@@ -1,0 +1,26 @@
+dnl -*- mode: Autoconf; -*-
+
+dnl -----------------------------------------------------------------------------------------
+dnl option for 32bit/64bit compile
+dnl -----------------------------------------------------------------------------------------
+
+AC_ARG_ENABLE(32bit,
+  AS_HELP_STRING([--enable-32bit], [force 32bit compilation (default: no)]),
+
+  tr_32BIT="$enableval"
+
+  if test "x$enableval" = xyes;  then
+    CXXFLAGS="$CXXFLAGS -m32"
+    CFLAGS="$CFLAGS -m32"
+    LDFLAGS="$LDFLAGS -m32"
+  fi,
+  tr_32BIT="no"
+)
+
+dnl -----------------------------------------------------------------------------------------
+dnl informational output
+dnl -----------------------------------------------------------------------------------------
+
+if test "x$tr_32BIT" = xyes;  then
+  BASIC_INFO="$BASIC_INFO|32bit: enabled"
+fi
