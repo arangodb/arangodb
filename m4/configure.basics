@@ -1,0 +1,340 @@
+dnl -*- mode: Autoconf; -*-
+
+dnl -----------------------------------------------------------------------------------------
+dnl checks build system
+dnl -----------------------------------------------------------------------------------------
+
+AC_MSG_NOTICE([................................................................................])
+AC_MSG_NOTICE([CHECKING BUILD SYSTEM])
+AC_MSG_NOTICE([................................................................................])
+
+AC_CANONICAL_BUILD
+AC_CANONICAL_HOST
+AC_CANONICAL_TARGET
+
+dnl -----------------------------------------------------------------------------------------
+dnl use automake to generate Makfile.in
+dnl -----------------------------------------------------------------------------------------
+
+AM_INIT_AUTOMAKE([foreign subdir-objects])
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES(yes)])
+
+dnl -----------------------------------------------------------------------------------------
+dnl checks for compiler and basic settings
+dnl -----------------------------------------------------------------------------------------
+
+AC_MSG_NOTICE([................................................................................])
+AC_MSG_NOTICE([CHECKING C/C++ COMPILER AND LINKER])
+AC_MSG_NOTICE([................................................................................])
+
+case $target in
+  *-*-cygwin)
+    LDFLAGS="$LDFLAGS -Wl,--enable-auto-import"
+    enable_static="yes"
+    enable_shared="no"
+
+    list_cc="[gcc-4 gcc-3 gcc cc]"
+    list_cxx="[g++-4 g++-3 g++ cxx]"
+
+    ;;
+
+  *) 
+    list_cc="[gcc cc]"
+    list_cxx="[g++ cxx]"
+
+    ;;
+esac
+
+AC_PROG_CC($list_cc)
+AC_PROG_CXX($list_cxx)
+AC_PROG_CPP
+AM_PROG_CC_C_O
+AC_PROG_INSTALL
+AC_PROG_LN_S
+AC_PROG_MAKE_SET
+
+CFLAGS="${CFLAGS}"
+CXXFLAGS="${CXXFLAGS}"
+
+AC_ARG_ENABLE(error-on-warning,
+  AS_HELP_STRING([--enable-error-on-warning], [treat warnings as errors (default: no)]),
+  [tr_WERROR="${enableval:-yes}"],
+  [tr_WERROR=no]
+)
+
+AC_ARG_ENABLE(eff-cpp,
+  AS_HELP_STRING([--enable-eff-cpp], [use -Weffc++ (default: no)]),
+  [tr_WEFFCXX="${enableval:-yes}"],
+  [tr_WEFFCXX=no]
+)
+
+if test x$GCC == xyes;  then
+  WALL="-pedantic -Wall -Winit-self -Wno-long-long"
+
+  if test x$tr_WERROR == xyes;  then
+    WALL="${WALL} -Werror"
+  fi
+
+  WALLC="${WALL} -Wshadow -Wstrict-prototypes"
+  WALLCXX="${WALL} -Wstrict-null-sentinel -Woverloaded-virtual -Wno-variadic-macros"
+
+  if test x$tr_WEFFCXX == xyes;  then
+    WALLCXX="${WALLCXX} -Weffc++"
+  fi
+
+  CFLAGS="${CFLAGS} -std=gnu99 ${WALLC}"
+  CXXFLAGS="${CXXFLAGS} ${WALLCXX}"
+fi
+
+AC_SEARCH_LIBS([sincos], [m])
+
+dnl -----------------------------------------------------------------------------------------
+dnl option for gnu style include
+dnl -----------------------------------------------------------------------------------------
+
+AC_ARG_ENABLE(isystem,
+  AS_HELP_STRING([--enable-isystem], [enables the use of -isystem instead of -I for system headers (default: no)]),
+  [tr_ISYSTEM="${enableval:-yes}"],
+  [tr_ISYSTEM=no]
+)
+
+if test x$GCC == xyes;  then
+  INCPREFIX="-isystem " # note that the trailing blank is important
+else
+  INCPREFIX="-I"
+fi
+
+if test "x$tr_ISYSTEM" = "xno";  then
+  INCPREFIX="-I"
+fi
+
+dnl -----------------------------------------------------------------------------------------
+dnl checks for linker settings
+dnl -----------------------------------------------------------------------------------------
+
+case $target in
+  *-apple-darwin*)
+    ABS_STATIC_LIBS="yes"
+    STATIC_LIBS=""
+    DYNAMIC_LIBS=""
+    LIBTOOL_LIBS=""
+    ;;
+
+  *)
+    STATIC_LIBS="-Wl,-Bstatic"
+    DYNAMIC_LIBS="-Wl,-Bdynamic"
+    LIBTOOL_LIBS="-Wl,"
+    ;;
+esac
+
+dnl -----------------------------------------------------------------------------------------
+dnl generate correct include, either -I oder -isystem
+dnl -----------------------------------------------------------------------------------------
+
+AC_DEFUN([TR_INCLUDE],[
+  if test "x$1" != "x";  then
+    if test "x$INCPREFIX" != "x-I";  then
+      $1=`echo $[]$1 | sed -e "s:-I:$INCPREFIX:g"`
+    fi
+  fi
+])
+
+dnl -----------------------------------------------------------------------------------------
+dnl find absolute path for library
+dnl
+dnl usage: TR_LIBRARY(library name)
+dnl
+dnl returns: tr_library
+dnl -----------------------------------------------------------------------------------------
+
+AC_DEFUN([TR_LIBRARY],[
+  tr_library=""
+
+  for tr_path in $LDFLAGS;  do
+    case $tr_path in
+      -L*)
+        path=`echo $tr_path | sed -e 's:^-L::'`
+        if test -f "$path/lib$1.a";  then
+          tr_library="$path/lib$1.a"
+        fi
+        ;;
+    esac
+  done
+])
+
+dnl -----------------------------------------------------------------------------------------
+dnl static enable library
+dnl
+dnl usage: TR_STATIC_ENABLE(static-if-name)
+dnl -----------------------------------------------------------------------------------------
+
+AC_DEFUN([TR_STATIC_ENABLE],[
+  if test "x$STATIC_LIBS" != x -o "x$ABS_STATIC_LIBS" = xyes;  then
+    AC_ARG_ENABLE(static-$1,
+      AS_HELP_STRING([--enable-static-$1], [using static library '$1' (default: no)]),
+      [tr_static_$1="$enableval"],
+      [tr_static_$1="no"]
+    )
+  else
+    tr_static_$1="no"
+  fi
+])
+
+dnl -----------------------------------------------------------------------------------------
+dnl find static or shared C library
+dnl
+dnl usage: TR_FIND_C_LIBRARY(static-if-name,
+dnl                          library,
+dnl                          lib environment,
+dnl                          function to check)
+dnl
+dnl returns: tr_library_found
+dnl -----------------------------------------------------------------------------------------
+
+AC_DEFUN([TR_FIND_C_LIBRARY],[
+  if test "x$ABS_STATIC_LIBS" = xyes -a "x$tr_static_$1" = xyes;  then
+    tr_library_found=no
+
+    AC_MSG_CHECKING([$2])
+    TR_LIBRARY($2)
+
+    if test "x$tr_library" != x;  then
+      $3="$tr_library $$3"
+      AC_MSG_RESULT([$tr_library])
+      tr_library_found=yes
+    else
+      AC_MSG_RESULT([no])
+    fi
+  else
+    tr_library_found=yes
+
+    AC_CHECK_LIB([$2],
+                 [$4],
+                 [$3="-l$2 $$3"],
+                 [tr_library_found=no])
+  fi
+])
+
+dnl -----------------------------------------------------------------------------------------
+dnl find static or shared C++ library
+dnl
+dnl usage: TR_FIND_CXX_LIBRARY(static-if-name,
+dnl                            library,
+dnl                            lib environment,
+dnl                            include header,
+dnl                            body source code)
+dnl
+dnl returns: tr_library_found
+dnl -----------------------------------------------------------------------------------------
+
+AC_DEFUN([TR_FIND_CXX_LIBRARY],[
+  if test "x$ABS_STATIC_LIBS" = xyes -a "x$tr_static_$1" = xyes;  then
+    tr_library_found=no
+
+    AC_MSG_CHECKING([$2])
+    TR_LIBRARY($2)
+
+    if test "x$tr_library" != x;  then
+      $3="$tr_library $$3"
+      AC_MSG_RESULT([$tr_library])
+      tr_library_found=yes
+    else
+      AC_MSG_RESULT([no])
+    fi
+  else
+    tr_library_found=yes
+
+    AX_CXX_CHECK_LIB([$2],
+                     [$4],
+                     [$5],
+                     [$3="-l$2 $$3"],
+                     [tr_library_found=no])
+  fi
+])
+
+dnl -----------------------------------------------------------------------------------------
+dnl find absolute path for libraries
+dnl
+dnl usage: TR_FIND_CXX_LIBRARY(lib environment)
+dnl
+dnl returns: tr_libraries_found
+dnl -----------------------------------------------------------------------------------------
+
+AC_DEFUN([TR_ABSOLUTE_LIBRARIES],
+  [if test "x$tr_static_$1" = xyes -a "x$ABS_STATIC_LIBS" = xyes;  then
+     tr_libraries_found=no
+     tr_missing=""
+     tr_result=""
+     tr_special=""
+
+     for tr_lib in $$2;  do
+       case $tr_lib in
+         -lpthread|-lm|-lrt)
+           tr_special="$tr_special $tr_lib"
+           ;;
+
+	 -l*)
+	   lib=`echo $tr_lib | sed -e 's:^-l::'`
+	   tr_missing="$tr_missing $lib"
+	   ;;
+       esac
+     done
+
+     for tr_path in $$2;  do
+       case $tr_path in
+	 -L*)
+	   path=`echo $tr_path | sed -e 's:^-L::'`
+
+	   tr_still_missing=""
+
+	   for tr_lib in $tr_missing;  do
+	     AC_MSG_CHECKING([for the static library $tr_lib in $path])
+
+	     if test -f "$path/lib$tr_lib.a";  then
+               AC_MSG_RESULT([$path/lib$tr_lib.a])
+	       tr_result="$tr_result $path/lib$tr_lib.a"
+	     else
+               AC_MSG_RESULT()
+	       tr_still_missing="$tr_sill_missing $tr_lib"
+	     fi
+	   done
+
+	   tr_missing="$tr_still_missing"
+	   ;;
+       esac
+     done
+
+     for tr_path in $LDFLAGS;  do
+       case $tr_path in
+	 -L*)
+	   path=`echo $tr_path | sed -e 's:^-L::'`
+
+	   tr_still_missing=""
+
+	   for tr_lib in $tr_missing;  do
+	     AC_MSG_CHECKING([for the static library $tr_lib in $path])
+
+	     if test -f "$path/lib$tr_lib.a";  then
+               AC_MSG_RESULT([$path/lib$tr_lib.a])
+	       tr_result="$tr_result $path/lib$tr_lib.a"
+	     else
+               AC_MSG_RESULT()
+	       tr_still_missing="$tr_sill_missing $tr_lib"
+	     fi
+	   done
+
+	   tr_missing="$tr_still_missing"
+	   ;;
+       esac
+     done
+
+     if test "x$tr_missing" = x;  then
+       tr_libraries_found=yes
+       $2="$tr_result $tr_special"
+     else
+       tr_libraries_found=no
+     fi
+   else
+     tr_libraries_found=yes
+   fi
+])
