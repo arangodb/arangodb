@@ -66,6 +66,7 @@ typedef struct doc_rs_vector_s {
 
   TRI_shaped_json_t* _elements;
   TRI_voc_did_t* _dids;
+  TRI_json_t* _augmented;
 
   TRI_voc_size_t _length;
   TRI_voc_size_t _current;
@@ -100,8 +101,14 @@ static bool HasNextRSSingle (TRI_result_set_t* rs) {
 /// @brief returns the current element of a single result set
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_shaped_json_t* NextRSSingle (TRI_result_set_t* rs, TRI_voc_did_t* did) {
+static TRI_shaped_json_t* NextRSSingle (TRI_result_set_t* rs,
+                                        TRI_voc_did_t* did,
+                                        TRI_json_t const** augmented) {
   doc_rs_single_t* rss = (doc_rs_single_t*) rs;
+
+  if (augmented != NULL) {
+    *augmented = NULL;
+  }
 
   if (rss->_empty) {
     *did = 0;
@@ -167,11 +174,22 @@ static bool HasNextRSVector (TRI_result_set_t* rs) {
 /// @brief returns the current element of a vector result set
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_shaped_json_t* NextRSVector (TRI_result_set_t* rs, TRI_voc_did_t* did) {
+static TRI_shaped_json_t* NextRSVector (TRI_result_set_t* rs,
+                                        TRI_voc_did_t* did,
+                                        TRI_json_t const** augmented) {
   doc_rs_vector_t* rss = (doc_rs_vector_t*) rs;
 
   if (rss->_current < rss->_length) {
     *did = rss->_dids[rss->_current];
+
+    if (augmented != NULL) {
+      if (rss->_augmented == NULL) {
+        *augmented = NULL;
+      }
+      else {
+        *augmented = &rss->_augmented[rss->_current];
+      }
+    }
 
     return &rss->_elements[rss->_current++];
   }
@@ -206,13 +224,17 @@ static void FreeRSVector (TRI_result_set_t* rs) {
 
   void* f;
 
+  f = TRI_RemoveKeyAssociativeSynced(&rs->_container->_resultSets, &rs->_id);
+  assert(f != NULL);
+
   if (rss->_elements != NULL) {
     TRI_Free(rss->_dids);
     TRI_Free(rss->_elements);
   }
 
-  f = TRI_RemoveKeyAssociativeSynced(&rs->_container->_resultSets, &rs->_id);
-  assert(f != NULL);
+  if (rss->_augmented != NULL) {
+    TRI_Free(rss->_augmented);
+  }
 
   TRI_Free(rs->_info._cursor);
   TRI_Free(rs);
@@ -308,6 +330,8 @@ TRI_result_set_t* TRI_CreateRSSingle (TRI_doc_collection_t* collection,
 
   rs = TRI_Allocate(sizeof(doc_rs_single_t));
 
+  rs->base._error = NULL;
+
   rs->base.hasNext = HasNextRSSingle;
   rs->base.next = NextRSSingle;
   rs->base.count = CountRSSingle;
@@ -338,6 +362,7 @@ TRI_result_set_t* TRI_CreateRSSingle (TRI_doc_collection_t* collection,
 
 TRI_result_set_t* TRI_CreateRSVector (TRI_doc_collection_t* collection,
                                       TRI_doc_mptr_t const** header,
+                                      TRI_json_t const* augmented,
                                       TRI_voc_size_t length,
                                       TRI_voc_size_t total) {
   doc_rs_vector_t* rs;
@@ -347,6 +372,8 @@ TRI_result_set_t* TRI_CreateRSVector (TRI_doc_collection_t* collection,
   TRI_voc_did_t* wtr;
 
   rs = TRI_Allocate(sizeof(doc_rs_vector_t));
+
+  rs->base._error = NULL;
 
   rs->base.hasNext = HasNextRSVector;
   rs->base.next = NextRSVector;
@@ -361,6 +388,7 @@ TRI_result_set_t* TRI_CreateRSVector (TRI_doc_collection_t* collection,
     rs->_current = 0;
     rs->_dids = NULL;
     rs->_elements = NULL;
+    rs->_augmented = NULL;
   }
   else {
     rs->_length = length;
@@ -376,6 +404,14 @@ TRI_result_set_t* TRI_CreateRSVector (TRI_doc_collection_t* collection,
     for (;  ptr < end;  ++ptr, ++qtr, ++wtr) {
       *wtr = (*qtr)->_did;
       *ptr = (*qtr)->_document;
+    }
+
+    if (augmented == NULL) {
+      rs->_augmented = NULL;
+    }
+    else {
+      rs->_augmented = TRI_Allocate(length * sizeof(TRI_json_t));
+      memcpy(rs->_augmented, augmented, length * sizeof(TRI_json_t));
     }
   }
 

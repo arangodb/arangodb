@@ -195,7 +195,7 @@ static v8::Handle<v8::Value> ParseArray (yyscan_t scanner) {
 
   v8::Handle<v8::Object> array = v8::Object::New();
   bool comma = false;
-  char const* name;
+  char* name;
   char const* ptr;
   size_t len;
   size_t outLength;
@@ -270,7 +270,7 @@ static v8::Handle<v8::Value> ParseObject (yyscan_t scanner, int c) {
   char buffer[1024];
 
   char* ep;
-  char const* ptr;
+  char* ptr;
   double d;
   size_t outLength;
 

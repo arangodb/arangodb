@@ -57,5 +57,4 @@ avocdb_SOURCES = \
 	VocBase/simple-collection.c \
 	VocBase/vocbase.c \
 	VocBase/voc-shaper.c \
-	VocBase/write-slots.c \
 	# end of file list

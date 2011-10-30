@@ -81,7 +81,7 @@ typedef struct TRI_index_s {
   struct TRI_doc_collection_s* _collection;
 
   bool (*insert) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
-  bool (*erase) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
+  bool (*remove) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
   bool (*update) (struct TRI_index_s*, struct TRI_doc_mptr_s const*, struct TRI_shaped_json_s const*);
   TRI_json_t* (*json) (struct TRI_index_s*, struct TRI_doc_collection_s*);
 }

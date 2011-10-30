@@ -39,8 +39,9 @@ extern "C" {
 // -----------------------------------------------------------------------------
 
 struct TRI_doc_collection_s;
-struct TRI_shaped_json_s;
 struct TRI_doc_mptr_s;
+struct TRI_json_s;
+struct TRI_shaped_json_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -92,8 +93,10 @@ typedef struct TRI_result_set_s {
   TRI_rs_container_t* _container;
   TRI_rs_info_t _info;
 
+  char* _error;
+
   bool (*hasNext) (struct TRI_result_set_s*);
-  struct TRI_shaped_json_s* (*next) (struct TRI_result_set_s*, TRI_voc_did_t*);
+  struct TRI_shaped_json_s* (*next) (struct TRI_result_set_s*, TRI_voc_did_t*, struct TRI_json_s const**);
   TRI_voc_size_t (*count) (struct TRI_result_set_s*, bool current);
 
   void (*free) (struct TRI_result_set_s*);
@@ -139,6 +142,7 @@ TRI_result_set_t* TRI_CreateRSSingle (struct TRI_doc_collection_s* collection,
 
 TRI_result_set_t* TRI_CreateRSVector (struct TRI_doc_collection_s* collection,
                                       struct TRI_doc_mptr_s const** header,
+                                      struct TRI_json_s const* augmented,
                                       TRI_voc_size_t length,
                                       TRI_voc_size_t total);
 

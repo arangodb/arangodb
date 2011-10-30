@@ -29,6 +29,8 @@
 
 #include <Basics/logging.h>
 #include <Basics/strings.h>
+#include <Basics/string-buffer.h>
+#include <Basics/conversions.h>
 #include <VocBase/simple-collection.h>
 #include <VocBase/index.h>
 
@@ -36,13 +38,722 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-static TRI_doc_mptr_t const** ExecuteQuery (TRI_query_t* query,
-                                            TRI_rs_info_t* info,
-                                            TRI_voc_size_t* length,
-                                            TRI_voc_size_t* total);
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBasePrivate VocBase (Private)
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees the old storage of a TRI_query_result_t
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeDocuments (TRI_query_result_t* result) {
+  if (result->_documents != NULL) {
+    TRI_Free(result->_documents);
+    result->_documents = NULL;
+  }
+
+  if (result->_augmented != NULL) {
+    TRI_Free(result->_augmented);
+    result->_augmented = NULL;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  COLLECTION QUERY
+// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBasePrivate VocBase (Private)
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a full scan
+////////////////////////////////////////////////////////////////////////////////
+
+static void ExecuteCollectionQuery (TRI_query_t* qry, TRI_query_result_t* result) {
+  TRI_document_query_t* query;
+  TRI_doc_mptr_t const** qtr;
+  TRI_sim_collection_t* collection;
+  void** end;
+  void** ptr;
+
+  // extract query
+  query = (TRI_document_query_t*) qry;
+
+  // sanity check
+  if (! query->base._collection->_loaded) {
+    return;
+  }
+
+  if (query->base._collection->_collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    return;
+  }
+
+  collection = (TRI_sim_collection_t*) query->base._collection->_collection;
+
+  // append information about the execution plan
+  TRI_AppendString(&result->_cursor, ">collection");
+
+  // free any old storage
+  FreeDocuments(result);
+
+  // add a new document list and copy all documents
+  result->_total = result->_length = collection->_primaryIndex._nrUsed;
+
+  if (result->_length == 0) {
+    return;
+  }
+
+  result->_documents = (qtr = TRI_Allocate(sizeof(TRI_doc_mptr_t*) * (result->_length)));
+
+  ptr = collection->_primaryIndex._table;
+  end = collection->_primaryIndex._table + collection->_primaryIndex._nrAlloc;
+
+  for (;  ptr < end;  ++ptr) {
+    ++result->_scannedDocuments;
+
+    if (*ptr) {
+      ++result->_matchedDocuments;
+      *qtr++ = *ptr;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clones a full scan
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_query_t* CloneCollectionQuery (TRI_query_t* query) {
+  return TRI_CreateCollectionQuery(query->_collection);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees a full scan
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeCollectionQuery (TRI_query_t* query) {
+  TRI_Free(query->_string);
+  TRI_Free(query);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    DOCUMENT QUERY
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBasePrivate VocBase (Private)
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a document lookup as primary index lookup
+////////////////////////////////////////////////////////////////////////////////
+
+static void ExecuteDocumentQueryPrimary (TRI_document_query_t* query,
+                                         TRI_vocbase_col_t const* collection,
+                                         TRI_query_result_t* result) {
+  TRI_doc_mptr_t const* document;
+
+  // sanity check
+  if (! query->base._collection->_loaded) {
+    return;
+  }
+
+  // look up the document
+  document = collection->_collection->read(collection->_collection, query->_did);
+
+  // append information about the execution plan
+  TRI_AppendString(&result->_cursor, ">primary");
+
+  ++result->_scannedIndexEntries;
+
+  // free any old storage
+  FreeDocuments(result);
+
+  // the document is the result
+  if (document == NULL) {
+    result->_total = result->_length = 0;
+  }
+  else {
+    result->_total = result->_length = 1;
+
+    ++result->_matchedDocuments;
+
+    result->_documents = TRI_Allocate(sizeof(TRI_doc_mptr_t*));
+    *result->_documents = document;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a document lookup as full scan
+////////////////////////////////////////////////////////////////////////////////
+
+static void ExecuteDocumentQueryFullScan (TRI_document_query_t* query,
+                                          TRI_query_result_t* result) {
+  TRI_doc_mptr_t const** ptr;
+  TRI_doc_mptr_t const** end;
+  TRI_json_t aug;
+  size_t pos;
+
+  // execute the sub-query
+  query->_operand->execute(query->_operand, result);
+
+  if (result->_error) {
+    return;
+  }
+
+  // append information about the execution plan
+  TRI_AppendString(&result->_cursor, ">full-scan[document]");
+
+  // without any document there will be no match
+  if (result->_length == 0) {
+    return;
+  }
+
+  // do a full scan
+  pos = 0;
+  ptr = result->_documents;
+  end = result->_documents + result->_length;
+
+  for (;  ptr < end;  ++ptr, ++pos) {
+    ++result->_scannedDocuments;
+
+    // found a match, create new result
+    if ((*ptr)->_did == query->_did) {
+      ++result->_matchedDocuments;
+
+      if (result->_length == 1) {
+        return;
+      }
+
+      TRI_Free(result->_documents);
+      result->_documents = TRI_Allocate(sizeof(TRI_doc_mptr_t*));
+
+      result->_total = result->_length = 1;
+      *result->_documents = *ptr;
+
+      if (result->_augmented != NULL) {
+        aug = result->_augmented[pos];
+
+        TRI_Free(result->_augmented);
+        result->_augmented = TRI_Allocate(sizeof(TRI_json_t));
+
+        result->_augmented[0] = aug;
+      }
+
+      return;
+    }
+  }
+
+  // nothing found
+  result->_total = result->_length = 0;
+
+  FreeDocuments(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a document lookup
+////////////////////////////////////////////////////////////////////////////////
+
+static void ExecuteDocumentQuery (TRI_query_t* qry,
+                                  TRI_query_result_t* result) {
+  TRI_document_query_t* query;
+
+  query = (TRI_document_query_t*) qry;
+
+  if (query->_operand != NULL && query->_operand->_type == TRI_QUE_TYPE_COLLECTION) {
+    ExecuteDocumentQueryPrimary(query, query->_operand->_collection, result);
+  }
+  else {
+    ExecuteDocumentQueryFullScan(query, result);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clones a document lookup
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_query_t* CloneDocumentQuery (TRI_query_t* qry) {
+  TRI_document_query_t* query;
+
+  query = (TRI_document_query_t*) qry;
+
+  return TRI_CreateDocumentQuery(query->_operand->clone(query->_operand), query->_did);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees a document lookup
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeDocumentQuery (TRI_query_t* qry) {
+  TRI_document_query_t* query;
+
+  query = (TRI_document_query_t*) qry;
+
+  query->_operand->free(query->_operand);
+
+  TRI_Free(query->base._string);
+  TRI_Free(query);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       LIMIT QUERY
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBasePrivate VocBase (Private)
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a limit query
+////////////////////////////////////////////////////////////////////////////////
+
+static void ExecuteLimitQuery (TRI_query_t* qry,
+                               TRI_query_result_t* result) {
+  TRI_doc_mptr_t const** copy;
+  TRI_json_t* aug = NULL;
+  TRI_limit_query_t* query;
+  TRI_voc_size_t limit;
+  TRI_voc_size_t offset;
+
+  query = (TRI_limit_query_t*) qry;
+
+  // execute the sub-query
+  query->_operand->execute(query->_operand, result);
+
+  if (result->_error) {
+    return;
+  }
+
+  // append information about the execution plan
+  TRI_AppendString(&result->_cursor, ">limit");
+
+  // without any documents there will be no limit
+  if (result->_length == 0) {
+    return;
+  }
+
+  // get the last "limit" documents
+  if (query->_limit < 0) {
+    limit = -query->_limit;
+
+    if (result->_length < limit) {
+      offset = 0;
+    }
+    else {
+      offset = result->_length - limit;
+    }
+  }
+
+  // get the first "limit" documents
+  else {
+    limit = query->_limit;
+    offset = 0;
+  }
+
+  // not enough documents to limit query
+  if (result->_length <= limit) {
+    result->_matchedDocuments += result->_length;
+    return;
+  }
+
+  // shorten result list
+  result->_matchedDocuments += limit;
+
+  copy = TRI_Allocate(sizeof(TRI_doc_mptr_t*) * limit);
+  memcpy(copy, result->_documents + offset, sizeof(TRI_doc_mptr_t*) * limit);
+
+  if (result->_augmented != NULL) {
+    aug = TRI_Allocate(sizeof(TRI_json_t) * limit);
+    memcpy(aug, result->_augmented + offset, sizeof(TRI_json_t) * limit);
+  }
+
+  result->_length = limit;
+
+  TRI_Free(result->_documents);
+  result->_documents = copy;
+
+  if (result->_augmented != NULL) {
+    TRI_Free(result->_augmented);
+    result->_augmented = aug;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clones a limit query
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_query_t* CloneLimitQuery (TRI_query_t* qry) {
+  TRI_limit_query_t* query;
+
+  query = (TRI_limit_query_t*) qry;
+
+  return TRI_CreateLimitQuery(query->_operand->clone(query->_operand), query->_limit);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees a full scan
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeLimitQuery (TRI_query_t* qry) {
+  TRI_limit_query_t* query;
+
+  query = (TRI_limit_query_t*) qry;
+
+  query->_operand->free(query->_operand);
+
+  TRI_Free(query->base._string);
+  TRI_Free(query);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                        NEAR QUERY
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBasePrivate VocBase (Private)
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locates a suitable geo index
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_geo_index_t* LocateGeoIndex (TRI_near_query_t* query) {
+  TRI_sim_collection_t* collection;
+
+  // sanity check
+  if (! query->base._collection->_loaded) {
+    return NULL;
+  }
+
+  if (query->base._collection->_collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    return NULL;
+  }
+
+  collection = (TRI_sim_collection_t*) query->base._collection->_collection;
+
+  // return the geo index
+  return collection->_geoIndex;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sorts geo coordinates
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct {
+  double _distance;
+  void const* _data;
+}
+geo_coordinate_distance_t;
+
+static int CompareGeoCoordinateDistance (geo_coordinate_distance_t* left, geo_coordinate_distance_t* right) {
+  if (left->_distance < right->_distance) {
+    return -1;
+  }
+  else if (left->_distance > right->_distance) {
+    return 1;
+  }
+  else {
+    return 0;
+  }
+}
+
+#define FSRT_NAME SortGeoCoordinates
+#define FSRT_TYPE geo_coordinate_distance_t
+
+#define FSRT_COMP(l,r,s) CompareGeoCoordinateDistance(l,r)
+
+uint32_t FSRT_Rand = 0;
+
+static uint32_t RandomGeoCoordinateDistance (void) {
+  return (FSRT_Rand = FSRT_Rand * 31415 + 27818);
+}
+
+#define FSRT__RAND \
+  ((fs_b) + FSRT__UNIT * (RandomGeoCoordinateDistance() % FSRT__DIST(fs_e,fs_b,FSRT__SIZE)))
+
+#include <Basics/fsrt.inc>
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a near query
+////////////////////////////////////////////////////////////////////////////////
+
+static void ExecuteNearQuery (TRI_query_t* qry,
+                              TRI_query_result_t* result) {
+  GeoCoordinate* end;
+  GeoCoordinate* ptr;
+  GeoCoordinates* cors;
+  TRI_doc_mptr_t const** wtr;
+  TRI_geo_index_t* idx;
+  TRI_near_query_t* query;
+  geo_coordinate_distance_t* tmp;
+  geo_coordinate_distance_t* gnd;
+  geo_coordinate_distance_t* gtr;
+  double* dtr;
+  size_t n;
+
+  query = (TRI_near_query_t*) qry;
+
+  // free any old results
+  FreeDocuments(result);
+
+  // we need a suitable geo index
+  idx = LocateGeoIndex(query);
+
+  if (idx == NULL) {
+    result->_error = TRI_DuplicateString("cannot locate suitable geo index");
+    return;
+  }
+
+  // sub-query must be the collection
+  if (query->_operand->_type != TRI_QUE_TYPE_COLLECTION) {
+    result->_error = TRI_DuplicateString("near query can only be executed for the complete collection");
+    return;
+  }
+
+  // append information about the execution plan
+  TRI_AppendString(&result->_cursor, ">near");
+
+  // execute geo search
+  cors = TRI_NearestGeoIndex(&idx->base, query->_latitude, query->_longitude, query->_count);
+
+  if (cors == NULL) {
+    result->_error = TRI_DuplicateString("cannot execute geo index search");
+    return;
+  }
+
+  // sort the result
+  n = cors->length;
+
+  gtr = tmp = TRI_Allocate(sizeof(geo_coordinate_distance_t) * n);
+  gnd = tmp + n;
+
+  ptr = cors->coordinates;
+  end = cors->coordinates + n;
+
+  dtr = cors->distances;
+
+  for (;  ptr < end;  ++ptr, ++dtr, ++gtr) {
+    gtr->_distance = *dtr;
+    gtr->_data = ptr->data;
+  }
+
+  GeoIndex_CoordinatesFree(cors);
+
+  SortGeoCoordinates(tmp, gnd);
+
+  // copy the documents
+  result->_documents = (TRI_doc_mptr_t const**) (wtr = TRI_Allocate(sizeof(TRI_doc_mptr_t*) * n));
+
+  for (gtr = tmp;  gtr < gnd;  ++gtr, ++wtr) {
+    *wtr = gtr->_data;
+  }
+
+  // copy the distance
+  if (query->_distance != NULL) {
+    TRI_json_t* atr;
+
+    result->_augmented = (atr = TRI_Allocate(sizeof(TRI_json_t) * n));
+
+    for (gtr = tmp;  gtr < gnd;  ++gtr, ++atr) {
+      atr->_type = TRI_JSON_ARRAY;
+      TRI_InitVector(&atr->_value._objects, sizeof(TRI_json_t));
+
+      TRI_InsertArrayJson(atr, query->_distance, TRI_CreateNumberJson(gtr->_distance));
+    }
+  }
+
+  TRI_Free(tmp);
+
+  result->_total = result->_length = n;
+  result->_scannedIndexEntries += n;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clones a near query
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_query_t* CloneNearQuery (TRI_query_t* qry) {
+  TRI_near_query_t* query;
+
+  query = (TRI_near_query_t*) qry;
+
+  return TRI_CreateNearQuery(query->_operand->clone(query->_operand),
+                             query->_latitude,
+                             query->_longitude,
+                             query->_count,
+                             query->_distance);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees a near query
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeNearQuery (TRI_query_t* qry) {
+  TRI_near_query_t* query;
+
+  query = (TRI_near_query_t*) qry;
+
+  TRI_Free(query->base._string);
+  TRI_Free(query);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                        SKIP QUERY
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBasePrivate VocBase (Private)
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a skip
+////////////////////////////////////////////////////////////////////////////////
+
+static void ExecuteSkipQuery (TRI_query_t* qry,
+                              TRI_query_result_t* result) {
+  TRI_doc_mptr_t const** copy;
+  TRI_json_t* aug = NULL;
+  TRI_skip_query_t* query;
+  TRI_voc_size_t newtotal;
+
+  query = (TRI_skip_query_t*) qry;
+
+  // execute the sub-query
+  query->_operand->execute(query->_operand, result);
+
+  if (result->_error) {
+    return;
+  }
+
+  TRI_AppendString(&result->_cursor, ">skip");
+
+  // no skip at all
+  if (query->_skip == 0) {
+    result->_matchedDocuments += result->_length;
+    return;
+  }
+
+  // without any documents there will be no skipping
+  if (result->_length == 0) {
+    return;
+  }
+
+  // not enough documents
+  if (result->_length <= query->_skip) {
+    result->_length = 0;
+
+    FreeDocuments(result);
+
+    return;
+  }
+
+  // shorten result list
+  newtotal = (result->_length - query->_skip);
+
+  result->_matchedDocuments += newtotal;
+
+  copy = TRI_Allocate(sizeof(TRI_doc_mptr_t*) * newtotal);
+  memcpy(copy, result->_documents + query->_skip, sizeof(TRI_doc_mptr_t*) * newtotal);
+
+  if (result->_augmented != NULL) {
+    aug = TRI_Allocate(sizeof(TRI_json_t) * newtotal);
+    memcpy(aug, result->_augmented + query->_skip, sizeof(TRI_json_t) * newtotal);
+  }
+
+  result->_length = newtotal;
+
+  TRI_Free(result->_documents);
+  result->_documents = copy;
+
+  if (result->_augmented != NULL) {
+    TRI_Free(result->_augmented);
+    result->_augmented = aug;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clones a skip query
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_query_t* CloneSkipQuery (TRI_query_t* qry) {
+  TRI_skip_query_t* query;
+
+  query = (TRI_skip_query_t*) qry;
+
+  return TRI_CreateSkipQuery(query->_operand->clone(query->_operand), query->_skip);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees a full scan
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeSkipQuery (TRI_query_t* qry) {
+  TRI_skip_query_t* query;
+
+  query = (TRI_skip_query_t*) qry;
+
+  query->_operand->free(query->_operand);
+
+  TRI_Free(query->base._string);
+  TRI_Free(query);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,338 +762,262 @@ static TRI_doc_mptr_t const** ExecuteQuery (TRI_query_t* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a full scan
+/// @brief creates a full scan of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t const** ExecuteCollectionQuery (TRI_collection_query_t* query,
-                                                      TRI_rs_info_t* info,
-                                                      TRI_voc_size_t* length,
-                                                      TRI_voc_size_t* total) {
-  TRI_doc_mptr_t const** result;
-  TRI_doc_mptr_t const** qtr;
-  TRI_sim_collection_t* collection;
-  void** end;
-  void** ptr;
+TRI_query_t* TRI_CreateCollectionQuery (TRI_vocbase_col_t const* collection) {
+  TRI_collection_query_t* query;
 
-  TRI_AppendString(&info->_cursor, ":collection");
+  query = TRI_Allocate(sizeof(TRI_collection_query_t));
 
-  *length = 0;
+  query->base._type = TRI_QUE_TYPE_COLLECTION;
+  query->base._collection = collection;
 
-  if (query->base._collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
-    return NULL;
+  query->base._string = TRI_Concatenate2String("db.", collection->_name);
+
+  query->base.execute = ExecuteCollectionQuery;
+  query->base.clone = CloneCollectionQuery;
+  query->base.free = FreeCollectionQuery;
+
+  return &query->base;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds the distance to a query
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_query_t* TRI_CreateDistanceQuery (TRI_query_t* operand, char const* name) {
+
+  // .............................................................................
+  // operand is a NEAR
+  // .............................................................................
+
+  if (operand->_type == TRI_QUE_TYPE_NEAR) {
+    TRI_near_query_t* near;
+
+    near = (TRI_near_query_t*) operand;
+
+    return TRI_CreateNearQuery(near->_operand->clone(near->_operand),
+                               near->_latitude,
+                               near->_longitude,
+                               near->_count,
+                               name);
   }
 
-  collection = (TRI_sim_collection_t*) query->base._collection;
+  // .............................................................................
+  // general case
+  // .............................................................................
 
-  *total = *length = collection->_primaryIndex._nrUsed;
+  return operand->clone(operand);
+}
 
-  if (*length == 0) {
-    return NULL;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a document
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_query_t* TRI_CreateDocumentQuery (TRI_query_t* operand, TRI_voc_did_t did) {
+  TRI_document_query_t* query;
+  char* number;
+
+  query = TRI_Allocate(sizeof(TRI_document_query_t));
+
+  query->base._type = TRI_QUE_TYPE_DOCUMENT;
+  query->base._collection = operand->_collection;
+
+  number = TRI_StringUInt64(did);
+  query->base._string = TRI_Concatenate4String(operand->_string, ".document(", number, ")");
+  TRI_FreeString(number);
+
+  query->base.execute = ExecuteDocumentQuery;
+  query->base.clone = CloneDocumentQuery;
+  query->base.free = FreeDocumentQuery;
+
+  query->_operand = operand;
+  query->_did = did;
+
+  return &query->base;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief limits an existing query
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_query_t* TRI_CreateLimitQuery (TRI_query_t* operand, TRI_voc_ssize_t limit) {
+
+  // .............................................................................
+  // operand is a NEAR
+  // .............................................................................
+
+  if (0 <= limit && operand->_type == TRI_QUE_TYPE_NEAR) {
+    TRI_near_query_t* near;
+
+    near = (TRI_near_query_t*) operand;
+
+    if (near->_count < limit) {
+      limit = near->_count;
+    }
+
+    return TRI_CreateNearQuery(near->_operand->clone(near->_operand),
+                               near->_latitude,
+                               near->_longitude,
+                               limit,
+                               near->_distance);
   }
 
-  result = qtr = TRI_Allocate(sizeof(TRI_doc_mptr_t*) * (*length));
+  // .............................................................................
+  // operand is a LIMIT
+  // .............................................................................
 
-  ptr = collection->_primaryIndex._table;
-  end = collection->_primaryIndex._table + collection->_primaryIndex._nrAlloc;
+  if (operand->_type == TRI_QUE_TYPE_LIMIT) {
+    TRI_limit_query_t* lquery;
+    bool combine;
 
-  for (;  ptr < end;  ++ptr) {
-    ++info->_scannedDocuments;
+    lquery = (TRI_limit_query_t*) operand;
+    combine = true;
 
-    if (*ptr) {
-      ++info->_matchedDocuments;
-      *qtr++ = *ptr;
+    if (lquery->_limit < 0 && limit <= 0) {
+      if (limit < lquery->_limit) {
+        limit = lquery->_limit;
+      }
+    }
+    else if (lquery->_limit > 0 && limit >= 0) {
+      if (limit > lquery->_limit) {
+        limit = lquery->_limit;
+      }
+    }
+    else if (abs(lquery->_limit) <= abs(limit)) {
+      return lquery->base.clone(&lquery->base);
+    }
+    else {
+      combine = false;
+    }
+
+    if (combine) {
+      return TRI_CreateLimitQuery(lquery->_operand->clone(lquery->_operand),
+                                  limit);
     }
   }
 
-  return result;
+  // .............................................................................
+  // general case
+  // .............................................................................
+
+  TRI_limit_query_t* query;
+  char* number;
+
+  query = TRI_Allocate(sizeof(TRI_limit_query_t));
+
+  query->base._type = TRI_QUE_TYPE_LIMIT;
+  query->base._collection = operand->_collection;
+
+  number = TRI_StringInt64(limit);
+  query->base._string = TRI_Concatenate4String(operand->_string, ".limit(", number, ")");
+  TRI_FreeString(number);
+
+  query->base.execute = ExecuteLimitQuery;
+  query->base.clone = CloneLimitQuery;
+  query->base.free = FreeLimitQuery;
+
+  query->_operand = operand;
+  query->_limit = limit;
+
+  return &query->base;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a document lookup as primary index lookup
+/// @brief looks up documents near a given point
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t const** ExecuteDocumentQueryPrimary (TRI_document_query_t* query,
-                                                           TRI_doc_collection_t* collection,
-                                                           TRI_rs_info_t* info,
-                                                           TRI_voc_size_t* length,
-                                                           TRI_voc_size_t* total) {
-  TRI_doc_mptr_t const* document;
-  TRI_doc_mptr_t const** result;
+TRI_query_t* TRI_CreateNearQuery (TRI_query_t* operand,
+                                  double latitude,
+                                  double longitude,
+                                  TRI_voc_size_t count,
+                                  char const* distance) {
+  TRI_string_buffer_t sb;
+  TRI_near_query_t* query;
 
-  document = collection->read(collection, query->_did);
+  query = TRI_Allocate(sizeof(TRI_near_query_t));
 
-  TRI_AppendString(&info->_cursor, ":primary");
+  query->base._type = TRI_QUE_TYPE_NEAR;
+  query->base._collection = operand->_collection;
 
-  ++info->_scannedIndexEntries;
 
-  if (document == NULL) {
-    *length = 0;
-    *total = 0;
-    return NULL;
+  TRI_InitStringBuffer(&sb);
+
+  TRI_AppendStringStringBuffer(&sb, ".near(");
+  TRI_AppendDoubleStringBuffer(&sb, latitude);
+  TRI_AppendStringStringBuffer(&sb, ",");
+  TRI_AppendDoubleStringBuffer(&sb, longitude);
+  TRI_AppendStringStringBuffer(&sb, ")");
+
+  TRI_AppendStringStringBuffer(&sb, ".limit(");
+  TRI_AppendUInt64StringBuffer(&sb, count);
+  TRI_AppendStringStringBuffer(&sb, ")");
+
+  if (distance != NULL) {
+    TRI_AppendStringStringBuffer(&sb, ".distance(\"");
+    TRI_AppendStringStringBuffer(&sb, distance);
+    TRI_AppendStringStringBuffer(&sb, "\")");
   }
-  else {
-    *length = 1;
-    *total = 1;
 
-    ++info->_matchedDocuments;
+  query->base._string = sb._buffer;
 
-    result = TRI_Allocate(sizeof(TRI_doc_mptr_t*));
-    *result = document;
+  query->base.execute = ExecuteNearQuery;
+  query->base.clone = CloneNearQuery;
+  query->base.free = FreeNearQuery;
 
-    return result;
-  }
+  query->_operand = operand;
+  query->_location = NULL;
+  query->_latitude = latitude;
+  query->_longitude = longitude;
+  query->_count = count;
+  query->_distance = (distance == NULL ? NULL : TRI_DuplicateString(distance));
+
+  return &query->base;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a document lookup as full scan
+/// @brief skips elements of an existing query
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t const** ExecuteDocumentQuerySlow (TRI_document_query_t* query,
-                                                        TRI_rs_info_t* info,
-                                                        TRI_voc_size_t* length,
-                                                        TRI_voc_size_t* total) {
-  TRI_doc_mptr_t const** result;
-  TRI_doc_mptr_t const** ptr;
-  TRI_doc_mptr_t const** sub;
-  TRI_doc_mptr_t const** end;
-  TRI_voc_size_t subtotal;
+TRI_query_t* TRI_CreateSkipQuery (TRI_query_t* operand, TRI_voc_size_t skip) {
+  TRI_skip_query_t* query;
+  char* number;
 
-  sub = ExecuteQuery(query->_operand, info, &subtotal, total);
+  // .............................................................................
+  // operand is a SKIP
+  // .............................................................................
 
-  TRI_AppendString(&info->_cursor, ":full-scan");
+  if (0 <= skip && operand->_type == TRI_QUE_TYPE_SKIP) {
+    TRI_skip_query_t* squery;
 
-  if (sub == NULL) {
-    *length = 0;
-    return NULL;
+    squery = (TRI_skip_query_t*) operand;
+
+    return TRI_CreateSkipQuery(squery->_operand->clone(squery->_operand),
+                               squery->_skip + skip);
   }
 
-  if (subtotal == 0) {
-    TRI_Free(sub);
+  // .............................................................................
+  // general case
+  // .............................................................................
 
-    *length = 0;
-    return NULL;
-  }
+  query = TRI_Allocate(sizeof(TRI_skip_query_t));
 
-  end = sub + subtotal;
+  query->base._type = TRI_QUE_TYPE_SKIP;
+  query->base._collection = operand->_collection;
 
-  for (ptr = sub;  ptr < end;  ++ptr) {
-    ++info->_scannedDocuments;
+  number = TRI_StringInt64(skip);
+  query->base._string = TRI_Concatenate4String(operand->_string, ".skip(", number, ")");
+  TRI_FreeString(number);
 
-    if ((*ptr)->_did == query->_did) {
-      ++info->_matchedDocuments;
-      result = TRI_Allocate(sizeof(TRI_doc_mptr_t*));
+  query->base.execute = ExecuteSkipQuery;
+  query->base.clone = CloneSkipQuery;
+  query->base.free = FreeSkipQuery;
 
-      *result = *ptr;
-      *length = 1;
+  query->_operand = operand;
+  query->_skip = skip;
 
-      TRI_Free(sub);
-
-      return result;
-    }
-  }
-
-  TRI_Free(sub);
-
-  *length = 0;
-  return NULL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a document lookup
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_doc_mptr_t const** ExecuteDocumentQuery (TRI_document_query_t* query,
-                                                    TRI_rs_info_t* info,
-                                                    TRI_voc_size_t* length,
-                                                    TRI_voc_size_t* total) {
-  if (query->_operand != NULL && query->_operand->_type == TRI_QUE_TYPE_COLLECTION) {
-    return ExecuteDocumentQueryPrimary(query,
-                                       query->_operand->_collection,
-                                       info,
-                                       length,
-                                       total);
-  }
-  else {
-    return ExecuteDocumentQuerySlow(query, info, length, total);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a limit
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_doc_mptr_t const** ExecuteLimitQuery (TRI_limit_query_t* query,
-                                                 TRI_rs_info_t* info,
-                                                 TRI_voc_size_t* length,
-                                                 TRI_voc_size_t* total) {
-  TRI_doc_mptr_t const** result;
-  TRI_doc_mptr_t const** sub;
-  TRI_voc_size_t subtotal;
-  TRI_voc_size_t offset;
-  TRI_voc_size_t limit;
-
-  sub = ExecuteQuery(query->_operand, info, &subtotal, total);
-
-  TRI_AppendString(&info->_cursor, ":limit");
-
-  if (sub == NULL) {
-    *length = 0;
-    return NULL;
-  }
-
-  // get the last "limit" documents
-  if (query->_limit < 0) {
-    limit = -query->_limit;
-    offset = subtotal + query->_limit;
-  }
-  else {
-    limit = query->_limit;
-    offset = 0;
-  }
-
-  if (subtotal <= limit) {
-    info->_matchedDocuments += subtotal;
-    *length = subtotal;
-    return sub;
-  }
-
-  info->_matchedDocuments += limit;
-  result = TRI_Allocate(sizeof(TRI_doc_mptr_t*) * limit);
-
-  memcpy(result, sub + offset, sizeof(TRI_doc_mptr_t*) * limit);
-  *length = limit;
-
-  TRI_Free(sub);
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a near
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_doc_mptr_t const** ExecuteNearQuery (TRI_near_query_t* query,
-                                                TRI_rs_info_t* info,
-                                                TRI_voc_size_t* length,
-                                                TRI_voc_size_t* total) {
-  GeoCoordinate* end;
-  GeoCoordinate* ptr;
-  GeoCoordinates* cors;
-  TRI_doc_mptr_t const** result;
-  TRI_doc_mptr_t const** wtr;
-  size_t n;
-
-  TRI_AppendString(&info->_cursor, ":near");
-
-  cors = TRI_NearestGeoIndex(query->_index, query->_latitude, query->_longitude, query->_count);
-
-  if (cors == NULL) {
-    LOG_WARNING("cannot execute geo-index");
-    *length = 0;
-    return NULL;
-  }
-
-  n = cors->length;
-
-  ptr = cors->coordinates;
-  end = cors->coordinates + n;
-
-  result = (TRI_doc_mptr_t const**) (wtr = TRI_Allocate(sizeof(TRI_doc_mptr_t*) * n));
-
-  for (;  ptr < end;  ++ptr, ++wtr) {
-    *wtr = ptr->data;
-  }
-
-  GeoIndex_CoordinatesFree(cors);
-
-  *length = n;
-  *total = n;
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a skip
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_doc_mptr_t const** ExecuteSkipQuery (TRI_skip_query_t* query,
-                                                TRI_rs_info_t* info,
-                                                TRI_voc_size_t* length,
-                                                TRI_voc_size_t* total) {
-  TRI_doc_mptr_t const** result;
-  TRI_doc_mptr_t const** sub;
-  TRI_voc_size_t subtotal;
-  TRI_voc_size_t newtotal;
-
-  sub = ExecuteQuery(query->_operand, info, &subtotal, total);
-
-  TRI_AppendString(&info->_cursor, ":skip");
-
-  if (sub == NULL) {
-    *length = 0;
-    return NULL;
-  }
-
-  if (subtotal <= query->_skip) {
-    TRI_Free(sub);
-    *length = 0;
-    return NULL;
-  }
-
-  if (query->_skip == 0) {
-    info->_matchedDocuments += subtotal;
-    *length = subtotal;
-    return sub;
-  }
-
-  newtotal = (subtotal - query->_skip);
-  info->_matchedDocuments += newtotal;
-  result = TRI_Allocate(sizeof(TRI_doc_mptr_t*) * newtotal);
-
-  memcpy(result, sub + query->_skip, sizeof(TRI_doc_mptr_t*) * newtotal);
-  *length = subtotal - query->_skip;
-
-  TRI_Free(sub);
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a query
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_doc_mptr_t const** ExecuteQuery (TRI_query_t* query,
-                                            TRI_rs_info_t* info,
-                                            TRI_voc_size_t* length,
-                                            TRI_voc_size_t* total) {
-  TRI_doc_mptr_t const** result;
-
-  result = NULL;
-  *length = 0;
-
-  switch (query->_type) {
-    case TRI_QUE_TYPE_COLLECTION:
-      result = ExecuteCollectionQuery((TRI_collection_query_t*) query, info, length, total);
-      break;
-
-    case TRI_QUE_TYPE_DOCUMENT:
-      result = ExecuteDocumentQuery((TRI_document_query_t*) query, info, length, total);
-      break;
-
-    case TRI_QUE_TYPE_LIMIT:
-      result = ExecuteLimitQuery((TRI_limit_query_t*) query, info, length, total);
-      break;
-
-    case TRI_QUE_TYPE_NEAR:
-      result = ExecuteNearQuery((TRI_near_query_t*) query, info, length, total);
-      break;
-
-    case TRI_QUE_TYPE_SKIP:
-      result = ExecuteSkipQuery((TRI_skip_query_t*) query, info, length, total);
-      break;
-  }
-
-  return result;
+  return &query->base;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -399,158 +1034,28 @@ static TRI_doc_mptr_t const** ExecuteQuery (TRI_query_t* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a full scan of a collection
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_query_t* TRI_CreateCollectionQuery (struct TRI_doc_collection_s* collection) {
-  TRI_collection_query_t* query;
-
-  query = TRI_Allocate(sizeof(TRI_collection_query_t));
-
-  query->base._type = TRI_QUE_TYPE_COLLECTION;
-  query->base._collection = collection;
-
-  return &query->base;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a document
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_query_t* TRI_CreateDocumentQuery (TRI_query_t* operand, TRI_voc_did_t did) {
-  TRI_document_query_t* query;
-
-  query = TRI_Allocate(sizeof(TRI_document_query_t));
-
-  query->base._type = TRI_QUE_TYPE_DOCUMENT;
-  query->base._collection = operand->_collection;
-
-  query->_operand = operand;
-  query->_did = did;
-
-  return &query->base;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief limits an existing query
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_query_t* TRI_CreateLimitQuery (TRI_query_t* operand, TRI_voc_ssize_t limit) {
-  TRI_limit_query_t* query;
-
-  query = TRI_Allocate(sizeof(TRI_limit_query_t));
-
-  query->base._type = TRI_QUE_TYPE_LIMIT;
-  query->base._collection = operand->_collection;
-
-  query->_operand = operand;
-  query->_limit = limit;
-
-  return &query->base;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up documents near a given point
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_query_t* TRI_CreateNearQuery (TRI_query_t* operand,
-                                  char const* location,
-                                  double latitude,
-                                  double longitude,
-                                  TRI_voc_size_t count,
-                                  char const** error) {
-  TRI_index_t* geo;
-  TRI_near_query_t* query;
-
-  if (operand->_type != TRI_QUE_TYPE_COLLECTION) {
-    *error = "'near' requires a collection as operand";
-    return NULL;
-  }
-
-#warning LOOKUP MUST BE DONE WITH AT LEAST A READ TRANSACTION
-  if (operand->_collection->base._type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
-    geo = TRI_LookupGeoIndexSimCollection((TRI_sim_collection_t*) operand->_collection, location);
-  }
-  else {
-    *error = "unknown collection type";
-    return NULL;
-  }
-
-  if (geo == NULL) {
-    *error = "'near' requires a geo-index";
-    return NULL;
-  }
-
-  query = TRI_Allocate(sizeof(TRI_near_query_t));
-
-  query->base._type = TRI_QUE_TYPE_NEAR;
-  query->base._collection = operand->_collection;
-
-  query->_index = geo;
-  query->_latitude = latitude;
-  query->_longitude = longitude;
-  query->_count = count;
-
-  return &query->base;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up documents near a given point
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_query_t* TRI_CreateNear2Query (TRI_query_t* operand,
-                                   char const* locLatitude,
-                                   double latitude,
-                                   char const* locLongitude,
-                                   double longitude,
-                                   TRI_voc_size_t count,
-                                   char const** error) {
-  if (operand->_type != TRI_QUE_TYPE_COLLECTION) {
-    *error = "near requires a collection as operand";
-    return 0;
-  }
-
-  *error = "not yet";
-  return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief skips elements of an existing query
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_query_t* TRI_CreateSkipQuery (TRI_query_t* operand, TRI_voc_size_t skip) {
-  TRI_skip_query_t* query;
-
-  query = TRI_Allocate(sizeof(TRI_skip_query_t));
-
-  query->base._type = TRI_QUE_TYPE_SKIP;
-  query->base._collection = operand->_collection;
-
-  query->_operand = operand;
-  query->_skip = skip;
-
-  return &query->base;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a query
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_result_set_t* TRI_ExecuteQuery (TRI_query_t* query) {
-  TRI_doc_collection_t* collection = query->_collection;
-  TRI_doc_mptr_t const** result;
-  TRI_voc_size_t length;
-  TRI_voc_size_t total;
+  TRI_doc_collection_t* collection = query->_collection->_collection;
+  TRI_query_result_t result;
   TRI_result_set_t* rs;
   TRI_rs_info_t info;
 
-  result = NULL;
-  length = 0;
+  result._cursor = TRI_DuplicateString("query");
+  result._error = NULL;
 
-  info._cursor = TRI_DuplicateString("");
-  info._scannedIndexEntries = 0;
-  info._scannedDocuments = 0;
-  info._matchedDocuments = 0;
+  result._length = 0;
+  result._total = 0;
+
+  result._documents = NULL;
+  result._augmented = NULL;
+
+  result._scannedIndexEntries = 0;
+  result._scannedDocuments = 0;
+  result._matchedDocuments = 0;
+
   info._runtime = -TRI_microtime();
 
   // .............................................................................
@@ -559,11 +1064,21 @@ TRI_result_set_t* TRI_ExecuteQuery (TRI_query_t* query) {
 
   collection->beginRead(collection);
 
-  result = ExecuteQuery(query, &info, &length, &total);
+  query->execute(query, &result);
 
-  LOG_TRACE("query returned '%lu' documents", (unsigned long) length);
-
-  rs = TRI_CreateRSVector(collection, result, length, total);
+  if (result._error) {
+    LOG_TRACE("query returned error: %s", result._error);
+    rs = TRI_CreateRSSingle(collection, NULL, 0);
+    rs->_error = result._error;
+  }
+  else {
+    LOG_TRACE("query returned '%lu' documents", (unsigned long) result._length);
+    rs = TRI_CreateRSVector(collection,
+                            result._documents,
+                            result._augmented,
+                            result._length,
+                            result._total);
+  }
 
   collection->endRead(collection);
 
@@ -571,9 +1086,17 @@ TRI_result_set_t* TRI_ExecuteQuery (TRI_query_t* query) {
   // outside a read transaction
   // .............................................................................
 
+  info._cursor = result._cursor;
+
   info._runtime += TRI_microtime();
 
+  info._scannedIndexEntries = result._scannedIndexEntries;
+  info._scannedDocuments = result._scannedDocuments;
+  info._matchedDocuments = result._matchedDocuments;
+
   rs->_info = info;
+
+  FreeDocuments(&result);
 
   return rs;
 }
