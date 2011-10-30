@@ -28,6 +28,7 @@
 #include "conversions.h"
 
 #include <Basics/strings.h>
+#include <Basics/string-buffer.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                             public functions for string to number
@@ -396,6 +397,19 @@ char* TRI_StringUInt64 (uint64_t attr) {
   *p = '\0';
 
   return TRI_DuplicateString(buffer);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to string from double
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_StringDouble (double value) {
+  TRI_string_buffer_t buffer;
+
+  TRI_InitStringBuffer(&buffer);
+  TRI_AppendDoubleStringBuffer(&buffer, value);
+
+  return buffer._buffer;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

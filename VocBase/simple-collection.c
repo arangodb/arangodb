@@ -55,7 +55,8 @@ static bool DeleteImmediateIndexes (TRI_sim_collection_t* collection,
 static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collection,
                                                  char const* location,
                                                  char const* latitude,
-                                                 char const* longitude);
+                                                 char const* longitude,
+                                                 TRI_idx_iid iid);
 
 static uint64_t HashKeyHeader (TRI_associative_pointer_t* array, void const* key);
 
@@ -351,8 +352,8 @@ static bool UpdateDocument (TRI_sim_collection_t* collection,
     update._rid = marker->_rid;
     update._data = *result;
     update._document._sid = ((TRI_doc_document_marker_t*) marker)->_shape;
-    update._document._data.length = ((TRI_df_marker_t const*) (header->_data))->_size - sizeof(TRI_doc_document_marker_t);
-    update._document._data.data = ((char*) header->_data) + sizeof(TRI_doc_document_marker_t);
+    update._document._data.length = ((TRI_df_marker_t const*) (update._data))->_size - sizeof(TRI_doc_document_marker_t);
+    update._document._data.data = ((char*) update._data) + sizeof(TRI_doc_document_marker_t);
 
     UpdateImmediateIndexes(collection, header, &update);
   }
@@ -650,7 +651,9 @@ static void OpenIterator (TRI_df_marker_t const* marker, void* data, bool journa
     }
   }
   else if (marker->_type == TRI_DOC_MARKER_DELETION) {
-    TRI_doc_deletion_marker_t const* d = (TRI_doc_deletion_marker_t const*) marker;
+    TRI_doc_deletion_marker_t const* d;
+
+    d = (TRI_doc_deletion_marker_t const*) marker;
 
     LOG_TRACE("deletion did %lu, rid %lu, deletion %lu",
               (unsigned long) d->_did,
@@ -692,11 +695,13 @@ static void OpenIterator (TRI_df_marker_t const* marker, void* data, bool journa
 
 static void OpenIndex (char const* filename, void* data) {
   TRI_sim_collection_t* doc;
+  TRI_idx_iid iid;
   TRI_json_t* json;
   TRI_json_t* loc;
   TRI_json_t* lat;
   TRI_json_t* lon;
   TRI_json_t* type;
+  TRI_json_t* iis;
   char const* typeStr;
   char* error;
 
@@ -729,12 +734,18 @@ static void OpenIndex (char const* filename, void* data) {
     loc = TRI_LookupArrayJson(json, "location");
     lat = TRI_LookupArrayJson(json, "latitude");
     lon = TRI_LookupArrayJson(json, "longitude");
+    iis = TRI_LookupArrayJson(json, "iid");
+    iid = 0;
+
+    if (iis != NULL && loc->_type == TRI_JSON_NUMBER) {
+      iid = loc->_value._number;
+    }
 
     if (loc != NULL && loc->_type == TRI_JSON_STRING) {
-      CreateGeoIndexSimCollection(doc, loc->_value._string.data, NULL, NULL);
+      CreateGeoIndexSimCollection(doc, loc->_value._string.data, NULL, NULL, iid);
     }
     else if (lat != NULL && lat->_type == TRI_JSON_STRING && lon != NULL && lon ->_type == TRI_JSON_STRING) {
-      CreateGeoIndexSimCollection(doc, NULL, lat->_value._string.data, lon->_value._string.data);
+      CreateGeoIndexSimCollection(doc, NULL, lat->_value._string.data, lon->_value._string.data, iid);
     }
     else {
       LOG_WARNING("ignore geo-index, need either 'location' or 'latitude' and 'longitude'");
@@ -770,6 +781,7 @@ static void InitSimCollection (TRI_sim_collection_t* collection,
   TRI_InitCondition(&collection->_journalsCondition);
 
   TRI_InitVectorPointer(&collection->_indexes);
+  collection->_geoIndex = NULL;
 
   collection->base.beginRead = BeginRead;
   collection->base.endRead = EndRead;
@@ -1058,7 +1070,43 @@ static bool CreateImmediateIndexes (TRI_sim_collection_t* collection,
 static bool UpdateImmediateIndexes (TRI_sim_collection_t* collection,
                                     TRI_doc_mptr_t const* header,
                                     TRI_doc_mptr_t const* update) {
-#warning TODO
+
+  union { TRI_doc_mptr_t const* c; TRI_doc_mptr_t* v; } change;
+  TRI_shaped_json_t old;
+  bool ok;
+  bool result;
+  size_t i;
+  size_t n;
+
+  // get the old document
+  old = header->_document;
+
+  // update all fields, the document identifier stays the same
+  change.c = header;
+
+  change.v->_rid = update->_rid;
+  change.v->_eid = update->_eid;
+  change.v->_deletion = update->_deletion;
+
+  change.v->_data = update->_data;
+  change.v->_document = update->_document;
+
+  // update all other indexes
+  n = TRI_SizeVectorPointer(&collection->_indexes);
+  result = true;
+
+  for (i = 0;  i < n;  ++i) {
+    TRI_index_t* idx;
+
+    idx = TRI_AtVectorPointer(&collection->_indexes, i);
+
+    ok = idx->update(idx, header, &old);
+
+    if (! ok) {
+      result = false;
+    }
+  }
+
   return true;
 }
 
@@ -1069,7 +1117,45 @@ static bool UpdateImmediateIndexes (TRI_sim_collection_t* collection,
 static bool DeleteImmediateIndexes (TRI_sim_collection_t* collection,
                                     TRI_doc_mptr_t const* header,
                                     TRI_voc_tick_t deletion) {
-#warning TODO
+  union { TRI_doc_mptr_t const* c; TRI_doc_mptr_t* v; } change;
+  TRI_doc_mptr_t* found;
+  size_t n;
+  size_t i;
+  bool result;
+  bool ok;
+
+  // set the deletion flag
+  change.c = header;
+  change.v->_deletion = deletion;
+
+  // remove from main index
+  found = TRI_RemoveKeyAssociativePointer(&collection->_primaryIndex, &header->_did);
+
+  if (found == NULL) {
+    TRI_set_errno(TRI_VOC_ERROR_DOCUMENT_NOT_FOUND);
+    return false;
+  }
+
+  // remove all other indexes
+  n = TRI_SizeVectorPointer(&collection->_indexes);
+  result = true;
+
+  for (i = 0;  i < n;  ++i) {
+    TRI_index_t* idx;
+
+    idx = TRI_AtVectorPointer(&collection->_indexes, i);
+
+    ok = idx->remove(idx, header);
+
+    if (! ok) {
+      result = false;
+    }
+  }
+
+  // and release the header pointer
+  collection->_headers->release(collection->_headers, change.v);
+
+  // that's it
   return true;
 }
 
@@ -1176,7 +1262,8 @@ static bool EqualKeyDocument (TRI_associative_pointer_t* array, void const* key,
 static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collection,
                                                  char const* location,
                                                  char const* latitude,
-                                                 char const* longitude) {
+                                                 char const* longitude,
+                                                 TRI_idx_iid iid) {
   TRI_index_t* idx;
   TRI_shape_pid_t lat;
   TRI_shape_pid_t loc;
@@ -1204,10 +1291,10 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
 
   // check, if we know the index
   if (location != NULL) {
-    idx = TRI_LookupGeoIndexSimCollection(collection, location);
+    idx = TRI_LookupGeoIndexSimCollection(collection, loc);
   }
   else if (longitude != NULL && latitude != NULL) {
-    idx = TRI_LookupGeoIndex2SimCollection(collection, latitude, longitude);
+    idx = TRI_LookupGeoIndex2SimCollection(collection, lat, lon);
   }
   else {
     TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_PARAMETER);
@@ -1242,11 +1329,22 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
               (unsigned long) lon);
   }
 
+  if (iid) {
+    idx->_iid = iid;
+  }
+
   // initialises the index with all existing documents
   FillIndex(collection, idx);
 
   // and store index
   TRI_PushBackVectorPointer(&collection->_indexes, idx);
+
+  if (collection->_geoIndex == NULL) {
+    collection->_geoIndex = (TRI_geo_index_t*) idx;
+  }
+  else if (collection->_geoIndex->base._iid > idx->_iid) {
+    collection->_geoIndex = (TRI_geo_index_t*) idx;
+  }
 
   return idx;
 }
@@ -1269,15 +1367,11 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_LookupGeoIndexSimCollection (TRI_sim_collection_t* collection,
-                                              char const* location) {
-  TRI_shape_pid_t loc;
-  TRI_shaper_t* shaper;
+                                              TRI_shape_pid_t location) {
   size_t n;
   size_t i;
 
   n = TRI_SizeVectorPointer(&collection->_indexes);
-  shaper = collection->base._shaper;
-  loc = shaper->findAttributePathByName(shaper, location);
 
   for (i = 0;  i < n;  ++i) {
     TRI_index_t* idx;
@@ -1287,7 +1381,7 @@ TRI_index_t* TRI_LookupGeoIndexSimCollection (TRI_sim_collection_t* collection,
     if (idx->_type == TRI_IDX_TYPE_GEO_INDEX) {
       TRI_geo_index_t* geo = (TRI_geo_index_t*) idx;
 
-      if (geo->_location == loc) {
+      if (geo->_location != 0 && geo->_location == location) {
         return idx;
       }
     }
@@ -1301,18 +1395,12 @@ TRI_index_t* TRI_LookupGeoIndexSimCollection (TRI_sim_collection_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_LookupGeoIndex2SimCollection (TRI_sim_collection_t* collection,
-                                               char const* latitude,
-                                               char const* longitude) {
-  TRI_shape_pid_t lat;
-  TRI_shape_pid_t lon;
-  TRI_shaper_t* shaper;
+                                               TRI_shape_pid_t latitude,
+                                               TRI_shape_pid_t longitude) {
   size_t n;
   size_t i;
 
   n = TRI_SizeVectorPointer(&collection->_indexes);
-  shaper = collection->base._shaper;
-  lat = shaper->findAttributePathByName(shaper, latitude);
-  lon = shaper->findAttributePathByName(shaper, longitude);
 
   for (i = 0;  i < n;  ++i) {
     TRI_index_t* idx;
@@ -1322,7 +1410,7 @@ TRI_index_t* TRI_LookupGeoIndex2SimCollection (TRI_sim_collection_t* collection,
     if (idx->_type == TRI_IDX_TYPE_GEO_INDEX) {
       TRI_geo_index_t* geo = (TRI_geo_index_t*) idx;
 
-      if (geo->_latitude == lat && geo->_longitude == lon) {
+      if (geo->_latitude != 0 && geo->_longitude != 0 && geo->_latitude == latitude && geo->_longitude == longitude) {
         return idx;
       }
     }
@@ -1346,7 +1434,7 @@ bool TRI_EnsureGeoIndexSimCollection (TRI_sim_collection_t* collection,
 
   TRI_WriteLockReadWriteLock(&collection->_lock);
 
-  idx = CreateGeoIndexSimCollection(collection, location, NULL, NULL);
+  idx = CreateGeoIndexSimCollection(collection, location, NULL, NULL, 0);
 
   if (idx == NULL) {
     TRI_WriteUnlockReadWriteLock(&collection->_lock);
@@ -1385,7 +1473,7 @@ bool TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* collection,
 
   TRI_WriteLockReadWriteLock(&collection->_lock);
 
-  idx = CreateGeoIndexSimCollection(collection, NULL, latitude, longitude);
+  idx = CreateGeoIndexSimCollection(collection, NULL, latitude, longitude, 0);
 
   if (idx == NULL) {
     TRI_WriteUnlockReadWriteLock(&collection->_lock);

@@ -41,6 +41,7 @@ extern "C" {
 // -----------------------------------------------------------------------------
 
 struct TRI_index_s;
+struct TRI_geo_index_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -71,6 +72,7 @@ typedef struct TRI_sim_collection_s {
   TRI_headers_t* _headers;
   TRI_associative_pointer_t _primaryIndex;
   TRI_vector_pointer_t _indexes;
+  struct TRI_geo_index_s* _geoIndex;
 
   // .............................................................................
   // this condition variable protects the _journals
@@ -176,7 +178,7 @@ bool TRI_CloseSimCollection (TRI_sim_collection_t* collection);
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_index_s* TRI_LookupGeoIndexSimCollection (struct TRI_sim_collection_s* collection,
-                                                     char const* location);
+                                                     TRI_shape_pid_t location);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a geo index
@@ -185,8 +187,8 @@ struct TRI_index_s* TRI_LookupGeoIndexSimCollection (struct TRI_sim_collection_s
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_index_s* TRI_LookupGeoIndex2SimCollection (struct TRI_sim_collection_s* collection,
-                                                      char const* latitude,
-                                                      char const* longitude);
+                                                      TRI_shape_pid_t latitude,
+                                                      TRI_shape_pid_t longitude);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists

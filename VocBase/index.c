@@ -249,7 +249,84 @@ static bool InsertGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   shaper = geo->base._collection->_shaper;
 
   // lookup latitude and longitude
-  ok = ExtractDoubleList(shaper, &doc->_document, geo->_location, &latitude, &longitude);
+  if (geo->_location != 0) {
+    ok = ExtractDoubleList(shaper, &doc->_document, geo->_location, &latitude, &longitude);
+  }
+  else {
+    ok = ExtractDoubleArray(shaper, &doc->_document, geo->_latitude, &latitude);
+    ok = ok && ExtractDoubleArray(shaper, &doc->_document, geo->_longitude, &longitude);
+  }
+
+  if (! ok) {
+    return false;
+  }
+
+  // and insert into index
+  gc.latitude = latitude;
+  gc.longitude = longitude;
+  gc.data = doc;
+
+  res = GeoIndex_insert(geo->_geoIndex, &gc);
+
+  if (res == -1) {
+    LOG_WARNING("found duplicate entry in geo-index, should not happend");
+  }
+  else if (res == -2) {
+    LOG_WARNING("out-of-memory in geo-index");
+  }
+  else if (res == -3) {
+    LOG_DEBUG("illegal geo-coordinates, ignoring entry");
+  }
+
+  return res == 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates a document, location is a list
+////////////////////////////////////////////////////////////////////////////////
+
+static bool UpdateGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_shaped_json_t const* old) {
+  GeoCoordinate gc;
+  TRI_shaper_t* shaper;
+  bool ok;
+  double latitude;
+  double longitude;
+  TRI_geo_index_t* geo;
+  int res;
+
+  geo = (TRI_geo_index_t*) idx;
+  shaper = geo->base._collection->_shaper;
+
+  // lookup OLD latitude and longitude
+  if (geo->_location != 0) {
+    ok = ExtractDoubleList(shaper, old, geo->_location, &latitude, &longitude);
+  }
+  else {
+    ok = ExtractDoubleArray(shaper, old, geo->_latitude, &latitude);
+    ok = ok && ExtractDoubleArray(shaper, old, geo->_longitude, &longitude);
+  }
+
+  // and remove old entry
+  if (ok) {
+    gc.latitude = latitude;
+    gc.longitude = longitude;
+    gc.data = doc;
+
+    res = GeoIndex_remove(geo->_geoIndex, &gc);
+
+    if (res != 0) {
+      LOG_WARNING("cannot remove old index entry: %d", res);
+    }
+  }
+
+  // create new entry with new coordinates
+  if (geo->_location != 0) {
+    ok = ExtractDoubleList(shaper, &doc->_document, geo->_location, &latitude, &longitude);
+  }
+  else {
+    ok = ExtractDoubleArray(shaper, &doc->_document, geo->_latitude, &latitude);
+    ok = ok && ExtractDoubleArray(shaper, &doc->_document, geo->_longitude, &longitude);
+  }
 
   if (! ok) {
     return false;
@@ -275,18 +352,45 @@ static bool InsertGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief updates a document, location is a list
-////////////////////////////////////////////////////////////////////////////////
-
-static bool UpdateGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_shaped_json_t const* old) {
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief erases a document, location is a list
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool EraseGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+static bool RemoveGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+  GeoCoordinate gc;
+  TRI_shaper_t* shaper;
+  bool ok;
+  double latitude;
+  double longitude;
+  TRI_geo_index_t* geo;
+  int res;
+
+  geo = (TRI_geo_index_t*) idx;
+  shaper = geo->base._collection->_shaper;
+
+  // lookup OLD latitude and longitude
+  if (geo->_location != 0) {
+    ok = ExtractDoubleList(shaper, &doc->_document, geo->_location, &latitude, &longitude);
+  }
+  else {
+    ok = ExtractDoubleArray(shaper, &doc->_document, geo->_latitude, &latitude);
+    ok = ok && ExtractDoubleArray(shaper, &doc->_document, geo->_longitude, &longitude);
+  }
+
+  // and remove old entry
+  if (ok) {
+    gc.latitude = latitude;
+    gc.longitude = longitude;
+    gc.data = doc;
+
+    res = GeoIndex_remove(geo->_geoIndex, &gc);
+
+    if (res != 0) {
+      LOG_WARNING("cannot remove old index entry: %d", res);
+    }
+
+    return res == 0;
+  }
+
   return true;
 }
 
@@ -316,55 +420,6 @@ static TRI_json_t* JsonGeoIndex (TRI_index_t* idx, TRI_doc_collection_t* collect
   TRI_Insert2ArrayJson(json, "location", TRI_CreateStringCopyJson(location));
 
   return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts a new document, location is an array
-////////////////////////////////////////////////////////////////////////////////
-
-static bool InsertGeoIndex2 (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
-  TRI_shaper_t* shaper;
-  bool ok;
-  double latitude;
-  double longitude;
-  TRI_geo_index_t* geo;
-
-  geo = (TRI_geo_index_t*) idx;
-  shaper = geo->base._collection->_shaper;
-
-  // lookup latitude
-  ok = ExtractDoubleArray(shaper, &doc->_document, geo->_latitude, &latitude);
-
-  if (! ok) {
-    return false;
-  }
-
-  // lookup longitude
-  ok = ExtractDoubleArray(shaper, &doc->_document, geo->_longitude, &longitude);
-
-  if (! ok) {
-    return false;
-  }
-
-  printf("%f %f\n", latitude, longitude);
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates a document, location is an array
-////////////////////////////////////////////////////////////////////////////////
-
-static bool UpdateGeoIndex2 (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_shaped_json_t const* old) {
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief erases a document, location is an array
-////////////////////////////////////////////////////////////////////////////////
-
-static bool EraseGeoIndex2 (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
-  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -489,7 +544,7 @@ TRI_index_t* TRI_CreateGeoIndex (struct TRI_doc_collection_s* collection,
   geo->base._collection = collection;
 
   geo->base.insert = InsertGeoIndex;
-  geo->base.erase = EraseGeoIndex;
+  geo->base.remove = RemoveGeoIndex;
   geo->base.update = UpdateGeoIndex;
   geo->base.json = JsonGeoIndex;
 
@@ -513,12 +568,13 @@ TRI_index_t* TRI_CreateGeoIndex2 (struct TRI_doc_collection_s* collection,
 
   geo = TRI_Allocate(sizeof(TRI_geo_index_t));
 
+  geo->base._iid = TRI_NewTickVocBase();
   geo->base._type = TRI_IDX_TYPE_GEO_INDEX;
   geo->base._collection = collection;
 
-  geo->base.insert = InsertGeoIndex2;
-  geo->base.erase = EraseGeoIndex2;
-  geo->base.update = UpdateGeoIndex2;
+  geo->base.insert = InsertGeoIndex;
+  geo->base.remove = RemoveGeoIndex;
+  geo->base.update = UpdateGeoIndex;
   geo->base.json = JsonGeoIndex2;
 
   geo->_geoIndex = GeoIndex_new();
