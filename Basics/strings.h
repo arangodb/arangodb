@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2010, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_PHILADELPHIA_BASICS_STRINGS_H
@@ -110,6 +110,12 @@ char* TRI_Concatenate4String (char const*, char const*, char const*, char const*
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_Concatenate5String (char const*, char const*, char const*, char const*, char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief concatenate six strings
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_Concatenate6String (char const*, char const*, char const*, char const*, char const*, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees a string

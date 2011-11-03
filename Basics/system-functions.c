@@ -22,7 +22,8 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2009-2010, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2011
+, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <Basics/Common.h>

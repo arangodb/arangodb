@@ -23,7 +23,8 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Copyright 2006-2010, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2006-2011
+, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_PHILADELPHIA_BASICS_ASSOCIATIVE_H

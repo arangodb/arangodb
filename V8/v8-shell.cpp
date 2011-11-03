@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2010, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-shell.h"
@@ -1339,6 +1339,22 @@ double ObjectToDouble (v8::Handle<v8::Value> value, bool& error) {
   error = true;
 
   return 0.0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts an V8 object to a boolean
+////////////////////////////////////////////////////////////////////////////////
+
+bool ObjectToBoolean (v8::Handle<v8::Value> value) {
+  if (value->IsBoolean()) {
+    return value->ToBoolean()->Value();
+  }
+  else if (value->IsBooleanObject()) {
+    v8::Handle<v8::BooleanObject> bo = v8::Handle<v8::BooleanObject>::Cast(value);
+    return bo->BooleanValue();
+  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2010, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_DURHAM_VOCBASE_SIMPLE_COLLECTION_H
@@ -195,7 +195,8 @@ struct TRI_index_s* TRI_LookupGeoIndex2SimCollection (struct TRI_sim_collection_
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_EnsureGeoIndexSimCollection (TRI_sim_collection_t* collection,
-                                      char const* location);
+                                      char const* location,
+                                      bool geoJson);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a geo index to a collection

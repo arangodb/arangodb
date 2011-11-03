@@ -22,7 +22,8 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Martin Schoenert
-/// @author Copyright 2009-2010, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2011
+, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -282,7 +283,7 @@ static uint32_t FSRT_Count [20];
 #else
 
 #ifndef FSRT__COUNT
-#define FSRT__COPY(fs_x,fs_y,fs_s,fs_d) (memmove( (char*)(fs_x), (char*)(fs_y), (fs_s) ))
+#define FSRT__COPY(fs_x,fs_y,fs_s,fs_d) (memcpy( (char*)(fs_x), (char*)(fs_y), (fs_s) ))
 #else
 #define FSRT__COPY(fs_x,fs_y,fs_s,fs_d) (FSRT_Count[(fs_d)]++, (memcpy( (char*)(fs_x), (char*)(fs_y), (fs_s) )))
 #endif
@@ -491,7 +492,9 @@ void FSRT_NAME (
     }
 
     // swap the pivot to the beg pos (out of the way for partitioning)
-    FSRT__SWAP( fs_b, fs_p, FSRT__SIZE, 4 );
+    if ( fs_b != fs_p ) {
+      FSRT__SWAP( fs_b, fs_p, FSRT__SIZE, 4 );
+    }
 
 #ifdef FSRT_UNIQ
 

@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2010, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-vocbase.h"
@@ -892,7 +892,7 @@ static v8::Handle<v8::Value> JS_NextQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a query and returns the result als array
+/// @brief executes a query and returns the result as array
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ToArrayQuery (v8::Arguments const& argv) {
@@ -956,6 +956,65 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief adds distance to a result set
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DistanceQuery (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract the operand query
+  v8::Handle<v8::Object> operand = argv.Holder();
+  v8::Handle<v8::String> err;
+  TRI_query_t* opQuery = ExtractQuery(operand, &err);
+
+  if (opQuery == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  if (IsExecutedQuery(operand)) {
+    return scope.Close(v8::ThrowException(v8::String::New("query already executed")));
+  }
+
+  // .............................................................................
+  // case: no arguments
+  // .............................................................................
+
+  if (argv.Length() == 0) {
+    v8::Handle<v8::Object> result = QueryTempl->NewInstance();
+
+    StoreQuery(result, TRI_CreateDistanceQuery(opQuery->clone(opQuery), "_distance"));
+
+    return scope.Close(result);
+  }
+
+  // .............................................................................
+  // case: <distance>
+  // .............................................................................
+
+  else if (argv.Length() == 1) {
+    string name = ObjectToString(argv[0]);
+
+    if (name.empty()) {
+      return scope.Close(v8::ThrowException(v8::String::New("<attribute> must be non-empty")));
+    }
+
+    v8::Handle<v8::Object> result = QueryTempl->NewInstance();
+
+    StoreQuery(result, TRI_CreateDistanceQuery(opQuery->clone(opQuery), name.c_str()));
+
+    return scope.Close(result);
+  }
+
+  // .............................................................................
+  // error case
+  // .............................................................................
+
+  else {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: distance([<attribute>])")));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a document
 ///
 /// The "document" operator finds a document given it's identifier.
@@ -1011,6 +1070,79 @@ static v8::Handle<v8::Value> JS_DocumentQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a geo-spatial index
+///
+/// <tt>geo(location)</tt>
+///
+/// Next "near" operator will use the specific geo-spatial index.
+///
+/// <tt>geo(latitiude,longitude)</tt>
+///
+/// Next "near" operator will use the specific geo-spatial index.
+///
+/// Assume you a location stored as list in the attribute @c location
+/// and a destination stored in the attribute @c destination. Than you
+/// can use the "geo" operator to select, which coordinates to use in
+/// a near query.
+///
+/// @verbinclude fluent15
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GeoQuery (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract the operand query
+  v8::Handle<v8::Object> operand = argv.Holder();
+  v8::Handle<v8::String> err;
+  TRI_query_t* opQuery = ExtractQuery(operand, &err);
+
+  if (opQuery == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  if (IsExecutedQuery(operand)) {
+    return scope.Close(v8::ThrowException(v8::String::New("query already executed")));
+  }
+
+  // .............................................................................
+  // case: location
+  // .............................................................................
+
+  if (argv.Length() == 1) {
+    string location = ObjectToString(argv[0]);
+
+    v8::Handle<v8::Object> result = QueryTempl->NewInstance();
+
+    StoreQuery(result, TRI_CreateGeoIndexQuery(opQuery->clone(opQuery), location.c_str(), 0, 0));
+
+    return scope.Close(result);
+  }
+
+  // .............................................................................
+  // case: latitiude and longitude
+  // .............................................................................
+
+  else if (argv.Length() == 2) {
+    string latitiude = ObjectToString(argv[0]);
+    string longitude = ObjectToString(argv[1]);
+
+    v8::Handle<v8::Object> result = QueryTempl->NewInstance();
+
+    StoreQuery(result, TRI_CreateGeoIndexQuery(opQuery->clone(opQuery), 0, latitiude.c_str(), longitude.c_str()));
+
+    return scope.Close(result);
+  }
+
+  // .............................................................................
+  // error case
+  // .............................................................................
+
+  else {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: geo(<location>|<latitiude>,<longitude>)")));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief limits an existing query
 ///
 /// <tt>limit(number)</tt>
@@ -1051,6 +1183,95 @@ static v8::Handle<v8::Value> JS_LimitQuery (v8::Arguments const& argv) {
   StoreQuery(result, TRI_CreateLimitQuery(opQuery->clone(opQuery), (TRI_voc_ssize_t) limit));
 
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds points near a given coordinate
+///
+/// The "near" operator is rather complex, because there are two variants (list
+/// or array) and some optional parameters. If you have defined only one
+/// geo-index, however, the call is simply
+///
+/// <tt>near(latitiude, longitude)</tt>
+///
+/// This will find at most 100 documents near the coordinate (@c latitiude, @c
+/// longitude). The returned list is sorted according to the distance, with the
+/// nearest document coming first.
+///
+/// @verbinclude fluent10
+///
+/// If you need the distance as well, then you can use
+///
+/// <tt>near(latitiude, longitude).distance()</tt>
+///
+/// This will add an attribute "_distance" to all documents returned, which
+/// contains the distance of the given point and the document in meter.
+///
+/// @verbinclude fluent11
+///
+/// <tt>near(latitiude, longitude).distance(name)</tt>
+///
+/// This will add an attribute "name" to all documents returned, which
+/// contains the distance of the given point and the document in meter.
+///
+/// @verbinclude fluent12
+///
+/// <tt>near(latitiude, longitude).limit(count)</tt>
+///
+/// Limits the result to @c count documents. Note that @c count can be more than
+/// 100. To get less or more than 100 documents with distances, use
+///
+/// <tt>near(latitiude, longitude).distance().limit(count)</tt>
+///
+/// This will return the first @c count documents together with their distances
+/// in meters.
+///
+/// @verbinclude fluent13
+///
+/// If you have more then one geo-spatial index, you can use the operator
+/// "geo" to select a particular index.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
+  static size_t const DEFAULT_LIMIT = 100;
+
+  v8::HandleScope scope;
+
+  // extract the operand query
+  v8::Handle<v8::Object> operand = argv.Holder();
+  v8::Handle<v8::String> err;
+  TRI_query_t* opQuery = ExtractQuery(operand, &err);
+
+  if (opQuery == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  if (IsExecutedQuery(operand)) {
+    return scope.Close(v8::ThrowException(v8::String::New("query already executed")));
+  }
+
+  // .............................................................................
+  // near(latitiude, longitude)
+  // .............................................................................
+
+  if (argv.Length() == 2) {
+    double latitiude = ObjectToDouble(argv[0]);
+    double longitude = ObjectToDouble(argv[1]);
+
+    v8::Handle<v8::Object> result = QueryTempl->NewInstance();
+
+    StoreQuery(result, TRI_CreateNearQuery(opQuery->clone(opQuery), latitiude, longitude, DEFAULT_LIMIT, NULL));
+
+    return scope.Close(result);
+  }
+
+  // .............................................................................
+  // error case
+  // .............................................................................
+
+  else {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: near(<latitiude>,<longitude>)")));
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1147,6 +1368,82 @@ static v8::Handle<v8::Value> JS_SkipQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief finds points within a given radius
+///
+/// The "within" operator is rather complex, because there are two variants
+/// (list or array) and some optional parameters. If you have defined only one
+/// geo-index, however, the call is simply
+///
+/// <tt>distance(latitiude, longitude, radius)</tt>
+///
+/// This will find all documents with in a given radius around the coordinate
+/// (@c latitiude, @c longitude). The returned list is sorted according to the
+/// distance, with the nearest document coming first.
+///
+/// @verbinclude fluentXX
+///
+/// If you need the distance as well, then you can use
+///
+/// <tt>within(latitiude, longitude, radius).distance()</tt>
+///
+/// This will add an attribute "_distance" to all documents returned, which
+/// contains the distance of the given point and the document in meter.
+///
+/// @verbinclude fluentXX
+///
+/// <tt>within(latitiude, longitude, radius).distance(name)</tt>
+///
+/// This will add an attribute "name" to all documents returned, which
+/// contains the distance of the given point and the document in meter.
+///
+/// @verbinclude fluentXX
+///
+/// If you have more then one geo-spatial index, you can use the operator
+/// "geo" to select a particular index.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract the operand query
+  v8::Handle<v8::Object> operand = argv.Holder();
+  v8::Handle<v8::String> err;
+  TRI_query_t* opQuery = ExtractQuery(operand, &err);
+
+  if (opQuery == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  if (IsExecutedQuery(operand)) {
+    return scope.Close(v8::ThrowException(v8::String::New("query already executed")));
+  }
+
+  // .............................................................................
+  // within(latitiude, longitude, radius)
+  // .............................................................................
+
+  if (argv.Length() == 3) {
+    double latitiude = ObjectToDouble(argv[0]);
+    double longitude = ObjectToDouble(argv[1]);
+    double radius = ObjectToDouble(argv[2]);
+
+    v8::Handle<v8::Object> result = QueryTempl->NewInstance();
+
+    StoreQuery(result, TRI_CreateWithinQuery(opQuery->clone(opQuery), latitiude, longitude, radius, NULL));
+
+    return scope.Close(result);
+  }
+
+  // .............................................................................
+  // error case
+  // .............................................................................
+
+  else {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: near(<latitiude>,<longitude>)")));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1170,8 +1467,15 @@ static v8::Handle<v8::Value> JS_SkipQuery (v8::Arguments const& argv) {
 ///
 /// Creates a geo-spatial index on all documents using @c location as path the
 /// coordinates. The value of the attribute must be a list with at least two
-/// double values. All documents, which do not have the attribute path or which
-/// value is not suitable, are ignored.
+/// double values. The list must contain the latitiude (first value) and the
+/// longitude (second value). All documents, which do not have the
+/// attribute path or which value is not suitable, are ignored.
+///
+/// <tt>ensureGeoIndex(location, geojson)</tt>
+///
+/// As above. If @c geoJson is true, than the order within the list is
+/// longitude followed by latitiude. This corresponds to the format
+/// described in http://geojson.org/geojson-spec.html#positions.
 ///
 /// @verbinclude fluent10
 ///
@@ -1215,7 +1519,21 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
       return scope.Close(v8::ThrowException(v8::String::New("<location> must be an attribute path")));
     }
 
-    TRI_EnsureGeoIndexSimCollection(sim, *loc);
+    TRI_EnsureGeoIndexSimCollection(sim, *loc, false);
+  }
+
+  // .............................................................................
+  // case: <location>
+  // .............................................................................
+
+  else if (argv.Length() == 2 && (argv[1]->IsBoolean() || argv[1]->IsBooleanObject())) {
+    v8::String::Utf8Value loc(argv[0]);
+
+    if (*loc == 0) {
+      return scope.Close(v8::ThrowException(v8::String::New("<location> must be an attribute path")));
+    }
+
+    TRI_EnsureGeoIndexSimCollection(sim, *loc, ObjectToBoolean(argv[1]));
   }
 
   // .............................................................................
@@ -1242,7 +1560,7 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
   // .............................................................................
 
   else {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: ensureGeoIndex(<latitiude>, <longitude>) or ensureGeoIndex(<location>)")));
+    return scope.Close(v8::ThrowException(v8::String::New("usage: ensureGeoIndex(<latitiude>, <longitude>) or ensureGeoIndex(<location>, [<geojson>])")));
   }
 
   return scope.Close(v8::Undefined());
@@ -1302,145 +1620,6 @@ static v8::Handle<v8::Value> JS_DeleteVocbaseCol (v8::Arguments const& argv) {
   }
 
   return scope.Close(v8::Undefined());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds points near a given coordinate
-///
-/// The near operator is rather complex, because there are two variants (list or
-/// array) and some optional parameters. If you have defined only one geo-index,
-/// however, the call is simply
-///
-/// <tt>near(latitiude, longitude)</tt>
-///
-/// This will find at most 100 documents near the coordinate (@c latitiude, @c
-/// longitude). The returned list is sorted according to the distance, with the
-/// nearest document coming first.
-///
-/// @verbinclude fluent10
-///
-/// If you need the distance as well, then you can use
-///
-/// <tt>near(latitiude, longitude).distance()</tt>
-///
-/// This will add an attribute "_distance" to all documents returned, which
-/// contains the distance of the given point and the document in meter.
-///
-/// @verbinclude fluent11
-///
-/// <tt>near(latitiude, longitude).distance(name)</tt>
-///
-/// This will add an attribute "name" to all documents returned, which
-/// contains the distance of the given point and the document in meter.
-///
-/// @verbinclude fluent12
-///
-/// <tt>near(latitiude, longitude).limit(count)</tt>
-///
-/// Limits the result to @c count documents. Note that @c count can be more than
-/// 100. To get less or more than 100 documents with distances, use
-///
-/// <tt>near(latitiude, longitude).distance().limit(count)</tt>
-///
-/// This will return the first @c count documents together with their distances
-/// in meters.
-///
-/// @verbinclude fluent13
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_NearVocbaseCol (v8::Arguments const& argv) {
-  static size_t const DEFAULT_LIMIT = 100;
-
-  v8::HandleScope scope;
-
-  // extract the operand query
-  v8::Handle<v8::Object> operand = argv.Holder();
-  v8::Handle<v8::String> err;
-  TRI_query_t* opQuery = ExtractQuery(operand, &err);
-
-  if (opQuery == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  if (IsExecutedQuery(operand)) {
-    return scope.Close(v8::ThrowException(v8::String::New("query already executed")));
-  }
-
-  // .............................................................................
-  // near(latitiude, longitude)
-  // .............................................................................
-
-  if (argv.Length() == 2) {
-    double latitiude = ObjectToDouble(argv[0]);
-    double longitude = ObjectToDouble(argv[1]);
-
-    v8::Handle<v8::Object> result = QueryTempl->NewInstance();
-
-    StoreQuery(result, TRI_CreateNearQuery(opQuery->clone(opQuery), latitiude, longitude, DEFAULT_LIMIT, NULL));
-
-    return scope.Close(result);
-  }
-
-  return scope.Close(v8::Undefined());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds distance to a result set
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_DistanceVocbaseCol (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  // extract the operand query
-  v8::Handle<v8::Object> operand = argv.Holder();
-  v8::Handle<v8::String> err;
-  TRI_query_t* opQuery = ExtractQuery(operand, &err);
-
-  if (opQuery == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  if (IsExecutedQuery(operand)) {
-    return scope.Close(v8::ThrowException(v8::String::New("query already executed")));
-  }
-
-  // .............................................................................
-  // case: no arguments
-  // .............................................................................
-
-  if (argv.Length() == 0) {
-    v8::Handle<v8::Object> result = QueryTempl->NewInstance();
-
-    StoreQuery(result, TRI_CreateDistanceQuery(opQuery->clone(opQuery), "_distance"));
-
-    return scope.Close(result);
-  }
-
-  // .............................................................................
-  // case: <distance>
-  // .............................................................................
-
-  else if (argv.Length() == 1) {
-    string name = ObjectToString(argv[0]);
-
-    if (name.empty()) {
-      return scope.Close(v8::ThrowException(v8::String::New("<attribute> must be non-empty")));
-    }
-
-    v8::Handle<v8::Object> result = QueryTempl->NewInstance();
-
-    StoreQuery(result, TRI_CreateDistanceQuery(opQuery->clone(opQuery), name.c_str()));
-
-    return scope.Close(result);
-  }
-
-  // .............................................................................
-  // error case
-  // .............................................................................
-
-  else {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: distance([<attribute>])")));
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1856,6 +2035,7 @@ v8::Persistent<v8::Context> InitV8VocBridge (TRI_vocbase_t* vocbase) {
   v8::Handle<v8::String> DocumentFuncName = v8::Persistent<v8::String>::New(v8::String::New("document"));
   v8::Handle<v8::String> EnsureGeoIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureGeoIndex"));
   v8::Handle<v8::String> ExplainFuncName = v8::Persistent<v8::String>::New(v8::String::New("explain"));
+  v8::Handle<v8::String> GeoFuncName = v8::Persistent<v8::String>::New(v8::String::New("geo"));
   v8::Handle<v8::String> HasNextFuncName = v8::Persistent<v8::String>::New(v8::String::New("hasNext"));
   v8::Handle<v8::String> LimitFuncName = v8::Persistent<v8::String>::New(v8::String::New("limit"));
   v8::Handle<v8::String> NearFuncName = v8::Persistent<v8::String>::New(v8::String::New("near"));
@@ -1868,6 +2048,7 @@ v8::Persistent<v8::Context> InitV8VocBridge (TRI_vocbase_t* vocbase) {
   v8::Handle<v8::String> ShowFuncName = v8::Persistent<v8::String>::New(v8::String::New("show"));
   v8::Handle<v8::String> SkipFuncName = v8::Persistent<v8::String>::New(v8::String::New("skip"));
   v8::Handle<v8::String> ToArrayFuncName = v8::Persistent<v8::String>::New(v8::String::New("toArray"));
+  v8::Handle<v8::String> WithinFuncName = v8::Persistent<v8::String>::New(v8::String::New("within"));
 
   // .............................................................................
   // query types
@@ -1912,8 +2093,9 @@ v8::Persistent<v8::Context> InitV8VocBridge (TRI_vocbase_t* vocbase) {
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentQuery));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
   rt->Set(ExplainFuncName, v8::FunctionTemplate::New(JS_ExplainQuery));
+  rt->Set(GeoFuncName, v8::FunctionTemplate::New(JS_GeoQuery));
   rt->Set(LimitFuncName, v8::FunctionTemplate::New(JS_LimitQuery));
-  rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearVocbaseCol));
+  rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
   rt->Set(ParameterFuncName, v8::FunctionTemplate::New(JS_ParameterVocbaseCol));
   rt->Set(PrintFuncName, v8::FunctionTemplate::New(JS_PrintUsingToString));
   rt->Set(ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbaseCol));
@@ -1922,6 +2104,7 @@ v8::Persistent<v8::Context> InitV8VocBridge (TRI_vocbase_t* vocbase) {
   rt->Set(SkipFuncName, v8::FunctionTemplate::New(JS_SkipQuery));
   rt->Set(ToArrayFuncName, v8::FunctionTemplate::New(JS_ToArrayQuery));
   rt->Set(ToStringFuncName, v8::FunctionTemplate::New(JS_ToStringVocbaseCol));
+  rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
 
   VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
@@ -1935,17 +2118,20 @@ v8::Persistent<v8::Context> InitV8VocBridge (TRI_vocbase_t* vocbase) {
 
   rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
   rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountQuery));
-  rt->Set(DistanceFuncName, v8::FunctionTemplate::New(JS_DistanceVocbaseCol));
+  rt->Set(DistanceFuncName, v8::FunctionTemplate::New(JS_DistanceQuery));
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentQuery));
   rt->Set(ExplainFuncName, v8::FunctionTemplate::New(JS_ExplainQuery));
+  rt->Set(GeoFuncName, v8::FunctionTemplate::New(JS_GeoQuery));
   rt->Set(HasNextFuncName, v8::FunctionTemplate::New(JS_HasNextQuery));
   rt->Set(LimitFuncName, v8::FunctionTemplate::New(JS_LimitQuery));
+  rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
   rt->Set(NextFuncName, v8::FunctionTemplate::New(JS_NextQuery));
   rt->Set(PrintFuncName, v8::FunctionTemplate::New(JS_PrintQuery));
   rt->Set(SelectFuncName, v8::FunctionTemplate::New(JS_SelectQuery));
   rt->Set(ShowFuncName, v8::FunctionTemplate::New(JS_ShowQuery));
   rt->Set(SkipFuncName, v8::FunctionTemplate::New(JS_SkipQuery));
   rt->Set(ToArrayFuncName, v8::FunctionTemplate::New(JS_ToArrayQuery));
+  rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
 
   QueryTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 

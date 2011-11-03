@@ -21,9 +21,8 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-///
 /// @author R. A. Parker
-/// @author Copyright 2011-2010, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 /* GeoIndex.c -   GeoIndex algorithms                */
@@ -197,7 +196,7 @@ GeoString GeoMkString(GeoCoordinate * c)
     return z;
 }
 
-void GeoStackSet (GeoIndex * gi, GeoStack * gk, 
+void GeoStackSet (GeoIndex * gi, GeoStack * gk,
         GeoCoordinate * c, GeoResults * gr)
 {
     gk->gi = gi;
@@ -245,7 +244,7 @@ int GeoFind(GeoStack * gk)
 /*  if ssmid == sstop, it is ssbot that will be set to it         */
         if(gk->targetgs < gi->geostrings[gi->sortslot[ssmid]])
             sstop=ssmid;
-        else 
+        else
             ssbot=ssmid;
     }
     return ssbot;
@@ -272,7 +271,7 @@ int GeoIndex_insert(GeoIndex * gi, GeoCoordinate * c)
         if(   (c->latitude  == ((gi->gc)[slot]).latitude)     &&
               (c->longitude == ((gi->gc)[slot]).longitude)    &&
               (c->data      == ((gi->gc)[slot]).data)  )  return -1;
-        topslot--;            
+        topslot--;
     }
 /* All OK.  we're going to try to put it in.  */
     slot=GeoIndexNewSlot(gi);
@@ -283,7 +282,7 @@ int GeoIndex_insert(GeoIndex * gi, GeoCoordinate * c)
     (gi->gc)[slot].data=c->data;
 
 /* shuffle up the sortslots to make room!  */
-    for(i=gi->occslots;i>putslot;i--) 
+    for(i=gi->occslots;i>putslot;i--)
         gi->sortslot[i] = gi->sortslot[i-1];
 /* put it in  */
     gi->sortslot[putslot]=slot;
@@ -309,12 +308,12 @@ int GeoIndex_remove(GeoIndex * gi, GeoCoordinate * c)
               (c->data      == (gi->gc)[slot].data)        )
         {
             GeoIndexFreeSlot(gi,slot);
-            for(i=sortslot;i<gi->occslots-1;i++) 
+            for(i=sortslot;i<gi->occslots-1;i++)
                 gi->sortslot[i] = gi->sortslot[i+1];
             gi->occslots--;
             return 0;
         }
-        sortslot--;            
+        sortslot--;
     }
     return -1;
 }
@@ -390,7 +389,7 @@ GeoCoordinates * GeoAnswers (GeoIndex * gi, GeoResults * gr)
     {
         ans->coordinates[i].latitude =
                      (gi->gc)[gr->slot[i]].latitude;
-        ans->coordinates[i].longitude = 
+        ans->coordinates[i].longitude =
                      (gi->gc)[gr->slot[i]].longitude;
         ans->coordinates[i].data =
                      (gi->gc)[gr->slot[i]].data;
@@ -496,7 +495,7 @@ double GeoMinDistance(GeoStack * gk, GeoString k1, GeoString k2)
         else                c2.latitude=d1.latitude;
         md=GeoIndex_distance(&c1,&c2) - 2.0;
         if(md<0.0) md=0.0;
-        return md; 
+        return md;
     }
     c1.longitude=0.0;
     c2.longitude=lon1;
@@ -554,7 +553,7 @@ GeoCoordinates * GeoIndex_PointsWithinRadius(GeoIndex * gi,
                     gres->slot[gres->pointsct]=slot;
                     gres->distance[gres->pointsct]=dist;
                     gres->pointsct++;
-                }        
+                }
             }
             gk.topofstack--;
             continue;
@@ -566,7 +565,7 @@ GeoCoordinates * GeoIndex_PointsWithinRadius(GeoIndex * gi,
         gk.topofstack++;
         gk.startslotid[gk.topofstack]=ssmid+1;
         gk.endslotid[gk.topofstack]=sstop;
- 
+
     }
     answer=GeoAnswers(gi,gres);
     return answer;   /* note - this may be NULL  */
@@ -668,7 +667,7 @@ GeoCoordinates * GeoIndex_NearestCountPoints(GeoIndex * gi,
                             newmaxdist=gres->distance[k];
                     }
                     maxdist=newmaxdist;
-                }        
+                }
             }
             gk.topofstack--;
             continue;
@@ -735,7 +734,7 @@ int GeoIndex_INDEXVALID(GeoIndex * gi)
     {
         j=gi->sortslot[i];
         gs = GeoMkString(&(gi->gc[j]));
-        if(gi->geostrings[j]!=gs) 
+        if(gi->geostrings[j]!=gs)
             return -1;
     }
     gs=0;
@@ -749,7 +748,7 @@ int GeoIndex_INDEXVALID(GeoIndex * gi)
     freeslot=0;
     for(i=gi->occslots+1;i<gi->slotct;i++)
         freeslot=-gi->geostrings[freeslot];
-    if(gi->geostrings[freeslot]!=GEOENDING) 
+    if(gi->geostrings[freeslot]!=GEOENDING)
         return -3;
     return 0;
 }

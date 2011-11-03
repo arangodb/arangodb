@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2010, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_DURHAM_VOCBASE_QUERY_H
@@ -59,9 +59,11 @@ struct TRI_index_s;
 typedef enum {
   TRI_QUE_TYPE_COLLECTION,
   TRI_QUE_TYPE_DOCUMENT,
+  TRI_QUE_TYPE_GEO_INDEX,
   TRI_QUE_TYPE_LIMIT,
   TRI_QUE_TYPE_NEAR,
-  TRI_QUE_TYPE_SKIP
+  TRI_QUE_TYPE_SKIP,
+  TRI_QUE_TYPE_WITHIN
 }
 TRI_que_type_e;
 
@@ -123,6 +125,21 @@ typedef struct TRI_document_query_s {
 TRI_document_query_t;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief geo index query
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_geo_index_query_s {
+  TRI_query_t base;
+
+  TRI_query_t* _operand;
+
+  char* _location;
+  char* _latitude;
+  char * _longitude;
+}
+TRI_geo_index_query_t;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief limit query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -149,7 +166,7 @@ typedef struct TRI_near_query_s {
   double _latitude;
   double _longitude;
 
-  TRI_voc_size_t _count;
+  TRI_voc_size_t _limit;
 }
 TRI_near_query_t;
 
@@ -164,6 +181,24 @@ typedef struct TRI_skip_query_s {
   TRI_voc_size_t _skip;
 }
 TRI_skip_query_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief within query
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_within_query_s {
+  TRI_query_t base;
+
+  TRI_query_t* _operand;
+
+  char* _location;
+  char* _distance;
+
+  double _latitude;
+  double _longitude;
+  double _radius;
+}
+TRI_within_query_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -197,6 +232,15 @@ TRI_query_t* TRI_CreateDistanceQuery (TRI_query_t*, char const* name);
 TRI_query_t* TRI_CreateDocumentQuery (TRI_query_t*, TRI_voc_did_t);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up an geo-spatial index
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_query_t* TRI_CreateGeoIndexQuery (TRI_query_t*,
+                                      char const* location,
+                                      char const* latitude,
+                                      char const* longitude);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief limits an existing query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -217,6 +261,16 @@ TRI_query_t* TRI_CreateNearQuery (TRI_query_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_query_t* TRI_CreateSkipQuery (TRI_query_t*, TRI_voc_size_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up documents within a given radius
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_query_t* TRI_CreateWithinQuery (TRI_query_t*,
+                                    double latitude,
+                                    double longitude,
+                                    double radius,
+                                    char const* distance);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
