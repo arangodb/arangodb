@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2010, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "index.h"
@@ -38,20 +38,67 @@
 #include "ShapedJson/shape-accessor.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
+// --SECTION--                                                             INDEX
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief saves an index
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_SaveIndex (TRI_doc_collection_t* collection, TRI_index_t* idx) {
+  TRI_json_t* json;
+  char* filename;
+  char* name;
+  char* number;
+  bool ok;
+
+  // convert into JSON
+  json = idx->json(idx, collection);
+
+  if (json == NULL) {
+    LOG_TRACE("cannot save index definition: index cannot be jsonfied");
+    return false;
+  }
+
+  // construct filename
+  number = TRI_StringUInt64(idx->_iid);
+  name = TRI_Concatenate3String("index-", number, ".json");
+  filename = TRI_Concatenate2File(collection->base._directory, name);
+  TRI_FreeString(name);
+  TRI_FreeString(number);
+
+  // and save
+  ok = TRI_SaveJson(filename, json);
+  TRI_FreeString(filename);
+  TRI_FreeJson(json);
+
+  if (! ok) {
+    LOG_TRACE("cannot save index definition: %s", TRI_last_error());
+    return false;
+  }
+
+  return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                   private functions for geo index
+// --SECTION--                                                         GEO INDEX
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -250,7 +297,12 @@ static bool InsertGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 
   // lookup latitude and longitude
   if (geo->_location != 0) {
-    ok = ExtractDoubleList(shaper, &doc->_document, geo->_location, &latitude, &longitude);
+    if (geo->_geoJson) {
+      ok = ExtractDoubleList(shaper, &doc->_document, geo->_location, &longitude, &latitude);
+    }
+    else {
+      ok = ExtractDoubleList(shaper, &doc->_document, geo->_location, &latitude, &longitude);
+    }
   }
   else {
     ok = ExtractDoubleArray(shaper, &doc->_document, geo->_latitude, &latitude);
@@ -395,7 +447,7 @@ static bool RemoveGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief saves the index to file
+/// @brief JSON description of a geo index, location is a list
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_json_t* JsonGeoIndex (TRI_index_t* idx, TRI_doc_collection_t* collection) {
@@ -405,6 +457,8 @@ static TRI_json_t* JsonGeoIndex (TRI_index_t* idx, TRI_doc_collection_t* collect
   TRI_geo_index_t* geo;
 
   geo = (TRI_geo_index_t*) idx;
+
+  // convert location to string
   path = collection->_shaper->lookupAttributePathByPid(collection->_shaper, geo->_location);
 
   if (path == 0) {
@@ -413,6 +467,7 @@ static TRI_json_t* JsonGeoIndex (TRI_index_t* idx, TRI_doc_collection_t* collect
 
   location = ((char const*) path) + sizeof(TRI_shape_path_t) + (path->_aidLength * sizeof(TRI_shape_aid_t));
 
+  // create json
   json = TRI_CreateArrayJson();
 
   TRI_Insert2ArrayJson(json, "iid", TRI_CreateNumberJson(idx->_iid));
@@ -434,22 +489,26 @@ static TRI_json_t* JsonGeoIndex2 (TRI_index_t* idx, TRI_doc_collection_t* collec
   TRI_geo_index_t* geo;
 
   geo = (TRI_geo_index_t*) idx;
+
+  // convert latitude to string
   path = collection->_shaper->lookupAttributePathByPid(collection->_shaper, geo->_latitude);
 
   if (path == 0) {
     return NULL;
   }
 
-  latitude = ((char const*) path) + path->_aidLength * sizeof(TRI_shape_aid_t);
+  latitude = ((char const*) path) + sizeof(TRI_shape_path_t) + path->_aidLength * sizeof(TRI_shape_aid_t);
 
+  // convert longitude to string
   path = collection->_shaper->lookupAttributePathByPid(collection->_shaper, geo->_longitude);
 
   if (path == 0) {
     return NULL;
   }
 
-  longitude = ((char const*) path) + path->_aidLength * sizeof(TRI_shape_aid_t);
+  longitude = ((char const*) path) + sizeof(TRI_shape_path_t) + path->_aidLength * sizeof(TRI_shape_aid_t);
 
+  // create json
   json = TRI_CreateArrayJson();
 
   TRI_Insert2ArrayJson(json, "iid", TRI_CreateNumberJson(idx->_iid));
@@ -458,62 +517,6 @@ static TRI_json_t* JsonGeoIndex2 (TRI_index_t* idx, TRI_doc_collection_t* collec
   TRI_Insert2ArrayJson(json, "longitude", TRI_CreateStringCopyJson(longitude));
 
   return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                             INDEX
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief saves an index
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_SaveIndex (TRI_doc_collection_t* collection, TRI_index_t* idx) {
-  TRI_json_t* json;
-  char* filename;
-  char* name;
-  char* number;
-  bool ok;
-
-  // convert into JSON
-  json = idx->json(idx, collection);
-
-  if (json == NULL) {
-    LOG_TRACE("cannot save index definition: index cannot be jsonfied");
-    return false;
-  }
-
-  // construct filename
-  number = TRI_StringUInt64(idx->_iid);
-  name = TRI_Concatenate3String("index-", number, ".json");
-  filename = TRI_Concatenate2File(collection->base._directory, name);
-  TRI_FreeString(name);
-  TRI_FreeString(number);
-
-  // and save
-  ok = TRI_SaveJson(filename, json);
-  TRI_FreeString(filename);
-  TRI_FreeJson(json);
-
-  if (! ok) {
-    LOG_TRACE("cannot save index definition: %s", TRI_last_error());
-    return false;
-  }
-
-  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -534,7 +537,8 @@ bool TRI_SaveIndex (TRI_doc_collection_t* collection, TRI_index_t* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateGeoIndex (struct TRI_doc_collection_s* collection,
-                                 TRI_shape_pid_t location) {
+                                 TRI_shape_pid_t location,
+                                 bool geoJson) {
   TRI_geo_index_t* geo;
 
   geo = TRI_Allocate(sizeof(TRI_geo_index_t));
@@ -553,6 +557,7 @@ TRI_index_t* TRI_CreateGeoIndex (struct TRI_doc_collection_s* collection,
   geo->_location = location;
   geo->_latitude = 0;
   geo->_longitude = 0;
+  geo->_geoJson = geoJson;
 
   return &geo->base;
 }
@@ -612,10 +617,6 @@ void TRI_FreeGeoIndex (TRI_index_t* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                         GEO INDEX
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
@@ -623,6 +624,24 @@ void TRI_FreeGeoIndex (TRI_index_t* idx) {
 /// @addtogroup VocBase VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up all points within a given radius
+////////////////////////////////////////////////////////////////////////////////
+
+GeoCoordinates* TRI_WithinGeoIndex (TRI_index_t* idx,
+                                    double lat,
+                                    double lon,
+                                    double radius) {
+  TRI_geo_index_t* geo;
+  GeoCoordinate gc;
+
+  geo = (TRI_geo_index_t*) idx;
+  gc.latitude = lat;
+  gc.longitude = lon;
+
+  return GeoIndex_PointsWithinRadius(geo->_geoIndex, &gc, radius);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up the nearest points

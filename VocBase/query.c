@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2010, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "query.h"
@@ -323,6 +323,70 @@ static void FreeDocumentQuery (TRI_query_t* qry) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   GEO INDEX QUERY
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBasePrivate VocBase (Private)
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a geo-spatial index
+////////////////////////////////////////////////////////////////////////////////
+
+static void ExecuteGeoIndexQuery (TRI_query_t* qry,
+                                  TRI_query_result_t* result) {
+  TRI_geo_index_query_t* query;
+
+  query = (TRI_geo_index_query_t*) qry;
+
+  query->_operand->execute(query->_operand, result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clones a geo-spatial index
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_query_t* CloneGeoIndexQuery (TRI_query_t* qry) {
+  TRI_geo_index_query_t* query;
+
+  query = (TRI_geo_index_query_t*) qry;
+
+  return TRI_CreateGeoIndexQuery(query->_operand->clone(query->_operand),
+                                 query->_location,
+                                 query->_latitude,
+                                 query->_longitude);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees a geo-spatial index
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeGeoIndeyQuery (TRI_query_t* qry) {
+  TRI_geo_index_query_t* query;
+
+  query = (TRI_geo_index_query_t*) qry;
+
+  query->_operand->free(query->_operand);
+
+  if (query->_location != NULL) { TRI_Free(query->_location); }
+  if (query->_latitude != NULL) { TRI_Free(query->_latitude); }
+  if (query->_longitude != NULL) { TRI_Free(query->_longitude); }
+
+  TRI_Free(query->base._string);
+  TRI_Free(query);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                       LIMIT QUERY
 // -----------------------------------------------------------------------------
 
@@ -423,7 +487,7 @@ static TRI_query_t* CloneLimitQuery (TRI_query_t* qry) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief frees a full scan
+/// @brief frees a limit query
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeLimitQuery (TRI_query_t* qry) {
@@ -446,6 +510,25 @@ static void FreeLimitQuery (TRI_query_t* qry) {
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                     private types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBasePrivate VocBase (Private)
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct {
+  double _distance;
+  void const* _data;
+}
+geo_coordinate_distance_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
@@ -458,19 +541,19 @@ static void FreeLimitQuery (TRI_query_t* qry) {
 /// @brief locates a suitable geo index
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_geo_index_t* LocateGeoIndex (TRI_near_query_t* query) {
+static TRI_geo_index_t* LocateGeoIndex (TRI_query_t* query) {
   TRI_sim_collection_t* collection;
 
   // sanity check
-  if (! query->base._collection->_loaded) {
+  if (! query->_collection->_loaded) {
     return NULL;
   }
 
-  if (query->base._collection->_collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+  if (query->_collection->_collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
     return NULL;
   }
 
-  collection = (TRI_sim_collection_t*) query->base._collection->_collection;
+  collection = (TRI_sim_collection_t*) query->_collection->_collection;
 
   // return the geo index
   return collection->_geoIndex;
@@ -479,12 +562,6 @@ static TRI_geo_index_t* LocateGeoIndex (TRI_near_query_t* query) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sorts geo coordinates
 ////////////////////////////////////////////////////////////////////////////////
-
-typedef struct {
-  double _distance;
-  void const* _data;
-}
-geo_coordinate_distance_t;
 
 static int CompareGeoCoordinateDistance (geo_coordinate_distance_t* left, geo_coordinate_distance_t* right) {
   if (left->_distance < right->_distance) {
@@ -515,47 +592,70 @@ static uint32_t RandomGeoCoordinateDistance (void) {
 #include <Basics/fsrt.inc>
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a near query
+/// @brief uses a specific geo-spatial index
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ExecuteNearQuery (TRI_query_t* qry,
-                              TRI_query_result_t* result) {
+static TRI_geo_index_t* LookupGeoIndex (TRI_geo_index_query_t* query) {
+  TRI_doc_collection_t* collection;
+  TRI_index_t* idx;
+  TRI_shape_pid_t lat = 0;
+  TRI_shape_pid_t loc = 0;
+  TRI_shape_pid_t lon = 0;
+  TRI_shaper_t* shaper;
+  TRI_sim_collection_t* sim;
+
+  // lookup an geo index
+  collection = query->base._collection->_collection;
+
+  if (collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    LOG_ERROR("cannot handle collection type %ld", collection->base._type);
+    return NULL;
+  }
+
+  sim = (TRI_sim_collection_t*) collection;
+
+  shaper = query->base._collection->_collection->_shaper;
+
+  if (query->_location != NULL) {
+    loc = shaper->findAttributePathByName(shaper, query->_location);
+  }
+
+  if (query->_latitude != NULL) {
+    lat = shaper->findAttributePathByName(shaper, query->_latitude);
+  }
+
+  if (query->_longitude != NULL) {
+    lon = shaper->findAttributePathByName(shaper, query->_longitude);
+  }
+
+  if (query->_location != NULL) {
+    idx = TRI_LookupGeoIndexSimCollection(sim, loc);
+  }
+  else if (query->_longitude != NULL && query->_latitude != NULL) {
+    idx = TRI_LookupGeoIndex2SimCollection(sim, lat, lon);
+  }
+  else {
+    idx = NULL;
+  }
+
+  return (TRI_geo_index_t*) idx;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create result
+////////////////////////////////////////////////////////////////////////////////
+
+static void GeoResult (GeoCoordinates* cors,
+                       char const* distance,
+                       TRI_query_result_t* result) {
   GeoCoordinate* end;
   GeoCoordinate* ptr;
-  GeoCoordinates* cors;
   TRI_doc_mptr_t const** wtr;
-  TRI_geo_index_t* idx;
-  TRI_near_query_t* query;
-  geo_coordinate_distance_t* tmp;
+  double* dtr;
   geo_coordinate_distance_t* gnd;
   geo_coordinate_distance_t* gtr;
-  double* dtr;
+  geo_coordinate_distance_t* tmp;
   size_t n;
-
-  query = (TRI_near_query_t*) qry;
-
-  // free any old results
-  FreeDocuments(result);
-
-  // we need a suitable geo index
-  idx = LocateGeoIndex(query);
-
-  if (idx == NULL) {
-    result->_error = TRI_DuplicateString("cannot locate suitable geo index");
-    return;
-  }
-
-  // sub-query must be the collection
-  if (query->_operand->_type != TRI_QUE_TYPE_COLLECTION) {
-    result->_error = TRI_DuplicateString("near query can only be executed for the complete collection");
-    return;
-  }
-
-  // append information about the execution plan
-  TRI_AppendString(&result->_cursor, ">near");
-
-  // execute geo search
-  cors = TRI_NearestGeoIndex(&idx->base, query->_latitude, query->_longitude, query->_count);
 
   if (cors == NULL) {
     result->_error = TRI_DuplicateString("cannot execute geo index search");
@@ -565,7 +665,7 @@ static void ExecuteNearQuery (TRI_query_t* qry,
   // sort the result
   n = cors->length;
 
-  gtr = tmp = TRI_Allocate(sizeof(geo_coordinate_distance_t) * n);
+  gtr = (tmp = TRI_Allocate(sizeof(geo_coordinate_distance_t) * n));
   gnd = tmp + n;
 
   ptr = cors->coordinates;
@@ -590,7 +690,7 @@ static void ExecuteNearQuery (TRI_query_t* qry,
   }
 
   // copy the distance
-  if (query->_distance != NULL) {
+  if (distance != NULL) {
     TRI_json_t* atr;
 
     result->_augmented = (atr = TRI_Allocate(sizeof(TRI_json_t) * n));
@@ -599,7 +699,7 @@ static void ExecuteNearQuery (TRI_query_t* qry,
       atr->_type = TRI_JSON_ARRAY;
       TRI_InitVector(&atr->_value._objects, sizeof(TRI_json_t));
 
-      TRI_InsertArrayJson(atr, query->_distance, TRI_CreateNumberJson(gtr->_distance));
+      TRI_InsertArrayJson(atr, distance, TRI_CreateNumberJson(gtr->_distance));
     }
   }
 
@@ -607,6 +707,57 @@ static void ExecuteNearQuery (TRI_query_t* qry,
 
   result->_total = result->_length = n;
   result->_scannedIndexEntries += n;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a near query
+////////////////////////////////////////////////////////////////////////////////
+
+static void ExecuteNearQuery (TRI_query_t* qry,
+                              TRI_query_result_t* result) {
+  GeoCoordinates* cors;
+  TRI_geo_index_t* idx;
+  TRI_near_query_t* query;
+  TRI_query_t* operand;
+
+  query = (TRI_near_query_t*) qry;
+  operand = query->_operand;
+
+  // free any old results
+  FreeDocuments(result);
+
+  // we need a suitable geo index
+  if (operand->_type == TRI_QUE_TYPE_GEO_INDEX) {
+    TRI_geo_index_query_t* geo;
+
+    geo = (TRI_geo_index_query_t*) operand;
+
+    idx = LookupGeoIndex(geo);
+    operand = geo->_operand;
+  }
+  else {
+    idx = LocateGeoIndex(&query->base);
+  }
+
+  if (idx == NULL) {
+    result->_error = TRI_DuplicateString("cannot locate suitable geo index");
+    return;
+  }
+
+  // sub-query must be the collection
+  if (operand->_type != TRI_QUE_TYPE_COLLECTION) {
+    result->_error = TRI_DuplicateString("near query can only be executed for the complete collection");
+    return;
+  }
+
+  // append information about the execution plan
+  TRI_AppendString(&result->_cursor, ">near");
+
+  // execute geo search
+  cors = TRI_NearestGeoIndex(&idx->base, query->_latitude, query->_longitude, query->_limit);
+
+  // and append result
+  GeoResult(cors, query->_distance, result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -621,7 +772,7 @@ static TRI_query_t* CloneNearQuery (TRI_query_t* qry) {
   return TRI_CreateNearQuery(query->_operand->clone(query->_operand),
                              query->_latitude,
                              query->_longitude,
-                             query->_count,
+                             query->_limit,
                              query->_distance);
 }
 
@@ -656,7 +807,7 @@ static void FreeNearQuery (TRI_query_t* qry) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a skip
+/// @brief executes a skip query
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ExecuteSkipQuery (TRI_query_t* qry,
@@ -734,7 +885,7 @@ static TRI_query_t* CloneSkipQuery (TRI_query_t* qry) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief frees a full scan
+/// @brief frees a skip query
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeSkipQuery (TRI_query_t* qry) {
@@ -743,6 +894,103 @@ static void FreeSkipQuery (TRI_query_t* qry) {
   query = (TRI_skip_query_t*) qry;
 
   query->_operand->free(query->_operand);
+
+  TRI_Free(query->base._string);
+  TRI_Free(query);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      WITHIN QUERY
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBasePrivate VocBase (Private)
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a within query
+////////////////////////////////////////////////////////////////////////////////
+
+static void ExecuteWithinQuery (TRI_query_t* qry,
+                                TRI_query_result_t* result) {
+  GeoCoordinates* cors;
+  TRI_geo_index_t* idx;
+  TRI_within_query_t* query;
+  TRI_query_t* operand;
+
+  query = (TRI_within_query_t*) qry;
+  operand = query->_operand;
+
+  // free any old results
+  FreeDocuments(result);
+
+  // we need a suitable geo index
+  if (operand->_type == TRI_QUE_TYPE_GEO_INDEX) {
+    TRI_geo_index_query_t* geo;
+
+    geo = (TRI_geo_index_query_t*) operand;
+
+    idx = LookupGeoIndex(geo);
+    operand = geo->_operand;
+  }
+  else {
+    idx = LocateGeoIndex(&query->base);
+  }
+
+  if (idx == NULL) {
+    result->_error = TRI_DuplicateString("cannot locate suitable geo index");
+    return;
+  }
+
+  // sub-query must be the collection
+  if (operand->_type != TRI_QUE_TYPE_COLLECTION) {
+    result->_error = TRI_DuplicateString("within query can only be executed for the complete collection");
+    return;
+  }
+
+  // append information about the execution plan
+  TRI_AppendString(&result->_cursor, ">within");
+
+  // execute geo search
+  cors = TRI_WithinGeoIndex(&idx->base, query->_latitude, query->_longitude, query->_radius);
+
+  // and create result
+  GeoResult(cors, query->_distance, result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clones a within query
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_query_t* CloneWithinQuery (TRI_query_t* qry) {
+  TRI_within_query_t* query;
+
+  query = (TRI_within_query_t*) qry;
+
+  return TRI_CreateWithinQuery(query->_operand->clone(query->_operand),
+                               query->_latitude,
+                               query->_longitude,
+                               query->_radius,
+                               query->_distance);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees a within query
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeWithinQuery (TRI_query_t* qry) {
+  TRI_within_query_t* query;
+
+  query = (TRI_within_query_t*) qry;
 
   TRI_Free(query->base._string);
   TRI_Free(query);
@@ -800,8 +1048,24 @@ TRI_query_t* TRI_CreateDistanceQuery (TRI_query_t* operand, char const* name) {
     return TRI_CreateNearQuery(near->_operand->clone(near->_operand),
                                near->_latitude,
                                near->_longitude,
-                               near->_count,
+                               near->_limit,
                                name);
+  }
+
+  // .............................................................................
+  // operand is a WITHIN
+  // .............................................................................
+
+  else if (operand->_type == TRI_QUE_TYPE_WITHIN) {
+    TRI_within_query_t* within;
+
+    within = (TRI_within_query_t*) operand;
+
+    return TRI_CreateWithinQuery(within->_operand->clone(within->_operand),
+                                 within->_latitude,
+                                 within->_longitude,
+                                 within->_radius,
+                                 name);
   }
 
   // .............................................................................
@@ -839,6 +1103,43 @@ TRI_query_t* TRI_CreateDocumentQuery (TRI_query_t* operand, TRI_voc_did_t did) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up an geo-spatial index
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_query_t* TRI_CreateGeoIndexQuery (TRI_query_t* operand,
+                                      char const* location,
+                                      char const* latitude,
+                                      char const* longitude) {
+  TRI_geo_index_query_t* query;
+
+  query = TRI_Allocate(sizeof(TRI_geo_index_query_t));
+
+  query->base._type = TRI_QUE_TYPE_GEO_INDEX;
+  query->base._collection = operand->_collection;
+
+  if (location != NULL) {
+    query->base._string = TRI_Concatenate4String(operand->_string, ".geo(", location, ")");
+  }
+  else if (latitude != NULL && longitude != NULL) {
+    query->base._string = TRI_Concatenate6String(operand->_string, ".geo(", latitude, ",", longitude, ")");
+  }
+  else {
+    query->base._string = TRI_DuplicateString("unknown");
+  }
+
+  query->base.execute = ExecuteGeoIndexQuery;
+  query->base.clone = CloneGeoIndexQuery;
+  query->base.free = FreeGeoIndeyQuery;
+
+  query->_operand = operand;
+  query->_location = (location == NULL ? NULL : TRI_DuplicateString(location));
+  query->_latitude = (latitude == NULL ? NULL : TRI_DuplicateString(latitude));
+  query->_longitude = (longitude == NULL ? NULL : TRI_DuplicateString(longitude));
+
+  return &query->base;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief limits an existing query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -853,8 +1154,8 @@ TRI_query_t* TRI_CreateLimitQuery (TRI_query_t* operand, TRI_voc_ssize_t limit) 
 
     near = (TRI_near_query_t*) operand;
 
-    if (near->_count < limit) {
-      limit = near->_count;
+    if (near->_limit < limit) {
+      limit = near->_limit;
     }
 
     return TRI_CreateNearQuery(near->_operand->clone(near->_operand),
@@ -970,7 +1271,7 @@ TRI_query_t* TRI_CreateNearQuery (TRI_query_t* operand,
   query->_location = NULL;
   query->_latitude = latitude;
   query->_longitude = longitude;
-  query->_count = count;
+  query->_limit = count;
   query->_distance = (distance == NULL ? NULL : TRI_DuplicateString(distance));
 
   return &query->base;
@@ -1016,6 +1317,56 @@ TRI_query_t* TRI_CreateSkipQuery (TRI_query_t* operand, TRI_voc_size_t skip) {
 
   query->_operand = operand;
   query->_skip = skip;
+
+  return &query->base;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up documents within a given radius
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_query_t* TRI_CreateWithinQuery (TRI_query_t* operand,
+                                    double latitude,
+                                    double longitude,
+                                    double radius,
+                                    char const* distance) {
+  TRI_string_buffer_t sb;
+  TRI_within_query_t* query;
+
+  query = TRI_Allocate(sizeof(TRI_within_query_t));
+
+  query->base._type = TRI_QUE_TYPE_WITHIN;
+  query->base._collection = operand->_collection;
+
+
+  TRI_InitStringBuffer(&sb);
+
+  TRI_AppendStringStringBuffer(&sb, ".within(");
+  TRI_AppendDoubleStringBuffer(&sb, latitude);
+  TRI_AppendStringStringBuffer(&sb, ",");
+  TRI_AppendDoubleStringBuffer(&sb, longitude);
+  TRI_AppendStringStringBuffer(&sb, ",");
+  TRI_AppendDoubleStringBuffer(&sb, radius);
+  TRI_AppendStringStringBuffer(&sb, ")");
+
+  if (distance != NULL) {
+    TRI_AppendStringStringBuffer(&sb, ".distance(\"");
+    TRI_AppendStringStringBuffer(&sb, distance);
+    TRI_AppendStringStringBuffer(&sb, "\")");
+  }
+
+  query->base._string = sb._buffer;
+
+  query->base.execute = ExecuteWithinQuery;
+  query->base.clone = CloneWithinQuery;
+  query->base.free = FreeWithinQuery;
+
+  query->_operand = operand;
+  query->_location = NULL;
+  query->_latitude = latitude;
+  query->_longitude = longitude;
+  query->_radius = radius;
+  query->_distance = (distance == NULL ? NULL : TRI_DuplicateString(distance));
 
   return &query->base;
 }

@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2010, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "strings.h"
@@ -482,7 +482,7 @@ char* TRI_Concatenate4String (char const* a, char const* b, char const* c, char 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief concatenate four strings
+/// @brief concatenate five strings
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_Concatenate5String (char const* a, char const* b, char const* c, char const* d, char const* e) {
@@ -508,6 +508,40 @@ char* TRI_Concatenate5String (char const* a, char const* b, char const* c, char 
   memcpy(result + na + nb + nc + nd, e, ne);
 
   result[na + nb + nc + nd + ne] = '\0';
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief concatenate six strings
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_Concatenate6String (char const* a, char const* b, char const* c, char const* d, char const* e, char const* f) {
+  char* result;
+  size_t na;
+  size_t nb;
+  size_t nc;
+  size_t nd;
+  size_t ne;
+  size_t nf;
+
+  na = strlen(a);
+  nb = strlen(b);
+  nc = strlen(c);
+  nd = strlen(d);
+  ne = strlen(e);
+  nf = strlen(f);
+
+  result = TRI_Allocate(na + nb + nc + nd + ne + nf + 1);
+
+  memcpy(result, a, na);
+  memcpy(result + na, b, nb);
+  memcpy(result + na + nb, c, nc);
+  memcpy(result + na + nb + nc, d, nd);
+  memcpy(result + na + nb + nc + nd, e, ne);
+  memcpy(result + na + nb + nc + nd + ne, f, nf);
+
+  result[na + nb + nc + nd + ne + nf] = '\0';
 
   return result;
 }

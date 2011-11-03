@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2010, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "simple-collection.h"
@@ -56,6 +56,7 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
                                                  char const* location,
                                                  char const* latitude,
                                                  char const* longitude,
+                                                 bool geoJson,
                                                  TRI_idx_iid iid);
 
 static uint64_t HashKeyHeader (TRI_associative_pointer_t* array, void const* key);
@@ -694,14 +695,16 @@ static void OpenIterator (TRI_df_marker_t const* marker, void* data, bool journa
 ////////////////////////////////////////////////////////////////////////////////
 
 static void OpenIndex (char const* filename, void* data) {
-  TRI_sim_collection_t* doc;
   TRI_idx_iid iid;
+  TRI_json_t* gjs;
+  TRI_json_t* iis;
   TRI_json_t* json;
-  TRI_json_t* loc;
   TRI_json_t* lat;
+  TRI_json_t* loc;
   TRI_json_t* lon;
   TRI_json_t* type;
-  TRI_json_t* iis;
+  TRI_sim_collection_t* doc;
+  bool geoJson;
   char const* typeStr;
   char* error;
 
@@ -735,17 +738,23 @@ static void OpenIndex (char const* filename, void* data) {
     lat = TRI_LookupArrayJson(json, "latitude");
     lon = TRI_LookupArrayJson(json, "longitude");
     iis = TRI_LookupArrayJson(json, "iid");
+    gjs = TRI_LookupArrayJson(json, "geoJson");
     iid = 0;
+    geoJson = false;
 
-    if (iis != NULL && loc->_type == TRI_JSON_NUMBER) {
-      iid = loc->_value._number;
+    if (iis != NULL && iis->_type == TRI_JSON_NUMBER) {
+      iid = iis->_value._number;
+    }
+
+    if (gjs != NULL && gjs->_type == TRI_JSON_BOOLEAN) {
+      geoJson = gjs->_value._boolean;
     }
 
     if (loc != NULL && loc->_type == TRI_JSON_STRING) {
-      CreateGeoIndexSimCollection(doc, loc->_value._string.data, NULL, NULL, iid);
+      CreateGeoIndexSimCollection(doc, loc->_value._string.data, NULL, NULL, geoJson, iid);
     }
     else if (lat != NULL && lat->_type == TRI_JSON_STRING && lon != NULL && lon ->_type == TRI_JSON_STRING) {
-      CreateGeoIndexSimCollection(doc, NULL, lat->_value._string.data, lon->_value._string.data, iid);
+      CreateGeoIndexSimCollection(doc, NULL, lat->_value._string.data, lon->_value._string.data, false, iid);
     }
     else {
       LOG_WARNING("ignore geo-index, need either 'location' or 'latitude' and 'longitude'");
@@ -1263,6 +1272,7 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
                                                  char const* location,
                                                  char const* latitude,
                                                  char const* longitude,
+                                                 bool geoJson,
                                                  TRI_idx_iid iid) {
   TRI_index_t* idx;
   TRI_shape_pid_t lat;
@@ -1314,7 +1324,7 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
 
   // create a new index
   if (location != NULL) {
-    idx = TRI_CreateGeoIndex(&collection->base, loc);
+    idx = TRI_CreateGeoIndex(&collection->base, loc, geoJson);
 
     LOG_TRACE("created geo-index for location '%s': %d",
               location,
@@ -1424,7 +1434,8 @@ TRI_index_t* TRI_LookupGeoIndex2SimCollection (TRI_sim_collection_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_EnsureGeoIndexSimCollection (TRI_sim_collection_t* collection,
-                                      char const* location) {
+                                      char const* location,
+                                      bool geoJson) {
   TRI_index_t* idx;
   bool ok;
 
@@ -1434,7 +1445,7 @@ bool TRI_EnsureGeoIndexSimCollection (TRI_sim_collection_t* collection,
 
   TRI_WriteLockReadWriteLock(&collection->_lock);
 
-  idx = CreateGeoIndexSimCollection(collection, location, NULL, NULL, 0);
+  idx = CreateGeoIndexSimCollection(collection, location, NULL, NULL, geoJson, 0);
 
   if (idx == NULL) {
     TRI_WriteUnlockReadWriteLock(&collection->_lock);
@@ -1473,7 +1484,7 @@ bool TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* collection,
 
   TRI_WriteLockReadWriteLock(&collection->_lock);
 
-  idx = CreateGeoIndexSimCollection(collection, NULL, latitude, longitude, 0);
+  idx = CreateGeoIndexSimCollection(collection, NULL, latitude, longitude, false, 0);
 
   if (idx == NULL) {
     TRI_WriteUnlockReadWriteLock(&collection->_lock);

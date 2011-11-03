@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2010, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_DURHAM_VOCBASE_INDEX_H
@@ -99,6 +99,8 @@ typedef struct TRI_geo_index_s {
   TRI_shape_pid_t _location;
   TRI_shape_pid_t _latitude;
   TRI_shape_pid_t _longitude;
+
+  bool _geoJson;
 }
 TRI_geo_index_t;
 
@@ -144,10 +146,15 @@ bool TRI_SaveIndex (struct TRI_doc_collection_s*, TRI_index_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a geo-index for lists
+///
+/// If geoJson is true, than the coordinates should be in the order described
+/// in http://geojson.org/geojson-spec.html#positions, which is longitude
+/// first and latitude second.
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateGeoIndex (struct TRI_doc_collection_s*,
-                                 TRI_shape_pid_t);
+                                 TRI_shape_pid_t,
+                                 bool geoJson);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a geo-index for arrays
@@ -186,10 +193,10 @@ void TRI_FreeGeoIndex (TRI_index_t*);
 /// @brief looks up all points within a given radius
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_doc_mptr_s const** TRI_WithinGeoIndex (TRI_index_t*,
-                                                  double lat,
-                                                  double lon,
-                                                  double radius);
+GeoCoordinates* TRI_WithinGeoIndex (TRI_index_t*,
+                                    double lat,
+                                    double lon,
+                                    double radius);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up the nearest points

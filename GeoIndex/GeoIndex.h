@@ -21,15 +21,21 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-///
 /// @author R. A. Parker
-/// @author Copyright 2011-2010, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 /* GeoIndex.h - header file for GeoIndex algorithms  */
 /* Version 1.0 24.9.2011 R. A. Parker                */
 
+#ifdef GEO_TRIAGENS
 #include <Basics/Common.h>
+#else
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#endif
 
 /* first the things that a user might want to change */
 
