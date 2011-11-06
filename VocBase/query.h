@@ -30,6 +30,8 @@
 
 #include <VocBase/vocbase.h>
 
+#include <Basics/json.h>
+#include <Basics/string-buffer.h>
 #include <VocBase/result-set.h>
 
 #ifdef __cplusplus
@@ -58,6 +60,7 @@ struct TRI_index_s;
 
 typedef enum {
   TRI_QUE_TYPE_COLLECTION,
+  TRI_QUE_TYPE_DISTANCE,
   TRI_QUE_TYPE_DOCUMENT,
   TRI_QUE_TYPE_GEO_INDEX,
   TRI_QUE_TYPE_LIMIT,
@@ -89,17 +92,53 @@ TRI_query_result_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query
+///
+/// A query contains the following methods.
+///
+/// <b><tt>char* optimise (TRI_query_t**)</tt></b>
+///
+/// Checks and optimises the query. This might change the pointer. If a new
+/// query is create, the old query is freed. In case of an error, an error
+/// message is returned.
+///
+/// <b><tt>void execute (TRI_query_t*, TRI_query_result_t*)</tt></b>
+///
+/// Executes the query and stores the result set in a @c TRI_query_result_t.
+/// You must call @c optimise before calling @c execute.  In case of an error
+/// during the executing, the error message is stored in the field @c
+/// _error. The query result must be clear using the free method of the @c
+/// TRI_query_result_t.
+///
+/// <b><tt>TRI_json_t* json (TRI_query_t*)</tt></b>
+///
+/// Returns a json description.
+///
+/// <b><tt>void stringify (TRI_query_t*, TRI_string_buffer_t*)</tt></b>
+///
+/// Appends a string representation to the buffer.
+///
+/// <b><tt>TRI_query_t* clone (TRI_query_t*)</tt></b>
+///
+/// Clones an existing query.
+///
+/// <b><tt>void free (TRI_query_t*, bool)</tt></b>
+///
+/// Frees all resources associated with the query. If the second parameter is
+/// true, also free all operands. This method will not clear any resources
+/// allocated during an @c execute associated with the @c TRI_query_result_t.
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_query_s {
   TRI_que_type_e _type;
   TRI_vocbase_col_t const* _collection;
+  bool _isOptimised;
 
-  char* _string;
-
+  char* (*optimise) (struct TRI_query_s**);
   void (*execute) (struct TRI_query_s*, TRI_query_result_t*);
+  TRI_json_t* (*json) (struct TRI_query_s*);
+  void (*stringify) (struct TRI_query_s*, TRI_string_buffer_t*);
   struct TRI_query_s* (*clone) (struct TRI_query_s*);
-  void (*free) (struct TRI_query_s*);
+  void (*free) (struct TRI_query_s*, bool);
 }
 TRI_query_t;
 
@@ -111,6 +150,18 @@ typedef struct TRI_collection_query_s {
   TRI_query_t base;
 }
 TRI_collection_query_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief distance query
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_distance_query_s {
+  TRI_query_t base;
+
+  TRI_query_t* _operand;
+  char* _distance;
+}
+TRI_distance_query_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document query
@@ -136,6 +187,8 @@ typedef struct TRI_geo_index_query_s {
   char* _location;
   char* _latitude;
   char * _longitude;
+
+  bool _geoJson;
 }
 TRI_geo_index_query_t;
 
@@ -160,7 +213,6 @@ typedef struct TRI_near_query_s {
 
   TRI_query_t* _operand;
 
-  char* _location;
   char* _distance;
 
   double _latitude;
@@ -191,7 +243,6 @@ typedef struct TRI_within_query_s {
 
   TRI_query_t* _operand;
 
-  char* _location;
   char* _distance;
 
   double _latitude;
@@ -238,7 +289,8 @@ TRI_query_t* TRI_CreateDocumentQuery (TRI_query_t*, TRI_voc_did_t);
 TRI_query_t* TRI_CreateGeoIndexQuery (TRI_query_t*,
                                       char const* location,
                                       char const* latitude,
-                                      char const* longitude);
+                                      char const* longitude,
+                                      bool geoJson);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief limits an existing query

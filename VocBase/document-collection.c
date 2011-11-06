@@ -44,27 +44,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief updates a document in the collection from json
+/// @brief creates a new document in the collection from shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool UpdateJson (TRI_doc_collection_t* collection,
-                        TRI_json_t const* json,
-                        TRI_voc_did_t did) {
-  TRI_shaped_json_t* shaped;
-  bool ok;
+static TRI_voc_did_t CreateLock (TRI_doc_collection_t* document,
+                                 TRI_shaped_json_t const* json) {
+  TRI_voc_did_t did;
 
-  shaped = TRI_ShapedJsonJson(collection->_shaper, json);
+  document->beginWrite(document);
+  did = document->create(document, json);
+  document->endWrite(document);
 
-  if (shaped == 0) {
-    collection->base._lastError = TRI_set_errno(TRI_VOC_ERROR_SHAPER_FAILED);
-    return false;
-  }
-
-  ok = collection->update(collection, shaped, did);
-
-  TRI_FreeShapedJson(shaped);
-
-  return ok;
+  return did;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -91,6 +82,92 @@ static TRI_voc_did_t CreateJson (TRI_doc_collection_t* collection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief updates a document in the collection from shaped json
+////////////////////////////////////////////////////////////////////////////////
+
+static bool UpdateLock (TRI_doc_collection_t* document,
+                              TRI_shaped_json_t const* json,
+                              TRI_voc_did_t did) {
+  bool ok;
+
+  document->beginWrite(document);
+  ok = document->update(document, json, did);
+  document->endWrite(document);
+
+  return ok;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates a document in the collection from json
+////////////////////////////////////////////////////////////////////////////////
+
+static bool UpdateJson (TRI_doc_collection_t* collection,
+                        TRI_json_t const* json,
+                        TRI_voc_did_t did) {
+  TRI_shaped_json_t* shaped;
+  bool ok;
+
+  shaped = TRI_ShapedJsonJson(collection->_shaper, json);
+
+  if (shaped == 0) {
+    collection->base._lastError = TRI_set_errno(TRI_VOC_ERROR_SHAPER_FAILED);
+    return false;
+  }
+
+  ok = collection->update(collection, shaped, did);
+
+  TRI_FreeShapedJson(shaped);
+
+  return ok;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes a json document given the identifier
+////////////////////////////////////////////////////////////////////////////////
+
+static bool DeleteLock (TRI_doc_collection_t* document,
+                        TRI_voc_did_t did) {
+  bool ok;
+
+  document->beginWrite(document);
+  ok = document->destroy(document, did);
+  document->endWrite(document);
+
+  return ok;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hashs a datafile identifier
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashKeyDatafile (TRI_associative_pointer_t* array, void const* key) {
+  TRI_voc_tick_t const* k = key;
+
+  return *k;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hashs a datafile identifier
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashElementDatafile (TRI_associative_pointer_t* array, void const* element) {
+  TRI_doc_datafile_info_t const* e = element;
+
+  return e->_fid;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares a datafile identifier and a datafile info
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IsEqualKeyElementDatafile (TRI_associative_pointer_t* array, void const* key, void const* element) {
+  TRI_voc_tick_t const* k = key;
+  TRI_doc_datafile_info_t const* e = element;
+
+  return *k == e->_fid;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -111,10 +188,21 @@ void TRI_InitDocCollection (TRI_doc_collection_t* collection,
                             TRI_shaper_t* shaper) {
   collection->_shaper = shaper;
 
+  collection->createLock = CreateLock;
   collection->createJson = CreateJson;
+
+  collection->updateLock = UpdateLock;
   collection->updateJson = UpdateJson;
 
+  collection->destroyLock = DeleteLock;
+
   TRI_InitRSContainer(&collection->_resultSets, collection);
+
+  TRI_InitAssociativePointer(&collection->_datafileInfo,
+                             HashKeyDatafile,
+                             HashElementDatafile,
+                             IsEqualKeyElementDatafile,
+                             NULL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,6 +214,7 @@ void TRI_DestroyDocCollection (TRI_doc_collection_t* collection) {
     TRI_FreeVocShaper(collection->_shaper);
   }
 
+  TRI_DestroyAssociativePointer(&collection->_datafileInfo);
   TRI_DestroyRSContainer(&collection->_resultSets);
 
   TRI_DestroyCollection(&collection->base);
@@ -143,6 +232,33 @@ void TRI_DestroyDocCollection (TRI_doc_collection_t* collection) {
 /// @addtogroup VocBase VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a datafile description
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_doc_datafile_info_t* TRI_FindDatafileInfoDocCollection (TRI_doc_collection_t* collection,
+                                                            TRI_voc_tick_t fid) {
+  TRI_doc_datafile_info_t const* found;
+  TRI_doc_datafile_info_t* dfi;
+
+  found = TRI_LookupByKeyAssociativePointer(&collection->_datafileInfo, &fid);
+
+  if (found != NULL) {
+    union { TRI_doc_datafile_info_t const* c; TRI_doc_datafile_info_t* v; } cnv;
+
+    cnv.c = found;
+    return cnv.v;
+  }
+
+  dfi = TRI_Allocate(sizeof(TRI_doc_datafile_info_t));
+
+  dfi->_fid = fid;
+
+  TRI_InsertKeyAssociativePointer(&collection->_datafileInfo, &fid, dfi, true);
+
+  return dfi;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a journal

@@ -31,17 +31,11 @@
 #include <VocBase/document-collection.h>
 
 #include <VocBase/headers.h>
+#include <VocBase/index.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
-
-struct TRI_index_s;
-struct TRI_geo_index_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -172,13 +166,43 @@ bool TRI_CloseSimCollection (TRI_sim_collection_t* collection);
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a description of all indexes
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops an index
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_DropIndexSimCollection (TRI_sim_collection_t* collection, TRI_idx_iid_t iid);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       GEO INDEXES
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a geo index
 ///
 /// Note that the caller must hold at least a read-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s* TRI_LookupGeoIndexSimCollection (struct TRI_sim_collection_s* collection,
-                                                     TRI_shape_pid_t location);
+struct TRI_index_s* TRI_LookupGeoIndexSimCollection (TRI_sim_collection_t* collection,
+                                                     TRI_shape_pid_t location,
+                                                     bool geoJson);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a geo index
@@ -186,7 +210,7 @@ struct TRI_index_s* TRI_LookupGeoIndexSimCollection (struct TRI_sim_collection_s
 /// Note that the caller must hold at least a read-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s* TRI_LookupGeoIndex2SimCollection (struct TRI_sim_collection_s* collection,
+struct TRI_index_s* TRI_LookupGeoIndex2SimCollection (TRI_sim_collection_t* collection,
                                                       TRI_shape_pid_t latitude,
                                                       TRI_shape_pid_t longitude);
 
@@ -194,17 +218,17 @@ struct TRI_index_s* TRI_LookupGeoIndex2SimCollection (struct TRI_sim_collection_
 /// @brief ensures that a geo index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_EnsureGeoIndexSimCollection (TRI_sim_collection_t* collection,
-                                      char const* location,
-                                      bool geoJson);
+TRI_idx_iid_t TRI_EnsureGeoIndexSimCollection (TRI_sim_collection_t* collection,
+                                               char const* location,
+                                               bool geoJson);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a geo index to a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* collection,
-                                       char const* latitude,
-                                       char const* longitude);
+TRI_idx_iid_t TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* collection,
+                                                char const* latitude,
+                                                char const* longitude);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

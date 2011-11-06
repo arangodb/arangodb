@@ -55,12 +55,29 @@ typedef struct TRI_doc_mptr_s {
   TRI_voc_rid_t _rid; // this is the revision identifier
   TRI_voc_eid_t _eid; // this is the step identifier
 
+  TRI_voc_tick_t _fid; // this is the datafile identifier
+
   TRI_voc_tick_t _deletion; // this is the deletion time
 
   void const* _data;                    // this is the pointer to the raw marker
   struct TRI_shaped_json_s _document;   // this is the pointer to the json document
 }
 TRI_doc_mptr_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief datafile info
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_doc_datafile_info_s {
+  TRI_voc_tick_t _fid;
+
+  TRI_voc_size_t _numberAlive;
+  TRI_voc_size_t _numberDead;
+  TRI_voc_size_t _sizeAlive;
+  TRI_voc_size_t _sizeDead;
+  TRI_voc_size_t _numberDeletion;
+}
+TRI_doc_datafile_info_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document collection
@@ -87,64 +104,87 @@ TRI_doc_mptr_t;
 /// "endRead". However, the result set itself does not contain any master
 /// pointers. Therefore, it stays valid after the "endRead" call.
 ///
-/// <tt>bool beginRead (TRI_doc_collection_t*)</tt>
+/// <b><tt>bool beginRead (TRI_doc_collection_t*)</tt></b>
 ///
 /// Starts a read transaction. Query and calls to "read" are allowed within a
 /// read transaction, but not calls to "create", "update", or "destroy".
 /// Returns @c true if the transaction could be started. This call might block
 /// until a running write transaction is finished.
 ///
-/// <tt>bool endRead (TRI_doc_collection_t*)</tt>
+/// <b><tt>bool endRead (TRI_doc_collection_t*)</tt></b>
 ///
 /// Ends a read transaction. Should only be called after a successful
 /// "beginRead".
 ///
-/// <tt>bool beginWrite (TRI_doc_collection_t*)</tt>
+/// <b><tt>bool beginWrite (TRI_doc_collection_t*)</tt></b>
 ///
 /// Starts a write transaction. Query and calls to "create", "read", "update",
 /// and "destroy" are allowed within a write transaction. Returns @c true if the
 /// transaction could be started. This call might block until a running write
 /// transaction is finished.
 ///
-/// <tt>bool endWrite (TRI_doc_collection_t*)</tt>
+/// <b><tt>bool endWrite (TRI_doc_collection_t*)</tt></b>
 ///
 /// Ends a write transaction. Should only be called after a successful
 /// "beginWrite".
 ///
-/// <tt>TRI_voc_did_t create (TRI_doc_collection_t*, TRI_shaped_json_t const*)</tt>
+/// <b><tt>TRI_voc_did_t create (TRI_doc_collection_t*, TRI_shaped_json_t const*)</tt></b>
 ///
 /// Adds a new document to the collection and returns the document identifier of
 /// the newly created entry. In case of an error, 0 is returned and
-/// "TRI_errno()" is set accordingly.
+/// "TRI_errno()" is set accordingly. The function DOES NOT acquire
+/// or release a write lock. This must be done by the caller.
 ///
-/// <tt>TRI_voc_did_t createJson (TRI_doc_collection_t*, TRI_json_t const*)</tt>
+/// <b><tt>TRI_voc_did_t createLock (TRI_doc_collection_t*, TRI_shaped_json_t const*)</tt></b>
 ///
 /// Adds a new document to the collection and returns the document identifier of
 /// the newly created entry. In case of an error, 0 is returned and
-/// "TRI_errno()" is set accordingly.
+/// "TRI_errno()" is set accordingly. The function will acquire and release a
+/// write lock.
 ///
-/// <tt>TRI_doc_mptr_t const* read (TRI_doc_collection_t*, TRI_voc_did_t did)</tt>
+/// <b><tt>TRI_voc_did_t createJson (TRI_doc_collection_t*, TRI_json_t const*)</tt></b>
+///
+/// Adds a new document to the collection and returns the document identifier of
+/// the newly created entry. In case of an error, 0 is returned and
+/// "TRI_errno()" is set accordingly. The function will acquire and release a
+/// write lock.
+///
+/// <b><tt>TRI_doc_mptr_t const* read (TRI_doc_collection_t*, TRI_voc_did_t did)</tt></b>
 ///
 /// Returns the master pointer of the document with identifier @c did. If the
-/// document does not exists or is deleted, then @c NULL is returned.
+/// document does not exists or is deleted, then @c NULL is returned. The function
+/// DOES NOT acquire or release a read lock. This must be done by the caller.
 ///
-/// <tt>bool update (TRI_doc_collection_t*, TRI_shaped_json_t const*, TRI_voc_did_t)</tt>
-///
-/// Updates an existing document of the collection and returns @c true in case
-/// of success. Otherwise, @c false is returned and the "TRI_errno()" is
-/// accordingly.
-///
-/// <tt>bool updateJson (TRI_doc_collection_t*, TRI_json_t const*, TRI_voc_did_t)</tt>
+/// <b><tt>bool update (TRI_doc_collection_t*, TRI_shaped_json_t const*, TRI_voc_did_t)</tt></b>
 ///
 /// Updates an existing document of the collection and returns @c true in case
 /// of success. Otherwise, @c false is returned and the "TRI_errno()" is
-/// accordingly.
+/// accordingly. The function DOES NOT acquire or release a write lock. This must
+/// be done by the caller.
 ///
-/// <tt>bool destroy (TRI_doc_collection_t*, TRI_voc_did_t)</tt>
+/// <b><tt>bool updateLock (TRI_doc_collection_t*, TRI_shaped_json_t const*, TRI_voc_did_t)</tt></b>
+///
+/// Updates an existing document of the collection and returns @c true in case
+/// of success. Otherwise, @c false is returned and the "TRI_errno()" is
+/// accordingly. The function will acquire and release a write lock.
+///
+/// <b><tt>bool updateJson (TRI_doc_collection_t*, TRI_json_t const*, TRI_voc_did_t)</tt></b>
+///
+/// Updates an existing document of the collection and returns @c true in case
+/// of success. Otherwise, @c false is returned and the "TRI_errno()" is
+/// accordingly. The function will acquire and release a write lock.
+///
+/// <b><tt>bool destroy (TRI_doc_collection_t*, TRI_voc_did_t)</tt></b>
 ///
 /// Deletes an existing document of the collection and returns @c true in case
 /// of success. Otherwise, @c false is returned and the "TRI_errno()" is
-/// accordingly.
+/// accordingly. The function DOES NOT acquire or release a write lock.
+///
+/// <b><tt>bool destroyLock (TRI_doc_collection_t*, TRI_voc_did_t)</tt></b>
+///
+/// Deletes an existing document of the collection and returns @c true in case
+/// of success. Otherwise, @c false is returned and the "TRI_errno()" is
+/// accordingly. The function will acquire and release a write lock.
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_doc_collection_s {
@@ -152,6 +192,7 @@ typedef struct TRI_doc_collection_s {
 
   TRI_shaper_t* _shaper;
   TRI_rs_container_t _resultSets;
+  TRI_associative_pointer_t _datafileInfo;
 
   bool (*beginRead) (struct TRI_doc_collection_s*);
   bool (*endRead) (struct TRI_doc_collection_s*);
@@ -160,14 +201,17 @@ typedef struct TRI_doc_collection_s {
   bool (*endWrite) (struct TRI_doc_collection_s*);
 
   TRI_voc_did_t (*create) (struct TRI_doc_collection_s*, TRI_shaped_json_t const*);
+  TRI_voc_did_t (*createLock) (struct TRI_doc_collection_s*, TRI_shaped_json_t const*);
   TRI_voc_did_t (*createJson) (struct TRI_doc_collection_s*, TRI_json_t const*);
 
   TRI_doc_mptr_t const* (*read) (struct TRI_doc_collection_s*, TRI_voc_did_t);
 
   bool (*update) (struct TRI_doc_collection_s*, TRI_shaped_json_t const*, TRI_voc_did_t);
+  bool (*updateLock) (struct TRI_doc_collection_s*, TRI_shaped_json_t const*, TRI_voc_did_t);
   bool (*updateJson) (struct TRI_doc_collection_s*, TRI_json_t const*, TRI_voc_did_t);
 
   bool (*destroy) (struct TRI_doc_collection_s* collection, TRI_voc_did_t);
+  bool (*destroyLock) (struct TRI_doc_collection_s* collection, TRI_voc_did_t);
 }
 TRI_doc_collection_t;
 
@@ -271,6 +315,13 @@ void TRI_DestroyDocCollection (TRI_doc_collection_t* collection);
 /// @addtogroup VocBase VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a datafile description
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_doc_datafile_info_t* TRI_FindDatafileInfoDocCollection (TRI_doc_collection_t* collection,
+                                                            TRI_voc_tick_t fid);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new journal

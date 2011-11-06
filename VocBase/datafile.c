@@ -657,7 +657,7 @@ bool TRI_WriteElementDatafile (TRI_datafile_t* datafile,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IterateDatafile (TRI_datafile_t* datafile,
-                          void (*iterator)(TRI_df_marker_t const*, void*, bool),
+                          void (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
                           void* data,
                           bool journal) {
   char* ptr;
@@ -679,7 +679,7 @@ bool TRI_IterateDatafile (TRI_datafile_t* datafile,
       return true;
     }
 
-    iterator(marker, data, journal);
+    iterator(marker, data, datafile, journal);
 
     size = ((marker->_size + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
     ptr += size;

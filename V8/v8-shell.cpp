@@ -1427,7 +1427,7 @@ static void ProcessCsvEnd (TRI_csv_parser_t* parser, char const* field, size_t r
 /// @brief processes a CSV file
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ProcessCsvFileCall (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() < 2) {
@@ -1522,7 +1522,7 @@ static v8::Handle<v8::Value> ProcessCsvFileCall (v8::Arguments const& argv) {
 /// @brief processes a JSON file
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ProcessJsonFileCall (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() < 2) {
@@ -1606,9 +1606,28 @@ static v8::Handle<v8::Value> ProcessJsonFileCall (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief changes the log-level
+///
+/// <b><tt>logLevel()</tt></b>
+///
+/// Returns the current log-level as string.
+///
+/// @verbinclude fluent37
+///
+/// <b><tt>logLevel(level)</tt></b>
+///
+/// Changes the current log-level. Valid log-level are:
+///
+/// - fatal
+/// - error
+/// - warning
+/// - info
+/// - debug
+/// - trace
+///
+/// @verbinclude fluent38
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> LogLevelCall (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_LogLevel (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (1 <= argv.Length()) {
@@ -1622,9 +1641,16 @@ static v8::Handle<v8::Value> LogLevelCall (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts JSON string to object
+///
+/// <b><tt>fromJson(string)</tt></b>
+///
+/// Converts a string representation of a JSON object into a JavaScript
+/// object.
+///
+/// @verbinclude fluent35
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> FromJsonCall (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_FromJson (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 1) {
@@ -1651,9 +1677,15 @@ static v8::Handle<v8::Value> FromJsonCall (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief outputs the arguments
+///
+/// <b><tt>output(string1, string2, string3, ...)</tt></b>
+///
+/// Outputs the arguments to standard output.
+///
+/// @verbinclude fluent39
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> OutputCall (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
   for (int i = 0; i < argv.Length(); i++) {
     v8::HandleScope scope;
 
@@ -1688,15 +1720,24 @@ static v8::Handle<v8::Value> OutputCall (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints the arguments
+///
+/// <b><tt>print(arg1, arg2, arg3, ...)</tt></b>
+///
+/// Prints the arguments. If an argument is an object having a function print,
+/// then this function is called. Otherwise @c toJson is used.  After each
+/// argument a newline is printed.
+///
+/// @verbinclude fluent40
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> PrintCall (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_Print (v8::Arguments const& argv) {
   v8::Handle<v8::Function> toJson = v8::Handle<v8::Function>::Cast(
     argv.Holder()->CreationContext()->Global()->Get(v8::String::New("toJson")));
 
   for (int i = 0; i < argv.Length(); i++) {
     v8::HandleScope scope;
     TRI_string_buffer_t buffer;
+    bool printBuffer = true;
 
     TRI_InitStringBuffer(&buffer);
 
@@ -1712,19 +1753,20 @@ static v8::Handle<v8::Value> PrintCall (v8::Arguments const& argv) {
         v8::Handle<v8::Function> print = v8::Handle<v8::Function>::Cast(obj->Get(printFuncName));
         v8::Handle<v8::Value> args[] = { val };
         print->Call(obj, 1, args);
-        continue;
-      }
-
-      v8::Handle<v8::Value> args[] = { val };
-      v8::Handle<v8::Value> cnv = toJson->Call(toJson, 1, args);
-
-      v8::String::Utf8Value utf8(cnv);
-
-      if (*utf8 == 0) {
-        TRI_AppendStringStringBuffer(&buffer, "[object]");
+        printBuffer = false;
       }
       else {
-        TRI_AppendString2StringBuffer(&buffer, *utf8, utf8.length());
+        v8::Handle<v8::Value> args[] = { val };
+        v8::Handle<v8::Value> cnv = toJson->Call(toJson, 1, args);
+
+        v8::String::Utf8Value utf8(cnv);
+
+        if (*utf8 == 0) {
+          TRI_AppendStringStringBuffer(&buffer, "[object]");
+        }
+        else {
+          TRI_AppendString2StringBuffer(&buffer, *utf8, utf8.length());
+        }
       }
     }
     else if (val->IsString()) {
@@ -1751,26 +1793,28 @@ static v8::Handle<v8::Value> PrintCall (v8::Arguments const& argv) {
     }
 
     // print the argument
-    char const* ptr = TRI_BeginStringBuffer(&buffer);
-    size_t len = TRI_LengthStringBuffer(&buffer);
+    if (printBuffer) {
+      char const* ptr = TRI_BeginStringBuffer(&buffer);
+      size_t len = TRI_LengthStringBuffer(&buffer);
 
-    while (0 < len) {
-      ssize_t n = write(1, ptr, len);
+      while (0 < len) {
+        ssize_t n = write(1, ptr, len);
 
-      if (n < 0) {
-        TRI_DestroyStringBuffer(&buffer);
-        return v8::Undefined();
+        if (n < 0) {
+          TRI_DestroyStringBuffer(&buffer);
+          return v8::Undefined();
+        }
+
+        len -= n;
+        ptr += n;
       }
-
-      len -= n;
-      ptr += n;
     }
 
     // print a new line
     ssize_t n = write(1, "\n", 1);
 
     if (n < 0) {
-        TRI_DestroyStringBuffer(&buffer);
+      TRI_DestroyStringBuffer(&buffer);
       return v8::Undefined();
     }
 
@@ -1782,9 +1826,15 @@ static v8::Handle<v8::Value> PrintCall (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current time
+///
+/// <b><tt>time()</tt></b>
+///
+/// Returns the current time in seconds.
+///
+/// @verbinclude fluent36
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> TimeCall (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_Time (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   return scope.Close(v8::Number::New(TRI_microtime()));
@@ -1847,31 +1897,31 @@ void InitV8Shell (v8::Handle<v8::ObjectTemplate> global) {
   // .............................................................................
 
   global->Set(v8::String::New("logLevel"),
-              v8::FunctionTemplate::New(LogLevelCall),
+              v8::FunctionTemplate::New(JS_LogLevel),
               v8::ReadOnly);
 
   global->Set(v8::String::New("output"),
-              v8::FunctionTemplate::New(OutputCall),
+              v8::FunctionTemplate::New(JS_Output),
               v8::ReadOnly);
 
   global->Set(v8::String::New("print"),
-              v8::FunctionTemplate::New(PrintCall),
+              v8::FunctionTemplate::New(JS_Print),
               v8::ReadOnly);
 
   global->Set(v8::String::New("processCsvFile"),
-              v8::FunctionTemplate::New(ProcessCsvFileCall),
+              v8::FunctionTemplate::New(JS_ProcessCsvFile),
               v8::ReadOnly);
 
   global->Set(v8::String::New("processJsonFile"),
-              v8::FunctionTemplate::New(ProcessJsonFileCall),
+              v8::FunctionTemplate::New(JS_ProcessJsonFile),
               v8::ReadOnly);
 
   global->Set(v8::String::New("fromJson"),
-              v8::FunctionTemplate::New(FromJsonCall),
+              v8::FunctionTemplate::New(JS_FromJson),
               v8::ReadOnly);
 
   global->Set(v8::String::New("time"),
-              v8::FunctionTemplate::New(TimeCall),
+              v8::FunctionTemplate::New(JS_Time),
               v8::ReadOnly);
 
   // .............................................................................

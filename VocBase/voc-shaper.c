@@ -23,8 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Copyright 2006-2011
-, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2006-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "voc-shaper.h"
@@ -382,7 +381,7 @@ static TRI_shape_t const* LookupShapeId (TRI_shaper_t* shaper, TRI_shape_sid_t s
 /// @brief iterator for open
 ////////////////////////////////////////////////////////////////////////////////
 
-static void OpenIterator (TRI_df_marker_t const* marker, void* data, bool journal) {
+static void OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafile_t* datafile, bool journal) {
   voc_shaper_t* shaper = data;
   void* f;
 

@@ -92,7 +92,7 @@ static TRI_spin_t TickLock;
 static uint64_t HashKeyCid (TRI_associative_pointer_t* array, void const* key) {
   TRI_voc_cid_t const* k = key;
 
-  return TRI_FnvHashPointer(k, sizeof(TRI_voc_cid_t));
+  return *k;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,7 +102,7 @@ static uint64_t HashKeyCid (TRI_associative_pointer_t* array, void const* key) {
 static uint64_t HashElementCid (TRI_associative_pointer_t* array, void const* element) {
   TRI_vocbase_col_t const* e = element;
 
-  return TRI_FnvHashPointer(&e->_cid, sizeof(TRI_voc_cid_t));
+  return e->_cid;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

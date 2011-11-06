@@ -451,9 +451,9 @@ bool TRI_WriteElementDatafile (TRI_datafile_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IterateDatafile (TRI_datafile_t*,
-                         void (*iterator)(TRI_df_marker_t const*, void*, bool),
-                         void* data,
-                         bool journal);
+                          void (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
+                          void* data,
+                          bool journal);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing datafile read-only

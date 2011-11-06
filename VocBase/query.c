@@ -38,6 +38,9 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
+static void ExecuteDocumentQueryPrimary (TRI_query_t* qry,
+                                         TRI_query_result_t* result);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -68,6 +71,40 @@ static void FreeDocuments (TRI_query_result_t* result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                             QUERY
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBasePrivate VocBase (Private)
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clones a TRI_query_t
+////////////////////////////////////////////////////////////////////////////////
+
+static void CloneQuery (TRI_query_t* dst, TRI_query_t* src) {
+  dst->_type = src->_type;
+  dst->_collection = src->_collection;
+  dst->_isOptimised = src->_isOptimised;
+
+  dst->optimise = src->optimise;
+  dst->execute = src->execute;
+  dst->json = src->json;
+  dst->stringify = src->stringify;
+  dst->clone = src->clone;
+  dst->free = src->free;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  COLLECTION QUERY
 // -----------------------------------------------------------------------------
 
@@ -81,28 +118,42 @@ static void FreeDocuments (TRI_query_result_t* result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief optimises a full scan
+////////////////////////////////////////////////////////////////////////////////
+
+static char* OptimiseCollectionQuery (TRI_query_t** qry) {
+  TRI_document_query_t* query;
+
+  // extract query
+  query = (TRI_document_query_t*) *qry;
+
+  // sanity check
+  if (! query->base._collection->_loaded) {
+    return TRI_Concatenate3String("collection \"", query->base._collection->_name, "\" not loaded");
+  }
+
+  if (query->base._collection->_collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    return TRI_DuplicateString("cannot handle collection type");
+  }
+
+  // nothing to optimise
+  query->base._isOptimised = true;
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a full scan
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ExecuteCollectionQuery (TRI_query_t* qry, TRI_query_result_t* result) {
-  TRI_document_query_t* query;
   TRI_doc_mptr_t const** qtr;
+  TRI_document_query_t* query;
   TRI_sim_collection_t* collection;
   void** end;
   void** ptr;
 
-  // extract query
+  // extract query and document
   query = (TRI_document_query_t*) qry;
-
-  // sanity check
-  if (! query->base._collection->_loaded) {
-    return;
-  }
-
-  if (query->base._collection->_collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
-    return;
-  }
-
   collection = (TRI_sim_collection_t*) query->base._collection->_collection;
 
   // append information about the execution plan
@@ -134,19 +185,233 @@ static void ExecuteCollectionQuery (TRI_query_t* qry, TRI_query_result_t* result
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief json representation of a full scan
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* JsonCollectionQuery (TRI_query_t* qry) {
+  TRI_document_query_t* query;
+  TRI_json_t* json;
+
+  query = (TRI_document_query_t*) qry;
+  json = TRI_CreateArrayJson();
+
+  TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("collection"));
+  TRI_Insert2ArrayJson(json, "collection", TRI_CreateStringCopyJson(query->base._collection->_name));
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief appends a string representation of a full scan
+////////////////////////////////////////////////////////////////////////////////
+
+static void StringifyCollectionQuery (TRI_query_t* qry, TRI_string_buffer_t* buffer) {
+  TRI_document_query_t* query;
+
+  query = (TRI_document_query_t*) qry;
+
+  TRI_AppendStringStringBuffer(buffer, "collection(\"");
+  TRI_AppendStringStringBuffer(buffer, query->base._collection->_name);
+  TRI_AppendStringStringBuffer(buffer, "\")");
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief clones a full scan
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_query_t* CloneCollectionQuery (TRI_query_t* query) {
-  return TRI_CreateCollectionQuery(query->_collection);
+static TRI_query_t* CloneCollectionQuery (TRI_query_t* qry) {
+  TRI_collection_query_t* clone;
+
+  clone = TRI_Allocate(sizeof(TRI_collection_query_t));
+
+  CloneQuery(&clone->base, qry);
+
+  return &clone->base;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees a full scan
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FreeCollectionQuery (TRI_query_t* query) {
-  TRI_Free(query->_string);
+static void FreeCollectionQuery (TRI_query_t* query, bool descend) {
+  TRI_Free(query);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    DISTANCE QUERY
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBasePrivate VocBase (Private)
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimises a distance query
+////////////////////////////////////////////////////////////////////////////////
+
+static char* OptimiseDistanceQuery (TRI_query_t** qry) {
+  TRI_distance_query_t* query;
+  TRI_query_t* operand;
+  char* e;
+
+  query = (TRI_distance_query_t*) *qry;
+
+  // sanity check
+  if (! query->base._collection->_loaded) {
+    return TRI_Concatenate3String("collection \"", query->base._collection->_name, "\" not loaded");
+  }
+
+  // check if query is already optimised
+  if (query->base._isOptimised) {
+    return NULL;
+  }
+
+  // optimise operand
+  e = query->_operand->optimise(&query->_operand);
+
+  if (e != NULL) {
+    return e;
+  }
+
+  operand = query->_operand;
+
+  // .............................................................................
+  // operand is a NEAR
+  // .............................................................................
+
+  if (operand->_type == TRI_QUE_TYPE_NEAR) {
+    TRI_near_query_t* near;
+
+    near = (TRI_near_query_t*) operand;
+
+    near->_distance = TRI_DuplicateString(query->_distance);
+    near->base._isOptimised = false;
+
+    // free the query, but not the operands of the query
+    query->base.free(&query->base, false);
+
+    // change the query to its operand
+    *qry = &near->base;
+
+    // recure
+    return (*qry)->optimise(qry);
+  }
+
+  // .............................................................................
+  // operand is a WITHIN
+  // .............................................................................
+
+  else if (operand->_type == TRI_QUE_TYPE_WITHIN) {
+    TRI_within_query_t* within;
+
+    within = (TRI_within_query_t*) operand;
+
+    within->_distance = TRI_DuplicateString(query->_distance);
+    within->base._isOptimised = false;
+
+    // free the query, but not the operands of the query
+    query->base.free(&query->base, false);
+
+    // change the query to its operand
+    *qry = &within->base;
+
+    // recure
+    return (*qry)->optimise(qry);
+  }
+
+  query->base._isOptimised = true;
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a distance query
+////////////////////////////////////////////////////////////////////////////////
+
+static void ExecuteDistanceQuery (TRI_query_t* qry,
+                              TRI_query_result_t* result) {
+  TRI_distance_query_t* query;
+
+  query = (TRI_distance_query_t*) qry;
+
+  query->_operand->execute(query->_operand, result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief json representation of a distance query
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* JsonDistanceQuery (TRI_query_t* qry) {
+  TRI_json_t* json;
+  TRI_distance_query_t* query;
+
+  query = (TRI_distance_query_t*) qry;
+  json = TRI_CreateArrayJson();
+
+  TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("distance"));
+  TRI_Insert2ArrayJson(json, "distance", TRI_CreateStringCopyJson(query->_distance));
+  TRI_Insert2ArrayJson(json, "operand", query->_operand->json(query->_operand));
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief appends a string representation of a distance query
+////////////////////////////////////////////////////////////////////////////////
+
+static void StringifyDistanceQuery (TRI_query_t* qry, TRI_string_buffer_t* buffer) {
+  TRI_distance_query_t* query;
+
+  query = (TRI_distance_query_t*) qry;
+
+  query->_operand->stringify(query->_operand, buffer);
+
+  TRI_AppendStringStringBuffer(buffer, ".distance(");
+  TRI_AppendStringStringBuffer(buffer, query->_distance);
+  TRI_AppendStringStringBuffer(buffer, ")");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clones a distance query
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_query_t* CloneDistanceQuery (TRI_query_t* qry) {
+  TRI_distance_query_t* clone;
+  TRI_distance_query_t* query;
+
+  clone = TRI_Allocate(sizeof(TRI_distance_query_t));
+  query = (TRI_distance_query_t*) qry;
+
+  CloneQuery(&clone->base, &query->base);
+
+  clone->_operand = query->_operand->clone(query->_operand);
+  clone->_distance = TRI_DuplicateString(query->_distance);
+
+  return &clone->base;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees a distance query
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeDistanceQuery (TRI_query_t* qry, bool descend) {
+  TRI_distance_query_t* query;
+
+  query = (TRI_distance_query_t*) qry;
+
+  if (descend) {
+    query->_operand->free(query->_operand, descend);
+  }
+
+  TRI_FreeString(query->_distance);
   TRI_Free(query);
 }
 
@@ -168,20 +433,64 @@ static void FreeCollectionQuery (TRI_query_t* query) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a document lookup as primary index lookup
+/// @brief optimises a document lookup
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ExecuteDocumentQueryPrimary (TRI_document_query_t* query,
-                                         TRI_vocbase_col_t const* collection,
-                                         TRI_query_result_t* result) {
-  TRI_doc_mptr_t const* document;
+static char* OptimiseDocumentQuery (TRI_query_t** qry) {
+  TRI_document_query_t* query;
+  char* e;
+
+  query = (TRI_document_query_t*) *qry;
 
   // sanity check
   if (! query->base._collection->_loaded) {
-    return;
+    return TRI_Concatenate3String("collection \"", query->base._collection->_name, "\" not loaded");
   }
 
+  // check if query is already optimised
+  if (query->base._isOptimised) {
+    return NULL;
+  }
+
+  // underlying query is a collection, use the primary index
+  if (query->_operand != NULL && query->_operand->_type == TRI_QUE_TYPE_COLLECTION) {
+    if (query->base._collection->_collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+      return TRI_DuplicateString("cannot handle collection type");
+    }
+
+    query->_operand->free(query->_operand, true);
+    query->_operand = NULL;
+
+    query->base.execute = ExecuteDocumentQueryPrimary;
+  }
+
+  // optimise operand
+  else {
+    e = query->_operand->optimise(&query->_operand);
+
+    if (e != NULL) {
+      return e;
+    }
+  }
+
+  query->base._isOptimised = true;
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a document lookup as primary index lookup
+////////////////////////////////////////////////////////////////////////////////
+
+static void ExecuteDocumentQueryPrimary (TRI_query_t* qry,
+                                         TRI_query_result_t* result) {
+  TRI_doc_mptr_t const* document;
+  TRI_document_query_t* query;
+  TRI_vocbase_col_t const* collection;
+
+  query = (TRI_document_query_t*) qry;
+
   // look up the document
+  collection = query->base._collection;
   document = collection->_collection->read(collection->_collection, query->_did);
 
   // append information about the execution plan
@@ -210,12 +519,17 @@ static void ExecuteDocumentQueryPrimary (TRI_document_query_t* query,
 /// @brief executes a document lookup as full scan
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ExecuteDocumentQueryFullScan (TRI_document_query_t* query,
-                                          TRI_query_result_t* result) {
-  TRI_doc_mptr_t const** ptr;
+static void ExecuteDocumentQuery (TRI_query_t* qry,
+                                  TRI_query_result_t* result) {
   TRI_doc_mptr_t const** end;
+  TRI_doc_mptr_t const** ptr;
+  TRI_doc_mptr_t const* found;
+  TRI_document_query_t* query;
   TRI_json_t aug;
   size_t pos;
+
+  // get the result set of the underlying query
+  query = (TRI_document_query_t*) qry;
 
   // execute the sub-query
   query->_operand->execute(query->_operand, result);
@@ -248,11 +562,12 @@ static void ExecuteDocumentQueryFullScan (TRI_document_query_t* query,
         return;
       }
 
+      found = *ptr;
       TRI_Free(result->_documents);
       result->_documents = TRI_Allocate(sizeof(TRI_doc_mptr_t*));
 
       result->_total = result->_length = 1;
-      *result->_documents = *ptr;
+      *result->_documents = found;
 
       if (result->_augmented != NULL) {
         aug = result->_augmented[pos];
@@ -274,21 +589,50 @@ static void ExecuteDocumentQueryFullScan (TRI_document_query_t* query,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a document lookup
+/// @brief json representation of a document lookup
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ExecuteDocumentQuery (TRI_query_t* qry,
-                                  TRI_query_result_t* result) {
+static TRI_json_t* JsonDocumentQuery (TRI_query_t* qry) {
+  TRI_json_t* json;
+  TRI_document_query_t* query;
+
+  query = (TRI_document_query_t*) qry;
+  json = TRI_CreateArrayJson();
+
+  TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("document"));
+  TRI_Insert2ArrayJson(json, "identfier", TRI_CreateNumberJson(query->_did));
+
+  if (query->_operand == NULL) {
+    TRI_Insert2ArrayJson(json, "collection", TRI_CreateStringCopyJson(query->base._collection->_name));
+  }
+  else {
+    TRI_Insert2ArrayJson(json, "operand", query->_operand->json(query->_operand));
+  }
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief appends a string representation of a document lookup
+////////////////////////////////////////////////////////////////////////////////
+
+static void StringifyDocumentQuery (TRI_query_t* qry, TRI_string_buffer_t* buffer) {
   TRI_document_query_t* query;
 
   query = (TRI_document_query_t*) qry;
 
-  if (query->_operand != NULL && query->_operand->_type == TRI_QUE_TYPE_COLLECTION) {
-    ExecuteDocumentQueryPrimary(query, query->_operand->_collection, result);
+  if (query->_operand == NULL) {
+    TRI_AppendStringStringBuffer(buffer, "collection(\"");
+    TRI_AppendStringStringBuffer(buffer, query->base._collection->_name);
+    TRI_AppendStringStringBuffer(buffer, "\")");
   }
   else {
-    ExecuteDocumentQueryFullScan(query, result);
+    query->_operand->stringify(query->_operand, buffer);
   }
+
+  TRI_AppendStringStringBuffer(buffer, ".document(");
+  TRI_AppendUInt64StringBuffer(buffer, query->_did);
+  TRI_AppendStringStringBuffer(buffer, ")");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -296,25 +640,35 @@ static void ExecuteDocumentQuery (TRI_query_t* qry,
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_query_t* CloneDocumentQuery (TRI_query_t* qry) {
+  TRI_document_query_t* clone;
   TRI_document_query_t* query;
 
+  clone = TRI_Allocate(sizeof(TRI_document_query_t));
   query = (TRI_document_query_t*) qry;
 
-  return TRI_CreateDocumentQuery(query->_operand->clone(query->_operand), query->_did);
+  CloneQuery(&clone->base, &query->base);
+
+  clone->_operand = query->_operand == NULL ? NULL : query->_operand->clone(query->_operand);
+  clone->_did = query->_did;
+
+  return &clone->base;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees a document lookup
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FreeDocumentQuery (TRI_query_t* qry) {
+static void FreeDocumentQuery (TRI_query_t* qry, bool descend) {
   TRI_document_query_t* query;
 
   query = (TRI_document_query_t*) qry;
 
-  query->_operand->free(query->_operand);
+  if (descend) {
+    if (query->_operand != NULL) {
+      query->_operand->free(query->_operand, descend);
+    }
+  }
 
-  TRI_Free(query->base._string);
   TRI_Free(query);
 }
 
@@ -336,7 +690,38 @@ static void FreeDocumentQuery (TRI_query_t* qry) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a geo-spatial index
+/// @brief optimises a geo-spatial hint
+////////////////////////////////////////////////////////////////////////////////
+
+static char* OptimiseGeoIndexQuery (TRI_query_t** qry) {
+  TRI_geo_index_query_t* query;
+  char* e;
+
+  query = (TRI_geo_index_query_t*) *qry;
+
+  // sanity check
+  if (! query->base._collection->_loaded) {
+    return TRI_Concatenate3String("collection \"", query->base._collection->_name, "\" not loaded");
+  }
+
+  // check if query is already optimised
+  if (query->base._isOptimised) {
+    return NULL;
+  }
+
+  // optimise operand
+  e = query->_operand->optimise(&query->_operand);
+
+  if (e != NULL) {
+    return e;
+  }
+
+  query->base._isOptimised = true;
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a geo-spatial hint
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ExecuteGeoIndexQuery (TRI_query_t* qry,
@@ -349,36 +734,99 @@ static void ExecuteGeoIndexQuery (TRI_query_t* qry,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clones a geo-spatial index
+/// @brief json representation of a geo-spatial hint
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_query_t* CloneGeoIndexQuery (TRI_query_t* qry) {
+static TRI_json_t* JsonGeoIndexQuery (TRI_query_t* qry) {
+  TRI_json_t* json;
   TRI_geo_index_query_t* query;
 
   query = (TRI_geo_index_query_t*) qry;
+  json = TRI_CreateArrayJson();
 
-  return TRI_CreateGeoIndexQuery(query->_operand->clone(query->_operand),
-                                 query->_location,
-                                 query->_latitude,
-                                 query->_longitude);
+  TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("geo"));
+  TRI_Insert2ArrayJson(json, "operand", query->_operand->json(query->_operand));
+
+  if (query->_location != NULL) {
+    TRI_Insert2ArrayJson(json, "location", TRI_CreateStringCopyJson(query->_location));
+    TRI_Insert2ArrayJson(json, "geoJson", TRI_CreateBooleanJson(query->_geoJson));
+  }
+  else if (query->_latitude != NULL && query->_longitude != NULL) {
+    TRI_Insert2ArrayJson(json, "latitude", TRI_CreateStringCopyJson(query->_latitude));
+    TRI_Insert2ArrayJson(json, "longitude", TRI_CreateStringCopyJson(query->_longitude));
+  }
+
+  return json;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief frees a geo-spatial index
+/// @brief appends a string representation of a geo-spatial hint
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FreeGeoIndeyQuery (TRI_query_t* qry) {
+static void StringifyGeoIndexQuery (TRI_query_t* qry, TRI_string_buffer_t* buffer) {
   TRI_geo_index_query_t* query;
 
   query = (TRI_geo_index_query_t*) qry;
 
-  query->_operand->free(query->_operand);
+  query->_operand->stringify(query->_operand, buffer);
+
+  TRI_AppendStringStringBuffer(buffer, ".geo(");
+
+  if (query->_location != NULL) {
+    TRI_AppendStringStringBuffer(buffer, query->_location);
+    TRI_AppendStringStringBuffer(buffer, ",");
+    TRI_AppendStringStringBuffer(buffer, query->_geoJson ? "true" : "false");
+  }
+  else if (query->_latitude != NULL && query->_longitude != NULL) {
+    TRI_AppendStringStringBuffer(buffer, query->_latitude);
+    TRI_AppendStringStringBuffer(buffer, ",");
+    TRI_AppendStringStringBuffer(buffer, query->_longitude);
+  }
+
+  TRI_AppendStringStringBuffer(buffer, ")");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clones a geo-spatial hint
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_query_t* CloneGeoIndexQuery (TRI_query_t* qry) {
+  TRI_geo_index_query_t* clone;
+  TRI_geo_index_query_t* query;
+
+  clone = TRI_Allocate(sizeof(TRI_geo_index_query_t));
+  query = (TRI_geo_index_query_t*) qry;
+
+  CloneQuery(&clone->base, &query->base);
+
+  clone->_operand = query->_operand->clone(query->_operand);
+
+  clone->_location = query->_location == NULL ? NULL : TRI_DuplicateString(query->_location);
+  clone->_latitude = query->_latitude == NULL ? NULL : TRI_DuplicateString(query->_latitude);
+  clone->_longitude = query->_longitude == NULL ? NULL : TRI_DuplicateString(query->_longitude);
+
+  clone->_geoJson = query->_geoJson;
+
+  return &clone->base;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees a geo-spatial hint
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeGeoIndeyQuery (TRI_query_t* qry, bool descend) {
+  TRI_geo_index_query_t* query;
+
+  query = (TRI_geo_index_query_t*) qry;
+
+  if (descend) {
+    query->_operand->free(query->_operand, descend);
+  }
 
   if (query->_location != NULL) { TRI_Free(query->_location); }
   if (query->_latitude != NULL) { TRI_Free(query->_latitude); }
   if (query->_longitude != NULL) { TRI_Free(query->_longitude); }
 
-  TRI_Free(query->base._string);
   TRI_Free(query);
 }
 
@@ -398,6 +846,121 @@ static void FreeGeoIndeyQuery (TRI_query_t* qry) {
 /// @addtogroup VocBasePrivate VocBase (Private)
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimises a limit query
+////////////////////////////////////////////////////////////////////////////////
+
+static char* OptimiseLimitQuery (TRI_query_t** qry) {
+  TRI_limit_query_t* query;
+  TRI_query_t* operand;
+  char* e;
+
+  query = (TRI_limit_query_t*) *qry;
+
+  // sanity check
+  if (! query->base._collection->_loaded) {
+    return TRI_Concatenate3String("collection \"", query->base._collection->_name, "\" not loaded");
+  }
+
+  // check if query is already optimised
+  if (query->base._isOptimised) {
+    return NULL;
+  }
+
+  // optimise operand
+  e = query->_operand->optimise(&query->_operand);
+
+  if (e != NULL) {
+    return e;
+  }
+
+  operand = query->_operand;
+
+  // .............................................................................
+  // operand is a NEAR
+  // .............................................................................
+
+  if (0 <= query->_limit && operand->_type == TRI_QUE_TYPE_NEAR) {
+    TRI_near_query_t* near;
+
+    near = (TRI_near_query_t*) operand;
+
+    // modify near query
+    if (query->_limit < near->_limit) {
+      near->_limit = query->_limit;
+      near->base._isOptimised = false;
+    }
+
+    // free the query, but not the operands of the query
+    query->base.free(&query->base, false);
+
+    // change the query to its operand
+    *qry = &near->base;
+
+    // recure
+    return (*qry)->optimise(qry);
+  }
+
+  // .............................................................................
+  // operand is a LIMIT
+  // .............................................................................
+
+  else if (operand->_type == TRI_QUE_TYPE_LIMIT) {
+    TRI_limit_query_t* op;
+
+    op = (TRI_limit_query_t*) operand;
+
+    // both limits are positive, use minimum
+    if (query->_limit >= 0 && op->_limit >= 0) {
+      if (query->_limit < op->_limit) {
+        op->_limit = query->_limit;
+        op->base._isOptimised = false;
+      }
+
+      // free the query, but not the operands of the query
+      query->base.free(&query->base, false);
+
+      // change the query to its operand
+      *qry = &op->base;
+
+      // recure
+      return (*qry)->optimise(qry);
+    }
+
+    // both limits are negative, use maximum
+    else if (query->_limit <= 0 && op->_limit <= 0) {
+      if (query->_limit > op->_limit) {
+        op->_limit = query->_limit;
+        op->base._isOptimised = false;
+      }
+
+      // free the query, but not the operands of the query
+      query->base.free(&query->base, false);
+
+      // change the query to its operand
+      *qry = &op->base;
+
+      // recure
+      return (*qry)->optimise(qry);
+    }
+
+    // operand has a smaller limit, forget query
+    else if (labs(op->_limit) <= labs(query->_limit)) {
+
+      // free the query, but not the operands of the query
+      query->base.free(&query->base, false);
+
+      // change the query to its operand
+      *qry = &op->base;
+
+      return (*qry)->optimise(qry);
+    }
+  }
+
+  query->base._isOptimised = true;
+  return NULL;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a limit query
@@ -475,29 +1038,71 @@ static void ExecuteLimitQuery (TRI_query_t* qry,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clones a limit query
+/// @brief json representation of a limit query
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_query_t* CloneLimitQuery (TRI_query_t* qry) {
+static TRI_json_t* JsonLimitQuery (TRI_query_t* qry) {
+  TRI_json_t* json;
+  TRI_limit_query_t* query;
+
+  query = (TRI_limit_query_t*) qry;
+  json = TRI_CreateArrayJson();
+
+  TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("limit"));
+  TRI_Insert2ArrayJson(json, "limit", TRI_CreateNumberJson(query->_limit));
+  TRI_Insert2ArrayJson(json, "operand", query->_operand->json(query->_operand));
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief appends a string representation of a limit query
+////////////////////////////////////////////////////////////////////////////////
+
+static void StringifyLimitQuery (TRI_query_t* qry, TRI_string_buffer_t* buffer) {
   TRI_limit_query_t* query;
 
   query = (TRI_limit_query_t*) qry;
 
-  return TRI_CreateLimitQuery(query->_operand->clone(query->_operand), query->_limit);
+  query->_operand->stringify(query->_operand, buffer);
+
+  TRI_AppendStringStringBuffer(buffer, ".limit(");
+  TRI_AppendInt64StringBuffer(buffer, query->_limit);
+  TRI_AppendStringStringBuffer(buffer, ")");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clones a limit query
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_query_t* CloneLimitQuery (TRI_query_t* qry) {
+  TRI_limit_query_t* clone;
+  TRI_limit_query_t* query;
+
+  clone = TRI_Allocate(sizeof(TRI_limit_query_t));
+  query = (TRI_limit_query_t*) qry;
+
+  CloneQuery(&clone->base, &query->base);
+
+  clone->_operand = query->_operand->clone(query->_operand);
+  clone->_limit = query->_limit;
+
+  return &clone->base;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees a limit query
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FreeLimitQuery (TRI_query_t* qry) {
+static void FreeLimitQuery (TRI_query_t* qry, bool descend) {
   TRI_limit_query_t* query;
 
   query = (TRI_limit_query_t*) qry;
 
-  query->_operand->free(query->_operand);
+  if (descend) {
+    query->_operand->free(query->_operand, descend);
+  }
 
-  TRI_Free(query->base._string);
   TRI_Free(query);
 }
 
@@ -629,7 +1234,7 @@ static TRI_geo_index_t* LookupGeoIndex (TRI_geo_index_query_t* query) {
   }
 
   if (query->_location != NULL) {
-    idx = TRI_LookupGeoIndexSimCollection(sim, loc);
+    idx = TRI_LookupGeoIndexSimCollection(sim, loc, query->_geoJson);
   }
   else if (query->_longitude != NULL && query->_latitude != NULL) {
     idx = TRI_LookupGeoIndex2SimCollection(sim, lat, lon);
@@ -710,6 +1315,36 @@ static void GeoResult (GeoCoordinates* cors,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief optimises a near query
+////////////////////////////////////////////////////////////////////////////////
+
+static char* OptimiseNearQuery (TRI_query_t** qry) {
+  TRI_near_query_t* query;
+  char* e;
+
+  query = (TRI_near_query_t*) *qry;
+
+  // sanity check
+  if (! query->base._collection->_loaded) {
+    return TRI_Concatenate3String("collection \"", query->base._collection->_name, "\" not loaded");
+  }
+
+  // check if query is already optimised
+  if (query->base._isOptimised) {
+    return NULL;
+  }
+
+  // optimise operand
+  e = query->_operand->optimise(&query->_operand);
+
+  if (e != NULL) {
+    return e;
+  }
+
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a near query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -761,31 +1396,92 @@ static void ExecuteNearQuery (TRI_query_t* qry,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clones a near query
+/// @brief json representation of a near lookup
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_query_t* CloneNearQuery (TRI_query_t* qry) {
+static TRI_json_t* JsonNearQuery (TRI_query_t* qry) {
+  TRI_json_t* json;
+  TRI_near_query_t* query;
+
+  query = (TRI_near_query_t*) qry;
+  json = TRI_CreateArrayJson();
+
+  TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("near"));
+  TRI_Insert2ArrayJson(json, "operand", query->_operand->json(query->_operand));
+  TRI_Insert2ArrayJson(json, "latitude", TRI_CreateNumberJson(query->_latitude));
+  TRI_Insert2ArrayJson(json, "longitude", TRI_CreateNumberJson(query->_longitude));
+  TRI_Insert2ArrayJson(json, "limit", TRI_CreateNumberJson(query->_limit));
+
+  if (query->_distance != NULL) {
+    TRI_Insert2ArrayJson(json, "distance", TRI_CreateStringCopyJson(query->_distance));
+  }
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief appends a string representation of a near query
+////////////////////////////////////////////////////////////////////////////////
+
+static void StringifyNearQuery (TRI_query_t* qry, TRI_string_buffer_t* buffer) {
   TRI_near_query_t* query;
 
   query = (TRI_near_query_t*) qry;
 
-  return TRI_CreateNearQuery(query->_operand->clone(query->_operand),
-                             query->_latitude,
-                             query->_longitude,
-                             query->_limit,
-                             query->_distance);
+  query->_operand->stringify(query->_operand, buffer);
+
+  TRI_AppendStringStringBuffer(buffer, ".near(");
+  TRI_AppendDoubleStringBuffer(buffer, query->_latitude);
+  TRI_AppendStringStringBuffer(buffer, ",");
+  TRI_AppendDoubleStringBuffer(buffer, query->_longitude);
+  TRI_AppendStringStringBuffer(buffer, ")");
+
+  if (query->_distance != NULL) {
+    TRI_AppendStringStringBuffer(buffer, ".distance(");
+    TRI_AppendStringStringBuffer(buffer, query->_distance);
+    TRI_AppendStringStringBuffer(buffer, ")");
+  }
+
+  TRI_AppendStringStringBuffer(buffer, ".limit(");
+  TRI_AppendUInt64StringBuffer(buffer, query->_limit);
+  TRI_AppendStringStringBuffer(buffer, ")");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clones a near query
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_query_t* CloneNearQuery (TRI_query_t* qry) {
+  TRI_near_query_t* clone;
+  TRI_near_query_t* query;
+
+  clone = TRI_Allocate(sizeof(TRI_near_query_t));
+  query = (TRI_near_query_t*) qry;
+
+  CloneQuery(&clone->base, &query->base);
+
+  clone->_operand = query->_operand->clone(query->_operand);
+  clone->_latitude = query->_latitude;
+  clone->_longitude = query->_longitude;
+  clone->_limit = query->_limit;
+  clone->_distance = query->_distance == NULL ? NULL : TRI_DuplicateString(query->_distance);
+
+  return &clone->base;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees a near query
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FreeNearQuery (TRI_query_t* qry) {
+static void FreeNearQuery (TRI_query_t* qry, bool descend) {
   TRI_near_query_t* query;
 
   query = (TRI_near_query_t*) qry;
 
-  TRI_Free(query->base._string);
+  if (descend) {
+    query->_operand->free(query->_operand, descend);
+  }
+
   TRI_Free(query);
 }
 
@@ -805,6 +1501,81 @@ static void FreeNearQuery (TRI_query_t* qry) {
 /// @addtogroup VocBasePrivate VocBase (Private)
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimises a skip query
+////////////////////////////////////////////////////////////////////////////////
+
+static char* OptimiseSkipQuery (TRI_query_t** qry) {
+  TRI_skip_query_t* query;
+  TRI_query_t* operand;
+  char* e;
+
+  query = (TRI_skip_query_t*) *qry;
+
+  // sanity check
+  if (! query->base._collection->_loaded) {
+    return TRI_Concatenate3String("collection \"", query->base._collection->_name, "\" not loaded");
+  }
+
+  // check if query is already optimised
+  if (query->base._isOptimised) {
+    return NULL;
+  }
+
+  // optimise operand
+  e = query->_operand->optimise(&query->_operand);
+
+  if (e != NULL) {
+    return e;
+  }
+
+  operand = query->_operand;
+
+  // .............................................................................
+  // no skip at all
+  // .............................................................................
+
+  if (query->_skip == 0) {
+    TRI_skip_query_t* op;
+
+    op = (TRI_skip_query_t*) operand;
+
+    // free the query, but not the operands of the query
+    query->base.free(&query->base, false);
+
+    // change the query to its operand
+    *qry = &op->base;
+
+    // done
+    return NULL;
+  }
+
+  // .............................................................................
+  // operand is a SKIP
+  // .............................................................................
+
+  if (operand->_type == TRI_QUE_TYPE_SKIP) {
+    TRI_skip_query_t* op;
+
+    op = (TRI_skip_query_t*) operand;
+
+    op->_skip = op->_skip + query->_skip;
+    op->base._isOptimised = false;
+
+    // free the query, but not the operands of the query
+    query->base.free(&query->base, false);
+
+    // change the query to its operand
+    *qry = &op->base;
+
+    // recure
+    return (*qry)->optimise(qry);
+  }
+
+  query->base._isOptimised = true;
+  return NULL;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a skip query
@@ -873,29 +1644,71 @@ static void ExecuteSkipQuery (TRI_query_t* qry,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clones a skip query
+/// @brief json representation of a skip query
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_query_t* CloneSkipQuery (TRI_query_t* qry) {
+static TRI_json_t* JsonSkipQuery (TRI_query_t* qry) {
+  TRI_json_t* json;
+  TRI_skip_query_t* query;
+
+  query = (TRI_skip_query_t*) qry;
+  json = TRI_CreateArrayJson();
+
+  TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("skip"));
+  TRI_Insert2ArrayJson(json, "skip", TRI_CreateNumberJson(query->_skip));
+  TRI_Insert2ArrayJson(json, "operand", query->_operand->json(query->_operand));
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief appends a string representation of a skip query
+////////////////////////////////////////////////////////////////////////////////
+
+static void StringifySkipQuery (TRI_query_t* qry, TRI_string_buffer_t* buffer) {
   TRI_skip_query_t* query;
 
   query = (TRI_skip_query_t*) qry;
 
-  return TRI_CreateSkipQuery(query->_operand->clone(query->_operand), query->_skip);
+  query->_operand->stringify(query->_operand, buffer);
+
+  TRI_AppendStringStringBuffer(buffer, ".skip(");
+  TRI_AppendUInt64StringBuffer(buffer, query->_skip);
+  TRI_AppendStringStringBuffer(buffer, ")");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clones a skip query
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_query_t* CloneSkipQuery (TRI_query_t* qry) {
+  TRI_skip_query_t* clone;
+  TRI_skip_query_t* query;
+
+  clone = TRI_Allocate(sizeof(TRI_skip_query_t));
+  query = (TRI_skip_query_t*) qry;
+
+  CloneQuery(&clone->base, &query->base);
+
+  clone->_operand = query->_operand->clone(query->_operand);
+  clone->_skip = query->_skip;
+
+  return &clone->base;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees a skip query
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FreeSkipQuery (TRI_query_t* qry) {
+static void FreeSkipQuery (TRI_query_t* qry, bool descend) {
   TRI_skip_query_t* query;
 
   query = (TRI_skip_query_t*) qry;
 
-  query->_operand->free(query->_operand);
+  if (descend) {
+    query->_operand->free(query->_operand, descend);
+  }
 
-  TRI_Free(query->base._string);
   TRI_Free(query);
 }
 
@@ -915,6 +1728,36 @@ static void FreeSkipQuery (TRI_query_t* qry) {
 /// @addtogroup VocBasePrivate VocBase (Private)
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimises a within query
+////////////////////////////////////////////////////////////////////////////////
+
+static char* OptimiseWithinQuery (TRI_query_t** qry) {
+  TRI_within_query_t* query;
+  char* e;
+
+  query = (TRI_within_query_t*) *qry;
+
+  // sanity check
+  if (! query->base._collection->_loaded) {
+    return TRI_Concatenate3String("collection \"", query->base._collection->_name, "\" not loaded");
+  }
+
+  // check if query is already optimised
+  if (query->base._isOptimised) {
+    return NULL;
+  }
+
+  // optimise operand
+  e = query->_operand->optimise(&query->_operand);
+
+  if (e != NULL) {
+    return e;
+  }
+
+  return NULL;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a within query
@@ -968,31 +1811,90 @@ static void ExecuteWithinQuery (TRI_query_t* qry,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clones a within query
+/// @brief json representation of a within lookup
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_query_t* CloneWithinQuery (TRI_query_t* qry) {
+static TRI_json_t* JsonWithinQuery (TRI_query_t* qry) {
+  TRI_json_t* json;
+  TRI_within_query_t* query;
+
+  query = (TRI_within_query_t*) qry;
+  json = TRI_CreateArrayJson();
+
+  TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("within"));
+  TRI_Insert2ArrayJson(json, "operand", query->_operand->json(query->_operand));
+  TRI_Insert2ArrayJson(json, "latitude", TRI_CreateNumberJson(query->_latitude));
+  TRI_Insert2ArrayJson(json, "longitude", TRI_CreateNumberJson(query->_longitude));
+  TRI_Insert2ArrayJson(json, "radius", TRI_CreateNumberJson(query->_radius));
+
+  if (query->_distance != NULL) {
+    TRI_Insert2ArrayJson(json, "distance", TRI_CreateStringCopyJson(query->_distance));
+  }
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief appends a string representation of a within query
+////////////////////////////////////////////////////////////////////////////////
+
+static void StringifyWithinQuery (TRI_query_t* qry, TRI_string_buffer_t* buffer) {
   TRI_within_query_t* query;
 
   query = (TRI_within_query_t*) qry;
 
-  return TRI_CreateWithinQuery(query->_operand->clone(query->_operand),
-                               query->_latitude,
-                               query->_longitude,
-                               query->_radius,
-                               query->_distance);
+  query->_operand->stringify(query->_operand, buffer);
+
+  TRI_AppendStringStringBuffer(buffer, ".within(");
+  TRI_AppendDoubleStringBuffer(buffer, query->_latitude);
+  TRI_AppendStringStringBuffer(buffer, ",");
+  TRI_AppendDoubleStringBuffer(buffer, query->_longitude);
+  TRI_AppendStringStringBuffer(buffer, ",");
+  TRI_AppendDoubleStringBuffer(buffer, query->_radius);
+  TRI_AppendStringStringBuffer(buffer, ")");
+
+  if (query->_distance != NULL) {
+    TRI_AppendStringStringBuffer(buffer, ".distance(");
+    TRI_AppendStringStringBuffer(buffer, query->_distance);
+    TRI_AppendStringStringBuffer(buffer, ")");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clones a within query
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_query_t* CloneWithinQuery (TRI_query_t* qry) {
+  TRI_within_query_t* clone;
+  TRI_within_query_t* query;
+
+  clone = TRI_Allocate(sizeof(TRI_within_query_t));
+  query = (TRI_within_query_t*) qry;
+
+  CloneQuery(&clone->base, &query->base);
+
+  clone->_operand = query->_operand->clone(query->_operand);
+  clone->_latitude = query->_latitude;
+  clone->_longitude = query->_longitude;
+  clone->_radius = query->_radius;
+  clone->_distance = query->_distance == NULL ? NULL : TRI_DuplicateString(query->_distance);
+
+  return &clone->base;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees a within query
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FreeWithinQuery (TRI_query_t* qry) {
+static void FreeWithinQuery (TRI_query_t* qry, bool descend) {
   TRI_within_query_t* query;
 
   query = (TRI_within_query_t*) qry;
 
-  TRI_Free(query->base._string);
+  if (descend) {
+    query->_operand->free(query->_operand, descend);
+  }
+
   TRI_Free(query);
 }
 
@@ -1020,10 +1922,12 @@ TRI_query_t* TRI_CreateCollectionQuery (TRI_vocbase_col_t const* collection) {
 
   query->base._type = TRI_QUE_TYPE_COLLECTION;
   query->base._collection = collection;
+  query->base._isOptimised = false;
 
-  query->base._string = TRI_Concatenate2String("db.", collection->_name);
-
+  query->base.optimise = OptimiseCollectionQuery;
   query->base.execute = ExecuteCollectionQuery;
+  query->base.json = JsonCollectionQuery;
+  query->base.stringify = StringifyCollectionQuery;
   query->base.clone = CloneCollectionQuery;
   query->base.free = FreeCollectionQuery;
 
@@ -1034,45 +1938,26 @@ TRI_query_t* TRI_CreateCollectionQuery (TRI_vocbase_col_t const* collection) {
 /// @brief adds the distance to a query
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_query_t* TRI_CreateDistanceQuery (TRI_query_t* operand, char const* name) {
+TRI_query_t* TRI_CreateDistanceQuery (TRI_query_t* operand, char const* distance) {
+  TRI_distance_query_t* query;
 
-  // .............................................................................
-  // operand is a NEAR
-  // .............................................................................
+  query = TRI_Allocate(sizeof(TRI_distance_query_t));
 
-  if (operand->_type == TRI_QUE_TYPE_NEAR) {
-    TRI_near_query_t* near;
+  query->base._type = TRI_QUE_TYPE_DISTANCE;
+  query->base._collection = operand->_collection;
+  query->base._isOptimised = false;
 
-    near = (TRI_near_query_t*) operand;
+  query->base.optimise = OptimiseDistanceQuery;
+  query->base.execute = ExecuteDistanceQuery;
+  query->base.json = JsonDistanceQuery;
+  query->base.stringify = StringifyDistanceQuery;
+  query->base.clone = CloneDistanceQuery;
+  query->base.free = FreeDistanceQuery;
 
-    return TRI_CreateNearQuery(near->_operand->clone(near->_operand),
-                               near->_latitude,
-                               near->_longitude,
-                               near->_limit,
-                               name);
-  }
+  query->_operand = operand;
+  query->_distance = TRI_DuplicateString(distance);
 
-  // .............................................................................
-  // operand is a WITHIN
-  // .............................................................................
-
-  else if (operand->_type == TRI_QUE_TYPE_WITHIN) {
-    TRI_within_query_t* within;
-
-    within = (TRI_within_query_t*) operand;
-
-    return TRI_CreateWithinQuery(within->_operand->clone(within->_operand),
-                                 within->_latitude,
-                                 within->_longitude,
-                                 within->_radius,
-                                 name);
-  }
-
-  // .............................................................................
-  // general case
-  // .............................................................................
-
-  return operand->clone(operand);
+  return &query->base;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1081,18 +1966,17 @@ TRI_query_t* TRI_CreateDistanceQuery (TRI_query_t* operand, char const* name) {
 
 TRI_query_t* TRI_CreateDocumentQuery (TRI_query_t* operand, TRI_voc_did_t did) {
   TRI_document_query_t* query;
-  char* number;
 
   query = TRI_Allocate(sizeof(TRI_document_query_t));
 
   query->base._type = TRI_QUE_TYPE_DOCUMENT;
   query->base._collection = operand->_collection;
+  query->base._isOptimised = false;
 
-  number = TRI_StringUInt64(did);
-  query->base._string = TRI_Concatenate4String(operand->_string, ".document(", number, ")");
-  TRI_FreeString(number);
-
+  query->base.optimise = OptimiseDocumentQuery;
   query->base.execute = ExecuteDocumentQuery;
+  query->base.json = JsonDocumentQuery;
+  query->base.stringify = StringifyDocumentQuery;
   query->base.clone = CloneDocumentQuery;
   query->base.free = FreeDocumentQuery;
 
@@ -1103,36 +1987,34 @@ TRI_query_t* TRI_CreateDocumentQuery (TRI_query_t* operand, TRI_voc_did_t did) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up an geo-spatial index
+/// @brief looks up an geo-spatial index as hint
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_query_t* TRI_CreateGeoIndexQuery (TRI_query_t* operand,
                                       char const* location,
                                       char const* latitude,
-                                      char const* longitude) {
+                                      char const* longitude,
+                                      bool geoJson) {
   TRI_geo_index_query_t* query;
 
   query = TRI_Allocate(sizeof(TRI_geo_index_query_t));
 
   query->base._type = TRI_QUE_TYPE_GEO_INDEX;
   query->base._collection = operand->_collection;
+  query->base._isOptimised = false;
 
-  if (location != NULL) {
-    query->base._string = TRI_Concatenate4String(operand->_string, ".geo(", location, ")");
-  }
-  else if (latitude != NULL && longitude != NULL) {
-    query->base._string = TRI_Concatenate6String(operand->_string, ".geo(", latitude, ",", longitude, ")");
-  }
-  else {
-    query->base._string = TRI_DuplicateString("unknown");
-  }
-
+  query->base.optimise = OptimiseGeoIndexQuery;
   query->base.execute = ExecuteGeoIndexQuery;
+  query->base.json = JsonGeoIndexQuery;
+  query->base.stringify = StringifyGeoIndexQuery;
   query->base.clone = CloneGeoIndexQuery;
   query->base.free = FreeGeoIndeyQuery;
 
   query->_operand = operand;
+
   query->_location = (location == NULL ? NULL : TRI_DuplicateString(location));
+  query->_geoJson = geoJson;
+
   query->_latitude = (latitude == NULL ? NULL : TRI_DuplicateString(latitude));
   query->_longitude = (longitude == NULL ? NULL : TRI_DuplicateString(longitude));
 
@@ -1144,78 +2026,18 @@ TRI_query_t* TRI_CreateGeoIndexQuery (TRI_query_t* operand,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_query_t* TRI_CreateLimitQuery (TRI_query_t* operand, TRI_voc_ssize_t limit) {
-
-  // .............................................................................
-  // operand is a NEAR
-  // .............................................................................
-
-  if (0 <= limit && operand->_type == TRI_QUE_TYPE_NEAR) {
-    TRI_near_query_t* near;
-
-    near = (TRI_near_query_t*) operand;
-
-    if (near->_limit < limit) {
-      limit = near->_limit;
-    }
-
-    return TRI_CreateNearQuery(near->_operand->clone(near->_operand),
-                               near->_latitude,
-                               near->_longitude,
-                               limit,
-                               near->_distance);
-  }
-
-  // .............................................................................
-  // operand is a LIMIT
-  // .............................................................................
-
-  if (operand->_type == TRI_QUE_TYPE_LIMIT) {
-    TRI_limit_query_t* lquery;
-    bool combine;
-
-    lquery = (TRI_limit_query_t*) operand;
-    combine = true;
-
-    if (lquery->_limit < 0 && limit <= 0) {
-      if (limit < lquery->_limit) {
-        limit = lquery->_limit;
-      }
-    }
-    else if (lquery->_limit > 0 && limit >= 0) {
-      if (limit > lquery->_limit) {
-        limit = lquery->_limit;
-      }
-    }
-    else if (abs(lquery->_limit) <= abs(limit)) {
-      return lquery->base.clone(&lquery->base);
-    }
-    else {
-      combine = false;
-    }
-
-    if (combine) {
-      return TRI_CreateLimitQuery(lquery->_operand->clone(lquery->_operand),
-                                  limit);
-    }
-  }
-
-  // .............................................................................
-  // general case
-  // .............................................................................
-
   TRI_limit_query_t* query;
-  char* number;
 
   query = TRI_Allocate(sizeof(TRI_limit_query_t));
 
   query->base._type = TRI_QUE_TYPE_LIMIT;
   query->base._collection = operand->_collection;
+  query->base._isOptimised = false;
 
-  number = TRI_StringInt64(limit);
-  query->base._string = TRI_Concatenate4String(operand->_string, ".limit(", number, ")");
-  TRI_FreeString(number);
-
+  query->base.optimise = OptimiseLimitQuery;
   query->base.execute = ExecuteLimitQuery;
+  query->base.json = JsonLimitQuery;
+  query->base.stringify = StringifyLimitQuery;
   query->base.clone = CloneLimitQuery;
   query->base.free = FreeLimitQuery;
 
@@ -1232,46 +2054,27 @@ TRI_query_t* TRI_CreateLimitQuery (TRI_query_t* operand, TRI_voc_ssize_t limit) 
 TRI_query_t* TRI_CreateNearQuery (TRI_query_t* operand,
                                   double latitude,
                                   double longitude,
-                                  TRI_voc_size_t count,
+                                  TRI_voc_size_t limit,
                                   char const* distance) {
-  TRI_string_buffer_t sb;
   TRI_near_query_t* query;
 
   query = TRI_Allocate(sizeof(TRI_near_query_t));
 
   query->base._type = TRI_QUE_TYPE_NEAR;
   query->base._collection = operand->_collection;
+  query->base._isOptimised = false;
 
-
-  TRI_InitStringBuffer(&sb);
-
-  TRI_AppendStringStringBuffer(&sb, ".near(");
-  TRI_AppendDoubleStringBuffer(&sb, latitude);
-  TRI_AppendStringStringBuffer(&sb, ",");
-  TRI_AppendDoubleStringBuffer(&sb, longitude);
-  TRI_AppendStringStringBuffer(&sb, ")");
-
-  TRI_AppendStringStringBuffer(&sb, ".limit(");
-  TRI_AppendUInt64StringBuffer(&sb, count);
-  TRI_AppendStringStringBuffer(&sb, ")");
-
-  if (distance != NULL) {
-    TRI_AppendStringStringBuffer(&sb, ".distance(\"");
-    TRI_AppendStringStringBuffer(&sb, distance);
-    TRI_AppendStringStringBuffer(&sb, "\")");
-  }
-
-  query->base._string = sb._buffer;
-
+  query->base.optimise = OptimiseNearQuery;
   query->base.execute = ExecuteNearQuery;
+  query->base.json = JsonNearQuery;
+  query->base.stringify = StringifyNearQuery;
   query->base.clone = CloneNearQuery;
   query->base.free = FreeNearQuery;
 
   query->_operand = operand;
-  query->_location = NULL;
   query->_latitude = latitude;
   query->_longitude = longitude;
-  query->_limit = count;
+  query->_limit = limit;
   query->_distance = (distance == NULL ? NULL : TRI_DuplicateString(distance));
 
   return &query->base;
@@ -1283,35 +2086,17 @@ TRI_query_t* TRI_CreateNearQuery (TRI_query_t* operand,
 
 TRI_query_t* TRI_CreateSkipQuery (TRI_query_t* operand, TRI_voc_size_t skip) {
   TRI_skip_query_t* query;
-  char* number;
-
-  // .............................................................................
-  // operand is a SKIP
-  // .............................................................................
-
-  if (0 <= skip && operand->_type == TRI_QUE_TYPE_SKIP) {
-    TRI_skip_query_t* squery;
-
-    squery = (TRI_skip_query_t*) operand;
-
-    return TRI_CreateSkipQuery(squery->_operand->clone(squery->_operand),
-                               squery->_skip + skip);
-  }
-
-  // .............................................................................
-  // general case
-  // .............................................................................
 
   query = TRI_Allocate(sizeof(TRI_skip_query_t));
 
   query->base._type = TRI_QUE_TYPE_SKIP;
   query->base._collection = operand->_collection;
+  query->base._isOptimised = false;
 
-  number = TRI_StringInt64(skip);
-  query->base._string = TRI_Concatenate4String(operand->_string, ".skip(", number, ")");
-  TRI_FreeString(number);
-
+  query->base.optimise = OptimiseSkipQuery;
   query->base.execute = ExecuteSkipQuery;
+  query->base.json = JsonSkipQuery;
+  query->base.stringify = StringifySkipQuery;
   query->base.clone = CloneSkipQuery;
   query->base.free = FreeSkipQuery;
 
@@ -1330,39 +2115,22 @@ TRI_query_t* TRI_CreateWithinQuery (TRI_query_t* operand,
                                     double longitude,
                                     double radius,
                                     char const* distance) {
-  TRI_string_buffer_t sb;
   TRI_within_query_t* query;
 
   query = TRI_Allocate(sizeof(TRI_within_query_t));
 
   query->base._type = TRI_QUE_TYPE_WITHIN;
   query->base._collection = operand->_collection;
+  query->base._isOptimised = false;
 
-
-  TRI_InitStringBuffer(&sb);
-
-  TRI_AppendStringStringBuffer(&sb, ".within(");
-  TRI_AppendDoubleStringBuffer(&sb, latitude);
-  TRI_AppendStringStringBuffer(&sb, ",");
-  TRI_AppendDoubleStringBuffer(&sb, longitude);
-  TRI_AppendStringStringBuffer(&sb, ",");
-  TRI_AppendDoubleStringBuffer(&sb, radius);
-  TRI_AppendStringStringBuffer(&sb, ")");
-
-  if (distance != NULL) {
-    TRI_AppendStringStringBuffer(&sb, ".distance(\"");
-    TRI_AppendStringStringBuffer(&sb, distance);
-    TRI_AppendStringStringBuffer(&sb, "\")");
-  }
-
-  query->base._string = sb._buffer;
-
+  query->base.optimise = OptimiseWithinQuery;
   query->base.execute = ExecuteWithinQuery;
+  query->base.json = JsonWithinQuery;
+  query->base.stringify = StringifyWithinQuery;
   query->base.clone = CloneWithinQuery;
   query->base.free = FreeWithinQuery;
 
   query->_operand = operand;
-  query->_location = NULL;
   query->_latitude = latitude;
   query->_longitude = longitude;
   query->_radius = radius;
