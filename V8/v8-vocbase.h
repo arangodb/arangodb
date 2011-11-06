@@ -36,7 +36,7 @@
 #include <v8.h>
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page DurhamFluentInterface Fluent Interface
+/// @page FluentInterface Fluent Interface
 ///
 /// A fluent interface is implemented by using method chaining to relay the
 /// instruction context of a subsequent call.  The AvocadoDB provides the

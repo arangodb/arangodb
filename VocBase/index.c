@@ -51,6 +51,34 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief removes an index file
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_RemoveIndex (TRI_doc_collection_t* collection, TRI_index_t* idx) {
+  char* filename;
+  char* name;
+  char* number;
+  bool ok;
+
+  // construct filename
+  number = TRI_StringUInt64(idx->_iid);
+  name = TRI_Concatenate3String("index-", number, ".json");
+  filename = TRI_Concatenate2File(collection->base._directory, name);
+  TRI_FreeString(name);
+  TRI_FreeString(number);
+
+  ok = TRI_UnlinkFile(filename);
+  TRI_FreeString(filename);
+
+  if (! ok) {
+    LOG_ERROR("cannot remove index definition: %s", TRI_last_error());
+    return false;
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief saves an index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -82,7 +110,7 @@ bool TRI_SaveIndex (TRI_doc_collection_t* collection, TRI_index_t* idx) {
   TRI_FreeJson(json);
 
   if (! ok) {
-    LOG_TRACE("cannot save index definition: %s", TRI_last_error());
+    LOG_ERROR("cannot save index definition: %s", TRI_last_error());
     return false;
   }
 
@@ -595,7 +623,7 @@ TRI_index_t* TRI_CreateGeoIndex2 (struct TRI_doc_collection_s* collection,
 /// @brief frees the memory allocated, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestoryGeoIndex (TRI_index_t* idx) {
+void TRI_DestroyGeoIndex (TRI_index_t* idx) {
   TRI_geo_index_t* geo;
 
   geo = (TRI_geo_index_t*) idx;
@@ -608,7 +636,7 @@ void TRI_DestoryGeoIndex (TRI_index_t* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeGeoIndex (TRI_index_t* idx) {
-  TRI_DestoryGeoIndex(idx);
+  TRI_DestroyGeoIndex(idx);
   TRI_Free(idx);
 }
 

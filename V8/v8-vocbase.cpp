@@ -50,6 +50,12 @@
 using namespace std;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+
+static bool OptimiseQuery (v8::Handle<v8::Object> queryObject);
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
 
@@ -516,7 +522,7 @@ static void WeakQueryCallback (v8::Persistent<v8::Value> object, void* parameter
   persistent.Clear();
 
   // and free the result set
-  query->free(query);
+  query->free(query, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -607,6 +613,13 @@ static TRI_result_set_t* ExecuteQuery (v8::Handle<v8::Object> queryObject,
 
   if (value->IsNull()) {
     LOG_TRACE("executing query");
+
+    bool ok = OptimiseQuery(self);
+
+    if (! ok) {
+      *err = v8::String::New("corrupted query");
+      return 0;
+    }
 
     TRI_query_t* query = ExtractQuery(self, err);
 
@@ -706,10 +719,58 @@ static string StringifyQuery (v8::Handle<v8::Value> queryObject) {
       return "[corrupted query]";
     }
 
-    return query->_string;
+    TRI_string_buffer_t buffer;
+    TRI_InitStringBuffer(&buffer);
+
+    query->stringify(query, &buffer);
+    string name = TRI_BeginStringBuffer(&buffer);
+
+    TRI_DestroyStringBuffer(&buffer);
+
+    return name;
   }
 
   return TRI_DuplicateString("[corrupted]");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimises a query
+////////////////////////////////////////////////////////////////////////////////
+
+static bool OptimiseQuery (v8::Handle<v8::Object> queryObject) {
+  v8::Handle<v8::Value> value = queryObject->GetInternalField(SLOT_QUERY);
+
+  if (value != CollectionQueryType) {
+    TRI_query_t* query = static_cast<TRI_query_t*>(v8::Handle<v8::External>::Cast(value)->Value());
+
+    if (query == 0) {
+      return false;
+    }
+
+    TRI_query_t* optimised = query;
+
+    optimised->optimise(&optimised);
+
+    if (optimised != query) {
+
+      // remove old query
+      v8::Persistent<v8::Value> persistent = JSQueries[query];
+
+      JSQueries.erase(query);
+      persistent.Dispose();
+      persistent.Clear();
+
+      // add optimised query
+      persistent = v8::Persistent<v8::Value>::New(v8::External::New(optimised));
+      queryObject->SetInternalField(SLOT_QUERY, persistent);
+
+      JSQueries[optimised] = persistent;
+
+      persistent.MakeWeak(optimised, WeakQueryCallback);
+    }
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -744,9 +805,12 @@ static v8::Handle<v8::Value> JS_PrintQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a query into a fluent interface representation
 ///
-/// <tt>show()</tt>
+/// <b><tt>show()</tt></b>
 ///
 /// Shows the representation of the query.
+///
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ShowQuery (v8::Arguments const& argv) {
@@ -762,10 +826,22 @@ static v8::Handle<v8::Value> JS_ShowQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief counts the number of documents in a result set
 ///
-/// <tt>count()</tt>
+/// <b><tt>count()</tt></b>
 ///
 /// The "count" operator counts the number of document in the result set and
-/// returns that number.
+/// returns that number. The "count" operator ignores any limits and returns
+/// the total number of documents found.
+///
+/// @verbinclude fluent24
+///
+/// <b><tt>count(true)</tt></b>
+///
+/// If the result set was limited by the "limit" operator or documents were
+/// skiped using the "skip" operator, the "count" operator with argument @c true
+/// will use the number of elements in the final result set - after applying
+/// "limit" and "count".
+///
+/// @verbinclude fluent25
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CountQuery (v8::Arguments const& argv) {
@@ -789,7 +865,7 @@ static v8::Handle<v8::Value> JS_CountQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief explains how a query was executed
 ///
-/// <tt>explain()</tt>
+/// <b><tt>explain()</tt></b>
 ///
 /// In order to optimise queries you need to know how the storage engine
 /// executed that type of query. You can use the "explain()" operator to
@@ -810,7 +886,8 @@ static v8::Handle<v8::Value> JS_ExplainQuery (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   v8::Handle<v8::String> err;
-  TRI_result_set_t* rs = ExecuteQuery(argv.Holder(), &err);
+  v8::Handle<v8::Object> self = argv.Holder();
+  TRI_result_set_t* rs = ExecuteQuery(self, &err);
 
   if (rs == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -824,17 +901,31 @@ static v8::Handle<v8::Value> JS_ExplainQuery (v8::Arguments const& argv) {
   result->Set(v8::String::New("matchedDocuments"), v8::Number::New(rs->_info._matchedDocuments));
   result->Set(v8::String::New("runtime"), v8::Number::New(rs->_info._runtime));
 
+  v8::Handle<v8::Value> value = self->GetInternalField(SLOT_QUERY);
+
+  if (value != CollectionQueryType) {
+    TRI_query_t* query = static_cast<TRI_query_t*>(v8::Handle<v8::External>::Cast(value)->Value());
+
+    if (query == 0) {
+      return scope.Close(v8::ThrowException(v8::String::New("corrupted query")));
+    }
+
+    result->Set(v8::String::New("query"), ObjectJson(query->json(query)));
+  }
+
   return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks for the next result document
 ///
-/// <tt>hasNext()</tt>
+/// <b><tt>hasNext()</tt></b>
 ///
 /// The "hasNext" operator returns true, if the cursor still has documents.
 /// In this case the next document can be accessed using the "next" operator,
 /// which will advance the cursor.
+///
+/// @verbinclude fluent28
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_HasNextQuery (v8::Arguments const& argv) {
@@ -853,11 +944,13 @@ static v8::Handle<v8::Value> JS_HasNextQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the next result document
 ///
-/// <tt>next()</tt>
+/// <b><tt>next()</tt></b>
 ///
 /// If the "hasNext" operator returns true, if the cursor still has documents.
 /// In this case the next document can be accessed using the "next" operator,
 /// which will advance the cursor.
+///
+/// @verbinclude fluent28
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_NextQuery (v8::Arguments const& argv) {
@@ -892,6 +985,36 @@ static v8::Handle<v8::Value> JS_NextQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief optimises a query
+///
+/// <tt>optimise()</tt>
+///
+/// Optimises a query. This is done automatically when executing a query.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_OptimiseQuery (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  v8::Handle<v8::Object> self = argv.Holder();
+
+  if (self->InternalFieldCount() <= SLOT_RESULT_SET) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted query")));
+  }
+
+  if (IsExecutedQuery(self)) {
+    return scope.Close(v8::ThrowException(v8::String::New("query already executed")));
+  }
+
+  bool ok = OptimiseQuery(self);
+
+  if (! ok) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted query")));
+  }
+
+  return scope.Close(self);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a query and returns the result as array
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -911,11 +1034,11 @@ static v8::Handle<v8::Value> JS_ToArrayQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all elements
 ///
-/// The "all" operator returns all documents of a collection.
+/// <b><tt>all()</tt></b>
 ///
-/// <tt>all()</tt>
+/// Selects all documents of a collection and returns a cursor.
 ///
-/// Selects all documents.
+/// @verbinclude fluent23
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
@@ -957,6 +1080,21 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds distance to a result set
+///
+/// <b><tt>distance()</tt></b>
+///
+/// Aguments the result-set of a "near" or "within" query with the distance of
+/// the document to the given point. The distance is returned in an attribute
+/// @c _distance. This is the distance in meters.
+///
+/// @verbinclude fluent26
+///
+/// <b><tt>distance(name)</tt></b>
+///
+/// Same as above, with the exception, that the distance is returned in an
+/// attribute called @c name.
+///
+/// @verbinclude fluent27
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DistanceQuery (v8::Arguments const& argv) {
@@ -1017,12 +1155,13 @@ static v8::Handle<v8::Value> JS_DistanceQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a document
 ///
-/// The "document" operator finds a document given it's identifier.
+/// <b><tt>document(document-identifier)</tt></b>
 ///
-/// <tt>document(identifier)</tt>
+/// The "document" operator finds a document given it's identifier.  It returns
+/// the empty result set or a result set containing the document with document
+/// identifier @c document-identifier.
 ///
-/// Returns the empty result set or a result set containing the document
-/// with document identifier @c identifier.
+/// @verbinclude fluent28
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DocumentQuery (v8::Arguments const& argv) {
@@ -1072,18 +1211,23 @@ static v8::Handle<v8::Value> JS_DocumentQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a geo-spatial index
 ///
-/// <tt>geo(location)</tt>
+/// <b><tt>geo(location)</tt></b>
 ///
-/// Next "near" operator will use the specific geo-spatial index.
+/// The next "near" operator will use the specific geo-spatial index.
 ///
-/// <tt>geo(latitiude,longitude)</tt>
+/// <b><tt>geo(location, geoJson)</tt></b>
 ///
-/// Next "near" operator will use the specific geo-spatial index.
+/// The next "near" or "within" operator will use the specific geo-spatial
+/// index.
 ///
-/// Assume you a location stored as list in the attribute @c location
-/// and a destination stored in the attribute @c destination. Than you
-/// can use the "geo" operator to select, which coordinates to use in
-/// a near query.
+/// <b><tt>geo(latitiude,longitude)</tt></b>
+///
+/// The next "near" or "within" operator will use the specific geo-spatial
+/// index.
+///
+/// Assume you have a location stored as list in the attribute @c home
+/// and a destination stored in the attribute @c work. Than you can use the
+/// "geo" operator to select, which coordinates to use in a near query.
 ///
 /// @verbinclude fluent15
 ////////////////////////////////////////////////////////////////////////////////
@@ -1105,7 +1249,7 @@ static v8::Handle<v8::Value> JS_GeoQuery (v8::Arguments const& argv) {
   }
 
   // .............................................................................
-  // case: location
+  // case: <location>
   // .............................................................................
 
   if (argv.Length() == 1) {
@@ -1113,13 +1257,28 @@ static v8::Handle<v8::Value> JS_GeoQuery (v8::Arguments const& argv) {
 
     v8::Handle<v8::Object> result = QueryTempl->NewInstance();
 
-    StoreQuery(result, TRI_CreateGeoIndexQuery(opQuery->clone(opQuery), location.c_str(), 0, 0));
+    StoreQuery(result, TRI_CreateGeoIndexQuery(opQuery->clone(opQuery), location.c_str(), 0, 0, false));
 
     return scope.Close(result);
   }
 
   // .............................................................................
-  // case: latitiude and longitude
+  // case: <location>, <geoJson>
+  // .............................................................................
+
+  else if (argv.Length() == 2 && (argv[1]->IsBoolean() || argv[1]->IsBooleanObject())) {
+    string location = ObjectToString(argv[0]);
+    bool geoJson = ObjectToBoolean(argv[1]);
+
+    v8::Handle<v8::Object> result = QueryTempl->NewInstance();
+
+    StoreQuery(result, TRI_CreateGeoIndexQuery(opQuery->clone(opQuery), location.c_str(), 0, 0, geoJson));
+
+    return scope.Close(result);
+  }
+
+  // .............................................................................
+  // case: <latitiude>, <longitude>
   // .............................................................................
 
   else if (argv.Length() == 2) {
@@ -1128,7 +1287,7 @@ static v8::Handle<v8::Value> JS_GeoQuery (v8::Arguments const& argv) {
 
     v8::Handle<v8::Object> result = QueryTempl->NewInstance();
 
-    StoreQuery(result, TRI_CreateGeoIndexQuery(opQuery->clone(opQuery), 0, latitiude.c_str(), longitude.c_str()));
+    StoreQuery(result, TRI_CreateGeoIndexQuery(opQuery->clone(opQuery), 0, latitiude.c_str(), longitude.c_str(), false));
 
     return scope.Close(result);
   }
@@ -1145,10 +1304,12 @@ static v8::Handle<v8::Value> JS_GeoQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief limits an existing query
 ///
-/// <tt>limit(number)</tt>
+/// <b><tt>limit(number)</tt></b>
 ///
 /// Limits a result to the first @c number documents. If @c number is negative,
 /// the result set is limited to the last @c -number documents.
+///
+/// @verbinclude fluent30
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_LimitQuery (v8::Arguments const& argv) {
@@ -1188,11 +1349,7 @@ static v8::Handle<v8::Value> JS_LimitQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds points near a given coordinate
 ///
-/// The "near" operator is rather complex, because there are two variants (list
-/// or array) and some optional parameters. If you have defined only one
-/// geo-index, however, the call is simply
-///
-/// <tt>near(latitiude, longitude)</tt>
+/// <b><tt>near(latitiude, longitude)</tt></b>
 ///
 /// This will find at most 100 documents near the coordinate (@c latitiude, @c
 /// longitude). The returned list is sorted according to the distance, with the
@@ -1202,26 +1359,26 @@ static v8::Handle<v8::Value> JS_LimitQuery (v8::Arguments const& argv) {
 ///
 /// If you need the distance as well, then you can use
 ///
-/// <tt>near(latitiude, longitude).distance()</tt>
+/// <b><tt>near(latitiude, longitude).distance()</tt></b>
 ///
 /// This will add an attribute "_distance" to all documents returned, which
 /// contains the distance of the given point and the document in meter.
 ///
 /// @verbinclude fluent11
 ///
-/// <tt>near(latitiude, longitude).distance(name)</tt>
+/// <b><tt>near(latitiude, longitude).distance(name)</tt></b>
 ///
 /// This will add an attribute "name" to all documents returned, which
 /// contains the distance of the given point and the document in meter.
 ///
 /// @verbinclude fluent12
 ///
-/// <tt>near(latitiude, longitude).limit(count)</tt>
+/// <b><tt>near(latitiude, longitude).limit(count)</tt></b>
 ///
 /// Limits the result to @c count documents. Note that @c count can be more than
 /// 100. To get less or more than 100 documents with distances, use
 ///
-/// <tt>near(latitiude, longitude).distance().limit(count)</tt>
+/// <b><tt>near(latitiude, longitude).distance().limit(count)</tt></b>
 ///
 /// This will return the first @c count documents together with their distances
 /// in meters.
@@ -1277,11 +1434,50 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects elements by example
 ///
+/// <b><tt>select()</tt></b>
+///
 /// The "select" operator finds all documents which match a given example.
 ///
-/// <tt>select()</tt>
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
 ///
-/// Selects all documents.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_SelectQuery (v8::Arguments const& argv) {
@@ -1324,9 +1520,11 @@ static v8::Handle<v8::Value> JS_SelectQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief skips an existing query
 ///
-/// <tt>skip(number)</tt>
+/// <b><tt>skip(number)</tt></b>
 ///
 /// Skips the first @c number documents.
+///
+/// @verbinclude fluent31
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_SkipQuery (v8::Arguments const& argv) {
@@ -1370,33 +1568,28 @@ static v8::Handle<v8::Value> JS_SkipQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds points within a given radius
 ///
-/// The "within" operator is rather complex, because there are two variants
-/// (list or array) and some optional parameters. If you have defined only one
-/// geo-index, however, the call is simply
-///
-/// <tt>distance(latitiude, longitude, radius)</tt>
+/// <b><tt>within(latitiude, longitude, radius)</tt></b>
 ///
 /// This will find all documents with in a given radius around the coordinate
-/// (@c latitiude, @c longitude). The returned list is sorted according to the
-/// distance, with the nearest document coming first.
+/// (@c latitiude, @c longitude). The returned list is unsorted.
 ///
-/// @verbinclude fluentXX
+/// @verbinclude fluent32
 ///
 /// If you need the distance as well, then you can use
 ///
-/// <tt>within(latitiude, longitude, radius).distance()</tt>
+/// <b><tt>within(latitiude, longitude, radius).distance()</tt></b>
 ///
 /// This will add an attribute "_distance" to all documents returned, which
 /// contains the distance of the given point and the document in meter.
 ///
-/// @verbinclude fluentXX
+/// @verbinclude fluent33
 ///
-/// <tt>within(latitiude, longitude, radius).distance(name)</tt>
+/// <b><tt>within(latitiude, longitude, radius).distance(name)</tt></b>
 ///
 /// This will add an attribute "name" to all documents returned, which
 /// contains the distance of the given point and the document in meter.
 ///
-/// @verbinclude fluentXX
+/// @verbinclude fluent34
 ///
 /// If you have more then one geo-spatial index, you can use the operator
 /// "geo" to select a particular index.
@@ -1439,7 +1632,7 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
   // .............................................................................
 
   else {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: near(<latitiude>,<longitude>)")));
+    return scope.Close(v8::ThrowException(v8::String::New("usage: within(<latitiude>,<longitude>,<radius>)")));
   }
 }
 
@@ -1463,29 +1656,37 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists
 ///
-/// <tt>ensureGeoIndex(location)</tt>
+/// <b><tt>ensureGeoIndex(location)</tt></b>
 ///
-/// Creates a geo-spatial index on all documents using @c location as path the
-/// coordinates. The value of the attribute must be a list with at least two
+/// Creates a geo-spatial index on all documents using @c location as path to
+/// the coordinates. The value of the attribute must be a list with at least two
 /// double values. The list must contain the latitiude (first value) and the
-/// longitude (second value). All documents, which do not have the
-/// attribute path or which value is not suitable, are ignored.
+/// longitude (second value). All documents, which do not have the attribute
+/// path or with value that are not suitable, are ignored.
 ///
-/// <tt>ensureGeoIndex(location, geojson)</tt>
-///
-/// As above. If @c geoJson is true, than the order within the list is
-/// longitude followed by latitiude. This corresponds to the format
-/// described in http://geojson.org/geojson-spec.html#positions.
+/// In case that the index was successfully created, the index indetifier
+/// is returned.
 ///
 /// @verbinclude fluent10
 ///
-/// <tt>ensureGeoIndex(latitiude,longitude)</tt>
+/// <b><tt>ensureGeoIndex(location, geojson)</tt></b>
+///
+/// As above. If @c geoJson is true, than the order within the list is
+/// longitude followed by latitiude. This corresponds to the format
+/// described in
+///
+/// http://geojson.org/geojson-spec.html#positions
+///
+/// <b><tt>ensureGeoIndex(latitiude, longitude)</tt></b>
 ///
 /// Creates a geo-spatial index on all documents using @c latitiude and @c
 /// longitude as paths the latitiude and the longitude. The value of the
 /// attribute @c latitiude and of the attribute @c longitude must a double. All
 /// documents, which do not have the attribute paths or which values are not
 /// suitable, are ignored.
+///
+/// In case that the index was successfully created, the index indetifier
+/// is returned.
 ///
 /// @verbinclude fluent14
 ////////////////////////////////////////////////////////////////////////////////
@@ -1507,6 +1708,7 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
   }
 
   TRI_sim_collection_t* sim = (TRI_sim_collection_t*) collection;
+  TRI_idx_iid_t iid = 0;
 
   // .............................................................................
   // case: <location>
@@ -1519,11 +1721,11 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
       return scope.Close(v8::ThrowException(v8::String::New("<location> must be an attribute path")));
     }
 
-    TRI_EnsureGeoIndexSimCollection(sim, *loc, false);
+    iid = TRI_EnsureGeoIndexSimCollection(sim, *loc, false);
   }
 
   // .............................................................................
-  // case: <location>
+  // case: <location>, <geoJson>
   // .............................................................................
 
   else if (argv.Length() == 2 && (argv[1]->IsBoolean() || argv[1]->IsBooleanObject())) {
@@ -1533,7 +1735,7 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
       return scope.Close(v8::ThrowException(v8::String::New("<location> must be an attribute path")));
     }
 
-    TRI_EnsureGeoIndexSimCollection(sim, *loc, ObjectToBoolean(argv[1]));
+    iid = TRI_EnsureGeoIndexSimCollection(sim, *loc, ObjectToBoolean(argv[1]));
   }
 
   // .............................................................................
@@ -1552,7 +1754,7 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
       return scope.Close(v8::ThrowException(v8::String::New("<longitude> must be an attribute path")));
     }
 
-    TRI_EnsureGeoIndex2SimCollection(sim, *lat, *lon);
+    iid = TRI_EnsureGeoIndex2SimCollection(sim, *lat, *lon);
   }
 
   // .............................................................................
@@ -1563,11 +1765,20 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
     return scope.Close(v8::ThrowException(v8::String::New("usage: ensureGeoIndex(<latitiude>, <longitude>) or ensureGeoIndex(<location>, [<geojson>])")));
   }
 
-  return scope.Close(v8::Undefined());
+  return scope.Close(v8::Number::New(iid));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
+///
+/// <b><tt>delete(document-identifier)</tt></b>
+///
+/// Deletes a document with a given document identifier. If the document does
+/// not exists, then @c false is returned. If the document existed and was
+/// deleted, then @c true is returned. An exception is thrown in case of an
+/// error.
+///
+/// @verbinclude fluent16
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DeleteVocbaseCol (v8::Arguments const& argv) {
@@ -1602,28 +1813,133 @@ static v8::Handle<v8::Value> JS_DeleteVocbaseCol (v8::Arguments const& argv) {
   // inside a write transaction
   // .............................................................................
 
-  collection->beginWrite(collection);
-
-  bool ok = collection->destroy(collection, did);
-
-  collection->endWrite(collection);
+  bool ok = collection->destroyLock(collection, did);
 
   // .............................................................................
   // outside a write transaction
   // .............................................................................
 
   if (! ok) {
-    string err = "cannot save document: ";
-    err += TRI_last_error();
+    if (TRI_errno() == TRI_VOC_ERROR_DOCUMENT_NOT_FOUND) {
+      return scope.Close(v8::False());
+    }
+    else {
+      string err = "cannot delete document: ";
+      err += TRI_last_error();
 
-    return scope.Close(v8::ThrowException(v8::String::New(err.c_str())));
+      return scope.Close(v8::ThrowException(v8::String::New(err.c_str())));
+    }
   }
 
-  return scope.Close(v8::Undefined());
+  return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops an index
+///
+/// <b><tt>dropIndex(index-identifier)</tt></b>
+///
+/// Drops the index. If the index does not exists, then @c false is returned. If
+/// the index existed and was dropped, then @c true is returned.
+///
+/// @verbinclude fluent17
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  v8::Handle<v8::String> err;
+  TRI_vocbase_col_t const* col = LoadCollection(argv.Holder(), &err);
+
+  if (col == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  TRI_doc_collection_t* collection = col->_collection;
+
+  if (collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
+  }
+
+  TRI_sim_collection_t* sim = (TRI_sim_collection_t*) collection;
+
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: dropIndex(<index-identifier>)")));
+  }
+
+  double iid = ObjectToDouble(argv[0]);
+
+  // .............................................................................
+  // inside a write transaction
+  // .............................................................................
+
+  bool ok = TRI_DropIndexSimCollection(sim, (TRI_idx_iid_t) iid);
+
+  // .............................................................................
+  // outside a write transaction
+  // .............................................................................
+
+  return scope.Close(ok ? v8::True() : v8::False());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns information about the indexes
+///
+/// <b><tt>getIndexes()</tt></b>
+///
+/// Returns a list of all indexes defined for the collection.
+///
+/// @verbinclude fluent18
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  v8::Handle<v8::String> err;
+  TRI_vocbase_col_t const* col = LoadCollection(argv.Holder(), &err);
+
+  if (col == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  TRI_doc_collection_t* collection = col->_collection;
+
+  if (collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
+  }
+
+  TRI_sim_collection_t* sim = (TRI_sim_collection_t*) collection;
+
+  // get a list of indexes
+  TRI_vector_pointer_t* indexes = TRI_IndexesSimCollection(sim);
+
+  v8::Handle<v8::Array> result = v8::Array::New();
+
+  size_t n = TRI_SizeVectorPointer(indexes);
+
+  for (size_t i = 0;  i < n;  ++i) {
+    TRI_json_t* idx = (TRI_json_t*) TRI_AtVectorPointer(indexes, i);
+
+    result->Set(i, ObjectJson(idx));
+  }
+
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets or sets the parameters of a collection
+///
+/// <b><tt>parameter()</tt></b>
+///
+/// Returns the collection parameter.
+///
+/// @verbinclude fluent19
+///
+/// <b><tt>parameter(parameter-array)</tt></b>
+///
+/// Changes the collection parameter.
+///
+/// @verbinclude fluent20
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ParameterVocbaseCol (v8::Arguments const& argv) {
@@ -1729,6 +2045,14 @@ static v8::Handle<v8::Value> JS_ParameterVocbaseCol (v8::Arguments const& argv) 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces a document
+///
+/// <b><tt>replace(document-identifier, document)</tt></b>
+///
+/// Replaces an existing document. The @c document-identifier must point to a
+/// document in the current collection. This document is than replaced with the
+/// value given as second argument and the @c document-identifier is returned.
+///
+/// @verbinclude fluent21
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
@@ -1769,11 +2093,7 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
   // inside a write transaction
   // .............................................................................
 
-  collection->beginWrite(collection);
-
-  bool ok = collection->update(collection, shaped, did);
-
-  collection->endWrite(collection);
+  bool ok = collection->updateLock(collection, shaped, did);
 
   // .............................................................................
   // outside a write transaction
@@ -1782,17 +2102,23 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
   TRI_FreeShapedJson(shaped);
 
   if (! ok) {
-    string err = "cannot save document: ";
+    string err = "cannot replace document: ";
     err += TRI_last_error();
 
     return scope.Close(v8::ThrowException(v8::String::New(err.c_str())));
   }
 
-  return scope.Close(v8::Undefined());
+  return scope.Close(v8::Number::New(did));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a new document
+///
+/// <b><tt>save(document)</tt></b>
+///
+/// Saves a new document and returns the document-identifier.
+///
+/// @verbinclude fluent22
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
@@ -1821,11 +2147,7 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   // inside a write transaction
   // .............................................................................
 
-  collection->beginWrite(collection);
-
-  TRI_voc_did_t did = collection->create(collection, shaped);
-
-  collection->endWrite(collection);
+  TRI_voc_did_t did = collection->createLock(collection, shaped);
 
   // .............................................................................
   // outside a write transaction
@@ -1978,6 +2300,150 @@ static v8::Handle<v8::Value> JS_ToStringVocBase (v8::Arguments const& argv) {
 // --SECTION--                                                            MODULE
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @page JavaScriptFuncIndex JavaScript Function Index
+///
+////////////////////////////////////////////////////////////////////////////////
+/// @section JSFDatabaseSelection Database Selection
+////////////////////////////////////////////////////////////////////////////////
+///
+/// @ref MapGetVocBase "db.<database>" @n
+///
+////////////////////////////////////////////////////////////////////////////////
+/// @section JSFDatabases Database Functions
+////////////////////////////////////////////////////////////////////////////////
+///
+/// @ref JS_ParameterVocbaseCol "parameter" @n
+///
+////////////////////////////////////////////////////////////////////////////////
+/// @subsection JSFDocument Database Document Functions
+////////////////////////////////////////////////////////////////////////////////
+///
+/// @ref JS_DeleteVocbaseCol "delete" @n
+/// @ref JS_ReplaceVocbaseCol "replace" @n
+/// @ref JS_SaveVocbaseCol "save" @n
+///
+////////////////////////////////////////////////////////////////////////////////
+/// @subsection JSFIndex Database Index Functions
+////////////////////////////////////////////////////////////////////////////////
+///
+/// @ref JS_DropIndexVocbaseCol "dropIndex" @n
+/// @ref JS_EnsureGeoIndexVocbaseCol "ensureGeoIndex" @n
+/// @ref JS_GetIndexesVocbaseCol "getIndexes" @n
+///
+////////////////////////////////////////////////////////////////////////////////
+/// @section JSFQueries Query Functions
+////////////////////////////////////////////////////////////////////////////////
+///
+////////////////////////////////////////////////////////////////////////////////
+/// @subsection JSFQueryBuilding Query Building Functions
+////////////////////////////////////////////////////////////////////////////////
+///
+/// @ref JS_AllQuery "all" @n
+/// @ref JS_DistanceQuery "distance" @n
+/// @ref JS_DocumentQuery "document" @n
+/// @ref JS_GeoQuery "geo" @n
+/// @ref JS_LimitQuery "limit" @n
+/// @ref JS_NearQuery "near" @n
+/// @ref JS_SelectQuery "select" @n
+/// @ref JS_SkipQuery "skip" @n
+/// @ref JS_WithinQuery "within" @n
+///
+////////////////////////////////////////////////////////////////////////////////
+/// @subsection JSFQueryExecuting Query Execution Functions
+////////////////////////////////////////////////////////////////////////////////
+///
+/// @ref JS_CountQuery "count" @n
+/// @ref JS_ExplainQuery "explain" @n
+/// @ref JS_HasNextQuery "hasNext" @n
+/// @ref JS_NextQuery "next" @n
+/// @ref JS_ShowQuery "show" @n
+///
+////////////////////////////////////////////////////////////////////////////////
+/// @section JSFGlobal Global Functions
+////////////////////////////////////////////////////////////////////////////////
+///
+/// @ref JS_FromJson "fromJson" @n
+/// @ref JS_LogLevel "logLevel" @n
+/// @ref JS_Output "output" @n
+/// @ref JS_Print "print" @n
+/// @ref JS_ProcessCsvFile "processCsvFile" @n
+/// @ref JS_ProcessJsonFile "processJsonFile" @n
+/// @ref JS_Time "time" @n
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page JavaScriptFunc JavaScript Functions
+///
+////////////////////////////////////////////////////////////////////////////////
+/// @section JSFDatabaseSelection Database Selection
+////////////////////////////////////////////////////////////////////////////////
+///
+/// @ref MapGetVocBase "db.<database>" @n
+///
+////////////////////////////////////////////////////////////////////////////////
+/// @section JSFDatabases Database Functions
+////////////////////////////////////////////////////////////////////////////////
+///
+/// @copydetails JS_ParameterVocbaseCol
+///
+////////////////////////////////////////////////////////////////////////////////
+/// @subsection JSFDocument Database Document Functions
+////////////////////////////////////////////////////////////////////////////////
+///
+/// @copydetails JS_DeleteVocbaseCol
+/// @copydetails JS_ReplaceVocbaseCol
+/// @copydetails JS_SaveVocbaseCol
+///
+////////////////////////////////////////////////////////////////////////////////
+/// @subsection JSFIndex Database Index Functions
+////////////////////////////////////////////////////////////////////////////////
+///
+/// @copydetails JS_DropIndexVocbaseCol
+/// @copydetails JS_EnsureGeoIndexVocbaseCol
+/// @copydetails JS_GetIndexesVocbaseCol
+///
+////////////////////////////////////////////////////////////////////////////////
+/// @section JSFQueries Query Functions
+////////////////////////////////////////////////////////////////////////////////
+///
+////////////////////////////////////////////////////////////////////////////////
+/// @subsection JSFQueryBuilding Query Building Functions
+////////////////////////////////////////////////////////////////////////////////
+///
+/// @copydetails JS_AllQuery
+/// @copydetails JS_DistanceQuery
+/// @copydetails JS_DocumentQuery
+/// @copydetails JS_GeoQuery
+/// @copydetails JS_LimitQuery
+/// @copydetails JS_NearQuery
+/// @copydetails JS_SelectQuery
+/// @copydetails JS_SkipQuery
+/// @copydetails JS_WithinQuery
+///
+////////////////////////////////////////////////////////////////////////////////
+/// @subsection JSFQueryExecuting Query Execution Functions
+////////////////////////////////////////////////////////////////////////////////
+///
+/// @copydetails JS_CountQuery
+/// @copydetails JS_ExplainQuery
+/// @copydetails JS_HasNextQuery
+/// @copydetails JS_NextQuery
+/// @copydetails JS_ShowQuery
+///
+////////////////////////////////////////////////////////////////////////////////
+/// @section JSFGlobal Global Functions
+////////////////////////////////////////////////////////////////////////////////
+///
+/// @copydetails JS_FromJson
+/// @copydetails JS_LogLevel
+/// @copydetails JS_Output
+/// @copydetails JS_Print
+/// @ref JS_ProcessCsvFile "processCsvFile" @n
+/// @ref JS_ProcessJsonFile "processJsonFile" @n
+/// @copydetails JS_Time
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -2033,13 +2499,16 @@ v8::Persistent<v8::Context> InitV8VocBridge (TRI_vocbase_t* vocbase) {
   v8::Handle<v8::String> DeleteFuncName = v8::Persistent<v8::String>::New(v8::String::New("delete"));
   v8::Handle<v8::String> DistanceFuncName = v8::Persistent<v8::String>::New(v8::String::New("distance"));
   v8::Handle<v8::String> DocumentFuncName = v8::Persistent<v8::String>::New(v8::String::New("document"));
+  v8::Handle<v8::String> DropIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("dropIndex"));
   v8::Handle<v8::String> EnsureGeoIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureGeoIndex"));
   v8::Handle<v8::String> ExplainFuncName = v8::Persistent<v8::String>::New(v8::String::New("explain"));
   v8::Handle<v8::String> GeoFuncName = v8::Persistent<v8::String>::New(v8::String::New("geo"));
+  v8::Handle<v8::String> GetIndexesFuncName = v8::Persistent<v8::String>::New(v8::String::New("getIndexes"));
   v8::Handle<v8::String> HasNextFuncName = v8::Persistent<v8::String>::New(v8::String::New("hasNext"));
   v8::Handle<v8::String> LimitFuncName = v8::Persistent<v8::String>::New(v8::String::New("limit"));
   v8::Handle<v8::String> NearFuncName = v8::Persistent<v8::String>::New(v8::String::New("near"));
   v8::Handle<v8::String> NextFuncName = v8::Persistent<v8::String>::New(v8::String::New("next"));
+  v8::Handle<v8::String> OptimiseFuncName = v8::Persistent<v8::String>::New(v8::String::New("optimise"));
   v8::Handle<v8::String> ParameterFuncName = v8::Persistent<v8::String>::New(v8::String::New("parameter"));
   v8::Handle<v8::String> PrintFuncName = v8::Persistent<v8::String>::New(v8::String::New("print"));
   v8::Handle<v8::String> ReplaceFuncName = v8::Persistent<v8::String>::New(v8::String::New("replace"));
@@ -2091,9 +2560,11 @@ v8::Persistent<v8::Context> InitV8VocBridge (TRI_vocbase_t* vocbase) {
   rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountQuery));
   rt->Set(DeleteFuncName, v8::FunctionTemplate::New(JS_DeleteVocbaseCol));
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentQuery));
+  rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
   rt->Set(ExplainFuncName, v8::FunctionTemplate::New(JS_ExplainQuery));
   rt->Set(GeoFuncName, v8::FunctionTemplate::New(JS_GeoQuery));
+  rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
   rt->Set(LimitFuncName, v8::FunctionTemplate::New(JS_LimitQuery));
   rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
   rt->Set(ParameterFuncName, v8::FunctionTemplate::New(JS_ParameterVocbaseCol));
@@ -2126,6 +2597,7 @@ v8::Persistent<v8::Context> InitV8VocBridge (TRI_vocbase_t* vocbase) {
   rt->Set(LimitFuncName, v8::FunctionTemplate::New(JS_LimitQuery));
   rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
   rt->Set(NextFuncName, v8::FunctionTemplate::New(JS_NextQuery));
+  rt->Set(OptimiseFuncName, v8::FunctionTemplate::New(JS_OptimiseQuery));
   rt->Set(PrintFuncName, v8::FunctionTemplate::New(JS_PrintQuery));
   rt->Set(SelectFuncName, v8::FunctionTemplate::New(JS_SelectQuery));
   rt->Set(ShowFuncName, v8::FunctionTemplate::New(JS_ShowQuery));

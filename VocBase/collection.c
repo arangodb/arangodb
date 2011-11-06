@@ -588,7 +588,7 @@ bool TRI_UpdateParameterInfoCollection (TRI_collection_t* collection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_IterateCollection (TRI_collection_t* collection,
-                            void (*iterator)(TRI_df_marker_t const*, void*, bool),
+                            void (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
                             void* data) {
   TRI_vector_pointer_t* datafiles;
   TRI_vector_pointer_t* journals;

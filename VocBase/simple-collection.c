@@ -57,7 +57,7 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
                                                  char const* latitude,
                                                  char const* longitude,
                                                  bool geoJson,
-                                                 TRI_idx_iid iid);
+                                                 TRI_idx_iid_t iid);
 
 static uint64_t HashKeyHeader (TRI_associative_pointer_t* array, void const* key);
 
@@ -254,6 +254,7 @@ static bool CreateDocument (TRI_sim_collection_t* collection,
   TRI_datafile_t* journal;
   TRI_doc_mptr_t* header;
   TRI_voc_size_t total;
+  TRI_doc_datafile_info_t* dfi;
   bool ok;
 
   // get a new header pointer
@@ -284,11 +285,18 @@ static bool CreateDocument (TRI_sim_collection_t* collection,
   if (ok) {
     header->_did = marker->_did;
     header->_rid = marker->_rid;
+    header->_fid = journal->_fid;
     header->_deletion = 0;
     header->_data = *result;
     header->_document._sid = ((TRI_doc_document_marker_t*) marker)->_shape;
     header->_document._data.length = ((TRI_df_marker_t const*) (header->_data))->_size - sizeof(TRI_doc_document_marker_t);
     header->_document._data.data = ((char*) header->_data) + sizeof(TRI_doc_document_marker_t);
+
+    // update the datafile info
+    dfi = TRI_FindDatafileInfoDocCollection(&collection->base, journal->_fid);
+
+    dfi->_numberAlive += 1;
+    dfi->_sizeAlive += header->_document._data.length;
 
     // update immediate indexes
     CreateImmediateIndexes(collection, header);
@@ -347,16 +355,36 @@ static bool UpdateDocument (TRI_sim_collection_t* collection,
   // update the header
   if (ok) {
     TRI_doc_mptr_t update;
+    TRI_doc_datafile_info_t* dfi;
 
     update = *header;
 
     update._rid = marker->_rid;
+    update._fid = journal->_fid;
     update._data = *result;
     update._document._sid = ((TRI_doc_document_marker_t*) marker)->_shape;
     update._document._data.length = ((TRI_df_marker_t const*) (update._data))->_size - sizeof(TRI_doc_document_marker_t);
     update._document._data.data = ((char*) update._data) + sizeof(TRI_doc_document_marker_t);
 
+    // update the datafile info
+    dfi = TRI_FindDatafileInfoDocCollection(&collection->base, header->_fid);
+
+    dfi->_numberAlive -= 1;
+    dfi->_sizeAlive -= header->_document._data.length;
+
+    dfi->_numberDead += 1;
+    dfi->_sizeDead += header->_document._data.length;
+
+    dfi = TRI_FindDatafileInfoDocCollection(&collection->base, journal->_fid);
+
+    dfi->_numberAlive += 1;
+    dfi->_sizeAlive += update._document._data.length;
+
+    // update immediate indexes
     UpdateImmediateIndexes(collection, header, &update);
+
+    // wait for sync
+    WaitSync(collection, journal, ((char const*) *result) + sizeof(TRI_doc_document_marker_t) + bodySize);
   }
   else {
     LOG_ERROR("cannot write element");
@@ -406,7 +434,26 @@ static bool DeleteDocument (TRI_sim_collection_t* collection,
 
   // update the header
   if (ok) {
+    TRI_doc_datafile_info_t* dfi;
+
+    // update the datafile info
+    dfi = TRI_FindDatafileInfoDocCollection(&collection->base, header->_fid);
+
+    dfi->_numberAlive -= 1;
+    dfi->_sizeAlive -= header->_document._data.length;
+
+    dfi->_numberDead += 1;
+    dfi->_sizeDead += header->_document._data.length;
+
+    dfi = TRI_FindDatafileInfoDocCollection(&collection->base, journal->_fid);
+
+    dfi->_numberDeletion += 1;
+
+    // update immediate indexes
     DeleteImmediateIndexes(collection, header, marker->base._tick);
+
+    // wait for sync
+    WaitSync(collection, journal, ((char const*) result) + sizeof(TRI_doc_deletion_marker_t));
   }
   else {
     LOG_ERROR("cannot delete element");
@@ -604,9 +651,10 @@ static bool EndWrite (TRI_doc_collection_t* document) {
 /// @brief iterator for open
 ////////////////////////////////////////////////////////////////////////////////
 
-static void OpenIterator (TRI_df_marker_t const* marker, void* data, bool journal) {
+static void OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafile_t* datafile, bool journal) {
   TRI_sim_collection_t* collection = data;
   TRI_doc_mptr_t const* found;
+  TRI_doc_datafile_info_t* dfi;
 
   // new or updated document
   if (marker->_type == TRI_DOC_MARKER_DOCUMENT) {
@@ -627,12 +675,20 @@ static void OpenIterator (TRI_df_marker_t const* marker, void* data, bool journa
 
       header->_did = d->_did;
       header->_rid = d->_rid;
+      header->_fid = datafile->_fid;
       header->_deletion = 0;
       header->_data = marker;
       header->_document._sid = d->_shape;
       header->_document._data.length = marker->_size - sizeof(TRI_doc_document_marker_t);
       header->_document._data.data = ((char*) marker) + sizeof(TRI_doc_document_marker_t);
 
+      // update the datafile info
+      dfi = TRI_FindDatafileInfoDocCollection(&collection->base, datafile->_fid);
+
+      dfi->_numberAlive += 1;
+      dfi->_sizeAlive += header->_document._data.length;
+
+      // update immediate indexes
       CreateImmediateIndexes(collection, header);
     }
 
@@ -643,12 +699,36 @@ static void OpenIterator (TRI_df_marker_t const* marker, void* data, bool journa
       update = *found;
 
       update._rid = d->_rid;
+      update._fid = datafile->_fid;
       update._data = marker;
       update._document._sid = d->_shape;
       update._document._data.length = marker->_size - sizeof(TRI_doc_document_marker_t);
       update._document._data.data = ((char*) marker) + sizeof(TRI_doc_document_marker_t);
 
+      // update the datafile info
+      dfi = TRI_FindDatafileInfoDocCollection(&collection->base, found->_fid);
+
+      dfi->_numberAlive -= 1;
+      dfi->_sizeAlive -= found->_document._data.length;
+
+      dfi->_numberDead += 1;
+      dfi->_sizeDead += found->_document._data.length;
+
+      dfi = TRI_FindDatafileInfoDocCollection(&collection->base, datafile->_fid);
+
+      dfi->_numberAlive += 1;
+      dfi->_sizeAlive += update._document._data.length;
+
+      // update immediate indexes
       UpdateImmediateIndexes(collection, found, &update);
+    }
+
+    // it is a stale update
+    else {
+      dfi = TRI_FindDatafileInfoDocCollection(&collection->base, datafile->_fid);
+
+      dfi->_numberDead += 1;
+      dfi->_sizeDead += found->_document._data.length;
     }
   }
   else if (marker->_type == TRI_DOC_MARKER_DELETION) {
@@ -677,13 +757,23 @@ static void OpenIterator (TRI_df_marker_t const* marker, void* data, bool journa
       header->_document._data.length = 0;
       header->_document._data.data = 0;
 
+      // update immediate indexes
       CreateImmediateIndexes(collection, header);
     }
 
     // it is a delete
     else {
-      DeleteImmediateIndexes(collection, found, marker->_tick);
+      union { TRI_doc_mptr_t const* c; TRI_doc_mptr_t* v; } change;
+
+      // mark element as deleted
+      change.c = found;
+      change.v->_deletion = marker->_tick;
     }
+
+    // update the datafile info
+    dfi = TRI_FindDatafileInfoDocCollection(&collection->base, datafile->_fid);
+
+    dfi->_numberDeletion += 1;
   }
   else {
     LOG_TRACE("skipping marker %lu", (unsigned long) marker->_type);
@@ -695,7 +785,7 @@ static void OpenIterator (TRI_df_marker_t const* marker, void* data, bool journa
 ////////////////////////////////////////////////////////////////////////////////
 
 static void OpenIndex (char const* filename, void* data) {
-  TRI_idx_iid iid;
+  TRI_idx_iid_t iid;
   TRI_json_t* gjs;
   TRI_json_t* iis;
   TRI_json_t* json;
@@ -1204,6 +1294,108 @@ static void FillIndex (TRI_sim_collection_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a description of all indexes
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* collection) {
+  TRI_vector_pointer_t* vector;
+  size_t n;
+  size_t i;
+
+  vector = TRI_Allocate(sizeof(TRI_vector_pointer_t));
+  TRI_InitVectorPointer(vector);
+
+  // .............................................................................
+  // within read-lock the collection
+  // .............................................................................
+
+  TRI_WriteLockReadWriteLock(&collection->_lock);
+
+  n = TRI_SizeVectorPointer(&collection->_indexes);
+
+  for (i = 0;  i < n;  ++i) {
+    TRI_index_t* idx;
+    TRI_json_t* json;
+
+    idx = TRI_AtVectorPointer(&collection->_indexes, i);
+
+    json = idx->json(idx, &collection->base);
+
+    if (json != NULL) {
+      TRI_PushBackVectorPointer(vector, json);
+    }
+  }
+
+  TRI_WriteUnlockReadWriteLock(&collection->_lock);
+
+  // .............................................................................
+  // without read-lock
+  // .............................................................................
+
+  return vector;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops an index
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_DropIndexSimCollection (TRI_sim_collection_t* collection, TRI_idx_iid_t iid) {
+  TRI_vector_pointer_t* vector;
+  TRI_index_t* found;
+  size_t n;
+  size_t i;
+
+  vector = TRI_Allocate(sizeof(TRI_vector_pointer_t));
+  found = NULL;
+  TRI_InitVectorPointer(vector);
+
+  // .............................................................................
+  // within write-lock
+  // .............................................................................
+
+  TRI_WriteLockReadWriteLock(&collection->_lock);
+
+  n = TRI_SizeVectorPointer(&collection->_indexes);
+
+  for (i = 0;  i < n;  ++i) {
+    TRI_index_t* idx;
+
+    idx = TRI_AtVectorPointer(&collection->_indexes, i);
+
+    if (idx->_iid == iid) {
+      found = TRI_RemoveVectorPointer(&collection->_indexes, i);
+      break;
+    }
+  }
+
+  TRI_WriteUnlockReadWriteLock(&collection->_lock);
+
+  // .............................................................................
+  // without write-lock
+  // .............................................................................
+
+  if (found != NULL) {
+    return TRI_RemoveIndex(&collection->base, found);
+  }
+  else {
+    return false;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                     PRIMARY INDEX
 // -----------------------------------------------------------------------------
 
@@ -1273,7 +1465,7 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
                                                  char const* latitude,
                                                  char const* longitude,
                                                  bool geoJson,
-                                                 TRI_idx_iid iid) {
+                                                 TRI_idx_iid_t iid) {
   TRI_index_t* idx;
   TRI_shape_pid_t lat;
   TRI_shape_pid_t loc;
@@ -1301,7 +1493,7 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
 
   // check, if we know the index
   if (location != NULL) {
-    idx = TRI_LookupGeoIndexSimCollection(collection, loc);
+    idx = TRI_LookupGeoIndexSimCollection(collection, loc, geoJson);
   }
   else if (longitude != NULL && latitude != NULL) {
     idx = TRI_LookupGeoIndex2SimCollection(collection, lat, lon);
@@ -1315,11 +1507,9 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
   }
 
   if (idx != NULL) {
-    TRI_set_errno(TRI_VOC_ERROR_INDEX_EXISTS);
-
     LOG_TRACE("geo-index already created for location '%s'", location);
 
-    return NULL;
+    return idx;
   }
 
   // create a new index
@@ -1377,7 +1567,8 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_LookupGeoIndexSimCollection (TRI_sim_collection_t* collection,
-                                              TRI_shape_pid_t location) {
+                                              TRI_shape_pid_t location,
+                                              bool geoJson) {
   size_t n;
   size_t i;
 
@@ -1391,7 +1582,7 @@ TRI_index_t* TRI_LookupGeoIndexSimCollection (TRI_sim_collection_t* collection,
     if (idx->_type == TRI_IDX_TYPE_GEO_INDEX) {
       TRI_geo_index_t* geo = (TRI_geo_index_t*) idx;
 
-      if (geo->_location != 0 && geo->_location == location) {
+      if (geo->_location != 0 && geo->_location == location && geo->_geoJson == geoJson) {
         return idx;
       }
     }
@@ -1433,9 +1624,9 @@ TRI_index_t* TRI_LookupGeoIndex2SimCollection (TRI_sim_collection_t* collection,
 /// @brief ensures that a geo index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_EnsureGeoIndexSimCollection (TRI_sim_collection_t* collection,
-                                      char const* location,
-                                      bool geoJson) {
+TRI_idx_iid_t TRI_EnsureGeoIndexSimCollection (TRI_sim_collection_t* collection,
+                                               char const* location,
+                                               bool geoJson) {
   TRI_index_t* idx;
   bool ok;
 
@@ -1449,15 +1640,8 @@ bool TRI_EnsureGeoIndexSimCollection (TRI_sim_collection_t* collection,
 
   if (idx == NULL) {
     TRI_WriteUnlockReadWriteLock(&collection->_lock);
-
-    if (TRI_errno() == TRI_VOC_ERROR_INDEX_EXISTS) {
-      return true;
-    }
-
-    return false;
+    return 0;
   }
-
-  ok = TRI_SaveIndex(&collection->base, idx);
 
   TRI_WriteUnlockReadWriteLock(&collection->_lock);
 
@@ -1465,16 +1649,18 @@ bool TRI_EnsureGeoIndexSimCollection (TRI_sim_collection_t* collection,
   // without write-lock
   // .............................................................................
 
-  return ok;
+  ok = TRI_SaveIndex(&collection->base, idx);
+
+  return ok ? idx->_iid : 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* collection,
-                                       char const* latitude,
-                                       char const* longitude) {
+TRI_idx_iid_t TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* collection,
+                                                char const* latitude,
+                                                char const* longitude) {
   TRI_index_t* idx;
   bool ok;
 
@@ -1488,15 +1674,8 @@ bool TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* collection,
 
   if (idx == NULL) {
     TRI_WriteUnlockReadWriteLock(&collection->_lock);
-
-    if (TRI_errno() == TRI_VOC_ERROR_INDEX_EXISTS) {
-      return true;
-    }
-
-    return false;
+    return 0;
   }
-
-  ok = TRI_SaveIndex(&collection->base, idx);
 
   TRI_WriteUnlockReadWriteLock(&collection->_lock);
 
@@ -1504,7 +1683,9 @@ bool TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* collection,
   // without write-lock
   // .............................................................................
 
-  return ok;
+  ok = TRI_SaveIndex(&collection->base, idx);
+
+  return ok ? idx->_iid : 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
