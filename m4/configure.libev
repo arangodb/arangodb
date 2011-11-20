@@ -1,0 +1,119 @@
+dnl -*- mode: Autoconf; -*-
+
+dnl -----------------------------------------------------------------------------------------
+dnl option for LIBEV support
+dnl -----------------------------------------------------------------------------------------
+
+AC_ARG_ENABLE(libev,
+  AS_HELP_STRING([--enable-libev], [enable libev support (default: yes)]),
+  tr_LIBEV="$enableval",
+  tr_LIBEV="maybe"
+)
+
+AC_ARG_WITH(libev,
+  AS_HELP_STRING([--with-libev=DIR], [where the libev library and includes are located]),
+  [LIBEV_CPPFLAGS="-I$withval/include"
+   LIBEV_LDFLAGS="-L$withval/lib"
+   LIBEV="$withval"]
+)
+
+AC_ARG_WITH(libev-lib,
+  AS_HELP_STRING([--with-libev-lib=DIR], [where the libev library is located]),
+  [LIBEV_LDFLAGS="-L$withval"]
+)
+
+TR_STATIC_ENABLE([libev])
+
+dnl -----------------------------------------------------------------------------------------
+dnl checks for the LIBEV library
+dnl -----------------------------------------------------------------------------------------
+
+AC_LANG(C++)
+
+if test "x$LIBEV_CPPFLAGS" != x;  then
+  TR_INCLUDE([LIBEV_CPPFLAGS])
+
+  LIBEV_CPPFLAGS="$LIBEV_CPPFLAGS -DEV_MINIMAL=0"
+fi
+
+dnl -----------------------------------------------------------------------------------------
+dnl save flags
+dnl -----------------------------------------------------------------------------------------
+
+SAVE_CPPFLAGS="$CPPFLAGS"
+CPPFLAGS="$CPPFLAGS $LIBEV_CPPFLAGS"
+
+SAVE_LDFLAGS="$LDFLAGS"
+LDFLAGS="$LDFLAGS $LIBEV_LDFLAGS"
+
+SAVE_LIBS="$LIBS"
+
+dnl -----------------------------------------------------------------------------------------
+dnl check for header and library
+dnl -----------------------------------------------------------------------------------------
+
+if test "x$tr_LIBEV" = xyes -o "x$tr_LIBEV" = xmaybe;  then
+  ch_LIBEV="$tr_LIBEV"
+
+  AC_CHECK_HEADERS(ev.h, [tr_LIBEV="yes"], [tr_LIBEV="no"])
+
+  if test "x$tr_LIBEV" = xyes;  then
+    AC_CHECK_LIB([rt], [clock_gettime], [LIBEV_LIBS="-lrt $LIBEV_LIBS" LIBS="-lrt $LIBS"], )
+
+    TR_FIND_C_LIBRARY([libev], [ev], [LIBEV_LIBS], [ev_now])
+    tr_LIBEV=$tr_library_found
+  fi
+
+  if test "x$tr_LIBEV" = xyes;  then
+    TR_STATIC_LIBRARY([libev], [LIBEV_LIBS])
+  else
+    if test "x$ch_LIBEV" = xyes;  then
+      AC_MSG_ERROR([Please install libev from http://software.schmorp.de/pkg/libev.html])
+    else
+      AC_MSG_ERROR([Please install libev from http://software.schmorp.de/pkg/libev.html])
+    fi
+  fi
+fi
+
+dnl -----------------------------------------------------------------------------------------
+dnl add substitutions
+dnl -----------------------------------------------------------------------------------------
+
+AM_CONDITIONAL(ENABLE_LIBEV, test "x$tr_LIBEV" = xyes)
+
+AC_SUBST(LIBEV_CPPFLAGS)
+AC_SUBST(LIBEV_LDFLAGS)
+AC_SUBST(LIBEV_LIBS)
+
+dnl -----------------------------------------------------------------------------------------
+dnl restore flags
+dnl -----------------------------------------------------------------------------------------
+
+LIBS="$SAVE_LIBS"
+LDFLAGS="$SAVE_LDFLAGS"
+CPPFLAGS="$SAVE_CPPFLAGS"
+
+dnl -----------------------------------------------------------------------------------------
+dnl informational output
+dnl -----------------------------------------------------------------------------------------
+
+if test "x$tr_LIBEV" = xyes;  then
+  if test "x$LIBEV" = x;  then
+    LIB_INFO="$LIB_INFO|LIBEV support: enabled"
+  else
+    LIB_INFO="$LIB_INFO|LIBEV support: enabled (path $LIBEV)"
+  fi
+else
+  LIB_INFO="$LIB_INFO|LIBEV support: disabled"
+fi
+
+dnl -----------------------------------------------------------------------------------------
+dnl informational output
+dnl -----------------------------------------------------------------------------------------
+
+if test "x$tr_LIBEV" = xyes;  then
+  FLAG_INFO="$FLAG_INFO|LIBEV_CPPFLAGS: ${LIBEV_CPPFLAGS}"
+  FLAG_INFO="$FLAG_INFO|LIBEV_LDFLAGS:  ${LIBEV_LDFLAGS}"
+  FLAG_INFO="$FLAG_INFO|LIBEV_LIBS:     ${LIBEV_LIBS}"
+fi
+
