@@ -1,0 +1,360 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief any server
+///
+/// @file
+/// This file contains a server template.
+///
+/// DISCLAIMER
+///
+/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+#include "AnyServer.h"
+
+#include <sys/wait.h>
+
+#ifdef TRI_HAVE_SYS_PRCTL_H
+#include <sys/prctl.h>
+#endif
+
+#include <fstream>
+
+#include "ApplicationServer/ApplicationServerImpl.h"
+#include <Basics/FileUtils.h>
+#include <Basics/Logger.h>
+
+using namespace std;
+using namespace triagens;
+using namespace triagens::basics;
+using namespace triagens::rest;
+
+// -----------------------------------------------------------------------------
+// helper functions
+// -----------------------------------------------------------------------------
+
+namespace {
+  int forkProcess (string const& pidFile, string const& workingDirectory, string& current) {
+
+    // check if the pid-file exists
+    if (! pidFile.empty()) {
+      if (FileUtils::isDirectory(pidFile)) {
+        LOGGER_FATAL << "pid-file '" << pidFile << "' is a directory";
+        exit(EXIT_FAILURE);
+      }
+      else if (FileUtils::exists(pidFile)) {
+        LOGGER_INFO << "pid-file '" << pidFile << "' already exists, verifying pid";
+
+        ifstream f(pidFile.c_str());
+
+        // file can be opened
+        if (f) {
+          int oldPid;
+
+          f >> oldPid;
+
+          if (oldPid == 0) {
+            LOGGER_FATAL << "pid-file '" << pidFile << "' is unreadable";
+            exit(EXIT_FAILURE);
+          }
+
+          LOGGER_DEBUG << "found old pid: " << oldPid;
+
+          int r = kill(oldPid, 0);
+
+          if (r == 0) {
+            LOGGER_FATAL << "pid-file '" << pidFile << "' exists and process with pid " << oldPid << " is still running";
+            exit(EXIT_FAILURE);
+          }
+          else if (errno == EPERM) {
+            LOGGER_FATAL << "pid-file '" << pidFile << "' exists and process with pid " << oldPid << " is still running";
+            exit(EXIT_FAILURE);
+          }
+          else if (errno == ESRCH) {
+            LOGGER_ERROR << "pid-file '" << pidFile << "' exists, but no process with pid " << oldPid << " exists";
+
+            if (! FileUtils::remove(pidFile)) {
+              LOGGER_FATAL << "pid-file '" << pidFile << "' exists, no process with pid " << oldPid << " exists, but pid-file cannot be removed";
+              exit(EXIT_FAILURE);
+            }
+
+            LOGGER_INFO << "removed stale pid-file '" << pidFile << "'";
+          }
+          else {
+            LOGGER_FATAL << "pid-file '" << pidFile << "' exists and kill " << oldPid << " failed";
+            exit(EXIT_FAILURE);
+          }
+        }
+
+        // failed to open file
+        else {
+          LOGGER_FATAL << "pid-file '" << pidFile << "' exists, but cannot be opened";
+          exit(EXIT_FAILURE);
+        }
+      }
+
+      LOGGER_DEBUG << "using pid-file '" << pidFile << "'";
+    }
+
+    // fork off the parent process
+    pid_t pid = fork();
+
+    if (pid < 0) {
+      LOGGER_FATAL << "cannot fork";
+      exit(EXIT_FAILURE);
+    }
+
+    // if we got a good PID, then we can exit the parent process
+    if (pid > 0) {
+      return 0;
+    }
+
+    // change the file mode mask
+    umask(0);
+
+    // create a new SID for the child process
+    pid_t sid = setsid();
+
+    if (sid < 0) {
+      LOGGER_FATAL << "cannot create sid";
+      exit(EXIT_FAILURE);
+    }
+
+    // write pid file
+    {
+      ofstream out(pidFile.c_str(), ios::trunc);
+
+      if (! out) {
+        LOGGER_FATAL << "cannot write pid";
+        exit(EXIT_FAILURE);
+      }
+
+      out << sid;
+    }
+
+    // store current working directory
+    int err = 0;
+    current = FileUtils::currentDirectory(&err);
+
+    if (err != 0) {
+      LOGGER_FATAL << "cannot get current directory";
+      exit(EXIT_FAILURE);
+    }
+
+    // change the current working directory (TODO must be configurable)
+    if (! workingDirectory.empty()) {
+      if (! FileUtils::changeDirectory(workingDirectory)) {
+        LOGGER_FATAL << "cannot change into directory '" << workingDirectory << "'";
+        exit(EXIT_FAILURE);
+      }
+      else {
+        LOGGER_DEBUG << "changed into directory '" << workingDirectory << "'";
+      }
+    }
+
+    // close the standard file descriptors
+    TRI_CloseLogging();
+
+    close(STDIN_FILENO);
+    close(STDOUT_FILENO);
+    close(STDERR_FILENO);
+
+    return 1;
+  }
+}
+
+namespace triagens {
+  namespace rest {
+
+    // -----------------------------------------------------------------------------
+    // constructors and destructors
+    // -----------------------------------------------------------------------------
+
+    AnyServer::AnyServer ()
+      : _daemonMode(false),
+        _supervisorMode(false),
+        _pidFile(""),
+        _workingDirectory(""),
+        _applicationServer(0),
+        _applicationHttpServer(0),
+        _applicationHttpsServer(0) {
+    }
+
+
+
+    AnyServer::~AnyServer () {
+      if (_applicationServer != 0) {
+        delete _applicationServer;
+      }
+    }
+
+    // -----------------------------------------------------------------------------
+    // public methods
+    // -----------------------------------------------------------------------------
+
+    int AnyServer::start () {
+      if (_applicationServer == 0) {
+        buildApplicationServer();
+      }
+
+      if (_supervisorMode) {
+        return startupSupervisor();
+      }
+      else if (_daemonMode) {
+        return startupDaemon();
+      }
+      else {
+        prepareServer();
+        return startupServer();
+      }
+    }
+
+    // -----------------------------------------------------------------------------
+    // protected methods
+    // -----------------------------------------------------------------------------
+
+    int AnyServer::startupSupervisor () {
+      LOGGER_INFO << "starting up in supervisor mode";
+
+      string current;
+      int result = forkProcess(_pidFile, _workingDirectory, current);
+
+      // main process
+      if (result == 0) {
+      }
+
+      // child process
+      else if (result == 1) {
+        bool done = false;
+        result = 0;
+
+        while (! done) {
+
+          // fork of the server
+          pid_t pid = fork();
+
+          if (pid < 0) {
+            exit(EXIT_FAILURE);
+          }
+
+          // parent
+          if (pid > 0) {
+            int status;
+            waitpid(pid, &status, 0);
+
+            if (WIFEXITED(status)) {
+              if (WEXITSTATUS(status) == 0) {
+                done = true;
+              }
+              else {
+                done = false;
+              }
+            }
+            else if (WIFSIGNALED(status)) {
+              switch (WTERMSIG(status)) {
+                case 2:
+                case 9:
+                case 15:
+                  done = true;
+                  break;
+
+                default:
+                  done = false;
+                  break;
+              }
+            }
+          }
+
+          // child
+          else {
+
+            // force child to stop if supervisor dies
+#ifdef TRI_HAVE_PRCTL
+            prctl(PR_SET_PDEATHSIG, SIGTERM, 0, 0, 0);
+#endif
+
+            // startup server
+            prepareServer();
+            result = startupServer();
+
+            // and stop
+            exit(result);
+          }
+        }
+
+        // remove pid file
+        if (FileUtils::changeDirectory(current)) {
+          if (! FileUtils::remove(_pidFile)) {
+            LOGGER_ERROR << "cannot unlink pid file '" << _pidFile << "'";
+          }
+        }
+        else {
+          LOGGER_ERROR << "cannot unlink pid file '" << _pidFile << "', because directory '"
+                       << current << "' is missing";
+        }
+      }
+
+      // upps,
+      else {
+        exit(EXIT_FAILURE);
+      }
+
+      return result;
+    }
+
+
+
+    int AnyServer::startupDaemon () {
+      LOGGER_INFO << "starting up in daemon mode";
+
+      string current;
+      int result = forkProcess(_pidFile, _workingDirectory, current);
+
+      // main process
+      if (result == 0) {
+      }
+
+      // child process
+      else if (result == 1) {
+
+        // and startup server
+        prepareServer();
+        result = startupServer();
+
+        // remove pid file
+        if (FileUtils::changeDirectory(current)) {
+          if (! FileUtils::remove(_pidFile)) {
+            LOGGER_ERROR << "cannot unlink pid file '" << _pidFile << "'";
+          }
+        }
+        else {
+          LOGGER_ERROR << "cannot unlink pid file '" << _pidFile << "', because directory '"
+                       << current << "' is missing";
+        }
+      }
+
+      // upps,
+      else {
+        exit(EXIT_FAILURE);
+      }
+
+      return result;
+    }
+  }
+}

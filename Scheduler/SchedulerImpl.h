@@ -1,0 +1,161 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief input-output scheduler
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Achim Brandt
+/// @author Copyright 2008-2011, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef FYN_SCHEDULER_SCHEDULER_IMPL_H
+#define FYN_SCHEDULER_SCHEDULER_IMPL_H 1
+
+#include <Rest/Scheduler.h>
+#include <Rest/Task.h>
+
+#include <Basics/Mutex.h>
+
+namespace triagens {
+  namespace rest {
+    class SchedulerThread;
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief input-output scheduler
+    ////////////////////////////////////////////////////////////////////////////////
+
+    class  SchedulerImpl : public Scheduler, private TaskManager {
+      public:
+        static const int DEFAULT_TIMEOUT_MSEC = 100;
+        static const int GRACE_CLOSE_MSEC = 1000;
+        static const int GRACE_SHUTDOWN_SECONDS = 3;
+        static const int GRACE_JOB_SHUTDOWN_SECONDS = 60;
+
+      public:
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief creates a scheduler
+        ///
+        /// If the number of threads is one, then the scheduler is single-threaded.
+        /// In this case the only methods, which can be called from a different thread
+        /// are beginShutdown, isShutdownInProgress, and isRunning. The method
+        /// registerTask must be called before the Scheduler is started or from
+        /// within the Scheduler thread.
+        ///
+        /// If the number of threads is greater than one, then the scheduler is
+        /// multi-threaded. In this case the method registerTask can be called from
+        /// threads other than the scheduler.
+        ////////////////////////////////////////////////////////////////////////////////
+
+        explicit
+        SchedulerImpl (size_t nrThreads = 1);
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief deletes a scheduler
+        ////////////////////////////////////////////////////////////////////////////////
+
+        ~SchedulerImpl ();
+
+      public:
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// {@inheritDoc}
+        ////////////////////////////////////////////////////////////////////////////////
+
+        bool isShutdownInProgress ();
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// {@inheritDoc}
+        ////////////////////////////////////////////////////////////////////////////////
+
+        bool isRunning ();
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// {@inheritDoc}
+        ////////////////////////////////////////////////////////////////////////////////
+
+        void registerTask (Task*);
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// {@inheritDoc}
+        ////////////////////////////////////////////////////////////////////////////////
+
+        void unregisterTask (Task*);
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// {@inheritDoc}
+        ////////////////////////////////////////////////////////////////////////////////
+
+        void destroyTask (Task*);
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// {@inheritDoc}
+        ////////////////////////////////////////////////////////////////////////////////
+
+        bool start (basics::ConditionVariable*);
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// {@inheritDoc}
+        ////////////////////////////////////////////////////////////////////////////////
+
+        void beginShutdown ();
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// {@inheritDoc}
+        ////////////////////////////////////////////////////////////////////////////////
+
+        void reportStatus ();
+
+      protected:
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief number of scheduler threads
+        ////////////////////////////////////////////////////////////////////////////////
+
+        size_t nrThreads;
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief scheduler threads
+        ////////////////////////////////////////////////////////////////////////////////
+
+        SchedulerThread** threads;
+
+      private:
+        static void initialiseSignalHandlers ();
+
+      private:
+        volatile sig_atomic_t stopping;
+
+        bool multiThreading;
+
+        size_t nextLoop;
+
+        basics::Mutex schedulerLock;
+
+        map<string, int> current;
+        map<Task*, SchedulerThread*> task2thread;
+        set<Task*> taskRegistered;
+    };
+
+  }
+}
+
+#endif
