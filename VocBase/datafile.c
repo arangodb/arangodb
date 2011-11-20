@@ -41,7 +41,7 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -54,7 +54,7 @@ static void InitDatafile (TRI_datafile_t* datafile,
                           int fd,
                           TRI_voc_size_t maximalSize,
                           TRI_voc_size_t currentSize,
-                          TRI_voc_tick_t tick,
+                          TRI_voc_fid_t tick,
                           char* data) {
 
   datafile->_state = TRI_DF_STATE_READ;
@@ -324,7 +324,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -487,7 +487,7 @@ void TRI_FreeDatafile (TRI_datafile_t* datafile) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -657,7 +657,7 @@ bool TRI_WriteElementDatafile (TRI_datafile_t* datafile,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IterateDatafile (TRI_datafile_t* datafile,
-                          void (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
+                          bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
                           void* data,
                           bool journal) {
   char* ptr;
@@ -673,13 +673,18 @@ bool TRI_IterateDatafile (TRI_datafile_t* datafile,
 
   while (ptr < end) {
     TRI_df_marker_t* marker = (TRI_df_marker_t*) ptr;
+    bool result;
     size_t size;
 
     if (marker->_size == 0) {
       return true;
     }
 
-    iterator(marker, data, datafile, journal);
+    result = iterator(marker, data, datafile, journal);
+
+    if (! result) {
+      return false;
+    }
 
     size = ((marker->_size + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
     ptr += size;

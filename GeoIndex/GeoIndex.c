@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 /* GeoIndex.c -   GeoIndex algorithms                */
-/* Version 1.0 24.9.2011 R. A. Parker                */
+/* Version 1.1 5.11.2011 R. A. Parker                */
 
 #include "GeoIndex.h"
 
@@ -253,7 +253,7 @@ int GeoFind(GeoStack * gk)
 int GeoIndex_insert(GeoIndex * gi, GeoCoordinate * c)
 {
     GeoStack gk;
-    int topslot,putslot,slot,i;
+    int topslot,putslot,slot;
     if(c->longitude < -180.0) return -3;
     if(c->longitude >  180.0) return -3;
     if(c->latitude  <  -90.0) return -3;
@@ -267,7 +267,7 @@ int GeoIndex_insert(GeoIndex * gi, GeoCoordinate * c)
     while(topslot > -1)
     {
         slot=gi->sortslot[topslot];
-        if(gi->geostrings[slot]>gk.targetgs) break;
+        if(gi->geostrings[slot] < gk.targetgs) break;
         if(   (c->latitude  == ((gi->gc)[slot]).latitude)     &&
               (c->longitude == ((gi->gc)[slot]).longitude)    &&
               (c->data      == ((gi->gc)[slot]).data)  )  return -1;
@@ -281,9 +281,11 @@ int GeoIndex_insert(GeoIndex * gi, GeoCoordinate * c)
     (gi->gc)[slot].longitude=c->longitude;
     (gi->gc)[slot].data=c->data;
 
-/* shuffle up the sortslots to make room!  */
-    for(i=gi->occslots;i>putslot;i--)
-        gi->sortslot[i] = gi->sortslot[i-1];
+/* shuffle up the sortslots to make room  */
+    memmove(gi->sortslot+putslot+1,
+            gi->sortslot+putslot,
+            (gi->occslots-putslot)*sizeof(int));
+
 /* put it in  */
     gi->sortslot[putslot]=slot;
     gi->occslots++;
@@ -292,7 +294,7 @@ int GeoIndex_insert(GeoIndex * gi, GeoCoordinate * c)
 
 int GeoIndex_remove(GeoIndex * gi, GeoCoordinate * c)
 {
-    int sortslot,slot,i;
+    int sortslot,slot;
     GeoStack gk;
     GeoStackSet(gi, &gk, c, (GeoResults *) NULL);
     sortslot = GeoFind(&gk);
@@ -308,8 +310,10 @@ int GeoIndex_remove(GeoIndex * gi, GeoCoordinate * c)
               (c->data      == (gi->gc)[slot].data)        )
         {
             GeoIndexFreeSlot(gi,slot);
-            for(i=sortslot;i<gi->occslots-1;i++)
-                gi->sortslot[i] = gi->sortslot[i+1];
+    memmove(gi->sortslot+sortslot,
+            gi->sortslot+sortslot+1,
+            (gi->occslots-sortslot-1)*sizeof(int));
+
             gi->occslots--;
             return 0;
         }
@@ -591,7 +595,7 @@ GeoCoordinates * GeoIndex_NearestCountPoints(GeoIndex * gi,
         if(  (sstop-ssbot) < GeoIndexSMALLINTERVAL ) break;
         ssmid=(sstop+ssbot)/2;
         slot=gi->sortslot[ssmid];
-        if(gi->geostrings[slot] > gk.targetgs)
+        if(gk.targetgs > gi->geostrings[slot])
         {
             gk.startslotid[gk.topofstack]=ssbot;
             gk.endslotid[gk.topofstack]=ssmid;

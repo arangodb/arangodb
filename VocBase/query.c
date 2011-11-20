@@ -46,7 +46,7 @@ static void ExecuteDocumentQueryPrimary (TRI_query_t* qry,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -79,7 +79,7 @@ static void FreeDocuments (TRI_query_result_t* result) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -113,7 +113,7 @@ static void CloneQuery (TRI_query_t* dst, TRI_query_t* src) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -149,6 +149,7 @@ static void ExecuteCollectionQuery (TRI_query_t* qry, TRI_query_result_t* result
   TRI_doc_mptr_t const** qtr;
   TRI_document_query_t* query;
   TRI_sim_collection_t* collection;
+  size_t total;
   void** end;
   void** ptr;
 
@@ -163,25 +164,32 @@ static void ExecuteCollectionQuery (TRI_query_t* qry, TRI_query_result_t* result
   FreeDocuments(result);
 
   // add a new document list and copy all documents
-  result->_total = result->_length = collection->_primaryIndex._nrUsed;
+  result->_total = result->_length = 0;
 
-  if (result->_length == 0) {
+  if (collection->_primaryIndex._nrUsed == 0) {
     return;
   }
 
-  result->_documents = (qtr = TRI_Allocate(sizeof(TRI_doc_mptr_t*) * (result->_length)));
+  result->_documents = (qtr = TRI_Allocate(sizeof(TRI_doc_mptr_t*) * (collection->_primaryIndex._nrUsed)));
 
   ptr = collection->_primaryIndex._table;
   end = collection->_primaryIndex._table + collection->_primaryIndex._nrAlloc;
 
-  for (;  ptr < end;  ++ptr) {
+  for (total = 0;  ptr < end;  ++ptr) {
     ++result->_scannedDocuments;
 
     if (*ptr) {
-      ++result->_matchedDocuments;
-      *qtr++ = *ptr;
+      TRI_doc_mptr_t* d = *ptr;
+
+      if (d->_deletion == 0) {
+        ++result->_matchedDocuments;
+        *qtr++ = *ptr;
+        total++;
+      }
     }
   }
+
+  result->_total = result->_length = total;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -250,7 +258,7 @@ static void FreeCollectionQuery (TRI_query_t* query, bool descend) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -428,7 +436,7 @@ static void FreeDistanceQuery (TRI_query_t* qry, bool descend) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -685,7 +693,7 @@ static void FreeDocumentQuery (TRI_query_t* qry, bool descend) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -843,7 +851,7 @@ static void FreeGeoIndeyQuery (TRI_query_t* qry, bool descend) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1119,7 +1127,7 @@ static void FreeLimitQuery (TRI_query_t* qry, bool descend) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1138,7 +1146,7 @@ geo_coordinate_distance_t;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1498,7 +1506,7 @@ static void FreeNearQuery (TRI_query_t* qry, bool descend) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1725,7 +1733,7 @@ static void FreeSkipQuery (TRI_query_t* qry, bool descend) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1907,7 +1915,7 @@ static void FreeWithinQuery (TRI_query_t* qry, bool descend) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2148,7 +2156,7 @@ TRI_query_t* TRI_CreateWithinQuery (TRI_query_t* operand,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2158,6 +2166,7 @@ TRI_query_t* TRI_CreateWithinQuery (TRI_query_t* operand,
 
 TRI_result_set_t* TRI_ExecuteQuery (TRI_query_t* query) {
   TRI_doc_collection_t* collection = query->_collection->_collection;
+  TRI_rs_container_element_t* ce;
   TRI_query_result_t result;
   TRI_result_set_t* rs;
   TRI_rs_info_t info;
@@ -2183,21 +2192,26 @@ TRI_result_set_t* TRI_ExecuteQuery (TRI_query_t* query) {
 
   collection->beginRead(collection);
 
+  ce = TRI_AddResultSetRSContainer(&collection->_resultSets);
+
   query->execute(query, &result);
 
   if (result._error) {
     LOG_TRACE("query returned error: %s", result._error);
-    rs = TRI_CreateRSSingle(collection, NULL, 0);
+    rs = TRI_CreateRSSingle(collection, ce, NULL, 0);
     rs->_error = result._error;
   }
   else {
     LOG_TRACE("query returned '%lu' documents", (unsigned long) result._length);
     rs = TRI_CreateRSVector(collection,
+                            ce,
                             result._documents,
                             result._augmented,
                             result._length,
                             result._total);
   }
+
+  ce->_resultSet = rs;
 
   collection->endRead(collection);
 

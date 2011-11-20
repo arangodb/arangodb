@@ -52,7 +52,7 @@ static bool StringifyJsonShapeData (TRI_shaper_t* shaper, TRI_string_buffer_t* b
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup JsonPrivate Json Objects (Private)
+/// @addtogroup Json
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1375,7 +1375,8 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
                                          TRI_string_buffer_t* buffer,
                                          TRI_shape_t const* shape,
                                          char const* data,
-                                         size_t size) {
+                                         size_t size,
+                                         bool braces) {
   TRI_array_shape_t const* s;
   TRI_shape_aid_t const* aids;
   TRI_shape_sid_t const* sids;
@@ -1396,7 +1397,9 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
 
   qtr = (char const*) shape;
 
-  TRI_AppendCharStringBuffer(buffer, '{');
+  if (braces) {
+    TRI_AppendCharStringBuffer(buffer, '{');
+  }
 
   qtr += sizeof(TRI_array_shape_t);
 
@@ -1498,7 +1501,9 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
     }
   }
 
-  TRI_AppendCharStringBuffer(buffer, '}');
+  if (braces) {
+    TRI_AppendCharStringBuffer(buffer, '}');
+  }
 
   return true;
 }
@@ -1721,7 +1726,7 @@ static bool StringifyJsonShapeData (TRI_shaper_t* shaper,
       return StringifyJsonShapeDataLongString(shaper, buffer, shape, data, size);
 
     case TRI_SHAPE_ARRAY:
-      return StringifyJsonShapeDataArray(shaper, buffer, shape, data, size);
+      return StringifyJsonShapeDataArray(shaper, buffer, shape, data, size, true);
 
     case TRI_SHAPE_LIST:
       return StringifyJsonShapeDataList(shaper, buffer, shape, data, size);
@@ -1745,7 +1750,7 @@ static bool StringifyJsonShapeData (TRI_shaper_t* shaper,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json Json
+/// @addtogroup Json
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1775,7 +1780,7 @@ void TRI_FreeShapedJson (TRI_shaped_json_t* shaped) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json Json Objects
+/// @addtogroup Json
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1850,6 +1855,46 @@ bool TRI_StringifyShapedJson (TRI_shaper_t* shaper,
   }
 
   return StringifyJsonShapeData(shaper, buffer, shape, shaped->_data.data, shaped->_data.length);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints a shaped json to a string buffer
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_StringifyAugmentedShapedJson (TRI_shaper_t* shaper,
+                                       struct TRI_string_buffer_s* buffer,
+                                       TRI_shaped_json_t const* shaped,
+                                       TRI_json_t const* augment) {
+  TRI_shape_t const* shape;
+  bool ok;
+
+  shape = shaper->lookupShapeId(shaper, shaped->_sid);
+
+  if (shape == NULL) {
+    return false;
+  }
+
+  if (augment == NULL || augment->_type != TRI_JSON_ARRAY || shape->_type != TRI_SHAPE_ARRAY) {
+    return StringifyJsonShapeData(shaper, buffer, shape, shaped->_data.data, shaped->_data.length);
+  }
+
+  TRI_AppendCharStringBuffer(buffer, '{');
+
+  ok = StringifyJsonShapeDataArray(shaper, buffer, shape, shaped->_data.data, shaped->_data.length, false);
+
+  if (shaped->_data.length != 0) {
+    TRI_AppendStringStringBuffer(buffer, ",");
+  }
+
+  if (! ok) {
+    return false;
+  }
+
+  TRI_Stringify2Json(buffer, augment);
+
+  TRI_AppendCharStringBuffer(buffer, '}');
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

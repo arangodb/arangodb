@@ -27,6 +27,8 @@
 
 #include "conversions.h"
 
+#include <limits.h>
+
 #include <Basics/strings.h>
 #include <Basics/string-buffer.h>
 
@@ -35,26 +37,78 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Conversions Conversion Functions
+/// @addtogroup Conversions
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to double from string
+////////////////////////////////////////////////////////////////////////////////
+
+double TRI_DoubleString (char const* str) {
+  double result;
+  char* endptr;
+
+  TRI_set_errno(TRI_ERROR_NO_ERROR);
+
+  result = strtod(str, &endptr);
+
+  while (isspace(*endptr)) {
+    ++endptr;
+  }
+
+  if (*endptr != '\0') {
+    TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
+  }
+
+  if (errno == ERANGE && (result == HUGE_VAL || result == -HUGE_VAL || result == 0)) {
+    TRI_set_errno(TRI_ERROR_NUMERIC_OVERFLOW);
+  }
+
+  return result;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to int32 from string
 ////////////////////////////////////////////////////////////////////////////////
 
 int32_t TRI_Int32String (char const* str) {
+  int32_t result;
+  char* endptr;
+
 #ifdef TRI_HAVE_STRTOL_R
   struct reent buffer;
-  return strtol_r(&buffer, str, 0, 10);
 #else
 #ifdef TRI_HAVE__STRTOL_R
   struct reent buffer;
-  return _strtol_r(&buffer, str, 0, 10);
+#endif
+#endif
+
+  TRI_set_errno(TRI_ERROR_NO_ERROR);
+
+#ifdef TRI_HAVE_STRTOL_R
+  result = strtol_r(&buffer, str, &endptr, 10);
 #else
-  return strtol(str, 0, 10);
+#ifdef TRI_HAVE__STRTOL_R
+  result = _strtol_r(&buffer, str, &endptr, 10);
+#else
+  result = strtol(str, &endptr, 10);
 #endif
 #endif
+
+  while (isspace(*endptr)) {
+    ++endptr;
+  }
+
+  if (*endptr != '\0') {
+    TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
+  }
+
+  if (errno == ERANGE && (result == INT32_MIN || result == INT32_MAX)) {
+    TRI_set_errno(TRI_ERROR_NUMERIC_OVERFLOW);
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -62,14 +116,7 @@ int32_t TRI_Int32String (char const* str) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int32_t TRI_Int32String2 (char const* str, size_t length) {
-  char tmp[22];
-#ifdef TRI_HAVE_STRTOL_R
-  struct reent buffer;
-#else
-#ifdef TRI_HAVE__STRTOL_R
-  struct reent buffer;
-#endif
-#endif
+  char tmp[1024];
 
   if (str[length] != '\0') {
     if (length >= sizeof(tmp)) {
@@ -81,15 +128,7 @@ int32_t TRI_Int32String2 (char const* str, size_t length) {
     str = tmp;
   }
 
-#ifdef TRI_HAVE_STRTOL_R
-  return strtol_r(&buffer, str, 0, 10);
-#else
-#ifdef TRI_HAVE__STRTOL_R
-  return _strtol_r(&buffer, str, 0, 10);
-#else
-  return strtol(str, 0, 10);
-#endif
-#endif
+  return TRI_Int32String(str);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -97,17 +136,42 @@ int32_t TRI_Int32String2 (char const* str, size_t length) {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint32_t TRI_UInt32String (char const* str) {
+  uint32_t result;
+  char* endptr;
+
 #ifdef TRI_HAVE_STRTOUL_R
   struct reent buffer;
-  return strtoul_r(&buffer, str, 0, 10);
 #else
 #ifdef TRI_HAVE__STRTOUL_R
   struct reent buffer;
-  return _strtoul_r(&buffer, str, 0, 10);
+#endif
+#endif
+
+  TRI_set_errno(TRI_ERROR_NO_ERROR);
+
+#ifdef TRI_HAVE_STRTOUL_R
+  result = strtoul_r(&buffer, str, &endptr, 10);
 #else
-  return strtoul(str, 0, 10);
+#ifdef TRI_HAVE__STRTOUL_R
+  result = _strtoul_r(&buffer, str, &endptr, 10);
+#else
+  result = strtoul(str, &endptr, 10);
 #endif
 #endif
+
+  while (isspace(*endptr)) {
+    ++endptr;
+  }
+
+  if (*endptr != '\0') {
+    TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
+  }
+
+  if (errno == ERANGE && (result == 0 || result == UINT32_MAX)) {
+    TRI_set_errno(TRI_ERROR_NUMERIC_OVERFLOW);
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -115,14 +179,7 @@ uint32_t TRI_UInt32String (char const* str) {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint32_t TRI_UInt32String2 (char const* str, size_t length) {
-  char tmp[22];
-#ifdef TRI_HAVE_STRTOUL_R
-  struct reent buffer;
-#else
-#ifdef TRI_HAVE__STRTOUL_R
-  struct reent buffer;
-#endif
-#endif
+  char tmp[1024];
 
   if (str[length] != '\0') {
     if (length >= sizeof(tmp)) {
@@ -134,15 +191,7 @@ uint32_t TRI_UInt32String2 (char const* str, size_t length) {
     str = tmp;
   }
 
-#ifdef TRI_HAVE_STRTOUL_R
-  return strtoul_r(&buffer, str, 0, 10);
-#else
-#ifdef TRI_HAVE__STRTOUL_R
-  return _strtoul_r(&buffer, str, 0, 10);
-#else
-  return strtoul(str, 0, 10);
-#endif
-#endif
+  return TRI_UInt32String(str);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -150,17 +199,42 @@ uint32_t TRI_UInt32String2 (char const* str, size_t length) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int64_t TRI_Int64String (char const* str) {
+  int64_t result;
+  char* endptr;
+
 #ifdef TRI_HAVE_STRTOLL_R
   struct reent buffer;
-  return strtoll_r(&buffer, str, 0, 10);
 #else
 #ifdef TRI_HAVE__STRTOLL_R
   struct reent buffer;
-  return _strtoll_r(&buffer, str, 0, 10);
+#endif
+#endif
+
+  TRI_set_errno(TRI_ERROR_NO_ERROR);
+
+#ifdef TRI_HAVE_STRTOLL_R
+  result = strtoll_r(&buffer, str, &endptr, 10);
 #else
-  return strtoll(str, 0, 10);
+#ifdef TRI_HAVE__STRTOLL_R
+  result = _strtoll_r(&buffer, str, &endptr, 10);
+#else
+  result = strtoll(str, &endptr, 10);
 #endif
 #endif
+
+  while (isspace(*endptr)) {
+    ++endptr;
+  }
+
+  if (*endptr != '\0') {
+    TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
+  }
+
+  if (errno == ERANGE && (result == INT64_MIN || result == INT64_MAX)) {
+    TRI_set_errno(TRI_ERROR_NUMERIC_OVERFLOW);
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -168,14 +242,7 @@ int64_t TRI_Int64String (char const* str) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int64_t TRI_Int64String2 (char const* str, size_t length) {
-  char tmp[22];
-#ifdef TRI_HAVE_STRTOLL_R
-  struct reent buffer;
-#else
-#ifdef TRI_HAVE__STRTOLL_R
-  struct reent buffer;
-#endif
-#endif
+  char tmp[1024];
 
   if (str[length] != '\0') {
     if (length >= sizeof(tmp)) {
@@ -187,15 +254,7 @@ int64_t TRI_Int64String2 (char const* str, size_t length) {
     str = tmp;
   }
 
-#ifdef TRI_HAVE_STRTOLL_R
-  return strtoll_r(&buffer, str, 0, 10);
-#else
-#ifdef TRI_HAVE__STRTOLL_R
-  return _strtoll_r(&buffer, str, 0, 10);
-#else
-  return strtoll(str, 0, 10);
-#endif
-#endif
+  return TRI_Int64String(str);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -203,17 +262,42 @@ int64_t TRI_Int64String2 (char const* str, size_t length) {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t TRI_UInt64String (char const* str) {
+  uint64_t result;
+  char* endptr;
+
 #ifdef TRI_HAVE_STRTOULL_R
   struct reent buffer;
-  return strtoull_r(&buffer, str, 0, 10);
 #else
 #ifdef TRI_HAVE__STRTOULL_R
   struct reent buffer;
-  return _strtoull_r(&buffer, str, 0, 10);
+#endif
+#endif
+
+  TRI_set_errno(TRI_ERROR_NO_ERROR);
+
+#ifdef TRI_HAVE_STRTOULL_R
+  result = strtoull_r(&buffer, str, &endptr, 10);
 #else
-  return strtoull(str, 0, 10);
+#ifdef TRI_HAVE__STRTOULL_R
+  result = _strtoull_r(&buffer, str, &endptr, 10);
+#else
+  result = strtoull(str, &endptr, 10);
 #endif
 #endif
+
+  while (isspace(*endptr)) {
+    ++endptr;
+  }
+
+  if (*endptr != '\0') {
+    TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
+  }
+
+  if (errno == ERANGE && (result == 0 || result == UINT64_MAX)) {
+    TRI_set_errno(TRI_ERROR_NUMERIC_OVERFLOW);
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -221,14 +305,7 @@ uint64_t TRI_UInt64String (char const* str) {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t TRI_UInt64String2 (char const* str, size_t length) {
-  char tmp[22];
-#ifdef TRI_HAVE_STRTOULL_R
-  struct reent buffer;
-#else
-#ifdef TRI_HAVE__STRTOULL_R
-  struct reent buffer;
-#endif
-#endif
+  char tmp[1024];
 
   if (str[length] != '\0') {
     if (length >= sizeof(tmp)) {
@@ -240,15 +317,7 @@ uint64_t TRI_UInt64String2 (char const* str, size_t length) {
     str = tmp;
   }
 
-#ifdef TRI_HAVE_STRTOULL_R
-  return strtoull_r(&buffer, str, 0, 10);
-#else
-#ifdef TRI_HAVE__STRTOULL_R
-  return _strtoull_r(&buffer, str, 0, 10);
-#else
-  return strtoull(str, 0, 10);
-#endif
-#endif
+  return TRI_UInt64String(str);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -260,7 +329,7 @@ uint64_t TRI_UInt64String2 (char const* str, size_t length) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Conversions Conversion Functions
+/// @addtogroup Conversions
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 

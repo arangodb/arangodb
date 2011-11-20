@@ -37,7 +37,7 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup CollectionsPrivate Collections, List, Queues, Vectors (Private)
+/// @addtogroup Collections
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -105,7 +105,7 @@ static void ResizeAssociativeArray (TRI_associative_array_t* array) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections Collections, List, Queues, Vectors
+/// @addtogroup Collections
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -180,7 +180,7 @@ void TRI_FreeAssociativeArray (TRI_associative_array_t* array) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections Collections, List, Queues, Vectors
+/// @addtogroup Collections
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -483,7 +483,7 @@ bool TRI_RemoveKeyAssociativeArray (TRI_associative_array_t* array, void* key, v
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup CollectionsPrivate Collections, List, Queues, Vectors (Private)
+/// @addtogroup Collections
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -551,7 +551,7 @@ static void ResizeAssociativePointer (TRI_associative_pointer_t* array) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections Collections, List, Queues, Vectors
+/// @addtogroup Collections
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -620,7 +620,7 @@ void TRI_FreeAssociativePointer (TRI_associative_pointer_t* array) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections Collections, List, Queues, Vectors
+/// @addtogroup Collections
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -911,7 +911,7 @@ void* TRI_RemoveKeyAssociativePointer (TRI_associative_pointer_t* array, void co
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup CollectionsPrivate Collections, List, Queues, Vectors (Private)
+/// @addtogroup Collections
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -979,7 +979,7 @@ static void ResizeAssociativeSynced (TRI_associative_synced_t* array) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections Collections, List, Queues, Vectors
+/// @addtogroup Collections
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1051,7 +1051,7 @@ void TRI_FreeAssociativeSynced (TRI_associative_synced_t* array) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections Collections, List, Queues, Vectors
+/// @addtogroup Collections
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 

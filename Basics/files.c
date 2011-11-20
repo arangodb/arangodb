@@ -37,13 +37,14 @@
 
 #include <Basics/logging.h>
 #include <Basics/strings.h>
+#include <Basics/string-buffer.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Files File Utilities
+/// @addtogroup Files
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -367,7 +368,7 @@ bool TRI_fsync (int fd) {
 #ifdef __APPLE__
 
   if (res == 0) {
-    res = = fcntl(fd, F_FULLFSYNC, 0);
+    res = fcntl(fd, F_FULLFSYNC, 0);
   }
 
 #endif
@@ -379,6 +380,51 @@ bool TRI_fsync (int fd) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     return false;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief slurps in a file
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_SlurpFile (char const* filename) {
+  TRI_string_buffer_t result;
+  char buffer[10240];
+  int fd;
+
+  fd = TRI_OPEN(filename, O_RDONLY);
+
+  if (fd == -1) {
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    return NULL;
+  }
+
+  TRI_InitStringBuffer(&result);
+
+  while (true) {
+    ssize_t n;
+
+    n = TRI_READ(fd, buffer, sizeof(buffer));
+
+    if (n == 0) {
+      break;
+    }
+
+    if (n < 0) {
+      TRI_CLOSE(fd);
+
+      TRI_DestroyStringBuffer(&result);
+
+      TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      return NULL;
+    }
+
+
+    TRI_AppendString2StringBuffer(&result, buffer, n);
+  }
+
+  TRI_CLOSE(fd);
+
+  return result._buffer;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

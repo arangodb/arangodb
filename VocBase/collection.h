@@ -81,7 +81,7 @@ extern "C" {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -106,7 +106,7 @@ extern "C" {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -209,7 +209,8 @@ typedef struct TRI_collection_s {
 
   TRI_vector_pointer_t _datafiles;   // all datafiles
   TRI_vector_pointer_t _journals;    // all journals
-  TRI_vector_string_t _indexFiles;   // all index files
+  TRI_vector_pointer_t _compactors;  // all compactor files
+  TRI_vector_string_t _indexFiles;   // all index filenames
 }
 TRI_collection_t;
 
@@ -222,7 +223,7 @@ TRI_collection_t;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -265,7 +266,7 @@ void TRI_FreeCollection (TRI_collection_t*);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -298,7 +299,7 @@ bool TRI_UpdateParameterInfoCollection (TRI_collection_t*);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -306,8 +307,8 @@ bool TRI_UpdateParameterInfoCollection (TRI_collection_t*);
 /// @brief iterates over a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_IterateCollection (TRI_collection_t*,
-                            void (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
+bool TRI_IterateCollection (TRI_collection_t*,
+                            bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
                             void* data);
 
 ////////////////////////////////////////////////////////////////////////////////

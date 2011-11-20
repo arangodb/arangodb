@@ -39,7 +39,7 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -49,23 +49,23 @@
 
 static TRI_voc_did_t CreateLock (TRI_doc_collection_t* document,
                                  TRI_shaped_json_t const* json) {
-  TRI_voc_did_t did;
+  TRI_doc_mptr_t const* result;
 
   document->beginWrite(document);
-  did = document->create(document, json);
+  result = document->create(document, json);
   document->endWrite(document);
 
-  return did;
+  return result == NULL ? 0 : result->_did;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new document in the collection from json
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_voc_did_t CreateJson (TRI_doc_collection_t* collection,
-                                 TRI_json_t const* json) {
+static TRI_doc_mptr_t const* CreateJson (TRI_doc_collection_t* collection,
+                                         TRI_json_t const* json) {
   TRI_shaped_json_t* shaped;
-  TRI_voc_did_t did;
+  TRI_doc_mptr_t const* result;
 
   shaped = TRI_ShapedJsonJson(collection->_shaper, json);
 
@@ -74,11 +74,11 @@ static TRI_voc_did_t CreateJson (TRI_doc_collection_t* collection,
     return false;
   }
 
-  did = collection->create(collection, shaped);
+  result = collection->create(collection, shaped);
 
   TRI_FreeShapedJson(shaped);
 
-  return did;
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -86,26 +86,30 @@ static TRI_voc_did_t CreateJson (TRI_doc_collection_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool UpdateLock (TRI_doc_collection_t* document,
-                              TRI_shaped_json_t const* json,
-                              TRI_voc_did_t did) {
-  bool ok;
+                        TRI_shaped_json_t const* json,
+                        TRI_voc_did_t did,
+                        TRI_voc_rid_t rid,
+                        TRI_doc_update_policy_e policy) {
+  TRI_doc_mptr_t const* result;
 
   document->beginWrite(document);
-  ok = document->update(document, json, did);
+  result = document->update(document, json, did, rid, policy);
   document->endWrite(document);
 
-  return ok;
+  return result != NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a document in the collection from json
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool UpdateJson (TRI_doc_collection_t* collection,
-                        TRI_json_t const* json,
-                        TRI_voc_did_t did) {
+static TRI_doc_mptr_t const* UpdateJson (TRI_doc_collection_t* collection,
+                                         TRI_json_t const* json,
+                                         TRI_voc_did_t did,
+                                         TRI_voc_rid_t rid,
+                                         TRI_doc_update_policy_e policy) {
   TRI_shaped_json_t* shaped;
-  bool ok;
+  TRI_doc_mptr_t const* result;
 
   shaped = TRI_ShapedJsonJson(collection->_shaper, json);
 
@@ -114,11 +118,11 @@ static bool UpdateJson (TRI_doc_collection_t* collection,
     return false;
   }
 
-  ok = collection->update(collection, shaped, did);
+  result = collection->update(collection, shaped, did, rid, policy);
 
   TRI_FreeShapedJson(shaped);
 
-  return ok;
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,11 +130,13 @@ static bool UpdateJson (TRI_doc_collection_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool DeleteLock (TRI_doc_collection_t* document,
-                        TRI_voc_did_t did) {
+                        TRI_voc_did_t did,
+                        TRI_voc_rid_t rid,
+                        TRI_doc_update_policy_e policy) {
   bool ok;
 
   document->beginWrite(document);
-  ok = document->destroy(document, did);
+  ok = document->destroy(document, did, rid, policy);
   document->endWrite(document);
 
   return ok;
@@ -168,6 +174,181 @@ static bool IsEqualKeyElementDatafile (TRI_associative_pointer_t* array, void co
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a journal or a compactor journal
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_datafile_t* CreateJournalDocCollection (TRI_doc_collection_t* collection, bool compactor) {
+  TRI_col_header_marker_t cm;
+  TRI_datafile_t* journal;
+  TRI_df_marker_t* position;
+  bool ok;
+  char* filename;
+  char* jname;
+  char* number;
+
+  // construct a suitable filename
+  number = TRI_StringUInt32(TRI_NewTickVocBase());
+
+  if (compactor) {
+    jname = TRI_Concatenate3String("journal-", number, ".db");
+  }
+  else {
+    jname = TRI_Concatenate3String("compactor-", number, ".db");
+  }
+
+  filename = TRI_Concatenate2File(collection->base._directory, jname);
+  TRI_FreeString(number);
+  TRI_FreeString(jname);
+
+  // create journal file
+  journal = TRI_CreateDatafile(filename, collection->base._maximalSize);
+
+  if (journal == NULL) {
+    collection->base._lastError = TRI_set_errno(TRI_VOC_ERROR_NO_JOURNAL);
+    collection->base._state = TRI_COL_STATE_WRITE_ERROR;
+
+    LOG_ERROR("cannot create new journal in '%s'", filename);
+
+    TRI_FreeString(filename);
+    return NULL;
+  }
+
+  TRI_FreeString(filename);
+  LOG_TRACE("created a new journal '%s'", journal->_filename);
+
+  // and use the correct name
+  number = TRI_StringUInt32(journal->_fid);
+
+  if (compactor) {
+    jname = TRI_Concatenate3String("compactor-", number, ".db");
+  }
+  else {
+    jname = TRI_Concatenate3String("journal-", number, ".db");
+  }
+
+  filename = TRI_Concatenate2File(collection->base._directory, jname);
+  TRI_FreeString(number);
+  TRI_FreeString(jname);
+
+  ok = TRI_RenameDatafile(journal, filename);
+
+  if (! ok) {
+    LOG_WARNING("failed to rename the journal to '%s': %s", filename, TRI_last_error());
+  }
+  else {
+    LOG_TRACE("renamed journal to '%s'", filename);
+  }
+
+  TRI_FreeString(filename);
+
+  // create a collection header
+  ok = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position);
+
+  if (! ok) {
+    collection->base._lastError = journal->_lastError;
+    TRI_FreeDatafile(journal);
+
+    LOG_ERROR("cannot create document header in journal '%s': %s", filename, TRI_last_error());
+
+    return NULL;
+  }
+
+  memset(&cm, 0, sizeof(cm));
+
+  cm.base._size = sizeof(TRI_col_header_marker_t);
+  cm.base._type = TRI_COL_MARKER_HEADER;
+  cm.base._tick = TRI_NewTickVocBase();
+
+  cm._cid = collection->base._cid;
+
+  TRI_FillCrcMarkerDatafile(&cm.base, sizeof(cm), 0, 0);
+  ok = TRI_WriteElementDatafile(journal, position, &cm.base, sizeof(cm), 0, 0, true);
+
+  if (! ok) {
+    collection->base._lastError = journal->_lastError;
+    TRI_FreeDatafile(journal);
+
+    LOG_ERROR("cannot create document header in journal '%s': %s", filename, TRI_last_error());
+
+    return NULL;
+  }
+
+  // that's it
+  if (compactor) {
+    TRI_PushBackVectorPointer(&collection->base._compactors, journal);
+  }
+  else {
+    TRI_PushBackVectorPointer(&collection->base._journals, journal);
+  }
+
+  return journal;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief closes a journal
+///
+/// Note that the caller must hold a lock protecting the _datafiles and
+/// _journals entry.
+////////////////////////////////////////////////////////////////////////////////
+
+bool CloseJournalDocCollection (TRI_doc_collection_t* collection,
+                                size_t position,
+                                bool compactor) {
+  TRI_datafile_t* journal;
+  TRI_vector_pointer_t* vector;
+  bool ok;
+  char* dname;
+  char* filename;
+  char* number;
+
+  if (compactor) {
+    vector = &collection->base._journals;
+  }
+  else {
+    vector = &collection->base._journals;
+  }
+
+  // no journal at this position
+  if (TRI_SizeVectorPointer(vector) <= position) {
+    TRI_set_errno(TRI_VOC_ERROR_NO_JOURNAL);
+    return false;
+  }
+
+  // seal and rename datafile
+  journal = TRI_AtVectorPointer(vector, position);
+  ok = TRI_SealDatafile(journal);
+
+  if (! ok) {
+    TRI_RemoveVectorPointer(vector, position);
+    TRI_PushBackVectorPointer(&collection->base._datafiles, journal);
+
+    return false;
+  }
+
+  number = TRI_StringUInt32(journal->_fid);
+  dname = TRI_Concatenate3String("datafile-", number, ".db");
+  filename = TRI_Concatenate2File(collection->base._directory, dname);
+  TRI_FreeString(dname);
+  TRI_FreeString(number);
+
+  ok = TRI_RenameDatafile(journal, filename);
+
+  if (! ok) {
+    TRI_RemoveVectorPointer(vector, position);
+    TRI_PushBackVectorPointer(&collection->base._datafiles, journal);
+
+    return false;
+  }
+
+  LOG_TRACE("closed journal '%s'", journal->_filename);
+
+  TRI_RemoveVectorPointer(vector, position);
+  TRI_PushBackVectorPointer(&collection->base._datafiles, journal);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -176,7 +357,7 @@ static bool IsEqualKeyElementDatafile (TRI_associative_pointer_t* array, void co
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -229,7 +410,7 @@ void TRI_DestroyDocCollection (TRI_doc_collection_t* collection) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -238,7 +419,7 @@ void TRI_DestroyDocCollection (TRI_doc_collection_t* collection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_doc_datafile_info_t* TRI_FindDatafileInfoDocCollection (TRI_doc_collection_t* collection,
-                                                            TRI_voc_tick_t fid) {
+                                                            TRI_voc_fid_t fid) {
   TRI_doc_datafile_info_t const* found;
   TRI_doc_datafile_info_t* dfi;
 
@@ -262,144 +443,46 @@ TRI_doc_datafile_info_t* TRI_FindDatafileInfoDocCollection (TRI_doc_collection_t
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a journal
+///
+/// Note that the caller must hold a lock protecting the _journals entry.
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_datafile_t* TRI_CreateJournalDocCollection (TRI_doc_collection_t* collection) {
-  TRI_col_header_marker_t cm;
-  TRI_datafile_t* journal;
-  TRI_df_marker_t* position;
-  bool ok;
-  char* filename;
-  char* jname;
-  char* number;
-
-  number = TRI_StringUInt32(TRI_NewTickVocBase());
-  jname = TRI_Concatenate3String("journal-", number, ".db");
-  filename = TRI_Concatenate2File(collection->base._directory, jname);
-  TRI_FreeString(number);
-  TRI_FreeString(jname);
-
-  journal = TRI_CreateDatafile(filename, collection->base._maximalSize);
-
-  if (journal == NULL) {
-    collection->base._lastError = TRI_set_errno(TRI_VOC_ERROR_NO_JOURNAL);
-    collection->base._state = TRI_COL_STATE_WRITE_ERROR;
-
-    LOG_ERROR("cannot create new journal in '%s'", filename);
-
-    TRI_FreeString(filename);
-    return NULL;
-  }
-
-  TRI_FreeString(filename);
-  LOG_TRACE("created a new journal '%s'", journal->_filename);
-
-  // and use the correct name
-  number = TRI_StringUInt32(journal->_fid);
-  jname = TRI_Concatenate3String("journal-", number, ".db");
-  filename = TRI_Concatenate2File(collection->base._directory, jname);
-  TRI_FreeString(number);
-  TRI_FreeString(jname);
-
-  ok = TRI_RenameDatafile(journal, filename);
-
-  if (! ok) {
-    LOG_WARNING("failed to rename the journal to '%s': %s", filename, TRI_last_error());
-  }
-  else {
-    LOG_TRACE("renamed journal to '%s'", filename);
-  }
-
-  TRI_FreeString(filename);
-
-  // create a collection header
-  ok = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position);
-
-  if (! ok) {
-    collection->base._lastError = journal->_lastError;
-    TRI_FreeDatafile(journal);
-
-    LOG_ERROR("cannot create document header in journal '%s': %s", filename, TRI_last_error());
-
-    return NULL;
-  }
-
-  memset(&cm, 0, sizeof(cm));
-
-  cm.base._size = sizeof(TRI_col_header_marker_t);
-  cm.base._type = TRI_COL_MARKER_HEADER;
-  cm.base._tick = TRI_NewTickVocBase();
-
-  cm._cid = collection->base._cid;
-
-  TRI_FillCrcMarkerDatafile(&cm.base, sizeof(cm), 0, 0);
-  ok = TRI_WriteElementDatafile(journal, position, &cm.base, sizeof(cm), 0, 0, true);
-
-  if (! ok) {
-    collection->base._lastError = journal->_lastError;
-    TRI_FreeDatafile(journal);
-
-    LOG_ERROR("cannot create document header in journal '%s': %s", filename, TRI_last_error());
-
-    return NULL;
-  }
-
-  // that's it
-  TRI_PushBackVectorPointer(&collection->base._journals, journal);
-
-  return journal;
+  return CreateJournalDocCollection(collection, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes a journal
+///
+/// Note that the caller must hold a lock protecting the _datafiles and
+/// _journals entry.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_CloseJournalDocCollection (TRI_doc_collection_t* collection,
                                     size_t position) {
-  TRI_datafile_t* journal;
-  bool ok;
-  char* dname;
-  char* filename;
-  char* number;
+  return CloseJournalDocCollection(collection, position, false);
+}
 
-  // no journal at this position
-  if (TRI_SizeVectorPointer(&collection->base._journals) <= position) {
-    TRI_set_errno(TRI_VOC_ERROR_NO_JOURNAL);
-    return false;
-  }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new compactor file
+///
+/// Note that the caller must hold a lock protecting the _journals entry.
+////////////////////////////////////////////////////////////////////////////////
 
-  // seal and rename datafile
-  journal = TRI_AtVectorPointer(&collection->base._journals, position);
-  ok = TRI_SealDatafile(journal);
+TRI_datafile_t* TRI_CreateCompactorDocCollection (TRI_doc_collection_t* collection) {
+  return CreateJournalDocCollection(collection, true);
+}
 
-  if (! ok) {
-    TRI_RemoveVectorPointer(&collection->base._journals, position);
-    TRI_PushBackVectorPointer(&collection->base._datafiles, journal);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief closes an existing compactor file
+///
+/// Note that the caller must hold a lock protecting the _datafiles and
+/// _journals entry.
+////////////////////////////////////////////////////////////////////////////////
 
-    return false;
-  }
-
-  number = TRI_StringUInt32(journal->_fid);
-  dname = TRI_Concatenate3String("datafile-", number, ".db");
-  filename = TRI_Concatenate2File(collection->base._directory, dname);
-  TRI_FreeString(dname);
-  TRI_FreeString(number);
-
-  ok = TRI_RenameDatafile(journal, filename);
-
-  if (! ok) {
-    TRI_RemoveVectorPointer(&collection->base._journals, position);
-    TRI_PushBackVectorPointer(&collection->base._datafiles, journal);
-
-    return false;
-  }
-
-  LOG_TRACE("closed journal '%s'", journal->_filename);
-
-  TRI_RemoveVectorPointer(&collection->base._journals, position);
-  TRI_PushBackVectorPointer(&collection->base._datafiles, journal);
-
-  return true;
+bool TRI_CloseCompactorDocCollection (TRI_doc_collection_t* collection,
+                                      size_t position) {
+  return CloseJournalDocCollection(collection, position, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

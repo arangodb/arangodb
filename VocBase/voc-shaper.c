@@ -39,7 +39,7 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -58,7 +58,7 @@ static TRI_voc_size_t const SHAPER_DATAFILE_SIZE = (2 * 1024 * 1204);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -93,7 +93,7 @@ voc_shaper_t;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -381,7 +381,7 @@ static TRI_shape_t const* LookupShapeId (TRI_shaper_t* shaper, TRI_shape_sid_t s
 /// @brief iterator for open
 ////////////////////////////////////////////////////////////////////////////////
 
-static void OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafile_t* datafile, bool journal) {
+static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafile_t* datafile, bool journal) {
   voc_shaper_t* shaper = data;
   void* f;
 
@@ -420,6 +420,8 @@ static void OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
   else {
     LOG_TRACE("skipping marker %lu", (unsigned long) marker->_type);
   }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -473,7 +475,7 @@ static void InitVocShaper (voc_shaper_t* shaper, TRI_blob_collection_t* collecti
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 

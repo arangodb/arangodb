@@ -74,15 +74,15 @@ static bool EqualKeyDocument (TRI_associative_pointer_t* array, void const* key,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects a journal, possibly waits until a journal appears
 ///
-/// Note that the function is called while holding a write-lock. We have to
-/// release this lock, in order to allow the gc to start.
+/// Note that the function grabs a lock. We have to release this lock, in order
+/// to allow the gc to start when waiting for a journal to appear.
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_datafile_t* SelectJournal (TRI_sim_collection_t* collection,
@@ -237,7 +237,7 @@ static bool WriteElement (TRI_sim_collection_t* collection,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -245,12 +245,11 @@ static bool WriteElement (TRI_sim_collection_t* collection,
 /// @brief creates a new document splitted into marker and body to file
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CreateDocument (TRI_sim_collection_t* collection,
-                            TRI_doc_document_marker_t* marker,
-                            void const* body,
-                            TRI_voc_size_t bodySize,
-                            TRI_df_marker_t** result,
-                            TRI_voc_did_t* did) {
+static TRI_doc_mptr_t* CreateDocument (TRI_sim_collection_t* collection,
+                                       TRI_doc_document_marker_t* marker,
+                                       void const* body,
+                                       TRI_voc_size_t bodySize,
+                                       TRI_df_marker_t** result) {
   TRI_datafile_t* journal;
   TRI_doc_mptr_t* header;
   TRI_voc_size_t total;
@@ -261,7 +260,7 @@ static bool CreateDocument (TRI_sim_collection_t* collection,
   header = collection->_headers->request(collection->_headers);
 
   // generate a new tick
-  *did = marker->_rid = marker->_did = marker->base._tick = TRI_NewTickVocBase();
+  marker->_rid = marker->_did = marker->base._tick = TRI_NewTickVocBase();
 
   // find and select a journal
   total = sizeof(TRI_doc_document_marker_t) + bodySize;
@@ -269,7 +268,7 @@ static bool CreateDocument (TRI_sim_collection_t* collection,
 
   if (journal == NULL) {
     collection->base.base._lastError = TRI_set_errno(TRI_VOC_ERROR_NO_JOURNAL);
-    return false;
+    return NULL;
   }
 
   // verify the header pointer
@@ -303,24 +302,27 @@ static bool CreateDocument (TRI_sim_collection_t* collection,
 
     // wait for sync
     WaitSync(collection, journal, ((char const*) *result) + sizeof(TRI_doc_document_marker_t) + bodySize);
+
+    // and return
+    return header;
   }
   else {
     LOG_ERROR("cannot write element: %s", TRI_last_error());
+    return NULL;
   }
-
-  // return any error encountered
-  return ok;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates an existing document splitted into marker and body to file
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool UpdateDocument (TRI_sim_collection_t* collection,
-                            TRI_doc_document_marker_t* marker,
-                            void const* body,
-                            TRI_voc_size_t bodySize,
-                            TRI_df_marker_t** result) {
+static TRI_doc_mptr_t const* UpdateDocument (TRI_sim_collection_t* collection,
+                                             TRI_doc_document_marker_t* marker,
+                                             void const* body,
+                                             TRI_voc_size_t bodySize,
+                                             TRI_voc_rid_t rid,
+                                             TRI_doc_update_policy_e policy,
+                                             TRI_df_marker_t** result) {
   TRI_datafile_t* journal;
   TRI_doc_mptr_t const* header;
   TRI_voc_size_t total;
@@ -331,7 +333,31 @@ static bool UpdateDocument (TRI_sim_collection_t* collection,
 
   if (header == NULL || header->_deletion != 0) {
     TRI_set_errno(TRI_VOC_ERROR_DOCUMENT_NOT_FOUND);
-    return false;
+    return NULL;
+  }
+
+  // check the revision
+  switch (policy) {
+    case TRI_DOC_UPDATE_ERROR:
+      if (rid != 0) {
+        if (rid != header->_rid) {
+          TRI_set_errno(TRI_VOC_ERROR_CONFLICT);
+          return NULL;
+        }
+      }
+
+      break;
+
+    case TRI_DOC_UPDATE_LAST_WRITE:
+      break;
+
+    case TRI_DOC_UPDATE_CONFLICT:
+      TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_PARAMETER);
+      return NULL;
+
+    case TRI_DOC_UPDATE_ILLEGAL:
+      TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_PARAMETER);
+      return NULL;
   }
 
   // generate a new tick
@@ -343,7 +369,7 @@ static bool UpdateDocument (TRI_sim_collection_t* collection,
 
   if (journal == NULL) {
     collection->base.base._lastError = TRI_set_errno(TRI_VOC_ERROR_NO_JOURNAL);
-    return false;
+    return NULL;
   }
 
   // generate crc
@@ -385,13 +411,14 @@ static bool UpdateDocument (TRI_sim_collection_t* collection,
 
     // wait for sync
     WaitSync(collection, journal, ((char const*) *result) + sizeof(TRI_doc_document_marker_t) + bodySize);
+
+    // and return
+    return header;
   }
   else {
     LOG_ERROR("cannot write element");
+    return NULL;
   }
-
-  // return any error encountered
-  return ok;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -399,7 +426,9 @@ static bool UpdateDocument (TRI_sim_collection_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool DeleteDocument (TRI_sim_collection_t* collection,
-                            TRI_doc_deletion_marker_t* marker) {
+                            TRI_doc_deletion_marker_t* marker,
+                            TRI_voc_rid_t rid,
+                            TRI_doc_update_policy_e policy) {
   TRI_datafile_t* journal;
   TRI_df_marker_t* result;
   TRI_doc_mptr_t const* header;
@@ -412,6 +441,30 @@ static bool DeleteDocument (TRI_sim_collection_t* collection,
   if (header == NULL || header->_deletion != 0) {
     TRI_set_errno(TRI_VOC_ERROR_DOCUMENT_NOT_FOUND);
     return false;
+  }
+
+  // check the revision
+  switch (policy) {
+    case TRI_DOC_UPDATE_ERROR:
+      if (rid != 0) {
+        if (rid != header->_rid) {
+          TRI_set_errno(TRI_VOC_ERROR_CONFLICT);
+          return NULL;
+        }
+      }
+
+      break;
+
+    case TRI_DOC_UPDATE_LAST_WRITE:
+      break;
+
+    case TRI_DOC_UPDATE_CONFLICT:
+      TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_PARAMETER);
+      return NULL;
+
+    case TRI_DOC_UPDATE_ILLEGAL:
+      TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_PARAMETER);
+      return NULL;
   }
 
   // generate a new tick
@@ -475,21 +528,107 @@ static bool DeleteDocument (TRI_sim_collection_t* collection,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief debug output for datafile information
+////////////////////////////////////////////////////////////////////////////////
+
+static void DebugDatafileInfoDatafile (TRI_doc_collection_t* collection,
+                                       TRI_datafile_t* datafile) {
+  TRI_doc_datafile_info_t* dfi;
+
+  dfi = TRI_FindDatafileInfoDocCollection(collection, datafile->_fid);
+
+  printf("DATAFILE '%s'\n", datafile->_filename);
+
+  if (dfi == NULL) {
+    printf(" no info\n\n");
+    return;
+  }
+
+  printf("  number alive: %ld\n", (long) dfi->_numberAlive);
+  printf("  size alive:   %ld\n", (long) dfi->_sizeAlive);
+  printf("  number dead:  %ld\n", (long) dfi->_numberDead);
+  printf("  size dead:    %ld\n", (long) dfi->_sizeDead);
+  printf("  deletion:     %ld\n\n", ( long) dfi->_numberDeletion);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief debug output for datafile information
+////////////////////////////////////////////////////////////////////////////////
+
+static void DebugDatafileInfoDocCollection (TRI_doc_collection_t* collection) {
+  TRI_datafile_t* datafile;
+  size_t n;
+  size_t i;
+
+  // journals
+  n = TRI_SizeVectorPointer(&collection->base._journals);
+
+  for (i = 0;  i < n;  ++i) {
+    datafile = TRI_AtVectorPointer(&collection->base._journals, i);
+    DebugDatafileInfoDatafile(collection, datafile);
+  }
+
+  // compactor journals
+  n = TRI_SizeVectorPointer(&collection->base._compactors);
+
+  for (i = 0;  i < n;  ++i) {
+    datafile = TRI_AtVectorPointer(&collection->base._compactors, i);
+    DebugDatafileInfoDatafile(collection, datafile);
+  }
+
+  // datafiles
+  n = TRI_SizeVectorPointer(&collection->base._datafiles);
+
+  for (i = 0;  i < n;  ++i) {
+    datafile = TRI_AtVectorPointer(&collection->base._datafiles, i);
+    DebugDatafileInfoDatafile(collection, datafile);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief debug output for datafile information
+////////////////////////////////////////////////////////////////////////////////
+
+static void DebugHeaderSimCollection (TRI_sim_collection_t* collection) {
+  size_t n;
+  void** end;
+  void** ptr;
+
+  // update index
+  n = collection->_primaryIndex._nrUsed;
+  ptr = collection->_primaryIndex._table;
+  end = collection->_primaryIndex._table + collection->_primaryIndex._nrAlloc;
+
+  for (;  ptr < end;  ++ptr) {
+    if (*ptr) {
+      TRI_doc_mptr_t* d;
+
+      d = *ptr;
+
+      printf("fid %lu, did %lu, rid %lu, eid %lu, del %lu\n",
+             (unsigned long) d->_fid,
+             (unsigned long) d->_did,
+             (unsigned long) d->_rid,
+             (unsigned long) d->_eid,
+             (unsigned long) d->_deletion);
+    }
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new document in the collection from shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_voc_did_t CreateShapedJson (TRI_doc_collection_t* document,
-                                       TRI_shaped_json_t const* json) {
+static TRI_doc_mptr_t const* CreateShapedJson (TRI_doc_collection_t* document,
+                                               TRI_shaped_json_t const* json) {
   TRI_df_marker_t* result;
   TRI_doc_document_marker_t marker;
   TRI_sim_collection_t* collection;
-  TRI_voc_did_t did;
-  bool ok;
 
   collection = (TRI_sim_collection_t*) document;
   memset(&marker, 0, sizeof(marker));
@@ -500,12 +639,10 @@ static TRI_voc_did_t CreateShapedJson (TRI_doc_collection_t* document,
   marker._sid = 0;
   marker._shape = json->_sid;
 
-  ok = CreateDocument(collection, &marker,
-                      json->_data.data, json->_data.length,
-                      &result,
-                      &did);
-
-  return ok ? did : 0;
+  return CreateDocument(collection,
+                        &marker,
+                        json->_data.data, json->_data.length,
+                        &result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -533,9 +670,11 @@ static TRI_doc_mptr_t const* ReadShapedJson (TRI_doc_collection_t* document,
 /// @brief updates a document in the collection from shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool UpdateShapedJson (TRI_doc_collection_t* document,
-                              TRI_shaped_json_t const* json,
-                              TRI_voc_did_t did) {
+static TRI_doc_mptr_t const* UpdateShapedJson (TRI_doc_collection_t* document,
+                                               TRI_shaped_json_t const* json,
+                                               TRI_voc_did_t did,
+                                               TRI_voc_rid_t rid,
+                                               TRI_doc_update_policy_e policy) {
   TRI_sim_collection_t* collection;
   TRI_doc_document_marker_t marker;
   TRI_df_marker_t* result;
@@ -551,8 +690,11 @@ static bool UpdateShapedJson (TRI_doc_collection_t* document,
   marker._sid = 0;
   marker._shape = json->_sid;
 
-  return UpdateDocument(collection, &marker,
+  return UpdateDocument(collection,
+                        &marker,
                         json->_data.data, json->_data.length,
+                        rid,
+                        policy,
                         &result);
 }
 
@@ -561,7 +703,9 @@ static bool UpdateShapedJson (TRI_doc_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool DeleteShapedJson (TRI_doc_collection_t* document,
-                              TRI_voc_did_t did) {
+                              TRI_voc_did_t did,
+                              TRI_voc_rid_t rid,
+                              TRI_doc_update_policy_e policy) {
   TRI_sim_collection_t* collection;
   TRI_doc_deletion_marker_t marker;
 
@@ -575,7 +719,7 @@ static bool DeleteShapedJson (TRI_doc_collection_t* document,
   marker._did = did;
   marker._sid = 0;
 
-  return DeleteDocument(collection, &marker);
+  return DeleteDocument(collection, &marker, rid, policy);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -643,7 +787,7 @@ static bool EndWrite (TRI_doc_collection_t* document) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -651,7 +795,7 @@ static bool EndWrite (TRI_doc_collection_t* document) {
 /// @brief iterator for open
 ////////////////////////////////////////////////////////////////////////////////
 
-static void OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafile_t* datafile, bool journal) {
+static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafile_t* datafile, bool journal) {
   TRI_sim_collection_t* collection = data;
   TRI_doc_mptr_t const* found;
   TRI_doc_datafile_info_t* dfi;
@@ -660,7 +804,8 @@ static void OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
   if (marker->_type == TRI_DOC_MARKER_DOCUMENT) {
     TRI_doc_document_marker_t const* d = (TRI_doc_document_marker_t const*) marker;
 
-    LOG_TRACE("document did %lu, rid %lu",
+    LOG_TRACE("document: fid %lu, did %lu, rid %lu",
+              (unsigned long) datafile->_fid,
               (unsigned long) d->_did,
               (unsigned long) d->_rid);
 
@@ -692,8 +837,13 @@ static void OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       CreateImmediateIndexes(collection, header);
     }
 
+    // it is an delete
+    else if (found->_deletion != 0) {
+      LOG_TRACE("skipping already deleted document: %lu", (unsigned long) d->_did);
+    }
+
     // it is an update, but only if found has a smaller revision identifier
-    else if (found->_rid < d->_rid) {
+    else if (found->_rid < d->_rid || (found->_rid == d->_rid && found->_fid <= datafile->_fid)) {
       TRI_doc_mptr_t update;
 
       update = *found;
@@ -731,12 +881,15 @@ static void OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       dfi->_sizeDead += found->_document._data.length;
     }
   }
+
+  // deletion
   else if (marker->_type == TRI_DOC_MARKER_DELETION) {
     TRI_doc_deletion_marker_t const* d;
 
     d = (TRI_doc_deletion_marker_t const*) marker;
 
-    LOG_TRACE("deletion did %lu, rid %lu, deletion %lu",
+    LOG_TRACE("deletion: fid %lu, did %lu, rid %lu, deletion %lu",
+              (unsigned long) datafile->_fid,
               (unsigned long) d->_did,
               (unsigned long) d->_rid,
               (unsigned long) marker->_tick);
@@ -759,25 +912,45 @@ static void OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
       // update immediate indexes
       CreateImmediateIndexes(collection, header);
+
+      // update the datafile info
+      dfi = TRI_FindDatafileInfoDocCollection(&collection->base, datafile->_fid);
+
+      dfi->_numberDeletion += 1;
     }
 
-    // it is a delete
-    else {
+    // it is a real delete
+    else if (found->_deletion == 0) {
       union { TRI_doc_mptr_t const* c; TRI_doc_mptr_t* v; } change;
 
       // mark element as deleted
       change.c = found;
       change.v->_deletion = marker->_tick;
+
+      // update the datafile info
+      dfi = TRI_FindDatafileInfoDocCollection(&collection->base, found->_fid);
+
+      dfi->_numberAlive -= 1;
+      dfi->_sizeAlive -= found->_document._data.length;
+
+      dfi->_numberDead += 1;
+      dfi->_sizeDead += found->_document._data.length;
+
+      dfi = TRI_FindDatafileInfoDocCollection(&collection->base, datafile->_fid);
+
+      dfi->_numberDeletion += 1;
     }
 
-    // update the datafile info
-    dfi = TRI_FindDatafileInfoDocCollection(&collection->base, datafile->_fid);
-
-    dfi->_numberDeletion += 1;
+    // it is a double delete
+    else {
+      LOG_TRACE("skipping deletion of already deleted document: %lu", (unsigned long) d->_did);
+    }
   }
   else {
     LOG_TRACE("skipping marker %lu", (unsigned long) marker->_type);
   }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -903,7 +1076,7 @@ static void InitSimCollection (TRI_sim_collection_t* collection,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1006,7 +1179,7 @@ void TRI_FreeSimCollection (TRI_sim_collection_t* collection) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1069,6 +1242,12 @@ TRI_sim_collection_t* TRI_OpenSimCollection (char const* path) {
   TRI_IterateCollection(collection, OpenIterator, collection);
   TRI_IterateIndexCollection(collection, OpenIndex, collection);
 
+  // output infomations about datafiles and journals
+  if (TRI_IsTraceLogging()) {
+    DebugDatafileInfoDocCollection(&doc->base);
+    DebugHeaderSimCollection(doc);
+  }
+
   return doc;
 }
 
@@ -1109,7 +1288,7 @@ bool TRI_CloseSimCollection (TRI_sim_collection_t* collection) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1185,6 +1364,7 @@ static bool UpdateImmediateIndexes (TRI_sim_collection_t* collection,
 
   change.v->_rid = update->_rid;
   change.v->_eid = update->_eid;
+  change.v->_fid = update->_fid;
   change.v->_deletion = update->_deletion;
 
   change.v->_data = update->_data;
@@ -1298,7 +1478,7 @@ static void FillIndex (TRI_sim_collection_t* collection,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1404,7 +1584,7 @@ bool TRI_DropIndexSimCollection (TRI_sim_collection_t* collection, TRI_idx_iid_t
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1452,7 +1632,7 @@ static bool EqualKeyDocument (TRI_associative_pointer_t* array, void const* key,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1558,7 +1738,7 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -27,7 +27,6 @@
 
 #include "v8-vocbase.h"
 
-#define TRI_WITHIN_C
 #include <Basics/conversions.h>
 #include <Basics/csv.h>
 #include <Basics/logging.h>
@@ -39,13 +38,8 @@
 
 #include "ShapedJson/shaped-json.h"
 
-#include "V8/v8-shell.h"
-#undef TRI_WITHIN_C
-
-#include <regex.h>
-
-#include <map>
-#include <string>
+#include "V8/v8-globals.h"
+#include "V8/v8-utils.h"
 
 using namespace std;
 
@@ -60,7 +54,7 @@ static bool OptimiseQuery (v8::Handle<v8::Object> queryObject);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -68,207 +62,25 @@ static bool OptimiseQuery (v8::Handle<v8::Object> queryObject);
 /// @brief slot for a "C++ class"
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SLOT_CLASS = 0;
+static int const SLOT_CLASS = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief slot for a "query"
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SLOT_QUERY = 1;
+static int const SLOT_QUERY = 1;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief slot for a "result set"
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SLOT_RESULT_SET = 2;
+static int const SLOT_RESULT_SET = 2;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief end marker
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SLOT_END = 3;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief query mapping for weak pointers
-////////////////////////////////////////////////////////////////////////////////
-
-static map< TRI_query_t*, v8::Persistent<v8::Value> > JSQueries;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief result set mapping for weak pointers
-////////////////////////////////////////////////////////////////////////////////
-
-static map< TRI_result_set_t*, v8::Persistent<v8::Value> > JSResultSets;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                       JAVASCRIPT OBJECT TEMPLATES
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief query class template
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Persistent<v8::ObjectTemplate> QueryTempl;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief TRI_vocbase_col_t template
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Persistent<v8::ObjectTemplate> VocbaseColTempl;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief TRI_vocbase_t class template
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Persistent<v8::ObjectTemplate> VocbaseTempl;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                         JAVASCRIPT FUNCTION NAMES
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief "output" function name
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Persistent<v8::String> OutputFuncName;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief "printQuery" function name
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Persistent<v8::String> PrintQueryFuncName;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief "toString" function name
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Persistent<v8::String> ToStringFuncName;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              JAVASCRIPT KEY NAMES
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief "journalSize" key name
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Persistent<v8::String> JournalSizeKey;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief "syncAfterBytes" key name
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Persistent<v8::String> SyncAfterBytesKey;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief "syncAfterObjects" key name
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Persistent<v8::String> SyncAfterObjectsKey;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief "syncAfterTime" key name
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Persistent<v8::String> SyncAfterTimeKey;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               SPECIAL QUERY TYPES
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief "collection" query type
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Persistent<v8::String> CollectionQueryType;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               REGULAR EXPRESSIONS
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief document identifier as collection-id:document-id
-////////////////////////////////////////////////////////////////////////////////
-
-static regex_t DocumentIdRegex;
+static int const SLOT_END = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -283,7 +95,7 @@ static regex_t DocumentIdRegex;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -292,8 +104,7 @@ static regex_t DocumentIdRegex;
 ////////////////////////////////////////////////////////////////////////////////
 
 template<class T>
-static v8::Handle<v8::Object> WrapClass (v8::Persistent<v8::ObjectTemplate> classTempl,
-                                         T* y) {
+static v8::Handle<v8::Object> WrapClass (v8::Persistent<v8::ObjectTemplate> classTempl, T* y) {
 
   // handle scope for temporary handles
   v8::HandleScope scope;
@@ -326,6 +137,10 @@ static T* UnwrapClass (v8::Handle<v8::Object> obj) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool IsDocumentId (v8::Handle<v8::Value> arg, TRI_voc_cid_t& cid, TRI_voc_did_t& did) {
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
   if (arg->IsNumber()) {
     cid = 0;
     did = arg->ToNumber()->Value();
@@ -345,7 +160,7 @@ static bool IsDocumentId (v8::Handle<v8::Value> arg, TRI_voc_cid_t& cid, TRI_voc
 
   regmatch_t matches[3];
 
-  if (regexec(&DocumentIdRegex, s, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
+  if (regexec(&v8g->DocumentIdRegex, s, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
     cid = TRI_UInt64String2(s + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
     did = TRI_UInt64String2(s + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
     return true;
@@ -392,7 +207,7 @@ static TRI_vocbase_col_t const* LoadCollection (v8::Handle<v8::Object> collectio
       return 0;
     }
 
-    LOG_INFO("collection created");
+    LOG_DEBUG("collection created");
   }
   else {
     LOG_INFO("loading collection: '%s'", col->_name);
@@ -424,7 +239,7 @@ static TRI_vocbase_col_t const* LoadCollection (v8::Handle<v8::Object> collectio
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -433,15 +248,18 @@ static TRI_vocbase_col_t const* LoadCollection (v8::Handle<v8::Object> collectio
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_PrintUsingToString (v8::Arguments const& argv) {
+  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
 
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
   v8::Handle<v8::Object> self = argv.Holder();
-  v8::Handle<v8::Function> toString = v8::Handle<v8::Function>::Cast(self->Get(ToStringFuncName));
+  v8::Handle<v8::Function> toString = v8::Handle<v8::Function>::Cast(self->Get(v8g->ToStringFuncName));
 
   v8::Handle<v8::Value> args1[] = { self };
   v8::Handle<v8::Value> str = toString->Call(self, 1, args1);
 
-  v8::Handle<v8::Function> output = v8::Handle<v8::Function>::Cast(self->CreationContext()->Global()->Get(OutputFuncName));
+  v8::Handle<v8::Function> output = v8::Handle<v8::Function>::Cast(self->CreationContext()->Global()->Get(v8g->OutputFuncName));
 
   v8::Handle<v8::Value> args2[] = { str, v8::String::New("\n") };
   output->Call(output, 2, args2);
@@ -462,7 +280,7 @@ static v8::Handle<v8::Value> JS_PrintUsingToString (v8::Arguments const& argv) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -471,13 +289,17 @@ static v8::Handle<v8::Value> JS_PrintUsingToString (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void WeakResultSetCallback (v8::Persistent<v8::Value> object, void* parameter) {
-  TRI_result_set_t* rs = (TRI_result_set_t*) parameter;
+  TRI_result_set_t* rs;
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  rs = (TRI_result_set_t*) parameter;
 
   LOG_TRACE("weak-callback for result-set called");
 
   // find the persistent handle
-  v8::Persistent<v8::Value> persistent = JSResultSets[rs];
-  JSResultSets.erase(rs);
+  v8::Persistent<v8::Value> persistent = v8g->JSResultSets[rs];
+  v8g->JSResultSets.erase(rs);
 
   // dispose and clear the persistent handle
   persistent.Dispose();
@@ -493,12 +315,16 @@ static void WeakResultSetCallback (v8::Persistent<v8::Value> object, void* param
 
 static void StoreResultSet (v8::Handle<v8::Object> rsObject,
                             TRI_result_set_t* rs) {
-  if (JSResultSets.find(rs) == JSResultSets.end()) {
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  if (v8g->JSResultSets.find(rs) == v8g->JSResultSets.end()) {
     v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(rs));
 
     rsObject->SetInternalField(SLOT_RESULT_SET, persistent);
 
-    JSResultSets[rs] = persistent;
+    v8g->JSResultSets[rs] = persistent;
 
     persistent.MakeWeak(rs, WeakResultSetCallback);
   }
@@ -509,13 +335,17 @@ static void StoreResultSet (v8::Handle<v8::Object> rsObject,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void WeakQueryCallback (v8::Persistent<v8::Value> object, void* parameter) {
-  TRI_query_t* query = (TRI_query_t*) parameter;
+  TRI_query_t* query;
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  query = (TRI_query_t*) parameter;
 
   LOG_TRACE("weak-callback for query called");
 
   // find the persistent handle
-  v8::Persistent<v8::Value> persistent = JSQueries[query];
-  JSQueries.erase(query);
+  v8::Persistent<v8::Value> persistent = v8g->JSQueries[query];
+  v8g->JSQueries.erase(query);
 
   // dispose and clear the persistent handle
   persistent.Dispose();
@@ -531,13 +361,17 @@ static void WeakQueryCallback (v8::Persistent<v8::Value> object, void* parameter
 
 static void StoreQuery (v8::Handle<v8::Object> queryObject,
                         TRI_query_t* query) {
-  if (JSQueries.find(query) == JSQueries.end()) {
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  if (v8g->JSQueries.find(query) == v8g->JSQueries.end()) {
     v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(query));
 
     queryObject->SetInternalField(SLOT_QUERY, persistent);
     queryObject->SetInternalField(SLOT_RESULT_SET, v8::Null());
 
-    JSQueries[query] = persistent;
+    v8g->JSQueries[query] = persistent;
 
     persistent.MakeWeak(query, WeakQueryCallback);
   }
@@ -549,6 +383,9 @@ static void StoreQuery (v8::Handle<v8::Object> queryObject,
 
 static TRI_query_t* ExtractQuery (v8::Handle<v8::Object> queryObject,
                                   v8::Handle<v8::String>* err) {
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   // the internal fields QUERY and RESULT_SET must be present
   if (queryObject->InternalFieldCount() <= SLOT_RESULT_SET) {
@@ -562,7 +399,7 @@ static TRI_query_t* ExtractQuery (v8::Handle<v8::Object> queryObject,
   // special case: the whole collection
   // .............................................................................
 
-  if (value == CollectionQueryType) {
+  if (value == v8g->CollectionQueryType) {
     TRI_vocbase_col_t const* collection = LoadCollection(queryObject, err);
 
     if (collection == 0) {
@@ -682,6 +519,10 @@ static bool IsExecutedQuery (v8::Handle<v8::Object> query) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static string StringifyQuery (v8::Handle<v8::Value> queryObject) {
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
   if (! queryObject->IsObject()) {
     return "[unknown]";
   }
@@ -698,7 +539,7 @@ static string StringifyQuery (v8::Handle<v8::Value> queryObject) {
   // special case: the whole collection
   // .............................................................................
 
-  if (value == CollectionQueryType) {
+  if (value == v8g->CollectionQueryType) {
     TRI_vocbase_col_t const* col = UnwrapClass<TRI_vocbase_col_t>(self);
 
     if (col == 0) {
@@ -738,9 +579,13 @@ static string StringifyQuery (v8::Handle<v8::Value> queryObject) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool OptimiseQuery (v8::Handle<v8::Object> queryObject) {
-  v8::Handle<v8::Value> value = queryObject->GetInternalField(SLOT_QUERY);
+  v8::Handle<v8::Value> value;
+  TRI_v8_global_t* v8g;
 
-  if (value != CollectionQueryType) {
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  value = queryObject->GetInternalField(SLOT_QUERY);
+
+  if (value != v8g->CollectionQueryType) {
     TRI_query_t* query = static_cast<TRI_query_t*>(v8::Handle<v8::External>::Cast(value)->Value());
 
     if (query == 0) {
@@ -754,9 +599,9 @@ static bool OptimiseQuery (v8::Handle<v8::Object> queryObject) {
     if (optimised != query) {
 
       // remove old query
-      v8::Persistent<v8::Value> persistent = JSQueries[query];
+      v8::Persistent<v8::Value> persistent = v8g->JSQueries[query];
 
-      JSQueries.erase(query);
+      v8g->JSQueries.erase(query);
       persistent.Dispose();
       persistent.Clear();
 
@@ -764,7 +609,7 @@ static bool OptimiseQuery (v8::Handle<v8::Object> queryObject) {
       persistent = v8::Persistent<v8::Value>::New(v8::External::New(optimised));
       queryObject->SetInternalField(SLOT_QUERY, persistent);
 
-      JSQueries[optimised] = persistent;
+      v8g->JSQueries[optimised] = persistent;
 
       persistent.MakeWeak(optimised, WeakQueryCallback);
     }
@@ -782,7 +627,7 @@ static bool OptimiseQuery (v8::Handle<v8::Object> queryObject) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -791,10 +636,13 @@ static bool OptimiseQuery (v8::Handle<v8::Object> queryObject) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_PrintQuery (v8::Arguments const& argv) {
+  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
 
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
   v8::Handle<v8::Object> self = argv.Holder();
-  v8::Handle<v8::Function> print = v8::Handle<v8::Function>::Cast(self->CreationContext()->Global()->Get(PrintQueryFuncName));
+  v8::Handle<v8::Function> print = v8::Handle<v8::Function>::Cast(self->CreationContext()->Global()->Get(v8g->PrintQueryFuncName));
 
   v8::Handle<v8::Value> args[] = { self };
   print->Call(print, 1, args);
@@ -828,18 +676,18 @@ static v8::Handle<v8::Value> JS_ShowQuery (v8::Arguments const& argv) {
 ///
 /// <b><tt>count()</tt></b>
 ///
-/// The "count" operator counts the number of document in the result set and
-/// returns that number. The "count" operator ignores any limits and returns
+/// The @c count operator counts the number of document in the result set and
+/// returns that number. The @c count operator ignores any limits and returns
 /// the total number of documents found.
 ///
 /// @verbinclude fluent24
 ///
 /// <b><tt>count(true)</tt></b>
 ///
-/// If the result set was limited by the "limit" operator or documents were
-/// skiped using the "skip" operator, the "count" operator with argument @c true
-/// will use the number of elements in the final result set - after applying
-/// "limit" and "count".
+/// If the result set was limited by the @c limit operator or documents were
+/// skiped using the @c skip operator, the @c count operator with argument @c
+/// true will use the number of elements in the final result set - after
+/// applying @c limit and @c skip.
 ///
 /// @verbinclude fluent25
 ////////////////////////////////////////////////////////////////////////////////
@@ -868,22 +716,30 @@ static v8::Handle<v8::Value> JS_CountQuery (v8::Arguments const& argv) {
 /// <b><tt>explain()</tt></b>
 ///
 /// In order to optimise queries you need to know how the storage engine
-/// executed that type of query. You can use the "explain()" operator to
-/// see how a query was executed.
+/// executed that type of query. You can use the @c explain operator to see how
+/// a query was executed.
 ///
 /// @verbinclude fluent9
 ///
-/// The "explain" operator returns an object with the following attributes.
+/// The @c explain operator returns an object with the following attributes.
 ///
-/// - cursor: describes how the result set was computed.
-/// - scannedIndexEntries: how many index entries were scanned
-/// - scannedDocuments: how many documents were scanned
-/// - matchedDocuments: the sum of all matched documents in each step
-/// - runtime: the runtime in seconds
+/// - cursor:
+///     describes how the result set was computed.
+/// - scannedIndexEntries:
+///     how many index entries were scanned
+/// - scannedDocuments:
+///     how many documents were scanned
+/// - matchedDocuments:
+///     the sum of all matched documents in each step
+/// - runtime:
+///     the runtime in seconds
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ExplainQuery (v8::Arguments const& argv) {
+  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::String> err;
   v8::Handle<v8::Object> self = argv.Holder();
@@ -903,14 +759,14 @@ static v8::Handle<v8::Value> JS_ExplainQuery (v8::Arguments const& argv) {
 
   v8::Handle<v8::Value> value = self->GetInternalField(SLOT_QUERY);
 
-  if (value != CollectionQueryType) {
+  if (value != v8g->CollectionQueryType) {
     TRI_query_t* query = static_cast<TRI_query_t*>(v8::Handle<v8::External>::Cast(value)->Value());
 
     if (query == 0) {
       return scope.Close(v8::ThrowException(v8::String::New("corrupted query")));
     }
 
-    result->Set(v8::String::New("query"), ObjectJson(query->json(query)));
+    result->Set(v8::String::New("query"), TRI_ObjectJson(query->json(query)));
   }
 
   return scope.Close(result);
@@ -921,8 +777,8 @@ static v8::Handle<v8::Value> JS_ExplainQuery (v8::Arguments const& argv) {
 ///
 /// <b><tt>hasNext()</tt></b>
 ///
-/// The "hasNext" operator returns true, if the cursor still has documents.
-/// In this case the next document can be accessed using the "next" operator,
+/// The @c hasNext operator returns @c true, if the cursor still has documents.
+/// In this case the next document can be accessed using the @c next operator,
 /// which will advance the cursor.
 ///
 /// @verbinclude fluent28
@@ -946,8 +802,8 @@ static v8::Handle<v8::Value> JS_HasNextQuery (v8::Arguments const& argv) {
 ///
 /// <b><tt>next()</tt></b>
 ///
-/// If the "hasNext" operator returns true, if the cursor still has documents.
-/// In this case the next document can be accessed using the "next" operator,
+/// If the @c hasNext operator returns @c true, if the cursor still has documents.
+/// In this case the next document can be accessed using the @c next operator,
 /// which will advance the cursor.
 ///
 /// @verbinclude fluent28
@@ -964,17 +820,18 @@ static v8::Handle<v8::Value> JS_NextQuery (v8::Arguments const& argv) {
   }
 
   if (rs->hasNext(rs)) {
-    TRI_doc_collection_t* collection = rs->_container->_collection;
+    TRI_doc_collection_t* collection = rs->_containerElement->_container->_collection;
     TRI_shaper_t* shaper = collection->_shaper;
 
     TRI_voc_did_t did;
+    TRI_voc_rid_t rid;
     TRI_json_t const* augmented;
-    TRI_shaped_json_t* element = rs->next(rs, &did, &augmented);
+    TRI_shaped_json_t* element = rs->next(rs, &did, &rid, &augmented);
 
-    v8::Handle<v8::Value> object = ObjectShapedJson(collection, did, shaper, element);
+    v8::Handle<v8::Value> object = TRI_ObjectShapedJson(collection, did, shaper, element);
 
     if (augmented != NULL) {
-      AugmentObject(object, augmented);
+      TRI_AugmentObject(object, augmented);
     }
 
     return scope.Close(object);
@@ -1028,7 +885,7 @@ static v8::Handle<v8::Value> JS_ToArrayQuery (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(err));
   }
 
-  return scope.Close(ArrayResultSet(rs));
+  return scope.Close(TRI_ArrayResultSet(rs));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1042,7 +899,10 @@ static v8::Handle<v8::Value> JS_ToArrayQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
+  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   // extract the operand query
   v8::Handle<v8::Object> operand = argv.Holder();
@@ -1062,7 +922,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   // .............................................................................
 
   if (argv.Length() == 0) {
-    v8::Handle<v8::Object> result = QueryTempl->NewInstance();
+    v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
 
     StoreQuery(result, opQuery->clone(opQuery));
 
@@ -1083,22 +943,25 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 ///
 /// <b><tt>distance()</tt></b>
 ///
-/// Aguments the result-set of a "near" or "within" query with the distance of
-/// the document to the given point. The distance is returned in an attribute
-/// @c _distance. This is the distance in meters.
+/// Aguments the result-set of a @c near or @c within query with the distance of
+/// the document to the given point. The distance is returned in an attribute @c
+/// _distance. This is the distance in meters.
 ///
 /// @verbinclude fluent26
 ///
-/// <b><tt>distance(name)</tt></b>
+/// <b><tt>distance(<em>name</em>)</tt></b>
 ///
 /// Same as above, with the exception, that the distance is returned in an
-/// attribute called @c name.
+/// attribute called @a name.
 ///
 /// @verbinclude fluent27
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DistanceQuery (v8::Arguments const& argv) {
+  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   // extract the operand query
   v8::Handle<v8::Object> operand = argv.Holder();
@@ -1118,7 +981,7 @@ static v8::Handle<v8::Value> JS_DistanceQuery (v8::Arguments const& argv) {
   // .............................................................................
 
   if (argv.Length() == 0) {
-    v8::Handle<v8::Object> result = QueryTempl->NewInstance();
+    v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
 
     StoreQuery(result, TRI_CreateDistanceQuery(opQuery->clone(opQuery), "_distance"));
 
@@ -1130,13 +993,13 @@ static v8::Handle<v8::Value> JS_DistanceQuery (v8::Arguments const& argv) {
   // .............................................................................
 
   else if (argv.Length() == 1) {
-    string name = ObjectToString(argv[0]);
+    string name = TRI_ObjectToString(argv[0]);
 
     if (name.empty()) {
       return scope.Close(v8::ThrowException(v8::String::New("<attribute> must be non-empty")));
     }
 
-    v8::Handle<v8::Object> result = QueryTempl->NewInstance();
+    v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
 
     StoreQuery(result, TRI_CreateDistanceQuery(opQuery->clone(opQuery), name.c_str()));
 
@@ -1155,17 +1018,20 @@ static v8::Handle<v8::Value> JS_DistanceQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a document
 ///
-/// <b><tt>document(document-identifier)</tt></b>
+/// <b><tt>document(<em>document-identifier</em>)</tt></b>
 ///
-/// The "document" operator finds a document given it's identifier.  It returns
+/// The @c document operator finds a document given it's identifier.  It returns
 /// the empty result set or a result set containing the document with document
-/// identifier @c document-identifier.
+/// identifier @a document-identifier.
 ///
 /// @verbinclude fluent28
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DocumentQuery (v8::Arguments const& argv) {
+  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   // extract the operand query
   v8::Handle<v8::Object> operand = argv.Holder();
@@ -1201,7 +1067,7 @@ static v8::Handle<v8::Value> JS_DocumentQuery (v8::Arguments const& argv) {
   // create new query
   // .............................................................................
 
-  v8::Handle<v8::Object> result = QueryTempl->NewInstance();
+  v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
 
   StoreQuery(result, TRI_CreateDocumentQuery(opQuery->clone(opQuery), did));
 
@@ -1211,29 +1077,32 @@ static v8::Handle<v8::Value> JS_DocumentQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a geo-spatial index
 ///
-/// <b><tt>geo(location)</tt></b>
+/// <b><tt>geo(<em>location</em>)</tt></b>
 ///
-/// The next "near" operator will use the specific geo-spatial index.
+/// The next @c near operator will use the specific geo-spatial index.
 ///
-/// <b><tt>geo(location, geoJson)</tt></b>
+/// <b><tt>geo(<em>location</em>, <em>geoJson</em>)</tt></b>
 ///
-/// The next "near" or "within" operator will use the specific geo-spatial
+/// The next @c near or @c within operator will use the specific geo-spatial
 /// index.
 ///
-/// <b><tt>geo(latitiude,longitude)</tt></b>
+/// <b><tt>geo(<em>latitiude</em>, <em>longitude</em>)</tt></b>
 ///
-/// The next "near" or "within" operator will use the specific geo-spatial
+/// The next @c near or @c within operator will use the specific geo-spatial
 /// index.
 ///
 /// Assume you have a location stored as list in the attribute @c home
 /// and a destination stored in the attribute @c work. Than you can use the
-/// "geo" operator to select, which coordinates to use in a near query.
+/// @c geo operator to select, which coordinates to use in a near query.
 ///
 /// @verbinclude fluent15
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_GeoQuery (v8::Arguments const& argv) {
+  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   // extract the operand query
   v8::Handle<v8::Object> operand = argv.Holder();
@@ -1253,9 +1122,9 @@ static v8::Handle<v8::Value> JS_GeoQuery (v8::Arguments const& argv) {
   // .............................................................................
 
   if (argv.Length() == 1) {
-    string location = ObjectToString(argv[0]);
+    string location = TRI_ObjectToString(argv[0]);
 
-    v8::Handle<v8::Object> result = QueryTempl->NewInstance();
+    v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
 
     StoreQuery(result, TRI_CreateGeoIndexQuery(opQuery->clone(opQuery), location.c_str(), 0, 0, false));
 
@@ -1267,10 +1136,10 @@ static v8::Handle<v8::Value> JS_GeoQuery (v8::Arguments const& argv) {
   // .............................................................................
 
   else if (argv.Length() == 2 && (argv[1]->IsBoolean() || argv[1]->IsBooleanObject())) {
-    string location = ObjectToString(argv[0]);
-    bool geoJson = ObjectToBoolean(argv[1]);
+    string location = TRI_ObjectToString(argv[0]);
+    bool geoJson = TRI_ObjectToBoolean(argv[1]);
 
-    v8::Handle<v8::Object> result = QueryTempl->NewInstance();
+    v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
 
     StoreQuery(result, TRI_CreateGeoIndexQuery(opQuery->clone(opQuery), location.c_str(), 0, 0, geoJson));
 
@@ -1282,10 +1151,10 @@ static v8::Handle<v8::Value> JS_GeoQuery (v8::Arguments const& argv) {
   // .............................................................................
 
   else if (argv.Length() == 2) {
-    string latitiude = ObjectToString(argv[0]);
-    string longitude = ObjectToString(argv[1]);
+    string latitiude = TRI_ObjectToString(argv[0]);
+    string longitude = TRI_ObjectToString(argv[1]);
 
-    v8::Handle<v8::Object> result = QueryTempl->NewInstance();
+    v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
 
     StoreQuery(result, TRI_CreateGeoIndexQuery(opQuery->clone(opQuery), 0, latitiude.c_str(), longitude.c_str(), false));
 
@@ -1304,16 +1173,19 @@ static v8::Handle<v8::Value> JS_GeoQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief limits an existing query
 ///
-/// <b><tt>limit(number)</tt></b>
+/// <b><tt>limit(<em>number</em>)</tt></b>
 ///
-/// Limits a result to the first @c number documents. If @c number is negative,
-/// the result set is limited to the last @c -number documents.
+/// Limits a result to the first @a number documents. If @a number is negative,
+/// the result set is limited to the last @a -number documents.
 ///
 /// @verbinclude fluent30
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_LimitQuery (v8::Arguments const& argv) {
+  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   // extract the operand query
   v8::Handle<v8::Object> operand = argv.Holder();
@@ -1333,13 +1205,13 @@ static v8::Handle<v8::Value> JS_LimitQuery (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: limit(<limit>)")));
   }
 
-  double limit = ObjectToDouble(argv[0]);
+  double limit = TRI_ObjectToDouble(argv[0]);
 
   // .............................................................................
   // create new query
   // .............................................................................
 
-  v8::Handle<v8::Object> result = QueryTempl->NewInstance();
+  v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
 
   StoreQuery(result, TRI_CreateLimitQuery(opQuery->clone(opQuery), (TRI_voc_ssize_t) limit));
 
@@ -1349,9 +1221,9 @@ static v8::Handle<v8::Value> JS_LimitQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds points near a given coordinate
 ///
-/// <b><tt>near(latitiude, longitude)</tt></b>
+/// <b><tt>near(<em>latitiude</em>, <em>longitude</em>)</tt></b>
 ///
-/// This will find at most 100 documents near the coordinate (@c latitiude, @c
+/// This will find at most 100 documents near the coordinate (@a latitiude, @a
 /// longitude). The returned list is sorted according to the distance, with the
 /// nearest document coming first.
 ///
@@ -1359,40 +1231,43 @@ static v8::Handle<v8::Value> JS_LimitQuery (v8::Arguments const& argv) {
 ///
 /// If you need the distance as well, then you can use
 ///
-/// <b><tt>near(latitiude, longitude).distance()</tt></b>
+/// <b><tt>near(<em>latitiude</em>, <em>longitude</em>).distance()</tt></b>
 ///
-/// This will add an attribute "_distance" to all documents returned, which
+/// This will add an attribute @c _distance to all documents returned, which
 /// contains the distance of the given point and the document in meter.
 ///
 /// @verbinclude fluent11
 ///
-/// <b><tt>near(latitiude, longitude).distance(name)</tt></b>
+/// <b><tt>near(<em>latitiude</em>, <em>longitude</em>).distance(<em>name</em>)</tt></b>
 ///
-/// This will add an attribute "name" to all documents returned, which
-/// contains the distance of the given point and the document in meter.
+/// This will add an attribute @c name to all documents returned, which contains
+/// the distance of the given point and the document in meter.
 ///
 /// @verbinclude fluent12
 ///
-/// <b><tt>near(latitiude, longitude).limit(count)</tt></b>
+/// <b><tt>near(<em>latitiude</em>, <em>longitude</em>).limit(<em>count</em>)</tt></b>
 ///
-/// Limits the result to @c count documents. Note that @c count can be more than
+/// Limits the result to @a count documents. Note that @a count can be more than
 /// 100. To get less or more than 100 documents with distances, use
 ///
-/// <b><tt>near(latitiude, longitude).distance().limit(count)</tt></b>
+/// <b><tt>near(<em>latitiude</em>, <em>longitude</em>).distance().limit(<em>count</em>)</tt></b>
 ///
-/// This will return the first @c count documents together with their distances
+/// This will return the first @a count documents together with their distances
 /// in meters.
 ///
 /// @verbinclude fluent13
 ///
-/// If you have more then one geo-spatial index, you can use the operator
-/// "geo" to select a particular index.
+/// If you have more then one geo-spatial index, you can use the @c geo operator
+/// to select a particular index.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
   static size_t const DEFAULT_LIMIT = 100;
 
+  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   // extract the operand query
   v8::Handle<v8::Object> operand = argv.Holder();
@@ -1412,10 +1287,10 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
   // .............................................................................
 
   if (argv.Length() == 2) {
-    double latitiude = ObjectToDouble(argv[0]);
-    double longitude = ObjectToDouble(argv[1]);
+    double latitiude = TRI_ObjectToDouble(argv[0]);
+    double longitude = TRI_ObjectToDouble(argv[1]);
 
-    v8::Handle<v8::Object> result = QueryTempl->NewInstance();
+    v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
 
     StoreQuery(result, TRI_CreateNearQuery(opQuery->clone(opQuery), latitiude, longitude, DEFAULT_LIMIT, NULL));
 
@@ -1481,7 +1356,10 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_SelectQuery (v8::Arguments const& argv) {
+  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   // extract the operand query
   v8::Handle<v8::Object> operand = argv.Holder();
@@ -1501,7 +1379,7 @@ static v8::Handle<v8::Value> JS_SelectQuery (v8::Arguments const& argv) {
   // .............................................................................
 
   if (argv.Length() == 0) {
-    v8::Handle<v8::Object> result = QueryTempl->NewInstance();
+    v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
 
     StoreQuery(result, opQuery->clone(opQuery));
 
@@ -1520,15 +1398,18 @@ static v8::Handle<v8::Value> JS_SelectQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief skips an existing query
 ///
-/// <b><tt>skip(number)</tt></b>
+/// <b><tt>skip(<em>number</em>)</tt></b>
 ///
-/// Skips the first @c number documents.
+/// Skips the first @a number documents.
 ///
 /// @verbinclude fluent31
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_SkipQuery (v8::Arguments const& argv) {
+  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   // extract the operand query
   v8::Handle<v8::Object> operand = argv.Holder();
@@ -1548,7 +1429,7 @@ static v8::Handle<v8::Value> JS_SkipQuery (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: skip(<number>)")));
   }
 
-  double skip = ObjectToDouble(argv[0]);
+  double skip = TRI_ObjectToDouble(argv[0]);
 
   if (skip < 0.0) {
     skip = 0.0;
@@ -1558,7 +1439,7 @@ static v8::Handle<v8::Value> JS_SkipQuery (v8::Arguments const& argv) {
   // create new query
   // .............................................................................
 
-  v8::Handle<v8::Object> result = QueryTempl->NewInstance();
+  v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
 
   StoreQuery(result, TRI_CreateSkipQuery(opQuery->clone(opQuery), (TRI_voc_size_t) skip));
 
@@ -1568,35 +1449,38 @@ static v8::Handle<v8::Value> JS_SkipQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds points within a given radius
 ///
-/// <b><tt>within(latitiude, longitude, radius)</tt></b>
+/// <b><tt>within(<em>latitiude</em>, <em>longitude</em>, <em>radius</em>)</tt></b>
 ///
 /// This will find all documents with in a given radius around the coordinate
-/// (@c latitiude, @c longitude). The returned list is unsorted.
+/// (@a latitiude, @a longitude). The returned list is unsorted.
 ///
 /// @verbinclude fluent32
 ///
 /// If you need the distance as well, then you can use
 ///
-/// <b><tt>within(latitiude, longitude, radius).distance()</tt></b>
+/// <b><tt>within(<em>latitiude</em>, <em>longitude</em>, <em>radius</em>).distance()</tt></b>
 ///
-/// This will add an attribute "_distance" to all documents returned, which
+/// This will add an attribute @c _distance to all documents returned, which
 /// contains the distance of the given point and the document in meter.
 ///
 /// @verbinclude fluent33
 ///
-/// <b><tt>within(latitiude, longitude, radius).distance(name)</tt></b>
+/// <b><tt>within(<em>latitiude</em>, <em>longitude</em>, <em>radius</em>).distance(<em>name</em>)</tt></b>
 ///
-/// This will add an attribute "name" to all documents returned, which
+/// This will add an attribute @a name to all documents returned, which
 /// contains the distance of the given point and the document in meter.
 ///
 /// @verbinclude fluent34
 ///
-/// If you have more then one geo-spatial index, you can use the operator
-/// "geo" to select a particular index.
+/// If you have more then one geo-spatial index, you can use the @c geo operator
+/// to select a particular index.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
+  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   // extract the operand query
   v8::Handle<v8::Object> operand = argv.Holder();
@@ -1616,11 +1500,11 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
   // .............................................................................
 
   if (argv.Length() == 3) {
-    double latitiude = ObjectToDouble(argv[0]);
-    double longitude = ObjectToDouble(argv[1]);
-    double radius = ObjectToDouble(argv[2]);
+    double latitiude = TRI_ObjectToDouble(argv[0]);
+    double longitude = TRI_ObjectToDouble(argv[1]);
+    double radius = TRI_ObjectToDouble(argv[2]);
 
-    v8::Handle<v8::Object> result = QueryTempl->NewInstance();
+    v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
 
     StoreQuery(result, TRI_CreateWithinQuery(opQuery->clone(opQuery), latitiude, longitude, radius, NULL));
 
@@ -1649,16 +1533,16 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists
 ///
-/// <b><tt>ensureGeoIndex(location)</tt></b>
+/// <b><tt>ensureGeoIndex(<em>location</em>)</tt></b>
 ///
-/// Creates a geo-spatial index on all documents using @c location as path to
+/// Creates a geo-spatial index on all documents using @a location as path to
 /// the coordinates. The value of the attribute must be a list with at least two
 /// double values. The list must contain the latitiude (first value) and the
 /// longitude (second value). All documents, which do not have the attribute
@@ -1669,19 +1553,19 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
 ///
 /// @verbinclude fluent10
 ///
-/// <b><tt>ensureGeoIndex(location, geojson)</tt></b>
+/// <b><tt>ensureGeoIndex(<em>location</em>, <em>geojson</em>)</tt></b>
 ///
-/// As above. If @c geoJson is true, than the order within the list is
+/// As above. If @a geoJson is true, than the order within the list is
 /// longitude followed by latitiude. This corresponds to the format
 /// described in
 ///
 /// http://geojson.org/geojson-spec.html#positions
 ///
-/// <b><tt>ensureGeoIndex(latitiude, longitude)</tt></b>
+/// <b><tt>ensureGeoIndex(<em>latitiude</em>, <em>longitude</em>)</tt></b>
 ///
-/// Creates a geo-spatial index on all documents using @c latitiude and @c
+/// Creates a geo-spatial index on all documents using @a latitiude and @a
 /// longitude as paths the latitiude and the longitude. The value of the
-/// attribute @c latitiude and of the attribute @c longitude must a double. All
+/// attribute @a latitiude and of the attribute @a longitude must a double. All
 /// documents, which do not have the attribute paths or which values are not
 /// suitable, are ignored.
 ///
@@ -1735,7 +1619,7 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
       return scope.Close(v8::ThrowException(v8::String::New("<location> must be an attribute path")));
     }
 
-    iid = TRI_EnsureGeoIndexSimCollection(sim, *loc, ObjectToBoolean(argv[1]));
+    iid = TRI_EnsureGeoIndexSimCollection(sim, *loc, TRI_ObjectToBoolean(argv[1]));
   }
 
   // .............................................................................
@@ -1771,7 +1655,7 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
 ///
-/// <b><tt>delete(document-identifier)</tt></b>
+/// <b><tt>delete(<em>document-identifier</em>)</tt></b>
 ///
 /// Deletes a document with a given document identifier. If the document does
 /// not exists, then @c false is returned. If the document existed and was
@@ -1813,7 +1697,7 @@ static v8::Handle<v8::Value> JS_DeleteVocbaseCol (v8::Arguments const& argv) {
   // inside a write transaction
   // .............................................................................
 
-  bool ok = collection->destroyLock(collection, did);
+  bool ok = collection->destroyLock(collection, did, 0, TRI_DOC_UPDATE_LAST_WRITE);
 
   // .............................................................................
   // outside a write transaction
@@ -1837,7 +1721,7 @@ static v8::Handle<v8::Value> JS_DeleteVocbaseCol (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an index
 ///
-/// <b><tt>dropIndex(index-identifier)</tt></b>
+/// <b><tt>dropIndex(<em>index-identifier</em>)</tt></b>
 ///
 /// Drops the index. If the index does not exists, then @c false is returned. If
 /// the index existed and was dropped, then @c true is returned.
@@ -1867,7 +1751,7 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
     return scope.Close(v8::ThrowException(v8::String::New("usage: dropIndex(<index-identifier>)")));
   }
 
-  double iid = ObjectToDouble(argv[0]);
+  double iid = TRI_ObjectToDouble(argv[0]);
 
   // .............................................................................
   // inside a write transaction
@@ -1920,7 +1804,7 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
   for (size_t i = 0;  i < n;  ++i) {
     TRI_json_t* idx = (TRI_json_t*) TRI_AtVectorPointer(indexes, i);
 
-    result->Set(i, ObjectJson(idx));
+    result->Set(i, TRI_ObjectJson(idx));
   }
 
   return scope.Close(result);
@@ -1935,7 +1819,7 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
 ///
 /// @verbinclude fluent19
 ///
-/// <b><tt>parameter(parameter-array)</tt></b>
+/// <b><tt>parameter(<em>parameter-array</em>)</tt></b>
 ///
 /// Changes the collection parameter.
 ///
@@ -1943,7 +1827,10 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ParameterVocbaseCol (v8::Arguments const& argv) {
+  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::String> err;
   TRI_vocbase_col_t const* col = LoadCollection(argv.Holder(), &err);
@@ -1978,8 +1865,8 @@ static v8::Handle<v8::Value> JS_ParameterVocbaseCol (v8::Arguments const& argv) 
       bool error;
 
       // extract sync after objects
-      if (po->Has(SyncAfterObjectsKey)) {
-        syncAfterObjects = ObjectToDouble(po->Get(SyncAfterObjectsKey), error);
+      if (po->Has(v8g->SyncAfterObjectsKey)) {
+        syncAfterObjects = TRI_ObjectToDouble(po->Get(v8g->SyncAfterObjectsKey), error);
 
         if (error || syncAfterObjects < 0.0) {
           return scope.Close(v8::ThrowException(v8::String::New("<parameter>.syncAfterObjects must be a number")));
@@ -1987,8 +1874,8 @@ static v8::Handle<v8::Value> JS_ParameterVocbaseCol (v8::Arguments const& argv) 
       }
 
       // extract sync after bytes
-      if (po->Has(SyncAfterBytesKey)) {
-        syncAfterBytes = ObjectToDouble(po->Get(SyncAfterBytesKey), error);
+      if (po->Has(v8g->SyncAfterBytesKey)) {
+        syncAfterBytes = TRI_ObjectToDouble(po->Get(v8g->SyncAfterBytesKey), error);
 
         if (error || syncAfterBytes < 0.0) {
           return scope.Close(v8::ThrowException(v8::String::New("<parameter>.syncAfterBytes must be a number")));
@@ -1996,8 +1883,8 @@ static v8::Handle<v8::Value> JS_ParameterVocbaseCol (v8::Arguments const& argv) 
       }
 
       // extract sync after times
-      if (po->Has(SyncAfterTimeKey)) {
-        syncAfterTime = ObjectToDouble(po->Get(SyncAfterTimeKey), error);
+      if (po->Has(v8g->SyncAfterTimeKey)) {
+        syncAfterTime = TRI_ObjectToDouble(po->Get(v8g->SyncAfterTimeKey), error);
 
         if (error || syncAfterTime < 0.0) {
           return scope.Close(v8::ThrowException(v8::String::New("<parameter>.syncAfterTime must be a non-negative number")));
@@ -2034,10 +1921,10 @@ static v8::Handle<v8::Value> JS_ParameterVocbaseCol (v8::Arguments const& argv) 
 
     TRI_UnlockCondition(&sim->_journalsCondition);
 
-    result->Set(SyncAfterObjectsKey, v8::Number::New(syncAfterObjects));
-    result->Set(SyncAfterBytesKey, v8::Number::New(syncAfterBytes));
-    result->Set(SyncAfterTimeKey, v8::Number::New(syncAfterTime));
-    result->Set(JournalSizeKey, v8::Number::New(maximalSize));
+    result->Set(v8g->SyncAfterObjectsKey, v8::Number::New(syncAfterObjects));
+    result->Set(v8g->SyncAfterBytesKey, v8::Number::New(syncAfterBytes));
+    result->Set(v8g->SyncAfterTimeKey, v8::Number::New(syncAfterTime));
+    result->Set(v8g->JournalSizeKey, v8::Number::New(maximalSize));
   }
 
   return scope.Close(result);
@@ -2046,11 +1933,11 @@ static v8::Handle<v8::Value> JS_ParameterVocbaseCol (v8::Arguments const& argv) 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces a document
 ///
-/// <b><tt>replace(document-identifier, document)</tt></b>
+/// <b><tt>replace(<em>document-identifier</em>, <em>document</em>)</tt></b>
 ///
-/// Replaces an existing document. The @c document-identifier must point to a
+/// Replaces an existing document. The @a document-identifier must point to a
 /// document in the current collection. This document is than replaced with the
-/// value given as second argument and the @c document-identifier is returned.
+/// value given as second argument and the @a document-identifier is returned.
 ///
 /// @verbinclude fluent21
 ////////////////////////////////////////////////////////////////////////////////
@@ -2083,7 +1970,7 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("expecting a document identifier")));
   }
 
-  TRI_shaped_json_t* shaped = ShapedJsonV8Object(argv[1], collection->_shaper);
+  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[1], collection->_shaper);
 
   if (shaped == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("<document> cannot be converted into JSON shape")));
@@ -2093,7 +1980,7 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
   // inside a write transaction
   // .............................................................................
 
-  bool ok = collection->updateLock(collection, shaped, did);
+  bool ok = collection->updateLock(collection, shaped, did, 0, TRI_DOC_UPDATE_LAST_WRITE);
 
   // .............................................................................
   // outside a write transaction
@@ -2114,7 +2001,7 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a new document
 ///
-/// <b><tt>save(document)</tt></b>
+/// <b><tt>save(<em>document</em>)</tt></b>
 ///
 /// Saves a new document and returns the document-identifier.
 ///
@@ -2137,7 +2024,7 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: save(<document>)")));
   }
 
-  TRI_shaped_json_t* shaped = ShapedJsonV8Object(argv[0], collection->_shaper);
+  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[0], collection->_shaper);
 
   if (shaped == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("<document> cannot be converted into JSON shape")));
@@ -2217,7 +2104,7 @@ static v8::Handle<v8::Value> JS_ToStringVocbaseCol (v8::Arguments const& argv) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2227,7 +2114,11 @@ static v8::Handle<v8::Value> JS_ToStringVocbaseCol (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
                                             const v8::AccessorInfo& info) {
+  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
   TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(info.Holder());
 
   if (vocbase == 0) {
@@ -2235,7 +2126,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   }
 
   // convert the JavaScript string to a string
-  string key = ObjectToString(name);
+  string key = TRI_ObjectToString(name);
 
   // look up the value if it exists
   TRI_vocbase_col_t const* collection = TRI_FindCollectionByNameVocBase(vocbase, key.c_str());
@@ -2245,20 +2136,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
     return scope.Close(v8::ThrowException(v8::String::New("cannot load or create collection")));
   }
 
-  // .............................................................................
-  // otherwise wrap collection into V8 object
-  // .............................................................................
-
-  v8::Handle<v8::Object> result = WrapClass(VocbaseColTempl, const_cast<TRI_vocbase_col_t*>(collection));
-
-  // .............................................................................
-  // create new query
-  // .............................................................................
-
-  result->SetInternalField(SLOT_QUERY, CollectionQueryType);
-  result->SetInternalField(SLOT_RESULT_SET, v8::Null());
-
-  return scope.Close(result);
+  return scope.Close(TRI_WrapCollection(collection));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2270,7 +2148,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2449,46 +2327,58 @@ static v8::Handle<v8::Value> JS_ToStringVocBase (v8::Arguments const& argv) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wraps a TRI_vocbase_col_t
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Object> TRI_WrapCollection (TRI_vocbase_col_t const* collection) {
+  TRI_v8_global_t* v8g;
+  v8::HandleScope scope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  v8::Handle<v8::Object> result = WrapClass(v8g->VocbaseColTempl, const_cast<TRI_vocbase_col_t*>(collection));
+
+  result->SetInternalField(SLOT_QUERY, v8g->CollectionQueryType);
+  result->SetInternalField(SLOT_RESULT_SET, v8::Null());
+
+  return scope.Close(result);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Persistent<v8::Context> InitV8VocBridge (TRI_vocbase_t* vocbase) {
+void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase) {
+  v8::HandleScope scope;
+
   v8::Handle<v8::ObjectTemplate> rt;
 
+  // check the isolate
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
+
+  if (v8g == 0) {
+    v8g = new TRI_v8_global_t;
+    isolate->SetData(v8g);
+  }
+
   // create the regular expressions
-  if (regcomp(&DocumentIdRegex, "([0-9][0-9]*):([0-9][0-9]*)", REG_ICASE | REG_EXTENDED) != 0) {
+  if (regcomp(&v8g->DocumentIdRegex, "([0-9][0-9]*):([0-9][0-9]*)", REG_ICASE | REG_EXTENDED) != 0) {
     LOG_FATAL("cannot compile regular expression");
     exit(EXIT_FAILURE);
   }
-
-  // create the global template
-  v8::Handle<v8::ObjectTemplate> global = v8::ObjectTemplate::New();
-
-  // create the global functions
-  InitV8Shell(global);
-
-  // create the context
-  v8::Persistent<v8::Context> context = v8::Context::New(0, global);
-
-  if (context.IsEmpty()) {
-    printf("cannot initialize V8 engine\n");
-    exit(EXIT_FAILURE);
-  }
-
-  context->Enter();
 
   // .............................................................................
   // global function names
   // .............................................................................
 
-  OutputFuncName = v8::Persistent<v8::String>::New(v8::String::New("output"));
-  PrintQueryFuncName = v8::Persistent<v8::String>::New(v8::String::New("printQuery"));
-  ToStringFuncName = v8::Persistent<v8::String>::New(v8::String::New("toString"));
+  v8g->OutputFuncName = v8::Persistent<v8::String>::New(v8::String::New("output"));
+  v8g->PrintQueryFuncName = v8::Persistent<v8::String>::New(v8::String::New("printQuery"));
+  v8g->ToStringFuncName = v8::Persistent<v8::String>::New(v8::String::New("toString"));
 
   // .............................................................................
   // local function names
@@ -2523,16 +2413,16 @@ v8::Persistent<v8::Context> InitV8VocBridge (TRI_vocbase_t* vocbase) {
   // query types
   // .............................................................................
 
-  CollectionQueryType = v8::Persistent<v8::String>::New(v8::String::New("collection"));
+  v8g->CollectionQueryType = v8::Persistent<v8::String>::New(v8::String::New("collection"));
 
   // .............................................................................
   // keys
   // .............................................................................
 
-  JournalSizeKey = v8::Persistent<v8::String>::New(v8::String::New("journalSize"));
-  SyncAfterBytesKey = v8::Persistent<v8::String>::New(v8::String::New("syncAfterBytes"));
-  SyncAfterObjectsKey = v8::Persistent<v8::String>::New(v8::String::New("syncAfterObjects"));
-  SyncAfterTimeKey = v8::Persistent<v8::String>::New(v8::String::New("syncAfterTime"));
+  v8g->JournalSizeKey = v8::Persistent<v8::String>::New(v8::String::New("journalSize"));
+  v8g->SyncAfterBytesKey = v8::Persistent<v8::String>::New(v8::String::New("syncAfterBytes"));
+  v8g->SyncAfterObjectsKey = v8::Persistent<v8::String>::New(v8::String::New("syncAfterObjects"));
+  v8g->SyncAfterTimeKey = v8::Persistent<v8::String>::New(v8::String::New("syncAfterTime"));
 
   // .............................................................................
   // generate the TRI_vocbase_t template
@@ -2543,10 +2433,10 @@ v8::Persistent<v8::Context> InitV8VocBridge (TRI_vocbase_t* vocbase) {
   rt->SetInternalFieldCount(1);
 
   rt->Set(PrintFuncName, v8::FunctionTemplate::New(JS_PrintUsingToString));
-  rt->Set(ToStringFuncName, v8::FunctionTemplate::New(JS_ToStringVocBase));
+  rt->Set(v8g->ToStringFuncName, v8::FunctionTemplate::New(JS_ToStringVocBase));
   rt->SetNamedPropertyHandler(MapGetVocBase);
 
-  VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+  v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
   // .............................................................................
   // generate the TRI_vocbase_col_t template
@@ -2574,10 +2464,10 @@ v8::Persistent<v8::Context> InitV8VocBridge (TRI_vocbase_t* vocbase) {
   rt->Set(SelectFuncName, v8::FunctionTemplate::New(JS_SelectQuery));
   rt->Set(SkipFuncName, v8::FunctionTemplate::New(JS_SkipQuery));
   rt->Set(ToArrayFuncName, v8::FunctionTemplate::New(JS_ToArrayQuery));
-  rt->Set(ToStringFuncName, v8::FunctionTemplate::New(JS_ToStringVocbaseCol));
+  rt->Set(v8g->ToStringFuncName, v8::FunctionTemplate::New(JS_ToStringVocbaseCol));
   rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
 
-  VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+  v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
   // .............................................................................
   // generate the query template
@@ -2605,18 +2495,15 @@ v8::Persistent<v8::Context> InitV8VocBridge (TRI_vocbase_t* vocbase) {
   rt->Set(ToArrayFuncName, v8::FunctionTemplate::New(JS_ToArrayQuery));
   rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
 
-  QueryTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+  v8g->QueryTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
   // .............................................................................
   // create the global variables
   // .............................................................................
 
   context->Global()->Set(v8::String::New("db"),
-                         WrapClass(VocbaseTempl, vocbase),
+                         WrapClass(v8g->VocbaseTempl, vocbase),
                          v8::ReadOnly);
-
-  // and return the context
-  return context;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

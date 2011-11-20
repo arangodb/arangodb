@@ -40,7 +40,7 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -70,6 +70,7 @@ static void InitCollection (TRI_collection_t* collection,
 
   TRI_InitVectorPointer(&collection->_datafiles);
   TRI_InitVectorPointer(&collection->_journals);
+  TRI_InitVectorPointer(&collection->_compactors);
   TRI_InitVectorString(&collection->_indexFiles);
 }
 
@@ -80,6 +81,7 @@ static void InitCollection (TRI_collection_t* collection,
 static bool CheckCollection (TRI_collection_t* collection) {
   TRI_datafile_t* datafile;
   TRI_vector_pointer_t all;
+  TRI_vector_pointer_t compactors;
   TRI_vector_pointer_t datafiles;
   TRI_vector_pointer_t journals;
   TRI_vector_pointer_t sealed;
@@ -95,9 +97,10 @@ static bool CheckCollection (TRI_collection_t* collection) {
   // check files within the directory
   files = TRI_FilesDirectory(collection->_directory);
   n = TRI_SizeVectorString(&files);
-  regcomp(&re, "^(journal|datafile|index)-([0-9][0-9]*)\\.(db|json)", REG_ICASE | REG_EXTENDED);
+  regcomp(&re, "^(journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_ICASE | REG_EXTENDED);
 
   TRI_InitVectorPointer(&journals);
+  TRI_InitVectorPointer(&compactors);
   TRI_InitVectorPointer(&datafiles);
   TRI_InitVectorPointer(&sealed);
   TRI_InitVectorPointer(&all);
@@ -180,6 +183,18 @@ static bool CheckCollection (TRI_collection_t* collection) {
           }
           else {
             TRI_PushBackVectorPointer(&journals, datafile);
+          }
+        }
+
+        // file is a compactor file
+        else if (TRI_EqualString2("compactor", first, firstLen)) {
+          if (datafile->_isSealed) {
+            LOG_WARNING("strange, compactor journal '%s' is already sealed; must be a left over; will use it as datafile", filename);
+
+            TRI_PushBackVectorPointer(&sealed, datafile);
+          }
+          else {
+            TRI_PushBackVectorPointer(&compactors, datafile);
           }
         }
 
@@ -273,6 +288,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
   // add the datafiles and journals
   collection->_datafiles = datafiles;
   collection->_journals = journals;
+  collection->_compactors = compactors;
 
   return true;
 }
@@ -286,7 +302,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -399,6 +415,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_collection_t* collection,
 void TRI_DestroyCollection (TRI_collection_t* collection) {
   TRI_DestroyVectorPointer(&collection->_datafiles);
   TRI_DestroyVectorPointer(&collection->_journals);
+  TRI_DestroyVectorPointer(&collection->_compactors);
   TRI_DestroyVectorString(&collection->_indexFiles);
   TRI_FreeString(collection->_directory);
 }
@@ -421,7 +438,7 @@ void TRI_FreeCollection (TRI_collection_t* collection) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -579,7 +596,7 @@ bool TRI_UpdateParameterInfoCollection (TRI_collection_t* collection) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -587,38 +604,74 @@ bool TRI_UpdateParameterInfoCollection (TRI_collection_t* collection) {
 /// @brief iterates over a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_IterateCollection (TRI_collection_t* collection,
-                            void (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
+bool TRI_IterateCollection (TRI_collection_t* collection,
+                            bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
                             void* data) {
   TRI_vector_pointer_t* datafiles;
   TRI_vector_pointer_t* journals;
+  TRI_vector_pointer_t* compactors;
   size_t i;
   size_t n;
 
   datafiles = TRI_CopyVectorPointer(&collection->_datafiles);
   journals = TRI_CopyVectorPointer(&collection->_journals);
+  compactors = TRI_CopyVectorPointer(&collection->_compactors);
 
   // iterate over all datafiles
   n = TRI_SizeVectorPointer(datafiles);
 
   for (i = 0;  i < n;  ++i) {
-    TRI_datafile_t* datafile = TRI_AtVectorPointer(datafiles, i);
+    TRI_datafile_t* datafile;
+    bool result;
 
-    TRI_IterateDatafile(datafile, iterator, data, false);
+    datafile = TRI_AtVectorPointer(datafiles, i);
+
+    result = TRI_IterateDatafile(datafile, iterator, data, false);
+
+    if (! result) {
+      TRI_DestroyVectorPointer(datafiles);
+      return false;
+    }
   }
 
   TRI_DestroyVectorPointer(datafiles);
+
+  // iterate over all compactors
+  n = TRI_SizeVectorPointer(compactors);
+
+  for (i = 0;  i < n;  ++i) {
+    TRI_datafile_t* datafile;
+    bool result;
+
+    datafile = TRI_AtVectorPointer(compactors, i);
+
+    result = TRI_IterateDatafile(datafile, iterator, data, false);
+
+    if (! result) {
+      TRI_DestroyVectorPointer(compactors);
+      return false;
+    }
+  }
 
   // iterate over all journals
   n = TRI_SizeVectorPointer(journals);
 
   for (i = 0;  i < n;  ++i) {
-    TRI_datafile_t* datafile = TRI_AtVectorPointer(journals, i);
+    TRI_datafile_t* datafile;
+    bool result;
 
-    TRI_IterateDatafile(datafile, iterator, data, false);
+    datafile = TRI_AtVectorPointer(journals, i);
+
+    result = TRI_IterateDatafile(datafile, iterator, data, false);
+
+    if (! result) {
+      TRI_DestroyVectorPointer(journals);
+      return false;
+    }
   }
 
   TRI_DestroyVectorPointer(journals);
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -683,13 +736,13 @@ TRI_collection_t* TRI_OpenCollection (TRI_collection_t* collection,
   ok = CheckCollection(collection);
 
   if (! ok) {
+    LOG_ERROR("cannot open '%s', check failed", collection->_directory);
+
     TRI_FreeString(collection->_directory);
 
     if (freeCol) {
       TRI_Free(collection);
     }
-
-    LOG_ERROR("cannot open '%s', check failed", collection->_directory);
 
     return NULL;
   }
@@ -706,6 +759,16 @@ bool TRI_CloseCollection (TRI_collection_t* collection) {
   size_t n;
   size_t i;
 
+  // close compactor files
+  n = TRI_SizeVectorPointer(&collection->_compactors);
+
+  for (i = 0;  i < n;  ++i) {
+    datafile = TRI_AtVectorPointer(&collection->_compactors, i);
+
+    TRI_CloseDatafile(datafile);
+  }
+
+  // close journal files
   n = TRI_SizeVectorPointer(&collection->_journals);
 
   for (i = 0;  i < n;  ++i) {
@@ -714,6 +777,7 @@ bool TRI_CloseCollection (TRI_collection_t* collection) {
     TRI_CloseDatafile(datafile);
   }
 
+  // close datafiles
   n = TRI_SizeVectorPointer(&collection->_datafiles);
 
   for (i = 0;  i < n;  ++i) {

@@ -30,6 +30,8 @@
 
 #include <VocBase/vocbase.h>
 
+#include <Basics/locks.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -42,13 +44,15 @@ struct TRI_doc_collection_s;
 struct TRI_doc_mptr_s;
 struct TRI_json_s;
 struct TRI_shaped_json_s;
+struct TRI_rs_container_s;
+struct TRI_rs_container_element_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -74,29 +78,19 @@ typedef struct TRI_rs_info_s {
 TRI_rs_info_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a result set container for all result sets of a collection
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_rs_container_s {
-  TRI_associative_synced_t _resultSets;
-
-  struct TRI_doc_collection_s* _collection;
-}
-TRI_rs_container_t;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief a result set
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_result_set_s {
   TRI_rs_id_t _id;
-  TRI_rs_container_t* _container;
   TRI_rs_info_t _info;
+
+  struct TRI_rs_container_element_s* _containerElement;
 
   char* _error;
 
   bool (*hasNext) (struct TRI_result_set_s*);
-  struct TRI_shaped_json_s* (*next) (struct TRI_result_set_s*, TRI_voc_did_t*, struct TRI_json_s const**);
+  struct TRI_shaped_json_s* (*next) (struct TRI_result_set_s*, TRI_voc_did_t*, TRI_voc_rid_t*, struct TRI_json_s const**);
   TRI_voc_size_t (*count) (struct TRI_result_set_s*, bool current);
 
   void (*free) (struct TRI_result_set_s*);
@@ -104,15 +98,59 @@ typedef struct TRI_result_set_s {
 TRI_result_set_t;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief result set container element type
+////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+  TRI_RSCE_RESULT_SET,
+  TRI_RSCE_DATAFILE
+}
+TRI_rs_container_element_type_e;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief result set container element
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_rs_container_element_s {
+  struct TRI_rs_container_element_s* _prev;
+  struct TRI_rs_container_element_s* _next;
+
+  struct TRI_rs_container_s* _container;
+
+  TRI_rs_container_element_type_e _type;
+
+  TRI_result_set_t* _resultSet;
+
+  struct TRI_datafile_s* _datafile;
+  void* _datafileData;
+  void (*datafileCallback) (struct TRI_datafile_s*, void*);
+}
+TRI_rs_container_element_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a result set container for all result sets of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_rs_container_s {
+  struct TRI_doc_collection_s* _collection;
+
+  TRI_spin_t _lock;
+
+  TRI_rs_container_element_t* _begin;
+  TRI_rs_container_element_t* _end;
+}
+TRI_rs_container_t;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -133,6 +171,7 @@ void TRI_DestroyRSContainer (TRI_rs_container_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_result_set_t* TRI_CreateRSSingle (struct TRI_doc_collection_s* collection,
+                                      TRI_rs_container_element_t* containerElement,
                                       struct TRI_doc_mptr_s const* header,
                                       TRI_voc_size_t total);
 
@@ -141,10 +180,39 @@ TRI_result_set_t* TRI_CreateRSSingle (struct TRI_doc_collection_s* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_result_set_t* TRI_CreateRSVector (struct TRI_doc_collection_s* collection,
+                                      TRI_rs_container_element_t* containerElement,
                                       struct TRI_doc_mptr_s const** header,
                                       struct TRI_json_s const* augmented,
                                       TRI_voc_size_t length,
                                       TRI_voc_size_t total);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a result set to the end of the doubly linked list
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_rs_container_element_t* TRI_AddResultSetRSContainer (TRI_rs_container_t* container);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds an callback to the result set container
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_rs_container_element_t* TRI_AddDatafileRSContainer (TRI_rs_container_t* container,
+                                                        struct TRI_datafile_s* datafile,
+                                                        void (*callback) (struct TRI_datafile_s*, void*),
+                                                        void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

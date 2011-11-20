@@ -30,6 +30,8 @@
 
 #include <Basics/Common.h>
 
+#include <Basics/vector.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -43,7 +45,7 @@ extern "C" {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Logging Logging
+/// @addtogroup Logging
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -52,12 +54,12 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_LOG_FATAL = 1,
-  TRI_LOG_ERROR = 2,
-  TRI_LOG_WARNING = 3,
-  TRI_LOG_INFO = 4,
-  TRI_LOG_DEBUG = 5,
-  TRI_LOG_TRACE = 6
+  TRI_LOG_LEVEL_FATAL = 1,
+  TRI_LOG_LEVEL_ERROR = 2,
+  TRI_LOG_LEVEL_WARNING = 3,
+  TRI_LOG_LEVEL_INFO = 4,
+  TRI_LOG_LEVEL_DEBUG = 5,
+  TRI_LOG_LEVEL_TRACE = 6
 }
 TRI_log_level_e;
 
@@ -76,6 +78,47 @@ typedef enum {
 TRI_log_severity_e;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief log categories
+////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+
+  // exceptions
+  TRI_LOG_CATEGORY_FATAL   = 1000,
+  TRI_LOG_CATEGORY_ERROR   = 1001,
+  TRI_LOG_CATEGORY_WARNING = 1002,
+
+  // technical
+  TRI_LOG_CATEGORY_HEARTBEAT         = 2000,
+  TRI_LOG_CATEGORY_REQUEST_IN_END    = 2001,
+  TRI_LOG_CATEGORY_REQUEST_IN_START  = 2002,
+  TRI_LOG_CATEGORY_REQUEST_OUT_END   = 2003,
+  TRI_LOG_CATEGORY_REQUEST_OUT_START = 2004,
+
+  // development
+  TRI_LOG_CATEGORY_FUNCTION_IN_END   = 4000,
+  TRI_LOG_CATEGORY_FUNCTION_IN_START = 4001,
+  TRI_LOG_CATEGORY_HEARTPULSE        = 4002,
+  TRI_LOG_CATEGORY_LOOP              = 4003,
+  TRI_LOG_CATEGORY_MODULE_IN_END     = 4004,
+  TRI_LOG_CATEGORY_MODULE_IN_START   = 4005,
+  TRI_LOG_CATEGORY_STEP              = 4006
+}
+TRI_log_category_e;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief buffer type
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_log_buffer_s {
+  uint64_t _lid;
+  TRI_log_level_e _level;
+  time_t _timestamp;
+  char* _text;
+}
+TRI_log_buffer_t;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -84,7 +127,7 @@ TRI_log_severity_e;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Logging Logging
+/// @addtogroup Logging
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -92,7 +135,7 @@ TRI_log_severity_e;
 /// @brief gets the log level
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* TRI_GetLogLevelLogging (void);
+char const* TRI_LogLevelLogging (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the log level
@@ -101,10 +144,64 @@ char const* TRI_GetLogLevelLogging (void);
 void TRI_SetLogLevelLogging (char const* level);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the log severity
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetLogSeverityLogging (char const* severities);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the output prefix
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetPrefixLogging (char const* prefix);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the thread identifier visibility
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetThreadIdentifierLogging (bool show);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the line number visibility
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetLineNumberLogging (bool show);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the function names visibility
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetFunctionLogging (bool show);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if human logging is enabled
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsHumanLogging (void);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if exception logging is enabled
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsExceptionLogging (void);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if technical logging is enabled
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsTechnicalLogging (void);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if functional logging is enabled
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsFunctionalLogging (void);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if development logging is enabled
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsDevelopmentLogging (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if fatal logging is enabled
@@ -149,6 +246,24 @@ bool TRI_IsTraceLogging (void);
 void TRI_Log (char const* func, char const* file, int line, TRI_log_level_e, TRI_log_severity_e, char const* fmt, ...);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief logs a new raw message
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_RawLog (TRI_log_level_e, TRI_log_severity_e, char const*, size_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the last log entries
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vector_t* TRI_BufferLogging (TRI_log_level_e, uint64_t pos);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees the log buffer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeBufferLogging (TRI_vector_t* buffer);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -157,7 +272,7 @@ void TRI_Log (char const* func, char const* file, int line, TRI_log_level_e, TRI
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Logging Logging
+/// @addtogroup Logging
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -170,7 +285,7 @@ void TRI_Log (char const* func, char const* file, int line, TRI_log_level_e, TRI
 #define LOG_FATAL(...)                                                                               \
   do {                                                                                               \
     if (TRI_IsHumanLogging() && TRI_IsFatalLogging()) {                                                            \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_FATAL, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
+      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_FATAL, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
     }                                                                                                \
   } while (0)
 
@@ -186,11 +301,11 @@ void TRI_Log (char const* func, char const* file, int line, TRI_log_level_e, TRI
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOG_ERROR(...)                                                                               \
-  do {                                                                                               \
-    if (TRI_IsHumanLogging() && TRI_IsErrorLogging()) {                                                            \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_ERROR, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
-    }                                                                                                \
+#define LOG_ERROR(...)                                                                                     \
+  do {                                                                                                     \
+    if (TRI_IsHumanLogging() && TRI_IsErrorLogging()) {                                                    \
+      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_ERROR, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
+    }                                                                                                      \
   } while (0)
 
 #else
@@ -205,11 +320,11 @@ void TRI_Log (char const* func, char const* file, int line, TRI_log_level_e, TRI
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOG_WARNING(...)                                                                               \
-  do {                                                                                                 \
-    if (TRI_IsHumanLogging() && TRI_IsWarningLogging()) {                                                            \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_WARNING, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
-    }                                                                                                  \
+#define LOG_WARNING(...)                                                                                     \
+  do {                                                                                                       \
+    if (TRI_IsHumanLogging() && TRI_IsWarningLogging()) {                                                    \
+      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_WARNING, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
+    }                                                                                                        \
   } while (0)
 
 #else
@@ -224,11 +339,11 @@ void TRI_Log (char const* func, char const* file, int line, TRI_log_level_e, TRI
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOG_INFO(...)                                                                               \
-  do {                                                                                              \
-    if (TRI_IsHumanLogging() && TRI_IsInfoLogging()) {                                                            \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_INFO, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
-    }                                                                                               \
+#define LOG_INFO(...)                                                                                     \
+  do {                                                                                                    \
+    if (TRI_IsHumanLogging() && TRI_IsInfoLogging()) {                                                    \
+      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_INFO, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
+    }                                                                                                     \
   } while (0)
 
 #else
@@ -243,11 +358,11 @@ void TRI_Log (char const* func, char const* file, int line, TRI_log_level_e, TRI
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOG_DEBUG(...)                                                                               \
-  do {                                                                                               \
-    if (TRI_IsHumanLogging() && TRI_IsDebugLogging()) {                                                            \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_DEBUG, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
-    }                                                                                                \
+#define LOG_DEBUG(...)                                                                                     \
+  do {                                                                                                     \
+    if (TRI_IsHumanLogging() && TRI_IsDebugLogging()) {                                                    \
+      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_DEBUG, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
+    }                                                                                                      \
   } while (0)
 
 #else
@@ -262,11 +377,11 @@ void TRI_Log (char const* func, char const* file, int line, TRI_log_level_e, TRI
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOG_TRACE(...)                                                                               \
-  do {                                                                                               \
-    if (TRI_IsHumanLogging() && TRI_IsTraceLogging()) {                                                            \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_TRACE, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
-    }                                                                                                \
+#define LOG_TRACE(...)                                                                                     \
+  do {                                                                                                     \
+    if (TRI_IsHumanLogging() && TRI_IsTraceLogging()) {                                                    \
+      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_TRACE, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
+    }                                                                                                      \
   } while (0)
 
 #else
@@ -288,7 +403,7 @@ void TRI_Log (char const* func, char const* file, int line, TRI_log_level_e, TRI
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Logging Logging
+/// @addtogroup Logging
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -296,11 +411,12 @@ void TRI_Log (char const* func, char const* file, int line, TRI_log_level_e, TRI
 /// @brief base structure for log appenders
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_LogAppender_s {
-  void (*log) (struct TRI_LogAppender_s*, TRI_log_level_e, TRI_log_severity_e, char const* msg, size_t length);
-  void (*close) (struct TRI_LogAppender_s*);
+typedef struct TRI_log_appender_s {
+  void (*log) (struct TRI_log_appender_s*, TRI_log_level_e, TRI_log_severity_e, char const* msg, size_t length);
+  void (*reopen) (struct TRI_log_appender_s*);
+  void (*close) (struct TRI_log_appender_s*);
 }
-TRI_LogAppender_t;
+TRI_log_appender_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -311,7 +427,7 @@ TRI_LogAppender_t;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Logging Logging
+/// @addtogroup Logging
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -319,21 +435,21 @@ TRI_LogAppender_t;
 /// @brief creates a log append for file output
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_LogAppender_t* TRI_LogAppenderFile (char const* filename);
+TRI_log_appender_t* TRI_CreateLogAppenderFile (char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a log append for syslog
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_SYSLOG
-TRI_LogAppender_t* TRI_LogAppenderSyslog (char const* name, char const* facility);
+TRI_log_appender_t* TRI_CreateLogAppenderSyslog (char const* name, char const* facility);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a log append for buffering
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_LogAppender_t* TRI_LogAppenderBuffer (size_t queueSize, size_t messageSize);
+TRI_log_appender_t* TRI_CreateLogAppenderBuffer (size_t queueSize, size_t messageSize);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -348,7 +464,7 @@ TRI_LogAppender_t* TRI_LogAppenderBuffer (size_t queueSize, size_t messageSize);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Logging Logging
+/// @addtogroup Logging
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -357,6 +473,18 @@ TRI_LogAppender_t* TRI_LogAppenderBuffer (size_t queueSize, size_t messageSize);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseLogging (bool threaded);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief closes all log appenders
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_CloseLogging (void);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reopens all log appenders
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ReopenLogging (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shut downs the logging components

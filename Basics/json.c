@@ -41,7 +41,7 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup JsonPrivate Json Objects (Private)
+/// @addtogroup Json
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -49,7 +49,7 @@
 /// @brief prints a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static void PrintStringBufferJson (TRI_string_buffer_t* buffer, TRI_json_t* object) {
+static void StringifyJson (TRI_string_buffer_t* buffer, TRI_json_t const* object, bool braces) {
   size_t n;
   size_t i;
   size_t outLength;
@@ -82,38 +82,46 @@ static void PrintStringBufferJson (TRI_string_buffer_t* buffer, TRI_json_t* obje
       break;
 
     case TRI_JSON_ARRAY:
-      TRI_AppendStringStringBuffer(buffer, "{ ");
+      if (braces) {
+        TRI_AppendStringStringBuffer(buffer, "{");
+      }
 
       n = TRI_SizeVector(&object->_value._objects);
 
       for (i = 0;  i < n;  i += 2) {
         if (0 < i) {
-          TRI_AppendStringStringBuffer(buffer, ", ");
+          TRI_AppendStringStringBuffer(buffer, ",");
         }
 
-        PrintStringBufferJson(buffer, TRI_AtVector(&object->_value._objects, i));
-        TRI_AppendStringStringBuffer(buffer, " : ");
-        PrintStringBufferJson(buffer, TRI_AtVector(&object->_value._objects, i + 1));
+        StringifyJson(buffer, TRI_AtVector(&object->_value._objects, i), true);
+        TRI_AppendStringStringBuffer(buffer, ":");
+        StringifyJson(buffer, TRI_AtVector(&object->_value._objects, i + 1), true);
       }
 
-      TRI_AppendStringStringBuffer(buffer, " }");
+      if (braces) {
+        TRI_AppendStringStringBuffer(buffer, "}");
+      }
 
       break;
 
     case TRI_JSON_LIST:
-      TRI_AppendStringStringBuffer(buffer, "[ ");
+      if (braces) {
+        TRI_AppendStringStringBuffer(buffer, "[");
+      }
 
       n = TRI_SizeVector(&object->_value._objects);
 
       for (i = 0;  i < n;  ++i) {
         if (0 < i) {
-          TRI_AppendStringStringBuffer(buffer, ", ");
+          TRI_AppendStringStringBuffer(buffer, ",");
         }
 
-        PrintStringBufferJson(buffer, TRI_AtVector(&object->_value._objects, i));
+        StringifyJson(buffer, TRI_AtVector(&object->_value._objects, i), true);
       }
 
-      TRI_AppendStringStringBuffer(buffer, " ]");
+      if (braces) {
+        TRI_AppendStringStringBuffer(buffer, "]");
+      }
 
       break;
   }
@@ -128,7 +136,7 @@ static void PrintStringBufferJson (TRI_string_buffer_t* buffer, TRI_json_t* obje
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json Json Objects
+/// @addtogroup Json
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -319,7 +327,7 @@ void TRI_FreeJson (TRI_json_t* object) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json Json Objects
+/// @addtogroup Json
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -419,16 +427,32 @@ TRI_json_t* TRI_LookupArrayJson (TRI_json_t* object, char const* name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief stringifies a json object
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_StringifyJson (TRI_string_buffer_t* buffer, TRI_json_t const* object) {
+  StringifyJson(buffer, object, true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stringifies a json object skiping the outer braces
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_Stringify2Json (TRI_string_buffer_t* buffer, TRI_json_t const* object) {
+  StringifyJson(buffer, object, false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_PrintJson (int fd, TRI_json_t* object) {
+bool TRI_PrintJson (int fd, TRI_json_t const* object) {
   TRI_string_buffer_t buffer;
   char const* p;
   size_t n;
 
   TRI_InitStringBuffer(&buffer);
-  PrintStringBufferJson(&buffer, object);
+  StringifyJson(&buffer, object, true);
 
   p = TRI_BeginStringBuffer(&buffer);
   n = TRI_LengthStringBuffer(&buffer);
@@ -453,7 +477,7 @@ bool TRI_PrintJson (int fd, TRI_json_t* object) {
 /// @brief saves a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_SaveJson (char const* filename, TRI_json_t* object) {
+bool TRI_SaveJson (char const* filename, TRI_json_t const* object) {
   bool ok;
   char* tmp;
   int fd;
@@ -529,7 +553,7 @@ bool TRI_SaveJson (char const* filename, TRI_json_t* object) {
 /// @brief copies a json object into a given buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CopyToJson (TRI_json_t* dst, TRI_json_t* src) {
+void TRI_CopyToJson (TRI_json_t* dst, TRI_json_t const* src) {
   size_t n;
   size_t i;
 
