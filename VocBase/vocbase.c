@@ -33,20 +33,21 @@
 #include <Basics/hashes.h>
 #include <Basics/locks.h>
 #include <Basics/logging.h>
-#include <Basics/random.h>
+#include <Basics/randomx.h>
 #include <Basics/strings.h>
 #include <Basics/threads.h>
 
+#include <VocBase/compactor.h>
 #include <VocBase/document-collection.h>
-#include <VocBase/garbage-collector.h>
 #include <VocBase/simple-collection.h>
+#include <VocBase/synchroniser.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -81,7 +82,7 @@ static TRI_spin_t TickLock;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -161,7 +162,7 @@ static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -290,7 +291,7 @@ static void ScanPath (TRI_vocbase_t* vocbase, char const* path) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -309,7 +310,7 @@ size_t PageSize;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -385,7 +386,7 @@ bool TRI_msync (int fd, char const* begin, char const* end) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -419,16 +420,19 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
                             EqualKeyCollectionName,
                             NULL);
 
-  TRI_InitThread(&vocbase->_gargabeCollector);
-
   // scan directory for collections
   ScanPath(vocbase, vocbase->_path);
 
   // vocbase is now active
   vocbase->_active = 1;
 
-  // start garbage collector thread
-  TRI_StartThread(&vocbase->_gargabeCollector, TRI_GarbageCollector, vocbase);
+  // start synchroniser thread
+  TRI_InitThread(&vocbase->_synchroniser);
+  TRI_StartThread(&vocbase->_synchroniser, TRI_SynchroniserVocBase, vocbase);
+
+  // start compactor thread
+  TRI_InitThread(&vocbase->_compactor);
+  TRI_StartThread(&vocbase->_compactor, TRI_CompactorVocBase, vocbase);
 
   // we are done
   return vocbase;
@@ -443,7 +447,8 @@ void TRI_CloseVocBase (TRI_vocbase_t* vocbase) {
 
   // TODO unload collections
 
-  TRI_JoinThread(&vocbase->_gargabeCollector);
+  TRI_JoinThread(&vocbase->_synchroniser);
+  TRI_JoinThread(&vocbase->_compactor);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -736,7 +741,7 @@ bool TRI_ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t co
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -763,7 +768,9 @@ void TRI_InitialiseVocBase () {
   TRI_set_errno_string(TRI_VOC_ERROR_DATAFILE_SEALED, "datafile sealed");
   TRI_set_errno_string(TRI_VOC_ERROR_CORRUPTED_COLLECTION, "corrupted collection");
   TRI_set_errno_string(TRI_VOC_ERROR_UNKNOWN_TYPE, "unknown type");
+  TRI_set_errno_string(TRI_VOC_ERROR_ILLEGAL_PARAMETER, "illegal paramater");
   TRI_set_errno_string(TRI_VOC_ERROR_INDEX_EXISTS, "index exists");
+  TRI_set_errno_string(TRI_VOC_ERROR_CONFLICT, "conflict");
 
   // open errors
   TRI_set_errno_string(TRI_VOC_ERROR_WRONG_PATH, "wrong path");

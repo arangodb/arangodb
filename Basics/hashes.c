@@ -36,12 +36,12 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Hashes Hashes
+/// @addtogroup Hashes
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief computes a NVL hash for blobs
+/// @brief computes a FNV hash for blobs
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t TRI_FnvHashBlob (TRI_blob_t* blob) {
@@ -49,7 +49,7 @@ uint64_t TRI_FnvHashBlob (TRI_blob_t* blob) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief computes a NVL hash for memory blobs
+/// @brief computes a FNV hash for memory blobs
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t TRI_FnvHashPointer (void const* buffer, size_t length) {
@@ -73,7 +73,7 @@ uint64_t TRI_FnvHashPointer (void const* buffer, size_t length) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief computes a NVL hash for strings
+/// @brief computes a FNV hash for strings
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t TRI_FnvHashString (char const* buffer) {
@@ -107,7 +107,7 @@ uint64_t TRI_FnvHashString (char const* buffer) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HashesPrivate Hashes (Private)
+/// @addtogroup Hashes
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -122,7 +122,7 @@ static uint32_t Crc32Polynomial[256];
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HashesPrivate Hashes (Private)
+/// @addtogroup Hashes
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -181,7 +181,7 @@ static void GenerateCrc32Polynomial (void) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Hashes Hashes
+/// @addtogroup Hashes
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -215,6 +215,27 @@ uint32_t TRI_BlockCrc32 (uint32_t value, char const* data, size_t length) {
   ptr = (uint8_t const*) data;
 
   while (length--) {
+    value = (value >> 8) ^ (Crc32Polynomial[(value & 0xFF) ^ (*ptr)]);
+    ++ptr;
+  }
+
+  return value;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief CRC32 value of data block ended by 0
+////////////////////////////////////////////////////////////////////////////////
+
+uint32_t TRI_BlockStringCrc32 (uint32_t value, char const* data) {
+  uint8_t const* ptr;
+
+  if (data == 0) {
+    return value;
+  }
+
+  ptr = (uint8_t const*) data;
+
+  while (*ptr != '\0') {
     value = (value >> 8) ^ (Crc32Polynomial[(value & 0xFF) ^ (*ptr)]);
     ++ptr;
   }
@@ -275,7 +296,7 @@ uint64_t TRI_Crc32HashString (char const* data) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Hashes Hashes
+/// @addtogroup Hashes
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 

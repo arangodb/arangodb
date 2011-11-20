@@ -33,11 +33,17 @@
 #include <VocBase/document-collection.h>
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                     private types for result sets
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+
+static void RemoveContainerElement (TRI_result_set_t* rs);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -52,6 +58,7 @@ typedef struct doc_rs_single_s {
 
   TRI_shaped_json_t _element;
   TRI_voc_did_t _did;
+  TRI_voc_rid_t _rid;
 
   TRI_voc_size_t _total;
 }
@@ -66,6 +73,7 @@ typedef struct doc_rs_vector_s {
 
   TRI_shaped_json_t* _elements;
   TRI_voc_did_t* _dids;
+  TRI_voc_rid_t* _rids;
   TRI_json_t* _augmented;
 
   TRI_voc_size_t _length;
@@ -79,11 +87,15 @@ doc_rs_vector_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                          private functions for single result sets
+// --SECTION--                                                SINGLE RESULT SETS
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -92,8 +104,9 @@ doc_rs_vector_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool HasNextRSSingle (TRI_result_set_t* rs) {
-  doc_rs_single_t* rss = (doc_rs_single_t*) rs;
+  doc_rs_single_t* rss;
 
+  rss = (doc_rs_single_t*) rs;
   return ! rss->_empty;
 }
 
@@ -103,8 +116,11 @@ static bool HasNextRSSingle (TRI_result_set_t* rs) {
 
 static TRI_shaped_json_t* NextRSSingle (TRI_result_set_t* rs,
                                         TRI_voc_did_t* did,
+                                        TRI_voc_rid_t* rid,
                                         TRI_json_t const** augmented) {
-  doc_rs_single_t* rss = (doc_rs_single_t*) rs;
+  doc_rs_single_t* rss;
+
+  rss = (doc_rs_single_t*) rs;
 
   if (augmented != NULL) {
     *augmented = NULL;
@@ -112,12 +128,14 @@ static TRI_shaped_json_t* NextRSSingle (TRI_result_set_t* rs,
 
   if (rss->_empty) {
     *did = 0;
+    *rid = 0;
 
     return NULL;
   }
   else {
     rss->_empty = true;
     *did = rss->_did;
+    *rid = rss->_rid;
 
     return &rss->_element;
   }
@@ -128,8 +146,9 @@ static TRI_shaped_json_t* NextRSSingle (TRI_result_set_t* rs,
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_voc_size_t CountRSSingle (TRI_result_set_t* rs, bool current) {
-  doc_rs_single_t* rss = (doc_rs_single_t*) rs;
+  doc_rs_single_t* rss;
 
+  rss = (doc_rs_single_t*) rs;
   return rss->_total;
 }
 
@@ -138,10 +157,7 @@ static TRI_voc_size_t CountRSSingle (TRI_result_set_t* rs, bool current) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeRSSingle (TRI_result_set_t* rs) {
-  void* f;
-
-  f = TRI_RemoveKeyAssociativeSynced(&rs->_container->_resultSets, &rs->_id);
-  assert(f != NULL);
+  RemoveContainerElement(rs);
 
   TRI_Free(rs->_info._cursor);
   TRI_Free(rs);
@@ -152,11 +168,15 @@ static void FreeRSSingle (TRI_result_set_t* rs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                          private functions for vector result sets
+// --SECTION--                                                VECTOR RESULT SETS
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -165,8 +185,9 @@ static void FreeRSSingle (TRI_result_set_t* rs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool HasNextRSVector (TRI_result_set_t* rs) {
-  doc_rs_vector_t* rss = (doc_rs_vector_t*) rs;
+  doc_rs_vector_t* rss;
 
+  rss = (doc_rs_vector_t*) rs;
   return rss->_current < rss->_length;
 }
 
@@ -176,11 +197,15 @@ static bool HasNextRSVector (TRI_result_set_t* rs) {
 
 static TRI_shaped_json_t* NextRSVector (TRI_result_set_t* rs,
                                         TRI_voc_did_t* did,
+                                        TRI_voc_rid_t* rid,
                                         TRI_json_t const** augmented) {
-  doc_rs_vector_t* rss = (doc_rs_vector_t*) rs;
+  doc_rs_vector_t* rss;
+
+  rss = (doc_rs_vector_t*) rs;
 
   if (rss->_current < rss->_length) {
     *did = rss->_dids[rss->_current];
+    *rid = rss->_rids[rss->_current];
 
     if (augmented != NULL) {
       if (rss->_augmented == NULL) {
@@ -195,6 +220,7 @@ static TRI_shaped_json_t* NextRSVector (TRI_result_set_t* rs,
   }
   else {
     *did = 0;
+    *rid = 0;
 
     return NULL;
   }
@@ -205,7 +231,9 @@ static TRI_shaped_json_t* NextRSVector (TRI_result_set_t* rs,
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_voc_size_t CountRSVector (TRI_result_set_t* rs, bool current) {
-  doc_rs_vector_t* rss = (doc_rs_vector_t*) rs;
+  doc_rs_vector_t* rss;
+
+  rss = (doc_rs_vector_t*) rs;
 
   if (current) {
     return rss->_length;
@@ -220,15 +248,15 @@ static TRI_voc_size_t CountRSVector (TRI_result_set_t* rs, bool current) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeRSVector (TRI_result_set_t* rs) {
-  doc_rs_vector_t* rss = (doc_rs_vector_t*) rs;
+  doc_rs_vector_t* rss;
 
-  void* f;
+  rss = (doc_rs_vector_t*) rs;
 
-  f = TRI_RemoveKeyAssociativeSynced(&rs->_container->_resultSets, &rs->_id);
-  assert(f != NULL);
+  RemoveContainerElement(rs);
 
   if (rss->_elements != NULL) {
     TRI_Free(rss->_dids);
+    TRI_Free(rss->_rids);
     TRI_Free(rss->_elements);
   }
 
@@ -245,43 +273,51 @@ static void FreeRSVector (TRI_result_set_t* rs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                 private functions for result sets
+// --SECTION--                                                       RESULT SETS
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBasePrivate VocBase (Private)
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hashs the result set id
+/// @brief removes a result set from the doubly linked list
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashKeyRS (TRI_associative_synced_t* array, void const* key) {
-  TRI_rs_id_t const* k = key;
+static void RemoveContainerElement (TRI_result_set_t* rs) {
+  TRI_rs_container_t* container;
+  TRI_rs_container_element_t* element;
 
-  return TRI_FnvHashPointer(k, sizeof(TRI_rs_id_t));
-}
+  element = rs->_containerElement;
+  container = element->_container;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hashs the result set id
-////////////////////////////////////////////////////////////////////////////////
+  TRI_LockSpin(&container->_lock);
 
-static uint64_t HashElementRS (TRI_associative_synced_t* array, void const* element) {
-  TRI_result_set_t const* e = element;
+  // element is at the beginning of the chain
+  if (element->_prev == NULL) {
+    container->_begin = element->_next;
+  }
+  else {
+    element->_prev->_next = element->_next;
+  }
 
-  return TRI_FnvHashPointer(&e->_id, sizeof(TRI_rs_id_t));
-}
+  // element is at the end of the chain
+  if (element->_next == NULL) {
+    container->_end = element->_prev;
+  }
+  else {
+    element->_next->_prev = element->_prev;
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compares a collection id and a collection
-////////////////////////////////////////////////////////////////////////////////
+  TRI_UnlockSpin(&container->_lock);
 
-static bool EqualKeyRS (TRI_associative_synced_t* array, void const* key, void const* element) {
-  TRI_rs_id_t const* k = key;
-  TRI_result_set_t const* e = element;
-
-  return *k == e->_id;
+  // free the element
+  TRI_Free(element);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -289,11 +325,11 @@ static bool EqualKeyRS (TRI_associative_synced_t* array, void const* key, void c
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase VocBase
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -304,11 +340,10 @@ static bool EqualKeyRS (TRI_associative_synced_t* array, void const* key, void c
 void TRI_InitRSContainer (TRI_rs_container_t* container, TRI_doc_collection_t* collection) {
   container->_collection = collection;
 
-  TRI_InitAssociativeSynced(&container->_resultSets,
-                            HashKeyRS,
-                            HashElementRS,
-                            EqualKeyRS,
-                            NULL);
+  TRI_InitSpin(&container->_lock);
+
+  container->_begin = NULL;
+  container->_end = NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -316,7 +351,18 @@ void TRI_InitRSContainer (TRI_rs_container_t* container, TRI_doc_collection_t* c
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyRSContainer (TRI_rs_container_t* container) {
-  TRI_DestroyAssociativeSynced(&container->_resultSets);
+  TRI_rs_container_element_t* ptr;
+  TRI_rs_container_element_t* next;
+
+  ptr = container->_begin;
+
+  while (ptr != NULL) {
+    next = ptr->_next;
+    ptr->_container = NULL;
+    ptr = next;
+  }
+
+  TRI_DestroySpin(&container->_lock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -324,6 +370,7 @@ void TRI_DestroyRSContainer (TRI_rs_container_t* container) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_result_set_t* TRI_CreateRSSingle (TRI_doc_collection_t* collection,
+                                      TRI_rs_container_element_t* containerElement,
                                       TRI_doc_mptr_t const* header,
                                       TRI_voc_size_t total) {
   doc_rs_single_t* rs;
@@ -338,7 +385,7 @@ TRI_result_set_t* TRI_CreateRSSingle (TRI_doc_collection_t* collection,
   rs->base.free = FreeRSSingle;
 
   rs->base._id = TRI_NewTickVocBase();
-  rs->base._container = &collection->_resultSets;
+  rs->base._containerElement = containerElement;
 
   if (header == NULL) {
     rs->_empty = true;
@@ -346,12 +393,11 @@ TRI_result_set_t* TRI_CreateRSSingle (TRI_doc_collection_t* collection,
   else {
     rs->_empty = false;
     rs->_did = header->_did;
+    rs->_rid = header->_rid;
     rs->_element = header->_document;
   }
 
   rs->_total = total;
-
-  TRI_InsertKeyAssociativeSynced(&collection->_resultSets._resultSets, &rs->base._id, rs);
 
   return &rs->base;
 }
@@ -361,15 +407,17 @@ TRI_result_set_t* TRI_CreateRSSingle (TRI_doc_collection_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_result_set_t* TRI_CreateRSVector (TRI_doc_collection_t* collection,
+                                      TRI_rs_container_element_t* containerElement,
                                       TRI_doc_mptr_t const** header,
                                       TRI_json_t const* augmented,
                                       TRI_voc_size_t length,
                                       TRI_voc_size_t total) {
-  doc_rs_vector_t* rs;
   TRI_doc_mptr_t const** qtr;
-  TRI_shaped_json_t* ptr;
   TRI_shaped_json_t* end;
+  TRI_shaped_json_t* ptr;
   TRI_voc_did_t* wtr;
+  TRI_voc_rid_t* ztr;
+  doc_rs_vector_t* rs;
 
   rs = TRI_Allocate(sizeof(doc_rs_vector_t));
 
@@ -381,7 +429,7 @@ TRI_result_set_t* TRI_CreateRSVector (TRI_doc_collection_t* collection,
   rs->base.free = FreeRSVector;
 
   rs->base._id = TRI_NewTickVocBase();
-  rs->base._container = &collection->_resultSets;
+  rs->base._containerElement = containerElement;
 
   if (length == 0) {
     rs->_length = 0;
@@ -395,14 +443,17 @@ TRI_result_set_t* TRI_CreateRSVector (TRI_doc_collection_t* collection,
     rs->_current = 0;
     rs->_elements = TRI_Allocate(length * sizeof(TRI_shaped_json_t));
     rs->_dids = TRI_Allocate(length * sizeof(TRI_voc_did_t));
+    rs->_rids = TRI_Allocate(length * sizeof(TRI_voc_rid_t));
 
     qtr = header;
     ptr = rs->_elements;
     wtr = rs->_dids;
+    ztr = rs->_rids;
     end = ptr + length;
 
-    for (;  ptr < end;  ++ptr, ++qtr, ++wtr) {
+    for (;  ptr < end;  ++ptr, ++qtr, ++wtr, ++ztr) {
       *wtr = (*qtr)->_did;
+      *ztr = (*qtr)->_rid;
       *ptr = (*qtr)->_document;
     }
 
@@ -417,9 +468,104 @@ TRI_result_set_t* TRI_CreateRSVector (TRI_doc_collection_t* collection,
 
   rs->_total = total;
 
-  TRI_InsertKeyAssociativeSynced(&collection->_resultSets._resultSets, &rs->base._id, rs);
-
   return &rs->base;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a result set to the end of the doubly linked list
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_rs_container_element_t* TRI_AddResultSetRSContainer (TRI_rs_container_t* container) {
+  TRI_rs_container_element_t* element;
+
+  element = TRI_Allocate(sizeof(TRI_rs_container_element_t));
+
+  element->_type = TRI_RSCE_RESULT_SET;
+  element->_container = container;
+  element->_resultSet = NULL;
+  element->_datafile = NULL;
+  element->datafileCallback = NULL;
+
+  TRI_LockSpin(&container->_lock);
+
+  // empty list
+  if (container->_end == NULL) {
+    element->_next = NULL;
+    element->_prev = NULL;
+
+    container->_begin = element;
+    container->_end = element;
+  }
+
+  // add to the end
+  else {
+    element->_next = NULL;
+    element->_prev = container->_end;
+
+    container->_end->_next = element;
+    container->_end = element;
+  }
+
+  TRI_UnlockSpin(&container->_lock);
+
+  return element;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds an callback to the result set container
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_rs_container_element_t* TRI_AddDatafileRSContainer (TRI_rs_container_t* container,
+                                                        TRI_datafile_t* datafile,
+                                                        void (*callback) (struct TRI_datafile_s*, void*),
+                                                        void* data) {
+  TRI_rs_container_element_t* element;
+
+  element = TRI_Allocate(sizeof(TRI_rs_container_element_t));
+
+  element->_type = TRI_RSCE_DATAFILE;
+  element->_container = container;
+  element->_resultSet = NULL;
+  element->_datafile = datafile;
+  element->_datafileData = data;
+  element->datafileCallback = callback;
+
+  TRI_LockSpin(&container->_lock);
+
+  // empty list
+  if (container->_end == NULL) {
+    element->_next = NULL;
+    element->_prev = NULL;
+
+    container->_begin = element;
+    container->_end = element;
+  }
+
+  // add to the end
+  else {
+    element->_next = NULL;
+    element->_prev = container->_end;
+
+    container->_end->_next = element;
+    container->_end = element;
+  }
+
+  TRI_UnlockSpin(&container->_lock);
+
+  return element;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

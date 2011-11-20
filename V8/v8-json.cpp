@@ -1,8 +1,6 @@
 #line 2 "./V8/v8-json.ll"
-#define TRI_WITHIN_C
 #include <Basics/strings.h>
 #include <Basics/logging.h>
-#undef TRI_WITHIN_C
 
 #include <v8.h>
 
@@ -10,7 +8,7 @@
 
 
 
-#line 14 "./V8/v8-json.cpp"
+#line 12 "./V8/v8-json.cpp"
 
 #define  YY_INT_ALIGNED short int
 
@@ -558,8 +556,8 @@ static yyconst flex_int16_t yy_chk[125] =
 
 static yyconst flex_int16_t yy_rule_linenum[14] =
     {   0,
-       53,   57,   61,   69,   77,   85,   89,   93,   97,  101,
-      105,  114,  117
+       51,   55,   59,   67,   75,   83,   87,   91,   95,   99,
+      103,  112,  115
     } ;
 
 /* The intent behind this definition is that it'll catch
@@ -2342,7 +2340,7 @@ static v8::Handle<v8::Value> ParseObject (yyscan_t scanner, int c);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell V8 Shell
+/// @addtogroup Json
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2574,7 +2572,7 @@ static v8::Handle<v8::Value> ParseObject (yyscan_t scanner, int c) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json Json Objects
+/// @addtogroup Json
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 

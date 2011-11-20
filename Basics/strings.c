@@ -32,7 +32,7 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup StringsPrivate String Functions (Private)
+/// @addtogroup Strings
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -314,7 +314,7 @@ static void DecodeSurrogatePair (char** dst, char const* src1, char const* src2)
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Strings String Functions
+/// @addtogroup Strings
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -367,8 +367,8 @@ char* TRI_DuplicateString (char const* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_DuplicateString2 (char const* value, size_t length) {
-  size_t n;
   char* result;
+  size_t n;
 
   n = length + 1;
   result = TRI_Allocate(n);
@@ -547,6 +547,53 @@ char* TRI_Concatenate6String (char const* a, char const* b, char const* c, char 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief splits a string
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vector_string_t TRI_SplitString (char const* source, char delim) {
+  TRI_vector_string_t result;
+  char* buffer;
+  char* p;
+  char const* q;
+  char const* e;
+  size_t size;
+
+  TRI_InitVectorString(&result);
+
+  if (source == NULL || *source == '\0') {
+    return result;
+  }
+
+  size = strlen(source);
+  buffer = TRI_Allocate(size + 1);
+  p = buffer;
+
+  q = source;
+  e = source + size;
+
+  for (;  q < e;  ++q) {
+    if (*q == delim) {
+      *p = '\0';
+
+      TRI_PushBackVectorString(&result, TRI_DuplicateString2(buffer, p - buffer));
+
+      p = buffer;
+    }
+    else {
+      *p++ = *q;
+    }
+  }
+
+  *p = '\0';
+
+  TRI_PushBackVectorString(&result, TRI_DuplicateString2(buffer, p - buffer));
+
+  TRI_FreeString(buffer);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief frees a string
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -563,7 +610,7 @@ void TRI_FreeString (char* value) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Strings String Functions
+/// @addtogroup Strings
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 

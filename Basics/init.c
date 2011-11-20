@@ -29,14 +29,14 @@
 
 #include <Basics/hashes.h>
 #include <Basics/logging.h>
-#include <Basics/random.h>
+#include <Basics/randomx.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration Configuration
+/// @addtogroup Configuration
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 

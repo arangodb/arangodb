@@ -27,29 +27,60 @@
 
 #include <Basics/Common.h>
 
+#ifndef TRI_GCC_THREAD_LOCAL_STORAGE
+#include <pthread.h>
+#endif
+
 #include <Basics/strings.h>
 #include <Basics/vector.h>
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     private types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ErrorHandling
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief error number and system error
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct tri_error_s {
+  int _number;
+  int _sys;
+}
+tri_error_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ErrorHandling Error Handling
+/// @addtogroup ErrorHandling
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pthread local storage key
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef TRI_GCC_THREAD_LOCAL_STORAGE
+static pthread_key_t ErrorKey;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief holds the last error
 ////////////////////////////////////////////////////////////////////////////////
 
-static __thread int ErrorNumber = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief holds the last system error
-////////////////////////////////////////////////////////////////////////////////
-
-static __thread int SystemErrorNumber = 0;
+#ifdef TRI_GCC_THREAD_LOCAL_STORAGE
+static __thread tri_error_t ErrorNumber;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the error messages
@@ -62,11 +93,36 @@ static TRI_vector_string_t ErrorMessages;
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ErrorHandling
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cleanup
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef TRI_GCC_THREAD_LOCAL_STORAGE
+
+static void CleanupError (void* ptr) {
+  TRI_Free(ptr);
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ErrorHandling Error Handling
+/// @addtogroup ErrorHandling
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -75,7 +131,24 @@ static TRI_vector_string_t ErrorMessages;
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_errno () {
-  return ErrorNumber;
+#ifdef TRI_GCC_THREAD_LOCAL_STORAGE
+
+  return ErrorNumber._number;
+
+#else
+
+  tri_error_t* eptr;
+
+  eptr = pthread_getspecific(ErrorKey);
+
+  if (eptr == NULL) {
+    return 0;
+  }
+  else {
+    return eptr->_number;
+  }
+
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -83,12 +156,37 @@ int TRI_errno () {
 ////////////////////////////////////////////////////////////////////////////////
 
 char const* TRI_last_error () {
-  if (ErrorNumber == TRI_ERROR_SYS_ERROR) {
-    return strerror(SystemErrorNumber);
+  int err;
+  int sys;
+
+#ifdef TRI_GCC_THREAD_LOCAL_STORAGE
+
+  err = ErrorNumber._number;
+  sys = ErrorNumber._sys;
+
+#else
+
+  tri_error_t* eptr;
+
+  eptr = pthread_getspecific(ErrorKey);
+
+  if (eptr == NULL) {
+    err = 0;
+    sys = 0;
+  }
+  else {
+    err = eptr->_number;
+    err = eptr->_sys;
   }
 
-  if (ErrorNumber < TRI_SizeVectorString(&ErrorMessages)) {
-    char const* str = TRI_AtVectorString(&ErrorMessages, ErrorNumber);
+#endif
+
+  if (err == TRI_ERROR_SYS_ERROR) {
+    return strerror(sys);
+  }
+
+  if (err < TRI_SizeVectorString(&ErrorMessages)) {
+    char const* str = TRI_AtVectorString(&ErrorMessages, err);
 
     if (str == NULL) {
       return "general error";
@@ -105,11 +203,38 @@ char const* TRI_last_error () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_set_errno (int error) {
-  ErrorNumber = error;
+#ifdef TRI_GCC_THREAD_LOCAL_STORAGE
+
+  ErrorNumber._number = error;
 
   if (error == TRI_ERROR_SYS_ERROR) {
-    SystemErrorNumber = errno;
+    ErrorNumber._sys = errno;
   }
+  else {
+    ErrorNumber._sys = 0;
+  }
+
+#else
+
+  tri_error_t* eptr;
+
+  eptr = pthread_getspecific(ErrorKey);
+
+  if (eptr == NULL) {
+    eptr = TRI_Allocate(sizeof(tri_error_t));
+    pthread_setspecific(ErrorKey, eptr);
+  }
+
+  eptr->_number = error;
+
+  if (error == TRI_ERROR_SYS_ERROR) {
+    eptr->_sys = errno;
+  }
+  else {
+    eptr->_sys = 0;
+  }
+
+#endif
 
   return error;
 }
@@ -139,7 +264,7 @@ void TRI_set_errno_string (int error, char const* msg) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ErrorHandling Error Handling
+/// @addtogroup ErrorHandling
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -153,6 +278,13 @@ void TRI_InitialiseError () {
   TRI_set_errno_string(0, "no error");
   TRI_set_errno_string(1, "failed");
   TRI_set_errno_string(2, "system error");
+
+#ifdef TRI_GCC_THREAD_LOCAL_STORAGE
+  ErrorNumber._number = 0;
+  ErrorNumber._sys = 0;
+#else
+  pthread_key_create(&ErrorKey, CleanupError);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

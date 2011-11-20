@@ -36,7 +36,7 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup BasicStructures Basic Structures
+/// @addtogroup BasicStructures
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -72,7 +72,7 @@ void TRI_FreeBlob (TRI_blob_t* blob) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup BasicStructures Basic Structures
+/// @addtogroup BasicStructures
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -80,7 +80,7 @@ void TRI_FreeBlob (TRI_blob_t* blob) {
 /// @brief copies a blob
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_blob_t* TRI_CopyBlob (TRI_blob_t* src) {
+TRI_blob_t* TRI_CopyBlob (TRI_blob_t const* src) {
   TRI_blob_t* dst;
 
   dst = (TRI_blob_t*) TRI_Allocate(sizeof(TRI_blob_t));
@@ -103,7 +103,7 @@ TRI_blob_t* TRI_CopyBlob (TRI_blob_t* src) {
 /// @brief copies a blob into given destination
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CopyToBlob (TRI_blob_t* dst, TRI_blob_t* src) {
+void TRI_CopyToBlob (TRI_blob_t* dst, TRI_blob_t const* src) {
   dst->length = src->length;
 
   if (src->length == 0 || src->data == NULL) {

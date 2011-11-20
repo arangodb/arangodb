@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 /* regression testing program for GeoIndex module     */
-/*  R.A.P. 1.0 24.9.2011                              */
+/*  R.A.P. 1.1 5.11.2011                              */
 
 #ifdef GEO_TRIAGENS
 #include "GeoIndex/GeoIndex.h"
@@ -50,8 +50,8 @@ void pcheck(int e, char * a, char * b)
 {
     if(a==b) return;
     errors++;
-    if(b>a) printf("Error %d, pointer was %d too high\n",e,b-a);
-    if(b<a) printf("Error %d, pointer was %d too low \n",e,a-b);
+    if(b>a) printf("Error %d, pointer was %ld too high\n",e,(long)(b-a));
+    if(b<a) printf("Error %d, pointer was %ld too low \n",e,(long)(a-b));
 }
 
 void dcheck(int e, double a, double b, double bar)
@@ -369,13 +369,13 @@ int main(int argc, char ** argv)
     icheck(77,1,list1->length);
     dcheck(78,0.0,list1->coordinates[0].latitude,0.0);
     dcheck(79,30.0,list1->coordinates[0].longitude,0.0);
-    pcheck(80,&ix[3],list1->coordinates[0].data);
+    pcheck(80,&ix[3],(char *)list1->coordinates[0].data);
     gcp.longitude= 24.5;
     list1 = GeoIndex_NearestCountPoints(gi,&gcp,1);
     icheck(81,1,list1->length);
     dcheck(82,0.0,list1->coordinates[0].latitude,0.0);
     dcheck(83,20.0,list1->coordinates[0].longitude,0.0);
-    pcheck(84,&ix[2],list1->coordinates[0].data);
+    pcheck(84,&ix[2],(char *)list1->coordinates[0].data);
 
     gcp.latitude  = 1.0;
     gcp.longitude = 40.0;
@@ -427,7 +427,7 @@ int main(int argc, char ** argv)
     icheck(91,1,list1->length);
     dcheck(92,0.0,list1->coordinates[0].latitude,0.0);
     dcheck(93,40.0,list1->coordinates[0].longitude,0.0);
-    pcheck(94,&ix[4],list1->coordinates[0].data);
+    pcheck(94,&ix[4],(char *)list1->coordinates[0].data);
 
     list1 = GeoIndex_NearestCountPoints(gi,&gcp,10);
     gccheck(95,list1,  8,"OPBAAAAAAAAAAAAAAAAAAAAAA");
