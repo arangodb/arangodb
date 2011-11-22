@@ -13,12 +13,15 @@ Compilation
 
 (2) ./configure --with-v8=/home/huerth/fceller/IPP/3rdParty/v8
 
-(3) ./avocdb --shell js/shell.js
+(3) "./avocado" to start a REST server or "./avocado --shell" for debugging
 
 First Steps
 ===========
 
-> ./avocado --shell
-avocado> db.examples.count();
-avocado> db.examples.save({ Hallo: "World" });
-avocado> db.examples.select();
+ ./avocado --shell
+
+ avocado> db.examples.count();
+
+ avocado> db.examples.save({ Hallo: "World" });
+
+ avocado> db.examples.select();
