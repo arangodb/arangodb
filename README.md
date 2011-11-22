@@ -18,10 +18,7 @@ Compilation
 First Steps
 ===========
 
- ./avocado --shell
-
- avocado> db.examples.count();
-
- avocado> db.examples.save({ Hallo: "World" });
-
- avocado> db.examples.select();
+    ./avocado --shell
+    avocado> db.examples.count();
+    avocado> db.examples.save({ Hallo: "World" });
+    avocado> db.examples.select();
