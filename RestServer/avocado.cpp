@@ -54,6 +54,7 @@
 #include "RestHandler/RestActionHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 
+#include "HttpServer/HttpServerImpl.h"
 #include "Dispatcher/DispatcherThread.h"
 #include "Dispatcher/DispatcherImpl.h"
 
@@ -69,12 +70,25 @@ using namespace triagens::rest;
 using namespace triagens::admin;
 using namespace triagens::avocado;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          ACTION DISPTACHER THREAD
-// -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @page StartStop Starting and stopping
+///
+/// The AvocadoDB has two mode of operations: as server, where it will answer to
+/// HTTP request, see @ref HttpInterface, and a debug shell, where you can
+/// access the database directly, see @ref DebugShell.
+///
+/// The following main command-line options are available.
+///
+/// @CMDOPT{--log.level @CA{level}}
+///
+/// Allows the user to choose the level of information which is logged by the
+/// server. The arg is specified as a string and can be one of the following
+/// values: fatal, error, warning, info, debug, trace.  For more information see
+/// @ref CommandLineLogging "here".
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   private classes
+// --SECTION--                                      class ActionDisptacherThread
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,6 +103,22 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
   class ActionDisptacherThread : public DispatcherThread {
+    ActionDisptacherThread (ActionDisptacherThread const&);
+    ActionDisptacherThread& operator= (ActionDisptacherThread const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                           public static variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
     public:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,6 +139,19 @@ namespace {
 
       static TRI_vocbase_t* _vocbase;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
     public:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -118,7 +161,8 @@ namespace {
       ActionDisptacherThread (DispatcherQueue* queue)
         : DispatcherThread(queue),
           _report(false),
-          _isolate(0) {
+          _isolate(0),
+          _context() {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -127,6 +171,19 @@ namespace {
 
       ~ActionDisptacherThread () {
       }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          DispatcherThread methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
     public:
 
@@ -162,6 +219,19 @@ namespace {
         LOGGER_DEBUG << "active result-sets: " << v8g->JSResultSets.size();
       }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    Thread methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
     public:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -183,6 +253,19 @@ namespace {
         _isolate->Dispose();
       }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
     private:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -192,9 +275,11 @@ namespace {
       void initialise () {
         bool ok;
         char* filename;
+        char const* files[] = { "json.js", "actions.js" };
+        size_t i;
 
+        // enter a new isolate
         _isolate = v8::Isolate::New();
-
         _isolate->Enter();
 
         // create the context
@@ -202,7 +287,7 @@ namespace {
 
         if (_context.IsEmpty()) {
           LOGGER_FATAL << "cannot initialize V8 engine";
-          TRI_ShutdownLogging();
+          TRIAGENS_REST_SHUTDOWN;
           exit(EXIT_FAILURE);
         }
 
@@ -213,39 +298,46 @@ namespace {
         TRI_InitV8Utils(_context);
         TRI_InitV8Shell(_context);
 
-        filename = TRI_Concatenate2File(_startupPath.c_str(), "json.js");
-        ok = TRI_LoadJavaScriptFile(_context, filename);
+        // load all init files
+        for (i = 0;  i < sizeof(files) / sizeof(files[0]);  ++i) {
+          filename = TRI_Concatenate2File(_startupPath.c_str(), files[i]);
+          ok = TRI_LoadJavaScriptFile(_context, filename);
 
-        if (! ok) {
-          LOGGER_FATAL << "cannot load json utilities from file '" << filename << "'";
-          TRI_ShutdownLogging();
-          exit(EXIT_FAILURE);
+          if (! ok) {
+            LOGGER_FATAL << "cannot load json utilities from file '" << filename << "'";
+            TRIAGENS_REST_SHUTDOWN;
+            exit(EXIT_FAILURE);
+          }
+
+          TRI_FreeString(filename);
         }
 
-        TRI_FreeString(filename);
-
-        filename = TRI_Concatenate2File(_startupPath.c_str(), "actions.js");
-        ok = TRI_LoadJavaScriptFile(_context, filename);
-
-        if (! ok) {
-          LOGGER_FATAL << "cannot load actions basics from file '" << filename << "'";
-          TRI_ShutdownLogging();
-          exit(EXIT_FAILURE);
-        }
-
-        TRI_FreeString(filename);
-
+        // load all actions
         ok = TRI_LoadJavaScriptDirectory(_context, _actionPath.c_str());
 
         if (! ok) {
           LOGGER_FATAL << "cannot load actions from directory '" << filename << "'";
-          TRI_ShutdownLogging();
+          TRIAGENS_REST_SHUTDOWN;
           exit(EXIT_FAILURE);
         }
 
+        // and return from the context
         _context->Exit();
         _isolate->Exit();
       }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
     private:
 
@@ -269,6 +361,19 @@ namespace {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                           public static variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief action path
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -288,10 +393,23 @@ namespace {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief action dispatcher thread creator
 ////////////////////////////////////////////////////////////////////////////////
 
-DispatcherThread* ActionDisptacherThreadCreator (DispatcherQueue* queue) {
+static DispatcherThread* ActionDisptacherThreadCreator (DispatcherQueue* queue) {
   return new ActionDisptacherThread(queue);
 }
 
@@ -300,11 +418,82 @@ DispatcherThread* ActionDisptacherThreadCreator (DispatcherQueue* queue) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    AVOCADO SERVER
+// --SECTION--                                           class AvocadoHttpServer
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+namespace {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief specialized http server
+////////////////////////////////////////////////////////////////////////////////
+
+  class AvocadoHttpServer : public HttpServerImpl {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   private classes
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+    public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new http server
+////////////////////////////////////////////////////////////////////////////////
+
+      AvocadoHttpServer (Scheduler* scheduler, Dispatcher* dispatcher)
+        : HttpServerImpl(scheduler, dispatcher) {
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             GeneralServer methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+    public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+      void handleConnected (socket_t socket, ConnectionInfo& info) {
+        SocketTask* task
+          = new SpecificCommTask<AvocadoHttpServer, HttpHandlerFactory, HttpCommTask>(
+              this,
+              socket,
+              info);
+
+        _scheduler->registerTask(task);
+      }
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   class AvocadoDB
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -326,6 +515,19 @@ namespace {
     public:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief UnviversalVoc constructor
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -344,6 +546,19 @@ namespace {
           _vocbase(0) {
         _workingDirectory = "/var/tmp";
       }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 AnyServer methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
     public:
 
@@ -386,6 +601,7 @@ namespace {
         map<string, ProgramOptionsDescription> additional;
 
         additional[ApplicationServer::OPTIONS_CMDLINE]
+          ("shell", "do not start as server, start in shell mode instead")
           ("daemon", "run as daemon")
           ("supervisor", "starts a supervisor and runs as daemon")
           ("pid-file", &_pidFile, "pid-file in daemon mode")
@@ -425,8 +641,17 @@ namespace {
         // .............................................................................
 
         if (! _applicationServer->parse(_argc, _argv, additional)) {
-          TRI_ShutdownLogging();
+          TRIAGENS_REST_SHUTDOWN;
           exit(EXIT_FAILURE);
+        }
+
+        // .............................................................................
+        // in shell mode ignore the rest
+        // .............................................................................
+
+        if (_applicationServer->programOptions().has("shell")) {
+          executeShell();
+          exit(EXIT_SUCCESS);
         }
 
         // .............................................................................
@@ -444,14 +669,14 @@ namespace {
         if (_daemonMode) {
           if (_pidFile.empty()) {
             LOGGER_FATAL << "no pid-file defined, but daemon mode requested";
-            TRI_ShutdownLogging();
+            TRIAGENS_REST_SHUTDOWN;
             exit(EXIT_FAILURE);
           }
         }
 
         if (_databasePath.empty()) {
           LOGGER_FATAL << "no database path has been supplied, giving up";
-          TRI_ShutdownLogging();
+          TRIAGENS_REST_SHUTDOWN;
           exit(EXIT_FAILURE);
         }
       }
@@ -467,13 +692,7 @@ namespace {
         // open the database
         // .............................................................................
 
-        _vocbase = TRI_OpenVocBase(_databasePath.c_str());
-
-        if (_vocbase == 0) {
-          LOGGER_FATAL << "cannot open database '" << _databasePath << "'";
-          TRI_ShutdownLogging();
-          exit(EXIT_FAILURE);
-        }
+        openDatabase();
 
         // .............................................................................
         // create the action dispatcher thread infor
@@ -517,7 +736,9 @@ namespace {
         factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
         factory->addPrefixHandler(RestVocbaseBaseHandler::ACTION_PATH, RestHandlerCreator<RestActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
 
-        _httpServer = _applicationHttpServer->buildServer(factory, ports);
+        Scheduler* scheduler = _applicationServer->scheduler();
+
+        _httpServer = _applicationHttpServer->buildServer(new AvocadoHttpServer(scheduler, dispatcher), factory, ports);
 
         // .............................................................................
         // start the main event loop
@@ -526,12 +747,157 @@ namespace {
         _applicationServer->start();
         _applicationServer->wait();
 
-        TRI_CloseVocBase(_vocbase);
+        // .............................................................................
+        // and cleanup
+        // .............................................................................
 
-        LOGGER_INFO << "AvocadoDB has been shut down";
-
+        closeDatabase();
         return 0;
       }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+    private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes the shell
+////////////////////////////////////////////////////////////////////////////////
+
+      void executeShell () {
+        v8::Isolate* isolate;
+        v8::Persistent<v8::Context> context;
+        bool ok;
+        char* filename;
+        char const* files[] = { "shell.js", "json.js" };
+        size_t i;
+
+        // open the database
+        openDatabase();
+
+        // enter a new isolate
+        isolate = v8::Isolate::New();
+        isolate->Enter();
+
+        // global scope
+        v8::HandleScope globalScope;
+
+        // create the context
+        context = v8::Context::New(0);
+
+        if (context.IsEmpty()) {
+          LOGGER_FATAL << "cannot initialize V8 engine";
+          TRIAGENS_REST_SHUTDOWN;
+          exit(EXIT_FAILURE);
+        }
+
+        context->Enter();
+
+        TRI_InitV8VocBridge(context, _vocbase);
+        TRI_InitV8Utils(context);
+        TRI_InitV8Shell(context);
+
+        // load all init files
+        for (i = 0;  i < sizeof(files) / sizeof(files[0]);  ++i) {
+          filename = TRI_Concatenate2File(_startupPath.c_str(), files[i]);
+          ok = TRI_LoadJavaScriptFile(context, filename);
+
+          if (! ok) {
+            LOGGER_FATAL << "cannot load json utilities from file '" << filename << "'";
+            TRIAGENS_REST_SHUTDOWN;
+            exit(EXIT_FAILURE);
+          }
+
+          TRI_FreeString(filename);
+        }
+
+        // run the shell
+        printf("AvocadoDB shell [V8 version %s, DB version %s]\n", v8::V8::GetVersion(), TRIAGENS_VERSION);
+
+        v8::Context::Scope contextScope(context);
+        v8::Local<v8::String> name(v8::String::New("(avocado)"));
+
+        V8LineEditor* console = new V8LineEditor();
+
+        console->open();
+
+        while (true) {
+          while(! v8::V8::IdleNotification()) {
+          }
+
+          char* input = console->prompt("avocado> ");
+
+          if (input == 0) {
+            break;
+          }
+
+          if (*input == '\0') {
+            TRI_FreeString(input);
+            continue;
+          }
+
+          console->addHistory(input);
+
+          v8::HandleScope scope;
+
+          TRI_ExecuteStringVocBase(context, v8::String::New(input), name, true, true);
+
+          TRI_FreeString(input);
+        }
+
+        // and return from the context and isolate
+        context->Exit();
+        isolate->Exit();
+
+        // close the database
+        closeDatabase();
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief opens the database
+////////////////////////////////////////////////////////////////////////////////
+
+      void openDatabase () {
+        _vocbase = TRI_OpenVocBase(_databasePath.c_str());
+
+        if (_vocbase == 0) {
+          LOGGER_FATAL << "cannot open database '" << _databasePath << "'";
+          TRIAGENS_REST_SHUTDOWN;
+          exit(EXIT_FAILURE);
+        }
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief closes the database
+////////////////////////////////////////////////////////////////////////////////
+
+      void closeDatabase () {
+        TRI_CloseVocBase(_vocbase);
+        LOGGER_INFO << "AvocadoDB has been shut down";
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
     private:
 
@@ -627,19 +993,17 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
 int main (int argc, char* argv[]) {
-  TRIAGENS_C_INITIALISE;
   TRIAGENS_REST_INITIALISE;
-
   TRI_InitialiseVocBase();
-  TRI_SetLogLevelLogging("trace");
 
   // create and start a AvocadoDB server
   AvocadoDB server(argc, argv);
 
   int res = server.start();
 
-  // shutdown database
+  // shutdown
   TRI_ShutdownVocBase();
+  TRIAGENS_REST_SHUTDOWN;
 
   return res;
 }

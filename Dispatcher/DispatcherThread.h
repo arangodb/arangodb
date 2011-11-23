@@ -47,6 +47,9 @@ namespace triagens {
       friend class DispatcherImpl;
       friend class DispatcherQueue;
 
+      DispatcherThread (DispatcherThread const&);
+      DispatcherThread& operator= (DispatcherThread const&);
+
       public:
 
         /////////////////////////////////////////////////////////////////////////

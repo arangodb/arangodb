@@ -45,6 +45,9 @@ namespace triagens {
 
     template<typename S, typename HF>
     class GeneralCommTask : public SocketTask {
+      GeneralCommTask (GeneralCommTask const&);
+      GeneralCommTask const& operator= (GeneralCommTask const&);
+
       public:
 
         ////////////////////////////////////////////////////////////////////////////////

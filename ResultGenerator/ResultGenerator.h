@@ -43,7 +43,10 @@ namespace triagens {
     /// @brief abstract base class for result generators
     ////////////////////////////////////////////////////////////////////////////////
 
-    class ResultGenerator : noncopyable {
+    class ResultGenerator {
+      ResultGenerator (ResultGenerator const&);
+      ResultGenerator& operator= (ResultGenerator const&);
+
       public:
         typedef void (*generate_fptr)(ResultGenerator const* generator, basics::StringBuffer&, basics::VariantObject*);
 
@@ -76,6 +79,13 @@ namespace triagens {
         static void registerObject (basics::VariantObject::ObjectType, ResultGeneratorType, basics::VariantObject::ObjectType);
 
       public:
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief constructs a result generator
+        ////////////////////////////////////////////////////////////////////////////////
+
+        ResultGenerator () {
+        }
 
         ////////////////////////////////////////////////////////////////////////////////
         /// @brief destructs a result generator

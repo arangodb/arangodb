@@ -290,13 +290,13 @@ static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief changes the log-level
 ///
-/// <b><tt>logLevel()</tt></b>
+/// @FUN{logLevel()}
 ///
 /// Returns the current log-level as string.
 ///
 /// @verbinclude fluent37
 ///
-/// <b><tt>logLevel(level)</tt></b>
+/// @FUN{logLevel(@FA{level})}
 ///
 /// Changes the current log-level. Valid log-level are:
 ///
@@ -325,7 +325,7 @@ static v8::Handle<v8::Value> JS_LogLevel (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief outputs the arguments
 ///
-/// <b><tt>output(string1, string2, string3, ...)</tt></b>
+/// @FUN{output(@FA{string1}, @FA{string2}, @FA{string3}, ...)}
 ///
 /// Outputs the arguments to standard output.
 ///
@@ -368,10 +368,10 @@ static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints the arguments
 ///
-/// <b><tt>print(arg1, arg2, arg3, ...)</tt></b>
+/// @FUN{print(@FA{arg1}, @FA{arg2}, @FA{arg3}, ...)}
 ///
 /// Prints the arguments. If an argument is an object having a function print,
-/// then this function is called. Otherwise @c toJson is used.  After each
+/// then this function is called. Otherwise @FN{toJson} is used.  After each
 /// argument a newline is printed.
 ///
 /// @verbinclude fluent40

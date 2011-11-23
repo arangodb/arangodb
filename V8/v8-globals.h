@@ -52,6 +52,34 @@
 typedef struct TRI_v8_global_s {
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+  TRI_v8_global_s ()
+    : JSQueries(),
+      JSResultSets(),
+      Actions(),
+      ActionsLock(),
+      QueryTempl(),
+      VocbaseColTempl(),
+      VocbaseTempl(),
+      OutputFuncName(),
+      PrintQueryFuncName(),
+      ToStringFuncName(),
+      CollectionQueryType(),
+      ContentType(),
+      DidKey(),
+      JournalSizeKey(),
+      ParametersKey(),
+      SyncAfterBytesKey(),
+      SyncAfterObjectsKey(),
+      SyncAfterTimeKey(),
+      BodyKey(),
+      ResponseCodeKey(),
+      DocumentIdRegex() {
+  }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief query mapping for weak pointers
 ////////////////////////////////////////////////////////////////////////////////
 

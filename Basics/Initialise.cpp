@@ -60,6 +60,12 @@ namespace triagens {
       pthread_cond_broadcast(&cond);
 #endif
     }
+
+
+
+    void ShutdownBasics () {
+      TRIAGENS_C_SHUTDOWN;
+    }
   }
 }
 

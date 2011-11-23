@@ -50,7 +50,10 @@ namespace triagens {
     ApplicationHttpServerImpl::ApplicationHttpServerImpl (ApplicationServer* applicationServer)
       : applicationServer(applicationServer),
         showPort(true),
-        requireKeepAlive(false) {
+        requireKeepAlive(false),
+        httpServers(),
+        httpPorts(),
+        httpAddressPorts() {
     }
 
 
@@ -107,7 +110,7 @@ namespace triagens {
 
 
     HttpServer* ApplicationHttpServerImpl::buildServer (HttpHandlerFactory* httpHandlerFactory) {
-      return buildHttpServer(httpHandlerFactory, httpAddressPorts);
+      return buildHttpServer(0, httpHandlerFactory, httpAddressPorts);
     }
 
 
@@ -118,7 +121,21 @@ namespace triagens {
         return 0;
       }
       else {
-        return buildHttpServer(httpHandlerFactory, ports);
+        return buildHttpServer(0, httpHandlerFactory, ports);
+      }
+    }
+
+
+
+    HttpServer* ApplicationHttpServerImpl::buildServer (HttpServer* httpServer, HttpHandlerFactory* httpHandlerFactory, vector<AddressPort> const& ports) {
+      if (ports.empty()) {
+        delete httpHandlerFactory;
+        return 0;
+      }
+      else {
+        HttpServerImpl* impl = dynamic_cast<HttpServerImpl*>(httpServer);
+
+        return buildHttpServer(impl, httpHandlerFactory, ports);
       }
     }
 
@@ -126,7 +143,8 @@ namespace triagens {
     // private methods
     // -----------------------------------------------------------------------------
 
-    HttpServerImpl* ApplicationHttpServerImpl::buildHttpServer (HttpHandlerFactory* httpHandlerFactory,
+    HttpServerImpl* ApplicationHttpServerImpl::buildHttpServer (HttpServerImpl* httpServer,
+                                                                HttpHandlerFactory* httpHandlerFactory,
                                                                 vector<AddressPort> const& ports) {
       Scheduler* scheduler = applicationServer->scheduler();
 
@@ -136,17 +154,19 @@ namespace triagens {
       }
 
       // create new server
+      if (httpServer == 0) {
 
 
-      Dispatcher* dispatcher = 0;
-      ApplicationServerDispatcher* asd = dynamic_cast<ApplicationServerDispatcher*>(applicationServer);
+        Dispatcher* dispatcher = 0;
+        ApplicationServerDispatcher* asd = dynamic_cast<ApplicationServerDispatcher*>(applicationServer);
 
-      if (asd != 0) {
-        dispatcher = asd->dispatcher();
+        if (asd != 0) {
+          dispatcher = asd->dispatcher();
+        }
+
+        httpServer = new HttpServerImpl(scheduler, dispatcher);
+
       }
-
-      HttpServerImpl* httpServer = new HttpServerImpl(scheduler, dispatcher);
-
 
       httpServer->setHandlerFactory(httpHandlerFactory);
 

@@ -54,6 +54,9 @@ namespace triagens {
 
     template<typename S, typename HF, typename CT>
     class GeneralServer : protected TaskManager {
+      GeneralServer (GeneralServer const&);
+      GeneralServer const& operator= (GeneralServer const&);
+
       public:
 
         ////////////////////////////////////////////////////////////////////////////////
@@ -62,14 +65,14 @@ namespace triagens {
 
         explicit
         GeneralServer (Scheduler* scheduler)
-          : _scheduler(scheduler), _handlerFactory(0), _maintenance(false) {
+          : _scheduler(scheduler), _handlerFactory(0), _maintenance(false), _maintenanceLock() {
         }
 
         ////////////////////////////////////////////////////////////////////////////////
         /// @brief destructs a general server
         ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ~GeneralServer () {
+        ~GeneralServer () {
           if (_handlerFactory != 0) {
             delete _handlerFactory;
           }

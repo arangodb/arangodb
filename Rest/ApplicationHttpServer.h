@@ -80,6 +80,14 @@ namespace triagens {
         ////////////////////////////////////////////////////////////////////////////////
 
         virtual HttpServer* buildServer (HttpHandlerFactory*, vector<AddressPort> const&) = 0;
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief builds the http server
+        ///
+        /// Note that the server claims ownership of the factory and the server.
+        ////////////////////////////////////////////////////////////////////////////////
+
+        virtual HttpServer* buildServer (HttpServer*, HttpHandlerFactory*, vector<AddressPort> const&) = 0;
     };
   }
 }

@@ -103,7 +103,8 @@ namespace triagens {
     // -----------------------------------------------------------------------------
 
     LoggerStream::LoggerStream () :
-      stream(new stringstream()) {
+      stream(new stringstream()),
+      info() {
     }
 
 

@@ -42,6 +42,9 @@ namespace triagens {
 
     template<typename S>
     class GeneralListenTask : public ListenTask {
+      GeneralListenTask (GeneralListenTask const&);
+      GeneralListenTask& operator= (GeneralListenTask const&);
+
       public:
 
         ////////////////////////////////////////////////////////////////////////////////
