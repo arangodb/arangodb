@@ -35,42 +35,47 @@
 #include <v8.h>
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page FluentInterface Fluent Interface
+/// @page DebugShell Debug Shell
+///
+/// The debug shell provides a fluent interface to access the database directly
+/// together with a set of support function.
 ///
 /// A fluent interface is implemented by using method chaining to relay the
 /// instruction context of a subsequent call.  The AvocadoDB provides the
 /// following methods:
 ///
 /// - selection by example
-/// - @ref GeoFI "geo coordinates"
+/// - geo coordinates
 /// - field selection (aka projection)
 /// - sorting
 /// - cursors
 /// - pagination of the result-set
+///
+/// A complete list of the available JavaScript functions can be found
+/// @ref JavaScriptFunc "here".
 ///
 ////////////////////////////////////////////////////////////////////////////////
 /// @section FirstStepsFI First Steps
 ////////////////////////////////////////////////////////////////////////////////
 ///
 /// For instance, in order to select all elements of a collection "examples",
-/// one can use the "all()" operator.
+/// one can use the @FN{all} operator.
 ///
 /// @verbinclude fluent1
 ///
 /// This will select all documents and prints the first 20 documents. If there
-/// are more than 20 documents, then "...more results..." is printed and you
-/// can use the variable "it" to access the next 20 document.
+/// are more than 20 documents, then @CODE{...more results...} is printed and
+/// you can use the variable @VAR{it} to access the next 20 document.
 ///
 /// @verbinclude fluent2
 ///
-/// In the above examples "db.examples.all()" defines a query. Printing
-/// that query, executes the query and returns a cursor to the result set.
-/// The first 20 documents are printed and the query (resp. cursor) is
-/// assigned to the variable "it".
+/// In the above examples @CODE{db.examples.all()} defines a query. Printing
+/// that query, executes the query and returns a cursor to the result set.  The
+/// first 20 documents are printed and the query (resp. cursor) is assigned to
+/// the variable @VAR{it}.
 ///
-/// A cursor can also be queried using "hasNext()" and "next()". Calling
-/// either of these functions also executes the query, turning it into
-/// a cursor.
+/// A cursor can also be queried using @FN{hasNext} and @FN{next}. Calling
+/// either of these functions also executes the query, turning it into a cursor.
 ///
 /// @verbinclude fluent3
 ///
@@ -79,16 +84,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 ///
 /// The AvocadoDB allows to selects documents based on geographic
-/// coordinates. In order for this to work a geo-spatial index must be defined.
+/// coordinates. In order for this to work, a geo-spatial index must be defined.
 /// This index will use a very elaborate algorithm to lookup neighbours that is
 /// a magnitude faster than a simple R* index.
 ///
 /// In general a geo coordinate is a pair of latitude and longitude.  This can
-/// either be an list with two elements like "[ -10, +30 ]" (latitude first,
-/// followed by longitude) or an object like "{ lon: -10, lat: +30 }". In order
-/// to find all documents within a given radius around a coordinate use the @ref
-/// WithinFI "within()" operator. In order to find all documents near a given
-/// document use the @ref NearFI "near()" operator.
+/// either be an list with two elements like @CODE{[ -10\, +30 ]} (latitude
+/// first, followed by longitude) or an object like @CODE{{ lon: -10\, lat: +30
+/// }}. In order to find all documents within a given radius around a
+/// coordinate use the @FN{within} operator. In order to find all
+/// documents near a given document use the @FN{near} operator.
 ///
 /// It is possible to define more than one geo-spatial index per collection.  In
 /// this case you must give a hint which of indexes should be used in a query.
@@ -109,6 +114,8 @@
 /// @subsection WithinFI The Within Operator
 ////////////////////////////////////////////////////////////////////////////////
 ///
+/// @copydetails JS_WithinQuery
+///
 ////////////////////////////////////////////////////////////////////////////////
 /// @subsection GeoOperatorFI The Geo Operator
 ////////////////////////////////////////////////////////////////////////////////
@@ -121,46 +128,39 @@
 ///
 /// If, for example, you display the result of a user search, then you are in
 /// general not interested in the completed result set, but only the first 10
-/// documents. In this case, you can the "limit()" operator. This operators
+/// documents. In this case, you can the @FN{limit} operator. This operators
 /// works like LIMIT in MySQL, it specifies a maximal number of documents to
 /// return.
 ///
 /// @verbinclude fluent4
 ///
-/// Specifying a limit of "0" returns no documents at all. If you do not need
-/// a limit, just do not add the limit operator. If you specifiy a negtive
-/// limit of -n, this will return the last n documents instead.
-///
-/// @verbinclude fluent8
+/// @copydetails JS_LimitQuery
 ///
 ////////////////////////////////////////////////////////////////////////////////
 /// @section SkipFI The Skip Operator
 ////////////////////////////////////////////////////////////////////////////////
 ///
-/// "skip" used together with "limit" can be used to implement pagination.
-/// The "skip" operator skips over the first n documents. So, in order to
-/// create result pages with 10 result documents per page, you can use
-/// "skip(n * 10).limit(10)" to access the n.th page.
+/// @FN{skip} used together with @FN{limit} can be used to implement
+/// pagination.  The @FN{skip} operator skips over the first n documents. So, in
+/// order to create result pages with 10 result documents per page, you can use
+/// @CODE{skip(n * 10).limit(10)} to access the n.th page.
 ///
 /// @verbinclude fluent5
+///
+/// @copydetails JS_SkipQuery
 ///
 ////////////////////////////////////////////////////////////////////////////////
 /// @section CountFI The Count Operator
 ////////////////////////////////////////////////////////////////////////////////
 ///
-/// If you are implementation pagination, then you need the total amount of
-/// documents a query returned. "count()" just does this. It returns the
-/// total amount of documents regardless of any "limit()" and "skip()"
-/// operator used before the "count()". If you really want these to be taken
-/// into account, use "count(true)".
-///
-/// @verbinclude fluent6
+/// @copydetails JS_CountQuery
 ///
 ////////////////////////////////////////////////////////////////////////////////
 /// @section ExplainFI The Explain Operator
 ////////////////////////////////////////////////////////////////////////////////
 ///
 /// @copydetails JS_ExplainQuery
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------

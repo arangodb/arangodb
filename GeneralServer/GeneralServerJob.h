@@ -48,6 +48,9 @@ namespace triagens {
 
     template<typename S, typename H>
     class GeneralServerJob : public Job {
+      GeneralServerJob (GeneralServerJob const&);
+      GeneralServerJob& operator= (GeneralServerJob const&);
+
       public:
 
         ////////////////////////////////////////////////////////////////////////////////

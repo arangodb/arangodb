@@ -31,175 +31,93 @@
 using namespace triagens::basics;
 using namespace std;
 
-namespace triagens {
-  namespace basics {
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
 
-    // -----------------------------------------------------------------------------
-    // ApplicationName
-    // -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Logging
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
-    LoggerData::ApplicationName LoggerData::Info::applicationName;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief catches a prefix
+////////////////////////////////////////////////////////////////////////////////
 
-    // -----------------------------------------------------------------------------
-    // Facility
-    // -----------------------------------------------------------------------------
+LoggerInfo& LoggerInfo::operator<< (string const& text) {
+  info.prefix += text;
 
-    LoggerData::Facility LoggerData::Info::facility;
-
-    // -----------------------------------------------------------------------------
-    // HostName
-    // -----------------------------------------------------------------------------
-
-    LoggerData::HostName LoggerData::Info::hostName;
-
-    // -----------------------------------------------------------------------------
-    // ProcessIdentifier
-    // -----------------------------------------------------------------------------
-
-    LoggerData::ProcessIdentifier::ProcessIdentifier ()
-      : process(Thread::currentProcessId()),
-        threadProcess(Thread::currentThreadProcessId()),
-        thread(Thread::currentThreadId()) {
-    }
-
-    // -----------------------------------------------------------------------------
-    // Functional (log level)
-    // -----------------------------------------------------------------------------
-
-    LoggerData::Functional::Functional (string const& name)
-      : name(name) {
-    }
-
-    // -----------------------------------------------------------------------------
-    // Peg (hierarchy)
-    // -----------------------------------------------------------------------------
-
-    LoggerData::Peg::Peg (string const& name)
-      : name(name) {
-    }
-
-    // -----------------------------------------------------------------------------
-    // Task (hierarchy)
-    // -----------------------------------------------------------------------------
-
-    LoggerData::Task::Task (string const& name)
-      : name(name) {
-    }
-
-    // -----------------------------------------------------------------------------
-    // Position (hierarchy)
-    // -----------------------------------------------------------------------------
-
-    LoggerData::Position::Position (string const& function, string const& file, int line)
-      : function(function), file(file), line(line) {
-    }
-
-    // -----------------------------------------------------------------------------
-    // Measure
-    // -----------------------------------------------------------------------------
-
-    LoggerData::Measure::Measure (double measure, unit_e unit)
-      : value(measure), unit(unit) {
-    }
-
-    // -----------------------------------------------------------------------------
-    // Extra
-    // -----------------------------------------------------------------------------
-
-    size_t const LoggerData::Extra::npos = (size_t) -1;
-
-
-
-    LoggerData::Extra::Extra (size_t pos, string const& name)
-      : position(pos), name(name) {
-    }
-
-
-
-    LoggerData::Extra::Extra (string const& name)
-      : position(npos), name(name) {
-    }
-
-    // -----------------------------------------------------------------------------
-    // UserIdentifier
-    // -----------------------------------------------------------------------------
-
-    LoggerData::UserIdentifier::UserIdentifier (string const& name)
-      : user(name) {
-    }
-
-    // -----------------------------------------------------------------------------
-    // Info
-    // -----------------------------------------------------------------------------
-
-    LoggerData::Info::Info ()
-      : level(TRI_LOG_LEVEL_FATAL),
-        category(TRI_LOG_CATEGORY_WARNING),
-        severity(TRI_LOG_SEVERITY_UNKNOWN) {
-    }
-
-    // -----------------------------------------------------------------------------
-    // LoggerInfo
-    // -----------------------------------------------------------------------------
-
-    LoggerInfo& LoggerInfo::operator<< (string const& text) {
-      info.prefix += text;
-
-      return *this;
-    }
-
-
-
-    LoggerInfo& LoggerInfo::operator<< (LoggerData::Peg const& peg) {
-      info.peg = peg;
-
-      return *this;
-    }
-
-
-
-    LoggerInfo& LoggerInfo::operator<< (LoggerData::Task const& task) {
-      info.task = task;
-
-      return *this;
-    }
-
-
-
-    LoggerInfo& LoggerInfo::operator<< (LoggerData::Extra const& extra) {
-      if (extra.position == LoggerData::Extra::npos) {
-        info.extras.push_back(extra);
-
-        size_t pos = info.extras.size() - 1;
-        info.extras[pos].position = pos;
-      }
-      else {
-        if (info.extras.size() <= extra.position) {
-          info.extras.resize(extra.position + 1);
-        }
-
-        info.extras[extra.position] = extra;
-      }
-
-      return *this;
-    }
-
-
-
-    LoggerInfo& LoggerInfo::operator<< (LoggerData::UserIdentifier const& userIdentifier) {
-      info.userIdentifier = userIdentifier;
-
-      return *this;
-    }
-
-
-
-    LoggerInfo& LoggerInfo::operator<< (LoggerData::Position const& position) {
-      info.position = position;
-
-      return *this;
-    }
-  }
+  return *this;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief catches a peg
+////////////////////////////////////////////////////////////////////////////////
+
+LoggerInfo& LoggerInfo::operator<< (LoggerData::Peg const& peg) {
+  info.peg = peg;
+
+  return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief catches a task
+////////////////////////////////////////////////////////////////////////////////
+
+LoggerInfo& LoggerInfo::operator<< (LoggerData::Task const& task) {
+  info.task = task;
+
+  return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief catches an extra
+////////////////////////////////////////////////////////////////////////////////
+
+LoggerInfo& LoggerInfo::operator<< (LoggerData::Extra const& extra) {
+  if (extra.position == LoggerData::Extra::npos) {
+    info.extras.push_back(extra);
+
+    size_t pos = info.extras.size() - 1;
+    info.extras[pos].position = pos;
+  }
+  else {
+    if (info.extras.size() <= extra.position) {
+      info.extras.resize(extra.position + 1);
+    }
+
+    info.extras[extra.position] = extra;
+  }
+
+  return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief catches an user identifier
+////////////////////////////////////////////////////////////////////////////////
+
+LoggerInfo& LoggerInfo::operator<< (LoggerData::UserIdentifier const& userIdentifier) {
+  info.userIdentifier = userIdentifier;
+
+  return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief catches a position
+////////////////////////////////////////////////////////////////////////////////
+
+LoggerInfo& LoggerInfo::operator<< (LoggerData::Position const& position) {
+  info.position = position;
+
+  return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// End:
 

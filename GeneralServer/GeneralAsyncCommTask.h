@@ -45,6 +45,9 @@ namespace triagens {
 
     template<typename S, typename HF, typename T>
     class GeneralAsyncCommTask : public T, public AsyncTask {
+      GeneralAsyncCommTask (GeneralAsyncCommTask const&);
+      GeneralAsyncCommTask& operator= (GeneralAsyncCommTask const&);
+
       public:
 
         ////////////////////////////////////////////////////////////////////////////////

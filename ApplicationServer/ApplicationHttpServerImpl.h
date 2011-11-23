@@ -98,13 +98,19 @@ namespace triagens {
 
         HttpServer* buildServer (HttpHandlerFactory*, vector<AddressPort> const&);
 
+        ////////////////////////////////////////////////////////////////////////////////
+        /// {@inheritDoc}
+        ////////////////////////////////////////////////////////////////////////////////
+
+        HttpServer* buildServer (HttpServer*, HttpHandlerFactory*, vector<AddressPort> const&);
+
       protected:
 
         ////////////////////////////////////////////////////////////////////////////////
         /// @brief build an http server
         ////////////////////////////////////////////////////////////////////////////////
 
-        HttpServerImpl* buildHttpServer (HttpHandlerFactory*, vector<AddressPort> const&);
+        HttpServerImpl* buildHttpServer (HttpServerImpl*, HttpHandlerFactory*, vector<AddressPort> const&);
 
       protected:
 

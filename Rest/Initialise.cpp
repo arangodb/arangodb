@@ -140,6 +140,12 @@ namespace triagens {
 
       opensslSetup();
     }
+
+
+
+    void ShutdownRest () {
+      TRIAGENS_BASICS_SHUTDOWN;
+    }
   }
 }
 

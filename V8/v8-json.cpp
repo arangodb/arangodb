@@ -34,7 +34,7 @@
 /* %endif */
 
 /* %if-c-only */
-    
+
 /* %endif */
 
 /* %if-c-only */
@@ -66,7 +66,7 @@
 #if defined (__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
 
 /* C99 says to define __STDC_LIMIT_MACROS before including stdint.h,
- * if you want the limit (max/min) macros for int types. 
+ * if you want the limit (max/min) macros for int types.
  */
 #ifndef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS 1
@@ -83,7 +83,7 @@ typedef uint32_t flex_uint32_t;
 typedef signed char flex_int8_t;
 typedef short int flex_int16_t;
 typedef int flex_int32_t;
-typedef unsigned char flex_uint8_t; 
+typedef unsigned char flex_uint8_t;
 typedef unsigned short int flex_uint16_t;
 typedef unsigned int flex_uint32_t;
 #endif /* ! C99 */
@@ -233,7 +233,7 @@ typedef struct yy_buffer_state *YY_BUFFER_STATE;
 #define EOB_ACT_LAST_MATCH 2
 
     #define YY_LESS_LINENO(n)
-    
+
 /* Return all but the first "n" matched characters back to the input stream. */
 #define yyless(n) \
 	do \
@@ -300,7 +300,7 @@ struct yy_buffer_state
 
     int yy_bs_lineno; /**< The line count. */
     int yy_bs_column; /**< The column count. */
-    
+
 	/* Whether to try to fill the input buffer when we reach the
 	 * end of it.
 	 */
@@ -1024,19 +1024,19 @@ YY_RULE_SETUP
 case 6:
 YY_RULE_SETUP
 {
-  return OPEN_BRACE; 
+  return OPEN_BRACE;
 }
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
 {
-  return CLOSE_BRACE; 
+  return CLOSE_BRACE;
 }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
 {
-  return OPEN_BRACKET; 
+  return OPEN_BRACKET;
 }
 	YY_BREAK
 case 9:
@@ -1048,13 +1048,13 @@ YY_RULE_SETUP
 case 10:
 YY_RULE_SETUP
 {
- return COMMA; 
+ return COMMA;
 }
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
 {
-  return COLON;  
+  return COLON;
 }
 	YY_BREAK
 /* -----------------------------------------------------------------------------
@@ -1071,7 +1071,7 @@ case 13:
 YY_RULE_SETUP
 {
   return UNQUOTED_STRING;
-} 
+}
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
@@ -1611,7 +1611,7 @@ static void tri_v8__load_buffer_state  (yyscan_t yyscanner)
 /* %endif */
 {
 	YY_BUFFER_STATE b;
-    
+
 	b = (YY_BUFFER_STATE) tri_v8_alloc(sizeof( struct yy_buffer_state ) ,yyscanner );
 	if ( ! b )
 		YY_FATAL_ERROR( "out of dynamic memory in tri_v8__create_buffer()" );
@@ -1661,7 +1661,7 @@ static void tri_v8__load_buffer_state  (yyscan_t yyscanner)
 #ifndef __cplusplus
 extern int isatty (int );
 #endif /* __cplusplus */
-    
+
 /* %endif */
 
 /* %if-c++-only */
@@ -1698,7 +1698,7 @@ extern int isatty (int );
 /* %if-c-only */
 
         b->yy_is_interactive = file ? (isatty( fileno(file) ) > 0) : 0;
-    
+
 /* %endif */
 /* %if-c++-only */
 /* %endif */
@@ -1828,9 +1828,9 @@ static void tri_v8_ensure_buffer_stack (yyscan_t yyscanner)
 								, yyscanner);
 		if ( ! yyg->yy_buffer_stack )
 			YY_FATAL_ERROR( "out of dynamic memory in tri_v8_ensure_buffer_stack()" );
-								  
+
 		memset(yyg->yy_buffer_stack, 0, num_to_alloc * sizeof(struct yy_buffer_state*));
-				
+
 		yyg->yy_buffer_stack_max = num_to_alloc;
 		yyg->yy_buffer_stack_top = 0;
 		return;
@@ -1861,12 +1861,12 @@ static void tri_v8_ensure_buffer_stack (yyscan_t yyscanner)
  * @param base the character buffer
  * @param size the size in bytes of the character buffer
  * @param yyscanner The scanner object.
- * @return the newly allocated buffer state object. 
+ * @return the newly allocated buffer state object.
  */
 YY_BUFFER_STATE tri_v8__scan_buffer  (char * base, yy_size_t  size , yyscan_t yyscanner)
 {
 	YY_BUFFER_STATE b;
-    
+
 	if ( size < 2 ||
 	     base[size-2] != YY_END_OF_BUFFER_CHAR ||
 	     base[size-1] != YY_END_OF_BUFFER_CHAR )
@@ -1904,7 +1904,7 @@ YY_BUFFER_STATE tri_v8__scan_buffer  (char * base, yy_size_t  size , yyscan_t yy
  */
 YY_BUFFER_STATE tri_v8__scan_string (yyconst char * yystr , yyscan_t yyscanner)
 {
-    
+
 	return tri_v8__scan_bytes(yystr,strlen(yystr) ,yyscanner);
 }
 /* %endif */
@@ -1923,7 +1923,7 @@ YY_BUFFER_STATE tri_v8__scan_bytes  (yyconst char * yybytes, int  _yybytes_len ,
 	char *buf;
 	yy_size_t n;
 	int i;
-    
+
 	/* Get memory for full buffer, including space for trailing EOB's. */
 	n = _yybytes_len + 2;
 	buf = (char *) tri_v8_alloc(n ,yyscanner );
@@ -2001,10 +2001,10 @@ YY_EXTRA_TYPE tri_v8_get_extra  (yyscan_t yyscanner)
 int tri_v8_get_lineno  (yyscan_t yyscanner)
 {
     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
-    
+
         if (! YY_CURRENT_BUFFER)
             return 0;
-    
+
     return yylineno;
 }
 
@@ -2014,10 +2014,10 @@ int tri_v8_get_lineno  (yyscan_t yyscanner)
 int tri_v8_get_column  (yyscan_t yyscanner)
 {
     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
-    
+
         if (! YY_CURRENT_BUFFER)
             return 0;
-    
+
     return yycolumn;
 }
 
@@ -2082,8 +2082,8 @@ void tri_v8_set_lineno (int  line_number , yyscan_t yyscanner)
 
         /* lineno is only valid if an input buffer exists. */
         if (! YY_CURRENT_BUFFER )
-           yy_fatal_error( "tri_v8_set_lineno called with no buffer" , yyscanner); 
-    
+           yy_fatal_error( "tri_v8_set_lineno called with no buffer" , yyscanner);
+
     yylineno = line_number;
 }
 
@@ -2097,8 +2097,8 @@ void tri_v8_set_column (int  column_no , yyscan_t yyscanner)
 
         /* column is only valid if an input buffer exists. */
         if (! YY_CURRENT_BUFFER )
-           yy_fatal_error( "tri_v8_set_column called with no buffer" , yyscanner); 
-    
+           yy_fatal_error( "tri_v8_set_column called with no buffer" , yyscanner);
+
     yycolumn = column_no;
 }
 
@@ -2187,20 +2187,20 @@ int tri_v8_lex_init_extra(YY_EXTRA_TYPE yy_user_defined,yyscan_t* ptr_yy_globals
         errno = EINVAL;
         return 1;
     }
-	
+
     *ptr_yy_globals = (yyscan_t) tri_v8_alloc ( sizeof( struct yyguts_t ), &dummy_yyguts );
-	
+
     if (*ptr_yy_globals == NULL){
         errno = ENOMEM;
         return 1;
     }
-    
+
     /* By setting to 0xAA, we expose bugs in
     yy_init_globals. Leave at 0x00 for releases. */
     memset(*ptr_yy_globals,0x00,sizeof(struct yyguts_t));
-    
+
     tri_v8_set_extra (yy_user_defined, *ptr_yy_globals);
-    
+
     return yy_init_globals ( *ptr_yy_globals );
 }
 

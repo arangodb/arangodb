@@ -39,7 +39,9 @@ namespace triagens {
     // constructors and destructors
     // -----------------------------------------------------------------------------
 
-    ConditionVariable::ConditionVariable () {
+    ConditionVariable::ConditionVariable ()
+      : _mutex(),
+        _condition() {
       pthread_mutex_init(&_mutex, 0);
       pthread_cond_init(&_condition, 0);
     }

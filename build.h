@@ -1,1 +1,1 @@
-#define TRIAGENS_VERSION "0.0.4 (9579)"
+#define TRIAGENS_VERSION "0.0.4 (9595)"

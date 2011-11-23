@@ -27,6 +27,9 @@
 
 #include "v8-utils.h"
 
+#include <readline/readline.h>
+#include <readline/history.h>
+
 #include <Basics/StringUtils.h>
 #include <Basics/conversions.h>
 #include <Basics/csv.h>
@@ -41,6 +44,10 @@
 
 #include "V8/v8-json.h"
 #include "V8/v8-globals.h"
+
+#if RL_READLINE_VERSION >= 0x0500
+#define completion_matches rl_completion_matches
+#endif
 
 using namespace std;
 using namespace triagens::basics;
@@ -57,6 +64,146 @@ static v8::Handle<v8::Value> JsonShapeData (TRI_shaper_t* shaper,
                                             TRI_shape_t const* shape,
                                             char const* data,
                                             size_t size);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                class V8LineEditor
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief word break characters
+////////////////////////////////////////////////////////////////////////////////
+
+static char WordBreakCharacters[] = {
+    ' ', '\t', '\n', '"', '\\', '\'', '`', '@',
+    '.', '>', '<', '=', ';', '|', '&', '{', '(',
+    '\0'
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief completion generator
+////////////////////////////////////////////////////////////////////////////////
+
+static char* CompletionGenerator (const char* text, int state) {
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief attempted completion
+////////////////////////////////////////////////////////////////////////////////
+
+static char** AttemptedCompletion (const char* text, int start, int end) {
+  char** result = completion_matches(text, CompletionGenerator);
+  rl_attempted_completion_over = true;
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                           static public variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief history file
+////////////////////////////////////////////////////////////////////////////////
+
+const char* V8LineEditor::HISTORY_FILENAME = ".avocado";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief line editor open
+////////////////////////////////////////////////////////////////////////////////
+
+bool V8LineEditor::open () {
+  rl_initialize();
+  rl_attempted_completion_function = AttemptedCompletion;
+  rl_completer_word_break_characters = WordBreakCharacters;
+
+  rl_bind_key('\t', rl_complete);
+
+  using_history();
+  stifle_history(MAX_HISTORY_ENTRIES);
+
+  return read_history(HISTORY_FILENAME) == 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief line editor prompt
+////////////////////////////////////////////////////////////////////////////////
+
+char* V8LineEditor::prompt (char const* prompt) {
+  char* result = readline(prompt);
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add to history
+////////////////////////////////////////////////////////////////////////////////
+
+void V8LineEditor::addHistory (const char* str) {
+  if (*str == '\0') {
+    return;
+  }
+
+  history_set_pos(history_length-1);
+
+  if (current_history()) {
+    do {
+      if (strcmp(current_history()->line, str) == 0) {
+        remove_history(where_history());
+        break;
+      }
+    }
+    while (previous_history());
+  }
+
+  add_history(str);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              CONVERSION FUNCTIONS
@@ -1359,7 +1506,7 @@ bool TRI_ObjectToBoolean (v8::Handle<v8::Value> value) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts JSON string to object
 ///
-/// <b><tt>fromJson(string)</tt></b>
+/// @FUN{fromJson(@FA{string})}
 ///
 /// Converts a string representation of a JSON object into a JavaScript
 /// object.
@@ -1395,7 +1542,7 @@ static v8::Handle<v8::Value> JS_FromJson (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current time
 ///
-/// <b><tt>time()</tt></b>
+/// @FUN{time()}
 ///
 /// Returns the current time in seconds.
 ///
@@ -1518,6 +1665,71 @@ string TRI_ReportV8Exception (v8::TryCatch* tryCatch) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief prints an exception and stacktrace
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_PrintV8Exception (v8::TryCatch* tryCatch) {
+  v8::HandleScope handle_scope;
+
+  v8::String::Utf8Value exception(tryCatch->Exception());
+  const char* exceptionString = *exception;
+  v8::Handle<v8::Message> message = tryCatch->Message();
+
+  // V8 didn't provide any extra information about this error; just print the exception.
+  if (message.IsEmpty()) {
+    if (exceptionString == 0) {
+      printf("JavaScript exception\n");
+    }
+    else {
+      printf("JavaScript exception: %s\n", exceptionString);
+    }
+  }
+  else {
+    v8::String::Utf8Value filename(message->GetScriptResourceName());
+    const char* filenameString = *filename;
+    int linenum = message->GetLineNumber();
+    int start = message->GetStartColumn() + 1;
+    int end = message->GetEndColumn();
+
+    if (filenameString == 0) {
+      if (exceptionString == 0) {
+        printf("exception\n");
+      }
+      else {
+        printf("exception: %s\n", exceptionString);
+      }
+    }
+    else {
+      if (exceptionString == 0) {
+        printf("exception in file '%s' at %d,%d\n", filenameString, linenum, start);
+      }
+      else {
+        printf("exception in file '%s' at %d,%d: %s\n", filenameString, linenum, start, exceptionString);
+      }
+    }
+
+    v8::String::Utf8Value sourceline(message->GetSourceLine());
+
+    if (*sourceline) {
+      printf("%s\n", *sourceline);
+
+      if (1 < start) {
+        printf("%*s", start - 1, "");
+      }
+
+      string e((size_t)(end - start + 1), '^');
+      printf("%s\n", e.c_str());
+    }
+
+    v8::String::Utf8Value stacktrace(tryCatch->StackTrace());
+
+    if (*stacktrace && stacktrace.length() > 0) {
+      printf("stacktrace:\n%s\n", *stacktrace);
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a file into the current context
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1605,6 +1817,60 @@ bool TRI_LoadJavaScriptDirectory (v8::Handle<v8::Context> context, char const* p
   TRI_DestroyVectorString(&files);
 
   return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a string within a V8 context
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ExecuteStringVocBase (v8::Handle<v8::Context> context,
+                               v8::Handle<v8::String> source,
+                               v8::Handle<v8::Value> name,
+                               bool printResult,
+                               bool reportExceptions) {
+  v8::HandleScope handleScope;
+  v8::TryCatch tryCatch;
+
+  v8::Handle<v8::Script> script = v8::Script::Compile(source, name);
+
+  // compilation failed, print errors that happened during compilation
+  if (script.IsEmpty()) {
+    if (reportExceptions) {
+      TRI_PrintV8Exception(&tryCatch);
+    }
+
+    return false;
+  }
+
+  // compilation succeeded, run the script
+  else {
+    v8::Handle<v8::Value> result = script->Run();
+
+    if (result.IsEmpty()) {
+      assert(tryCatch.HasCaught());
+
+      // print errors that happened during execution
+      if (reportExceptions) {
+        TRI_PrintV8Exception(&tryCatch);
+      }
+
+      return false;
+    }
+    else {
+      assert(! tryCatch.HasCaught());
+
+      // if all went well and the result wasn't undefined then print the returned value
+      if (printResult && ! result->IsUndefined()) {
+        v8::Handle<v8::String> printFuncName = v8::String::New("print");
+        v8::Handle<v8::Function> print = v8::Handle<v8::Function>::Cast(context->Global()->Get(printFuncName));
+
+        v8::Handle<v8::Value> args[] = { result };
+        print->Call(print, 1, args);
+      }
+
+      return true;
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

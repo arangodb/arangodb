@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief logger info
+/// @brief logger data
 ///
 /// @file
 ///
@@ -26,15 +26,16 @@
 /// @author Copyright 2007-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_LOGGER_INFO_H
-#define TRIAGENS_BASICS_LOGGER_INFO_H 1
+#ifndef TRIAGENS_BASICS_LOGGER_DATA_H
+#define TRIAGENS_BASICS_LOGGER_DATA_H 1
 
 #include <Basics/Common.h>
 
-#include <Basics/LoggerData.h>
+#include <Basics/logging.h>
+#include <Basics/Thread.h>
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  class LoggerInfo
+// --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,119 +45,214 @@
 
 namespace triagens {
   namespace basics {
+    namespace LoggerData {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief logger info
+/// @brief the application name
 ////////////////////////////////////////////////////////////////////////////////
 
-    class LoggerInfo {
-      friend class Logger;
+      struct ApplicationName {
+        public:
+          ApplicationName ();
+
+        public:
+          string name;
+      };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief the facility name
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+      struct Facility {
+        public:
+          Facility ();
+
+        public:
+          string name;
+      };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Logging
-/// @{
+/// @brief the hostname
 ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+      struct HostName {
+        public:
+          HostName ();
+
+        public:
+          string name;
+      };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a logger info
+/// @brief the message identifier, automatically generated
 ////////////////////////////////////////////////////////////////////////////////
 
-        LoggerInfo ()
-          : info() {
-        }
+      struct MessageIdentifier {
+        public:
+          MessageIdentifier ();
+
+        public:
+          string name;
+      };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destructs a logger info
+/// @brief the proc and thread identifiers, automatically generated
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ~LoggerInfo () {
-        }
+      struct ProcessIdentifier {
+        public:
+          ProcessIdentifier ();
+
+        public:
+          Thread::pid_t process;
+          Thread::tpid_t threadProcess;
+          Thread::tid_t thread;
+      };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief the fucntional name
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
+      struct Functional {
+        public:
+          Functional (string const& name = "");
+
+        public:
+          string name;
+      };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Logging
-/// @{
+/// @brief the peg name
 ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+      struct Peg {
+        public:
+          Peg (string const& name = "");
+
+        public:
+          string name;
+      };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief catches a prefix
+/// @brief the task name
 ////////////////////////////////////////////////////////////////////////////////
 
-        LoggerInfo& operator<< (string const& value);
+      struct Task {
+        public:
+          Task (string const& name = "");
+
+        public:
+          string name;
+      };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief catches a peg
+/// @brief position information
 ////////////////////////////////////////////////////////////////////////////////
 
-        LoggerInfo& operator<< (LoggerData::Peg const& value);
+      struct Position {
+        public:
+          Position (string const& function = "", string const& file = "", int line = 0);
+
+        public:
+          string function;
+          string file;
+          int line;
+      };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief catches a task
+/// @brief the measure unit
 ////////////////////////////////////////////////////////////////////////////////
 
-        LoggerInfo& operator<< (LoggerData::Task const& value);
+      enum unit_e {
+        UNIT_SECONDS,
+        UNIT_MILLI_SECONDS,
+        UNIT_MICRO_SECONDS,
+        UNIT_NANO_SECONDS,
+
+        UNIT_BYTE,
+        UNIT_KILO_BYTE,
+        UNIT_MEGA_BYTE,
+        UNIT_GIGA_BYTE,
+
+        UNIT_LESS
+      };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief catches an extra
+/// @brief the measure
 ////////////////////////////////////////////////////////////////////////////////
 
-        LoggerInfo& operator<< (LoggerData::Extra const& value);
+      struct Measure {
+        public:
+          Measure (double measure = 0.0, unit_e unit = UNIT_LESS);
+
+        public:
+          double value;
+          unit_e unit;
+      };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief catches an user identifier
+/// @brief the extra attribute
 ////////////////////////////////////////////////////////////////////////////////
 
-        LoggerInfo& operator<< (LoggerData::UserIdentifier const& value);
+      struct Extra {
+        public:
+          Extra (size_t pos, string const& name);
+          Extra (string const& name = "");
+
+        public:
+          static size_t const npos;
+
+        public:
+          size_t position;
+          string name;
+      };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief catches a position
+/// @brief the user identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-        LoggerInfo& operator<< (LoggerData::Position const& value);
+      struct UserIdentifier {
+        public:
+          UserIdentifier (string const& name = "");
+
+        public:
+          string user;
+      };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief the info block
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected variables
-// -----------------------------------------------------------------------------
+      struct Info {
+        Info();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Logging
-/// @{
-////////////////////////////////////////////////////////////////////////////////
+        static ApplicationName applicationName;
+        static Facility facility;
+        static HostName hostName;
 
-      protected:
+        MessageIdentifier messageIdentifier;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief context
-////////////////////////////////////////////////////////////////////////////////
+        TRI_log_level_e level;
+        TRI_log_category_e category;
+        TRI_log_severity_e severity;
 
-        LoggerData::Info info;
-    };
+        Functional functional;
+
+        Peg peg;
+        Task task;
+        Position position;
+
+        Measure measure;
+        vector<Extra> extras;
+
+        UserIdentifier userIdentifier;
+        ProcessIdentifier processIdentifier;
+
+        string prefix;
+      };
+    }
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

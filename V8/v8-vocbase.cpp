@@ -653,7 +653,7 @@ static v8::Handle<v8::Value> JS_PrintQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a query into a fluent interface representation
 ///
-/// <b><tt>show()</tt></b>
+/// @FUN{show()}
 ///
 /// Shows the representation of the query.
 ///
@@ -674,20 +674,20 @@ static v8::Handle<v8::Value> JS_ShowQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief counts the number of documents in a result set
 ///
-/// <b><tt>count()</tt></b>
+/// @FUN{count()}
 ///
-/// The @c count operator counts the number of document in the result set and
-/// returns that number. The @c count operator ignores any limits and returns
+/// The @FN{count} operator counts the number of document in the result set and
+/// returns that number. The @FN{count} operator ignores any limits and returns
 /// the total number of documents found.
 ///
 /// @verbinclude fluent24
 ///
-/// <b><tt>count(true)</tt></b>
+/// @FUN{count(@LIT{true})}
 ///
-/// If the result set was limited by the @c limit operator or documents were
-/// skiped using the @c skip operator, the @c count operator with argument @c
-/// true will use the number of elements in the final result set - after
-/// applying @c limit and @c skip.
+/// If the result set was limited by the @FN{limit} operator or documents were
+/// skiped using the @FN{skip} operator, the @FN{count} operator with argument
+/// @LIT{true} will use the number of elements in the final result set - after
+/// applying @FN{limit} and @FN{skip}.
 ///
 /// @verbinclude fluent25
 ////////////////////////////////////////////////////////////////////////////////
@@ -713,15 +713,15 @@ static v8::Handle<v8::Value> JS_CountQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief explains how a query was executed
 ///
-/// <b><tt>explain()</tt></b>
+/// @FUN{explain()}
 ///
 /// In order to optimise queries you need to know how the storage engine
-/// executed that type of query. You can use the @c explain operator to see how
-/// a query was executed.
+/// executed that type of query. You can use the @FN{explain} operator to see
+/// how a query was executed.
 ///
 /// @verbinclude fluent9
 ///
-/// The @c explain operator returns an object with the following attributes.
+/// The @FN{explain} operator returns an object with the following attributes.
 ///
 /// - cursor:
 ///     describes how the result set was computed.
@@ -775,11 +775,11 @@ static v8::Handle<v8::Value> JS_ExplainQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks for the next result document
 ///
-/// <b><tt>hasNext()</tt></b>
+/// @FUN{hasNext()}
 ///
-/// The @c hasNext operator returns @c true, if the cursor still has documents.
-/// In this case the next document can be accessed using the @c next operator,
-/// which will advance the cursor.
+/// The @FN{hasNext} operator returns @LIT{true}, if the cursor still has
+/// documents.  In this case the next document can be accessed using the
+/// @FN{next} operator, which will advance the cursor.
 ///
 /// @verbinclude fluent28
 ////////////////////////////////////////////////////////////////////////////////
@@ -800,11 +800,11 @@ static v8::Handle<v8::Value> JS_HasNextQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the next result document
 ///
-/// <b><tt>next()</tt></b>
+/// @FUN{next()}
 ///
-/// If the @c hasNext operator returns @c true, if the cursor still has documents.
-/// In this case the next document can be accessed using the @c next operator,
-/// which will advance the cursor.
+/// If the @FN{hasNext} operator returns @LIT{true}, if the cursor still has
+/// documents.  In this case the next document can be accessed using the @FN{next}
+/// operator, which will advance the cursor.
 ///
 /// @verbinclude fluent28
 ////////////////////////////////////////////////////////////////////////////////
@@ -844,7 +844,7 @@ static v8::Handle<v8::Value> JS_NextQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimises a query
 ///
-/// <tt>optimise()</tt>
+/// @FUN{optimise()}
 ///
 /// Optimises a query. This is done automatically when executing a query.
 ////////////////////////////////////////////////////////////////////////////////
@@ -891,7 +891,7 @@ static v8::Handle<v8::Value> JS_ToArrayQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all elements
 ///
-/// <b><tt>all()</tt></b>
+/// @FUN{all()}
 ///
 /// Selects all documents of a collection and returns a cursor.
 ///
@@ -941,18 +941,18 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds distance to a result set
 ///
-/// <b><tt>distance()</tt></b>
+/// @FUN{distance()}
 ///
-/// Aguments the result-set of a @c near or @c within query with the distance of
-/// the document to the given point. The distance is returned in an attribute @c
-/// _distance. This is the distance in meters.
+/// Aguments the result-set of a @FN{near} or @FN{within} query with the
+/// distance between the document and the given point. The distance is returned
+/// in an attribute @LIT{_distance}. This is the distance in meters.
 ///
 /// @verbinclude fluent26
 ///
-/// <b><tt>distance(<em>name</em>)</tt></b>
+/// @FUN{distance(@FA{name})}
 ///
 /// Same as above, with the exception, that the distance is returned in an
-/// attribute called @a name.
+/// attribute called @FA{name}.
 ///
 /// @verbinclude fluent27
 ////////////////////////////////////////////////////////////////////////////////
@@ -1018,11 +1018,11 @@ static v8::Handle<v8::Value> JS_DistanceQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a document
 ///
-/// <b><tt>document(<em>document-identifier</em>)</tt></b>
+/// @FUN{document(@FA{document-identifier})}
 ///
-/// The @c document operator finds a document given it's identifier.  It returns
+/// The @FN{document} operator finds a document given it's identifier.  It returns
 /// the empty result set or a result set containing the document with document
-/// identifier @a document-identifier.
+/// identifier @FA{document-identifier}.
 ///
 /// @verbinclude fluent28
 ////////////////////////////////////////////////////////////////////////////////
@@ -1077,23 +1077,23 @@ static v8::Handle<v8::Value> JS_DocumentQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a geo-spatial index
 ///
-/// <b><tt>geo(<em>location</em>)</tt></b>
+/// @FUN{geo(@FA{location})}
 ///
-/// The next @c near operator will use the specific geo-spatial index.
+/// The next @FN{near} operator will use the specific geo-spatial index.
 ///
-/// <b><tt>geo(<em>location</em>, <em>geoJson</em>)</tt></b>
+/// @FUN{geo(@FA{location}, @LIT{true})}
 ///
-/// The next @c near or @c within operator will use the specific geo-spatial
+/// The next @FN{near} or @FN{within} operator will use the specific geo-spatial
 /// index.
 ///
-/// <b><tt>geo(<em>latitiude</em>, <em>longitude</em>)</tt></b>
+/// @FUN{geo(@FA{latitiude}, @FA{longitude})}
 ///
-/// The next @c near or @c within operator will use the specific geo-spatial
+/// The next @FN{near} or @FN{within} operator will use the specific geo-spatial
 /// index.
 ///
-/// Assume you have a location stored as list in the attribute @c home
-/// and a destination stored in the attribute @c work. Than you can use the
-/// @c geo operator to select, which coordinates to use in a near query.
+/// Assume you have a location stored as list in the attribute @LIT{home}
+/// and a destination stored in the attribute @LIT{work}. Than you can use the
+/// @FN{geo} operator to select, which coordinates to use in a near query.
 ///
 /// @verbinclude fluent15
 ////////////////////////////////////////////////////////////////////////////////
@@ -1173,10 +1173,12 @@ static v8::Handle<v8::Value> JS_GeoQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief limits an existing query
 ///
-/// <b><tt>limit(<em>number</em>)</tt></b>
+/// @FUN{limit(@FA{number})}
 ///
-/// Limits a result to the first @a number documents. If @a number is negative,
-/// the result set is limited to the last @a -number documents.
+/// Limits a result to the first @FA{number} documents. Specifying a limit of
+/// @CODE{0} returns no documents at all. If you do not need a limit, just do
+/// not add the limit operator. If you specifiy a negtive limit of @CODE{-n},
+/// this will return the last @CODE{n} documents instead.
 ///
 /// @verbinclude fluent30
 ////////////////////////////////////////////////////////////////////////////////
@@ -1221,44 +1223,44 @@ static v8::Handle<v8::Value> JS_LimitQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds points near a given coordinate
 ///
-/// <b><tt>near(<em>latitiude</em>, <em>longitude</em>)</tt></b>
+/// @FUN{near(@FA{latitiude}, @FA{longitude})}
 ///
-/// This will find at most 100 documents near the coordinate (@a latitiude, @a
-/// longitude). The returned list is sorted according to the distance, with the
-/// nearest document coming first.
+/// This will find at most 100 documents near the coordinate (@FA{latitiude},
+/// @FA{longitude}). The returned list is sorted according to the distance, with
+/// the nearest document coming first.
 ///
 /// @verbinclude fluent10
 ///
 /// If you need the distance as well, then you can use
 ///
-/// <b><tt>near(<em>latitiude</em>, <em>longitude</em>).distance()</tt></b>
+/// @FUN{near(@FA{latitiude}, @FA{longitude}).distance()}
 ///
-/// This will add an attribute @c _distance to all documents returned, which
-/// contains the distance of the given point and the document in meter.
+/// This will add an attribute @LIT{_distance} to all documents returned, which
+/// contains the distance between the given point and the document in meter.
 ///
 /// @verbinclude fluent11
 ///
-/// <b><tt>near(<em>latitiude</em>, <em>longitude</em>).distance(<em>name</em>)</tt></b>
+/// @FUN{near(@FA{latitiude}, @FA{longitude}).distance(@FA{name})}
 ///
-/// This will add an attribute @c name to all documents returned, which contains
-/// the distance of the given point and the document in meter.
+/// This will add an attribute @FA{name} to all documents returned, which
+/// contains the distance between the given point and the document in meter.
 ///
 /// @verbinclude fluent12
 ///
-/// <b><tt>near(<em>latitiude</em>, <em>longitude</em>).limit(<em>count</em>)</tt></b>
+/// @FUN{near(@FA{latitiude}, @FA{longitude}).limit(@FA{count})}
 ///
-/// Limits the result to @a count documents. Note that @a count can be more than
-/// 100. To get less or more than 100 documents with distances, use
+/// Limits the result to @FA{count} documents. Note that @FA{count} can be more
+/// than 100. To get less or more than 100 documents with distances, use
 ///
-/// <b><tt>near(<em>latitiude</em>, <em>longitude</em>).distance().limit(<em>count</em>)</tt></b>
+/// @FUN{near(@FA{latitiude}, @FA{longitude}).distance().limit(@FA{count})}
 ///
-/// This will return the first @a count documents together with their distances
-/// in meters.
+/// This will return the first @FA{count} documents together with their
+/// distances in meters.
 ///
 /// @verbinclude fluent13
 ///
-/// If you have more then one geo-spatial index, you can use the @c geo operator
-/// to select a particular index.
+/// If you have more then one geo-spatial index, you can use the @FN{geo}
+/// operator to select a particular index.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
@@ -1309,7 +1311,7 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects elements by example
 ///
-/// <b><tt>select()</tt></b>
+/// @FUN{select()}
 ///
 /// The "select" operator finds all documents which match a given example.
 ///
@@ -1398,9 +1400,9 @@ static v8::Handle<v8::Value> JS_SelectQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief skips an existing query
 ///
-/// <b><tt>skip(<em>number</em>)</tt></b>
+/// @FUN{skip(@FA{number})}
 ///
-/// Skips the first @a number documents.
+/// Skips the first @FA{number} documents.
 ///
 /// @verbinclude fluent31
 ////////////////////////////////////////////////////////////////////////////////
@@ -1449,31 +1451,31 @@ static v8::Handle<v8::Value> JS_SkipQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds points within a given radius
 ///
-/// <b><tt>within(<em>latitiude</em>, <em>longitude</em>, <em>radius</em>)</tt></b>
+/// @FUN{within(@FA{latitiude}, @FA{longitude}, @FA{radius})}
 ///
 /// This will find all documents with in a given radius around the coordinate
-/// (@a latitiude, @a longitude). The returned list is unsorted.
+/// (@FA{latitiude}, @FA{longitude}). The returned list is unsorted.
 ///
 /// @verbinclude fluent32
 ///
 /// If you need the distance as well, then you can use
 ///
-/// <b><tt>within(<em>latitiude</em>, <em>longitude</em>, <em>radius</em>).distance()</tt></b>
+/// @FUN{within(@FA{latitiude}, @FA{longitude}, @FA{radius}).distance()}
 ///
-/// This will add an attribute @c _distance to all documents returned, which
-/// contains the distance of the given point and the document in meter.
+/// This will add an attribute @LIT{_distance} to all documents returned, which
+/// contains the distance between the given point and the document in meter.
 ///
 /// @verbinclude fluent33
 ///
-/// <b><tt>within(<em>latitiude</em>, <em>longitude</em>, <em>radius</em>).distance(<em>name</em>)</tt></b>
+/// @FUN{within(@FA{latitiude}, @FA{longitude}, @FA{radius}).distance(@FA{name})}
 ///
-/// This will add an attribute @a name to all documents returned, which
-/// contains the distance of the given point and the document in meter.
+/// This will add an attribute @FA{name} to all documents returned, which
+/// contains the distance between the given point and the document in meter.
 ///
 /// @verbinclude fluent34
 ///
-/// If you have more then one geo-spatial index, you can use the @c geo operator
-/// to select a particular index.
+/// If you have more then one geo-spatial index, you can use the @FN{geo}
+/// operator to select a particular index.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
@@ -1540,9 +1542,9 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists
 ///
-/// <b><tt>ensureGeoIndex(<em>location</em>)</tt></b>
+/// @FUN{ensureGeoIndex(@FA{location})}
 ///
-/// Creates a geo-spatial index on all documents using @a location as path to
+/// Creates a geo-spatial index on all documents using @FA{location} as path to
 /// the coordinates. The value of the attribute must be a list with at least two
 /// double values. The list must contain the latitiude (first value) and the
 /// longitude (second value). All documents, which do not have the attribute
@@ -1553,21 +1555,20 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
 ///
 /// @verbinclude fluent10
 ///
-/// <b><tt>ensureGeoIndex(<em>location</em>, <em>geojson</em>)</tt></b>
+/// @FUN{ensureGeoIndex(@FA{location}, @LIT{true})}
 ///
-/// As above. If @a geoJson is true, than the order within the list is
-/// longitude followed by latitiude. This corresponds to the format
-/// described in
+/// As above which the exception, that the order within the list is longitude
+/// followed by latitiude. This corresponds to the format described in
 ///
 /// http://geojson.org/geojson-spec.html#positions
 ///
-/// <b><tt>ensureGeoIndex(<em>latitiude</em>, <em>longitude</em>)</tt></b>
+/// @FUN{ensureGeoIndex(@FA{latitiude}, @FA{longitude})}
 ///
-/// Creates a geo-spatial index on all documents using @a latitiude and @a
-/// longitude as paths the latitiude and the longitude. The value of the
-/// attribute @a latitiude and of the attribute @a longitude must a double. All
-/// documents, which do not have the attribute paths or which values are not
-/// suitable, are ignored.
+/// Creates a geo-spatial index on all documents using @FA{latitiude} and
+/// @FA{longitude} as paths the latitiude and the longitude. The value of the
+/// attribute @FA{latitiude} and of the attribute @FA{longitude} must a
+/// double. All documents, which do not have the attribute paths or which values
+/// are not suitable, are ignored.
 ///
 /// In case that the index was successfully created, the index indetifier
 /// is returned.
@@ -1655,11 +1656,11 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
 ///
-/// <b><tt>delete(<em>document-identifier</em>)</tt></b>
+/// @FUN{delete(@FA{document-identifier})}
 ///
 /// Deletes a document with a given document identifier. If the document does
-/// not exists, then @c false is returned. If the document existed and was
-/// deleted, then @c true is returned. An exception is thrown in case of an
+/// not exists, then @LIT{false} is returned. If the document existed and was
+/// deleted, then @LIT{true} is returned. An exception is thrown in case of an
 /// error.
 ///
 /// @verbinclude fluent16
@@ -1721,10 +1722,10 @@ static v8::Handle<v8::Value> JS_DeleteVocbaseCol (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an index
 ///
-/// <b><tt>dropIndex(<em>index-identifier</em>)</tt></b>
+/// @FUN{dropIndex(@FA{index-identifier})}
 ///
-/// Drops the index. If the index does not exists, then @c false is returned. If
-/// the index existed and was dropped, then @c true is returned.
+/// Drops the index. If the index does not exists, then @LIT{false} is
+/// returned. If the index existed and was dropped, then @LIT{true} is returned.
 ///
 /// @verbinclude fluent17
 ////////////////////////////////////////////////////////////////////////////////
@@ -1769,7 +1770,7 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the indexes
 ///
-/// <b><tt>getIndexes()</tt></b>
+/// @FUN{getIndexes()}
 ///
 /// Returns a list of all indexes defined for the collection.
 ///
@@ -1813,13 +1814,13 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets or sets the parameters of a collection
 ///
-/// <b><tt>parameter()</tt></b>
+/// @FUN{parameter()}
 ///
 /// Returns the collection parameter.
 ///
 /// @verbinclude fluent19
 ///
-/// <b><tt>parameter(<em>parameter-array</em>)</tt></b>
+/// @FUN{parameter(@FA{parameter-array})}
 ///
 /// Changes the collection parameter.
 ///
@@ -1933,11 +1934,11 @@ static v8::Handle<v8::Value> JS_ParameterVocbaseCol (v8::Arguments const& argv) 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces a document
 ///
-/// <b><tt>replace(<em>document-identifier</em>, <em>document</em>)</tt></b>
+/// @FUN{replace(@FA{document-identifier}, @FA{document})}
 ///
-/// Replaces an existing document. The @a document-identifier must point to a
+/// Replaces an existing document. The @FA{document-identifier} must point to a
 /// document in the current collection. This document is than replaced with the
-/// value given as second argument and the @a document-identifier is returned.
+/// value given as second argument and the @FA{document-identifier} is returned.
 ///
 /// @verbinclude fluent21
 ////////////////////////////////////////////////////////////////////////////////
@@ -2001,7 +2002,7 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a new document
 ///
-/// <b><tt>save(<em>document</em>)</tt></b>
+/// @FUN{save(@FA{document})}
 ///
 /// Saves a new document and returns the document-identifier.
 ///
@@ -2185,29 +2186,29 @@ static v8::Handle<v8::Value> JS_ToStringVocBase (v8::Arguments const& argv) {
 /// @section JSFDatabaseSelection Database Selection
 ////////////////////////////////////////////////////////////////////////////////
 ///
-/// @ref MapGetVocBase "db.<database>" @n
+/// - @ref MapGetVocBase "db".@FA{database}
 ///
 ////////////////////////////////////////////////////////////////////////////////
 /// @section JSFDatabases Database Functions
 ////////////////////////////////////////////////////////////////////////////////
 ///
-/// @ref JS_ParameterVocbaseCol "parameter" @n
+/// - @ref JS_ParameterVocbaseCol "parameter"
 ///
 ////////////////////////////////////////////////////////////////////////////////
 /// @subsection JSFDocument Database Document Functions
 ////////////////////////////////////////////////////////////////////////////////
 ///
-/// @ref JS_DeleteVocbaseCol "delete" @n
-/// @ref JS_ReplaceVocbaseCol "replace" @n
-/// @ref JS_SaveVocbaseCol "save" @n
+/// - @ref JS_DeleteVocbaseCol "delete"
+/// - @ref JS_ReplaceVocbaseCol "replace"
+/// - @ref JS_SaveVocbaseCol "save"
 ///
 ////////////////////////////////////////////////////////////////////////////////
 /// @subsection JSFIndex Database Index Functions
 ////////////////////////////////////////////////////////////////////////////////
 ///
-/// @ref JS_DropIndexVocbaseCol "dropIndex" @n
-/// @ref JS_EnsureGeoIndexVocbaseCol "ensureGeoIndex" @n
-/// @ref JS_GetIndexesVocbaseCol "getIndexes" @n
+/// - @ref JS_DropIndexVocbaseCol "dropIndex"
+/// - @ref JS_EnsureGeoIndexVocbaseCol "ensureGeoIndex"
+/// - @ref JS_GetIndexesVocbaseCol "getIndexes"
 ///
 ////////////////////////////////////////////////////////////////////////////////
 /// @section JSFQueries Query Functions
@@ -2217,37 +2218,37 @@ static v8::Handle<v8::Value> JS_ToStringVocBase (v8::Arguments const& argv) {
 /// @subsection JSFQueryBuilding Query Building Functions
 ////////////////////////////////////////////////////////////////////////////////
 ///
-/// @ref JS_AllQuery "all" @n
-/// @ref JS_DistanceQuery "distance" @n
-/// @ref JS_DocumentQuery "document" @n
-/// @ref JS_GeoQuery "geo" @n
-/// @ref JS_LimitQuery "limit" @n
-/// @ref JS_NearQuery "near" @n
-/// @ref JS_SelectQuery "select" @n
-/// @ref JS_SkipQuery "skip" @n
-/// @ref JS_WithinQuery "within" @n
+/// - @ref JS_AllQuery "all"
+/// - @ref JS_DistanceQuery "distance"
+/// - @ref JS_DocumentQuery "document"
+/// - @ref JS_GeoQuery "geo"
+/// - @ref JS_LimitQuery "limit"
+/// - @ref JS_NearQuery "near"
+/// - @ref JS_SelectQuery "select"
+/// - @ref JS_SkipQuery "skip"
+/// - @ref JS_WithinQuery "within"
 ///
 ////////////////////////////////////////////////////////////////////////////////
 /// @subsection JSFQueryExecuting Query Execution Functions
 ////////////////////////////////////////////////////////////////////////////////
 ///
-/// @ref JS_CountQuery "count" @n
-/// @ref JS_ExplainQuery "explain" @n
-/// @ref JS_HasNextQuery "hasNext" @n
-/// @ref JS_NextQuery "next" @n
-/// @ref JS_ShowQuery "show" @n
+/// - @ref JS_CountQuery "count"
+/// - @ref JS_ExplainQuery "explain"
+/// - @ref JS_HasNextQuery "hasNext"
+/// - @ref JS_NextQuery "next"
+/// - @ref JS_ShowQuery "show"
 ///
 ////////////////////////////////////////////////////////////////////////////////
 /// @section JSFGlobal Global Functions
 ////////////////////////////////////////////////////////////////////////////////
 ///
-/// @ref JS_FromJson "fromJson" @n
-/// @ref JS_LogLevel "logLevel" @n
-/// @ref JS_Output "output" @n
-/// @ref JS_Print "print" @n
-/// @ref JS_ProcessCsvFile "processCsvFile" @n
-/// @ref JS_ProcessJsonFile "processJsonFile" @n
-/// @ref JS_Time "time" @n
+/// - @ref JS_FromJson "fromJson"
+/// - @ref JS_LogLevel "logLevel"
+/// - @ref JS_Output "output"
+/// - @ref JS_Print "print"
+/// - @ref JS_ProcessCsvFile "processCsvFile"
+/// - @ref JS_ProcessJsonFile "processJsonFile"
+/// - @ref JS_Time "time"
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2257,7 +2258,7 @@ static v8::Handle<v8::Value> JS_ToStringVocBase (v8::Arguments const& argv) {
 /// @section JSFDatabaseSelection Database Selection
 ////////////////////////////////////////////////////////////////////////////////
 ///
-/// @ref MapGetVocBase "db.<database>" @n
+/// @ref MapGetVocBase "db".@FA{database}
 ///
 ////////////////////////////////////////////////////////////////////////////////
 /// @section JSFDatabases Database Functions
@@ -2270,7 +2271,9 @@ static v8::Handle<v8::Value> JS_ToStringVocBase (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 ///
 /// @copydetails JS_DeleteVocbaseCol
+///
 /// @copydetails JS_ReplaceVocbaseCol
+///
 /// @copydetails JS_SaveVocbaseCol
 ///
 ////////////////////////////////////////////////////////////////////////////////
@@ -2278,7 +2281,9 @@ static v8::Handle<v8::Value> JS_ToStringVocBase (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 ///
 /// @copydetails JS_DropIndexVocbaseCol
+///
 /// @copydetails JS_EnsureGeoIndexVocbaseCol
+///
 /// @copydetails JS_GetIndexesVocbaseCol
 ///
 ////////////////////////////////////////////////////////////////////////////////
@@ -2290,13 +2295,21 @@ static v8::Handle<v8::Value> JS_ToStringVocBase (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 ///
 /// @copydetails JS_AllQuery
+///
 /// @copydetails JS_DistanceQuery
+///
 /// @copydetails JS_DocumentQuery
+///
 /// @copydetails JS_GeoQuery
+///
 /// @copydetails JS_LimitQuery
+///
 /// @copydetails JS_NearQuery
+///
 /// @copydetails JS_SelectQuery
+///
 /// @copydetails JS_SkipQuery
+///
 /// @copydetails JS_WithinQuery
 ///
 ////////////////////////////////////////////////////////////////////////////////
@@ -2304,9 +2317,13 @@ static v8::Handle<v8::Value> JS_ToStringVocBase (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 ///
 /// @copydetails JS_CountQuery
+///
 /// @copydetails JS_ExplainQuery
+///
 /// @copydetails JS_HasNextQuery
+///
 /// @copydetails JS_NextQuery
+///
 /// @copydetails JS_ShowQuery
 ///
 ////////////////////////////////////////////////////////////////////////////////
@@ -2314,11 +2331,17 @@ static v8::Handle<v8::Value> JS_ToStringVocBase (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 ///
 /// @copydetails JS_FromJson
+///
 /// @copydetails JS_LogLevel
+///
 /// @copydetails JS_Output
+///
 /// @copydetails JS_Print
-/// @ref JS_ProcessCsvFile "processCsvFile" @n
-/// @ref JS_ProcessJsonFile "processJsonFile" @n
+///
+/// @copydetails JS_ProcessCsvFile
+///
+/// @copydetails JS_ProcessJsonFile
+///
 /// @copydetails JS_Time
 ////////////////////////////////////////////////////////////////////////////////
 

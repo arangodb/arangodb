@@ -69,6 +69,11 @@ action_parameter_type_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct action_parameter_s {
+  action_parameter_s ()
+    : _name(),
+      _type(TRI_ACT_NUMBER) {
+  }
+
   string _name;
   action_parameter_type_e _type;
 }
@@ -79,6 +84,10 @@ action_parameter_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct action_options_s {
+  action_options_s ()
+    : _parameters() {
+  }
+
   map<string, action_parameter_t*> _parameters;
 }
 action_options_t;
@@ -88,9 +97,20 @@ action_options_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct action_s {
-  string _name;
-  v8::Persistent<v8::Function> _callback;
-  action_options_t* _options;
+  private:
+    action_s (action_s const&);
+    action_s& operator= (action_s const&);
+
+  public:
+    action_s ()
+      : _name(),
+        _callback(),
+        _options() {
+    }
+
+    string _name;
+    v8::Persistent<v8::Function> _callback;
+    action_options_t* _options;
 }
 action_t;
 
