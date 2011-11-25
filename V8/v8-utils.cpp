@@ -1828,8 +1828,11 @@ bool TRI_ExecuteStringVocBase (v8::Handle<v8::Context> context,
                                v8::Handle<v8::Value> name,
                                bool printResult,
                                bool reportExceptions) {
+  TRI_v8_global_t* v8g;
   v8::HandleScope handleScope;
   v8::TryCatch tryCatch;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Script> script = v8::Script::Compile(source, name);
 
@@ -1861,8 +1864,7 @@ bool TRI_ExecuteStringVocBase (v8::Handle<v8::Context> context,
 
       // if all went well and the result wasn't undefined then print the returned value
       if (printResult && ! result->IsUndefined()) {
-        v8::Handle<v8::String> printFuncName = v8::String::New("print");
-        v8::Handle<v8::Function> print = v8::Handle<v8::Function>::Cast(context->Global()->Get(printFuncName));
+        v8::Handle<v8::Function> print = v8::Handle<v8::Function>::Cast(context->Global()->Get(v8g->PrintFuncName));
 
         v8::Handle<v8::Value> args[] = { result };
         print->Call(print, 1, args);
@@ -1887,6 +1889,14 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context) {
   if (v8g == 0) {
     v8g = new TRI_v8_global_t;
     isolate->SetData(v8g);
+  }
+
+  // .............................................................................
+  // global function names
+  // .............................................................................
+
+  if (v8g->PrintFuncName.IsEmpty()) {
+    v8g->PrintFuncName = v8::Persistent<v8::String>::New(v8::String::New("print"));
   }
 
   // .............................................................................

@@ -48,15 +48,15 @@ avocdb_SOURCES = \
 	Basics/LoggerTiming.cpp \
 	Basics/logging.c \
 	Basics/memory.c \
+	Basics/Mutex.cpp \
 	Basics/MutexLocker.cpp \
-	Basics/Mutex-posix.cpp \
 	Basics/ProgramOptions.cpp \
 	Basics/ProgramOptionsDescription.cpp \
 	Basics/Random.cpp \
 	Basics/randomx.c \
 	Basics/ReadLocker.cpp \
 	Basics/ReadUnlocker.cpp \
-	Basics/ReadWriteLock-posix.cpp \
+	Basics/ReadWriteLock.cpp \
 	Basics/SocketUtils.cpp \
 	Basics/string-buffer.c \
 	Basics/strings.c \
@@ -133,7 +133,11 @@ avocdb_SOURCES = \
 	Rest/RestModel.cpp \
 	Rest/RestServer.cpp \
 	Rest/Scheduler.cpp \
+	RestServer/ActionDispatcherThread.cpp \
 	RestServer/avocado.cpp \
+	RestServer/AvocadoHttpServer.cpp \
+	RestServer/AvocadoServer.cpp \
+	RestServer/JSLoader.cpp \
 	Rest/SignalTask.cpp \
 	Rest/SocketTask.cpp \
 	Rest/SslInterface.cpp \

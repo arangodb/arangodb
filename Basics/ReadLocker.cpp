@@ -40,42 +40,20 @@ namespace triagens {
 
     ReadLocker::ReadLocker (ReadWriteLock* readWriteLock)
       : _readWriteLock(readWriteLock), _file(0), _line(0) {
-      bool ok = _readWriteLock->readLock();
-
-      if (! ok) {
-        THROW_INTERNAL_ERROR("read lock failed");
-      }
+      _readWriteLock->readLock();
     }
 
 
 
     ReadLocker::ReadLocker (ReadWriteLock* readWriteLock, char const* file, int line)
       : _readWriteLock(readWriteLock), _file(file), _line(line) {
-      bool ok = _readWriteLock->readLock();
-
-      if (! ok) {
-        if (_file != 0) {
-          THROW_INTERNAL_ERROR_L("read lock failed", _file, _line);
-        }
-        else {
-          THROW_INTERNAL_ERROR("read lock failed");
-        }
-      }
+      _readWriteLock->readLock();
     }
 
 
 
     ReadLocker::~ReadLocker () {
-      bool ok = _readWriteLock->unlock();
-
-      if (! ok) {
-        if (_file != 0) {
-          THROW_INTERNAL_ERROR_L("read unlock failed", _file, _line);
-        }
-        else {
-          THROW_INTERNAL_ERROR("read unlock failed");
-        }
-      }
+      _readWriteLock->unlock();
     }
   }
 }

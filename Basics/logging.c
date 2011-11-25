@@ -1188,7 +1188,7 @@ static void LogAppenderFile_Reopen (TRI_log_appender_t* appender) {
   TRI_RenameFile(self->_filename, backup);
 
   // open new log file
-  fd = TRI_CREATE(self->_filename, O_APPEND | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP);
+  fd = TRI_CREATE(self->_filename, O_APPEND | O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP);
 
   if (fd < 0) {
     TRI_RenameFile(backup, self->_filename);
@@ -1287,7 +1287,7 @@ TRI_log_appender_t* TRI_CreateLogAppenderFile (char const* filename) {
 
   // logging to file
   else {
-    appender->_fd = TRI_CREATE(filename, O_APPEND | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP);
+    appender->_fd = TRI_CREATE(filename, O_APPEND | O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP);
 
     if (appender->_fd < 0) {
       TRI_Free(appender);

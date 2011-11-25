@@ -251,9 +251,16 @@ static void ScanPath (TRI_vocbase_t* vocbase, char const* path) {
   n = TRI_SizeVectorString(&files);
 
   for (i = 0;  i < n;  ++i) {
+    char* name;
     char* file;
 
-    file = TRI_Concatenate2File(path, TRI_AtVectorString(&files, i));
+    name = TRI_AtVectorString(&files, i);
+
+    if (name[0] == '\0' || name[0] == '_' || name[0] == '.') {
+      continue;
+    }
+
+    file = TRI_Concatenate2File(path, name);
 
     if (TRI_IsDirectory(file)) {
       TRI_col_info_t info;

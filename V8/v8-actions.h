@@ -34,6 +34,73 @@
 
 #include <VocBase/vocbase.h>
 
+////////////////////////////////////////////////////////////////////////////////
+/// @page Actions Actions
+///
+/// Actions are small JavaScript functions which are used to compute the result
+/// of a request. Normally, the function will use the request parameter @a
+/// collection to locate a collection, compute the result and return this result
+/// as JSON object.
+///
+/// An action is defined using the function @c defineAction. You need to provide
+/// a path, a function, and a description of the parameters.
+///
+/// @verbinclude action1
+///
+/// This will define a new action accessible under @c /_action/pagination, with
+/// three parameters @a collection, @a blocksize, and @a page. The action
+/// function is called with two parameters @a req and @a res. The variable @a
+/// req contains the request parameters. The result is stored in the variable @a
+/// res.
+///
+/// The function @c queryResult is predefined. It expects three parameters, the
+/// request, the response, and a result set. The function @c queryResult uses
+/// the parameters @a blocksize and @a page to paginate the result.
+///
+/// @verbinclude action2
+///
+/// The result contains the @a total number of documents, the number of
+/// documents returned in @a count, the @a offset, the @a blocksize, the current
+/// @a page, and the @a documents.
+///
+/// There is an alternative function @c queryReferences, which will only return
+/// the document references, not the whole document.
+///
+/// @verbinclude action3
+///
+/// You can then use the rest interface to extract the documents.
+///
+/// @verbinclude action4
+///
+/// Next steps:
+///
+/// - learn about @ref ActionsQueryBuilding "query building functions"
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page ActionsQueryBuilding Query Building Functions for Actions
+///
+/// The following functions can be used to build the result-set.
+///
+/// @copydetails JS_AllQuery
+///
+/// @copydetails JS_DistanceQuery
+///
+/// @copydetails JS_DocumentQuery
+///
+/// @copydetails JS_GeoQuery
+///
+/// @copydetails JS_LimitQuery
+///
+/// @copydetails JS_NearQuery
+///
+/// @copydetails JS_SelectQuery
+///
+/// @copydetails JS_SkipQuery
+///
+/// @copydetails JS_WithinQuery
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------

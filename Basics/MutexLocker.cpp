@@ -40,42 +40,20 @@ namespace triagens {
 
     MutexLocker::MutexLocker (Mutex* mutex)
       : _mutex(mutex), _file(0), _line(0) {
-      bool ok = _mutex->lock();
-
-      if (! ok) {
-        THROW_INTERNAL_ERROR("mutex lock failed");
-      }
+      _mutex->lock();
     }
 
 
 
     MutexLocker::MutexLocker (Mutex* mutex, char const* file, int line)
       : _mutex(mutex), _file(file), _line(line) {
-      bool ok = _mutex->lock();
-
-      if (! ok) {
-        if (_file != 0) {
-          THROW_INTERNAL_ERROR_L("mutex lock failed", _file, _line);
-        }
-        else {
-          THROW_INTERNAL_ERROR("mutex lock failed");
-        }
-      }
+      _mutex->lock();
     }
 
 
 
     MutexLocker::~MutexLocker () {
-      bool ok = _mutex->unlock();
-
-      if (! ok) {
-        if (_file != 0) {
-          THROW_INTERNAL_ERROR_L("mutex unlock failed", _file, _line);
-        }
-        else {
-          THROW_INTERNAL_ERROR("mutex unlock failed");
-        }
-      }
+      _mutex->unlock();
     }
   }
 }

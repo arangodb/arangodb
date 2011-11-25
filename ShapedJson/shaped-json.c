@@ -936,7 +936,7 @@ static TRI_json_t* JsonShapeDataShortString (TRI_shaper_t* shaper,
   l = * (TRI_shape_length_short_string_t const*) data;
   data += sizeof(TRI_shape_length_short_string_t);
 
-  return TRI_CreateString2CopyJson(data, l);
+  return TRI_CreateString2CopyJson(data, l - 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -952,7 +952,7 @@ static TRI_json_t* JsonShapeDataLongString (TRI_shaper_t* shaper,
   l = * (TRI_shape_length_long_string_t const*) data;
   data += sizeof(TRI_shape_length_long_string_t);
 
-  return TRI_CreateString2CopyJson(data, l);
+  return TRI_CreateString2CopyJson(data, l - 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1340,7 +1340,7 @@ static bool StringifyJsonShapeDataShortString (TRI_shaper_t* shaper,
   data += sizeof(TRI_shape_length_short_string_t);
 
   TRI_AppendCharStringBuffer(buffer, '"');
-  TRI_AppendString2StringBuffer(buffer, data, l);
+  TRI_AppendString2StringBuffer(buffer, data, l - 1);
   TRI_AppendCharStringBuffer(buffer, '"');
 
   return true;
@@ -1361,7 +1361,7 @@ static bool StringifyJsonShapeDataLongString (TRI_shaper_t* shaper,
   data += sizeof(TRI_shape_length_long_string_t);
 
   TRI_AppendCharStringBuffer(buffer, '"');
-  TRI_AppendString2StringBuffer(buffer, data, l);
+  TRI_AppendString2StringBuffer(buffer, data, l - 1);
   TRI_AppendCharStringBuffer(buffer, '"');
 
   return true;

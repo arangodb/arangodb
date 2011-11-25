@@ -306,7 +306,7 @@ namespace triagens {
 /// Debug log information is generally useful to find out the state of the
 /// server in the case of an error. For example,
 ///
-/// @LIT{2010-09-17T13:02:53Z [13783] DEBUG (ApplicationServer/ApplicationServerImpl.cpp:1200) opened port 7000 for any}
+/// @LIT{2010-09-17T13:02:53Z [13783] DEBUG opened port 7000 for any}
 ///
 /// Note that, setting the log level to debug will also result in all errors,
 /// warnings and server status information to be logged as well.
@@ -316,7 +316,7 @@ namespace triagens {
 ///
 /// For example,
 ///
-/// @LIT{2010-09-20T08:23:12Z [5687] TRACE (ApplicationServer/ApplicationServerImpl.cpp:1088) trying to open port 8000 for http requests\, token = '0'}
+/// @LIT{2010-09-20T08:23:12Z [5687] TRACE trying to open port 8000}
 ///
 /// Note that, setting the log level to trace will also result in all errors,
 /// warnings, status information, and debug information to be logged as well.
@@ -403,13 +403,11 @@ namespace triagens {
 /// log information. Setting this option appends the thread id of the calling
 /// thread to the process id. For example,
 ///
-/// @LIT{2010-09-20T13:04:01Z [19355] INFO SimpleVOC ready for business}
-/// @LIT{2010-09-20T13:04:01Z [19355] INFO VOC version 1.6.1 (6734:6766)}
+/// @LIT{2010-09-20T13:04:01Z [19355] INFO ready for business}
 ///
 /// when no thread is logged and
 ///
-/// @LIT{2010-09-20T13:04:17Z [19371-18446744072487317056] INFO SimpleVOC ready for business}
-/// @LIT{2010-09-20T13:04:17Z [19371-18446744072487317056] INFO VOC version 1.6.1 (6734:6766)}
+/// @LIT{2010-09-20T13:04:17Z [19371-18446744072487317056] ready for business}
 ///
 /// when this command line option is set.
 ////////////////////////////////////////////////////////////////////////////////

@@ -126,29 +126,30 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a document
 ///
-/// <b><tt>POST /_document/<em>collection-identifier</em></tt></b>
+/// @REST{POST /_document/@FA{collection-identifier}}
 ///
-/// Creates a new document in the collection identified by the @a
-/// collection-identifier.  A JSON representation of the document must be passed
-/// in the body of the POST request. If the document was created, then a HTTP
-/// 201 is returned and the "Location" header contains the path to the newly
-/// created document. The "ETag" contains the revision of the newly created
-/// document.
+/// Creates a new document in the collection identified by the
+/// @FA{collection-identifier}.  A JSON representation of the document must be
+/// passed in the body of the POST request. If the document was created, then a
+/// @CODE{HTTP 201} is returned and the "Location" header contains the path to the
+/// newly created document. The "ETag" contains the revision of the newly
+/// created document.
 ///
 /// @verbinclude rest3
 ///
-/// If the @a collection-identifier is unknown, then a HTTP 404 is returned.
+/// If the @FA{collection-identifier} is unknown, then a @CODE{HTTP 404} is
+/// returned.
 ///
 /// @verbinclude rest4
 ///
 /// If the body does not contain a valid JSON representation of an document,
-/// then a HTTP 400 is returned.
+/// then a @CODE{HTTP 400} is returned.
 ///
 /// @verbinclude rest5
 ///
-/// <b><tt>POST /_document/<em>collection-name</em></tt></b>
+/// @REST{POST /_document/@FA{collection-name}}
 ///
-/// Creates a new document in the collection named @a collection-name.
+/// Creates a new document in the collection named @FA{collection-name}.
 ///
 /// @verbinclude rest6
 ////////////////////////////////////////////////////////////////////////////////
@@ -215,16 +216,16 @@ bool RestDocumentHandler::createDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a document
 ///
-/// <b><tt>GET /_document/<em>document-reference</em></tt></b>
+/// @REST{GET /_document/@FA{document-reference}}
 ///
-/// Returns the document referenced by @a document-reference. If the document
-/// exists, then a HTTP 200 is returned and the JSON representation of the
+/// Returns the document referenced by @FA{document-reference}. If the document
+/// exists, then a @CODE{HTTP 200} is returned and the JSON representation of the
 /// document is the body of the response.
 ///
 /// @verbinclude rest1
 ///
 /// If the document-reference points to a non-existing document, then a
-/// HTTP 404 is returned and the body contains an error document.
+/// @CODE{HTTP 404} is returned and the body contains an error document.
 ///
 /// @verbinclude rest2
 ////////////////////////////////////////////////////////////////////////////////
@@ -280,32 +281,32 @@ bool RestDocumentHandler::readDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a document
 ///
-/// <b><tt>PUT /_document/<em>document-reference</em></tt></b>
+/// @REST{PUT /_document/@FA{document-reference}}
 ///
-/// Updates the document referenced by @a document-reference. If the document
-/// exists and could be updated, then a HTTP 201 is returned and the "ETag"
-/// header contains the new revision of the document.
+/// Updates the document referenced by @FA{document-reference}. If the document
+/// exists and could be updated, then a @CODE{HTTP 201} is returned and the
+/// "ETag" header contains the new revision of the document.
 ///
 /// @verbinclude rest7
 ///
-/// If the document does not exists, then a HTTP 404 is returned.
+/// If the document does not exists, then a @CODE{HTTP 404} is returned.
 ///
 /// @verbinclude rest8
 ///
 /// If an etag is supplied in the "ETag" field, then the AvocadoDB checks that
 /// the revision of the document is equal to the etag. If there is a mismatch,
-/// then a HTTP 409 conflict is returned and no update is performed.
+/// then a @CODE{HTTP 409} conflict is returned and no update is performed.
 ///
 /// @verbinclude rest9
 ///
-/// <b><tt>PUT /_document/<em>document-reference</em>?policy=<em>policy</em></tt></b>
+/// @REST{PUT /_document/@FA{document-reference}?policy=@FA{policy}}
 ///
-/// As before, if @a policy is @c error. If @a pocily is @c last, then the last
-/// write will win.
+/// As before, if @FA{policy} is @CODE{error}. If @FA{policy} is @CODE{last},
+/// then the last write will win.
 ///
 /// @verbinclude rest10
 ///
-/// <b><tt>PUT /_document/<em>document-reference</em>?_rev=<em>etag</em></tt></b>
+/// @REST{PUT /_document/@FA{document-reference}?_rev=@FA{etag}}
 ///
 /// You can also supply the etag using the parameter "_rev" instead of an "ETag"
 /// header.
@@ -395,29 +396,29 @@ bool RestDocumentHandler::updateDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
 ///
-/// <b><tt>DELETE /_document/<em>document-reference</em></tt></b>
+/// @REST{DELETE /_document/@FA{document-reference}}
 ///
-/// Deletes the document referenced by @a document-reference. If the document
-/// exists and could be deleted, then a HTTP 204 is returned.
+/// Deletes the document referenced by @FA{document-reference}. If the document
+/// exists and could be deleted, then a @CODE{HTTP 204} is returned.
 ///
 /// @verbinclude rest13
 ///
-/// If the document does not exists, then a HTTP 404 is returned.
+/// If the document does not exists, then a @CODE{HTTP 404} is returned.
 ///
 /// @verbinclude rest14
 ///
 /// If an etag is supplied in the "ETag" field, then the AvocadoDB checks that
 /// the revision of the document is equal to the etag. If there is a mismatch,
-/// then a HTTP 409 conflict is returned and no delete is performed.
+/// then a @CODE{HTTP 409} conflict is returned and no delete is performed.
 ///
 /// @verbinclude rest12
 ///
-/// <b><tt>DELETE /_document/<em>document-reference</em>?policy=<em>policy</em></tt></b>
+/// @REST{DELETE /_document/@FA{document-reference}?policy=@FA{policy}}
 ///
-/// As before, if @a policy is @c error. If @a pocily is @c last, then the last
-/// write will win.
+/// As before, if @FA{policy} is @CODE{error}. If @FA{policy} is @CODE{last},
+/// then the last write will win.
 ///
-/// <b><tt>DELETE /_document/<em>document-reference</em>?_rev=<em>etag</em></tt></b>
+/// @REST{DELETE /_document/@FA{document-reference}? _rev=@FA{etag}}
 ///
 /// You can also supply the etag using the parameter "_rev" instead of an "ETag"
 /// header.
