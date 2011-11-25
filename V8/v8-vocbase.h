@@ -54,14 +54,41 @@
 /// A complete list of the available JavaScript functions can be found
 /// @ref JavaScriptFunc "here".
 ///
-////////////////////////////////////////////////////////////////////////////////
 /// @section FirstStepsFI First Steps
-////////////////////////////////////////////////////////////////////////////////
 ///
-/// For instance, in order to select all elements of a collection "examples",
-/// one can use the @FN{all} operator.
+/// All documents are stored in collections. All collections are stored in a
+/// database.
 ///
-/// @verbinclude fluent1
+/// @verbinclude fluent41
+///
+/// Printing the @VAR{db} variable will show you the location, where the
+/// datafiles of the collections are stored by default.
+///
+/// Creating a collection is simple.  It will automatically be created
+/// when accessing the members of the @VAR{db}.
+///
+/// @verbinclude fluent42
+///
+/// If the collections does not exists, it is called a new-born. No file has
+/// been created so far. If you access the collection, then the directory
+/// and corresponding files will be created.
+///
+/// @verbinclude fluent43
+///
+/// If you restart the server and access the collection again, it will
+/// now show as "unloaded".
+///
+/// @verbinclude fluent44
+///
+/// In order to create new documents in a collection, use the @FN{save}
+/// operator.
+///
+/// @verbinclude fluent45
+///
+/// In order to select all elements of a collection, one can use the @FN{all}
+/// operator.
+///
+/// @verbinclude fluent46
 ///
 /// This will select all documents and prints the first 20 documents. If there
 /// are more than 20 documents, then @CODE{...more results...} is printed and
@@ -74,14 +101,19 @@
 /// first 20 documents are printed and the query (resp. cursor) is assigned to
 /// the variable @VAR{it}.
 ///
-/// A cursor can also be queried using @FN{hasNext} and @FN{next}. Calling
-/// either of these functions also executes the query, turning it into a cursor.
+/// A query can also be executed using @FN{hasNext} and @FN{next}.
 ///
 /// @verbinclude fluent3
 ///
+/// Next steps:
+///
+/// - learn about @ref GeoCoordinates "geo coordinates"
+/// - learn about @ref Pagination "pagination"
+/// - look at all the @ref JavaScriptFunc "functions"
 ////////////////////////////////////////////////////////////////////////////////
-/// @section GeoFI Geo Coordinates
+
 ////////////////////////////////////////////////////////////////////////////////
+/// @page GeoCoordinates Geo Coordinates
 ///
 /// The AvocadoDB allows to selects documents based on geographic
 /// coordinates. In order for this to work, a geo-spatial index must be defined.
@@ -98,33 +130,29 @@
 /// It is possible to define more than one geo-spatial index per collection.  In
 /// this case you must give a hint which of indexes should be used in a query.
 ///
-////////////////////////////////////////////////////////////////////////////////
-/// @subsection EnsureGeoIndexFI Create a Geo-Spatial Index
-////////////////////////////////////////////////////////////////////////////////
+/// @section EnsureGeoIndex Create a Geo-Spatial Index
+///
+/// First create an index.
 ///
 /// @copydetails JS_EnsureGeoIndexVocbaseCol
 ///
-////////////////////////////////////////////////////////////////////////////////
-/// @subsection NearFI The Near Operator
-////////////////////////////////////////////////////////////////////////////////
+/// @section NearOperator The Near Operator
 ///
 /// @copydetails JS_NearQuery
 ///
-////////////////////////////////////////////////////////////////////////////////
-/// @subsection WithinFI The Within Operator
-////////////////////////////////////////////////////////////////////////////////
+/// @section WithinOperator The Within Operator
 ///
 /// @copydetails JS_WithinQuery
 ///
-////////////////////////////////////////////////////////////////////////////////
-/// @subsection GeoOperatorFI The Geo Operator
-////////////////////////////////////////////////////////////////////////////////
+/// @section GeoOperator The Geo Operator
 ///
 /// @copydetails JS_GeoQuery
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page Pagination Pagination
 ///
-////////////////////////////////////////////////////////////////////////////////
-/// @section LimitFI The Limit Operator
-////////////////////////////////////////////////////////////////////////////////
+/// @section LimitOperator The Limit Operator
 ///
 /// If, for example, you display the result of a user search, then you are in
 /// general not interested in the completed result set, but only the first 10
@@ -136,9 +164,7 @@
 ///
 /// @copydetails JS_LimitQuery
 ///
-////////////////////////////////////////////////////////////////////////////////
-/// @section SkipFI The Skip Operator
-////////////////////////////////////////////////////////////////////////////////
+/// @section SkipOperator The Skip Operator
 ///
 /// @FN{skip} used together with @FN{limit} can be used to implement
 /// pagination.  The @FN{skip} operator skips over the first n documents. So, in
@@ -148,19 +174,6 @@
 /// @verbinclude fluent5
 ///
 /// @copydetails JS_SkipQuery
-///
-////////////////////////////////////////////////////////////////////////////////
-/// @section CountFI The Count Operator
-////////////////////////////////////////////////////////////////////////////////
-///
-/// @copydetails JS_CountQuery
-///
-////////////////////////////////////////////////////////////////////////////////
-/// @section ExplainFI The Explain Operator
-////////////////////////////////////////////////////////////////////////////////
-///
-/// @copydetails JS_ExplainQuery
-///
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------

@@ -50,7 +50,7 @@ var queryLimit = 20;
 /// @brief prints a query
 ////////////////////////////////////////////////////////////////////////////////
 
-printQuery = function(q) {
+AvocadoQuery.prototype.print = function(q) {
   var count = 0;
 
   try {
@@ -59,13 +59,13 @@ printQuery = function(q) {
     }
 
     if (q.hasNext()) {
-      output("...more results...\n");
+      output("...more results...");
     }
 
     it = q;
   }
   catch (e) {
-    output("encountered error while printing: " + e + "\n");
+    output("encountered error while printing: " + e);
   }
 }
 

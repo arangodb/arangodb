@@ -40,6 +40,7 @@
 #include <fstream>
 
 #include "V8/v8-json.h"
+#include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 
 using namespace std;
@@ -108,6 +109,26 @@ static void ProcessCsvEnd (TRI_csv_parser_t* parser, char const* field, size_t r
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief processes a CSV file
+///
+/// @FUN{processCsvFile(@FA{filename}, @FA{callback})}
+///
+/// Processes a CSV file. The @FA{callback} function is called for line in the
+/// file. The seperator is @CODE{\,} and the quote is @CODE{"}.
+///
+/// Create the input file @CODE{csv.txt}
+///
+/// @verbinclude fluent48
+///
+/// If you use @FN{processCsvFile} on this file, you get
+///
+/// @verbinclude fluent47
+///
+/// @FUN{processCsvFile(@FA{filename}, @FA{callback}, @FA{options})}
+///
+/// Processes a CSV file. The @FA{callback} function is called for line in the
+/// file. The @FA{options} argument must be an object. The value of
+/// @CODE{seperator} sets the seperator character and @CODE{quote} the quote
+/// character.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
@@ -203,6 +224,20 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief processes a JSON file
+///
+/// @FUN{processJsonFile(@FA{filename}, @FA{callback})}
+///
+/// Processes a JSON file. The file must contain the JSON objects each on its
+/// own line. The @FA{callback} function is called for each object.
+///
+/// Create the input file @CODE{json.txt}
+///
+/// @verbinclude fluent49
+///
+/// If you use @FN{processJsonFile} on this file, you get
+///
+/// @verbinclude fluent50
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
@@ -378,8 +413,13 @@ static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_Print (v8::Arguments const& argv) {
+  TRI_v8_global_t* v8g;
+  v8::HandleScope globalScope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
   v8::Handle<v8::Function> toJson = v8::Handle<v8::Function>::Cast(
-    argv.Holder()->CreationContext()->Global()->Get(v8::String::New("toJson")));
+    argv.Holder()->CreationContext()->Global()->Get(v8g->ToJsonFuncName));
 
   for (int i = 0; i < argv.Length(); i++) {
     v8::HandleScope scope;
@@ -394,10 +434,9 @@ static v8::Handle<v8::Value> JS_Print (v8::Arguments const& argv) {
     // convert the object into json - if possible
     if (val->IsObject()) {
       v8::Handle<v8::Object> obj = val->ToObject();
-      v8::Handle<v8::String> printFuncName = v8::String::New("print");
 
-      if (obj->Has(printFuncName)) {
-        v8::Handle<v8::Function> print = v8::Handle<v8::Function>::Cast(obj->Get(printFuncName));
+      if (obj->Has(v8g->PrintFuncName)) {
+        v8::Handle<v8::Function> print = v8::Handle<v8::Function>::Cast(obj->Get(v8g->PrintFuncName));
         v8::Handle<v8::Value> args[] = { val };
         print->Call(obj, 1, args);
         printBuffer = false;
@@ -423,9 +462,14 @@ static v8::Handle<v8::Value> JS_Print (v8::Arguments const& argv) {
         TRI_AppendStringStringBuffer(&buffer, "[string]");
       }
       else {
+        size_t out;
+        char* e = TRI_EscapeCString(*utf8, utf8.length(), &out);
+
         TRI_AppendCharStringBuffer(&buffer, '"');
-        TRI_AppendString2StringBuffer(&buffer, *utf8, utf8.length());
+        TRI_AppendString2StringBuffer(&buffer, e, out);
         TRI_AppendCharStringBuffer(&buffer, '"');
+
+        TRI_FreeString(e);
       }
     }
     else {
@@ -491,6 +535,27 @@ static v8::Handle<v8::Value> JS_Print (v8::Arguments const& argv) {
 void TRI_InitV8Shell (v8::Handle<v8::Context> context) {
   v8::HandleScope scope;
 
+  // check the isolate
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
+
+  if (v8g == 0) {
+    v8g = new TRI_v8_global_t;
+    isolate->SetData(v8g);
+  }
+
+  // .............................................................................
+  // global function names
+  // .............................................................................
+
+  if (v8g->PrintFuncName.IsEmpty()) {
+    v8g->PrintFuncName = v8::Persistent<v8::String>::New(v8::String::New("print"));
+  }
+
+  if (v8g->ToJsonFuncName.IsEmpty()) {
+    v8g->ToJsonFuncName = v8::Persistent<v8::String>::New(v8::String::New("toJson"));
+  }
+
   // .............................................................................
   // create the global functions
   // .............................................................................
@@ -503,7 +568,7 @@ void TRI_InitV8Shell (v8::Handle<v8::Context> context) {
                          v8::FunctionTemplate::New(JS_Output)->GetFunction(),
                          v8::ReadOnly);
 
-  context->Global()->Set(v8::String::New("print"),
+  context->Global()->Set(v8g->PrintFuncName,
                          v8::FunctionTemplate::New(JS_Print)->GetFunction(),
                          v8::ReadOnly);
 

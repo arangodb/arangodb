@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document request handler
+/// @brief source code loader
 ///
 /// @file
 ///
@@ -22,120 +22,145 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_AVOCADODB_RESTHANDLER_REST_DOCUMENT_HANDLER_H
-#define TRIAGENS_AVOCADODB_RESTHANDLER_REST_DOCUMENT_HANDLER_H 1
+#include "JSLoader.h"
 
-#include "RestHandler/RestVocbaseBaseHandler.h"
+#include <Basics/MutexLocker.h>
+#include <Basics/Logger.h>
+#include <Basics/files.h>
+#include <Basics/strings.h>
 
-////////////////////////////////////////////////////////////////////////////////
-/// @page CRUDDocument CRUD for Documents
-///
-/// The basic operations (create, read, update, delete) for documents are mapped
-/// to the standard HTTP methods (POST, GET, PUT, DELETE). An identifier for the
-/// revision is returned in the "ETag" field. If you modify a document, you can
-/// use the "ETag" field to detect conflicts.
-///
-/// @copydetails triagens::avocado::RestDocumentHandler::createDocument
-///
-/// @copydetails triagens::avocado::RestDocumentHandler::readDocument
-///
-/// @copydetails triagens::avocado::RestDocumentHandler::updateDocument
-///
-/// @copydetails triagens::avocado::RestDocumentHandler::deleteDocument
-////////////////////////////////////////////////////////////////////////////////
+#include "V8/v8-utils.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               RestDocumentHandler
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-namespace triagens {
-  namespace avocado {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief document request handler
-////////////////////////////////////////////////////////////////////////////////
-
-    class RestDocumentHandler : public RestVocbaseBaseHandler {
+using namespace std;
+using namespace triagens::basics;
+using namespace triagens::avocado;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
-        RestDocumentHandler (rest::HttpRequest* request, struct TRI_vocbase_s* vocbase);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        status_e execute ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup AvocadoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-    private:
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a document
+/// @brief constructs a loader
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool createDocument ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reads a document
-////////////////////////////////////////////////////////////////////////////////
-
-      bool readDocument ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates a document
-////////////////////////////////////////////////////////////////////////////////
-
-      bool updateDocument ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes a document
-////////////////////////////////////////////////////////////////////////////////
-
-      bool deleteDocument ();
-    };
-  }
+JSLoader::JSLoader ()
+  : _scripts(),
+    _directory(),
+    _lock() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-#endif
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the directory for scripts
+////////////////////////////////////////////////////////////////////////////////
+
+void JSLoader::setDirectory (string const& directory) {
+  MUTEX_LOCKER(_lock);
+
+  _directory = directory;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief defines a new named script
+////////////////////////////////////////////////////////////////////////////////
+
+void JSLoader::defineScript (string const& name, string const& script) {
+  MUTEX_LOCKER(_lock);
+
+  _scripts[name] = script;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a named script
+////////////////////////////////////////////////////////////////////////////////
+
+string const& JSLoader::findScript (string const& name) {
+  MUTEX_LOCKER(_lock);
+  static string empty = "";
+
+  map<string, string>::iterator i = _scripts.find(name);
+
+  if (i != _scripts.end()) {
+    return i->second;
+  }
+
+  if (! _directory.empty()) {
+    char* filename = TRI_Concatenate2File(_directory.c_str(), name.c_str());
+    char* result = TRI_SlurpFile(filename);
+
+    if (result == 0) {
+      LOGGER_ERROR << "cannot load file '" << filename << "': " << TRI_last_error();
+    }
+
+    TRI_FreeString(filename);
+
+    if (result != 0) {
+      _scripts[name] = result;
+      TRI_FreeString(result);
+      return _scripts[name];
+    }
+  }
+
+  return empty;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief loads a named script
+////////////////////////////////////////////////////////////////////////////////
+
+bool JSLoader::loadScript (v8::Persistent<v8::Context> context, string const& name) {
+  v8::HandleScope scope;
+
+  findScript(name);
+
+  map<string, string>::iterator i = _scripts.find(name);
+
+  if (i == _scripts.end()) {
+    return false;
+  }
+
+  return TRI_ExecuteStringVocBase(context,
+                                  v8::String::New(i->second.c_str()),
+                                  v8::String::New(name.c_str()),
+                                  false,
+                                  true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief loads all scripts
+////////////////////////////////////////////////////////////////////////////////
+
+bool JSLoader::loadAllScripts (v8::Persistent<v8::Context> context) {
+  if (_directory.empty()) {
+    return true;
+  }
+
+  return TRI_LoadJavaScriptDirectory(context, _directory.c_str());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

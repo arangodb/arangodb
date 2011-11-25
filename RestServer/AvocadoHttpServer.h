@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief AvocadoDB server
+/// @brief avocado http server
 ///
 /// @file
 ///
@@ -22,45 +22,16 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Basics/Common.h>
+#ifndef TRIAGENS_AVOCADODB_RESTHANDLER_REST_ACTION_HANDLER3_H
+#define TRIAGENS_AVOCADODB_RESTHANDLER_REST_ACTION_HANDLER3_H 1
 
-#include <Rest/Initialise.h>
-
-#include "RestServer/AvocadoServer.h"
-
-using namespace triagens;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::avocado;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page StartStop Starting and stopping
-///
-/// The AvocadoDB has two mode of operations: as server, where it will answer to
-/// HTTP request, see @ref HttpInterface, and a debug shell, where you can
-/// access the database directly, see @ref DebugShell.
-///
-/// The following main command-line options are available.
-///
-/// @copydetails triagens::avocado::AvocadoServer::_databasePath
-///
-/// @CMDOPT{--shell}
-///
-/// Opens a debug shell instead of starting the HTTP server.
-///
-/// @CMDOPT{--log.level @CA{level}}
-///
-/// Allows the user to choose the level of information which is logged by the
-/// server. The arg is specified as a string and can be one of the following
-/// values: fatal, error, warning, info, debug, trace.  For more information see
-/// @ref CommandLineLogging "here".
-////////////////////////////////////////////////////////////////////////////////
+#include "HttpServer/HttpServerImpl.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                           class AvocadoHttpServer
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,29 +39,44 @@ using namespace triagens::avocado;
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+namespace triagens {
+  namespace avocado {
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an application server
+/// @brief specialized http server
 ////////////////////////////////////////////////////////////////////////////////
 
-int main (int argc, char* argv[]) {
-  TRIAGENS_REST_INITIALISE;
-  TRI_InitialiseVocBase();
+    class AvocadoHttpServer : public rest::HttpServerImpl {
 
-  // create and start a AvocadoDB server
-  AvocadoServer server(argc, argv);
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
-  int res = server.start();
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
-  // shutdown
-  TRI_ShutdownVocBase();
-  TRIAGENS_REST_SHUTDOWN;
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
-  return res;
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new http server
+////////////////////////////////////////////////////////////////////////////////
+
+        AvocadoHttpServer (rest::Scheduler* scheduler, rest::Dispatcher* dispatcher);
+    };
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+#endif
 
 // Local Variables:
 // mode: outline-minor

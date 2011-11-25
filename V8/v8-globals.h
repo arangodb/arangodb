@@ -31,6 +31,8 @@
 #include <Basics/Common.h>
 
 #include <regex.h>
+
+#include <map>
 #include <v8.h>
 
 #include <Basics/ReadWriteLock.h>
@@ -64,7 +66,8 @@ typedef struct TRI_v8_global_s {
       VocbaseColTempl(),
       VocbaseTempl(),
       OutputFuncName(),
-      PrintQueryFuncName(),
+      PrintFuncName(),
+      ToJsonFuncName(),
       ToStringFuncName(),
       CollectionQueryType(),
       ContentType(),
@@ -136,10 +139,16 @@ typedef struct TRI_v8_global_s {
   v8::Persistent<v8::String> OutputFuncName;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief "printQuery" function name
+/// @brief "print" function name
 ////////////////////////////////////////////////////////////////////////////////
 
-  v8::Persistent<v8::String> PrintQueryFuncName;
+  v8::Persistent<v8::String> PrintFuncName;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "toJson" function name
+////////////////////////////////////////////////////////////////////////////////
+
+  v8::Persistent<v8::String> ToJsonFuncName;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief "toString" function name

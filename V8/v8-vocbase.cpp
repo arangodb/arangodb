@@ -261,8 +261,8 @@ static v8::Handle<v8::Value> JS_PrintUsingToString (v8::Arguments const& argv) {
 
   v8::Handle<v8::Function> output = v8::Handle<v8::Function>::Cast(self->CreationContext()->Global()->Get(v8g->OutputFuncName));
 
-  v8::Handle<v8::Value> args2[] = { str, v8::String::New("\n") };
-  output->Call(output, 2, args2);
+  v8::Handle<v8::Value> args2[] = { str };
+  output->Call(output, 1, args2);
 
   return scope.Close(v8::Undefined());
 }
@@ -630,25 +630,6 @@ static bool OptimiseQuery (v8::Handle<v8::Object> queryObject) {
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief calls the "printQuery" function
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_PrintQuery (v8::Arguments const& argv) {
-  TRI_v8_global_t* v8g;
-  v8::HandleScope scope;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-  v8::Handle<v8::Object> self = argv.Holder();
-  v8::Handle<v8::Function> print = v8::Handle<v8::Function>::Cast(self->CreationContext()->Global()->Get(v8g->PrintQueryFuncName));
-
-  v8::Handle<v8::Value> args[] = { self };
-  print->Call(print, 1, args);
-
-  return scope.Close(v8::Undefined());
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a query into a fluent interface representation
@@ -2129,6 +2110,10 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   // convert the JavaScript string to a string
   string key = TRI_ObjectToString(name);
 
+  if (key == "toString" || key == "print") {
+    return v8::Handle<v8::Value>();
+  }
+
   // look up the value if it exists
   TRI_vocbase_col_t const* collection = TRI_FindCollectionByNameVocBase(vocbase, key.c_str());
 
@@ -2379,6 +2364,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::HandleScope scope;
 
   v8::Handle<v8::ObjectTemplate> rt;
+  v8::Handle<v8::FunctionTemplate> ft;
 
   // check the isolate
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
@@ -2399,9 +2385,17 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   // global function names
   // .............................................................................
 
-  v8g->OutputFuncName = v8::Persistent<v8::String>::New(v8::String::New("output"));
-  v8g->PrintQueryFuncName = v8::Persistent<v8::String>::New(v8::String::New("printQuery"));
-  v8g->ToStringFuncName = v8::Persistent<v8::String>::New(v8::String::New("toString"));
+  if (v8g->OutputFuncName.IsEmpty()) {
+    v8g->OutputFuncName = v8::Persistent<v8::String>::New(v8::String::New("output"));
+  }
+
+  if (v8g->PrintFuncName.IsEmpty()) {
+    v8g->PrintFuncName = v8::Persistent<v8::String>::New(v8::String::New("print"));
+  }
+
+  if (v8g->ToStringFuncName.IsEmpty()) {
+    v8g->ToStringFuncName = v8::Persistent<v8::String>::New(v8::String::New("toString"));
+  }
 
   // .............................................................................
   // local function names
@@ -2423,7 +2417,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> NextFuncName = v8::Persistent<v8::String>::New(v8::String::New("next"));
   v8::Handle<v8::String> OptimiseFuncName = v8::Persistent<v8::String>::New(v8::String::New("optimise"));
   v8::Handle<v8::String> ParameterFuncName = v8::Persistent<v8::String>::New(v8::String::New("parameter"));
-  v8::Handle<v8::String> PrintFuncName = v8::Persistent<v8::String>::New(v8::String::New("print"));
   v8::Handle<v8::String> ReplaceFuncName = v8::Persistent<v8::String>::New(v8::String::New("replace"));
   v8::Handle<v8::String> SaveFuncName = v8::Persistent<v8::String>::New(v8::String::New("save"));
   v8::Handle<v8::String> SelectFuncName = v8::Persistent<v8::String>::New(v8::String::New("select"));
@@ -2451,22 +2444,31 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   // generate the TRI_vocbase_t template
   // .............................................................................
 
-  rt = v8::ObjectTemplate::New();
+  ft = v8::FunctionTemplate::New();
+  ft->SetClassName(v8::String::New("AvocadoCollection"));
 
+  rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(1);
 
-  rt->Set(PrintFuncName, v8::FunctionTemplate::New(JS_PrintUsingToString));
-  rt->Set(v8g->ToStringFuncName, v8::FunctionTemplate::New(JS_ToStringVocBase));
   rt->SetNamedPropertyHandler(MapGetVocBase);
 
+  rt->Set(v8g->PrintFuncName, v8::FunctionTemplate::New(JS_PrintUsingToString));
+  rt->Set(v8g->ToStringFuncName, v8::FunctionTemplate::New(JS_ToStringVocBase));
+
   v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+
+  // must come after SetInternalFieldCount
+  context->Global()->Set(v8::String::New("AvocadoCollection"),
+                         ft->GetFunction());
 
   // .............................................................................
   // generate the TRI_vocbase_col_t template
   // .............................................................................
 
-  rt = v8::ObjectTemplate::New();
+  ft = v8::FunctionTemplate::New();
+  ft->SetClassName(v8::String::New("AvocadoCollection"));
 
+  rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(SLOT_END);
 
   rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
@@ -2481,7 +2483,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(LimitFuncName, v8::FunctionTemplate::New(JS_LimitQuery));
   rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
   rt->Set(ParameterFuncName, v8::FunctionTemplate::New(JS_ParameterVocbaseCol));
-  rt->Set(PrintFuncName, v8::FunctionTemplate::New(JS_PrintUsingToString));
+  rt->Set(v8g->PrintFuncName, v8::FunctionTemplate::New(JS_PrintUsingToString));
   rt->Set(ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbaseCol));
   rt->Set(SaveFuncName, v8::FunctionTemplate::New(JS_SaveVocbaseCol));
   rt->Set(SelectFuncName, v8::FunctionTemplate::New(JS_SelectQuery));
@@ -2492,12 +2494,18 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
 
   v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
+  // must come after SetInternalFieldCount
+  context->Global()->Set(v8::String::New("AvocadoCollection"),
+                         ft->GetFunction());
+
   // .............................................................................
   // generate the query template
   // .............................................................................
 
-  rt = v8::ObjectTemplate::New();
+  ft = v8::FunctionTemplate::New();
+  ft->SetClassName(v8::String::New("AvocadoQuery"));
 
+  rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(SLOT_END);
 
   rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
@@ -2511,7 +2519,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
   rt->Set(NextFuncName, v8::FunctionTemplate::New(JS_NextQuery));
   rt->Set(OptimiseFuncName, v8::FunctionTemplate::New(JS_OptimiseQuery));
-  rt->Set(PrintFuncName, v8::FunctionTemplate::New(JS_PrintQuery));
   rt->Set(SelectFuncName, v8::FunctionTemplate::New(JS_SelectQuery));
   rt->Set(ShowFuncName, v8::FunctionTemplate::New(JS_ShowQuery));
   rt->Set(SkipFuncName, v8::FunctionTemplate::New(JS_SkipQuery));
@@ -2519,6 +2526,10 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
 
   v8g->QueryTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+
+  // must come after SetInternalFieldCount
+  context->Global()->Set(v8::String::New("AvocadoQuery"),
+                         ft->GetFunction());
 
   // .............................................................................
   // create the global variables

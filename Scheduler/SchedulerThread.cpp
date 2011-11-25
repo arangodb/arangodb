@@ -94,10 +94,7 @@ namespace triagens {
       else {
 
         // put the register request unto the queue
-        if (! queueLock.lock()) {
-          LOGGER_FATAL << "cannot lock in " << __FILE__ << "@" << __LINE__;
-          exit(EXIT_FAILURE);
-        }
+        queueLock.lock();
 
         Work w(SETUP, scheduler, task);
         queue.push_back(w);
@@ -105,10 +102,7 @@ namespace triagens {
 
         scheduler->wakeupLoop(loop);
 
-        if (! queueLock.unlock()) {
-          LOGGER_FATAL << "cannot unlock in " << __FILE__ << "@" << __LINE__;
-          exit(EXIT_FAILURE);
-        }
+        queueLock.unlock();
       }
     }
 
@@ -127,10 +121,7 @@ namespace triagens {
       else {
 
         // put the unregister request unto the queue
-        if (! queueLock.lock()) {
-          LOGGER_FATAL << "cannot lock in " << __FILE__ << "@" << __LINE__;
-          exit(EXIT_FAILURE);
-        }
+        queueLock.lock();
 
         Work w(CLEANUP, 0, task);
         queue.push_back(w);
@@ -138,10 +129,7 @@ namespace triagens {
 
         scheduler->wakeupLoop(loop);
 
-        if (! queueLock.unlock()) {
-          LOGGER_FATAL << "cannot unlock in " << __FILE__ << "@" << __LINE__;
-          exit(EXIT_FAILURE);
-        }
+        queueLock.unlock();
       }
     }
 
@@ -161,10 +149,7 @@ namespace triagens {
       else {
 
         // put the unregister request unto the queue
-        if (! queueLock.lock()) {
-          LOGGER_FATAL << "cannot lock in " << __FILE__ << "@" << __LINE__;
-          exit(EXIT_FAILURE);
-        }
+        queueLock.lock();
 
         Work w(DESTROY, 0, task);
         queue.push_back(w);
@@ -172,10 +157,7 @@ namespace triagens {
 
         scheduler->wakeupLoop(loop);
 
-        if (! queueLock.unlock()) {
-          LOGGER_FATAL << "cannot unlock in " << __FILE__ << "@" << __LINE__;
-          exit(EXIT_FAILURE);
-        }
+        queueLock.unlock();
       }
     }
 
@@ -213,19 +195,13 @@ namespace triagens {
 #endif
 
         if (hasWork != 0) {
-          if (! queueLock.lock()) {
-            LOGGER_FATAL << "cannot lock in " << __FILE__ << "@" << __LINE__;
-            exit(EXIT_FAILURE);
-          }
+          queueLock.lock();
 
           while (! queue.empty()) {
             Work w = queue.front();
             queue.pop_front();
 
-            if (! queueLock.unlock()) {
-              LOGGER_FATAL << "cannot unlock in " << __FILE__ << "@" << __LINE__;
-              exit(EXIT_FAILURE);
-            }
+            queueLock.unlock();
 
             switch (w.work) {
               case CLEANUP:
@@ -242,18 +218,12 @@ namespace triagens {
                 break;
             }
 
-            if (! queueLock.lock()) {
-              LOGGER_FATAL << "cannot lock in " << __FILE__ << "@" << __LINE__;
-              exit(EXIT_FAILURE);
-            }
+            queueLock.lock();
           }
 
           hasWork = 0;
 
-          if (! queueLock.unlock()) {
-            LOGGER_FATAL << "cannot unlock in " << __FILE__ << "@" << __LINE__;
-            exit(EXIT_FAILURE);
-          }
+          queueLock.unlock();
         }
       }
 

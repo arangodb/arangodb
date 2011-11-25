@@ -81,6 +81,15 @@ extern "C" {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises a new mutex
+///
+/// Mutual exclusion (often abbreviated to mutex) algorithms are used in
+/// concurrent programming to avoid the simultaneous use of a common resource,
+/// such as a global variable, by pieces of computer code called critical
+/// sections. A critical section is a piece of code in which a process or thread
+/// accesses a common resource. The critical section by itself is not a
+/// mechanism or algorithm for mutual exclusion. A program, process, or thread
+/// can have the critical section in it without any mechanism or algorithm which
+/// implements mutual exclusion. For details see www.wikipedia.org.
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitMutex (TRI_mutex_t*);
@@ -189,6 +198,21 @@ void TRI_UnlockSpin (TRI_spin_t* spin);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises a new read-write lock
+///
+/// A ReadWriteLock maintains a pair of associated locks, one for read-only
+/// operations and one for writing. The read lock may be held simultaneously by
+/// multiple reader threads, so long as there are no writers. The write lock is
+/// exclusive.
+///
+/// A read-write lock allows for a greater level of concurrency in accessing
+/// shared data than that permitted by a mutual exclusion lock. It exploits the
+/// fact that while only a single thread at a time (a writer thread) can modify
+/// the shared data, in many cases any number of threads can concurrently read
+/// the data (hence reader threads). In theory, the increase in concurrency
+/// permitted by the use of a read-write lock will lead to performance
+/// improvements over the use of a mutual exclusion lock. In practice this
+/// increase in concurrency will only be fully realized on a multi-processor,
+/// and then only if the access patterns for the shared data are suitable.
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitReadWriteLock (TRI_read_write_lock_t* lock);

@@ -40,43 +40,21 @@ namespace triagens {
 
     WriteUnlocker::WriteUnlocker (ReadWriteLock* readWriteLock)
       : _readWriteLock(readWriteLock), _file(0), _line(0) {
-      bool ok = _readWriteLock->unlock();
-
-      if (! ok) {
-        THROW_INTERNAL_ERROR("write unlock failed");
-      }
+      _readWriteLock->unlock();
     }
 
 
 
     WriteUnlocker::WriteUnlocker (ReadWriteLock* readWriteLock, char const* file, int line)
       : _readWriteLock(readWriteLock), _file(file), _line(line) {
-      bool ok = _readWriteLock->unlock();
-
-      if (! ok) {
-        if (_file != 0) {
-          THROW_INTERNAL_ERROR_L("write unlock failed", _file, _line);
-        }
-        else {
-          THROW_INTERNAL_ERROR("write unlock failed");
-        }
-      }
+      _readWriteLock->unlock();
     }
 
 
 
 
     WriteUnlocker::~WriteUnlocker () {
-      bool ok = _readWriteLock->writeLock();
-
-      if (! ok) {
-        if (_file != 0) {
-          THROW_INTERNAL_ERROR_L("write lock failed", _file, _line);
-        }
-        else {
-          THROW_INTERNAL_ERROR("write lock failed");
-        }
-      }
+      _readWriteLock->writeLock();
     }
   }
 }
