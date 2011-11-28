@@ -370,7 +370,7 @@ bool TRI_msync (int fd, char const* begin, char const* end) {
 #ifdef __APPLE__
 
   if (res == 0) {
-    res = = fcntl(fd, F_FULLFSYNC, 0);
+    res = fcntl(fd, F_FULLFSYNC, 0);
   }
 
 #endif
