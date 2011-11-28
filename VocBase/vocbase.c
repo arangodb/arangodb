@@ -413,6 +413,8 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   vocbase = TRI_Allocate(sizeof(TRI_vocbase_t));
   vocbase->_path = TRI_DuplicateString(path);
 
+  TRI_InitReadWriteLock(&vocbase->_lock);
+
   TRI_InitVectorPointer(&vocbase->_collections);
 
   TRI_InitAssociativePointer(&vocbase->_collectionsById,
