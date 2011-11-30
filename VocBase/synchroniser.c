@@ -65,10 +65,10 @@ static bool CheckSyncSimCollection (TRI_sim_collection_t* collection) {
   // therefore no locking is required to access the _journals
   // .............................................................................
 
-  n = TRI_SizeVectorPointer(&base->_journals);
+  n = base->_journals._length;
 
   for (i = 0;  i < n; ++i) {
-    journal = TRI_AtVectorPointer(&base->_journals, i);
+    journal = base->_journals._buffer[i];
 
     TRI_LockCondition(&collection->_journalsCondition);
 
@@ -130,10 +130,10 @@ static bool CheckJournalSimCollection (TRI_sim_collection_t* collection) {
   // therefore no locking is required to access the _journals
   // .............................................................................
 
-  n = TRI_SizeVectorPointer(&base->_journals);
+  n = base->_journals._length;
 
   for (i = 0;  i < n;) {
-    journal = TRI_AtVectorPointer(&base->_journals, i);
+    journal = base->_journals._buffer[i];
 
     if (journal->_full) {
       worked = true;
@@ -144,7 +144,7 @@ static bool CheckJournalSimCollection (TRI_sim_collection_t* collection) {
       TRI_CloseJournalDocCollection(&collection->base, i);
       TRI_UnlockCondition(&collection->_journalsCondition);
 
-      n = TRI_SizeVectorPointer(&base->_journals);
+      n = base->_journals._length;
       i = 0;
     }
     else {
@@ -152,7 +152,7 @@ static bool CheckJournalSimCollection (TRI_sim_collection_t* collection) {
     }
   }
 
-  if (TRI_SizeVectorPointer(&base->_journals) == 0) {
+  if (base->_journals._length == 0) {
     worked = true;
 
     TRI_LockCondition(&collection->_journalsCondition);
@@ -195,10 +195,10 @@ static bool CheckSyncCompactorSimCollection (TRI_sim_collection_t* collection) {
   // therefore no locking is required to access the _compactors
   // .............................................................................
 
-  n = TRI_SizeVectorPointer(&base->_compactors);
+  n = base->_compactors._length;
 
   for (i = 0;  i < n; ++i) {
-    journal = TRI_AtVectorPointer(&base->_compactors, i);
+    journal = base->_compactors._buffer[i];
 
     TRI_LockCondition(&collection->_journalsCondition);
 
@@ -260,10 +260,10 @@ static bool CheckCompactorSimCollection (TRI_sim_collection_t* collection) {
   // therefore no locking is required to access the _compactors
   // .............................................................................
 
-  n = TRI_SizeVectorPointer(&base->_compactors);
+  n = base->_compactors._length;
 
   for (i = 0;  i < n;) {
-    compactor = TRI_AtVectorPointer(&base->_compactors, i);
+    compactor = base->_compactors._buffer[i];
 
     if (compactor->_full) {
       worked = true;
@@ -274,7 +274,7 @@ static bool CheckCompactorSimCollection (TRI_sim_collection_t* collection) {
       TRI_CloseCompactorDocCollection(&collection->base, i);
       TRI_UnlockCondition(&collection->_journalsCondition);
 
-      n = TRI_SizeVectorPointer(&base->_compactors);
+      n = base->_compactors._length;
       i = 0;
     }
     else {
@@ -282,7 +282,7 @@ static bool CheckCompactorSimCollection (TRI_sim_collection_t* collection) {
     }
   }
 
-  if (TRI_SizeVectorPointer(&base->_compactors) == 0) {
+  if (base->_compactors._length == 0) {
     worked = true;
 
     TRI_LockCondition(&collection->_journalsCondition);
@@ -318,6 +318,7 @@ static bool CheckCompactorSimCollection (TRI_sim_collection_t* collection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SynchroniserVocBase (void* data) {
+  TRI_col_type_e type;
   TRI_vocbase_t* vocbase = data;
   TRI_vector_pointer_t collections;
 
@@ -335,14 +336,14 @@ void TRI_SynchroniserVocBase (void* data) {
     TRI_CopyDataVectorPointer(&collections, &vocbase->_collections);
     TRI_ReadUnlockReadWriteLock(&vocbase->_lock);
 
-    n = TRI_SizeVectorPointer(&collections);
+    n = collections._length;
 
     for (i = 0;  i < n;  ++i) {
       TRI_vocbase_col_t* col;
       TRI_doc_collection_t* collection;
       bool result;
 
-      col = TRI_AtVectorPointer(&collections, i);
+      col = collections._buffer[i];
 
       if (! col->_loaded) {
         continue;
@@ -351,7 +352,9 @@ void TRI_SynchroniserVocBase (void* data) {
       collection = col->_collection;
 
       // for simple document collection, first sync and then seal
-      if (collection->base._type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+      type = collection->base._type;
+
+      if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
         result = CheckSyncSimCollection((TRI_sim_collection_t*) collection);
         worked |= result;
 

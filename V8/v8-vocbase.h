@@ -35,24 +35,26 @@
 #include <v8.h>
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page DebugShell Debug Shell
+/// @page AvocadoScript Avocado Script
 ///
-/// The debug shell provides a fluent interface to access the database directly
-/// together with a set of support function.
-///
-/// A fluent interface is implemented by using method chaining to relay the
-/// instruction context of a subsequent call.  The AvocadoDB provides the
-/// following methods:
+/// All the actions and transactions are programmed in JavaScript. The AvocadoDB
+/// provides a fluent interface in JavaScript to access the database directly
+/// together with a set of support function.  A fluent interface is implemented
+/// by using method chaining to relay the instruction context of a subsequent
+/// call.  The AvocadoDB defines the following methods:
 ///
 /// - selection by example
-/// - geo coordinates
 /// - field selection (aka projection)
 /// - sorting
 /// - cursors
 /// - pagination of the result-set
 ///
-/// A complete list of the available JavaScript functions can be found
-/// @ref JavaScriptFunc "here".
+/// Advanced topics are
+///
+/// - geo coordinates
+///
+/// A complete list of the available JavaScript functions can be found @ref
+/// JavaScriptFunc "here".
 ///
 /// @section FirstStepsFI First Steps
 ///
@@ -70,13 +72,13 @@
 /// @verbinclude fluent42
 ///
 /// If the collections does not exists, it is called a new-born. No file has
-/// been created so far. If you access the collection, then the directory
-/// and corresponding files will be created.
+/// been created so far. If you access the collection, then the directory and
+/// corresponding files will be created.
 ///
 /// @verbinclude fluent43
 ///
-/// If you restart the server and access the collection again, it will
-/// now show as "unloaded".
+/// If you restart the server and access the collection again, it will now show
+/// as "unloaded".
 ///
 /// @verbinclude fluent44
 ///
@@ -186,10 +188,28 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief wraps a TRI_vocbase_t
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Object> TRI_WrapVocBase (TRI_vocbase_t const* database);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wraps a TRI_vocbase_t for edges
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Object> TRI_WrapEdges (TRI_vocbase_t const* database);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a TRI_vocbase_col_t
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Object> TRI_WrapCollection (TRI_vocbase_col_t const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wraps a TRI_vocbase_col_t for edges
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Object> TRI_WrapEdgesCollection (TRI_vocbase_col_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a TRI_vocbase_t global context

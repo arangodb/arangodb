@@ -30,7 +30,9 @@
 
 #include <VocBase/vocbase.h>
 
+#include <Basics/json.h>
 #include <Basics/locks.h>
+#include <VocBase/datafile.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,8 +44,6 @@ extern "C" {
 
 struct TRI_doc_collection_s;
 struct TRI_doc_mptr_s;
-struct TRI_json_s;
-struct TRI_shaped_json_s;
 struct TRI_rs_container_s;
 struct TRI_rs_container_element_s;
 
@@ -78,6 +78,26 @@ typedef struct TRI_rs_info_s {
 TRI_rs_info_t;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief result set entry
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_rs_entry_s {
+  TRI_shaped_json_t _document;
+  TRI_json_t _augmented;
+  TRI_df_marker_type_e _type;
+
+  TRI_voc_did_t _did;
+  TRI_voc_rid_t _rid;
+
+  TRI_voc_cid_t _fromCid;
+  TRI_voc_did_t _fromDid;
+
+  TRI_voc_cid_t _toCid;
+  TRI_voc_did_t _toDid;
+}
+TRI_rs_entry_t;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief a result set
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -90,7 +110,7 @@ typedef struct TRI_result_set_s {
   char* _error;
 
   bool (*hasNext) (struct TRI_result_set_s*);
-  struct TRI_shaped_json_s* (*next) (struct TRI_result_set_s*, TRI_voc_did_t*, TRI_voc_rid_t*, struct TRI_json_s const**);
+  TRI_rs_entry_t const* (*next) (struct TRI_result_set_s*);
   TRI_voc_size_t (*count) (struct TRI_result_set_s*, bool current);
 
   void (*free) (struct TRI_result_set_s*);
@@ -182,7 +202,7 @@ TRI_result_set_t* TRI_CreateRSSingle (struct TRI_doc_collection_s* collection,
 TRI_result_set_t* TRI_CreateRSVector (struct TRI_doc_collection_s* collection,
                                       TRI_rs_container_element_t* containerElement,
                                       struct TRI_doc_mptr_s const** header,
-                                      struct TRI_json_s const* augmented,
+                                      TRI_json_t const* augmented,
                                       TRI_voc_size_t length,
                                       TRI_voc_size_t total);
 

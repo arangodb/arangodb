@@ -29,6 +29,7 @@ avocdb_SOURCES = \
 	ApplicationServer/ApplicationServerImpl.cpp \
 	ApplicationServer/ApplicationServerSchedulerImpl.cpp \
 	Basics/associative.c \
+	Basics/associative-multi.c \
 	Basics/ConditionLocker.cpp \
 	Basics/ConditionVariable-posix.cpp \
 	Basics/conversions.c \
@@ -41,7 +42,6 @@ avocdb_SOURCES = \
 	Basics/Initialise.cpp \
 	Basics/json.c \
 	Basics/locks-posix.c \
-	Basics/locks-macos.c \
 	Basics/Logger.cpp \
 	Basics/LoggerData.cpp \
 	Basics/LoggerInfo.cpp \

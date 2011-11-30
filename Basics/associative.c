@@ -530,7 +530,7 @@ static void ResizeAssociativePointer (TRI_associative_pointer_t* array) {
   array->_table = TRI_Allocate(array->_nrAlloc * sizeof(void*));
 
   for (j = 0; j < array->_nrAlloc; j++) {
-    array->_table[j] = 0;
+    array->_table[j] = NULL;
   }
 
   for (j = 0; j < oldAlloc; j++) {
@@ -580,7 +580,7 @@ void TRI_InitAssociativePointer (TRI_associative_pointer_t* array,
   e = p + array->_nrAlloc;
 
   for (;  p < e;  ++p) {
-    *p = 0;
+    *p = NULL;
   }
 
   array->_nrUsed = 0;
@@ -640,29 +640,13 @@ void const* TRI_LookupByKeyAssociativePointer (TRI_associative_pointer_t* array,
   array->_nrFinds++;
 
   // search the table
-  while (array->_table[i] != 0 && ! array->isEqualKeyElement(array, key, array->_table[i])) {
+  while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
     array->_nrProbesF++;
   }
 
   // return whatever we found
   return array->_table[i];
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds an element given a key, return NULL if not found
-////////////////////////////////////////////////////////////////////////////////
-
-void const* TRI_FindByKeyAssociativePointer (TRI_associative_pointer_t* array, void const* key) {
-  void const* element;
-
-  element = TRI_LookupByKeyAssociativePointer(array, key);
-
-  if (element != 0 && array->isEqualKeyElement(array, key, element)) {
-    return element;
-  }
-
-  return NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -681,29 +665,13 @@ void const* TRI_LookupByElementAssociativePointer (TRI_associative_pointer_t* ar
   array->_nrFinds++;
 
   // search the table
-  while (array->_table[i] != 0 && ! array->isEqualElementElement(array, element, array->_table[i])) {
+  while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
     array->_nrProbesF++;
   }
 
   // return whatever we found
   return array->_table[i];
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds an element given an element, returns NULL if not found
-////////////////////////////////////////////////////////////////////////////////
-
-void const* TRI_FindByElementAssociativePointer (TRI_associative_pointer_t* array, void const* element) {
-  void const* element2;
-
-  element2 = TRI_LookupByElementAssociativePointer(array, element);
-
-  if (element2 != 0 && array->isEqualElementElement(array, element2, element)) {
-    return element2;
-  }
-
-  return NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -723,7 +691,7 @@ void* TRI_InsertElementAssociativePointer (TRI_associative_pointer_t* array, voi
   array->_nrAdds++;
 
   // search the table
-  while (array->_table[i] != 0 && ! array->isEqualElementElement(array, element, array->_table[i])) {
+  while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
     array->_nrProbesA++;
   }
@@ -768,7 +736,7 @@ void* TRI_InsertKeyAssociativePointer (TRI_associative_pointer_t* array, void co
   array->_nrAdds++;
 
   // search the table
-  while (array->_table[i] != 0 && ! array->isEqualKeyElement(array, key, array->_table[i])) {
+  while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
     array->_nrProbesA++;
   }
@@ -813,7 +781,7 @@ void* TRI_RemoveElementAssociativePointer (TRI_associative_pointer_t* array, voi
   array->_nrRems++;
 
   // search the table
-  while (array->_table[i] != 0 && ! array->isEqualElementElement(array, element, array->_table[i])) {
+  while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
     array->_nrProbesD++;
   }
@@ -825,7 +793,7 @@ void* TRI_RemoveElementAssociativePointer (TRI_associative_pointer_t* array, voi
 
   // remove item
   old = array->_table[i];
-  array->_table[i] = 0;
+  array->_table[i] = NULL;
   array->_nrUsed--;
 
   // and now check the following places for items to move here
@@ -836,7 +804,7 @@ void* TRI_RemoveElementAssociativePointer (TRI_associative_pointer_t* array, voi
 
     if ((i < k && !(i < j && j <= k)) || (k < i && !(i < j || j <= k))) {
       array->_table[i] = array->_table[k];
-      array->_table[k] = 0;
+      array->_table[k] = NULL;
       i = k;
     }
 
@@ -864,7 +832,7 @@ void* TRI_RemoveKeyAssociativePointer (TRI_associative_pointer_t* array, void co
   array->_nrRems++;
 
   // search the table
-  while (array->_table[i] != 0 && ! array->isEqualKeyElement(array, key, array->_table[i])) {
+  while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
     array->_nrProbesD++;
   }
@@ -876,7 +844,7 @@ void* TRI_RemoveKeyAssociativePointer (TRI_associative_pointer_t* array, void co
 
   // remove item
   old = array->_table[i];
-  array->_table[i] = 0;
+  array->_table[i] = NULL;
   array->_nrUsed--;
 
   // and now check the following places for items to move here
@@ -887,7 +855,7 @@ void* TRI_RemoveKeyAssociativePointer (TRI_associative_pointer_t* array, void co
 
     if ((i < k && !(i < j && j <= k)) || (k < i && !(i < j || j <= k))) {
       array->_table[i] = array->_table[k];
-      array->_table[k] = 0;
+      array->_table[k] = NULL;
       i = k;
     }
 
@@ -958,7 +926,7 @@ static void ResizeAssociativeSynced (TRI_associative_synced_t* array) {
   array->_table = TRI_Allocate(array->_nrAlloc * sizeof(void*));
 
   for (j = 0; j < array->_nrAlloc; j++) {
-    array->_table[j] = 0;
+    array->_table[j] = NULL;
   }
 
   for (j = 0; j < oldAlloc; j++) {
@@ -1008,7 +976,7 @@ void TRI_InitAssociativeSynced (TRI_associative_synced_t* array,
   e = p + array->_nrAlloc;
 
   for (;  p < e;  ++p) {
-    *p = 0;
+    *p = NULL;
   }
 
   array->_nrUsed = 0;
@@ -1074,7 +1042,7 @@ void const* TRI_LookupByKeyAssociativeSynced (TRI_associative_synced_t* array, v
   // search the table
   TRI_ReadLockReadWriteLock(&array->_lock);
 
-  while (array->_table[i] != 0 && ! array->isEqualKeyElement(array, key, array->_table[i])) {
+  while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
     array->_nrProbesF++;
   }
@@ -1085,22 +1053,6 @@ void const* TRI_LookupByKeyAssociativeSynced (TRI_associative_synced_t* array, v
 
   // return whatever we found
   return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds an element given a key, return NULL if not found
-////////////////////////////////////////////////////////////////////////////////
-
-void const* TRI_FindByKeyAssociativeSynced (TRI_associative_synced_t* array, void const* key) {
-  void const* element;
-
-  element = TRI_LookupByKeyAssociativeSynced(array, key);
-
-  if (element != 0 && array->isEqualKeyElement(array, key, element)) {
-    return element;
-  }
-
-  return NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1122,7 +1074,7 @@ void const* TRI_LookupByElementAssociativeSynced (TRI_associative_synced_t* arra
   // search the table
   TRI_ReadLockReadWriteLock(&array->_lock);
 
-  while (array->_table[i] != 0 && ! array->isEqualElementElement(array, element, array->_table[i])) {
+  while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
     array->_nrProbesF++;
   }
@@ -1133,22 +1085,6 @@ void const* TRI_LookupByElementAssociativeSynced (TRI_associative_synced_t* arra
 
   // return whatever we found
   return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds an element given an element, returns NULL if not found
-////////////////////////////////////////////////////////////////////////////////
-
-void const* TRI_FindByElementAssociativeSynced (TRI_associative_synced_t* array, void const* element) {
-  void const* element2;
-
-  element2 = TRI_LookupByElementAssociativeSynced(array, element);
-
-  if (element2 != 0 && array->isEqualElementElement(array, element2, element)) {
-    return element2;
-  }
-
-  return NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1170,7 +1106,7 @@ void* TRI_InsertElementAssociativeSynced (TRI_associative_synced_t* array, void*
   // search the table, TODO optimise the locks
   TRI_WriteLockReadWriteLock(&array->_lock);
 
-  while (array->_table[i] != 0 && ! array->isEqualElementElement(array, element, array->_table[i])) {
+  while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
     array->_nrProbesA++;
   }
@@ -1215,7 +1151,7 @@ void* TRI_InsertKeyAssociativeSynced (TRI_associative_synced_t* array, void cons
   // search the table
   TRI_WriteLockReadWriteLock(&array->_lock);
 
-  while (array->_table[i] != 0 && ! array->isEqualKeyElement(array, key, array->_table[i])) {
+  while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
     array->_nrProbesA++;
   }
@@ -1260,7 +1196,7 @@ void* TRI_RemoveElementAssociativeSynced (TRI_associative_synced_t* array, void 
   // search the table
   TRI_WriteLockReadWriteLock(&array->_lock);
 
-  while (array->_table[i] != 0 && ! array->isEqualElementElement(array, element, array->_table[i])) {
+  while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
     array->_nrProbesD++;
   }
@@ -1273,7 +1209,7 @@ void* TRI_RemoveElementAssociativeSynced (TRI_associative_synced_t* array, void 
 
   // remove item
   old.c = array->_table[i];
-  array->_table[i] = 0;
+  array->_table[i] = NULL;
   array->_nrUsed--;
 
   // and now check the following places for items to move here
@@ -1284,7 +1220,7 @@ void* TRI_RemoveElementAssociativeSynced (TRI_associative_synced_t* array, void 
 
     if ((i < k && !(i < j && j <= k)) || (k < i && !(i < j || j <= k))) {
       array->_table[i] = array->_table[k];
-      array->_table[k] = 0;
+      array->_table[k] = NULL;
       i = k;
     }
 
@@ -1315,7 +1251,7 @@ void* TRI_RemoveKeyAssociativeSynced (TRI_associative_synced_t* array, void cons
   // search the table
   TRI_WriteLockReadWriteLock(&array->_lock);
 
-  while (array->_table[i] != 0 && ! array->isEqualKeyElement(array, key, array->_table[i])) {
+  while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
     array->_nrProbesD++;
   }
@@ -1328,7 +1264,7 @@ void* TRI_RemoveKeyAssociativeSynced (TRI_associative_synced_t* array, void cons
 
   // remove item
   old.c = array->_table[i];
-  array->_table[i] = 0;
+  array->_table[i] = NULL;
   array->_nrUsed--;
 
   // and now check the following places for items to move here
@@ -1339,7 +1275,7 @@ void* TRI_RemoveKeyAssociativeSynced (TRI_associative_synced_t* array, void cons
 
     if ((i < k && !(i < j && j <= k)) || (k < i && !(i < j || j <= k))) {
       array->_table[i] = array->_table[k];
-      array->_table[k] = 0;
+      array->_table[k] = NULL;
       i = k;
     }
 

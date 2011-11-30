@@ -418,9 +418,6 @@ static v8::Handle<v8::Value> JS_Print (v8::Arguments const& argv) {
 
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
-  v8::Handle<v8::Function> toJson = v8::Handle<v8::Function>::Cast(
-    argv.Holder()->CreationContext()->Global()->Get(v8g->ToJsonFuncName));
-
   for (int i = 0; i < argv.Length(); i++) {
     v8::HandleScope scope;
     TRI_string_buffer_t buffer;
@@ -431,21 +428,18 @@ static v8::Handle<v8::Value> JS_Print (v8::Arguments const& argv) {
     // extract the next argument
     v8::Handle<v8::Value> val = argv[i];
 
-    // convert the object into json - if possible
+    // convert the object into a string
     if (val->IsObject()) {
       v8::Handle<v8::Object> obj = val->ToObject();
 
       if (obj->Has(v8g->PrintFuncName)) {
         v8::Handle<v8::Function> print = v8::Handle<v8::Function>::Cast(obj->Get(v8g->PrintFuncName));
-        v8::Handle<v8::Value> args[] = { val };
-        print->Call(obj, 1, args);
+        v8::Handle<v8::Value> args[1];
+        print->Call(obj, 0, args);
         printBuffer = false;
       }
       else {
-        v8::Handle<v8::Value> args[] = { val };
-        v8::Handle<v8::Value> cnv = toJson->Call(toJson, 1, args);
-
-        v8::String::Utf8Value utf8(cnv);
+        v8::String::Utf8Value utf8(argv[0]);
 
         if (*utf8 == 0) {
           TRI_AppendStringStringBuffer(&buffer, "[object]");
@@ -501,14 +495,6 @@ static v8::Handle<v8::Value> JS_Print (v8::Arguments const& argv) {
       }
     }
 
-    // print a new line
-    ssize_t n = write(1, "\n", 1);
-
-    if (n < 0) {
-      TRI_DestroyStringBuffer(&buffer);
-      return v8::Undefined();
-    }
-
     TRI_DestroyStringBuffer(&buffer);
   }
 
@@ -550,10 +536,6 @@ void TRI_InitV8Shell (v8::Handle<v8::Context> context) {
 
   if (v8g->PrintFuncName.IsEmpty()) {
     v8g->PrintFuncName = v8::Persistent<v8::String>::New(v8::String::New("print"));
-  }
-
-  if (v8g->ToJsonFuncName.IsEmpty()) {
-    v8g->ToJsonFuncName = v8::Persistent<v8::String>::New(v8::String::New("toJson"));
   }
 
   // .............................................................................

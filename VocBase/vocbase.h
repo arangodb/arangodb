@@ -319,7 +319,7 @@ TRI_vocbase_col_t const* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t*, TRI_vo
 /// @brief finds up a (document) collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t const* TRI_FindCollectionByNameVocBase (TRI_vocbase_t*, char const*);
+TRI_vocbase_col_t const* TRI_FindCollectionByNameVocBase (TRI_vocbase_t*, char const*, bool bear);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new (document) collection

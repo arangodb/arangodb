@@ -69,7 +69,7 @@ TRI_headers_t;
 /// @brief creates a new simple headers structures
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_headers_t* TRI_CreateSimpleHeaders (void);
+TRI_headers_t* TRI_CreateSimpleHeaders (size_t headerSize);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a simple headers structures, but does not free the pointer

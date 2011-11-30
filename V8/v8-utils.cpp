@@ -615,7 +615,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, v
   char* ptr;
 
   // number of attributes
-  v8::Handle<v8::Array> names = json->GetPropertyNames();
+  v8::Handle<v8::Array> names = json->GetOwnPropertyNames();
   n = names->Length();
 
   // convert into TRI_shape_value_t array
@@ -1189,6 +1189,26 @@ static v8::Handle<v8::Value> JsonShapeData (TRI_shaper_t* shaper,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief converts identifier into ibject reference
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ObjectReference (TRI_voc_cid_t cid, TRI_voc_did_t did) {
+  v8::HandleScope scope;
+  TRI_string_buffer_t buffer;
+
+  TRI_InitStringBuffer(&buffer);
+  TRI_AppendUInt64StringBuffer(&buffer, cid);
+  TRI_AppendStringStringBuffer(&buffer, ":");
+  TRI_AppendUInt64StringBuffer(&buffer, did);
+
+  v8::Handle<v8::String> ref = v8::String::New(buffer._buffer);
+
+  TRI_DestroyStringBuffer(&buffer);
+
+  return scope.Close(ref);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1240,7 +1260,7 @@ v8::Handle<v8::Value> ObjectJsonString (TRI_json_t const* json) {
 v8::Handle<v8::Value> ObjectJsonArray (TRI_json_t const* json) {
   v8::Handle<v8::Object> object = v8::Object::New();
 
-  size_t n = TRI_SizeVector(&json->_value._objects);
+  size_t n = json->_value._objects._length;
 
   for (size_t i = 0;  i < n;  i += 2) {
     TRI_json_t* key = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
@@ -1265,7 +1285,7 @@ v8::Handle<v8::Value> ObjectJsonArray (TRI_json_t const* json) {
 v8::Handle<v8::Value> ObjectJsonList (TRI_json_t const* json) {
   v8::Handle<v8::Array> object = v8::Array::New();
 
-  size_t n = TRI_SizeVector(&json->_value._objects);
+  size_t n = json->_value._objects._length;
 
   for (size_t i = 0;  i < n;  ++i) {
     TRI_json_t* j = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
@@ -1285,6 +1305,9 @@ v8::Handle<v8::Value> TRI_ObjectJson (TRI_json_t const* json) {
   v8::HandleScope scope;
 
   switch (json->_type) {
+    case TRI_JSON_UNUSED:
+      return scope.Close(v8::Undefined());
+
     case TRI_JSON_NULL:
       return scope.Close(ObjectJsonNull(json));
 
@@ -1311,33 +1334,36 @@ v8::Handle<v8::Value> TRI_ObjectJson (TRI_json_t const* json) {
 /// @brief converts a TRI_shaped_json_t into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_ObjectShapedJson (TRI_doc_collection_t* collection,
-                                            TRI_voc_did_t did,
-                                            TRI_shaper_t* shaper,
-                                            TRI_shaped_json_t const* shaped) {
+v8::Handle<v8::Value> TRI_ObjectRSEntry (TRI_doc_collection_t* collection,
+                                         TRI_shaper_t* shaper,
+                                         TRI_rs_entry_t const* entry) {
   TRI_shape_t const* shape;
   TRI_v8_global_t* v8g;
 
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-  shape = shaper->lookupShapeId(shaper, shaped->_sid);
+  shape = shaper->lookupShapeId(shaper, entry->_document._sid);
 
   if (shape == 0) {
-    LOG_WARNING("cannot find shape #%u", (unsigned int) shaped->_sid);
+    LOG_WARNING("cannot find shape #%u", (unsigned int) entry->_document._sid);
     return v8::Null();
   }
 
-  v8::Handle<v8::Value> result = JsonShapeData(shaper, shape, shaped->_data.data, shaped->_data.length);
+  v8::Handle<v8::Value> result = JsonShapeData(shaper,
+                                               shape,
+                                               entry->_document._data.data,
+                                               entry->_document._data.length);
 
   if (result->IsObject()) {
-    char* cidStr = TRI_StringUInt64(collection->base._cid);
-    char* didStr = TRI_StringUInt64(did);
+    result->ToObject()->Set(v8g->DidKey, ObjectReference(collection->base._cid, entry->_did));
 
-    string name = cidStr + string(":") + didStr;
+    if (entry->_type == TRI_DOC_MARKER_EDGE) {
+      result->ToObject()->Set(v8g->FromKey, ObjectReference(entry->_fromCid, entry->_fromDid));
+      result->ToObject()->Set(v8g->ToKey, ObjectReference(entry->_toCid, entry->_toDid));
+    }
+  }
 
-    TRI_FreeString(didStr);
-    TRI_FreeString(cidStr);
-
-    result->ToObject()->Set(v8g->DidKey, v8::String::New(name.c_str()));
+  if (entry->_augmented._type != TRI_JSON_UNUSED) {
+    TRI_AugmentObject(result, &entry->_augmented);
   }
 
   return result;
@@ -1356,18 +1382,9 @@ v8::Handle<v8::Array> TRI_ArrayResultSet (TRI_result_set_t* rs) {
   size_t pos;
 
   for (pos = 0;  rs->hasNext(rs);  ++pos) {
-    TRI_voc_did_t did;
-    TRI_voc_rid_t rid;
-    TRI_json_t const* augmented;
-    TRI_shaped_json_t* element = rs->next(rs, &did, &rid, &augmented);
+    TRI_rs_entry_t const* entry = rs->next(rs);
 
-    v8::Handle<v8::Value> object = TRI_ObjectShapedJson(collection, did, shaper, element);
-
-    if (augmented != NULL) {
-      TRI_AugmentObject(object, augmented);
-    }
-
-    array->Set(pos, object);
+    array->Set(pos, TRI_ObjectRSEntry(collection, shaper, entry));
   }
 
   return array;
@@ -1384,7 +1401,6 @@ TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> object, TRI_sha
   if (! ok) {
     return 0;
   }
-
 
   TRI_shaped_json_t* shaped = (TRI_shaped_json_t*) TRI_Allocate(sizeof(TRI_shaped_json_t));
 
@@ -1585,7 +1601,7 @@ void TRI_AugmentObject (v8::Handle<v8::Value> value, TRI_json_t const* json) {
 
   v8::Handle<v8::Object> object = value->ToObject();
 
-  size_t n = TRI_SizeVector(&json->_value._objects);
+  size_t n = json->_value._objects._length;
 
   for (size_t i = 0;  i < n;  i += 2) {
     TRI_json_t* key = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
@@ -1782,7 +1798,6 @@ bool TRI_LoadJavaScriptDirectory (v8::Handle<v8::Context> context, char const* p
   TRI_vector_string_t files;
   bool result;
   regex_t re;
-  size_t n;
   size_t i;
 
   LOG_TRACE("loading java script directory: '%s'", path);
@@ -1791,15 +1806,14 @@ bool TRI_LoadJavaScriptDirectory (v8::Handle<v8::Context> context, char const* p
 
   regcomp(&re, "^(.*)\\.js$", REG_ICASE | REG_EXTENDED);
 
-  n = TRI_SizeVectorString(&files);
   result = true;
 
-  for (i = 0;  i < n;  ++i) {
+  for (i = 0;  i < files._length;  ++i) {
     bool ok;
     char const* filename;
     char* full;
 
-    filename = TRI_AtVectorString(&files, i);
+    filename = files._buffer[i];
 
     if (! regexec(&re, filename, 0, 0, 0) == 0) {
       continue;
@@ -1868,6 +1882,8 @@ bool TRI_ExecuteStringVocBase (v8::Handle<v8::Context> context,
 
         v8::Handle<v8::Value> args[] = { result };
         print->Call(print, 1, args);
+
+        printf("\n");
       }
 
       return true;
@@ -1915,7 +1931,17 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context) {
   // keys
   // .............................................................................
 
-  v8g->DidKey = v8::Persistent<v8::String>::New(v8::String::New("_id"));
+  if (v8g->DidKey.IsEmpty()) {
+    v8g->DidKey = v8::Persistent<v8::String>::New(v8::String::New("_id"));
+  }
+
+  if (v8g->FromKey.IsEmpty()) {
+    v8g->FromKey = v8::Persistent<v8::String>::New(v8::String::New("_from"));
+  }
+
+  if (v8g->ToKey.IsEmpty()) {
+    v8g->ToKey = v8::Persistent<v8::String>::New(v8::String::New("_to"));
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -52,6 +52,8 @@ static void ExecuteDocumentQueryPrimary (TRI_query_t* qry,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the old storage of a TRI_query_result_t
+///
+/// Note the augument json objects are not freed.
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeDocuments (TRI_query_result_t* result) {
@@ -62,6 +64,26 @@ static void FreeDocuments (TRI_query_result_t* result) {
 
   if (result->_augmented != NULL) {
     TRI_Free(result->_augmented);
+    result->_augmented = NULL;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees the augument json objects
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeAugmented (TRI_query_result_t* result) {
+  TRI_json_t* ptr;
+  TRI_json_t* end;
+
+  if (result->_augmented != NULL) {
+    ptr = result->_augmented;
+    end = result->_augmented + result->_length;
+
+    for (;  ptr < end;  ++ptr) {
+      TRI_DestroyJson(ptr);
+    }
+
     result->_augmented = NULL;
   }
 }
@@ -123,6 +145,7 @@ static void CloneQuery (TRI_query_t* dst, TRI_query_t* src) {
 
 static char* OptimiseCollectionQuery (TRI_query_t** qry) {
   TRI_document_query_t* query;
+  TRI_col_type_e type;
 
   // extract query
   query = (TRI_document_query_t*) *qry;
@@ -132,7 +155,14 @@ static char* OptimiseCollectionQuery (TRI_query_t** qry) {
     return TRI_Concatenate3String("collection \"", query->base._collection->_name, "\" not loaded");
   }
 
-  if (query->base._collection->_collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+  // check if query is already optimised
+  if (query->base._isOptimised) {
+    return NULL;
+  }
+
+  type = query->base._collection->_collection->base._type;
+
+  if (type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
     return TRI_DuplicateString("cannot handle collection type");
   }
 
@@ -161,6 +191,7 @@ static void ExecuteCollectionQuery (TRI_query_t* qry, TRI_query_result_t* result
   TRI_AppendString(&result->_cursor, ">collection");
 
   // free any old storage
+  FreeAugmented(result);
   FreeDocuments(result);
 
   // add a new document list and copy all documents
@@ -446,6 +477,7 @@ static void FreeDistanceQuery (TRI_query_t* qry, bool descend) {
 
 static char* OptimiseDocumentQuery (TRI_query_t** qry) {
   TRI_document_query_t* query;
+  TRI_col_type_e type;
   char* e;
 
   query = (TRI_document_query_t*) *qry;
@@ -462,7 +494,9 @@ static char* OptimiseDocumentQuery (TRI_query_t** qry) {
 
   // underlying query is a collection, use the primary index
   if (query->_operand != NULL && query->_operand->_type == TRI_QUE_TYPE_COLLECTION) {
-    if (query->base._collection->_collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    type = query->base._collection->_collection->base._type;
+
+    if (type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
       return TRI_DuplicateString("cannot handle collection type");
     }
 
@@ -507,6 +541,7 @@ static void ExecuteDocumentQueryPrimary (TRI_query_t* qry,
   ++result->_scannedIndexEntries;
 
   // free any old storage
+  FreeAugmented(result);
   FreeDocuments(result);
 
   // the document is the result
@@ -578,9 +613,9 @@ static void ExecuteDocumentQuery (TRI_query_t* qry,
       *result->_documents = found;
 
       if (result->_augmented != NULL) {
-        aug = result->_augmented[pos];
+        TRI_CopyToJson(&aug, &result->_augmented[pos]);
 
-        TRI_Free(result->_augmented);
+        FreeAugmented(result);
         result->_augmented = TRI_Allocate(sizeof(TRI_json_t));
 
         result->_augmented[0] = aug;
@@ -593,6 +628,7 @@ static void ExecuteDocumentQuery (TRI_query_t* qry,
   // nothing found
   result->_total = result->_length = 0;
 
+  FreeAugmented(result);
   FreeDocuments(result);
 }
 
@@ -670,6 +706,206 @@ static void FreeDocumentQuery (TRI_query_t* qry, bool descend) {
   TRI_document_query_t* query;
 
   query = (TRI_document_query_t*) qry;
+
+  if (descend) {
+    if (query->_operand != NULL) {
+      query->_operand->free(query->_operand, descend);
+    }
+  }
+
+  TRI_Free(query);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       EDGES QUERY
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimises an edges lookup
+////////////////////////////////////////////////////////////////////////////////
+
+static char* OptimiseEdgesQuery (TRI_query_t** qry) {
+  TRI_edges_query_t* query;
+  char* e;
+
+  query = (TRI_edges_query_t*) *qry;
+
+  // sanity check
+  if (! query->base._collection->_loaded) {
+    return TRI_Concatenate3String("collection \"", query->base._collection->_name, "\" not loaded");
+  }
+
+  if (query->base._collection->_type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    return TRI_DuplicateString("cannot handle collection type");
+  }
+
+  // check if query is already optimised
+  if (query->base._isOptimised) {
+    return NULL;
+  }
+
+  // optimise operand
+  e = query->_operand->optimise(&query->_operand);
+
+  if (e != NULL) {
+    return e;
+  }
+
+  query->base._isOptimised = true;
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes an edges lookup
+////////////////////////////////////////////////////////////////////////////////
+
+static void ExecuteEdgesQuery (TRI_query_t* qry,
+                               TRI_query_result_t* result) {
+  TRI_edges_query_t* query;
+  TRI_sim_collection_t* edgesCollection;
+  TRI_vector_pointer_t v;
+  size_t i;
+  size_t j;
+
+  query = (TRI_edges_query_t*) qry;
+
+  // execute the sub-query
+  query->_operand->execute(query->_operand, result);
+
+  if (result->_error) {
+    return;
+  }
+
+  TRI_AppendString(&result->_cursor, ">edges");
+
+  // without any documents there will be no edges
+  if (result->_length == 0) {
+    return;
+  }
+
+  // create a vector for the result
+  TRI_InitVectorPointer(&v);
+
+  edgesCollection = (TRI_sim_collection_t*) query->base._collection->_collection;
+
+  // for each document get the edges
+  for (i = 0;  i < result->_length;  ++i) {
+    TRI_doc_mptr_t const* mptr;
+    TRI_vector_pointer_t edges;
+
+    mptr = result->_documents[i];
+    edges = TRI_LookupEdgesSimCollection(edgesCollection,
+                                         query->_direction,
+                                         query->_operand->_collection->_cid,
+                                         mptr->_did);
+
+    for (j = 0;  j < edges._length;  ++j) {
+      TRI_PushBackVectorPointer(&v, edges._buffer[j]);
+    }
+
+    TRI_DestroyVectorPointer(&edges);
+  }
+
+  // free any old results
+  FreeAugmented(result);
+  FreeDocuments(result);
+
+  result->_documents = (TRI_doc_mptr_t const**) v._buffer;
+  result->_total = result->_length = v._length;
+  result->_scannedDocuments += v._length;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief json representation of an edges lookup
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* JsonEdgesQuery (TRI_query_t* qry) {
+  TRI_json_t* json;
+  TRI_edges_query_t* query;
+
+  query = (TRI_edges_query_t*) qry;
+  json = TRI_CreateArrayJson();
+
+  TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("edges"));
+  TRI_Insert2ArrayJson(json, "operand", query->_operand->json(query->_operand));
+  TRI_Insert2ArrayJson(json, "direction", TRI_CreateNumberJson(query->_direction));
+  TRI_Insert2ArrayJson(json, "edge-collection", TRI_CreateNumberJson(query->base._collection->_cid));
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief appends a string representation of an edges lookup
+////////////////////////////////////////////////////////////////////////////////
+
+static void StringifyEdgesQuery (TRI_query_t* qry, TRI_string_buffer_t* buffer) {
+  TRI_edges_query_t* query;
+
+  query = (TRI_edges_query_t*) qry;
+
+  switch (query->_direction) {
+    case TRI_EDGE_IN:
+      TRI_AppendStringStringBuffer(buffer, "inEdges(\"");
+      break;
+
+    case TRI_EDGE_OUT:
+      TRI_AppendStringStringBuffer(buffer, "outEdges(\"");
+      break;
+
+    case TRI_EDGE_ANY:
+      TRI_AppendStringStringBuffer(buffer, "edges(\"");
+      break;
+
+    case TRI_EDGE_UNUSED:
+      TRI_AppendStringStringBuffer(buffer, "nonEdges(\"");
+      break;
+  }
+
+  TRI_AppendUInt64StringBuffer(buffer, query->base._collection->_cid);
+
+  TRI_AppendStringStringBuffer(buffer, "\")");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clones an edges lookup
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_query_t* CloneEdgesQuery (TRI_query_t* qry) {
+  TRI_edges_query_t* clone;
+  TRI_edges_query_t* query;
+
+  clone = TRI_Allocate(sizeof(TRI_edges_query_t));
+  query = (TRI_edges_query_t*) qry;
+
+  CloneQuery(&clone->base, &query->base);
+
+  clone->_operand = query->_operand == NULL ? NULL : query->_operand->clone(query->_operand);
+  clone->_direction = query->_direction;
+
+  return &clone->base;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees a edges lookup
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeEdgesQuery (TRI_query_t* qry, bool descend) {
+  TRI_edges_query_t* query;
+
+  query = (TRI_edges_query_t*) qry;
 
   if (descend) {
     if (query->_operand != NULL) {
@@ -894,8 +1130,14 @@ static char* OptimiseLimitQuery (TRI_query_t** qry) {
 
     near = (TRI_near_query_t*) operand;
 
+    // no limit specified, that the limit
+    if (near->_limit < 0) {
+      near->_limit = query->_limit;
+      near->base._isOptimised = false;
+    }
+
     // modify near query
-    if (query->_limit < near->_limit) {
+    else if (query->_limit < near->_limit) {
       near->_limit = query->_limit;
       near->base._isOptimised = false;
     }
@@ -1155,21 +1397,42 @@ geo_coordinate_distance_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_geo_index_t* LocateGeoIndex (TRI_query_t* query) {
+  TRI_col_type_e type;
+  TRI_index_t* idx2;
+  TRI_index_t* idx;
   TRI_sim_collection_t* collection;
+  size_t i;
 
   // sanity check
   if (! query->_collection->_loaded) {
     return NULL;
   }
 
-  if (query->_collection->_collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+  type = query->_collection->_collection->base._type;
+
+  if (type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
     return NULL;
   }
 
   collection = (TRI_sim_collection_t*) query->_collection->_collection;
 
   // return the geo index
-  return collection->_geoIndex;
+  idx = NULL;
+
+  for (i = 0;  i < collection->_indexes._length;  ++i) {
+    idx2 = collection->_indexes._buffer[i];
+
+    if (idx2->_type == TRI_IDX_TYPE_GEO_INDEX) {
+      if (idx == NULL) {
+        idx = idx2;
+      }
+      else if (idx2->_iid < idx->_iid) {
+        idx = idx2;
+      }
+    }
+  }
+
+  return (TRI_geo_index_t*) idx;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1209,6 +1472,7 @@ static uint32_t RandomGeoCoordinateDistance (void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_geo_index_t* LookupGeoIndex (TRI_geo_index_query_t* query) {
+  TRI_col_type_e type;
   TRI_doc_collection_t* collection;
   TRI_index_t* idx;
   TRI_shape_pid_t lat = 0;
@@ -1220,7 +1484,9 @@ static TRI_geo_index_t* LookupGeoIndex (TRI_geo_index_query_t* query) {
   // lookup an geo index
   collection = query->base._collection->_collection;
 
-  if (collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+  type = collection->base._type;
+
+  if (type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
     LOG_ERROR("cannot handle collection type %ld", collection->base._type);
     return NULL;
   }
@@ -1349,6 +1615,7 @@ static char* OptimiseNearQuery (TRI_query_t** qry) {
     return e;
   }
 
+  query->base._isOptimised = true;
   return NULL;
 }
 
@@ -1358,6 +1625,8 @@ static char* OptimiseNearQuery (TRI_query_t** qry) {
 
 static void ExecuteNearQuery (TRI_query_t* qry,
                               TRI_query_result_t* result) {
+  static size_t const DEFAULT_LIMIT = 100;
+
   GeoCoordinates* cors;
   TRI_geo_index_t* idx;
   TRI_near_query_t* query;
@@ -1367,6 +1636,7 @@ static void ExecuteNearQuery (TRI_query_t* qry,
   operand = query->_operand;
 
   // free any old results
+  FreeAugmented(result);
   FreeDocuments(result);
 
   // we need a suitable geo index
@@ -1397,7 +1667,12 @@ static void ExecuteNearQuery (TRI_query_t* qry,
   TRI_AppendString(&result->_cursor, ">near");
 
   // execute geo search
-  cors = TRI_NearestGeoIndex(&idx->base, query->_latitude, query->_longitude, query->_limit);
+  if (query->_limit < 0) {
+    cors = TRI_NearestGeoIndex(&idx->base, query->_latitude, query->_longitude, DEFAULT_LIMIT);
+  }
+  else {
+    cors = TRI_NearestGeoIndex(&idx->base, query->_latitude, query->_longitude, query->_limit);
+  }
 
   // and append result
   GeoResult(cors, query->_distance, result);
@@ -1450,9 +1725,11 @@ static void StringifyNearQuery (TRI_query_t* qry, TRI_string_buffer_t* buffer) {
     TRI_AppendStringStringBuffer(buffer, ")");
   }
 
-  TRI_AppendStringStringBuffer(buffer, ".limit(");
-  TRI_AppendUInt64StringBuffer(buffer, query->_limit);
-  TRI_AppendStringStringBuffer(buffer, ")");
+  if (0 <= query->_limit) {
+    TRI_AppendStringStringBuffer(buffer, ".limit(");
+    TRI_AppendUInt64StringBuffer(buffer, query->_limit);
+    TRI_AppendStringStringBuffer(buffer, ")");
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1622,6 +1899,7 @@ static void ExecuteSkipQuery (TRI_query_t* qry,
   if (result->_length <= query->_skip) {
     result->_length = 0;
 
+    FreeAugmented(result);
     FreeDocuments(result);
 
     return;
@@ -1764,6 +2042,7 @@ static char* OptimiseWithinQuery (TRI_query_t** qry) {
     return e;
   }
 
+  query->base._isOptimised = true;
   return NULL;
 }
 
@@ -1782,6 +2061,7 @@ static void ExecuteWithinQuery (TRI_query_t* qry,
   operand = query->_operand;
 
   // free any old results
+  FreeAugmented(result);
   FreeDocuments(result);
 
   // we need a suitable geo index
@@ -1995,6 +2275,34 @@ TRI_query_t* TRI_CreateDocumentQuery (TRI_query_t* operand, TRI_voc_did_t did) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up edges
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_query_t* TRI_CreateEdgesQuery (TRI_vocbase_col_t const* edges,
+                                   TRI_query_t* operand,
+                                   TRI_edge_direction_e direction) {
+  TRI_edges_query_t* query;
+
+  query = TRI_Allocate(sizeof(TRI_edges_query_t));
+
+  query->base._type = TRI_QUE_TYPE_EDGES;
+  query->base._collection = edges;
+  query->base._isOptimised = false;
+
+  query->base.optimise = OptimiseEdgesQuery;
+  query->base.execute = ExecuteEdgesQuery;
+  query->base.json = JsonEdgesQuery;
+  query->base.stringify = StringifyEdgesQuery;
+  query->base.clone = CloneEdgesQuery;
+  query->base.free = FreeEdgesQuery;
+
+  query->_operand = operand;
+  query->_direction = direction;
+
+  return &query->base;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an geo-spatial index as hint
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2062,7 +2370,6 @@ TRI_query_t* TRI_CreateLimitQuery (TRI_query_t* operand, TRI_voc_ssize_t limit) 
 TRI_query_t* TRI_CreateNearQuery (TRI_query_t* operand,
                                   double latitude,
                                   double longitude,
-                                  TRI_voc_size_t limit,
                                   char const* distance) {
   TRI_near_query_t* query;
 
@@ -2082,7 +2389,7 @@ TRI_query_t* TRI_CreateNearQuery (TRI_query_t* operand,
   query->_operand = operand;
   query->_latitude = latitude;
   query->_longitude = longitude;
-  query->_limit = limit;
+  query->_limit = -1;
   query->_distance = (distance == NULL ? NULL : TRI_DuplicateString(distance));
 
   return &query->base;
@@ -2200,6 +2507,8 @@ TRI_result_set_t* TRI_ExecuteQuery (TRI_query_t* query) {
     LOG_TRACE("query returned error: %s", result._error);
     rs = TRI_CreateRSSingle(collection, ce, NULL, 0);
     rs->_error = result._error;
+
+    FreeAugmented(&result);
   }
   else {
     LOG_TRACE("query returned '%lu' documents", (unsigned long) result._length);

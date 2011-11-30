@@ -159,9 +159,10 @@ typedef enum {
   TRI_DOC_MARKER_DELETION           = 3002,
   TRI_DOC_MARKER_BEGIN_TRANSACTION  = 3003,
   TRI_DOC_MARKER_COMMIT_TRANSACTION = 3004,
-  TRI_DOC_MARKER_ABORT_TRANSACTION  = 3005
+  TRI_DOC_MARKER_ABORT_TRANSACTION  = 3005,
+  TRI_DOC_MARKER_EDGE               = 3006
 }
-TRI_df_maker_type_e;
+TRI_df_marker_type_e;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief storage type of the marker

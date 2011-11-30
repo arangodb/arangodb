@@ -182,7 +182,7 @@ bool RestDocumentHandler::createDocument () {
 
   _documentCollection->beginWrite(_documentCollection);
 
-  TRI_doc_mptr_t const* mptr = _documentCollection->createJson(_documentCollection, json);
+  TRI_doc_mptr_t const* mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_DOCUMENT, json, 0);
   TRI_voc_did_t did = 0;
   TRI_voc_rid_t rid = 0;
 

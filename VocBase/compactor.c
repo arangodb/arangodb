@@ -81,12 +81,12 @@ static TRI_datafile_t* SelectCompactor (TRI_sim_collection_t* collection,
   TRI_LockCondition(&collection->_journalsCondition);
 
   while (true) {
-    n = TRI_SizeVectorPointer(&collection->base.base._compactors);
+    n = collection->base.base._compactors._length;
 
     for (i = 0;  i < n;  ++i) {
 
       // select datafile
-      datafile = TRI_AtVectorPointer(&collection->base.base._compactors, i);
+      datafile = collection->base.base._compactors._buffer[i];
 
       // try to reserve space
       ok = TRI_ReserveElementDatafile(datafile, size, result);
@@ -195,15 +195,27 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
   collection = data;
 
   // new or updated document
-  if (marker->_type == TRI_DOC_MARKER_DOCUMENT) {
+  if (marker->_type == TRI_DOC_MARKER_DOCUMENT || marker->_type == TRI_DOC_MARKER_EDGE) {
     TRI_doc_document_marker_t const* d;
+    size_t markerSize;
+
+    if (marker->_type == TRI_DOC_MARKER_DOCUMENT) {
+      markerSize = sizeof(TRI_doc_document_marker_t);
+    }
+    else if (marker->_type == TRI_DOC_MARKER_EDGE) {
+      markerSize = sizeof(TRI_doc_edge_marker_t);
+    }
+    else {
+      LOG_FATAL("unknown marker type %d", (int) marker->_type);
+      exit(EXIT_FAILURE);
+    }
 
     d = (TRI_doc_document_marker_t const*) marker;
 
     // check if the document is still active
     TRI_ReadLockReadWriteLock(&collection->_lock);
 
-    found = TRI_FindByKeyAssociativePointer(&collection->_primaryIndex, &d->_did);
+    found = TRI_LookupByKeyAssociativePointer(&collection->_primaryIndex, &d->_did);
 
     if (found == NULL || found->_deletion != 0) {
       TRI_ReadUnlockReadWriteLock(&collection->_lock);
@@ -225,11 +237,11 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     TRI_WriteLockReadWriteLock(&collection->_lock);
 
     dfi = TRI_FindDatafileInfoDocCollection(&collection->base, fid);
-    found = TRI_FindByKeyAssociativePointer(&collection->_primaryIndex, &d->_did);
+    found = TRI_LookupByKeyAssociativePointer(&collection->_primaryIndex, &d->_did);
 
     if (found == NULL || found->_deletion != 0) {
       dfi->_numberDead += 1;
-      dfi->_sizeDead += marker->_size - sizeof(TRI_doc_document_marker_t);
+      dfi->_sizeDead += marker->_size - markerSize;
 
       LOG_DEBUG("found a stale document after copying: %lu", d->_did);
       TRI_WriteUnlockReadWriteLock(&collection->_lock);
@@ -240,11 +252,11 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     cnv.c = found;
     cnv.v->_fid = datafile->_fid;
     cnv.v->_data = result;
-    cnv.v->_document._data.data = ((char*) cnv.v->_data) + sizeof(TRI_doc_document_marker_t);
+    cnv.v->_document._data.data = ((char*) cnv.v->_data) + markerSize;
 
     // update datafile info
     dfi->_numberAlive += 1;
-    dfi->_sizeAlive += marker->_size - sizeof(TRI_doc_document_marker_t);
+    dfi->_sizeAlive += marker->_size - markerSize;
 
     TRI_WriteUnlockReadWriteLock(&collection->_lock);
   }
@@ -305,10 +317,10 @@ static void CompactifyDatafile (TRI_sim_collection_t* collection, TRI_voc_fid_t 
   // locate the datafile
   TRI_ReadLockReadWriteLock(&collection->_lock);
 
-  n = TRI_SizeVectorPointer(&collection->base.base._datafiles);
+  n = collection->base.base._datafiles._length;
 
   for (i = 0;  i < n;  ++i) {
-    df = TRI_AtVectorPointer(&collection->base.base._datafiles, i);
+    df = collection->base.base._datafiles._buffer[i];
 
     if (df->_fid == fid) {
       break;
@@ -337,10 +349,10 @@ static void CompactifyDatafile (TRI_sim_collection_t* collection, TRI_voc_fid_t 
   // remove the datafile from the list of datafiles
   TRI_ReadLockReadWriteLock(&collection->_lock);
 
-  n = TRI_SizeVectorPointer(&collection->base.base._datafiles);
+  n = collection->base.base._datafiles._length;
 
   for (i = 0;  i < n;  ++i) {
-    df = TRI_AtVectorPointer(&collection->base.base._datafiles, i);
+    df = collection->base.base._datafiles._buffer[i];
 
     if (df->_fid == fid) {
       TRI_RemoveVectorPointer(&collection->base.base._datafiles, i);
@@ -373,13 +385,13 @@ static void CompactifySimCollection (TRI_sim_collection_t* collection) {
   // copy datafile information
   TRI_ReadLockReadWriteLock(&collection->_lock);
 
-  n = TRI_SizeVectorPointer(&collection->base.base._datafiles);
+  n = collection->base.base._datafiles._length;
 
   for (i = 0;  i < n;  ++i) {
     TRI_datafile_t* df;
     TRI_doc_datafile_info_t* dfi;
 
-    df = TRI_AtVectorPointer(&collection->base.base._datafiles, i);
+    df = collection->base.base._datafiles._buffer[i];
     dfi = TRI_FindDatafileInfoDocCollection(&collection->base, df->_fid);
 
     TRI_PushBackVector(&vector, dfi);
@@ -388,9 +400,7 @@ static void CompactifySimCollection (TRI_sim_collection_t* collection) {
   TRI_ReadUnlockReadWriteLock(&collection->_lock);
 
   // handle datafiles with dead objects
-  n = TRI_SizeVector(&vector);
-
-  for (i = 0;  i < n;  ++i) {
+  for (i = 0;  i < vector._length;  ++i) {
     TRI_doc_datafile_info_t* dfi;
 
     dfi = TRI_AtVector(&vector, i);
@@ -474,6 +484,7 @@ static void CleanupSimCollection (TRI_sim_collection_t* collection) {
 void TRI_CompactorVocBase (void* data) {
   TRI_vocbase_t* vocbase = data;
   TRI_vector_pointer_t collections;
+  TRI_col_type_e type;
 
   TRI_InitVectorPointer(&collections);
 
@@ -486,13 +497,13 @@ void TRI_CompactorVocBase (void* data) {
     TRI_CopyDataVectorPointer(&collections, &vocbase->_collections);
     TRI_ReadUnlockReadWriteLock(&vocbase->_lock);
 
-    n = TRI_SizeVectorPointer(&collections);
+    n = collections._length;
 
     for (i = 0;  i < n;  ++i) {
       TRI_vocbase_col_t* col;
       TRI_doc_collection_t* collection;
 
-      col = TRI_AtVectorPointer(&collections, i);
+      col = collections._buffer[i];
 
       if (! col->_loaded) {
         continue;
@@ -501,7 +512,9 @@ void TRI_CompactorVocBase (void* data) {
       collection = col->_collection;
 
       // for simple document collection, compatify datafiles
-      if (collection->base._type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+      type = collection->base._type;
+
+      if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
         CompactifySimCollection((TRI_sim_collection_t*) collection);
         CleanupSimCollection((TRI_sim_collection_t*) collection);
       }

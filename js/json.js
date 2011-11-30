@@ -5,19 +5,29 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright by triAGENS GmbH - All rights reserved.
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
+/// The Programs (which include both the software and documentation)
+/// contain proprietary information of triAGENS GmbH; they are
+/// provided under a license agreement containing restrictions on use and
+/// disclosure and are also protected by copyright, patent and other
+/// intellectual and industrial property laws. Reverse engineering,
+/// disassembly or decompilation of the Programs, except to the extent
+/// required to obtain interoperability with other independently created
+/// software or as specified by law, is prohibited.
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+/// The Programs are not intended for use in any nuclear, aviation, mass
+/// transit, medical, or other inherently dangerous applications. It shall
+/// be the licensee's responsibility to take all appropriate fail-safe,
+/// backup, redundancy, and other measures to ensure the safe use of such
+/// applications if the Programs are used for such purposes, and triAGENS
+/// GmbH disclaims liability for any damages caused by such use of
+/// the Programs.
 ///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
+/// This software is the confidential and proprietary information of
+/// triAGENS GmbH. You shall not disclose such confidential and
+/// proprietary information and shall use it only in accordance with the
+/// terms of the license agreement you entered into with triAGENS GmbH.
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
@@ -36,20 +46,20 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JSON representation of an object
+///
+/// @FUN{toJson(@FA{object}, @FA{useNewLine})}
+///
+/// The representation of a JSON object as string. If @FA{useNewLine} is true,
+/// then new-lines are used to format the output in a nice way.
 ////////////////////////////////////////////////////////////////////////////////
 
-toJson = function(x, indent , useNL) {
+function toJson (x, useNL, indent) {
   if (x === null) {
     return "null";
   }
-
+    
   if (x === undefined) {
     return "undefined";
-  }
-
-  if (useNL === undefined && (indent === true || indent === false)) {
-    useNL = indent;
-    indent = "";
   }
 
   if (! indent) {
@@ -98,7 +108,7 @@ toJson = function(x, indent , useNL) {
   }
 
   if (x instanceof Object) {
-    return toJsonObject(x, indent , useNL);
+    return x.toJson(useNL, indent);
   }
 
   return "" + x;
@@ -108,18 +118,18 @@ toJson = function(x, indent , useNL) {
 /// @brief JSON representation of an array
 ////////////////////////////////////////////////////////////////////////////////
 
-Array.toJson = function(a, indent, useNL) {
+Array.prototype.toJson = function(useNL, indent) {
   var nl = useNL ? "\n" : " ";
 
   if (! indent) {
     indent = "";
   }
-
+    
   if (! useNL) {
     indent = "";
   }
 
-  if (a.length == 0) {
+  if (this.length == 0) {
     return indent + "[]";
   }
 
@@ -130,10 +140,10 @@ Array.toJson = function(a, indent, useNL) {
     indent += "  ";
   }
 
-  for (var i = 0;  i < a.length;  i++) {
-    s += indent + toJson(a[i], indent , useNL);
+  for (var i = 0;  i < this.length;  i++) {
+    s += indent + toJson(this[i], useNL, indent);
 
-    if (i < a.length - 1) {
+    if (i < this.length - 1) {
       s += "," + nl;
     }
   }
@@ -147,38 +157,32 @@ Array.toJson = function(a, indent, useNL) {
 /// @brief JSON representation of an object
 ////////////////////////////////////////////////////////////////////////////////
 
-toJsonObject = function(x, indent , useNL) {
+Object.prototype.toJson = function(useNL, indent) {
   var nl = useNL ? "\n" : " ";
-
+    
   if (! indent) {
     indent = "";
   }
-
-  if (typeof(x.toJson) == "function" && x.toJson != toJson) {
-    return indent + x.toJson(indent, useNL);
-  }
-
-  if (x.constructor && typeof(x.constructor.toJson) == "function" && x.constructor.toJson != toJson) {
-    return x.constructor.toJson(x, indent , useNL);
-  }
-
+    
   var s = "{" + nl;
 
   // push one level of indent
   var oldIndent = indent;
   indent += "  ";
-
+    
   if (! useNL) {
     indent = "";
   }
 
   var sep = "";
 
-  for (var k in x) {
-    var val = x[k];
+  for (var k in this) {
+    if (this.hasOwnProperty(k)) {
+      var val = this[k];
 
-    s += sep + indent + "\"" + k + "\" : " + toJson(val, indent , useNL);
-    sep = "," + nl;
+      s += sep + indent + "\"" + k + "\" : " + toJson(val, useNL, indent);
+      sep = "," + nl;
+    }
   }
 
   // pop one level of indent

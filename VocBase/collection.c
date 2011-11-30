@@ -96,7 +96,8 @@ static bool CheckCollection (TRI_collection_t* collection) {
 
   // check files within the directory
   files = TRI_FilesDirectory(collection->_directory);
-  n = TRI_SizeVectorString(&files);
+  n = files._length;
+
   regcomp(&re, "^(journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_ICASE | REG_EXTENDED);
 
   TRI_InitVectorPointer(&journals);
@@ -106,7 +107,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
   TRI_InitVectorPointer(&all);
 
   for (i = 0;  i < n;  ++i) {
-    char const* file = TRI_AtVectorString(&files, i);
+    char const* file = files._buffer[i];
     regmatch_t matches[4];
 
     if (regexec(&re, file, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
@@ -228,14 +229,14 @@ static bool CheckCollection (TRI_collection_t* collection) {
 
   // convert the sealed journals into datafiles
   if (! stop) {
-    n = TRI_SizeVectorPointer(&sealed);
+    n = sealed._length;
 
     for (i = 0;  i < n;  ++i) {
       char* number;
       char* dname;
       char* filename;
 
-      datafile = TRI_AtVectorPointer(&sealed, i);
+      datafile = sealed._buffer[i];
 
       number = TRI_StringUInt32(datafile->_fid);
       dname = TRI_Concatenate3String("datafile-", number, ".db");
@@ -266,10 +267,10 @@ static bool CheckCollection (TRI_collection_t* collection) {
 
   // stop if necessary
   if (stop) {
-    n = TRI_SizeVectorPointer(&all);
+    n = all._length;
 
     for (i = 0;  i < n;  ++i) {
-      datafile = TRI_AtVectorPointer(&all, i);
+      datafile = all._buffer[i];
 
       LOG_TRACE("closing datafile '%s'", datafile->_filename);
 
@@ -485,7 +486,7 @@ bool TRI_LoadParameterInfo (char const* path,
   }
 
   // convert json
-  n = TRI_SizeVector(&json->_value._objects);
+  n = json->_value._objects._length;
 
   for (i = 0;  i < n;  i += 2) {
     TRI_json_t* key;
@@ -618,13 +619,13 @@ bool TRI_IterateCollection (TRI_collection_t* collection,
   compactors = TRI_CopyVectorPointer(&collection->_compactors);
 
   // iterate over all datafiles
-  n = TRI_SizeVectorPointer(datafiles);
+  n = datafiles->_length;
 
   for (i = 0;  i < n;  ++i) {
     TRI_datafile_t* datafile;
     bool result;
 
-    datafile = TRI_AtVectorPointer(datafiles, i);
+    datafile = datafiles->_buffer[i];
 
     result = TRI_IterateDatafile(datafile, iterator, data, false);
 
@@ -637,13 +638,13 @@ bool TRI_IterateCollection (TRI_collection_t* collection,
   TRI_DestroyVectorPointer(datafiles);
 
   // iterate over all compactors
-  n = TRI_SizeVectorPointer(compactors);
+  n = compactors->_length;
 
   for (i = 0;  i < n;  ++i) {
     TRI_datafile_t* datafile;
     bool result;
 
-    datafile = TRI_AtVectorPointer(compactors, i);
+    datafile = compactors->_buffer[i];
 
     result = TRI_IterateDatafile(datafile, iterator, data, false);
 
@@ -654,13 +655,13 @@ bool TRI_IterateCollection (TRI_collection_t* collection,
   }
 
   // iterate over all journals
-  n = TRI_SizeVectorPointer(journals);
+  n = journals->_length;
 
   for (i = 0;  i < n;  ++i) {
     TRI_datafile_t* datafile;
     bool result;
 
-    datafile = TRI_AtVectorPointer(journals, i);
+    datafile = journals->_buffer[i];
 
     result = TRI_IterateDatafile(datafile, iterator, data, false);
 
@@ -685,12 +686,12 @@ void TRI_IterateIndexCollection (TRI_collection_t* collection,
   size_t i;
 
   // iterate over all index files
-  n = TRI_SizeVectorString(&collection->_indexFiles);
+  n = collection->_indexFiles._length;
 
   for (i = 0;  i < n;  ++i) {
     char const* filename;
 
-    filename = TRI_AtVectorString(&collection->_indexFiles, i);
+    filename = collection->_indexFiles._buffer[i];
     iterator(filename, data);
   }
 }
@@ -760,28 +761,28 @@ bool TRI_CloseCollection (TRI_collection_t* collection) {
   size_t i;
 
   // close compactor files
-  n = TRI_SizeVectorPointer(&collection->_compactors);
+  n = collection->_compactors._length;
 
   for (i = 0;  i < n;  ++i) {
-    datafile = TRI_AtVectorPointer(&collection->_compactors, i);
+    datafile = collection->_compactors._buffer[i];
 
     TRI_CloseDatafile(datafile);
   }
 
   // close journal files
-  n = TRI_SizeVectorPointer(&collection->_journals);
+  n = collection->_journals._length;
 
   for (i = 0;  i < n;  ++i) {
-    datafile = TRI_AtVectorPointer(&collection->_journals, i);
+    datafile = collection->_journals._buffer[i];
 
     TRI_CloseDatafile(datafile);
   }
 
   // close datafiles
-  n = TRI_SizeVectorPointer(&collection->_datafiles);
+  n = collection->_datafiles._length;
 
   for (i = 0;  i < n;  ++i) {
-    datafile = TRI_AtVectorPointer(&collection->_datafiles, i);
+    datafile = collection->_datafiles._buffer[i];
 
     TRI_CloseDatafile(datafile);
   }

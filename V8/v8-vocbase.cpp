@@ -31,6 +31,7 @@
 #include <Basics/csv.h>
 #include <Basics/logging.h>
 #include <Basics/strings.h>
+#include <Basics/StringUtils.h>
 
 #include <VocBase/query.h>
 #include <VocBase/simple-collection.h>
@@ -42,6 +43,7 @@
 #include "V8/v8-utils.h"
 
 using namespace std;
+using namespace triagens::basics;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -142,7 +144,6 @@ static bool IsDocumentId (v8::Handle<v8::Value> arg, TRI_voc_cid_t& cid, TRI_voc
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   if (arg->IsNumber()) {
-    cid = 0;
     did = arg->ToNumber()->Value();
     return true;
   }
@@ -228,43 +229,6 @@ static TRI_vocbase_col_t const* LoadCollection (v8::Handle<v8::Object> collectio
   }
 
   return col;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              javascript functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief calls the "toString" function
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_PrintUsingToString (v8::Arguments const& argv) {
-  TRI_v8_global_t* v8g;
-  v8::HandleScope scope;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-  v8::Handle<v8::Object> self = argv.Holder();
-  v8::Handle<v8::Function> toString = v8::Handle<v8::Function>::Cast(self->Get(v8g->ToStringFuncName));
-
-  v8::Handle<v8::Value> args1[] = { self };
-  v8::Handle<v8::Value> str = toString->Call(self, 1, args1);
-
-  v8::Handle<v8::Function> output = v8::Handle<v8::Function>::Cast(self->CreationContext()->Global()->Get(v8g->OutputFuncName));
-
-  v8::Handle<v8::Value> args2[] = { str };
-  output->Call(output, 1, args2);
-
-  return scope.Close(v8::Undefined());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -619,6 +583,67 @@ static bool OptimiseQuery (v8::Handle<v8::Object> queryObject) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up edges
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arguments const& argv) {
+  TRI_v8_global_t* v8g;
+  v8::HandleScope scope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  // extract the operand query
+  v8::Handle<v8::Object> operand = argv.Holder();
+  v8::Handle<v8::String> err;
+  TRI_query_t* opQuery = ExtractQuery(operand, &err);
+
+  if (opQuery == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  if (IsExecutedQuery(operand)) {
+    return scope.Close(v8::ThrowException(v8::String::New("query already executed")));
+  }
+
+  // first and only argument schould be an document idenfifier
+  if (argv.Length() != 1) {
+    switch (direction) {
+      case TRI_EDGE_UNUSED:
+        return scope.Close(v8::ThrowException(v8::String::New("usage: noneEdge(<edges-collection>)")));
+
+      case TRI_EDGE_IN:
+        return scope.Close(v8::ThrowException(v8::String::New("usage: inEdge(<edges-collection>)")));
+
+      case TRI_EDGE_OUT:
+        return scope.Close(v8::ThrowException(v8::String::New("usage: outEdge(<edges-collection>)")));
+
+      case TRI_EDGE_ANY:
+        return scope.Close(v8::ThrowException(v8::String::New("usage: edge(<edges-collection>)")));
+    }
+  }
+
+  if (! argv[0]->IsObject()) {
+    return scope.Close(v8::ThrowException(v8::String::New("<edges-collection> must be an object")));
+  }
+
+  TRI_vocbase_col_t const* edges = LoadCollection(argv[0]->ToObject(), &err);
+
+  if (edges == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  // .............................................................................
+  // create new query
+  // .............................................................................
+
+  v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
+
+  StoreQuery(result, TRI_CreateEdgesQuery(edges, opQuery->clone(opQuery), direction));
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -803,19 +828,45 @@ static v8::Handle<v8::Value> JS_NextQuery (v8::Arguments const& argv) {
   if (rs->hasNext(rs)) {
     TRI_doc_collection_t* collection = rs->_containerElement->_container->_collection;
     TRI_shaper_t* shaper = collection->_shaper;
+    TRI_rs_entry_t const* entry = rs->next(rs);
 
-    TRI_voc_did_t did;
-    TRI_voc_rid_t rid;
-    TRI_json_t const* augmented;
-    TRI_shaped_json_t* element = rs->next(rs, &did, &rid, &augmented);
+    return scope.Close(TRI_ObjectRSEntry(collection, shaper, entry));
+  }
+  else {
+    return scope.Close(v8::Undefined());
+  }
+}
 
-    v8::Handle<v8::Value> object = TRI_ObjectShapedJson(collection, did, shaper, element);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the next result document reference
+///
+/// @FUN{nextRef()}
+///
+/// If the @FN{hasNext} operator returns @LIT{true}, if the cursor still has
+/// documents.  In this case the next document reference can be
+/// accessed using the @FN{nextRef} operator, which will advance the
+/// cursor.
+///
+/// @verbinclude fluent28
+////////////////////////////////////////////////////////////////////////////////
 
-    if (augmented != NULL) {
-      TRI_AugmentObject(object, augmented);
-    }
+static v8::Handle<v8::Value> JS_NextRefQuery (v8::Arguments const& argv) {
+  v8::HandleScope scope;
 
-    return scope.Close(object);
+  v8::Handle<v8::String> err;
+  TRI_result_set_t* rs = ExecuteQuery(argv.Holder(), &err);
+
+  if (rs == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  if (rs->hasNext(rs)) {
+    TRI_doc_collection_t* collection = rs->_containerElement->_container->_collection;
+    TRI_rs_entry_t const* entry = rs->next(rs);
+
+    string ref = StringUtils::itoa(collection->base._cid) + ":" + StringUtils::itoa(entry->_did);
+
+    return scope.Close(v8::String::New(ref.c_str()));
   }
   else {
     return scope.Close(v8::Undefined());
@@ -1033,14 +1084,14 @@ static v8::Handle<v8::Value> JS_DocumentQuery (v8::Arguments const& argv) {
   }
 
   v8::Handle<v8::Value> arg1 = argv[0];
-  TRI_voc_cid_t cid;
+  TRI_voc_cid_t cid = opQuery->_collection->_collection->base._cid;
   TRI_voc_did_t did;
 
   if (! IsDocumentId(arg1, cid, did)) {
     return scope.Close(v8::ThrowException(v8::String::New("<document-idenifier> must be a document identifier")));
   }
 
-  if (cid != 0 && cid != opQuery->_collection->_collection->base._cid) {
+  if (cid != opQuery->_collection->_collection->base._cid) {
     return scope.Close(v8::ThrowException(v8::String::New("cannot execute cross collection query")));
   }
 
@@ -1053,6 +1104,32 @@ static v8::Handle<v8::Value> JS_DocumentQuery (v8::Arguments const& argv) {
   StoreQuery(result, TRI_CreateDocumentQuery(opQuery->clone(opQuery), did));
 
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up all edges
+///
+/// @FUN{@FA{edges-collection})}
+///
+/// The @FN{edges} operator finds all edges starting from (outbound) or
+/// ending in (inbound) the current vertices.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_EdgesQuery (v8::Arguments const& argv) {
+  return EdgesQuery(TRI_EDGE_ANY, argv);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up all inbound edges
+///
+/// @FUN{@FA{edges-collection})}
+///
+/// The @FN{edges} operator finds all edges starting from (outbound)
+/// or ending in (inbound) the current vertices.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_InEdgesQuery (v8::Arguments const& argv) {
+  return EdgesQuery(TRI_EDGE_IN, argv);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1245,8 +1322,6 @@ static v8::Handle<v8::Value> JS_LimitQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
-  static size_t const DEFAULT_LIMIT = 100;
-
   TRI_v8_global_t* v8g;
   v8::HandleScope scope;
 
@@ -1275,7 +1350,7 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
 
     v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
 
-    StoreQuery(result, TRI_CreateNearQuery(opQuery->clone(opQuery), latitiude, longitude, DEFAULT_LIMIT, NULL));
+    StoreQuery(result, TRI_CreateNearQuery(opQuery->clone(opQuery), latitiude, longitude, NULL));
 
     return scope.Close(result);
   }
@@ -1287,6 +1362,19 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
   else {
     return scope.Close(v8::ThrowException(v8::String::New("usage: near(<latitiude>,<longitude>)")));
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up all outbound edges
+///
+/// @FUN{@FA{edges-collection})}
+///
+/// The @FN{edges} operator finds all edges starting from (outbound)
+/// the current vertices.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_OutEdgesQuery (v8::Arguments const& argv) {
+  return EdgesQuery(TRI_EDGE_OUT, argv);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1663,11 +1751,11 @@ static v8::Handle<v8::Value> JS_DeleteVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: delete(<document-identifier>)")));
   }
 
-  TRI_voc_cid_t cid;
+  TRI_voc_cid_t cid = collection->base._cid;
   TRI_voc_did_t did;
 
   if (IsDocumentId(argv[0], cid, did)) {
-    if (cid != 0 && cid != collection->base._cid) {
+    if (cid != collection->base._cid) {
       return scope.Close(v8::ThrowException(v8::String::New("cannot execute cross collection delete")));
     }
   }
@@ -1781,10 +1869,10 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
 
   v8::Handle<v8::Array> result = v8::Array::New();
 
-  size_t n = TRI_SizeVectorPointer(indexes);
+  size_t n = indexes->_length;
 
   for (size_t i = 0;  i < n;  ++i) {
-    TRI_json_t* idx = (TRI_json_t*) TRI_AtVectorPointer(indexes, i);
+    TRI_json_t* idx = (TRI_json_t*) indexes->_buffer[i];
 
     result->Set(i, TRI_ObjectJson(idx));
   }
@@ -1940,11 +2028,11 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: replace(<document-identifier>, <document>)")));
   }
 
-  TRI_voc_cid_t cid;
+  TRI_voc_cid_t cid = collection->base._cid;
   TRI_voc_did_t did;
 
   if (IsDocumentId(argv[0], cid, did)) {
-    if (cid != 0 && cid != collection->base._cid) {
+    if (cid != collection->base._cid) {
       return scope.Close(v8::ThrowException(v8::String::New("cannot execute cross collection update")));
     }
   }
@@ -2002,7 +2090,7 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
 
   TRI_doc_collection_t* collection = col->_collection;
 
-  if (argv.Length() < 1) {
+  if (argv.Length() != 1) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: save(<document>)")));
   }
 
@@ -2016,7 +2104,7 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   // inside a write transaction
   // .............................................................................
 
-  TRI_voc_did_t did = collection->createLock(collection, shaped);
+  TRI_voc_did_t did = collection->createLock(collection, TRI_DOC_MARKER_DOCUMENT, shaped, 0);
 
   // .............................................................................
   // outside a write transaction
@@ -2078,6 +2166,198 @@ static v8::Handle<v8::Value> JS_ToStringVocbaseCol (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                 TRI_VOCBASE_COL_T EDGES FUNCTIONS
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              javascript functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replaces a document
+///
+/// @FUN{replace(@FA{document-identifier}, @FA{document})}
+///
+/// Replaces an existing document. The @FA{document-identifier} must point to a
+/// document in the current collection. This document is than replaced with the
+/// value given as second argument and the @FA{document-identifier} is returned.
+///
+/// @verbinclude fluent21
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ReplaceEdgesCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  v8::Handle<v8::String> err;
+  TRI_vocbase_col_t const* col = LoadCollection(argv.Holder(), &err);
+
+  if (col == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  TRI_doc_collection_t* collection = col->_collection;
+
+  if (argv.Length() != 2) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: replace(<document-identifier>, <document>)")));
+  }
+
+  TRI_voc_cid_t cid = collection->base._cid;
+  TRI_voc_did_t did;
+
+  if (IsDocumentId(argv[0], cid, did)) {
+    if (cid != collection->base._cid) {
+      return scope.Close(v8::ThrowException(v8::String::New("cannot execute cross collection update")));
+    }
+  }
+  else {
+    return scope.Close(v8::ThrowException(v8::String::New("expecting a document identifier")));
+  }
+
+  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[1], collection->_shaper);
+
+  if (shaped == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("<document> cannot be converted into JSON shape")));
+  }
+
+  // .............................................................................
+  // inside a write transaction
+  // .............................................................................
+
+  bool ok = collection->updateLock(collection, shaped, did, 0, TRI_DOC_UPDATE_LAST_WRITE);
+
+  // .............................................................................
+  // outside a write transaction
+  // .............................................................................
+
+  TRI_FreeShapedJson(shaped);
+
+  if (! ok) {
+    string err = "cannot replace document: ";
+    err += TRI_last_error();
+
+    return scope.Close(v8::ThrowException(v8::String::New(err.c_str())));
+  }
+
+  return scope.Close(v8::Number::New(did));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief saves a new document
+///
+/// @FUN{save(@FA{from}, @FA{to}, @FA{document})}
+///
+/// Saves a new edge and returns the document-identifier. @FA{from} and @FA{to}
+/// must be documents or document references.
+///
+/// @verbinclude fluent22
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_SaveEdgesCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  v8::Handle<v8::String> err;
+  TRI_vocbase_col_t const* col = LoadCollection(argv.Holder(), &err);
+
+  if (col == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  TRI_doc_collection_t* collection = col->_collection;
+
+  if (argv.Length() != 3) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: save(<from>, <to>, <document>)")));
+  }
+
+  TRI_sim_edge_t edge;
+
+  edge._fromCid = col->_cid;
+  edge._toCid = col->_cid;
+
+  if (! IsDocumentId(argv[0], edge._fromCid, edge._fromDid)) {
+    return scope.Close(v8::ThrowException(v8::String::New("<from> is not a document identifier")));
+  }
+
+  if (! IsDocumentId(argv[1], edge._toCid, edge._toDid)) {
+    return scope.Close(v8::ThrowException(v8::String::New("<from> is not a document identifier")));
+  }
+
+  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[2], collection->_shaper);
+
+  if (shaped == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("<document> cannot be converted into JSON shape")));
+  }
+
+  // .............................................................................
+  // inside a write transaction
+  // .............................................................................
+
+  TRI_voc_did_t did = collection->createLock(collection, TRI_DOC_MARKER_EDGE, shaped, &edge);
+
+  // .............................................................................
+  // outside a write transaction
+  // .............................................................................
+
+  TRI_FreeShapedJson(shaped);
+
+  if (did == 0) {
+    string err = "cannot save document: ";
+    err += TRI_last_error();
+
+    return scope.Close(v8::ThrowException(v8::String::New(err.c_str())));
+  }
+
+  char* cidStr = TRI_StringUInt64(collection->base._cid);
+  char* didStr = TRI_StringUInt64(did);
+
+  string name = cidStr + string(":") + didStr;
+
+  TRI_FreeString(didStr);
+  TRI_FreeString(cidStr);
+
+  return scope.Close(v8::String::New(name.c_str()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a TRI_vocbase_col_t into a string
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ToStringEdgesCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_col_t const* collection = UnwrapClass<TRI_vocbase_col_t>(argv.Holder());
+
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
+  }
+
+  string name;
+
+  if (collection->_corrupted) {
+    name = "[corrupted edges collection \"" + string(collection->_name) + "\"]";
+  }
+  else if (collection->_newBorn) {
+    name = "[new born edges collection \"" + string(collection->_name) + "\"]";
+  }
+  else if (collection->_loaded) {
+    name = "[edges collection \"" + string(collection->_name) + "\"]";
+  }
+  else {
+    name = "[unloaded edges collection \"" + string(collection->_name) + "\"]";
+  }
+
+  return scope.Close(v8::String::New(name.c_str()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                           TRI_VOCBASE_T FUNCTIONS
 // -----------------------------------------------------------------------------
 
@@ -2110,16 +2390,20 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   // convert the JavaScript string to a string
   string key = TRI_ObjectToString(name);
 
-  if (key == "toString" || key == "print") {
+  if (key == "toString" || key == "print" || key[0] == '_') {
     return v8::Handle<v8::Value>();
   }
 
   // look up the value if it exists
-  TRI_vocbase_col_t const* collection = TRI_FindCollectionByNameVocBase(vocbase, key.c_str());
+  TRI_vocbase_col_t const* collection = TRI_FindCollectionByNameVocBase(vocbase, key.c_str(), true);
 
   // if the key is not present return an empty handle as signal
   if (collection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("cannot load or create collection")));
+  }
+
+  if (collection->_type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    return scope.Close(v8::ThrowException(v8::String::New("collection is not an document collection")));
   }
 
   return scope.Close(TRI_WrapCollection(collection));
@@ -2161,6 +2445,89 @@ static v8::Handle<v8::Value> JS_ToStringVocBase (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                     TRI_VOCBASE_T EDGES FUNCTIONS
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects a collection from the vocbase
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> MapGetEdges (v8::Local<v8::String> name,
+                                            const v8::AccessorInfo& info) {
+  TRI_v8_global_t* v8g;
+  v8::HandleScope scope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(info.Holder());
+
+  if (vocbase == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+
+  // convert the JavaScript string to a string
+  string key = TRI_ObjectToString(name);
+
+  if (key == "toString" || key == "print" || key[0] == '_') {
+    return v8::Handle<v8::Value>();
+  }
+
+  // look up the value if it exists
+  TRI_vocbase_col_t const* collection = TRI_FindCollectionByNameVocBase(vocbase, key.c_str(), true);
+
+  // if the key is not present return an empty handle as signal
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("cannot load or create edge collection")));
+  }
+
+  return scope.Close(TRI_WrapEdgesCollection(collection));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              javascript functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a TRI_vocbase_t into a string
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ToStringEdges (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(argv.Holder());
+
+  if (vocbase == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+
+  string name = "[edges at \"" + string(vocbase->_path) + "\"]";
+
+  return scope.Close(v8::String::New(name.c_str()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                            MODULE
 // -----------------------------------------------------------------------------
 
@@ -2172,6 +2539,8 @@ static v8::Handle<v8::Value> JS_ToStringVocBase (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 ///
 /// - @ref MapGetVocBase "db".@FA{database}
+///
+/// - @ref MapGetVocBase "edges".@FA{database}
 ///
 ////////////////////////////////////////////////////////////////////////////////
 /// @section JSFDatabases Database Functions
@@ -2186,6 +2555,7 @@ static v8::Handle<v8::Value> JS_ToStringVocBase (v8::Arguments const& argv) {
 /// - @ref JS_DeleteVocbaseCol "delete"
 /// - @ref JS_ReplaceVocbaseCol "replace"
 /// - @ref JS_SaveVocbaseCol "save"
+/// - @ref JS_SaveEdgesCol "save" for edges
 ///
 ////////////////////////////////////////////////////////////////////////////////
 /// @subsection JSFIndex Database Index Functions
@@ -2221,6 +2591,7 @@ static v8::Handle<v8::Value> JS_ToStringVocBase (v8::Arguments const& argv) {
 /// - @ref JS_ExplainQuery "explain"
 /// - @ref JS_HasNextQuery "hasNext"
 /// - @ref JS_NextQuery "next"
+/// - @ref JS_NextRefQuery "nextRef"
 /// - @ref JS_ShowQuery "show"
 ///
 ////////////////////////////////////////////////////////////////////////////////
@@ -2228,6 +2599,7 @@ static v8::Handle<v8::Value> JS_ToStringVocBase (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 ///
 /// - @ref JS_FromJson "fromJson"
+/// - @ref JSF_toJson "toJson"
 /// - @ref JS_LogLevel "logLevel"
 /// - @ref JS_Output "output"
 /// - @ref JS_Print "print"
@@ -2260,6 +2632,8 @@ static v8::Handle<v8::Value> JS_ToStringVocBase (v8::Arguments const& argv) {
 /// @copydetails JS_ReplaceVocbaseCol
 ///
 /// @copydetails JS_SaveVocbaseCol
+///
+/// @copydetails JS_SaveEdgesCol
 ///
 ////////////////////////////////////////////////////////////////////////////////
 /// @subsection JSFIndex Database Index Functions
@@ -2309,6 +2683,8 @@ static v8::Handle<v8::Value> JS_ToStringVocBase (v8::Arguments const& argv) {
 ///
 /// @copydetails JS_NextQuery
 ///
+/// @copydetails JS_NextRefQuery
+///
 /// @copydetails JS_ShowQuery
 ///
 ////////////////////////////////////////////////////////////////////////////////
@@ -2316,6 +2692,8 @@ static v8::Handle<v8::Value> JS_ToStringVocBase (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 ///
 /// @copydetails JS_FromJson
+///
+/// @copydetails JSF_toJson
 ///
 /// @copydetails JS_LogLevel
 ///
@@ -2340,6 +2718,38 @@ static v8::Handle<v8::Value> JS_ToStringVocBase (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief wraps a TRI_vocbase_t
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Object> TRI_WrapVocBase (TRI_vocbase_t const* database) {
+  TRI_v8_global_t* v8g;
+  v8::HandleScope scope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  v8::Handle<v8::Object> result = WrapClass(v8g->VocbaseTempl, const_cast<TRI_vocbase_t*>(database));
+
+  result->Set(v8::String::New("_path"), v8::String::New(database->_path));
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wraps a TRI_vocbase_t for edges
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Object> TRI_WrapEdges (TRI_vocbase_t const* database) {
+  TRI_v8_global_t* v8g;
+  v8::HandleScope scope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  v8::Handle<v8::Object> result = WrapClass(v8g->EdgesTempl, const_cast<TRI_vocbase_t*>(database));
+
+  result->Set(v8::String::New("_path"), v8::String::New(database->_path));
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a TRI_vocbase_col_t
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2352,6 +2762,29 @@ v8::Handle<v8::Object> TRI_WrapCollection (TRI_vocbase_col_t const* collection) 
 
   result->SetInternalField(SLOT_QUERY, v8g->CollectionQueryType);
   result->SetInternalField(SLOT_RESULT_SET, v8::Null());
+
+  result->Set(v8::String::New("_name"), v8::String::New(collection->_name));
+  result->Set(v8::String::New("_id"), v8::Number::New(collection->_cid));
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wraps a TRI_vocbase_col_t for edges
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Object> TRI_WrapEdgesCollection (TRI_vocbase_col_t const* collection) {
+  TRI_v8_global_t* v8g;
+  v8::HandleScope scope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  v8::Handle<v8::Object> result = WrapClass(v8g->EdgesColTempl, const_cast<TRI_vocbase_col_t*>(collection));
+
+  result->SetInternalField(SLOT_QUERY, v8g->CollectionQueryType);
+  result->SetInternalField(SLOT_RESULT_SET, v8::Null());
+
+  result->Set(v8::String::New("_name"), v8::String::New(collection->_name));
+  result->Set(v8::String::New("_id"), v8::Number::New(collection->_cid));
 
   return scope.Close(result);
 }
@@ -2407,15 +2840,19 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> DistanceFuncName = v8::Persistent<v8::String>::New(v8::String::New("distance"));
   v8::Handle<v8::String> DocumentFuncName = v8::Persistent<v8::String>::New(v8::String::New("document"));
   v8::Handle<v8::String> DropIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("dropIndex"));
+  v8::Handle<v8::String> EdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("edges"));
   v8::Handle<v8::String> EnsureGeoIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureGeoIndex"));
   v8::Handle<v8::String> ExplainFuncName = v8::Persistent<v8::String>::New(v8::String::New("explain"));
   v8::Handle<v8::String> GeoFuncName = v8::Persistent<v8::String>::New(v8::String::New("geo"));
   v8::Handle<v8::String> GetIndexesFuncName = v8::Persistent<v8::String>::New(v8::String::New("getIndexes"));
   v8::Handle<v8::String> HasNextFuncName = v8::Persistent<v8::String>::New(v8::String::New("hasNext"));
+  v8::Handle<v8::String> InEdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("inEdges"));
   v8::Handle<v8::String> LimitFuncName = v8::Persistent<v8::String>::New(v8::String::New("limit"));
   v8::Handle<v8::String> NearFuncName = v8::Persistent<v8::String>::New(v8::String::New("near"));
   v8::Handle<v8::String> NextFuncName = v8::Persistent<v8::String>::New(v8::String::New("next"));
+  v8::Handle<v8::String> NextRefFuncName = v8::Persistent<v8::String>::New(v8::String::New("nextRef"));
   v8::Handle<v8::String> OptimiseFuncName = v8::Persistent<v8::String>::New(v8::String::New("optimise"));
+  v8::Handle<v8::String> OutEdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("outEdges"));
   v8::Handle<v8::String> ParameterFuncName = v8::Persistent<v8::String>::New(v8::String::New("parameter"));
   v8::Handle<v8::String> ReplaceFuncName = v8::Persistent<v8::String>::New(v8::String::New("replace"));
   v8::Handle<v8::String> SaveFuncName = v8::Persistent<v8::String>::New(v8::String::New("save"));
@@ -2445,20 +2882,39 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   // .............................................................................
 
   ft = v8::FunctionTemplate::New();
-  ft->SetClassName(v8::String::New("AvocadoCollection"));
+  ft->SetClassName(v8::String::New("AvocadoDatabase"));
 
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(1);
 
   rt->SetNamedPropertyHandler(MapGetVocBase);
 
-  rt->Set(v8g->PrintFuncName, v8::FunctionTemplate::New(JS_PrintUsingToString));
   rt->Set(v8g->ToStringFuncName, v8::FunctionTemplate::New(JS_ToStringVocBase));
 
   v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
   // must come after SetInternalFieldCount
-  context->Global()->Set(v8::String::New("AvocadoCollection"),
+  context->Global()->Set(v8::String::New("AvocadoDatabase"),
+                         ft->GetFunction());
+
+  // .............................................................................
+  // generate the TRI_vocbase_t template for edges
+  // .............................................................................
+
+  ft = v8::FunctionTemplate::New();
+  ft->SetClassName(v8::String::New("AvocadoEdges"));
+
+  rt = ft->InstanceTemplate();
+  rt->SetInternalFieldCount(1);
+
+  rt->SetNamedPropertyHandler(MapGetEdges);
+
+  rt->Set(v8g->ToStringFuncName, v8::FunctionTemplate::New(JS_ToStringEdges));
+
+  v8g->EdgesTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+
+  // must come after SetInternalFieldCount
+  context->Global()->Set(v8::String::New("AvocadoEdges"),
                          ft->GetFunction());
 
   // .............................................................................
@@ -2476,26 +2932,67 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(DeleteFuncName, v8::FunctionTemplate::New(JS_DeleteVocbaseCol));
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentQuery));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
+  rt->Set(EdgesFuncName, v8::FunctionTemplate::New(JS_EdgesQuery));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
   rt->Set(ExplainFuncName, v8::FunctionTemplate::New(JS_ExplainQuery));
   rt->Set(GeoFuncName, v8::FunctionTemplate::New(JS_GeoQuery));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
+  rt->Set(InEdgesFuncName, v8::FunctionTemplate::New(JS_InEdgesQuery));
   rt->Set(LimitFuncName, v8::FunctionTemplate::New(JS_LimitQuery));
   rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
+  rt->Set(OutEdgesFuncName, v8::FunctionTemplate::New(JS_OutEdgesQuery));
   rt->Set(ParameterFuncName, v8::FunctionTemplate::New(JS_ParameterVocbaseCol));
-  rt->Set(v8g->PrintFuncName, v8::FunctionTemplate::New(JS_PrintUsingToString));
   rt->Set(ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbaseCol));
   rt->Set(SaveFuncName, v8::FunctionTemplate::New(JS_SaveVocbaseCol));
   rt->Set(SelectFuncName, v8::FunctionTemplate::New(JS_SelectQuery));
   rt->Set(SkipFuncName, v8::FunctionTemplate::New(JS_SkipQuery));
   rt->Set(ToArrayFuncName, v8::FunctionTemplate::New(JS_ToArrayQuery));
-  rt->Set(v8g->ToStringFuncName, v8::FunctionTemplate::New(JS_ToStringVocbaseCol));
   rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
+  rt->Set(v8g->ToStringFuncName, v8::FunctionTemplate::New(JS_ToStringVocbaseCol));
 
   v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
   // must come after SetInternalFieldCount
   context->Global()->Set(v8::String::New("AvocadoCollection"),
+                         ft->GetFunction());
+
+  // .............................................................................
+  // generate the TRI_vocbase_col_t template for edges
+  // .............................................................................
+
+  ft = v8::FunctionTemplate::New();
+  ft->SetClassName(v8::String::New("AvocadoEdgesCollection"));
+
+  rt = ft->InstanceTemplate();
+  rt->SetInternalFieldCount(SLOT_END);
+
+  rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
+  rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountQuery));
+  rt->Set(DeleteFuncName, v8::FunctionTemplate::New(JS_DeleteVocbaseCol));
+  rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentQuery));
+  rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
+  rt->Set(EdgesFuncName, v8::FunctionTemplate::New(JS_EdgesQuery));
+  rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
+  rt->Set(ExplainFuncName, v8::FunctionTemplate::New(JS_ExplainQuery));
+  rt->Set(GeoFuncName, v8::FunctionTemplate::New(JS_GeoQuery));
+  rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
+  rt->Set(InEdgesFuncName, v8::FunctionTemplate::New(JS_InEdgesQuery));
+  rt->Set(LimitFuncName, v8::FunctionTemplate::New(JS_LimitQuery));
+  rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
+  rt->Set(OutEdgesFuncName, v8::FunctionTemplate::New(JS_OutEdgesQuery));
+  rt->Set(ParameterFuncName, v8::FunctionTemplate::New(JS_ParameterVocbaseCol));
+  rt->Set(ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceEdgesCol));
+  rt->Set(SaveFuncName, v8::FunctionTemplate::New(JS_SaveEdgesCol));
+  rt->Set(SelectFuncName, v8::FunctionTemplate::New(JS_SelectQuery));
+  rt->Set(SkipFuncName, v8::FunctionTemplate::New(JS_SkipQuery));
+  rt->Set(ToArrayFuncName, v8::FunctionTemplate::New(JS_ToArrayQuery));
+  rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
+  rt->Set(v8g->ToStringFuncName, v8::FunctionTemplate::New(JS_ToStringEdgesCol));
+
+  v8g->EdgesColTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+
+  // must come after SetInternalFieldCount
+  context->Global()->Set(v8::String::New("AvocadoEdgesCollection"),
                          ft->GetFunction());
 
   // .............................................................................
@@ -2512,13 +3009,17 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountQuery));
   rt->Set(DistanceFuncName, v8::FunctionTemplate::New(JS_DistanceQuery));
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentQuery));
+  rt->Set(EdgesFuncName, v8::FunctionTemplate::New(JS_EdgesQuery));
   rt->Set(ExplainFuncName, v8::FunctionTemplate::New(JS_ExplainQuery));
   rt->Set(GeoFuncName, v8::FunctionTemplate::New(JS_GeoQuery));
   rt->Set(HasNextFuncName, v8::FunctionTemplate::New(JS_HasNextQuery));
+  rt->Set(InEdgesFuncName, v8::FunctionTemplate::New(JS_InEdgesQuery));
   rt->Set(LimitFuncName, v8::FunctionTemplate::New(JS_LimitQuery));
   rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
   rt->Set(NextFuncName, v8::FunctionTemplate::New(JS_NextQuery));
+  rt->Set(NextRefFuncName, v8::FunctionTemplate::New(JS_NextRefQuery));
   rt->Set(OptimiseFuncName, v8::FunctionTemplate::New(JS_OptimiseQuery));
+  rt->Set(OutEdgesFuncName, v8::FunctionTemplate::New(JS_OutEdgesQuery));
   rt->Set(SelectFuncName, v8::FunctionTemplate::New(JS_SelectQuery));
   rt->Set(ShowFuncName, v8::FunctionTemplate::New(JS_ShowQuery));
   rt->Set(SkipFuncName, v8::FunctionTemplate::New(JS_SkipQuery));
@@ -2536,7 +3037,11 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   // .............................................................................
 
   context->Global()->Set(v8::String::New("db"),
-                         WrapClass(v8g->VocbaseTempl, vocbase),
+                         TRI_WrapVocBase(vocbase),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("edges"),
+                         TRI_WrapEdges(vocbase),
                          v8::ReadOnly);
 }
 

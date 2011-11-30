@@ -244,17 +244,18 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
 
 static void ScanPath (TRI_vocbase_t* vocbase, char const* path) {
   TRI_vector_string_t files;
+  TRI_col_type_e type;
   size_t n;
   size_t i;
 
   files = TRI_FilesDirectory(path);
-  n = TRI_SizeVectorString(&files);
+  n = files._length;
 
   for (i = 0;  i < n;  ++i) {
     char* name;
     char* file;
 
-    name = TRI_AtVectorString(&files, i);
+    name = files._buffer[i];
 
     if (name[0] == '\0' || name[0] == '_' || name[0] == '.') {
       continue;
@@ -272,12 +273,14 @@ static void ScanPath (TRI_vocbase_t* vocbase, char const* path) {
         LOG_DEBUG("ignoring directory '%s' without valid parameter file '%s'", file, TRI_COL_PARAMETER_FILE);
       }
       else {
-        if (info._type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
-          AddCollection(vocbase, info._type, info._name, info._cid, file);
+        type = info._type;
+
+        if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+          AddCollection(vocbase, type, info._name, info._cid, file);
           LOG_INFO("added simple document collection from '%s'", file);
         }
         else {
-          LOG_DEBUG("skiping collection of unknown type %d", (int) info._type);
+          LOG_DEBUG("skiping collection of unknown type %d", (int) type);
         }
       }
     }
@@ -465,7 +468,7 @@ void TRI_CloseVocBase (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t const* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t* vocbase, char const* name) {
-  return TRI_FindByKeyAssociativePointer(&vocbase->_collectionsByName, name);
+  return TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -473,20 +476,24 @@ TRI_vocbase_col_t const* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t* vocba
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t const* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t* vocbase, TRI_voc_cid_t id) {
-  return TRI_FindByKeyAssociativePointer(&vocbase->_collectionsById, &id);
+  return TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds up a (document) collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t const* TRI_FindCollectionByNameVocBase (TRI_vocbase_t* vocbase, char const* name) {
+TRI_vocbase_col_t const* TRI_FindCollectionByNameVocBase (TRI_vocbase_t* vocbase, char const* name, bool bear) {
   TRI_vocbase_col_t const* found;
 
   found = TRI_LookupCollectionByNameVocBase(vocbase, name);
 
   if (found != NULL) {
     return found;
+  }
+
+  if (! bear) {
+    return NULL;
   }
 
   return TRI_BearCollectionVocBase(vocbase, name);
@@ -499,6 +506,7 @@ TRI_vocbase_col_t const* TRI_FindCollectionByNameVocBase (TRI_vocbase_t* vocbase
 TRI_vocbase_col_t const* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase, TRI_col_parameter_t* parameter) {
   TRI_doc_collection_t* collection;
   TRI_vocbase_col_t* vc;
+  TRI_col_type_e type;
   char const* name;
   char wrong;
   void const* found;
@@ -507,7 +515,7 @@ TRI_vocbase_col_t const* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase, TR
 
   // check that we have a new name
   name = parameter->_name;
-  found = TRI_FindByKeyAssociativePointer(&vocbase->_collectionsByName, name);
+  found = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name);
 
   if (found != NULL) {
     LOG_ERROR("collection named '%s' already exists", name);
@@ -526,8 +534,9 @@ TRI_vocbase_col_t const* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase, TR
 
   // ok, construct the collection
   collection = NULL;
+  type = parameter->_type;
 
-  if (parameter->_type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+  if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
     TRI_sim_collection_t* sim;
 
     sim = TRI_CreateSimCollection(vocbase->_path, parameter);
@@ -554,7 +563,7 @@ TRI_vocbase_col_t const* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase, TR
                      collection->base._directory);
 
   if (vc == NULL) {
-    if (parameter->_type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
       TRI_CloseSimCollection((TRI_sim_collection_t*) collection);
       TRI_FreeSimCollection((TRI_sim_collection_t*) collection);
     }
@@ -575,12 +584,13 @@ TRI_vocbase_col_t const* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase, TR
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t const* TRI_LoadCollectionVocBase (TRI_vocbase_t* vocbase, char const* name) {
+  TRI_col_type_e type;
   union { TRI_vocbase_col_t const* c; TRI_vocbase_col_t* v; } found;
 
   TRI_WriteLockReadWriteLock(&vocbase->_lock);
 
   // check that we have an existing name
-  found.c = TRI_FindByKeyAssociativePointer(&vocbase->_collectionsByName, name);
+  found.c = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name);
 
   if (found.c == NULL) {
     LOG_ERROR("unknown collection '%s'", name);
@@ -595,7 +605,9 @@ TRI_vocbase_col_t const* TRI_LoadCollectionVocBase (TRI_vocbase_t* vocbase, char
   }
 
   // load the collection
-  if (found.c->_type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+  type = found.c->_type;
+
+  if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
     TRI_sim_collection_t* collection;
 
     collection = TRI_OpenSimCollection(found.c->_path);
@@ -631,7 +643,7 @@ TRI_vocbase_col_t const* TRI_BearCollectionVocBase (TRI_vocbase_t* vocbase, char
   TRI_WriteLockReadWriteLock(&vocbase->_lock);
 
   // check that we have an existing name
-  found.c = TRI_FindByKeyAssociativePointer(&vocbase->_collectionsByName, name);
+  found.c = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name);
 
   if (found.c != NULL) {
     return found.c;
@@ -647,11 +659,7 @@ TRI_vocbase_col_t const* TRI_BearCollectionVocBase (TRI_vocbase_t* vocbase, char
   }
 
   // check if the collection is not already loaded
-  found.v = AddCollection(vocbase,
-                          TRI_COL_TYPE_SIMPLE_DOCUMENT,
-                          name,
-                          0,
-                          NULL);
+  found.v = AddCollection(vocbase, TRI_COL_TYPE_SIMPLE_DOCUMENT, name, 0, NULL);
 
   found.v->_newBorn = 1;
 
@@ -665,6 +673,7 @@ TRI_vocbase_col_t const* TRI_BearCollectionVocBase (TRI_vocbase_t* vocbase, char
 
 bool TRI_ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t const* vc) {
   union { TRI_vocbase_col_t* v; TRI_vocbase_col_t const* c; } cnv;
+  TRI_col_type_e type;
   TRI_doc_collection_t* collection;
 
   TRI_WriteLockReadWriteLock(&vocbase->_lock);
@@ -693,13 +702,15 @@ bool TRI_ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t co
 
   // ok, construct the collection
   collection = NULL;
+  type = vc->_type;
 
-  if (vc->_type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+  if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
     TRI_sim_collection_t* sim;
     TRI_col_parameter_t parameter;
 
     TRI_InitParameterCollection(&parameter, vc->_name, DEFAULT_MAXIMAL_SIZE);
 
+    parameter._type = type;
     parameter._syncAfterTime = 1;
 
     sim = TRI_CreateSimCollection(vocbase->_path, &parameter);
