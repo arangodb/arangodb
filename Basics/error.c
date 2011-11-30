@@ -191,8 +191,8 @@ char const* TRI_last_error () {
     return strerror(sys);
   }
 
-  if (err < TRI_SizeVectorString(&ErrorMessages)) {
-    char const* str = TRI_AtVectorString(&ErrorMessages, err);
+  if (err < ErrorMessages._length) {
+    char const* str = ErrorMessages._buffer[err];
 
     if (str == NULL) {
       return "general error";
@@ -250,11 +250,11 @@ int TRI_set_errno (int error) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_set_errno_string (int error, char const* msg) {
-  if (error >= TRI_SizeVectorString(&ErrorMessages)) {
+  if (error >= ErrorMessages._length) {
     TRI_ResizeVectorString(&ErrorMessages, error + 1);
   }
 
-  TRI_SetVectorString(&ErrorMessages, error, TRI_DuplicateString(msg));
+  ErrorMessages._buffer[error] = TRI_DuplicateString(msg);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

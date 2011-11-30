@@ -30,6 +30,8 @@
 
 #include <VocBase/document-collection.h>
 
+#include <Basics/associative-multi.h>
+
 #include <VocBase/headers.h>
 #include <VocBase/index.h>
 
@@ -65,8 +67,8 @@ typedef struct TRI_sim_collection_s {
 
   TRI_headers_t* _headers;
   TRI_associative_pointer_t _primaryIndex;
+  TRI_multi_pointer_t _edgesIndex;
   TRI_vector_pointer_t _indexes;
-  struct TRI_geo_index_s* _geoIndex;
 
   // .............................................................................
   // this condition variable protects the _journals
@@ -75,6 +77,43 @@ typedef struct TRI_sim_collection_s {
   TRI_condition_t _journalsCondition;
 }
 TRI_sim_collection_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief edge from and to
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_sim_edge_s {
+  TRI_voc_cid_t _fromCid;
+  TRI_voc_did_t _fromDid;
+
+  TRI_voc_cid_t _toCid;
+  TRI_voc_did_t _toDid;
+}
+TRI_sim_edge_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief edge direction
+////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+  TRI_EDGE_UNUSED = 0,
+  TRI_EDGE_IN = 1,
+  TRI_EDGE_OUT = 2,
+  TRI_EDGE_ANY = 3
+}
+TRI_edge_direction_e;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief index entry for edges
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_edge_header_s {
+  TRI_doc_mptr_t const* _mptr;
+  TRI_edge_direction_e _direction;
+  TRI_voc_cid_t _cid; // from or to, depending on the direction
+  TRI_voc_did_t _did; // from or to, depending on the direction
+}
+TRI_edge_header_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -176,6 +215,32 @@ TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_DropIndexSimCollection (TRI_sim_collection_t* collection, TRI_idx_iid_t iid);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       EDGES INDEX
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up edges
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vector_pointer_t TRI_LookupEdgesSimCollection (TRI_sim_collection_t* edges,
+                                                   TRI_edge_direction_e direction,
+                                                   TRI_voc_cid_t cid,
+                                                   TRI_voc_did_t did);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

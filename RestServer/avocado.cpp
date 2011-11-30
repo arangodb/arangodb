@@ -41,7 +41,9 @@ using namespace triagens::avocado;
 ///
 /// The AvocadoDB has two mode of operations: as server, where it will answer to
 /// HTTP request, see @ref HttpInterface, and a debug shell, where you can
-/// access the database directly, see @ref DebugShell.
+/// access the database directly. Using the debug shell always you to issue all
+/// command normally available in actions and transactions, see @ref
+/// AvocadoScript.
 ///
 /// The following main command-line options are available.
 ///

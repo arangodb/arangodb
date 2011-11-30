@@ -142,7 +142,7 @@ static TRI_shape_aid_t FindAttributeName (TRI_shaper_t* shaper, char const* name
   void* f;
 
   s = (voc_shaper_t*) shaper;
-  p = TRI_FindByKeyAssociativeSynced(&s->_attributeNames, name);
+  p = TRI_LookupByKeyAssociativeSynced(&s->_attributeNames, name);
 
   if (p != NULL) {
     return ((TRI_df_attribute_marker_t const*) p)->_aid;
@@ -154,7 +154,7 @@ static TRI_shape_aid_t FindAttributeName (TRI_shaper_t* shaper, char const* name
   // lock the index and check that the element is still missing
   TRI_LockMutex(&s->_attributeLock);
 
-  p = TRI_FindByKeyAssociativeSynced(&s->_attributeNames, name);
+  p = TRI_LookupByKeyAssociativeSynced(&s->_attributeNames, name);
 
   // if the element appeared, return the aid
   if (p != NULL) {
@@ -230,7 +230,7 @@ static char const* LookupAttributeId (TRI_shaper_t* shaper, TRI_shape_aid_t aid)
   voc_shaper_t* s = (voc_shaper_t*) shaper;
   void const* p;
 
-  p = TRI_FindByKeyAssociativeSynced(&s->_attributeIds, &aid);
+  p = TRI_LookupByKeyAssociativeSynced(&s->_attributeIds, &aid);
 
   if (p == NULL) {
     return NULL;
@@ -285,7 +285,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
   void* f;
 
   s = (voc_shaper_t*) shaper;
-  found = TRI_FindByElementAssociativeSynced(&s->_shapeDictionary, shape);
+  found = TRI_LookupByElementAssociativeSynced(&s->_shapeDictionary, shape);
 
   // shape found, free argument and return
   if (found != 0) {
@@ -296,7 +296,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
   // lock the index and check the element is still missing
   TRI_LockMutex(&s->_shapeLock);
 
-  found = TRI_FindByElementAssociativeSynced(&s->_shapeDictionary, shape);
+  found = TRI_LookupByElementAssociativeSynced(&s->_shapeDictionary, shape);
 
   if (found != 0) {
     TRI_Free(shape);
@@ -374,7 +374,7 @@ static bool EqualKeyShapeId (TRI_associative_synced_t* array, void const* key, v
 static TRI_shape_t const* LookupShapeId (TRI_shaper_t* shaper, TRI_shape_sid_t sid) {
   voc_shaper_t* s = (voc_shaper_t*) shaper;
 
-  return TRI_FindByKeyAssociativeSynced(&s->_shapeIds, &sid);
+  return TRI_LookupByKeyAssociativeSynced(&s->_shapeIds, &sid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

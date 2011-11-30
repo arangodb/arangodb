@@ -33,6 +33,7 @@
 #include <Basics/json.h>
 #include <Basics/string-buffer.h>
 #include <VocBase/result-set.h>
+#include <VocBase/simple-collection.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -62,6 +63,7 @@ typedef enum {
   TRI_QUE_TYPE_COLLECTION,
   TRI_QUE_TYPE_DISTANCE,
   TRI_QUE_TYPE_DOCUMENT,
+  TRI_QUE_TYPE_EDGES,
   TRI_QUE_TYPE_GEO_INDEX,
   TRI_QUE_TYPE_LIMIT,
   TRI_QUE_TYPE_NEAR,
@@ -176,6 +178,19 @@ typedef struct TRI_document_query_s {
 TRI_document_query_t;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief edges query
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_edges_query_s {
+  TRI_query_t base;
+
+  TRI_query_t* _operand;
+
+  TRI_edge_direction_e _direction;
+}
+TRI_edges_query_t;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief geo index query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -218,7 +233,7 @@ typedef struct TRI_near_query_s {
   double _latitude;
   double _longitude;
 
-  TRI_voc_size_t _limit;
+  TRI_voc_ssize_t _limit;
 }
 TRI_near_query_t;
 
@@ -283,6 +298,14 @@ TRI_query_t* TRI_CreateDistanceQuery (TRI_query_t*, char const* name);
 TRI_query_t* TRI_CreateDocumentQuery (TRI_query_t*, TRI_voc_did_t);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up edges
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_query_t* TRI_CreateEdgesQuery (TRI_vocbase_col_t const* edges,
+                                   TRI_query_t*,
+                                   TRI_edge_direction_e direction);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an geo-spatial index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -305,7 +328,6 @@ TRI_query_t* TRI_CreateLimitQuery (TRI_query_t*, TRI_voc_ssize_t);
 TRI_query_t* TRI_CreateNearQuery (TRI_query_t*,
                                   double latitude,
                                   double longitude,
-                                  TRI_voc_size_t count,
                                   char const* distance);
 
 ////////////////////////////////////////////////////////////////////////////////

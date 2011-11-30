@@ -147,12 +147,12 @@ static bool CloseJournal (TRI_blob_collection_t* collection, TRI_datafile_t* jou
   size_t n;
 
   // remove datafile from list of journals
-  n = TRI_SizeVectorPointer(&collection->base._journals);
+  n = collection->base._journals._length;
 
   for (i = 0;  i < n;  ++i) {
     TRI_datafile_t* df;
 
-    df = TRI_AtVectorPointer(&collection->base._journals, i);
+    df = collection->base._journals._buffer[i];
 
     if (journal == df) {
       break;
@@ -205,11 +205,11 @@ static TRI_datafile_t* SelectJournal (TRI_blob_collection_t* collection,
   size_t n;
 
   // need to create a new journal?
-  n = TRI_SizeVectorPointer(&collection->base._journals);
+  n = collection->base._journals._length;
 
   if (n == 0) {
     ok = CreateJournal(collection);
-    n = TRI_SizeVectorPointer(&collection->base._journals);
+    n = collection->base._journals._length;
 
     if (! ok || n == 0) {
       return NULL;
@@ -217,7 +217,7 @@ static TRI_datafile_t* SelectJournal (TRI_blob_collection_t* collection,
   }
 
   // select first datafile
-  datafile = TRI_AtVectorPointer(&collection->base._journals, 0);
+  datafile = collection->base._journals._buffer[0];
 
   // try to reserve space
   ok = TRI_ReserveElementDatafile(datafile, size, result);
@@ -230,13 +230,13 @@ static TRI_datafile_t* SelectJournal (TRI_blob_collection_t* collection,
     }
 
     ok = CreateJournal(collection);
-    n = TRI_SizeVectorPointer(&collection->base._journals);
+    n = collection->base._journals._length;
 
     if (! ok || n == 0) {
       return NULL;
     }
 
-    datafile = TRI_AtVectorPointer(&collection->base._journals, 0);
+    datafile = collection->base._journals._buffer[0];
 
     ok = TRI_ReserveElementDatafile(datafile, size, result);
   }

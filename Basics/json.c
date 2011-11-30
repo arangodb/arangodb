@@ -56,6 +56,9 @@ static void StringifyJson (TRI_string_buffer_t* buffer, TRI_json_t const* object
   char const* ptr;
 
   switch (object->_type) {
+    case TRI_JSON_UNUSED:
+      break;
+
     case TRI_JSON_NULL:
       TRI_AppendStringStringBuffer(buffer, "null");
       break;
@@ -86,7 +89,7 @@ static void StringifyJson (TRI_string_buffer_t* buffer, TRI_json_t const* object
         TRI_AppendStringStringBuffer(buffer, "{");
       }
 
-      n = TRI_SizeVector(&object->_value._objects);
+      n = object->_value._objects._length;
 
       for (i = 0;  i < n;  i += 2) {
         if (0 < i) {
@@ -109,7 +112,7 @@ static void StringifyJson (TRI_string_buffer_t* buffer, TRI_json_t const* object
         TRI_AppendStringStringBuffer(buffer, "[");
       }
 
-      n = TRI_SizeVector(&object->_value._objects);
+      n = object->_value._objects._length;
 
       for (i = 0;  i < n;  ++i) {
         if (0 < i) {
@@ -284,6 +287,7 @@ void TRI_DestroyJson (TRI_json_t* object) {
   size_t i;
 
   switch (object->_type) {
+    case TRI_JSON_UNUSED:
     case TRI_JSON_NULL:
     case TRI_JSON_BOOLEAN:
     case TRI_JSON_NUMBER:
@@ -295,7 +299,7 @@ void TRI_DestroyJson (TRI_json_t* object) {
 
     case TRI_JSON_ARRAY:
     case TRI_JSON_LIST:
-      n = TRI_SizeVector(&object->_value._objects);
+      n = object->_value._objects._length;
 
       for (i = 0;  i < n;  ++i) {
         TRI_json_t* v = TRI_AtVector(&object->_value._objects, i);
@@ -407,7 +411,7 @@ TRI_json_t* TRI_LookupArrayJson (TRI_json_t* object, char const* name) {
 
   assert(object->_type == TRI_JSON_ARRAY);
 
-  n = TRI_SizeVector(&object->_value._objects);
+  n = object->_value._objects._length;
 
   for (i = 0;  i < n;  i += 2) {
     TRI_json_t* key;
@@ -560,6 +564,7 @@ void TRI_CopyToJson (TRI_json_t* dst, TRI_json_t const* src) {
   dst->_type = src->_type;
 
   switch (src->_type) {
+    case TRI_JSON_UNUSED:
     case TRI_JSON_NULL:
       break;
 
@@ -577,7 +582,7 @@ void TRI_CopyToJson (TRI_json_t* dst, TRI_json_t const* src) {
 
     case TRI_JSON_ARRAY:
     case TRI_JSON_LIST:
-      n = TRI_SizeVector(&src->_value._objects);
+      n = src->_value._objects._length;
 
       TRI_InitVector(&dst->_value._objects, sizeof(TRI_json_t));
       TRI_ResizeVector(&dst->_value._objects, n);

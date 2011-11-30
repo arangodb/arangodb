@@ -202,7 +202,7 @@ void ActionDisptacherThread::run () {
 void ActionDisptacherThread::initialise () {
   bool ok;
   char* filename;
-  char const* files[] = { "json.js", "actions.js" };
+  char const* files[] = { "json.js", "actions.js", "graph.js" };
   size_t i;
 
   // enter a new isolate

@@ -26,8 +26,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_PHILADELPHIA_BASICS_LOCAL_CONFIGURATION_H
-#define TRIAGENS_PHILADELPHIA_BASICS_LOCAL_CONFIGURATION_H 1
+#ifndef TRIAGENS_BASICS_CONFIGURATION_H
+#define TRIAGENS_BASICS_CONFIGURATION_H 1
 
 #ifndef TRI_WITHIN_COMMON
 #error use <Basics/Common.h>

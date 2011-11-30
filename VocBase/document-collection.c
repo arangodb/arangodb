@@ -48,11 +48,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_voc_did_t CreateLock (TRI_doc_collection_t* document,
-                                 TRI_shaped_json_t const* json) {
+                                 TRI_df_marker_type_e type,
+                                 TRI_shaped_json_t const* json,
+                                 void const* data) {
   TRI_doc_mptr_t const* result;
 
   document->beginWrite(document);
-  result = document->create(document, json);
+  result = document->create(document, type, json, data);
   document->endWrite(document);
 
   return result == NULL ? 0 : result->_did;
@@ -63,7 +65,9 @@ static TRI_voc_did_t CreateLock (TRI_doc_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_doc_mptr_t const* CreateJson (TRI_doc_collection_t* collection,
-                                         TRI_json_t const* json) {
+                                         TRI_df_marker_type_e type,
+                                         TRI_json_t const* json,
+                                         void const* data) {
   TRI_shaped_json_t* shaped;
   TRI_doc_mptr_t const* result;
 
@@ -74,7 +78,7 @@ static TRI_doc_mptr_t const* CreateJson (TRI_doc_collection_t* collection,
     return false;
   }
 
-  result = collection->create(collection, shaped);
+  result = collection->create(collection, type, shaped, data);
 
   TRI_FreeShapedJson(shaped);
 
@@ -309,13 +313,13 @@ bool CloseJournalDocCollection (TRI_doc_collection_t* collection,
   }
 
   // no journal at this position
-  if (TRI_SizeVectorPointer(vector) <= position) {
+  if (vector->_length <= position) {
     TRI_set_errno(TRI_VOC_ERROR_NO_JOURNAL);
     return false;
   }
 
   // seal and rename datafile
-  journal = TRI_AtVectorPointer(vector, position);
+  journal = vector->_buffer[position];
   ok = TRI_SealDatafile(journal);
 
   if (! ok) {

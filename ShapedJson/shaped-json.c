@@ -462,7 +462,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
   assert(json->_type == TRI_JSON_LIST);
 
   // check for special case "empty list"
-  n = TRI_LengthVector(&json->_value._objects);
+  n = json->_value._objects._length;
 
   if (n == 0) {
     dst->_type = TRI_SHAPE_LIST;
@@ -697,10 +697,10 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, T
 
   // sanity checks
   assert(json->_type == TRI_JSON_ARRAY);
-  assert(TRI_LengthVector(&json->_value._objects) % 2 == 0);
+  assert(json->_value._objects._length % 2 == 0);
 
   // number of attributes
-  n = TRI_LengthVector(&json->_value._objects) / 2;
+  n = json->_value._objects._length / 2;
 
   // convert into TRI_shape_value_t array
   p = (values = TRI_Allocate(n * sizeof(TRI_shape_value_t)));
@@ -860,6 +860,9 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, T
 
 static bool FillShapeValueJson (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TRI_json_t const* json) {
   switch (json->_type) {
+    case TRI_JSON_UNUSED:
+      return false;
+
     case TRI_JSON_NULL:
       return FillShapeValueNull(shaper, dst, json);
 

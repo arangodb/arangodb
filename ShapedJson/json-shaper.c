@@ -128,7 +128,7 @@ static bool EqualPidKeyAttributePath (TRI_associative_synced_t* array, void cons
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_shape_path_t const* LookupPidAttributePath (TRI_shaper_t* shaper, TRI_shape_pid_t pid) {
-  return TRI_FindByKeyAssociativeSynced(&shaper->_attributePathsByPid, &pid);
+  return TRI_LookupByKeyAssociativeSynced(&shaper->_attributePathsByPid, &pid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -193,7 +193,7 @@ static TRI_shape_pid_t FindNameAttributePath (TRI_shaper_t* shaper, char const* 
   void const* f;
   void const* p;
 
-  p = TRI_FindByKeyAssociativeSynced(&shaper->_attributePathsByName, name);
+  p = TRI_LookupByKeyAssociativeSynced(&shaper->_attributePathsByName, name);
 
   if (p != NULL) {
     return ((TRI_shape_path_t const*) p)->_pid;
@@ -206,7 +206,7 @@ static TRI_shape_pid_t FindNameAttributePath (TRI_shaper_t* shaper, char const* 
   TRI_LockMutex(&shaper->_attributePathLock);
 
   // if the element appeared, return the pid
-  p = TRI_FindByKeyAssociativeSynced(&shaper->_attributePathsByName, name);
+  p = TRI_LookupByKeyAssociativeSynced(&shaper->_attributePathsByName, name);
 
   if (p != NULL) {
     TRI_UnlockMutex(&shaper->_attributePathLock);
@@ -321,7 +321,7 @@ static TRI_shape_aid_t FindAttributeNameArrayShaper (TRI_shaper_t* shaper, char 
   void const* p;
 
   s = (array_shaper_t*) shaper;
-  p = TRI_FindByKeyAssociativePointer(&s->_attributeNames, name);
+  p = TRI_LookupByKeyAssociativePointer(&s->_attributeNames, name);
 
   if (p == NULL) {
     size_t n;
@@ -331,7 +331,7 @@ static TRI_shape_aid_t FindAttributeNameArrayShaper (TRI_shaper_t* shaper, char 
     n = strlen(name) + 1;
     a2i = TRI_Allocate(sizeof(attribute_2_id_t) + n);
 
-    a2i->_aid = 1 + TRI_LengthVectorPointer(&s->_attributes);
+    a2i->_aid = 1 + s->_attributes._length;
     a2i->_size = n;
     memcpy(((char*) a2i) + sizeof(attribute_2_id_t), name, n);
 
@@ -358,10 +358,10 @@ static char const* LookupAttributeIdArrayShaper (TRI_shaper_t* shaper, TRI_shape
 
   s = (array_shaper_t*) shaper;
 
-  if (0 < aid && aid <= TRI_LengthVectorPointer(&s->_attributes)) {
+  if (0 < aid && aid <= s->_attributes._length) {
     char const* a2i;
 
-    a2i = TRI_AtVectorPointer(&s->_attributes, aid - 1);
+    a2i = s->_attributes._buffer[aid - 1];
 
     return a2i + sizeof(attribute_2_id_t);
   }
@@ -425,14 +425,14 @@ static TRI_shape_t const* FindShapeShape (TRI_shaper_t* shaper, TRI_shape_t* sha
   array_shaper_t* s;
 
   s = (array_shaper_t*) shaper;
-  l = TRI_FindByElementAssociativePointer(&s->_shapeDictionary, shape);
+  l = TRI_LookupByElementAssociativePointer(&s->_shapeDictionary, shape);
 
   if (l != NULL) {
     TRI_Free(shape);
     return l;
   }
 
-  shape->_sid = TRI_LengthVectorPointer(&s->_shapes) + 1;
+  shape->_sid = s->_shapes._length + 1;
   TRI_InsertElementAssociativePointer(&s->_shapeDictionary, shape, false);
   TRI_PushBackVectorPointer(&s->_shapes, shape);
 
@@ -448,8 +448,8 @@ static TRI_shape_t const* LookupShapeId (TRI_shaper_t* shaper, TRI_shape_sid_t s
 
   s = (array_shaper_t*) shaper;
 
-  if (0 < sid && sid <= TRI_LengthVectorPointer(&s->_shapes)) {
-    return TRI_AtVectorPointer(&s->_shapes, sid - 1);
+  if (0 < sid && sid <= s->_shapes._length) {
+    return s->_shapes._buffer[sid - 1];
   }
 
   return NULL;
@@ -530,20 +530,20 @@ void TRI_DestroyArrayShaper (TRI_shaper_t* shaper) {
 
   s = (array_shaper_t*) shaper;
 
-  for (i = 0, n = TRI_LengthVectorPointer(&s->_attributes);  i < n;  ++i) {
+  for (i = 0, n = s->_attributes._length;  i < n;  ++i) {
     attribute_2_id_t* a2i;
 
-    a2i = TRI_AtVectorPointer(&s->_attributes, i);
+    a2i = s->_attributes._buffer[i];
     TRI_Free(a2i);
   }
 
   TRI_DestroyAssociativePointer(&s->_attributeNames);
   TRI_DestroyVectorPointer(&s->_attributes);
 
-  for (i = 0, n = TRI_LengthVectorPointer(&s->_shapes);  i < n;  ++i) {
+  for (i = 0, n = s->_shapes._length;  i < n;  ++i) {
     TRI_shape_t* shape;
 
-    shape = TRI_AtVectorPointer(&s->_shapes, i);
+    shape = s->_shapes._buffer[i];
     TRI_Free(shape);
   }
 

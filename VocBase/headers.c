@@ -57,6 +57,8 @@ typedef struct simple_headers_s {
 
   TRI_doc_mptr_t const* _freelist;
   TRI_vector_pointer_t _blocks;
+
+  size_t _headerSize;
 }
 simple_headers_t;
 
@@ -68,8 +70,8 @@ simple_headers_t;
 /// @brief clears an header
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClearSimpleHeaders (TRI_doc_mptr_t* header) {
-  memset(header, 0, sizeof(TRI_doc_mptr_t));
+static void ClearSimpleHeaders (TRI_doc_mptr_t* header, size_t headerSize) {
+  memset(header, 0, headerSize);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,25 +80,25 @@ static void ClearSimpleHeaders (TRI_doc_mptr_t* header) {
 
 static TRI_doc_mptr_t* RequestSimpleHeaders (TRI_headers_t* h) {
   simple_headers_t* headers = (simple_headers_t*) h;
-  TRI_doc_mptr_t const* header;
+  char const* header;
   union { TRI_doc_mptr_t const* c; TRI_doc_mptr_t* h; } c;
 
   if (headers->_freelist == NULL) {
-    TRI_doc_mptr_t* begin;
-    TRI_doc_mptr_t* ptr;
+    char* begin;
+    char* ptr;
 
-    begin = TRI_Allocate(NUMBER_HEADERS_PER_BLOCK * sizeof(TRI_doc_mptr_t));
-    ptr = begin + (NUMBER_HEADERS_PER_BLOCK - 1);
+    begin = TRI_Allocate(NUMBER_HEADERS_PER_BLOCK * headers->_headerSize);
+    ptr = begin + headers->_headerSize * (NUMBER_HEADERS_PER_BLOCK - 1);
 
     header = NULL;
 
-    for (;  begin <= ptr;  --ptr) {
-      ClearSimpleHeaders(ptr);
-      ptr->_data = header;
+    for (;  begin <= ptr;  ptr -= headers->_headerSize) {
+      ClearSimpleHeaders((TRI_doc_mptr_t*) ptr, headers->_headerSize);
+      ((TRI_doc_mptr_t*) ptr)->_data = header;
       header = ptr;
     }
 
-    headers->_freelist = header;
+    headers->_freelist = (TRI_doc_mptr_t*) header;
 
     TRI_PushBackVectorPointer(&headers->_blocks, begin);
   }
@@ -123,7 +125,7 @@ static TRI_doc_mptr_t* VerifySimpleHeaders (TRI_headers_t* h, TRI_doc_mptr_t* he
 static void ReleaseSimpleHeaders (TRI_headers_t* h, TRI_doc_mptr_t* header) {
   simple_headers_t* headers = (simple_headers_t*) h;
 
-  ClearSimpleHeaders(header);
+  ClearSimpleHeaders(header, headers->_headerSize);
 
   header->_data = headers->_freelist;
   headers->_freelist = header;
@@ -146,7 +148,7 @@ static void ReleaseSimpleHeaders (TRI_headers_t* h, TRI_doc_mptr_t* header) {
 /// @brief creates a new simple headers structures
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_headers_t* TRI_CreateSimpleHeaders () {
+TRI_headers_t* TRI_CreateSimpleHeaders (size_t headerSize) {
   simple_headers_t* headers = TRI_Allocate(sizeof(simple_headers_t));
 
   headers->base.request = RequestSimpleHeaders;
@@ -154,6 +156,7 @@ TRI_headers_t* TRI_CreateSimpleHeaders () {
   headers->base.release = ReleaseSimpleHeaders;
 
   headers->_freelist = NULL;
+  headers->_headerSize = headerSize;
 
   TRI_InitVectorPointer(&headers->_blocks);
 
@@ -166,12 +169,10 @@ TRI_headers_t* TRI_CreateSimpleHeaders () {
 
 void TRI_DestroySimpleHeaders (TRI_headers_t* h) {
   simple_headers_t* headers = (simple_headers_t*) h;
-
-  size_t n = TRI_SizeVectorPointer(&headers->_blocks);
   size_t i;
 
-  for (i = 0;  i < n;  ++i) {
-    TRI_Free(TRI_AtVectorPointer(&headers->_blocks, i));
+  for (i = 0;  i < headers->_blocks._length;  ++i) {
+    TRI_Free(headers->_blocks._buffer[i]);
   }
 
   TRI_DestroyVectorPointer(&headers->_blocks);
@@ -198,13 +199,10 @@ void TRI_IterateSimpleHeaders (TRI_headers_t* headers,
                                void (*iterator)(TRI_doc_mptr_t const*, void*),
                                void* data) {
   simple_headers_t* h = (simple_headers_t*) headers;
-  size_t n;
   size_t i;
 
-  n = TRI_SizeVectorPointer(&h->_blocks);
-
-  for (i = 0;  i < n;   ++i) {
-    TRI_doc_mptr_t* begin = TRI_AtVectorPointer(&h->_blocks, i);
+  for (i = 0;  i < h->_blocks._length;   ++i) {
+    TRI_doc_mptr_t* begin = h->_blocks._buffer[i];
     TRI_doc_mptr_t* end = begin + NUMBER_HEADERS_PER_BLOCK;
 
     for (;  begin < end;  ++begin) {

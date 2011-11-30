@@ -5,19 +5,29 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright by triAGENS GmbH - All rights reserved.
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
+/// The Programs (which include both the software and documentation)
+/// contain proprietary information of triAGENS GmbH; they are
+/// provided under a license agreement containing restrictions on use and
+/// disclosure and are also protected by copyright, patent and other
+/// intellectual and industrial property laws. Reverse engineering,
+/// disassembly or decompilation of the Programs, except to the extent
+/// required to obtain interoperability with other independently created
+/// software or as specified by law, is prohibited.
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+/// The Programs are not intended for use in any nuclear, aviation, mass
+/// transit, medical, or other inherently dangerous applications. It shall
+/// be the licensee's responsibility to take all appropriate fail-safe,
+/// backup, redundancy, and other measures to ensure the safe use of such
+/// applications if the Programs are used for such purposes, and triAGENS
+/// GmbH disclaims liability for any damages caused by such use of
+/// the Programs.
 ///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
+/// This software is the confidential and proprietary information of
+/// triAGENS GmbH. You shall not disclose such confidential and
+/// proprietary information and shall use it only in accordance with the
+/// terms of the license agreement you entered into with triAGENS GmbH.
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
@@ -26,7 +36,203 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  query evaluation
+// --SECTION--                                                             Array
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell V8 Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief JSON representation of an array
+////////////////////////////////////////////////////////////////////////////////
+
+Array.prototype.print = function() {
+  if (this.length == 0) {
+    output("[ ]");
+  }
+  else {
+    var sep = " ";
+
+    output("[");
+
+    for (var i = 0;  i < this.length;  i++) {
+      output(sep);
+      print(this[i]);
+      sep = ", ";
+    }
+
+    output(" ]");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                          Function
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell V8 Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief JSON representation of a function
+////////////////////////////////////////////////////////////////////////////////
+
+Function.prototype.print = function() {
+  output(this.toString());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                            Object
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell V8 Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief string representation of an object
+////////////////////////////////////////////////////////////////////////////////
+
+Object.prototype.print = function() {
+  var sep = " ";
+
+  output("{");
+
+  for (var k in this) {
+    if (this.hasOwnProperty(k)) {
+      var val = this[k];
+
+      output(sep, k, " : ");
+      print(val);
+      sep = ", ";
+    }
+  }
+
+  output(" }");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 AvocadoCollection
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell V8 Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.print = function() {
+  if (this instanceof AvocadoCollection) {
+    output("[collection \"", this._name, "]");
+  }
+  else {
+    output(this.toString(), "\n");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   AvocadoDatabase
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell V8 Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints the vocbase
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype.print = function() {
+  if (this instanceof AvocadoDatabase) {
+    output("[vocbase at \"", this._path, "]");
+  }
+  else {
+    output(this.toString(), "\n");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      AvocadoEdges
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell V8 Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints the edges base
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoEdges.prototype.print = function() {
+  if (this instanceof AvocadoEdges) {
+    output("[edges at \"", this._path, "]");
+  }
+  else {
+    output(this.toString(), "\n");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            AvocadoEdgesCollection
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell V8 Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints an edges collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoEdgesCollection.prototype.print = function() {
+  if (this instanceof AvocadoEdgesCollection) {
+    output("[edges collection \"", this._name, "]");
+  }
+  else {
+    output(this.toString(), "\n");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      AvocadoQuery
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -50,189 +256,29 @@ var queryLimit = 20;
 /// @brief prints a query
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoQuery.prototype.print = function(q) {
-  var count = 0;
+AvocadoQuery.prototype.print = function() {
+  if (this instanceof AvocadoQuery) {
+    var count = 0;
 
-  try {
-    while (q.hasNext() && count++ < queryLimit) {
-      output(toJson(q.next()), "\n");
-    }
-
-    if (q.hasNext()) {
-      output("...more results...");
-    }
-
-    it = q;
-  }
-  catch (e) {
-    output("encountered error while printing: " + e);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            toJson
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell V8 Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief JSON representation of an object
-////////////////////////////////////////////////////////////////////////////////
-
-toJson = function(x, indent , useNL) {
-  if (x === null) {
-    return "null";
-  }
-
-  if (x === undefined) {
-    return "undefined";
-  }
-
-  if (useNL === undefined && (indent === true || indent === false)) {
-    useNL = indent;
-    indent = "";
-  }
-
-  if (! indent) {
-    indent = "";
-  }
-
-  if (x instanceof String || typeof x === "string") {
-    var s = "\"";
-
-    for (var i = 0;  i < x.length;  i++){
-      switch (x[i]) {
-        case '"': s += '\\"'; break;
-        case '\\': s += '\\\\'; break;
-        case '\b': s += '\\b'; break;
-        case '\f': s += '\\f'; break;
-        case '\n': s += '\\n'; break;
-        case '\r': s += '\\r'; break;
-        case '\t': s += '\\t'; break;
-
-        default: {
-          var code = x.charCodeAt(i);
-
-          if (code < 0x20) {
-            s += (code < 0x10 ? '\\u000' : '\\u00') + code.toString(16);
-          }
-          else {
-            s += x[i];
-          }
-        }
+    try {
+      while (this.hasNext() && count++ < queryLimit) {
+        print(this.next());
+        output("\n");
       }
+
+      if (this.hasNext()) {
+        output("...more results...");
+      }
+
+      it = this;
     }
-
-    return s + "\"";
-  }
-
-  if (x instanceof Number || typeof x === "number") {
-    return "" + x;
-  }
-
-  if (x instanceof Boolean || typeof x === "boolean") {
-    return "" + x;
-  }
-
-  if (x instanceof Function) {
-    return x.toString();
-  }
-
-  if (x instanceof Object) {
-    return toJsonObject(x, indent , useNL);
-  }
-
-  return "" + x;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief JSON representation of an array
-////////////////////////////////////////////////////////////////////////////////
-
-Array.toJson = function(a, indent, useNL) {
-  var nl = useNL ? "\n" : " ";
-
-  if (! indent) {
-    indent = "";
-  }
-
-  if (! useNL) {
-    indent = "";
-  }
-
-  if (a.length == 0) {
-    return indent + "[]";
-  }
-
-  var s = "[" + nl;
-  var oldIndent = indent;
-
-  if (useNL) {
-    indent += "  ";
-  }
-
-  for (var i = 0;  i < a.length;  i++) {
-    s += indent + toJson(a[i], indent , useNL);
-
-    if (i < a.length - 1) {
-      s += "," + nl;
+    catch (e) {
+      output("encountered error while printing: " + e);
     }
   }
-
-  s += nl + oldIndent + "]";
-
-  return s;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief JSON representation of an object
-////////////////////////////////////////////////////////////////////////////////
-
-toJsonObject = function(x, indent , useNL) {
-  var nl = useNL ? "\n" : " ";
-
-  if (! indent) {
-    indent = "";
+  else {
+    output(this.toString(), "\n");
   }
-
-  if (typeof(x.toJson) == "function" && x.toJson != toJson) {
-    return indent + x.toJson(indent, useNL);
-  }
-
-  if (x.constructor && typeof(x.constructor.toJson) == "function" && x.constructor.toJson != toJson) {
-    return x.constructor.toJson(x, indent , useNL);
-  }
-
-  var s = "{" + nl;
-
-  // push one level of indent
-  var oldIndent = indent;
-  indent += "  ";
-
-  if (! useNL) {
-    indent = "";
-  }
-
-  var sep = "";
-
-  for (var k in x) {
-    var val = x[k];
-
-    s += sep + indent + "\"" + k + "\" : " + toJson(val, indent , useNL);
-    sep = "," + nl;
-  }
-
-  // pop one level of indent
-  indent = oldIndent;
-
-  return s + nl + indent + "}";
 }
 
 ////////////////////////////////////////////////////////////////////////////////

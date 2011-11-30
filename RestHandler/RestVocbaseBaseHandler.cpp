@@ -217,21 +217,19 @@ void RestVocbaseBaseHandler::generateResultSetNext () {
   TRI_doc_collection_t* collection = _resultSet->_containerElement->_container->_collection;
 
   // executes a result set query
-  TRI_voc_did_t did;
-  TRI_voc_did_t rid;
-  TRI_json_t const* a;
-  TRI_json_t augmented;
-  TRI_shaped_json_t* result = _resultSet->next(_resultSet, &did, &rid, &a);
+  TRI_rs_entry_t const* entry = _resultSet->next(_resultSet);
 
   // add document identifier to buffer
-  string id = StringUtils::itoa(_collection->_cid) + ":" + StringUtils::itoa(did);
+  string id = StringUtils::itoa(_collection->_cid) + ":" + StringUtils::itoa(entry->_did);
 
-  if (a == NULL || a->_type != TRI_JSON_ARRAY) {
+  TRI_json_t augmented;
+
+  if (entry->_augmented._type != TRI_JSON_ARRAY) {
     augmented._type = TRI_JSON_ARRAY;
     TRI_InitVector(&augmented._value._objects, sizeof(TRI_json_t));
   }
   else {
-    TRI_CopyToJson(&augmented, a);
+    TRI_CopyToJson(&augmented, &entry->_augmented);
   }
 
   TRI_Insert2ArrayJson(&augmented, "_id", TRI_CreateStringCopyJson(id.c_str()));
@@ -240,14 +238,14 @@ void RestVocbaseBaseHandler::generateResultSetNext () {
   TRI_string_buffer_t buffer;
   TRI_InitStringBuffer(&buffer);
 
-  TRI_StringifyAugmentedShapedJson(collection->_shaper, &buffer, result, &augmented);
+  TRI_StringifyAugmentedShapedJson(collection->_shaper, &buffer, &entry->_document, &augmented);
 
   TRI_DestroyJson(&augmented);
 
   // and generate a response
   response = new HttpResponse(HttpResponse::OK);
   response->setContentType("application/json");
-  response->setHeader("ETag", "\"" + StringUtils::itoa(rid) + "\"");
+  response->setHeader("ETag", "\"" + StringUtils::itoa(entry->_rid) + "\"");
 
   response->body().appendText(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
 

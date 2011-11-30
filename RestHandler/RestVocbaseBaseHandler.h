@@ -43,9 +43,12 @@
 ///
 /// Next steps:
 ///
-/// - learn more about @ref Actions "actions"
 /// - learn more about the @ref RestInterface "REST interface"
 /// - learn more about the @ref CRUDDocument "REST interface for documents"
+///
+/// Advanced Topis:
+///
+/// - learn more about @ref Actions "actions"
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -90,10 +90,9 @@ v8::Handle<v8::Value> TRI_ObjectJson (TRI_json_t const*);
 /// @brief converts a TRI_shaped_json_t into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_ObjectShapedJson (TRI_doc_collection_t* collection,
-                                            TRI_voc_did_t did,
-                                            TRI_shaper_t* shaper,
-                                            TRI_shaped_json_t const* shaped);
+v8::Handle<v8::Value> TRI_ObjectRSEntry (TRI_doc_collection_t* collection,
+                                         TRI_shaper_t* shaper,
+                                         TRI_rs_entry_t const* entry);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a TRI_result_set_t into a V8 array

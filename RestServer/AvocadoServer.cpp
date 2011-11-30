@@ -70,6 +70,7 @@ using namespace triagens::avocado;
 #include "RestServer/js-actions.h"
 #include "RestServer/js-json.h"
 #include "RestServer/js-shell.h"
+#include "RestServer/js-graph.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -254,6 +255,7 @@ void AvocadoServer::buildApplicationServer () {
     StartupLoader.defineScript("json.js", JS_json);
     StartupLoader.defineScript("shell.js", JS_shell);
     StartupLoader.defineScript("actions.js", JS_actions);
+    StartupLoader.defineScript("graph.js", JS_graph);
   }
   else {
     StartupLoader.setDirectory(_startupPath);
@@ -417,7 +419,7 @@ void AvocadoServer::executeShell () {
   v8::Isolate* isolate;
   v8::Persistent<v8::Context> context;
   bool ok;
-  char const* files[] = { "shell.js", "json.js" };
+  char const* files[] = { "shell.js", "json.js", "graph.js" };
   size_t i;
 
   // only simple logging

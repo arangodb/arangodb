@@ -496,6 +496,8 @@ static void OutputMessage (TRI_log_level_e level,
                            char* message,
                            size_t length,
                            bool copy) {
+  size_t i;
+
   if (! LoggingActive) {
     if (! copy) {
       TRI_FreeString(message);
@@ -520,12 +522,10 @@ static void OutputMessage (TRI_log_level_e level,
   else {
     TRI_LockSpin(&AppendersLock);
 
-    size_t n = TRI_SizeVectorPointer(&Appenders);
-    size_t i;
+    for (i = 0;  i < Appenders._length;  ++i) {
+      TRI_log_appender_t* appender;
 
-    for (i = 0;  i < n;  ++i) {
-      TRI_log_appender_t* appender = TRI_AtVectorPointer(&Appenders, i);
-
+      appender = Appenders._buffer[i];
       appender->log(appender, level, severity, message, length);
     }
 
@@ -543,7 +543,6 @@ static void OutputMessage (TRI_log_level_e level,
 
 static void MessageQueueWorker (void* data) {
   int sl;
-  size_t m;
   size_t j;
 
   TRI_vector_t buffer;
@@ -560,11 +559,11 @@ static void MessageQueueWorker (void* data) {
       sl += 1000;
     }
     else {
-      size_t n;
+      size_t m;
       size_t i;
 
       // move message from queue into temporary buffer
-      m = TRI_SizeVector(&LogMessageQueue);
+      m = LogMessageQueue._length;
 
       for (j = 0;  j < m;  ++j) {
         TRI_PushBackVector(&buffer, TRI_AtVector(&LogMessageQueue, j));
@@ -582,11 +581,10 @@ static void MessageQueueWorker (void* data) {
 
         TRI_LockSpin(&AppendersLock);
 
-        n = TRI_SizeVectorPointer(&Appenders);
+        for (i = 0;  i < Appenders._length;  ++i) {
+          TRI_log_appender_t* appender;
 
-        for (i = 0;  i < n;  ++i) {
-          TRI_log_appender_t* appender = TRI_AtVectorPointer(&Appenders, i);
-
+          appender = Appenders._buffer[i];
           appender->log(appender, msg->_level, msg->_severity, msg->_message, msg->_length);
         }
 
@@ -620,9 +618,7 @@ static void MessageQueueWorker (void* data) {
   TRI_LockMutex(&LogMessageQueueLock);
   TRI_DestroyVector(&buffer);
 
-  m = TRI_SizeVector(&LogMessageQueue);
-
-  for (j = 0;  j < m;  ++j) {
+  for (j = 0;  j < LogMessageQueue._length;  ++j) {
     log_message_t* msg;
 
     msg = TRI_AtVector(&LogMessageQueue, j);
@@ -802,10 +798,10 @@ void TRI_SetLogSeverityLogging (char const* severities) {
   IsDevelopment = 0;
   IsHuman = 0;
 
-  n = TRI_SizeVectorString(&split);
+  n = split._length;
 
   for (i = 0;  i < n;  ++i) {
-    char const* type = TRI_AtVectorString(&split, i);
+    char const* type = split._buffer[i];
 
     if (TRI_CaseEqualString(type, "exception")) {
       IsException = 1;
@@ -1040,7 +1036,7 @@ TRI_vector_t* TRI_BufferLogging (TRI_log_level_e level, uint64_t start) {
 
   TRI_UnlockMutex(&BufferLock);
 
-  qsort(TRI_BeginVector(result), TRI_SizeVector(result), sizeof(TRI_log_buffer_t), LidCompare);
+  qsort(TRI_BeginVector(result), result->_length, sizeof(TRI_log_buffer_t), LidCompare);
 
   return result;
 }
@@ -1052,11 +1048,8 @@ TRI_vector_t* TRI_BufferLogging (TRI_log_level_e level, uint64_t start) {
 void TRI_FreeBufferLogging (TRI_vector_t* buffer) {
   TRI_log_buffer_t* buf;
   size_t i;
-  size_t n;
 
-  n = TRI_SizeVector(buffer);
-
-  for (i = 0;  i < n;  ++i) {
+  for (i = 0;  i < buffer->_length;  ++i) {
     buf = TRI_AtVector(buffer, i);
 
     TRI_FreeString(buf->_text);
@@ -1212,17 +1205,14 @@ static void LogAppenderFile_Reopen (TRI_log_appender_t* appender) {
 
 static void LogAppenderFile_Close (TRI_log_appender_t* appender) {
   log_appender_file_t* self;
-  size_t n;
   size_t i;
 
   self = (log_appender_file_t*) appender;
 
   TRI_LockSpin(&AppendersLock);
 
-  n = TRI_SizeVectorPointer(&Appenders);
-
-  for (i = 0;  i < n;  ++i) {
-    if (appender == TRI_AtVectorPointer(&Appenders, i)) {
+  for (i = 0;  i < Appenders._length;  ++i) {
+    if (appender == Appenders._buffer[i]) {
       TRI_RemoveVectorPointer(&Appenders, i);
       break;
     }
@@ -1403,14 +1393,11 @@ static void LogAppenderSyslog_Reopen (TRI_log_appender_t* appender) {
 static void LogAppenderSyslog_Close (TRI_log_appender_t* appender) {
   log_appender_syslog_t* self;
   size_t i;
-  size_t n;
 
   TRI_LockSpin(&AppendersLock);
 
-  n = TRI_SizeVectorPointer(&Appenders);
-
-  for (i = 0;  i < n;  ++i) {
-    if (appender == TRI_AtVectorPointer(&Appenders, i)) {
+  for (i = 0;  i < Appenders._length;  ++i) {
+    if (appender == Appenders._buffer[i]) {
       TRI_RemoveVectorPointer(&Appenders, i);
       break;
     }
@@ -1555,8 +1542,8 @@ void TRI_CloseLogging () {
 
   TRI_LockSpin(&AppendersLock);
 
-  if (TRI_SizeVectorPointer(&Appenders) != 0) {
-    appender = TRI_AtVectorPointer(&Appenders, 0);
+  if (Appenders._length != 0) {
+    appender = Appenders._buffer[0];
   }
 
   TRI_UnlockSpin(&AppendersLock);
@@ -1572,15 +1559,12 @@ void TRI_CloseLogging () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ReopenLogging () {
-  size_t n;
   size_t i;
 
   TRI_LockSpin(&AppendersLock);
 
-  n = TRI_SizeVectorPointer(&Appenders);
-
-  for (i = 0;  i < n;  ++i) {
-    TRI_log_appender_t* appender = TRI_AtVectorPointer(&Appenders, i);
+  for (i = 0;  i < Appenders._length;  ++i) {
+    TRI_log_appender_t* appender = Appenders._buffer[i];
 
     appender->reopen(appender);
   }

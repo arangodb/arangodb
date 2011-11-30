@@ -140,20 +140,28 @@ TRI_doc_datafile_info_t;
 /// Ends a write transaction. Should only be called after a successful
 /// "beginWrite".
 ///
-/// <b><tt>TRI_doc_mptr_t const* create (TRI_doc_collection_t*, TRI_shaped_json_t const*)</tt></b>
+/// @FUN{void createHeader (TRI_doc_collection_t* @FA{collection}, TRI_datafile_t* @FA{datafile}, TRI_df_marker_t const* @FA{marker}, size_t @FA{markerSize}, TRI_doc_mptr_t* {mptr}, void const* @FA{data})}
+///
+/// Creates a new header.
+///
+/// @FUN{void updateHeader (TRI_doc_collection_t* @FA{collection}, TRI_datafile_t* @FA{datafile}, TRI_df_marker_t const* @FA{marker}, size_t @FA{markerSize}, TRI_doc_mptr_t const* {mptr}, TRI_doc_mptr_t* @FA{update})}
+///
+/// Updates an existing header.
+///
+/// <b><tt>TRI_doc_mptr_t const* create (TRI_doc_collection_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*)</tt></b>
 ///
 /// Adds a new document to the collection and returns the master pointer of the
 /// newly created entry. In case of an error, NULL is returned and "TRI_errno()" is
 /// set accordingly. The function DOES NOT acquire or release a write lock. This
 /// must be done by the caller.
 ///
-/// <b><tt>TRI_doc_mptr_t const* createJson (TRI_doc_collection_t*, TRI_json_t const*)</tt></b>
+/// <b><tt>TRI_doc_mptr_t const* createJson (TRI_doc_collection_t*, TRI_df_marker_type_e, TRI_json_t const*)</tt></b>
 ///
 /// Adds a new document to the collection and returns the master pointer of the
 /// newly created entry. In case of an error, NULL is returned and "TRI_errno()"
 /// is set accordingly. The function will acquire and release a write lock.
 ///
-/// <b><tt>TRI_voc_did_t createLock (TRI_doc_collection_t*, TRI_shaped_json_t const*)</tt></b>
+/// <b><tt>TRI_voc_did_t createLock (TRI_doc_collection_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*)</tt></b>
 ///
 /// Adds a new document to the collection and returns document identifier of the
 /// newly created entry. In case of an error, NULL is returned and "TRI_errno()"
@@ -219,9 +227,12 @@ typedef struct TRI_doc_collection_s {
   bool (*beginWrite) (struct TRI_doc_collection_s*);
   bool (*endWrite) (struct TRI_doc_collection_s*);
 
-  TRI_doc_mptr_t const* (*create) (struct TRI_doc_collection_s*, TRI_shaped_json_t const*);
-  TRI_doc_mptr_t const* (*createJson) (struct TRI_doc_collection_s*, TRI_json_t const*);
-  TRI_voc_did_t (*createLock) (struct TRI_doc_collection_s*, TRI_shaped_json_t const*);
+  void (*createHeader) (struct TRI_doc_collection_s*, TRI_datafile_t*, TRI_df_marker_t const*, size_t, TRI_doc_mptr_t*, void const* data);
+  void (*updateHeader) (struct TRI_doc_collection_s*, TRI_datafile_t*, TRI_df_marker_t const*, size_t, TRI_doc_mptr_t const*, TRI_doc_mptr_t*);
+
+  TRI_doc_mptr_t const* (*create) (struct TRI_doc_collection_s*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*);
+  TRI_doc_mptr_t const* (*createJson) (struct TRI_doc_collection_s*, TRI_df_marker_type_e, TRI_json_t const*, void const*);
+  TRI_voc_did_t (*createLock) (struct TRI_doc_collection_s*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*);
 
   TRI_doc_mptr_t const* (*read) (struct TRI_doc_collection_s*, TRI_voc_did_t);
 
@@ -250,6 +261,23 @@ typedef struct TRI_doc_document_marker_s {
   // char data[]
 }
 TRI_doc_document_marker_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief edge datafile marker
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_doc_edge_marker_s {
+  TRI_doc_document_marker_t base;
+
+  TRI_voc_cid_t _toCid;
+  TRI_voc_did_t _toDid;
+
+  TRI_voc_cid_t _fromCid;
+  TRI_voc_did_t _fromDid;
+
+  // char data[]
+}
+TRI_doc_edge_marker_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document datafile deletion marker

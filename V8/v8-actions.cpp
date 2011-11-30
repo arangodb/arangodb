@@ -368,7 +368,7 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
 
       switch (ap->_type) {
         case TRI_ACT_COLLECTION: {
-          TRI_vocbase_col_t const* collection = TRI_FindCollectionByNameVocBase(vocbase, v.c_str());
+          TRI_vocbase_col_t const* collection = TRI_FindCollectionByNameVocBase(vocbase, v.c_str(), false);
 
           if (collection == 0) {
             return new HttpResponse(HttpResponse::NOT_FOUND);

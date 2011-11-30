@@ -61,6 +61,7 @@ struct TRI_string_buffer_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
+  TRI_JSON_UNUSED = 0,
   TRI_JSON_NULL = 1,
   TRI_JSON_BOOLEAN = 2,
   TRI_JSON_NUMBER = 3,
