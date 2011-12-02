@@ -37,13 +37,30 @@ using namespace triagens::rest;
 using namespace triagens::avocado;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page StartStop Starting and stopping
+/// @page StartStopTOC
+///
+/// <ol>
+///  <li>Frequently Used Options</li>
+///  <li>Starting the Debug Shell</li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page StartStop Starting and Stopping the AvocadoDB
 ///
 /// The AvocadoDB has two mode of operations: as server, where it will answer to
 /// HTTP request, see @ref HttpInterface, and a debug shell, where you can
 /// access the database directly. Using the debug shell always you to issue all
 /// command normally available in actions and transactions, see @ref
 /// AvocadoScript.
+///
+/// You should never start more than one server for the same database,
+/// independent from the mode of operation.
+///
+/// <hr>
+/// @copydoc StartStopTOC
+///
+/// @section StartStopOptions Frequently Used Options
 ///
 /// The following main command-line options are available.
 ///
@@ -59,6 +76,10 @@ using namespace triagens::avocado;
 /// server. The arg is specified as a string and can be one of the following
 /// values: fatal, error, warning, info, debug, trace.  For more information see
 /// @ref CommandLineLogging "here".
+///
+/// @section StartStopShell Starting the Debug Shell
+///
+/// @verbinclude start1
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------

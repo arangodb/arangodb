@@ -31,7 +31,7 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page CRUDDocument CRUD for Documents
+/// @page CRUDDocument REST Interface for Documents
 ///
 /// The basic operations (create, read, update, delete) for documents are mapped
 /// to the standard HTTP methods (POST, GET, PUT, DELETE). An identifier for the

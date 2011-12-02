@@ -5,29 +5,19 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright by triAGENS GmbH - All rights reserved.
+/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
 ///
-/// The Programs (which include both the software and documentation)
-/// contain proprietary information of triAGENS GmbH; they are
-/// provided under a license agreement containing restrictions on use and
-/// disclosure and are also protected by copyright, patent and other
-/// intellectual and industrial property laws. Reverse engineering,
-/// disassembly or decompilation of the Programs, except to the extent
-/// required to obtain interoperability with other independently created
-/// software or as specified by law, is prohibited.
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
 ///
-/// The Programs are not intended for use in any nuclear, aviation, mass
-/// transit, medical, or other inherently dangerous applications. It shall
-/// be the licensee's responsibility to take all appropriate fail-safe,
-/// backup, redundancy, and other measures to ensure the safe use of such
-/// applications if the Programs are used for such purposes, and triAGENS
-/// GmbH disclaims liability for any damages caused by such use of
-/// the Programs.
+///     http://www.apache.org/licenses/LICENSE-2.0
 ///
-/// This software is the confidential and proprietary information of
-/// triAGENS GmbH. You shall not disclose such confidential and
-/// proprietary information and shall use it only in accordance with the
-/// terms of the license agreement you entered into with triAGENS GmbH.
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
@@ -142,10 +132,51 @@ Object.prototype.print = function() {
 
 AvocadoCollection.prototype.print = function() {
   if (this instanceof AvocadoCollection) {
-    output("[collection \"", this._name, "]");
+    status = this.status();
+
+    if (status == 1) {
+      output("[new born collection ", toJson(this._name), "]");
+    }
+    else if (status == 2) {
+      output("[unloaded collection ", toJson(this._name), "]");
+    }
+    else if (status == 3) {
+      output("[collection ", toJson(this._name), "]");
+    }
+    else {
+      output("[corrupted collection ", toJson(this._name), "]");
+    }
   }
   else {
     output(this.toString(), "\n");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief string representation of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.toString = function() {
+  var status;
+
+  if (this instanceof AvocadoCollection) {
+    status = this.status();
+
+    if (status == 1) {
+      return "[new born collection at " + toJson(this._name) + "]";
+    }
+    else if (status == 2) {
+      return "[unloaded collection at " + toJson(this._name) + "]";
+    }
+    else if (status == 3) {
+      return "[collection at " + toJson(this._name) + "]";
+    }
+    else {
+      return "[corrupted collection at " + toJson(this._name) + "]";
+    }
+  }
+  else {
+    return "[object]";
   }
 }
 
@@ -168,10 +199,23 @@ AvocadoCollection.prototype.print = function() {
 
 AvocadoDatabase.prototype.print = function() {
   if (this instanceof AvocadoDatabase) {
-    output("[vocbase at \"", this._path, "]");
+    output("[vocbase at ", toJson(this._path), "]");
   }
   else {
     output(this.toString(), "\n");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief string representation of a vocbase
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype.toString = function() {
+  if (this instanceof AvocadoDatabase) {
+    return "[vocbase at " + toJson(this._path) + "]";
+  }
+  else {
+    return "[object]";
   }
 }
 
@@ -194,10 +238,23 @@ AvocadoDatabase.prototype.print = function() {
 
 AvocadoEdges.prototype.print = function() {
   if (this instanceof AvocadoEdges) {
-    output("[edges at \"", this._path, "]");
+    output("[edges at ", toJson(this._path), "]");
   }
   else {
     output(this.toString(), "\n");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief string representation of a vocbase
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoEdges.prototype.toString = function() {
+  if (this instanceof AvocadoEdges) {
+    return "[edges at " + toJson(this._path) + "]";
+  }
+  else {
+    return "[object]";
   }
 }
 
@@ -220,7 +277,7 @@ AvocadoEdges.prototype.print = function() {
 
 AvocadoEdgesCollection.prototype.print = function() {
   if (this instanceof AvocadoEdgesCollection) {
-    output("[edges collection \"", this._name, "]");
+    output("[edges collection ", toJson(this._name), "]");
   }
   else {
     output(this.toString(), "\n");
