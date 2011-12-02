@@ -42,6 +42,7 @@ avocdb_SOURCES = \
 	Basics/Initialise.cpp \
 	Basics/json.c \
 	Basics/locks-posix.c \
+	Basics/locks-macos.c \
 	Basics/Logger.cpp \
 	Basics/LoggerData.cpp \
 	Basics/LoggerInfo.cpp \
