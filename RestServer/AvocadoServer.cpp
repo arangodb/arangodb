@@ -186,6 +186,7 @@ void AvocadoServer::buildApplicationServer () {
   _applicationAdminServer = ApplicationAdminServer::create(_applicationServer);
   _applicationServer->addFeature(_applicationAdminServer);
 
+  _applicationAdminServer->allowAdminDirectory();
   _applicationAdminServer->allowLogViewer();
   _applicationAdminServer->allowVersion("avocado", TRIAGENS_VERSION);
 
@@ -269,6 +270,7 @@ void AvocadoServer::buildApplicationServer () {
 
       if (ok) {
         LOGGER_FATAL << "action directory '" << path << "' must be a directory";
+        LOGGER_INFO << "please use the '--database.directory' option";
         TRIAGENS_REST_SHUTDOWN;
         exit(EXIT_FAILURE);
       }
@@ -277,6 +279,7 @@ void AvocadoServer::buildApplicationServer () {
 
       if (! ok) {
         LOGGER_FATAL << "cannot create action directory '" << path << "': " << TRI_last_error();
+        LOGGER_INFO << "please use the '--database.directory' option";
         TRIAGENS_REST_SHUTDOWN;
         exit(EXIT_FAILURE);
       }
@@ -312,6 +315,7 @@ void AvocadoServer::buildApplicationServer () {
   if (_daemonMode) {
     if (_pidFile.empty()) {
       LOGGER_FATAL << "no pid-file defined, but daemon mode requested";
+      LOGGER_INFO << "please use the '--pid-file' option";
       TRIAGENS_REST_SHUTDOWN;
       exit(EXIT_FAILURE);
     }
@@ -319,6 +323,7 @@ void AvocadoServer::buildApplicationServer () {
 
   if (_databasePath.empty()) {
     LOGGER_FATAL << "no database path has been supplied, giving up";
+    LOGGER_INFO << "please use the '--database.directory' option";
     TRIAGENS_REST_SHUTDOWN;
     exit(EXIT_FAILURE);
   }
@@ -419,7 +424,7 @@ void AvocadoServer::executeShell () {
   v8::Isolate* isolate;
   v8::Persistent<v8::Context> context;
   bool ok;
-  char const* files[] = { "shell.js", "json.js", "graph.js" };
+  char const* files[] = { "shell.js", "json.js" };
   size_t i;
 
   // only simple logging
@@ -483,6 +488,7 @@ void AvocadoServer::executeShell () {
     char* input = console->prompt("avocado> ");
 
     if (input == 0) {
+      printf("bye...\n");
       break;
     }
 
@@ -517,6 +523,7 @@ void AvocadoServer::openDatabase () {
 
   if (_vocbase == 0) {
     LOGGER_FATAL << "cannot open database '" << _databasePath << "'";
+    LOGGER_INFO << "please use the '--database.directory' option";
     TRIAGENS_REST_SHUTDOWN;
     exit(EXIT_FAILURE);
   }

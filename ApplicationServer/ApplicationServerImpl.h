@@ -35,6 +35,33 @@
 #include <Rest/ApplicationServer.h>
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @page CommandLineLoggingTOC
+///
+/// <ol>
+///  <li>General Logging Options</li>
+///   <ol>
+///    <li>log.file</li>
+///    <li>log.severity</li>
+///    <li>log.syslog</li>
+///   </ol>
+///  <li>Human Readable Logging</li>
+///   <ol>
+///    <li>log.level</li>
+///    <li>log.line-number</li>
+///    <li>log.prefix</li>
+///    <li>log.thread</li>
+///   </ol>
+///  <li>Machine Readable Logging</li>
+///   <ol>
+///    <li>log.application</li>
+///    <li>log.facility</li>
+///    <li>log.format</li>
+///    <li>log.hostname</li>
+///   </ol>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @page CommandLineLogging Command-Line Options for Logging
 ///
 /// There are two different kinds of logs. Human-readable logs and
@@ -42,6 +69,13 @@
 /// administration with information about the server. The machine-readable logs
 /// are used to provide statistics about executed requests and timings about
 /// computation steps.
+///
+/// <hr>
+/// @copydoc CommandLineLoggingTOC
+///
+////////////////////////////////////////////////////////////////////////////////
+/// @section GeneralLogging General Logging Options
+////////////////////////////////////////////////////////////////////////////////
 ///
 /// @copydetails triagens::rest::ApplicationServerImpl::logFile
 ///

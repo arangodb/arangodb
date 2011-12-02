@@ -2131,10 +2131,10 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a TRI_vocbase_col_t into a string
+/// @brief returns the status of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_ToStringVocbaseCol (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   TRI_vocbase_col_t const* collection = UnwrapClass<TRI_vocbase_col_t>(argv.Holder());
@@ -2143,22 +2143,20 @@ static v8::Handle<v8::Value> JS_ToStringVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
   }
 
-  string name;
-
   if (collection->_corrupted) {
-    name = "[corrupted collection \"" + string(collection->_name) + "\"]";
+    return scope.Close(v8::Number::New(4));
   }
   else if (collection->_newBorn) {
-    name = "[new born collection \"" + string(collection->_name) + "\"]";
+    return scope.Close(v8::Number::New(1));
   }
   else if (collection->_loaded) {
-    name = "[collection \"" + string(collection->_name) + "\"]";
+    return scope.Close(v8::Number::New(3));
   }
   else {
-    name = "[unloaded collection \"" + string(collection->_name) + "\"]";
+    return scope.Close(v8::Number::New(2));
   }
 
-  return scope.Close(v8::String::New(name.c_str()));
+  return scope.Close(v8::Number::New(5));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2390,6 +2388,10 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   // convert the JavaScript string to a string
   string key = TRI_ObjectToString(name);
 
+  if (key == "") {
+    return scope.Close(v8::ThrowException(v8::String::New("name must not be empty")));
+  }
+
   if (key == "toString" || key == "print" || key[0] == '_') {
     return v8::Handle<v8::Value>();
   }
@@ -2423,10 +2425,10 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a TRI_vocbase_t into a string
+/// @brief returns all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_ToStringVocBase (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_CollectionsVocBase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(argv.Holder());
@@ -2435,9 +2437,18 @@ static v8::Handle<v8::Value> JS_ToStringVocBase (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
   }
 
-  string name = "[vocbase at \"" + string(vocbase->_path) + "\"]";
+  v8::Handle<v8::Array> result = v8::Array::New();
+  TRI_vector_pointer_t colls = TRI_CollectionsVocBase(vocbase);
 
-  return scope.Close(v8::String::New(name.c_str()));
+  for (size_t i = 0;  i < colls._length;  ++i) {
+    TRI_vocbase_col_t const* collection = (TRI_vocbase_col_t const*) colls._buffer[i];
+
+    result->Set(i, TRI_WrapCollection(collection));
+  }
+
+  TRI_DestroyVectorPointer(&colls);
+
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2477,6 +2488,10 @@ static v8::Handle<v8::Value> MapGetEdges (v8::Local<v8::String> name,
   // convert the JavaScript string to a string
   string key = TRI_ObjectToString(name);
 
+  if (key == "") {
+    return scope.Close(v8::ThrowException(v8::String::New("name must not be empty")));
+  }
+
   if (key == "toString" || key == "print" || key[0] == '_') {
     return v8::Handle<v8::Value>();
   }
@@ -2506,10 +2521,10 @@ static v8::Handle<v8::Value> MapGetEdges (v8::Local<v8::String> name,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a TRI_vocbase_t into a string
+/// @brief returns all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_ToStringEdges (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_CollectionsEdges (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(argv.Holder());
@@ -2518,9 +2533,18 @@ static v8::Handle<v8::Value> JS_ToStringEdges (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
   }
 
-  string name = "[edges at \"" + string(vocbase->_path) + "\"]";
+  v8::Handle<v8::Array> result = v8::Array::New();
+  TRI_vector_pointer_t colls = TRI_CollectionsVocBase(vocbase);
 
-  return scope.Close(v8::String::New(name.c_str()));
+  for (size_t i = 0;  i < colls._length;  ++i) {
+    TRI_vocbase_col_t const* collection = (TRI_vocbase_col_t const*) colls._buffer[i];
+
+    result->Set(i, TRI_WrapEdgesCollection(collection));
+  }
+
+  TRI_DestroyVectorPointer(&colls);
+
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2534,44 +2558,32 @@ static v8::Handle<v8::Value> JS_ToStringEdges (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @page JavaScriptFuncIndex JavaScript Function Index
 ///
-////////////////////////////////////////////////////////////////////////////////
 /// @section JSFDatabaseSelection Database Selection
-////////////////////////////////////////////////////////////////////////////////
 ///
 /// - @ref MapGetVocBase "db".@FA{database}
 ///
 /// - @ref MapGetVocBase "edges".@FA{database}
 ///
-////////////////////////////////////////////////////////////////////////////////
 /// @section JSFDatabases Database Functions
-////////////////////////////////////////////////////////////////////////////////
 ///
 /// - @ref JS_ParameterVocbaseCol "parameter"
 ///
-////////////////////////////////////////////////////////////////////////////////
 /// @subsection JSFDocument Database Document Functions
-////////////////////////////////////////////////////////////////////////////////
 ///
 /// - @ref JS_DeleteVocbaseCol "delete"
 /// - @ref JS_ReplaceVocbaseCol "replace"
 /// - @ref JS_SaveVocbaseCol "save"
 /// - @ref JS_SaveEdgesCol "save" for edges
 ///
-////////////////////////////////////////////////////////////////////////////////
 /// @subsection JSFIndex Database Index Functions
-////////////////////////////////////////////////////////////////////////////////
 ///
 /// - @ref JS_DropIndexVocbaseCol "dropIndex"
 /// - @ref JS_EnsureGeoIndexVocbaseCol "ensureGeoIndex"
 /// - @ref JS_GetIndexesVocbaseCol "getIndexes"
 ///
-////////////////////////////////////////////////////////////////////////////////
 /// @section JSFQueries Query Functions
-////////////////////////////////////////////////////////////////////////////////
 ///
-////////////////////////////////////////////////////////////////////////////////
 /// @subsection JSFQueryBuilding Query Building Functions
-////////////////////////////////////////////////////////////////////////////////
 ///
 /// - @ref JS_AllQuery "all"
 /// - @ref JS_DistanceQuery "distance"
@@ -2583,9 +2595,7 @@ static v8::Handle<v8::Value> JS_ToStringEdges (v8::Arguments const& argv) {
 /// - @ref JS_SkipQuery "skip"
 /// - @ref JS_WithinQuery "within"
 ///
-////////////////////////////////////////////////////////////////////////////////
 /// @subsection JSFQueryExecuting Query Execution Functions
-////////////////////////////////////////////////////////////////////////////////
 ///
 /// - @ref JS_CountQuery "count"
 /// - @ref JS_ExplainQuery "explain"
@@ -2594,9 +2604,7 @@ static v8::Handle<v8::Value> JS_ToStringEdges (v8::Arguments const& argv) {
 /// - @ref JS_NextRefQuery "nextRef"
 /// - @ref JS_ShowQuery "show"
 ///
-////////////////////////////////////////////////////////////////////////////////
 /// @section JSFGlobal Global Functions
-////////////////////////////////////////////////////////////////////////////////
 ///
 /// - @ref JS_FromJson "fromJson"
 /// - @ref JSF_toJson "toJson"
@@ -2611,21 +2619,15 @@ static v8::Handle<v8::Value> JS_ToStringEdges (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @page JavaScriptFunc JavaScript Functions
 ///
-////////////////////////////////////////////////////////////////////////////////
 /// @section JSFDatabaseSelection Database Selection
-////////////////////////////////////////////////////////////////////////////////
 ///
 /// @ref MapGetVocBase "db".@FA{database}
 ///
-////////////////////////////////////////////////////////////////////////////////
 /// @section JSFDatabases Database Functions
-////////////////////////////////////////////////////////////////////////////////
 ///
 /// @copydetails JS_ParameterVocbaseCol
 ///
-////////////////////////////////////////////////////////////////////////////////
 /// @subsection JSFDocument Database Document Functions
-////////////////////////////////////////////////////////////////////////////////
 ///
 /// @copydetails JS_DeleteVocbaseCol
 ///
@@ -2635,9 +2637,7 @@ static v8::Handle<v8::Value> JS_ToStringEdges (v8::Arguments const& argv) {
 ///
 /// @copydetails JS_SaveEdgesCol
 ///
-////////////////////////////////////////////////////////////////////////////////
 /// @subsection JSFIndex Database Index Functions
-////////////////////////////////////////////////////////////////////////////////
 ///
 /// @copydetails JS_DropIndexVocbaseCol
 ///
@@ -2645,13 +2645,9 @@ static v8::Handle<v8::Value> JS_ToStringEdges (v8::Arguments const& argv) {
 ///
 /// @copydetails JS_GetIndexesVocbaseCol
 ///
-////////////////////////////////////////////////////////////////////////////////
 /// @section JSFQueries Query Functions
-////////////////////////////////////////////////////////////////////////////////
 ///
-////////////////////////////////////////////////////////////////////////////////
 /// @subsection JSFQueryBuilding Query Building Functions
-////////////////////////////////////////////////////////////////////////////////
 ///
 /// @copydetails JS_AllQuery
 ///
@@ -2671,9 +2667,7 @@ static v8::Handle<v8::Value> JS_ToStringEdges (v8::Arguments const& argv) {
 ///
 /// @copydetails JS_WithinQuery
 ///
-////////////////////////////////////////////////////////////////////////////////
 /// @subsection JSFQueryExecuting Query Execution Functions
-////////////////////////////////////////////////////////////////////////////////
 ///
 /// @copydetails JS_CountQuery
 ///
@@ -2687,9 +2681,7 @@ static v8::Handle<v8::Value> JS_ToStringEdges (v8::Arguments const& argv) {
 ///
 /// @copydetails JS_ShowQuery
 ///
-////////////////////////////////////////////////////////////////////////////////
 /// @section JSFGlobal Global Functions
-////////////////////////////////////////////////////////////////////////////////
 ///
 /// @copydetails JS_FromJson
 ///
@@ -2835,6 +2827,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   // .............................................................................
 
   v8::Handle<v8::String> AllFuncName = v8::Persistent<v8::String>::New(v8::String::New("all"));
+  v8::Handle<v8::String> CollectionsFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collections"));
   v8::Handle<v8::String> CountFuncName = v8::Persistent<v8::String>::New(v8::String::New("count"));
   v8::Handle<v8::String> DeleteFuncName = v8::Persistent<v8::String>::New(v8::String::New("delete"));
   v8::Handle<v8::String> DistanceFuncName = v8::Persistent<v8::String>::New(v8::String::New("distance"));
@@ -2859,6 +2852,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> SelectFuncName = v8::Persistent<v8::String>::New(v8::String::New("select"));
   v8::Handle<v8::String> ShowFuncName = v8::Persistent<v8::String>::New(v8::String::New("show"));
   v8::Handle<v8::String> SkipFuncName = v8::Persistent<v8::String>::New(v8::String::New("skip"));
+  v8::Handle<v8::String> StatusFuncName = v8::Persistent<v8::String>::New(v8::String::New("status"));
   v8::Handle<v8::String> ToArrayFuncName = v8::Persistent<v8::String>::New(v8::String::New("toArray"));
   v8::Handle<v8::String> WithinFuncName = v8::Persistent<v8::String>::New(v8::String::New("within"));
 
@@ -2889,9 +2883,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
 
   rt->SetNamedPropertyHandler(MapGetVocBase);
 
-  rt->Set(v8g->ToStringFuncName, v8::FunctionTemplate::New(JS_ToStringVocBase));
-
   v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+
+  rt->Set(CollectionsFuncName, v8::FunctionTemplate::New(JS_CollectionsVocBase));
 
   // must come after SetInternalFieldCount
   context->Global()->Set(v8::String::New("AvocadoDatabase"),
@@ -2909,7 +2903,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
 
   rt->SetNamedPropertyHandler(MapGetEdges);
 
-  rt->Set(v8g->ToStringFuncName, v8::FunctionTemplate::New(JS_ToStringEdges));
+  rt->Set(CollectionsFuncName, v8::FunctionTemplate::New(JS_CollectionsEdges));
 
   v8g->EdgesTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
@@ -2946,9 +2940,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(SaveFuncName, v8::FunctionTemplate::New(JS_SaveVocbaseCol));
   rt->Set(SelectFuncName, v8::FunctionTemplate::New(JS_SelectQuery));
   rt->Set(SkipFuncName, v8::FunctionTemplate::New(JS_SkipQuery));
+  rt->Set(StatusFuncName, v8::FunctionTemplate::New(JS_StatusVocbaseCol));
   rt->Set(ToArrayFuncName, v8::FunctionTemplate::New(JS_ToArrayQuery));
   rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
-  rt->Set(v8g->ToStringFuncName, v8::FunctionTemplate::New(JS_ToStringVocbaseCol));
 
   v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 

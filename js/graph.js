@@ -768,6 +768,9 @@ Graph.prototype.addEdge = function (out, ine, label, data) {
     ine._inbound.push(edge);
   }
 
+  edge._inVertex = ine;
+  edge._outVertex = out;
+
   return edge;
 }
 

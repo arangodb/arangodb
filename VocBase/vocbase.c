@@ -486,7 +486,9 @@ TRI_vocbase_col_t const* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t* vocbase
 TRI_vocbase_col_t const* TRI_FindCollectionByNameVocBase (TRI_vocbase_t* vocbase, char const* name, bool bear) {
   TRI_vocbase_col_t const* found;
 
+  TRI_ReadLockReadWriteLock(&vocbase->_lock);
   found = TRI_LookupCollectionByNameVocBase(vocbase, name);
+  TRI_ReadUnlockReadWriteLock(&vocbase->_lock);
 
   if (found != NULL) {
     return found;
@@ -497,6 +499,32 @@ TRI_vocbase_col_t const* TRI_FindCollectionByNameVocBase (TRI_vocbase_t* vocbase
   }
 
   return TRI_BearCollectionVocBase(vocbase, name);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns all known collections
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t* vocbase) {
+  TRI_vector_pointer_t result;
+  TRI_vocbase_col_t* found;
+  size_t i;
+
+  TRI_InitVectorPointer(&result);
+
+  TRI_ReadLockReadWriteLock(&vocbase->_lock);
+
+  for (i = 0;  i < vocbase->_collectionsById._nrAlloc;  ++i) {
+    found = vocbase->_collectionsById._table[i];
+
+    if (found != NULL) {
+      TRI_PushBackVectorPointer(&result, found);
+    }
+  }
+
+  TRI_ReadUnlockReadWriteLock(&vocbase->_lock);
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

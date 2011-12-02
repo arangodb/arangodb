@@ -35,7 +35,7 @@
 #include <VocBase/vocbase.h>
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page Actions Actions
+/// @page Actions First Steps with Actions
 ///
 /// Actions are small JavaScript functions which are used to compute the result
 /// of a request. Normally, the function will use the request parameter @a
@@ -74,13 +74,34 @@
 ///
 /// Next steps:
 ///
-/// - learn about @ref ActionsQueryBuilding "query building functions"
+/// - learn more about @ref DefineAction "Defining an Action"
+/// - learn about @ref ActionsQueryBuilding "Query Building Functions"
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page ActionsQueryBuildingTOC
+///
+/// <ol>
+///  <li>all</li>
+///  <li>distance</li>
+///  <li>document</li>
+///  <li>geo</li>
+///  <li>limit</li>
+///  <li>near</li>
+///  <li>select</li>
+///  <li>skip</li>
+///  <li>within</li>
+/// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ActionsQueryBuilding Query Building Functions for Actions
 ///
 /// The following functions can be used to build the result-set.
+///
+/// <hr>
+/// @copydoc ActionsQueryBuildingTOC
+/// <hr>
 ///
 /// @copydetails JS_AllQuery
 ///

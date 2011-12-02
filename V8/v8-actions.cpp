@@ -226,6 +226,34 @@ static action_options_t* ParseActionOptions (TRI_v8_global_t* v8g,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines a new action
+///
+/// @FUN{defineAction(@FA{name}, @FA{callback})}
+///
+/// Defines an action named @FA{name}, which might contain slahes. The action
+/// can be accessed using the path @c /_action/name. The callback function
+/// is executed as soon as a request is received.
+///
+/// @FA{callback}(@FA{request}, @FA{response})
+///
+/// The request arguments contains a description of the request. A request
+/// parameter @c foo is accessible as @c request.foo.
+///
+/// The callback must define the @FA{response}.
+///
+/// - @FA{response}.responseCode: the response code
+/// - @FA{response}.contentType: the content type of the response
+/// - @FA{response}.body: the body of the response
+///
+/// @FUN{defineAction(@FA{request}, @FA{response}, @FA{options})}
+///
+/// Normally the paramaters are passed to the callback as strings. You can
+/// use the @FA{options}, to force a converstion of the parameter to
+///
+/// - @c "collection"
+/// - @c "number"
+/// - @c "string"
+///
+/// @verbinclude action1
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
