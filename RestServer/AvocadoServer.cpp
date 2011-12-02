@@ -141,7 +141,9 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
     _applicationAdminServer(0),
     _applicationHttpServer(0),
     _httpServer(0),
+    _adminHttpServer(0),
     _httpPort("localhost:8529"),
+    _adminPort("localhost:8530"),
     _dispatcherThreads(1),
     _startupPath(),
     _actionPath(),
@@ -237,6 +239,14 @@ void AvocadoServer::buildApplicationServer () {
     ("startup.directory", &_startupPath, "path to the directory containing the startup scripts")
     ("action.directory", &_actionPath, "path to the action directory, defaults to <database.directory>/_ACTIONS")
     ("action.threads", &_actionThreads, "threads for actions")
+  ;
+
+  // .............................................................................
+  // database options
+  // .............................................................................
+
+  additional["Server Options:help-admin"]
+    ("server.admin-port", &_adminPort, "http server:port for ADMIN requests")
   ;
 
   // .............................................................................
@@ -374,19 +384,37 @@ int AvocadoServer::startupServer () {
   // create a http server and http handler factory
   // .............................................................................
 
-  HttpHandlerFactory* factory = new HttpHandlerFactory();
-
-  vector<AddressPort> ports;
-  ports.push_back(AddressPort(_httpPort));
-
-  _applicationAdminServer->addBasicHandlers(factory);
-
-  factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
-  factory->addPrefixHandler(RestVocbaseBaseHandler::ACTION_PATH, RestHandlerCreator<RestActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
-
   Scheduler* scheduler = _applicationServer->scheduler();
 
-  _httpServer = _applicationHttpServer->buildServer(new AvocadoHttpServer(scheduler, dispatcher), factory, ports);
+  {
+    HttpHandlerFactory* factory = new HttpHandlerFactory();
+
+    vector<AddressPort> ports;
+    ports.push_back(AddressPort(_httpPort));
+
+    _applicationAdminServer->addBasicHandlers(factory);
+
+    factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
+    factory->addPrefixHandler(RestVocbaseBaseHandler::ACTION_PATH, RestHandlerCreator<RestActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
+
+    _httpServer = _applicationHttpServer->buildServer(new AvocadoHttpServer(scheduler, dispatcher), factory, ports);
+  }
+
+  // .............................................................................
+  // create a http server and http handler factory
+  // .............................................................................
+
+  {
+    HttpHandlerFactory* adminFactory = new HttpHandlerFactory();
+
+    vector<AddressPort> adminPorts;
+    adminPorts.push_back(AddressPort(_adminPort));
+
+    _applicationAdminServer->addBasicHandlers(adminFactory);
+    _applicationAdminServer->addHandlers(adminFactory, "/admin");
+
+    _adminHttpServer = _applicationHttpServer->buildServer(adminFactory, adminPorts);
+  }
 
   // .............................................................................
   // start the main event loop
