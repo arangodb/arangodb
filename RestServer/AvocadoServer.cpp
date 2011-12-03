@@ -452,7 +452,7 @@ void AvocadoServer::executeShell () {
   v8::Isolate* isolate;
   v8::Persistent<v8::Context> context;
   bool ok;
-  char const* files[] = { "shell.js", "json.js" };
+  char const* files[] = { "shell.js", "json.js", "graph.js" };
   size_t i;
 
   // only simple logging
