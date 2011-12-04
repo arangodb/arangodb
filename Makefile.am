@@ -11,12 +11,12 @@ LIBS = @BOOST_LIBS@ @LIBEV_LIBS@ @OPENSSL_LIBS@ @V8_LIBS@ -lreadline
 BUILD_H = $(top_srcdir)/build.h
 
 ################################################################################
-## avocdb program
+## avocado program
 ################################################################################
 
-bin_PROGRAMS = avocdb
+bin_PROGRAMS = avocado
 
-avocdb_SOURCES = \
+avocado_SOURCES = \
 	Admin/ApplicationAdminServer.cpp \
 	Admin/RestAdminBaseHandler.cpp \
 	Admin/RestAdminFeConfigurationHandler.cpp \
