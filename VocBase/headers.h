@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOCBASE_HEADERS_H
-#define TRIAGENS_DURHAM_VOCBASE_HEADERS_H 1
+#ifndef TRIAGENS_VOC_BASE_HEADERS_H
+#define TRIAGENS_VOC_BASE_HEADERS_H 1
 
 #include <Basics/Common.h>
 
@@ -107,5 +107,5 @@ void TRI_IterateSimpleHeaders (TRI_headers_t*,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

@@ -25,8 +25,8 @@
 /// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef FYN_APPLICATIONSERVER_APPLICATION_SERVER_IMPL_H
-#define FYN_APPLICATIONSERVER_APPLICATION_SERVER_IMPL_H 1
+#ifndef TRIAGENS_APPLICATION_SERVER_APPLICATION_SERVER_IMPL_H
+#define TRIAGENS_APPLICATION_SERVER_APPLICATION_SERVER_IMPL_H 1
 
 #include <Basics/Common.h>
 
@@ -73,9 +73,7 @@
 /// <hr>
 /// @copydoc CommandLineLoggingTOC
 ///
-////////////////////////////////////////////////////////////////////////////////
 /// @section GeneralLogging General Logging Options
-////////////////////////////////////////////////////////////////////////////////
 ///
 /// @copydetails triagens::rest::ApplicationServerImpl::logFile
 ///
@@ -83,9 +81,7 @@
 ///
 /// @copydetails triagens::rest::ApplicationServerImpl::logSyslog
 ///
-////////////////////////////////////////////////////////////////////////////////
 /// @section HumanReadableLogging Human Readable Logging
-////////////////////////////////////////////////////////////////////////////////
 ///
 /// @copydetails triagens::rest::ApplicationServerImpl::logLevel
 ///
@@ -95,9 +91,7 @@
 ///
 /// @copydetails triagens::rest::ApplicationServerImpl::logThreadId
 ///
-////////////////////////////////////////////////////////////////////////////////
 /// @section MaschineReadableLogging Maschine Readable Logging
-////////////////////////////////////////////////////////////////////////////////
 ///
 /// @copydetails triagens::rest::ApplicationServerImpl::logApplicationName
 ///

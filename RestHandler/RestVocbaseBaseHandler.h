@@ -25,8 +25,8 @@
 /// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_AVOCADODB_RESTHANDLER_REST_VOCBASE_BASE_HANDLER_H
-#define TRIAGENS_AVOCADODB_RESTHANDLER_REST_VOCBASE_BASE_HANDLER_H 1
+#ifndef TRIAGENS_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H
+#define TRIAGENS_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H 1
 
 #include <Admin/RestBaseHandler.h>
 
@@ -372,5 +372,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOCBASE_QUERY_H
-#define TRIAGENS_DURHAM_VOCBASE_QUERY_H 1
+#ifndef TRIAGENS_VOC_BASE_QUERY_H
+#define TRIAGENS_VOC_BASE_QUERY_H 1
 
 #include <VocBase/vocbase.h>
 
@@ -377,5 +377,5 @@ TRI_result_set_t* TRI_ExecuteQuery (TRI_query_t*);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

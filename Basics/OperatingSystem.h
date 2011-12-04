@@ -25,8 +25,8 @@
 /// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_PHILADELPHIA_BASICS_OPERATING_SYSTEM_H
-#define TRIAGENS_PHILADELPHIA_BASICS_OPERATING_SYSTEM_H 1
+#ifndef TRIAGENS_BASICS_OPERATING_SYSTEM_H
+#define TRIAGENS_BASICS_OPERATING_SYSTEM_H 1
 
 #ifndef TRI_WITHIN_COMMON
 #error use <Basics/Common.h>
@@ -292,5 +292,5 @@ typedef int socket_t;
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

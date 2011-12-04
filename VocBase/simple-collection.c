@@ -2200,5 +2200,5 @@ TRI_idx_iid_t TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* collection
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

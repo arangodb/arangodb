@@ -2631,6 +2631,6 @@ v8::Handle<v8::Value> TRI_FromJsonString (char const* text, char** error) {
 // Local Variables:
 // mode: C
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
 

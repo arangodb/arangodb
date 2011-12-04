@@ -26,8 +26,8 @@
 /// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef FYN_HTTPSERVER_HTTP_SERVER_IMPL_H
-#define FYN_HTTPSERVER_HTTP_SERVER_IMPL_H 1
+#ifndef TRIAGENS_HTTP_SERVER_HTTP_SERVER_IMPL_H
+#define TRIAGENS_HTTP_SERVER_HTTP_SERVER_IMPL_H 1
 
 #include <Rest/HttpServer.h>
 

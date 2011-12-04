@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_PHILADELPHIA_BASICS_LOCKS_H
-#define TRIAGENS_PHILADELPHIA_BASICS_LOCKS_H 1
+#ifndef TRIAGENS_BASICS_LOCKS_H
+#define TRIAGENS_BASICS_LOCKS_H 1
 
 #include <Basics/Common.h>
 
@@ -356,5 +356,5 @@ void TRI_UnlockCondition (TRI_condition_t* cond);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

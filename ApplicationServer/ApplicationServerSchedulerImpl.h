@@ -25,8 +25,8 @@
 /// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef FYN_APPLICATIONSERVER_APPLICATION_SERVER_SCHEDULER_IMPL_H
-#define FYN_APPLICATIONSERVER_APPLICATION_SERVER_SCHEDULER_IMPL_H 1
+#ifndef TRIAGENS_APPLICATION_SERVER_APPLICATION_SERVER_SCHEDULER_IMPL_H
+#define TRIAGENS_APPLICATION_SERVER_APPLICATION_SERVER_SCHEDULER_IMPL_H 1
 
 #include "ApplicationServer/ApplicationServerImpl.h"
 

@@ -26,8 +26,8 @@
 /// @author Copyright 2006-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOCBASE_VOC_SHAPER_H
-#define TRIAGENS_DURHAM_VOCBASE_VOC_SHAPER_H 1
+#ifndef TRIAGENS_VOC_BASE_VOC_SHAPER_H
+#define TRIAGENS_VOC_BASE_VOC_SHAPER_H 1
 
 #include <Basics/Common.h>
 
@@ -134,5 +134,5 @@ void TRI_FreeVocShaper (TRI_shaper_t*);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

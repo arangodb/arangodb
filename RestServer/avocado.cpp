@@ -82,6 +82,20 @@ using namespace triagens::avocado;
 /// @verbinclude start1
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @page CommandLineTOC
+///
+/// <ol>
+///  <li>@ref CommandLineLogging "Command-Line Options for Logging"</li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page CommandLine Command-Line Options
+///
+/// @copydoc CommandLineTOC
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -117,5 +131,5 @@ int main (int argc, char* argv[]) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

@@ -26,8 +26,8 @@
 /// @author Copyright 2006-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_PHILADELPHIA_BASICS_ASSOCIATIVE_MULTI_H
-#define TRIAGENS_PHILADELPHIA_BASICS_ASSOCIATIVE_MULTI_H 1
+#ifndef TRIAGENS_BASICS_ASSOCIATIVE_MULTI_H
+#define TRIAGENS_BASICS_ASSOCIATIVE_MULTI_H 1
 
 #include <Basics/Common.h>
 
@@ -163,5 +163,5 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t*, void const* element);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

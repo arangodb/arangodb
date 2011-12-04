@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_PHILADELPHIA_BASICS_SYSTEM_COMPILER_H
-#define TRIAGENS_PHILADELPHIA_BASICS_SYSTEM_COMPILER_H 1
+#ifndef TRIAGENS_BASICS_SYSTEM_COMPILER_H
+#define TRIAGENS_BASICS_SYSTEM_COMPILER_H 1
 
 #ifdef __cplusplus
 extern "C" {
@@ -115,5 +115,5 @@ extern "C" {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

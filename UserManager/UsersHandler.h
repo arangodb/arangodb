@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef BORNHOLM_USERMANAGER_USERS_HANDLER_H
-#define BORNHOLM_USERMANAGER_USERS_HANDLER_H 1
+#ifndef TRIAGENS_USER_MANAGER_USERS_HANDLER_H
+#define TRIAGENS_USER_MANAGER_USERS_HANDLER_H 1
 
 #include <Admin/RestAdminBaseHandler.h>
 

@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_V8_V8_GLOBALS_H
-#define TRIAGENS_DURHAM_V8_V8_GLOBALS_H 1
+#ifndef TRIAGENS_V8_V8_GLOBALS_H
+#define TRIAGENS_V8_V8_GLOBALS_H 1
 
 #include <Basics/Common.h>
 
@@ -265,5 +265,5 @@ TRI_v8_global_t;
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

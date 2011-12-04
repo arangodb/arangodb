@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef BORNHOLM_USERMANAGER_ROLE_H
-#define BORNHOLM_USERMANAGER_ROLE_H 1
+#ifndef TRIAGENS_USER_MANAGER_ROLE_H
+#define TRIAGENS_USER_MANAGER_ROLE_H 1
 
 #include <Basics/Common.h>
 

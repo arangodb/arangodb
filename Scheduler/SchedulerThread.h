@@ -26,8 +26,8 @@
 /// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef FYN_SCHEDULER_SCHEDULER_THREAD_H
-#define FYN_SCHEDULER_SCHEDULER_THREAD_H 1
+#ifndef TRIAGENS_SCHEDULER_SCHEDULER_THREAD_H
+#define TRIAGENS_SCHEDULER_SCHEDULER_THREAD_H 1
 
 #include <Basics/Thread.h>
 

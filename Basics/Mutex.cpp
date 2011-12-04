@@ -43,7 +43,8 @@ using namespace triagens::basics;
 /// @brief constructs a mutex
 ////////////////////////////////////////////////////////////////////////////////
 
-Mutex::Mutex () {
+Mutex::Mutex ()
+  : _mutex() {
   TRI_InitMutex(&_mutex);
 }
 
@@ -90,5 +91,5 @@ void Mutex::unlock () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

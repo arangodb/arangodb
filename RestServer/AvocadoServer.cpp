@@ -452,7 +452,7 @@ void AvocadoServer::executeShell () {
   v8::Isolate* isolate;
   v8::Persistent<v8::Context> context;
   bool ok;
-  char const* files[] = { "shell.js", "json.js", "graph.js" };
+  char const* files[] = { "shell.js", "json.js" };
   size_t i;
 
   // only simple logging
@@ -573,5 +573,5 @@ void AvocadoServer::closeDatabase () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

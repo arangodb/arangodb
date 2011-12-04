@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_PHILADELPHIA_BASICS_VECTOR_H
-#define TRIAGENS_PHILADELPHIA_BASICS_VECTOR_H 1
+#ifndef TRIAGENS_BASICS_VECTOR_H
+#define TRIAGENS_BASICS_VECTOR_H 1
 
 #include <Basics/Common.h>
 
@@ -376,5 +376,5 @@ void TRI_RemoveVectorString (TRI_vector_string_t*, size_t n);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

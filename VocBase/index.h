@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOCBASE_INDEX_H
-#define TRIAGENS_DURHAM_VOCBASE_INDEX_H 1
+#ifndef TRIAGENS_VOC_BASE_INDEX_H
+#define TRIAGENS_VOC_BASE_INDEX_H 1
 
 #include <VocBase/vocbase.h>
 
@@ -225,5 +225,5 @@ GeoCoordinates* TRI_NearestGeoIndex (TRI_index_t*,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
