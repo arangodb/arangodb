@@ -56,22 +56,6 @@ TR_FIND_CXX_LIBRARY([boost],
 LIBS="$LIBS $BOOST_LIBS"
 
 dnl -----------------------------------------------------------------------------------------
-dnl boost_regex
-dnl -----------------------------------------------------------------------------------------
-
-TR_FIND_CXX_LIBRARY([boost],
-                    [boost_regex$BOOST_SUFFIX],
-                    [BOOST_LIBS],
-                    [#include <boost/regex.hpp>],
-                    [boost::regex m("a")])
-
-if test "x$tr_library_found" != xyes;  then
-  AC_MSG_ERROR([Please install the boost regular expression package from http://www.boost.org/])
-fi
-
-LIBS="$LIBS $BOOST_LIBS"
-
-dnl -----------------------------------------------------------------------------------------
 dnl boost_program_options
 dnl -----------------------------------------------------------------------------------------
 
