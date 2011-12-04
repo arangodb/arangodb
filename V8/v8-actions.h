@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_V8_V8_ACTIONS_H
-#define TRIAGENS_DURHAM_V8_V8_ACTIONS_H 1
+#ifndef TRIAGENS_V8_V8_ACTIONS_H
+#define TRIAGENS_V8_V8_ACTIONS_H 1
 
 #include <Basics/Common.h>
 
@@ -176,5 +176,5 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

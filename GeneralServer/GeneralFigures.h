@@ -26,8 +26,8 @@
 /// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef FYN_GENERALSERVER_GENERAL_FIGURES_H
-#define FYN_GENERALSERVER_GENERAL_FIGURES_H 1
+#ifndef TRIAGENS_GENERAL_SERVER_GENERAL_FIGURES_H
+#define TRIAGENS_GENERAL_SERVER_GENERAL_FIGURES_H 1
 
 #include <Basics/Common.h>
 

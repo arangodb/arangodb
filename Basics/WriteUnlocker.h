@@ -54,7 +54,11 @@ namespace triagens {
     /// the write lock when it is destroyed.
     ////////////////////////////////////////////////////////////////////////////////
 
-    class WriteUnlocker : noncopyable {
+    class WriteUnlocker {
+      private:
+        WriteUnlocker (WriteUnlocker const&);
+        WriteUnlocker& operator= (WriteUnlocker const&);
+
       public:
 
         ////////////////////////////////////////////////////////////////////////////////

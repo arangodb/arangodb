@@ -26,8 +26,8 @@
 /// @author Copyright 2006-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_PHILADELPHIA_BASICS_ASSOCIATIVE_H
-#define TRIAGENS_PHILADELPHIA_BASICS_ASSOCIATIVE_H 1
+#ifndef TRIAGENS_BASICS_ASSOCIATIVE_H
+#define TRIAGENS_BASICS_ASSOCIATIVE_H 1
 
 #include <Basics/Common.h>
 
@@ -431,5 +431,5 @@ void* TRI_RemoveKeyAssociativeSynced (TRI_associative_synced_t*, void const* key
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

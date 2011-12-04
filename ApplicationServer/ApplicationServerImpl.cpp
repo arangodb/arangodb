@@ -32,8 +32,7 @@
 #include <pwd.h>
 #include <grp.h>
 
-#include <boost/regex.hpp>
-
+#include <Basics/conversions.h>
 #include <Basics/DeleteObject.h>
 #include <Basics/FileUtils.h>
 #include <Basics/Logger.h>
@@ -464,23 +463,10 @@ namespace triagens {
       if (! gid.empty()) {
         LOGGER_TRACE << "trying to switch to group '" << gid << "'";
 
-        int gidNumber = 0;
+        int gidNumber = TRI_Int32String(gid.c_str());
 
-        static string pattern = "[ \t]*([0-9]*)[ \t]*";
-        static boost::regex_constants::syntax_option_type flags = boost::regex_constants::perl;
-
-        boost::regex re;
-
-        re.assign(pattern, flags);
-
-        boost::smatch what;
-
-        bool result = boost::regex_match(gid, what, re);
-
-        if (result) {
-          string name = what[1];
-          gidNumber = StringUtils::uint32(name);
-          LOGGER_TRACE << "trying to switch to numeric gid '" << gidNumber << "' for '" << name << "'";
+        if (TRI_errno() == TRI_ERROR_NO_ERROR) {
+          LOGGER_TRACE << "trying to switch to numeric gid '" << gidNumber << "' for '" << gid << "'";
 
 #ifdef TRI_HAVE_GETGRGID
           group* g = getgrgid(gidNumber);
@@ -527,23 +513,10 @@ namespace triagens {
       if (! uid.empty()) {
         LOGGER_TRACE << "trying to switch to user '" << uid << "'";
 
-        int uidNumber = 0;
+        int uidNumber = TRI_Int32String(uid.c_str());
 
-        static string pattern = "[ \t]*([0-9]*)[ \t]*";
-        static boost::regex_constants::syntax_option_type flags = boost::regex_constants::perl;
-
-        boost::regex re;
-
-        re.assign(pattern, flags);
-
-        boost::smatch what;
-
-        bool result = boost::regex_match(uid, what, re);
-
-        if (result) {
-          string name = what[1];
-          uidNumber = StringUtils::uint32(name);
-          LOGGER_TRACE << "trying to switch to numeric uid '" << uidNumber << "' for '" << name << "'";
+        if (TRI_errno() == TRI_ERROR_NO_ERROR) {
+          LOGGER_TRACE << "trying to switch to numeric uid '" << uidNumber << "' for '" << uid << "'";
 
 #ifdef TRI_HAVE_GETPWUID
           passwd* p = getpwuid(uidNumber);

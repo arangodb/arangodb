@@ -26,8 +26,8 @@
 /// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef FYN_HTTPSERVER_HTTP_COMM_TASK_H
-#define FYN_HTTPSERVER_HTTP_COMM_TASK_H 1
+#ifndef TRIAGENS_HTTP_SERVER_HTTP_COMM_TASK_H
+#define TRIAGENS_HTTP_SERVER_HTTP_COMM_TASK_H 1
 
 #include <Basics/Common.h>
 

@@ -2010,5 +2010,5 @@ bool TRI_AtHomogeneousSizedListShapedJson (TRI_homogeneous_sized_list_shape_t co
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

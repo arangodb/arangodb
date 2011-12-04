@@ -25,8 +25,8 @@
 /// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef BORNHOLM_ADMIN_REST_HANDLER_CREATOR_H
-#define BORNHOLM_ADMIN_REST_HANDLER_CREATOR_H 1
+#ifndef TRIAGENS_ADMIN_REST_HANDLER_CREATOR_H
+#define TRIAGENS_ADMIN_REST_HANDLER_CREATOR_H 1
 
 #include <Basics/Common.h>
 

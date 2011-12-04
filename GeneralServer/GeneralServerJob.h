@@ -26,8 +26,8 @@
 /// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef FYN_GENERALSERVER_GENERAL_SERVER_JOB_H
-#define FYN_GENERALSERVER_GENERAL_SERVER_JOB_H 1
+#ifndef TRIAGENS_GENERAL_SERVER_GENERAL_SERVER_JOB_H
+#define TRIAGENS_GENERAL_SERVER_GENERAL_SERVER_JOB_H 1
 
 #include <Rest/Job.h>
 

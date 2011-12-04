@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef FYN_HTTPSERVER_SERVICE_UNAVAILABLE_HANDLER_H
-#define FYN_HTTPSERVER_SERVICE_UNAVAILABLE_HANDLER_H 1
+#ifndef TRIAGENS_HTTP_SERVER_SERVICE_UNAVAILABLE_HANDLER_H
+#define TRIAGENS_HTTP_SERVER_SERVICE_UNAVAILABLE_HANDLER_H 1
 
 #include <Basics/Common.h>
 

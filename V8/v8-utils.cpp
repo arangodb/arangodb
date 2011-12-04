@@ -1829,6 +1829,7 @@ bool TRI_LoadJavaScriptDirectory (v8::Handle<v8::Context> context, char const* p
   }
 
   TRI_DestroyVectorString(&files);
+  regfree(&re);
 
   return result;
 }
@@ -1950,5 +1951,5 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

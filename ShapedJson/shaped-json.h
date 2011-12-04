@@ -26,8 +26,8 @@
 /// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_PHILADELPHIA_SHAPEDJSON_SHAPED_JSON_H
-#define TRIAGENS_PHILADELPHIA_SHAPEDJSON_SHAPED_JSON_H 1
+#ifndef TRIAGENS_SHAPED_JSON_SHAPED_JSON_H
+#define TRIAGENS_SHAPED_JSON_SHAPED_JSON_H 1
 
 #include <Basics/Common.h>
 
@@ -934,5 +934,5 @@ void TRI_PrintShape (TRI_shaper_t* shaper, TRI_shape_t const* shape, int indent)
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

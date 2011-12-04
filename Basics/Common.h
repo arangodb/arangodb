@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_PHILADELPHIA_BASICS_COMMON_H
-#define TRIAGENS_PHILADELPHIA_BASICS_COMMON_H 1
+#ifndef TRIAGENS_BASICS_COMMON_H
+#define TRIAGENS_BASICS_COMMON_H 1
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             configuration options
@@ -180,5 +180,5 @@
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

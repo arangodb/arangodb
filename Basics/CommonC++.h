@@ -25,8 +25,8 @@
 /// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_COMMON_CXX_H
-#define TRIAGENS_BASICS_COMMON_CXX_H 1
+#ifndef TRIAGENS_BASICS_COMMON_C___H
+#define TRIAGENS_BASICS_COMMON_C___H 1
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup Configuration Configuration
@@ -101,5 +101,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

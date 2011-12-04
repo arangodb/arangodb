@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOCBASE_DATAFILE_H
-#define TRIAGENS_DURHAM_VOCBASE_DATAFILE_H 1
+#ifndef TRIAGENS_VOC_BASE_DATAFILE_H
+#define TRIAGENS_VOC_BASE_DATAFILE_H 1
 
 #include <Basics/Common.h>
 
@@ -498,5 +498,5 @@ bool TRI_RenameDatafile (TRI_datafile_t* datafile, char const* filename);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

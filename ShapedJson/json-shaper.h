@@ -26,8 +26,8 @@
 /// @author Copyright 2006-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_PHILADELPHIA_SHAPEDJSON_JSON_SHAPER_H
-#define TRIAGENS_PHILADELPHIA_SHAPEDJSON_JSON_SHAPER_H 1
+#ifndef TRIAGENS_SHAPED_JSON_JSON_SHAPER_H
+#define TRIAGENS_SHAPED_JSON_JSON_SHAPER_H 1
 
 #include <Basics/Common.h>
 
@@ -117,5 +117,5 @@ bool TRI_InsertBasicTypesShaper (TRI_shaper_t*);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

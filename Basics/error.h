@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_PHILADELPHIA_BASICS_ERROR_H
-#define TRIAGENS_PHILADELPHIA_BASICS_ERROR_H 1
+#ifndef TRIAGENS_BASICS_ERROR_H
+#define TRIAGENS_BASICS_ERROR_H 1
 
 #ifndef TRI_WITHIN_COMMON
 #error use <Basics/Common.h>
@@ -74,6 +74,12 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_NUMERIC_OVERFLOW (4)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief illegal option
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ILLEGAL_OPTION (5)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -153,5 +159,5 @@ void TRI_ShutdownError (void);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

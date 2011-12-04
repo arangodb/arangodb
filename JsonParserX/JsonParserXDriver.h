@@ -25,8 +25,8 @@
 /// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef FYN_JSONPARSERX_JSON_PARSER_XDRIVER_H
-#define FYN_JSONPARSERX_JSON_PARSER_XDRIVER_H 1
+#ifndef TRIAGENS_JSON_PARSER_X_JSON_PARSER_XDRIVER_H
+#define TRIAGENS_JSON_PARSER_X_JSON_PARSER_XDRIVER_H 1
 
 #include <Basics/Common.h>
 

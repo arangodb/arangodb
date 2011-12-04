@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOCBASE_COLLECTION_H
-#define TRIAGENS_DURHAM_VOCBASE_COLLECTION_H 1
+#ifndef TRIAGENS_VOC_BASE_COLLECTION_H
+#define TRIAGENS_VOC_BASE_COLLECTION_H 1
 
 #include <Basics/Common.h>
 
@@ -344,5 +344,5 @@ bool TRI_CloseCollection (TRI_collection_t*);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

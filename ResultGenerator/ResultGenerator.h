@@ -26,8 +26,8 @@
 /// @author Copyright 2008-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef FYN_RESULTGENERATOR_RESULT_GENERATOR_H
-#define FYN_RESULTGENERATOR_RESULT_GENERATOR_H 1
+#ifndef TRIAGENS_RESULT_GENERATOR_RESULT_GENERATOR_H
+#define TRIAGENS_RESULT_GENERATOR_RESULT_GENERATOR_H 1
 
 #include <Basics/VariantObject.h>
 #include <Basics/Exceptions.h>

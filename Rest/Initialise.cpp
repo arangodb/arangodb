@@ -32,6 +32,8 @@
 #include <Basics/Initialise.h>
 #include <Basics/Logger.h>
 
+#include <Rest/Url.h>
+
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
@@ -122,6 +124,8 @@ namespace triagens {
     void InitialiseRest () {
       TRIAGENS_BASICS_INITIALISE;
 
+      TRI_InitialiseUrl();
+
       string revision = "$Revision: REST " TRIAGENS_VERSION " (c) triAGENS GmbH $";
       LOGGER_TRACE << revision;
 
@@ -144,6 +148,8 @@ namespace triagens {
 
 
     void ShutdownRest () {
+      TRI_ShutdownUrl();
+
       TRIAGENS_BASICS_SHUTDOWN;
     }
   }

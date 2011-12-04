@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOCBASE_DOCUMENT_COLLECTION_H
-#define TRIAGENS_DURHAM_VOCBASE_DOCUMENT_COLLECTION_H 1
+#ifndef TRIAGENS_VOC_BASE_DOCUMENT_COLLECTION_H
+#define TRIAGENS_VOC_BASE_DOCUMENT_COLLECTION_H 1
 
 #include <VocBase/collection.h>
 
@@ -408,5 +408,5 @@ bool TRI_CloseCompactorDocCollection (TRI_doc_collection_t* collection,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

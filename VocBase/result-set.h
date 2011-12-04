@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOCBASE_RESULT_SET_H
-#define TRIAGENS_DURHAM_VOCBASE_RESULT_SET_H 1
+#ifndef TRIAGENS_VOC_BASE_RESULT_SET_H
+#define TRIAGENS_VOC_BASE_RESULT_SET_H 1
 
 #include <VocBase/vocbase.h>
 
@@ -246,5 +246,5 @@ TRI_rs_container_element_t* TRI_AddDatafileRSContainer (TRI_rs_container_t* cont
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
