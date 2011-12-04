@@ -41,6 +41,7 @@ avocado_SOURCES = \
 	Basics/init.c \
 	Basics/Initialise.cpp \
 	Basics/json.c \
+	Basics/locks-macos.c \
 	Basics/locks-posix.c \
 	Basics/Logger.cpp \
 	Basics/LoggerData.cpp \
