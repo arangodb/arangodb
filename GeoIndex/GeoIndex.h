@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 /* GeoIndex.h - header file for GeoIndex algorithms  */
-/* Version 1.0 24.9.2011 R. A. Parker                */
+/* Version 2.0  3.12.2011 R. A. Parker               */
 
 #ifdef GEO_TRIAGENS
 #include <Basics/Common.h>
@@ -43,10 +43,14 @@
 typedef long long GeoString;
 
 /* percentage growth of slot or slotslot tables     */
-#define GeoIndexGROW 50
+#define GeoIndexGROW 10
 
-/* Largest interval that is processed simply        */
-#define GeoIndexSMALLINTERVAL 5
+/* maximum number of points in a pot  >=2           */
+#define GeoIndexPOTSIZE 6
+
+/* number of fixed points for max-dist calculations */
+#define GeoIndexFIXEDPOINTS 8
+typedef unsigned short GeoFix;
 
 /* If this #define is there, then the INDEXDUMP and */
 /* INDEXVALID functions are also available.  These  */
@@ -55,13 +59,13 @@ typedef long long GeoString;
 /* assumed to be a character string, if DEBUG is    */
 /* set to 2.                                        */
 
-/*  #define DEBUG 1 */
+#define DEBUG 1
 
 typedef struct
 {
     double latitude;
     double longitude;
-    void const * data;
+    void * data;
 }       GeoCoordinate;
 
 typedef struct
@@ -73,11 +77,29 @@ typedef struct
 
 typedef struct
 {
-    int slotct;
-    int occslots;  /* number of occupied slots */
-    int * sortslot;
-      GeoString * geostrings;  /* These two indexed in  */
-      GeoCoordinate * gc;      /* parallel by a "slot"  */
+    double x[GeoIndexFIXEDPOINTS];
+    double y[GeoIndexFIXEDPOINTS];
+    double z[GeoIndexFIXEDPOINTS];
+}       GeoIndexFixed;
+
+typedef struct
+{
+    int LorLeaf;
+    int RorPoints;
+    GeoString middle;
+    GeoFix  maxdist[GeoIndexFIXEDPOINTS];
+    GeoString start;
+    GeoString end;
+    int level;
+    int points[GeoIndexPOTSIZE];
+}       GeoPot;
+typedef struct
+{
+    GeoIndexFixed fixed;  /* fixed point data         */
+    int potct;            /* pots allocated           */
+    int slotct;           /* slots allocated          */
+    GeoPot * pots;        /* the pots themselves      */
+    GeoCoordinate * gc;   /* the slots themselves     */
 }       GeoIndex;
 
 GeoIndex * GeoIndex_new(void);
@@ -85,6 +107,7 @@ void GeoIndex_free(GeoIndex * gi);
 double GeoIndex_distance(GeoCoordinate * c1, GeoCoordinate * c2);
 int GeoIndex_insert(GeoIndex * gi, GeoCoordinate * c);
 int GeoIndex_remove(GeoIndex * gi, GeoCoordinate * c);
+int GeoIndex_hint(GeoIndex * gi, int hint);
 GeoCoordinates * GeoIndex_PointsWithinRadius(GeoIndex * gi,
                     GeoCoordinate * c, double d);
 GeoCoordinates * GeoIndex_NearestCountPoints(GeoIndex * gi,

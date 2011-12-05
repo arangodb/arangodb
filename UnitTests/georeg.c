@@ -26,18 +26,36 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 /* regression testing program for GeoIndex module     */
-/*  R.A.P. 1.1 5.11.2011                              */
+/*  R.A.P. 2.0 4.12.2011                              */
 
 #ifdef GEO_TRIAGENS
 #include "GeoIndex/GeoIndex.h"
 #else
-#include "GeoIndex.h"
+#include "GeoIndex2.h"
 #endif
 
 int errors;
 
 char ix[1000];  /* working array for (void *) data  */
 char iy[30];
+
+int np[20]={14676,23724,24457,24785,24809,
+            25909,25051,27052,25192,28126,
+            25191,29291,25079,30338,24852,
+            31320,24565,31936,24133,31893};
+int hs[20]={16278595,6622245,83009659,97313687,94638085,
+            86998272,72133969,99595673,76554853,116384443,
+            458789,67013205,44378533,97387502,97331554,
+            76392514,43104144,48695421,87361440,1556675} ;
+int np1[10]={6761,13521,20282,27042,33803,
+            40563,47324,54084,60845,67605};
+int hs1[10]={79121168,71376992,120173779,54504134,89075457,
+            50229904,41454125,104395668,14196041,106196305};
+int hs2[10]={21216619,99404510,92771863,40046216,25926851,
+            6056147,93877377,82650316,14776130,41666384};
+int np4[4]={2838,5116,5180,9869};
+int hs4[4]={33972992,9770664,11661062,28398735};
+int hs5[4]={79685116,67516870,19274248,35037618};
 
 void icheck(int e, int a, int b)
 {
@@ -118,6 +136,56 @@ void gcmass(int e, GeoCoordinates * gc, int ct, int hash)
     GeoIndex_CoordinatesFree(gc);
 }
 
+void coonum(GeoCoordinate * gc, int num)
+{
+    double lat,lon;
+    int i,j;
+    j=num;
+    gc->latitude=-42.23994323;
+    gc->longitude=-53.40029372;
+    gc->data=&ix[num%997];
+    for(i=1;i<30;i++)
+    {
+        lat=0.0;
+        lon=0.0;
+        if( (j&1)==1 )
+        {
+            if(i==1)  { lat=16.1543722;  lon=12.1992384; }
+            if(i==2)  { lat=6.14347227;  lon=5.19923843; }
+            if(i==3)  { lat=2.15237222;  lon=3.19923843; }
+            if(i==4)  { lat=1.51233226;  lon=1.63122143; }
+            if(i==5)  { lat=1.14347229;  lon=1.69932121; }
+            if(i==6)  { lat=0.93443431;  lon=0.80023323; }
+            if(i==7)  { lat=0.63443442;  lon=0.79932032; }
+            if(i==8)  { lat=0.70049323;  lon=0.80076994; }
+            if(i==9)  { lat=0.89223236;  lon=0.78805238; }
+            if(i==10) { lat=0.85595656;  lon=0.72332312; }
+            if(i==11) { lat=0.18823232;  lon=0.21129576; }
+            if(i==12) { lat=0.12294854;  lon=0.15543207; }
+            if(i==13) { lat=0.30984343;  lon=0.18223745; }
+            if(i==14) { lat=0.19923412;  lon=0.27345381; }
+            if(i==15) { lat=0.18223534;  lon=0.15332087; }
+            if(i==16) { lat=0.09344343;  lon=0.08002332; }
+            if(i==17) { lat=0.06344344;  lon=0.07993203; }
+            if(i==18) { lat=0.07004932;  lon=0.08007699; }
+            if(i==19) { lat=0.08922323;  lon=0.07880523; }
+            if(i==20) { lat=0.08559565;  lon=0.07233231; }
+            if(i==21) { lat=0.01882323;  lon=0.02112957; }
+            if(i==22) { lat=0.01229485;  lon=0.01554320; }
+            if(i==23) { lat=0.03098434;  lon=0.01822374; }
+            if(i==24) { lat=0.01992341;  lon=0.02734538; }
+            if(i==25) { lat=0.01822353;  lon=0.01533208; }
+            if(i==26) { lat=0.00934434;  lon=0.00800233; }
+            if(i==27) { lat=0.00634434;  lon=0.00799320; }
+            if(i==28) { lat=0.00700493;  lon=0.00800769; }
+            if(i==29) { lat=0.00480493;  lon=0.00170769; }
+        }
+        gc->latitude+=lat;
+        gc->longitude+=lon;
+        j>>=1;
+    }
+}
+
 int main(int argc, char ** argv)
 {
     GeoIndex * gi;
@@ -170,7 +238,7 @@ int main(int argc, char ** argv)
 /* mainly for debugging rather than regression     */
 
     gi=GeoIndex_new();
-
+    i=GeoIndex_hint(gi,10);  /* set it to "robust" mode */
     for(i=0;i<50;i++)
     {
         gcp.latitude  = 90.0;
@@ -900,44 +968,27 @@ int main(int argc, char ** argv)
 
     if(mode==2)
     {
-        gcp1.latitude = 44.999999;
-        gcp1.longitude= 45.0000001;
-        printf("start of 50000 x points within radius (43 found)\n");
-        for(i=0;i<50000;i++)
+        printf("start of 5000000 x points within radius 127 Km (3 found)\n");
+        for(i=0;i<10000;i++)
         {
-            list1 = GeoIndex_PointsWithinRadius(gi,&gcp1,430000.0);
-            GeoIndex_CoordinatesFree(list1);
+            for(j=1;j<=500;j++)
+            {
+                coonum(&gcp1,j);
+                list1 = GeoIndex_PointsWithinRadius(gi,&gcp1,127000.0);
+                GeoIndex_CoordinatesFree(list1);
+            }
         }
         printf("End of timing test\n");
     }
 
     if(mode==3)
     {
-        printf("start of 10000 x points by count (2)\n");
-        for(i=0;i<4;i++)
+        printf("start of 5000000 x points by count (2)\n");
+        for(i=0;i<10000;i++)
         {
-            if(i==0)
+            for(j=1;j<=500;j++)
             {
-                gcp1.latitude = 44.999999;
-                gcp1.longitude= 45.0000001;
-            }
-            if(i==1)
-            {
-                gcp1.latitude = -44.999999;
-                gcp1.longitude= 45.0000001;
-            }
-            if(i==2)
-            {
-                gcp1.latitude = 44.999999;
-                gcp1.longitude= -45.0000001;
-            }
-            if(i==3)
-            {
-                gcp1.latitude = -44.999999;
-                gcp1.longitude= -45.0000001;
-            }
-            for(j=0;j<2500;j++)
-            {
+                coonum(&gcp1,j);
                 list1 = GeoIndex_NearestCountPoints(gi,&gcp1,2);
                 GeoIndex_CoordinatesFree(list1);
             }
@@ -946,6 +997,134 @@ int main(int argc, char ** argv)
     }
 
     gicheck(390,gi);
+
+    GeoIndex_free(gi);
+
+/*                                                 */
+/*             400 - 499                           */
+/*             =========                           */
+/*                                                 */
+
+/* another batch of massive tests - again used as  */
+/* comparisons - this time between 1.1 and 2.0     */
+
+    gi=GeoIndex_new();
+    la=41.23456789;
+    lo=39.87654321;
+    for(i=0;i<20;i++)
+    {
+        for(j=1;j<30000;j++)
+        {
+            gcp.latitude = la;
+            gcp.longitude= lo;
+            gcp.data     = &ix[(7*i+j)%1000];
+            r = GeoIndex_insert(gi,&gcp);
+            icheck(400,0,r);
+            la+=19.5396157761;
+            if(la>90.0) la-=180.0;
+            lo+=17.2329155421;
+            if(lo>180) lo-=360.0;
+        }
+        list1 = GeoIndex_PointsWithinRadius(gi,&gcp,9800000.0);
+        for(j=0;j<list1->length;j++)  /* delete before freeing list1! */
+        {
+            r=GeoIndex_remove(gi,list1->coordinates+j);
+        }
+        gcmass(400+5*i,list1, np[i], hs[i]);
+    }
+
+    GeoIndex_free(gi);
+
+/*                                                 */
+/*             500 - 599                           */
+/*             =========                           */
+/*                                                 */
+
+/* This set of tests aims to cluster the points in */
+/* a sligtly more realistic way.       */
+
+    gi=GeoIndex_new();
+    for(i=1;i<135212;i++)
+    {
+        coonum(&gcp,i);
+        r = GeoIndex_insert(gi,&gcp);
+        icheck(501,0,r);
+        if( (i%2)==0)
+        {
+            coonum(&gcp,i/2);
+            r = GeoIndex_remove(gi,&gcp);
+            icheck(502,0,r);
+        }
+        if( (i%13521)==0)
+        {
+            list1 = GeoIndex_PointsWithinRadius(gi,&gcp,9800000.0);
+            gcmass(505+4*(i/13521),list1,
+                 np1[i/13521 - 1], hs1[i/13521 - 1]);
+            list1 = GeoIndex_NearestCountPoints(gi,&gcp,i/1703);
+            gcmass(507+4*(i/13521),list1,i/1703,hs2[i/13521 - 1]);
+        }
+    }
+
+    GeoIndex_free(gi);
+/*                                                 */
+/*             600 - 610                           */
+/*             =========                           */
+/*                                                 */
+
+/* Test a very large database - too big for V1.2!  */
+    if(mode==4)
+    {
+        gi=GeoIndex_new();
+        for(i=1;i<21123212;i++)
+        {
+            coonum(&gcp,i);
+            r = GeoIndex_insert(gi,&gcp);
+            icheck(601,0,r);
+            if( (i%2)==0)
+            {
+                coonum(&gcp,i/2);
+                r = GeoIndex_remove(gi,&gcp);
+                icheck(602,0,r);
+            }
+            if( (i%4541672)==0)
+            {
+                list1 = GeoIndex_PointsWithinRadius(gi,&gcp,9800.0);
+                gcmass(603+4*(i/4541672),list1,
+                     np4[i/4541672 - 1], hs4[i/4541672 - 1]);
+                list1 = GeoIndex_NearestCountPoints(gi,&gcp,i/1832703);
+                gcmass(605+4*(i/4541672),list1,i/1832703,hs5[i/4541672 - 1]);
+            }
+        }
+        GeoIndex_free(gi);
+    }
+/*                                                 */
+/*             900 - 999                           */
+/*             =========                           */
+/*                                                 */
+
+/* tests that ensure old bugs have not reappeared  */
+
+/* forgot to allow for distance greater than pi.radius  */
+/* this went into sin(theta) to give small value, so it */
+/* found that many points were not within 30000 Km      */
+
+    gi=GeoIndex_new();
+    la=41.23456789;
+    lo=39.87654321;
+    for(j=1;j<50;j++)
+    {
+        gcp.latitude = la;
+        gcp.longitude= lo;
+        gcp.data     = &ix[j];
+        r = GeoIndex_insert(gi,&gcp);
+        icheck(900,0,r);
+        la+=19.5396157761;
+        if(la>90.0) la-=180.0;
+        lo+=17.2329155421;
+        if(lo>180) lo-=360.0;
+    }
+    list1 = GeoIndex_PointsWithinRadius(gi,&gcp,30000000.0);
+    gcmass(901,list1, 49, 94065911);
 
     GeoIndex_free(gi);
 
