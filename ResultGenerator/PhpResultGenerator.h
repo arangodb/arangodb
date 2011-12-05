@@ -26,8 +26,8 @@
 /// @author Copyright 2008-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_RESULT_GENERATOR_PHP_RESULT_GENERATOR_H
-#define TRIAGENS_RESULT_GENERATOR_PHP_RESULT_GENERATOR_H 1
+#ifndef TRIAGENS_FYN_RESULT_GENERATOR_PHP_RESULT_GENERATOR_H
+#define TRIAGENS_FYN_RESULT_GENERATOR_PHP_RESULT_GENERATOR_H 1
 
 #include "ResultGenerator/ResultGenerator.h"
 

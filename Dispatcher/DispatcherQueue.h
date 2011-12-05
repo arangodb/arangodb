@@ -26,8 +26,8 @@
 /// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DISPATCHER_DISPATCHER_QUEUE_H
-#define TRIAGENS_DISPATCHER_DISPATCHER_QUEUE_H 1
+#ifndef TRIAGENS_FYN_DISPATCHER_DISPATCHER_QUEUE_H
+#define TRIAGENS_FYN_DISPATCHER_DISPATCHER_QUEUE_H 1
 
 #include <Basics/Common.h>
 

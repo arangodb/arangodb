@@ -26,8 +26,8 @@
 /// @author Copyright 2008-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_SCHEDULER_SCHEDULER_LIBEV_H
-#define TRIAGENS_SCHEDULER_SCHEDULER_LIBEV_H 1
+#ifndef TRIAGENS_FYN_SCHEDULER_SCHEDULER_LIBEV_H
+#define TRIAGENS_FYN_SCHEDULER_SCHEDULER_LIBEV_H 1
 
 #include "Scheduler/SchedulerImpl.h"
 

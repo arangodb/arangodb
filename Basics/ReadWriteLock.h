@@ -26,8 +26,8 @@
 /// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_READ_WRITE_LOCK_H
-#define TRIAGENS_BASICS_READ_WRITE_LOCK_H 1
+#ifndef TRIAGENS_JUTLAND_BASICS_READ_WRITE_LOCK_H
+#define TRIAGENS_JUTLAND_BASICS_READ_WRITE_LOCK_H 1
 
 #include <Basics/Common.h>
 

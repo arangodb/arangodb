@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_SYSTEM_FUNCTIONS_H
-#define TRIAGENS_BASICS_SYSTEM_FUNCTIONS_H 1
+#ifndef TRIAGENS_PHILADELPHIA_BASICS_SYSTEM_FUNCTIONS_H
+#define TRIAGENS_PHILADELPHIA_BASICS_SYSTEM_FUNCTIONS_H 1
 
 #ifdef __cplusplus
 extern "C" {

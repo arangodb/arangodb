@@ -115,6 +115,7 @@ namespace triagens {
         }
       }
 
+      description.arguments(&arguments);
 
       // parse command line
       bool ok = options.parse(description, argc, argv);
@@ -272,6 +273,10 @@ namespace triagens {
         ("log.line-number", "always log file and line number")
       ;
 
+      options[OPTIONS_HIDDEN]
+        ("log", &logLevel, "log level for severity 'human'")
+      ;
+
       // .............................................................................
       // application server options
       // .............................................................................
@@ -280,12 +285,6 @@ namespace triagens {
         ("random.no-seed", "do not seed the random generator")
         ("random.generator", &randomGenerator, "1 = mersenne, 2 = random, 3 = urandom, 4 = combined")
       ;
-
-      // .............................................................................
-      // hidden options
-      // .............................................................................
-
-      options[OPTIONS_HIDDEN].arguments(&arguments);
     }
 
 

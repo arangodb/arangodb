@@ -26,8 +26,8 @@
 /// @author Copyright 2008-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_VARIANT_BLOB_H
-#define TRIAGENS_BASICS_VARIANT_BLOB_H 1
+#ifndef TRIAGENS_JUTLAND_BASICS_VARIANT_BLOB_H
+#define TRIAGENS_JUTLAND_BASICS_VARIANT_BLOB_H 1
 
 #include <Basics/VariantObject.h>
 

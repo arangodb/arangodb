@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_HTTP_SERVER_REDIRECT_HANDLER_H
-#define TRIAGENS_HTTP_SERVER_REDIRECT_HANDLER_H 1
+#ifndef TRIAGENS_FYN_HTTP_SERVER_REDIRECT_HANDLER_H
+#define TRIAGENS_FYN_HTTP_SERVER_REDIRECT_HANDLER_H 1
 
 #include <Basics/Common.h>
 

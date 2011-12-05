@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_SESSION_MANAGER_SESSION_H
-#define TRIAGENS_SESSION_MANAGER_SESSION_H 1
+#ifndef TRIAGENS_BORNHOLM_SESSION_MANAGER_SESSION_H
+#define TRIAGENS_BORNHOLM_SESSION_MANAGER_SESSION_H 1
 
 #include <Basics/Common.h>
 

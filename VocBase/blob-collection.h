@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_VOC_BASE_BLOB_COLLECTION_H
-#define TRIAGENS_VOC_BASE_BLOB_COLLECTION_H 1
+#ifndef TRIAGENS_DURHAM_VOC_BASE_BLOB_COLLECTION_H
+#define TRIAGENS_DURHAM_VOC_BASE_BLOB_COLLECTION_H 1
 
 #include <Basics/Common.h>
 

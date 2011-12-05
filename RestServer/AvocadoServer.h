@@ -189,12 +189,38 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief list port for client requests
+///
+/// @CMDOPT{--server.http-port @CA{port}}
+///
+/// Specifies the @CA{port} for HTTP requests by clients. This will bind to any
+/// address available.
+///
+/// @CMDOPT{--server.http-port @CA{address}:@CA{port}}
+///
+/// Specifies the @CA{port} for HTTP requests by clients. This will bind to the
+/// given @CA{address}, which can be a numeric value like @CODE{192.168.1.1} or
+/// a name.
+///
+/// @CMDOPT{--port @CA{port}}
+///
+/// This variant can be used as command line options.
 ////////////////////////////////////////////////////////////////////////////////
 
         string _httpPort;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief list port for admin requests
+///
+/// @CMDOPT{--server.admin-port @CA{port}}
+///
+/// Specifies the @CA{port} for HTTP requests by the administrator. This will
+/// bind to any address available.
+///
+/// @CMDOPT{--server.admin-port @CA{address}:@CA{port}}
+///
+/// Specifies the @CA{port} for HTTP requests by the administrator. This will
+/// bind to the given @CA{address}, which can be a numeric value like
+/// 192.168.1.1 or a name.
 ////////////////////////////////////////////////////////////////////////////////
 
         string _adminPort;
@@ -230,6 +256,13 @@ namespace triagens {
 ///
 /// The directory containing the collections and data-files. Defaults
 /// to @CODE{/var/lib/avocado}.
+///
+/// @CMDOPT{@CA{directory}}
+///
+/// When using the command line version, you can simply supply the database
+/// directory as argument.
+///
+/// @verbinclude start2
 ////////////////////////////////////////////////////////////////////////////////
 
         string _databasePath;

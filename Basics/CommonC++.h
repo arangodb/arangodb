@@ -25,8 +25,8 @@
 /// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_COMMON_C___H
-#define TRIAGENS_BASICS_COMMON_C___H 1
+#ifndef TRIAGENS_JUTLAND_BASICS_COMMON_C___H
+#define TRIAGENS_JUTLAND_BASICS_COMMON_C___H 1
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup Configuration Configuration

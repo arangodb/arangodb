@@ -26,8 +26,8 @@
 /// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_REST_REST_SERVER_H
-#define TRIAGENS_REST_REST_SERVER_H 1
+#ifndef TRIAGENS_FYN_REST_REST_SERVER_H
+#define TRIAGENS_FYN_REST_REST_SERVER_H 1
 
 #include <Rest/AnyServer.h>
 

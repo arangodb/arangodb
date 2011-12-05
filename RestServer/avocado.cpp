@@ -40,8 +40,9 @@ using namespace triagens::avocado;
 /// @page StartStopTOC
 ///
 /// <ol>
-///  <li>Frequently Used Options</li>
 ///  <li>Starting the Debug Shell</li>
+///  <li>Starting the HTTP Server</li>
+///  <li>Frequently Used Options</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -60,33 +61,58 @@ using namespace triagens::avocado;
 /// <hr>
 /// @copydoc StartStopTOC
 ///
+/// @section StartStopShell Starting the Debug Shell
+///
+/// The following command starts a debug shell. See below for a list of
+/// frequently used options, see @ref CommandLine "here" for a complete list.
+///
+/// @verbinclude start1
+///
+/// @section StartStopServer Starting the HTTP Server
+///
+/// The following command starts the AvocadoDB in server mode. You will be able
+/// to access the server using HTTP request on port 8529. See below for a list
+/// of frequently used options, see @ref CommandLine "here" for a complete list.
+///
+/// @verbinclude start2
+///
 /// @section StartStopOptions Frequently Used Options
 ///
 /// The following main command-line options are available.
 ///
-/// @copydetails triagens::avocado::AvocadoServer::_databasePath
+/// @CMDOPT{@CA{database-directory}}
 ///
-/// @CMDOPT{--shell}
+/// Uses the @CA{database-directory} as base directory. There is an alternative
+/// version available for use in configuration files, see @ref
+/// CommandLineAvocado "here".
 ///
-/// Opens a debug shell instead of starting the HTTP server.
+/// @copydetails triagens::rest::ApplicationServerImpl::options
 ///
-/// @CMDOPT{--log.level @CA{level}}
+/// @CMDOPT{--log @CA{level}}
 ///
 /// Allows the user to choose the level of information which is logged by the
 /// server. The arg is specified as a string and can be one of the following
 /// values: fatal, error, warning, info, debug, trace.  For more information see
 /// @ref CommandLineLogging "here".
 ///
-/// @section StartStopShell Starting the Debug Shell
+/// @copydetails triagens::avocado::AvocadoServer::_httpPort
 ///
-/// @verbinclude start1
+/// @CMDOPT{--shell}
+///
+/// Opens a debug shell instead of starting the HTTP server.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page CommandLineTOC
 ///
 /// <ol>
-///  <li>@ref CommandLineLogging "Command-Line Options for Logging"</li>
+///  <li>configuration</li>
+///  <li>daemon</li>
+///  <li>gid</li>
+///  <li>help</li>
+///  <li>pid-file</li>
+///  <li>uid</li>
+///  <li>version</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -94,6 +120,76 @@ using namespace triagens::avocado;
 /// @page CommandLine Command-Line Options
 ///
 /// @copydoc CommandLineTOC
+///
+/// @section GeneralOptions General Options
+///
+/// @copydetails triagens::rest::ApplicationServerImpl::initFile
+///
+/// @CMDOPT{--daemon}
+///
+/// Runs the server as a daemon (as a background process). This parameter can
+/// only be set if the pid (process id) file is specified. That is, unless a
+/// value to the parameter pid-file is given, then the server will report an
+/// error and exit.
+///
+/// @copydetails triagens::rest::ApplicationServerImpl::gid
+///
+/// @copydetails triagens::rest::ApplicationServerImpl::options
+///
+/// @copydetails triagens::rest::AnyServer::_pidFile
+///
+/// @CMDOPT{--show-io-backends}
+///
+/// If this option is specified, then the server will list available backends
+/// and exit. This option is useful only when used in conjunction with the
+/// option scheduler.backend. An integer is returned (which is platform
+/// dependent) which indicates available backends on your platform. See libev
+/// for further details and for the meaning of the integer returned. This
+/// describes the allowed integers for @CODE{scheduler.backend}, see
+/// @ref CommandLineScheduler "here" for details.
+///
+/// @CMDOPT{--supervisor}
+///
+/// Executes the server in supervisor mode. In the event that the server
+/// unexpectedly terminates due to an internal error, the supervisor will
+/// automatically restart the server. Setting this flag automatically implies
+/// that the server will run as a daemon. Note that, as with the daemon flag,
+/// this flag requires that the pid-file parameter will set.
+///
+/// @copydetails triagens::rest::ApplicationServerImpl::uid
+///
+/// @copydetails triagens::rest::ApplicationServerImpl::version
+///
+/// <hr>
+/// Next steps:
+///
+///  - @ref CommandLineAvocado "Command-Line Options for the AvocadoDB"
+///  - @ref CommandLineScheduler "Command-Line Options for Communication"
+///  - @ref CommandLineLogging "Command-Line Options for Logging"
+///  - @ref CommandLineRandom "Command-Line Options for Random Numbers"
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page CommandLineAvocadoTOC
+///
+/// <ol>
+///  <li>database.directory</li>
+///  <li>server.admin-port</li>
+///  <li>server.http-port</li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page CommandLineAvocado Command-Line Options for the AvocadoDB
+///
+/// @copydoc CommandLineAvocadoTOC
+/// <hr>
+///
+/// @copydetails triagens::avocado::AvocadoServer::_databasePath
+///
+/// @copydetails triagens::avocado::AvocadoServer::_adminPort
+///
+/// @copydetails triagens::avocado::AvocadoServer::_httpPort
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------

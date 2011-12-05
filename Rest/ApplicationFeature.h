@@ -25,8 +25,8 @@
 /// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_REST_APPLICATION_FEATURE_H
-#define TRIAGENS_REST_APPLICATION_FEATURE_H 1
+#ifndef TRIAGENS_FYN_REST_APPLICATION_FEATURE_H
+#define TRIAGENS_FYN_REST_APPLICATION_FEATURE_H 1
 
 #include <Basics/Common.h>
 

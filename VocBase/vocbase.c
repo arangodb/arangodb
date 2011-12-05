@@ -277,7 +277,7 @@ static void ScanPath (TRI_vocbase_t* vocbase, char const* path) {
 
         if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
           AddCollection(vocbase, type, info._name, info._cid, file);
-          LOG_INFO("added simple document collection from '%s'", file);
+          LOG_DEBUG("added simple document collection from '%s'", file);
         }
         else {
           LOG_DEBUG("skiping collection of unknown type %d", (int) type);

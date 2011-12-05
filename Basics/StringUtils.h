@@ -26,8 +26,8 @@
 /// @author Copyright 2005-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_STRING_UTILS_H
-#define TRIAGENS_BASICS_STRING_UTILS_H 1
+#ifndef TRIAGENS_JUTLAND_BASICS_STRING_UTILS_H
+#define TRIAGENS_JUTLAND_BASICS_STRING_UTILS_H 1
 
 #include <Basics/Common.h>
 

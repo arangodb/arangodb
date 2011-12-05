@@ -26,8 +26,8 @@
 /// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_SHAPED_JSON_SHAPED_JSON_H
-#define TRIAGENS_SHAPED_JSON_SHAPED_JSON_H 1
+#ifndef TRIAGENS_PHILADELPHIA_SHAPED_JSON_SHAPED_JSON_H
+#define TRIAGENS_PHILADELPHIA_SHAPED_JSON_SHAPED_JSON_H 1
 
 #include <Basics/Common.h>
 

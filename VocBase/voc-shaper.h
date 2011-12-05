@@ -26,8 +26,8 @@
 /// @author Copyright 2006-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_VOC_BASE_VOC_SHAPER_H
-#define TRIAGENS_VOC_BASE_VOC_SHAPER_H 1
+#ifndef TRIAGENS_DURHAM_VOC_BASE_VOC_SHAPER_H
+#define TRIAGENS_DURHAM_VOC_BASE_VOC_SHAPER_H 1
 
 #include <Basics/Common.h>
 
