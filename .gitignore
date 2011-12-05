@@ -1,6 +1,6 @@
 aclocal.m4
 autom4te.cache
-avocdb
+avocado
 config/compile
 config/config.guess
 config/config.sub
