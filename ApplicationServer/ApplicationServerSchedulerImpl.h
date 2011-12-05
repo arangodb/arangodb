@@ -25,12 +25,32 @@
 /// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_APPLICATION_SERVER_APPLICATION_SERVER_SCHEDULER_IMPL_H
-#define TRIAGENS_APPLICATION_SERVER_APPLICATION_SERVER_SCHEDULER_IMPL_H 1
+#ifndef TRIAGENS_FYN_APPLICATION_SERVER_APPLICATION_SERVER_SCHEDULER_IMPL_H
+#define TRIAGENS_FYN_APPLICATION_SERVER_APPLICATION_SERVER_SCHEDULER_IMPL_H 1
 
 #include "ApplicationServer/ApplicationServerImpl.h"
 
 #include <Basics/ConditionVariable.h>
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page CommandLineSchedulerTOC
+///
+/// <ol>
+///  <li>scheduler.backend</li>
+///  <li>scheduler.threads</li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page CommandLineScheduler Command-Line Options for Communication
+///
+/// @copydoc CommandLineSchedulerTOC
+/// <hr>
+///
+/// @copydetails triagens::rest::ApplicationServerSchedulerImpl::_backend
+///
+/// @copydetails triagens::rest::ApplicationServerSchedulerImpl::_nrSchedulerThreads
+////////////////////////////////////////////////////////////////////////////////
 
 namespace triagens {
   namespace rest {
@@ -175,12 +195,24 @@ namespace triagens {
 
         ////////////////////////////////////////////////////////////////////////////////
         /// @brief number of scheduler threads
+        ///
+        /// @CMDOPT{--scheduler.threads @CA{arg}}
+        ///
+        /// An integer argument which sets the number of threads to use in the IO
+        /// scheduler. The default is 1.
         ////////////////////////////////////////////////////////////////////////////////
 
         uint32_t _nrSchedulerThreads;
 
         ////////////////////////////////////////////////////////////////////////////////
         /// @brief scheduler backend
+        ///
+        /// @CMDOPT{--scheduler.backend @CA{arg}}
+        ///
+        /// The I/O method used by the event handler. The default (if this option is
+        /// not specified) is to try all recommended backends. This is platform
+        /// specific. See libev for further details and the meaning of select, poll
+        /// and epoll.
         ////////////////////////////////////////////////////////////////////////////////
 
         uint32_t _backend;

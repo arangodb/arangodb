@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_ADMIN_RIGHT_H
-#define TRIAGENS_ADMIN_RIGHT_H 1
+#ifndef TRIAGENS_BORNHOLM_ADMIN_RIGHT_H
+#define TRIAGENS_BORNHOLM_ADMIN_RIGHT_H 1
 
 #include <Basics/Common.h>
 

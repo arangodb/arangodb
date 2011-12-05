@@ -26,8 +26,8 @@
 /// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_REST_LISTEN_TASK_H
-#define TRIAGENS_REST_LISTEN_TASK_H 1
+#ifndef TRIAGENS_FYN_REST_LISTEN_TASK_H
+#define TRIAGENS_FYN_REST_LISTEN_TASK_H 1
 
 #include <Rest/Task.h>
 

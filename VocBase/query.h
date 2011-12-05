@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_VOC_BASE_QUERY_H
-#define TRIAGENS_VOC_BASE_QUERY_H 1
+#ifndef TRIAGENS_DURHAM_VOC_BASE_QUERY_H
+#define TRIAGENS_DURHAM_VOC_BASE_QUERY_H 1
 
 #include <VocBase/vocbase.h>
 

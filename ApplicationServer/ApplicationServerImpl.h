@@ -25,8 +25,8 @@
 /// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_APPLICATION_SERVER_APPLICATION_SERVER_IMPL_H
-#define TRIAGENS_APPLICATION_SERVER_APPLICATION_SERVER_IMPL_H 1
+#ifndef TRIAGENS_FYN_APPLICATION_SERVER_APPLICATION_SERVER_IMPL_H
+#define TRIAGENS_FYN_APPLICATION_SERVER_APPLICATION_SERVER_IMPL_H 1
 
 #include <Basics/Common.h>
 
@@ -101,6 +101,24 @@
 ///
 /// @copydetails triagens::rest::ApplicationServerImpl::logHostName
 ///
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page CommandLineRandomTOC
+///
+/// <ol>
+///  <li>random.generator</li>
+///  <li>random.no-seed</li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page CommandLineRandom Command-Line Options for Random Numbers
+///
+/// @copydoc CommandLineRandomTOC
+/// <hr>
+///
+/// @copydetails triagens::rest::ApplicationServerImpl::randomGenerator
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace triagens {
@@ -223,6 +241,13 @@ namespace triagens {
 
         ////////////////////////////////////////////////////////////////////////////////
         /// @brief program options
+        ///
+        /// @CMDOPT{--help}
+        ///
+        /// @CMDOPT{-h}
+        ///
+        /// Prints a list of the most common options available and then
+        /// exits. In order to see all options use @CODE{--help-all}.
         ////////////////////////////////////////////////////////////////////////////////
 
         basics::ProgramOptions options;
@@ -240,13 +265,120 @@ namespace triagens {
 
       private:
         string title;
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief program options
+        ///
+        /// @CMDOPT{--version}
+        ///
+        /// @CMDOPT{-v}
+        ///
+        /// Prints the version of the server and exits.
+        ////////////////////////////////////////////////////////////////////////////////
+
         string version;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief config file
+///
+/// @CMDOPT{--configuration @CA{filename}}
+///
+/// @CMDOPT{-c @CA{filename}}
+///
+/// Specifies the name of the configuration file to use.
+///
+/// If this command is not passed to the server, then by default, the server
+/// will attempt to first locate a file named @CODE{~/SERVER/SERVER.conf} in the
+/// user's home directory, where @CA{SERVER} is the name of the corresponding
+/// server.
+///
+/// If no such file is found, the server will proceed to look for a file
+/// @CODE{/etc/SERVER.conf} in the system configuration directory. The default
+/// installation specifies the system configuration directory as
+/// /etc. Therefore, in case that no configuration file is found in the user's
+/// home directory, the server will proceed to look for a file named
+/// @CODE{/etc/SERVER.conf}.
+///
+/// Only command line options with a value should be set within the
+/// configuration file. Command line options which act as flags should be
+/// entered on the command line when starting the server.
+///
+/// White space is ignored. Each option is specified on a separate line in the
+/// form
+///
+/// @verbinclude conf1
+///
+/// Alternatively, a header section can be specified and options pertaining to
+/// that section can be specified in a shorter form
+///
+/// @verbinclude conf2
+///
+/// rather than specifying
+///
+/// @verbinclude conf3
+///
+/// Comments can be placed in the configuration file, only if the line begins
+/// with one or more hash symbols (#).
+///
+/// There may be occasions where a configuration file exists and the user wishes
+/// to override configuration settings stored in a configuration file. Any
+/// settings specified on the command line will overwrite the same setting when
+/// it appears in a configuration file. If the user wishes to completely ignore
+/// configuration files without necessarily deleting the file (or files), then
+/// add the command line option
+///
+/// @verbinclude conf4
+///
+/// or
+///
+/// @verbinclude conf5
+///
+/// when starting up the server. Note that, the word @CODE{none} is
+/// case-insensitive.
+////////////////////////////////////////////////////////////////////////////////
 
         string initFile;
         string userConfigFile;
         string systemConfigFile;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the user id to use for the process
+///
+/// @CMDOPT{--uid @CA{uid}}
+///
+/// The name (identity) of the user the server will run as. If this parameter is
+/// not specified, the server will not attempt to change its UID, so that the
+/// UID used by the server will be the same as the UID of the user who started
+/// the server. If this parameter is specified, then the server will change its
+/// UID after opening ports and reading configuration files, but before
+/// accepting connections or opening other files (such as recovery files). This
+/// is useful when the server must be started with raised privileges (in certain
+/// environments) but security considerations require that these privileges be
+/// dropped once the server has started work.
+///
+/// Observe that this parameter cannot be used to bypass operating system
+/// security. In general, this parameter (and its corresponding relative gid)
+/// can lower privileges but not raise them.
+////////////////////////////////////////////////////////////////////////////////
+
         string uid;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the group id to use for the process
+///
+/// @CMDOPT{--gid @CA{gid}}
+///
+/// The name (identity) of the group the server will run as. If this parameter
+/// is not specified, then the server will not attempt to change its GID, so
+/// that the GID the server runs as will be the primary group of the user who
+/// started the server. If this parameter is specified, then the server will
+/// change its GID after opening ports and reading configuration files, but
+/// before accepting connections or opening other files (such as recovery
+/// files).
+///
+/// This parameter is related to the parameter uid.
+////////////////////////////////////////////////////////////////////////////////
+
         string gid;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -288,11 +420,14 @@ namespace triagens {
 ///
 /// @CMDOPT{--log.level @CA{level}}
 ///
+/// @CMDOPT{--log @CA{level}}
+///
 /// Allows the user to choose the level of information which is logged by the
 /// server. The argument @CA{level} is specified as a string and can be one of
 /// the values listed below. Note that, fatal errors, that is, errors which
 /// cause the server to terminate, are always logged irrespective of the log
-/// level assigned by the user.
+/// level assigned by the user. The variant @c log.level can be used in
+/// configuration files, the variant @c log for command line options.
 ///
 /// - fatal: Logs errors which cause the server to terminate.
 ///
@@ -454,6 +589,28 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool logLineNumber;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief random number generator to use
+///
+/// @CMDOPT{--random.generator @CA{arg}}
+///
+/// The argument is an integer (1,2,3 or 4) which sets the manner in which
+/// random numbers are generated. The default method (3) is to use the a
+/// non-blocking random (or pseudorandom) number generator supplied by the
+/// operating system. Specifying an argument of 2, uses a blocking random (or
+/// pseudorandom) number generator. Specifying an argument 1 sets a pseudorandom
+/// number generator using an implication of the Mersenne Twister MT19937
+/// algorithm. Algorithm 4 is a combination of the blocking random number
+/// generator and the Mersenne Twister.
+///
+/// @CMDOPT{--random.no-seed}
+///
+/// By default, the random generator is seeded. Setting this option causes the
+/// random number generator not to be seeded. (Seeding the random number
+/// generator only occurs if the generator is set to Mersenne, refer to
+/// random.generator for details.)
+////////////////////////////////////////////////////////////////////////////////
 
         uint32_t randomGenerator;
 

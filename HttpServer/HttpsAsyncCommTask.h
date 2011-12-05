@@ -26,8 +26,8 @@
 /// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_HTTP_SERVER_HTTPS_ASYNC_COMM_TASK_H
-#define TRIAGENS_HTTP_SERVER_HTTPS_ASYNC_COMM_TASK_H 1
+#ifndef TRIAGENS_FYN_HTTP_SERVER_HTTPS_ASYNC_COMM_TASK_H
+#define TRIAGENS_FYN_HTTP_SERVER_HTTPS_ASYNC_COMM_TASK_H 1
 
 #include "GeneralServer/GeneralAsyncCommTask.h"
 

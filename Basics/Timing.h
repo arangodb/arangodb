@@ -25,8 +25,8 @@
 /// @author Copyright 2005-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_TIMING_H
-#define TRIAGENS_BASICS_TIMING_H 1
+#ifndef TRIAGENS_JUTLAND_BASICS_TIMING_H
+#define TRIAGENS_JUTLAND_BASICS_TIMING_H 1
 
 #include <Basics/Common.h>
 

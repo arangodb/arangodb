@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_REST_SSL_INTERFACE_H
-#define TRIAGENS_REST_SSL_INTERFACE_H 1
+#ifndef TRIAGENS_FYN_REST_SSL_INTERFACE_H
+#define TRIAGENS_FYN_REST_SSL_INTERFACE_H 1
 
 #include <Basics/Common.h>
 

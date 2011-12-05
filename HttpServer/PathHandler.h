@@ -25,8 +25,8 @@
 /// @author Copyright 2008-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_HTTP_SERVER_PATH_HANDLER_H
-#define TRIAGENS_HTTP_SERVER_PATH_HANDLER_H 1
+#ifndef TRIAGENS_FYN_HTTP_SERVER_PATH_HANDLER_H
+#define TRIAGENS_FYN_HTTP_SERVER_PATH_HANDLER_H 1
 
 #include <Basics/Common.h>
 

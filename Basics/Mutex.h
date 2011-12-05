@@ -26,8 +26,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_MUTEX_H
-#define TRIAGENS_BASICS_MUTEX_H 1
+#ifndef TRIAGENS_JUTLAND_BASICS_MUTEX_H
+#define TRIAGENS_JUTLAND_BASICS_MUTEX_H 1
 
 #include <Basics/Common.h>
 

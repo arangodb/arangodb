@@ -223,6 +223,10 @@ void AvocadoServer::buildApplicationServer () {
     ("dispatcher.threads", &_dispatcherThreads, "number of dispatcher threads")
   ;
 
+  additional[ApplicationServer::OPTIONS_HIDDEN]
+    ("port", &_httpPort, "port for client access")
+  ;
+
   // .............................................................................
   // database options
   // .............................................................................
@@ -261,6 +265,16 @@ void AvocadoServer::buildApplicationServer () {
   // .............................................................................
   // set directories and scripts
   // .............................................................................
+
+  vector<string> arguments = _applicationServer->programArguments();
+
+  if (1 < arguments.size()) {
+    LOGGER_FATAL << "expected at most one database directory, got " << arguments.size();
+    exit(EXIT_FAILURE);
+  }
+  else if (1 == arguments.size()) {
+    _databasePath = arguments[0];
+  }
 
   if (_startupPath.empty()) {
     StartupLoader.defineScript("json.js", JS_json);
@@ -386,7 +400,7 @@ int AvocadoServer::startupServer () {
 
   Scheduler* scheduler = _applicationServer->scheduler();
 
-  {
+  if (! _httpPort.empty()) {
     HttpHandlerFactory* factory = new HttpHandlerFactory();
 
     vector<AddressPort> ports;
@@ -404,7 +418,7 @@ int AvocadoServer::startupServer () {
   // create a http server and http handler factory
   // .............................................................................
 
-  {
+  if (! _adminPort.empty()) {
     HttpHandlerFactory* adminFactory = new HttpHandlerFactory();
 
     vector<AddressPort> adminPorts;
@@ -419,6 +433,24 @@ int AvocadoServer::startupServer () {
   // .............................................................................
   // start the main event loop
   // .............................................................................
+
+  LOGGER_INFO << "AvocadoDB (version " << TRIAGENS_VERSION << ") is ready for business";
+
+  if (_httpPort.empty()) {
+    LOGGER_WARNING << "HTTP client port not defined, maybe you want to use the 'server.http-port' option?";
+  }
+  else {
+    LOGGER_INFO << "HTTP client port: " << _httpPort;
+  }
+
+  if (_adminPort.empty()) {
+    LOGGER_INFO << "HTTP admin port not defined, maybe you want to use the 'server.admin-port' option?";
+  }
+  else {
+    LOGGER_INFO << "HTTP admin port: " << _adminPort;
+  }
+
+  LOGGER_INFO << "Have Fun!";
 
   _applicationServer->start();
   _applicationServer->wait();

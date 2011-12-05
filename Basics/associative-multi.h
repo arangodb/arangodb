@@ -26,8 +26,8 @@
 /// @author Copyright 2006-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_ASSOCIATIVE_MULTI_H
-#define TRIAGENS_BASICS_ASSOCIATIVE_MULTI_H 1
+#ifndef TRIAGENS_PHILADELPHIA_BASICS_ASSOCIATIVE_MULTI_H
+#define TRIAGENS_PHILADELPHIA_BASICS_ASSOCIATIVE_MULTI_H 1
 
 #include <Basics/Common.h>
 

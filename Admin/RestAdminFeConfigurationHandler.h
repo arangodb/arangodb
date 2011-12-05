@@ -25,8 +25,8 @@
 /// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_ADMIN_REST_ADMIN_FE_CONFIGURATION_HANDLER_H
-#define TRIAGENS_ADMIN_REST_ADMIN_FE_CONFIGURATION_HANDLER_H 1
+#ifndef TRIAGENS_BORNHOLM_ADMIN_REST_ADMIN_FE_CONFIGURATION_HANDLER_H
+#define TRIAGENS_BORNHOLM_ADMIN_REST_ADMIN_FE_CONFIGURATION_HANDLER_H 1
 
 #include <Admin/RestAdminBaseHandler.h>
 

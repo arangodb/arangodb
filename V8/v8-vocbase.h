@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_V8_V8_VOCBASE_H
-#define TRIAGENS_V8_V8_VOCBASE_H 1
+#ifndef TRIAGENS_DURHAM_V8_V8_VOCBASE_H
+#define TRIAGENS_DURHAM_V8_V8_VOCBASE_H 1
 
 #include <Basics/Common.h>
 

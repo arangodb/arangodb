@@ -37,8 +37,8 @@
 /// @author Copyright 2006-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_ASSOCIATIVE_ARRAY_H
-#define TRIAGENS_BASICS_ASSOCIATIVE_ARRAY_H 1
+#ifndef TRIAGENS_JUTLAND_BASICS_ASSOCIATIVE_ARRAY_H
+#define TRIAGENS_JUTLAND_BASICS_ASSOCIATIVE_ARRAY_H 1
 
 #include <Basics/Common.h>
 

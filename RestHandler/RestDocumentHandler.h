@@ -25,8 +25,8 @@
 /// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_REST_HANDLER_REST_DOCUMENT_HANDLER_H
-#define TRIAGENS_REST_HANDLER_REST_DOCUMENT_HANDLER_H 1
+#ifndef TRIAGENS_AVOCADO_DB_REST_HANDLER_REST_DOCUMENT_HANDLER_H
+#define TRIAGENS_AVOCADO_DB_REST_HANDLER_REST_DOCUMENT_HANDLER_H 1
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 

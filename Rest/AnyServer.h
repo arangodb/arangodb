@@ -26,8 +26,8 @@
 /// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_REST_ANY_SERVER_H
-#define TRIAGENS_REST_ANY_SERVER_H 1
+#ifndef TRIAGENS_FYN_REST_ANY_SERVER_H
+#define TRIAGENS_FYN_REST_ANY_SERVER_H 1
 
 #include <Basics/Common.h>
 
@@ -110,6 +110,12 @@ namespace triagens {
 
         ////////////////////////////////////////////////////////////////////////////////
         /// @brief pid file
+        ///
+        /// @CMDOPT{--pid-file @CA{filename}}
+        ///
+        /// The name of the process ID file to use when running the server as a
+        /// daemon. This parameter must be specified if either the flag @CODE{daemon} or
+        /// @CODE{supervisor} is set.
         ////////////////////////////////////////////////////////////////////////////////
 
         string _pidFile;

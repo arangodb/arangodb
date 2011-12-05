@@ -27,8 +27,8 @@
 /// @author Copyright 2007-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_REST_URL_H
-#define TRIAGENS_REST_URL_H 1
+#ifndef TRIAGENS_FYN_REST_URL_H
+#define TRIAGENS_FYN_REST_URL_H 1
 
 #include <Basics/Common.h>
 
