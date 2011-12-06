@@ -1520,42 +1520,6 @@ bool TRI_ObjectToBoolean (v8::Handle<v8::Value> value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts JSON string to object
-///
-/// @FUN{fromJson(@FA{string})}
-///
-/// Converts a string representation of a JSON object into a JavaScript
-/// object.
-///
-/// @verbinclude fluent35
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_FromJson (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: fromJson(<string>)")));
-  }
-
-  v8::String::Utf8Value str(argv[0]);
-
-  if (*str == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("cannot get UTF-8 representation of <string>")));
-  }
-
-  char* error;
-  v8::Handle<v8::Value> object = TRI_FromJsonString(*str, &error);
-
-  if (object->IsUndefined()) {
-    v8::Handle<v8::String> msg = v8::String::New(error);
-    TRI_FreeString(error);
-    return scope.Close(v8::ThrowException(msg));
-  }
-
-  return scope.Close(object);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current time
 ///
 /// @FUN{time()}
@@ -1919,10 +1883,6 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context) {
   // .............................................................................
   // create the global functions
   // .............................................................................
-
-  context->Global()->Set(v8::String::New("fromJson"),
-                         v8::FunctionTemplate::New(JS_FromJson)->GetFunction(),
-                         v8::ReadOnly);
 
   context->Global()->Set(v8::String::New("time"),
                          v8::FunctionTemplate::New(JS_Time)->GetFunction(),

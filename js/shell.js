@@ -135,48 +135,20 @@ AvocadoCollection.prototype.print = function() {
     status = this.status();
 
     if (status == 1) {
-      output("[new born collection ", toJson(this._name), "]");
+      output("[new born collection ", JSON.stringify(this._name), "]");
     }
     else if (status == 2) {
-      output("[unloaded collection ", toJson(this._name), "]");
+      output("[unloaded collection ", JSON.stringify(this._name), "]");
     }
     else if (status == 3) {
-      output("[collection ", toJson(this._name), "]");
+      output("[collection ", JSON.stringify(this._name), "]");
     }
     else {
-      output("[corrupted collection ", toJson(this._name), "]");
+      output("[corrupted collection ", JSON.stringify(this._name), "]");
     }
   }
   else {
     output(this.toString(), "\n");
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief string representation of a collection
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoCollection.prototype.toString = function() {
-  var status;
-
-  if (this instanceof AvocadoCollection) {
-    status = this.status();
-
-    if (status == 1) {
-      return "[new born collection at " + toJson(this._name) + "]";
-    }
-    else if (status == 2) {
-      return "[unloaded collection at " + toJson(this._name) + "]";
-    }
-    else if (status == 3) {
-      return "[collection at " + toJson(this._name) + "]";
-    }
-    else {
-      return "[corrupted collection at " + toJson(this._name) + "]";
-    }
-  }
-  else {
-    return "[object]";
   }
 }
 
@@ -199,23 +171,10 @@ AvocadoCollection.prototype.toString = function() {
 
 AvocadoDatabase.prototype.print = function() {
   if (this instanceof AvocadoDatabase) {
-    output("[vocbase at ", toJson(this._path), "]");
+    output("[vocbase at ", JSON.stringify(this._path), "]");
   }
   else {
     output(this.toString(), "\n");
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief string representation of a vocbase
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoDatabase.prototype.toString = function() {
-  if (this instanceof AvocadoDatabase) {
-    return "[vocbase at " + toJson(this._path) + "]";
-  }
-  else {
-    return "[object]";
   }
 }
 
@@ -238,23 +197,10 @@ AvocadoDatabase.prototype.toString = function() {
 
 AvocadoEdges.prototype.print = function() {
   if (this instanceof AvocadoEdges) {
-    output("[edges at ", toJson(this._path), "]");
+    output("[edges at ", JSON.stringify(this._path), "]");
   }
   else {
     output(this.toString(), "\n");
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief string representation of a vocbase
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoEdges.prototype.toString = function() {
-  if (this instanceof AvocadoEdges) {
-    return "[edges at " + toJson(this._path) + "]";
-  }
-  else {
-    return "[object]";
   }
 }
 
@@ -277,7 +223,20 @@ AvocadoEdges.prototype.toString = function() {
 
 AvocadoEdgesCollection.prototype.print = function() {
   if (this instanceof AvocadoEdgesCollection) {
-    output("[edges collection ", toJson(this._name), "]");
+    status = this.status();
+
+    if (status == 1) {
+      output("[new born edges collection ", JSON.stringify(this._name), "]");
+    }
+    else if (status == 2) {
+      output("[unloaded edges collection ", JSON.stringify(this._name), "]");
+    }
+    else if (status == 3) {
+      output("[collection edges ", JSON.stringify(this._name), "]");
+    }
+    else {
+      output("[corrupted edges collection ", JSON.stringify(this._name), "]");
+    }
   }
   else {
     output(this.toString(), "\n");

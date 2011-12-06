@@ -26,159 +26,247 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                            toJson
+// --SECTION--                                                 AvocadoCollection
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Json V8 JSON
+/// @addtogroup V8Json
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief JSON representation of an object
-///
-/// @FUN{toJson(@FA{object}, @FA{useNewLine})}
-///
-/// The representation of a JSON object as string. If @FA{useNewLine} is true,
-/// then new-lines are used to format the output in a nice way.
+/// @brief string representation of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-function toJson (x, useNL, indent) {
-  if (x === null) {
-    return "null";
-  }
+AvocadoCollection.prototype.toString = function() {
+  var status;
 
-  if (x === undefined) {
-    return "undefined";
-  }
+  if (this instanceof AvocadoCollection) {
+    status = this.status();
 
-  if (! indent) {
-    indent = "";
-  }
-
-  if (x instanceof String || typeof x === "string") {
-    var s = "\"";
-
-    for (var i = 0;  i < x.length;  i++){
-      switch (x[i]) {
-        case '"': s += '\\"'; break;
-        case '\\': s += '\\\\'; break;
-        case '\b': s += '\\b'; break;
-        case '\f': s += '\\f'; break;
-        case '\n': s += '\\n'; break;
-        case '\r': s += '\\r'; break;
-        case '\t': s += '\\t'; break;
-
-        default: {
-          var code = x.charCodeAt(i);
-
-          if (code < 0x20) {
-            s += (code < 0x10 ? '\\u000' : '\\u00') + code.toString(16);
-          }
-          else {
-            s += x[i];
-          }
-        }
-      }
+    if (status == 1) {
+      return "[new born collection at " + JSON.stringify(this._name) + "]";
     }
-
-    return s + "\"";
+    else if (status == 2) {
+      return "[unloaded collection at " + JSON.stringify(this._name) + "]";
+    }
+    else if (status == 3) {
+      return "[collection at " + JSON.stringify(this._name) + "]";
+    }
+    else {
+      return "[corrupted collection at " + JSON.stringify(this._name) + "]";
+    }
   }
-
-  if (x instanceof Number || typeof x === "number") {
-    return "" + x;
+  else {
+    return "[object]";
   }
-
-  if (x instanceof Boolean || typeof x === "boolean") {
-    return "" + x;
-  }
-
-  if (x instanceof Function) {
-    return x.toString();
-  }
-
-  if (x instanceof Object) {
-    return x.toJson(useNL, indent);
-  }
-
-  return "" + x;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief JSON representation of an array
+/// @brief JSON representation of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-Array.prototype.toJson = function(useNL, indent) {
-  var nl = useNL ? "\n" : " ";
+AvocadoCollection.prototype.toJSON = function() {
+  if (this instanceof AvocadoCollection) {
+    status = this.status();
 
-  if (! indent) {
-    indent = "";
-  }
-
-  if (! useNL) {
-    indent = "";
-  }
-
-  if (this.length == 0) {
-    return indent + "[]";
-  }
-
-  var s = "[" + nl;
-  var oldIndent = indent;
-
-  if (useNL) {
-    indent += "  ";
-  }
-
-  for (var i = 0;  i < this.length;  i++) {
-    s += indent + toJson(this[i], useNL, indent);
-
-    if (i < this.length - 1) {
-      s += "," + nl;
+    if (status == 1) {
+      return "[new born collection " + JSON.stringify(this._name) + "]";
+    }
+    else if (status == 2) {
+      return "[unloaded collection " + JSON.stringify(this._name) + "]";
+    }
+    else if (status == 3) {
+      return "[collection " + JSON.stringify(this._name) + "]";
+    }
+    else {
+      return "[corrupted collection " + JSON.stringify(this._name) + "]";
     }
   }
-
-  s += nl + oldIndent + "]";
-
-  return s;
+  else {
+    return "[object]";
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief JSON representation of an object
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-Object.prototype.toJson = function(useNL, indent) {
-  var nl = useNL ? "\n" : " ";
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   AvocadoDatabase
+// -----------------------------------------------------------------------------
 
-  if (! indent) {
-    indent = "";
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Json
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief string representation of a vocbase
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype.toString = function() {
+  if (this instanceof AvocadoDatabase) {
+    return "[vocbase at " + JSON.stringify(this._path) + "]";
   }
-
-  var s = "{" + nl;
-
-  // push one level of indent
-  var oldIndent = indent;
-  indent += "  ";
-
-  if (! useNL) {
-    indent = "";
+  else {
+    return "[object]";
   }
+}
 
-  var sep = "";
+////////////////////////////////////////////////////////////////////////////////
+/// @brief JSON representation of a vocbase
+////////////////////////////////////////////////////////////////////////////////
 
-  for (var k in this) {
-    if (this.hasOwnProperty(k)) {
-      var val = this[k];
+AvocadoDatabase.prototype.toJSON = function() {
+  if (this instanceof AvocadoDatabase) {
+    return "[vocbase at " + JSON.stringify(this._path) + "]";
+  }
+  else {
+    return "[object]";
+  }
+}
 
-      s += sep + indent + "\"" + k + "\" : " + toJson(val, useNL, indent);
-      sep = "," + nl;
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      AvocadoEdges
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Json
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief string representation of a vocbase
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoEdges.prototype.toString = function() {
+  if (this instanceof AvocadoEdges) {
+    return "[edges at " + JSON.stringify(this._path) + "]";
+  }
+  else {
+    return "[object]";
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief JSON representation of a vocbase
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoEdges.prototype.toJSON = function() {
+  if (this instanceof AvocadoEdges) {
+    return "[edges at " + JSON.stringify(this._path) + "]";
+  }
+  else {
+    return "[object]";
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            AvocadoEdgesCollection
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Json
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief string representation of an edges collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoEdgesCollection.prototype.toString = function() {
+  var status;
+
+  if (this instanceof AvocadoEdgesCollection) {
+    status = this.status();
+
+    if (status == 1) {
+      return "[new born collection at " + JSON.stringify(this._name) + "]";
+    }
+    else if (status == 2) {
+      return "[unloaded collection at " + JSON.stringify(this._name) + "]";
+    }
+    else if (status == 3) {
+      return "[collection at " + JSON.stringify(this._name) + "]";
+    }
+    else {
+      return "[corrupted collection at " + JSON.stringify(this._name) + "]";
     }
   }
+  else {
+    return "[object]";
+  }
+}
 
-  // pop one level of indent
-  indent = oldIndent;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief JSON representation of an edges collection
+////////////////////////////////////////////////////////////////////////////////
 
-  return s + nl + indent + "}";
+AvocadoEdgesCollection.prototype.toJSON = function() {
+  var status;
+
+  if (this instanceof AvocadoEdgesCollection) {
+    status = this.status();
+
+    if (status == 1) {
+      return "[new born collection at " + JSON.stringify(this._name) + "]";
+    }
+    else if (status == 2) {
+      return "[unloaded collection at " + JSON.stringify(this._name) + "]";
+    }
+    else if (status == 3) {
+      return "[collection at " + JSON.stringify(this._name) + "]";
+    }
+    else {
+      return "[corrupted collection at " + JSON.stringify(this._name) + "]";
+    }
+  }
+  else {
+    return "[object]";
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      AvocadoQuery
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief string representation of a query
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoQuery.prototype.toString = function() {
+  if (this instanceof AvocadoQuery) {
+    return "[query]";
+  }
+  else {
+    return "[object]";
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief JSON representation of a query
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoQuery.prototype.toJSON = function() {
+  if (this instanceof AvocadoQuery) {
+    return "[query]";
+  }
+  else {
+    return "[object]";
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
