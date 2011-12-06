@@ -787,7 +787,7 @@ static v8::Handle<v8::Value> JS_ExplainQuery (v8::Arguments const& argv) {
 /// documents.  In this case the next document can be accessed using the
 /// @FN{next} operator, which will advance the cursor.
 ///
-/// @verbinclude fluent28
+/// @verbinclude fluent3
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_HasNextQuery (v8::Arguments const& argv) {
@@ -847,7 +847,7 @@ static v8::Handle<v8::Value> JS_NextQuery (v8::Arguments const& argv) {
 /// accessed using the @FN{nextRef} operator, which will advance the
 /// cursor.
 ///
-/// @verbinclude fluent28
+/// @verbinclude fluent51
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_NextRefQuery (v8::Arguments const& argv) {
@@ -2606,7 +2606,6 @@ static v8::Handle<v8::Value> JS_CollectionsEdges (v8::Arguments const& argv) {
 ///
 /// @section JSFGlobal Global Functions
 ///
-/// - @ref JS_FromJson "fromJson"
 /// - @ref JSF_toJson "toJson"
 /// - @ref JS_LogLevel "logLevel"
 /// - @ref JS_Output "output"
@@ -2682,8 +2681,6 @@ static v8::Handle<v8::Value> JS_CollectionsEdges (v8::Arguments const& argv) {
 /// @copydetails JS_ShowQuery
 ///
 /// @section JSFGlobal Global Functions
-///
-/// @copydetails JS_FromJson
 ///
 /// @copydetails JSF_toJson
 ///

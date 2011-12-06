@@ -75,7 +75,7 @@ function queryResult (req, res, query) {
 
   res.responseCode = 200;
   res.contentType = "application/json";
-  res.body = toJson(result);
+  res.body = JSON.stringify(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -123,7 +123,7 @@ function queryReferences (req, res, query) {
 
   res.responseCode = 200;
   res.contentType = "application/json";
-  res.body = toJson(result);
+  res.body = JSON.stringify(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
