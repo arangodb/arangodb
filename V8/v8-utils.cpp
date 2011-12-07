@@ -1520,6 +1520,185 @@ bool TRI_ObjectToBoolean (v8::Handle<v8::Value> value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a script
+///
+/// @FUN{execute(@CA{script}, @CA{sandbox}, @CA{filename})}
+///
+/// Executes the @CA{script} with the @CA{sandbox} as context.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+  size_t i;
+
+  // extract arguments
+  if (argv.Length() != 3) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: execute(<script>, <sandbox>, <filename>)")));
+  }
+
+  v8::Handle<v8::Value> source = argv[0];
+  v8::Handle<v8::Value> sandboxValue = argv[1];
+  v8::Handle<v8::Value> filename = argv[2];
+
+  if (! source->IsString()) {
+    return scope.Close(v8::ThrowException(v8::String::New("<script> must be a string")));
+  }
+
+  if (! sandboxValue->IsObject()) {
+    return scope.Close(v8::ThrowException(v8::String::New("<sandbox> must be an object")));
+  }
+
+  v8::Handle<v8::Object> sandbox = sandboxValue->ToObject();
+
+  // create new context
+  v8::Handle<v8::Context> context = v8::Context::New();
+  context->Enter();
+
+  // copy sandbox into context
+  v8::Handle<v8::Array> keys = sandbox->GetPropertyNames();
+
+  for (i = 0; i < keys->Length(); i++) {
+    v8::Handle<v8::String> key = keys->Get(v8::Integer::New(i))->ToString();
+    v8::Handle<v8::Value> value = sandbox->Get(key);
+
+    if (TRI_IsTraceLogging()) {
+      v8::String::Utf8Value keyName(key);
+
+      if (*keyName != 0) {
+        LOG_TRACE("copying key '%s' from sandbox to context", *keyName);
+      }
+    }
+
+    if (value == sandbox) {
+      value = context->Global();
+    }
+
+    context->Global()->Set(key, value);
+  }
+
+  // execute script inside the context
+  v8::Handle<v8::Script> script = v8::Script::Compile(source->ToString(), filename);
+
+  // compilation failed, print errors that happened during compilation
+  if (script.IsEmpty()) {
+    assert(tryCatch.HasCaught());
+
+    context->DetachGlobal();
+    context->Exit();
+
+    return scope.Close(tryCatch.ReThrow());
+  }
+
+  // compilation succeeded, run the script
+  v8::Handle<v8::Value> result = script->Run();
+
+  if (result.IsEmpty()) {
+    assert(tryCatch.HasCaught());
+
+    context->DetachGlobal();
+    context->Exit();
+
+    return scope.Close(tryCatch.ReThrow());
+  }
+
+  // copy result back into the sandbox
+  keys = context->Global()->GetPropertyNames();
+
+  for (i = 0; i < keys->Length(); i++) {
+    v8::Handle<v8::String> key = keys->Get(v8::Integer::New(i))->ToString();
+    v8::Handle<v8::Value> value = context->Global()->Get(key);
+
+    if (TRI_IsTraceLogging()) {
+      v8::String::Utf8Value keyName(key);
+
+      if (*keyName != 0) {
+        LOG_TRACE("copying key '%s' from context to sandbox", *keyName);
+      }
+    }
+
+    if (value == context->Global()) {
+      value = sandbox;
+    }
+
+    sandbox->Set(key, value);
+  }
+
+  context->DetachGlobal();
+
+  context->Exit();
+  return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads a file and executes it
+///
+/// @FUN{load(@CA{filename})}
+///
+/// Reads in a files and executes the contents in the current context.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Load (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  // extract arguments
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: load(<filename>)")));
+  }
+
+  v8::String::Utf8Value name(argv[0]);
+
+  if (*name == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("<filename> must be a string")));
+  }
+
+  char* content = TRI_SlurpFile(*name);
+
+  if (content == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New(TRI_last_error())));
+  }
+
+  bool ok = TRI_ExecuteStringVocBase(v8::Context::GetCurrent(), v8::String::New(content), argv[0], false, true);
+
+  return scope.Close(ok ? v8::True() : v8::False());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads in a file
+///
+/// @FUN{read(@CA{filename})}
+///
+/// Reads in a files and returns the content as string.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: read(<filename>)")));
+  }
+
+  v8::String::Utf8Value name(argv[0]);
+
+  if (*name == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("<filename> must be a string")));
+  }
+
+  char* content = TRI_SlurpFile(*name);
+
+  if (content == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New(TRI_last_error())));
+  }
+
+  v8::Handle<v8::String> result = v8::String::New(content);
+
+  TRI_FreeString(content);
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current time
 ///
 /// @FUN{time()}
@@ -1847,8 +2026,6 @@ bool TRI_ExecuteStringVocBase (v8::Handle<v8::Context> context,
 
         v8::Handle<v8::Value> args[] = { result };
         print->Call(print, 1, args);
-
-        printf("\n");
       }
 
       return true;
@@ -1883,6 +2060,18 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context) {
   // .............................................................................
   // create the global functions
   // .............................................................................
+
+  context->Global()->Set(v8::String::New("execute"),
+                         v8::FunctionTemplate::New(JS_Execute)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("load"),
+                         v8::FunctionTemplate::New(JS_Load)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("read"),
+                         v8::FunctionTemplate::New(JS_Read)->GetFunction(),
+                         v8::ReadOnly);
 
   context->Global()->Set(v8::String::New("time"),
                          v8::FunctionTemplate::New(JS_Time)->GetFunction(),

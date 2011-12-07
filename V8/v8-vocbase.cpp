@@ -2321,37 +2321,6 @@ static v8::Handle<v8::Value> JS_SaveEdgesCol (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a TRI_vocbase_col_t into a string
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_ToStringEdgesCol (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  TRI_vocbase_col_t const* collection = UnwrapClass<TRI_vocbase_col_t>(argv.Holder());
-
-  if (collection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
-  }
-
-  string name;
-
-  if (collection->_corrupted) {
-    name = "[corrupted edges collection \"" + string(collection->_name) + "\"]";
-  }
-  else if (collection->_newBorn) {
-    name = "[new born edges collection \"" + string(collection->_name) + "\"]";
-  }
-  else if (collection->_loaded) {
-    name = "[edges collection \"" + string(collection->_name) + "\"]";
-  }
-  else {
-    name = "[unloaded edges collection \"" + string(collection->_name) + "\"]";
-  }
-
-  return scope.Close(v8::String::New(name.c_str()));
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2392,7 +2361,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
     return scope.Close(v8::ThrowException(v8::String::New("name must not be empty")));
   }
 
-  if (key == "toString" || key == "print" || key[0] == '_') {
+  if (key == "toString" || key == "toJSON" || key == "PRINT" || key[0] == '_') {
     return v8::Handle<v8::Value>();
   }
 
@@ -2492,7 +2461,7 @@ static v8::Handle<v8::Value> MapGetEdges (v8::Local<v8::String> name,
     return scope.Close(v8::ThrowException(v8::String::New("name must not be empty")));
   }
 
-  if (key == "toString" || key == "print" || key[0] == '_') {
+  if (key == "toString" || key == "toJSON" || key == "PRINT" || key[0] == '_') {
     return v8::Handle<v8::Value>();
   }
 
@@ -2606,12 +2575,14 @@ static v8::Handle<v8::Value> JS_CollectionsEdges (v8::Arguments const& argv) {
 ///
 /// @section JSFGlobal Global Functions
 ///
-/// - @ref JSF_toJson "toJson"
+/// - @ref JS_Execute "execute"
+/// - @ref JS_Load "load"
 /// - @ref JS_LogLevel "logLevel"
 /// - @ref JS_Output "output"
 /// - @ref JS_Print "print"
 /// - @ref JS_ProcessCsvFile "processCsvFile"
 /// - @ref JS_ProcessJsonFile "processJsonFile"
+/// - @ref JS_Read "read"
 /// - @ref JS_Time "time"
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2682,7 +2653,9 @@ static v8::Handle<v8::Value> JS_CollectionsEdges (v8::Arguments const& argv) {
 ///
 /// @section JSFGlobal Global Functions
 ///
-/// @copydetails JSF_toJson
+/// @copydetails JS_Execute
+///
+/// @copydetails JS_Load
 ///
 /// @copydetails JS_LogLevel
 ///
@@ -2693,6 +2666,8 @@ static v8::Handle<v8::Value> JS_CollectionsEdges (v8::Arguments const& argv) {
 /// @copydetails JS_ProcessCsvFile
 ///
 /// @copydetails JS_ProcessJsonFile
+///
+/// @copydetails JS_Read
 ///
 /// @copydetails JS_Time
 ////////////////////////////////////////////////////////////////////////////////
@@ -2809,14 +2784,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
 
   if (v8g->OutputFuncName.IsEmpty()) {
     v8g->OutputFuncName = v8::Persistent<v8::String>::New(v8::String::New("output"));
-  }
-
-  if (v8g->PrintFuncName.IsEmpty()) {
-    v8g->PrintFuncName = v8::Persistent<v8::String>::New(v8::String::New("print"));
-  }
-
-  if (v8g->ToStringFuncName.IsEmpty()) {
-    v8g->ToStringFuncName = v8::Persistent<v8::String>::New(v8::String::New("toString"));
   }
 
   // .............................................................................
@@ -2978,7 +2945,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(SkipFuncName, v8::FunctionTemplate::New(JS_SkipQuery));
   rt->Set(ToArrayFuncName, v8::FunctionTemplate::New(JS_ToArrayQuery));
   rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
-  rt->Set(v8g->ToStringFuncName, v8::FunctionTemplate::New(JS_ToStringEdgesCol));
 
   v8g->EdgesColTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
