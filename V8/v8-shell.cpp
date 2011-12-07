@@ -401,107 +401,6 @@ static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief prints the arguments
-///
-/// @FUN{print(@FA{arg1}, @FA{arg2}, @FA{arg3}, ...)}
-///
-/// Prints the arguments. If an argument is an object having a function print,
-/// then this function is called. Otherwise @FN{toJson} is used.  After each
-/// argument a newline is printed.
-///
-/// @verbinclude fluent40
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_Print (v8::Arguments const& argv) {
-  TRI_v8_global_t* v8g;
-  v8::HandleScope globalScope;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-  for (int i = 0; i < argv.Length(); i++) {
-    v8::HandleScope scope;
-    TRI_string_buffer_t buffer;
-    bool printBuffer = true;
-
-    TRI_InitStringBuffer(&buffer);
-
-    // extract the next argument
-    v8::Handle<v8::Value> val = argv[i];
-
-    // convert the object into a string
-    if (val->IsObject()) {
-      v8::Handle<v8::Object> obj = val->ToObject();
-
-      if (obj->Has(v8g->PrintFuncName)) {
-        v8::Handle<v8::Function> print = v8::Handle<v8::Function>::Cast(obj->Get(v8g->PrintFuncName));
-        v8::Handle<v8::Value> args[1];
-        print->Call(obj, 0, args);
-        printBuffer = false;
-      }
-      else {
-        v8::String::Utf8Value utf8(argv[0]);
-
-        if (*utf8 == 0) {
-          TRI_AppendStringStringBuffer(&buffer, "[object]");
-        }
-        else {
-          TRI_AppendString2StringBuffer(&buffer, *utf8, utf8.length());
-        }
-      }
-    }
-    else if (val->IsString()) {
-      v8::String::Utf8Value utf8(val->ToString());
-
-      if (*utf8 == 0) {
-        TRI_AppendStringStringBuffer(&buffer, "[string]");
-      }
-      else {
-        size_t out;
-        char* e = TRI_EscapeCString(*utf8, utf8.length(), &out);
-
-        TRI_AppendCharStringBuffer(&buffer, '"');
-        TRI_AppendString2StringBuffer(&buffer, e, out);
-        TRI_AppendCharStringBuffer(&buffer, '"');
-
-        TRI_FreeString(e);
-      }
-    }
-    else {
-      v8::String::Utf8Value utf8(val);
-
-      if (*utf8 == 0) {
-        TRI_AppendStringStringBuffer(&buffer, "[value]");
-      }
-      else {
-        TRI_AppendString2StringBuffer(&buffer, *utf8, utf8.length());
-      }
-    }
-
-    // print the argument
-    if (printBuffer) {
-      char const* ptr = TRI_BeginStringBuffer(&buffer);
-      size_t len = TRI_LengthStringBuffer(&buffer);
-
-      while (0 < len) {
-        ssize_t n = write(1, ptr, len);
-
-        if (n < 0) {
-          TRI_DestroyStringBuffer(&buffer);
-          return v8::Undefined();
-        }
-
-        len -= n;
-        ptr += n;
-      }
-    }
-
-    TRI_DestroyStringBuffer(&buffer);
-  }
-
-  return v8::Undefined();
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -531,14 +430,6 @@ void TRI_InitV8Shell (v8::Handle<v8::Context> context) {
   }
 
   // .............................................................................
-  // global function names
-  // .............................................................................
-
-  if (v8g->PrintFuncName.IsEmpty()) {
-    v8g->PrintFuncName = v8::Persistent<v8::String>::New(v8::String::New("print"));
-  }
-
-  // .............................................................................
   // create the global functions
   // .............................................................................
 
@@ -548,10 +439,6 @@ void TRI_InitV8Shell (v8::Handle<v8::Context> context) {
 
   context->Global()->Set(v8::String::New("output"),
                          v8::FunctionTemplate::New(JS_Output)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8g->PrintFuncName,
-                         v8::FunctionTemplate::New(JS_Print)->GetFunction(),
                          v8::ReadOnly);
 
   context->Global()->Set(v8::String::New("processCsvFile"),
