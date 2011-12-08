@@ -75,6 +75,12 @@ JSLoader* ActionDisptacherThread::_startupLoader = 0;
 TRI_vocbase_t* ActionDisptacherThread::_vocbase = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief modules path
+////////////////////////////////////////////////////////////////////////////////
+
+string ActionDisptacherThread::_startupModules;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -202,7 +208,7 @@ void ActionDisptacherThread::run () {
 void ActionDisptacherThread::initialise () {
   bool ok;
   char* filename;
-  char const* files[] = { "json.js", "actions.js", "graph.js" };
+  char const* files[] = { "actions.js", "graph.js", "json.js", "modules.js" };
   size_t i;
 
   // enter a new isolate
@@ -222,7 +228,7 @@ void ActionDisptacherThread::initialise () {
 
   TRI_InitV8VocBridge(_context, _vocbase);
   TRI_InitV8Actions(_context);
-  TRI_InitV8Utils(_context);
+  TRI_InitV8Utils(_context, _startupModules);
   TRI_InitV8Shell(_context);
 
   // load all init files

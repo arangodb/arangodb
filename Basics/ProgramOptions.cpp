@@ -616,7 +616,7 @@ bool ProgramOptions::extractValues (ProgramOptionsDescription const& description
 
             case ProgramOptionsDescription::OPTION_TYPE_TIME:
 #if __WORDSIZE == 32
-              ExtractTime(*ptr, lookup(description._timeOptions, name));
+              ExtractInt32(*ptr, (int32_t*) lookup(description._timeOptions, name));
 #endif
               break;
 

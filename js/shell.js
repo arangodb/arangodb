@@ -39,6 +39,8 @@
 ///
 /// @FUN{print(@FA{arg1}, @FA{arg2}, @FA{arg3}, ...)}
 ///
+/// Only available in shell mode.
+///
 /// Prints the arguments. If an argument is an object having a
 /// function @FN{PRINT}, then this function is called. Otherwise @FN{toJson} is
 /// used.  A final newline is printed

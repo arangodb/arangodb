@@ -1522,9 +1522,12 @@ bool TRI_ObjectToBoolean (v8::Handle<v8::Value> value) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a script
 ///
-/// @FUN{execute(@CA{script}, @CA{sandbox}, @CA{filename})}
+/// @FUN{execute(@FA{script}, @FA{sandbox}, @FA{filename})}
 ///
-/// Executes the @CA{script} with the @CA{sandbox} as context.
+/// Executes the @FA{script} with the @FA{sandbox} as context. Global variables
+/// assigned inside the @FA{script}, will be visible in the @FA{sandbox} object
+/// after execution. The @FA{filename} is used for displaying error
+/// messages.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
@@ -1633,7 +1636,7 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a file and executes it
 ///
-/// @FUN{load(@CA{filename})}
+/// @FUN{load(@FA{filename})}
 ///
 /// Reads in a files and executes the contents in the current context.
 ////////////////////////////////////////////////////////////////////////////////
@@ -1667,7 +1670,7 @@ static v8::Handle<v8::Value> JS_Load (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads in a file
 ///
-/// @FUN{read(@CA{filename})}
+/// @FUN{read(@FA{filename})}
 ///
 /// Reads in a files and returns the content as string.
 ////////////////////////////////////////////////////////////////////////////////
@@ -2037,7 +2040,7 @@ bool TRI_ExecuteStringVocBase (v8::Handle<v8::Context> context,
 /// @brief stores the V8 utils functions inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Utils (v8::Handle<v8::Context> context) {
+void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
   v8::HandleScope scope;
 
   // check the isolate
@@ -2076,6 +2079,13 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context) {
   context->Global()->Set(v8::String::New("time"),
                          v8::FunctionTemplate::New(JS_Time)->GetFunction(),
                          v8::ReadOnly);
+
+  // .............................................................................
+  // create the global variables
+  // .............................................................................
+
+  context->Global()->Set(v8::String::New("MODULES_PATH"),
+                         v8::String::New(path.c_str()));
 
   // .............................................................................
   // keys

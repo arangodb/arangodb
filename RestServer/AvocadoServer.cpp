@@ -68,9 +68,10 @@ using namespace triagens::admin;
 using namespace triagens::avocado;
 
 #include "RestServer/js-actions.h"
-#include "RestServer/js-json.h"
-#include "RestServer/js-shell.h"
 #include "RestServer/js-graph.h"
+#include "RestServer/js-json.h"
+#include "RestServer/js-modules.h"
+#include "RestServer/js-shell.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -146,6 +147,7 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
     _adminPort("localhost:8530"),
     _dispatcherThreads(1),
     _startupPath(),
+    _startupModules(),
     _actionPath(),
     _actionThreads(1),
     _databasePath("/var/lib/avocado"),
@@ -241,6 +243,7 @@ void AvocadoServer::buildApplicationServer () {
 
   additional["JAVASCRIPT Options"]
     ("startup.directory", &_startupPath, "path to the directory containing the startup scripts")
+    ("startup.modules-path", &_startupModules, "one or more directories separated by semicolon")
     ("action.directory", &_actionPath, "path to the action directory, defaults to <database.directory>/_ACTIONS")
     ("action.threads", &_actionThreads, "threads for actions")
   ;
@@ -277,10 +280,11 @@ void AvocadoServer::buildApplicationServer () {
   }
 
   if (_startupPath.empty()) {
-    StartupLoader.defineScript("json.js", JS_json);
-    StartupLoader.defineScript("shell.js", JS_shell);
     StartupLoader.defineScript("actions.js", JS_actions);
     StartupLoader.defineScript("graph.js", JS_graph);
+    StartupLoader.defineScript("json.js", JS_json);
+    StartupLoader.defineScript("modules.js", JS_modules);
+    StartupLoader.defineScript("shell.js", JS_shell);
   }
   else {
     StartupLoader.setDirectory(_startupPath);
@@ -427,10 +431,7 @@ int AvocadoServer::startupServer () {
     _applicationAdminServer->addBasicHandlers(adminFactory);
     _applicationAdminServer->addHandlers(adminFactory, "/admin");
 
-    adminFactory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
-    adminFactory->addPrefixHandler(RestVocbaseBaseHandler::ACTION_PATH, RestHandlerCreator<RestActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
-
-    _adminHttpServer = _applicationHttpServer->buildServer(new AvocadoHttpServer(scheduler, dispatcher), adminFactory, adminPorts);
+    _adminHttpServer = _applicationHttpServer->buildServer(adminFactory, adminPorts);
   }
 
   // .............................................................................
@@ -487,7 +488,7 @@ void AvocadoServer::executeShell () {
   v8::Isolate* isolate;
   v8::Persistent<v8::Context> context;
   bool ok;
-  char const* files[] = { "shell.js", "json.js" };
+  char const* files[] = { "graph.js", "json.js", "modules.js", "shell.js" };
   size_t i;
 
   // only simple logging
@@ -517,7 +518,7 @@ void AvocadoServer::executeShell () {
   context->Enter();
 
   TRI_InitV8VocBridge(context, _vocbase);
-  TRI_InitV8Utils(context);
+  TRI_InitV8Utils(context, _startupModules);
   TRI_InitV8Shell(context);
 
   // load all init files

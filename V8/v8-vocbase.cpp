@@ -2579,7 +2579,7 @@ static v8::Handle<v8::Value> JS_CollectionsEdges (v8::Arguments const& argv) {
 /// - @ref JS_Load "load"
 /// - @ref JS_LogLevel "logLevel"
 /// - @ref JS_Output "output"
-/// - @ref JS_Print "print"
+/// - @ref JSF_print "print"
 /// - @ref JS_ProcessCsvFile "processCsvFile"
 /// - @ref JS_ProcessJsonFile "processJsonFile"
 /// - @ref JS_Read "read"
@@ -2661,7 +2661,7 @@ static v8::Handle<v8::Value> JS_CollectionsEdges (v8::Arguments const& argv) {
 ///
 /// @copydetails JS_Output
 ///
-/// @copydetails JS_Print
+/// @copydetails JSF_print
 ///
 /// @copydetails JS_ProcessCsvFile
 ///

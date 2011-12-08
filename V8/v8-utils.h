@@ -197,7 +197,7 @@ bool TRI_ExecuteStringVocBase (v8::Handle<v8::Context> context,
 /// @brief stores the V8 utils function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Utils (v8::Handle<v8::Context> context);
+void TRI_InitV8Utils (v8::Handle<v8::Context> context, std::string const& path);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
