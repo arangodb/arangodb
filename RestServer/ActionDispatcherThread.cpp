@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ActionDispatcherThread.h"
@@ -193,6 +193,27 @@ void ActionDisptacherThread::run () {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// returns the action loader
+////////////////////////////////////////////////////////////////////////////////
+
+JSLoader* ActionDisptacherThread::actionLoader () {
+  return _actionLoader;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
@@ -243,12 +264,19 @@ void ActionDisptacherThread::initialise () {
   }
 
   // load all actions
-  ok = _actionLoader->loadAllScripts(_context);
+  JSLoader* loader = actionLoader();
 
-  if (! ok) {
-    LOGGER_FATAL << "cannot load actions from directory '" << filename << "'";
-    TRIAGENS_REST_SHUTDOWN;
-    exit(EXIT_FAILURE);
+  if (loader == 0) {
+    LOGGER_WARNING << "no action loader has been defined";
+  }
+  else {
+    ok = actionLoader()->loadAllScripts(_context);
+
+    if (! ok) {
+      LOGGER_FATAL << "cannot load actions from directory '" << filename << "'";
+      TRIAGENS_REST_SHUTDOWN;
+      exit(EXIT_FAILURE);
+    }
   }
 
   // and return from the context
@@ -259,7 +287,6 @@ void ActionDisptacherThread::initialise () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
 
 // Local Variables:
 // mode: outline-minor

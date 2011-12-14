@@ -58,9 +58,15 @@ class V8LineEditor {
     static const char* HISTORY_FILENAME;
 
   public:
+    V8LineEditor ();
+
+  public:
     bool open ();
     char* prompt (char const* prompt);
     void addHistory (const char* string);
+
+  private:
+    std::string current;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

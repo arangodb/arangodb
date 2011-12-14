@@ -176,11 +176,8 @@ GeoIndex * GeoIndex_new(void)
 
     for(i=0;i<GeoIndexFIXEDPOINTS;i++)
     {
-        if(i==0)
-        {
-            lat = 90.0;
-            lon = 0.0;
-        }
+        lat = 90.0;
+        lon = 0.0;
         if(i==1)
         {
             lat =  -90.0;

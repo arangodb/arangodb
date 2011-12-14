@@ -312,6 +312,7 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool InsertGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+  union { void* p; void const* c; } cnv;
   GeoCoordinate gc;
   TRI_shaper_t* shaper;
   bool ok;
@@ -344,7 +345,9 @@ static bool InsertGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   // and insert into index
   gc.latitude = latitude;
   gc.longitude = longitude;
-  gc.data = doc;
+
+  cnv.c = doc;
+  gc.data = cnv.p;
 
   res = GeoIndex_insert(geo->_geoIndex, &gc);
 
@@ -366,6 +369,7 @@ static bool InsertGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool UpdateGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_shaped_json_t const* old) {
+  union { void* p; void const* c; } cnv;
   GeoCoordinate gc;
   TRI_shaper_t* shaper;
   bool ok;
@@ -390,7 +394,9 @@ static bool UpdateGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_sha
   if (ok) {
     gc.latitude = latitude;
     gc.longitude = longitude;
-    gc.data = doc;
+
+    cnv.c = doc;
+    gc.data = cnv.p;
 
     res = GeoIndex_remove(geo->_geoIndex, &gc);
 
@@ -414,7 +420,9 @@ static bool UpdateGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_sha
 
   gc.latitude = latitude;
   gc.longitude = longitude;
-  gc.data = doc;
+
+  cnv.c = doc;
+  gc.data = cnv.p;
 
   res = GeoIndex_insert(geo->_geoIndex, &gc);
 
@@ -436,6 +444,7 @@ static bool UpdateGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_sha
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool RemoveGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+  union { void* p; void const* c; } cnv;
   GeoCoordinate gc;
   TRI_shaper_t* shaper;
   bool ok;
@@ -460,7 +469,9 @@ static bool RemoveGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   if (ok) {
     gc.latitude = latitude;
     gc.longitude = longitude;
-    gc.data = doc;
+
+    cnv.c = doc;
+    gc.data = cnv.p;
 
     res = GeoIndex_remove(geo->_geoIndex, &gc);
 

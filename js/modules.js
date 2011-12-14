@@ -91,6 +91,7 @@ function Module (id) {
 Module.prototype.require = function (path) {
   var content;
   var sandbox;
+  var paths;
   var module;
 
   // first get rid of any ".." and "."
@@ -102,7 +103,29 @@ Module.prototype.require = function (path) {
   }
 
   // try to load the file
-  content = read("." + path + ".js");
+  paths = MODULES_PATH.split(";");
+  content = undefined;
+
+  for (var i = 0;  i < paths.length;  ++i) {
+    var p = paths[i];
+    var n;
+
+    if (p == "") {
+      n = "." + path + ".js"
+    }
+    else {
+      n = p + "/" + path + ".js";
+    }
+
+    if (FS_EXISTS(n)) {
+      content = read(n);
+      break;
+    }
+  }
+
+  if (content == undefined) {
+    throw "cannot find a module named '" + path + "' using the module path(s) '" + MODULES_PATH + "'";
+  }
 
   // create a new sandbox and execute
   ModuleCache[path] = module = new Module(path);
@@ -200,6 +223,26 @@ ModuleCache["/"] = module = new Module("/");
 function require (path) {
   return module.require(path);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                            Module
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8ModuleFS
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fs model
+////////////////////////////////////////////////////////////////////////////////
+
+ModuleCache["/fs"] = new Module("/fs");
+ModuleCache["/fs"].exports.exists = FS_EXISTS;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

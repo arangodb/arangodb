@@ -92,6 +92,21 @@ typedef struct TRI_doc_datafile_info_s {
 TRI_doc_datafile_info_t;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief collection info
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_doc_collection_info_s {
+  TRI_voc_ssize_t _numberDatafiles;
+
+  TRI_voc_ssize_t _numberAlive;
+  TRI_voc_ssize_t _numberDead;
+  TRI_voc_ssize_t _sizeAlive;
+  TRI_voc_ssize_t _sizeDead;
+  TRI_voc_ssize_t _numberDeletion;
+}
+TRI_doc_collection_info_t;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief document collection
 ///
 /// A document collection is a collection of documents. These documents are
@@ -212,6 +227,11 @@ TRI_doc_datafile_info_t;
 /// Deletes an existing document of the collection and returns @c true in case
 /// of success. Otherwise, @c false is returned and the "TRI_errno()" is
 /// accordingly. The function will acquire and release a write lock.
+///
+/// <b><tt>TRI_doc_collection_info_t* figures (TRI_doc_collection_t*)</tt></b>
+///
+/// Returns informatiom about the collection. You must hold a read lock and
+/// must destroy the result after usage.
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_doc_collection_s {
@@ -242,6 +262,8 @@ typedef struct TRI_doc_collection_s {
 
   bool (*destroy) (struct TRI_doc_collection_s* collection, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e);
   bool (*destroyLock) (struct TRI_doc_collection_s* collection, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e);
+
+  TRI_doc_collection_info_t* (*figures) (struct TRI_doc_collection_s* collection);
 }
 TRI_doc_collection_t;
 

@@ -43,6 +43,28 @@ LDFLAGS="$LDFLAGS $BOOST_LDFLAGS"
 
 SAVE_LIBS="$LIBS"
 
+dnl -----------------------------------------------------------------------------------------
+dnl boost_system
+dnl -----------------------------------------------------------------------------------------
+
+TR_FIND_CXX_LIBRARY([boost],
+                    [boost_system$BOOST_SUFFIX],
+                    [BOOST_LIBS],
+                    [#include <boost/system/error_code.hpp>],
+                    [boost::system::get_system_category()])
+
+LIBS="$LIBS $BOOST_LIBS"
+
+dnl -----------------------------------------------------------------------------------------
+dnl boost_program_options
+dnl -----------------------------------------------------------------------------------------
+
+TR_FIND_CXX_LIBRARY([boost],
+                    [boost_program_options$BOOST_SUFFIX],
+                    [BOOST_LIBS],
+                    [#include <boost/program_options.hpp>],
+                    [boost::program_options::options_description d("test")])
+
 LIBS="$LIBS $BOOST_LIBS"
 
 dnl -----------------------------------------------------------------------------------------
@@ -50,6 +72,7 @@ dnl fix include and static libraries
 dnl -----------------------------------------------------------------------------------------
 
 TR_INCLUDE([BOOST_CPPFLAGS])
+TR_STATIC_LIBRARY([boost], [BOOST_LIBS])
 
 dnl -----------------------------------------------------------------------------------------
 dnl add substitutions

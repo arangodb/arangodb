@@ -65,9 +65,6 @@ namespace triagens {
         /// @brief aquires a lock
         ///
         /// The constructors aquires a lock, the destructors releases the lock.
-        ///
-        /// @param
-        ///    mutex [in]       mutex
         ////////////////////////////////////////////////////////////////////////////////
 
         explicit
@@ -77,11 +74,6 @@ namespace triagens {
         /// @brief aquires a lock
         ///
         /// The constructors aquires a lock, the destructors releases the lock.
-        ///
-        /// @param
-        ///    mutex [in]       mutex
-        ///    file [in]        file
-        ///    line [in]        line number
         ////////////////////////////////////////////////////////////////////////////////
 
         MutexLocker (Mutex* mutex, char const* file, int line);

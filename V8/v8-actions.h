@@ -76,6 +76,7 @@
 ///
 /// - learn more about @ref DefineAction "Defining an Action"
 /// - learn about @ref ActionsQueryBuilding "Query Building Functions"
+/// - learn more about @ref DefineSystemAction "Defining a System Action"
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -138,6 +139,29 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Actions
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new action
+////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+  TRI_ACT_CATEGORY_USER,
+  TRI_ACT_CATEGORY_SYSTEM
+}
+TRI_action_category_e;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
@@ -150,7 +174,8 @@ namespace triagens {
 /// @brief creates a new action
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateActionVocBase (std::string const& name,
+void TRI_CreateActionVocBase (TRI_action_category_e,
+                              std::string const& name,
                               v8::Handle<v8::Function> callback,
                               v8::Handle<v8::Object> options);
 
@@ -159,6 +184,7 @@ void TRI_CreateActionVocBase (std::string const& name,
 ////////////////////////////////////////////////////////////////////////////////
 
 triagens::rest::HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
+                                                        TRI_action_category_e category,
                                                         std::string const& name,
                                                         triagens::rest::HttpRequest* request);
 
