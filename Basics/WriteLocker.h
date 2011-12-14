@@ -65,9 +65,6 @@ namespace triagens {
         /// @brief aquires a write-lock
         ///
         /// The constructors aquires a write lock, the destructors unlocks the lock.
-        ///
-        /// @param[in]
-        ///    readWriteLock            read-write lock
         ////////////////////////////////////////////////////////////////////////////////
 
         explicit
@@ -77,11 +74,6 @@ namespace triagens {
         /// @brief aquires a write-lock
         ///
         /// The constructors aquires a write lock, the destructors unlocks the lock.
-        ///
-        /// @param[in]
-        ///    readWriteLock            read-write lock
-        ///    file [in]                file
-        ///    line [in]                line number
         ////////////////////////////////////////////////////////////////////////////////
 
         explicit

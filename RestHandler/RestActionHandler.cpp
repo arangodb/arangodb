@@ -35,8 +35,6 @@
 #include <VocBase/result-set.h>
 #include <VocBase/vocbase.h>
 
-#include "V8/v8-actions.h"
-
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -56,12 +54,22 @@ using namespace triagens::avocado;
 ////////////////////////////////////////////////////////////////////////////////
 
 RestActionHandler::RestActionHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
-  : RestVocbaseBaseHandler(request, vocbase) {
+  : RestVocbaseBaseHandler(request, vocbase),
+    _category(TRI_ACT_CATEGORY_USER) {
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -137,7 +145,7 @@ bool RestActionHandler::executeAction () {
   vector<string> const& suffix = request->suffix();
   string name = StringUtils::join(suffix, '/');
 
-  response = TRI_ExecuteActionVocBase(_vocbase, name, request);
+  response = TRI_ExecuteActionVocBase(_vocbase, _category, name, request);
 
   if (response == 0) {
     generateNotImplemented(ACTION_PATH + "/" + name);

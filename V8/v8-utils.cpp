@@ -120,6 +120,150 @@ static char** AttemptedCompletion (const char* text, int start, int end) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if javascript is missing a closing bracket
+////////////////////////////////////////////////////////////////////////////////
+
+static bool CheckJavaScript (string const& source) {
+  char const* ptr;
+  char const* end;
+  int openParen;
+  int openBrackets;
+  int openBraces;
+
+  enum {
+    NORMAL,
+    NORMAL_1,
+    DOUBLE_QUOTE,
+    DOUBLE_QUOTE_ESC,
+    SINGLE_QUOTE,
+    SINGLE_QUOTE_ESC,
+    MULTI_COMMENT,
+    MULTI_COMMENT_1,
+    SINGLE_COMMENT
+  }
+  state;
+
+  openParen = 0;
+  openBrackets = 0;
+  openBraces = 0;
+
+  ptr = source.c_str();
+  end = ptr + source.length();
+  state = NORMAL;
+
+  while (ptr < end) {
+    if (state == DOUBLE_QUOTE) {
+      if (*ptr == '\\') {
+        state = DOUBLE_QUOTE_ESC;
+      }
+      else if (*ptr == '"') {
+        state = NORMAL;
+      }
+
+      ++ptr;
+    }
+    else if (state == DOUBLE_QUOTE_ESC) {
+      state = DOUBLE_QUOTE;
+      ptr++;
+    }
+    else if (state == SINGLE_QUOTE) {
+      if (*ptr == '\\') {
+        state = SINGLE_QUOTE_ESC;
+      }
+      else if (*ptr == '\'') {
+        state = NORMAL;
+      }
+
+      ++ptr;
+    }
+    else if (state == SINGLE_QUOTE_ESC) {
+      state = SINGLE_QUOTE;
+      ptr++;
+    }
+    else if (state == MULTI_COMMENT) {
+      if (*ptr == '*') {
+        state = MULTI_COMMENT_1;
+      }
+
+      ++ptr;
+    }
+    else if (state == MULTI_COMMENT_1) {
+      if (*ptr == '/') {
+        state = NORMAL;
+      }
+
+      ++ptr;
+    }
+    else if (state == SINGLE_COMMENT) {
+      ++ptr;
+
+      if (ptr == end) {
+        state = NORMAL;
+      }
+    }
+    else if (state == NORMAL_1) {
+      switch (*ptr) {
+        case '/':
+          state = SINGLE_COMMENT;
+          ++ptr;
+          break;
+
+        case '*':
+          state = MULTI_COMMENT;
+          ++ptr;
+          break;
+
+        default:
+          state = NORMAL; // try again, do not change ptr
+          break;
+      }
+    }
+    else {
+      switch (*ptr) {
+        case '"':
+          state = DOUBLE_QUOTE;
+          break;
+
+        case '\'':
+          state = SINGLE_QUOTE;
+          break;
+
+        case '/':
+          state = NORMAL_1;
+
+        case '(':
+          ++openParen;
+          break;
+
+        case ')':
+          --openParen;
+          break;
+
+        case '[':
+          ++openBrackets;
+          break;
+
+        case ']':
+          --openBrackets;
+          break;
+
+        case '{':
+          ++openBraces;
+          break;
+
+        case '}':
+          --openBraces;
+          break;
+      }
+
+      ++ptr;
+    }
+  }
+
+  return openParen <= 0 && openBrackets <= 0 && openBraces <= 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -137,6 +281,27 @@ static char** AttemptedCompletion (const char* text, int start, int end) {
 ////////////////////////////////////////////////////////////////////////////////
 
 const char* V8LineEditor::HISTORY_FILENAME = ".avocado";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new editor
+////////////////////////////////////////////////////////////////////////////////
+
+V8LineEditor::V8LineEditor ()
+  : current() {
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -173,8 +338,61 @@ bool V8LineEditor::open () {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* V8LineEditor::prompt (char const* prompt) {
-  char* result = readline(prompt);
-  return result;
+  string dotdot;
+  char const* p = prompt;
+  size_t len1 = strlen(prompt);
+  size_t len2 = len1;
+
+  if (len1 < 3) {
+    dotdot = "> ";
+    len2 = 2;
+  }
+  else {
+    dotdot = string(len1 - 2, '.') + "> ";
+  }
+
+  char const* sep = "";
+
+  while (true) {
+    char* result = readline(p);
+    p = dotdot.c_str();
+
+    if (result == 0) {
+
+      // give up, if the user pressed control-D on the top-most level
+      if (current.empty()) {
+        return 0;
+      }
+
+      // otherwise clear current content
+      current.clear();
+      break;
+    }
+
+    current += sep;
+    sep = "\n";
+
+    if (strncmp(result, prompt, len1) == 0) {
+      current += (result + len1);
+    }
+    else if (strncmp(result, dotdot.c_str(), len2) == 0) {
+      current += (result + len2);
+    }
+    else {
+      current += result;
+    }
+
+    bool ok = CheckJavaScript(current);
+
+    if (ok) {
+      break;
+    }
+  }
+
+  char* line = TRI_DuplicateString(current.c_str());
+  current.clear();
+
+  return line;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1520,6 +1738,188 @@ bool TRI_ObjectToBoolean (v8::Handle<v8::Value> value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a script
+///
+/// @FUN{execute(@FA{script}, @FA{sandbox}, @FA{filename})}
+///
+/// Executes the @FA{script} with the @FA{sandbox} as context. Global variables
+/// assigned inside the @FA{script}, will be visible in the @FA{sandbox} object
+/// after execution. The @FA{filename} is used for displaying error
+/// messages.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+  size_t i;
+
+  // extract arguments
+  if (argv.Length() != 3) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: execute(<script>, <sandbox>, <filename>)")));
+  }
+
+  v8::Handle<v8::Value> source = argv[0];
+  v8::Handle<v8::Value> sandboxValue = argv[1];
+  v8::Handle<v8::Value> filename = argv[2];
+
+  if (! source->IsString()) {
+    return scope.Close(v8::ThrowException(v8::String::New("<script> must be a string")));
+  }
+
+  if (! sandboxValue->IsObject()) {
+    return scope.Close(v8::ThrowException(v8::String::New("<sandbox> must be an object")));
+  }
+
+  v8::Handle<v8::Object> sandbox = sandboxValue->ToObject();
+
+  // create new context
+  v8::Handle<v8::Context> context = v8::Context::New();
+  context->Enter();
+
+  // copy sandbox into context
+  v8::Handle<v8::Array> keys = sandbox->GetPropertyNames();
+
+  for (i = 0; i < keys->Length(); i++) {
+    v8::Handle<v8::String> key = keys->Get(v8::Integer::New(i))->ToString();
+    v8::Handle<v8::Value> value = sandbox->Get(key);
+
+    if (TRI_IsTraceLogging()) {
+      v8::String::Utf8Value keyName(key);
+
+      if (*keyName != 0) {
+        LOG_TRACE("copying key '%s' from sandbox to context", *keyName);
+      }
+    }
+
+    if (value == sandbox) {
+      value = context->Global();
+    }
+
+    context->Global()->Set(key, value);
+  }
+
+  // execute script inside the context
+  v8::Handle<v8::Script> script = v8::Script::Compile(source->ToString(), filename);
+
+  // compilation failed, print errors that happened during compilation
+  if (script.IsEmpty()) {
+    assert(tryCatch.HasCaught());
+
+    context->DetachGlobal();
+    context->Exit();
+
+    return scope.Close(tryCatch.ReThrow());
+  }
+
+  // compilation succeeded, run the script
+  v8::Handle<v8::Value> result = script->Run();
+
+  if (result.IsEmpty()) {
+    assert(tryCatch.HasCaught());
+
+    context->DetachGlobal();
+    context->Exit();
+
+    return scope.Close(tryCatch.ReThrow());
+  }
+
+  // copy result back into the sandbox
+  keys = context->Global()->GetPropertyNames();
+
+  for (i = 0; i < keys->Length(); i++) {
+    v8::Handle<v8::String> key = keys->Get(v8::Integer::New(i))->ToString();
+    v8::Handle<v8::Value> value = context->Global()->Get(key);
+
+    if (TRI_IsTraceLogging()) {
+      v8::String::Utf8Value keyName(key);
+
+      if (*keyName != 0) {
+        LOG_TRACE("copying key '%s' from context to sandbox", *keyName);
+      }
+    }
+
+    if (value == context->Global()) {
+      value = sandbox;
+    }
+
+    sandbox->Set(key, value);
+  }
+
+  context->DetachGlobal();
+
+  context->Exit();
+  return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads a file and executes it
+///
+/// @FUN{load(@FA{filename})}
+///
+/// Reads in a files and executes the contents in the current context.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Load (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  // extract arguments
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: load(<filename>)")));
+  }
+
+  v8::String::Utf8Value name(argv[0]);
+
+  if (*name == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("<filename> must be a string")));
+  }
+
+  char* content = TRI_SlurpFile(*name);
+
+  if (content == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New(TRI_last_error())));
+  }
+
+  bool ok = TRI_ExecuteStringVocBase(v8::Context::GetCurrent(), v8::String::New(content), argv[0], false, true);
+
+  return scope.Close(ok ? v8::True() : v8::False());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads in a file
+///
+/// @FUN{read(@FA{filename})}
+///
+/// Reads in a files and returns the content as string.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: read(<filename>)")));
+  }
+
+  v8::String::Utf8Value name(argv[0]);
+
+  if (*name == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("<filename> must be a string")));
+  }
+
+  char* content = TRI_SlurpFile(*name);
+
+  if (content == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New(TRI_last_error())));
+  }
+
+  v8::Handle<v8::String> result = v8::String::New(content);
+
+  TRI_FreeString(content);
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current time
 ///
 /// @FUN{time()}
@@ -1533,6 +1933,38 @@ static v8::Handle<v8::Value> JS_Time (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   return scope.Close(v8::Number::New(TRI_microtime()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a file of any type or directory exists
+///
+/// @FUN{fs.exists(@FA{filename})}
+///
+/// Returns true if a file (of any type) or a directory exists at a given
+/// path. If the file is a broken symbolic link, returns false.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Exists (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("exists: execute(<filename>)")));
+  }
+
+  v8::Handle<v8::Value> filename = argv[0];
+
+  if (! filename->IsString()) {
+    return scope.Close(v8::ThrowException(v8::String::New("<filename> must be a string")));
+  }
+
+  v8::String::Utf8Value name(filename);
+
+  if (*name == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("<filename> must be an UTF8 string")));
+  }
+
+  return scope.Close(TRI_ExistsFile(*name) ? v8::True() : v8::False());;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1847,8 +2279,6 @@ bool TRI_ExecuteStringVocBase (v8::Handle<v8::Context> context,
 
         v8::Handle<v8::Value> args[] = { result };
         print->Call(print, 1, args);
-
-        printf("\n");
       }
 
       return true;
@@ -1860,7 +2290,7 @@ bool TRI_ExecuteStringVocBase (v8::Handle<v8::Context> context,
 /// @brief stores the V8 utils functions inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Utils (v8::Handle<v8::Context> context) {
+void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
   v8::HandleScope scope;
 
   // check the isolate
@@ -1884,9 +2314,32 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context) {
   // create the global functions
   // .............................................................................
 
+  context->Global()->Set(v8::String::New("execute"),
+                         v8::FunctionTemplate::New(JS_Execute)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("load"),
+                         v8::FunctionTemplate::New(JS_Load)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("read"),
+                         v8::FunctionTemplate::New(JS_Read)->GetFunction(),
+                         v8::ReadOnly);
+
   context->Global()->Set(v8::String::New("time"),
                          v8::FunctionTemplate::New(JS_Time)->GetFunction(),
                          v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("FS_EXISTS"),
+                         v8::FunctionTemplate::New(JS_Exists)->GetFunction(),
+                         v8::ReadOnly);
+
+  // .............................................................................
+  // create the global variables
+  // .............................................................................
+
+  context->Global()->Set(v8::String::New("MODULES_PATH"),
+                         v8::String::New(path.c_str()));
 
   // .............................................................................
   // keys

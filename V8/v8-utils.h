@@ -58,9 +58,15 @@ class V8LineEditor {
     static const char* HISTORY_FILENAME;
 
   public:
+    V8LineEditor ();
+
+  public:
     bool open ();
     char* prompt (char const* prompt);
     void addHistory (const char* string);
+
+  private:
+    std::string current;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -197,7 +203,7 @@ bool TRI_ExecuteStringVocBase (v8::Handle<v8::Context> context,
 /// @brief stores the V8 utils function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Utils (v8::Handle<v8::Context> context);
+void TRI_InitV8Utils (v8::Handle<v8::Context> context, std::string const& path);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

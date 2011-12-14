@@ -7,7 +7,7 @@ AM_CFLAGS =
 AM_CPPFLAGS = @BOOST_CPPFLAGS@ @LIBEV_CPPFLAGS@ @OPENSSL_CPPFLAGS@ @V8_CPPFLAGS@
 AM_LDFLAGS = @BOOST_LDFLAGS@ @LIBEV_LDFLAGS@ @OPENSSL_LDFLAGS@ @V8_LDFLAGS@
 BUILT_SOURCES =
-LIBS = @BOOST_LIBS@ @LIBEV_LIBS@ @OPENSSL_LIBS@ @V8_LIBS@ -lreadline -ldl
+LIBS = @BOOST_LIBS@ @LIBEV_LIBS@ @OPENSSL_LIBS@ @V8_LIBS@ -lreadline
 BUILD_H = $(top_srcdir)/build.h
 
 ################################################################################
@@ -119,6 +119,7 @@ avocado_SOURCES = \
 	Rest/ConnectionTask.cpp \
 	RestHandler/RestActionHandler.cpp \
 	RestHandler/RestDocumentHandler.cpp \
+	RestHandler/RestSystemActionHandler.cpp \
 	RestHandler/RestVocbaseBaseHandler.cpp \
 	Rest/HttpHandler.cpp \
 	Rest/HttpHandlerFactory.cpp \
@@ -141,6 +142,7 @@ avocado_SOURCES = \
 	RestServer/AvocadoHttpServer.cpp \
 	RestServer/AvocadoServer.cpp \
 	RestServer/JSLoader.cpp \
+	RestServer/SystemActionDispatcherThread.cpp \
 	Rest/SignalTask.cpp \
 	Rest/SocketTask.cpp \
 	Rest/SslInterface.cpp \

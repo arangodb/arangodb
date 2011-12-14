@@ -1837,6 +1837,47 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the figures of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_col_t const* collection = UnwrapClass<TRI_vocbase_col_t>(argv.Holder());
+
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
+  }
+
+  v8::Handle<v8::Object> result = v8::Object::New();
+
+  if (! collection->_loaded) {
+    return scope.Close(result);
+  }
+
+  if (collection->_collection == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
+  }
+
+  TRI_doc_collection_t* doc = collection->_collection;
+
+  doc->beginRead(doc);
+  TRI_doc_collection_info_t* info = doc->figures(doc);
+  doc->endRead(doc);
+
+  result->Set(v8::String::New("numberDatafiles"), v8::Number::New(info->_numberDatafiles));
+  result->Set(v8::String::New("numberAlive"), v8::Number::New(info->_numberAlive));
+  result->Set(v8::String::New("numberDead"), v8::Number::New(info->_numberDead));
+  result->Set(v8::String::New("sizeAlive"), v8::Number::New(info->_sizeAlive));
+  result->Set(v8::String::New("sizeDead"), v8::Number::New(info->_sizeDead));
+  result->Set(v8::String::New("numberDeletion"), v8::Number::New(info->_numberDeletion));
+
+  TRI_Free(info);
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the indexes
 ///
 /// @FUN{getIndexes()}
@@ -1878,6 +1919,23 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
   }
 
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief loads a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_LoadVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  v8::Handle<v8::String> err;
+  TRI_vocbase_col_t const* col = LoadCollection(argv.Holder(), &err);
+
+  if (col == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  return scope.Close(v8::Undefined());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2321,37 +2379,6 @@ static v8::Handle<v8::Value> JS_SaveEdgesCol (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a TRI_vocbase_col_t into a string
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_ToStringEdgesCol (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  TRI_vocbase_col_t const* collection = UnwrapClass<TRI_vocbase_col_t>(argv.Holder());
-
-  if (collection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
-  }
-
-  string name;
-
-  if (collection->_corrupted) {
-    name = "[corrupted edges collection \"" + string(collection->_name) + "\"]";
-  }
-  else if (collection->_newBorn) {
-    name = "[new born edges collection \"" + string(collection->_name) + "\"]";
-  }
-  else if (collection->_loaded) {
-    name = "[edges collection \"" + string(collection->_name) + "\"]";
-  }
-  else {
-    name = "[unloaded edges collection \"" + string(collection->_name) + "\"]";
-  }
-
-  return scope.Close(v8::String::New(name.c_str()));
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2392,7 +2419,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
     return scope.Close(v8::ThrowException(v8::String::New("name must not be empty")));
   }
 
-  if (key == "toString" || key == "print" || key[0] == '_') {
+  if (key == "toString" || key == "toJSON" || key == "PRINT" || key[0] == '_') {
     return v8::Handle<v8::Value>();
   }
 
@@ -2492,7 +2519,7 @@ static v8::Handle<v8::Value> MapGetEdges (v8::Local<v8::String> name,
     return scope.Close(v8::ThrowException(v8::String::New("name must not be empty")));
   }
 
-  if (key == "toString" || key == "print" || key[0] == '_') {
+  if (key == "toString" || key == "toJSON" || key == "PRINT" || key[0] == '_') {
     return v8::Handle<v8::Value>();
   }
 
@@ -2606,12 +2633,14 @@ static v8::Handle<v8::Value> JS_CollectionsEdges (v8::Arguments const& argv) {
 ///
 /// @section JSFGlobal Global Functions
 ///
-/// - @ref JSF_toJson "toJson"
+/// - @ref JS_Execute "execute"
+/// - @ref JS_Load "load"
 /// - @ref JS_LogLevel "logLevel"
 /// - @ref JS_Output "output"
-/// - @ref JS_Print "print"
+/// - @ref JSF_print "print"
 /// - @ref JS_ProcessCsvFile "processCsvFile"
 /// - @ref JS_ProcessJsonFile "processJsonFile"
+/// - @ref JS_Read "read"
 /// - @ref JS_Time "time"
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2682,17 +2711,21 @@ static v8::Handle<v8::Value> JS_CollectionsEdges (v8::Arguments const& argv) {
 ///
 /// @section JSFGlobal Global Functions
 ///
-/// @copydetails JSF_toJson
+/// @copydetails JS_Execute
+///
+/// @copydetails JS_Load
 ///
 /// @copydetails JS_LogLevel
 ///
 /// @copydetails JS_Output
 ///
-/// @copydetails JS_Print
+/// @copydetails JSF_print
 ///
 /// @copydetails JS_ProcessCsvFile
 ///
 /// @copydetails JS_ProcessJsonFile
+///
+/// @copydetails JS_Read
 ///
 /// @copydetails JS_Time
 ////////////////////////////////////////////////////////////////////////////////
@@ -2811,14 +2844,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
     v8g->OutputFuncName = v8::Persistent<v8::String>::New(v8::String::New("output"));
   }
 
-  if (v8g->PrintFuncName.IsEmpty()) {
-    v8g->PrintFuncName = v8::Persistent<v8::String>::New(v8::String::New("print"));
-  }
-
-  if (v8g->ToStringFuncName.IsEmpty()) {
-    v8g->ToStringFuncName = v8::Persistent<v8::String>::New(v8::String::New("toString"));
-  }
-
   // .............................................................................
   // local function names
   // .............................................................................
@@ -2833,11 +2858,13 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> EdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("edges"));
   v8::Handle<v8::String> EnsureGeoIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureGeoIndex"));
   v8::Handle<v8::String> ExplainFuncName = v8::Persistent<v8::String>::New(v8::String::New("explain"));
+  v8::Handle<v8::String> FiguresFuncName = v8::Persistent<v8::String>::New(v8::String::New("figures"));
   v8::Handle<v8::String> GeoFuncName = v8::Persistent<v8::String>::New(v8::String::New("geo"));
   v8::Handle<v8::String> GetIndexesFuncName = v8::Persistent<v8::String>::New(v8::String::New("getIndexes"));
   v8::Handle<v8::String> HasNextFuncName = v8::Persistent<v8::String>::New(v8::String::New("hasNext"));
   v8::Handle<v8::String> InEdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("inEdges"));
   v8::Handle<v8::String> LimitFuncName = v8::Persistent<v8::String>::New(v8::String::New("limit"));
+  v8::Handle<v8::String> LoadFuncName = v8::Persistent<v8::String>::New(v8::String::New("load"));
   v8::Handle<v8::String> NearFuncName = v8::Persistent<v8::String>::New(v8::String::New("near"));
   v8::Handle<v8::String> NextFuncName = v8::Persistent<v8::String>::New(v8::String::New("next"));
   v8::Handle<v8::String> NextRefFuncName = v8::Persistent<v8::String>::New(v8::String::New("nextRef"));
@@ -2880,9 +2907,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
 
   rt->SetNamedPropertyHandler(MapGetVocBase);
 
-  v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
-
   rt->Set(CollectionsFuncName, v8::FunctionTemplate::New(JS_CollectionsVocBase));
+
+  v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
   // must come after SetInternalFieldCount
   context->Global()->Set(v8::String::New("AvocadoDatabase"),
@@ -2918,6 +2945,8 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(SLOT_END);
 
+  v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+
   rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
   rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountQuery));
   rt->Set(DeleteFuncName, v8::FunctionTemplate::New(JS_DeleteVocbaseCol));
@@ -2926,10 +2955,12 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(EdgesFuncName, v8::FunctionTemplate::New(JS_EdgesQuery));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
   rt->Set(ExplainFuncName, v8::FunctionTemplate::New(JS_ExplainQuery));
+  rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GeoFuncName, v8::FunctionTemplate::New(JS_GeoQuery));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
   rt->Set(InEdgesFuncName, v8::FunctionTemplate::New(JS_InEdgesQuery));
   rt->Set(LimitFuncName, v8::FunctionTemplate::New(JS_LimitQuery));
+  rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));
   rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
   rt->Set(OutEdgesFuncName, v8::FunctionTemplate::New(JS_OutEdgesQuery));
   rt->Set(ParameterFuncName, v8::FunctionTemplate::New(JS_ParameterVocbaseCol));
@@ -2940,8 +2971,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(StatusFuncName, v8::FunctionTemplate::New(JS_StatusVocbaseCol));
   rt->Set(ToArrayFuncName, v8::FunctionTemplate::New(JS_ToArrayQuery));
   rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
-
-  v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
   // must come after SetInternalFieldCount
   context->Global()->Set(v8::String::New("AvocadoCollection"),
@@ -2965,10 +2994,12 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(EdgesFuncName, v8::FunctionTemplate::New(JS_EdgesQuery));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
   rt->Set(ExplainFuncName, v8::FunctionTemplate::New(JS_ExplainQuery));
+  rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GeoFuncName, v8::FunctionTemplate::New(JS_GeoQuery));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
   rt->Set(InEdgesFuncName, v8::FunctionTemplate::New(JS_InEdgesQuery));
   rt->Set(LimitFuncName, v8::FunctionTemplate::New(JS_LimitQuery));
+  rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));
   rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
   rt->Set(OutEdgesFuncName, v8::FunctionTemplate::New(JS_OutEdgesQuery));
   rt->Set(ParameterFuncName, v8::FunctionTemplate::New(JS_ParameterVocbaseCol));
@@ -2976,9 +3007,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(SaveFuncName, v8::FunctionTemplate::New(JS_SaveEdgesCol));
   rt->Set(SelectFuncName, v8::FunctionTemplate::New(JS_SelectQuery));
   rt->Set(SkipFuncName, v8::FunctionTemplate::New(JS_SkipQuery));
+  rt->Set(StatusFuncName, v8::FunctionTemplate::New(JS_StatusVocbaseCol));
   rt->Set(ToArrayFuncName, v8::FunctionTemplate::New(JS_ToArrayQuery));
   rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
-  rt->Set(v8g->ToStringFuncName, v8::FunctionTemplate::New(JS_ToStringEdgesCol));
 
   v8g->EdgesColTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
