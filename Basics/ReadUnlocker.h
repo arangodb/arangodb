@@ -65,23 +65,16 @@ namespace triagens {
         /// @brief unlocks the lock
         ///
         /// The constructors unlocks the lock, the destructors aquires a read-lock.
-        ///
-        /// @param
-        ///    readWriteLock [in]       read-write lock
         ////////////////////////////////////////////////////////////////////////////////
 
         explicit
         ReadUnlocker (ReadWriteLock* readWriteLock);
 
+
         ////////////////////////////////////////////////////////////////////////////////
         /// @brief unlocks the lock
         ///
         /// The constructors unlocks the lock, the destructors aquires a read-lock.
-        ///
-        /// @param
-        ///    readWriteLock [in]       read-write lock
-        ///    file [in]                file
-        ///    line [in]                line number
         ////////////////////////////////////////////////////////////////////////////////
 
         ReadUnlocker (ReadWriteLock* readWriteLock, char const* file, int line);

@@ -50,8 +50,10 @@
 
 #include "RestHandler/RestActionHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
+#include "RestHandler/RestSystemActionHandler.h"
 
 #include "RestServer/ActionDispatcherThread.h"
+#include "RestServer/SystemActionDispatcherThread.h"
 #include "RestServer/AvocadoHttpServer.h"
 #include "RestServer/JSLoader.h"
 
@@ -68,9 +70,10 @@ using namespace triagens::admin;
 using namespace triagens::avocado;
 
 #include "RestServer/js-actions.h"
-#include "RestServer/js-json.h"
-#include "RestServer/js-shell.h"
 #include "RestServer/js-graph.h"
+#include "RestServer/js-json.h"
+#include "RestServer/js-modules.h"
+#include "RestServer/js-shell.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -94,6 +97,12 @@ static JSLoader StartupLoader;
 static JSLoader ActionLoader;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief system action loader
+////////////////////////////////////////////////////////////////////////////////
+
+static JSLoader SystemActionLoader;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -112,6 +121,14 @@ static JSLoader ActionLoader;
 
 static DispatcherThread* ActionDisptacherThreadCreator (DispatcherQueue* queue) {
   return new ActionDisptacherThread(queue);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief system action dispatcher thread creator
+////////////////////////////////////////////////////////////////////////////////
+
+static DispatcherThread* SystemActionDisptacherThreadCreator (DispatcherQueue* queue) {
+  return new SystemActionDisptacherThread(queue);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -146,7 +163,9 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
     _adminPort("localhost:8530"),
     _dispatcherThreads(1),
     _startupPath(),
+    _startupModules(),
     _actionPath(),
+    _systemActionPath(),
     _actionThreads(1),
     _databasePath("/var/lib/avocado"),
     _vocbase(0) {
@@ -207,6 +226,9 @@ void AvocadoServer::buildApplicationServer () {
 
   additional[ApplicationServer::OPTIONS_CMDLINE]
     ("shell", "do not start as server, start in shell mode instead")
+  ;
+
+  additional[ApplicationServer::OPTIONS_CMDLINE + ":help-extended"]
     ("daemon", "run as daemon")
     ("supervisor", "starts a supervisor and runs as daemon")
     ("pid-file", &_pidFile, "pid-file in daemon mode")
@@ -241,7 +263,12 @@ void AvocadoServer::buildApplicationServer () {
 
   additional["JAVASCRIPT Options"]
     ("startup.directory", &_startupPath, "path to the directory containing the startup scripts")
+    ("startup.modules-path", &_startupModules, "one or more directories separated by semicolon")
     ("action.directory", &_actionPath, "path to the action directory, defaults to <database.directory>/_ACTIONS")
+  ;
+
+  additional["JAVASCRIPT Options:help-admin"]
+    ("action.system-directory", &_systemActionPath, "path to the system action directory")
     ("action.threads", &_actionThreads, "threads for actions")
   ;
 
@@ -277,10 +304,11 @@ void AvocadoServer::buildApplicationServer () {
   }
 
   if (_startupPath.empty()) {
-    StartupLoader.defineScript("json.js", JS_json);
-    StartupLoader.defineScript("shell.js", JS_shell);
     StartupLoader.defineScript("actions.js", JS_actions);
     StartupLoader.defineScript("graph.js", JS_graph);
+    StartupLoader.defineScript("json.js", JS_json);
+    StartupLoader.defineScript("modules.js", JS_modules);
+    StartupLoader.defineScript("shell.js", JS_shell);
   }
   else {
     StartupLoader.setDirectory(_startupPath);
@@ -313,6 +341,10 @@ void AvocadoServer::buildApplicationServer () {
   }
   else {
     ActionLoader.setDirectory(_actionPath);
+  }
+
+  if (! _systemActionPath.empty()) {
+    SystemActionLoader.setDirectory(_systemActionPath);
   }
 
   // .............................................................................
@@ -374,8 +406,10 @@ int AvocadoServer::startupServer () {
   ActionDisptacherThread::_startupLoader = &StartupLoader;
   ActionDisptacherThread::_vocbase = _vocbase;
 
+  SystemActionDisptacherThread::_actionLoader = &SystemActionLoader;
+
   // .............................................................................
-  // create the various parts of the universalVoc server
+  // create the various parts of the Avocado server
   // .............................................................................
 
   _applicationServer->buildScheduler();
@@ -393,6 +427,7 @@ int AvocadoServer::startupServer () {
   }
 
   safe_cast<DispatcherImpl*>(dispatcher)->addQueue("ACTION", ActionDisptacherThreadCreator, _actionThreads);
+  safe_cast<DispatcherImpl*>(dispatcher)->addQueue("SYSTEM ACTION", SystemActionDisptacherThreadCreator, 2);
 
   // .............................................................................
   // create a http server and http handler factory
@@ -427,10 +462,9 @@ int AvocadoServer::startupServer () {
     _applicationAdminServer->addBasicHandlers(adminFactory);
     _applicationAdminServer->addHandlers(adminFactory, "/admin");
 
-    adminFactory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
-    adminFactory->addPrefixHandler(RestVocbaseBaseHandler::ACTION_PATH, RestHandlerCreator<RestActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
+    adminFactory->addPrefixHandler(RestVocbaseBaseHandler::SYSTEM_ACTION_PATH, RestHandlerCreator<RestSystemActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
 
-    _adminHttpServer = _applicationHttpServer->buildServer(new AvocadoHttpServer(scheduler, dispatcher), adminFactory, adminPorts);
+    _adminHttpServer = _applicationHttpServer->buildServer(adminFactory, adminPorts);
   }
 
   // .............................................................................
@@ -487,7 +521,7 @@ void AvocadoServer::executeShell () {
   v8::Isolate* isolate;
   v8::Persistent<v8::Context> context;
   bool ok;
-  char const* files[] = { "shell.js", "json.js" };
+  char const* files[] = { "graph.js", "json.js", "modules.js", "shell.js" };
   size_t i;
 
   // only simple logging
@@ -517,7 +551,7 @@ void AvocadoServer::executeShell () {
   context->Enter();
 
   TRI_InitV8VocBridge(context, _vocbase);
-  TRI_InitV8Utils(context);
+  TRI_InitV8Utils(context, _startupModules);
   TRI_InitV8Shell(context);
 
   // load all init files

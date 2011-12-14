@@ -64,9 +64,6 @@ namespace triagens {
         ///
         /// The constructors locks the condition variable, the destructors unlocks
         /// the condition variable
-        ///
-        /// @param
-        ///    conditionVariable [in]   condition variable
         ////////////////////////////////////////////////////////////////////////////////
 
         explicit
@@ -77,11 +74,6 @@ namespace triagens {
         ///
         /// The constructors locks the condition variable, the destructors unlocks
         /// the condition variable
-        ///
-        /// @param
-        ///    conditionVariable [in]   condition variable
-        ///    file [in]                file
-        ///    line [in]                line number
         ////////////////////////////////////////////////////////////////////////////////
 
         ConditionLocker (ConditionVariable* conditionVariable, char const* file, int line);

@@ -65,9 +65,6 @@ namespace triagens {
         /// @brief aquires a read-lock
         ///
         /// The constructors read-locks the lock, the destructors unlocks the lock.
-        ///
-        /// @param
-        ///    readWriteLock [in]       read-write lock
         ////////////////////////////////////////////////////////////////////////////////
 
         explicit
@@ -77,11 +74,6 @@ namespace triagens {
         /// @brief aquires a read-lock
         ///
         /// The constructors read-locks the lock, the destructors unlocks the lock.
-        ///
-        /// @param
-        ///    readWriteLock [in]       read-write lock
-        ///    file [in]                file
-        ///    line [in]                line number
         ////////////////////////////////////////////////////////////////////////////////
 
         ReadLocker (ReadWriteLock* readWriteLock, char const* file, int line);

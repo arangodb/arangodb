@@ -150,6 +150,7 @@ namespace triagens {
 
       if (scheduler == 0) {
         LOGGER_FATAL << "no scheduler is known, cannot create http server";
+        TRI_ShutdownLogging();
         exit(EXIT_FAILURE);
       }
 

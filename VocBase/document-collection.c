@@ -133,10 +133,10 @@ static TRI_doc_mptr_t const* UpdateJson (TRI_doc_collection_t* collection,
 /// @brief deletes a json document given the identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool DeleteLock (TRI_doc_collection_t* document,
-                        TRI_voc_did_t did,
-                        TRI_voc_rid_t rid,
-                        TRI_doc_update_policy_e policy) {
+static bool DestroyLock (TRI_doc_collection_t* document,
+                         TRI_voc_did_t did,
+                         TRI_voc_rid_t rid,
+                         TRI_doc_update_policy_e policy) {
   bool ok;
 
   document->beginWrite(document);
@@ -144,6 +144,33 @@ static bool DeleteLock (TRI_doc_collection_t* document,
   document->endWrite(document);
 
   return ok;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns information about the collection
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_doc_collection_info_t* Figures (TRI_doc_collection_t* document) {
+  TRI_doc_collection_info_t* info;
+  size_t i;
+
+  info = TRI_Allocate(sizeof(TRI_doc_collection_info_t));
+
+  info->_numberDatafiles = document->_datafileInfo._nrUsed;
+
+  for (i = 0;  i < document->_datafileInfo._nrAlloc;  ++i) {
+    TRI_doc_datafile_info_t* d = document->_datafileInfo._table[i];
+
+    if (d != NULL) {
+      info->_numberAlive += d->_numberAlive;
+      info->_numberDead += d->_numberDead;
+      info->_sizeAlive += d->_sizeAlive;
+      info->_sizeDead += d->_sizeDead;
+      info->_numberDeletion += d->_numberDeletion;
+    }
+  }
+
+  return info;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -379,7 +406,9 @@ void TRI_InitDocCollection (TRI_doc_collection_t* collection,
   collection->updateLock = UpdateLock;
   collection->updateJson = UpdateJson;
 
-  collection->destroyLock = DeleteLock;
+  collection->destroyLock = DestroyLock;
+
+  collection->figures = Figures;
 
   TRI_InitRSContainer(&collection->_resultSets, collection);
 

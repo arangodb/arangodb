@@ -26,11 +26,77 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                          printing
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints objects to standard output
+///
+/// @FUN{print(@FA{arg1}, @FA{arg2}, @FA{arg3}, ...)}
+///
+/// Only available in shell mode.
+///
+/// Prints the arguments. If an argument is an object having a
+/// function @FN{PRINT}, then this function is called. Otherwise @FN{toJson} is
+/// used.  A final newline is printed
+///
+/// @verbinclude fluent40
+////////////////////////////////////////////////////////////////////////////////
+
+function print () {
+  for (var i = 0;  i < arguments.length;  ++i) {
+    if (0 < i) {
+      output(" ");
+    }
+
+    PRINT(arguments[i]);
+  }
+
+  output("\n");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints objects to standard output without a new-line
+////////////////////////////////////////////////////////////////////////////////
+
+function PRINT (value) {
+  if (value instanceof Object) {
+    if ('PRINT' in value) {
+      value.PRINT();
+    }
+    else if (value.__proto__ === Object.prototype) {
+      PRINT_OBJECT(value);
+    }
+    else if ('toString' in value) {
+      output(value.toString());
+    }
+    else {
+      PRINT_OBJECT(value);
+    }
+  }
+  else if (value === undefined) {
+    output("undefined");
+  }
+  else {
+    output("" + value);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                             Array
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell V8 Shell
+/// @addtogroup V8Shell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -38,7 +104,7 @@
 /// @brief JSON representation of an array
 ////////////////////////////////////////////////////////////////////////////////
 
-Array.prototype.print = function() {
+Array.prototype.PRINT = function() {
   if (this.length == 0) {
     output("[ ]");
   }
@@ -49,7 +115,7 @@ Array.prototype.print = function() {
 
     for (var i = 0;  i < this.length;  i++) {
       output(sep);
-      print(this[i]);
+      PRINT(this[i]);
       sep = ", ";
     }
 
@@ -66,15 +132,15 @@ Array.prototype.print = function() {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell V8 Shell
+/// @addtogroup V8Shell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief JSON representation of a function
+/// @brief prints a function
 ////////////////////////////////////////////////////////////////////////////////
 
-Function.prototype.print = function() {
+Function.prototype.PRINT = function() {
   output(this.toString());
 }
 
@@ -87,7 +153,7 @@ Function.prototype.print = function() {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell V8 Shell
+/// @addtogroup V8Shell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -95,17 +161,17 @@ Function.prototype.print = function() {
 /// @brief string representation of an object
 ////////////////////////////////////////////////////////////////////////////////
 
-Object.prototype.print = function() {
+function PRINT_OBJECT (object) {
   var sep = " ";
 
   output("{");
 
-  for (var k in this) {
-    if (this.hasOwnProperty(k)) {
-      var val = this[k];
+  for (var k in object) {
+    if (object.hasOwnProperty(k)) {
+      var val = object[k];
 
       output(sep, k, " : ");
-      print(val);
+      PRINT(val);
       sep = ", ";
     }
   }
@@ -118,141 +184,11 @@ Object.prototype.print = function() {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 AvocadoCollection
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell V8 Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints a collection
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoCollection.prototype.print = function() {
-  if (this instanceof AvocadoCollection) {
-    status = this.status();
-
-    if (status == 1) {
-      output("[new born collection ", JSON.stringify(this._name), "]");
-    }
-    else if (status == 2) {
-      output("[unloaded collection ", JSON.stringify(this._name), "]");
-    }
-    else if (status == 3) {
-      output("[collection ", JSON.stringify(this._name), "]");
-    }
-    else {
-      output("[corrupted collection ", JSON.stringify(this._name), "]");
-    }
-  }
-  else {
-    output(this.toString(), "\n");
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   AvocadoDatabase
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell V8 Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints the vocbase
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoDatabase.prototype.print = function() {
-  if (this instanceof AvocadoDatabase) {
-    output("[vocbase at ", JSON.stringify(this._path), "]");
-  }
-  else {
-    output(this.toString(), "\n");
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      AvocadoEdges
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell V8 Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints the edges base
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoEdges.prototype.print = function() {
-  if (this instanceof AvocadoEdges) {
-    output("[edges at ", JSON.stringify(this._path), "]");
-  }
-  else {
-    output(this.toString(), "\n");
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                            AvocadoEdgesCollection
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell V8 Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints an edges collection
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoEdgesCollection.prototype.print = function() {
-  if (this instanceof AvocadoEdgesCollection) {
-    status = this.status();
-
-    if (status == 1) {
-      output("[new born edges collection ", JSON.stringify(this._name), "]");
-    }
-    else if (status == 2) {
-      output("[unloaded edges collection ", JSON.stringify(this._name), "]");
-    }
-    else if (status == 3) {
-      output("[collection edges ", JSON.stringify(this._name), "]");
-    }
-    else {
-      output("[corrupted edges collection ", JSON.stringify(this._name), "]");
-    }
-  }
-  else {
-    output(this.toString(), "\n");
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                      AvocadoQuery
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell V8 Shell
+/// @addtogroup V8Shell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -272,14 +208,13 @@ var queryLimit = 20;
 /// @brief prints a query
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoQuery.prototype.print = function() {
+AvocadoQuery.prototype.PRINT = function() {
   if (this instanceof AvocadoQuery) {
     var count = 0;
 
     try {
       while (this.hasNext() && count++ < queryLimit) {
-        print(this.next());
-        output("\n");
+        output(JSON.stringify(this.next()), "\n");
       }
 
       if (this.hasNext()) {
@@ -293,7 +228,7 @@ AvocadoQuery.prototype.print = function() {
     }
   }
   else {
-    output(this.toString(), "\n");
+    output(this.toString());
   }
 }
 

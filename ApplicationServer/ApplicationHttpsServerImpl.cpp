@@ -277,6 +277,7 @@ namespace triagens {
 
       if (scheduler == 0) {
         LOGGER_FATAL << "no scheduler is known, cannot create https server";
+        TRI_ShutdownLogging();
         exit(EXIT_FAILURE);
       }
 
@@ -290,6 +291,7 @@ namespace triagens {
       // check the ssl context
       if (sslContext == 0) {
         LOGGER_FATAL << "no ssl context is known, cannot create https server";
+        TRI_ShutdownLogging();
         exit(EXIT_FAILURE);
       }
 

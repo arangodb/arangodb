@@ -3,14 +3,14 @@ defineAction("examples",
     var result = req.collection.all();
 
     queryResult(req, res, result);
-   },
-   {
-     parameters : {
-       collection : "collection",
-       blocksize : "number",
-       page : "number"
-     }
-   }
+  },
+  {
+    parameters : {
+      collection : "collection",
+      blocksize : "number",
+      page : "number"
+    }
+  }
 );
 
 defineAction("examples/id",
@@ -18,12 +18,12 @@ defineAction("examples/id",
     var result = req.collection.all();
 
     queryReferences(req, res, result);
-   },
-   {
-     parameters : {
-       collection : "collection",
-       blocksize : "number",
-       page : "number"
-     }
-   }
+  },
+  {
+    parameters : {
+      collection : "collection",
+      blocksize : "number",
+      page : "number"
+    }
+  }
 );
