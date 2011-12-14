@@ -50,8 +50,10 @@
 
 #include "RestHandler/RestActionHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
+#include "RestHandler/RestSystemActionHandler.h"
 
 #include "RestServer/ActionDispatcherThread.h"
+#include "RestServer/SystemActionDispatcherThread.h"
 #include "RestServer/AvocadoHttpServer.h"
 #include "RestServer/JSLoader.h"
 
@@ -95,6 +97,12 @@ static JSLoader StartupLoader;
 static JSLoader ActionLoader;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief system action loader
+////////////////////////////////////////////////////////////////////////////////
+
+static JSLoader SystemActionLoader;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -113,6 +121,14 @@ static JSLoader ActionLoader;
 
 static DispatcherThread* ActionDisptacherThreadCreator (DispatcherQueue* queue) {
   return new ActionDisptacherThread(queue);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief system action dispatcher thread creator
+////////////////////////////////////////////////////////////////////////////////
+
+static DispatcherThread* SystemActionDisptacherThreadCreator (DispatcherQueue* queue) {
+  return new SystemActionDisptacherThread(queue);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -149,6 +165,7 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
     _startupPath(),
     _startupModules(),
     _actionPath(),
+    _systemActionPath(),
     _actionThreads(1),
     _databasePath("/var/lib/avocado"),
     _vocbase(0) {
@@ -209,6 +226,9 @@ void AvocadoServer::buildApplicationServer () {
 
   additional[ApplicationServer::OPTIONS_CMDLINE]
     ("shell", "do not start as server, start in shell mode instead")
+  ;
+
+  additional[ApplicationServer::OPTIONS_CMDLINE + ":help-extended"]
     ("daemon", "run as daemon")
     ("supervisor", "starts a supervisor and runs as daemon")
     ("pid-file", &_pidFile, "pid-file in daemon mode")
@@ -245,6 +265,10 @@ void AvocadoServer::buildApplicationServer () {
     ("startup.directory", &_startupPath, "path to the directory containing the startup scripts")
     ("startup.modules-path", &_startupModules, "one or more directories separated by semicolon")
     ("action.directory", &_actionPath, "path to the action directory, defaults to <database.directory>/_ACTIONS")
+  ;
+
+  additional["JAVASCRIPT Options:help-admin"]
+    ("action.system-directory", &_systemActionPath, "path to the system action directory")
     ("action.threads", &_actionThreads, "threads for actions")
   ;
 
@@ -319,6 +343,10 @@ void AvocadoServer::buildApplicationServer () {
     ActionLoader.setDirectory(_actionPath);
   }
 
+  if (! _systemActionPath.empty()) {
+    SystemActionLoader.setDirectory(_systemActionPath);
+  }
+
   // .............................................................................
   // in shell mode ignore the rest
   // .............................................................................
@@ -378,8 +406,10 @@ int AvocadoServer::startupServer () {
   ActionDisptacherThread::_startupLoader = &StartupLoader;
   ActionDisptacherThread::_vocbase = _vocbase;
 
+  SystemActionDisptacherThread::_actionLoader = &SystemActionLoader;
+
   // .............................................................................
-  // create the various parts of the universalVoc server
+  // create the various parts of the Avocado server
   // .............................................................................
 
   _applicationServer->buildScheduler();
@@ -397,6 +427,7 @@ int AvocadoServer::startupServer () {
   }
 
   safe_cast<DispatcherImpl*>(dispatcher)->addQueue("ACTION", ActionDisptacherThreadCreator, _actionThreads);
+  safe_cast<DispatcherImpl*>(dispatcher)->addQueue("SYSTEM ACTION", SystemActionDisptacherThreadCreator, 2);
 
   // .............................................................................
   // create a http server and http handler factory
@@ -430,6 +461,8 @@ int AvocadoServer::startupServer () {
 
     _applicationAdminServer->addBasicHandlers(adminFactory);
     _applicationAdminServer->addHandlers(adminFactory, "/admin");
+
+    adminFactory->addPrefixHandler(RestVocbaseBaseHandler::SYSTEM_ACTION_PATH, RestHandlerCreator<RestSystemActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
 
     _adminHttpServer = _applicationHttpServer->buildServer(adminFactory, adminPorts);
   }

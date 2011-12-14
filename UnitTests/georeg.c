@@ -800,7 +800,7 @@ int main(int argc, char ** argv)
         icheck(300,0,r);
         if(i==1322)
         {
-            gcp.data++;
+            gcp.data=&ix[323];
             r = GeoIndex_insert(gi,&gcp);
             icheck(299,0,r);
         }

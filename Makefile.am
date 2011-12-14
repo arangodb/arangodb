@@ -108,7 +108,6 @@ avocado_SOURCES = \
 	JsonParserX/JsonParserX.cpp \
 	JsonParserX/JsonParserXDriver.cpp \
 	JsonParserX/JsonScannerX.cpp \
-	ProgramOptions/program-options.c \
 	Rest/AddressPort.cpp \
 	Rest/AnyServer.cpp \
 	Rest/ApplicationHttpServer.cpp \
@@ -119,6 +118,7 @@ avocado_SOURCES = \
 	Rest/ConnectionTask.cpp \
 	RestHandler/RestActionHandler.cpp \
 	RestHandler/RestDocumentHandler.cpp \
+	RestHandler/RestSystemActionHandler.cpp \
 	RestHandler/RestVocbaseBaseHandler.cpp \
 	Rest/HttpHandler.cpp \
 	Rest/HttpHandlerFactory.cpp \
@@ -141,6 +141,7 @@ avocado_SOURCES = \
 	RestServer/AvocadoHttpServer.cpp \
 	RestServer/AvocadoServer.cpp \
 	RestServer/JSLoader.cpp \
+	RestServer/SystemActionDispatcherThread.cpp \
 	Rest/SignalTask.cpp \
 	Rest/SocketTask.cpp \
 	Rest/SslInterface.cpp \

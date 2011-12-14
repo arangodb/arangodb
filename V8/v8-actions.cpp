@@ -60,7 +60,8 @@ using namespace triagens::rest;
 typedef enum {
   TRI_ACT_STRING,
   TRI_ACT_NUMBER,
-  TRI_ACT_COLLECTION
+  TRI_ACT_COLLECTION,
+  TRI_ACT_COLLECTION_ID
 }
 action_parameter_type_e;
 
@@ -148,10 +149,17 @@ static void ParseActionOptionsParameter (TRI_v8_global_t* v8g,
   if (parameter == "collection") {
     p->_type = TRI_ACT_COLLECTION;
   }
+  else if (parameter == "collection-identifier") {
+    p->_type = TRI_ACT_COLLECTION_ID;
+  }
   else if (parameter == "number") {
     p->_type = TRI_ACT_NUMBER;
   }
+  else if (parameter == "string") {
+    p->_type = TRI_ACT_STRING;
+  }
   else {
+    LOG_ERROR("unknown parameter type '%s', falling back to string", parameter.c_str());
     p->_type = TRI_ACT_STRING;
   }
 
@@ -225,38 +233,10 @@ static action_options_t* ParseActionOptions (TRI_v8_global_t* v8g,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief defines a new action
-///
-/// @FUN{defineAction(@FA{name}, @FA{callback})}
-///
-/// Defines an action named @FA{name}, which might contain slahes. The action
-/// can be accessed using the path @c /_action/name. The callback function
-/// is executed as soon as a request is received.
-///
-/// @FA{callback}(@FA{request}, @FA{response})
-///
-/// The request arguments contains a description of the request. A request
-/// parameter @c foo is accessible as @c request.foo.
-///
-/// The callback must define the @FA{response}.
-///
-/// - @FA{response}.responseCode: the response code
-/// - @FA{response}.contentType: the content type of the response
-/// - @FA{response}.body: the body of the response
-///
-/// @FUN{defineAction(@FA{request}, @FA{response}, @FA{options})}
-///
-/// Normally the paramaters are passed to the callback as strings. You can
-/// use the @FA{options}, to force a converstion of the parameter to
-///
-/// - @c "collection"
-/// - @c "number"
-/// - @c "string"
-///
-/// @verbinclude action1
+/// @brief defines a new action helper
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> DefineActionHelper (v8::Arguments const& argv, TRI_action_category_e category) {
   v8::HandleScope scope;
 
   if (argv.Length() < 2) {
@@ -294,9 +274,62 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
   }
 
   // store an action with the given name
-  TRI_CreateActionVocBase(name, callback, options);
+  TRI_CreateActionVocBase(category, name, callback, options);
 
   return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief defines a new action
+///
+/// @FUN{defineAction(@FA{name}, @FA{callback})}
+///
+/// Defines an action named @FA{name}, which might contain slashes. The action
+/// can be accessed using the path @c /_action/name. The callback function
+/// is executed as soon as a request is received.
+///
+/// @FA{callback}(@FA{request}, @FA{response})
+///
+/// The request arguments contains a description of the request. A request
+/// parameter @c foo is accessible as @c request.foo.
+///
+/// The callback must define the @FA{response}.
+///
+/// - @FA{response}.responseCode: the response code
+/// - @FA{response}.contentType: the content type of the response
+/// - @FA{response}.body: the body of the response
+///
+/// @FUN{defineAction(@FA{request}, @FA{response}, @FA{options})}
+///
+/// Normally the paramaters are passed to the callback as strings. You can
+/// use the @FA{options}, to force a converstion of the parameter to
+///
+/// - @c "collection"
+/// - @c "collection-identifier"
+/// - @c "number"
+/// - @c "string"
+///
+/// @verbinclude action1
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
+  return DefineActionHelper(argv, TRI_ACT_CATEGORY_USER);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief defines a new system action
+///
+/// @FUN{defineSystemAction(@FA{name}, @FA{callback})}
+///
+/// @FUN{defineSystemAction(@FA{request}, @FA{response}, @FA{options})}
+///
+/// This functions works like @FN{defineAction} but defines a system action
+/// instead of a user action. A system action is only available in the
+/// administration interface and the access path is @c /_action/name.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DefineSystemAction (v8::Arguments const& argv) {
+  return DefineActionHelper(argv, TRI_ACT_CATEGORY_SYSTEM);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -316,7 +349,8 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
 /// @brief creates a new action
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateActionVocBase (string const& name,
+void TRI_CreateActionVocBase (TRI_action_category_e category,
+                              string const& name,
                               v8::Handle<v8::Function> callback,
                               v8::Handle<v8::Object> options) {
   TRI_v8_global_t* v8g;
@@ -329,10 +363,23 @@ void TRI_CreateActionVocBase (string const& name,
   // lock the actions map
   WRITE_LOCKER(v8g->ActionsLock);
 
-  // check if we already know the action
-  map<string, void*>::iterator i = v8g->Actions.find(name);
+  // which map to use
+  map<string, void*>* actions = 0;
 
-  if (i != v8g->Actions.end()) {
+  switch (category) {
+    case TRI_ACT_CATEGORY_USER:
+      actions = &(v8g->Actions);
+      break;
+
+    case TRI_ACT_CATEGORY_SYSTEM:
+      actions = &(v8g->SystemActions);
+      break;
+  }
+
+  // check if we already know the action
+  map<string, void*>::iterator i = actions->find(name);
+
+  if (i != actions->end()) {
     action_t* cb = (action_t*) i->second;
 
     cb->_callback.Dispose();
@@ -348,7 +395,9 @@ void TRI_CreateActionVocBase (string const& name,
   cb->_callback = v8::Persistent<v8::Function>::New(callback);
   cb->_options = ao;
 
-  v8g->Actions[name] = (void*) cb;
+  LOG_DEBUG("created action '%s' for category %d", name.c_str(), (int) category);
+
+  (*actions)[name] = (void*) cb;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -356,6 +405,7 @@ void TRI_CreateActionVocBase (string const& name,
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
+                                        TRI_action_category_e category,
                                         string const& name,
                                         HttpRequest* request) {
   TRI_v8_global_t* v8g;
@@ -367,10 +417,24 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
   v8::HandleScope scope;
   v8::TryCatch tryCatch;
 
-  // check if we know a callback
-  map<string, void*>::iterator i = v8g->Actions.find(name);
+  // which map to use
+  map<string, void*>* actions = 0;
 
-  if (i == v8g->Actions.end()) {
+  switch (category) {
+    case TRI_ACT_CATEGORY_USER:
+      actions = &(v8g->Actions);
+      break;
+
+    case TRI_ACT_CATEGORY_SYSTEM:
+      actions = &(v8g->SystemActions);
+      break;
+  }
+
+  // check if we know a callback
+  map<string, void*>::iterator i = actions->find(name);
+
+  if (i == actions->end()) {
+    LOG_DEBUG("unknown action '%s' for category %d", name.c_str(), (int) category);
     return new HttpResponse(HttpResponse::NOT_FOUND);
   }
 
@@ -397,6 +461,25 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
       switch (ap->_type) {
         case TRI_ACT_COLLECTION: {
           TRI_vocbase_col_t const* collection = TRI_FindCollectionByNameVocBase(vocbase, v.c_str(), false);
+
+          if (collection == 0) {
+            return new HttpResponse(HttpResponse::NOT_FOUND);
+          }
+
+          req->Set(v8::Handle<v8::String>(v8::String::New(k.c_str())),
+                   TRI_WrapCollection(collection));
+
+          break;
+        }
+
+        case TRI_ACT_COLLECTION_ID: {
+          TRI_ReadLockReadWriteLock(&vocbase->_lock);
+
+          TRI_vocbase_col_t const* collection = TRI_LookupCollectionByIdVocBase(
+            vocbase,
+            TRI_UInt64String(v.c_str()));
+
+          TRI_ReadUnlockReadWriteLock(&vocbase->_lock);
 
           if (collection == 0) {
             return new HttpResponse(HttpResponse::NOT_FOUND);
@@ -480,6 +563,10 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context) {
 
   context->Global()->Set(v8::String::New("defineAction"),
                          v8::FunctionTemplate::New(JS_DefineAction)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("defineSystemAction"),
+                         v8::FunctionTemplate::New(JS_DefineSystemAction)->GetFunction(),
                          v8::ReadOnly);
 
   // .............................................................................

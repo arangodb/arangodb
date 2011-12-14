@@ -69,7 +69,7 @@ function PRINT (value) {
     if ('PRINT' in value) {
       value.PRINT();
     }
-    else if (value.prototype == undefined) {
+    else if (value.__proto__ === Object.prototype) {
       PRINT_OBJECT(value);
     }
     else if ('toString' in value) {

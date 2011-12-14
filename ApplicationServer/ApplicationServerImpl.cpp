@@ -311,6 +311,7 @@ namespace triagens {
       }
       catch (...) {
         LOGGER_FATAL << "cannot select random generator, giving up";
+        TRI_ShutdownLogging();
         exit(EXIT_FAILURE);
       }
 
@@ -472,6 +473,7 @@ namespace triagens {
 
           if (g == 0) {
             LOGGER_FATAL << "unknown numeric gid '" << gid << "'";
+            TRI_ShutdownLogging();
             exit(EXIT_FAILURE);
           }
 #endif
@@ -487,10 +489,12 @@ namespace triagens {
           }
           else {
             LOGGER_FATAL << "cannot convert groupname '" << gid << "' to numeric gid";
+            TRI_ShutdownLogging();
             exit(EXIT_FAILURE);
           }
 #else
           LOGGER_FATAL << "cannot convert groupname '" << gid << "' to numeric gid";
+          TRI_ShutdownLogging();
           exit(EXIT_FAILURE);
 #endif
         }
@@ -501,6 +505,7 @@ namespace triagens {
 
         if (res != 0) {
           LOGGER_FATAL << "cannot set gid '" << gid << "', because " << strerror(errno);
+          TRI_ShutdownLogging();
           exit(EXIT_FAILURE);
         }
       }
@@ -522,6 +527,7 @@ namespace triagens {
 
           if (p == 0) {
             LOGGER_FATAL << "unknown numeric uid '" << uid << "'";
+            TRI_ShutdownLogging();
             exit(EXIT_FAILURE);
           }
 #endif
@@ -537,10 +543,12 @@ namespace triagens {
           }
           else {
             LOGGER_FATAL << "cannot convert username '" << uid << "' to numeric uid";
+            TRI_ShutdownLogging();
             exit(EXIT_FAILURE);
           }
 #else
           LOGGER_FATAL << "cannot convert username '" << uid << "' to numeric uid";
+          TRI_ShutdownLogging();
           exit(EXIT_FAILURE);
 #endif
         }
@@ -551,6 +559,7 @@ namespace triagens {
 
         if (res != 0) {
           LOGGER_FATAL << "cannot set uid '" << uid << "', because " << strerror(errno);
+          TRI_ShutdownLogging();
           exit(EXIT_FAILURE);
         }
       }

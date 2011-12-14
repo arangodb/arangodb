@@ -83,6 +83,8 @@
 ///
 /// @copydetails JSF_Graph_prototype_addVertex
 ///
+/// @copydetails JSF_Graph_prototype_getVertex
+///
 /// @section Vertex
 ///
 /// @copydetails JSF_Vertex_prototype_getId
@@ -124,11 +126,11 @@
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Json V8 JSON
+/// @addtogroup V8Json
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -140,6 +142,19 @@ function Edge (graph, id) {
   this._graph = graph;
   this._id = id;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoGraph
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the identifier of an edge
@@ -166,12 +181,7 @@ Edge.prototype.getId = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getInVertex = function () {
-  if (! this.hasOwnProperty("_inVertex")) {
-    this.properties();
-    this._inVertex = new Vertex(this._graph, this._to);
-  }
-
-  return _inVertex;
+  return this.graph.constructVertex(this._to);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -203,12 +213,7 @@ Edge.prototype.getLabel = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getOutVertex = function () {
-  if (! this.hasOwnProperty("_outVertex")) {
-    this.properties();
-    this._outVertex = new Vertex(this._graph, this._from);
-  }
-
-  return this._outVertex;
+  return this._graph.constructVertex(this._from);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -325,10 +330,23 @@ Edge.prototype.properties = function () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoGraph
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief edge printing
 ////////////////////////////////////////////////////////////////////////////////
 
-Edge.prototype.print = function () {
+Edge.prototype.PRINT = function () {
   output("Edge(<graph>, \"", this._id, "\")");
 }
 
@@ -341,11 +359,11 @@ Edge.prototype.print = function () {
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Json V8 JSON
+/// @addtogroup AvocadoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -359,12 +377,17 @@ function Vertex (graph, id) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief vertex representation
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-Vertex.prototype.print = function () {
-  output("Vertex(<graph>, \"", this._id, "\")");
-}
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoGraph
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inbound and outbound edges
@@ -387,7 +410,7 @@ Vertex.prototype.edges = function () {
     result = [];
 
     while (query.hasNext()) {
-      result.push(new Edge(graph, query.nextRef()));
+      result.push(graph.constructEdge(query.nextRef()));
     }
 
     this._edges = result;
@@ -554,7 +577,7 @@ Vertex.prototype.inbound = function () {
     result = [];
 
     while (query.hasNext()) {
-      result.push(new Edge(graph, query.nextRef()));
+      result.push(graph.constructEdge(query.nextRef()));
     }
 
     this._inbound = result;
@@ -584,7 +607,7 @@ Vertex.prototype.outbound = function () {
     result = [];
 
     while (query.hasNext()) {
-      result.push(new Edge(graph, query.nextRef()));
+      result.push(graph.constructEdge(query.nextRef()));
     }
 
     this._outbound = result;
@@ -659,15 +682,36 @@ Vertex.prototype.setProperty = function (name, value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoGraph
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief vertex representation
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.PRINT = function () {
+  output("Vertex(<graph>, \"", this._id, "\")");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                             GRAPH
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Json V8 JSON
+/// @addtogroup AvocadoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -698,16 +742,24 @@ function Graph (vertices, edg) {
   }
 
   this._vertices = vertices;
+  this._verticesCache = {};
+
   this._edges = edg;
+  this._edgesCache = {};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief graph printing
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype.print = function () {
-  output("Graph(\"", this._vertices._name, "\", \"" + this._edges._name, "\")");
-}
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoGraph
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an edge to the graph
@@ -750,7 +802,7 @@ Graph.prototype.addEdge = function (out, ine, label, data) {
     ref = this._edges.save(out._id, ine._id, shallow);
   }
 
-  edge = new Edge(this, ref);
+  edge = this.constructEdge(ref);
 
   if (out.hasOwnProperty("_edges")) {
     out._edges.push(edge);
@@ -767,9 +819,6 @@ Graph.prototype.addEdge = function (out, ine, label, data) {
   if (ine.hasOwnProperty("_inbound")) {
     ine._inbound.push(edge);
   }
-
-  edge._inVertex = ine;
-  edge._outVertex = out;
 
   return edge;
 }
@@ -801,7 +850,75 @@ Graph.prototype.addVertex = function (data) {
     ref = this._vertices.save(data);
   }
 
-  return new Vertex(this, ref);
+  return this.constructVertex(ref);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a vertex given its id
+///
+/// @FUN{@FA{graph}.getVertex(@FA{id})}
+///
+/// Returns the vertex identified by @FA{id} or undefined.
+///
+/// @verbinclude graph2
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.getVertex = function (id) {
+  var ref;
+
+  ref = this._vertices.document(id);
+
+  if (ref.count() == 1) {
+    return this.constructVertex(id);
+  }
+  else {
+    return undefined;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoGraph
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief private function to construct a vertex
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.constructVertex = function(id) {
+  if (! (id in this._verticesCache)) {
+    this._verticesCache[id] = new Vertex(this, id);
+  }
+
+  return this._verticesCache[id];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief private function to construct an edge
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.constructEdge = function(id) {
+  if (! (id in this._edgesCache)) {
+    this._edgesCache[id] = new Edge(this, id);
+  }
+
+  return this._edgesCache[id];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief graph printing
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.PRINT = function () {
+  output("Graph(\"", this._vertices._name, "\", \"" + this._edges._name, "\")");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
