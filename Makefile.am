@@ -108,6 +108,7 @@ avocado_SOURCES = \
 	JsonParserX/JsonParserX.cpp \
 	JsonParserX/JsonParserXDriver.cpp \
 	JsonParserX/JsonScannerX.cpp \
+	ProgramOptions/program-options.c \
 	Rest/AddressPort.cpp \
 	Rest/AnyServer.cpp \
 	Rest/ApplicationHttpServer.cpp \
