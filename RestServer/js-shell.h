@@ -80,7 +80,7 @@ static string JS_shell =
   "    if ('PRINT' in value) {\n"
   "      value.PRINT();\n"
   "    }\n"
-  "    else if (value.prototype == undefined) {\n"
+  "    else if (value.__proto__ === Object.prototype) {\n"
   "      PRINT_OBJECT(value);\n"
   "    }\n"
   "    else if ('toString' in value) {\n"

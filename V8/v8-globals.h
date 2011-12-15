@@ -61,6 +61,7 @@ typedef struct TRI_v8_global_s {
     : JSQueries(),
       JSResultSets(),
       Actions(),
+      SystemActions(),
       ActionsLock(),
       EdgesTempl(),
       EdgesColTempl(),

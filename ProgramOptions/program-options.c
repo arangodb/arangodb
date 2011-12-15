@@ -250,6 +250,12 @@ static void ParseFlagArg (char const * userarg, void * value) {
     else if (TRI_CaseEqualString(userarg, "false")) {
       *flag->_value = false;
     }
+    else if (TRI_CaseEqualString(userarg, "1")) {
+      *flag->_value = true;
+    }
+    else if (TRI_CaseEqualString(userarg, "0")) {
+      *flag->_value = false;
+    }
   }
 }
 
@@ -264,7 +270,12 @@ static void CreateFlagOption (po_flag_t * desc, void const * input, void * outpu
 
   po = output;
 
-  InitOptionStructure(&flagOpt, desc->base._name, 0, 0, po->_longopts._length);
+  if (desc->_value == 0) {
+    InitOptionStructure(&flagOpt, desc->base._name, 0, 0, po->_longopts._length);
+  }
+  else {
+    InitOptionStructure(&flagOpt, desc->base._name, 1, 0, po->_longopts._length);
+  }
 
   memset(&item, 0, sizeof(item));
 
@@ -1359,7 +1370,16 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
     if (item->_desc->_short != '\0') {
       TRI_AppendCharStringBuffer(&buffer, item->_desc->_short);
 
-      if (item->_desc->_type != TRI_PO_FLAG) {
+      if (item->_desc->_type == TRI_PO_FLAG) {
+        po_flag_t* p;
+
+        p = (po_flag_t*) item->_desc;
+
+        if (p->_value != 0) {
+          TRI_AppendCharStringBuffer(&buffer, ':');
+        }
+      }
+      else {
         TRI_AppendCharStringBuffer(&buffer, ':');
       }
     }

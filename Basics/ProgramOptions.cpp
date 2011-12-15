@@ -97,30 +97,6 @@ static T find (map<string, T> const& m, string const& key) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts a boolean
-////////////////////////////////////////////////////////////////////////////////
-
-static void ExtractBool (char const* ptr, bool* value) {
-  TRI_set_errno(TRI_ERROR_NO_ERROR);
-
-  if (TRI_CaseEqualString(ptr, "yes")) {
-    *value = true;
-  }
-  else if (TRI_CaseEqualString(ptr, "no")) {
-    *value = false;
-  }
-  else if (TRI_CaseEqualString(ptr, "true")) {
-    *value = true;
-  }
-  else if (TRI_CaseEqualString(ptr, "false")) {
-    *value = false;
-  }
-  else {
-    TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts a double
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -295,7 +271,15 @@ static void ExtractVectorUInt64 (TRI_vector_string_t* ptr, vector<uint64_t>* val
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ProgramOptions::ProgramOptions () {
+ProgramOptions::ProgramOptions ()
+  : _valuesBool(),
+    _valuesString(),
+    _valuesVector(),
+    _options(),
+    _errorMessage(),
+    _helpOptions(),
+    _flags(),
+    _seen() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -315,6 +299,10 @@ ProgramOptions::~ProgramOptions () {
 
   for (map<string, TRI_vector_string_t*>::iterator i = _valuesVector.begin();  i != _valuesVector.end();  ++i) {
     TRI_FreeVectorString(i->second);
+  }
+
+  for (map<string, bool*>::iterator i = _valuesBool.begin();  i != _valuesBool.end();  ++i) {
+    TRI_Free(i->second);
   }
 }
 
@@ -345,11 +333,13 @@ bool ProgramOptions::parse (ProgramOptionsDescription const& description, int ar
   bool ok = TRI_ParseArgumentsProgramOptions(options, argc, argv);
 
   if (ok) {
-    ok = extractValues(description, options);
+    ok = extractValues(description, options, _seen);
 
-    if (description._positionals != 0) {
-      for (size_t i = 0;  i < options->_arguments._length;  ++i) {
-        description._positionals->push_back(options->_arguments._buffer[i]);
+    if (ok) {
+      if (description._positionals != 0) {
+        for (size_t i = 0;  i < options->_arguments._length;  ++i) {
+          description._positionals->push_back(options->_arguments._buffer[i]);
+        }
       }
     }
   }
@@ -357,11 +347,11 @@ bool ProgramOptions::parse (ProgramOptionsDescription const& description, int ar
     _errorMessage = TRI_last_error();
   }
 
-  //freeValues(options);
+  // freeValues(options);
   TRI_FreeProgramOptions(options);
   TRI_FreePODescription(desc);
 
-  return true;
+  return ok;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -378,13 +368,13 @@ bool ProgramOptions::parse (ProgramOptionsDescription const& description, string
   bool ok = TRI_ParseFileProgramOptions(options, filename.c_str());
 
   if (ok) {
-    ok = extractValues(description, options);
+    ok = extractValues(description, options, _seen);
   }
   else {
     _errorMessage = TRI_last_error();
   }
 
-  //freeValues(options);
+  // freeValues(options);
   TRI_FreeProgramOptions(options);
   TRI_FreePODescription(desc);
 
@@ -499,14 +489,24 @@ void ProgramOptions::setupSubDescription (ProgramOptionsDescription const& descr
     if (j != description._optionTypes.end()) {
       ProgramOptionsDescription::option_type_e type = j->second;
       char** ptr;
+      bool* btr;
       TRI_vector_string_t* wtr;
 
       switch (type) {
         case ProgramOptionsDescription::OPTION_TYPE_FLAG:
-          TRI_AddFlagPODescription(desc, option.c_str(), 0, help.c_str(), 0);
+          TRI_AddFlagPODescription(desc, option.c_str(), shortOption, help.c_str(), 0);
           break;
 
         case ProgramOptionsDescription::OPTION_TYPE_BOOL:
+          btr = _valuesBool[option];
+
+          if (btr == 0) {
+            btr = _valuesBool[option] = (bool*) TRI_Allocate(sizeof(bool));
+          }
+
+          TRI_AddFlagPODescription(desc, option.c_str(), shortOption, help.c_str(), btr);
+          break;
+
         case ProgramOptionsDescription::OPTION_TYPE_DOUBLE:
         case ProgramOptionsDescription::OPTION_TYPE_INT32:
         case ProgramOptionsDescription::OPTION_TYPE_INT64:
@@ -564,9 +564,11 @@ void ProgramOptions::setupSubDescription (ProgramOptionsDescription const& descr
 /// @brief extracts the parsed options
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ProgramOptions::extractValues (ProgramOptionsDescription const& description, TRI_program_options_t* options) {
+bool ProgramOptions::extractValues (ProgramOptionsDescription const& description, TRI_program_options_t* options, set<string> seen) {
   size_t i;
   char** ptr;
+  bool* btr;
+  bool* b;
   TRI_vector_string_t* wtr;
 
   for (i = 0;  i < options->_items._length;  ++i) {
@@ -577,19 +579,41 @@ bool ProgramOptions::extractValues (ProgramOptionsDescription const& description
     if (item->_used) {
       string name = item->_desc->_name;
 
-      _flags.insert(name);
+      if (seen.find(name) != seen.end()) {
+        continue;
+      }
 
-      if (item->_desc->_type == TRI_PO_STRING) {
+      _flags.insert(name);
+      _seen.insert(name);
+
+      if (item->_desc->_type == TRI_PO_FLAG) {
+        btr = _valuesBool[name];
+
+        if (btr != 0) {
+          ProgramOptionsDescription::option_type_e type = lookup(description._optionTypes, name);
+
+          switch (type) {
+            case ProgramOptionsDescription::OPTION_TYPE_BOOL:
+              b = lookup(description._boolOptions, name);
+
+              if (b != 0) {
+                *b = *btr;
+              }
+
+              break;
+
+            default:
+              break;
+          }
+        }
+      }
+      else if (item->_desc->_type == TRI_PO_STRING) {
         ptr = _valuesString[name];
 
         if (ptr != 0) {
           ProgramOptionsDescription::option_type_e type = lookup(description._optionTypes, name);
 
           switch (type) {
-            case ProgramOptionsDescription::OPTION_TYPE_BOOL:
-              ExtractBool(*ptr, lookup(description._boolOptions, name));
-              break;
-
             case ProgramOptionsDescription::OPTION_TYPE_DOUBLE:
               ExtractDouble(*ptr, lookup(description._doubleOptions, name));
               break;
@@ -679,13 +703,17 @@ bool ProgramOptions::extractValues (ProgramOptionsDescription const& description
   for (vector<ProgramOptionsDescription>::const_iterator i = description._subDescriptions.begin();
        i != description._subDescriptions.end();
        ++i) {
-    extractValues(*i, options);
+    if (! extractValues(*i, options, seen)) {
+      return false;
+    }
   }
 
   for (vector<ProgramOptionsDescription>::const_iterator i = description._hiddenSubDescriptions.begin();
        i != description._hiddenSubDescriptions.end();
        ++i) {
-    extractValues(*i, options);
+    if (! extractValues(*i, options, seen)) {
+      return false;
+    }
   }
 
   return true;
