@@ -478,7 +478,7 @@ static size_t GenerateMessage (char* buffer,
   // append the message
   // .............................................................................
 
-  n = vsnprintf(buffer + m, size - n, fmt, ap);
+  n = vsnprintf(buffer + m, size - m, fmt, ap);
 
   if (n < 0) {
     return n;

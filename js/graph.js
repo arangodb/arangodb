@@ -47,14 +47,16 @@
 ///     </ol>
 ///   <li>Vertex</li>
 ///     <ol>
+///       <li>Vertex.edges</li>
+///       <li>Vertex.addInEdge</li>
+///       <li>Vertex.addOutEdge</li>
 ///       <li>Vertex.getId</li>
 ///       <li>Vertex.getInEdges</li>
 ///       <li>Vertex.getOutEdges</li>
 ///       <li>Vertex.getProperty</li>
 ///       <li>Vertex.getPropertyKeys</li>
-///       <li>Vertex.setProperty</li>
-///       <li>Vertex.edges</li>
 ///       <li>Vertex.properties</li>
+///       <li>Vertex.setProperty</li>
 ///     </ol>
 ///   <li>Edge</li>
 ///     <ol>
@@ -64,6 +66,7 @@
 ///       <li>Edge.getOutVertex</li>
 ///       <li>Edge.getProperty</li>
 ///       <li>Edge.getPropertyKeys</li>
+///       <li>Edge.properties</li>
 ///       <li>Edge.setProperty</li>
 ///     </ol>
 ///   </li>
@@ -87,6 +90,12 @@
 ///
 /// @section Vertex
 ///
+/// @copydetails JSF_Vertex_prototype_edges
+///
+/// @copydetails JSF_Vertex_prototype_addInEdge
+///
+/// @copydetails JSF_Vertex_prototype_addOutEdge
+///
 /// @copydetails JSF_Vertex_prototype_getId
 ///
 /// @copydetails JSF_Vertex_prototype_getInEdges
@@ -97,11 +106,9 @@
 ///
 /// @copydetails JSF_Vertex_prototype_getPropertyKeys
 ///
-/// @copydetails JSF_Vertex_prototype_setProperty
-///
-/// @copydetails JSF_Vertex_prototype_edges
-///
 /// @copydetails JSF_Vertex_prototype_properties
+///
+/// @copydetails JSF_Vertex_prototype_setProperty
 ///
 /// @section Edge
 ///
@@ -116,6 +123,8 @@
 /// @copydetails JSF_Edge_prototype_getProperty
 ///
 /// @copydetails JSF_Edge_prototype_getPropertyKeys
+///
+/// @copydetails JSF_Edge_prototype_properties
 ///
 /// @copydetails JSF_Edge_prototype_setProperty
 ///
@@ -388,6 +397,50 @@ function Vertex (graph, id) {
 /// @addtogroup AvocadoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds an inbound edge
+///
+/// @FUN{@FA{vertex}.addInEdge(@FA{peer}, @FA{label})}
+///
+/// Creates a new edge from @FA{peer} to @FA{vertex} with given label and
+/// returns the edge object.
+///
+/// @verbinclude graph23
+///
+/// @FUN{@FA{vertex}.addInEdge(@FA{peer}, @FA{label}, @FA{data})}
+///
+/// Creates a new edge from @FA{peer} to @FA{vertex} with given label and
+/// properties defined in @FA{data}. Returns the edge object.
+///
+/// @verbinclude graph24
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.addInEdge = function (out, label, data) {
+  return this._graph.addEdge(out, this, label, data);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds an outbound edge
+///
+/// @FUN{@FA{vertex}.addOutEdge(@FA{peer}, @FA{label})}
+///
+/// Creates a new edge from @FA{vertex} to @FA{peer} with given @FA{label} and
+/// returns the edge object.
+///
+/// @verbinclude graph23
+///
+/// @FUN{@FA{vertex}.addOutEdge(@FA{peer}, @FA{label}, @FA{data})}
+///
+/// Creates a new edge from @FA{vertex} to @FA{peer} with given @FA{label} and
+/// properties defined in @FA{data}. Returns the edge object.
+///
+/// @verbinclude graph24
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.addOutEdge = function (ine, label, data) {
+  return this._graph.addEdge(this, ine, label, data);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inbound and outbound edges
@@ -764,6 +817,11 @@ function Graph (vertices, edg) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an edge to the graph
 ///
+/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in})}
+///
+/// Creates a new edge from @FA{out} to @FA{in} and returns the edge
+/// object.
+///
 /// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{label})}
 ///
 /// Creates a new edge from @FA{out} to @FA{in} with @FA{label} and returns the
@@ -771,10 +829,15 @@ function Graph (vertices, edg) {
 ///
 /// @verbinclude graph9
 ///
-/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{label}, @FA{data})}
+/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{data})}
 ///
 /// Creates a new edge and returns the edge object. The edge contains the
 /// properties defined in @FA{data}.
+///
+/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{label}, @FA{data})}
+///
+/// Creates a new edge and returns the edge object. The edge has the
+/// label @FA{label} and contains the properties defined in @FA{data}.
 ///
 /// @verbinclude graph10
 ////////////////////////////////////////////////////////////////////////////////
@@ -784,6 +847,15 @@ Graph.prototype.addEdge = function (out, ine, label, data) {
   var shallow;
   var key;
   var edge;
+
+  if (typeof label === 'object') {
+    data = label;
+    label = undefined;
+  }
+
+  if (label === undefined) {
+    label = null;
+  }
 
   if (data === undefined) {
     ref = this._edges.save(out._id, ine._id, {"_label" : label});

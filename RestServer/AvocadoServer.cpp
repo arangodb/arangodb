@@ -190,7 +190,7 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
 ////////////////////////////////////////////////////////////////////////////////
 
 void AvocadoServer::buildApplicationServer () {
-  _applicationServer = ApplicationServerDispatcher::create("[<options>] - starts the triAGENS AvocadoDB", TRIAGENS_VERSION);
+  _applicationServer = ApplicationServerDispatcher::create("[<options>] <database-directory>", TRIAGENS_VERSION);
   _applicationServer->setSystemConfigFile("avocado.conf");
   _applicationServer->setUserConfigFile(".avocado/avocado.conf");
 
@@ -253,8 +253,8 @@ void AvocadoServer::buildApplicationServer () {
   // database options
   // .............................................................................
 
-  additional["DATABASE Options"]
-    ("database.directory", &_databasePath, "path to the database directory")
+  additional["DATABASE Options:help-extended"]
+    ("database.directory", &_databasePath, "path to the database directory (use this option in configuration files instead of passing it via the command line)")
   ;
 
   // .............................................................................
