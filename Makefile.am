@@ -7,7 +7,7 @@ AM_CFLAGS =
 AM_CPPFLAGS = @BOOST_CPPFLAGS@ @LIBEV_CPPFLAGS@ @OPENSSL_CPPFLAGS@ @V8_CPPFLAGS@
 AM_LDFLAGS = @BOOST_LDFLAGS@ @LIBEV_LDFLAGS@ @OPENSSL_LDFLAGS@ @V8_LDFLAGS@
 BUILT_SOURCES =
-LIBS = @BOOST_LIBS@ @LIBEV_LIBS@ @OPENSSL_LIBS@ @V8_LIBS@ -lreadline
+LIBS = @BOOST_LIBS@ @LIBEV_LIBS@ @OPENSSL_LIBS@ @V8_LIBS@ -lreadline -ldl
 BUILD_H = $(top_srcdir)/build.h
 
 ################################################################################
