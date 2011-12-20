@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_CONDITION_VARIABLE_H
 #define TRIAGENS_JUTLAND_BASICS_CONDITION_VARIABLE_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
 #ifdef TRI_HAVE_POSIX_THREADS
 #include <Basics/ConditionVariable-posix.h>

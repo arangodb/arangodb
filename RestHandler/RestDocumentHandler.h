@@ -31,19 +31,38 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page CRUDDocument REST Interface for Documents
+/// @page RestDocumentTOC
+///
+/// <ol>
+///   <li>@ref RestDocumentCreate "POST /_document"</li>
+///   <li>@ref RestDocumentRead "GET /_document"</li>
+///   <li>@ref RestDocumentUpdate "PUT /_document"</li>
+///   <li>@ref RestDocumentDelete "DELETE /_document"</li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page RestDocument REST Interface for Documents
 ///
 /// The basic operations (create, read, update, delete) for documents are mapped
 /// to the standard HTTP methods (POST, GET, PUT, DELETE). An identifier for the
 /// revision is returned in the "ETag" field. If you modify a document, you can
 /// use the "ETag" field to detect conflicts.
 ///
+/// <hr>
+/// @copydoc RestDocumentTOC
+/// <hr>
+///
+/// @anchor RestDocumentCreate
 /// @copydetails triagens::avocado::RestDocumentHandler::createDocument
 ///
+/// @anchor RestDocumentRead
 /// @copydetails triagens::avocado::RestDocumentHandler::readDocument
 ///
+/// @anchor RestDocumentUpdate
 /// @copydetails triagens::avocado::RestDocumentHandler::updateDocument
 ///
+/// @anchor RestDocumentDelete
 /// @copydetails triagens::avocado::RestDocumentHandler::deleteDocument
 ////////////////////////////////////////////////////////////////////////////////
 

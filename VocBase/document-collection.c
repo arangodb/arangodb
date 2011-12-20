@@ -27,10 +27,10 @@
 
 #include "document-collection.h"
 
-#include <Basics/conversions.h>
-#include <Basics/files.h>
-#include <Basics/logging.h>
-#include <Basics/strings.h>
+#include <BasicsC/conversions.h>
+#include <BasicsC/files.h>
+#include <BasicsC/logging.h>
+#include <BasicsC/strings.h>
 
 #include <VocBase/voc-shaper.h>
 

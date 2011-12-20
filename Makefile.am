@@ -28,47 +28,49 @@ avocado_SOURCES = \
 	ApplicationServer/ApplicationServerDispatcherImpl.cpp \
 	ApplicationServer/ApplicationServerImpl.cpp \
 	ApplicationServer/ApplicationServerSchedulerImpl.cpp \
-	Basics/associative.c \
-	Basics/associative-multi.c \
+	BasicsC/associative.c \
+	BasicsC/associative-multi.c \
+	BasicsC/conversions.c \
+	BasicsC/csv.c \
+	BasicsC/error.c \
+	BasicsC/files.c \
+	BasicsC/hashes.c \
+	BasicsC/init.c \
+	BasicsC/json.c \
+	BasicsC/locks-macos.c \
+	BasicsC/locks-posix.c \
+	BasicsC/logging.c \
+	BasicsC/memory.c \
 	Basics/ConditionLocker.cpp \
 	Basics/ConditionVariable-posix.cpp \
-	Basics/conversions.c \
-	Basics/csv.c \
-	Basics/error.c \
-	Basics/files.c \
+	BasicsC/random.c \
+	BasicsC/string-buffer.c \
+	BasicsC/strings.c \
+	BasicsC/structures.c \
+	BasicsC/system-functions.c \
+	BasicsC/system-windows.c \
+	BasicsC/terminal-utils.c \
+	BasicsC/terminal-utils-ncurses.c \
+	BasicsC/threads-posix.c \
+	BasicsC/vector.c \
 	Basics/FileUtils.cpp \
-	Basics/hashes.c \
-	Basics/init.c \
 	Basics/Initialise.cpp \
-	Basics/json.c \
-	Basics/locks-macos.c \
-	Basics/locks-posix.c \
 	Basics/Logger.cpp \
 	Basics/LoggerData.cpp \
 	Basics/LoggerInfo.cpp \
 	Basics/LoggerStream.cpp \
 	Basics/LoggerTiming.cpp \
-	Basics/logging.c \
-	Basics/memory.c \
 	Basics/Mutex.cpp \
 	Basics/MutexLocker.cpp \
 	Basics/ProgramOptions.cpp \
 	Basics/ProgramOptionsDescription.cpp \
 	Basics/Random.cpp \
-	Basics/randomx.c \
 	Basics/ReadLocker.cpp \
 	Basics/ReadUnlocker.cpp \
 	Basics/ReadWriteLock.cpp \
 	Basics/SocketUtils.cpp \
-	Basics/string-buffer.c \
-	Basics/strings.c \
 	Basics/StringUtils.cpp \
-	Basics/structures.c \
-	Basics/system-functions.c \
-	Basics/system-windows.c \
-	Basics/TerminalUtils-NCurses.cpp \
 	Basics/Thread-posix.cpp \
-	Basics/threads-posix.c \
 	Basics/Timing.cpp \
 	Basics/VariantArray.cpp \
 	Basics/VariantBlob.cpp \
@@ -90,7 +92,6 @@ avocado_SOURCES = \
 	Basics/VariantUInt64.cpp \
 	Basics/VariantUInt8.cpp \
 	Basics/VariantVector.cpp \
-	Basics/vector.c \
 	Basics/WriteLocker.cpp \
 	Basics/WriteUnlocker.cpp \
 	Dispatcher/DispatcherImpl.cpp \

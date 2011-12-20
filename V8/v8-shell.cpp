@@ -28,11 +28,11 @@
 #include "v8-shell.h"
 
 #define TRI_WITHIN_C
-#include <Basics/conversions.h>
-#include <Basics/csv.h>
-#include <Basics/logging.h>
-#include <Basics/string-buffer.h>
-#include <Basics/strings.h>
+#include <BasicsC/conversions.h>
+#include <BasicsC/csv.h>
+#include <BasicsC/logging.h>
+#include <BasicsC/string-buffer.h>
+#include <BasicsC/strings.h>
 
 #include "ShapedJson/shaped-json.h"
 #undef TRI_WITHIN_C
@@ -314,97 +314,6 @@ static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      JS functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief changes the log-level
-///
-/// @FUN{logLevel()}
-///
-/// Returns the current log-level as string.
-///
-/// @verbinclude fluent37
-///
-/// @FUN{logLevel(@FA{level})}
-///
-/// Changes the current log-level. Valid log-level are:
-///
-/// - fatal
-/// - error
-/// - warning
-/// - info
-/// - debug
-/// - trace
-///
-/// @verbinclude fluent38
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_LogLevel (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  if (1 <= argv.Length()) {
-    v8::String::Utf8Value str(argv[0]);
-
-    TRI_SetLogLevelLogging(*str);
-  }
-
-  return scope.Close(v8::String::New(TRI_LogLevelLogging()));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief outputs the arguments
-///
-/// @FUN{output(@FA{string1}, @FA{string2}, @FA{string3}, ...)}
-///
-/// Outputs the arguments to standard output.
-///
-/// @verbinclude fluent39
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
-  for (int i = 0; i < argv.Length(); i++) {
-    v8::HandleScope scope;
-
-    // extract the next argument
-    v8::Handle<v8::Value> val = argv[i];
-
-    // convert it into a string
-    v8::String::Utf8Value utf8(val);
-
-    if (*utf8 == 0) {
-      continue;
-    }
-
-    // print the argument
-    char const* ptr = *utf8;
-    size_t len = utf8.length();
-
-    while (0 < len) {
-      ssize_t n = write(1, ptr, len);
-
-      if (n < 0) {
-        return v8::Undefined();
-      }
-
-      len -= n;
-      ptr += n;
-    }
-  }
-
-  return v8::Undefined();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
@@ -432,14 +341,6 @@ void TRI_InitV8Shell (v8::Handle<v8::Context> context) {
   // .............................................................................
   // create the global functions
   // .............................................................................
-
-  context->Global()->Set(v8::String::New("logLevel"),
-                         v8::FunctionTemplate::New(JS_LogLevel)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("output"),
-                         v8::FunctionTemplate::New(JS_Output)->GetFunction(),
-                         v8::ReadOnly);
 
   context->Global()->Set(v8::String::New("processCsvFile"),
                          v8::FunctionTemplate::New(JS_ProcessCsvFile)->GetFunction(),

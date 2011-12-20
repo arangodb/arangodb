@@ -32,10 +32,10 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_DICTIONARY_H
 #define TRIAGENS_JUTLAND_BASICS_DICTIONARY_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
 #include <Basics/AssociativeArray.h>
-#include <Basics/hashes.h>
+#include <BasicsC/hashes.h>
 
 namespace triagens {
   namespace basics {

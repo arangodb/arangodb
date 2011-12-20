@@ -1,9 +1,9 @@
 #line 2 "./JsonParser/json-parser.l"
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
-#include <Basics/json.h>
-#include <Basics/strings.h>
-#include <Basics/logging.h>
+#include <BasicsC/json.h>
+#include <BasicsC/strings.h>
+#include <BasicsC/logging.h>
 
 int fileno(FILE *stream);
 

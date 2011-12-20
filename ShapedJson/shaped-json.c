@@ -28,11 +28,11 @@
 
 #include "shaped-json.h"
 
-#include <Basics/associative.h>
-#include <Basics/hashes.h>
-#include <Basics/logging.h>
-#include <Basics/string-buffer.h>
-#include <Basics/vector.h>
+#include <BasicsC/associative.h>
+#include <BasicsC/hashes.h>
+#include <BasicsC/logging.h>
+#include <BasicsC/string-buffer.h>
+#include <BasicsC/vector.h>
 
 #include "ShapedJson/json-shaper.h"
 

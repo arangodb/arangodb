@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_DELETE_OBJECT_H
 #define TRIAGENS_JUTLAND_BASICS_DELETE_OBJECT_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
 namespace triagens {
   namespace basics {

@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_FYN_JSON_PARSER_X_JSON_PARSER_XDRIVER_H
 #define TRIAGENS_FYN_JSON_PARSER_X_JSON_PARSER_XDRIVER_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 // @brief flex prototyp

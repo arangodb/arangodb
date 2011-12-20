@@ -88,9 +88,7 @@ defineSystemAction("collections",
       };
     }
 
-    res.responseCode = 200;
-    res.contentType = "application/json";
-    res.body = JSON.stringify(result);
+    actionResult(req, res, 200, result);
   }
 );
 
@@ -109,13 +107,10 @@ defineSystemAction("collection/load",
     try {
       req.collection.load();
 
-      res.responseCode = 204;
-      res.contentType = "application/json";
+      actionResult(req, res, 204);
     }
     catch (err) {
-      res.responseCode = 500;
-      res.contentType = "application/json";
-      res.body = JSON.stringify(err);
+      actionError(req, res, err);
     }
   },
   {
@@ -123,7 +118,6 @@ defineSystemAction("collection/load",
       collection : "collection-identifier"
     }
   }
-
 );
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,14 +139,10 @@ defineSystemAction("collection/info",
       result.status = req.collection.status();
       result.figures = req.collection.figures();
 
-      res.responseCode = 200;
-      res.contentType = "application/json";
-      res.body = JSON.stringify(result);
+      actionResult(req, res, 200, result);
     }
     catch (err) {
-      res.responseCode = 500;
-      res.contentType = "application/json";
-      res.body = JSON.stringify({ 'error' : "" + err });
+      actionError(req, res, err);
     }
   },
   {
@@ -160,7 +150,6 @@ defineSystemAction("collection/info",
       collection : "collection-identifier"
     }
   }
-
 );
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -169,5 +158,5 @@ defineSystemAction("collection/info",
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:

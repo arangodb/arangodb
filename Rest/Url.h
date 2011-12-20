@@ -30,7 +30,7 @@
 #ifndef TRIAGENS_FYN_REST_URL_H
 #define TRIAGENS_FYN_REST_URL_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
 namespace triagens {
   namespace rest {

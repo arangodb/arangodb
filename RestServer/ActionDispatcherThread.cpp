@@ -28,8 +28,8 @@
 #include "ActionDispatcherThread.h"
 
 #include <Basics/Logger.h>
-#include <Basics/files.h>
-#include <Basics/strings.h>
+#include <BasicsC/files.h>
+#include <BasicsC/strings.h>
 #include <Rest/Initialise.h>
 
 #include "V8/v8-actions.h"

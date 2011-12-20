@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_BORNHOLM_SESSION_MANAGER_SESSION_H
 #define TRIAGENS_BORNHOLM_SESSION_MANAGER_SESSION_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
 #include <Admin/Right.h>
 #include <Basics/Mutex.h>

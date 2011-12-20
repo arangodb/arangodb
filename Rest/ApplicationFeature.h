@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_FYN_REST_APPLICATION_FEATURE_H
 #define TRIAGENS_FYN_REST_APPLICATION_FEATURE_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
 #include <Rest/ApplicationServer.h>
 

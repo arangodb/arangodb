@@ -25,6 +25,8 @@
 /// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var internal = require("internal");
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          printing
 // -----------------------------------------------------------------------------
@@ -51,39 +53,56 @@
 function print () {
   for (var i = 0;  i < arguments.length;  ++i) {
     if (0 < i) {
-      output(" ");
+      internal.output(" ");
     }
 
-    PRINT(arguments[i]);
+    PRINT(arguments[i], [], "~", []);
   }
 
-  output("\n");
+  internal.output("\n");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints objects to standard output without a new-line
 ////////////////////////////////////////////////////////////////////////////////
 
-function PRINT (value) {
-  if (value instanceof Object) {
-    if ('PRINT' in value) {
-      value.PRINT();
-    }
-    else if (value.__proto__ === Object.prototype) {
-      PRINT_OBJECT(value);
-    }
-    else if ('toString' in value) {
-      output(value.toString());
-    }
-    else {
-      PRINT_OBJECT(value);
-    }
+function PRINT (value, seen, path, names) {
+  var p;
+
+  if (seen === undefined) {
+    seen = [];
+    names = [];
   }
-  else if (value === undefined) {
-    output("undefined");
+
+  p = seen.indexOf(value);
+
+  if (0 <= p) {
+    internal.output(names[p]);
   }
   else {
-    output("" + value);
+    seen.push(value);
+    names.push(path);
+
+    if (value instanceof Object) {
+      if ('PRINT' in value) {
+        value.PRINT(seen, path, names);
+      }
+      else if (value.__proto__ === Object.prototype) {
+        PRINT_OBJECT(value, seen, path, names);
+      }
+      else if ('toString' in value) {
+        internal.output(value.toString());
+      }
+      else {
+        PRINT_OBJECT(value, seen, path, names);
+      }
+    }
+    else if (value === undefined) {
+      internal.output("undefined");
+    }
+    else {
+      internal.output("" + value);
+    }
   }
 }
 
@@ -104,22 +123,22 @@ function PRINT (value) {
 /// @brief JSON representation of an array
 ////////////////////////////////////////////////////////////////////////////////
 
-Array.prototype.PRINT = function() {
+Array.prototype.PRINT = function(seen, path, names) {
   if (this.length == 0) {
-    output("[ ]");
+    internal.output("[ ]");
   }
   else {
     var sep = " ";
 
-    output("[");
+    internal.output("[");
 
     for (var i = 0;  i < this.length;  i++) {
-      output(sep);
-      PRINT(this[i]);
+      internal.output(sep);
+      PRINT(this[i], seen, path + "[" + i + "]", names);
       sep = ", ";
     }
 
-    output(" ]");
+    internal.output(" ]");
   }
 }
 
@@ -141,7 +160,7 @@ Array.prototype.PRINT = function() {
 ////////////////////////////////////////////////////////////////////////////////
 
 Function.prototype.PRINT = function() {
-  output(this.toString());
+  internal.output(this.toString());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -161,22 +180,22 @@ Function.prototype.PRINT = function() {
 /// @brief string representation of an object
 ////////////////////////////////////////////////////////////////////////////////
 
-function PRINT_OBJECT (object) {
+function PRINT_OBJECT (object, seen, path, names) {
   var sep = " ";
 
-  output("{");
+  internal.output("{");
 
   for (var k in object) {
     if (object.hasOwnProperty(k)) {
       var val = object[k];
 
-      output(sep, k, " : ");
-      PRINT(val);
+      internal.output(sep, k, " : ");
+      PRINT(val, seen, path + "[" + k + "]", names);
       sep = ", ";
     }
   }
 
-  output(" }");
+  internal.output(" }");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -214,21 +233,21 @@ AvocadoQuery.prototype.PRINT = function() {
 
     try {
       while (this.hasNext() && count++ < queryLimit) {
-        output(JSON.stringify(this.next()), "\n");
+        internal.output(JSON.stringify(this.next()), "\n");
       }
 
       if (this.hasNext()) {
-        output("...more results...");
+        internal.output("...more results...");
       }
 
       it = this;
     }
     catch (e) {
-      output("encountered error while printing: " + e);
+      internal.output("encountered error while printing: " + e);
     }
   }
   else {
-    output(this.toString());
+    internal.output(this.toString());
   }
 }
 
@@ -238,5 +257,5 @@ AvocadoQuery.prototype.PRINT = function() {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:

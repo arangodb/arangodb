@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_CONDITION_VARIABLE_POSIX_H
 #define TRIAGENS_JUTLAND_BASICS_CONDITION_VARIABLE_POSIX_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
 namespace triagens {
   namespace basics {

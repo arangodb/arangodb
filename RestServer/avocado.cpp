@@ -25,7 +25,7 @@
 /// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
 #include <Rest/Initialise.h>
 
@@ -40,19 +40,19 @@ using namespace triagens::avocado;
 /// @page StartStopTOC
 ///
 /// <ol>
-///  <li>Starting the Debug Shell</li>
-///  <li>Starting the HTTP Server</li>
-///  <li>Frequently Used Options</li>
+///  <li>@ref StartStopDebug "Starting the Debug Shell"</li>
+///  <li>@ref StartStopHttp "Starting the HTTP Server"</li>
+///  <li>@ref StartStopOptions "Frequently Used Options"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page StartStop Starting and Stopping the AvocadoDB
 ///
-/// The AvocadoDB has two mode of operations: as server, where it will answer to
-/// HTTP request, see @ref HttpInterface, and a debug shell, where you can
-/// access the database directly. Using the debug shell always you to issue all
-/// command normally available in actions and transactions, see @ref
+/// The AvocadoDB has two mode of operation: as server, where it will answer to
+/// HTTP requests, see @ref HttpInterface, and a debug shell, where you can
+/// access the database directly. Using the debug shell allows you to issue all
+/// commands normally available in actions and transactions, see @ref
 /// AvocadoScript.
 ///
 /// You should never start more than one server for the same database,
@@ -61,14 +61,14 @@ using namespace triagens::avocado;
 /// <hr>
 /// @copydoc StartStopTOC
 ///
-/// @section StartStopShell Starting the Debug Shell
+/// @section StartStopDebug Starting the Debug Shell
 ///
 /// The following command starts a debug shell. See below for a list of
 /// frequently used options, see @ref CommandLine "here" for a complete list.
 ///
 /// @verbinclude start1
 ///
-/// @section StartStopServer Starting the HTTP Server
+/// @section StartStopHttp Starting the HTTP Server
 ///
 /// The following command starts the AvocadoDB in server mode. You will be able
 /// to access the server using HTTP request on port 8529. See below for a list
@@ -78,7 +78,8 @@ using namespace triagens::avocado;
 ///
 /// @section StartStopOptions Frequently Used Options
 ///
-/// The following main command-line options are available.
+/// The following command-line options are frequently used. For a full
+/// list of options see @ref CommandLine "here".
 ///
 /// @CMDOPT{@CA{database-directory}}
 ///
@@ -91,9 +92,9 @@ using namespace triagens::avocado;
 /// @CMDOPT{--log @CA{level}}
 ///
 /// Allows the user to choose the level of information which is logged by the
-/// server. The arg is specified as a string and can be one of the following
-/// values: fatal, error, warning, info, debug, trace.  For more information see
-/// @ref CommandLineLogging "here".
+/// server. The @CA{level} is specified as a string and can be one of the
+/// following values: fatal, error, warning, info, debug, trace.  For more
+/// information see @ref CommandLineLogging "here".
 ///
 /// @copydetails triagens::avocado::AvocadoServer::_httpPort
 ///

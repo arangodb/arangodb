@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_FYN_REST_HANDLER_H
 #define TRIAGENS_FYN_REST_HANDLER_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 #include <Basics/Exceptions.h>
 
 #include <Rest/Job.h>

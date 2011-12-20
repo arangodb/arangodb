@@ -30,8 +30,8 @@
 
 #include <VocBase/vocbase.h>
 
-#include <Basics/json.h>
-#include <Basics/string-buffer.h>
+#include <BasicsC/json.h>
+#include <BasicsC/string-buffer.h>
 #include <VocBase/result-set.h>
 #include <VocBase/simple-collection.h>
 

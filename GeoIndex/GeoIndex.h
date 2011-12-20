@@ -29,7 +29,7 @@
 /* Version 2.0  3.12.2011 R. A. Parker               */
 
 #ifdef GEO_TRIAGENS
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 #else
 #include <string.h>
 #include <stdio.h>

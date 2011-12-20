@@ -31,12 +31,12 @@
 #include <readline/history.h>
 
 #include <Basics/StringUtils.h>
-#include <Basics/conversions.h>
-#include <Basics/csv.h>
-#include <Basics/files.h>
-#include <Basics/logging.h>
-#include <Basics/string-buffer.h>
-#include <Basics/strings.h>
+#include <BasicsC/conversions.h>
+#include <BasicsC/csv.h>
+#include <BasicsC/files.h>
+#include <BasicsC/logging.h>
+#include <BasicsC/string-buffer.h>
+#include <BasicsC/strings.h>
 
 #include "ShapedJson/shaped-json.h"
 
@@ -58,7 +58,9 @@ using namespace triagens::basics;
 
 static bool FillShapeValueJson (TRI_shaper_t* shaper,
                                 TRI_shape_value_t* dst,
-                                v8::Handle<v8::Value> json);
+                                v8::Handle<v8::Value> json,
+                                set<int>& seenHashes,
+                                vector< v8::Handle<v8::Object> >& seenObjects);
 
 static v8::Handle<v8::Value> JsonShapeData (TRI_shaper_t* shaper,
                                             TRI_shape_t const* shape,
@@ -575,7 +577,11 @@ static bool FillShapeValueString (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
 /// @brief converts a json list into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, v8::Handle<v8::Array> json) {
+static bool FillShapeValueList (TRI_shaper_t* shaper,
+                                TRI_shape_value_t* dst,
+                                v8::Handle<v8::Array> json,
+                                set<int>& seenHashes,
+                                vector< v8::Handle<v8::Object> >& seenObjects) {
   size_t i;
   size_t n;
   size_t total;
@@ -623,7 +629,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, v8
 
   for (i = 0;  i < n;  ++i, ++p) {
     v8::Local<v8::Value> el = json->Get(i);
-    bool ok = FillShapeValueJson(shaper, p, el);
+    bool ok = FillShapeValueJson(shaper, p, el, seenHashes, seenObjects);
 
     if (! ok) {
       for (e = p, p = values;  p < e;  ++p) {
@@ -808,7 +814,11 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, v8
 /// @brief converts a json array into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, v8::Handle<v8::Object> json) {
+static bool FillShapeValueArray (TRI_shaper_t* shaper,
+                                 TRI_shape_value_t* dst,
+                                 v8::Handle<v8::Object> json,
+                                 set<int>& seenHashes,
+                                 vector< v8::Handle<v8::Object> >& seenObjects) {
   size_t n;
   size_t i;
   size_t total;
@@ -870,7 +880,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, v
       ok = false;
     }
     else {
-      ok = FillShapeValueJson(shaper, p, val);
+      ok = FillShapeValueJson(shaper, p, val, seenHashes, seenObjects);
     }
 
     if (! ok) {
@@ -1004,7 +1014,33 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, v
 /// @brief converts a json object into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FillShapeValueJson (TRI_shaper_t* shaper, TRI_shape_value_t* dst, v8::Handle<v8::Value> json) {
+static bool FillShapeValueJson (TRI_shaper_t* shaper,
+                                TRI_shape_value_t* dst,
+                                v8::Handle<v8::Value> json,
+                                set<int>& seenHashes,
+                                vector< v8::Handle<v8::Object> >& seenObjects) {
+  if (json->IsObject()) {
+    v8::Handle<v8::Object> o = json->ToObject();
+    int hash = o->GetIdentityHash();
+
+    if (seenHashes.find(hash) != seenHashes.end()) {
+      LOG_TRACE("found hash %d", hash);
+
+      for (vector< v8::Handle<v8::Object> >::iterator i = seenObjects.begin();  i != seenObjects.end();  ++i) {
+        if (json->StrictEquals(*i)) {
+          LOG_TRACE("found duplicate for hash %d", hash);
+          return FillShapeValueNull(shaper, dst);
+        }
+      }
+
+      seenObjects.push_back(o);
+    }
+    else {
+      seenHashes.insert(hash);
+      seenObjects.push_back(o);
+    }
+  }
+
   if (json->IsNull()) {
     return FillShapeValueNull(shaper, dst);
   }
@@ -1038,11 +1074,11 @@ static bool FillShapeValueJson (TRI_shaper_t* shaper, TRI_shape_value_t* dst, v8
 
   if (json->IsArray()) {
     v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(json);
-    return FillShapeValueList(shaper, dst, array);
+    return FillShapeValueList(shaper, dst, array, seenHashes, seenObjects);
   }
 
   if (json->IsObject()) {
-    return FillShapeValueArray(shaper, dst, json->ToObject());
+    return FillShapeValueArray(shaper, dst, json->ToObject(), seenHashes, seenObjects);
   }
 
   return false;
@@ -1614,7 +1650,9 @@ v8::Handle<v8::Array> TRI_ArrayResultSet (TRI_result_set_t* rs) {
 
 TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> object, TRI_shaper_t* shaper) {
   TRI_shape_value_t dst;
-  bool ok = FillShapeValueJson(shaper, &dst, object);
+  set<int> seenHashes;
+  vector< v8::Handle<v8::Object> > seenObjects;
+  bool ok = FillShapeValueJson(shaper, &dst, object, seenHashes, seenObjects);
 
   if (! ok) {
     return 0;
@@ -1740,7 +1778,7 @@ bool TRI_ObjectToBoolean (v8::Handle<v8::Value> value) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a script
 ///
-/// @FUN{execute(@FA{script}, @FA{sandbox}, @FA{filename})}
+/// @FUN{internal.execute(@FA{script}, @FA{sandbox}, @FA{filename})}
 ///
 /// Executes the @FA{script} with the @FA{sandbox} as context. Global variables
 /// assigned inside the @FA{script}, will be visible in the @FA{sandbox} object
@@ -1854,7 +1892,7 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a file and executes it
 ///
-/// @FUN{load(@FA{filename})}
+/// @FUN{internal.load(@FA{filename})}
 ///
 /// Reads in a files and executes the contents in the current context.
 ////////////////////////////////////////////////////////////////////////////////
@@ -1886,9 +1924,148 @@ static v8::Handle<v8::Value> JS_Load (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief logs a message
+///
+/// @FUN{internal.log(@FA{level}, @FA{message})}
+///
+/// Logs the @FA{message} at the given log @FA{level}.
+///
+/// Valid log-level are:
+///
+/// - fatal
+/// - error
+/// - warning
+/// - info
+/// - debug
+/// - trace
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Log (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 2) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: log(<level>, <message>)")));
+  }
+
+  v8::String::Utf8Value level(argv[0]);
+
+  if (*level == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("<level> must be a string")));
+  }
+
+  v8::String::Utf8Value message(argv[1]);
+
+  if (*message == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("<message> must be a string")));
+  }
+
+  if (TRI_CaseEqualString(*level, "fatal")) {
+    LOG_FATAL("%s", *message);
+  }
+  else if (TRI_CaseEqualString(*level, "error")) {
+    LOG_ERROR("%s", *message);
+  }
+  else if (TRI_CaseEqualString(*level, "warning")) {
+    LOG_WARNING("%s", *message);
+  }
+  else if (TRI_CaseEqualString(*level, "info")) {
+    LOG_INFO("%s", *message);
+  }
+  else if (TRI_CaseEqualString(*level, "debug")) {
+    LOG_DEBUG("%s", *message);
+  }
+  else if (TRI_CaseEqualString(*level, "trace")) {
+    LOG_TRACE("%s", *message);
+  }
+  else {
+    LOG_ERROR("(unknown log level '%s') %s", *level, *message);
+  }
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets or sets the log-level
+///
+/// @FUN{internal.logLevel()}
+///
+/// Returns the current log-level as string.
+///
+/// @verbinclude fluent37
+///
+/// @FUN{internal.logLevel(@FA{level})}
+///
+/// Changes the current log-level. Valid log-level are:
+///
+/// - fatal
+/// - error
+/// - warning
+/// - info
+/// - debug
+/// - trace
+///
+/// @verbinclude fluent38
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_LogLevel (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (1 <= argv.Length()) {
+    v8::String::Utf8Value str(argv[0]);
+
+    TRI_SetLogLevelLogging(*str);
+  }
+
+  return scope.Close(v8::String::New(TRI_LogLevelLogging()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief outputs the arguments
+///
+/// @FUN{internal.output(@FA{string1}, @FA{string2}, @FA{string3}, ...)}
+///
+/// Outputs the arguments to standard output.
+///
+/// @verbinclude fluent39
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
+  for (int i = 0; i < argv.Length(); i++) {
+    v8::HandleScope scope;
+
+    // extract the next argument
+    v8::Handle<v8::Value> val = argv[i];
+
+    // convert it into a string
+    v8::String::Utf8Value utf8(val);
+
+    if (*utf8 == 0) {
+      continue;
+    }
+
+    // print the argument
+    char const* ptr = *utf8;
+    size_t len = utf8.length();
+
+    while (0 < len) {
+      ssize_t n = write(1, ptr, len);
+
+      if (n < 0) {
+        return v8::Undefined();
+      }
+
+      len -= n;
+      ptr += n;
+    }
+  }
+
+  return v8::Undefined();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief reads in a file
 ///
-/// @FUN{read(@FA{filename})}
+/// @FUN{internal.read(@FA{filename})}
 ///
 /// Reads in a files and returns the content as string.
 ////////////////////////////////////////////////////////////////////////////////
@@ -1920,9 +2097,122 @@ static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief formats the arguments
+///
+/// @FUN{internal.sprintf(@FA{format}, @FA{argument1}, ...)}
+///
+/// Formats the arguments according to the format string @FA{format}.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  size_t len = argv.Length();
+
+  if (len == 0) {
+    return scope.Close(v8::String::New(""));
+  }
+
+  v8::String::Utf8Value format(argv[0]);
+
+  if (*format == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("<format> must be a string")));
+  }
+
+  string result;
+
+  size_t p = 1;
+
+  for (char const* ptr = *format;  *ptr;  ++ptr) {
+    if (*ptr == '%') {
+      ++ptr;
+
+      switch (*ptr) {
+        case '%':
+          result += '%';
+          break;
+
+        case 'd':
+        case 'f':
+        case 'i': {
+          if (len <= p) {
+            return scope.Close(v8::ThrowException(v8::String::New("not enough arguments")));
+          }
+
+          bool e;
+          double f = TRI_ObjectToDouble(argv[p], e);
+
+          if (e) {
+            string msg = StringUtils::itoa(p) + ".th argument must be a number";
+            return scope.Close(v8::ThrowException(v8::String::New(msg.c_str())));
+          }
+
+          char b[1024];
+
+          if (*ptr == 'f') {
+            snprintf(b, sizeof(b), "%f", f);
+          }
+          else {
+            snprintf(b, sizeof(b), "%ld", (long) f);
+          }
+
+          ++p;
+
+          result += b;
+
+          break;
+        }
+
+        case 'o':
+        case 's': {
+          if (len <= p) {
+            return scope.Close(v8::ThrowException(v8::String::New("not enough arguments")));
+          }
+
+          v8::String::Utf8Value text(argv[p]);
+
+          if (*text == 0) {
+            string msg = StringUtils::itoa(p) + ".th argument must be a string";
+            return scope.Close(v8::ThrowException(v8::String::New(msg.c_str())));
+          }
+
+          ++p;
+
+          result += *text;
+
+          break;
+        }
+
+        default: {
+          string msg = "found illegal format directive '" + string(1, *ptr) + "'";
+          return scope.Close(v8::ThrowException(v8::String::New(msg.c_str())));
+        }
+      }
+    }
+    else {
+      result += *ptr;
+    }
+  }
+
+  for (size_t i = p;  i < len;  ++i) {
+    v8::String::Utf8Value text(argv[i]);
+
+    if (*text == 0) {
+      string msg = StringUtils::itoa(i) + ".th argument must be a string";
+      return scope.Close(v8::ThrowException(v8::String::New(msg.c_str())));
+    }
+
+    result += " ";
+    result += *text;
+  }
+
+  return scope.Close(v8::String::New(result.c_str()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current time
 ///
-/// @FUN{time()}
+/// @FUN{internal.time()}
 ///
 /// Returns the current time in seconds.
 ///
@@ -2314,19 +2604,35 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
   // create the global functions
   // .............................................................................
 
-  context->Global()->Set(v8::String::New("execute"),
+  context->Global()->Set(v8::String::New("SYS_EXECUTE"),
                          v8::FunctionTemplate::New(JS_Execute)->GetFunction(),
                          v8::ReadOnly);
 
-  context->Global()->Set(v8::String::New("load"),
+  context->Global()->Set(v8::String::New("SYS_LOAD"),
                          v8::FunctionTemplate::New(JS_Load)->GetFunction(),
                          v8::ReadOnly);
 
-  context->Global()->Set(v8::String::New("read"),
+  context->Global()->Set(v8::String::New("SYS_LOG"),
+                         v8::FunctionTemplate::New(JS_Log)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("SYS_LOG_LEVEL"),
+                         v8::FunctionTemplate::New(JS_LogLevel)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("SYS_OUTPUT"),
+                         v8::FunctionTemplate::New(JS_Output)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("SYS_READ"),
                          v8::FunctionTemplate::New(JS_Read)->GetFunction(),
                          v8::ReadOnly);
 
-  context->Global()->Set(v8::String::New("time"),
+  context->Global()->Set(v8::String::New("SYS_SPRINTF"),
+                         v8::FunctionTemplate::New(JS_SPrintF)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("SYS_TIME"),
                          v8::FunctionTemplate::New(JS_Time)->GetFunction(),
                          v8::ReadOnly);
 

@@ -27,10 +27,10 @@
 
 #include "query.h"
 
-#include <Basics/logging.h>
-#include <Basics/strings.h>
-#include <Basics/string-buffer.h>
-#include <Basics/conversions.h>
+#include <BasicsC/logging.h>
+#include <BasicsC/strings.h>
+#include <BasicsC/string-buffer.h>
+#include <BasicsC/conversions.h>
 #include <VocBase/simple-collection.h>
 #include <VocBase/index.h>
 
@@ -1465,7 +1465,7 @@ static uint32_t RandomGeoCoordinateDistance (void) {
 #define FSRT__RAND \
   ((fs_b) + FSRT__UNIT * (RandomGeoCoordinateDistance() % FSRT__DIST(fs_e,fs_b,FSRT__SIZE)))
 
-#include <Basics/fsrt.inc>
+#include <BasicsC/fsrt.inc>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief uses a specific geo-spatial index

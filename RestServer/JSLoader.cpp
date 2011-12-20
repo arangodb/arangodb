@@ -29,8 +29,8 @@
 
 #include <Basics/MutexLocker.h>
 #include <Basics/Logger.h>
-#include <Basics/files.h>
-#include <Basics/strings.h>
+#include <BasicsC/files.h>
+#include <BasicsC/strings.h>
 
 #include "V8/v8-utils.h"
 

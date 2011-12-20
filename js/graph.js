@@ -35,39 +35,59 @@
 /// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var internal = require("internal");
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page Graphs First Steps with Graphs
+///
+/// Graphs consists of vertices and edges. The vertex collection contains the
+/// documents forming the vertices. The edge collection contains the documents
+/// forming the edges. Together both collections form a graph. Assume that
+/// the vertex collection is called @LIT{vertices} and the edges collection
+/// @LIT{edges}, then you can build a graph using the @FN{Graph} constructor.
+///
+/// @verbinclude graph25
+///
+/// It is possible to use different edges with the same vertices. For
+/// instance, to build a new graph with a different edge collection use
+///
+/// @verbinclude graph26
+////////////////////////////////////////////////////////////////////////////////
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @page GraphFuncIndexTOC
 ///
 /// <ol>
 ///   <li>Graph</li>
 ///     <ol>
-///       <li>Graph constructor</li>
-///       <li>Graph.addEdge</li>
-///       <li>Graph.addVertex</li>
+///       <li>@ref GraphFuncIndexGraphConstructor "Graph constructor"</li>
+///       <li>@ref GraphFuncIndexGraphAddEdge "Graph.addEdge"</li>
+///       <li>@ref GraphFuncIndexGraphAddVertex "Graph.addVertex"</li>
+///       <li>@ref GraphFuncIndexGraphGetVertex "Graph.getVertex"</li>
 ///     </ol>
 ///   <li>Vertex</li>
 ///     <ol>
-///       <li>Vertex.edges</li>
-///       <li>Vertex.addInEdge</li>
-///       <li>Vertex.addOutEdge</li>
-///       <li>Vertex.getId</li>
-///       <li>Vertex.getInEdges</li>
-///       <li>Vertex.getOutEdges</li>
-///       <li>Vertex.getProperty</li>
-///       <li>Vertex.getPropertyKeys</li>
-///       <li>Vertex.properties</li>
-///       <li>Vertex.setProperty</li>
+///       <li>@ref GraphFuncIndexVertexEdges "Vertex.edges"</li>
+///       <li>@ref GraphFuncIndexVertexAddInEdge "Vertex.addInEdge"</li>
+///       <li>@ref GraphFuncIndexVertexAddOutEdge "Vertex.addOutEdge"</li>
+///       <li>@ref GraphFuncIndexVertexGetId "Vertex.getId"</li>
+///       <li>@ref GraphFuncIndexVertexGetInEdges "Vertex.getInEdges"</li>
+///       <li>@ref GraphFuncIndexVertexGetOutEdges "Vertex.getOutEdges"</li>
+///       <li>@ref GraphFuncIndexVertexGetProperty "Vertex.getProperty"</li>
+///       <li>@ref GraphFuncIndexVertexGetPropertyKeys "Vertex.getPropertyKeys"</li>
+///       <li>@ref GraphFuncIndexVertexProperties "Vertex.properties"</li>
+///       <li>@ref GraphFuncIndexVertexSetProperty "Vertex.setProperty"</li>
 ///     </ol>
 ///   <li>Edge</li>
 ///     <ol>
-///       <li>Edge.getId</li>
-///       <li>Edge.getInVertex</li>
-///       <li>Edge.getLabel</li>
-///       <li>Edge.getOutVertex</li>
-///       <li>Edge.getProperty</li>
-///       <li>Edge.getPropertyKeys</li>
-///       <li>Edge.properties</li>
-///       <li>Edge.setProperty</li>
+///       <li>@ref GraphFuncIndexEdgeGetId "Edge.getId"</li>
+///       <li>@ref GraphFuncIndexEdgeGetInVertex "Edge.getInVertex"</li>
+///       <li>@ref GraphFuncIndexEdgeGetLabel "Edge.getLabel"</li>
+///       <li>@ref GraphFuncIndexEdgeGetOutVertex "Edge.getOutVertex"</li>
+///       <li>@ref GraphFuncIndexEdgeGetProperty "Edge.getProperty"</li>
+///       <li>@ref GraphFuncIndexEdgeGetPropertyKeys "Edge.getPropertyKeys"</li>
+///       <li>@ref GraphFuncIndexEdgeProperties "Edge.properties"</li>
+///       <li>@ref GraphFuncIndexEdgeSetProperty "Edge.setProperty"</li>
 ///     </ol>
 ///   </li>
 /// </ol>
@@ -80,52 +100,74 @@
 ///
 /// @section Graph
 ///
+/// @anchor GraphFuncIndexGraphConstructor
 /// @copydetails JSF_Graph
 ///
+/// @anchor GraphFuncIndexGraphAddEdge
 /// @copydetails JSF_Graph_prototype_addEdge
 ///
+/// @anchor GraphFuncIndexGraphAddVertex
 /// @copydetails JSF_Graph_prototype_addVertex
 ///
+/// @anchor GraphFuncIndexGraphGetVertex
 /// @copydetails JSF_Graph_prototype_getVertex
 ///
 /// @section Vertex
 ///
+/// @anchor GraphFuncIndexVertexEdges
 /// @copydetails JSF_Vertex_prototype_edges
 ///
+/// @anchor GraphFuncIndexVertexAddInEdge
 /// @copydetails JSF_Vertex_prototype_addInEdge
 ///
+/// @anchor GraphFuncIndexVertexAddOutEdge
 /// @copydetails JSF_Vertex_prototype_addOutEdge
 ///
+/// @anchor GraphFuncIndexVertexGetId
 /// @copydetails JSF_Vertex_prototype_getId
 ///
+/// @anchor GraphFuncIndexVertexGetInEdges
 /// @copydetails JSF_Vertex_prototype_getInEdges
 ///
+/// @anchor GraphFuncIndexVertexGetOutEdges
 /// @copydetails JSF_Vertex_prototype_getOutEdges
 ///
+/// @anchor GraphFuncIndexVertexGetProperty
 /// @copydetails JSF_Vertex_prototype_getProperty
 ///
+/// @anchor GraphFuncIndexVertexGetPropertyKeys
 /// @copydetails JSF_Vertex_prototype_getPropertyKeys
 ///
+/// @anchor GraphFuncIndexVertexProperties
 /// @copydetails JSF_Vertex_prototype_properties
 ///
+/// @anchor GraphFuncIndexVertexSetProperty
 /// @copydetails JSF_Vertex_prototype_setProperty
 ///
 /// @section Edge
 ///
+/// @anchor GraphFuncIndexEdgeGetId
 /// @copydetails JSF_Edge_prototype_getId
 ///
+/// @anchor GraphFuncIndexEdgeGetInVertex
 /// @copydetails JSF_Edge_prototype_getInVertex
 ///
+/// @anchor GraphFuncIndexEdgeGetLabel
 /// @copydetails JSF_Edge_prototype_getLabel
 ///
+/// @anchor GraphFuncIndexEdgeGetOutVertex
 /// @copydetails JSF_Edge_prototype_getOutVertex
 ///
+/// @anchor GraphFuncIndexEdgeGetProperty
 /// @copydetails JSF_Edge_prototype_getProperty
 ///
+/// @anchor GraphFuncIndexEdgeGetPropertyKeys
 /// @copydetails JSF_Edge_prototype_getPropertyKeys
 ///
+/// @anchor GraphFuncIndexEdgeProperties
 /// @copydetails JSF_Edge_prototype_properties
 ///
+/// @anchor GraphFuncIndexEdgeSetProperty
 /// @copydetails JSF_Edge_prototype_setProperty
 ///
 ////////////////////////////////////////////////////////////////////////////////
@@ -356,7 +398,7 @@ Edge.prototype.properties = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.PRINT = function () {
-  output("Edge(<graph>, \"", this._id, "\")");
+  internal.output("Edge(<graph>, \"", this._id, "\")");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -748,7 +790,7 @@ Vertex.prototype.setProperty = function (name, value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.PRINT = function () {
-  output("Vertex(<graph>, \"", this._id, "\")");
+  internal.output("Vertex(<graph>, \"", this._id, "\")");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -990,7 +1032,7 @@ Graph.prototype.constructEdge = function(id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.PRINT = function () {
-  output("Graph(\"", this._vertices._name, "\", \"" + this._edges._name, "\")");
+  internal.output("Graph(\"", this._vertices._name, "\", \"" + this._edges._name, "\")");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -999,5 +1041,5 @@ Graph.prototype.PRINT = function () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:

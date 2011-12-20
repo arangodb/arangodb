@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_FYN_HTTP_SERVER_SERVICE_UNAVAILABLE_HANDLER_H
 #define TRIAGENS_FYN_HTTP_SERVER_SERVICE_UNAVAILABLE_HANDLER_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
 #include "Rest/HttpHandler.h"
 

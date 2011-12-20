@@ -29,8 +29,8 @@
 
 #include <fstream>
 
-#include <Basics/strings.h>
-#include <Basics/conversions.h>
+#include <BasicsC/strings.h>
+#include <BasicsC/conversions.h>
 #include <Basics/Exceptions.h>
 #include <Basics/Logger.h>
 

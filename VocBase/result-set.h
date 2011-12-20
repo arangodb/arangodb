@@ -30,8 +30,8 @@
 
 #include <VocBase/vocbase.h>
 
-#include <Basics/json.h>
-#include <Basics/locks.h>
+#include <BasicsC/json.h>
+#include <BasicsC/locks.h>
 #include <VocBase/datafile.h>
 
 #ifdef __cplusplus
