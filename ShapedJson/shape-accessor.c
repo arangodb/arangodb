@@ -27,8 +27,8 @@
 
 #include "shape-accessor.h"
 
-#include <Basics/logging.h>
-#include <Basics/vector.h>
+#include <BasicsC/logging.h>
+#include <BasicsC/vector.h>
 
 #include "ShapedJson/shaped-json.h"
 

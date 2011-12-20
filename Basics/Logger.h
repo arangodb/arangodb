@@ -29,9 +29,9 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_LOGGER_H
 #define TRIAGENS_JUTLAND_BASICS_LOGGER_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
-#include <Basics/logging.h>
+#include <BasicsC/logging.h>
 #include <Basics/LoggerInfo.h>
 #include <Basics/LoggerTiming.h>
 #include <Basics/LoggerStream.h>

@@ -28,11 +28,11 @@
 
 #include "voc-shaper.h"
 
-#include <Basics/associative.h>
-#include <Basics/hashes.h>
-#include <Basics/locks.h>
-#include <Basics/logging.h>
-#include <Basics/strings.h>
+#include <BasicsC/associative.h>
+#include <BasicsC/hashes.h>
+#include <BasicsC/locks.h>
+#include <BasicsC/logging.h>
+#include <BasicsC/strings.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private constants

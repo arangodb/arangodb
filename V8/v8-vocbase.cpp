@@ -27,10 +27,10 @@
 
 #include "v8-vocbase.h"
 
-#include <Basics/conversions.h>
-#include <Basics/csv.h>
-#include <Basics/logging.h>
-#include <Basics/strings.h>
+#include <BasicsC/conversions.h>
+#include <BasicsC/csv.h>
+#include <BasicsC/logging.h>
+#include <BasicsC/strings.h>
 #include <Basics/StringUtils.h>
 
 #include <VocBase/query.h>
@@ -2123,7 +2123,15 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New(err.c_str())));
   }
 
-  return scope.Close(v8::Number::New(did));
+  char* cidStr = TRI_StringUInt64(collection->base._cid);
+  char* didStr = TRI_StringUInt64(did);
+
+  string name = cidStr + string(":") + didStr;
+
+  TRI_FreeString(didStr);
+  TRI_FreeString(cidStr);
+
+  return scope.Close(v8::String::New(name.c_str()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

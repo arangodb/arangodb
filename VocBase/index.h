@@ -30,7 +30,7 @@
 
 #include <VocBase/vocbase.h>
 
-#include <Basics/json.h>
+#include <BasicsC/json.h>
 
 #include <GeoIndex/GeoIndex.h>
 

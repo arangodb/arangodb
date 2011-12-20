@@ -28,9 +28,9 @@
 #ifndef TRIAGENS_DURHAM_V8_V8_UTILS_H
 #define TRIAGENS_DURHAM_V8_V8_UTILS_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
-#include <Basics/json.h>
+#include <BasicsC/json.h>
 #include <VocBase/simple-collection.h>
 
 #include <v8.h>

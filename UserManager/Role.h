@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_BORNHOLM_USER_MANAGER_ROLE_H
 #define TRIAGENS_BORNHOLM_USER_MANAGER_ROLE_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
 #include <Admin/Right.h>
 #include <Basics/Logger.h>

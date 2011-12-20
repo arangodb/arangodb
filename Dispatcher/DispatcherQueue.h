@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_FYN_DISPATCHER_DISPATCHER_QUEUE_H
 #define TRIAGENS_FYN_DISPATCHER_DISPATCHER_QUEUE_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
 #include <Basics/ConditionVariable.h>
 #include <Rest/Dispatcher.h>

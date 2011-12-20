@@ -1,6 +1,6 @@
 #line 2 "./V8/v8-json.ll"
-#include <Basics/strings.h>
-#include <Basics/logging.h>
+#include <BasicsC/strings.h>
+#include <BasicsC/logging.h>
 
 #include <v8.h>
 

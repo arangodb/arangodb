@@ -27,9 +27,10 @@
 
 #include "ProgramOptionsDescription.h"
 
+#include <BasicsC/terminal-utils.h>
+
 #include <Basics/Exceptions.h>
 #include <Basics/StringUtils.h>
-#include <Basics/TerminalUtils.h>
 
 using namespace std;
 using namespace triagens::basics;
@@ -599,7 +600,7 @@ string ProgramOptionsDescription::usage (set<string> const& help, bool addHelpOp
     }
 
     // construct the parameters
-    size_t tWidth = TerminalUtils::columnsWidth();
+    size_t tWidth = TRI_ColumnsWidth();
 
     if (tWidth < 40) {
       tWidth = 40;

@@ -36,6 +36,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @page JSModulesTOC
+///
+/// <ol>
+///   <li>@ref JSModulesRequire "require"</li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @page JSModules JavaScript Modules
 ///
 /// The AvocadoDB uses a <a
@@ -45,19 +53,12 @@
 /// module. You can use the option @CO{startup.modules-path} to specify the
 /// location of the JavaScript files.
 ///
-/// @section Modules Modules
+/// <hr>
+/// @copydoc JSModulesTOC
+/// <hr>
 ///
+/// @anchor JSModulesRequire
 /// @copydetails JSF_require
-///
-/// @section InternalFunctions Internal Functions
-///
-/// The following functions are used internally to implement the module loader.
-///
-/// @copydetails JS_Execute
-///
-/// @copydetails JS_Load
-///
-/// @copydetails JS_Read
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
@@ -118,7 +119,7 @@ Module.prototype.require = function (path) {
     }
 
     if (FS_EXISTS(n)) {
-      content = read(n);
+      content = SYS_READ(n);
       break;
     }
   }
@@ -136,7 +137,7 @@ Module.prototype.require = function (path) {
   sandbox.require = function(path) { return sandbox.module.require(path); }
   sandbox.print = print;
 
-  execute(content, sandbox, path);
+  SYS_EXECUTE(content, sandbox, path);
 
   module.exports = sandbox.exports;
 
@@ -196,20 +197,21 @@ Module.prototype.normalise = function (path) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief top-level model
+/// @brief top-level module
 ////////////////////////////////////////////////////////////////////////////////
 
 ModuleCache["/"] = module = new Module("/");
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief top-level require
+/// @brief global require function
 ///
 /// @FUN{require(@FA{path})}
 ///
-/// Require checks if the file specified by @FA{path} has already been loaded.
-/// If not, the content of the file is executed in a new context. Within the
-/// context you can use the global variable @CODE{exports} in order to export
-/// variables and functions. This variable is returned by @FN{require}. 
+/// @FN{require} checks if the file specified by @FA{path} has already been
+/// loaded.  If not, the content of the file is executed in a new
+/// context. Within the context you can use the global variable @CODE{exports}
+/// in order to export variables and functions. This variable is returned by
+/// @FN{require}.
 ///
 /// Assume that your module file is @CODE{test1.js} and contains
 ///
@@ -218,6 +220,9 @@ ModuleCache["/"] = module = new Module("/");
 /// Then you can use require to load the file and access the exports.
 ///
 /// @verbinclude modules2
+///
+/// @FN{require} follows the specification 
+/// <a href="http://wiki.commonjs.org/wiki/Modules/1.1.1">Modules/1.1.1</a>.
 ////////////////////////////////////////////////////////////////////////////////
 
 function require (path) {
@@ -229,8 +234,30 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                            Module
+// --SECTION--                                                       Module "fs"
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page JSModuleFsTOC
+///
+/// <ol>
+///   <li>@ref JSModuleFsExists "fs.exists"</li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page JSModuleFs Module "fs"
+///
+/// The implementation follows the CommonJS specification
+/// <a href="http://wiki.commonjs.org/wiki/Filesystem/A/0">Filesystem/A/0</a>.
+///
+/// <hr>
+/// @copydoc JSModuleFsTOC
+/// <hr>
+///
+/// @anchor JSModuleFsExists
+/// @copydetails JS_Exists
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup V8ModuleFS
@@ -238,11 +265,235 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fs model
+/// @brief fs module
 ////////////////////////////////////////////////////////////////////////////////
 
 ModuleCache["/fs"] = new Module("/fs");
 ModuleCache["/fs"].exports.exists = FS_EXISTS;
+fs = ModuleCache["/fs"].exports;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 Module "internal"
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page JSModuleInternalTOC
+///
+/// <ol>
+///   <li>@ref JSModuleInternalExecute "internal.execute"</li>
+///   <li>@ref JSModuleInternalLoad "internal.load"</li>
+///   <li>@ref JSModuleInternalLogLevel "internal.log"</li>
+///   <li>@ref JSModuleInternalLogLevel "internal.logLevel"</li>
+///   <li>@ref JSModuleInternalRead "internal.read"</li>
+///   <li>@ref JSModuleInternalSPrintF "internal.sprintf"</li>
+///   <li>@ref JSModuleInternalTime "internal.time"</li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page JSModuleInternal Module "internal"
+///
+/// The following functions are used internally.
+///
+/// <hr>
+/// @copydoc JSModuleInternalTOC
+/// <hr>
+///
+/// @anchor JSModuleInternalExecute
+/// @copydetails JS_Execute
+///
+/// @anchor JSModuleInternalLoad
+/// @copydetails JS_Load
+///
+/// @anchor JSModuleInternalLog
+/// @copydetails JS_Log
+///
+/// @anchor JSModuleInternalLogLevel
+/// @copydetails JS_LogLevel
+///
+/// @anchor JSModuleInternalRead
+/// @copydetails JS_Read
+///
+/// @anchor JSModuleInternalSPrintF
+/// @copydetails JS_SPrintF
+///
+/// @anchor JSModuleInternalTime
+/// @copydetails JS_Time
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8ModuleInternal
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal module
+////////////////////////////////////////////////////////////////////////////////
+
+ModuleCache["/internal"] = new Module("/internal");
+ModuleCache["/internal"].exports.execute = SYS_EXECUTE;
+ModuleCache["/internal"].exports.load = SYS_LOAD;
+ModuleCache["/internal"].exports.log = SYS_LOG;
+ModuleCache["/internal"].exports.logLevel = SYS_LOG_LEVEL;
+ModuleCache["/internal"].exports.output = SYS_OUTPUT;
+ModuleCache["/internal"].exports.read = SYS_READ;
+ModuleCache["/internal"].exports.sprintf = SYS_SPRINTF;
+ModuleCache["/internal"].exports.time = SYS_TIME;
+internal = ModuleCache["/internal"].exports;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  Module "console"
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page JSModuleConsoleTOC
+///
+/// <ol>
+///   <li>@ref JSModuleConsoleDebug "console.debug"</li>
+///   <li>@ref JSModuleConsoleError "console.error"</li>
+///   <li>@ref JSModuleConsoleInfo "console.info"</li>
+///   <li>@ref JSModuleConsoleLog "console.log"</li>
+///   <li>@ref JSModuleConsoleWarn "console.warn"</li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page JSModuleConsole Module "console"
+///
+/// The implementation follows the CommonJS specification
+/// <a href="http://wiki.commonjs.org/wiki/Console">Console</a>.
+///
+/// <hr>
+/// @copydoc JSModuleConsoleTOC
+/// <hr>
+///
+/// @anchor JSModuleConsoleDebug
+/// @copydetails JSF_CONSOLE_DEBUG
+///
+/// @anchor JSModuleConsoleError
+/// @copydetails JSF_CONSOLE_ERROR
+///
+/// @anchor JSModuleConsoleInfo
+/// @copydetails JSF_CONSOLE_INFO
+///
+/// @anchor JSModuleConsoleLog
+/// @copydetails JSF_CONSOLE_LOG
+///
+/// @anchor JSModuleConsoleWarn
+/// @copydetails JSF_CONSOLE_WARN
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8ModuleConsole
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs debug message
+///
+/// @FUN{console.debug(@FA{format}, @FA{argument1}, ...)}
+///
+/// Formats the arguments according to @FA{format} and logs the result as
+/// debug message.
+///
+/// String substitution patterns, which can be used in @FA{format}.
+///
+/// - @LIT{\%s} string
+/// - @LIT{\%d}, @LIT{\%i} integer
+/// - @LIT{\%f} floating point number
+/// - @LIT{\%o} object hyperlink
+////////////////////////////////////////////////////////////////////////////////
+
+function CONSOLE_DEBUG () {
+  var msg;
+
+  msg = internal.sprintf.apply(internal.sprintf, arguments);
+  internal.log("debug", msg);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs error message
+///
+/// @FUN{console.error(@FA{format}, @FA{argument1}, ...)}
+///
+/// Formats the arguments according to @FA{format} and logs the result as
+/// error message.
+////////////////////////////////////////////////////////////////////////////////
+
+function CONSOLE_ERROR () {
+  var msg;
+
+  msg = internal.sprintf.apply(internal.sprintf, arguments);
+  internal.log("error", msg);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs info message
+///
+/// @FUN{console.info(@FA{format}, @FA{argument1}, ...)}
+///
+/// Formats the arguments according to @FA{format} and logs the result as
+/// info message.
+////////////////////////////////////////////////////////////////////////////////
+
+function CONSOLE_INFO () {
+  var msg;
+
+  msg = internal.sprintf.apply(internal.sprintf, arguments);
+  internal.log("info", msg);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs log message
+///
+/// @FUN{console.log(@FA{format}, @FA{argument1}, ...)}
+///
+/// Formats the arguments according to @FA{format} and logs the result as
+/// log message.
+////////////////////////////////////////////////////////////////////////////////
+
+function CONSOLE_LOG () {
+  var msg;
+
+  msg = internal.sprintf.apply(internal.sprintf, arguments);
+  internal.log("info", msg);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs warn message
+///
+/// @FUN{console.warn(@FA{format}, @FA{argument1}, ...)}
+///
+/// Formats the arguments according to @FA{format} and logs the result as
+/// warn message.
+////////////////////////////////////////////////////////////////////////////////
+
+function CONSOLE_WARN () {
+  var msg;
+
+  msg = internal.sprintf.apply(internal.sprintf, arguments);
+  internal.log("warn", msg);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief console module
+////////////////////////////////////////////////////////////////////////////////
+
+ModuleCache["/console"] = new Module("/console");
+ModuleCache["/console"].exports.debug = CONSOLE_DEBUG;
+ModuleCache["/console"].exports.error = CONSOLE_ERROR;
+ModuleCache["/console"].exports.info = CONSOLE_INFO;
+ModuleCache["/console"].exports.log = CONSOLE_LOG;
+ModuleCache["/console"].exports.warn = CONSOLE_WARN;
+console = ModuleCache["/console"].exports;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -250,5 +501,5 @@ ModuleCache["/fs"].exports.exists = FS_EXISTS;
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:

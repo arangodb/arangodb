@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_DURHAM_V8_V8_GLOBALS_H
 #define TRIAGENS_DURHAM_V8_V8_GLOBALS_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
 #include <regex.h>
 

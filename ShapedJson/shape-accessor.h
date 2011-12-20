@@ -28,9 +28,9 @@
 #ifndef TRIAGENS_PHILADELPHIA_SHAPED_JSON_SHAPE_ACCESSOR_H
 #define TRIAGENS_PHILADELPHIA_SHAPED_JSON_SHAPE_ACCESSOR_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
-#include <Basics/json.h>
+#include <BasicsC/json.h>
 
 #ifdef __cplusplus
 extern "C" {

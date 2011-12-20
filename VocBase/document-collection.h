@@ -30,7 +30,7 @@
 
 #include <VocBase/collection.h>
 
-#include <Basics/json.h>
+#include <BasicsC/json.h>
 #include <VocBase/result-set.h>
 
 #ifdef __cplusplus

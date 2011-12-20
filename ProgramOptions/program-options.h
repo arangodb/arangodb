@@ -29,9 +29,9 @@
 #ifndef TRIAGENS_PHILADELPHIA_PROGRAM_OPTIONS_PROGRAM_OPTIONS_H
 #define TRIAGENS_PHILADELPHIA_PROGRAM_OPTIONS_PROGRAM_OPTIONS_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
-#include <Basics/vector.h>
+#include <BasicsC/vector.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -286,6 +286,6 @@ static string JS_json =
   "\n"
   "// Local Variables:\n"
   "// mode: outline-minor\n"
-  "// outline-regexp: \"^\\\\(/// @brief\\\\|/// @addtogroup\\\\|// --SECTION--\\\\)\"\n"
+  "// outline-regexp: \"^\\\\(/// @brief\\\\|/// @addtogroup\\\\|// --SECTION--\\\\|/// @page\\\\|/// @}\\\\)\"\n"
   "// End:\n"
 ;

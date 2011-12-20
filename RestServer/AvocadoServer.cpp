@@ -34,11 +34,11 @@
 #include <Basics/Logger.h>
 #include <Basics/ProgramOptions.h>
 #include <Basics/ProgramOptionsDescription.h>
-#include <Basics/files.h>
-#include <Basics/init.h>
-#include <Basics/logging.h>
+#include <BasicsC/files.h>
+#include <BasicsC/init.h>
+#include <BasicsC/logging.h>
 #include <Basics/safe_cast.h>
-#include <Basics/strings.h>
+#include <BasicsC/strings.h>
 
 #include <Rest/ApplicationServerDispatcher.h>
 #include <Rest/HttpHandlerFactory.h>
@@ -304,10 +304,10 @@ void AvocadoServer::buildApplicationServer () {
   }
 
   if (_startupPath.empty()) {
+    StartupLoader.defineScript("modules.js", JS_modules);
     StartupLoader.defineScript("actions.js", JS_actions);
     StartupLoader.defineScript("graph.js", JS_graph);
     StartupLoader.defineScript("json.js", JS_json);
-    StartupLoader.defineScript("modules.js", JS_modules);
     StartupLoader.defineScript("shell.js", JS_shell);
   }
   else {
@@ -521,7 +521,7 @@ void AvocadoServer::executeShell () {
   v8::Isolate* isolate;
   v8::Persistent<v8::Context> context;
   bool ok;
-  char const* files[] = { "graph.js", "json.js", "modules.js", "shell.js" };
+  char const* files[] = { "modules.js", "graph.js", "json.js", "shell.js" };
   size_t i;
 
   // only simple logging

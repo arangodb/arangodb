@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_EXCEPTIONS_H
 #define TRIAGENS_JUTLAND_BASICS_EXCEPTIONS_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
 #include <errno.h>
 

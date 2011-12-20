@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_FYN_REST_INPUT_PARSER_H
 #define TRIAGENS_FYN_REST_INPUT_PARSER_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
 namespace triagens {
   namespace basics {

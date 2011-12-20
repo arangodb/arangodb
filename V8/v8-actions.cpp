@@ -29,8 +29,8 @@
 
 #include <map>
 
-#include <Basics/conversions.h>
-#include <Basics/logging.h>
+#include <BasicsC/conversions.h>
+#include <BasicsC/logging.h>
 #include <Basics/ReadLocker.h>
 #include <Basics/WriteLocker.h>
 #include <Rest/HttpResponse.h>

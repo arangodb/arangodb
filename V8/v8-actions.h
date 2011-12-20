@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_DURHAM_V8_V8_ACTIONS_H
 #define TRIAGENS_DURHAM_V8_V8_ACTIONS_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
 #include <v8.h>
 
@@ -38,33 +38,39 @@
 /// @page Actions First Steps with Actions
 ///
 /// Actions are small JavaScript functions which are used to compute the result
-/// of a request. Normally, the function will use the request parameter @a
-/// collection to locate a collection, compute the result and return this result
-/// as JSON object.
+/// of a request. Normally, the function will use the request parameter
+/// @FA{collection} to locate a collection, compute the result and return this
+/// result as JSON object.
 ///
-/// An action is defined using the function @c defineAction. You need to provide
-/// a path, a function, and a description of the parameters.
+/// Actions are defined in JaveScript files living in a directory called
+/// _ACTIONS under the database directory. The files must exists when the
+/// server is started. You can use the @CO{action.directory} to use a different
+/// directory during startup.
+///
+/// Inside these files an action is defined using the function
+/// @FN{defineAction}. You need to provide a path, a function, and a description
+/// of the parameters.
 ///
 /// @verbinclude action1
 ///
-/// This will define a new action accessible under @c /_action/pagination, with
-/// three parameters @a collection, @a blocksize, and @a page. The action
-/// function is called with two parameters @a req and @a res. The variable @a
-/// req contains the request parameters. The result is stored in the variable @a
-/// res.
+/// This will define a new action accessible under @LIT{/_action/pagination}, with
+/// three parameters @FA{collection}, @FA{blocksize}, and @FA{page}. The action
+/// function is called with two parameters @LIT{req} and @LIT{res}. The variable
+/// @LIT{req} contains the request parameters. The result is stored in the
+/// variable @FA{res}.
 ///
-/// The function @c queryResult is predefined. It expects three parameters, the
-/// request, the response, and a result set. The function @c queryResult uses
-/// the parameters @a blocksize and @a page to paginate the result.
+/// The function @FN{queryResult} is predefined. It expects three parameters,
+/// the request, the response, and a result set. The function @FN{queryResult}
+/// uses the parameters @FA{blocksize} and @FA{page} to paginate the result.
 ///
 /// @verbinclude action2
 ///
-/// The result contains the @a total number of documents, the number of
-/// documents returned in @a count, the @a offset, the @a blocksize, the current
-/// @a page, and the @a documents.
+/// The result contains the @LIT{total} number of documents, the number of
+/// documents is returned in @LIT{count}, it also contains the @FA{offset}, the
+/// @FA{blocksize}, the current @FA{page}, and the @FA{documents}.
 ///
-/// There is an alternative function @c queryReferences, which will only return
-/// the document references, not the whole document.
+/// There is an alternative function @FN{queryReferences}, which will only
+/// return the document references, not the whole document.
 ///
 /// @verbinclude action3
 ///
@@ -72,26 +78,25 @@
 ///
 /// @verbinclude action4
 ///
-/// Next steps:
+/// Next steps: learn more about
 ///
-/// - learn more about @ref DefineAction "Defining an Action"
-/// - learn about @ref ActionsQueryBuilding "Query Building Functions"
-/// - learn more about @ref DefineSystemAction "Defining a System Action"
+/// - @ref DefineAction
+/// - @ref ActionsQueryBuilding
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ActionsQueryBuildingTOC
 ///
 /// <ol>
-///  <li>all</li>
-///  <li>distance</li>
-///  <li>document</li>
-///  <li>geo</li>
-///  <li>limit</li>
-///  <li>near</li>
-///  <li>select</li>
-///  <li>skip</li>
-///  <li>within</li>
+///  <li>@ref ActionsQueryBuildingAll "all"</li>
+///  <li>@ref ActionsQueryBuildingDistance "distance"</li>
+///  <li>@ref ActionsQueryBuildingDocument "document"</li>
+///  <li>@ref ActionsQueryBuildingGeo "geo"</li>
+///  <li>@ref ActionsQueryBuildingLimit "limit"</li>
+///  <li>@ref ActionsQueryBuildingNear "near"</li>
+///  <li>@ref ActionsQueryBuildingSelect "select"</li>
+///  <li>@ref ActionsQueryBuildingSkip "skip"</li>
+///  <li>@ref ActionsQueryBuildingWithin "within"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -104,23 +109,60 @@
 /// @copydoc ActionsQueryBuildingTOC
 /// <hr>
 ///
+/// @anchor ActionsQueryBuildingAll
 /// @copydetails JS_AllQuery
 ///
+/// @anchor ActionsQueryBuildingDistance
 /// @copydetails JS_DistanceQuery
 ///
+/// @anchor ActionsQueryBuildingDocument
 /// @copydetails JS_DocumentQuery
 ///
+/// @anchor ActionsQueryBuildingGeo
 /// @copydetails JS_GeoQuery
 ///
+/// @anchor ActionsQueryBuildingLimit
 /// @copydetails JS_LimitQuery
 ///
+/// @anchor ActionsQueryBuildingNear
 /// @copydetails JS_NearQuery
 ///
+/// @anchor ActionsQueryBuildingSelect
 /// @copydetails JS_SelectQuery
 ///
+/// @anchor ActionsQueryBuildingSkip
 /// @copydetails JS_SkipQuery
 ///
+/// @anchor ActionsQueryBuildingWithin
 /// @copydetails JS_WithinQuery
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page DefineActionTOC
+///
+/// <ol>
+///  <li>@ref DefineActionDefineAction "defineAction"</li>
+///  <li>@ref DefineActionDefineSystemAction "defineSystemAction"</li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page DefineAction Defining an Action
+///
+/// Actions are user defined functions and are stored in JavaScript files in a
+/// directory called _ACTIONS under the database directory. System action are
+/// predefined actions used by the server. They are stored in system wide
+/// directory.
+///
+/// <hr>
+/// @copydoc DefineActionTOC
+/// <hr>
+///
+/// @anchor DefineActionDefineAction
+/// @copydetails JS_DefineAction
+///
+/// @anchor DefineActionDefineSystemAction
+/// @copydetails JS_DefineSystemAction
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------

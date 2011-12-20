@@ -30,7 +30,7 @@
 
 #include <VocBase/document-collection.h>
 
-#include <Basics/associative-multi.h>
+#include <BasicsC/associative-multi.h>
 
 #include <VocBase/headers.h>
 #include <VocBase/index.h>

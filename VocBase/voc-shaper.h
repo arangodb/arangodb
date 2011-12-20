@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_DURHAM_VOC_BASE_VOC_SHAPER_H
 #define TRIAGENS_DURHAM_VOC_BASE_VOC_SHAPER_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
 #include <VocBase/datafile.h>
 #include <VocBase/blob-collection.h>

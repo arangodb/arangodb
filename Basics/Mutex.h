@@ -29,9 +29,9 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_MUTEX_H
 #define TRIAGENS_JUTLAND_BASICS_MUTEX_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
-#include <Basics/locks.h>
+#include <BasicsC/locks.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       class Mutex

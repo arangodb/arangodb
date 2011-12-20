@@ -27,11 +27,11 @@
 
 #include "simple-collection.h"
 
-#include <Basics/conversions.h>
-#include <Basics/files.h>
-#include <Basics/hashes.h>
-#include <Basics/logging.h>
-#include <Basics/strings.h>
+#include <BasicsC/conversions.h>
+#include <BasicsC/files.h>
+#include <BasicsC/hashes.h>
+#include <BasicsC/logging.h>
+#include <BasicsC/strings.h>
 
 #include <VocBase/index.h>
 #include <VocBase/result-set.h>

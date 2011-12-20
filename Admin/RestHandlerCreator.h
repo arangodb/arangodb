@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_BORNHOLM_ADMIN_REST_HANDLER_CREATOR_H
 #define TRIAGENS_BORNHOLM_ADMIN_REST_HANDLER_CREATOR_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
 namespace triagens {
   namespace rest {

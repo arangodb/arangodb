@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_FYN_REST_CONNECTION_INFO_H
 #define TRIAGENS_FYN_REST_CONNECTION_INFO_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
 namespace triagens {
   namespace rest {

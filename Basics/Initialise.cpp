@@ -27,10 +27,10 @@
 
 #include <Basics/Initialise.h>
 
-#include <Basics/init.h>
-#include <Basics/error.h>
-#include <Basics/hashes.h>
-#include <Basics/randomx.h>
+#include <BasicsC/init.h>
+#include <BasicsC/error.h>
+#include <BasicsC/hashes.h>
+#include <BasicsC/random.h>
 
 #include <Basics/Logger.h>
 #include <Basics/Random.h>

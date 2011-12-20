@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_FYN_REST_REST_MODEL_LOADER_H
 #define TRIAGENS_FYN_REST_REST_MODEL_LOADER_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
 namespace triagens {
   namespace rest {

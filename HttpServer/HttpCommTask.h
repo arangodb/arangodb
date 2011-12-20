@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_FYN_HTTP_SERVER_HTTP_COMM_TASK_H
 #define TRIAGENS_FYN_HTTP_SERVER_HTTP_COMM_TASK_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/Common.h>
 
 #include <Rest/HttpHandlerFactory.h>
 #include <Rest/ListenTask.h>
