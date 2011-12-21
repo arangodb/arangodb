@@ -35,7 +35,7 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_STRING_BUFFER_H
 #define TRIAGENS_JUTLAND_BASICS_STRING_BUFFER_H 1
 
-#include <BasicsC/Common.h>
+#include <Basics/Common.h>
 
 // -----------------------------------------------------------------------------
 // string buffer with formatting routines

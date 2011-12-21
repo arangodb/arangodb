@@ -279,7 +279,8 @@ ProgramOptions::ProgramOptions ()
     _errorMessage(),
     _helpOptions(),
     _flags(),
-    _seen() {
+    _seen(),
+    _programName() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -328,6 +329,10 @@ bool ProgramOptions::parse (ProgramOptionsDescription const& description, int ar
   set<string> const& ho = description.helpOptions();
   _helpOptions.insert(ho.begin(), ho.end());
 
+  // set the program name from the argument vector
+  _programName = argv[0];
+
+  // parse the options
   TRI_program_options_t* options = TRI_CreateProgramOptions(desc);
 
   bool ok = TRI_ParseArgumentsProgramOptions(options, argc, argv);
@@ -365,7 +370,7 @@ bool ProgramOptions::parse (ProgramOptionsDescription const& description, string
 
   TRI_program_options_t* options = TRI_CreateProgramOptions(desc);
 
-  bool ok = TRI_ParseFileProgramOptions(options, filename.c_str());
+  bool ok = TRI_ParseFileProgramOptions(options, _programName.c_str(), filename.c_str());
 
   if (ok) {
     ok = extractValues(description, options, _seen);
@@ -378,7 +383,7 @@ bool ProgramOptions::parse (ProgramOptionsDescription const& description, string
   TRI_FreeProgramOptions(options);
   TRI_FreePODescription(desc);
 
-  return true;
+  return ok;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

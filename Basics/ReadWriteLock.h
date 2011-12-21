@@ -29,11 +29,11 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_READ_WRITE_LOCK_H
 #define TRIAGENS_JUTLAND_BASICS_READ_WRITE_LOCK_H 1
 
-#include <BasicsC/Common.h>
+#include <Basics/Common.h>
 
 #include <BasicsC/locks.h>
 
-#undef READ_WRITE_LOCK_COUNTER
+#undef TRI_READ_WRITE_LOCK_COUNTER
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class ReadWriteLock
@@ -102,7 +102,7 @@ namespace triagens {
 /// @brief check for read locked
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef READ_WRITE_LOCK_COUNTER
+#ifdef TRI_READ_WRITE_LOCK_COUNTER
 
         bool isReadLocked () const;
 
@@ -118,7 +118,7 @@ namespace triagens {
 /// @brief check for write locked
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef READ_WRITE_LOCK_COUNTER
+#ifdef TRI_READ_WRITE_LOCK_COUNTER
 
         bool isWriteLocked () const;
 
@@ -167,7 +167,7 @@ namespace triagens {
 /// @brief mutex for read-write counter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef READ_WRITE_LOCK_COUNTER
+#ifdef TRI_READ_WRITE_LOCK_COUNTER
         TRI_mutex_t _mutex;
 #endif
 
@@ -175,7 +175,7 @@ namespace triagens {
 /// @brief read counter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef READ_WRITE_LOCK_COUNTER
+#ifdef TRI_READ_WRITE_LOCK_COUNTER
         int32_t _readLockedCounter;
 #endif
 
@@ -183,7 +183,7 @@ namespace triagens {
 /// @brief write counter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef READ_WRITE_LOCK_COUNTER
+#ifdef TRI_READ_WRITE_LOCK_COUNTER
         int32_t _writeLockedCounter;
 #endif
     };

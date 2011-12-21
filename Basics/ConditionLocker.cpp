@@ -40,42 +40,20 @@ namespace triagens {
 
     ConditionLocker::ConditionLocker (ConditionVariable* conditionVariable)
       : _conditionVariable(conditionVariable), _file(0), _line(0) {
-      bool ok = _conditionVariable->lock();
-
-      if (! ok) {
-        THROW_INTERNAL_ERROR("condition lock failed");
-      }
+      _conditionVariable->lock();
     }
 
 
 
     ConditionLocker::ConditionLocker (ConditionVariable* conditionVariable, char const* file, int line)
       : _conditionVariable(conditionVariable), _file(file), _line(line) {
-      bool ok = _conditionVariable->lock();
-
-      if (! ok) {
-        if (_file != 0) {
-          THROW_INTERNAL_ERROR_L("condition lock failed", _file, _line);
-        }
-        else {
-          THROW_INTERNAL_ERROR("condition lock failed");
-        }
-      }
+      _conditionVariable->lock();
     }
 
 
 
     ConditionLocker::~ConditionLocker () {
-      bool ok = _conditionVariable->unlock();
-
-      if (! ok) {
-        if (_file != 0) {
-          THROW_INTERNAL_ERROR_L("condition unlock failed", _file, _line);
-        }
-        else {
-          THROW_INTERNAL_ERROR("condition unlock failed");
-        }
-      }
+      _conditionVariable->unlock();
     }
 
     // -----------------------------------------------------------------------------
@@ -83,31 +61,13 @@ namespace triagens {
     // -----------------------------------------------------------------------------
 
     void ConditionLocker::wait () {
-      bool ok = _conditionVariable->wait();
-
-      if (! ok) {
-        if (_file != 0) {
-          THROW_INTERNAL_ERROR_L("condition wait failed", _file, _line);
-        }
-        else {
-          THROW_INTERNAL_ERROR("condition wait failed");
-        }
-      }
+      _conditionVariable->wait();
     }
 
 
 
     void ConditionLocker::broadcast () {
-      bool ok = _conditionVariable->broadcast();
-
-      if (! ok) {
-        if (_file != 0) {
-          THROW_INTERNAL_ERROR_L("condition wait failed", _file, _line);
-        }
-        else {
-          THROW_INTERNAL_ERROR("condition wait failed");
-        }
-      }
+      _conditionVariable->broadcast();
     }
   }
 }

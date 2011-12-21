@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_THREAD_H
 #define TRIAGENS_JUTLAND_BASICS_THREAD_H 1
 
-#include <BasicsC/Common.h>
+#include <Basics/Common.h>
 
 #ifdef TRI_HAVE_POSIX_THREADS
 #include <Basics/Thread-posix.h>

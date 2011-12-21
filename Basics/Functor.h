@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_FUNCTOR_H
 #define TRIAGENS_JUTLAND_BASICS_FUNCTOR_H 1
 
-#include <BasicsC/Common.h>
+#include <Basics/Common.h>
 
 namespace triagens {
   namespace basics {
