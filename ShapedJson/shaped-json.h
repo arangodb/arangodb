@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_PHILADELPHIA_SHAPED_JSON_SHAPED_JSON_H
 #define TRIAGENS_PHILADELPHIA_SHAPED_JSON_SHAPED_JSON_H 1
 
-#include <BasicsC/Common.h>
+#include <BasicsC/common.h>
 
 #include <BasicsC/json.h>
 
