@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_PHILADELPHIA_BASICS_ASSOCIATIVE_H
 #define TRIAGENS_PHILADELPHIA_BASICS_ASSOCIATIVE_H 1
 
-#include <BasicsC/Common.h>
+#include <BasicsC/common.h>
 
 #include <BasicsC/locks.h>
 

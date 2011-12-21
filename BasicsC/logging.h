@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_PHILADELPHIA_BASICS_LOGGING_H
 #define TRIAGENS_PHILADELPHIA_BASICS_LOGGING_H 1
 
-#include <BasicsC/Common.h>
+#include <BasicsC/common.h>
 
 #include <BasicsC/vector.h>
 

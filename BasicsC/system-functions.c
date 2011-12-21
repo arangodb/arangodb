@@ -25,7 +25,7 @@
 /// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <BasicsC/Common.h>
+#include <BasicsC/common.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions

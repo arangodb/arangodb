@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_PHILADELPHIA_BASICS_JSON_H
 #define TRIAGENS_PHILADELPHIA_BASICS_JSON_H 1
 
-#include <BasicsC/Common.h>
+#include <BasicsC/common.h>
 
 #include <BasicsC/associative.h>
 #include <BasicsC/vector.h>

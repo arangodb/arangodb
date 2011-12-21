@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief csv functions
+/// @brief High-Performance Database Framework made by triagens
 ///
 /// @file
 ///
@@ -25,132 +25,137 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_PHILADELPHIA_BASICS_CSV_H
-#define TRIAGENS_PHILADELPHIA_BASICS_CSV_H 1
+#ifndef TRIAGENS_PHILADELPHIA_BASICS_COMMON_H
+#define TRIAGENS_PHILADELPHIA_BASICS_COMMON_H 1
 
-#include <BasicsC/common.h>
+// -----------------------------------------------------------------------------
+// --SECTION--                                             configuration options
+// -----------------------------------------------------------------------------
 
-#ifdef __cplusplus
-extern "C" {
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Configuration
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WITHIN_COMMON 1
+#include <BasicsC/operating-system.h>
+#include <BasicsC/local-configuration.h>
+#undef TRI_WITHIN_COMMON
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--             C header files that are always present on all systems
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Configuration
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+#include <assert.h>
+#include <ctype.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <math.h>
+#include <stdarg.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+#include <sys/stat.h>
+#include <sys/types.h>
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                   system dependent C header files
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Configuration
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_HAVE_IO_H
+#include <io.h>
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup CSV
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parser states
-////////////////////////////////////////////////////////////////////////////////
-
-typedef enum {
-  TRI_CSV_PARSER_BOL,
-  TRI_CSV_PARSER_BOF,
-  TRI_CSV_PARSER_WITHIN_FIELD,
-  TRI_CSV_PARSER_WITHIN_QUOTED_FIELD,
-  TRI_CSV_PARSER_CORRUPTED
-}
-TRI_csv_parser_states_e;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief template for CSV parser
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_csv_parser_s {
-  TRI_csv_parser_states_e _state;
-
-  char _quote;
-  char _separator;
-  char _eol;
-
-  char* _begin;       // beginning of the input buffer
-  char* _start;       // start of the unproccessed part
-  char* _written;     // pointer to currently written character
-  char* _current;     // pointer to currently processed character
-  char* _stop;        // end of unproccessed part
-  char* _end;         // end of the input buffer
-
-  size_t _row;
-  size_t _column;
-
-  void* _dataBegin;
-  void* _dataAdd;
-  void* _dataEnd;
-
-  void (*begin) (struct TRI_csv_parser_s*, size_t row);
-  void (*add) (struct TRI_csv_parser_s*, char const*, size_t row, size_t column);
-  void (*end) (struct TRI_csv_parser_s*, char const*, size_t row, size_t column);
-
-  size_t _nResize;
-  size_t _nMemmove;
-  size_t _nMemcpy;
-}
-TRI_csv_parser_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup CSV
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief inits a CSV parser
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitCsvParser (TRI_csv_parser_t*,
-                        void (*) (TRI_csv_parser_t*, size_t),
-                        void (*) (TRI_csv_parser_t*, char const*, size_t, size_t),
-                        void (*) (TRI_csv_parser_t*, char const*, size_t, size_t));
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a CSV parser
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyCsvParser (TRI_csv_parser_t* parser);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup CSV
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parses a CSV line
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ParseCsvString (TRI_csv_parser_t*, char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parses a CSV line
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ParseCsvString2 (TRI_csv_parser_t*, char const*, size_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
+#ifdef TRI_HAVE_PROCESS_H
+#include <process.h>
 #endif
+
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
+#endif
+
+#ifdef TRI_HAVE_STDBOOL_H
+#include <stdbool.h>
+#endif
+
+#ifdef TRI_HAVE_SYS_RESOURCE_H
+#include <sys/resource.h>
+#endif
+
+#ifdef TRI_HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
+#ifdef TRI_HAVE_WINSOCK2_H
+#include <WinSock2.h>
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            basic triAGENS headers
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Configuration
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WITHIN_COMMON 1
+#include <BasicsC/error.h>
+#include <BasicsC/memory.h>
+#include <BasicsC/structures.h>
+#undef TRI_WITHIN_COMMON
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              basic compiler stuff
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Configuration
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WITHIN_COMMON 1
+#include <BasicsC/system-compiler.h>
+#include <BasicsC/system-functions.h>
+#undef TRI_WITHIN_COMMON
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 #endif
 

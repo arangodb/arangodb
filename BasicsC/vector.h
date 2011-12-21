@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_PHILADELPHIA_BASICS_VECTOR_H
 #define TRIAGENS_PHILADELPHIA_BASICS_VECTOR_H 1
 
-#include <BasicsC/Common.h>
+#include <BasicsC/common.h>
 
 #ifdef __cplusplus
 extern "C" {
