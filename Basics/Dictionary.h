@@ -32,7 +32,7 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_DICTIONARY_H
 #define TRIAGENS_JUTLAND_BASICS_DICTIONARY_H 1
 
-#include <BasicsC/Common.h>
+#include <Basics/Common.h>
 
 #include <Basics/AssociativeArray.h>
 #include <BasicsC/hashes.h>

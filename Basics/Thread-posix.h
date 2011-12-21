@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_THREAD_POSIX_H
 #define TRIAGENS_JUTLAND_BASICS_THREAD_POSIX_H 1
 
-#include <BasicsC/Common.h>
+#include <Basics/Common.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @defgroup Threads Threads, Locks, and Conditions

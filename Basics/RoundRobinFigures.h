@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_ROUND_ROBIN_FIGURES_H
 #define TRIAGENS_JUTLAND_BASICS_ROUND_ROBIN_FIGURES_H 1
 
-#include <BasicsC/Common.h>
+#include <Basics/Common.h>
 
 #include <math.h>
 

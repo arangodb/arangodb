@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_PROGRAM_OPTIONS_H
 #define TRIAGENS_JUTLAND_BASICS_PROGRAM_OPTIONS_H 1
 
-#include <BasicsC/Common.h>
+#include <Basics/Common.h>
 
 #include <BasicsC/vector.h>
 #include <Basics/ProgramOptionsDescription.h>
@@ -227,6 +227,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         set<string> _seen;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief program name if known
+////////////////////////////////////////////////////////////////////////////////
+
+        string _programName;
     };
   }
 }

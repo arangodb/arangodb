@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_READ_LOCKER_H
 #define TRIAGENS_JUTLAND_BASICS_READ_LOCKER_H 1
 
-#include <BasicsC/Common.h>
+#include <Basics/Common.h>
 
 #include <Basics/ReadWriteLock.h>
 
