@@ -104,9 +104,9 @@ namespace triagens {
           ProcessIdentifier ();
 
         public:
-          Thread::pid_t process;
-          Thread::tpid_t threadProcess;
-          Thread::tid_t thread;
+          TRI_pid_t process;
+          TRI_tpid_t threadProcess;
+          TRI_tid_t thread;
       };
 
 ////////////////////////////////////////////////////////////////////////////////

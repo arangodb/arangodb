@@ -55,7 +55,8 @@ namespace triagens {
     // constructors and destructors
     // -----------------------------------------------------------------------------
 
-    VariantArray::VariantArray () {
+    VariantArray::VariantArray () 
+      : attributes(), mapping(), nextKey() {
     }
 
 

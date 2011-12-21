@@ -83,7 +83,8 @@ namespace RandomHelper {
   template<int N>
   class RandomDeviceDirect : public RandomDevice {
     public:
-      RandomDeviceDirect (string path) {
+      RandomDeviceDirect (string path) 
+        : fd(1), pos(0)  {
         fd = TRI_OPEN(path.c_str(), O_RDONLY);
 
         if (fd < 0) {
@@ -147,6 +148,8 @@ namespace RandomHelper {
       RandomDeviceCombined (string path)
         : interval(0, UINT32_MAX),
           randomGenerator(mersenneDevice, interval),
+          fd(0),
+          pos(0),
           rseed(0) {
         fd = TRI_OPEN(path.c_str(), O_RDONLY);
 
@@ -255,9 +258,18 @@ namespace RandomHelper {
 
 namespace RandomHelper {
   class UniformGenerator {
+    private:
+      UniformGenerator (UniformGenerator const&);
+      UniformGenerator& operator= (UniformGenerator const&);
+
     public:
       UniformGenerator (RandomDevice* device)
         : device(device) {
+      }
+
+
+
+      virtual ~UniformGenerator () {
       }
 
 
