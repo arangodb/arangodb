@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_PHILADELPHIA_PROGRAM_OPTIONS_PROGRAM_OPTIONS_H
 #define TRIAGENS_PHILADELPHIA_PROGRAM_OPTIONS_PROGRAM_OPTIONS_H 1
 
-#include <BasicsC/Common.h>
+#include <BasicsC/common.h>
 
 #include <BasicsC/vector.h>
 
@@ -371,6 +371,7 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
+                                  char const * programName,
                                   char const * filename);
 
 ////////////////////////////////////////////////////////////////////////////////

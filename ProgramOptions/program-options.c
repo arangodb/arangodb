@@ -1446,6 +1446,7 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
+                                  char const * programName,
                                   char const * filename) {
   FILE* f;
   bool ok;
@@ -1542,13 +1543,23 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
 
       ok = HandleOption(options, section, option, value);
 
-      TRI_FreeString(option);
       TRI_FreeString(value);
 
       if (! ok) {
+        TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
+
+        if (*section != '\0') {
+          fprintf(stderr, "%s: unrecognized option '%s.%s'\n", programName, section, option);
+        }
+        else {
+          fprintf(stderr, "%s: unrecognized option '%s'\n", programName, option);
+        }
+
+        TRI_FreeString(option);
         break;
       }
 
+      TRI_FreeString(option);
       continue;
     }
 
@@ -1563,12 +1574,21 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
 
       ok = HandleOption(options, section, option, "");
 
-      TRI_FreeString(option);
-
       if (! ok) {
+        TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
+
+        if (*section != '\0') {
+          fprintf(stderr, "%s: unrecognized option '%s.%s'\n", programName, section, option);
+        }
+        else {
+          fprintf(stderr, "%s: unrecognized option '%s'\n", programName, option);
+        }
+
+        TRI_FreeString(option);
         break;
       }
 
+      TRI_FreeString(option);
       continue;
     }
 
@@ -1585,14 +1605,19 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
 
       ok = HandleOption(options, tmpSection, option, value);
 
-      TRI_FreeString(tmpSection);
-      TRI_FreeString(option);
       TRI_FreeString(value);
 
       if (! ok) {
+        TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
+        fprintf(stderr, "%s: unrecognized option '%s.%s'\n", programName, tmpSection, option);
+
+        TRI_FreeString(tmpSection);
+        TRI_FreeString(option);
         break;
       }
 
+      TRI_FreeString(tmpSection);
+      TRI_FreeString(option);
       continue;
     }
 
@@ -1608,17 +1633,23 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
 
       ok = HandleOption(options, tmpSection, option, "");
 
-      TRI_FreeString(tmpSection);
-      TRI_FreeString(option);
-
       if (! ok) {
+        TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
+        fprintf(stderr, "%s: unrecognized option '%s.%s'\n", programName, tmpSection, option);
+
+        TRI_FreeString(tmpSection);
+        TRI_FreeString(option);
         break;
       }
 
+      TRI_FreeString(tmpSection);
+      TRI_FreeString(option);
       continue;
     }
 
-    LOG_ERROR("cannot understand line '%s", buffer);
+    TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
+    fprintf(stderr, "%s: unrecognized entry '%s'\n", programName, buffer);
+
     TRI_FreeString(buffer);
     buffer = NULL;
     break;
