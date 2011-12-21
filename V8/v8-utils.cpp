@@ -5,19 +5,29 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright by triAGENS GmbH - All rights reserved.
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
+/// The Programs (which include both the software and documentation)
+/// contain proprietary information of triAGENS GmbH; they are
+/// provided under a license agreement containing restrictions on use and
+/// disclosure and are also protected by copyright, patent and other
+/// intellectual and industrial property laws. Reverse engineering,
+/// disassembly or decompilation of the Programs, except to the extent
+/// required to obtain interoperability with other independently created
+/// software or as specified by law, is prohibited.
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+/// The Programs are not intended for use in any nuclear, aviation, mass
+/// transit, medical, or other inherently dangerous applications. It shall
+/// be the licensee's responsibility to take all appropriate fail-safe,
+/// backup, redundancy, and other measures to ensure the safe use of such
+/// applications if the Programs are used for such purposes, and triAGENS
+/// GmbH disclaims liability for any damages caused by such use of
+/// the Programs.
 ///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
+/// This software is the confidential and proprietary information of
+/// triAGENS GmbH. You shall not disclose such confidential and
+/// proprietary information and shall use it only in accordance with the
+/// terms of the license agreement you entered into with triAGENS GmbH.
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
@@ -26,6 +36,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-utils.h"
+
+#include <fstream>
+#include <locale>
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -40,10 +53,7 @@
 
 #include "ShapedJson/shaped-json.h"
 
-#include <fstream>
-
 #include "V8/v8-json.h"
-#include "V8/v8-globals.h"
 
 #if RL_READLINE_VERSION >= 0x0500
 #define completion_matches rl_completion_matches
@@ -374,16 +384,22 @@ char* V8LineEditor::prompt (char const* prompt) {
     current += sep;
     sep = "\n";
 
-    if (strncmp(result, prompt, len1) == 0) {
-      current += (result + len1);
-    }
-    else if (strncmp(result, dotdot.c_str(), len2) == 0) {
-      current += (result + len2);
-    }
-    else {
-      current += result;
+    bool c1 = strncmp(result, prompt, len1) == 0;
+    bool c2 = strncmp(result, dotdot.c_str(), len2) == 0;
+
+    while (c1 || c2) {
+      if (c1) {
+        result += len1;
+      }
+      else if (c2) {
+        result += len2;
+      }
+
+      c1 = strncmp(result, prompt, len1) == 0;
+      c2 = strncmp(result, dotdot.c_str(), len2) == 0;
     }
 
+    current += result;
     bool ok = CheckJavaScript(current);
 
     if (ok) {
@@ -1015,7 +1031,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool FillShapeValueJson (TRI_shaper_t* shaper,
-                                TRI_shape_value_t* dst,
+                                TRI_shape_value_t* dst, 
                                 v8::Handle<v8::Value> json,
                                 set<int>& seenHashes,
                                 vector< v8::Handle<v8::Object> >& seenObjects) {
@@ -1032,7 +1048,7 @@ static bool FillShapeValueJson (TRI_shaper_t* shaper,
           return FillShapeValueNull(shaper, dst);
         }
       }
-
+    
       seenObjects.push_back(o);
     }
     else {
