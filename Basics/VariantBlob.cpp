@@ -43,12 +43,9 @@ namespace triagens {
 
 
 
-    VariantBlob::VariantBlob (char const* pointer, size_t len) {
-      if (pointer == 0) {
-        value = 0;
-        length = 0;
-      }
-      else {
+    VariantBlob::VariantBlob (char const* pointer, size_t len) 
+      : value(0), length(0) {
+      if (pointer != 0) {
         value = new char[len];
         memcpy(value, pointer, len);
         length = len;

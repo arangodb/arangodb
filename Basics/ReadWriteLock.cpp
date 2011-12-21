@@ -43,10 +43,10 @@ using namespace triagens::basics;
 /// @brief constructs a read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-ReadWriteLock::ReadWriteLock () {
+ReadWriteLock::ReadWriteLock () 
+  : _rwlock(),
+    _writeLocked(false) {
   TRI_InitReadWriteLock(&_rwlock);
-
-  _writeLocked = false;
 
 #ifdef TRI_READ_WRITE_LOCK_COUNTER
   TRI_InitMutex(&_mutex);

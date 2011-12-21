@@ -36,12 +36,12 @@ namespace triagens {
 
     struct TimingImpl {
         TimingImpl (Timing::TimingType type)
-          : type(type) {
+          : tv(), tv2(), type(type) {
           fill(&tv);
         }
 
         TimingImpl (timeval tv, Timing::TimingType type)
-          : tv(tv), type(type) {
+          : tv(tv), tv2(), type(type) {
         }
 
         void fill (::timeval* t);

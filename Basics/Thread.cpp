@@ -34,6 +34,24 @@
 #include <Basics/ConditionLocker.h>
 #include <Basics/Logger.h>
 
+using namespace triagens::basics;
+
+void* Thread::startThread (void* arg) {
+  sigset_t all;
+  sigfillset(&all);
+  
+  pthread_sigmask(SIG_SETMASK, &all, 0);
+  
+  Thread * ptr = (Thread *) arg;
+  
+  ptr->runMe();
+  ptr->cleanup();
+  
+  return 0;
+}
+
+
+
 namespace triagens {
   namespace basics {
 
@@ -41,42 +59,20 @@ namespace triagens {
     // static public methods
     // -----------------------------------------------------------------------------
 
-    bool Thread::createKey (tlsKey& key, void (*destructor)(void*)) {
-      return pthread_key_create(&key, destructor) == 0;
+    TRI_pid_t Thread::currentProcessId () {
+      return TRI_CurrentProcessId();
     }
 
 
 
-    void* Thread::specific (tlsKey& key) {
-      return pthread_getspecific(key);
+    TRI_pid_t Thread::currentThreadProcessId () {
+      return TRI_CurrentThreadProcessId();
     }
 
 
 
-    bool Thread::setSpecific (tlsKey& key, void* value) {
-      return pthread_setspecific(key, value) == 0;
-    }
-
-
-
-    Thread::pid_t Thread::currentProcessId () {
-      return ::getpid();
-    }
-
-
-
-    Thread::pid_t Thread::currentThreadProcessId () {
-#ifdef TRI_HAVE_GETTID
-      return ::gettid();
-#else
-      return ::getpid();
-#endif
-    }
-
-
-
-    Thread::tid_t Thread::currentThreadId () {
-      return (intptr_t) pthread_self();
+    TRI_tid_t Thread::currentThreadId () {
+      return TRI_CurrentThreadId();
     }
 
     // -----------------------------------------------------------------------------
@@ -128,6 +124,8 @@ namespace triagens {
         return false;
       }
 
+      _started = 1;
+
       int rc = pthread_create(&_thread, 0, &startThread, this);
 
       if (rc != 0) {
@@ -153,7 +151,7 @@ namespace triagens {
 
 
     void Thread::join () {
-      pthread_join(_thread, 0);
+      TRI_JoinThread(&_thread);
     }
 
 
@@ -195,24 +193,6 @@ namespace triagens {
     // -----------------------------------------------------------------------------
     // private methods
     // -----------------------------------------------------------------------------
-
-    void* Thread::startThread (void* arg) {
-      sigset_t all;
-      sigfillset(&all);
-
-      pthread_sigmask(SIG_SETMASK, &all, 0);
-
-      Thread * ptr = (Thread *) arg;
-
-      ptr->_started = 1;
-
-      ptr->runMe();
-      ptr->cleanup();
-
-      return 0;
-    }
-
-
 
     void Thread::runMe () {
       if (_asynchronousCancelation) {
