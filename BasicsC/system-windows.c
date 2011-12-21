@@ -25,7 +25,7 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <BasicsC/Common.h>
+#include <BasicsC/common.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions

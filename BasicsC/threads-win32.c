@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief High-Performance Database Framework made by triagens
+/// @brief threads in win32
 ///
 /// @file
 ///
@@ -25,160 +25,162 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_PHILADELPHIA_BASICS_COMMON_H
-#define TRIAGENS_PHILADELPHIA_BASICS_COMMON_H 1
+#include "threads.h"
+
+#include <BasicsC/logging.h>
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             configuration options
+// --SECTION--                                                            THREAD
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
+/// @addtogroup Threading
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_WITHIN_COMMON 1
-#include <BasicsC/operating-system.h>
-#include <BasicsC/LocalConfiguration.h>
-#undef TRI_WITHIN_COMMON
+////////////////////////////////////////////////////////////////////////////////
+/// @brief data block for thread starter
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct thread_data_s {
+  void (*starter) (void*);
+  void* _data;
+}
+thread_data_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--             C header files that are always present on all systems
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
+/// @addtogroup Threading
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <assert.h>
-#include <ctype.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <math.h>
-#include <stdarg.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
+////////////////////////////////////////////////////////////////////////////////
+/// @brief starter function for thread
+////////////////////////////////////////////////////////////////////////////////
 
-#include <sys/stat.h>
-#include <sys/types.h>
+static DWORD __stdcall ThreadStarter (void* data) {
+  thread_data_t* d;
+
+  d = data;
+  d->starter(d->_data);
+
+  return 0;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                   system dependent C header files
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
+/// @addtogroup Threading
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_HAVE_IO_H
-#include <io.h>
-#endif
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialises a thread
+////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_HAVE_PROCESS_H
-#include <process.h>
-#endif
-
-#ifdef TRI_HAVE_SIGNAL_H
-#include <signal.h>
-#endif
-
-#ifdef TRI_HAVE_STDBOOL_H
-#include <stdbool.h>
-#endif
-
-#ifdef TRI_HAVE_SYS_RESOURCE_H
-#include <sys/resource.h>
-#endif
-
-#ifdef TRI_HAVE_SYS_TIME_H
-#include <sys/time.h>
-#endif
-
-#ifdef TRI_HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-
-#ifdef TRI_HAVE_WINSOCK2_H
-#include <WinSock2.h>
-#endif
+void TRI_InitThread (TRI_thread_t* thread) {
+  *thread = 0;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            basic triAGENS headers
+// --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
+/// @addtogroup Threading
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_WITHIN_COMMON 1
-#include <BasicsC/error.h>
-#include <BasicsC/memory.h>
-#include <BasicsC/structures.h>
-#undef TRI_WITHIN_COMMON
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the current process identifier
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_pid_t TRI_CurrentProcessId () {
+  return _getpid();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the current thread process identifier
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_tpid_t TRI_CurrentThreadProcessId () {
+  return _getpid();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the current thread identifier
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_tid_t TRI_CurrentThreadId () {
+  return GetCurrentThreadId();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief starts a thread
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_StartThread (TRI_thread_t* thread, void (*start)(void*), void* data) {
+  DWORD threadId;
+  thread_data_t* d;
+
+  d = TRI_Allocate(sizeof(thread_data_t));
+
+  d->starter = starter;
+  d->_data = data;
+
+  *thread = CreateThread(0, // default security attributes
+                         0, // use default stack size
+                         ThreadStarter, // thread function name
+                         c.a, // argument to thread function
+                         0, // use default creation flags
+                         &threadId); // returns the thread identifier
+
+
+
+
+  if (*thread == 0) {
+    LOG_ERROR("could not start thread: %s ", strerror(errno));
+    return false;
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief waits for a thread to finish
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_JoinThread (TRI_thread_t* thread) {
+  WaitForSingleObject(*thread, INFINITE);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              basic compiler stuff
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WITHIN_COMMON 1
-#include <BasicsC/system-compiler.h>
-#include <BasicsC/system-functions.h>
-#undef TRI_WITHIN_COMMON
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   basic C++ stuff
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-#ifndef TRI_WITHIN_C
-#include <Basics/CommonC++.h>
-#endif
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-#endif
 
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
+

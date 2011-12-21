@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_PHILADELPHIA_BASICS_LOCKS_POSIX_H
 #define TRIAGENS_PHILADELPHIA_BASICS_LOCKS_POSIX_H 1
 
-#include <BasicsC/Common.h>
+#include <BasicsC/common.h>
 
 #include <pthread.h>
 

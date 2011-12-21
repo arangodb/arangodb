@@ -29,7 +29,7 @@
 #define TRIAGENS_PHILADELPHIA_BASICS_STRUCTURES_H 1
 
 #ifndef TRI_WITHIN_COMMON
-#error use <Basics/Common.h>
+#error use <BasicsC/Common.h>
 #endif
 
 #ifdef __cplusplus

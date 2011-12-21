@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_PHILADELPHIA_BASICS_STRINGS_H
 #define TRIAGENS_PHILADELPHIA_BASICS_STRINGS_H 1
 
-#include <BasicsC/Common.h>
+#include <BasicsC/common.h>
 
 #include <BasicsC/vector.h>
 

@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_PHILADELPHIA_BASICS_ASSOCIATIVE_MULTI_H
 #define TRIAGENS_PHILADELPHIA_BASICS_ASSOCIATIVE_MULTI_H 1
 
-#include <BasicsC/Common.h>
+#include <BasicsC/common.h>
 
 #include <BasicsC/locks.h>
 #include <BasicsC/vector.h>

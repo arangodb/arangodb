@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_PHILADELPHIA_BASICS_THREADS_H
 #define TRIAGENS_PHILADELPHIA_BASICS_THREADS_H 1
 
-#include <BasicsC/Common.h>
+#include <BasicsC/common.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief posix threads

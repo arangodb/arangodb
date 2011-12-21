@@ -25,7 +25,7 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <BasicsC/Common.h>
+#include <BasicsC/common.h>
 
 #ifndef TRI_GCC_THREAD_LOCAL_STORAGE
 #include <pthread.h>
@@ -288,6 +288,9 @@ void TRI_InitialiseError () {
   TRI_set_errno_string(0, "no error");
   TRI_set_errno_string(1, "failed");
   TRI_set_errno_string(2, "system error");
+  TRI_set_errno_string(3, "illegal number");
+  TRI_set_errno_string(4, "numeric overflow");
+  TRI_set_errno_string(5, "illegal option");
 
 #ifdef TRI_GCC_THREAD_LOCAL_STORAGE
   ErrorNumber._number = 0;
