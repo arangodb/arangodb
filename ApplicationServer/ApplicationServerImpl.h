@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_FYN_APPLICATION_SERVER_APPLICATION_SERVER_IMPL_H
 #define TRIAGENS_FYN_APPLICATION_SERVER_APPLICATION_SERVER_IMPL_H 1
 
-#include <BasicsC/Common.h>
+#include <Basics/Common.h>
 
 #include <Basics/ProgramOptions.h>
 #include <Basics/ProgramOptionsDescription.h>
