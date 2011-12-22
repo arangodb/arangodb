@@ -2,20 +2,20 @@
 /* A Bison parser, made by GNU Bison 2.4.1.  */
 
 /* Skeleton implementation for Bison LALR(1) parsers in C++
-   
+
       Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2008 Free Software
    Foundation, Inc.
-   
+
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation, either version 3 of the License, or
    (at your option) any later version.
-   
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-   
+
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
@@ -28,7 +28,7 @@
    special exception, which will cause the skeleton and the resulting
    Bison output files to be licensed under the GNU General Public
    License without this special exception.
-   
+
    This special exception was added by the Free Software Foundation in
    version 2.2 of Bison.  */
 
@@ -37,7 +37,7 @@
 
 
 
-#include <BasicsC/Common.h>
+#include <Basics/Common.h>
 #include <Basics/StringUtils.h>
 #include <Basics/VariantArray.h>
 #include <Basics/VariantBoolean.h>
@@ -237,7 +237,7 @@ namespace triagens { namespace json_parser {
 
     switch (yytype)
       {
-  
+
 	default:
 	  break;
       }
@@ -312,7 +312,7 @@ namespace triagens { namespace json_parser {
 
 
     /* User initialization code.  */
-    
+
 {
   // reset the location
   yylloc.step();
@@ -543,23 +543,23 @@ namespace triagens { namespace json_parser {
 
     {
       (yyval.keyValueList) = new VariantArray();
-      (yyval.keyValueList)->add(*(yysemantic_stack_[(3) - (1)].str),(yysemantic_stack_[(3) - (3)].variantObject));    
-      delete (yysemantic_stack_[(3) - (1)].str);      
+      (yyval.keyValueList)->add(*(yysemantic_stack_[(3) - (1)].str),(yysemantic_stack_[(3) - (3)].variantObject));
+      delete (yysemantic_stack_[(3) - (1)].str);
     }
     break;
 
   case 18:
 
     {
-      // nothing to add 
+      // nothing to add
     }
     break;
 
   case 19:
 
     {
-      (yyval.keyValueList)->add(*(yysemantic_stack_[(5) - (3)].str),(yysemantic_stack_[(5) - (5)].variantObject));    
-      delete (yysemantic_stack_[(5) - (3)].str);      
+      (yyval.keyValueList)->add(*(yysemantic_stack_[(5) - (3)].str),(yysemantic_stack_[(5) - (5)].variantObject));
+      delete (yysemantic_stack_[(5) - (3)].str);
     }
     break;
 
