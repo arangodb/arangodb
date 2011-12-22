@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_FYN_DISPATCHER_DISPATCHER_THREAD_H
 #define TRIAGENS_FYN_DISPATCHER_DISPATCHER_THREAD_H 1
 
-#include <BasicsC/Common.h>
+#include <Basics/Common.h>
 
 #include <Basics/Thread.h>
 #include <Rest/Job.h>

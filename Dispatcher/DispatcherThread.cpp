@@ -69,10 +69,7 @@ namespace triagens {
     // -----------------------------------------------------------------------------
 
     void DispatcherThread::run () {
-      if (! queue->accessQueue.lock()) {
-        LOGGER_FATAL << "cannot lock in " << __FILE__ << "@" << __LINE__;
-        exit(EXIT_FAILURE);
-      }
+      queue->accessQueue.lock();
 
       queue->nrStarted--;
       queue->nrRunning++;
@@ -115,10 +112,7 @@ namespace triagens {
           }
 
           // now release the queue lock (initialise is inside the lock, work outside)
-          if (! queue->accessQueue.unlock()) {
-            LOGGER_FATAL << "cannot unlock in " << __FILE__ << "@" << __LINE__;
-            exit(EXIT_FAILURE);
-          }
+          queue->accessQueue.unlock();
 
           // do the work (this might change the job type)
           Job::status_e status = Job::JOB_FAILED;
@@ -191,10 +185,7 @@ namespace triagens {
             status = Job::JOB_FAILED;
           }
 
-          if (! queue->accessQueue.lock()) {
-            LOGGER_FATAL << "cannot lock in " << __FILE__ << "@" << __LINE__;
-            exit(EXIT_FAILURE);
-          }
+          queue->accessQueue.lock();
 
           queue->monopolizer = 0;
 
@@ -224,10 +215,7 @@ namespace triagens {
           }
 
           if (0 < queue->nrWaiting && ! queue->readyJobs.empty()) {
-            if (! queue->accessQueue.broadcast()) {
-              LOGGER_FATAL << "cannot broadcast in " << __FILE__ << "@" << __LINE__;
-              exit(EXIT_FAILURE);
-            }
+            queue->accessQueue.broadcast();
           }
 
           tick();
@@ -238,10 +226,7 @@ namespace triagens {
 
           tick();
 
-          if (! queue->accessQueue.wait()) {
-            LOGGER_FATAL << "cannot wait in " << __FILE__ << "@" << __LINE__;
-            exit(EXIT_FAILURE);
-          }
+          queue->accessQueue.wait();
 
           tick();
 
@@ -260,10 +245,7 @@ namespace triagens {
         queue->nrSpecial--;
       }
 
-      if (! queue->accessQueue.unlock()) {
-        LOGGER_FATAL << "cannot unlock in " << __FILE__ << "@" << __LINE__;
-        exit(EXIT_FAILURE);
-      }
+      queue->accessQueue.unlock();
 
       LOGGER_TRACE << "dispatcher thread has finished";
     }
