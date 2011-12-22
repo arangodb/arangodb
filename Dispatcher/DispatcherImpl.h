@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_FYN_DISPATCHER_DISPATCHER_IMPL_H
 #define TRIAGENS_FYN_DISPATCHER_DISPATCHER_IMPL_H 1
 
-#include <BasicsC/Common.h>
+#include <Basics/Common.h>
 
 #include <Rest/Dispatcher.h>
 #include <Basics/Mutex.h>
