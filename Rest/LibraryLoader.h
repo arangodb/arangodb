@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_FYN_REST_LIBRARY_LOADER_H
 #define TRIAGENS_FYN_REST_LIBRARY_LOADER_H 1
 
-#include <BasicsC/Common.h>
+#include <Basics/Common.h>
 
 #include <Basics/FileUtils.h>
 #include <Basics/Logger.h>

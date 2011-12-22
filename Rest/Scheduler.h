@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_FYN_REST_SCHEDULER_H
 #define TRIAGENS_FYN_REST_SCHEDULER_H 1
 
-#include <BasicsC/Common.h>
+#include <Basics/Common.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @defgroup Scheduler I/O Scheduler

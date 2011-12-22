@@ -222,7 +222,7 @@ namespace triagens {
         mutable basics::Mutex writeBufferLock;
 
       private:
-        basics::Thread::tid_t tid;
+        TRI_tid_t tid;
         char * tmpReadBuffer;
     };
   }
