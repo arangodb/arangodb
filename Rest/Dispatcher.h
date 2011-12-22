@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_FYN_REST_DISPATCHER_H
 #define TRIAGENS_FYN_REST_DISPATCHER_H 1
 
-#include <BasicsC/Common.h>
+#include <Basics/Common.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @defgroup Dispatcher Job Dispatcher

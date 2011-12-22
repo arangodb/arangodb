@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_FYN_REST_REST_SERVER_OPTIONS_H
 #define TRIAGENS_FYN_REST_REST_SERVER_OPTIONS_H 1
 
-#include <BasicsC/Common.h>
+#include <Basics/Common.h>
 
 #include <Basics/Exceptions.h>
 #include <Rest/RestModel.h>

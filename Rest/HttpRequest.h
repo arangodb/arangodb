@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_FYN_REST_HTTP_REQUEST_H
 #define TRIAGENS_FYN_REST_HTTP_REQUEST_H 1
 
-#include <BasicsC/Common.h>
+#include <Basics/Common.h>
 
 #include <Basics/Dictionary.h>
 #include <Rest/ConnectionInfo.h>
