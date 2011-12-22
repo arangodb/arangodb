@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_FYN_GENERAL_SERVER_GENERAL_FIGURES_H
 #define TRIAGENS_FYN_GENERAL_SERVER_GENERAL_FIGURES_H 1
 
-#include <BasicsC/Common.h>
+#include <Basics/Common.h>
 
 #include <Basics/RoundRobinFigures.h>
 
