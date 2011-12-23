@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_AVOCADODB_RESTHANDLER_REST_ACTION_HANDLER37_H
 #define TRIAGENS_AVOCADODB_RESTHANDLER_REST_ACTION_HANDLER37_H 1
 
-#include <BasicsC/Common.h>
+#include <Basics/Common.h>
 
 #include <v8.h>
 

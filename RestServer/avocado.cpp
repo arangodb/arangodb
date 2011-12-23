@@ -25,7 +25,7 @@
 /// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <BasicsC/Common.h>
+#include <Basics/Common.h>
 
 #include <Rest/Initialise.h>
 
