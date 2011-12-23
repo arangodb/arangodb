@@ -5,29 +5,19 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright by triAGENS GmbH - All rights reserved.
+/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
 ///
-/// The Programs (which include both the software and documentation)
-/// contain proprietary information of triAGENS GmbH; they are
-/// provided under a license agreement containing restrictions on use and
-/// disclosure and are also protected by copyright, patent and other
-/// intellectual and industrial property laws. Reverse engineering,
-/// disassembly or decompilation of the Programs, except to the extent
-/// required to obtain interoperability with other independently created
-/// software or as specified by law, is prohibited.
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
 ///
-/// The Programs are not intended for use in any nuclear, aviation, mass
-/// transit, medical, or other inherently dangerous applications. It shall
-/// be the licensee's responsibility to take all appropriate fail-safe,
-/// backup, redundancy, and other measures to ensure the safe use of such
-/// applications if the Programs are used for such purposes, and triAGENS
-/// GmbH disclaims liability for any damages caused by such use of
-/// the Programs.
+///     http://www.apache.org/licenses/LICENSE-2.0
 ///
-/// This software is the confidential and proprietary information of
-/// triAGENS GmbH. You shall not disclose such confidential and
-/// proprietary information and shall use it only in accordance with the
-/// terms of the license agreement you entered into with triAGENS GmbH.
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
@@ -130,7 +120,7 @@ static int RunMain (v8::Handle<v8::Context> context, int argc, char* argv[]) {
 
     if (strcmp(str, "--shell") == 0) {
       RunShellFlag = true;
-    } 
+    }
     else if (strncmp(str, "--", 2) == 0) {
       printf("Warning: unknown flag %s.\n", str);
     }
@@ -216,27 +206,23 @@ int main (int argc, char* argv[]) {
   TRI_InitV8Utils(context, ".");
   TRI_InitV8Shell(context);
 
-  bool ok;
+  char const* files[] = {
+    "js/modules.js",
+    "js/shell.js"
+  };
 
-  ok = TRI_LoadJavaScriptFile(context, "js/modules.js");
+  for (size_t i = 0;   i < sizeof(files) / sizeof(files[0]);  ++i) {
+    bool ok;
 
-  if (! ok) {
-    LOG_ERROR("cannot load file 'js/modules.js'");
+    ok = TRI_LoadJavaScriptFile(context, files[i]);
+
+    if (! ok) {
+      LOG_ERROR("cannot load file '%s'", files[i]);
+    }
   }
 
-  ok = TRI_LoadJavaScriptFile(context, "js/shell.js");
+  RunMain(context, argc, argv);
 
-  if (! ok) {
-    LOG_ERROR("cannot load file 'js/shell.js'");
-  }
-
-  ok = TRI_LoadJavaScriptFile(context, "js/actions.js");
-
-  if (! ok) {
-    LOG_ERROR("cannot load file 'js/actions.js'");
-  }
-
-  int result = RunMain(context, argc, argv);
   if (RunShellFlag) {
     RunShell(context);
   }
