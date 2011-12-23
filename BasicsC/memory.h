@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_PHILADELPHIA_BASICS_MEMORY_H
-#define TRIAGENS_PHILADELPHIA_BASICS_MEMORY_H 1
+#ifndef TRIAGENS_PHILADELPHIA_BASICS_C_MEMORY_H
+#define TRIAGENS_PHILADELPHIA_BASICS_C_MEMORY_H 1
 
 #ifndef TRI_WITHIN_COMMON
 #error use <BasicsC/Common.h>

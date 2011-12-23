@@ -25,10 +25,12 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_PHILADELPHIA_BASICS_LOCKS_POSIX_H
-#define TRIAGENS_PHILADELPHIA_BASICS_LOCKS_POSIX_H 1
+#ifndef TRIAGENS_PHILADELPHIA_BASICS_C_LOCKS_POSIX_H
+#define TRIAGENS_PHILADELPHIA_BASICS_C_LOCKS_POSIX_H 1
 
 #include <BasicsC/common.h>
+
+#ifdef TRI_HAVE_POSIX_THREADS
 
 #include <pthread.h>
 
@@ -83,6 +85,8 @@ TRI_condition_t;
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif
 
 #endif

@@ -25,8 +25,8 @@
 /// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_PHILADELPHIA_BASICS_OPERATING_SYSTEM_H
-#define TRIAGENS_PHILADELPHIA_BASICS_OPERATING_SYSTEM_H 1
+#ifndef TRIAGENS_PHILADELPHIA_BASICS_C_OPERATING_SYSTEM_H
+#define TRIAGENS_PHILADELPHIA_BASICS_C_OPERATING_SYSTEM_H 1
 
 #ifndef TRI_WITHIN_COMMON
 #error use <BasicsC/Common.h>
@@ -169,6 +169,7 @@
 #define TRI_HAVE_POSIX_THREADS              1
 #define TRI_HAVE_POSIX_SPIN                 1
 #define TRI_HAVE_PRCTL                      1
+#define TRI_HAVE_LINUX_PROC                 1
 
 #if __WORDSIZE == 64
 #define TRI_SIZEOF_SIZE_T                   8
