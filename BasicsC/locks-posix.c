@@ -359,7 +359,14 @@ void TRI_DestroyCondition (TRI_condition_t* cond) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SignalCondition (TRI_condition_t* cond) {
-  pthread_cond_signal(&cond->_cond);
+  int rc;
+
+  rc = pthread_cond_signal(&cond->_cond);
+
+  if (rc != 0) {
+    LOG_ERROR("could not signal the condition: %s", strerror(rc));
+    exit(EXIT_FAILURE);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -369,7 +376,14 @@ void TRI_SignalCondition (TRI_condition_t* cond) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_BroadcastCondition (TRI_condition_t* cond) {
-  pthread_cond_broadcast(&cond->_cond);
+  int rc;
+
+  rc = pthread_cond_broadcast(&cond->_cond);
+
+  if (rc != 0) {
+    LOG_ERROR("could not croadcast the condition: %s", strerror(rc));
+    exit(EXIT_FAILURE);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -379,7 +393,54 @@ void TRI_BroadcastCondition (TRI_condition_t* cond) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_WaitCondition (TRI_condition_t* cond) {
-  pthread_cond_wait(&cond->_cond, cond->_mutex);
+  int rc;
+
+  rc = pthread_cond_wait(&cond->_cond, cond->_mutex);
+
+  if (rc != 0) {
+    LOG_ERROR("could not wait for the condition: %s", strerror(rc));
+    exit(EXIT_FAILURE);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief waits for a signal with a timeout in milli-seconds
+///
+/// Note that you must hold the lock.
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
+  int rc;
+  struct timespec ts;
+  struct timeval tp;
+
+  rc = gettimeofday(&tp, NULL);
+
+  if (rc != 0) {
+    LOG_ERROR("could not get time of day for the condition: %s", strerror(rc));
+    exit(EXIT_FAILURE);
+  }
+
+  // Convert from timeval to timespec
+  ts.tv_sec  = tp.tv_sec;
+  uint64_t x = (tp.tv_usec * 1000) + (delay * 1000);
+  uint64_t y = (x % 1000000000);
+  ts.tv_nsec = y;
+  ts.tv_sec  = ts.tv_sec + ((x - y) / 1000000000);
+
+  // and wait
+  rc = pthread_cond_timedwait(&cond->_cond, cond->_mutex, &ts);
+
+  if (rc != 0) {
+    if (rc == ETIMEDOUT) {
+      return false;
+    }
+
+    LOG_ERROR("could not wait for the condition: %s", strerror(rc));
+    exit(EXIT_FAILURE);
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -387,7 +448,14 @@ void TRI_WaitCondition (TRI_condition_t* cond) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_LockCondition (TRI_condition_t* cond) {
-  pthread_mutex_lock(cond->_mutex);
+  int rc;
+
+  rc = pthread_mutex_lock(cond->_mutex);
+
+  if (rc != 0) {
+    LOG_ERROR("could not lock the condition: %s", strerror(rc));
+    exit(EXIT_FAILURE);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -395,7 +463,14 @@ void TRI_LockCondition (TRI_condition_t* cond) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_UnlockCondition (TRI_condition_t* cond) {
-  pthread_mutex_unlock(cond->_mutex);
+  int rc;
+
+  rc = pthread_mutex_unlock(cond->_mutex);
+
+  if (rc != 0) {
+    LOG_ERROR("could not unlock the condition: %s", strerror(rc));
+    exit(EXIT_FAILURE);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
