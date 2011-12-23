@@ -33,11 +33,11 @@
 
 #include <boost/random.hpp>
 
+#include <BasicsC/socket-utils.h>
 #include <Basics/Exceptions.h>
-#include <Basics/Logger.h>
+#include <Logger/Logger.h>
 #include <Basics/Mutex.h>
 #include <Basics/MutexLocker.h>
-#include <Basics/SocketUtils.h>
 
 using namespace std;
 using namespace triagens::basics;
@@ -83,7 +83,7 @@ namespace RandomHelper {
   template<int N>
   class RandomDeviceDirect : public RandomDevice {
     public:
-      RandomDeviceDirect (string path) 
+      RandomDeviceDirect (string path)
         : fd(1), pos(0)  {
         fd = TRI_OPEN(path.c_str(), O_RDONLY);
 
@@ -157,7 +157,7 @@ namespace RandomHelper {
           THROW_INTERNAL_ERROR("cannot open random source '" + path + "'");
         }
 
-        if (! SocketUtils::setNonBlocking(fd)) {
+        if (! TRI_SetNonBlockingSocket(fd)) {
           THROW_INTERNAL_ERROR("cannot switch random source '" + path + "' to non-blocking");
         }
 

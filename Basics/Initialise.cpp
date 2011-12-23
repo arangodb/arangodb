@@ -32,7 +32,7 @@
 #include <BasicsC/hashes.h>
 #include <BasicsC/random.h>
 
-#include <Basics/Logger.h>
+#include <Logger/Logger.h>
 #include <Basics/Random.h>
 
 #ifdef TRI_BROKEN_CXA_GUARD

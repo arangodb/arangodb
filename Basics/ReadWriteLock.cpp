@@ -43,7 +43,7 @@ using namespace triagens::basics;
 /// @brief constructs a read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-ReadWriteLock::ReadWriteLock () 
+ReadWriteLock::ReadWriteLock ()
   : _rwlock(),
     _writeLocked(false) {
   TRI_InitReadWriteLock(&_rwlock);

@@ -26,8 +26,8 @@
 /// @author Copyright 2008-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_JUTLAND_BASICS_THREAD_POSIX_H
-#define TRIAGENS_JUTLAND_BASICS_THREAD_POSIX_H 1
+#ifndef TRIAGENS_JUTLAND_BASICS_THREAD_H
+#define TRIAGENS_JUTLAND_BASICS_THREAD_H 1
 
 #include <Basics/Common.h>
 

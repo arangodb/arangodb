@@ -32,7 +32,7 @@
 #include <BasicsC/strings.h>
 #include <BasicsC/conversions.h>
 #include <Basics/Exceptions.h>
-#include <Basics/Logger.h>
+#include <Logger/Logger.h>
 
 #include "ProgramOptions/program-options.h"
 
