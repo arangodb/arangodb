@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_PHILADELPHIA_BASICS_LOCKS_WIN32_H
-#define TRIAGENS_PHILADELPHIA_BASICS_LOCKS_WIN32_H 1
+#ifndef TRIAGENS_PHILADELPHIA_BASICS_C_LOCKS_WIN32_H
+#define TRIAGENS_PHILADELPHIA_BASICS_C_LOCKS_WIN32_H 1
 
 #include <BasicsC/common.h>
 
@@ -56,7 +56,7 @@ extern "C" {
 typedef struct TRI_read_write_lock_s {
     HANDLE _writerEvent;
     HANDLE _readersEvent;
- 
+
     int _readers;
 
     CRITICAL_SECTION _lockWriter;

@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_PHILADELPHIA_BASICS_RANDOMX_H
-#define TRIAGENS_PHILADELPHIA_BASICS_RANDOMX_H 1
+#ifndef TRIAGENS_PHILADELPHIA_BASICS_C_RANDOM_H
+#define TRIAGENS_PHILADELPHIA_BASICS_C_RANDOM_H 1
 
 #include <BasicsC/common.h>
 

@@ -25,10 +25,12 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_PHILADELPHIA_BASICS_LOCKS_MACOS_H
-#define TRIAGENS_PHILADELPHIA_BASICS_LOCKS_MACOS_H 1
+#ifndef TRIAGENS_PHILADELPHIA_BASICS_C_LOCKS_MACOS_H
+#define TRIAGENS_PHILADELPHIA_BASICS_C_LOCKS_MACOS_H 1
 
 #include <BasicsC/common.h>
+
+#ifdef TRI_HAVE_MACOS_SPIN
 
 #include <libkern/OSAtomic.h>
 
@@ -57,6 +59,8 @@ extern "C" {
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif
 
 #endif

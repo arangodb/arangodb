@@ -27,6 +27,8 @@
 
 #include "locks.h"
 
+#ifdef TRI_HAVE_POSIX_THREADS
+
 #include <BasicsC/logging.h>
 
 // -----------------------------------------------------------------------------
@@ -476,6 +478,8 @@ void TRI_UnlockCondition (TRI_condition_t* cond) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+#endif
 
 // Local Variables:
 // mode: outline-minor
