@@ -32,21 +32,21 @@
 #include <signal.h>
 
 #include <Basics/ConditionLocker.h>
-#include <Basics/Logger.h>
+#include <Logger/Logger.h>
 
 using namespace triagens::basics;
 
 void* Thread::startThread (void* arg) {
   sigset_t all;
   sigfillset(&all);
-  
+
   pthread_sigmask(SIG_SETMASK, &all, 0);
-  
+
   Thread * ptr = (Thread *) arg;
-  
+
   ptr->runMe();
   ptr->cleanup();
-  
+
   return 0;
 }
 

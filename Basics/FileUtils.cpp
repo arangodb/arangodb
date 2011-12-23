@@ -42,7 +42,7 @@
 #endif
 
 #include <Basics/Exceptions.h>
-#include <Basics/Logger.h>
+#include <Logger/Logger.h>
 #include <Basics/StringBuffer.h>
 
 namespace triagens {

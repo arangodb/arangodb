@@ -34,7 +34,7 @@
 
 #include <Basics/Exceptions.h>
 #include <Basics/StringBuffer.h>
-#include <Basics/Logger.h>
+#include <Logger/Logger.h>
 
 extern long GLOBAL_TIMEZONE;
 
