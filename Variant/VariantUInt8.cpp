@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -30,25 +30,54 @@
 
 #include <Basics/StringBuffer.h>
 
-namespace triagens {
-  namespace basics {
+using namespace std;
+using namespace triagens::basics;
 
-    // -----------------------------------------------------------------------------
-    // constructors and destructors
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
-    VariantUInt8::VariantUInt8 (uint8_t value)
-      : VariantObjectTemplate<uint8_t, VariantObject::VARIANT_UINT8, VariantUInt8>(value) {
-    }
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Variants
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
-    // -----------------------------------------------------------------------------
-    // VariantObject methods
-    // -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new unsigned int8
+////////////////////////////////////////////////////////////////////////////////
 
-    void VariantUInt8::print (StringBuffer& buffer, size_t) const {
-      buffer.appendText("(uint8) ");
-      buffer.appendInteger(getValue());
-      buffer.appendEol();
-    }
-  }
+VariantUInt8::VariantUInt8 (uint8_t value)
+  : VariantObjectTemplate<uint8_t, VariantObject::VARIANT_UINT8, VariantUInt8>(value) {
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             VariantObject methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Variants
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void VariantUInt8::print (StringBuffer& buffer, size_t) const {
+  buffer.appendText("(uint8) ");
+  buffer.appendInteger(getValue());
+  buffer.appendEol();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:

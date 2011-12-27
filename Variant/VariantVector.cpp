@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -31,102 +31,173 @@
 #include <Basics/StringBuffer.h>
 #include <Variant/VariantString.h>
 
-namespace triagens {
-  namespace basics {
+using namespace std;
+using namespace triagens::basics;
 
-    // -----------------------------------------------------------------------------
-    // constructors and destructors
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
-    VariantVector::VariantVector () {
-    }
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Variants
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new vector
+////////////////////////////////////////////////////////////////////////////////
 
+VariantVector::VariantVector ()
+  : _values() {
+}
 
-    VariantVector::VariantVector (vector<string> const& elements) {
-      for (vector<string>::const_iterator i = elements.begin();  i != elements.end();  ++i) {
-        string const& value = *i;
-        values.push_back(new VariantString(value));
-      }
-    }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new vector
+////////////////////////////////////////////////////////////////////////////////
 
-
-
-    VariantVector::~VariantVector () {
-      for (vector<VariantObject*>::const_iterator i = values.begin();  i != values.end();  ++i) {
-        delete (*i);
-      }
-    }
-
-    // -----------------------------------------------------------------------------
-    // VariantObject methods
-    // -----------------------------------------------------------------------------
-
-    VariantObject* VariantVector::clone () const {
-      VariantVector* copy = new VariantVector();
-
-      for (vector<VariantObject*>::const_iterator i = values.begin();  i != values.end();  ++i) {
-        VariantObject* o = *i;
-
-        copy->add(o->clone());
-      }
-
-      return copy;
-    }
-
-
-
-    void VariantVector::print (StringBuffer& buffer, size_t indent) const {
-      buffer.appendText("{\n");
-
-      vector<VariantObject*>::const_iterator j = values.begin();
-
-      for (size_t i = 0;  j != values.end();  ++i, ++j) {
-        printIndent(buffer, indent+1);
-
-        buffer.appendInteger(i);
-        buffer.appendText(" => ");
-
-        (*j)->print(buffer, indent + 2);
-      }
-
-      printIndent(buffer, indent);
-      buffer.appendText("}\n");
-    }
-
-    // -----------------------------------------------------------------------------
-    // public methods
-    // -----------------------------------------------------------------------------
-
-    void VariantVector::add (VariantObject* value) {
-      values.push_back(value);
-    }
-
-
-
-    void VariantVector::add (vector<VariantObject*> const& v) {
-      for (vector<VariantObject*>::const_iterator i = v.begin();  i != v.end();  ++i) {
-        VariantObject* value = *i;
-
-        values.push_back(value);
-      }
-    }
-
-
-
-    void VariantVector::add (string const& value) {
-      values.push_back(new VariantString(value));
-    }
-
-
-
-    void VariantVector::add (vector<string> const& v) {
-      for (vector<string>::const_iterator i = v.begin();  i != v.end();  ++i) {
-        string const& value = *i;
-
-        values.push_back(new VariantString(value));
-      }
-    }
+VariantVector::VariantVector (vector<string> const& elements)
+  : _values() {
+  for (vector<string>::const_iterator i = elements.begin();  i != elements.end();  ++i) {
+    string const& value = *i;
+    _values.push_back(new VariantString(value));
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructs a vector
+////////////////////////////////////////////////////////////////////////////////
+
+VariantVector::~VariantVector () {
+  for (vector<VariantObject*>::const_iterator i = _values.begin();  i != _values.end();  ++i) {
+    delete (*i);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             VariantObject methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Variants
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+VariantObject::ObjectType VariantVector::type () const {
+  return TYPE;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+VariantObject* VariantVector::clone () const {
+  VariantVector* copy = new VariantVector();
+
+  for (vector<VariantObject*>::const_iterator i = _values.begin();  i != _values.end();  ++i) {
+    VariantObject* o = *i;
+
+    copy->add(o->clone());
+  }
+
+  return copy;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void VariantVector::print (StringBuffer& buffer, size_t indent) const {
+  buffer.appendText("{\n");
+
+  vector<VariantObject*>::const_iterator j = _values.begin();
+
+  for (size_t i = 0;  j != _values.end();  ++i, ++j) {
+    printIndent(buffer, indent+1);
+
+    buffer.appendInteger(i);
+    buffer.appendText(" => ");
+
+    (*j)->print(buffer, indent + 2);
+  }
+
+  printIndent(buffer, indent);
+  buffer.appendText("}\n");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Variants
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the values
+////////////////////////////////////////////////////////////////////////////////
+
+vector<VariantObject*> const& VariantVector::getValues () const {
+  return _values;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a value
+////////////////////////////////////////////////////////////////////////////////
+
+void VariantVector::add (VariantObject* value) {
+  _values.push_back(value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds many values
+////////////////////////////////////////////////////////////////////////////////
+
+void VariantVector::add (vector<VariantObject*> const& v) {
+  for (vector<VariantObject*>::const_iterator i = v.begin();  i != v.end();  ++i) {
+    VariantObject* value = *i;
+
+    _values.push_back(value);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a string value
+////////////////////////////////////////////////////////////////////////////////
+
+void VariantVector::add (string const& value) {
+  _values.push_back(new VariantString(value));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds many string values
+////////////////////////////////////////////////////////////////////////////////
+
+void VariantVector::add (vector<string> const& v) {
+  for (vector<string>::const_iterator i = v.begin();  i != v.end();  ++i) {
+    string const& value = *i;
+
+    _values.push_back(new VariantString(value));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -48,324 +48,426 @@
 #include <Variant/VariantUInt64.h>
 #include <Variant/VariantVector.h>
 
-namespace triagens {
-  namespace basics {
-
-    // -----------------------------------------------------------------------------
-    // constructors and destructors
-    // -----------------------------------------------------------------------------
-
-    VariantArray::VariantArray ()
-      : attributes(), mapping(), nextKey() {
-    }
-
-
-
-    VariantArray::~VariantArray () {
-      for (map<string, VariantObject*>::const_iterator i = mapping.begin();  i != mapping.end();  ++i) {
-        VariantObject* value = i->second;
-
-        if (value != 0) {
-          delete value;
-        }
-      }
-    }
-
-    // -----------------------------------------------------------------------------
-    // VariantObject methods
-    // -----------------------------------------------------------------------------
-
-    VariantObject* VariantArray::clone () const {
-      VariantArray* copy = new VariantArray();
-
-      for (map<string, VariantObject*>::const_iterator i = mapping.begin();  i != mapping.end();  ++i) {
-        copy->add(i->first, i->second->clone());
-      }
-
-      return copy;
-    }
-
-
-
-    void VariantArray::print (StringBuffer& buffer, size_t indent) const {
-      buffer.appendText("{\n");
-
-      for (map<string, VariantObject*>::const_iterator i = mapping.begin();  i != mapping.end();  ++i) {
-        printIndent(buffer, indent + 1);
-
-        buffer.appendText(i->first);
-        buffer.appendText(" => ");
-
-        i->second->print(buffer, indent + 2);
-      }
-
-      printIndent(buffer, indent);
-      buffer.appendText("}\n");
-    }
-
-    // -----------------------------------------------------------------------------
-    // public methods
-    // -----------------------------------------------------------------------------
-
-    vector<VariantObject*> VariantArray::getValues () const {
-      vector<VariantObject*> result;
-
-      for (vector<string>::const_iterator i = attributes.begin();  i != attributes.end();  ++i) {
-        string const& key = *i;
-        map<string, VariantObject*>::const_iterator j = mapping.find(key);
-
-        if (j == mapping.end()) {
-          result.push_back(0);
-        }
-        else {
-          result.push_back(j->second);
-        }
-      }
-
-      return result;
-    }
-
-
-
-    void VariantArray::add (string const& key, VariantObject* value) {
-      map<string, VariantObject*>::const_iterator j = mapping.find(key);
-
-      if (j == mapping.end()) {
-        attributes.push_back(key);
-        mapping[key] = value;
-      }
-      else {
-        delete j->second;
-        mapping[key] = value;
-      }
-    }
-
-
-
-    void VariantArray::add (string const& key, string const& valueString) {
-      add(key, new VariantString(valueString));
-    }
-
-
-
-    void VariantArray::add (vector<string> const& kv) {
-      for (vector<string>::const_iterator i = kv.begin();  i != kv.end();  i += 2) {
-        string const& key = *i;
-
-        add(key, new VariantString(*(i+1)));
-      }
-    }
-
-
-
-    void VariantArray::addNextKey (string const& key) {
-      nextKey = key;
-    }
-
-
-
-    void VariantArray::addNextValue (VariantObject* value) {
-      if (! nextKey.empty()) {
-        add(nextKey, value);
-        nextKey = "";
-      }
-      else {
-        delete value;
-      }
-    }
-
-
-
-    VariantObject* VariantArray::lookup (string const& name) {
-      map<string,VariantObject*>::iterator i = mapping.find(name);
-
-      if (i == mapping.end()) {
-        return 0;
-      }
-      else {
-        return i->second;
-      }
-    }
-
-
-
-
-    VariantArray* VariantArray::lookupArray (string const& name) {
-      return dynamic_cast<VariantArray*>(lookup(name));
-    }
-
-
-
-
-    VariantBlob* VariantArray::lookupBlob (string const& name) {
-      return dynamic_cast<VariantBlob*>(lookup(name));
-    }
-
-
-
-
-    VariantBoolean* VariantArray::lookupBoolean (string const& name) {
-      return dynamic_cast<VariantBoolean*>(lookup(name));
-    }
-
-
-
-
-    VariantDate* VariantArray::lookupDate (string const& name) {
-      return dynamic_cast<VariantDate*>(lookup(name));
-    }
-
-
-
-
-    VariantDatetime* VariantArray::lookupDatetime (string const& name) {
-      return dynamic_cast<VariantDatetime*>(lookup(name));
-    }
-
-
-
-
-    VariantDouble* VariantArray::lookupDouble (string const& name) {
-      return dynamic_cast<VariantDouble*>(lookup(name));
-    }
-
-
-
-
-    VariantFloat* VariantArray::lookupFloat (string const& name) {
-      return dynamic_cast<VariantFloat*>(lookup(name));
-    }
-
-
-
-
-    VariantInt16* VariantArray::lookupInt16 (string const& name) {
-      return dynamic_cast<VariantInt16*>(lookup(name));
-    }
-
-
-    VariantInt8* VariantArray::lookupInt8 (string const& name) {
-      return dynamic_cast<VariantInt8*>(lookup(name));
-    }
-
-
-    VariantInt32* VariantArray::lookupInt32 (string const& name) {
-      return dynamic_cast<VariantInt32*>(lookup(name));
-    }
-
-
-
-
-    VariantInt64* VariantArray::lookupInt64 (string const& name) {
-      return dynamic_cast<VariantInt64*>(lookup(name));
-    }
-
-
-
-
-    VariantMatrix2* VariantArray::lookupMatrix2 (string const& name) {
-      return dynamic_cast<VariantMatrix2*>(lookup(name));
-    }
-
-
-
-
-    VariantNull* VariantArray::lookupNull (string const& name) {
-      return dynamic_cast<VariantNull*>(lookup(name));
-    }
-
-
-
-
-    VariantString* VariantArray::lookupString (string const& name) {
-      return dynamic_cast<VariantString*>(lookup(name));
-    }
-
-
-
-    string const& VariantArray::lookupString (string const& name, bool& found) {
-      static string const empty = "";
-
-      VariantObject* o = lookup(name);
-
-      if (o == 0) {
-        found = false;
-        return empty;
-      }
-      else {
-        if (o->is<VariantString>()) {
-          found = true;
-          return dynamic_cast<VariantString*>(o)->getValue();
-        }
-        else {
-          found = false;
-          return empty;
-        }
-      }
-    }
-
-
-
-    VariantUInt8* VariantArray::lookupUInt8 (string const& name) {
-      return dynamic_cast<VariantUInt8*>(lookup(name));
-    }
-
-
-
-    VariantUInt16* VariantArray::lookupUInt16 (string const& name) {
-      return dynamic_cast<VariantUInt16*>(lookup(name));
-    }
-
-
-
-
-    VariantUInt32* VariantArray::lookupUInt32 (string const& name) {
-      return dynamic_cast<VariantUInt32*>(lookup(name));
-    }
-
-
-
-
-    VariantUInt64* VariantArray::lookupUInt64 (string const& name) {
-      return dynamic_cast<VariantUInt64*>(lookup(name));
-    }
-
-
-
-
-    VariantVector* VariantArray::lookupVector (string const& name) {
-      return dynamic_cast<VariantVector*>(lookup(name));
-    }
-
-
-
-    vector<string> VariantArray::lookupStrings (string const& name, bool& error) {
-      vector<string> result;
-      error = false;
-
-      VariantVector* attr = lookupVector(name);
-
-      if (attr == 0) {
-        error = true;
-        return result;
-      }
-
-      vector<VariantObject*> const& elements = attr->getValues();
-
-      for (vector<VariantObject*>::const_iterator i = elements.begin();  i != elements.end();  ++i) {
-        VariantObject* element = *i;
-        VariantString* s = dynamic_cast<VariantString*>(element);
-
-        if (s == 0) {
-          error = true;
-        }
-        else {
-          result.push_back(s->getValue());
-        }
-      }
-
-      return result;
+using namespace std;
+using namespace triagens::basics;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Variants
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new array
+////////////////////////////////////////////////////////////////////////////////
+
+VariantArray::VariantArray ()
+  : _attributes(), _mapping(), _nextKey() {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructs a new array
+////////////////////////////////////////////////////////////////////////////////
+
+VariantArray::~VariantArray () {
+  for (map<string, VariantObject*>::const_iterator i = _mapping.begin();  i != _mapping.end();  ++i) {
+    VariantObject* value = i->second;
+
+    if (value != 0) {
+      delete value;
     }
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             VariantObject methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Variants
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+VariantObject::ObjectType VariantArray::type () const {
+  return TYPE;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+VariantObject* VariantArray::clone () const {
+  VariantArray* copy = new VariantArray();
+
+  for (map<string, VariantObject*>::const_iterator i = _mapping.begin();  i != _mapping.end();  ++i) {
+    copy->add(i->first, i->second->clone());
+  }
+
+  return copy;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void VariantArray::print (StringBuffer& buffer, size_t indent) const {
+  buffer.appendText("{\n");
+
+  for (map<string, VariantObject*>::const_iterator i = _mapping.begin();  i != _mapping.end();  ++i) {
+    printIndent(buffer, indent + 1);
+
+    buffer.appendText(i->first);
+    buffer.appendText(" => ");
+
+    i->second->print(buffer, indent + 2);
+  }
+
+  printIndent(buffer, indent);
+  buffer.appendText("}\n");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Variants
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the attributes
+////////////////////////////////////////////////////////////////////////////////
+
+vector<string> const& VariantArray::getAttributes () const {
+  return _attributes;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the values
+////////////////////////////////////////////////////////////////////////////////
+
+vector<VariantObject*> VariantArray::getValues () const {
+  vector<VariantObject*> result;
+
+  for (vector<string>::const_iterator i = _attributes.begin();  i != _attributes.end();  ++i) {
+    string const& key = *i;
+    map<string, VariantObject*>::const_iterator j = _mapping.find(key);
+
+    if (j == _mapping.end()) {
+      result.push_back(0);
+    }
+    else {
+      result.push_back(j->second);
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a key value pair
+////////////////////////////////////////////////////////////////////////////////
+
+void VariantArray::add (string const& key, VariantObject* value) {
+  map<string, VariantObject*>::const_iterator j = _mapping.find(key);
+
+  if (j == _mapping.end()) {
+    _attributes.push_back(key);
+    _mapping[key] = value;
+  }
+  else {
+    delete j->second;
+    _mapping[key] = value;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a key value pair
+////////////////////////////////////////////////////////////////////////////////
+
+void VariantArray::add (string const& key, string const& valueString) {
+  add(key, new VariantString(valueString));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds many key value pairs
+////////////////////////////////////////////////////////////////////////////////
+
+void VariantArray::add (vector<string> const& kv) {
+  for (vector<string>::const_iterator i = kv.begin();  i != kv.end();  i += 2) {
+    string const& key = *i;
+
+    add(key, new VariantString(*(i+1)));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prepares next key/value pair
+////////////////////////////////////////////////////////////////////////////////
+
+void VariantArray::addNextKey (string const& key) {
+  _nextKey = key;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finishes next key/value pair
+////////////////////////////////////////////////////////////////////////////////
+
+void VariantArray::addNextValue (VariantObject* value) {
+  if (! _nextKey.empty()) {
+    add(_nextKey, value);
+    _nextKey = "";
+  }
+  else {
+    delete value;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up an attribute
+////////////////////////////////////////////////////////////////////////////////
+
+VariantObject* VariantArray::lookup (string const& name) {
+  map<string,VariantObject*>::iterator i = _mapping.find(name);
+
+  if (i == _mapping.end()) {
+    return 0;
+  }
+  else {
+    return i->second;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up an array attribute
+////////////////////////////////////////////////////////////////////////////////
+
+VariantArray* VariantArray::lookupArray (string const& name) {
+  return dynamic_cast<VariantArray*>(lookup(name));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a blob attribute
+////////////////////////////////////////////////////////////////////////////////
+
+VariantBlob* VariantArray::lookupBlob (string const& name) {
+  return dynamic_cast<VariantBlob*>(lookup(name));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a boolean attribute
+////////////////////////////////////////////////////////////////////////////////
+
+VariantBoolean* VariantArray::lookupBoolean (string const& name) {
+  return dynamic_cast<VariantBoolean*>(lookup(name));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a date attribute
+////////////////////////////////////////////////////////////////////////////////
+
+VariantDate* VariantArray::lookupDate (string const& name) {
+  return dynamic_cast<VariantDate*>(lookup(name));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a datetime attribute
+////////////////////////////////////////////////////////////////////////////////
+
+VariantDatetime* VariantArray::lookupDatetime (string const& name) {
+  return dynamic_cast<VariantDatetime*>(lookup(name));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a double attribute
+////////////////////////////////////////////////////////////////////////////////
+
+VariantDouble* VariantArray::lookupDouble (string const& name) {
+  return dynamic_cast<VariantDouble*>(lookup(name));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a float attribute
+////////////////////////////////////////////////////////////////////////////////
+
+VariantFloat* VariantArray::lookupFloat (string const& name) {
+  return dynamic_cast<VariantFloat*>(lookup(name));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a int16 attribute
+////////////////////////////////////////////////////////////////////////////////
+
+VariantInt16* VariantArray::lookupInt16 (string const& name) {
+  return dynamic_cast<VariantInt16*>(lookup(name));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a int16 attribute
+////////////////////////////////////////////////////////////////////////////////
+
+VariantInt8* VariantArray::lookupInt8 (string const& name) {
+  return dynamic_cast<VariantInt8*>(lookup(name));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a int32 attribute
+////////////////////////////////////////////////////////////////////////////////
+
+VariantInt32* VariantArray::lookupInt32 (string const& name) {
+  return dynamic_cast<VariantInt32*>(lookup(name));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a int64 attribute
+////////////////////////////////////////////////////////////////////////////////
+
+VariantInt64* VariantArray::lookupInt64 (string const& name) {
+  return dynamic_cast<VariantInt64*>(lookup(name));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a matrix attribute
+////////////////////////////////////////////////////////////////////////////////
+
+VariantMatrix2* VariantArray::lookupMatrix2 (string const& name) {
+  return dynamic_cast<VariantMatrix2*>(lookup(name));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a null attribute
+////////////////////////////////////////////////////////////////////////////////
+
+VariantNull* VariantArray::lookupNull (string const& name) {
+  return dynamic_cast<VariantNull*>(lookup(name));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a string attribute
+////////////////////////////////////////////////////////////////////////////////
+
+VariantString* VariantArray::lookupString (string const& name) {
+  return dynamic_cast<VariantString*>(lookup(name));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a string attribute
+////////////////////////////////////////////////////////////////////////////////
+
+string const& VariantArray::lookupString (string const& name, bool& found) {
+  static string const empty = "";
+
+  VariantObject* o = lookup(name);
+
+  if (o == 0) {
+    found = false;
+    return empty;
+  }
+  else {
+    if (o->is<VariantString>()) {
+      found = true;
+      return dynamic_cast<VariantString*>(o)->getValue();
+    }
+    else {
+      found = false;
+      return empty;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a uint8 attribute
+////////////////////////////////////////////////////////////////////////////////
+
+VariantUInt8* VariantArray::lookupUInt8 (string const& name) {
+  return dynamic_cast<VariantUInt8*>(lookup(name));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a uint16 attribute
+////////////////////////////////////////////////////////////////////////////////
+
+VariantUInt16* VariantArray::lookupUInt16 (string const& name) {
+  return dynamic_cast<VariantUInt16*>(lookup(name));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a uint32 attribute
+////////////////////////////////////////////////////////////////////////////////
+
+VariantUInt32* VariantArray::lookupUInt32 (string const& name) {
+  return dynamic_cast<VariantUInt32*>(lookup(name));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a uint64 attribute
+////////////////////////////////////////////////////////////////////////////////
+
+VariantUInt64* VariantArray::lookupUInt64 (string const& name) {
+  return dynamic_cast<VariantUInt64*>(lookup(name));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a vector attribute
+////////////////////////////////////////////////////////////////////////////////
+
+VariantVector* VariantArray::lookupVector (string const& name) {
+  return dynamic_cast<VariantVector*>(lookup(name));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a vector attribute
+////////////////////////////////////////////////////////////////////////////////
+
+vector<string> VariantArray::lookupStrings (string const& name, bool& error) {
+  vector<string> result;
+  error = false;
+
+  VariantVector* attr = lookupVector(name);
+
+  if (attr == 0) {
+    error = true;
+    return result;
+  }
+
+  vector<VariantObject*> const& elements = attr->getValues();
+
+  for (vector<VariantObject*>::const_iterator i = elements.begin();  i != elements.end();  ++i) {
+    VariantObject* element = *i;
+    VariantString* s = dynamic_cast<VariantString*>(element);
+
+    if (s == 0) {
+      error = true;
+    }
+    else {
+      result.push_back(s->getValue());
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:

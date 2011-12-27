@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -31,136 +31,207 @@
 #include <Basics/StringBuffer.h>
 #include <Variant/VariantString.h>
 
-namespace triagens {
-  namespace basics {
+using namespace std;
+using namespace triagens::basics;
 
-    // -----------------------------------------------------------------------------
-    // constructors and destructors
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
-    VariantMatrix2::VariantMatrix2 () {
-    }
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Variants
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new matrix2
+////////////////////////////////////////////////////////////////////////////////
 
+VariantMatrix2::VariantMatrix2 ()
+  : _dimensions(), _values() {
+}
 
-    VariantMatrix2::~VariantMatrix2 () {
-      for (vector< vector<VariantObject*> >::const_iterator i = values.begin();  i != values.end();  ++i) {
-        vector<VariantObject*> const& line = *i;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructs a new matrix2
+////////////////////////////////////////////////////////////////////////////////
 
-        for (vector<VariantObject*>::const_iterator j = line.begin();  j != line.end();  ++j) {
-          if (*j != 0) {
-            delete *j;
-          }
-        }
+VariantMatrix2::~VariantMatrix2 () {
+  for (vector< vector<VariantObject*> >::const_iterator i = _values.begin();  i != _values.end();  ++i) {
+    vector<VariantObject*> const& line = *i;
+
+    for (vector<VariantObject*>::const_iterator j = line.begin();  j != line.end();  ++j) {
+      if (*j != 0) {
+        delete *j;
       }
-    }
-
-    // -----------------------------------------------------------------------------
-    // VariantObject methods
-    // -----------------------------------------------------------------------------
-
-    VariantObject* VariantMatrix2::clone () const {
-      VariantMatrix2* copy = new VariantMatrix2();
-
-      copy->dimensions[0] = dimensions[0];
-      copy->dimensions[1] = dimensions[1];
-
-      for (vector< vector<VariantObject*> >::const_iterator i = values.begin();  i != values.end();  ++i) {
-        vector<VariantObject*> const& inner = *i;
-        vector<VariantObject*> innerCopy;
-
-        for (vector<VariantObject*>::const_iterator j = inner.begin();  j != inner.end();  ++j) {
-          VariantObject* vs = *j;
-
-          innerCopy.push_back(vs->clone());
-        }
-
-        copy->values.push_back(innerCopy);
-      }
-
-      return copy;
-    }
-
-
-
-    void VariantMatrix2::print (StringBuffer& buffer, size_t) const {
-      buffer.appendText("(matrix)");
-      buffer.appendEol();
-    }
-
-    // -----------------------------------------------------------------------------
-    // public methods
-    // -----------------------------------------------------------------------------
-
-    vector<string> const& VariantMatrix2::getDimension (size_t n) const {
-      if (n >= 2) {
-        THROW_PARAMETER_ERROR("n", "getDimension", "too large");
-      }
-
-      return dimensions[n];
-    }
-
-
-
-    VariantObject* VariantMatrix2::getValue (size_t x, size_t y) const {
-      if (dimensions[0].size() <= x) {
-        THROW_PARAMETER_ERROR("x", "setValue", "too large");
-      }
-
-      if (dimensions[1].size() <= y) {
-        THROW_PARAMETER_ERROR("y", "setValue", "too large");
-      }
-
-      if (values.size() <= x) {
-        return 0;
-      }
-
-      vector<VariantObject*> const& line = values[x];
-
-      if (line.size() <= y) {
-        return 0;
-      }
-
-      return line[y];
-    }
-
-
-    void VariantMatrix2::setValue (size_t x, size_t y, VariantObject* object) {
-      if (dimensions[0].size() <= x) {
-        THROW_PARAMETER_ERROR("x", "setValue", "too large");
-      }
-
-      if (dimensions[1].size() <= y) {
-        THROW_PARAMETER_ERROR("y", "setValue", "too large");
-      }
-
-      if (values.size() <= x) {
-        values.resize(x + 1);
-      }
-
-      vector<VariantObject*>& line = values[x];
-
-      if (line.size() <= y) {
-        line.resize(y + 1);
-      }
-
-      if (line[y] != 0) {
-        delete line[y];
-      }
-
-      line[y] = object;
-    }
-
-
-
-    size_t VariantMatrix2::addDimension (size_t n, string const& name) {
-      if (n >= 2) {
-        THROW_PARAMETER_ERROR("n", "addDimension", "too large");
-      }
-
-      dimensions[n].push_back(name);
-
-      return dimensions[n].size() - 1;
     }
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             VariantObject methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Variants
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+VariantObject::ObjectType VariantMatrix2::type () const {
+  return TYPE;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+VariantObject* VariantMatrix2::clone () const {
+  VariantMatrix2* copy = new VariantMatrix2();
+
+  copy->_dimensions[0] = _dimensions[0];
+  copy->_dimensions[1] = _dimensions[1];
+
+  for (vector< vector<VariantObject*> >::const_iterator i = _values.begin();  i != _values.end();  ++i) {
+    vector<VariantObject*> const& inner = *i;
+    vector<VariantObject*> innerCopy;
+
+    for (vector<VariantObject*>::const_iterator j = inner.begin();  j != inner.end();  ++j) {
+      VariantObject* vs = *j;
+
+      innerCopy.push_back(vs->clone());
+    }
+
+    copy->_values.push_back(innerCopy);
+  }
+
+  return copy;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void VariantMatrix2::print (StringBuffer& buffer, size_t) const {
+  buffer.appendText("(matrix)");
+  buffer.appendEol();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Variants
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the dimensions
+////////////////////////////////////////////////////////////////////////////////
+
+vector<string> const& VariantMatrix2::getDimension (size_t n) const {
+  if (n >= 2) {
+    THROW_PARAMETER_ERROR("n", "getDimension", "too large");
+  }
+
+  return _dimensions[n];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the values
+////////////////////////////////////////////////////////////////////////////////
+
+vector< vector<VariantObject*> > const& VariantMatrix2::getValues () const {
+  return _values;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the value at a given position
+////////////////////////////////////////////////////////////////////////////////
+
+VariantObject* VariantMatrix2::getValue (size_t x, size_t y) const {
+  if (_dimensions[0].size() <= x) {
+    THROW_PARAMETER_ERROR("x", "setValue", "too large");
+  }
+
+  if (_dimensions[1].size() <= y) {
+    THROW_PARAMETER_ERROR("y", "setValue", "too large");
+  }
+
+  if (_values.size() <= x) {
+    return 0;
+  }
+
+  vector<VariantObject*> const& line = _values[x];
+
+  if (line.size() <= y) {
+    return 0;
+  }
+
+  return line[y];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set a value
+////////////////////////////////////////////////////////////////////////////////
+
+void VariantMatrix2::setValue (size_t x, size_t y, VariantObject* object) {
+  if (_dimensions[0].size() <= x) {
+    THROW_PARAMETER_ERROR("x", "setValue", "too large");
+  }
+
+  if (_dimensions[1].size() <= y) {
+    THROW_PARAMETER_ERROR("y", "setValue", "too large");
+  }
+
+  if (_values.size() <= x) {
+    _values.resize(x + 1);
+  }
+
+  vector<VariantObject*>& line = _values[x];
+
+  if (line.size() <= y) {
+    line.resize(y + 1);
+  }
+
+  if (line[y] != 0) {
+    delete line[y];
+  }
+
+  line[y] = object;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a dimension element
+////////////////////////////////////////////////////////////////////////////////
+
+size_t VariantMatrix2::addDimension (size_t n, string const& name) {
+  if (n >= 2) {
+    THROW_PARAMETER_ERROR("n", "addDimension", "too large");
+  }
+
+  _dimensions[n].push_back(name);
+
+  return _dimensions[n].size() - 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:
+
