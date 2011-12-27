@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -36,193 +36,269 @@
 
 using namespace triagens::basics;
 
-void* Thread::startThread (void* arg) {
-  sigset_t all;
-  sigfillset(&all);
+// -----------------------------------------------------------------------------
+// --SECTION--                                            static private methods
+// -----------------------------------------------------------------------------
 
-  pthread_sigmask(SIG_SETMASK, &all, 0);
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Threading
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief static started with access to the private variables
+////////////////////////////////////////////////////////////////////////////////
+
+void Thread::startThread (void* arg) {
   Thread * ptr = (Thread *) arg;
 
   ptr->runMe();
   ptr->cleanup();
-
-  return 0;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                             static public methods
+// -----------------------------------------------------------------------------
 
-namespace triagens {
-  namespace basics {
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Threading
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
-    // -----------------------------------------------------------------------------
-    // static public methods
-    // -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the process id
+////////////////////////////////////////////////////////////////////////////////
 
-    TRI_pid_t Thread::currentProcessId () {
-      return TRI_CurrentProcessId();
-    }
+TRI_pid_t Thread::currentProcessId () {
+  return TRI_CurrentProcessId();
+}
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the thread process id
+////////////////////////////////////////////////////////////////////////////////
 
+TRI_pid_t Thread::currentThreadProcessId () {
+  return TRI_CurrentThreadProcessId();
+}
 
-    TRI_pid_t Thread::currentThreadProcessId () {
-      return TRI_CurrentThreadProcessId();
-    }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the thread id
+////////////////////////////////////////////////////////////////////////////////
 
+TRI_tid_t Thread::currentThreadId () {
+  return TRI_CurrentThreadId();
+}
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
-    TRI_tid_t Thread::currentThreadId () {
-      return TRI_CurrentThreadId();
-    }
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
-    // -----------------------------------------------------------------------------
-    // constructors and destructors
-    // -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Threading
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
-    Thread::Thread (const string& name)
-      : _name(name),
-        _asynchronousCancelation(false),
-        _thread(0),
-        _finishedCondition(0),
-        _started(0),
-        _running(0) {
-      memset(&_thread, 0, sizeof(_thread));
-    }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a thread
+////////////////////////////////////////////////////////////////////////////////
 
+Thread::Thread (const string& name)
+  : _name(name),
+    _asynchronousCancelation(false),
+    _thread(),
+    _finishedCondition(0),
+    _started(0),
+    _running(0) {
+  TRI_InitThread(&_thread);
+}
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes the thread
+////////////////////////////////////////////////////////////////////////////////
 
-    Thread::~Thread () {
-      if (_running != 0) {
-        LOGGER_WARNING << "forcefully shuting down thread '" << _name << "'";
-        pthread_cancel(_thread);
-      }
+Thread::~Thread () {
+  if (_running != 0) {
+    LOGGER_WARNING << "forcefully shuting down thread '" << _name << "'";
+    TRI_StopThread(&_thread);
+  }
 
-      pthread_detach(_thread);
-    }
+  TRI_DeatchThread(&_thread);
+}
 
-    // -----------------------------------------------------------------------------
-    // public methods
-    // -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
-    bool Thread::isRunning () {
-      return _running != 0;
-    }
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Threading
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
+bool Thread::isRunning () {
+  return _running != 0;
+}
 
-    intptr_t Thread::threadId () {
-      return (intptr_t) _thread;
-    }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a thread identifier
+////////////////////////////////////////////////////////////////////////////////
 
+intptr_t Thread::threadId () {
+  return (intptr_t) _thread;
+}
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief starts the thread
+////////////////////////////////////////////////////////////////////////////////
 
-    bool Thread::start (ConditionVariable * finishedCondition) {
-      _finishedCondition = finishedCondition;
+bool Thread::start (ConditionVariable * finishedCondition) {
+  _finishedCondition = finishedCondition;
 
-      if (_started != 0) {
-        LOGGER_FATAL << "called started on an already started thread";
-        return false;
-      }
+  if (_started != 0) {
+    LOGGER_FATAL << "called started on an already started thread";
+    return false;
+  }
 
-      _started = 1;
+  _started = 1;
 
-      int rc = pthread_create(&_thread, 0, &startThread, this);
+  bool ok = TRI_StartThread(&_thread, &startThread, this);
 
-      if (rc != 0) {
-        LOGGER_ERROR << "could not start thread '" << _name << "': " << strerror(errno);
-        return false;
-      }
+  if (! ok) {
+    LOGGER_ERROR << "could not start thread '" << _name << "': " << strerror(errno);
+  }
 
-      return true;
-    }
+  return ok;
+}
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stops the thread
+////////////////////////////////////////////////////////////////////////////////
 
-
-    void Thread::stop () {
-      if (_running != 0) {
-        LOGGER_TRACE << "trying to cancel (aka stop) the thread " << _name;
-        pthread_cancel(_thread);
-      }
-      else {
-        LOGGER_DEBUG << "trying to cancel (aka stop) stopped thread " << _name;
-      }
-    }
-
-
-
-    void Thread::join () {
-      TRI_JoinThread(&_thread);
-    }
-
-
-
-    void Thread::sendSignal (int signal) {
-      if (_running != 0) {
-        int rc = pthread_kill(_thread, signal);
-
-        if (rc != 0) {
-          LOGGER_ERROR << "could not send signal to thread '" << _name << "': " << strerror(errno);
-        }
-      }
-    }
-
-    // -----------------------------------------------------------------------------
-    // protected methods
-    // -----------------------------------------------------------------------------
-
-    void Thread::allowAsynchronousCancelation () {
-      if (_started) {
-        if (_running) {
-          if (_thread == pthread_self()) {
-            LOGGER_DEBUG << "set asynchronous cancelation for " << _name;
-            pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, 0);
-          }
-          else {
-            LOGGER_ERROR << "cannot change cancelation type of an already running thread from the outside";
-          }
-        }
-        else {
-          LOGGER_WARNING << "thread has already stop, it is useless to change the cancelation type";
-        }
-      }
-      else {
-        _asynchronousCancelation = true;
-      }
-    }
-
-    // -----------------------------------------------------------------------------
-    // private methods
-    // -----------------------------------------------------------------------------
-
-    void Thread::runMe () {
-      if (_asynchronousCancelation) {
-        LOGGER_DEBUG << "set asynchronous cancelation for " << _name;
-        pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, 0);
-      }
-
-      _running = 1;
-
-      try {
-        run();
-      }
-      catch (...) {
-        LOGGER_DEBUG << "caught exception on " << _name;
-        _running = 0;
-
-        if (_finishedCondition != 0) {
-          CONDITION_LOCKER(locker, *_finishedCondition);
-          locker.broadcast();
-        }
-
-        throw;
-      }
-
-      _running = 0;
-
-      if (_finishedCondition != 0) {
-        CONDITION_LOCKER(locker, *_finishedCondition);
-        locker.broadcast();
-      }
-    }
+void Thread::stop () {
+  if (_running != 0) {
+    LOGGER_TRACE << "trying to cancel (aka stop) the thread " << _name;
+    TRI_StopThread(&_thread);
+  }
+  else {
+    LOGGER_DEBUG << "trying to cancel (aka stop) stopped thread " << _name;
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief joins the thread
+////////////////////////////////////////////////////////////////////////////////
+
+void Thread::join () {
+  TRI_JoinThread(&_thread);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send signal to thread
+////////////////////////////////////////////////////////////////////////////////
+
+void Thread::sendSignal (int signal) {
+  if (_running != 0) {
+    TRI_SignalThread(&_thread, signal);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Threading
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief allows asynchrounous cancelation
+////////////////////////////////////////////////////////////////////////////////
+
+void Thread::allowAsynchronousCancelation () {
+  if (_started) {
+    if (_running) {
+      if (TRI_IsSelfThread(&_thread)) {
+        LOGGER_DEBUG << "set asynchronous cancelation for " << _name;
+        TRI_AllowCancelation();
+      }
+      else {
+        LOGGER_ERROR << "cannot change cancelation type of an already running thread from the outside";
+      }
+    }
+    else {
+      LOGGER_WARNING << "thread has already stop, it is useless to change the cancelation type";
+    }
+  }
+  else {
+    _asynchronousCancelation = true;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Threading
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+void Thread::runMe () {
+  if (_asynchronousCancelation) {
+    LOGGER_DEBUG << "set asynchronous cancelation for " << _name;
+    TRI_AllowCancelation();
+  }
+
+  _running = 1;
+
+  try {
+    run();
+  }
+  catch (...) {
+    LOGGER_DEBUG << "caught exception on " << _name;
+    _running = 0;
+
+    if (_finishedCondition != 0) {
+      CONDITION_LOCKER(locker, *_finishedCondition);
+      locker.broadcast();
+    }
+
+    throw;
+  }
+
+  _running = 0;
+
+  if (_finishedCondition != 0) {
+    CONDITION_LOCKER(locker, *_finishedCondition);
+    locker.broadcast();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:

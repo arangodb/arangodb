@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -31,45 +31,83 @@
 #include <Basics/Exceptions.h>
 #include <Basics/StringUtils.h>
 
-namespace triagens {
-  namespace basics {
+using namespace triagens::basics;
 
-    // -----------------------------------------------------------------------------
-    // constructors and destructors
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
-    ConditionLocker::ConditionLocker (ConditionVariable* conditionVariable)
-      : _conditionVariable(conditionVariable), _file(0), _line(0) {
-      _conditionVariable->lock();
-    }
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Threading
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locks the condition variable
+///
+/// The constructors locks the condition variable, the destructors unlocks
+/// the condition variable
+////////////////////////////////////////////////////////////////////////////////
 
-
-    ConditionLocker::ConditionLocker (ConditionVariable* conditionVariable, char const* file, int line)
-      : _conditionVariable(conditionVariable), _file(file), _line(line) {
-      _conditionVariable->lock();
-    }
-
-
-
-    ConditionLocker::~ConditionLocker () {
-      _conditionVariable->unlock();
-    }
-
-    // -----------------------------------------------------------------------------
-    // public methods
-    // -----------------------------------------------------------------------------
-
-    void ConditionLocker::wait () {
-      _conditionVariable->wait();
-    }
-
-
-
-    void ConditionLocker::broadcast () {
-      _conditionVariable->broadcast();
-    }
-  }
+ConditionLocker::ConditionLocker (ConditionVariable* conditionVariable)
+  : _conditionVariable(conditionVariable), _file(0), _line(0) {
+  _conditionVariable->lock();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locks the condition variable
+///
+/// The constructors locks the condition variable, the destructors unlocks
+/// the condition variable
+////////////////////////////////////////////////////////////////////////////////
 
+ConditionLocker::ConditionLocker (ConditionVariable* conditionVariable, char const* file, int line)
+  : _conditionVariable(conditionVariable), _file(file), _line(line) {
+  _conditionVariable->lock();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unlocks the condition variable
+////////////////////////////////////////////////////////////////////////////////
+
+ConditionLocker::~ConditionLocker () {
+  _conditionVariable->unlock();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Threading
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief waits for an event to occur
+////////////////////////////////////////////////////////////////////////////////
+
+void ConditionLocker::wait () {
+  _conditionVariable->wait();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief broadcasts an event
+////////////////////////////////////////////////////////////////////////////////
+
+void ConditionLocker::broadcast () {
+  _conditionVariable->broadcast();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:

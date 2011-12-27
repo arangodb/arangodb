@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -50,11 +50,15 @@
 #endif
 
 // -----------------------------------------------------------------------------
-// corrections for older boost libraries
+// --SECTION--                                                             boost
 // -----------------------------------------------------------------------------
 
-#ifdef USE_BOOST_EXCEPTIONS
-#if BOOST_VERSION < 104000
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Utilities
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+#if defined(USE_BOOST_EXCEPTIONS) && (BOOST_VERSION < 104000)
 
 namespace boost {
   typedef error_info<struct errinfo_api_function_,char const *> errinfo_api_function;
@@ -65,33 +69,400 @@ namespace boost {
 }
 
 #endif
-#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// exceptions
+// --SECTION--                                                     public macros
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Utilities
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief diagnostic output
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef USE_BOOST_EXCEPTIONS
+
+#define DIAGNOSTIC_INFORMATION(e) \
+    boost::diagnostic_information(e)
+
+#else
+
+#define DIAGNOSTIC_INFORMATION(e) \
+    e.diagnostic_information()
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief throws an unqualified exception
+///
+/// Some compilers do not know that BOOST_THROW_EXCEPTION never returns.
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef USE_BOOST_EXCEPTIONS
+
+#define THROW_TRIAGENS_ERROR(mesg, details)                           \
+    do {                                                              \
+      BOOST_THROW_EXCEPTION(triagens::basics::TriagensError()         \
+                            << triagens::ErrorMessage(mesg)           \
+                            << triagens::ErrorDetails(details));      \
+      throw "this cannot happen";                                     \
+    }                                                                 \
+    while (0)
+
+#else
+
+#define THROW_TRIAGENS_ERROR(mesg, details)                           \
+    throw triagens::basics::TriagensError(mesg, details)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief throws an exception for internal errors
+///
+/// Some compilers do not know that BOOST_THROW_EXCEPTION never returns.
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef USE_BOOST_EXCEPTIONS
+
+#define THROW_INTERNAL_ERROR(a)                                            \
+    do {                                                                   \
+      BOOST_THROW_EXCEPTION(triagens::basics::InternalError()              \
+                            << triagens::ErrorMessage(a)                   \
+                            << boost::errinfo_at_line(__LINE__)            \
+                            << boost::errinfo_file_name(__FILE__));        \
+      throw "this cannot happen";                                          \
+    }                                                                      \
+    while (0)
+
+#else
+
+#define THROW_INTERNAL_ERROR(a)                                            \
+    throw triagens::basics::InternalError(a)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief throws an exception for internal errors with line info
+///
+/// Some compilers do not know that BOOST_THROW_EXCEPTION never returns.
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef USE_BOOST_EXCEPTIONS
+
+#define THROW_INTERNAL_ERROR_L(a, file, line)                              \
+    do {                                                                   \
+      BOOST_THROW_EXCEPTION(triagens::basics::InternalError()              \
+                            << triagens::ErrorMessage(a)                   \
+                            << boost::errinfo_at_line(line)                \
+                            << boost::errinfo_file_name(file));            \
+      throw "this cannot happen";                                          \
+    }                                                                      \
+    while (0)
+
+#else
+
+#define THROW_INTERNAL_ERROR_L(a, file, line)                              \
+    throw triagens::basics::InternalError(a)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief throws an exception for out-of-memory errors
+///
+/// Some compilers do not know that BOOST_THROW_EXCEPTION never returns.
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef USE_BOOST_EXCEPTIONS
+
+#define THROW_OUT_OF_MEMORY_ERROR()                                     \
+    do {                                                                \
+      BOOST_THROW_EXCEPTION(triagens::basics::OutOfMemoryError());      \
+      throw "this cannot happen";                                       \
+    }                                                                   \
+    while (0)
+
+#else
+
+#define THROW_OUT_OF_MEMORY_ERROR()                     \
+    throw triagens::basics::OutOfMemoryError()
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief throws an exception for file open errors
+///
+/// Some compilers do not know that BOOST_THROW_EXCEPTION never returns.
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef USE_BOOST_EXCEPTIONS
+
+#define THROW_FILE_OPEN_ERROR(func, file, mode)                          \
+    do {                                                                 \
+      BOOST_THROW_EXCEPTION(triagens::basics::FileError()                \
+                            << triagens::ErrorMessage("file open error") \
+                            << boost::errinfo_api_function(func)         \
+                            << boost::errinfo_errno(errno)               \
+                            << boost::errinfo_file_name(file)            \
+                            << boost::errinfo_file_open_mode(mode));     \
+      throw "this cannot happen";                                        \
+    }                                                                    \
+    while (0)
+
+#else
+
+#define THROW_FILE_OPEN_ERROR(func, file, mode)                          \
+    throw triagens::basics::FileError("file open error", file)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief throws an exception for file errors
+///
+/// Some compilers do not know that BOOST_THROW_EXCEPTION never returns.
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef USE_BOOST_EXCEPTIONS
+
+#define THROW_FILE_FUNC_ERROR(func, mesg)                               \
+    do {                                                                \
+      BOOST_THROW_EXCEPTION(triagens::basics::FileError()               \
+                            << triagens::ErrorMessage(mesg)             \
+                            << boost::errinfo_api_function(func)        \
+                            << boost::errinfo_errno(errno));            \
+      throw "this cannot happen";                                       \
+    }                                                                   \
+    while (0)
+
+#else
+
+#define THROW_FILE_FUNC_ERROR(func, mesg)                               \
+    throw triagens::basics::FileError(func, mesg)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief throws an exception for file errors
+///
+/// Some compilers do not know that BOOST_THROW_EXCEPTION never returns.
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef USE_BOOST_EXCEPTIONS
+
+#define THROW_FILE_FUNC_ERROR_E(func, mesg, error)                      \
+    do {                                                                \
+      BOOST_THROW_EXCEPTION(triagens::basics::FileError()               \
+                            << triagens::ErrorMessage(mesg)             \
+                            << boost::errinfo_api_function(func)        \
+                            << boost::errinfo_errno(error));            \
+      throw "this cannot happen";                                       \
+    }                                                                   \
+    while (0)
+
+#else
+
+#define THROW_FILE_FUNC_ERROR_E(func, mesg, error)                      \
+    throw triagens::basics::FileError(func, mesg + (" " + triagens::basics::StringUtils::itoa(error)))
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief throws an exception for file errors
+///
+/// Some compilers do not know that BOOST_THROW_EXCEPTION never returns.
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef USE_BOOST_EXCEPTIONS
+
+#define THROW_FILE_ERROR(mesg)                                          \
+    do {                                                                \
+      BOOST_THROW_EXCEPTION(triagens::basics::FileError()               \
+                            << triagens::ErrorMessage(mesg));           \
+      throw "this cannot happen";                                       \
+    }                                                                   \
+    while (0)
+
+#else
+
+#define THROW_FILE_ERROR(mesg)                                          \
+    throw triagens::basics::FileError(mesg)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rethrows an exception with filename
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef USE_BOOST_EXCEPTIONS
+
+#define RETHROW_FILE_NAME(ex, file)                                       \
+    do {                                                                  \
+      ex << boost::errinfo_file_name(file);                               \
+      throw ex;                                                           \
+    } while (0)
+
+#else
+
+#define RETHROW_FILE_NAME(ex, file)                                       \
+    throw ex
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief throws an exception for parse errors
+///
+/// Some compilers do not know that BOOST_THROW_EXCEPTION never returns.
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef USE_BOOST_EXCEPTIONS
+
+#define THROW_PARSE_ERROR(mesg)                                         \
+    do {                                                                \
+      BOOST_THROW_EXCEPTION(triagens::basics::ParseError()              \
+                            << triagens::ErrorMessage(mesg));           \
+      throw "this cannot happen";                                       \
+    }                                                                   \
+    while (0)
+
+#else
+
+#define THROW_PARSE_ERROR(mesg)                                         \
+    throw triagens::basics::ParseError(mesg)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief throws an exception for parse errors
+///
+/// Some compilers do not know that BOOST_THROW_EXCEPTION never returns.
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef USE_BOOST_EXCEPTIONS
+
+#define THROW_PARSE_ERROR_L(line, mesg)                                 \
+    do {                                                                \
+      BOOST_THROW_EXCEPTION(triagens::basics::ParseError()              \
+                            << triagens::ErrorMessage(mesg)             \
+                            << boost::errinfo_at_line(line));           \
+      throw "this cannot happen";                                       \
+    }                                                                   \
+    while (0)
+
+#else
+
+#define THROW_PARSE_ERROR_L(line, mesg)                                 \
+    throw triagens::basics::ParseError(mesg, "line " + triagens::basics::StringUtils::itoa(line))
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief throws an exception for parse errors
+///
+/// Some compilers do not know that BOOST_THROW_EXCEPTION never returns.
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef USE_BOOST_EXCEPTIONS
+
+#define THROW_PARSE_ERROR_D(mesg, details)                              \
+    do {                                                                \
+      BOOST_THROW_EXCEPTION(triagens::basics::ParseError()              \
+                            << triagens::ErrorMessage(mesg)             \
+                            << triagens::ErrorDetails(details));        \
+      throw "this cannot happen";                                       \
+    }                                                                   \
+    while (0)
+
+#else
+
+#define THROW_PARSE_ERROR_D(mesg, details)                              \
+    throw triagens::basics::ParseError(mesg, details)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rethrows an exception with line
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef USE_BOOST_EXCEPTIONS
+
+#define RETHROW_LINE(ex, line)                                            \
+    do {                                                                  \
+      ex << boost::errinfo_at_line(line);                                 \
+      throw ex;                                                           \
+    } while (0)
+
+#else
+
+#define RETHROW_LINE(ex, line)                                            \
+    throw ex
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief throws an exception for parameter errors
+///
+/// Some compilers do not know that BOOST_THROW_EXCEPTION never returns.
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef USE_BOOST_EXCEPTIONS
+
+#define THROW_PARAMETER_ERROR(param, func, mesg)                        \
+    do {                                                                \
+      BOOST_THROW_EXCEPTION(triagens::basics::ParameterError()          \
+                            << triagens::ErrorMessage(mesg)             \
+                            << ErrorParameterName(param)                \
+                            << boost::errinfo_api_function(func));      \
+      throw "this cannot happen";                                       \
+    }                                                                   \
+    while (0)
+
+#else
+
+#define THROW_PARAMETER_ERROR(param, func, mesg)                        \
+    throw triagens::basics::ParameterError(mesg, param + string(" in ") + func)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
 namespace triagens {
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief message info
-  ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Utilities
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief message info
+////////////////////////////////////////////////////////////////////////////////
 
 #ifdef USE_BOOST_EXCEPTIONS
   typedef boost::error_info<struct TagMessage, string> ErrorMessage;
 #endif
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief message details
-  ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief message details
+////////////////////////////////////////////////////////////////////////////////
 
 #ifdef USE_BOOST_EXCEPTIONS
   typedef boost::error_info<struct TagDetails, string> ErrorDetails;
 #endif
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief parameter name
-  ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parameter name
+////////////////////////////////////////////////////////////////////////////////
 
 #ifdef USE_BOOST_EXCEPTIONS
   typedef boost::error_info<struct TagParameterName, string> ErrorParameterName;
@@ -99,9 +470,9 @@ namespace triagens {
 
   namespace basics {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief base class for all errors
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief base class for all errors
+////////////////////////////////////////////////////////////////////////////////
 
 #ifdef USE_BOOST_EXCEPTIONS
 
@@ -162,49 +533,9 @@ namespace triagens {
 
 #endif
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief diagnostic output
-    ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef USE_BOOST_EXCEPTIONS
-
-#define DIAGNOSTIC_INFORMATION(e) \
-    boost::diagnostic_information(e)
-
-#else
-
-#define DIAGNOSTIC_INFORMATION(e) \
-    e.diagnostic_information()
-
-#endif
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief throws an unqualified exception
-    ///
-    /// Some compilers do not know that BOOST_THROW_EXCEPTION never returns.
-    ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef USE_BOOST_EXCEPTIONS
-
-#define THROW_TRIAGENS_ERROR(mesg, details)                           \
-    do {                                                              \
-      BOOST_THROW_EXCEPTION(triagens::basics::TriagensError()         \
-                            << triagens::ErrorMessage(mesg)           \
-                            << triagens::ErrorDetails(details));      \
-      throw "this cannot happen";                                     \
-    }                                                                 \
-    while (0)
-
-#else
-
-#define THROW_TRIAGENS_ERROR(mesg, details)                           \
-    throw triagens::basics::TriagensError(mesg, details)
-
-#endif
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief exception for internal errors
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief exception for internal errors
+////////////////////////////////////////////////////////////////////////////////
 
 #ifdef USE_BOOST_EXCEPTIONS
 
@@ -248,59 +579,9 @@ namespace triagens {
 
 #endif
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief throws an exception for internal errors
-    ///
-    /// Some compilers do not know that BOOST_THROW_EXCEPTION never returns.
-    ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef USE_BOOST_EXCEPTIONS
-
-#define THROW_INTERNAL_ERROR(a)                                            \
-    do {                                                                   \
-      BOOST_THROW_EXCEPTION(triagens::basics::InternalError()              \
-                            << triagens::ErrorMessage(a)                   \
-                            << boost::errinfo_at_line(__LINE__)            \
-                            << boost::errinfo_file_name(__FILE__));        \
-      throw "this cannot happen";                                          \
-    }                                                                      \
-    while (0)
-
-#else
-
-#define THROW_INTERNAL_ERROR(a)                                            \
-    throw triagens::basics::InternalError(a)
-
-#endif
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief throws an exception for internal errors with line info
-    ///
-    /// Some compilers do not know that BOOST_THROW_EXCEPTION never returns.
-    ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef USE_BOOST_EXCEPTIONS
-
-#define THROW_INTERNAL_ERROR_L(a, file, line)                              \
-    do {                                                                   \
-      BOOST_THROW_EXCEPTION(triagens::basics::InternalError()              \
-                            << triagens::ErrorMessage(a)                   \
-                            << boost::errinfo_at_line(line)                \
-                            << boost::errinfo_file_name(file));            \
-      throw "this cannot happen";                                          \
-    }                                                                      \
-    while (0)
-
-#else
-
-#define THROW_INTERNAL_ERROR_L(a, file, line)                              \
-    throw triagens::basics::InternalError(a)
-
-#endif
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief exception for out-of-memory errors
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief exception for out-of-memory errors
+////////////////////////////////////////////////////////////////////////////////
 
 #ifdef USE_BOOST_EXCEPTIONS
 
@@ -326,31 +607,9 @@ namespace triagens {
 
 #endif
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief throws an exception for out-of-memory errors
-    ///
-    /// Some compilers do not know that BOOST_THROW_EXCEPTION never returns.
-    ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef USE_BOOST_EXCEPTIONS
-
-#define THROW_OUT_OF_MEMORY_ERROR()                                     \
-    do {                                                                \
-      BOOST_THROW_EXCEPTION(triagens::basics::OutOfMemoryError());      \
-      throw "this cannot happen";                                       \
-    }                                                                   \
-    while (0)
-
-#else
-
-#define THROW_OUT_OF_MEMORY_ERROR()                     \
-    throw triagens::basics::OutOfMemoryError()
-
-#endif
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief exception for file errors
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief exception for file errors
+////////////////////////////////////////////////////////////////////////////////
 
 #ifdef USE_BOOST_EXCEPTIONS
 
@@ -382,128 +641,9 @@ namespace triagens {
 
 #endif
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief throws an exception for file open errors
-    ///
-    /// Some compilers do not know that BOOST_THROW_EXCEPTION never returns.
-    ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef USE_BOOST_EXCEPTIONS
-
-#define THROW_FILE_OPEN_ERROR(func, file, mode)                          \
-    do {                                                                 \
-      BOOST_THROW_EXCEPTION(triagens::basics::FileError()                \
-                            << triagens::ErrorMessage("file open error") \
-                            << boost::errinfo_api_function(func)         \
-                            << boost::errinfo_errno(errno)               \
-                            << boost::errinfo_file_name(file)            \
-                            << boost::errinfo_file_open_mode(mode));     \
-      throw "this cannot happen";                                        \
-    }                                                                    \
-    while (0)
-
-#else
-
-#define THROW_FILE_OPEN_ERROR(func, file, mode)                          \
-    throw triagens::basics::FileError("file open error", file)
-
-#endif
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief throws an exception for file errors
-    ///
-    /// Some compilers do not know that BOOST_THROW_EXCEPTION never returns.
-    ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef USE_BOOST_EXCEPTIONS
-
-#define THROW_FILE_FUNC_ERROR(func, mesg)                               \
-    do {                                                                \
-      BOOST_THROW_EXCEPTION(triagens::basics::FileError()               \
-                            << triagens::ErrorMessage(mesg)             \
-                            << boost::errinfo_api_function(func)        \
-                            << boost::errinfo_errno(errno));            \
-      throw "this cannot happen";                                       \
-    }                                                                   \
-    while (0)
-
-#else
-
-#define THROW_FILE_FUNC_ERROR(func, mesg)                               \
-    throw triagens::basics::FileError(func, mesg)
-
-#endif
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief throws an exception for file errors
-    ///
-    /// Some compilers do not know that BOOST_THROW_EXCEPTION never returns.
-    ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef USE_BOOST_EXCEPTIONS
-
-#define THROW_FILE_FUNC_ERROR_E(func, mesg, error)                      \
-    do {                                                                \
-      BOOST_THROW_EXCEPTION(triagens::basics::FileError()               \
-                            << triagens::ErrorMessage(mesg)             \
-                            << boost::errinfo_api_function(func)        \
-                            << boost::errinfo_errno(error));            \
-      throw "this cannot happen";                                       \
-    }                                                                   \
-    while (0)
-
-#else
-
-#define THROW_FILE_FUNC_ERROR_E(func, mesg, error)                      \
-    throw triagens::basics::FileError(func, mesg + (" " + triagens::basics::StringUtils::itoa(error)))
-
-#endif
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief throws an exception for file errors
-    ///
-    /// Some compilers do not know that BOOST_THROW_EXCEPTION never returns.
-    ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef USE_BOOST_EXCEPTIONS
-
-#define THROW_FILE_ERROR(mesg)                                          \
-    do {                                                                \
-      BOOST_THROW_EXCEPTION(triagens::basics::FileError()               \
-                            << triagens::ErrorMessage(mesg));           \
-      throw "this cannot happen";                                       \
-    }                                                                   \
-    while (0)
-
-#else
-
-#define THROW_FILE_ERROR(mesg)                                          \
-    throw triagens::basics::FileError(mesg)
-
-#endif
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief rethrows an exception with filename
-    ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef USE_BOOST_EXCEPTIONS
-
-#define RETHROW_FILE_NAME(ex, file)                                       \
-    do {                                                                  \
-      ex << boost::errinfo_file_name(file);                               \
-      throw ex;                                                         \
-    } while (0)
-
-#else
-
-#define RETHROW_FILE_NAME(ex, file)                                       \
-    throw ex
-
-#endif
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief exception for parse errors
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief exception for parse errors
+////////////////////////////////////////////////////////////////////////////////
 
 #ifdef USE_BOOST_EXCEPTIONS
 
@@ -535,99 +675,9 @@ namespace triagens {
 
 #endif
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief throws an exception for parse errors
-    ///
-    /// Some compilers do not know that BOOST_THROW_EXCEPTION never returns.
-    ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef USE_BOOST_EXCEPTIONS
-
-#define THROW_PARSE_ERROR(mesg)                                         \
-    do {                                                                \
-      BOOST_THROW_EXCEPTION(triagens::basics::ParseError()              \
-                            << triagens::ErrorMessage(mesg));           \
-      throw "this cannot happen";                                       \
-    }                                                                   \
-    while (0)
-
-#else
-
-#define THROW_PARSE_ERROR(mesg)                                         \
-    throw triagens::basics::ParseError(mesg)
-
-#endif
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief throws an exception for parse errors
-    ///
-    /// Some compilers do not know that BOOST_THROW_EXCEPTION never returns.
-    ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef USE_BOOST_EXCEPTIONS
-
-#define THROW_PARSE_ERROR_L(line, mesg)                                 \
-    do {                                                                \
-      BOOST_THROW_EXCEPTION(triagens::basics::ParseError()              \
-                            << triagens::ErrorMessage(mesg)             \
-                            << boost::errinfo_at_line(line));           \
-      throw "this cannot happen";                                       \
-    }                                                                   \
-    while (0)
-
-#else
-
-#define THROW_PARSE_ERROR_L(line, mesg)                                 \
-    throw triagens::basics::ParseError(mesg, "line " + triagens::basics::StringUtils::itoa(line))
-
-#endif
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief throws an exception for parse errors
-    ///
-    /// Some compilers do not know that BOOST_THROW_EXCEPTION never returns.
-    ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef USE_BOOST_EXCEPTIONS
-
-#define THROW_PARSE_ERROR_D(mesg, details)                              \
-    do {                                                                \
-      BOOST_THROW_EXCEPTION(triagens::basics::ParseError()              \
-                            << triagens::ErrorMessage(mesg)             \
-                            << triagens::ErrorDetails(details));        \
-      throw "this cannot happen";                                       \
-    }                                                                   \
-    while (0)
-
-#else
-
-#define THROW_PARSE_ERROR_D(mesg, details)                              \
-    throw triagens::basics::ParseError(mesg, details)
-
-#endif
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief rethrows an exception with line
-    ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef USE_BOOST_EXCEPTIONS
-
-#define RETHROW_LINE(ex, line)                                            \
-    do {                                                                  \
-      ex << boost::errinfo_at_line(line);                                 \
-      throw ex;                                                           \
-    } while (0)
-
-#else
-
-#define RETHROW_LINE(ex, line)                                            \
-    throw ex
-
-#endif
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief exception for parameter errors
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief exception for parameter errors
+////////////////////////////////////////////////////////////////////////////////
 
 #ifdef USE_BOOST_EXCEPTIONS
 
@@ -659,42 +709,23 @@ namespace triagens {
 
 #endif
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief throws an exception for parameter errors
-    ///
-    /// Some compilers do not know that BOOST_THROW_EXCEPTION never returns.
-    ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef USE_BOOST_EXCEPTIONS
-
-#define THROW_PARAMETER_ERROR(param, func, mesg)                        \
-    do {                                                                \
-      BOOST_THROW_EXCEPTION(triagens::basics::ParameterError()          \
-                            << triagens::ErrorMessage(mesg)             \
-                            << ErrorParameterName(param)                \
-                            << boost::errinfo_api_function(func));      \
-      throw "this cannot happen";                                       \
-    }                                                                   \
-    while (0)
-
-#else
-
-#define THROW_PARAMETER_ERROR(param, func, mesg)                        \
-    throw triagens::basics::ParameterError(mesg, param + string(" in ") + func)
-
-#endif
   }
 }
 
-/// @cond IGNORE
+// -----------------------------------------------------------------------------
+// --SECTION--                                                             boost
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Utilities
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 #ifdef USE_BOOST_EXCEPTIONS
 
-namespace boost {
+/// @cond IGNORE
 
-  // -----------------------------------------------------------------------------
-  // nice names
-  // -----------------------------------------------------------------------------
+namespace boost {
 
 #if BOOST_VERSION < 104300
 #define TRIAGENS_TAG_TYPEID_NAME_RETURN_TYPE char const *
@@ -753,8 +784,17 @@ namespace boost {
 
 }
 
-#endif
-
 /// @endcond
 
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+#endif
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:

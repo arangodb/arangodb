@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -33,17 +33,17 @@
 
 #include <BasicsC/locks.h>
 
+namespace triagens {
+  namespace basics {
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       class Mutex
+// --SECTION--                                           class ConditionVariable
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup Threading
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-namespace triagens {
-  namespace basics {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief condition variable
@@ -76,7 +76,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     class  ConditionVariable {
-      private:
         ConditionVariable (ConditionVariable const&);
         ConditionVariable& operator= (ConditionVariable const&);
 

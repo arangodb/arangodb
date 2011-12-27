@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -478,11 +478,11 @@ void ProgramOptions::setupSubDescription (ProgramOptionsDescription const& descr
     string option = name;
 
     // check the short option
-    map<string, string>::const_iterator i = description._long2short.find(option);
+    map<string, string>::const_iterator k = description._long2short.find(option);
     char shortOption = '\0';
 
-    if (i != description._long2short.end() && ! i->second.empty()) {
-      shortOption = i->second[0];
+    if (k != description._long2short.end() && ! k->second.empty()) {
+      shortOption = k->second[0];
     }
 
     // store long option name
