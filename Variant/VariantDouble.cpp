@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -30,25 +30,54 @@
 
 #include <Basics/StringBuffer.h>
 
-namespace triagens {
-  namespace basics {
+using namespace std;
+using namespace triagens::basics;
 
-    // -----------------------------------------------------------------------------
-    // constructors and destructors
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
-    VariantDouble::VariantDouble (double value)
-      : VariantObjectTemplate<double, VariantObject::VARIANT_DOUBLE, VariantDouble>(value) {
-    }
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Variants
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
-    // -----------------------------------------------------------------------------
-    // VariantObject methods
-    // -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new double
+////////////////////////////////////////////////////////////////////////////////
 
-    void VariantDouble::print (StringBuffer& buffer, size_t) const {
-      buffer.appendText("(double) ");
-      buffer.appendDecimal(getValue());
-      buffer.appendEol();
-    }
-  }
+VariantDouble::VariantDouble (double value)
+  : VariantObjectTemplate<double, VariantObject::VARIANT_DOUBLE, VariantDouble>(value) {
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             VariantObject methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Variants
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void VariantDouble::print (StringBuffer& buffer, size_t) const {
+  buffer.appendText("(double) ");
+  buffer.appendDecimal(getValue());
+  buffer.appendEol();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:
