@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -35,6 +35,9 @@
 
 #undef TRI_READ_WRITE_LOCK_COUNTER
 
+namespace triagens {
+  namespace basics {
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class ReadWriteLock
 // -----------------------------------------------------------------------------
@@ -44,15 +47,11 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-namespace triagens {
-  namespace basics {
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
     class ReadWriteLock {
-      private:
         ReadWriteLock (ReadWriteLock const&);
         ReadWriteLock& operator= (ReadWriteLock const&);
 
@@ -103,9 +102,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_READ_WRITE_LOCK_COUNTER
-
         bool isReadLocked () const;
-
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,9 +116,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_READ_WRITE_LOCK_COUNTER
-
         bool isWriteLocked () const;
-
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

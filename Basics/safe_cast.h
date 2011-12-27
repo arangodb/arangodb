@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -35,19 +35,18 @@
 namespace triagens {
   namespace basics {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @ingroup Utilities
-    /// @brief dynamic_cast or exception
-    ///
-    /// @param[in]
-    ///    from         the from value
-    ///
-    /// @return
-    ///    return the converted value
-    ///
-    /// @exception
-    ///    InternalError        raised if the cast fails
-    ////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Utilities
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dynamic_cast or exception
+////////////////////////////////////////////////////////////////////////////////
 
     template<typename T, typename F> T safe_cast (F from) {
       T to = dynamic_cast<T>(from);
@@ -61,4 +60,13 @@ namespace triagens {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 #endif
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:

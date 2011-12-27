@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -33,6 +33,10 @@
 
 #include <BasicsC/threads.h>
 
+namespace triagens {
+  namespace basics {
+    class ConditionVariable;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      class Thread
 // -----------------------------------------------------------------------------
@@ -41,10 +45,6 @@
 /// @addtogroup Threading
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-namespace triagens {
-  namespace basics {
-    class ConditionVariable;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief thread
@@ -55,7 +55,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     class Thread {
-      public:
         Thread (Thread const&);
         Thread& operator= (Thread const&);
 
@@ -231,14 +230,13 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief static started with access to the private variables
 ////////////////////////////////////////////////////////////////////////////////
 
-        static void* startThread (void* arg);
+        static void startThread (void* arg);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -252,7 +250,6 @@ namespace triagens {
 /// @addtogroup Threading
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
 
       private:
 
@@ -316,4 +313,13 @@ namespace triagens {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 #endif
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:

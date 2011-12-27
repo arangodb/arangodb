@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -31,30 +31,52 @@
 #include <Basics/Exceptions.h>
 #include <Basics/StringUtils.h>
 
-namespace triagens {
-  namespace basics {
+using namespace triagens::basics;
 
-    // -----------------------------------------------------------------------------
-    // constructors and destructors
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
-    ReadLocker::ReadLocker (ReadWriteLock* readWriteLock)
-      : _readWriteLock(readWriteLock), _file(0), _line(0) {
-      _readWriteLock->readLock();
-    }
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Threading
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief aquires a read-lock
+///
+/// The constructors read-locks the lock, the destructors unlocks the lock.
+////////////////////////////////////////////////////////////////////////////////
 
-
-    ReadLocker::ReadLocker (ReadWriteLock* readWriteLock, char const* file, int line)
-      : _readWriteLock(readWriteLock), _file(file), _line(line) {
-      _readWriteLock->readLock();
-    }
-
-
-
-    ReadLocker::~ReadLocker () {
-      _readWriteLock->unlock();
-    }
-  }
+ReadLocker::ReadLocker (ReadWriteLock* readWriteLock)
+  : _readWriteLock(readWriteLock), _file(0), _line(0) {
+  _readWriteLock->readLock();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief aquires a read-lock
+///
+/// The constructors read-locks the lock, the destructors unlocks the lock.
+////////////////////////////////////////////////////////////////////////////////
+
+ReadLocker::ReadLocker (ReadWriteLock* readWriteLock, char const* file, int line)
+  : _readWriteLock(readWriteLock), _file(file), _line(line) {
+  _readWriteLock->readLock();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief releases the read-lock
+////////////////////////////////////////////////////////////////////////////////
+
+ReadLocker::~ReadLocker () {
+  _readWriteLock->unlock();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:
