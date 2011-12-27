@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -35,6 +35,88 @@
 /// @addtogroup OperatingSystem
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the time of day
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_HAVE_WIN32_GETTIMEOFDAY
+
+int gettimeofday (struct timeval* tv, void* tz) {
+  union {
+      int64_t ns100; // since 1.1.1601 in 100ns units
+      FILETIME ft;
+  } now;
+
+  GetSystemTimeAsFileTime(&now.ft);
+
+  tv->tv_usec = (long) ((now.ns100 / 10LL) % 1000000LL);
+  tv->tv_sec  = (long) ((now.ns100 - 116444736000000000LL) / 10000000LL);
+
+  return 0;
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets a line
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef TRI_HAVE_GETLINE
+
+static int const line_size = 256;
+
+ssize_t getline (char** lineptr, size_t* n, FILE* stream) {
+  size_t indx = 0;
+  int c;
+
+  // sanity checks
+  if (lineptr == NULL || n == NULL || stream == NULL) {
+    return -1;
+  }
+
+  // allocate the line the first time
+  if (*lineptr == NULL) {
+    *lineptr = malloc(line_size);
+
+    if (*lineptr == NULL) {
+      return -1;
+    }
+
+    *n = line_size;
+  }
+
+  // clear the line
+  memset(*lineptr, '\0', *n);
+
+  while ((c = getc(stream)) != EOF) {
+
+    // check if more memory is needed
+    if (indx >= *n) {
+      *lineptr = realloc(*lineptr, *n + line_size);
+
+      if (*lineptr == NULL) {
+        return -1;
+      }
+
+      // clear the rest of the line
+      memset(*lineptr + *n, '\0', line_size);
+      *n += line_size;
+    }
+
+    // push the result in the line
+    (*lineptr)[indx++] = c;
+
+    // bail out
+    if (c == '\n') {
+      break;
+    }
+  }
+
+  return (c == EOF) ? -1 : indx;
+}
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief safe gmtime
@@ -85,5 +167,3 @@ double TRI_microtime () {
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-
-

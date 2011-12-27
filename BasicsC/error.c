@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -28,7 +28,9 @@
 #include <BasicsC/common.h>
 
 #ifndef TRI_GCC_THREAD_LOCAL_STORAGE
+#ifdef TRI_HAVE_POSIX_THREADS
 #include <pthread.h>
+#endif
 #endif
 
 #include <BasicsC/strings.h>
@@ -73,19 +75,15 @@ tri_error_t;
 static bool Initialised = false;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief pthread local storage key
-////////////////////////////////////////////////////////////////////////////////
-
-#ifndef TRI_GCC_THREAD_LOCAL_STORAGE
-static pthread_key_t ErrorKey;
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief holds the last error
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_GCC_THREAD_LOCAL_STORAGE
 static __thread tri_error_t ErrorNumber;
+#elif defined(TRI_WIN32_THREAD_LOCAL_STORAGE)
+static __declspec(thread) tri_error_t ErrorNumber;
+#elif defined(TRI_HAVE_POSIX_THREADS)
+static pthread_key_t ErrorKey;
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -112,11 +110,13 @@ static TRI_vector_string_t ErrorMessages;
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRI_GCC_THREAD_LOCAL_STORAGE
+#ifdef TRI_HAVE_POSIX_THREADS
 
 static void CleanupError (void* ptr) {
   TRI_Free(ptr);
 }
 
+#endif
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -136,13 +136,15 @@ static void CleanupError (void* ptr) {
 /// @brief returns the last error
 ////////////////////////////////////////////////////////////////////////////////
 
+#if defined(TRI_GCC_THREAD_LOCAL_STORAGE) || defined(TRI_WIN32_THREAD_LOCAL_STORAGE)
+
 int TRI_errno () {
-#ifdef TRI_GCC_THREAD_LOCAL_STORAGE
-
   return ErrorNumber._number;
+}
 
-#else
+#elif defined(TRI_HAVE_POSIX_THREADS)
 
+int TRI_errno () {
   tri_error_t* eptr;
 
   eptr = pthread_getspecific(ErrorKey);
@@ -153,9 +155,11 @@ int TRI_errno () {
   else {
     return eptr->_number;
   }
-
-#endif
 }
+
+#else
+#error no TLS
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the last error as string
@@ -165,12 +169,12 @@ char const* TRI_last_error () {
   int err;
   int sys;
 
-#ifdef TRI_GCC_THREAD_LOCAL_STORAGE
+#if defined(TRI_GCC_THREAD_LOCAL_STORAGE) || defined(TRI_WIN32_THREAD_LOCAL_STORAGE)
 
   err = ErrorNumber._number;
   sys = ErrorNumber._sys;
 
-#else
+#elif defined(TRI_HAVE_POSIX_THREADS)
 
   tri_error_t* eptr;
 
@@ -185,13 +189,15 @@ char const* TRI_last_error () {
     err = eptr->_sys;
   }
 
+#else
+#error no TLS
 #endif
 
   if (err == TRI_ERROR_SYS_ERROR) {
     return strerror(sys);
   }
 
-  if (err < ErrorMessages._length) {
+  if (err < (int) ErrorMessages._length) {
     char const* str = ErrorMessages._buffer[err];
 
     if (str == NULL) {
@@ -209,7 +215,7 @@ char const* TRI_last_error () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_set_errno (int error) {
-#ifdef TRI_GCC_THREAD_LOCAL_STORAGE
+#if defined(TRI_GCC_THREAD_LOCAL_STORAGE) || defined(TRI_WIN32_THREAD_LOCAL_STORAGE)
 
   ErrorNumber._number = error;
 
@@ -220,7 +226,7 @@ int TRI_set_errno (int error) {
     ErrorNumber._sys = 0;
   }
 
-#else
+#elif defined(TRI_HAVE_POSIX_THREADS)
 
   tri_error_t* eptr;
 
@@ -240,6 +246,8 @@ int TRI_set_errno (int error) {
     eptr->_sys = 0;
   }
 
+#else
+#error no TLS
 #endif
 
   return error;
@@ -250,7 +258,7 @@ int TRI_set_errno (int error) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_set_errno_string (int error, char const* msg) {
-  if (error >= ErrorMessages._length) {
+  if (error >= (int) ErrorMessages._length) {
     TRI_ResizeVectorString(&ErrorMessages, error + 1);
   }
 
@@ -292,11 +300,13 @@ void TRI_InitialiseError () {
   TRI_set_errno_string(4, "numeric overflow");
   TRI_set_errno_string(5, "illegal option");
 
-#ifdef TRI_GCC_THREAD_LOCAL_STORAGE
+#if defined(TRI_GCC_THREAD_LOCAL_STORAGE) || defined(TRI_WIN32_THREAD_LOCAL_STORAGE)
   ErrorNumber._number = 0;
   ErrorNumber._sys = 0;
-#else
+#elif defined(TRI_HAVE_POSIX_THREADS)
   pthread_key_create(&ErrorKey, CleanupError);
+#else
+#error no TLS
 #endif
 
   Initialised = true;

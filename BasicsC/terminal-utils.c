@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@
 /// @brief returns the columns width
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef HAVE_NCURSES
+#if !defined(HAVE_NCURSES) && !defined(TRI_WIN32_CONSOLE)
 
 int TRI_ColumnsWidth () {
   char* e;

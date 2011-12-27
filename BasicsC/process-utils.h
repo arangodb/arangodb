@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,10 +25,12 @@
 /// @author Copyright 2008-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_JUTLAND_BASICS_PROCESS_UTILS_H
-#define TRIAGENS_JUTLAND_BASICS_PROCESS_UTILS_H 1
+#ifndef TRIAGENS_PHILADELPHIA_BASICS_C_PROCESS_UTILS_H
+#define TRIAGENS_PHILADELPHIA_BASICS_C_PROCESS_UTILS_H 1
 
 #include <BasicsC/common.h>
+
+#include <BasicsC/threads.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -72,7 +74,7 @@ unsigned int TRI_ProcessSizeSelf (void);
 /// @brief returns the size of the process given its pid
 ////////////////////////////////////////////////////////////////////////////////
 
-unsigned int TRI_ProcessSize (pid_t pid);
+unsigned int TRI_ProcessSize (TRI_pid_t pid);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

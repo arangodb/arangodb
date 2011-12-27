@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -76,24 +76,20 @@ int32_t TRI_Int32String (char const* str) {
   int32_t result;
   char* endptr;
 
-#ifdef TRI_HAVE_STRTOL_R
+#if defined(TRI_HAVE_STRTOL_R)
   struct reent buffer;
-#else
-#ifdef TRI_HAVE__STRTOL_R
+#elif defined(TRI_HAVE__STRTOL_R)
   struct reent buffer;
-#endif
 #endif
 
   TRI_set_errno(TRI_ERROR_NO_ERROR);
 
-#ifdef TRI_HAVE_STRTOL_R
+#if defined(TRI_HAVE_STRTOL_R)
   result = strtol_r(&buffer, str, &endptr, 10);
-#else
-#ifdef TRI_HAVE__STRTOL_R
+#elif defined(TRI_HAVE__STRTOL_R)
   result = _strtol_r(&buffer, str, &endptr, 10);
 #else
   result = strtol(str, &endptr, 10);
-#endif
 #endif
 
   while (isspace(*endptr)) {
@@ -139,24 +135,20 @@ uint32_t TRI_UInt32String (char const* str) {
   uint32_t result;
   char* endptr;
 
-#ifdef TRI_HAVE_STRTOUL_R
+#if defined(TRI_HAVE_STRTOUL_R)
   struct reent buffer;
-#else
-#ifdef TRI_HAVE__STRTOUL_R
+#elif defined(TRI_HAVE__STRTOUL_R)
   struct reent buffer;
-#endif
 #endif
 
   TRI_set_errno(TRI_ERROR_NO_ERROR);
 
-#ifdef TRI_HAVE_STRTOUL_R
+#if defined(TRI_HAVE_STRTOUL_R)
   result = strtoul_r(&buffer, str, &endptr, 10);
-#else
-#ifdef TRI_HAVE__STRTOUL_R
+#elif defined(TRI_HAVE__STRTOUL_R)
   result = _strtoul_r(&buffer, str, &endptr, 10);
 #else
   result = strtoul(str, &endptr, 10);
-#endif
 #endif
 
   while (isspace(*endptr)) {
@@ -202,24 +194,24 @@ int64_t TRI_Int64String (char const* str) {
   int64_t result;
   char* endptr;
 
-#ifdef TRI_HAVE_STRTOLL_R
+#if defined(TRI_HAVE_STRTOLL_R)
   struct reent buffer;
-#else
-#ifdef TRI_HAVE__STRTOLL_R
+#elif defined(TRI_HAVE__STRTOLL_R)
   struct reent buffer;
-#endif
 #endif
 
   TRI_set_errno(TRI_ERROR_NO_ERROR);
 
-#ifdef TRI_HAVE_STRTOLL_R
+#if defined(TRI_HAVE_STRTOLL_R)
   result = strtoll_r(&buffer, str, &endptr, 10);
-#else
-#ifdef TRI_HAVE__STRTOLL_R
+#elif defined(TRI_HAVE__STRTOLL_R)
   result = _strtoll_r(&buffer, str, &endptr, 10);
-#else
+#elif defined(TRI_HAVE_STRTOI64)
+  result = _strtoi64(str, &endptr, 10);
+#elif defined(TRI_HAVE_STRTOLL)
   result = strtoll(str, &endptr, 10);
-#endif
+#else
+#warning cannot convert string to int64
 #endif
 
   while (isspace(*endptr)) {
@@ -265,24 +257,24 @@ uint64_t TRI_UInt64String (char const* str) {
   uint64_t result;
   char* endptr;
 
-#ifdef TRI_HAVE_STRTOULL_R
+#if defined(TRI_HAVE_STRTOULL_R)
   struct reent buffer;
-#else
-#ifdef TRI_HAVE__STRTOULL_R
+#elif defined(TRI_HAVE__STRTOULL_R)
   struct reent buffer;
-#endif
 #endif
 
   TRI_set_errno(TRI_ERROR_NO_ERROR);
 
-#ifdef TRI_HAVE_STRTOULL_R
+#if defined(TRI_HAVE_STRTOULL_R)
   result = strtoull_r(&buffer, str, &endptr, 10);
-#else
-#ifdef TRI_HAVE__STRTOULL_R
+#elif defined(TRI_HAVE__STRTOULL_R)
   result = _strtoull_r(&buffer, str, &endptr, 10);
-#else
+#elif defined(TRI_HAVE_STRTOUI64)
+  result = _strtoui64(str, &endptr, 10);
+#elif defined(TRI_HAVE_STRTOULL)
   result = strtoull(str, &endptr, 10);
-#endif
+#else
+#warning cannot convert string to int64
 #endif
 
   while (isspace(*endptr)) {

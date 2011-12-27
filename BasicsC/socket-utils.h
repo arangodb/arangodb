@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,8 +25,8 @@
 /// @author Copyright 2008-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_JUTLAND_BASICS_SOCKET_UTILS_H
-#define TRIAGENS_JUTLAND_BASICS_SOCKET_UTILS_H 1
+#ifndef TRIAGENS_PHILADELPHIA_BASICS_C_SOCKET_UTILS_H
+#define TRIAGENS_PHILADELPHIA_BASICS_C_SOCKET_UTILS_H 1
 
 #include <BasicsC/common.h>
 
@@ -47,7 +47,9 @@ extern "C" {
 /// @brief invalid socket
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef INVALID_SOCKET
 #define INVALID_SOCKET (-1)
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

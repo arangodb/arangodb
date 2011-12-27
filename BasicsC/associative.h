@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -63,8 +63,8 @@ typedef struct TRI_associative_array_s {
 
   uint32_t _elementSize;
 
-  uint64_t _nrAlloc; // the size of the table
-  uint64_t _nrUsed; // the number of used entries
+  uint32_t _nrAlloc; // the size of the table
+  uint32_t _nrUsed; // the number of used entries
 
   char* _table; // the table itself
 
@@ -91,8 +91,8 @@ typedef struct TRI_associative_pointer_s {
   bool (*isEqualKeyElement) (struct TRI_associative_pointer_s*, void const*, void const*);
   bool (*isEqualElementElement) (struct TRI_associative_pointer_s*, void const*, void const*);
 
-  uint64_t _nrAlloc; // the size of the table
-  uint64_t _nrUsed; // the number of used entries
+  uint32_t _nrAlloc; // the size of the table
+  uint32_t _nrUsed; // the number of used entries
 
   void** _table; // the table itself
 
@@ -121,8 +121,8 @@ typedef struct TRI_associative_synced_s {
   bool (*isEqualKeyElement) (struct TRI_associative_synced_s*, void const*, void const*);
   bool (*isEqualElementElement) (struct TRI_associative_synced_s*, void const*, void const*);
 
-  uint64_t _nrAlloc; // the size of the table
-  uint64_t _nrUsed; // the number of used entries
+  uint32_t _nrAlloc; // the size of the table
+  uint32_t _nrUsed; // the number of used entries
 
   void** _table; // the table itself
 

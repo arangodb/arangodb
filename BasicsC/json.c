@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -462,7 +462,7 @@ bool TRI_PrintJson (int fd, TRI_json_t const* object) {
   n = TRI_LengthStringBuffer(&buffer);
 
   while (0 < n) {
-    ssize_t m = write(fd, p, n);
+    ssize_t m = TRI_WRITE(fd, p, n);
 
     if (m <= 0) {
       TRI_DestroyStringBuffer(&buffer);
@@ -509,7 +509,7 @@ bool TRI_SaveJson (char const* filename, TRI_json_t const* object) {
     return false;
   }
 
-  m = write(fd, "\n", 1);
+  m = TRI_WRITE(fd, "\n", 1);
 
   if (m <= 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);

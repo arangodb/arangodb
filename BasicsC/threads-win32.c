@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -74,6 +74,8 @@ static DWORD __stdcall ThreadStarter (void* data) {
 
   d = data;
   d->starter(d->_data);
+
+  TRI_Free(d);
 
   return 0;
 }
@@ -146,20 +148,18 @@ bool TRI_StartThread (TRI_thread_t* thread, void (*start)(void*), void* data) {
 
   d = TRI_Allocate(sizeof(thread_data_t));
 
-  d->starter = starter;
+  d->starter = start;
   d->_data = data;
 
   *thread = CreateThread(0, // default security attributes
                          0, // use default stack size
                          ThreadStarter, // thread function name
-                         c.a, // argument to thread function
+                         d, // argument to thread function
                          0, // use default creation flags
                          &threadId); // returns the thread identifier
 
-
-
-
   if (*thread == 0) {
+    TRI_Free(d);
     LOG_ERROR("could not start thread: %s ", strerror(errno));
     return false;
   }

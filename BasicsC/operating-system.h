@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -29,35 +29,42 @@
 #define TRIAGENS_PHILADELPHIA_BASICS_C_OPERATING_SYSTEM_H 1
 
 #ifndef TRI_WITHIN_COMMON
-#error use <BasicsC/Common.h>
+#error use <BasicsC/common.h>
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                             apple
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup OperatingSystem
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_HAVE_STRTOLL                    1
-#define TRI_HAVE_STRTOULL                   1
-#define TRI_HAVE_STRTOLL                    1
-#define TRI_HAVE_STRTOULL                   1
-#define TRI_HAVE_GETTIMEOFDAY               1
-#define TRI_HAVE_DIRENT_H                   1
-#define TRI_HAVE_GETRUSAGE                  1
-#define TRI_HAVE_SETUID                     1
-#define TRI_HAVE_SETGID                     1
-#define TRI_HAVE_GETGRGID                   1
-#define TRI_HAVE_GETPWUID                   1
-#define TRI_HAVE_GETPWNAM                   1
-#define TRI_HAVE_GETRLIMIT                  1
-#define TRI_HAVE_DLFCN_H                    1
 #define TRI_DIR_SEPARATOR_CHAR              '/'
+#define TRI_HAVE_DLFCN_H                    1
+#define TRI_HAVE_GETGRGID                   1
+#define TRI_HAVE_GETPWNAM                   1
+#define TRI_HAVE_GETPWUID                   1
+#define TRI_HAVE_GETRLIMIT                  1
+#define TRI_HAVE_GETRUSAGE                  1
+#define TRI_HAVE_SETGID                     1
+#define TRI_HAVE_SETUID                     1
 
 #define GLOBAL_TIMEZONE                     timezone
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             apple
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup OperatingSystem
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 #ifdef __APPLE__
 
@@ -66,15 +73,22 @@
 #define TRI_ENABLE_SYSLOG                   1
 
 #define TRI_HAVE_CURSES_H                   1
+#define TRI_HAVE_DIRENT_H                   1
 #define TRI_HAVE_SIGNAL_H                   1
 #define TRI_HAVE_STDBOOL_H                  1
 #define TRI_HAVE_SYS_RESOURCE_H             1
 #define TRI_HAVE_SYS_TIME_H                 1
 #define TRI_HAVE_UNISTD_H                   1
 
+#define TRI_HAVE_GETLINE                    1
+#define TRI_HAVE_GETTIMEOFDAY               1
 #define TRI_HAVE_GMTIME_R                   1
-#define TRI_HAVE_POSIX_THREADS              1
+#define TRI_HAVE_LINUX_SOCKETS              1
 #define TRI_HAVE_MACOS_SPIN                 1
+#define TRI_HAVE_POSIX_THREADS              1
+#define TRI_HAVE_STRTOLL                    1
+#define TRI_HAVE_STRTOULL                   1
+
 #define TRI_OVERLOAD_FUNCS_SIZE_T           1
 
 #if __WORDSIZE == 64
@@ -95,25 +109,40 @@
 
 #endif
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            cygwin
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup OperatingSystem
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
 #ifdef __CYGWIN__
 
 #include <bits/wordsize.h>
+#include <io.h>
 
 #define TRI_ENABLE_SYSLOG                   1
 
-#define TRI_HAVE_IO_H                       1
+#define TRI_HAVE_DIRENT_H                   1
 #define TRI_HAVE_NCURSES_CURSES_H           1
 #define TRI_HAVE_STDBOOL_H                  1
 #define TRI_HAVE_SYS_RESOURCE_H             1
 #define TRI_HAVE_UNISTD_H                   1
 
+#define TRI_HAVE_GETLINE                    1
+#define TRI_HAVE_GETTIMEOFDAY               1
 #define TRI_HAVE_GMTIME_R                   1
-#define TRI_HAVE_POSIX_THREADS              1
+#define TRI_HAVE_LINUX_SOCKETS              1
 #define TRI_HAVE_POSIX_SPIN                 1
+#define TRI_HAVE_POSIX_THREADS              1
+#define TRI_HAVE_STRTOLL                    1
+#define TRI_HAVE_STRTOULL                   1
 
 #if __WORDSIZE == 64
 #define TRI_SIZEOF_SIZE_T                   8
@@ -125,9 +154,18 @@
 
 #endif
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             linux
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup OperatingSystem
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 #ifdef __linux__
 
@@ -156,7 +194,10 @@
 
 #define TRI_ENABLE_SYSLOG                   1
 
+#define TRI_GCC_THREAD_LOCAL_STORAGE        1
+
 #define TRI_HAVE_CURSES_H                   1
+#define TRI_HAVE_DIRENT_H                   1
 #define TRI_HAVE_SIGNAL_H                   1
 #define TRI_HAVE_STDBOOL_H                  1
 #define TRI_HAVE_SYS_PRCTL_H                1
@@ -164,12 +205,16 @@
 #define TRI_HAVE_SYS_TIME_H                 1
 #define TRI_HAVE_UNISTD_H                   1
 
-#define TRI_GCC_THREAD_LOCAL_STORAGE        1
+#define TRI_HAVE_GETLINE                    1
+#define TRI_HAVE_GETTIMEOFDAY               1
 #define TRI_HAVE_GMTIME_R                   1
-#define TRI_HAVE_POSIX_THREADS              1
-#define TRI_HAVE_POSIX_SPIN                 1
-#define TRI_HAVE_PRCTL                      1
 #define TRI_HAVE_LINUX_PROC                 1
+#define TRI_HAVE_LINUX_SOCKETS              1
+#define TRI_HAVE_POSIX_SPIN                 1
+#define TRI_HAVE_POSIX_THREADS              1
+#define TRI_HAVE_PRCTL                      1
+#define TRI_HAVE_STRTOLL                    1
+#define TRI_HAVE_STRTOULL                   1
 
 #if __WORDSIZE == 64
 #define TRI_SIZEOF_SIZE_T                   8
@@ -181,26 +226,44 @@
 
 #endif
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           windows
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup OperatingSystem
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
 #if defined(_WIN32) && defined(_MSC_VER)
 
-#define _CRT_SECURE_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS                     1
+#define _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES     1
+
+#include <stdio.h>
+#include <io.h>
+
+#define TRI_WIN32_CONSOLE                   1
+#define TRI_WIN32_THREAD_LOCAL_STORAGE      1
 
 #define TRI_HAVE_DIRECT_H                   1
-#define TRI_HAVE_IO_H                       1
 #define TRI_HAVE_PROCESS_H                  1
 #define TRI_HAVE_SIGNAL_H                   1
 #define TRI_HAVE_WINSOCK2_H                 1
 
 #define TRI_HAVE_GETTID                     1
 #define TRI_HAVE_GMTIME_S                   1
+#define TRI_HAVE_STRTOI64                   1
+#define TRI_HAVE_STRTOUI64                  1
 #define TRI_HAVE_WIN32_CLOSE_ON_EXEC        1
 #define TRI_HAVE_WIN32_GETTIMEOFDAY         1
 #define TRI_HAVE_WIN32_LIST_FILES           1
 #define TRI_HAVE_WIN32_NON_BLOCKING         1
+#define TRI_HAVE_WIN32_SOCKETS              1
 #define TRI_HAVE_WIN32_SYMBOLIC_LINK        1
 #define TRI_HAVE_WIN32_THREADS              1
 
@@ -215,8 +278,22 @@
 #define strcasecmp                      _stricmp
 #define snprintf                        _snprintf
 #define usleep                          Sleep
+#define srandom                         srand
+#define fsync                           _commit
+#define isatty                          _isatty
+#define fileno                          _fileno
+#define putenv                          _putenv
+#define tzset                           _tzset
 
 typedef int ssize_t;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifdef __cplusplus
+}
+#endif
 
 #ifndef __BOOL_DEFINED
 typedef unsigned int bool;
@@ -228,9 +305,18 @@ typedef unsigned int bool;
 
 #endif
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              posix or windows I/O
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup OperatingSystem
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 typedef int socket_t;
 
@@ -245,6 +331,7 @@ typedef int socket_t;
 #define TRI_CREATE(a,b,c)               _open((a), (b))
 #define TRI_OPEN(a,b)                   _open((a), (b))
 #define TRI_READ                        _read
+#define TRI_UNLINK                      _unlink
 #define TRI_WRITE                       _write
 
 #define TRI_LAST_ERROR_STR              strerror(errno)
@@ -257,6 +344,7 @@ typedef int socket_t;
 #define TRI_CREATE(a,b,c)               open((a), (b), (c))
 #define TRI_OPEN(a,b)                   open((a), (b))
 #define TRI_READ                        read
+#define TRI_UNLINK                      unlink
 #define TRI_WRITE                       write
 #define TRI_GETCWD                      getcwd
 
@@ -264,18 +352,36 @@ typedef int socket_t;
 
 #endif
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    GNU C compiler
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup OperatingSystem
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 #ifdef __GNUC__
 #define TRI_HAVE_GCC_ATTRIBUTE          1
 #define TRI_HAVE_GCC_BUILTIN            1
 #endif
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                size_t overloading
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup OperatingSystem
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 #if defined(TRI_OVERLOAD_FUNCS_SIZE_T)
 #if TRI_SIZEOF_SIZE_T == 8

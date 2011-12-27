@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@
 
 #include "socket-utils.h"
 
+#ifdef TRI_HAVE_LINUX_SOCKETS
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -35,6 +36,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#endif
 
 #include <BasicsC/logging.h>
 #include <BasicsC/locks.h>
@@ -133,6 +135,7 @@ bool TRI_SetNonBlockingSocket (socket_t fd) {
 #ifdef TRI_HAVE_WIN32_CLOSE_ON_EXEC
 
 bool TRI_SetCloseOnExecSocket (socket_t fd) {
+  return true;
 }
 
 #else
