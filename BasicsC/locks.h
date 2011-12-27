@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -30,36 +30,36 @@
 
 #include <BasicsC/common.h>
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief posix threads
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     POSIX THREADS
+// -----------------------------------------------------------------------------
 
 #ifdef TRI_HAVE_POSIX_THREADS
 #include <BasicsC/locks-posix.h>
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief posix spins
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_HAVE_POSIX_THREADS
-#include <BasicsC/locks-posix.h>
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Mac OS X spins
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_HAVE_MACOS_SPIN
-#include <BasicsC/locks-macos.h>
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief windows threads
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   WINDOWS THREADS
+// -----------------------------------------------------------------------------
 
 #ifdef TRI_HAVE_WIN32_THREADS
 #include <BasicsC/locks-win32.h>
+#endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       POSIX SPINS
+// -----------------------------------------------------------------------------
+
+#ifdef TRI_HAVE_POSIX_THREADS
+#include <BasicsC/locks-posix.h>
+#endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     MAC OS X SPIN
+// -----------------------------------------------------------------------------
+
+#ifdef TRI_HAVE_MACOS_SPIN
+#include <BasicsC/locks-macos.h>
 #endif
 
 #ifdef __cplusplus

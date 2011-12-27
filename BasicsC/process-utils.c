@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,15 +26,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "process-utils.h"
-
-#include <BasicsC/common.h>
-#include <BasicsC/threads.h>
-
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <stdint.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
@@ -147,7 +138,7 @@ unsigned int TRI_ProcessSize (TRI_pid_t pid) {
   char fn[1024];
   int fd;
   unsigned int vsize;
-  
+
   snprintf(fn, sizeof(fn), "/proc/%d/stat", pid);
   fd = open(fn, O_RDONLY);
   vsize = 0;

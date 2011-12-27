@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@
 #define TRIAGENS_PHILADELPHIA_BASICS_C_MEMORY_H 1
 
 #ifndef TRI_WITHIN_COMMON
-#error use <BasicsC/Common.h>
+#error use <BasicsC/common.h>
 #endif
 
 #ifdef __cplusplus
@@ -49,7 +49,7 @@ extern "C" {
 /// @brief basic memory management for allocate
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_Allocate (size_t);
+void* TRI_Allocate (uint64_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief basic memory management for deallocate

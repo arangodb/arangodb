@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -174,6 +174,12 @@ void TRI_SetLineNumberLogging (bool show);
 void TRI_SetFunctionLogging (bool show);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the file to log for debug and trace
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetFileToLog (char const* file);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if human logging is enabled
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -231,13 +237,13 @@ bool TRI_IsInfoLogging (void);
 /// @brief checks if debug logging is enabled
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsDebugLogging (void);
+bool TRI_IsDebugLogging (char const* file);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if trace logging is enabled
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsTraceLogging (void);
+bool TRI_IsTraceLogging (char const* file);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a new message
@@ -360,7 +366,7 @@ void TRI_FreeBufferLogging (TRI_vector_t* buffer);
 
 #define LOG_DEBUG(...)                                                                                     \
   do {                                                                                                     \
-    if (TRI_IsHumanLogging() && TRI_IsDebugLogging()) {                                                    \
+    if (TRI_IsHumanLogging() && TRI_IsDebugLogging(__FILE__)) {                                            \
       TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_DEBUG, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
     }                                                                                                      \
   } while (0)
@@ -379,7 +385,7 @@ void TRI_FreeBufferLogging (TRI_vector_t* buffer);
 
 #define LOG_TRACE(...)                                                                                     \
   do {                                                                                                     \
-    if (TRI_IsHumanLogging() && TRI_IsTraceLogging()) {                                                    \
+    if (TRI_IsHumanLogging() && TRI_IsTraceLogging(__FILE__)) {                                            \
       TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_TRACE, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
     }                                                                                                      \
   } while (0)

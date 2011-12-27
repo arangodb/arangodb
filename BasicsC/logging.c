@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@
 #endif
 
 #include <BasicsC/files.h>
+#include <BasicsC/hashes.h>
 #include <BasicsC/locks.h>
 #include <BasicsC/strings.h>
 #include <BasicsC/threads.h>
@@ -237,7 +238,25 @@ static sig_atomic_t LoggingActive = 0;
 /// @brief logging thread
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ThreadedLogging = 0;
+static bool ThreadedLogging = false;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief use file based logging
+////////////////////////////////////////////////////////////////////////////////
+
+static bool UseFileBasedLogging = false;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief size of hash
+////////////////////////////////////////////////////////////////////////////////
+
+#define FilesToLogSize (1024 * 1024)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief files to log
+////////////////////////////////////////////////////////////////////////////////
+
+static bool FilesToLog [FilesToLogSize];
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -328,7 +347,7 @@ static int LidCompare (void const* l, void const* r) {
   TRI_log_buffer_t const* left = l;
   TRI_log_buffer_t const* right = r;
 
-  return ((int64_t) left->_lid) - ((int64_t) right->_lid);
+  return (int) (((int64_t) left->_lid) - ((int64_t) right->_lid));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -877,6 +896,15 @@ void TRI_SetFunctionLogging (bool show) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the file to log for debug and trace
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetFileToLog (char const* file) {
+  UseFileBasedLogging = true;
+  FilesToLog[TRI_FnvHashString(file) % FilesToLogSize] = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if human logging is enabled
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -953,16 +981,34 @@ bool TRI_IsInfoLogging () {
 /// @brief checks if debug logging is enabled
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsDebugLogging () {
-  return IsDebug != 0;
+bool TRI_IsDebugLogging (char const* file) {
+  if (UseFileBasedLogging) {
+    if (! IsDebug || file == NULL) {
+      return false;
+    }
+
+    return FilesToLog[TRI_FnvHashString(file) % FilesToLogSize];
+  }
+  else {
+    return IsDebug != 0;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if trace logging is enabled
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsTraceLogging () {
-  return IsTrace != 0;
+bool TRI_IsTraceLogging (char const* file) {
+  if (UseFileBasedLogging) {
+    if (! IsTrace || file == NULL) {
+      return false;
+    }
+
+    return FilesToLog[TRI_FnvHashString(file) % FilesToLogSize];
+  }
+  else {
+    return IsTrace != 0;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1506,6 +1552,9 @@ void TRI_InitialiseLogging (bool threaded) {
   if (Initialised) {
     return;
   }
+
+  UseFileBasedLogging = false;
+  memset(FilesToLog, 0, sizeof(FilesToLog));
 
   TRI_InitVectorPointer(&Appenders);
   TRI_InitMutex(&BufferLock);

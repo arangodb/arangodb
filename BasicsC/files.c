@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -210,19 +210,20 @@ char* TRI_Concatenate3File (char const* path1, char const* path2, char const* na
 /// @brief returns a list of files in path
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_HAVE_WIN32_LIST_FILES
+
 TRI_vector_string_t TRI_FilesDirectory (char const* path) {
   TRI_vector_string_t result;
 
-#ifdef TRI_HAVE_WIN32_LIST_FILES
-
   struct _finddata_t fd;
   intptr_t handle;
-  string filter;
+  char* filter;
 
   TRI_InitVectorString(&result);
 
-  filter = directory + "\\*";
-  handle = _findfirst(filter.c_str(), &fd);
+  filter = TRI_Concatenate2String(path, "\\*");
+  handle = _findfirst(filter, &fd);
+  TRI_FreeString(filter);
 
   if (handle == -1) {
     return result;
@@ -230,13 +231,19 @@ TRI_vector_string_t TRI_FilesDirectory (char const* path) {
 
   do {
     if (strcmp(fd.name, ".") != 0 && strcmp(fd.name, "..") != 0) {
-      result.push_back(fd.name);
+      TRI_PushBackVectorString(&result, TRI_DuplicateString(fd.name));
     }
   } while(_findnext(handle, &fd) != -1);
 
   _findclose(handle);
 
+  return result;
+}
+
 #else
+
+TRI_vector_string_t TRI_FilesDirectory (char const* path) {
+  TRI_vector_string_t result;
 
   DIR * d;
   struct dirent * de;
@@ -262,10 +269,10 @@ TRI_vector_string_t TRI_FilesDirectory (char const* path) {
 
   closedir(d);
 
-#endif
-
   return result;
 }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a file
@@ -292,7 +299,7 @@ bool TRI_RenameFile (char const* old, char const* filename) {
 bool TRI_UnlinkFile (char const* filename) {
   int res;
 
-  res = unlink(filename);
+  res = TRI_UNLINK(filename);
 
   if (res != 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -313,7 +320,7 @@ bool TRI_ReadPointer (int fd, void* buffer, size_t length) {
   ptr = buffer;
 
   while (0 < length) {
-    ssize_t n = read(fd, ptr, length);
+    ssize_t n = TRI_READ(fd, ptr, length);
 
     if (n < 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -343,7 +350,7 @@ bool TRI_WritePointer (int fd, void const* buffer, size_t length) {
   ptr = buffer;
 
   while (0 < length) {
-    ssize_t n = write(fd, ptr, length);
+    ssize_t n = TRI_WRITE(fd, ptr, length);
 
     if (n < 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);

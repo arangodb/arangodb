@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -30,6 +30,8 @@
 
 #include <BasicsC/common.h>
 
+#ifdef TRI_HAVE_WIN32_THREADS
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -47,22 +49,51 @@ extern "C" {
 /// @brief mutex type
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_mutex_t CRITICAL_SECTION
+typedef struct TRI_mutex_s {
+  HANDLE _mutex;
+}
+TRI_mutex_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief spin-lock type
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_spin_t CRITICAL_SECTION
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read-write-lock type
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_read_write_lock_s {
-    HANDLE _writerEvent;
-    HANDLE _readersEvent;
+  HANDLE _writerEvent;
+  HANDLE _readersEvent;
 
-    int _readers;
+  int _readers;
 
-    CRITICAL_SECTION _lockWriter;
-    CRITICAL_SECTION _lockReaders;
+  CRITICAL_SECTION _lockWriter;
+  CRITICAL_SECTION _lockReaders;
 }
 TRI_read_write_lock_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief condition variable
+///
+/// This is based on http://www.cs.wustl.edu/~schmidt/win32-cv-1.html.
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_condition_s {
+  CRITICAL_SECTION _lockWaiters;
+
+  bool _ownMutex;
+
+  HANDLE _waitersDone;
+  HANDLE _mutex;
+  HANDLE _sema;
+
+  int _waiters;
+  bool _broadcast;
+}
+TRI_condition_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -70,6 +101,8 @@ TRI_read_write_lock_t;
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif
 
 #endif

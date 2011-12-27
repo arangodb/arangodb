@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -40,11 +40,11 @@
 /// @brief basic memory management for allocate
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_Allocate (size_t n) {
+void* TRI_Allocate (uint64_t n) {
   char* m;
 
-  m = malloc(n);
-  memset(m, 0, n);
+  m = malloc((size_t) n);
+  memset(m, 0, (size_t) n);
 
   return m;
 }
