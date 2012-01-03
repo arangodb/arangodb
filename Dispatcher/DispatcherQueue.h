@@ -32,8 +32,8 @@
 #include <Basics/Common.h>
 
 #include <Basics/ConditionVariable.h>
-#include <Rest/Dispatcher.h>
 
+#include "Dispatcher/Dispatcher.h"
 #include "Dispatcher/DispatcherImpl.h"
 
 namespace triagens {
