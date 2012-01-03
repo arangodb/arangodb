@@ -29,12 +29,12 @@
 #include "DispatcherThread.h"
 
 #include <Basics/Exceptions.h>
-#include <Basics/Logger.h>
+#include <Logger/Logger.h>
 #include <Basics/StringUtils.h>
-#include <Rest/Dispatcher.h>
-#include <Rest/Job.h>
 
+#include "Dispatcher/Dispatcher.h"
 #include "Dispatcher/DispatcherQueue.h"
+#include "Dispatcher/Job.h"
 
 using namespace triagens::basics;
 

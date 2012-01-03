@@ -29,7 +29,7 @@
 #include "DispatcherQueue.h"
 
 #include <Basics/ConditionLocker.h>
-#include <Basics/Logger.h>
+#include <Logger/Logger.h>
 
 #include "Dispatcher/DispatcherThread.h"
 
