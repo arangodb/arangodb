@@ -30,6 +30,7 @@
 #include "Basics/FileUtils.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+#include "Logger/Logger.h"
 
 using namespace std;
 using namespace triagens::basics;
