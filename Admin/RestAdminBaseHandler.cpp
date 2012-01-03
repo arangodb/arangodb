@@ -28,34 +28,11 @@
 #include "RestAdminBaseHandler.h"
 
 #include "Rest/HttpRequest.h"
-#include "SessionManager/Session.h"
-#include "UserManager/User.h"
 
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::admin;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-static Session* authSession (HttpRequest* request) {
-  bool found;
-  string const& sid = request->value("authSid", found);
-
-  if (! found) {
-    return 0;
-  }
-
-  Session* session = Session::lookup(sid);
-
-  if (session == 0) {
-    return 0;
-  }
-
-  return session;
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        class RestAdminBaseHandler
@@ -72,53 +49,6 @@ static Session* authSession (HttpRequest* request) {
 
 RestAdminBaseHandler::RestAdminBaseHandler (HttpRequest* request)
   : RestBaseHandler(request) {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup RestServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if authentication session has given right
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestAdminBaseHandler::hasRight (right_t right) {
-  Session* session = authSession(request);
-
-  if (session == 0) {
-    return false;
-  }
-
-  return session->hasRight(right);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if authentication session is bound to given user
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestAdminBaseHandler::isSelf (string const& username) {
-  Session* session = authSession(request);
-
-  if (session == 0) {
-    return false;
-  }
-
-  User* user = User::lookup(username);
-
-  if (user == 0) {
-    return false;
-  }
-
-  return session->getUser() != user;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
