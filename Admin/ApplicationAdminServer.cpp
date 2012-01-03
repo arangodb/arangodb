@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,32 +22,30 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationAdminServer.h"
 
 #include "build.h"
 
-#include <Admin/RestAdminFeConfigurationHandler.h>
-#include <Admin/RestAdminLogHandler.h>
-#include <Admin/RestHandlerCreator.h>
-#include <Admin/RestVersionHandler.h>
-#include <Rest/HttpHandlerFactory.h>
-#include <Rest/HttpResponse.h>
-#include <Basics/ProgramOptionsDescription.h>
+#include "Admin/RestAdminFeConfigurationHandler.h"
+#include "Admin/RestAdminLogHandler.h"
+#include "Admin/RestHandlerCreator.h"
+#include "Admin/RestVersionHandler.h"
+#include "Basics/ProgramOptionsDescription.h"
+#include "Rest/HttpResponse.h"
 
+#include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/PathHandler.h"
 
 #include "SessionManager/Session.h"
 #include "SessionManager/SessionHandler.h"
 
-
 #include "UserManager/Role.h"
 #include "UserManager/User.h"
 #include "UserManager/UserHandler.h"
 #include "UserManager/UsersHandler.h"
-
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -55,16 +53,16 @@ using namespace triagens::rest;
 namespace triagens {
   namespace admin {
 
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
     // static variables
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
     string ApplicationAdminServer::optionAdminDirectory;
     string ApplicationAdminServer::optionUserDatabase;
 
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
     // constructors and destructors
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
     ApplicationAdminServer* ApplicationAdminServer::create (ApplicationServer*) {
       return new ApplicationAdminServer();
@@ -87,9 +85,9 @@ namespace triagens {
       delete reinterpret_cast<PathHandler::Options*>(_pathOptions);
     }
 
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
     // public methods
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
     void ApplicationAdminServer::allowVersion () {
       _allowVersion = true;
@@ -165,7 +163,6 @@ namespace triagens {
 
 
 
-
     bool ApplicationAdminServer::createRole (string const& name,
                                              vector<right_t> const& rights,
                                              right_t rightToManage) {
@@ -215,9 +212,9 @@ namespace triagens {
       Session::setAnonymousRights(rights);
     }
 
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
     // ApplicationFeature methods
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
     void ApplicationAdminServer::setupOptions (map<string, basics::ProgramOptionsDescription>& options) {
       if (_allowAdminDirectory) {
