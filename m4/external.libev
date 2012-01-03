@@ -28,6 +28,10 @@ dnl ----------------------------------------------------------------------------
 dnl checks for the LIBEV library
 dnl -----------------------------------------------------------------------------------------
 
+AC_MSG_NOTICE([--------------------------------------------------------------------------------])
+AC_MSG_NOTICE([CHECKING FOR LIBEV])
+AC_MSG_NOTICE([--------------------------------------------------------------------------------])
+
 AC_LANG(C++)
 
 if test "x$LIBEV_CPPFLAGS" != x;  then
@@ -100,6 +104,10 @@ dnl ----------------------------------------------------------------------------
 if test "x$tr_LIBEV" = xyes;  then
   if test "x$LIBEV" = x;  then
     LIB_INFO="$LIB_INFO|LIBEV support: enabled"
+
+    FLAG_INFO="$FLAG_INFO|LIBEV_CPPFLAGS: ${LIBEV_CPPFLAGS}"
+    FLAG_INFO="$FLAG_INFO|LIBEV_LDFLAGS:  ${LIBEV_LDFLAGS}"
+    FLAG_INFO="$FLAG_INFO|LIBEV_LIBS:     ${LIBEV_LIBS}"
   else
     LIB_INFO="$LIB_INFO|LIBEV support: enabled (path $LIBEV)"
   fi
@@ -107,13 +115,7 @@ else
   LIB_INFO="$LIB_INFO|LIBEV support: disabled"
 fi
 
-dnl -----------------------------------------------------------------------------------------
-dnl informational output
-dnl -----------------------------------------------------------------------------------------
-
-if test "x$tr_LIBEV" = xyes;  then
-  FLAG_INFO="$FLAG_INFO|LIBEV_CPPFLAGS: ${LIBEV_CPPFLAGS}"
-  FLAG_INFO="$FLAG_INFO|LIBEV_LDFLAGS:  ${LIBEV_LDFLAGS}"
-  FLAG_INFO="$FLAG_INFO|LIBEV_LIBS:     ${LIBEV_LIBS}"
-fi
-
+dnl Local Variables:
+dnl mode: outline-minor
+dnl outline-regexp: "^\\(dnl --SECTION--\\)"
+dnl End:

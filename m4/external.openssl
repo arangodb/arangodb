@@ -28,6 +28,14 @@ AC_ARG_WITH(openssl-lib,
 TR_STATIC_ENABLE([ssl])
 
 dnl -----------------------------------------------------------------------------------------
+dnl check for OpenSSL
+dnl -----------------------------------------------------------------------------------------
+
+AC_MSG_NOTICE([--------------------------------------------------------------------------------])
+AC_MSG_NOTICE([CHECKING FOR OPENSSL])
+AC_MSG_NOTICE([--------------------------------------------------------------------------------])
+
+dnl -----------------------------------------------------------------------------------------
 dnl save flags
 dnl -----------------------------------------------------------------------------------------
 
@@ -38,10 +46,6 @@ SAVE_LDFLAGS="$LDFLAGS"
 LDFLAGS="$LDFLAGS $OPENSSL_LDFLAGS"
 
 SAVE_LIBS="$LIBS"
-
-dnl -----------------------------------------------------------------------------------------
-dnl check for OpenSSL
-dnl -----------------------------------------------------------------------------------------
 
 if test "$tr_OPENSSL" = "yes";  then
   AC_CHECK_HEADERS([openssl/ssl.h])
@@ -141,3 +145,8 @@ if test "x$tr_OPENSSL" = xyes;  then
   FLAG_INFO="$FLAG_INFO|OPENSSL_LDFLAGS:  ${OPENSSL_LDFLAGS}"
   FLAG_INFO="$FLAG_INFO|OPENSSL_LIBS:     ${OPENSSL_LIBS}"
 fi
+
+dnl Local Variables:
+dnl mode: outline-minor
+dnl outline-regexp: "^\\(dnl --SECTION--\\)"
+dnl End:
