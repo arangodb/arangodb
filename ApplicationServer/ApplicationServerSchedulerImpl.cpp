@@ -28,11 +28,11 @@
 #include "ApplicationServerSchedulerImpl.h"
 
 #include <Basics/Exceptions.h>
-#include <Basics/Logger.h>
-#include <Rest/PeriodicTask.h>
-#include <Rest/SignalTask.h>
+#include <Logger/Logger.h>
 
+#include "Scheduler/PeriodicTask.h"
 #include "Scheduler/SchedulerLibev.h"
+#include "Scheduler/SignalTask.h"
 
 using namespace std;
 using namespace triagens::basics;

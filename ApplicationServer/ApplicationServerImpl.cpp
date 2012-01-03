@@ -32,13 +32,14 @@
 #include <pwd.h>
 #include <grp.h>
 
-#include <BasicsC/conversions.h>
-#include <Basics/DeleteObject.h>
 #include <Basics/FileUtils.h>
-#include <Basics/Logger.h>
 #include <Basics/Random.h>
 #include <Basics/StringUtils.h>
-#include <Rest/ApplicationFeature.h>
+#include <Basics/delete_object.h>
+#include <BasicsC/conversions.h>
+#include <Logger/Logger.h>
+
+#include "ApplicationServer/ApplicationFeature.h"
 
 using namespace std;
 using namespace triagens::basics;
