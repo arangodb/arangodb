@@ -29,9 +29,7 @@
 #ifndef TRIAGENS_FYN_GENERAL_SERVER_GENERAL_LISTEN_TASK_H
 #define TRIAGENS_FYN_GENERAL_SERVER_GENERAL_LISTEN_TASK_H 1
 
-#include <Basics/Common.h>
-
-#include <Rest/ListenTask.h>
+#include "Scheduler/ListenTask.h"
 
 namespace triagens {
   namespace rest {
