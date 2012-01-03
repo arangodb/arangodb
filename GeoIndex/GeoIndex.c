@@ -5,34 +5,24 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright by triAGENS GmbH - All rights reserved.
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
-/// The Programs (which include both the software and documentation)
-/// contain proprietary information of triAGENS GmbH; they are
-/// provided under a license agreement containing restrictions on use and
-/// disclosure and are also protected by copyright, patent and other
-/// intellectual and industrial property laws. Reverse engineering,
-/// disassembly or decompilation of the Programs, except to the extent
-/// required to obtain interoperability with other independently created
-/// software or as specified by law, is prohibited.
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
 ///
-/// The Programs are not intended for use in any nuclear, aviation, mass
-/// transit, medical, or other inherently dangerous applications. It shall
-/// be the licensee's responsibility to take all appropriate fail-safe,
-/// backup, redundancy, and other measures to ensure the safe use of such
-/// applications if the Programs are used for such purposes, and triAGENS
-/// GmbH disclaims liability for any damages caused by such use of
-/// the Programs.
+///     http://www.apache.org/licenses/LICENSE-2.0
 ///
-/// This software is the confidential and proprietary information of
-/// triAGENS GmbH. You shall not disclose such confidential and
-/// proprietary information and shall use it only in accordance with the
-/// terms of the license agreement you entered into with triAGENS GmbH.
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author R. A. Parker
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 /* GeoIndex.c -   GeoIndex algorithms                */
@@ -270,8 +260,8 @@ GeoString GeoMkHilbert(GeoCoordinate * c)
     x1=c->longitude;
     if(c->longitude < 0.0)
     {
-        x1=c->longitude+180.0;  
-        z=1;      
+        x1=c->longitude+180.0;
+        z=1;
     }
     x=(int) (x1*STRINGPERDEGREE);
     y=(int) (y1*STRINGPERDEGREE);
@@ -328,7 +318,7 @@ void GeoMkDetail(GeoIndex * gi, GeoDetailedPoint * gd, GeoCoordinate * c)
         z1=(gi->fixed.z)[i];
         snmd=(x1-gd->x)*(x1-gd->x)+(y1-gd->y)*(y1-gd->y)+
                           (z1-gd->z)*(z1-gd->z);
-        (gd->fixdist)[i] = asin(sqrt(snmd)/2.0)*ARCSINFIX;      
+        (gd->fixdist)[i] = asin(sqrt(snmd)/2.0)*ARCSINFIX;
     }
 }
 
@@ -464,7 +454,7 @@ void GeoResultsInsertPoint(GeoResults * gr, int slot, double snmd)
         }
         gr->snmd[i]=snmd;
         gr->slot[i]=slot;
-        return;     
+        return;
     }
 }
 
@@ -518,7 +508,7 @@ GeoCoordinates * GeoAnswers (GeoIndex * gi, GeoResults * gr)
         if(slot==0) continue;
         ans->coordinates[j].latitude =
                      (gi->gc)[slot].latitude;
-        ans->coordinates[j].longitude = 
+        ans->coordinates[j].longitude =
                      (gi->gc)[slot].longitude;
         ans->coordinates[j].data =
                      (gi->gc)[slot].data;
@@ -574,7 +564,7 @@ GeoCoordinates * GeoIndex_PointsWithinRadius(GeoIndex * gi,
     {
         gk.stacksize--;
         pot=gk.potid[gk.stacksize];
-        if(GeoPotJunk(&gd,pot)) 
+        if(GeoPotJunk(&gd,pot))
             continue;
         gp=gi->pots+pot;
         if(gp->LorLeaf==0)
@@ -756,7 +746,7 @@ int GeoFind(GeoPath * gt, GeoDetailedPoint * gd)
             gt->pathlength++;
             if(gp->LorLeaf == 0) break;
             pot=gp->RorPoints;
-        }           
+        }
     }
     return 2;
 }
@@ -907,7 +897,7 @@ int GeoIndex_insert(GeoIndex * gi, GeoCoordinate * c)
 /* first move the points from pot to pot2          */
         gp2->LorLeaf=0;    /* leaf pot  */
         gp2->RorPoints=gp->RorPoints;
-        for(i=0;i<gp->RorPoints;i++) 
+        for(i=0;i<gp->RorPoints;i++)
             gp2->points[i]=gp->points[i];
 /* move the first half of the points from pot2 to pot1 */
         for(i=0;i<GeoIndexPOTSIZE/2;i++)
@@ -964,7 +954,7 @@ int GeoIndex_insert(GeoIndex * gi, GeoCoordinate * c)
             if(gd.fixdist[i] > gi->pots[gt.path[j]].maxdist[i])
                 gi->pots[gt.path[j]].maxdist[i] = gd.fixdist[i];
             else break;
-            j--; 
+            j--;
         }
     }
 /* just need to balance the tree  */
