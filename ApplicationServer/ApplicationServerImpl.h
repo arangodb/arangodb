@@ -32,7 +32,8 @@
 
 #include <Basics/ProgramOptions.h>
 #include <Basics/ProgramOptionsDescription.h>
-#include <Rest/ApplicationServer.h>
+
+#include "ApplicationServer/ApplicationServer.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page CommandLineLoggingTOC

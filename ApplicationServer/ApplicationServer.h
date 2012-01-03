@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief application server http server implementation
+/// @brief application server
 ///
 /// @file
 ///
@@ -25,130 +25,180 @@
 /// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_FYN_APPLICATION_SERVER_APPLICATION_HTTP_SERVER_IMPL_H
-#define TRIAGENS_FYN_APPLICATION_SERVER_APPLICATION_HTTP_SERVER_IMPL_H 1
+#ifndef TRIAGENS_FYN_REST_APPLICATION_SERVER_H
+#define TRIAGENS_FYN_REST_APPLICATION_SERVER_H 1
 
-#include <Rest/ApplicationHttpServer.h>
+#include <Basics/Common.h>
 
 namespace triagens {
+  namespace basics {
+    class ProgramOptionsDescription;
+    class ProgramOptions;
+  }
+
   namespace rest {
-    class HttpServer;
-    class HttpServerImpl;
+    class ApplicationFeature;
+    class Scheduler;
+    class SignalTask;
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief application server scheduler implementation
+    /// @brief application server
     ////////////////////////////////////////////////////////////////////////////////
 
-    class ApplicationHttpServerImpl : public ApplicationHttpServer {
+    class ApplicationServer {
       private:
-        ApplicationHttpServerImpl (ApplicationHttpServerImpl const&);
-        ApplicationHttpServerImpl& operator= (ApplicationHttpServerImpl const&);
+        ApplicationServer (const ApplicationServer&);
+        ApplicationServer& operator= (const ApplicationServer&);
 
       public:
+        static string const OPTIONS_CMDLINE;
+        static string const OPTIONS_HIDDEN;
+        static string const OPTIONS_LIMITS;
+        static string const OPTIONS_LOGGER;
+        static string const OPTIONS_SERVER;
+        static string const OPTIONS_RECOVERY_REPLICATION;
+
+      public:
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief constructs a new skeleton
+        ////////////////////////////////////////////////////////////////////////////////
+
+        static ApplicationServer* create (string const& description, string const& version);
+
+      protected:
 
         ////////////////////////////////////////////////////////////////////////////////
         /// @brief constructor
         ////////////////////////////////////////////////////////////////////////////////
 
-        ApplicationHttpServerImpl (ApplicationServer*);
+        ApplicationServer () {
+        }
+
+      public:
 
         ////////////////////////////////////////////////////////////////////////////////
         /// @brief destructor
         ////////////////////////////////////////////////////////////////////////////////
 
-        ~ApplicationHttpServerImpl ();
+        virtual ~ApplicationServer () {
+        }
 
       public:
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// {@inheritDoc}
+        /// @brief adds a new feature
         ////////////////////////////////////////////////////////////////////////////////
 
-        void setupOptions (map<string, basics::ProgramOptionsDescription>&);
+        virtual void addFeature (ApplicationFeature*) = 0;
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// {@inheritDoc}
+        /// @brief sets the name of the system config file
         ////////////////////////////////////////////////////////////////////////////////
 
-        bool parsePhase2 (basics::ProgramOptions&);
+        virtual void setSystemConfigFile (string const& name) = 0;
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// {@inheritDoc}
+        /// @brief sets the name of the user config file
         ////////////////////////////////////////////////////////////////////////////////
 
-        void showPortOptions (bool value) {
-          showPort = value;
-        }
+        virtual void setUserConfigFile (string const& name) = 0;
+
+      public:
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// {@inheritDoc}
+        /// @brief allows a multi scheduler to be build
         ////////////////////////////////////////////////////////////////////////////////
 
-        AddressPort addPort (string const&);
+        virtual void allowMultiScheduler (bool value = true) = 0;
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// {@inheritDoc}
+        /// @brief returns the scheduler
         ////////////////////////////////////////////////////////////////////////////////
 
-        HttpServer* buildServer (HttpHandlerFactory*);
+        virtual Scheduler* scheduler () const = 0;
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// {@inheritDoc}
+        /// @brief builds the scheduler
         ////////////////////////////////////////////////////////////////////////////////
 
-        HttpServer* buildServer (HttpHandlerFactory*, vector<AddressPort> const&);
+        virtual void buildScheduler () = 0;
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// {@inheritDoc}
+        /// @brief builds the scheduler reporter
         ////////////////////////////////////////////////////////////////////////////////
 
-        HttpServer* buildServer (HttpServer*, HttpHandlerFactory*, vector<AddressPort> const&);
-
-      protected:
+        virtual void buildSchedulerReporter () = 0;
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// @brief build an http server
+        /// @brief quits on control-c signal
         ////////////////////////////////////////////////////////////////////////////////
 
-        HttpServerImpl* buildHttpServer (HttpServerImpl*, HttpHandlerFactory*, vector<AddressPort> const&);
-
-      protected:
+        virtual void buildControlCHandler () = 0;
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// @brief application server
+        /// @brief installs a signal handler
         ////////////////////////////////////////////////////////////////////////////////
 
-        ApplicationServer* applicationServer;
+        virtual void installSignalHandler (SignalTask*) = 0;
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// @brief show port options
+        /// @brief returns true, if address reuse is allowed
         ////////////////////////////////////////////////////////////////////////////////
 
-        bool showPort;
+        virtual bool addressReuseAllowed () = 0;
+
+      public:
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// @brief is keep-alive required to keep the connection open
+        /// @brief returns the command line options
         ////////////////////////////////////////////////////////////////////////////////
 
-        bool requireKeepAlive;
+        virtual basics::ProgramOptions& programOptions () = 0;
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// @brief all constructed http servers
+        /// @brief returns the command line arguments
         ////////////////////////////////////////////////////////////////////////////////
 
-        vector<HttpServer*> httpServers;
+        virtual vector<string> programArguments () = 0;
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// @brief all default ports
+        /// @brief parses the arguments
         ////////////////////////////////////////////////////////////////////////////////
 
-        vector<string> httpPorts;
+        bool parse (int argc, char* argv[]);
+
+      public:
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// @brief all used addresses
+        /// @brief parses the arguments
         ////////////////////////////////////////////////////////////////////////////////
 
-        vector<AddressPort> httpAddressPorts;
+        virtual bool parse (int argc, char* argv[], map<string, basics::ProgramOptionsDescription>) = 0;
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief starts the scheduler
+        ////////////////////////////////////////////////////////////////////////////////
+
+        virtual void start () = 0;
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief waits for shutdown
+        ////////////////////////////////////////////////////////////////////////////////
+
+        virtual void wait () = 0;
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief begins shutdown sequence
+        ////////////////////////////////////////////////////////////////////////////////
+
+        virtual void beginShutdown () = 0;
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief shut downs everything
+        ////////////////////////////////////////////////////////////////////////////////
+
+        virtual void shutdown () = 0;
     };
   }
 }
