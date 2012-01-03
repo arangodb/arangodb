@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,15 +22,13 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAdminBaseHandler.h"
 
-#include <Rest/HttpRequest.h>
-
+#include "Rest/HttpRequest.h"
 #include "SessionManager/Session.h"
-
 #include "UserManager/User.h"
 
 using namespace std;
@@ -39,71 +37,95 @@ using namespace triagens::rest;
 using namespace triagens::admin;
 
 // -----------------------------------------------------------------------------
-// helper functions
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-namespace {
-  Session* authSession (HttpRequest* request) {
-    bool found;
-    string const& sid = request->value("authSid", found);
+static Session* authSession (HttpRequest* request) {
+  bool found;
+  string const& sid = request->value("authSid", found);
 
-    if (! found) {
-      return 0;
-    }
-
-    Session* session = Session::lookup(sid);
-
-    if (session == 0) {
-      return 0;
-    }
-
-    return session;
+  if (! found) {
+    return 0;
   }
+
+  Session* session = Session::lookup(sid);
+
+  if (session == 0) {
+    return 0;
+  }
+
+  return session;
 }
 
-namespace triagens {
-  namespace admin {
+// -----------------------------------------------------------------------------
+// --SECTION--                                        class RestAdminBaseHandler
+// -----------------------------------------------------------------------------
 
-    // -----------------------------------------------------------------------------
-    // constructors and destructors
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
-    RestAdminBaseHandler::RestAdminBaseHandler (HttpRequest* request)
-      : RestBaseHandler(request) {
-    }
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup RestServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
-    // -----------------------------------------------------------------------------
-    // protected methods
-    // -----------------------------------------------------------------------------
-
-    bool RestAdminBaseHandler::hasRight (right_t right) {
-      Session* session = authSession(request);
-
-      if (session == 0) {
-        return false;
-      }
-
-      return session->hasRight(right);
-    }
-
-
-
-
-    bool RestAdminBaseHandler::isSelf (string const& username) {
-      Session* session = authSession(request);
-
-      if (session == 0) {
-        return false;
-      }
-
-      User* user = User::lookup(username);
-
-      if (user == 0) {
-        return false;
-      }
-
-      return session->getUser() != user;
-    }
-
-  }
+RestAdminBaseHandler::RestAdminBaseHandler (HttpRequest* request)
+  : RestBaseHandler(request) {
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup RestServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if authentication session has given right
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestAdminBaseHandler::hasRight (right_t right) {
+  Session* session = authSession(request);
+
+  if (session == 0) {
+    return false;
+  }
+
+  return session->hasRight(right);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if authentication session is bound to given user
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestAdminBaseHandler::isSelf (string const& username) {
+  Session* session = authSession(request);
+
+  if (session == 0) {
+    return false;
+  }
+
+  User* user = User::lookup(username);
+
+  if (user == 0) {
+    return false;
+  }
+
+  return session->getUser() != user;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:
