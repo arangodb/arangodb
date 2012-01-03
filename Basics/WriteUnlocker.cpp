@@ -28,8 +28,8 @@
 
 #include "WriteUnlocker.h"
 
-#include <Basics/Exceptions.h>
-#include <Basics/StringUtils.h>
+#include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
 
 using namespace triagens::basics;
 

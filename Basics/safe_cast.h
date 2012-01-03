@@ -28,9 +28,9 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_SAFE_CAST_H
 #define TRIAGENS_JUTLAND_BASICS_SAFE_CAST_H 1
 
-#include <Basics/Common.h>
+#include "Basics/Common.h"
 
-#include <Basics/Exceptions.h>
+#include "Basics/Exceptions.h"
 
 namespace triagens {
   namespace basics {
