@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,15 +23,15 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2008-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2008-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_JUTLAND_VARIANT_VARIANT_OBJECT_H
-#define TRIAGENS_JUTLAND_VARIANT_VARIANT_OBJECT_H 1
+#ifndef TRIAGENS_VARIANT_VARIANT_OBJECT_H
+#define TRIAGENS_VARIANT_VARIANT_OBJECT_H 1
 
-#include <Basics/Common.h>
+#include "Basics/Common.h"
 
-#include <Basics/Exceptions.h>
+#include "Basics/Exceptions.h"
 
 namespace triagens {
   namespace basics {
