@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Esteban Lombeyda
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "program-options.h"
@@ -30,10 +30,10 @@
 #include <getopt.h>
 #include <regex.h>
 
-#include <BasicsC/conversions.h>
-#include <BasicsC/logging.h>
-#include <BasicsC/string-buffer.h>
-#include <BasicsC/strings.h>
+#include "BasicsC/conversions.h"
+#include "BasicsC/logging.h"
+#include "BasicsC/string-buffer.h"
+#include "BasicsC/strings.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
@@ -1355,7 +1355,7 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
   TRI_string_buffer_t buffer;
   TRI_PO_item_t * item;
   char const* shortOptions;
-  int i;
+  size_t i;
   int c;
   int idx;
   int maxIdx;
@@ -1399,7 +1399,7 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
     c = getopt_long(argc, argv, shortOptions, (const struct option*) options->_longopts._buffer, &idx);
 
     if (c == -1) {
-      for (i = optind;  i < argc;  ++i) {
+      for (i = optind;  i < (size_t) argc;  ++i) {
         TRI_PushBackVectorString(&options->_arguments, TRI_DuplicateString(argv[i]));
       }
 
