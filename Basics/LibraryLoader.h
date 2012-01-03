@@ -28,10 +28,10 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_LIBRARY_LOADER_H
 #define TRIAGENS_JUTLAND_BASICS_LIBRARY_LOADER_H 1
 
-#include <Basics/Common.h>
+#include "Basics/Common.h"
 
-#include <Basics/FileUtils.h>
-#include <Logger/Logger.h>
+#include "Basics/FileUtils.h"
+#include "Logger/Logger.h"
 
 namespace triagens {
   namespace rest {

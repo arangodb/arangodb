@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_FILE_UTILS_H
 #define TRIAGENS_JUTLAND_BASICS_FILE_UTILS_H 1
 
-#include <Basics/Common.h>
+#include "Basics/Common.h"
 
 namespace triagens {
   namespace basics {

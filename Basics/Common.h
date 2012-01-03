@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_COMMON_H
 #define TRIAGENS_JUTLAND_BASICS_COMMON_H 1
 
-#include <BasicsC/common.h>
+#include "BasicsC/common.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup Configuration Configuration

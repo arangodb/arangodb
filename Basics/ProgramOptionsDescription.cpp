@@ -27,10 +27,10 @@
 
 #include "ProgramOptionsDescription.h"
 
-#include <BasicsC/terminal-utils.h>
+#include "BasicsC/terminal-utils.h"
 
-#include <Basics/Exceptions.h>
-#include <Basics/StringUtils.h>
+#include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
 
 using namespace std;
 using namespace triagens::basics;

@@ -32,10 +32,10 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_DICTIONARY_H
 #define TRIAGENS_JUTLAND_BASICS_DICTIONARY_H 1
 
-#include <Basics/Common.h>
+#include "Basics/Common.h"
 
-#include <Basics/AssociativeArray.h>
-#include <BasicsC/hashes.h>
+#include "Basics/AssociativeArray.h"
+#include "BasicsC/hashes.h"
 
 namespace triagens {
   namespace basics {
@@ -79,16 +79,16 @@ namespace triagens {
 
         struct KeyValue {
           public:
-            KeyValue () :
-              key(0), keyLength(0) {
+            KeyValue ()
+              : _key(0), _keyLength(0), _value() {
             }
 
-            KeyValue (char const* key, size_t keyLength, ELEMENT const& value) :
-              key(key), keyLength(keyLength), value(value) {
+            KeyValue (char const* key, size_t keyLength, ELEMENT const& value)
+              : _key(key), _keyLength(keyLength), _value(value) {
             }
 
-            KeyValue (char const* key, size_t keyLength) :
-              key(key), keyLength(keyLength) {
+            KeyValue (char const* key, size_t keyLength)
+              : _key(key), _keyLength(keyLength), _value() {
             }
 
           public:
@@ -119,19 +119,19 @@ namespace triagens {
         struct DictionaryDescription {
           public:
             static void clearElement (KeyValue& element) {
-              element.key = 0;
+              element._key = 0;
             }
 
             static bool isEmptyElement (KeyValue const& element) {
-              return element.key == 0;
+              return element._key == 0;
             }
 
             static bool isEqualElementElement (KeyValue const& left, KeyValue const& right) {
-              return left.keyLength == right.keyLength && memcmp(left.key, right.key, left.keyLength) == 0;
+              return left._keyLength == right._keyLength && memcmp(left._key, right._key, left._keyLength) == 0;
             }
 
             static uint32_t hashElement (KeyValue const& element) {
-              return TRI_FnvHashPointer(element.key, element.keyLength) 0xFFFFFFFF;
+              return TRI_FnvHashPointer(element._key, element._keyLength) & 0xFFFFFFFF;
             }
         };
 
@@ -230,8 +230,8 @@ namespace triagens {
           KeyValue l(key, strlen(key));
           KeyValue const& f = _array.findElement(l);
 
-          if (f.key != 0 && strcmp(f.key, key) == 0) {
-            return &f.value;
+          if (f._key != 0 && strcmp(f._key, key) == 0) {
+            return &f._value;
           }
           else {
             return 0;

@@ -40,7 +40,7 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_ASSOCIATIVE_ARRAY_H
 #define TRIAGENS_JUTLAND_BASICS_ASSOCIATIVE_ARRAY_H 1
 
-#include <Basics/Common.h>
+#include "Basics/Common.h"
 
 namespace triagens {
   namespace basics {
@@ -116,8 +116,20 @@ namespace triagens {
 /// @brief constructs a new associative array for POD data
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit AssociativeArray (uint64_t size) :
-          _desc() {
+        explicit
+        AssociativeArray (uint64_t size)
+          : _desc(),
+            _nrAlloc(0),
+            _nrUsed(0),
+            _table(0),
+            _nrFinds(0),
+            _nrAdds(0),
+            _nrRems(0),
+            _nrResizes(0),
+            _nrProbesF(0),
+            _nrProbesA(0),
+            _nrProbesD(0),
+            _nrProbesR(0) {
           initialise(size);
         }
 
@@ -126,7 +138,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AssociativeArray (uint64_t size, const DESC& desc) :
-          _desc(desc) {
+          _desc(desc),
+            _nrAlloc(0),
+            _nrUsed(0),
+            _table(0),
+            _nrFinds(0),
+            _nrAdds(0),
+            _nrRems(0),
+            _nrResizes(0),
+            _nrProbesF(0),
+            _nrProbesA(0),
+            _nrProbesD(0),
+            _nrProbesR(0) {
           initialise(size);
         }
 

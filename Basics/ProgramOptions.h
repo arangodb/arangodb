@@ -28,10 +28,10 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_PROGRAM_OPTIONS_H
 #define TRIAGENS_JUTLAND_BASICS_PROGRAM_OPTIONS_H 1
 
-#include <Basics/Common.h>
+#include "Basics/Common.h"
 
-#include <BasicsC/vector.h>
-#include <Basics/ProgramOptionsDescription.h>
+#include "BasicsC/vector.h"
+#include "Basics/ProgramOptionsDescription.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations

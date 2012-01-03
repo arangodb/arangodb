@@ -29,9 +29,9 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_THREAD_H
 #define TRIAGENS_JUTLAND_BASICS_THREAD_H 1
 
-#include <Basics/Common.h>
+#include "Basics/Common.h"
 
-#include <BasicsC/threads.h>
+#include "BasicsC/threads.h"
 
 namespace triagens {
   namespace basics {

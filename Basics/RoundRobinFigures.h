@@ -28,12 +28,12 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_ROUND_ROBIN_FIGURES_H
 #define TRIAGENS_JUTLAND_BASICS_ROUND_ROBIN_FIGURES_H 1
 
-#include <Basics/Common.h>
+#include "Basics/Common.h"
 
 #include <math.h>
 
-#include <Basics/Mutex.h>
-#include <Basics/MutexLocker.h>
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     public macros

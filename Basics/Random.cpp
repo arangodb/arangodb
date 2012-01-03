@@ -33,11 +33,11 @@
 
 #include <boost/random.hpp>
 
-#include <BasicsC/socket-utils.h>
-#include <Basics/Exceptions.h>
-#include <Logger/Logger.h>
-#include <Basics/Mutex.h>
-#include <Basics/MutexLocker.h>
+#include "BasicsC/socket-utils.h"
+#include "Basics/Exceptions.h"
+#include "Logger/Logger.h"
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 
 using namespace std;
 using namespace triagens::basics;

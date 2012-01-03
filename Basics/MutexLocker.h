@@ -29,9 +29,9 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_MUTEX_LOCKER_H
 #define TRIAGENS_JUTLAND_BASICS_MUTEX_LOCKER_H 1
 
-#include <Basics/Common.h>
+#include "Basics/Common.h"
 
-#include <Basics/Mutex.h>
+#include "Basics/Mutex.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     public macros

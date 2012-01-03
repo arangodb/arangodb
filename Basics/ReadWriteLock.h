@@ -29,9 +29,9 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_READ_WRITE_LOCK_H
 #define TRIAGENS_JUTLAND_BASICS_READ_WRITE_LOCK_H 1
 
-#include <Basics/Common.h>
+#include "Basics/Common.h"
 
-#include <BasicsC/locks.h>
+#include "BasicsC/locks.h"
 
 #undef TRI_READ_WRITE_LOCK_COUNTER
 

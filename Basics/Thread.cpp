@@ -31,8 +31,8 @@
 #include <errno.h>
 #include <signal.h>
 
-#include <Basics/ConditionLocker.h>
-#include <Logger/Logger.h>
+#include "Basics/ConditionLocker.h"
+#include "Logger/Logger.h"
 
 using namespace triagens::basics;
 

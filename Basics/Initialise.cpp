@@ -25,15 +25,15 @@
 /// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Basics/Initialise.h>
+#include "Basics/Initialise.h"
 
-#include <BasicsC/init.h>
-#include <BasicsC/error.h>
-#include <BasicsC/hashes.h>
-#include <BasicsC/random.h>
+#include "BasicsC/init.h"
+#include "BasicsC/error.h"
+#include "BasicsC/hashes.h"
+#include "BasicsC/random.h"
 
-#include <Logger/Logger.h>
-#include <Basics/Random.h>
+#include "Logger/Logger.h"
+#include "Basics/Random.h"
 
 #ifdef TRI_BROKEN_CXA_GUARD
 #include <pthread.h>

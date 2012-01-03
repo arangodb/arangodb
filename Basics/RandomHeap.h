@@ -34,9 +34,9 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_RANDOM_HEAP_H
 #define TRIAGENS_JUTLAND_BASICS_RANDOM_HEAP_H 1
 
-#include <Basics/Common.h>
+#include "Basics/Common.h"
 
-#include <Basics/Exceptions.h>
+#include "Basics/Exceptions.h"
 
 namespace triagens {
   namespace basics {

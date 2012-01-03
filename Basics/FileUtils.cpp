@@ -41,9 +41,9 @@
 #include <direct.h>
 #endif
 
-#include <Basics/Exceptions.h>
-#include <Logger/Logger.h>
-#include <Basics/StringBuffer.h>
+#include "Basics/Exceptions.h"
+#include "Logger/Logger.h"
+#include "Basics/StringBuffer.h"
 
 namespace triagens {
   namespace basics {
