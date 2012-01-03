@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,10 +22,10 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <BasicsC/common.h>
+#include "BasicsC/common.h"
 
 #ifndef TRI_GCC_THREAD_LOCAL_STORAGE
 #ifdef TRI_HAVE_POSIX_THREADS
@@ -33,8 +33,8 @@
 #endif
 #endif
 
-#include <BasicsC/strings.h>
-#include <BasicsC/vector.h>
+#include "BasicsC/strings.h"
+#include "BasicsC/vector.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
