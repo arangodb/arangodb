@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,16 +23,15 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Copyright 2006-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2006-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_PHILADELPHIA_SHAPED_JSON_JSON_SHAPER_H
-#define TRIAGENS_PHILADELPHIA_SHAPED_JSON_JSON_SHAPER_H 1
+#ifndef TRIAGENS_SHAPED_JSON_JSON_SHAPER_H
+#define TRIAGENS_SHAPED_JSON_JSON_SHAPER_H 1
 
-#include <BasicsC/common.h>
+#include "BasicsC/common.h"
 
-#include <BasicsC/json.h>
-
+#include "BasicsC/json.h"
 #include "ShapedJson/shaped-json.h"
 
 #ifdef __cplusplus
