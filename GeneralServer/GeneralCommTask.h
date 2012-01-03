@@ -31,10 +31,11 @@
 
 #include <Basics/Common.h>
 
-#include <Basics/Logger.h>
+#include <Logger/Logger.h>
 #include <Basics/StringBuffer.h>
-#include <Rest/SocketTask.h>
 #include <Rest/HttpRequest.h>
+
+#include "Scheduler/SocketTask.h"
 
 namespace triagens {
   namespace rest {
@@ -59,13 +60,16 @@ namespace triagens {
             SocketTask(fd),
             server(server),
             connectionInfo(info),
+            writeBuffers(),
             readPosition(0),
             bodyPosition(0),
             bodyLength(0),
             requestPending(false),
             closeRequested(false),
             request(0),
-            readRequestBody(false) {
+            readRequestBody(false),
+            maximalHeaderSize(0),
+            maximalBodySize(0) {
           LOGGER_TRACE << "connection established, client " << fd
                        << ", server ip " << connectionInfo.serverAddress
                        << ", server port " << connectionInfo.serverPort

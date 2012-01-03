@@ -32,8 +32,8 @@
 #include "GeneralServer/GeneralCommTask.h"
 
 #include <Basics/Exceptions.h>
-#include <Rest/AsyncTask.h>
 
+#include "Scheduler/AsyncTask.h"
 #include "GeneralServer/GeneralServerJob.h"
 
 namespace triagens {

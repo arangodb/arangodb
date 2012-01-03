@@ -32,15 +32,15 @@
 #include <Basics/Common.h>
 
 #include <Basics/Exceptions.h>
-#include <Basics/Logger.h>
+#include <Logger/Logger.h>
 #include <Basics/ReadLocker.h>
 #include <Basics/ReadWriteLock.h>
 #include <Basics/WriteLocker.h>
 #include <Rest/Handler.h>
-#include <Rest/ListenTask.h>
-#include <Rest/Scheduler.h>
-#include <Rest/SocketTask.h>
 
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SocketTask.h"
+#include "Scheduler/ListenTask.h"
 #include "GeneralServer/GeneralListenTask.h"
 #include "GeneralServer/SpecificCommTask.h"
 
