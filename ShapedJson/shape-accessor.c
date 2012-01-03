@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,14 +22,13 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shape-accessor.h"
 
-#include <BasicsC/logging.h>
-#include <BasicsC/vector.h>
-
+#include "BasicsC/logging.h"
+#include "BasicsC/vector.h"
 #include "ShapedJson/shaped-json.h"
 
 // #define DEBUG_SHAPE_ACCESSOR 1
@@ -143,8 +142,8 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
           }
 
           TRI_PushBackVectorPointer(&ops, (void*) TRI_SHAPE_AC_OFFSET_FIX);
-          TRI_PushBackVectorPointer(&ops, (void*) (offsetsF[0]));
-          TRI_PushBackVectorPointer(&ops, (void*) (offsetsF[1]));
+          TRI_PushBackVectorPointer(&ops, (void*) (intptr_t) (offsetsF[0])); // offset is always smaller than 4 GByte
+          TRI_PushBackVectorPointer(&ops, (void*) (intptr_t) (offsetsF[1])); // offset is always smaller than 4 GByte
 
           TRI_PushBackVectorPointer(&ops, (void*) TRI_SHAPE_AC_SHAPE_PTR);
           cv.c = shape;
@@ -259,8 +258,8 @@ static bool ExecuteBytecodeShapeAccessor (TRI_shape_access_t* accessor,
         break;
 
       case TRI_SHAPE_AC_OFFSET_FIX:
-        b = (TRI_shape_size_t) *ops++;
-        e = (TRI_shape_size_t) *ops++;
+        b = (TRI_shape_size_t) (intptr_t) *ops++; // offset is always smaller than 4 GByte
+        e = (TRI_shape_size_t) (intptr_t) *ops++; // offset is always smaller than 4 GByte
 
         *end = ((char*) *begin) + e;
         *begin = ((char*) *begin) + b;
@@ -268,7 +267,7 @@ static bool ExecuteBytecodeShapeAccessor (TRI_shape_access_t* accessor,
         break;
 
       case TRI_SHAPE_AC_OFFSET_VAR:
-        pos = (TRI_shape_size_t) *ops++;
+        pos = (TRI_shape_size_t) (intptr_t) *ops++; // offset is always smaller than 4 GByte
 
         offsetsV = (TRI_shape_size_t*) *begin;
 
@@ -391,8 +390,8 @@ void TRI_PrintShapeAccessor (TRI_shape_access_t* accessor) {
         break;
 
       case TRI_SHAPE_AC_OFFSET_FIX:
-        b = (TRI_shape_size_t) *ops++;
-        e = (TRI_shape_size_t) *ops++;
+        b = (TRI_shape_size_t) (intptr_t) *ops++; // offset is always smaller than 4 GByte
+        e = (TRI_shape_size_t) (intptr_t) *ops++; // offset is always smaller than 4 GByte
 
         printf("  OP: fixed offset %lu - %lu\n",
                (unsigned long) b,
@@ -400,7 +399,7 @@ void TRI_PrintShapeAccessor (TRI_shape_access_t* accessor) {
         break;
 
       case TRI_SHAPE_AC_OFFSET_VAR:
-        pos = (TRI_shape_size_t) *ops++;
+        pos = (TRI_shape_size_t) (intptr_t) *ops++; // offset is always smaller than 4 GByte
 
         printf("  OP: variable offset at position %lu\n",
                (unsigned long) pos);
