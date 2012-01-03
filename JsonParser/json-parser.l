@@ -6,7 +6,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,16 +23,20 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <BasicsC/Common.h>
+#include "BasicsC/common.h"
 
-#include <BasicsC/json.h>
-#include <BasicsC/strings.h>
-#include <BasicsC/logging.h>
+#include "BasicsC/json.h"
+#include "BasicsC/strings.h"
+#include "BasicsC/logging.h"
 
+#ifdef _WIN32
+#define YY_NO_UNISTD_H 1
+#else
 int fileno(FILE *stream);
+#endif
 
 #define YY_NO_INPUT
 }
@@ -111,15 +115,15 @@ struct jsonData {
   * ----------------------------------------------------------------------------- */
 
 "{" {
-  return OPEN_BRACE; 
+  return OPEN_BRACE;
 }
 
 "}" {
-  return CLOSE_BRACE; 
+  return CLOSE_BRACE;
 }
 
 "[" {
-  return OPEN_BRACKET; 
+  return OPEN_BRACKET;
 }
 
 "]" {
@@ -127,24 +131,24 @@ struct jsonData {
 }
 
 "," {
- return COMMA; 
+ return COMMA;
 }
 
 ":" {
-  return COLON;  
+  return COLON;
 }
 
  /* -----------------------------------------------------------------------------
   * Skip whitespaces. Whatever is left, should be an unquoted string appearing
   * somewhere. This will be reported as an error.
   * ----------------------------------------------------------------------------- */
-  
+
 [ \t\r\n]* {
 }
 
 . {
   return UNQUOTED_STRING;
-} 
+}
 
 %%
 
@@ -160,7 +164,7 @@ static TRI_json_t* ParseObject (yyscan_t scanner, int c);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup JsonPrivate Json Objects (Private)
+/// @addtogroup Json
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -226,6 +230,7 @@ static TRI_json_t* ParseArray (yyscan_t scanner) {
   struct yyguts_t * yyg = (struct yyguts_t*) scanner;
 
   TRI_json_t* array;
+  TRI_json_t* sub;
   bool comma;
   char* name;
   char const* ptr;
@@ -279,7 +284,7 @@ static TRI_json_t* ParseArray (yyscan_t scanner) {
 
     // fallowed by an object
     c = yylex(scanner);
-    TRI_json_t* sub = ParseObject(scanner, c);
+    sub = ParseObject(scanner, c);
 
     if (sub == NULL) {
       TRI_FreeString(name);
@@ -400,7 +405,7 @@ static TRI_json_t* ParseObject (yyscan_t scanner, int c) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json Json Objects
+/// @addtogroup Json
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -420,7 +425,7 @@ TRI_json_t* TRI_Json2String (char const* text, char** error) {
   yylex_init(&scanner);
   yyg = (struct yyguts_t*) scanner;
 
-  buf = yy_scan_string(text, scanner);
+  buf = yy_scan_string((char yyconst*) text, scanner);
 
   c = yylex(scanner);
   object = ParseObject(scanner, c);
@@ -522,5 +527,5 @@ TRI_json_t* TRI_JsonFile (char const* path, char** error) {
 // Local Variables:
 // mode: C
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
