@@ -20,15 +20,24 @@ dnl CHECKS                                 HOST, PROGRAMS, COMPILER, LIB, SYSTEM
 dnl ============================================================================
 
 m4_include([m4/configure.basics])
+AC_PROG_RANLIB
+
 m4_include([m4/configure.static])
 m4_include([m4/configure.32bit])
+m4_include([m4/configure.logging])
 m4_include([m4/configure.largefile])
 m4_include([m4/configure.threads])
 m4_include([m4/configure.flex-bison])
-m4_include([m4/configure.boost])
-m4_include([m4/configure.libev])
-m4_include([m4/configure.openssl])
-m4_include([m4/configure.v8])
+
+m4_include([m4/external.boost])
+m4_include([m4/external.libev])
+m4_include([m4/external.math])
+m4_include([m4/external.ncurses])
+m4_include([m4/external.readline])
+m4_include([m4/external.openssl])
+m4_include([m4/external.v8])
+
+CPPFLAGS="$CPPFLAGS -DGEO_TRIAGENS=1"
 
 dnl ============================================================================
 dnl OUTPUT                                                        GENERATE FILES
@@ -38,6 +47,7 @@ BUILD_H="\$(top_srcdir)/build.h"
 AC_SUBST(BUILD_H)
 
 AC_CONFIG_FILES([Makefile])
+AM_CONFIG_HEADER([BasicsC/local-configuration.h])
 AC_OUTPUT
 
 dnl ============================================================================
