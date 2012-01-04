@@ -1,77 +1,105 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @brief High-Performance Database Framework made by triagens
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+/* BasicsC/local-configuration.h.in.  Generated from configure.ac by autoheader.  */
 
-#ifndef TRIAGENS_BASICS_CONFIGURATION_H
-#define TRIAGENS_BASICS_CONFIGURATION_H 1
+/* static programs have broken cxa_guard */
+#undef BROKEN_CXA_GUARD
 
-#ifndef TRI_WITHIN_COMMON
-#error use <BasicsC/common.h>
-#endif
+/* define if the Boost library is available */
+#undef HAVE_BOOST
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                     Special Configuration Options
-// -----------------------------------------------------------------------------
+/* Define to 1 if you have the <ev.h> header file. */
+#undef HAVE_EV_H
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
-/// @{
-////////////////////////////////////////////////////////////////////////////////
+/* Define to 1 if you have the <inttypes.h> header file. */
+#undef HAVE_INTTYPES_H
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enable calculation of timing figures
-////////////////////////////////////////////////////////////////////////////////
+/* Define to 1 if you have the <memory.h> header file. */
+#undef HAVE_MEMORY_H
 
+/* Define to 1 if you have the <openssl/ssl.h> header file. */
+#undef HAVE_OPENSSL_SSL_H
+
+/* Define if you have POSIX threads libraries and header files. */
+#undef HAVE_PTHREAD
+
+/* Define to 1 if you have the <readline/readline.h> header file. */
+#undef HAVE_READLINE_READLINE_H
+
+/* Define to 1 if you have the <stdint.h> header file. */
+#undef HAVE_STDINT_H
+
+/* Define to 1 if you have the <stdlib.h> header file. */
+#undef HAVE_STDLIB_H
+
+/* Define to 1 if you have the <strings.h> header file. */
+#undef HAVE_STRINGS_H
+
+/* Define to 1 if you have the <string.h> header file. */
+#undef HAVE_STRING_H
+
+/* Define to 1 if you have the <sys/stat.h> header file. */
+#undef HAVE_SYS_STAT_H
+
+/* Define to 1 if you have the <sys/types.h> header file. */
+#undef HAVE_SYS_TYPES_H
+
+/* Define to 1 if you have the <unistd.h> header file. */
+#undef HAVE_UNISTD_H
+
+/* Define to 1 if your C compiler doesn't accept -c and -o together. */
+#undef NO_MINUS_C_MINUS_O
+
+/* true if SSLv23_method return SSL_METHOD const* */
+#undef OPENSSL_NEEDS_CONST
+
+/* Name of package */
+#undef PACKAGE
+
+/* Define to the address where bug reports for this package should be sent. */
+#undef PACKAGE_BUGREPORT
+
+/* Define to the full name of this package. */
+#undef PACKAGE_NAME
+
+/* Define to the full name and version of this package. */
+#undef PACKAGE_STRING
+
+/* Define to the one symbol short name of this package. */
+#undef PACKAGE_TARNAME
+
+/* Define to the home page for this package. */
+#undef PACKAGE_URL
+
+/* Define to the version of this package. */
+#undef PACKAGE_VERSION
+
+/* Define to necessary symbol if this constant uses a non-standard name on
+   your system. */
+#undef PTHREAD_CREATE_JOINABLE
+
+/* Define to 1 if you have the ANSI C header files. */
+#undef STDC_HEADERS
+
+/* true if figures are enabled */
 #undef TRI_ENABLE_FIGURES
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enable logging
-////////////////////////////////////////////////////////////////////////////////
-
+/* true if logging is enabled */
 #undef TRI_ENABLE_LOGGER
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enable logging of timings
-////////////////////////////////////////////////////////////////////////////////
-
+/* true if timing is enabled */
 #undef TRI_ENABLE_LOGGER_TIMING
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enable timings
-////////////////////////////////////////////////////////////////////////////////
-
+/* true if timing is enabled */
 #undef TRI_ENABLE_TIMING
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+/* Version number of package */
+#undef VERSION
 
-#endif
+/* Define to 1 if `lex' declares `yytext' as a `char *' by default, not a
+   `char[]'. */
+#undef YYTEXT_POINTER
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:
+/* Number of bits in a file offset, on hosts where this is settable. */
+#undef _FILE_OFFSET_BITS
+
+/* Define for large files, on AIX-style hosts. */
+#undef _LARGE_FILES

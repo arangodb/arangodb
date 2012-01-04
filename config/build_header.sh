@@ -32,7 +32,7 @@ fi
 
 echo "#define TRIAGENS_VERSION \"$version [$revision]\"" > ${FILE}.tmp
 
-if cmp $FILE ${FILE}.tmp;  then
+if cmp -s $FILE ${FILE}.tmp;  then
   rm ${FILE}.tmp
 else
   mv ${FILE}.tmp $FILE
