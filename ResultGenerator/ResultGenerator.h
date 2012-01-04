@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_FYN_RESULT_GENERATOR_RESULT_GENERATOR_H
 #define TRIAGENS_FYN_RESULT_GENERATOR_RESULT_GENERATOR_H 1
 
-#include <Basics/VariantObject.h>
+#include <Variant/VariantObject.h>
 #include <Basics/Exceptions.h>
 
 namespace triagens {
