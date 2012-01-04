@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,16 +23,20 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2007-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2007-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_JUTLAND_BASICS_LOGGER_DATA_H
-#define TRIAGENS_JUTLAND_BASICS_LOGGER_DATA_H 1
+#ifndef TRIAGENS_LOGGER_LOGGER_DATA_H
+#define TRIAGENS_LOGGER_LOGGER_DATA_H 1
 
-#include <Basics/Common.h>
+#include "Basics/Common.h"
 
-#include <BasicsC/logging.h>
-#include <Basics/Thread.h>
+#include "BasicsC/logging.h"
+#include "Basics/Thread.h"
+
+namespace triagens {
+  namespace basics {
+    namespace LoggerData {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -43,10 +47,6 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-namespace triagens {
-  namespace basics {
-    namespace LoggerData {
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the application name
 ////////////////////////////////////////////////////////////////////////////////
@@ -56,7 +56,7 @@ namespace triagens {
           ApplicationName ();
 
         public:
-          string name;
+          string _name;
       };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,7 +68,7 @@ namespace triagens {
           Facility ();
 
         public:
-          string name;
+          string _name;
       };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -80,7 +80,7 @@ namespace triagens {
           HostName ();
 
         public:
-          string name;
+          string _name;
       };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -92,7 +92,7 @@ namespace triagens {
           MessageIdentifier ();
 
         public:
-          string name;
+          string _name;
       };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,9 +104,9 @@ namespace triagens {
           ProcessIdentifier ();
 
         public:
-          TRI_pid_t process;
-          TRI_tpid_t threadProcess;
-          TRI_tid_t thread;
+          TRI_pid_t _process;
+          TRI_tpid_t _threadProcess;
+          TRI_tid_t _thread;
       };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -118,7 +118,7 @@ namespace triagens {
           Functional (string const& name = "");
 
         public:
-          string name;
+          string _name;
       };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -130,7 +130,7 @@ namespace triagens {
           Peg (string const& name = "");
 
         public:
-          string name;
+          string _name;
       };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,7 +142,7 @@ namespace triagens {
           Task (string const& name = "");
 
         public:
-          string name;
+          string _name;
       };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,9 +154,9 @@ namespace triagens {
           Position (string const& function = "", string const& file = "", int line = 0);
 
         public:
-          string function;
-          string file;
-          int line;
+          string _function;
+          string _file;
+          int _line;
       };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -186,8 +186,8 @@ namespace triagens {
           Measure (double measure = 0.0, unit_e unit = UNIT_LESS);
 
         public:
-          double value;
-          unit_e unit;
+          double _value;
+          unit_e _unit;
       };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -203,8 +203,8 @@ namespace triagens {
           static size_t const npos;
 
         public:
-          size_t position;
-          string name;
+          size_t _position;
+          string _name;
       };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -216,7 +216,7 @@ namespace triagens {
           UserIdentifier (string const& name = "");
 
         public:
-          string user;
+          string _user;
       };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -226,29 +226,29 @@ namespace triagens {
       struct Info {
         Info();
 
-        static ApplicationName applicationName;
-        static Facility facility;
-        static HostName hostName;
+        static ApplicationName _applicationName;
+        static Facility _facility;
+        static HostName _hostName;
 
-        MessageIdentifier messageIdentifier;
+        MessageIdentifier _messageIdentifier;
 
-        TRI_log_level_e level;
-        TRI_log_category_e category;
-        TRI_log_severity_e severity;
+        TRI_log_level_e _level;
+        TRI_log_category_e _category;
+        TRI_log_severity_e _severity;
 
-        Functional functional;
+        Functional _functional;
 
-        Peg peg;
-        Task task;
-        Position position;
+        Peg _peg;
+        Task _task;
+        Position _position;
 
-        Measure measure;
-        vector<Extra> extras;
+        Measure _measure;
+        vector<Extra> _extras;
 
-        UserIdentifier userIdentifier;
-        ProcessIdentifier processIdentifier;
+        UserIdentifier _userIdentifier;
+        ProcessIdentifier _processIdentifier;
 
-        string prefix;
+        string _prefix;
       };
     }
   }

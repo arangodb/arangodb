@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,13 +23,41 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2007-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2007-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LoggerInfo.h"
 
 using namespace triagens::basics;
 using namespace std;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Logging
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a logger info
+////////////////////////////////////////////////////////////////////////////////
+
+LoggerInfo::LoggerInfo ()
+  : _info() {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructs a logger info
+////////////////////////////////////////////////////////////////////////////////
+
+LoggerInfo::~LoggerInfo () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -45,7 +73,7 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 LoggerInfo& LoggerInfo::operator<< (string const& text) {
-  info.prefix += text;
+  _info._prefix += text;
 
   return *this;
 }
@@ -55,7 +83,7 @@ LoggerInfo& LoggerInfo::operator<< (string const& text) {
 ////////////////////////////////////////////////////////////////////////////////
 
 LoggerInfo& LoggerInfo::operator<< (LoggerData::Peg const& peg) {
-  info.peg = peg;
+  _info._peg = peg;
 
   return *this;
 }
@@ -65,7 +93,7 @@ LoggerInfo& LoggerInfo::operator<< (LoggerData::Peg const& peg) {
 ////////////////////////////////////////////////////////////////////////////////
 
 LoggerInfo& LoggerInfo::operator<< (LoggerData::Task const& task) {
-  info.task = task;
+  _info._task = task;
 
   return *this;
 }
@@ -75,18 +103,18 @@ LoggerInfo& LoggerInfo::operator<< (LoggerData::Task const& task) {
 ////////////////////////////////////////////////////////////////////////////////
 
 LoggerInfo& LoggerInfo::operator<< (LoggerData::Extra const& extra) {
-  if (extra.position == LoggerData::Extra::npos) {
-    info.extras.push_back(extra);
+  if (extra._position == LoggerData::Extra::npos) {
+    _info._extras.push_back(extra);
 
-    size_t pos = info.extras.size() - 1;
-    info.extras[pos].position = pos;
+    size_t pos = _info._extras.size() - 1;
+    _info._extras[pos]._position = pos;
   }
   else {
-    if (info.extras.size() <= extra.position) {
-      info.extras.resize(extra.position + 1);
+    if (_info._extras.size() <= extra._position) {
+      _info._extras.resize(extra._position + 1);
     }
 
-    info.extras[extra.position] = extra;
+    _info._extras[extra._position] = extra;
   }
 
   return *this;
@@ -97,7 +125,7 @@ LoggerInfo& LoggerInfo::operator<< (LoggerData::Extra const& extra) {
 ////////////////////////////////////////////////////////////////////////////////
 
 LoggerInfo& LoggerInfo::operator<< (LoggerData::UserIdentifier const& userIdentifier) {
-  info.userIdentifier = userIdentifier;
+  _info._userIdentifier = userIdentifier;
 
   return *this;
 }
@@ -107,7 +135,7 @@ LoggerInfo& LoggerInfo::operator<< (LoggerData::UserIdentifier const& userIdenti
 ////////////////////////////////////////////////////////////////////////////////
 
 LoggerInfo& LoggerInfo::operator<< (LoggerData::Position const& position) {
-  info.position = position;
+  _info._position = position;
 
   return *this;
 }

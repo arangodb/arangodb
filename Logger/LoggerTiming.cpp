@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2007-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2007-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LoggerTiming.h"
@@ -31,42 +31,70 @@
 using namespace triagens::basics;
 using namespace std;
 
-namespace triagens {
-  namespace basics {
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
-   // -----------------------------------------------------------------------------
-   // logger timing enabled
-   // -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Logging
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new timing
+////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_LOGGER_TIMING
 
-    LoggerTiming::LoggerTiming ()
-      : timing(Timing::TI_WALLCLOCK) {
-    }
-
-
-
-    void LoggerTiming::measure () {
-      info.measure = LoggerData::Measure((double) timing.time(), LoggerData::UNIT_MICRO_SECONDS);
-    }
+LoggerTiming::LoggerTiming ()
+  : _timing(Timing::TI_WALLCLOCK) {
+}
 
 #else
 
-   // -----------------------------------------------------------------------------
-   // logger timing disabled
-   // -----------------------------------------------------------------------------
-
-    LoggerTiming::LoggerTiming () {
-    }
-
-
-
-    void LoggerTiming::measure () {
-      info.measure = LoggerData::Measure(0.0, LoggerData::UNIT_MICRO_SECONDS);
-    }
+LoggerTiming::LoggerTiming () {
+}
 
 #endif
-  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Logging
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the time measurement in info
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_LOGGER_TIMING
+
+void LoggerTiming::measure () {
+  _info._measure = LoggerData::Measure((double) _timing.time(), LoggerData::UNIT_MICRO_SECONDS);
 }
+
+#else
+
+void LoggerTiming::measure () {
+  _info._measure = LoggerData::Measure(0.0, LoggerData::UNIT_MICRO_SECONDS);
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:
 
 

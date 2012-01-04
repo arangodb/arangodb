@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,15 +23,18 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2007-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2007-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_JUTLAND_BASICS_LOGGER_INFO_H
-#define TRIAGENS_JUTLAND_BASICS_LOGGER_INFO_H 1
+#ifndef TRIAGENS_LOGGER_LOGGER_INFO_H
+#define TRIAGENS_LOGGER_LOGGER_INFO_H 1
 
-#include <Basics/Common.h>
+#include "Basics/Common.h"
 
-#include <Logger/LoggerData.h>
+#include "Logger/LoggerData.h"
+
+namespace triagens {
+  namespace basics {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class LoggerInfo
@@ -41,9 +44,6 @@
 /// @addtogroup Logging
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-namespace triagens {
-  namespace basics {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logger info
@@ -71,16 +71,13 @@ namespace triagens {
 /// @brief constructs a logger info
 ////////////////////////////////////////////////////////////////////////////////
 
-        LoggerInfo ()
-          : info() {
-        }
+      LoggerInfo ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a logger info
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ~LoggerInfo () {
-        }
+      virtual ~LoggerInfo ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -152,11 +149,10 @@ namespace triagens {
 /// @brief context
 ////////////////////////////////////////////////////////////////////////////////
 
-        LoggerData::Info info;
+        LoggerData::Info _info;
     };
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
