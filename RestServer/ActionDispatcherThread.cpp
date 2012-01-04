@@ -27,7 +27,7 @@
 
 #include "ActionDispatcherThread.h"
 
-#include <Basics/Logger.h>
+#include <Logger/Logger.h>
 #include <BasicsC/files.h>
 #include <BasicsC/strings.h>
 #include <Rest/Initialise.h>

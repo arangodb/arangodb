@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_AVOCADODB_RESTHANDLER_REST_ACTION_HANDLER2_H
-#define TRIAGENS_AVOCADODB_RESTHANDLER_REST_ACTION_HANDLER2_H 1
+#ifndef TRIAGENS_AVOCADO_DB_REST_SERVER_ACTION_DISPATCHER_THREAD_H
+#define TRIAGENS_AVOCADO_DB_REST_SERVER_ACTION_DISPATCHER_THREAD_H 1
 
 #include "Dispatcher/DispatcherThread.h"
 
@@ -256,5 +256,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
