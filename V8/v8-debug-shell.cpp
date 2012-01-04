@@ -231,7 +231,7 @@ int main (int argc, char* argv[]) {
   context.Dispose();
   v8::V8::Dispose();
 
-  return result;
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
