@@ -7,7 +7,7 @@ BUILT_SOURCES =
 LIBS =
 
 noinst_LIBRARIES = libavocadodb.a
-bin_PROGRAMS = avocadodb
+bin_PROGRAMS = avocado
 
 ################################################################################
 ## avocado
