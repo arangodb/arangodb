@@ -31,10 +31,10 @@
 #include <ev.h>
 
 #include <Basics/Exceptions.h>
-#include <Basics/Logger.h>
+#include <Logger/Logger.h>
 #include <Basics/MutexLocker.h>
-#include <Rest/Task.h>
 
+#include "Scheduler/Task.h"
 #include "Scheduler/SchedulerThread.h"
 
 using namespace triagens::basics;
