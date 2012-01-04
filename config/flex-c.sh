@@ -1,16 +1,11 @@
 #!/bin/sh
 
 FLEX="$1"
-DIR="$2"
-FILE="$3"
+OUTPUT="$2"
+INPUT="$3"
 
-if test "x$FLEX" = "x" -o "x$DIR" = "x" -o "x$FILE" = "x" -o ! -d "$DIR";  then
-  echo "usage: $0 <flex> <directory> <file-prefix>"
-  exit 1
-fi
-
-if test ! -d "$DIR";  then
-  echo "$0: expecting '$DIR' to be a directory"
+if test "x$FLEX" = "x" -o "x$OUTPUT" = "x" -o "x$INPUT" = "x";  then
+  echo "usage: $0 <flex> <output> <input>"
   exit 1
 fi
 
@@ -18,27 +13,25 @@ fi
 ## flex
 #############################################################################
 
-${FLEX} -L -o${DIR}/${FILE}.c ${DIR}/${FILE}.l
+${FLEX} -L -o${OUTPUT} ${INPUT}
 
 #############################################################################
 ## sanity checks
 #############################################################################
 
-test -f ${DIR}/${FILE}.c || exit 1
+test -f ${OUTPUT} || exit 1
 
 #############################################################################
 ## fix casts
 #############################################################################
 
-cat ${DIR}/${FILE}.c \
+cat ${OUTPUT} \
   | sed -e 's:yy_n_chars, (size_t) num_to_read );:yy_n_chars, (int) num_to_read );:' \
-  | sed -e 's:extern int isatty (int );:#ifndef _WIN32\
-\0\
-#endif:' \
-  > ${DIR}/${FILE}.c.tmp
+  | awk '$0 == "extern int isatty (int );" {print "#ifndef _WIN32"; print $0; print "#endif"; next;} {print $0}' \
+  > ${OUTPUT}.tmp
 
 # give some information
-diff -u ${DIR}/${FILE}.c ${DIR}/${FILE}.c.tmp
+diff -u ${OUTPUT} ${OUTPUT}.tmp
 
 # and move the files to the final destination
-mv ${DIR}/${FILE}.c.tmp ${DIR}/${FILE}.c || exit 1
+mv ${OUTPUT}.tmp ${OUTPUT} || exit 1

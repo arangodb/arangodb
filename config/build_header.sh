@@ -11,11 +11,11 @@ if test -d .svn;  then
   revision=`svnversion`
 else
   if test ! -f "$INFO";  then
-    echo "$0: cannot open info file $INFO"
-    exit 1
+    echo "WARNING: cannot open info file $INFO"
+    revision="exported"
+  else
+    revision=`grep 'Revision:' $INFO | awk '{print $2}'`
   fi
-
-  revision=`grep 'Revision:' $INFO | awk '{print $2}'`
 fi
 
 if test -z "$revision";  then
