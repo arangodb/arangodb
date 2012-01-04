@@ -1,0 +1,255 @@
+################################################################################
+## avocadodb
+################################################################################
+
+libavocadodb_a_CPPFLAGS = \
+	@BOOST_CPPFLAGS@ \
+	@LIBEV_CPPFLAGS@ \
+	@MATH_CPPFLAGS@ \
+	@NCURSES_CPPFLAGS@ \
+	@OPENSSL_CPPFLAGS@ \
+	@READLINE_CPPFLAGS@ \
+	@V8_CPPFLAGS@
+
+libavocadodb_a_SOURCES = \
+	Admin/ApplicationAdminServer.cpp \
+	Admin/RestAdminBaseHandler.cpp \
+	Admin/RestAdminFeConfigurationHandler.cpp \
+	Admin/RestAdminLogHandler.cpp \
+	Admin/RestBaseHandler.cpp \
+	Admin/RestVersionHandler.cpp \
+	ApplicationServer/ApplicationServer.cpp \
+	ApplicationServer/ApplicationServerImpl.cpp \
+	ApplicationServer/ApplicationServerSchedulerImpl.cpp \
+	Basics/ConditionLocker.cpp \
+	Basics/ConditionVariable.cpp \
+	Basics/FileUtils.cpp \
+	Basics/Initialise.cpp \
+	Basics/LibraryLoader.cpp \
+	Basics/Mutex.cpp \
+	Basics/MutexLocker.cpp \
+	Basics/ProgramOptions.cpp \
+	Basics/ProgramOptionsDescription.cpp \
+	Basics/Random.cpp \
+	Basics/ReadLocker.cpp \
+	Basics/ReadUnlocker.cpp \
+	Basics/ReadWriteLock.cpp \
+	Basics/StringUtils.cpp \
+	Basics/Thread.cpp \
+	Basics/Timing.cpp \
+	Basics/WriteLocker.cpp \
+	Basics/WriteUnlocker.cpp \
+	BasicsC/associative-multi.c \
+	BasicsC/associative.c \
+	BasicsC/conversions.c \
+	BasicsC/csv.c \
+	BasicsC/error.c \
+	BasicsC/files.c \
+	BasicsC/hashes.c \
+	BasicsC/init.c \
+	BasicsC/json.c \
+	BasicsC/locks-macos.c \
+	BasicsC/locks-posix.c \
+	BasicsC/logging.c \
+	BasicsC/memory.c \
+	BasicsC/process-utils.c \
+	BasicsC/random.c \
+	BasicsC/socket-utils.c \
+	BasicsC/string-buffer.c \
+	BasicsC/strings.c \
+	BasicsC/structures.c \
+	BasicsC/system-functions.c \
+	BasicsC/terminal-utils-ncurses.c \
+	BasicsC/terminal-utils.c \
+	BasicsC/threads-posix.c \
+	BasicsC/vector.c \
+	Dispatcher/ApplicationServerDispatcher.cpp \
+	Dispatcher/ApplicationServerDispatcherImpl.cpp \
+	Dispatcher/DispatcherImpl.cpp \
+	Dispatcher/DispatcherQueue.cpp \
+	Dispatcher/DispatcherThread.cpp \
+	Dispatcher/Job.cpp \
+	GeneralServer/GeneralFigures.cpp \
+	GeoIndex/GeoIndex.c \
+	HttpServer/ApplicationHttpServer.cpp \
+	HttpServer/ApplicationHttpServerImpl.cpp \
+	HttpServer/HttpCommTask.cpp \
+	HttpServer/HttpHandler.cpp \
+	HttpServer/HttpHandlerFactory.cpp \
+	HttpServer/PathHandler.cpp \
+	HttpServer/RedirectHandler.cpp \
+	HttpServer/ServiceUnavailableHandler.cpp \
+	HttpsServer/ApplicationHttpsServer.cpp \
+	HttpsServer/ApplicationHttpsServerImpl.cpp \
+	HttpsServer/HttpsAsyncCommTask.cpp \
+	HttpsServer/HttpsServer.cpp \
+	HttpsServer/HttpsServerImpl.cpp \
+	JsonParser/json-parser.c \
+	JsonParserX/InputParser.cpp \
+	JsonParserX/JsonParserX.cpp \
+	JsonParserX/JsonParserXDriver.cpp \
+	JsonParserX/JsonScannerX.cpp \
+	Logger/Logger.cpp \
+	Logger/LoggerData.cpp \
+	Logger/LoggerInfo.cpp \
+	Logger/LoggerStream.cpp \
+	Logger/LoggerTiming.cpp \
+	ProgramOptions/program-options.c \
+	Rest/AddressPort.cpp \
+	Rest/AnyServer.cpp \
+	Rest/HttpRequest.cpp \
+	Rest/HttpResponse.cpp \
+	Rest/Initialise.cpp \
+	Rest/SslInterface.cpp \
+	Rest/Url.cpp \
+	ResultGenerator/HtmlResultGenerator.cpp \
+	ResultGenerator/Initialise.cpp \
+	ResultGenerator/JsonResultGenerator.cpp \
+	ResultGenerator/JsonXResultGenerator.cpp \
+	ResultGenerator/OutputGenerator.cpp \
+	ResultGenerator/PhpResultGenerator.cpp \
+	ResultGenerator/ResultGenerator.cpp \
+	ResultGenerator/XmlResultGenerator.cpp \
+	Scheduler/AsyncTask.cpp \
+	Scheduler/ConnectionTask.cpp \
+	Scheduler/ListenTask.cpp \
+	Scheduler/PeriodicTask.cpp \
+	Scheduler/Scheduler.cpp \
+	Scheduler/SchedulerImpl.cpp \
+	Scheduler/SchedulerLibev.cpp \
+	Scheduler/SchedulerThread.cpp \
+	Scheduler/SignalTask.cpp \
+	Scheduler/SocketTask.cpp \
+	Scheduler/Task.cpp \
+	Scheduler/TimerTask.cpp \
+	ShapedJson/json-shaper.c \
+	ShapedJson/shape-accessor.c \
+	ShapedJson/shaped-json.c \
+	V8/v8-actions.cpp \
+	V8/v8-json.cpp \
+	V8/v8-shell.cpp \
+	V8/v8-utils.cpp \
+	V8/v8-vocbase.cpp \
+	Variant/VariantArray.cpp \
+	Variant/VariantBlob.cpp \
+	Variant/VariantBoolean.cpp \
+	Variant/VariantDate.cpp \
+	Variant/VariantDatetime.cpp \
+	Variant/VariantDouble.cpp \
+	Variant/VariantFloat.cpp \
+	Variant/VariantInt16.cpp \
+	Variant/VariantInt32.cpp \
+	Variant/VariantInt64.cpp \
+	Variant/VariantInt8.cpp \
+	Variant/VariantMatrix2.cpp \
+	Variant/VariantNull.cpp \
+	Variant/VariantObject.cpp \
+	Variant/VariantString.cpp \
+	Variant/VariantUInt16.cpp \
+	Variant/VariantUInt32.cpp \
+	Variant/VariantUInt64.cpp \
+	Variant/VariantUInt8.cpp \
+	Variant/VariantVector.cpp \
+	VocBase/blob-collection.c \
+	VocBase/collection.c \
+	VocBase/compactor.c \
+	VocBase/datafile.c \
+	VocBase/document-collection.c \
+	VocBase/headers.c \
+	VocBase/index.c \
+	VocBase/query.c \
+	VocBase/result-set.c \
+	VocBase/simple-collection.c \
+	VocBase/synchroniser.c \
+	VocBase/voc-shaper.c \
+	VocBase/vocbase.c
+
+avocadodb_CPPFLAGS = \
+	@BOOST_CPPFLAGS@ \
+	@LIBEV_CPPFLAGS@ \
+	@MATH_CPPFLAGS@ \
+	@NCURSES_CPPFLAGS@ \
+	@OPENSSL_CPPFLAGS@ \
+	@READLINE_CPPFLAGS@ \
+	@V8_CPPFLAGS@
+
+avocadodb_LDFLAGS = \
+	-L. \
+	@BOOST_LDFLAGS@ \
+	@LIBEV_LDFLAGS@ \
+	@MATH_LDFLAGS@ \
+	@NCURSES_LDFLAGS@ \
+	@OPENSSL_LDFLAGS@ \
+	@READLINE_LDFLAGS@ \
+	@V8_LDFLAGS@
+
+avocadodb_LDADD = \
+	-lavocadodb \
+	@BOOST_LIBS@ \
+	@LIBEV_LIBS@ \
+	@MATH_LIBS@ \
+	@NCURSES_LIBS@ \
+	@OPENSSL_LIBS@ \
+	@READLINE_LIBS@ \
+	@V8_LIBS@
+
+avocadodb_SOURCES = \
+	RestHandler/RestActionHandler.cpp \
+	RestHandler/RestDocumentHandler.cpp \
+	RestHandler/RestSystemActionHandler.cpp \
+	RestHandler/RestVocbaseBaseHandler.cpp \
+	RestServer/ActionDispatcherThread.cpp \
+	RestServer/AvocadoHttpServer.cpp \
+	RestServer/AvocadoServer.cpp \
+	RestServer/JSLoader.cpp \
+	RestServer/SystemActionDispatcherThread.cpp \
+	RestServer/avocado.cpp
+
+################################################################################
+## JavaScript source code as header
+################################################################################
+
+BUILT_SOURCES += \
+	@builddir@/js/js-json.h \
+	@builddir@/js/js-shell.h \
+	@builddir@/js/js-actions.h \
+	@builddir@/js/js-graph.h \
+	@builddir@/js/js-modules.h
+
+@builddir@/js/js-modules.h: @srcdir@/js/modules.js
+	@top_srcdir@/config/js2c.sh $^ > $@
+
+@builddir@/js/js-json.h: @srcdir@/js/json.js
+	@top_srcdir@/config/js2c.sh $^ > $@
+
+@builddir@/js/js-graph.h: @srcdir@/js/graph.js
+	@top_srcdir@/config/js2c.sh $^ > $@
+
+@builddir@/js/js-shell.h: @srcdir@/js/shell.js
+	@top_srcdir@/config/js2c.sh $^ > $@
+
+@builddir@/js/js-actions.h: @srcdir@/js/actions.js
+	@top_srcdir@/config/js2c.sh $^ > $@
+
+################################################################################
+## FLEX
+################################################################################
+
+BUILT_SOURCES += \
+	JsonParser/json-parser.c
+
+################################################################################
+## FLEX++
+################################################################################
+
+BUILT_SOURCES += \
+	V8/v8-json.cpp \
+	JsonParserX/JsonScannerX.cpp
+
+################################################################################
+## BISON++
+################################################################################
+
+BUILT_SOURCES += \
+	JsonParserX/JsonParserX.cpp
+
