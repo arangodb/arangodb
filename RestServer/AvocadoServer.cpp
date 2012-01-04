@@ -31,31 +31,26 @@
 
 #include "build.h"
 
-#include <Basics/Logger.h>
-#include <Basics/ProgramOptions.h>
-#include <Basics/ProgramOptionsDescription.h>
-#include <BasicsC/files.h>
-#include <BasicsC/init.h>
-#include <BasicsC/logging.h>
-#include <Basics/safe_cast.h>
-#include <BasicsC/strings.h>
-
-#include <Rest/ApplicationServerDispatcher.h>
-#include <Rest/HttpHandlerFactory.h>
-#include <Rest/Initialise.h>
-
+#include "Admin/RestHandlerCreator.h"
+#include "Basics/ProgramOptions.h"
+#include "Basics/ProgramOptionsDescription.h"
+#include "Basics/safe_cast.h"
+#include "BasicsC/files.h"
+#include "BasicsC/init.h"
+#include "BasicsC/logging.h"
+#include "BasicsC/strings.h"
+#include "Dispatcher/ApplicationServerDispatcher.h"
 #include "Dispatcher/DispatcherImpl.h"
-
-#include <Admin/RestHandlerCreator.h>
-
+#include "HttpServer/HttpHandlerFactory.h"
+#include "Logger/Logger.h"
+#include "Rest/Initialise.h"
 #include "RestHandler/RestActionHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestSystemActionHandler.h"
-
 #include "RestServer/ActionDispatcherThread.h"
-#include "RestServer/SystemActionDispatcherThread.h"
 #include "RestServer/AvocadoHttpServer.h"
 #include "RestServer/JSLoader.h"
+#include "RestServer/SystemActionDispatcherThread.h"
 
 #include "V8/v8-actions.h"
 #include "V8/v8-globals.h"
@@ -69,11 +64,11 @@ using namespace triagens::rest;
 using namespace triagens::admin;
 using namespace triagens::avocado;
 
-#include "RestServer/js-actions.h"
-#include "RestServer/js-graph.h"
-#include "RestServer/js-json.h"
-#include "RestServer/js-modules.h"
-#include "RestServer/js-shell.h"
+#include "js/js-actions.h"
+#include "js/js-graph.h"
+#include "js/js-json.h"
+#include "js/js-modules.h"
+#include "js/js-shell.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

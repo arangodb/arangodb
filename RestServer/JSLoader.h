@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_AVOCADODB_RESTHANDLER_REST_ACTION_HANDLER37_H
-#define TRIAGENS_AVOCADODB_RESTHANDLER_REST_ACTION_HANDLER37_H 1
+#ifndef TRIAGENS_AVOCADO_DB_REST_SERVER_JSLOADER_H
+#define TRIAGENS_AVOCADO_DB_REST_SERVER_JSLOADER_H 1
 
 #include <Basics/Common.h>
 
@@ -162,5 +162,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
