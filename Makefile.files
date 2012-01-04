@@ -164,7 +164,7 @@ libavocadodb_a_SOURCES = \
 	VocBase/voc-shaper.c \
 	VocBase/vocbase.c
 
-avocadodb_CPPFLAGS = \
+avocado_CPPFLAGS = \
 	@BOOST_CPPFLAGS@ \
 	@LIBEV_CPPFLAGS@ \
 	@MATH_CPPFLAGS@ \
@@ -173,7 +173,7 @@ avocadodb_CPPFLAGS = \
 	@READLINE_CPPFLAGS@ \
 	@V8_CPPFLAGS@
 
-avocadodb_LDFLAGS = \
+avocado_LDFLAGS = \
 	-L. \
 	@BOOST_LDFLAGS@ \
 	@LIBEV_LDFLAGS@ \
@@ -183,7 +183,7 @@ avocadodb_LDFLAGS = \
 	@READLINE_LDFLAGS@ \
 	@V8_LDFLAGS@
 
-avocadodb_LDADD = \
+avocado_LDADD = \
 	-lavocadodb \
 	@BOOST_LIBS@ \
 	@LIBEV_LIBS@ \
@@ -193,7 +193,9 @@ avocadodb_LDADD = \
 	@READLINE_LIBS@ \
 	@V8_LIBS@
 
-avocadodb_SOURCES = \
+avocado_DEPENDENCIES = @builddir@/libavocadodb.a
+
+avocado_SOURCES = \
 	RestHandler/RestActionHandler.cpp \
 	RestHandler/RestDocumentHandler.cpp \
 	RestHandler/RestSystemActionHandler.cpp \
