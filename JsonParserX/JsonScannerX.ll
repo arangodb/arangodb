@@ -26,7 +26,7 @@
 /// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Basics/StringUtils.h>
+#include "Basics/StringUtils.h"
 
 #include <cstdlib>
 #include <errno.h>
@@ -34,8 +34,8 @@
 
 #include <string>
 
-#include "JsonParserXDriver.h"
-#include "JsonParserX.h"
+#include "JsonParserX/JsonParserXDriver.h"
+#include "JsonParserX/JsonParserX.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
