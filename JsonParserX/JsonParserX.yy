@@ -37,9 +37,9 @@
 
 %define namespace "triagens::json_parser"
 
-// /////////////////////////////////////////////////////////////////////////////
+// .............................................................................
 // preamble
-// /////////////////////////////////////////////////////////////////////////////
+// .............................................................................
 
 %code requires {
 #define NAME_SPACE triagens::json_parser
@@ -54,18 +54,19 @@
 
 #include <Basics/Common.h>
 #include <Basics/StringUtils.h>
-#include <Basics/VariantArray.h>
-#include <Basics/VariantBoolean.h>
-#include <Basics/VariantDouble.h>
-#include <Basics/VariantInt32.h>
-#include <Basics/VariantInt64.h>
-#include <Basics/VariantNull.h>
-#include <Basics/VariantObject.h>
-#include <Basics/VariantString.h>
-#include <Basics/VariantUInt32.h>
-#include <Basics/VariantUInt64.h>
-#include <Basics/VariantVector.h>
-#include <JsonParserX/JsonParserXDriver.h>
+#include <Variant/VariantArray.h>
+#include <Variant/VariantBoolean.h>
+#include <Variant/VariantDouble.h>
+#include <Variant/VariantInt32.h>
+#include <Variant/VariantInt64.h>
+#include <Variant/VariantNull.h>
+#include <Variant/VariantObject.h>
+#include <Variant/VariantString.h>
+#include <Variant/VariantUInt32.h>
+#include <Variant/VariantUInt64.h>
+#include <Variant/VariantVector.h>
+
+#include "JsonParserX/JsonParserXDriver.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -163,26 +164,26 @@ using namespace triagens::basics;
 YY_DECL;
 %}
 
-// /////////////////////////////////////////////////////////////////////////////
+// .............................................................................
 // grammar
-// /////////////////////////////////////////////////////////////////////////////
+// .............................................................................
 
 %%
 
 %start jsonDefinition;
 
-// /////////////////////////////////////////////////////////////////////////////
+// .............................................................................
 // precedence 
-// /////////////////////////////////////////////////////////////////////////////
+// .............................................................................
 
 %left NEGATION;
 %left GE LE EQ NE GT LT;
 %left PLUS MINUS;
 %left TIMES QUOTIENT;
 
-// /////////////////////////////////////////////////////////////////////////////
+// .............................................................................
 // DEFINITION FILE
-// /////////////////////////////////////////////////////////////////////////////
+// .............................................................................
 
 jsonDefinition:
     variantArray {
@@ -357,9 +358,9 @@ variantObject:
 
 %%
 
-// /////////////////////////////////////////////////////////////////////////////
+// .............................................................................
 // postamble
-// /////////////////////////////////////////////////////////////////////////////
+// .............................................................................
 
 void triagens::json_parser::JsonParserX::error (const triagens::json_parser::JsonParserX::location_type& l, const string& m) {
   triagens::json_parser::position last = l.end - 1;
