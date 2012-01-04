@@ -219,18 +219,23 @@ BUILT_SOURCES += \
 	@builddir@/js/js-modules.h
 
 @builddir@/js/js-modules.h: @srcdir@/js/modules.js
+	@test -d @builddir@/js || mkdir @builddir@/js || true
 	@top_srcdir@/config/js2c.sh $^ > $@
 
 @builddir@/js/js-json.h: @srcdir@/js/json.js
+	@test -d @builddir@/js || mkdir @builddir@/js || true
 	@top_srcdir@/config/js2c.sh $^ > $@
 
 @builddir@/js/js-graph.h: @srcdir@/js/graph.js
+	@test -d @builddir@/js || mkdir @builddir@/js || true
 	@top_srcdir@/config/js2c.sh $^ > $@
 
 @builddir@/js/js-shell.h: @srcdir@/js/shell.js
+	@test -d @builddir@/js || mkdir @builddir@/js || true
 	@top_srcdir@/config/js2c.sh $^ > $@
 
 @builddir@/js/js-actions.h: @srcdir@/js/actions.js
+	@test -d @builddir@/js || mkdir @builddir@/js || true
 	@top_srcdir@/config/js2c.sh $^ > $@
 
 ################################################################################
