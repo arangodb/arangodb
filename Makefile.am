@@ -87,3 +87,19 @@ else
 
 endif
 
+################################################################################
+## build information
+################################################################################
+
+.PHONY: BUILD_H_TARGET
+
+BUILT_SOURCES += @builddir@/build.c @srcdir@/build.h
+avocadodb_SOURCES += @builddir@/build.c
+
+@builddir@/build.c:
+	@top_srcdir@/config/build_info.sh @srcdir@/build.info > $@
+
+@srcdir@/build.h: BUILD_H_TARGET
+
+BUILD_H_TARGET:
+	@top_srcdir@/config/build_header.sh @srcdir@/build.info @srcdir@/build.h
