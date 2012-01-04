@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,14 +22,13 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Basics/Common.h>
-
-#include <Rest/Initialise.h>
+#include "Basics/Common.h"
 
 #include "RestServer/AvocadoServer.h"
+#include "ResultGenerator/Initialise.h"
 
 using namespace triagens;
 using namespace triagens::basics;
@@ -207,7 +206,7 @@ using namespace triagens::avocado;
 ////////////////////////////////////////////////////////////////////////////////
 
 int main (int argc, char* argv[]) {
-  TRIAGENS_REST_INITIALISE;
+  TRIAGENS_RESULT_GENERATOR_INITIALISE;
   TRI_InitialiseVocBase();
 
   // create and start a AvocadoDB server
@@ -217,7 +216,7 @@ int main (int argc, char* argv[]) {
 
   // shutdown
   TRI_ShutdownVocBase();
-  TRIAGENS_REST_SHUTDOWN;
+  TRIAGENS_RESULT_GENERATOR_SHUTDOWN;
 
   return res;
 }
