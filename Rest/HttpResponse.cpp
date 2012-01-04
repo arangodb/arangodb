@@ -118,7 +118,9 @@ namespace triagens {
 
     HttpResponse::HttpResponse ()
       : code(NOT_IMPLEMENTED),
-        headerFields(5) {
+        headerFields(5),
+        bodyValue(),
+        freeables() {
       bodyValue.initialise();
     }
 
@@ -126,7 +128,9 @@ namespace triagens {
 
     HttpResponse::HttpResponse (string const& header)
       : code(NOT_IMPLEMENTED),
-        headerFields(5) {
+        headerFields(5),
+        bodyValue(),
+        freeables() {
       bodyValue.initialise();
 
       setHeaders(header, true);
@@ -136,7 +140,9 @@ namespace triagens {
 
     HttpResponse::HttpResponse (HttpResponseCode code)
       : code(code),
-        headerFields(5) {
+        headerFields(5),
+        bodyValue(),
+        freeables() {
       bodyValue.initialise();
 
       char* headerBuffer = StringUtils::duplicate("server\ntriagens GmbH High-Performance HTTP Server\n"
@@ -237,13 +243,13 @@ namespace triagens {
       map<string, string> result;
 
       for (headerFields.range(begin, end);  begin < end;  ++begin) {
-        char const* key = begin->key;
+        char const* key = begin->_key;
 
         if (key == 0) {
           continue;
         }
 
-        result[key] = begin->value;
+        result[key] = begin->_value;
       }
 
       return result;
@@ -397,7 +403,7 @@ namespace triagens {
       string transferEncoding;
 
       for (headerFields.range(begin, end);  begin < end;  ++begin) {
-        char const* key = begin->key;
+        char const* key = begin->_key;
 
         if (key == 0) {
           continue;
@@ -410,11 +416,11 @@ namespace triagens {
 
         if (strcmp(key, "transfer-encoding") == 0) {
           seenTransferEncoding = true;
-          transferEncoding = begin->value;
+          transferEncoding = begin->_value;
           continue;
         }
 
-        char const* value = begin->value;
+        char const* value = begin->_value;
 
         output->appendText(key);
         output->appendText(": ");

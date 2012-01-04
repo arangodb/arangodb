@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_FYN_REST_INITIALISE_H
 #define TRIAGENS_FYN_REST_INITIALISE_H 1
 
-#include <BasicsC/Common.h>
+#include <Basics/Common.h>
 
 namespace triagens {
 

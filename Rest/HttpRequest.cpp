@@ -28,7 +28,7 @@
 
 #include "HttpRequest.h"
 
-#include <Basics/Logger.h>
+#include <Logger/Logger.h>
 #include <Basics/StringBuffer.h>
 #include <Basics/StringUtils.h>
 
@@ -44,8 +44,12 @@ namespace triagens {
     HttpRequest::HttpRequest (string const& header)
       : type(HTTP_REQUEST_ILLEGAL),
         requestPathValue(""),
+        suffixValue(),
         headerFields(5),
-        requestFields(10) {
+        requestFields(10),
+        bodyValue(),
+        connectionInfoValue(),
+        freeables() {
 
       // copy request
       char* request = StringUtils::duplicate(header);
@@ -59,8 +63,12 @@ namespace triagens {
     HttpRequest::HttpRequest (char const* header, size_t length)
       : type(HTTP_REQUEST_ILLEGAL),
         requestPathValue(""),
+        suffixValue(),
         headerFields(5),
-        requestFields(10) {
+        requestFields(10),
+        bodyValue(),
+        connectionInfoValue(),
+        freeables() {
 
       // copy request
       char* request = StringUtils::duplicate(header, length);
@@ -74,8 +82,12 @@ namespace triagens {
     HttpRequest::HttpRequest ()
       : type(HTTP_REQUEST_ILLEGAL),
         requestPathValue(""),
+        suffixValue(),
         headerFields(5),
-        requestFields(5) {
+        requestFields(5),
+        bodyValue(),
+        connectionInfoValue(),
+        freeables() {
     }
 
 
@@ -139,13 +151,13 @@ namespace triagens {
       map<string, string> result;
 
       for (headerFields.range(begin, end);  begin < end;  ++begin) {
-        char const* key = begin->key;
+        char const* key = begin->_key;
 
         if (key == 0) {
           continue;
         }
 
-        result[key] = begin->value;
+        result[key] = begin->_value;
       }
 
       return result;
@@ -200,13 +212,13 @@ namespace triagens {
       map<string, string> result;
 
       for (requestFields.range(begin, end);  begin < end;  ++begin) {
-        char const* key = begin->key;
+        char const* key = begin->_key;
 
         if (key == 0) {
           continue;
         }
 
-        result[key] = begin->value;
+        result[key] = begin->_value;
       }
 
       return result;
@@ -270,7 +282,7 @@ namespace triagens {
       bool first = true;
 
       for (requestFields.range(begin, end);  begin < end;  ++begin) {
-        char const* key = begin->key;
+        char const* key = begin->_key;
 
         if (key == 0) {
           continue;
@@ -284,7 +296,7 @@ namespace triagens {
           buffer->appendChar('&');
         }
 
-        char const* value = begin->value;
+        char const* value = begin->_value;
 
         buffer->appendText(StringUtils::urlEncode(key));
         buffer->appendChar('=');
@@ -295,7 +307,7 @@ namespace triagens {
 
       // generate the header fields
       for (headerFields.range(begin, end);  begin < end;  ++begin) {
-        char const* key = begin->key;
+        char const* key = begin->_key;
 
         if (key == 0) {
           continue;
@@ -305,7 +317,7 @@ namespace triagens {
           continue;
         }
 
-        char const* value = begin->value;
+        char const* value = begin->_value;
 
         buffer->appendText(key);
         buffer->appendText(": ");

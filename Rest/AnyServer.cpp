@@ -38,7 +38,7 @@
 
 #include "ApplicationServer/ApplicationServerImpl.h"
 #include <Basics/FileUtils.h>
-#include <Basics/Logger.h>
+#include <Logger/Logger.h>
 
 using namespace std;
 using namespace triagens;
