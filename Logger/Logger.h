@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,19 +23,19 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2007-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2007-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_JUTLAND_BASICS_LOGGER_H
-#define TRIAGENS_JUTLAND_BASICS_LOGGER_H 1
+#ifndef TRIAGENS_LOGGER_LOGGER_H
+#define TRIAGENS_LOGGER_LOGGER_H 1
 
-#include <Basics/Common.h>
+#include "Basics/Common.h"
 
-#include <BasicsC/logging.h>
-#include <Logger/LoggerInfo.h>
-#include <Logger/LoggerTiming.h>
-#include <Logger/LoggerStream.h>
-#include <Basics/Timing.h>
+#include "Basics/Timing.h"
+#include "BasicsC/logging.h"
+#include "Logger/LoggerInfo.h"
+#include "Logger/LoggerStream.h"
+#include "Logger/LoggerTiming.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     public macros
@@ -54,7 +54,7 @@
 
 #define LOGGER_FATAL                                                              \
   if (TRI_IsHumanLogging() && TRI_IsFatalLogging())                               \
-    triagens::basics::Logger::singleton                                           \
+    triagens::basics::Logger::_singleton                                          \
     << TRI_LOG_LEVEL_FATAL                                                        \
     << TRI_LOG_SEVERITY_HUMAN                                                     \
     << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
@@ -62,7 +62,7 @@
 #else
 
 #define LOGGER_FATAL \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -74,7 +74,7 @@
 
 #define LOGGER_FATAL_I(a)                                                         \
   if (TRI_IsHumanLogging() && TRI_IsFatalLogging())                               \
-    triagens::basics::Logger::singleton                                           \
+    triagens::basics::Logger::_singleton                                          \
     << (a)                                                                        \
     << TRI_LOG_LEVEL_FATAL                                                        \
     << TRI_LOG_SEVERITY_HUMAN                                                     \
@@ -83,7 +83,7 @@
 #else
 
 #define LOGGER_FATAL_I(a) \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -95,7 +95,7 @@
 
 #define LOGGER_ERROR                                                              \
   if (TRI_IsHumanLogging() && TRI_IsErrorLogging())                               \
-    triagens::basics::Logger::singleton                                           \
+    triagens::basics::Logger::_singleton                                          \
     << TRI_LOG_LEVEL_ERROR                                                        \
     << TRI_LOG_SEVERITY_HUMAN                                                     \
     << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
@@ -103,7 +103,7 @@
 #else
 
 #define LOGGER_ERROR \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -115,7 +115,7 @@
 
 #define LOGGER_ERROR_I(a)                                                         \
   if (TRI_IsHumanLogging() && TRI_IsErrorLogging())                               \
-    triagens::basics::Logger::singleton                                           \
+    triagens::basics::Logger::_singleton                                          \
     << (a)                                                                        \
     << TRI_LOG_LEVEL_ERROR                                                        \
     << TRI_LOG_SEVERITY_HUMAN                                                     \
@@ -124,7 +124,7 @@
 #else
 
 #define LOGGER_ERROR_I(a) \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -136,7 +136,7 @@
 
 #define LOGGER_WARNING                                                              \
   if (TRI_IsHumanLogging() && TRI_IsWarningLogging())                               \
-    triagens::basics::Logger::singleton                                             \
+    triagens::basics::Logger::_singleton                                            \
     << TRI_LOG_LEVEL_WARNING                                                        \
     << TRI_LOG_SEVERITY_HUMAN                                                       \
     << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
@@ -144,7 +144,7 @@
 #else
 
 #define LOGGER_WARNING \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -156,7 +156,7 @@
 
 #define LOGGER_WARNING_I(a)                                                         \
   if (TRI_IsHumanLogging() && TRI_IsWarningLogging())                               \
-    triagens::basics::Logger::singleton                                             \
+    triagens::basics::Logger::_singleton                                            \
     << (a)                                                                          \
     << TRI_LOG_LEVEL_WARNING                                                        \
     << TRI_LOG_SEVERITY_HUMAN                                                       \
@@ -165,7 +165,7 @@
 #else
 
 #define LOGGER_WARNING_I(a) \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -177,7 +177,7 @@
 
 #define LOGGER_INFO                                                              \
   if (TRI_IsHumanLogging() && TRI_IsInfoLogging())                               \
-    triagens::basics::Logger::singleton                                          \
+    triagens::basics::Logger::_singleton                                         \
     << TRI_LOG_LEVEL_INFO                                                        \
     << TRI_LOG_SEVERITY_HUMAN                                                    \
     << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
@@ -185,7 +185,7 @@
 #else
 
 #define LOGGER_INFO \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -197,7 +197,7 @@
 
 #define LOGGER_INFO_I(a)                                                         \
   if (TRI_IsHumanLogging() && TRI_IsInfoLogging())                               \
-    triagens::basics::Logger::singleton                                          \
+    triagens::basics::Logger::_singleton                                         \
     << (a)                                                                       \
     << TRI_LOG_LEVEL_INFO                                                        \
     << TRI_LOG_SEVERITY_HUMAN                                                    \
@@ -206,7 +206,7 @@
 #else
 
 #define LOGGER_INFO_I(a) \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -217,8 +217,8 @@
 #ifdef TRI_ENABLE_LOGGER
 
 #define LOGGER_DEBUG                                                              \
-  if (TRI_IsHumanLogging() && TRI_IsDebugLogging())                               \
-    triagens::basics::Logger::singleton                                           \
+  if (TRI_IsHumanLogging() && TRI_IsDebugLogging(__FILE__))                       \
+    triagens::basics::Logger::_singleton                                          \
     << TRI_LOG_LEVEL_DEBUG                                                        \
     << TRI_LOG_SEVERITY_HUMAN                                                     \
     << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
@@ -226,7 +226,7 @@
 #else
 
 #define LOGGER_DEBUG \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -237,8 +237,8 @@
 #ifdef TRI_ENABLE_LOGGER
 
 #define LOGGER_DEBUG_I(a)                                                         \
-  if (TRI_IsHumanLogging() && TRI_IsDebugLogging())                               \
-    triagens::basics::Logger::singleton                                           \
+  if (TRI_IsHumanLogging() && TRI_IsDebugLogging(__FILE__))                       \
+    triagens::basics::Logger::_singleton                                          \
     << (a)                                                                        \
     << TRI_LOG_LEVEL_DEBUG                                                        \
     << TRI_LOG_SEVERITY_HUMAN                                                     \
@@ -247,7 +247,7 @@
 #else
 
 #define LOGGER_DEBUG_I(a) \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -258,8 +258,8 @@
 #ifdef TRI_ENABLE_LOGGER
 
 #define LOGGER_TRACE                                                              \
-  if (TRI_IsHumanLogging() && TRI_IsTraceLogging())                               \
-    triagens::basics::Logger::singleton                                           \
+  if (TRI_IsHumanLogging() && TRI_IsTraceLogging(__FILE__))                       \
+    triagens::basics::Logger::_singleton                                          \
     << TRI_LOG_LEVEL_TRACE                                                        \
     << TRI_LOG_SEVERITY_HUMAN                                                     \
     << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
@@ -267,7 +267,7 @@
 #else
 
 #define LOGGER_TRACE \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -278,8 +278,8 @@
 #ifdef TRI_ENABLE_LOGGER
 
 #define LOGGER_TRACE_I(a)                                                         \
-  if (TRI_IsHumanLogging() && TRI_IsTraceLogging())                               \
-    triagens::basics::Logger::singleton                                           \
+  if (TRI_IsHumanLogging() && TRI_IsTraceLogging(__FILE__))                       \
+    triagens::basics::Logger::_singleton                                          \
     << (a)                                                                        \
     << TRI_LOG_LEVEL_TRACE                                                        \
     << TRI_LOG_SEVERITY_HUMAN                                                     \
@@ -288,7 +288,7 @@
 #else
 
 #define LOGGER_TRACE_I(a) \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -300,13 +300,13 @@
 
 #define VOC_LOGGER(severity)                                                   \
   if (TRI_Is ## severity ## Logging ())                                        \
-    triagens::basics::Logger::singleton                                        \
+    triagens::basics::Logger::_singleton                                       \
     << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
 
 #else
 
 #define VOC_LOGGER(a) \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -318,14 +318,14 @@
 
 #define VOC_LOGGER_I(severity, a)                                              \
   if (TRI_Is ## severity ## Logging ())                                        \
-    triagens::basics::Logger::singleton                                        \
+    triagens::basics::Logger::_singleton                                       \
     << (a)                                                                     \
     << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
 
 #else
 
 #define VOC_LOGGER_I(a,b) \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -342,7 +342,7 @@
 #else
 
 #define LOGGER_REQUEST_IN_START \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -359,7 +359,7 @@
 #else
 
 #define LOGGER_REQUEST_IN_START_I(a) \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -376,7 +376,7 @@
 #else
 
 #define LOGGER_REQUEST_IN_END \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -393,7 +393,7 @@
 #else
 
 #define LOGGER_REQUEST_IN_END_I(a) \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -410,7 +410,7 @@
 #else
 
 #define LOGGER_REQUEST_OUT_START \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -427,7 +427,7 @@
 #else
 
 #define LOGGER_REQUEST_OUT_START_I(a) \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -444,7 +444,7 @@
 #else
 
 #define LOGGER_REQUEST_OUT_END \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -461,7 +461,7 @@
 #else
 
 #define LOGGER_REQUEST_OUT_END_I(a) \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -478,7 +478,7 @@
 #else
 
 #define LOGGER_MODULE_IN_START \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -495,7 +495,7 @@
 #else
 
 #define LOGGER_MODULE_IN_START_I(a) \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -512,7 +512,7 @@
 #else
 
 #define LOGGER_MODULE_IN_END \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -529,7 +529,7 @@
 #else
 
 #define LOGGER_MODULE_IN_END_I(a) \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -546,7 +546,7 @@
 #else
 
 #define LOGGER_FUNCTION_IN_START \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -563,7 +563,7 @@
 #else
 
 #define LOGGER_FUNCTION_IN_START_I(a) \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -580,7 +580,7 @@
 #else
 
 #define LOGGER_FUNCTION_IN_END \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -597,7 +597,7 @@
 #else
 
 #define LOGGER_FUNCTION_IN_END_I(a) \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -615,7 +615,7 @@
 #else
 
 #define LOGGER_STEP \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -633,7 +633,7 @@
 #else
 
 #define LOGGER_STEP_I(a) \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -651,7 +651,7 @@
 #else
 
 #define LOGGER_LOOP \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -669,7 +669,7 @@
 #else
 
 #define LOGGER_LOOP_I(a) \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -687,7 +687,7 @@
 #else
 
 #define LOGGER_HEARTBEAT \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -705,7 +705,7 @@
 #else
 
 #define LOGGER_HEARTBEAT_I(a) \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -723,7 +723,7 @@
 #else
 
 #define LOGGER_HEARTPULSE \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -741,7 +741,7 @@
 #else
 
 #define LOGGER_HEARTPULSE_I(a) \
-  if (false) triagens::basics::Logger::singleton
+  if (false) triagens::basics::Logger::_singleton
 
 #endif
 
@@ -775,6 +775,12 @@ void TRI_SetLogSeverityLogging (std::string const& severities);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SetPrefixLogging (std::string const& prefix);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the file to log for debug and trace
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetFileToLog (std::string const& file);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a log appender for file output
@@ -841,7 +847,7 @@ namespace triagens {
 /// @brief global logger
 ////////////////////////////////////////////////////////////////////////////////
 
-        static Logger singleton;
+        static Logger _singleton;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -951,7 +957,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         LoggerStream operator<< (LoggerInfo& value) {
-          LoggerStream stream(value.info);
+          LoggerStream stream(value._info);
           return stream;
         }
 
@@ -961,7 +967,7 @@ namespace triagens {
 
         LoggerStream operator<< (LoggerTiming& value) {
           value.measure();
-          LoggerStream stream(value.info);
+          LoggerStream stream(value._info);
           return stream;
         }
 
@@ -984,15 +990,13 @@ namespace triagens {
 /// @brief constructs a new logger
 ////////////////////////////////////////////////////////////////////////////////
 
-        Logger () {
-        }
+        Logger ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a logger
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~Logger () {
-        }
+        ~Logger ();
     };
   }
 }

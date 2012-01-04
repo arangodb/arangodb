@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2007-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2007-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Logger.h"
@@ -35,11 +35,11 @@
 
 #include <fstream>
 
-#include <Basics/Mutex.h>
-#include <Basics/MutexLocker.h>
-#include <Basics/StringBuffer.h>
-#include <Basics/StringUtils.h>
-#include <Basics/Thread.h>
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
+#include "Basics/Thread.h"
 
 using namespace triagens::basics;
 using namespace std;
@@ -75,6 +75,14 @@ void TRI_SetLogSeverityLogging (string const& severities) {
 
 void TRI_SetPrefixLogging (string const& prefix) {
   TRI_SetPrefixLogging(prefix.c_str());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the file to log for debug and trace
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetFileToLog (string const& file) {
+  TRI_SetFileToLog(file.c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -166,7 +174,7 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
         // .............................................................................
 
         case 'A': {
-          line.appendText(info.applicationName.name);
+          line.appendText(info._applicationName._name);
           break;
         }
 
@@ -175,11 +183,11 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
         // .............................................................................
 
         case 'C': {
-          if (info.severity == TRI_LOG_SEVERITY_FUNCTIONAL && ! info.functional.name.empty()) {
-            line.appendText(info.functional.name);
+          if (info._severity == TRI_LOG_SEVERITY_FUNCTIONAL && ! info._functional._name.empty()) {
+            line.appendText(info._functional._name);
           }
           else {
-            switch (info.category) {
+            switch (info._category) {
               case TRI_LOG_CATEGORY_FATAL: line.appendText("FATAL"); break;
               case TRI_LOG_CATEGORY_ERROR: line.appendText("ERROR"); break;
               case TRI_LOG_CATEGORY_WARNING: line.appendText("WARNING"); break;
@@ -208,16 +216,16 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
         // .............................................................................
 
         case 'E': {
-          for (vector<LoggerData::Extra>::const_iterator i = info.extras.begin();
-               i != info.extras.end();
+          for (vector<LoggerData::Extra>::const_iterator i = info._extras.begin();
+               i != info._extras.end();
                ++i) {
-            if (i != info.extras.begin()) {
+            if (i != info._extras.begin()) {
               line.appendChar(';');
             }
 
             LoggerData::Extra const& extra = *i;
 
-            line.appendText(StringUtils::escapeHex(extra.name, SpecialCharacters));
+            line.appendText(StringUtils::escapeHex(extra._name, SpecialCharacters));
           }
 
           break;
@@ -228,7 +236,7 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
         // .............................................................................
 
         case 'F': {
-          line.appendText(info.facility.name);
+          line.appendText(info._facility._name);
           break;
         }
 
@@ -237,7 +245,7 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
         // .............................................................................
 
         case 'f': {
-          line.appendText(info.position.file);
+          line.appendText(info._position._file);
           break;
         }
 
@@ -246,7 +254,7 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
         // .............................................................................
 
         case 'H': {
-          line.appendText(info.hostName.name);
+          line.appendText(info._hostName._name);
           break;
         }
 
@@ -255,7 +263,7 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
         // .............................................................................
 
         case 'K': {
-          line.appendText(info.task.name);
+          line.appendText(info._task._name);
           break;
         }
 
@@ -264,7 +272,7 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
         // .............................................................................
 
         case 'l': {
-          line.appendInteger(info.position.line);
+          line.appendInteger(info._position._line);
           break;
         }
 
@@ -273,7 +281,7 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
         // .............................................................................
 
         case 'M': {
-          line.appendText(info.messageIdentifier.name);
+          line.appendText(info._messageIdentifier._name);
           break;
         }
 
@@ -282,7 +290,7 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
         // .............................................................................
 
         case 'm': {
-          line.appendText(info.position.function);
+          line.appendText(info._position._function);
           break;
         }
 
@@ -291,7 +299,7 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
         // .............................................................................
 
         case 'p': {
-          line.appendInteger((uint64_t) info.processIdentifier.process);
+          line.appendInteger((uint64_t) info._processIdentifier._process);
           break;
         }
 
@@ -300,7 +308,7 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
         // .............................................................................
 
         case 'P': {
-          line.appendText(info.peg.name);
+          line.appendText(info._peg._name);
           break;
         }
 
@@ -309,7 +317,7 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
         // .............................................................................
 
         case 'S': {
-          switch (info.severity) {
+          switch (info._severity) {
             case TRI_LOG_SEVERITY_EXCEPTION: line.appendInteger(2);  break;
             case TRI_LOG_SEVERITY_FUNCTIONAL: line.appendInteger(5);  break;
             case TRI_LOG_SEVERITY_TECHNICAL: line.appendInteger(6);  break;
@@ -325,7 +333,7 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
         // .............................................................................
 
         case 's': {
-          line.appendInteger((uint64_t) info.processIdentifier.threadProcess);
+          line.appendInteger((uint64_t) info._processIdentifier._threadProcess);
           break;
         }
 
@@ -351,7 +359,7 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
         // .............................................................................
 
         case 't': {
-          line.appendInteger((uint64_t) info.processIdentifier.thread);
+          line.appendInteger((uint64_t) info._processIdentifier._thread);
           break;
         }
 
@@ -360,7 +368,7 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
         // .............................................................................
 
         case 'U': {
-          switch (info.measure.unit) {
+          switch (info._measure._unit) {
             case LoggerData::UNIT_SECONDS:  line.appendText("s");  break;
             case LoggerData::UNIT_MILLI_SECONDS:  line.appendText("ms");  break;
             case LoggerData::UNIT_MICRO_SECONDS:  line.appendText("us");  break;
@@ -382,7 +390,7 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
         // .............................................................................
 
         case 'u': {
-          line.appendText(info.userIdentifier.user);
+          line.appendText(info._userIdentifier._user);
           break;
         }
 
@@ -391,7 +399,7 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
         // .............................................................................
 
         case 'V': {
-          line.appendDecimal(info.measure.value);
+          line.appendDecimal(info._measure._value);
           break;
         }
 
@@ -400,8 +408,8 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
         // .............................................................................
 
         case 'x': {
-          if (! info.prefix.empty()) {
-            line.appendText(StringUtils::escapeHex(info.prefix, SpecialCharacters));
+          if (! info._prefix.empty()) {
+            line.appendText(StringUtils::escapeHex(info._prefix, SpecialCharacters));
           }
 
           line.appendText(StringUtils::escapeHex(text, SpecialCharacters));
@@ -434,7 +442,7 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
 
   line.appendChar('\0');
 
-  TRI_RawLog(info.level, info.severity, line.c_str(), line.length());
+  TRI_RawLog(info._level, info._severity, line.c_str(), line.length());
 
   line.free();
 }
@@ -460,7 +468,7 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
 /// @brief global logger
 ////////////////////////////////////////////////////////////////////////////////
 
-Logger Logger::singleton;
+Logger Logger::_singleton;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -480,7 +488,7 @@ Logger Logger::singleton;
 ////////////////////////////////////////////////////////////////////////////////
 
 void Logger::setApplicationName (string const& name) {
-  LoggerData::Info::applicationName.name = name;
+  LoggerData::Info::_applicationName._name = name;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -488,7 +496,7 @@ void Logger::setApplicationName (string const& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Logger::setFacility (string const& name) {
-  LoggerData::Info::facility.name = name;
+  LoggerData::Info::_facility._name = name;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -496,7 +504,7 @@ void Logger::setFacility (string const& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Logger::setHostName (string const& name) {
-  LoggerData::Info::hostName.name = name;
+  LoggerData::Info::_hostName._name = name;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -505,6 +513,33 @@ void Logger::setHostName (string const& name) {
 
 void Logger::setLogFormat (string const& format) {
   LoggerFormat = format;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Logging
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new logger
+////////////////////////////////////////////////////////////////////////////////
+
+Logger::Logger () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructs a logger
+////////////////////////////////////////////////////////////////////////////////
+
+Logger::~Logger () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -527,16 +562,16 @@ void Logger::setLogFormat (string const& format) {
 void Logger::output (string const& text, LoggerData::Info const& info) {
 
   // human readable
-  if (info.severity == TRI_LOG_SEVERITY_HUMAN) {
+  if (info._severity == TRI_LOG_SEVERITY_HUMAN) {
     if (! TRI_IsHumanLogging()) {
       return;
     }
 
-    TRI_Log(info.position.function.c_str(),
-            info.position.file.c_str(),
-            info.position.line,
-            info.level,
-            info.severity,
+    TRI_Log(info._position._function.c_str(),
+            info._position._file.c_str(),
+            info._position._line,
+            info._level,
+            info._severity,
             "%s", text.c_str());
   }
 

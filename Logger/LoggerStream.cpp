@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,223 +23,294 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2007-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2007-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LoggerStream.h"
 
-#include <Logger/Logger.h>
+#include "Logger/Logger.h"
 
 using namespace triagens::basics;
 
 // -----------------------------------------------------------------------------
-// helper
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-namespace {
-  void computeInfo (LoggerData::Info& info) {
-    if (info.severity == TRI_LOG_SEVERITY_UNKNOWN) {
-      switch (info.category) {
-        case TRI_LOG_CATEGORY_FATAL:
-          info.severity = TRI_LOG_SEVERITY_EXCEPTION;
-          break;
-        case TRI_LOG_CATEGORY_ERROR:
-          info.severity = TRI_LOG_SEVERITY_EXCEPTION;
-          break;
-        case TRI_LOG_CATEGORY_WARNING:
-          info.severity = TRI_LOG_SEVERITY_EXCEPTION;
-          break;
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Logging
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
-        case TRI_LOG_CATEGORY_REQUEST_IN_START:
-          info.severity = TRI_LOG_SEVERITY_TECHNICAL;
-          break;
-        case TRI_LOG_CATEGORY_REQUEST_IN_END:
-          info.severity = TRI_LOG_SEVERITY_TECHNICAL;
-          break;
-        case TRI_LOG_CATEGORY_REQUEST_OUT_START:
-          info.severity = TRI_LOG_SEVERITY_TECHNICAL;
-          break;
-        case TRI_LOG_CATEGORY_REQUEST_OUT_END:
-          info.severity = TRI_LOG_SEVERITY_TECHNICAL;
-          break;
-        case TRI_LOG_CATEGORY_HEARTBEAT:
-          info.severity = TRI_LOG_SEVERITY_TECHNICAL;
-          break;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update severity from category
+////////////////////////////////////////////////////////////////////////////////
 
-        case TRI_LOG_CATEGORY_MODULE_IN_START:
-          info.severity = TRI_LOG_SEVERITY_DEVELOPMENT;
-          break;
-        case TRI_LOG_CATEGORY_MODULE_IN_END:
-          info.severity = TRI_LOG_SEVERITY_DEVELOPMENT;
-          break;
-        case TRI_LOG_CATEGORY_FUNCTION_IN_START:
-          info.severity = TRI_LOG_SEVERITY_DEVELOPMENT;
-          break;
-        case TRI_LOG_CATEGORY_FUNCTION_IN_END:
-          info.severity = TRI_LOG_SEVERITY_DEVELOPMENT;
-          break;
-        case TRI_LOG_CATEGORY_STEP:
-          info.severity = TRI_LOG_SEVERITY_DEVELOPMENT;
-          break;
-        case TRI_LOG_CATEGORY_LOOP:
-          info.severity = TRI_LOG_SEVERITY_DEVELOPMENT;
-          break;
-        case TRI_LOG_CATEGORY_HEARTPULSE:
-          info.severity = TRI_LOG_SEVERITY_DEVELOPMENT;
-          break;
+static void computeInfo (LoggerData::Info& info) {
+  if (info._severity == TRI_LOG_SEVERITY_UNKNOWN) {
+    switch (info._category) {
+      case TRI_LOG_CATEGORY_FATAL:
+        info._severity = TRI_LOG_SEVERITY_EXCEPTION;
+        break;
+      case TRI_LOG_CATEGORY_ERROR:
+        info._severity = TRI_LOG_SEVERITY_EXCEPTION;
+        break;
+      case TRI_LOG_CATEGORY_WARNING:
+        info._severity = TRI_LOG_SEVERITY_EXCEPTION;
+        break;
 
-        default:
-          info.severity = TRI_LOG_SEVERITY_UNKNOWN;
-      }
+      case TRI_LOG_CATEGORY_REQUEST_IN_START:
+        info._severity = TRI_LOG_SEVERITY_TECHNICAL;
+        break;
+      case TRI_LOG_CATEGORY_REQUEST_IN_END:
+        info._severity = TRI_LOG_SEVERITY_TECHNICAL;
+        break;
+      case TRI_LOG_CATEGORY_REQUEST_OUT_START:
+        info._severity = TRI_LOG_SEVERITY_TECHNICAL;
+        break;
+      case TRI_LOG_CATEGORY_REQUEST_OUT_END:
+        info._severity = TRI_LOG_SEVERITY_TECHNICAL;
+        break;
+      case TRI_LOG_CATEGORY_HEARTBEAT:
+        info._severity = TRI_LOG_SEVERITY_TECHNICAL;
+        break;
+
+      case TRI_LOG_CATEGORY_MODULE_IN_START:
+        info._severity = TRI_LOG_SEVERITY_DEVELOPMENT;
+        break;
+      case TRI_LOG_CATEGORY_MODULE_IN_END:
+        info._severity = TRI_LOG_SEVERITY_DEVELOPMENT;
+        break;
+      case TRI_LOG_CATEGORY_FUNCTION_IN_START:
+        info._severity = TRI_LOG_SEVERITY_DEVELOPMENT;
+        break;
+      case TRI_LOG_CATEGORY_FUNCTION_IN_END:
+        info._severity = TRI_LOG_SEVERITY_DEVELOPMENT;
+        break;
+      case TRI_LOG_CATEGORY_STEP:
+        info._severity = TRI_LOG_SEVERITY_DEVELOPMENT;
+        break;
+      case TRI_LOG_CATEGORY_LOOP:
+        info._severity = TRI_LOG_SEVERITY_DEVELOPMENT;
+        break;
+      case TRI_LOG_CATEGORY_HEARTPULSE:
+        info._severity = TRI_LOG_SEVERITY_DEVELOPMENT;
+        break;
+
+      default:
+        info._severity = TRI_LOG_SEVERITY_UNKNOWN;
     }
   }
 }
 
-namespace triagens {
-  namespace basics {
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
-    // -----------------------------------------------------------------------------
-    // LoggerStream
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  class LoggerInfo
+// -----------------------------------------------------------------------------
 
-    LoggerStream::LoggerStream () :
-      stream(new stringstream()),
-      info() {
-    }
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Logging
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new logger stream
+////////////////////////////////////////////////////////////////////////////////
 
-    LoggerStream::LoggerStream (LoggerData::Info const& info) :
-      stream(new stringstream()), info(info) {
-    }
+LoggerStream::LoggerStream () :
+  _stream(new stringstream()),
+  _info() {
+}
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new logger stream with given info
+////////////////////////////////////////////////////////////////////////////////
 
+LoggerStream::LoggerStream (LoggerData::Info const& info) :
+  _stream(new stringstream()), _info(info) {
+}
 
-    LoggerStream::LoggerStream (LoggerStream const& copy) :
-      stream(new stringstream()), info(copy.info) {
-      stream->str(copy.stream->str());
-    }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copy constructor
+////////////////////////////////////////////////////////////////////////////////
 
+LoggerStream::LoggerStream (LoggerStream const& copy) :
+  _stream(new stringstream()), _info(copy._info) {
+  _stream->str(copy._stream->str());
+}
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructs a logger stream
+////////////////////////////////////////////////////////////////////////////////
 
-    LoggerStream::~LoggerStream () {
-      computeInfo(info);
+LoggerStream::~LoggerStream () {
+  computeInfo(_info);
 
-      if (stream != 0) {
-        Logger::output(static_cast<stringstream*> (stream)->str(), info);
+  if (_stream != 0) {
+    Logger::output(static_cast<stringstream*> (_stream)->str(), _info);
 
-        delete stream;
-      }
-    }
-
-
-
-    LoggerStream& LoggerStream::operator<< (ostream& (*fptr) (ostream&)) {
-      if (stream != 0) {
-        *stream << fptr;
-      }
-
-      return *this;
-    }
-
-
-
-    LoggerStream& LoggerStream::operator<< (TRI_log_level_e level) {
-      info.level = level;
-
-      return *this;
-    }
-
-
-
-    LoggerStream& LoggerStream::operator<< (TRI_log_category_e category) {
-      info.category = category;
-
-      return *this;
-    }
-
-
-
-    LoggerStream& LoggerStream::operator<< (TRI_log_severity_e severity) {
-      info.severity = severity;
-
-      return *this;
-    }
-
-
-
-    LoggerStream& LoggerStream::operator<< (LoggerData::Functional const& functional) {
-      info.functional = functional;
-
-      return *this;
-    }
-
-
-
-    LoggerStream& LoggerStream::operator<< (LoggerData::MessageIdentifier const& messageIdentifier) {
-      info.messageIdentifier = messageIdentifier;
-
-      return *this;
-    }
-
-
-
-    LoggerStream& LoggerStream::operator<< (LoggerData::Peg const& peg) {
-      info.peg = peg;
-
-      return *this;
-    }
-
-
-
-    LoggerStream& LoggerStream::operator<< (LoggerData::Task const& task) {
-      info.task = task;
-
-      return *this;
-    }
-
-
-
-    LoggerStream& LoggerStream::operator<< (LoggerData::Position const& position) {
-      info.position = position;
-
-      return *this;
-    }
-
-
-
-    LoggerStream& LoggerStream::operator<< (LoggerData::Measure const& measure) {
-      info.measure = measure;
-
-      return *this;
-    }
-
-
-
-    LoggerStream& LoggerStream::operator<< (LoggerData::Extra const& extra) {
-      if (extra.position == LoggerData::Extra::npos) {
-        info.extras.push_back(extra);
-
-        size_t pos = info.extras.size() - 1;
-        info.extras[pos].position = pos;
-      }
-      else {
-        if (info.extras.size() <= extra.position) {
-          info.extras.resize(extra.position + 1);
-        }
-
-        info.extras[extra.position] = extra;
-      }
-
-      return *this;
-    }
-
-
-
-    LoggerStream& LoggerStream::operator<< (LoggerData::UserIdentifier const& userIdentifier) {
-      info.userIdentifier = userIdentifier;
-
-      return *this;
-    }
+    delete _stream;
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Logging
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief catches a special stream operator
+////////////////////////////////////////////////////////////////////////////////
+
+LoggerStream& LoggerStream::operator<< (ostream& (*fptr) (ostream&)) {
+  if (_stream != 0) {
+    *_stream << fptr;
+  }
+
+  return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief catches a log level
+////////////////////////////////////////////////////////////////////////////////
+
+LoggerStream& LoggerStream::operator<< (TRI_log_level_e level) {
+  _info._level = level;
+
+  return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief catches a category
+////////////////////////////////////////////////////////////////////////////////
+
+LoggerStream& LoggerStream::operator<< (TRI_log_category_e category) {
+  _info._category = category;
+
+  return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief catches a severity
+////////////////////////////////////////////////////////////////////////////////
+
+LoggerStream& LoggerStream::operator<< (TRI_log_severity_e severity) {
+  _info._severity = severity;
+
+  return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief catches a functional category
+////////////////////////////////////////////////////////////////////////////////
+
+LoggerStream& LoggerStream::operator<< (LoggerData::Functional const& functional) {
+  _info._functional = functional;
+
+  return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief catches a message identifier
+////////////////////////////////////////////////////////////////////////////////
+
+LoggerStream& LoggerStream::operator<< (LoggerData::MessageIdentifier const& messageIdentifier) {
+  _info._messageIdentifier = messageIdentifier;
+
+  return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief catches a peg
+////////////////////////////////////////////////////////////////////////////////
+
+LoggerStream& LoggerStream::operator<< (LoggerData::Peg const& peg) {
+  _info._peg = peg;
+
+  return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief catches a task
+////////////////////////////////////////////////////////////////////////////////
+
+LoggerStream& LoggerStream::operator<< (LoggerData::Task const& task) {
+  _info._task = task;
+
+  return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief catches a position
+////////////////////////////////////////////////////////////////////////////////
+
+LoggerStream& LoggerStream::operator<< (LoggerData::Position const& position) {
+  _info._position = position;
+
+  return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief catches a measure
+////////////////////////////////////////////////////////////////////////////////
+
+LoggerStream& LoggerStream::operator<< (LoggerData::Measure const& measure) {
+  _info._measure = measure;
+
+  return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief catches an extra
+////////////////////////////////////////////////////////////////////////////////
+
+LoggerStream& LoggerStream::operator<< (LoggerData::Extra const& extra) {
+  if (extra._position == LoggerData::Extra::npos) {
+    _info._extras.push_back(extra);
+
+    size_t pos = _info._extras.size() - 1;
+    _info._extras[pos]._position = pos;
+  }
+  else {
+    if (_info._extras.size() <= extra._position) {
+      _info._extras.resize(extra._position + 1);
+    }
+
+    _info._extras[extra._position] = extra;
+  }
+
+  return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief catches an user identifier
+////////////////////////////////////////////////////////////////////////////////
+
+LoggerStream& LoggerStream::operator<< (LoggerData::UserIdentifier const& userIdentifier) {
+  _info._userIdentifier = userIdentifier;
+
+  return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:
