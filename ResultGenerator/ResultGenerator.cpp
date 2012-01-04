@@ -30,23 +30,23 @@
 
 #include <Basics/StringBuffer.h>
 #include <Basics/StringUtils.h>
-#include <Basics/VariantArray.h>
-#include <Basics/VariantBlob.h>
-#include <Basics/VariantBoolean.h>
-#include <Basics/VariantDate.h>
-#include <Basics/VariantDatetime.h>
-#include <Basics/VariantDouble.h>
-#include <Basics/VariantFloat.h>
-#include <Basics/VariantInt16.h>
-#include <Basics/VariantInt32.h>
-#include <Basics/VariantInt64.h>
-#include <Basics/VariantMatrix2.h>
-#include <Basics/VariantNull.h>
-#include <Basics/VariantString.h>
-#include <Basics/VariantUInt16.h>
-#include <Basics/VariantUInt32.h>
-#include <Basics/VariantUInt64.h>
-#include <Basics/VariantVector.h>
+#include <Variant/VariantArray.h>
+#include <Variant/VariantBlob.h>
+#include <Variant/VariantBoolean.h>
+#include <Variant/VariantDate.h>
+#include <Variant/VariantDatetime.h>
+#include <Variant/VariantDouble.h>
+#include <Variant/VariantFloat.h>
+#include <Variant/VariantInt16.h>
+#include <Variant/VariantInt32.h>
+#include <Variant/VariantInt64.h>
+#include <Variant/VariantMatrix2.h>
+#include <Variant/VariantNull.h>
+#include <Variant/VariantString.h>
+#include <Variant/VariantUInt16.h>
+#include <Variant/VariantUInt32.h>
+#include <Variant/VariantUInt64.h>
+#include <Variant/VariantVector.h>
 
 using namespace triagens::basics;
 
