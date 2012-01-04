@@ -31,3 +31,4 @@ V8/v8-json.cpp
 BasicsC/stamp-h1
 avocadodb
 libavocadodb.a
+build.c
