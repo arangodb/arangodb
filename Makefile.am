@@ -29,6 +29,9 @@ JsonParser/%.c: @srcdir@/JsonParser/%.l
 V8/%.cpp: @srcdir@/V8/%.ll
 	@top_srcdir@/config/flex-c++.sh $(LEX) "$@" "$^"
 
+JsonParserX/%.cpp: @srcdir@/JsonParserX/%.ll
+	@top_srcdir@/config/flex-c++.sh $(LEX) "$@" "$^"
+
 ################################################################################
 ## BISON++
 ################################################################################
