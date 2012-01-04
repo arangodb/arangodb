@@ -2,16 +2,16 @@
 INFO="$1"
 FILE="$2"
 
-if test ! -f "$INFO";  then
-  echo "$0: cannot open info file $INFO"
+if test ! -f "$FILE";  then
+  echo "$0: cannot open build file $FILE"
   exit 1
 fi
 
 if test -d .svn;  then
   revision=`svnversion`
 else
-  if test ! -f "$FILE";  then
-    echo "$0: cannot open build file $FILE"
+  if test ! -f "$INFO";  then
+    echo "$0: cannot open info file $INFO"
     exit 1
   fi
 
