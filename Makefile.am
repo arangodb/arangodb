@@ -7,7 +7,7 @@ BUILT_SOURCES =
 LIBS =
 
 noinst_LIBRARIES = libavocadodb.a
-bin_PROGRAMS = avocadodb
+bin_PROGRAMS = avocado
 
 ################################################################################
 ## avocado
@@ -94,7 +94,7 @@ endif
 .PHONY: BUILD_H_TARGET
 
 BUILT_SOURCES += @builddir@/build.c @srcdir@/build.h
-avocadodb_SOURCES += @builddir@/build.c
+avocado_SOURCES += @builddir@/build.c
 
 @builddir@/build.c:
 	@top_srcdir@/config/build_info.sh @srcdir@/build.info > $@
