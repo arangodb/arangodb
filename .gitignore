@@ -32,3 +32,4 @@ BasicsC/stamp-h1
 avocadodb
 libavocadodb.a
 build.c
+build.info
