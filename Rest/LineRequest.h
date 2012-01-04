@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief application http server feature
+/// @brief line request
 ///
 /// @file
 ///
@@ -22,72 +22,100 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
+/// @author Achim Brandt
+/// @author Copyright 2008-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_FYN_REST_APPLICATION_HTTP_SERVER_H
-#define TRIAGENS_FYN_REST_APPLICATION_HTTP_SERVER_H 1
+#ifndef TRIAGENS_FYN_REST_LINE_REQUEST_H
+#define TRIAGENS_FYN_REST_LINE_REQUEST_H 1
 
-#include <Rest/ApplicationFeature.h>
+#include <Basics/Common.h>
 
-#include <Rest/AddressPort.h>
+#include <Rest/ConnectionInfo.h>
+#include <Basics/StringBuffer.h>
+#include <Basics/StringUtils.h>
+
+using namespace triagens::basics;
 
 namespace triagens {
   namespace rest {
-    class ApplicationServer;
-    class HttpHandlerFactory;
-    class HttpServer;
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief application http server feature
+    /// @brief line request
+    ///
+    /// The line server reads the request string from the client and converts it
+    /// into an instance of this class. An line request object provides methods to
+    /// inspect the header and parameter fields.
     ////////////////////////////////////////////////////////////////////////////////
 
-    class ApplicationHttpServer : public ApplicationFeature {
-      public:
-
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief creates a new feature
-        ////////////////////////////////////////////////////////////////////////////////
-
-        static ApplicationHttpServer* create (ApplicationServer*);
+    class  LineRequest {
+      LineRequest (LineRequest const&);
+      LineRequest& operator= (LineRequest const&);
 
       public:
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// @brief shows the port options
+        /// @brief constructor
         ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void showPortOptions (bool value) = 0;
+        LineRequest () 
+          : _connectionInfo() {
+        }
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// @brief adds a http address:port
+        /// @brief destructor
         ////////////////////////////////////////////////////////////////////////////////
 
-        virtual AddressPort addPort (string const&) = 0;
+        virtual ~LineRequest () {
+        }
+
+      public:
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// @brief builds the http server
-        ///
-        /// Note that the server claims ownership of the factory.
+        /// @brief adds a body line to the response
         ////////////////////////////////////////////////////////////////////////////////
 
-        virtual HttpServer* buildServer (HttpHandlerFactory*) = 0;
+        virtual void addBodyLine (char const* ptr, size_t length) = 0;
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// @brief builds the http server
-        ///
-        /// Note that the server claims ownership of the factory.
+        /// @brief adds a body blob to the response
         ////////////////////////////////////////////////////////////////////////////////
 
-        virtual HttpServer* buildServer (HttpHandlerFactory*, vector<AddressPort> const&) = 0;
+        virtual void addBody (char const* ptr, size_t length) = 0;
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// @brief builds the http server
-        ///
-        /// Note that the server claims ownership of the factory and the server.
+        /// @brief marks request as malformed
         ////////////////////////////////////////////////////////////////////////////////
 
-        virtual HttpServer* buildServer (HttpServer*, HttpHandlerFactory*, vector<AddressPort> const&) = 0;
+        virtual void setLineRequestInvalid () = 0;
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief
+        ////////////////////////////////////////////////////////////////////////////////
+
+        virtual void write (StringBuffer* buffer) {
+        };
+
+      public:
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief returns the server IP
+        ////////////////////////////////////////////////////////////////////////////////
+
+        ConnectionInfo const& connectionInfo () const {
+          return _connectionInfo;
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief sets the server IP
+        ////////////////////////////////////////////////////////////////////////////////
+
+        void setConnectionInfo (ConnectionInfo const& info) {
+          _connectionInfo = info;
+        }
+
+      protected:
+        ConnectionInfo _connectionInfo;
     };
   }
 }

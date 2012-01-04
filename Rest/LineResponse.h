@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tasks used to handle asynchronous events
+/// @brief line response
 ///
 /// @file
 ///
@@ -26,81 +26,117 @@
 /// @author Copyright 2008-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_FYN_REST_ASYNC_TASK_H
-#define TRIAGENS_FYN_REST_ASYNC_TASK_H 1
+#ifndef TRIAGENS_FYN_REST_LINE_RESPONSE_H
+#define TRIAGENS_FYN_REST_LINE_RESPONSE_H 1
 
-#include <Rest/Task.h>
+#include <Basics/Common.h>
+
+#include <Basics/StringBuffer.h>
+#include <Rest/LineRequest.h>
+
 
 namespace triagens {
   namespace rest {
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @ingroup Scheduler
-    /// @brief task used to handle asyncs
+    /// @brief line response
+    ///
+    /// A line request handler is called to handle a line request. It returns its
+    /// answer as line response.
     ////////////////////////////////////////////////////////////////////////////////
 
-    class  AsyncTask : virtual public Task {
+    class LineRequest;
+
+    class  LineResponse : noncopyable {
       public:
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// @brief constructs a new task
+        /// @brief line response codes
         ////////////////////////////////////////////////////////////////////////////////
 
-        AsyncTask ();
+        enum LineResponseCode {
+          OK,
+          ERROR_CODE
+        };
 
       public:
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// @brief signals the task
+        /// @brief constructor
+        ////////////////////////////////////////////////////////////////////////////////
+
+        LineResponse () : _lineRequest(0) {
+          _bodyValue.initialise();
+          _headerValue.initialise();
+        }
+
+        LineResponse (const char* header, size_t headerLength) : _lineRequest(0) {
+          _headerValue.initialise();
+          _headerValue.appendText(header,headerLength);
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief deletes a line response
         ///
-        /// Note that this method can only be called after the task has been registered.
+        /// The descrutor will free the string buffers used. After the line response
+        /// is deleted, the string buffers returned by body() become invalid.
         ////////////////////////////////////////////////////////////////////////////////
 
-        void signal ();
+        virtual ~LineResponse () {
+          _headerValue.free();
+          _bodyValue.free();
+          if (_lineRequest != 0) {
+            delete _lineRequest;
+          }
+        }
+
+      public:
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief returns the body
+        ////////////////////////////////////////////////////////////////////////////////
+
+        basics::StringBuffer& body () {
+          return _bodyValue;
+        }
+
+        basics::StringBuffer& header () {
+          return _headerValue;
+        }
+
+        LineRequest* request () {
+          return _lineRequest;
+        }
+
+
+      public:
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief
+        ////////////////////////////////////////////////////////////////////////////////
+
+        virtual const size_t& bodyLength () const {
+          return _bodyLength;
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief generates the response
+        ////////////////////////////////////////////////////////////////////////////////
+
+        virtual void write (basics::StringBuffer* output) {
+          output->copy(_bodyValue);
+        }
 
       protected:
 
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief destructor
-        ////////////////////////////////////////////////////////////////////////////////
+        basics::StringBuffer _headerValue;
 
-        ~AsyncTask ();
+        basics::StringBuffer _bodyValue;
 
-      protected:
+        size_t _bodyLength;
 
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief handles the signal
-        ////////////////////////////////////////////////////////////////////////////////
+        LineRequest* _lineRequest;
 
-        virtual bool handleAsync () = 0;
-
-      protected:
-
-        ////////////////////////////////////////////////////////////////////////////////
-        /// {@inheritDoc}
-        ////////////////////////////////////////////////////////////////////////////////
-
-        void setup (Scheduler*, EventLoop);
-
-        ////////////////////////////////////////////////////////////////////////////////
-        /// {@inheritDoc}
-        ////////////////////////////////////////////////////////////////////////////////
-
-        void cleanup ();
-
-        ////////////////////////////////////////////////////////////////////////////////
-        /// {@inheritDoc}
-        ////////////////////////////////////////////////////////////////////////////////
-
-        bool handleEvent (EventToken, EventType);
-
-      protected:
-
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief event for async signals
-        ////////////////////////////////////////////////////////////////////////////////
-
-        EventToken watcher;
     };
   }
 }
