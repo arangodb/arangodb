@@ -1827,7 +1827,7 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
     v8::Handle<v8::String> key = keys->Get(v8::Integer::New(i))->ToString();
     v8::Handle<v8::Value> value = sandbox->Get(key);
 
-    if (TRI_IsTraceLogging()) {
+    if (TRI_IsTraceLogging(__FILE__)) {
       v8::String::Utf8Value keyName(key);
 
       if (*keyName != 0) {
@@ -1874,7 +1874,7 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
     v8::Handle<v8::String> key = keys->Get(v8::Integer::New(i))->ToString();
     v8::Handle<v8::Value> value = context->Global()->Get(key);
 
-    if (TRI_IsTraceLogging()) {
+    if (TRI_IsTraceLogging(__FILE__)) {
       v8::String::Utf8Value keyName(key);
 
       if (*keyName != 0) {
