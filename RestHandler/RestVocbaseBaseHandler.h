@@ -30,7 +30,7 @@
 
 #include <Admin/RestBaseHandler.h>
 
-#include <Basics/Logger.h>
+#include <Logger/Logger.h>
 #include <Rest/HttpResponse.h>
 #include <VocBase/document-collection.h>
 
