@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief path handler
+/// @brief http server
 ///
 /// @file
 ///
@@ -22,96 +22,100 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2008-2011, triAGENS GmbH, Cologne, Germany
+/// @author Achim Brandt
+/// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_FYN_HTTP_SERVER_PATH_HANDLER_H
-#define TRIAGENS_FYN_HTTP_SERVER_PATH_HANDLER_H 1
+#ifndef TRIAGENS_FYN_REST_HTTP_SERVER_H
+#define TRIAGENS_FYN_REST_HTTP_SERVER_H 1
 
 #include <Basics/Common.h>
 
-#include "HttpServer/HttpHandler.h"
-
 namespace triagens {
   namespace rest {
+    class Dispatcher;
+    class HttpHandlerFactory;
+    class MaintenanceCallback;
+    class Scheduler;
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief path handler
+    /// @brief http server
     ////////////////////////////////////////////////////////////////////////////////
 
-    class PathHandler : public HttpHandler {
-      public:
-
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief path options
-        ////////////////////////////////////////////////////////////////////////////////
-
-        struct Options {
-          Options ()
-            : allowSymbolicLink(false) {
-          }
-
-          Options (string const& path)
-            : path(path), contentType("text/html"), allowSymbolicLink(false) {
-          }
-
-          Options (string const& path, string const& contentType)
-            : path(path), contentType(contentType), allowSymbolicLink(false) {
-          }
-
-          string path;
-          string contentType;
-          bool allowSymbolicLink;
-          string defaultFile;
-        };
+    class HttpServer {
+      private:
+        HttpServer (HttpServer const&);
+        HttpServer& operator= (HttpServer const&);
 
       public:
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// @brief factory methods
+        /// @brief constructs a new http server
         ////////////////////////////////////////////////////////////////////////////////
 
-        static HttpHandler* create (HttpRequest* request, void* data) {
-          Options* options = (Options*) data;
+        static HttpServer* create (Scheduler* scheduler, Dispatcher* dispatcher);
 
-          return new PathHandler(request, options);
-        }
-
-      public:
+      protected:
 
         ////////////////////////////////////////////////////////////////////////////////
         /// @brief constructor
         ////////////////////////////////////////////////////////////////////////////////
 
-        PathHandler (HttpRequest* request, Options const* options);
+        HttpServer () {
+        }
 
       public:
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// {@inheritDoc}
+        /// @brief destructor
         ////////////////////////////////////////////////////////////////////////////////
 
-        bool isDirect () {
-          return true;
+        virtual ~HttpServer () {
         }
 
-        ////////////////////////////////////////////////////////////////////////////////
-        /// {@inheritDoc}
-        ////////////////////////////////////////////////////////////////////////////////
-
-        status_e execute ();
+      public:
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// {@inheritDoc}
+        /// @brief activates the maintenance mode
         ////////////////////////////////////////////////////////////////////////////////
 
-        void handleError (basics::TriagensError const&);
+        virtual void activateMaintenance () = 0;
 
-      private:
-        string path;
-        string contentType;
-        bool allowSymbolicLink;
-        string defaultFile;
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief activates the maintenance mode
+        ////////////////////////////////////////////////////////////////////////////////
+
+        virtual void activateMaintenance (MaintenanceCallback*) = 0;
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief deactivates the maintenance mode
+        ////////////////////////////////////////////////////////////////////////////////
+
+        virtual void deactivateMaintenance () = 0;
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief returns the number of active handlers
+        ////////////////////////////////////////////////////////////////////////////////
+
+        virtual size_t numberActiveHandlers () = 0;
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief checks if to close connection if keep-alive is missing
+        ////////////////////////////////////////////////////////////////////////////////
+
+        virtual bool getCloseWithoutKeepAlive () const = 0;
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief close connection if keep-alive is missing
+        ////////////////////////////////////////////////////////////////////////////////
+
+        virtual void setCloseWithoutKeepAlive (bool value) = 0;
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief sets a new handler factory
+        ////////////////////////////////////////////////////////////////////////////////
+
+        virtual void setHandlerFactory (HttpHandlerFactory*) = 0;
     };
   }
 }

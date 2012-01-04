@@ -29,13 +29,13 @@
 #include "HttpCommTask.h"
 
 #include <Basics/StringUtils.h>
-#include <Rest/HttpHandler.h>
-#include <Rest/HttpHandlerFactory.h>
 #include <Rest/HttpRequest.h>
 #include <Rest/HttpResponse.h>
-#include <Rest/Scheduler.h>
 
+#include "Scheduler/Scheduler.h"
 #include "GeneralServer/GeneralFigures.h"
+#include "HttpServer/HttpHandlerFactory.h"
+#include "HttpServer/HttpHandler.h"
 #include "HttpServer/HttpServerImpl.h"
 
 using namespace triagens::basics;

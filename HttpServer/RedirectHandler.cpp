@@ -30,7 +30,7 @@
 #include <fstream>
 
 #include <Basics/FileUtils.h>
-#include <Basics/Logger.h>
+#include <Logger/Logger.h>
 #include <Basics/StringBuffer.h>
 #include <Rest/HttpRequest.h>
 #include <Rest/HttpResponse.h>
