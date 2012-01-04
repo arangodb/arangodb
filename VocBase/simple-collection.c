@@ -1424,7 +1424,7 @@ TRI_sim_collection_t* TRI_OpenSimCollection (char const* path) {
   TRI_IterateIndexCollection(collection, OpenIndex, collection);
 
   // output infomations about datafiles and journals
-  if (TRI_IsTraceLogging()) {
+  if (TRI_IsTraceLogging(__FILE__)) {
     DebugDatafileInfoDocCollection(&doc->base);
     DebugHeaderSimCollection(doc);
   }
