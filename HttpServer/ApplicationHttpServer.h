@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief task for https communication
+/// @brief application http server feature
 ///
 /// @file
 ///
@@ -22,83 +22,72 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Achim Brandt
 /// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_FYN_HTTP_SERVER_HTTPS_ASYNC_COMM_TASK_H
-#define TRIAGENS_FYN_HTTP_SERVER_HTTPS_ASYNC_COMM_TASK_H 1
+#ifndef TRIAGENS_FYN_REST_APPLICATION_HTTP_SERVER_H
+#define TRIAGENS_FYN_REST_APPLICATION_HTTP_SERVER_H 1
 
-#include "GeneralServer/GeneralAsyncCommTask.h"
+#include "ApplicationServer/ApplicationFeature.h"
 
-#include <openssl/ssl.h>
-
-#include <Rest/HttpHandlerFactory.h>
-
-#include "HttpServer/HttpCommTask.h"
+#include <Rest/AddressPort.h>
 
 namespace triagens {
   namespace rest {
-    class HttpServerImpl;
-    class HttpCommTask;
+    class ApplicationServer;
+    class HttpHandlerFactory;
+    class HttpServer;
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief task for https communication
+    /// @brief application http server feature
     ////////////////////////////////////////////////////////////////////////////////
 
-    class HttpsAsyncCommTask : public GeneralAsyncCommTask<HttpServerImpl, HttpHandlerFactory, HttpCommTask> {
-      private:
-        static size_t const READ_BLOCK_SIZE = 10000;
+    class ApplicationHttpServer : public ApplicationFeature {
+      public:
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief creates a new feature
+        ////////////////////////////////////////////////////////////////////////////////
+
+        static ApplicationHttpServer* create (ApplicationServer*);
 
       public:
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// @brief constructs a new task with a given socket
+        /// @brief shows the port options
         ////////////////////////////////////////////////////////////////////////////////
 
-        HttpsAsyncCommTask (HttpServerImpl*, socket_t, ConnectionInfo const&, BIO*);
-
-      protected:
+        virtual void showPortOptions (bool value) = 0;
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// @brief destructs a task
+        /// @brief adds a http address:port
         ////////////////////////////////////////////////////////////////////////////////
 
-        ~HttpsAsyncCommTask ();
+        virtual AddressPort addPort (string const&) = 0;
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// {@inheritDoc}
+        /// @brief builds the http server
+        ///
+        /// Note that the server claims ownership of the factory.
         ////////////////////////////////////////////////////////////////////////////////
 
-        bool handleEvent (EventToken token, EventType event);
+        virtual HttpServer* buildServer (HttpHandlerFactory*) = 0;
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// {@inheritDoc}
+        /// @brief builds the http server
+        ///
+        /// Note that the server claims ownership of the factory.
         ////////////////////////////////////////////////////////////////////////////////
 
-        bool fillReadBuffer (bool& closed);
+        virtual HttpServer* buildServer (HttpHandlerFactory*, vector<AddressPort> const&) = 0;
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// {@inheritDoc}
+        /// @brief builds the http server
+        ///
+        /// Note that the server claims ownership of the factory and the server.
         ////////////////////////////////////////////////////////////////////////////////
 
-        bool handleWrite (bool& closed, bool noWrite);
-
-      private:
-        bool trySSLAccept ();
-        bool trySSLRead (bool& closed);
-        bool trySSLWrite (bool& closed, bool noWrite);
-
-      private:
-        bool accepted;
-        bool readBlocked;
-        bool readBlockedOnWrite;
-        bool writeBlockedOnRead;
-
-        char * tmpReadBuffer;
-
-        SSL* ssl;
-        BIO* bio;
+        virtual HttpServer* buildServer (HttpServer*, HttpHandlerFactory*, vector<AddressPort> const&) = 0;
     };
   }
 }

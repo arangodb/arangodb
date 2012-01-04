@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief redirect handler
+/// @brief abstract class for handlers
 ///
 /// @file
 ///
@@ -22,44 +22,46 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2008-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ServiceUnavailableHandler.h"
+#include "HttpHandler.h"
 
-#include <fstream>
-
-#include <Basics/FileUtils.h>
 #include <Logger/Logger.h>
-#include <Basics/StringBuffer.h>
 #include <Rest/HttpRequest.h>
 #include <Rest/HttpResponse.h>
-
-using namespace triagens::basics;
 
 namespace triagens {
   namespace rest {
 
     // -----------------------------------------------------------------------------
-    // constructors and destructores
+    // constructs and destructors
     // -----------------------------------------------------------------------------
 
-    ServiceUnavailableHandler::ServiceUnavailableHandler ()
-      : HttpHandler(0) {
-      response = new HttpResponse(HttpResponse::SERVICE_UNAVAILABLE);
-    }
 
-    // -----------------------------------------------------------------------------
-    // Handler methods
-    // -----------------------------------------------------------------------------
 
-    HttpHandler::status_e ServiceUnavailableHandler::execute () {
-      return HANDLER_DONE;
+    HttpHandler::HttpHandler (HttpRequest* request)
+      : request(request), response(0) {
     }
 
 
 
-    void ServiceUnavailableHandler::handleError (TriagensError const&) {
+    HttpHandler::~HttpHandler () {
+      if (request != 0) {
+        delete request;
+      }
+
+      if (response != 0) {
+        delete response;
+      }
+    }
+
+    // -----------------------------------------------------------------------------
+    // public methods
+    // -----------------------------------------------------------------------------
+
+    HttpResponse* HttpHandler::getResponse () {
+      return response;
     }
   }
 }
