@@ -1,0 +1,11 @@
+avocado> g = new Graph("vertices", "edges");
+Graph("vertices", "edges")
+
+avocado> v1 = g.addVertex({ name : "Hugo" });
+Vertex(<graph>, "153246:2310672")
+
+avocado> v2 = g.addVertex({ name : "Emil" });
+Vertex(<graph>, "153246:2310673")
+
+avocado> e = g.addEdge(v1, v2, "knows");
+Edge(<graph>, "3999653:5570857")

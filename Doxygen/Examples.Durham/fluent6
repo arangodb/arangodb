@@ -1,0 +1,5 @@
+> db.examples.skip(10).limit(2).count();
+33
+
+> db.examples.skip(10).limit(2).count(true);
+2

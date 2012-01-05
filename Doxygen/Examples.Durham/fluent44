@@ -1,0 +1,8 @@
+avocado> db.names;
+[unloaded collection "names"]
+
+avocado> db.names.count();
+0
+
+avocado> db.names;
+[collection "names"]

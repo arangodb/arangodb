@@ -1,0 +1,11 @@
+avocado> id = db.examples.save({ Hallo : "World" });
+"148759:5437094"
+
+avocado> db.examples.document(id);
+{ "Hallo" : "World", "_id" : "148759:5437094" }
+
+avocado> db.examples.replace(id, { Hallo : "You" });
+"148759:5437094"
+
+avocado> db.examples.document(id);
+{ "Hallo" : "You", "_id" : "148759:5437094" }

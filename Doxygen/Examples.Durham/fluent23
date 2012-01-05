@@ -1,0 +1,17 @@
+avocado> db.five.save({ doc : 1 })
+"5961858:7207042"
+avocado> db.five.save({ doc : 2 });
+"5961858:7272578"
+avocado> db.five.save({ doc : 3 });
+"5961858:7338114"
+avocado> db.five.save({ doc : 4 });
+"5961858:7403650"
+avocado> db.five.save({ doc : 5 });
+"5961858:7469186"
+
+avocado> db.five.all();
+{ "doc" : 2, "_id" : "5961858:7272578" }
+{ "doc" : 4, "_id" : "5961858:7403650" }
+{ "doc" : 3, "_id" : "5961858:7338114" }
+{ "doc" : 1, "_id" : "5961858:7207042" }
+{ "doc" : 5, "_id" : "5961858:7469186" }

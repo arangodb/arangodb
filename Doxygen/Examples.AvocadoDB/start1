@@ -1,0 +1,8 @@
+> ./avocado --shell --log error /tmp/vocbase
+AvocadoDB shell [V8 version 3.6.5.1, DB version 1 (9650)]
+
+avocado> 1 + 2;
+3
+
+avocado> db.geo.count();
+703

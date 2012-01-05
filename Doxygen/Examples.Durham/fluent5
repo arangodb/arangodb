@@ -1,0 +1,20 @@
+> n = 0; db.examples.skip(n * 5).limit(5);
+{ "age" : 2, "name" : "Name2", "first_name" : "Yes", "_id" : "9496015:11126645" }
+{ "age" : 8, "name" : "Name8", "first_name" : "Yes", "_id" : "9496015:11519861" }
+{ "age" : 6, "name" : "Name6", "first_name" : "Yes", "_id" : "9496015:11388789" }
+{ "age" : 30, "name" : "Meier", "first_name" : "Hugo", "_id" : "9496015:10733429" }
+{ "age" : 25, "name" : "Name25", "first_name" : "Yes", "_id" : "9496015:12633973" }
+
+> n = 1; db.examples.skip(n * 5).limit(5);
+{ "age" : 27, "name" : "Name27", "first_name" : "Yes", "_id" : "9496015:12765045" }
+{ "age" : 29, "name" : "Name29", "first_name" : "Yes", "_id" : "9496015:12896117" }
+{ "age" : 0, "name" : "Name0", "first_name" : "Yes", "_id" : "9496015:10995573" }
+{ "age" : 40, "name" : "Meier", "first_name" : "Alfred", "_id" : "9496015:10864501" }
+{ "age" : 20, "name" : "Name20", "first_name" : "Yes", "_id" : "9496015:12306293" }
+
+> n = 3; db.examples.skip(n * 5).limit(5);
+{ "age" : 16, "name" : "Name16", "first_name" : "Yes", "_id" : "9496015:12044149" }
+{ "age" : 14, "name" : "Name14", "first_name" : "Yes", "_id" : "9496015:11913077" }
+{ "age" : 3, "name" : "Name3", "first_name" : "Yes", "_id" : "9496015:11192181" }
+{ "age" : 1, "name" : "Name1", "first_name" : "Yes", "_id" : "9496015:11061109" }
+{ "age" : 7, "name" : "Name7", "first_name" : "Yes", "_id" : "9496015:11454325" }

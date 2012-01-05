@@ -1,0 +1,20 @@
+> curl --data '@'- -X POST --dump - http://localhost:8529/_document/examples
+{ "Hallo" : "World" }
+
+HTTP/1.1 201 Created
+content-type: text/plain;charset=utf-8
+connection: Keep-Alive
+server: triagens GmbH High-Performance HTTP Server
+etag: "13658604"
+location: /_document/9496015:13658604
+content-length: 0
+
+> curl -X GET --dump - http://localhost:8529/_document/9496015:13658604
+HTTP/1.1 200 OK
+content-type: application/json
+connection: Keep-Alive
+server: triagens GmbH High-Performance HTTP Server
+etag: "13658604"
+content-length: 43
+
+{"Hallo":"World","_id":"9496015:13658604"}
