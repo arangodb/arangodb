@@ -84,6 +84,7 @@ Module.prototype.require = function (path) {
   var sandbox;
   var paths;
   var module;
+  var f;
 
   // first get rid of any ".." and "."
   path = this.normalise(path);
@@ -121,15 +122,14 @@ Module.prototype.require = function (path) {
   // create a new sandbox and execute
   ModuleCache[path] = module = new Module(path);
 
-  sandbox = {};
-  sandbox.module = module;
-  sandbox.exports = module.exports;
-  sandbox.require = function(path) { return sandbox.module.require(path); }
-  sandbox.print = print;
+  content = "(function (module, exports, require, print) {" + content + "\n});";
+  f = SYS_EXECUTE(content, undefined, path);
 
-  SYS_EXECUTE(content, sandbox, path);
+  if (f == undefined) {
+    throw "cannot create context function";
+  }
 
-  module.exports = sandbox.exports;
+  f(module, module.exports, function(path) { return module.require(path); }, print);
 
   return module.exports;
 };
@@ -325,6 +325,10 @@ fs = ModuleCache["/fs"].exports;
 ////////////////////////////////////////////////////////////////////////////////
 
 ModuleCache["/internal"] = new Module("/internal");
+ModuleCache["/internal"].exports.AvocadoCollection = AvocadoCollection;
+ModuleCache["/internal"].exports.AvocadoEdgesCollection = AvocadoEdgesCollection;
+ModuleCache["/internal"].exports.db = db;
+ModuleCache["/internal"].exports.edges = edges;
 ModuleCache["/internal"].exports.execute = SYS_EXECUTE;
 ModuleCache["/internal"].exports.load = SYS_LOAD;
 ModuleCache["/internal"].exports.log = SYS_LOG;

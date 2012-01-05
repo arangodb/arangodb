@@ -7,10 +7,10 @@ avocado> v1 = g.addVertex();
 Vertex(<graph>, "153246:8712055")
 
 avocado> v2 = g.addVertex();
-Vertex(<graph>, "153246:8777591")
+Vertex(<graph>, "153246:8843127")
 
-avocado> v1.addInEdge(v2, "knows");
-Edge(<graph>, "3999653:8908663")
+avocado> v1.addOutEdge(v2, "knows");
+Edge(<graph>, "3999653:8974199")
 
-avocado> v1.getInEdges();
-[ Edge(<graph>, "3999653:8908663") ]
+avocado> v1.getOutEdges();
+[ Edge(<graph>, "3999653:8974199") ]

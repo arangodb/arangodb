@@ -157,7 +157,7 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
     _adminPort("localhost:8530"),
     _dispatcherThreads(1),
     _startupPath(),
-    _startupModules(),
+    _startupModules("js/modules"),
     _actionPath(),
     _systemActionPath(),
     _actionThreads(1),
@@ -279,7 +279,6 @@ void AvocadoServer::buildApplicationServer () {
   // .............................................................................
 
   if (! _applicationServer->parse(_argc, _argv, additional)) {
-    TRIAGENS_REST_SHUTDOWN;
     exit(EXIT_FAILURE);
   }
 
@@ -300,7 +299,6 @@ void AvocadoServer::buildApplicationServer () {
   if (_startupPath.empty()) {
     StartupLoader.defineScript("modules.js", JS_modules);
     StartupLoader.defineScript("actions.js", JS_actions);
-    StartupLoader.defineScript("graph.js", JS_graph);
     StartupLoader.defineScript("json.js", JS_json);
     StartupLoader.defineScript("shell.js", JS_shell);
   }
@@ -316,8 +314,8 @@ void AvocadoServer::buildApplicationServer () {
 
       if (ok) {
         LOGGER_FATAL << "action directory '" << path << "' must be a directory";
+        cerr << "action directory '" << path << "' must be a directory\n";
         LOGGER_INFO << "please use the '--database.directory' option";
-        TRIAGENS_REST_SHUTDOWN;
         exit(EXIT_FAILURE);
       }
 
@@ -325,8 +323,8 @@ void AvocadoServer::buildApplicationServer () {
 
       if (! ok) {
         LOGGER_FATAL << "cannot create action directory '" << path << "': " << TRI_last_error();
+        cerr << "cannot create action directory '" << path << "': " << TRI_last_error() << "\n";
         LOGGER_INFO << "please use the '--database.directory' option";
-        TRIAGENS_REST_SHUTDOWN;
         exit(EXIT_FAILURE);
       }
     }
@@ -365,16 +363,16 @@ void AvocadoServer::buildApplicationServer () {
   if (_daemonMode) {
     if (_pidFile.empty()) {
       LOGGER_FATAL << "no pid-file defined, but daemon mode requested";
+      cerr << "no pid-file defined, but daemon mode requested\n";
       LOGGER_INFO << "please use the '--pid-file' option";
-      TRIAGENS_REST_SHUTDOWN;
       exit(EXIT_FAILURE);
     }
   }
 
   if (_databasePath.empty()) {
     LOGGER_FATAL << "no database path has been supplied, giving up";
+    cerr << "no database path has been supplied, giving up\n";
     LOGGER_INFO << "please use the '--database.directory' option";
-    TRIAGENS_REST_SHUTDOWN;
     exit(EXIT_FAILURE);
   }
 }
@@ -515,7 +513,7 @@ void AvocadoServer::executeShell () {
   v8::Isolate* isolate;
   v8::Persistent<v8::Context> context;
   bool ok;
-  char const* files[] = { "modules.js", "graph.js", "json.js", "shell.js" };
+  char const* files[] = { "modules.js", "json.js", "shell.js" };
   size_t i;
 
   // only simple logging
@@ -538,7 +536,7 @@ void AvocadoServer::executeShell () {
 
   if (context.IsEmpty()) {
     LOGGER_FATAL << "cannot initialize V8 engine";
-    TRIAGENS_REST_SHUTDOWN;
+    cerr << "cannot initialize V8 engine\n";
     exit(EXIT_FAILURE);
   }
 
@@ -557,7 +555,7 @@ void AvocadoServer::executeShell () {
     }
     else {
       LOGGER_FATAL << "cannot load json file '" << files[i] << "'";
-      TRIAGENS_REST_SHUTDOWN;
+      cerr << "cannot load json file '" << files[i] << "'\n";
       exit(EXIT_FAILURE);
     }
   }
@@ -614,8 +612,8 @@ void AvocadoServer::openDatabase () {
 
   if (_vocbase == 0) {
     LOGGER_FATAL << "cannot open database '" << _databasePath << "'";
+    cerr << "cannot open database '" << _databasePath << "'\n";
     LOGGER_INFO << "please use the '--database.directory' option";
-    TRIAGENS_REST_SHUTDOWN;
     exit(EXIT_FAILURE);
   }
 }

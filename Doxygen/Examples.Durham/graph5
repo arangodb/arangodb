@@ -1,3 +1,5 @@
+avocado> var Graph = require("graph").Graph;
+
 avocado> g = new Graph("vertices", "edges");
 Graph("vertices", "edges")
 
@@ -5,4 +7,4 @@ avocado> v = g.addVertex({ name : "Hugo" });
 Vertex(<graph>, "153246:2310672")
 
 avocado> v.getProperty("name");
-"Hugo"
+Hugo

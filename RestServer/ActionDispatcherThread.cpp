@@ -227,8 +227,7 @@ JSLoader* ActionDisptacherThread::actionLoader () {
 
 void ActionDisptacherThread::initialise () {
   bool ok;
-  char* filename;
-  char const* files[] = { "actions.js", "graph.js", "json.js", "modules.js" };
+  char const* files[] = { "modules.js", "actions.js", "json.js" };
   size_t i;
 
   // enter a new isolate
@@ -240,7 +239,8 @@ void ActionDisptacherThread::initialise () {
 
   if (_context.IsEmpty()) {
     LOGGER_FATAL << "cannot initialize V8 engine";
-    TRIAGENS_REST_SHUTDOWN;
+    cerr << "cannot initialize V8 engine\n";
+    _isolate->Exit();
     exit(EXIT_FAILURE);
   }
 
@@ -256,8 +256,10 @@ void ActionDisptacherThread::initialise () {
     ok = _startupLoader->loadScript(_context, files[i]);
 
     if (! ok) {
-      LOGGER_FATAL << "cannot load json utilities from file '" << filename << "'";
-      TRIAGENS_REST_SHUTDOWN;
+      LOGGER_FATAL << "cannot load json utilities from file '" << files[i] << "'";
+      cerr << "cannot load json utilities from file '" << files[i] << "'\n";
+      _context->Exit();
+      _isolate->Exit();
       exit(EXIT_FAILURE);
     }
   }
@@ -272,8 +274,10 @@ void ActionDisptacherThread::initialise () {
     ok = actionLoader()->loadAllScripts(_context);
 
     if (! ok) {
-      LOGGER_FATAL << "cannot load actions from directory '" << filename << "'";
-      TRIAGENS_REST_SHUTDOWN;
+      LOGGER_FATAL << "cannot load actions from directory '" << loader->getDirectory() << "'";
+      cerr  << "cannot load actions from directory '" << loader->getDirectory() << "'\n";
+      _context->Exit();
+      _isolate->Exit();
       exit(EXIT_FAILURE);
     }
   }
