@@ -212,31 +212,11 @@ avocado_SOURCES = \
 ################################################################################
 
 BUILT_SOURCES += \
-	@builddir@/js/js-json.h \
-	@builddir@/js/js-shell.h \
-	@builddir@/js/js-actions.h \
-	@builddir@/js/js-graph.h \
-	@builddir@/js/js-modules.h
-
-@builddir@/js/js-modules.h: @srcdir@/js/modules.js
-	@test -d @builddir@/js || mkdir @builddir@/js || true
-	@top_srcdir@/config/js2c.sh $^ > $@
-
-@builddir@/js/js-json.h: @srcdir@/js/json.js
-	@test -d @builddir@/js || mkdir @builddir@/js || true
-	@top_srcdir@/config/js2c.sh $^ > $@
-
-@builddir@/js/js-graph.h: @srcdir@/js/graph.js
-	@test -d @builddir@/js || mkdir @builddir@/js || true
-	@top_srcdir@/config/js2c.sh $^ > $@
-
-@builddir@/js/js-shell.h: @srcdir@/js/shell.js
-	@test -d @builddir@/js || mkdir @builddir@/js || true
-	@top_srcdir@/config/js2c.sh $^ > $@
-
-@builddir@/js/js-actions.h: @srcdir@/js/actions.js
-	@test -d @builddir@/js || mkdir @builddir@/js || true
-	@top_srcdir@/config/js2c.sh $^ > $@
+	js/js-modules.h \
+	js/js-actions.h \
+	js/js-graph.h \
+	js/js-json.h \
+	js/js-shell.h
 
 ################################################################################
 ## FLEX
@@ -259,4 +239,17 @@ BUILT_SOURCES += \
 
 BUILT_SOURCES += \
 	JsonParserX/JsonParserX.cpp
+
+################################################################################
+## DOXYGEN
+################################################################################
+
+BUILT_SOURCES += \
+	Doxygen/js/shell.c \
+	Doxygen/js/system/indexes.c \
+	Doxygen/js/actions.c \
+	Doxygen/js/graph.c \
+	Doxygen/js/system/collections.c \
+	Doxygen/js/modules.c \
+	Doxygen/js/json.c
 
