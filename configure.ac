@@ -28,6 +28,7 @@ m4_include([m4/configure.logging])
 m4_include([m4/configure.largefile])
 m4_include([m4/configure.threads])
 m4_include([m4/configure.flex-bison])
+m4_include([m4/configure.dot])
 
 m4_include([m4/external.boost])
 m4_include([m4/external.libev])
@@ -46,7 +47,7 @@ dnl ============================================================================
 BUILD_H="\$(top_srcdir)/build.h"
 AC_SUBST(BUILD_H)
 
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile Doxygen/avocado.doxy])
 AC_CONFIG_HEADER([config/config.h BasicsC/local-configuration.h])
 AC_OUTPUT
 

@@ -34,3 +34,10 @@ libavocadodb.a
 build.c
 build.info
 config/config.h*
+Doxygen/avocado.doxy
+Doxygen/html/
+Doxygen/js/
+Doxygen/latex/
+Doxygen/xml/
+build.sh
+commit.sh
