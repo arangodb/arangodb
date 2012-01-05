@@ -214,7 +214,6 @@ avocado_SOURCES = \
 BUILT_SOURCES += \
 	js/js-modules.h \
 	js/js-actions.h \
-	js/js-graph.h \
 	js/js-json.h \
 	js/js-shell.h
 
@@ -245,13 +244,13 @@ BUILT_SOURCES += \
 ################################################################################
 
 DOXYGEN = \
-	Doxygen/js/shell.c \
-	Doxygen/js/system/indexes.c \
 	Doxygen/js/actions.c \
-	Doxygen/js/graph.c \
-	Doxygen/js/system/collections.c \
+	Doxygen/js/json.c \
 	Doxygen/js/modules.c \
-	Doxygen/js/json.c
+	Doxygen/js/modules/graph.c \
+	Doxygen/js/shell.c \
+	Doxygen/js/system/collections.c \
+	Doxygen/js/system/indexes.c
 
 ################################################################################
 ## wiki
@@ -270,13 +269,16 @@ WIKI = \
 	Doxygen/xml/d7/daa/Actions.md \
 	Doxygen/xml/d4/d7d/HttpInterface.md \
 	Doxygen/xml/d9/de4/JSModules.md \
-	Doxygen/xml/d0/da4/GraphFuncIndex.md \
+	Doxygen/xml/d2/d35/JSModuleGraph.md \
 	Doxygen/xml/d9/db2/CommandLineScheduler.md \
 	Doxygen/xml/d8/d3d/RestInterface.md \
 	Doxygen/xml/db/d14/GeoCoordinates.md \
 	Doxygen/xml/d3/db6/JavaScriptFuncIndex.md \
 	Doxygen/xml/df/d91/CommandLineRandom.md \
-	Doxygen/xml/d9/ddd/CommandLineAvocado.md
+	Doxygen/xml/d9/ddd/CommandLineAvocado.md \
+	Doxygen/xml/d7/d40/JSModuleConsole.md \
+	Doxygen/xml/d3/d4b/JSModuleInternal.md \
+	Doxygen/xml/d2/d66/JSModuleFs.md
 
 Doxygen/xml/d9/d52/DefineAction.md: Doxygen/xml/d9/d52/DefineAction.xml
 	python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
@@ -314,7 +316,7 @@ Doxygen/xml/d4/d7d/HttpInterface.md: Doxygen/xml/d4/d7d/HttpInterface.xml
 Doxygen/xml/d9/de4/JSModules.md: Doxygen/xml/d9/de4/JSModules.xml
 	python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
 
-Doxygen/xml/d0/da4/GraphFuncIndex.md: Doxygen/xml/d0/da4/GraphFuncIndex.xml
+Doxygen/xml/d2/d35/JSModuleGraph.md: Doxygen/xml/d2/d35/JSModuleGraph.xml
 	python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
 
 Doxygen/xml/d9/db2/CommandLineScheduler.md: Doxygen/xml/d9/db2/CommandLineScheduler.xml
@@ -335,3 +337,11 @@ Doxygen/xml/df/d91/CommandLineRandom.md: Doxygen/xml/df/d91/CommandLineRandom.xm
 Doxygen/xml/d9/ddd/CommandLineAvocado.md: Doxygen/xml/d9/ddd/CommandLineAvocado.xml
 	python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
 
+Doxygen/xml/d7/d40/JSModuleConsole.md: Doxygen/xml/d7/d40/JSModuleConsole.xml
+	python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
+
+Doxygen/xml/d3/d4b/JSModuleInternal.md: Doxygen/xml/d3/d4b/JSModuleInternal.xml
+	python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
+
+Doxygen/xml/d2/d66/JSModuleFs.md: Doxygen/xml/d2/d66/JSModuleFs.xml
+	python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@

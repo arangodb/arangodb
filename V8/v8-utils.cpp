@@ -1790,6 +1790,8 @@ bool TRI_ObjectToBoolean (v8::Handle<v8::Value> value) {
 /// assigned inside the @FA{script}, will be visible in the @FA{sandbox} object
 /// after execution. The @FA{filename} is used for displaying error
 /// messages.
+///
+/// If @FA{sandbox} is undefined, then @FN{execute} uses the current context.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
@@ -1810,36 +1812,38 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("<script> must be a string")));
   }
 
-  if (! sandboxValue->IsObject()) {
-    return scope.Close(v8::ThrowException(v8::String::New("<sandbox> must be an object")));
-  }
+  bool useSandbox = sandboxValue->IsObject();
+  v8::Handle<v8::Object> sandbox;
+  v8::Handle<v8::Context> context;
 
-  v8::Handle<v8::Object> sandbox = sandboxValue->ToObject();
+  if (useSandbox) {
+    sandbox = sandboxValue->ToObject();
 
-  // create new context
-  v8::Handle<v8::Context> context = v8::Context::New();
-  context->Enter();
+    // create new context
+    context = v8::Context::New();
+    context->Enter();
 
-  // copy sandbox into context
-  v8::Handle<v8::Array> keys = sandbox->GetPropertyNames();
+    // copy sandbox into context
+    v8::Handle<v8::Array> keys = sandbox->GetPropertyNames();
 
-  for (i = 0; i < keys->Length(); i++) {
-    v8::Handle<v8::String> key = keys->Get(v8::Integer::New(i))->ToString();
-    v8::Handle<v8::Value> value = sandbox->Get(key);
+    for (i = 0; i < keys->Length(); i++) {
+      v8::Handle<v8::String> key = keys->Get(v8::Integer::New(i))->ToString();
+      v8::Handle<v8::Value> value = sandbox->Get(key);
 
-    if (TRI_IsTraceLogging(__FILE__)) {
-      v8::String::Utf8Value keyName(key);
+      if (TRI_IsTraceLogging(__FILE__)) {
+        v8::String::Utf8Value keyName(key);
 
-      if (*keyName != 0) {
-        LOG_TRACE("copying key '%s' from sandbox to context", *keyName);
+        if (*keyName != 0) {
+          LOG_TRACE("copying key '%s' from sandbox to context", *keyName);
+        }
       }
-    }
 
-    if (value == sandbox) {
-      value = context->Global();
-    }
+      if (value == sandbox) {
+        value = context->Global();
+      }
 
-    context->Global()->Set(key, value);
+      context->Global()->Set(key, value);
+    }
   }
 
   // execute script inside the context
@@ -1849,8 +1853,10 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
   if (script.IsEmpty()) {
     assert(tryCatch.HasCaught());
 
-    context->DetachGlobal();
-    context->Exit();
+    if (useSandbox) {
+      context->DetachGlobal();
+      context->Exit();
+    }
 
     return scope.Close(tryCatch.ReThrow());
   }
@@ -1861,38 +1867,47 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
   if (result.IsEmpty()) {
     assert(tryCatch.HasCaught());
 
-    context->DetachGlobal();
-    context->Exit();
+    if (useSandbox) {
+      context->DetachGlobal();
+      context->Exit();
+    }
 
     return scope.Close(tryCatch.ReThrow());
   }
 
   // copy result back into the sandbox
-  keys = context->Global()->GetPropertyNames();
+  if (useSandbox) {
+    v8::Handle<v8::Array> keys = context->Global()->GetPropertyNames();
 
-  for (i = 0; i < keys->Length(); i++) {
-    v8::Handle<v8::String> key = keys->Get(v8::Integer::New(i))->ToString();
-    v8::Handle<v8::Value> value = context->Global()->Get(key);
-
-    if (TRI_IsTraceLogging(__FILE__)) {
-      v8::String::Utf8Value keyName(key);
-
-      if (*keyName != 0) {
-        LOG_TRACE("copying key '%s' from context to sandbox", *keyName);
+    for (i = 0; i < keys->Length(); i++) {
+      v8::Handle<v8::String> key = keys->Get(v8::Integer::New(i))->ToString();
+      v8::Handle<v8::Value> value = context->Global()->Get(key);
+      
+      if (TRI_IsTraceLogging(__FILE__)) {
+        v8::String::Utf8Value keyName(key);
+        
+        if (*keyName != 0) {
+          LOG_TRACE("copying key '%s' from context to sandbox", *keyName);
+        }
       }
+      
+      if (value == context->Global()) {
+        value = sandbox;
+      }
+      
+      sandbox->Set(key, value);
     }
 
-    if (value == context->Global()) {
-      value = sandbox;
-    }
-
-    sandbox->Set(key, value);
+    context->DetachGlobal();
+    context->Exit();
   }
 
-  context->DetachGlobal();
-
-  context->Exit();
-  return scope.Close(v8::True());
+  if (useSandbox) {
+    return scope.Close(v8::True());
+  }
+  else {
+    return scope.Close(result);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

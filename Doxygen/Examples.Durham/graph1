@@ -1,5 +1,6 @@
-avocado> var g = new Graph(db.vertices, edges.edges);
-avocado> g;
+avocado> var Graph = require("graph").Graph;
+
+avocado> new Graph(db.vertices, edges.edges);
 Graph("vertices", "edges")
 
 avocado> new Graph("vertices", "edges");

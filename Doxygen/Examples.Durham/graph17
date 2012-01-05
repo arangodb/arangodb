@@ -1,3 +1,5 @@
+avocado> var Graph = require("graph").Graph;
+
 avocado> g = new Graph("vertices", "edges");
 
 avocado> v1 = g.addVertex({ name : "Hugo" });
