@@ -1,0 +1,5 @@
+avocado> g = new Graph("vertices", "edges");
+Graph("vertices", "edges")
+
+avocado> v = g.addVertex();
+Vertex(<graph>, "153246:1824463")

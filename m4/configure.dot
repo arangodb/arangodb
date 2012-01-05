@@ -1,0 +1,32 @@
+dnl -*- mode: Autoconf; -*-
+
+dnl -----------------------------------------------------------------------------------------
+dnl checks for dot
+dnl -----------------------------------------------------------------------------------------
+
+AC_ARG_WITH(dot,
+	    AS_HELP_STRING([--with-dot=DIR], [where the dot executable is located]),
+	    tr_DOT_PATH="$withval",
+            tr_DOT_PATH="$PATH")
+
+AC_PATH_PROG([DOT_PATH], [dot], [], [$tr_DOT_PATH])
+
+if test -n "$DOT_PATH";  then
+  HAVE_DOT="YES"
+  DOT_PATH=`dirname "$DOT_PATH"`
+else
+  HAVE_DOT="NO"
+  DOT_PATH=""
+fi
+
+AC_SUBST(HAVE_DOT)
+
+dnl -----------------------------------------------------------------------------------------
+dnl informational output
+dnl -----------------------------------------------------------------------------------------
+
+if test "x$HAVE_DOT" = xyes;  then
+  TOOL_INFO="$TOOL_INFO|DOT support: enabled ($DOT_PATH)"
+else
+  TOOL_INFO="$TOOL_INFO|DOT support: disabled"
+fi

@@ -1,0 +1,2 @@
+avocado> g2 = new Graph("vertices", "alternativeEdges");
+Graph("vertices", "alternativeEdges")

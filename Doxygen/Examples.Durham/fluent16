@@ -1,0 +1,18 @@
+eavocado> id = db.examples.save({ hallo : "world" });
+"148759:4083274"
+
+avocado> db.examples.document(id);
+{ "hallo" : "world", "_id" : "148759:4083274" }
+
+avocado> db.examples.delete(id);
+true
+
+avocado> db.examples.document(id);
+
+avocado> db.examples.delete(id);
+false
+
+avocado> db.examples.delete("emil");
+(shell):1: expecting a document identifier
+db.examples.delete("emil");
+            ^

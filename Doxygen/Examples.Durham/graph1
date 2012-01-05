@@ -1,0 +1,6 @@
+avocado> var g = new Graph(db.vertices, edges.edges);
+avocado> g;
+Graph("vertices", "edges")
+
+avocado> new Graph("vertices", "edges");
+Graph("vertices", "edges")

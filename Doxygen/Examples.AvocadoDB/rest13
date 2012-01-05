@@ -1,0 +1,17 @@
+> curl -X GET --dump - http://localhost:8529/_document/9496015:13658604
+HTTP/1.1 200 OK
+content-type: application/json
+connection: Keep-Alive
+server: triagens GmbH High-Performance HTTP Server
+etag: "14755542"
+content-length: 27
+
+{"_id":"9496015:13658604"}
+
+> curl -X DELETE --dump - http://localhost:8529/_document/9496015:13658604
+HTTP/1.1 204 No Content
+content-type: text/plain;charset=utf-8
+connection: Keep-Alive
+server: triagens GmbH High-Performance HTTP Server
+content-length: 0
+

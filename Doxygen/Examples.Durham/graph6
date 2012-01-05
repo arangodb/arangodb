@@ -1,0 +1,14 @@
+avocado> g = new Graph("vertices", "edges");
+Graph("vertices", "edges")
+
+avocado> v = g.addVertex({ name : "Hugo" });
+Vertex(<graph>, "153246:2310672")
+
+avocado> v.getProperty("name");
+"Hugo"
+
+avocado> v.setProperty("name", "Emil");
+"Emil"
+
+avocado> v.getProperty("name");
+"Emil"
