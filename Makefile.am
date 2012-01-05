@@ -19,8 +19,10 @@ include Makefile.files
 ## JavaScript source code as header
 ################################################################################
 
+.PHONY: js
+
 js:
-	mkdir js
+	@test -d js || mkdir js
 
 js/js-%.h: @srcdir@/js/%.js js
 	@top_srcdir@/config/js2c.sh $< > $@
