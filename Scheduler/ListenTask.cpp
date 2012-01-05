@@ -289,7 +289,7 @@ namespace triagens {
         memcpy(&(addr.sin_addr.s_addr), a, length);
         addr.sin_port = htons(port);
 
-        delete[] a;
+        TRI_Free(a);
       }
 
       int res = bind(listenSocket, (const sockaddr*) &addr, sizeof(addr));
