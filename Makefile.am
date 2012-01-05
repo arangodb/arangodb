@@ -62,13 +62,25 @@ Doxygen/js/system:
 	mkdir Doxygen/js/system
 
 Doxygen/js/%.c: @srcdir@/js/%.js Doxygen/js
-	python @top_srcdir@/config/js2doxy.py $< > $@
+	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
 Doxygen/js/system/%.c: @srcdir@/js/system/%.js Doxygen/js/system
-	python @top_srcdir@/config/js2doxy.py $< > $@
+	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
-doxygen: Doxygen/avocado.doxy
+doxygen: Doxygen/avocado.doxy $(DOXYGEN)
 	doxygen Doxygen/avocado.doxy
+
+################################################################################
+## wiki
+################################################################################
+
+.PHONY: wiki
+
+PANDOC = pandoc -f markdown -t markdown
+
+wiki: $(WIKI)
+	@test -d Doxygen/wiki || mkdir Doxygen/wiki
+	for w in $(WIKI); do $(PANDOC) -o Doxygen/wiki/`basename $$w` $$w; done
 
 ################################################################################
 ## build information
@@ -93,3 +105,5 @@ BUILD_H_TARGET:
 
 clean-local:
 	rm -f $(BUILT_SOURCES)
+	rm -f $(DOXYGEN)
+	rm -f $(WIKI)
