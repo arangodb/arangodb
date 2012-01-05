@@ -133,6 +133,12 @@ static TRI_vector_t LogMessageQueue;
 static TRI_thread_t LoggingThread;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief thread used for logging
+////////////////////////////////////////////////////////////////////////////////
+
+static sig_atomic_t LoggingThreadActive = 0;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief human readable logging
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -190,13 +196,13 @@ static sig_atomic_t IsInfo = 1;
 /// @brief log debug messages
 ////////////////////////////////////////////////////////////////////////////////
 
-static sig_atomic_t IsDebug = 1;
+static sig_atomic_t IsDebug = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log trace messages
 ////////////////////////////////////////////////////////////////////////////////
 
-static sig_atomic_t IsTrace = 1;
+static sig_atomic_t IsTrace = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief show line numbers, debug and trace always show the line numbers
@@ -569,13 +575,19 @@ static void MessageQueueWorker (void* data) {
   TRI_InitVector(&buffer, sizeof(log_message_t));
 
   sl = 100;
+  LoggingThreadActive = 1;
 
   while (true) {
     TRI_LockMutex(&LogMessageQueueLock);
 
     if (TRI_EmptyVector(&LogMessageQueue)) {
       TRI_UnlockMutex(&LogMessageQueueLock);
+
       sl += 1000;
+
+      if (1000000 < sl) {
+        sl = 1000000;
+      }
     }
     else {
       size_t m;
@@ -647,6 +659,8 @@ static void MessageQueueWorker (void* data) {
   TRI_ClearVector(&LogMessageQueue);
 
   TRI_UnlockMutex(&LogMessageQueueLock);
+
+  LoggingThreadActive = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1561,7 +1575,10 @@ void TRI_InitialiseLogging (bool threaded) {
   TRI_InitSpin(&OutputPrefixLock);
   TRI_InitSpin(&AppendersLock);
 
-  // generate threaded logging
+  // logging is now active
+  LoggingActive = 1;
+
+  // generate threaded logging?
   ThreadedLogging = threaded;
 
   if (threaded) {
@@ -1571,10 +1588,11 @@ void TRI_InitialiseLogging (bool threaded) {
 
     TRI_InitThread(&LoggingThread);
     TRI_StartThread(&LoggingThread, MessageQueueWorker, 0);
-  }
 
-  // logging is now active
-  LoggingActive = 1;
+    while (LoggingThreadActive == 0) {
+      usleep(1000);
+    }
+  }
 
   // and initialised
   Initialised = true;
