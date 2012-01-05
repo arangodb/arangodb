@@ -47,7 +47,7 @@ BUILD_H="\$(top_srcdir)/build.h"
 AC_SUBST(BUILD_H)
 
 AC_CONFIG_FILES([Makefile])
-AM_CONFIG_HEADER([BasicsC/local-configuration.h])
+AC_CONFIG_HEADER([config/config.h BasicsC/local-configuration.h])
 AC_OUTPUT
 
 dnl ============================================================================

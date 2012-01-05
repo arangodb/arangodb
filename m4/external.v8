@@ -4,8 +4,8 @@ dnl ----------------------------------------------------------------------------
 dnl option for V8
 dnl -----------------------------------------------------------------------------------------
 
-V8_CPPFLAGS="-I${THIRD_PARTY}/v8/include"
-V8_LDFLAGS="-L${THIRD_PARTY}/v8/lib"
+V8_CPPFLAGS=""
+V8_LDFLAGS=""
 
 AC_ARG_WITH(v8,
   AS_HELP_STRING([--with-v8=DIR], [where the v8 library and includes are located]),

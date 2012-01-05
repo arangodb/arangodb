@@ -28,8 +28,9 @@ JsonParserX/location.hh
 JsonParserX/position.hh
 JsonParserX/stack.hh
 V8/v8-json.cpp
-BasicsC/stamp-h1
+stamp-h*
 avocadodb
 libavocadodb.a
 build.c
 build.info
+config/config.h*
