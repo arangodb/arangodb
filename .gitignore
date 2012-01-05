@@ -39,5 +39,6 @@ Doxygen/html/
 Doxygen/js/
 Doxygen/latex/
 Doxygen/xml/
+Doxygen/wiki/
 build.sh
 commit.sh
