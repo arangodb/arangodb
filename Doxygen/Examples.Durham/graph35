@@ -1,0 +1,13 @@
+avocado> var Graph = require("graph").Graph;
+
+avocado> g = new Graph("vertices", "edges");
+Graph("vertices", "edges")
+
+avocado> f = g.getVertices();
+[vertex iterator]
+
+avocado> f.hasNext();
+true
+
+avocado> v = f.next();
+Vertex(<graph>, "179962:1945116")

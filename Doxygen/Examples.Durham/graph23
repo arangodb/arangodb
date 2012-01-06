@@ -1,13 +1,5 @@
-avocado> var Graph = require("graph").Graph;
-
-avocado> g = new Graph("vertices", "edges");
-Graph("vertices", "edges")
-
 avocado> v1 = g.addVertex();
 Vertex(<graph>, "153246:8712055")
-
-avocado> v2 = g.addVertex();
-Vertex(<graph>, "153246:8777591")
 
 avocado> v1.addInEdge(v2, "knows");
 Edge(<graph>, "3999653:8908663")

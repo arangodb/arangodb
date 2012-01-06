@@ -1,0 +1,18 @@
+avocado> var Graph = require("graph").Graph;
+
+avocado> g = new Graph("vertices", "edges");
+Graph("vertices", "edges")
+
+avocado> v1 = g.addVertex();
+Vertex(<graph>, "179962:10521976")
+
+avocado> v2 = g.addVertex();
+Vertex(<graph>, "179962:10653048")
+
+avocado> e = g.addEdge(v1, v2);
+Edge(<graph>, "2141724:10784120")
+
+avocado> g.removeVertex(v1);
+
+avocado> v2.edges();
+[ ]
