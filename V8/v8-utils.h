@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,16 +22,16 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_V8_V8_UTILS_H
-#define TRIAGENS_DURHAM_V8_V8_UTILS_H 1
+#ifndef TRIAGENS_V8_V8_UTILS_H
+#define TRIAGENS_V8_V8_UTILS_H 1
 
 #include "V8/v8-globals.h"
 
-#include <BasicsC/json.h>
-#include <VocBase/simple-collection.h>
+#include "BasicsC/json.h"
+#include "VocBase/simple-collection.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class V8LineEditor

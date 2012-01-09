@@ -1190,7 +1190,7 @@ Graph.prototype.removeVertex = function (vertex) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an edge
 ///
-/// @FUN{@FA{graph}.removeVertex(@FA{vertex})}
+/// @FUN{@FA{graph}.removeEdge(@FA{vertex})}
 ///
 /// Deletes the @FA{edge}. Note that the in and out vertices are left untouched.
 ///

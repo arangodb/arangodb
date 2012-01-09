@@ -3,7 +3,7 @@ ACLOCAL_AMFLAGS = -I m4
 AM_CFLAGS = 
 AM_CPPFLAGS =
 AM_LDFLAGS =
-BUILT_SOURCES = js Doxygen/js Doxygen/js/system Doxygen/js/modules
+BUILT_SOURCES = setup-directories
 LIBS =
 
 noinst_LIBRARIES = libavocadodb.a
@@ -19,10 +19,13 @@ include Makefile.files
 ## JavaScript source code as header
 ################################################################################
 
-.PHONY: js
+.PHONY: setup-directories
 
-js:
-	@test -d $@ || mkdir $@
+setup-directories:
+	@test -d js || mkdir js
+	@test -d Doxygen/js || mkdir Doxygen/js
+	@test -d Doxygen/js/system || mkdir Doxygen/js/system
+	@test -d Doxygen/js/modules || mkdir Doxygen/js/modules
 
 js/js-%.h: @srcdir@/js/%.js
 	@top_srcdir@/config/js2c.sh $< > $@
@@ -56,9 +59,6 @@ JsonParserX/%.cpp: @srcdir@/JsonParserX/%.yy
 ################################################################################
 
 .PHONY: doxygen Doxygen/js Doxygen/js/system Doxygen/js/modules
-
-Doxygen/js Doxygen/js/system Doxygen/js/modules:
-	test -d $@ || mkdir $@
 
 Doxygen/js/%.c: @srcdir@/js/%.js
 	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@

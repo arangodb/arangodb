@@ -27,12 +27,15 @@
 
 #include "query.h"
 
-#include <BasicsC/logging.h>
-#include <BasicsC/strings.h>
-#include <BasicsC/string-buffer.h>
-#include <BasicsC/conversions.h>
-#include <VocBase/simple-collection.h>
-#include <VocBase/index.h>
+#include "BasicsC/conversions.h"
+#include "BasicsC/logging.h"
+#include "BasicsC/string-buffer.h"
+#include "BasicsC/strings.h"
+#include "ShapedJson/shape-accessor.h"
+#include "ShapedJson/shaped-json.h"
+#include "VocBase/index.h"
+#include "VocBase/simple-collection.h"
+#include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -1775,6 +1778,298 @@ static void FreeNearQuery (TRI_query_t* qry, bool descend) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                           SELECT BY EXAMPLE QUERY
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks for match of an example
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IsExampleMatch (TRI_shaper_t* shaper,
+                            TRI_doc_mptr_t const* doc,
+                            size_t len, 
+                            TRI_shape_pid_t* pids,
+                            TRI_shaped_json_t** values) {
+  TRI_shape_access_t const* accessor;
+  TRI_shaped_json_t const* document;
+  TRI_shaped_json_t* example;
+  TRI_shaped_json_t result;
+  bool ok;
+  size_t i;
+
+  document = &doc->_document;
+
+  for (i = 0;  i < len;  ++i) {
+    example = values[i];
+    accessor = TRI_FindAccessorVocShaper(shaper, document->_sid, pids[i]);
+
+    if (accessor == NULL) {
+      LOG_TRACE("failed to get accessor for sid %lu and path %lu",
+                (unsigned long) document->_sid,
+                (unsigned long) pids[i]);
+
+      return false;
+    }
+
+    if (accessor->_shape == NULL) {
+      LOG_TRACE("expecting an array for path %lu",
+                (unsigned long) pids[i]);
+
+      return false;
+    }
+
+    if (accessor->_shape->_sid != example->_sid) {
+      LOG_TRACE("expecting sid %lu for path %lu, got sid %lu",
+                (unsigned long) example->_sid,
+                (unsigned long) pids[i],
+                (unsigned long) accessor->_shape->_sid);
+
+      return false;
+    }
+
+    ok = TRI_ExecuteShapeAccessor(accessor, document, &result);
+
+    if (! ok) {
+      LOG_TRACE("failed to get accessor for sid %lu and path %lu",
+                (unsigned long) document->_sid,
+                (unsigned long) pids[i]);
+
+      return false;
+    }
+
+    if (result._data.length != example->_data.length) {
+      LOG_TRACE("expecting length %lu, got length %lu for path %lu",
+                (unsigned long) result._data.length,
+                (unsigned long) example->_data.length,
+                (unsigned long) pids[i]);
+
+      return false;
+    }
+
+    if (memcmp(result._data.data, example->_data.data, example->_data.length) != 0) {
+      LOG_TRACE("data mismatch at path %lu",
+                (unsigned long) pids[i]);
+      return false;
+    }
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimises a select-by-example query
+////////////////////////////////////////////////////////////////////////////////
+
+static char* OptimiseSelectFullQuery (TRI_query_t** qry) {
+  TRI_select_full_query_t* query;
+  TRI_query_t* operand;
+  char* e;
+
+  query = (TRI_select_full_query_t*) *qry;
+
+  // sanity check
+  if (! query->base._collection->_loaded) {
+    return TRI_Concatenate3String("collection \"", query->base._collection->_name, "\" not loaded");
+  }
+
+  // check if query is already optimised
+  if (query->base._isOptimised) {
+    return NULL;
+  }
+
+  // optimise operand
+  e = query->_operand->optimise(&query->_operand);
+
+  if (e != NULL) {
+    return e;
+  }
+
+  query->base._isOptimised = true;
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a select-by-example query
+////////////////////////////////////////////////////////////////////////////////
+
+static void ExecuteSelectFullQuery (TRI_query_t* qry,
+                                    TRI_query_result_t* result) {
+  union { void* v; void const* c; } cnv;
+  TRI_select_full_query_t* query;
+  TRI_vector_pointer_t filtered;
+  TRI_shaper_t* shaper;
+  TRI_doc_mptr_t const** ptr;
+  TRI_doc_mptr_t const** end;
+
+  query = (TRI_select_full_query_t*) qry;
+
+  // execute the sub-query
+  query->_operand->execute(query->_operand, result);
+
+  if (result->_error) {
+    return;
+  }
+
+  TRI_AppendString(&result->_cursor, ">select[full-scan]");
+
+  // without any document there will be no match
+  if (result->_length == 0) {
+    return;
+  }
+
+  // do a full scan
+  TRI_InitVectorPointer(&filtered);
+
+  shaper = query->base._collection->_collection->_shaper;
+
+  ptr = result->_documents;
+  end = result->_documents + result->_length;
+
+  for (;  ptr < end;  ++ptr) {
+    ++result->_scannedDocuments;
+
+    if (IsExampleMatch(shaper, *ptr, query->_length, query->_pids, query->_values)) {
+      ++result->_matchedDocuments;
+
+      cnv.c = *ptr;
+      TRI_PushBackVectorPointer(&filtered, cnv.v);
+    }
+  }
+
+  TRI_Free(result->_documents);
+  result->_documents = (TRI_doc_mptr_t const**) filtered._buffer;
+  result->_length = filtered._length;
+
+  if (result->_augmented != NULL) {
+    TRI_Free(result->_augmented);
+    result->_augmented = NULL;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief json representation of a select-by-example query
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* JsonSelectFullQuery (TRI_query_t* qry) {
+  TRI_json_t* json;
+  TRI_json_t* example;
+  TRI_select_full_query_t* query;
+  TRI_shaper_t* shaper;
+  size_t i;
+
+  query = (TRI_select_full_query_t*) qry;
+  json = TRI_CreateArrayJson();
+  shaper = query->base._collection->_collection->_shaper;
+
+  TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("select-full"));
+
+  example = TRI_CreateArrayJson();
+
+  for (i = 0;  i < query->_length;  ++i) {
+    char const* path;
+    TRI_json_t* value;
+
+    path = TRI_AttributeNameShapePid(shaper, query->_pids[i]);
+    value = TRI_JsonShapedJson(shaper, query->_values[i]);
+
+    TRI_Insert2ArrayJson(example, path, value);
+  }
+
+  TRI_Insert2ArrayJson(json, "example", example);
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief appends a string representation of a select-by-example query
+////////////////////////////////////////////////////////////////////////////////
+
+static void StringifySelectFullQuery (TRI_query_t* qry, TRI_string_buffer_t* buffer) {
+  TRI_select_full_query_t* query;
+
+  query = (TRI_select_full_query_t*) qry;
+
+  query->_operand->stringify(query->_operand, buffer);
+
+  TRI_AppendStringStringBuffer(buffer, ".select(");
+  // TODO
+  TRI_AppendStringStringBuffer(buffer, ")");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clones a select-by-example query
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_query_t* CloneSelectFullQuery (TRI_query_t* qry) {
+  TRI_select_full_query_t* clone;
+  TRI_select_full_query_t* query;
+  TRI_shaped_json_t* copy;
+  size_t n;
+  size_t i;
+
+  clone = TRI_Allocate(sizeof(TRI_select_full_query_t));
+  query = (TRI_select_full_query_t*) qry;
+
+  CloneQuery(&clone->base, &query->base);
+
+  clone->_operand = query->_operand->clone(query->_operand);
+
+  n = query->_length;
+
+  clone->_length = n;
+  clone->_pids = TRI_Allocate(n * sizeof(TRI_shape_pid_t));
+  clone->_values = TRI_Allocate(n * sizeof(TRI_shaped_json_t*));
+
+  for (i = 0;  i < n;  ++i) {
+    copy = TRI_Allocate(sizeof(TRI_shaped_json_t));
+    copy->_sid = query->_values[i]->_sid;
+    TRI_CopyToBlob(&copy->_data, TRI_CopyBlob(&query->_values[i]->_data));
+
+    clone->_values[i] = copy;
+    clone->_pids[i] = query->_pids[i];
+  }
+  
+  return &clone->base;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees a select-by-example query
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeSelectFullQuery (TRI_query_t* qry, bool descend) {
+  TRI_select_full_query_t* query;
+  size_t i;
+
+  query = (TRI_select_full_query_t*) qry;
+
+  if (descend) {
+    query->_operand->free(query->_operand, descend);
+  }
+
+  for (i = 0;  i < query->_length;  ++i) {
+    TRI_FreeShapedJson(query->_values[i]);
+  }
+
+  TRI_Free(query->_values);
+  TRI_Free(query->_pids);
+
+  TRI_Free(query);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                        SKIP QUERY
 // -----------------------------------------------------------------------------
 
@@ -2391,6 +2686,37 @@ TRI_query_t* TRI_CreateNearQuery (TRI_query_t* operand,
   query->_longitude = longitude;
   query->_limit = -1;
   query->_distance = (distance == NULL ? NULL : TRI_DuplicateString(distance));
+
+  return &query->base;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief skips elements of an existing query
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_query_t* TRI_CreateSelectFullQuery (TRI_query_t* operand, 
+                                        size_t n,
+                                        TRI_shape_pid_t* pids,
+                                        TRI_shaped_json_t** values) {
+  TRI_select_full_query_t* query;
+
+  query = TRI_Allocate(sizeof(TRI_select_full_query_t));
+
+  query->base._type = TRI_QUE_TYPE_SELECT_FULL_QUERY;
+  query->base._collection = operand->_collection;
+  query->base._isOptimised = false;
+
+  query->base.optimise = OptimiseSelectFullQuery;
+  query->base.execute = ExecuteSelectFullQuery;
+  query->base.json = JsonSelectFullQuery;
+  query->base.stringify = StringifySelectFullQuery;
+  query->base.clone = CloneSelectFullQuery;
+  query->base.free = FreeSelectFullQuery;
+
+  query->_operand = operand;
+  query->_length = n;
+  query->_pids = pids;
+  query->_values = values;
 
   return &query->base;
 }

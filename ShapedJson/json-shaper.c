@@ -31,6 +31,7 @@
 #include "BasicsC/associative.h"
 #include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
+#include "BasicsC/string-buffer.h"
 #include "BasicsC/strings.h"
 #include "BasicsC/vector.h"
 
@@ -569,6 +570,36 @@ void TRI_FreeArrayShaper (TRI_shaper_t* shaper) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            SHAPER
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Json
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates the attribute path
+////////////////////////////////////////////////////////////////////////////////
+
+char const* TRI_AttributeNameShapePid (TRI_shaper_t* shaper, TRI_shape_pid_t pid) {
+  TRI_string_buffer_t buffer;
+  TRI_shape_path_t const* path;
+  char const* e;
+
+  TRI_InitStringBuffer(&buffer);
+
+  path = shaper->lookupAttributePathByPid(shaper, pid);
+  e = (char const*) path;
+
+  return e + sizeof(TRI_shape_path_t) + path->_aidLength * sizeof(TRI_shape_aid_t);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected functions

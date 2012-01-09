@@ -5,31 +5,41 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright by triAGENS GmbH - All rights reserved.
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
+/// The Programs (which include both the software and documentation)
+/// contain proprietary information of triAGENS GmbH; they are
+/// provided under a license agreement containing restrictions on use and
+/// disclosure and are also protected by copyright, patent and other
+/// intellectual and industrial property laws. Reverse engineering,
+/// disassembly or decompilation of the Programs, except to the extent
+/// required to obtain interoperability with other independently created
+/// software or as specified by law, is prohibited.
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+/// The Programs are not intended for use in any nuclear, aviation, mass
+/// transit, medical, or other inherently dangerous applications. It shall
+/// be the licensee's responsibility to take all appropriate fail-safe,
+/// backup, redundancy, and other measures to ensure the safe use of such
+/// applications if the Programs are used for such purposes, and triAGENS
+/// GmbH disclaims liability for any damages caused by such use of
+/// the Programs.
 ///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
+/// This software is the confidential and proprietary information of
+/// triAGENS GmbH. You shall not disclose such confidential and
+/// proprietary information and shall use it only in accordance with the
+/// terms of the license agreement you entered into with triAGENS GmbH.
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author R. A. Parker
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 /* GeoIndex.h - header file for GeoIndex algorithms  */
-/* Version 2.0  3.12.2011 R. A. Parker               */
+/* Version 2.1   8.1.2012   R. A. Parker             */
 
 #ifdef GEO_TRIAGENS
-#include "BasicsC/common.h"
+#include <BasicsC/common.h>
 #else
 #include <string.h>
 #include <stdio.h>
@@ -43,14 +53,35 @@
 typedef long long GeoString;
 
 /* percentage growth of slot or slotslot tables     */
-#define GeoIndexGROW 10
+#define GeoIndexGROW 50
 
-/* maximum number of points in a pot  >=2           */
+/* maximum number of points in a pot                */
+/*  ***  note - must be even!                       */
+/* smaller takes more space but is a little faster  */
 #define GeoIndexPOTSIZE 6
 
-/* number of fixed points for max-dist calculations */
-#define GeoIndexFIXEDPOINTS 8
+/* choses the set of fixed points             */
+#define GeoIndexFIXEDSET 6
+/* 1 is just the N pole (doesn't really work) */
+/* 2 is N and S pole - slow but OK            */
+/* 3 is equilateral triangle on 0/180 long    */
+/* 4 is four corners of a tetrahedron         */
+/* 5 is trigonal bipyramid                    */
+/* 6 is the  corners of octahedron (default)  */
+/* 8 is eight corners of a cube               */
+
+/* size of max-dist integer.                           */
+/* 2 is 16-bit - smaller but slow when lots of points  */
+/*     within a few hundred meters of target           */
+/* 4 is 32-bit - larger and fast even when points are  */
+/*     only centimeters apart.  Default                */
+#define GEOFIXLEN 4
+#if GEOFIXLEN == 2
 typedef unsigned short GeoFix;
+#endif
+#if GEOFIXLEN == 4
+typedef unsigned int GeoFix;
+#endif
 
 /* If this #define is there, then the INDEXDUMP and */
 /* INDEXVALID functions are also available.  These  */
@@ -58,7 +89,6 @@ typedef unsigned short GeoFix;
 /* the INDEXDUMP function also prints the data,     */
 /* assumed to be a character string, if DEBUG is    */
 /* set to 2.                                        */
-
 #define DEBUG 1
 
 typedef struct
@@ -75,32 +105,7 @@ typedef struct
     double * distances;
 }       GeoCoordinates;
 
-typedef struct
-{
-    double x[GeoIndexFIXEDPOINTS];
-    double y[GeoIndexFIXEDPOINTS];
-    double z[GeoIndexFIXEDPOINTS];
-}       GeoIndexFixed;
-
-typedef struct
-{
-    int LorLeaf;
-    int RorPoints;
-    GeoString middle;
-    GeoFix  maxdist[GeoIndexFIXEDPOINTS];
-    GeoString start;
-    GeoString end;
-    int level;
-    int points[GeoIndexPOTSIZE];
-}       GeoPot;
-typedef struct
-{
-    GeoIndexFixed fixed;  /* fixed point data         */
-    int potct;            /* pots allocated           */
-    int slotct;           /* slots allocated          */
-    GeoPot * pots;        /* the pots themselves      */
-    GeoCoordinate * gc;   /* the slots themselves     */
-}       GeoIndex;
+typedef char GeoIndex;   /* to keep the structure private  */
 
 GeoIndex * GeoIndex_new(void);
 void GeoIndex_free(GeoIndex * gi);

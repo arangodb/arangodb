@@ -28,11 +28,11 @@
 #ifndef TRIAGENS_DURHAM_VOC_BASE_INDEX_H
 #define TRIAGENS_DURHAM_VOC_BASE_INDEX_H 1
 
-#include <VocBase/vocbase.h>
+#include "VocBase/vocbase.h"
 
-#include <BasicsC/json.h>
-
-#include <GeoIndex/GeoIndex.h>
+#include "BasicsC/json.h"
+#include "ShapedJson/shaped-json.h"
+#include "GeoIndex/GeoIndex.h"
 
 #ifdef __cplusplus
 extern "C" {

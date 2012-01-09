@@ -29,6 +29,7 @@
 
 #include "BasicsC/logging.h"
 #include "BasicsC/vector.h"
+#include "ShapedJson/json-shaper.h"
 #include "ShapedJson/shaped-json.h"
 
 // #define DEBUG_SHAPE_ACCESSOR 1
@@ -226,7 +227,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
 /// @brief executes a byte-code sequence
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ExecuteBytecodeShapeAccessor (TRI_shape_access_t* accessor,
+static bool ExecuteBytecodeShapeAccessor (TRI_shape_access_t const* accessor,
                                           void** begin,
                                           void** end) {
   TRI_shape_size_t b;
@@ -324,7 +325,7 @@ TRI_shape_access_t* TRI_ShapeAccessor (TRI_shaper_t* shaper,
 /// @brief executes a shape accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteShapeAccessor (TRI_shape_access_t* accessor,
+bool TRI_ExecuteShapeAccessor (TRI_shape_access_t const* accessor,
                                TRI_shaped_json_t const* shaped,
                                TRI_shaped_json_t* result) {
   void* begin;
