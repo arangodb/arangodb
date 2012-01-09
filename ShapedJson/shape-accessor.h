@@ -31,6 +31,7 @@
 #include "BasicsC/common.h"
 
 #include "BasicsC/json.h"
+#include "ShapedJson/shaped-json.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,6 +45,19 @@ extern "C" {
 /// @addtogroup Json
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief json shape access
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_shape_access_s {
+  TRI_shape_sid_t _sid;                 // shaped identifier of the shape we are looking at
+  TRI_shape_pid_t _pid;                 // path identifier of the attribute path
+
+  TRI_shape_t const* _shape;            // resulting shape
+  void* const* _code;                   // bytecode
+}
+TRI_shape_access_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief size of short strings
@@ -74,7 +88,7 @@ TRI_shape_ac_bc_e;
 /// @brief creates a shape accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shape_access_t* TRI_ShapeAccessor (TRI_shaper_t* shaper,
+TRI_shape_access_t* TRI_ShapeAccessor (struct TRI_shaper_s* shaper,
                                        TRI_shape_sid_t sid,
                                        TRI_shape_pid_t pid);
 
@@ -82,7 +96,7 @@ TRI_shape_access_t* TRI_ShapeAccessor (TRI_shaper_t* shaper,
 /// @brief executes a shape accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteShapeAccessor (TRI_shape_access_t* accessor,
+bool TRI_ExecuteShapeAccessor (TRI_shape_access_t const* accessor,
                                TRI_shaped_json_t const* shaped,
                                TRI_shaped_json_t* result);
 

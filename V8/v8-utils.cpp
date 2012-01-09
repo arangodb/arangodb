@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-utils.h"
@@ -33,13 +33,13 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
-#include <Basics/StringUtils.h>
-#include <BasicsC/conversions.h>
-#include <BasicsC/csv.h>
-#include <BasicsC/files.h>
-#include <BasicsC/logging.h>
-#include <BasicsC/string-buffer.h>
-#include <BasicsC/strings.h>
+#include "Basics/StringUtils.h"
+#include "BasicsC/conversions.h"
+#include "BasicsC/csv.h"
+#include "BasicsC/files.h"
+#include "BasicsC/logging.h"
+#include "BasicsC/string-buffer.h"
+#include "BasicsC/strings.h"
 
 #include "ShapedJson/shaped-json.h"
 
@@ -1882,19 +1882,19 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
     for (i = 0; i < keys->Length(); i++) {
       v8::Handle<v8::String> key = keys->Get(v8::Integer::New(i))->ToString();
       v8::Handle<v8::Value> value = context->Global()->Get(key);
-      
+
       if (TRI_IsTraceLogging(__FILE__)) {
         v8::String::Utf8Value keyName(key);
-        
+
         if (*keyName != 0) {
           LOG_TRACE("copying key '%s' from context to sandbox", *keyName);
         }
       }
-      
+
       if (value == context->Global()) {
         value = sandbox;
       }
-      
+
       sandbox->Set(key, value);
     }
 
