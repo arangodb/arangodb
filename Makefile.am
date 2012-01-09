@@ -3,7 +3,7 @@ ACLOCAL_AMFLAGS = -I m4
 AM_CFLAGS = 
 AM_CPPFLAGS =
 AM_LDFLAGS =
-BUILT_SOURCES = setup-directories
+BUILT_SOURCES = .setup-directories
 LIBS =
 
 noinst_LIBRARIES = libavocadodb.a
@@ -19,15 +19,14 @@ include Makefile.files
 ## JavaScript source code as header
 ################################################################################
 
-.PHONY: setup-directories
-
-setup-directories:
+.setup-directories:
 	@test -d js || mkdir js
 	@test -d Doxygen/js || mkdir Doxygen/js
 	@test -d Doxygen/js/system || mkdir Doxygen/js/system
 	@test -d Doxygen/js/modules || mkdir Doxygen/js/modules
+	@touch $@
 
-js/js-%.h: @srcdir@/js/%.js
+js/js-%.h: @srcdir@/js/%.js .setup-directories
 	@top_srcdir@/config/js2c.sh $< > $@
 
 ################################################################################
@@ -60,13 +59,13 @@ JsonParserX/%.cpp: @srcdir@/JsonParserX/%.yy
 
 .PHONY: doxygen Doxygen/js Doxygen/js/system Doxygen/js/modules
 
-Doxygen/js/%.c: @srcdir@/js/%.js
+Doxygen/js/%.c: @srcdir@/js/%.js .setup-directories
 	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
-Doxygen/js/system/%.c: @srcdir@/js/system/%.js
+Doxygen/js/system/%.c: @srcdir@/js/system/%.js .setup-directories
 	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
-Doxygen/js/modules/%.c: @srcdir@/js/system/%.js
+Doxygen/js/modules/%.c: @srcdir@/js/system/%.js .setup-directories
 	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
 doxygen: Doxygen/avocado.doxy $(DOXYGEN)
