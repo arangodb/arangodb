@@ -1,0 +1,47 @@
+> toJson(db.examples.all().explain(), true);
+{
+  "cursor" : "query>collection",
+  "scannedIndexEntries" : 0,
+  "scannedDocuments" : 87,
+  "matchedDocuments" : 33,
+  "runtime" : 0.017073869705200195,
+  "query" : {
+    "type" : "collection",
+    "collection" : "examples"
+  }
+}
+
+> toJson(db.examples.all().document("9496015:11126645").explain(), true);
+{
+  "cursor" : "query>primary",
+  "scannedIndexEntries" : 1,
+  "scannedDocuments" : 0,
+  "matchedDocuments" : 1,
+  "runtime" : 0.003036022186279297,
+  "query" : {
+    "type" : "document",
+    "identfier" : 11126645,
+    "collection" : "examples"
+  }
+}
+
+> toJson(db.examples.all().limit(100).document("9496015:11126645").explain(), true);
+{
+  "cursor" : "query>collection>limit>full-scan[document]",
+  "scannedIndexEntries" : 0,
+  "scannedDocuments" : 88,
+  "matchedDocuments" : 67,
+  "runtime" : 0.04597210884094238,
+  "query" : {
+    "type" : "document",
+    "identfier" : 11126645,
+    "operand" : {
+      "type" : "limit",
+      "limit" : 100,
+      "operand" : {
+        "type" : "collection",
+        "collection" : "examples"
+      }
+    }
+  }
+}

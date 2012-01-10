@@ -27,8 +27,8 @@
 
 #include "result-set.h"
 
-#include <Basics/hashes.h>
-#include <Basics/json.h>
+#include <BasicsC/hashes.h>
+#include <BasicsC/json.h>
 
 #include <VocBase/document-collection.h>
 

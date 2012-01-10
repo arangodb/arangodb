@@ -31,7 +31,7 @@
 #include <Basics/Common.h>
 #include <Basics/Exceptions.h>
 
-#include <Rest/Job.h>
+#include "Dispatcher/Job.h"
 
 namespace triagens {
   namespace rest {
@@ -76,7 +76,6 @@ namespace triagens {
 
       public:
 
-
         ////////////////////////////////////////////////////////////////////////////////
         /// @brief returns true if a handler is executed directly
         ////////////////////////////////////////////////////////////////////////////////
@@ -106,7 +105,6 @@ namespace triagens {
 
         virtual void setDispatcherThread (DispatcherThread*) {
         }
-
 
         ////////////////////////////////////////////////////////////////////////////////
         /// @brief executes a handler

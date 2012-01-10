@@ -1,0 +1,8 @@
+avocado> db.examples.save( { name : "Meier", first_name : "Hugo", age : 30 } );
+avocado> db.examples.save( { name : "Meier", first_name : "Egon", age : 40 } );
+avocado> db.examples.save( { name : "Meier", first_name : "Alfred", age : 40 } );
+
+> db.examples.all();
+{ "age" : 40, "name" : "Meier", "first_name" : "Egon", "_id" : "9496015:10798965" }
+{ "age" : 30, "name" : "Meier", "first_name" : "Hugo", "_id" : "9496015:10733429" }
+{ "age" : 40, "name" : "Meier", "first_name" : "Alfred", "_id" : "9496015:10864501" }

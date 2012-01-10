@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,16 +23,17 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Copyright 2006-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2006-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "json-shaper.h"
 
-#include <Basics/associative.h>
-#include <Basics/hashes.h>
-#include <Basics/logging.h>
-#include <Basics/strings.h>
-#include <Basics/vector.h>
+#include "BasicsC/associative.h"
+#include "BasicsC/hashes.h"
+#include "BasicsC/logging.h"
+#include "BasicsC/string-buffer.h"
+#include "BasicsC/strings.h"
+#include "BasicsC/vector.h"
 
 // #define DEBUG_JSON_SHAPER 1
 
@@ -295,7 +296,7 @@ static uint64_t HashElementAttributeName (TRI_associative_pointer_t* array, void
   e = (char const*) element;
   ee = (attribute_2_id_t const*) element;
 
-  return TRI_FnvHashPointer(e + sizeof(attribute_2_id_t), ee->_size - 1);
+  return TRI_FnvHashPointer(e + sizeof(attribute_2_id_t), (size_t)(ee->_size - 1));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -393,7 +394,7 @@ static uint64_t HashElementShape (TRI_associative_pointer_t* array, void const* 
   e = element;
   ee = element;
 
-  return TRI_FnvHashPointer(e + sizeof(TRI_shape_sid_t), ee->_size - sizeof(TRI_shape_sid_t));
+  return TRI_FnvHashPointer(e + sizeof(TRI_shape_sid_t), (size_t)(ee->_size - sizeof(TRI_shape_sid_t)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -413,7 +414,7 @@ static bool EqualElementShape (TRI_associative_pointer_t* array, void const* lef
   rr = right;
 
   return (ll->_size == rr->_size)
-    && memcmp(l + sizeof(TRI_shape_sid_t), r + sizeof(TRI_shape_sid_t), ll->_size - sizeof(TRI_shape_sid_t)) == 0;
+    && memcmp(l + sizeof(TRI_shape_sid_t), r + sizeof(TRI_shape_sid_t), (size_t)(ll->_size - sizeof(TRI_shape_sid_t))) == 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -569,6 +570,36 @@ void TRI_FreeArrayShaper (TRI_shaper_t* shaper) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            SHAPER
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Json
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates the attribute path
+////////////////////////////////////////////////////////////////////////////////
+
+char const* TRI_AttributeNameShapePid (TRI_shaper_t* shaper, TRI_shape_pid_t pid) {
+  TRI_string_buffer_t buffer;
+  TRI_shape_path_t const* path;
+  char const* e;
+
+  TRI_InitStringBuffer(&buffer);
+
+  path = shaper->lookupAttributePathByPid(shaper, pid);
+  e = (char const*) path;
+
+  return e + sizeof(TRI_shape_path_t) + path->_aidLength * sizeof(TRI_shape_aid_t);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected functions

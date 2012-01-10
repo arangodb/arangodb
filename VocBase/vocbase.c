@@ -29,13 +29,13 @@
 
 #include <sys/mman.h>
 
-#include <Basics/files.h>
-#include <Basics/hashes.h>
-#include <Basics/locks.h>
-#include <Basics/logging.h>
-#include <Basics/randomx.h>
-#include <Basics/strings.h>
-#include <Basics/threads.h>
+#include <BasicsC/files.h>
+#include <BasicsC/hashes.h>
+#include <BasicsC/locks.h>
+#include <BasicsC/logging.h>
+#include <BasicsC/random.h>
+#include <BasicsC/strings.h>
+#include <BasicsC/threads.h>
 
 #include <VocBase/compactor.h>
 #include <VocBase/document-collection.h>

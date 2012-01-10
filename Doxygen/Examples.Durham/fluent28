@@ -1,0 +1,2 @@
+avocado> db.examples.all().next();
+{ "age" : 4, "name" : "Name4", "_id" : "148759:2114839" }

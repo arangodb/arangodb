@@ -1,0 +1,5 @@
+> ./avocado /tmp/vocbase --port 8528 /tmp/vocbase
+2011-12-05T09:58:31Z  [2690] INFO AvocadoDB (version 1 (9711)) is ready for business
+2011-12-05T09:58:31Z  [2690] INFO HTTP client port: 8529
+2011-12-05T09:58:31Z  [2690] INFO HTTP admin port: localhost:8530
+2011-12-05T09:58:31Z  [2690] INFO Have Fun!

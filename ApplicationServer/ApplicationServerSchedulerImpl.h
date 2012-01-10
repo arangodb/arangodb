@@ -61,6 +61,9 @@ namespace triagens {
     ////////////////////////////////////////////////////////////////////////////////
 
     class ApplicationServerSchedulerImpl : public ApplicationServerImpl {
+      ApplicationServerSchedulerImpl (ApplicationServerSchedulerImpl const&);
+      ApplicationServerSchedulerImpl& operator= (ApplicationServerSchedulerImpl const&);
+
       public:
 
         ////////////////////////////////////////////////////////////////////////////////

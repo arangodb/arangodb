@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,17 +22,17 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_AVOCADODB_RESTHANDLER_REST_ACTION_HANDLER37_H
-#define TRIAGENS_AVOCADODB_RESTHANDLER_REST_ACTION_HANDLER37_H 1
+#ifndef TRIAGENS_REST_SERVER_JSLOADER_H
+#define TRIAGENS_REST_SERVER_JSLOADER_H 1
 
-#include <Basics/Common.h>
+#include "Basics/Common.h"
 
 #include <v8.h>
 
-#include <Basics/Mutex.h>
+#include "Basics/Mutex.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    class JSLoader
@@ -87,6 +87,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the directory for scripts
+////////////////////////////////////////////////////////////////////////////////
+
+        string const& getDirectory () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the directory for scripts
@@ -162,5 +168,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

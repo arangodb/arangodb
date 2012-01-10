@@ -29,13 +29,14 @@
 #ifndef TRIAGENS_FYN_GENERAL_SERVER_GENERAL_SERVER_JOB_H
 #define TRIAGENS_FYN_GENERAL_SERVER_GENERAL_SERVER_JOB_H 1
 
-#include <Rest/Job.h>
+#include "Dispatcher/Job.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/StringUtils.h>
 #include <Basics/Mutex.h>
 #include <Rest/Handler.h>
-#include <Rest/AsyncTask.h>
+
+#include "Scheduler/AsyncTask.h"
 
 namespace triagens {
   namespace rest {

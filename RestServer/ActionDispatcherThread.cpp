@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,16 +22,15 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ActionDispatcherThread.h"
 
-#include <Basics/Logger.h>
-#include <Basics/files.h>
-#include <Basics/strings.h>
-#include <Rest/Initialise.h>
-
+#include "BasicsC/files.h"
+#include "BasicsC/strings.h"
+#include "Logger/Logger.h"
+#include "Rest/Initialise.h"
 #include "V8/v8-actions.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-shell.h"
@@ -228,8 +227,7 @@ JSLoader* ActionDisptacherThread::actionLoader () {
 
 void ActionDisptacherThread::initialise () {
   bool ok;
-  char* filename;
-  char const* files[] = { "actions.js", "graph.js", "json.js", "modules.js" };
+  char const* files[] = { "modules.js", "actions.js", "json.js" };
   size_t i;
 
   // enter a new isolate
@@ -241,7 +239,8 @@ void ActionDisptacherThread::initialise () {
 
   if (_context.IsEmpty()) {
     LOGGER_FATAL << "cannot initialize V8 engine";
-    TRIAGENS_REST_SHUTDOWN;
+    cerr << "cannot initialize V8 engine\n";
+    _isolate->Exit();
     exit(EXIT_FAILURE);
   }
 
@@ -257,8 +256,10 @@ void ActionDisptacherThread::initialise () {
     ok = _startupLoader->loadScript(_context, files[i]);
 
     if (! ok) {
-      LOGGER_FATAL << "cannot load json utilities from file '" << filename << "'";
-      TRIAGENS_REST_SHUTDOWN;
+      LOGGER_FATAL << "cannot load json utilities from file '" << files[i] << "'";
+      cerr << "cannot load json utilities from file '" << files[i] << "'\n";
+      _context->Exit();
+      _isolate->Exit();
       exit(EXIT_FAILURE);
     }
   }
@@ -273,8 +274,10 @@ void ActionDisptacherThread::initialise () {
     ok = actionLoader()->loadAllScripts(_context);
 
     if (! ok) {
-      LOGGER_FATAL << "cannot load actions from directory '" << filename << "'";
-      TRIAGENS_REST_SHUTDOWN;
+      LOGGER_FATAL << "cannot load actions from directory '" << loader->getDirectory() << "'";
+      cerr  << "cannot load actions from directory '" << loader->getDirectory() << "'\n";
+      _context->Exit();
+      _isolate->Exit();
       exit(EXIT_FAILURE);
     }
   }

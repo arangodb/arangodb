@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -43,12 +43,12 @@ using namespace triagens::basics;
 /// @brief constructs a read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-ReadWriteLock::ReadWriteLock () {
+ReadWriteLock::ReadWriteLock ()
+  : _rwlock(),
+    _writeLocked(false) {
   TRI_InitReadWriteLock(&_rwlock);
 
-  _writeLocked = false;
-
-#ifdef READ_WRITE_LOCK_COUNTER
+#ifdef TRI_READ_WRITE_LOCK_COUNTER
   TRI_InitMutex(&_mutex);
 
   _readLockedCounter = 0;
@@ -63,7 +63,7 @@ ReadWriteLock::ReadWriteLock () {
 ReadWriteLock::~ReadWriteLock () {
   TRI_DestroyReadWriteLock(&_rwlock);
 
-#ifdef READ_WRITE_LOCK_COUNTER
+#ifdef TRI_READ_WRITE_LOCK_COUNTER
   TRI_DestroyMutex(&_mutex);
 #endif
 }
@@ -85,7 +85,7 @@ ReadWriteLock::~ReadWriteLock () {
 /// @brief check for read locked
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef READ_WRITE_LOCK_COUNTER
+#ifdef TRI_READ_WRITE_LOCK_COUNTER
 
 bool ReadWriteLock::isReadLocked () const {
   return _readLockedCounter > 0;
@@ -100,7 +100,7 @@ bool ReadWriteLock::isReadLocked () const {
 void ReadWriteLock::readLock () {
   TRI_ReadLockReadWriteLock(&_rwlock);
 
-#ifdef READ_WRITE_LOCK_COUNTER
+#ifdef TRI_READ_WRITE_LOCK_COUNTER
 
   TRI_LockMutex(&_mutex);
   _readLockedCounter++;
@@ -113,7 +113,7 @@ void ReadWriteLock::readLock () {
 /// @brief check for write locked
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef READ_WRITE_LOCK_COUNTER
+#ifdef TRI_READ_WRITE_LOCK_COUNTER
 
 bool ReadWriteLock::isWriteLocked () const {
   return _writeLockedCounter > 0;
@@ -130,7 +130,7 @@ void ReadWriteLock::writeLock () {
 
   _writeLocked = true;
 
-#ifdef READ_WRITE_LOCK_COUNTER
+#ifdef TRI_READ_WRITE_LOCK_COUNTER
 
   TRI_LockMutex(&_mutex);
   _writeLockedCounter++;
@@ -144,7 +144,7 @@ void ReadWriteLock::writeLock () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ReadWriteLock::unlock () {
-#ifdef READ_WRITE_LOCK_COUNTER
+#ifdef TRI_READ_WRITE_LOCK_COUNTER
 
   TRI_LockMutex(&_mutex);
 

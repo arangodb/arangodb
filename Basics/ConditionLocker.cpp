@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -28,88 +28,86 @@
 
 #include "ConditionLocker.h"
 
-#include <Basics/Exceptions.h>
-#include <Basics/StringUtils.h>
+#include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
 
-namespace triagens {
-  namespace basics {
+using namespace triagens::basics;
 
-    // -----------------------------------------------------------------------------
-    // constructors and destructors
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
-    ConditionLocker::ConditionLocker (ConditionVariable* conditionVariable)
-      : _conditionVariable(conditionVariable), _file(0), _line(0) {
-      bool ok = _conditionVariable->lock();
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Threading
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
-      if (! ok) {
-        THROW_INTERNAL_ERROR("condition lock failed");
-      }
-    }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locks the condition variable
+///
+/// The constructors locks the condition variable, the destructors unlocks
+/// the condition variable
+////////////////////////////////////////////////////////////////////////////////
 
-
-
-    ConditionLocker::ConditionLocker (ConditionVariable* conditionVariable, char const* file, int line)
-      : _conditionVariable(conditionVariable), _file(file), _line(line) {
-      bool ok = _conditionVariable->lock();
-
-      if (! ok) {
-        if (_file != 0) {
-          THROW_INTERNAL_ERROR_L("condition lock failed", _file, _line);
-        }
-        else {
-          THROW_INTERNAL_ERROR("condition lock failed");
-        }
-      }
-    }
-
-
-
-    ConditionLocker::~ConditionLocker () {
-      bool ok = _conditionVariable->unlock();
-
-      if (! ok) {
-        if (_file != 0) {
-          THROW_INTERNAL_ERROR_L("condition unlock failed", _file, _line);
-        }
-        else {
-          THROW_INTERNAL_ERROR("condition unlock failed");
-        }
-      }
-    }
-
-    // -----------------------------------------------------------------------------
-    // public methods
-    // -----------------------------------------------------------------------------
-
-    void ConditionLocker::wait () {
-      bool ok = _conditionVariable->wait();
-
-      if (! ok) {
-        if (_file != 0) {
-          THROW_INTERNAL_ERROR_L("condition wait failed", _file, _line);
-        }
-        else {
-          THROW_INTERNAL_ERROR("condition wait failed");
-        }
-      }
-    }
-
-
-
-    void ConditionLocker::broadcast () {
-      bool ok = _conditionVariable->broadcast();
-
-      if (! ok) {
-        if (_file != 0) {
-          THROW_INTERNAL_ERROR_L("condition wait failed", _file, _line);
-        }
-        else {
-          THROW_INTERNAL_ERROR("condition wait failed");
-        }
-      }
-    }
-  }
+ConditionLocker::ConditionLocker (ConditionVariable* conditionVariable)
+  : _conditionVariable(conditionVariable), _file(0), _line(0) {
+  _conditionVariable->lock();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locks the condition variable
+///
+/// The constructors locks the condition variable, the destructors unlocks
+/// the condition variable
+////////////////////////////////////////////////////////////////////////////////
 
+ConditionLocker::ConditionLocker (ConditionVariable* conditionVariable, char const* file, int line)
+  : _conditionVariable(conditionVariable), _file(file), _line(line) {
+  _conditionVariable->lock();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unlocks the condition variable
+////////////////////////////////////////////////////////////////////////////////
+
+ConditionLocker::~ConditionLocker () {
+  _conditionVariable->unlock();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Threading
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief waits for an event to occur
+////////////////////////////////////////////////////////////////////////////////
+
+void ConditionLocker::wait () {
+  _conditionVariable->wait();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief broadcasts an event
+////////////////////////////////////////////////////////////////////////////////
+
+void ConditionLocker::broadcast () {
+  _conditionVariable->broadcast();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:

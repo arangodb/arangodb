@@ -29,13 +29,13 @@
 #include "DispatcherImpl.h"
 
 #include <Basics/ConditionLocker.h>
-#include <Basics/Logger.h>
+#include <Logger/Logger.h>
 #include <Basics/MutexLocker.h>
 #include <Basics/StringUtils.h>
-#include <Rest/Job.h>
 
 #include "Dispatcher/DispatcherQueue.h"
 #include "Dispatcher/DispatcherThread.h"
+#include "Dispatcher/Job.h"
 
 using namespace triagens::basics;
 
@@ -160,7 +160,7 @@ namespace triagens {
 
 
     void DispatcherImpl::reportStatus () {
-      if (TRI_IsDebugLogging()) {
+      if (TRI_IsDebugLogging(__FILE__)) {
         MUTEX_LOCKER(accessDispatcher);
 
         for (map<string, DispatcherQueue*>::iterator i = queues.begin();  i != queues.end();  ++i) {

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,221 +22,237 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationAdminServer.h"
 
 #include "build.h"
 
-#include <Admin/RestAdminFeConfigurationHandler.h>
-#include <Admin/RestAdminLogHandler.h>
-#include <Admin/RestHandlerCreator.h>
-#include <Admin/RestVersionHandler.h>
-#include <Rest/HttpHandlerFactory.h>
-#include <Rest/HttpResponse.h>
-#include <Basics/ProgramOptionsDescription.h>
-
+#include "Admin/RestAdminFeConfigurationHandler.h"
+#include "Admin/RestAdminLogHandler.h"
+#include "Admin/RestHandlerCreator.h"
+#include "Admin/RestVersionHandler.h"
+#include "Basics/ProgramOptionsDescription.h"
+#include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/PathHandler.h"
+#include "Rest/HttpResponse.h"
 
-#include "SessionManager/Session.h"
-#include "SessionManager/SessionHandler.h"
-
-
-#include "UserManager/Role.h"
-#include "UserManager/User.h"
-#include "UserManager/UserHandler.h"
-#include "UserManager/UsersHandler.h"
-
-
+using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
+using namespace triagens::admin;
 
-namespace triagens {
-  namespace admin {
+// -----------------------------------------------------------------------------
+// --SECTION--                                          static private variables
+// -----------------------------------------------------------------------------
 
-    // -----------------------------------------------------------------------------
-    // static variables
-    // -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup RestServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
-    string ApplicationAdminServer::optionAdminDirectory;
-    string ApplicationAdminServer::optionUserDatabase;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief option for the directory containing the admin files
+////////////////////////////////////////////////////////////////////////////////
 
-    // -----------------------------------------------------------------------------
-    // constructors and destructors
-    // -----------------------------------------------------------------------------
+string ApplicationAdminServer::optionAdminDirectory;
 
-    ApplicationAdminServer* ApplicationAdminServer::create (ApplicationServer*) {
-      return new ApplicationAdminServer();
-    }
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                             static public methods
+// -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup RestServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
-    ApplicationAdminServer::ApplicationAdminServer ()
-      : _allowSessionManagement(false),
-        _allowLogViewer(false),
-        _allowAdminDirectory(false),
-        _allowFeConfiguration(false),
-        _allowVersion(false) {
-      _pathOptions = new PathHandler::Options();
-    }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new feature
+////////////////////////////////////////////////////////////////////////////////
 
+ApplicationAdminServer* ApplicationAdminServer::create (ApplicationServer*) {
+  return new ApplicationAdminServer();
+}
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
-    ApplicationAdminServer::~ApplicationAdminServer () {
-      delete reinterpret_cast<PathHandler::Options*>(_pathOptions);
-    }
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
-    // -----------------------------------------------------------------------------
-    // public methods
-    // -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup RestServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
-    void ApplicationAdminServer::allowVersion () {
-      _allowVersion = true;
-      _version = TRIAGENS_VERSION;
-    }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
 
+ApplicationAdminServer::ApplicationAdminServer ()
+  : _allowLogViewer(false),
+    _allowAdminDirectory(false),
+    _allowFeConfiguration(false),
+    _allowVersion(false) {
+  _pathOptions = new PathHandler::Options();
+}
 
-    void ApplicationAdminServer::allowVersion (string name, string version) {
-      _allowVersion = true;
-      _name = name;
-      _version = version;
-    }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
 
+ApplicationAdminServer::~ApplicationAdminServer () {
+  delete reinterpret_cast<PathHandler::Options*>(_pathOptions);
+}
 
-    void ApplicationAdminServer::addBasicHandlers (HttpHandlerFactory* factory) {
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
-      // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      // add a version handler
-      // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
 
-      if (_allowVersion) {
-        pair<string, string>* data = new pair<string,string>(_name, _version);
-        factory->addHandler("/version", RestHandlerCreator<RestVersionHandler>::createData<pair<string,string> const*>, (void*) data);
-      }
-    }
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup RestServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a log viewer
+////////////////////////////////////////////////////////////////////////////////
 
+void ApplicationAdminServer::allowLogViewer () {
+  _allowLogViewer = true;
+}
 
-    void ApplicationAdminServer::addHandlers (HttpHandlerFactory* factory, string const& prefix) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief allows for a webadmin directory
+////////////////////////////////////////////////////////////////////////////////
 
-      // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      // add session management
-      // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+void ApplicationAdminServer::allowAdminDirectory () {
+  _allowAdminDirectory = true;
+}
 
-      if (_allowSessionManagement) {
-        factory->addPrefixHandler(prefix + "/user-manager/user", UserHandler::create, this);
-        factory->addPrefixHandler(prefix + "/user-manager/users", UsersHandler::create, this);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief allows for a front-end configuration
+////////////////////////////////////////////////////////////////////////////////
 
-        factory->addPrefixHandler(prefix + "/session-manager/session", SessionHandler::create, this);
-      }
+void ApplicationAdminServer::allowFeConfiguration () {
+  _allowFeConfiguration = true;
+}
 
-      // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      // add log viewer
-      // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+////////////////////////////////////////////////////////////////////////////////
+/// @brief allows for a version handler using the default version
+////////////////////////////////////////////////////////////////////////////////
 
-      if (_allowLogViewer) {
-        factory->addHandler("/admin/log", RestHandlerCreator<RestAdminLogHandler>::createNoData, 0);
-      }
+void ApplicationAdminServer::allowVersion () {
+  _allowVersion = true;
+  _version = TRIAGENS_VERSION;
+}
 
-      // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      // add a web-admin directory
-      // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+////////////////////////////////////////////////////////////////////////////////
+/// @brief allows for a version handler
+////////////////////////////////////////////////////////////////////////////////
 
-      if (_allowAdminDirectory) {
-        if (! optionAdminDirectory.empty()) {
-          reinterpret_cast<PathHandler::Options*>(_pathOptions)->path = optionAdminDirectory;
-          reinterpret_cast<PathHandler::Options*>(_pathOptions)->contentType = "text/plain";
-          reinterpret_cast<PathHandler::Options*>(_pathOptions)->allowSymbolicLink = false;
-          reinterpret_cast<PathHandler::Options*>(_pathOptions)->defaultFile = "index.html";
+void ApplicationAdminServer::allowVersion (string name, string version) {
+  _allowVersion = true;
+  _name = name;
+  _version = version;
+}
 
-          factory->addPrefixHandler(prefix, RestHandlerCreator<PathHandler>::createData<PathHandler::Options*>, _pathOptions);
-        }
-      }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds the http handlers
+///
+/// Note that the server does not claim ownership of the factory.
+////////////////////////////////////////////////////////////////////////////////
 
-      // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      // add a front-end configuration
-      // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-      if (_allowFeConfiguration) {
-        factory->addHandler(prefix + "/fe-configuration", RestHandlerCreator<RestAdminFeConfigurationHandler>::createData<char const*>, (void*) _feConfiguration.c_str());
-      }
-    }
-
-
-
-
-    bool ApplicationAdminServer::createRole (string const& name,
-                                             vector<right_t> const& rights,
-                                             right_t rightToManage) {
-      Role* role = Role::create(name, rightToManage);
-
-      if (role == 0) {
-        LOGGER_WARNING << "cannot create role '" << name << "'";
-        return false;
-      }
-
-      role->setRights(rights);
-      return true;
-    }
-
-
-
-    bool ApplicationAdminServer::createUser (string const& name,
-                                             string const& rolename) {
-      Role* role = Role::lookup(rolename);
-
-      if (role == 0) {
-        LOGGER_WARNING << "cannot create user '" << name << "', unknown role '" << rolename << "'";
-        return false;
-      }
-
-      User* user = User::create(name, role);
-
-      return user != 0;
-    }
-
-
-
-    bool ApplicationAdminServer::loadUser () {
-      LOGGER_DEBUG << "trying to load user database '" << optionUserDatabase << "'";
-
-      if (optionUserDatabase.empty()) {
-        return false;
-      }
-
-      return User::loadUser(optionUserDatabase);
-    }
-
-
-
-
-    void ApplicationAdminServer::setAnonymousRights (vector<right_t> const& rights) {
-      Session::setAnonymousRights(rights);
-    }
-
-    // -----------------------------------------------------------------------------
-    // ApplicationFeature methods
-    // -----------------------------------------------------------------------------
-
-    void ApplicationAdminServer::setupOptions (map<string, basics::ProgramOptionsDescription>& options) {
-      if (_allowAdminDirectory) {
-        options[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
-          ("server.admin-directory", &optionAdminDirectory, "directory containing the ADMIN front-end")
-        ;
-      }
-
-      if (_allowFeConfiguration) {
-        options[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
-          ("server.fe-configuration", &_feConfiguration, "file to store the front-end preferences")
-        ;
-      }
-
-      if (_allowSessionManagement) {
-        options[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
-          ("server.user-database", &optionUserDatabase, "file for storing the user database")
-        ;
-      }
-    }
+void ApplicationAdminServer::addBasicHandlers (HttpHandlerFactory* factory) {
+  if (_allowVersion) {
+    pair<string, string>* data = new pair<string,string>(_name, _version);
+    factory->addHandler("/version", RestHandlerCreator<RestVersionHandler>::createData<pair<string,string> const*>, (void*) data);
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds the http handlers for administration
+///
+/// Note that the server does not claim ownership of the factory.
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationAdminServer::addHandlers (HttpHandlerFactory* factory, string const& prefix) {
+
+  // .............................................................................
+  // add log viewer
+  // .............................................................................
+
+  if (_allowLogViewer) {
+    factory->addHandler("/admin/log", RestHandlerCreator<RestAdminLogHandler>::createNoData, 0);
+  }
+
+  // .............................................................................
+  // add a web-admin directory
+  // .............................................................................
+  
+  if (_allowAdminDirectory) {
+    if (! optionAdminDirectory.empty()) {
+      reinterpret_cast<PathHandler::Options*>(_pathOptions)->path = optionAdminDirectory;
+      reinterpret_cast<PathHandler::Options*>(_pathOptions)->contentType = "text/plain";
+      reinterpret_cast<PathHandler::Options*>(_pathOptions)->allowSymbolicLink = false;
+      reinterpret_cast<PathHandler::Options*>(_pathOptions)->defaultFile = "index.html";
+      
+      factory->addPrefixHandler(prefix, RestHandlerCreator<PathHandler>::createData<PathHandler::Options*>, _pathOptions);
+    }
+  }
+  
+  // .............................................................................
+  // add a front-end configuration
+  // .............................................................................
+  
+  if (_allowFeConfiguration) {
+    factory->addHandler(prefix + "/fe-configuration", RestHandlerCreator<RestAdminFeConfigurationHandler>::createData<char const*>, (void*) _feConfiguration.c_str());
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        ApplicationFeature methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup RestServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationAdminServer::setupOptions (map<string, basics::ProgramOptionsDescription>& options) {
+  if (_allowAdminDirectory) {
+    options[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
+      ("server.admin-directory", &optionAdminDirectory, "directory containing the ADMIN front-end")
+    ;
+  }
+
+  if (_allowFeConfiguration) {
+    options[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
+      ("server.fe-configuration", &_feConfiguration, "file to store the front-end preferences")
+    ;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:

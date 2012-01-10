@@ -30,7 +30,7 @@
 
 #include <Basics/Common.h>
 
-#include "Rest/HttpHandler.h"
+#include "HttpServer/HttpHandler.h"
 
 namespace triagens {
   namespace rest {

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,154 +22,77 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_PHILADELPHIA_BASICS_COMMON_H
-#define TRIAGENS_PHILADELPHIA_BASICS_COMMON_H 1
+#ifndef TRIAGENS_JUTLAND_BASICS_COMMON_H
+#define TRIAGENS_JUTLAND_BASICS_COMMON_H 1
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             configuration options
-// -----------------------------------------------------------------------------
+#include "BasicsC/common.h"
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
+/// @addtogroup Configuration Configuration
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_WITHIN_COMMON 1
-#include <Basics/OperatingSystem.h>
-#include <Basics/LocalConfiguration.h>
-#undef TRI_WITHIN_COMMON
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
-// --SECTION--             C header files that are always present on all systems
+// --SECTIONS--                                               triagens namespace
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
-/// @{
-////////////////////////////////////////////////////////////////////////////////
+namespace triagens {
+  using namespace std;
 
-#include <assert.h>
-#include <ctype.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <math.h>
-#include <stdarg.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-
-#include <sys/stat.h>
-#include <sys/types.h>
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+  typedef TRI_blob_t blob_t;
+  typedef TRI_datetime_t datetime_t;
+  typedef TRI_date_t date_t;
+  typedef TRI_seconds_t seconds_t;
+  typedef TRI_msec_t msec_t;
+}
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                   system dependent C header files
+// --SECTION--           C++ header files that are always present on all systems
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_HAVE_IO_H
-#include <io.h>
-#endif
-
-#ifdef TRI_HAVE_PROCESS_H
-#include <process.h>
-#endif
-
-#ifdef TRI_HAVE_SIGNAL_H
-#include <signal.h>
-#endif
-
-#ifdef TRI_HAVE_STDBOOL_H
-#include <stdbool.h>
-#endif
-
-#ifdef TRI_HAVE_SYS_RESOURCE_H
-#include <sys/resource.h>
-#endif
-
-#ifdef TRI_HAVE_SYS_TIME_H
-#include <sys/time.h>
-#endif
-
-#ifdef TRI_HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-
-#ifdef TRI_HAVE_WINSOCK2_H
-#include <WinSock2.h>
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+#include <algorithm>
+#include <deque>
+#include <iostream>
+#include <list>
+#include <map>
+#include <queue>
+#include <set>
+#include <sstream>
+#include <stack>
+#include <string>
+#include <vector>
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            basic triAGENS headers
+// --SECTION--                                                 noncopyable class
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
-/// @{
-////////////////////////////////////////////////////////////////////////////////
+namespace triagens {
+  class noncopyable {
+   protected:
+      noncopyable () {
+      }
 
-#define TRI_WITHIN_COMMON 1
-#include <Basics/error.h>
-#include <Basics/memory.h>
-#include <Basics/structures.h>
-#undef TRI_WITHIN_COMMON
+      ~noncopyable () {
+      }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              basic compiler stuff
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WITHIN_COMMON 1
-#include <Basics/system-compiler.h>
-#include <Basics/system-functions.h>
-#undef TRI_WITHIN_COMMON
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+   private:
+      noncopyable (const noncopyable&);
+      noncopyable& operator= (const noncopyable&);
+  };
+}
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   basic C++ stuff
+// --SECTION--                                                boost header files
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
-/// @{
-////////////////////////////////////////////////////////////////////////////////
+#ifndef TRI_NO_BOOST
 
-#ifdef __cplusplus
-#ifndef TRI_WITHIN_C
-#include <Basics/CommonC++.h>
-#endif
+#include <boost/version.hpp>
+#include <boost/utility.hpp>
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

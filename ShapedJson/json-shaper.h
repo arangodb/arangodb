@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,21 +23,65 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Copyright 2006-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2006-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_PHILADELPHIA_SHAPED_JSON_JSON_SHAPER_H
-#define TRIAGENS_PHILADELPHIA_SHAPED_JSON_JSON_SHAPER_H 1
+#ifndef TRIAGENS_SHAPED_JSON_JSON_SHAPER_H
+#define TRIAGENS_SHAPED_JSON_JSON_SHAPER_H 1
 
-#include <Basics/Common.h>
+#include "BasicsC/common.h"
 
-#include <Basics/json.h>
-
+#include "BasicsC/json.h"
 #include "ShapedJson/shaped-json.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       JSON SHAPER
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Json
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief json shaper
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_shaper_s {
+  TRI_shape_aid_t (*findAttributeName) (struct TRI_shaper_s*, char const*);
+  char const* (*lookupAttributeId) (struct TRI_shaper_s*, TRI_shape_aid_t);
+  TRI_shape_t const* (*findShape) (struct TRI_shaper_s*, TRI_shape_t*);
+  TRI_shape_t const* (*lookupShapeId) (struct TRI_shaper_s*, TRI_shape_sid_t);
+
+  TRI_shape_path_t const* (*lookupAttributePathByPid) (struct TRI_shaper_s*, TRI_shape_pid_t);
+  TRI_shape_pid_t (*findAttributePathByName) (struct TRI_shaper_s*, char const*);
+
+  TRI_associative_synced_t _attributePathsByName;
+  TRI_associative_synced_t _attributePathsByPid;
+
+  TRI_shape_pid_t _nextPid;
+  TRI_mutex_t _attributePathLock;
+
+  TRI_shape_sid_t _sidNull;
+  TRI_shape_sid_t _sidBoolean;
+  TRI_shape_sid_t _sidNumber;
+  TRI_shape_sid_t _sidShortString;
+  TRI_shape_sid_t _sidLongString;
+  TRI_shape_sid_t _sidList;
+}
+TRI_shaper_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      ARRAY SHAPER
@@ -77,6 +121,25 @@ void TRI_FreeArrayShaper (TRI_shaper_t*);
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            SHAPER
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Json
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates the attribute path
+////////////////////////////////////////////////////////////////////////////////
+
+char const* TRI_AttributeNameShapePid (TRI_shaper_t*, TRI_shape_pid_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected functions

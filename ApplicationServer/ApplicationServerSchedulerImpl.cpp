@@ -28,11 +28,11 @@
 #include "ApplicationServerSchedulerImpl.h"
 
 #include <Basics/Exceptions.h>
-#include <Basics/Logger.h>
-#include <Rest/PeriodicTask.h>
-#include <Rest/SignalTask.h>
+#include <Logger/Logger.h>
 
+#include "Scheduler/PeriodicTask.h"
 #include "Scheduler/SchedulerLibev.h"
+#include "Scheduler/SignalTask.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -213,29 +213,16 @@ namespace triagens {
       ApplicationServerImpl::wait();
 
       if (_scheduler != 0) {
-        bool ok = _schedulerCond.lock();
-
-        if (! ok) {
-          THROW_INTERNAL_ERROR("cannot lock scheduler condition");
-        }
+        _schedulerCond.lock();
 
         while (_scheduler->isRunning()) {
           LOGGER_TRACE << "waiting for scheduler to stop";
-
-          ok = _schedulerCond.wait();
-
-          if (! ok) {
-            THROW_INTERNAL_ERROR("cannot wait on scheduler condition");
-          }
+          _schedulerCond.wait();
         }
 
         LOGGER_TRACE << "scheduler has stopped";
 
-        ok = _schedulerCond.unlock();
-
-        if (! ok) {
-          THROW_INTERNAL_ERROR("cannot unlock scheduler condition");
-        }
+        _schedulerCond.unlock();
       }
     }
 

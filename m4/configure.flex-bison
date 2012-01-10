@@ -21,7 +21,7 @@ if test "x$LEX" != x -a "x$LEX" != "x:";  then
 fi
 
 if test "x$tr_flex_usable" != "xyes"; then
-  AC_MSG_WARN([Please install flex version 2.5.35 or higher from http://ftp.gnu.org/gnu/flex/])
+  AC_MSG_ERROR([Please install flex version 2.5.35 or higher from http://ftp.gnu.org/gnu/flex/])
 fi
 
 AM_CONDITIONAL(ENABLE_FLEX, test "x$tr_flex_usable" = xyes)
@@ -47,7 +47,7 @@ if test "x$BISON" != x -a "x$BISON" != "x:"; then
 fi
 
 if test "x$tr_bison_usable" != "xyes"; then
-  AC_MSG_WARN([Please install bison version 2.4.1 or higher from http://ftp.gnu.org/gnu/bison/])
+  AC_MSG_ERROR([Please install bison version 2.4.1 or higher from http://ftp.gnu.org/gnu/bison/])
 fi
 
 AM_CONDITIONAL(ENABLE_BISON, test "x$tr_bison_usable" = xyes)

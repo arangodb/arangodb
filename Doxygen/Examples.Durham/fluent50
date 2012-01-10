@@ -1,0 +1,3 @@
+avocado> processJsonFile("json.txt", function(line, pos) { output(pos, ": ", toJson(line), "\n"); });
+0: { "a" : 1, "b" : false }
+1: { "a" : 2, "c" : true }

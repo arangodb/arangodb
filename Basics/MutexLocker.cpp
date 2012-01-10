@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -28,32 +28,55 @@
 
 #include "MutexLocker.h"
 
-#include <Basics/Exceptions.h>
-#include <Basics/StringUtils.h>
+#include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
 
-namespace triagens {
-  namespace basics {
+using namespace triagens::basics;
 
-    // -----------------------------------------------------------------------------
-    // constructors and destructors
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
-    MutexLocker::MutexLocker (Mutex* mutex)
-      : _mutex(mutex), _file(0), _line(0) {
-      _mutex->lock();
-    }
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Threading
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief aquires a lock
+///
+/// The constructors aquires a lock, the destructors releases the lock.
+////////////////////////////////////////////////////////////////////////////////
 
-
-    MutexLocker::MutexLocker (Mutex* mutex, char const* file, int line)
-      : _mutex(mutex), _file(file), _line(line) {
-      _mutex->lock();
-    }
-
-
-
-    MutexLocker::~MutexLocker () {
-      _mutex->unlock();
-    }
-  }
+MutexLocker::MutexLocker (Mutex* mutex)
+  : _mutex(mutex), _file(0), _line(0) {
+  _mutex->lock();
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief aquires a lock
+///
+/// The constructors aquires a lock, the destructors releases the lock.
+////////////////////////////////////////////////////////////////////////////////
+
+MutexLocker::MutexLocker (Mutex* mutex, char const* file, int line)
+  : _mutex(mutex), _file(file), _line(line) {
+  _mutex->lock();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief releases the lock
+////////////////////////////////////////////////////////////////////////////////
+
+MutexLocker::~MutexLocker () {
+  _mutex->unlock();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:

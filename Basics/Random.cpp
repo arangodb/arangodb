@@ -6,7 +6,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -33,11 +33,11 @@
 
 #include <boost/random.hpp>
 
-#include <Basics/Exceptions.h>
-#include <Basics/Logger.h>
-#include <Basics/Mutex.h>
-#include <Basics/MutexLocker.h>
-#include <Basics/SocketUtils.h>
+#include "BasicsC/socket-utils.h"
+#include "Basics/Exceptions.h"
+#include "Logger/Logger.h"
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -48,21 +48,21 @@ using namespace triagens::basics;
 
 namespace {
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief random version
-  ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief random version
+////////////////////////////////////////////////////////////////////////////////
 
   Random::random_e version = Random::RAND_MERSENNE;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief random lock
-  ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief random lock
+////////////////////////////////////////////////////////////////////////////////
 
   Mutex RandomLock;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief pseudo random generator (mersenne twister)
-  ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pseudo random generator (mersenne twister)
+////////////////////////////////////////////////////////////////////////////////
 
   boost::mt19937 mersenneDevice;
 }
@@ -83,7 +83,8 @@ namespace RandomHelper {
   template<int N>
   class RandomDeviceDirect : public RandomDevice {
     public:
-      RandomDeviceDirect (string path) {
+      RandomDeviceDirect (string path)
+        : fd(1), pos(0)  {
         fd = TRI_OPEN(path.c_str(), O_RDONLY);
 
         if (fd < 0) {
@@ -147,6 +148,8 @@ namespace RandomHelper {
       RandomDeviceCombined (string path)
         : interval(0, UINT32_MAX),
           randomGenerator(mersenneDevice, interval),
+          fd(0),
+          pos(0),
           rseed(0) {
         fd = TRI_OPEN(path.c_str(), O_RDONLY);
 
@@ -154,7 +157,7 @@ namespace RandomHelper {
           THROW_INTERNAL_ERROR("cannot open random source '" + path + "'");
         }
 
-        if (! SocketUtils::setNonBlocking(fd)) {
+        if (! TRI_SetNonBlockingSocket(fd)) {
           THROW_INTERNAL_ERROR("cannot switch random source '" + path + "' to non-blocking");
         }
 
@@ -255,9 +258,18 @@ namespace RandomHelper {
 
 namespace RandomHelper {
   class UniformGenerator {
+    private:
+      UniformGenerator (UniformGenerator const&);
+      UniformGenerator& operator= (UniformGenerator const&);
+
     public:
       UniformGenerator (RandomDevice* device)
         : device(device) {
+      }
+
+
+
+      virtual ~UniformGenerator () {
       }
 
 
@@ -352,9 +364,9 @@ namespace triagens {
   namespace basics {
     namespace Random {
 
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
       // implementation
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
       struct UniformIntegerImpl {
         virtual ~UniformIntegerImpl () {}
@@ -390,9 +402,9 @@ namespace triagens {
       // current implementation (see version at the top of the file)
       UniformIntegerImpl * uniformInteger = new UniformIntegerMersenne;
 
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
       // uniform integer generator
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
       int32_t UniformInteger::random () {
         MUTEX_LOCKER(RandomLock);
@@ -404,9 +416,9 @@ namespace triagens {
         return uniformInteger->random(left, right);
       }
 
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
       // uniform character generator
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
       UniformCharacter::UniformCharacter (size_t length)
         : length(length),
@@ -468,9 +480,9 @@ namespace triagens {
         return string(buffer.get());
       }
 
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
       // public methods
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
       void seed () {
         MUTEX_LOCKER(RandomLock);

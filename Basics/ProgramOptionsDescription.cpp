@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -27,9 +27,10 @@
 
 #include "ProgramOptionsDescription.h"
 
-#include <Basics/Exceptions.h>
-#include <Basics/StringUtils.h>
-#include <Basics/TerminalUtils.h>
+#include "BasicsC/terminal-utils.h"
+
+#include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -599,7 +600,7 @@ string ProgramOptionsDescription::usage (set<string> const& help, bool addHelpOp
     }
 
     // construct the parameters
-    size_t tWidth = TerminalUtils::columnsWidth();
+    size_t tWidth = TRI_ColumnsWidth();
 
     if (tWidth < 40) {
       tWidth = 40;

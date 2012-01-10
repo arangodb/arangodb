@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,15 +23,15 @@
 ///
 /// @author Esteban Lombeyda
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_PHILADELPHIA_PROGRAM_OPTIONS_PROGRAM_OPTIONS_H
-#define TRIAGENS_PHILADELPHIA_PROGRAM_OPTIONS_PROGRAM_OPTIONS_H 1
+#ifndef TRIAGENS_PROGRAM_OPTIONS_PROGRAM_OPTIONS_H
+#define TRIAGENS_PROGRAM_OPTIONS_PROGRAM_OPTIONS_H 1
 
-#include <Basics/Common.h>
+#include "BasicsC/common.h"
 
-#include <Basics/vector.h>
+#include "BasicsC/vector.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -371,6 +371,7 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
+                                  char const * programName,
                                   char const * filename);
 
 ////////////////////////////////////////////////////////////////////////////////

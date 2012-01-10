@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,98 +22,169 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Achim Brandt
-/// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAdminFeConfigurationHandler.h"
 
-#include <Basics/FileUtils.h>
-#include <Rest/HttpRequest.h>
-#include <Rest/HttpResponse.h>
+#include "Basics/FileUtils.h"
+#include "Rest/HttpRequest.h"
+#include "Rest/HttpResponse.h"
+#include "Logger/Logger.h"
 
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
+using namespace triagens::admin;
 
 // -----------------------------------------------------------------------------
-// private variables
+// --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
-namespace {
-  string transientResult;
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup RestServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief if no filename is known, save configuration in memory
+////////////////////////////////////////////////////////////////////////////////
+
+static string transientResult;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup RestServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+RestAdminFeConfigurationHandler::RestAdminFeConfigurationHandler (HttpRequest* request, char const* filename)
+  : RestAdminBaseHandler(request),
+    _filename(filename) {
 }
 
-namespace triagens {
-  namespace admin {
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
-    // -----------------------------------------------------------------------------
-    // Handler methods
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   Handler methods
+// -----------------------------------------------------------------------------
 
-    HttpHandler::status_e RestAdminFeConfigurationHandler::execute () {
-      switch (request->requestType()) {
-        case HttpRequest::HTTP_REQUEST_GET:
-          return executeRead();
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup RestServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
-        case HttpRequest::HTTP_REQUEST_POST:
-          return executeWrite();
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
 
-        default:
-          generateError(HttpResponse::METHOD_NOT_ALLOWED, "expecting GET or POST");
-          return HANDLER_DONE;
-      }
+bool RestAdminFeConfigurationHandler::isDirect () {
+  return true;
+}
 
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+HttpHandler::status_e RestAdminFeConfigurationHandler::execute () {
+  switch (request->requestType()) {
+    case HttpRequest::HTTP_REQUEST_GET:
+      return executeRead();
+
+    case HttpRequest::HTTP_REQUEST_POST:
+      return executeWrite();
+
+    default:
+      generateError(HttpResponse::METHOD_NOT_ALLOWED, "expecting GET or POST");
       return HANDLER_DONE;
+  }
+
+  return HANDLER_DONE;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup RestServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads a configuration
+////////////////////////////////////////////////////////////////////////////////
+
+HttpHandler::status_e RestAdminFeConfigurationHandler::executeRead () {
+  string result;
+
+  if (_filename.empty()) {
+    result = transientResult;
+  }
+  else {
+    try {
+      result = FileUtils::slurp(_filename);
     }
-
-    // -----------------------------------------------------------------------------
-    // Handler methods
-    // -----------------------------------------------------------------------------
-
-    HttpHandler::status_e RestAdminFeConfigurationHandler::executeRead () {
-      string result;
-
-      if (_filename.empty()) {
-        result = transientResult;
-      }
-      else {
-        try {
-          result = FileUtils::slurp(_filename);
-        }
-        catch (...) {
-          LOGGER_INFO << "cannot read configuration '" << _filename << "'";
-        }
-      }
-
-      if (result.empty()) {
-        result = "{}";
-      }
-
-      response = new HttpResponse(HttpResponse::OK);
-      response->setContentType("application/json");
-      response->body().appendText(result);
-
-      return HANDLER_DONE;
+    catch (...) {
+      LOGGER_INFO << "cannot read configuration '" << _filename << "'";
     }
+  }
+  
+  if (result.empty()) {
+    result = "{}";
+  }
+  
+  response = new HttpResponse(HttpResponse::OK);
+  response->setContentType("application/json");
+  response->body().appendText(result);
+  
+  return HANDLER_DONE;
+}
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief writes a configuration
+////////////////////////////////////////////////////////////////////////////////
 
-
-    HttpHandler::status_e RestAdminFeConfigurationHandler::executeWrite () {
-      if (_filename.empty()) {
-        transientResult = request->body().c_str();
-      }
-      else {
-        try {
-          FileUtils::spit(_filename, request->body());
-        }
-        catch (...) {
-          generateError(HttpResponse::SERVER_ERROR, "cannot write configuration");
-          return HANDLER_DONE;
-        }
-      }
-
-      response = new HttpResponse(HttpResponse::OK);
+HttpHandler::status_e RestAdminFeConfigurationHandler::executeWrite () {
+  if (_filename.empty()) {
+    transientResult = request->body().c_str();
+  }
+  else {
+    try {
+      FileUtils::spit(_filename, request->body());
+    }
+    catch (...) {
+      generateError(HttpResponse::SERVER_ERROR, "cannot write configuration");
       return HANDLER_DONE;
     }
   }
+  
+  response = new HttpResponse(HttpResponse::OK);
+  return HANDLER_DONE;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:

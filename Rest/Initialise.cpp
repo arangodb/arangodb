@@ -25,12 +25,12 @@
 /// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Rest/Initialise.h>
+#include "Initialise.h"
 
 #include <build.h>
 
 #include <Basics/Initialise.h>
-#include <Basics/Logger.h>
+#include <Logger/Logger.h>
 
 #include <Rest/Url.h>
 
@@ -45,18 +45,9 @@
 #error missing thread support for openssl, please recomple OpenSSL with threads
 #endif
 
-
-#include "ResultGenerator/HtmlResultGenerator.h"
-#include "ResultGenerator/JsonResultGenerator.h"
-#include "ResultGenerator/JsonXResultGenerator.h"
-#include "ResultGenerator/PhpResultGenerator.h"
-#include "ResultGenerator/XmlResultGenerator.h"
-
-
 // -----------------------------------------------------------------------------
 // OPEN SSL support
 // -----------------------------------------------------------------------------
-
 
 #ifdef TRI_HAVE_POSIX_THREADS
 
@@ -114,7 +105,6 @@ namespace {
 
 #endif
 
-
 // -----------------------------------------------------------------------------
 // initialisation
 // -----------------------------------------------------------------------------
@@ -129,20 +119,14 @@ namespace triagens {
       string revision = "$Revision: REST " TRIAGENS_VERSION " (c) triAGENS GmbH $";
       LOGGER_TRACE << revision;
 
-
-      HtmlResultGenerator::initialise();
-      JsonResultGenerator::initialise();
-      JsonXResultGenerator::initialise();
-      PhpResultGenerator::initialise();
-      XmlResultGenerator::initialise();
-
-
       SSL_library_init();
       SSL_load_error_strings();
       OpenSSL_add_all_algorithms();
       ERR_load_crypto_strings();
 
+#ifdef TRI_HAVE_POSIX_THREADS
       opensslSetup();
+#endif
     }
 
 

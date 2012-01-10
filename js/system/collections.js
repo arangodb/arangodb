@@ -5,29 +5,19 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright by triAGENS GmbH - All rights reserved.
+/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
 ///
-/// The Programs (which include both the software and documentation)
-/// contain proprietary information of triAGENS GmbH; they are
-/// provided under a license agreement containing restrictions on use and
-/// disclosure and are also protected by copyright, patent and other
-/// intellectual and industrial property laws. Reverse engineering,
-/// disassembly or decompilation of the Programs, except to the extent
-/// required to obtain interoperability with other independently created
-/// software or as specified by law, is prohibited.
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
 ///
-/// The Programs are not intended for use in any nuclear, aviation, mass
-/// transit, medical, or other inherently dangerous applications. It shall
-/// be the licensee's responsibility to take all appropriate fail-safe,
-/// backup, redundancy, and other measures to ensure the safe use of such
-/// applications if the Programs are used for such purposes, and triAGENS
-/// GmbH disclaims liability for any damages caused by such use of
-/// the Programs.
+///     http://www.apache.org/licenses/LICENSE-2.0
 ///
-/// This software is the confidential and proprietary information of
-/// triAGENS GmbH. You shall not disclose such confidential and
-/// proprietary information and shall use it only in accordance with the
-/// terms of the license agreement you entered into with triAGENS GmbH.
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
@@ -88,9 +78,7 @@ defineSystemAction("collections",
       };
     }
 
-    res.responseCode = 200;
-    res.contentType = "application/json";
-    res.body = JSON.stringify(result);
+    actionResult(req, res, 200, result);
   }
 );
 
@@ -109,13 +97,10 @@ defineSystemAction("collection/load",
     try {
       req.collection.load();
 
-      res.responseCode = 204;
-      res.contentType = "application/json";
+      actionResult(req, res, 204);
     }
     catch (err) {
-      res.responseCode = 500;
-      res.contentType = "application/json";
-      res.body = JSON.stringify(err);
+      actionError(req, res, err);
     }
   },
   {
@@ -123,7 +108,6 @@ defineSystemAction("collection/load",
       collection : "collection-identifier"
     }
   }
-
 );
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,14 +129,10 @@ defineSystemAction("collection/info",
       result.status = req.collection.status();
       result.figures = req.collection.figures();
 
-      res.responseCode = 200;
-      res.contentType = "application/json";
-      res.body = JSON.stringify(result);
+      actionResult(req, res, 200, result);
     }
     catch (err) {
-      res.responseCode = 500;
-      res.contentType = "application/json";
-      res.body = JSON.stringify({ 'error' : "" + err });
+      actionError(req, res, err);
     }
   },
   {
@@ -160,7 +140,6 @@ defineSystemAction("collection/info",
       collection : "collection-identifier"
     }
   }
-
 );
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -169,5 +148,5 @@ defineSystemAction("collection/info",
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
+// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:

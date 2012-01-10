@@ -1,0 +1,2 @@
+avocado> output("Hallo", " ", "World", "\n");
+Hallo World

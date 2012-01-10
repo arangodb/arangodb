@@ -1,0 +1,119 @@
+dnl -*- mode: Autoconf; -*-
+
+dnl -----------------------------------------------------------------------------------------
+dnl option for READLINE support
+dnl -----------------------------------------------------------------------------------------
+
+AC_MSG_NOTICE([--------------------------------------------------------------------------------])
+AC_MSG_NOTICE([CHECKING FOR READLINE])
+AC_MSG_NOTICE([--------------------------------------------------------------------------------])
+
+AC_ARG_ENABLE(readline,
+  AS_HELP_STRING([--enable-readline], [enable readline support (default: yes)]),
+  tr_READLINE="$enableval",
+  tr_READLINE="maybe"
+)
+
+AC_ARG_WITH(readline,
+  AS_HELP_STRING([--with-readline=DIR], [where the readline library and includes are located]),
+  [READLINE_CPPFLAGS="-I$withval/include"
+   READLINE_LDFLAGS="-L$withval/lib"
+   READLINE="$withval"]
+)
+
+AC_ARG_WITH(readline-lib,
+  AS_HELP_STRING([--with-readline-lib=DIR], [where the readline library is located]),
+  [READLINE_LDFLAGS="-L$withval"]
+)
+
+TR_STATIC_ENABLE([readline])
+
+dnl -----------------------------------------------------------------------------------------
+dnl checks for the READLINE library
+dnl -----------------------------------------------------------------------------------------
+
+AC_LANG(C++)
+
+if test "x$READLINE_CPPFLAGS" != x;  then
+  TR_INCLUDE([READLINE_CPPFLAGS])
+fi
+
+dnl -----------------------------------------------------------------------------------------
+dnl save flags
+dnl -----------------------------------------------------------------------------------------
+
+SAVE_CPPFLAGS="$CPPFLAGS"
+CPPFLAGS="$CPPFLAGS $READLINE_CPPFLAGS"
+
+SAVE_LDFLAGS="$LDFLAGS"
+LDFLAGS="$LDFLAGS $READLINE_LDFLAGS"
+
+SAVE_LIBS="$LIBS"
+
+dnl -----------------------------------------------------------------------------------------
+dnl check for header and library
+dnl -----------------------------------------------------------------------------------------
+
+if test "x$tr_READLINE" = xyes -o "x$tr_READLINE" = xmaybe;  then
+  ch_READLINE="$tr_READLINE"
+
+  AC_CHECK_HEADERS(readline/readline.h, [tr_READLINE="yes"], [tr_READLINE="no"])
+
+  if test "x$tr_READLINE" = xyes;  then
+    TR_FIND_C_LIBRARY([readline], [readline], [READLINE_LIBS], [readline])
+    tr_READLINE=$tr_library_found
+  fi
+
+  if test "x$tr_READLINE" = xyes;  then
+    TR_STATIC_LIBRARY([readline], [READLINE_LIBS])
+  else
+    if test "x$ch_READLINE" = xyes;  then
+      AC_MSG_ERROR([Please install readline support])
+    fi
+  fi
+fi
+
+dnl -----------------------------------------------------------------------------------------
+dnl add substitutions
+dnl -----------------------------------------------------------------------------------------
+
+AM_CONDITIONAL(ENABLE_READLINE, test "x$tr_READLINE" = xyes)
+
+AC_SUBST(READLINE_CPPFLAGS)
+AC_SUBST(READLINE_LDFLAGS)
+AC_SUBST(READLINE_LIBS)
+
+dnl -----------------------------------------------------------------------------------------
+dnl restore flags
+dnl -----------------------------------------------------------------------------------------
+
+LIBS="$SAVE_LIBS"
+LDFLAGS="$SAVE_LDFLAGS"
+CPPFLAGS="$SAVE_CPPFLAGS"
+
+if test "x$tr_READLINE" = xyes;  then
+  CPPFLAGS="$CPPFLAGS -DHAVE_READLINE=1"
+fi
+
+dnl -----------------------------------------------------------------------------------------
+dnl informational output
+dnl -----------------------------------------------------------------------------------------
+
+if test "x$tr_READLINE" = xyes;  then
+  if test "x$READLINE" = x;  then
+    LIB_INFO="$LIB_INFO|READLINE support: enabled"
+  else
+    LIB_INFO="$LIB_INFO|READLINE support: enabled (path $READLINE)"
+  fi
+
+  FLAG_INFO="$FLAG_INFO|READLINE_CPPFLAGS: ${READLINE_CPPFLAGS}"
+  FLAG_INFO="$FLAG_INFO|READLINE_LDFLAGS:  ${READLINE_LDFLAGS}"
+  FLAG_INFO="$FLAG_INFO|READLINE_LIBS:     ${READLINE_LIBS}"
+else
+  LIB_INFO="$LIB_INFO|READLINE support: disabled"
+fi
+
+dnl Local Variables:
+dnl mode: outline-minor
+dnl outline-regexp: "^\\(dnl --SECTION--\\)"
+dnl End:

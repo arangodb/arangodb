@@ -31,8 +31,7 @@
 
 #include "GeneralServer/GeneralServer.h"
 
-#include <Rest/Dispatcher.h>
-
+#include "Dispatcher/Dispatcher.h"
 #include "GeneralServer/GeneralCommTask.h"
 #include "GeneralServer/GeneralAsyncCommTask.h"
 

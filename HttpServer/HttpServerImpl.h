@@ -29,15 +29,11 @@
 #ifndef TRIAGENS_FYN_HTTP_SERVER_HTTP_SERVER_IMPL_H
 #define TRIAGENS_FYN_HTTP_SERVER_HTTP_SERVER_IMPL_H 1
 
-#include <Rest/HttpServer.h>
-
-#include "HttpServer/HttpCommTask.h"
-#include "HttpServer/ServiceUnavailableHandler.h"
-
+#include "HttpServer/HttpServer.h"
 
 #include "GeneralServer/GeneralServerDispatcher.h"
-#define HTTP_SERVER_SUPER_CLASS GeneralServerDispatcher<HttpServerImpl, HttpHandlerFactory, HttpCommTask>
-
+#include "HttpServer/HttpCommTask.h"
+#include "HttpServer/ServiceUnavailableHandler.h"
 
 namespace triagens {
   namespace rest {
@@ -49,29 +45,17 @@ namespace triagens {
     /// @brief http server implementation
     ////////////////////////////////////////////////////////////////////////////////
 
-    class HttpServerImpl : public HTTP_SERVER_SUPER_CLASS, virtual public HttpServer {
+    class HttpServerImpl : public GeneralServerDispatcher<HttpServerImpl, HttpHandlerFactory, HttpCommTask>, virtual public HttpServer {
       public:
 
         ////////////////////////////////////////////////////////////////////////////////
         /// @brief constructs a new http server
         ////////////////////////////////////////////////////////////////////////////////
 
-        explicit
-        HttpServerImpl (Scheduler* scheduler)
-          : HTTP_SERVER_SUPER_CLASS(scheduler),
-            _closeWithoutKeepAlive(false) {
-        }
-
-
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief constructs a new http server
-        ////////////////////////////////////////////////////////////////////////////////
-
         HttpServerImpl (Scheduler* scheduler, Dispatcher* dispatcher)
-          : HTTP_SERVER_SUPER_CLASS(scheduler, dispatcher),
+          : GeneralServerDispatcher<HttpServerImpl, HttpHandlerFactory, HttpCommTask>(scheduler, dispatcher),
             _closeWithoutKeepAlive(false) {
         }
-
 
       public:
 

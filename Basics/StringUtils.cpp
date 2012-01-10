@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -32,9 +32,9 @@
 
 #include <iostream>
 
-#include <Basics/Exceptions.h>
-#include <Basics/StringBuffer.h>
-#include <Basics/Logger.h>
+#include "Basics/Exceptions.h"
+#include "Basics/StringBuffer.h"
+#include "Logger/Logger.h"
 
 extern long GLOBAL_TIMEZONE;
 
@@ -256,9 +256,9 @@ namespace {
     }
     return ok;
   }
-  ///-------------------------------------------------------
-  /// @brief computes the unicode value of an ut16 symbol
-  ///-------------------------------------------------------
+///-------------------------------------------------------
+/// @brief computes the unicode value of an ut16 symbol
+///-------------------------------------------------------
 
   bool toUnicode (uint16_t w1, uint16_t w2, uint32_t *v) {
     uint32_t vh = w1 - 0xD800;
@@ -295,16 +295,16 @@ namespace {
     }
     return true;
   }
-  ///-------------------------------------------------------
-  /// @brief true when number lays in the range
-  ///        U+D800  U+DBFF
-  ///-------------------------------------------------------
+///-------------------------------------------------------
+/// @brief true when number lays in the range
+///        U+D800  U+DBFF
+///-------------------------------------------------------
   bool isHighSurrugate (uint32_t number) {
     return (number >= 0xD800) && (number <= 0xDBFF);
   }
-  ///-------------------------------------------------------
-  /// @brief true when number lays in the range
-  ///        U+DC00  U+DFFF
+///-------------------------------------------------------
+/// @brief true when number lays in the range
+///        U+DC00  U+DFFF
   bool isLowSurrugate (uint32_t number) {
     return (number >= 0xDC00) && (number <= 0xDFFF);
   }
@@ -314,9 +314,9 @@ namespace triagens {
   namespace basics {
     namespace StringUtils {
 
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
       // STRING AND STRING POINTER
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
       blob_t duplicateBlob (const blob_t&  source) {
         blob_t result = {0,0};
@@ -467,9 +467,9 @@ namespace triagens {
         }
       }
 
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
       // STRING CONVERSION
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
       string capitalize (string const& name, bool first) {
         size_t len = name.length();
@@ -1406,11 +1406,11 @@ namespace triagens {
 
 
 
-      /// replaces the contents of the sourceStr = "aaebbbbcce" where ever the occurence of
-      /// fromStr = "bb" exists with the toStr = "dd". No recursion peformed on the replaced string
-      /// e.g. replace("aaebbbbcce","bb","dd") = "aaeddddcce"
-      /// e.g. replace("aaebbbbcce","bb","bbb") = "aaebbbbbbcce"
-      /// e.g. replace("aaebbbbcce","bbb","bb") = "aaebbbcce"
+/// replaces the contents of the sourceStr = "aaebbbbcce" where ever the occurence of
+/// fromStr = "bb" exists with the toStr = "dd". No recursion peformed on the replaced string
+/// e.g. replace("aaebbbbcce","bb","dd") = "aaeddddcce"
+/// e.g. replace("aaebbbbcce","bb","bbb") = "aaebbbbbbcce"
+/// e.g. replace("aaebbbbcce","bbb","bb") = "aaebbbcce"
 
       string replace (string const& sourceStr, string const& fromStr, string const& toStr) {
         size_t fromLength   = fromStr.length();
@@ -1684,9 +1684,9 @@ namespace triagens {
         return result;
       }
 
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
       // CONVERT TO STRING
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
       string itoa (int16_t attr) {
         char buffer[7];
@@ -1869,9 +1869,9 @@ namespace triagens {
         return result;
       }
 
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
       // CONVERT FROM STRING
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
       bool boolean (string const& str) {
         string lower = tolower(trim(str));
@@ -2976,9 +2976,9 @@ namespace triagens {
       }
 
 
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
       // UTF8
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
       // this function takes a sequence of hexadecimal characters (inputStr) of a particular
       // length (len) and output 1,2,3 or 4 characters which represents the utf8 encoding
@@ -3005,9 +3005,9 @@ namespace triagens {
 
       }
 
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
       // UTF16
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
       // this function converts unicode symbols whose code points lies in U+10000 to U+10FFFF
       //
@@ -3038,9 +3038,9 @@ namespace triagens {
         return ok;
       }
 
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
       // BASE64
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
       string encodeBase64 (string const& in) {
         unsigned char charArray3[3];
@@ -3260,12 +3260,12 @@ namespace triagens {
         return ret;
       }
 
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
       // ADDITIONAL STRING UTILITIES
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
-      /// In a list str = "xx,yy,zz ...", entry(n,str,',') returns the nth entry of the list delimited
-      /// by ','. E.g entry(2,str,',') = 'yy'
+/// In a list str = "xx,yy,zz ...", entry(n,str,',') returns the nth entry of the list delimited
+/// by ','. E.g entry(2,str,',') = 'yy'
 
       string entry (const size_t pos, string const& sourceStr, string const& delimiter) {
         size_t delLength    = delimiter.length();
@@ -3304,8 +3304,8 @@ namespace triagens {
 
 
 
-      /// Determines the number of entries in a list str = "xx,yyy,zz,www".
-      /// numEntries(str,',') = 4.
+/// Determines the number of entries in a list str = "xx,yyy,zz,www".
+/// numEntries(str,',') = 4.
 
       size_t numEntries (string const& sourceStr, string const& delimiter) {
         size_t delLength    = delimiter.length();

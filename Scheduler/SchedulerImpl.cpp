@@ -28,12 +28,12 @@
 
 #include "SchedulerImpl.h"
 
-#include <Basics/Logger.h>
+#include <Logger/Logger.h>
 #include <Basics/MutexLocker.h>
 #include <Basics/StringUtils.h>
 #include <Basics/Thread.h>
-#include <Rest/Task.h>
 
+#include "Scheduler/Task.h"
 #include "Scheduler/SchedulerThread.h"
 
 using namespace triagens::basics;
@@ -46,8 +46,8 @@ namespace triagens {
     // -----------------------------------------------------------------------------
 
     SchedulerImpl::SchedulerImpl (size_t nrThreads)
-      : stopping(0),
-        nrThreads(nrThreads),
+      : nrThreads(nrThreads),
+        stopping(0),
         nextLoop(0) {
 
       // check for multi-threading scheduler
@@ -254,7 +254,7 @@ namespace triagens {
 
 
     void SchedulerImpl::reportStatus () {
-      if (TRI_IsDebugLogging()) {
+      if (TRI_IsDebugLogging(__FILE__)) {
         MUTEX_LOCKER(schedulerLock);
 
         string status = "scheduler: ";

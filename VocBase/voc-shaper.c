@@ -23,16 +23,16 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Copyright 2006-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2006-2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "voc-shaper.h"
 
-#include <Basics/associative.h>
-#include <Basics/hashes.h>
-#include <Basics/locks.h>
-#include <Basics/logging.h>
-#include <Basics/strings.h>
+#include <BasicsC/associative.h>
+#include <BasicsC/hashes.h>
+#include <BasicsC/locks.h>
+#include <BasicsC/logging.h>
+#include <BasicsC/strings.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private constants
@@ -74,6 +74,8 @@ typedef struct voc_shaper_s {
   TRI_associative_synced_t _shapeDictionary;
   TRI_associative_synced_t _shapeIds;
 
+  TRI_associative_pointer_t _accessors;
+
   TRI_shape_aid_t _nextAid;
   TRI_shape_sid_t _nextSid;
 
@@ -81,6 +83,7 @@ typedef struct voc_shaper_s {
 
   TRI_mutex_t _shapeLock;
   TRI_mutex_t _attributeLock;
+  TRI_mutex_t _accessorLock;
 }
 voc_shaper_t;
 
@@ -425,6 +428,31 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief hashs the accessor
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashElementAccessor (TRI_associative_pointer_t* array, void const* element) {
+  TRI_shape_access_t const* ee = element;
+  uint64_t v[2];
+
+  v[0] = ee->_sid;
+  v[1] = ee->_pid;
+
+  return TRI_FnvHashPointer(v, sizeof(v));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares an accessor
+////////////////////////////////////////////////////////////////////////////////
+
+static bool EqualElementAccessor (TRI_associative_pointer_t* array, void const* left, void const* right) {
+  TRI_shape_access_t const* ll = left;
+  TRI_shape_access_t const* rr = right;
+
+  return ll->_sid == rr->_sid && ll->_pid == rr->_pid;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises a persistent shaper
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -458,8 +486,15 @@ static void InitVocShaper (voc_shaper_t* shaper, TRI_blob_collection_t* collecti
                             EqualKeyShapeId,
                             0);
 
+  TRI_InitAssociativePointer(&shaper->_accessors,
+                             0,
+                             HashElementAccessor,
+                             0,
+                             EqualElementAccessor);
+
   TRI_InitMutex(&shaper->_shapeLock);
   TRI_InitMutex(&shaper->_attributeLock);
+  TRI_InitMutex(&shaper->_accessorLock);
 
   shaper->_nextAid = 1;
   shaper->_nextSid = 1;
@@ -471,21 +506,13 @@ static void InitVocShaper (voc_shaper_t* shaper, TRI_blob_collection_t* collecti
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the underlying collection
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_blob_collection_t* TRI_CollectionVocShaper (TRI_shaper_t* shaper) {
-  return ((voc_shaper_t*) shaper)->_collection;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates persistent shaper
@@ -519,6 +546,55 @@ TRI_shaper_t* TRI_CreateVocShaper (char const* path, char const* name) {
 
   // and return
   return &shaper->base;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys an persistent shaper, but does not free the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyVocShaper (TRI_shaper_t* s) {
+  voc_shaper_t* shaper = (voc_shaper_t*) s;
+
+  TRI_DestroyBlobCollection(shaper->_collection);
+
+  TRI_DestroyAssociativeSynced(&shaper->_attributeNames);
+  TRI_DestroyAssociativeSynced(&shaper->_attributeIds);
+  TRI_DestroyAssociativeSynced(&shaper->_shapeDictionary);
+  TRI_DestroyAssociativeSynced(&shaper->_shapeIds);
+
+  TRI_DestroyMutex(&shaper->_shapeLock);
+  TRI_DestroyMutex(&shaper->_attributeLock);
+
+  TRI_DestroyShaper(s);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys an persistent shaper and frees the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeVocShaper (TRI_shaper_t* shaper) {
+  TRI_Free(shaper);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the underlying collection
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_blob_collection_t* TRI_CollectionVocShaper (TRI_shaper_t* shaper) {
+  return ((voc_shaper_t*) shaper)->_collection;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -576,31 +652,32 @@ int TRI_CloseVocShaper (TRI_shaper_t* s) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an persistent shaper, but does not free the pointer
+/// @brief closes a persistent shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyVocShaper (TRI_shaper_t* s) {
+TRI_shape_access_t const* TRI_FindAccessorVocShaper (TRI_shaper_t* s,
+                                                     TRI_shape_sid_t sid,
+                                                     TRI_shape_pid_t pid) {
   voc_shaper_t* shaper = (voc_shaper_t*) s;
+  TRI_shape_access_t search;
+  TRI_shape_access_t* accessor;
+  TRI_shape_access_t const* found;
 
-  TRI_DestroyBlobCollection(shaper->_collection);
+  TRI_LockMutex(&shaper->_accessorLock);
 
-  TRI_DestroyAssociativeSynced(&shaper->_attributeNames);
-  TRI_DestroyAssociativeSynced(&shaper->_attributeIds);
-  TRI_DestroyAssociativeSynced(&shaper->_shapeDictionary);
-  TRI_DestroyAssociativeSynced(&shaper->_shapeIds);
+  search._sid = sid;
+  search._pid = pid;
 
-  TRI_DestroyMutex(&shaper->_shapeLock);
-  TRI_DestroyMutex(&shaper->_attributeLock);
+  found = TRI_LookupByElementAssociativePointer(&shaper->_accessors, &search);
 
-  TRI_DestroyShaper(s);
-}
+  if (found == NULL) {
+    found = accessor = TRI_ShapeAccessor(&shaper->base, sid, pid);
+    TRI_InsertElementAssociativePointer(&shaper->_accessors, accessor, true);
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an persistent shaper and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
+  TRI_UnlockMutex(&shaper->_accessorLock);
 
-void TRI_FreeVocShaper (TRI_shaper_t* shaper) {
-  TRI_Free(shaper);
+  return found;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
