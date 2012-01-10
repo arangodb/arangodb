@@ -31,7 +31,7 @@
 
 
 	<body>
-	<h3 id="ueberschrift" style="color:white">Directory:</h3>
+	<h3 style="color:white">Database:</h3>
 	
 	<ul id="sliding-navigation">
           <li class="sliding-element"><h3 id="navelement1" style="color:black">Navigation Title #1</h3></li>  
@@ -44,8 +44,39 @@
 
 
 	<script>
+		
+		function fnFormatDetails ( oTable, nTr ) {
+    			var aData = oTable.fnGetData( nTr );
+    			var sOut = '<table cellpadding="5" cellspacing="0" border="0" style="padding-left:50px;">';
+    			sOut += '<tr><td>Rendering engine:</td><td>'+aaData[1]+' '+aaData[4]+'</td></tr>';
+    			sOut += '<tr><td>Link to source:</td><td>Could provide a link here</td></tr>';
+    			sOut += '<tr><td>Extra info:</td><td>And any further details here (images etc)</td></tr>';
+    			sOut += '</table>';
+     
+    		return sOut;
+		}
+
+
+
 		$(document).ready(function() {
-			$.getJSON("http://localhost:8530/_action/system/collections.json", function(data) {
+			
+
+			var nCloneTh = document.createElement( 'th' );
+    			var nCloneTd = document.createElement( 'td' );
+    			nCloneTd.innerHTML = '<img src="images/details_open.png">';
+    			nCloneTd.className = "center";
+     
+   	 		$('#example thead tr').each( function () {
+        		this.insertBefore( nCloneTh, this.childNodes[0] );
+    			} );
+     
+    			$('#example tbody tr').each( function () {
+        		this.insertBefore(  nCloneTd.cloneNode( true ), this.childNodes[0] );
+    			} );
+
+
+
+			$.getJSON("http://localhost:8530/_system/collections", function(data) {
                         	
 				var items=[];
 				document.getElementById('ueberschrift').innerHTML="Directory:  " + data.path;
@@ -57,26 +88,46 @@
 						temp_status = "loaded";
 					}
 					
-					items.push([val.name, temp_status]);
+					items.push(["", val.id, val.name, temp_status]);
 			    	});
 
-				$('#dt_example').dataTable({
+				var oTable = $('#example').dataTable({
 					"sPaginationType": "full_numbers",
 					"bJQueryUI": true,
+					"aoColumnDefs": [
+							{"bSortable": false, "aTargets": [0] }
+							],
+					"aaSorting": [[1, 'asc']],
 					"aaData": items
 				});
 			});
-		});
 				
+			$('#example tbody td img').live('click', function () {
+        			var nTr = this.parentNode.parentNode;
+        			if ( this.src.match('details_close') ) {
+            				this.src = "images/details_open.png";
+            				oTable.fnClose( nTr );
+        				}
+        			else {
+            				this.src = "images/details_close.png";
+            				oTable.fnOpen( nTr, fnFormatDetails(oTable, nTr), 'details' );
+        			}
+    			} );
+
+		});
+		
 	</script>
 	
 	<ul id="table-view">
 	<h3 id="ueberschrift" style="color:white">Directory:</h3>
-	  <table cellpadding="0" cellspacing="0" border="0" class="display" id="dt_example">
+	  <table cellpadding="0" cellspacing="0" border="0" class="display" id="example">
 	    <thead>
 	      <tr>
-	        <th>Name</th>
-		<th>Status</th>
+	        <th>ID</th>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Datafiles</th>
+                <th>Size Documents</th>
 	      </tr>
             </thead>
 	</ul>
