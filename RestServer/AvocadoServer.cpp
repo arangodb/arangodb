@@ -64,7 +64,6 @@ using namespace triagens::admin;
 using namespace triagens::avocado;
 
 #include "js/js-actions.h"
-#include "js/js-graph.h"
 #include "js/js-json.h"
 #include "js/js-modules.h"
 #include "js/js-shell.h"
