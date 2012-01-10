@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,16 +22,15 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "JSLoader.h"
 
-#include <Basics/MutexLocker.h>
-#include <Basics/Logger.h>
-#include <Basics/files.h>
-#include <Basics/strings.h>
-
+#include "Basics/MutexLocker.h"
+#include "BasicsC/files.h"
+#include "BasicsC/strings.h"
+#include "Logger/Logger.h"
 #include "V8/v8-utils.h"
 
 using namespace std;
@@ -69,6 +68,14 @@ JSLoader::JSLoader ()
 /// @addtogroup AvocadoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the directory for scripts
+////////////////////////////////////////////////////////////////////////////////
+
+string const& JSLoader::getDirectory () const {
+  return _directory;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the directory for scripts

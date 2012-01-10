@@ -1,0 +1,14 @@
+> curl -X GET --dump - http://localhost:8530/_system/collection/info?collection=9496015
+HTTP/1.1 200 OK
+content-type: application/json
+connection: Keep-Alive
+server: triagens GmbH High-Performance HTTP Server
+content-length: 157
+
+{"id" : 9496015, "name" : "examples", "status" : 3, "figures" : {
+  "numberDatafiles" : 2, 
+  "numberAlive" : 37, 
+  "numberDead" : 7, 
+  "sizeAlive" : 1120, 
+  "sizeDead" : 88, 
+  "numberDeletion" : 1}}

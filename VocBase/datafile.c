@@ -29,10 +29,10 @@
 
 #include <sys/mman.h>
 
-#include <Basics/hashes.h>
-#include <Basics/logging.h>
-#include <Basics/strings.h>
-#include <Basics/files.h>
+#include <BasicsC/hashes.h>
+#include <BasicsC/logging.h>
+#include <BasicsC/strings.h>
+#include <BasicsC/files.h>
 
 // #define DEBUG_DATAFILE 1
 

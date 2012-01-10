@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -41,9 +41,9 @@
 #include <direct.h>
 #endif
 
-#include <Basics/Exceptions.h>
-#include <Basics/Logger.h>
-#include <Basics/StringBuffer.h>
+#include "Basics/Exceptions.h"
+#include "Logger/Logger.h"
+#include "Basics/StringBuffer.h"
 
 namespace triagens {
   namespace basics {

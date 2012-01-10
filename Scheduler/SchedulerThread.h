@@ -32,7 +32,8 @@
 #include <Basics/Thread.h>
 
 #include <Basics/Mutex.h>
-#include <Rest/Task.h>
+
+#include "Scheduler/Task.h"
 
 namespace triagens {
   namespace rest {

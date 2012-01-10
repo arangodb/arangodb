@@ -1,0 +1,20 @@
+> curl -X GET --dump - http://localhost:8529/_document/9496015:13658604
+HTTP/1.1 200 OK
+content-type: application/json
+connection: Keep-Alive
+server: triagens GmbH High-Performance HTTP Server
+etag: "14755542"
+content-length: 27
+
+{,"_id":"9496015:13658604"}
+
+> curl --data @- -X PUT --dump - http://localhost:8529/_document/9496015:13658604?_rev=1234567
+{}
+
+HTTP/1.1 409 Conflict
+content-type: application/json
+connection: Keep-Alive
+server: triagens GmbH High-Performance HTTP Server
+content-length: 101
+
+{ "error" : true, "message" : "document /_document/9496015:13658604 is been altered", "code" : 409}

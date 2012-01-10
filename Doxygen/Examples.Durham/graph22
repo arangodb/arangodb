@@ -1,0 +1,12 @@
+avocado> var Graph = require("graph").Graph;
+
+avocado> g = new Graph("vertices", "edges");
+
+avocado> v = g.addVertex();
+Vertex(<graph>, "153246:2310672")
+
+avocado> e = g.addEdge(v, v, "self");
+Edge(<graph>, "3999653:7360858")
+
+avocado> e.getOutVertex();
+Vertex(<graph>, "153246:2310672")

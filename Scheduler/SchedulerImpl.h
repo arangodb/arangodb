@@ -29,8 +29,8 @@
 #ifndef TRIAGENS_FYN_SCHEDULER_SCHEDULER_IMPL_H
 #define TRIAGENS_FYN_SCHEDULER_SCHEDULER_IMPL_H 1
 
-#include <Rest/Scheduler.h>
-#include <Rest/Task.h>
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/Task.h"
 
 #include <Basics/Mutex.h>
 

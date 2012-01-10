@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -29,9 +29,12 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_MUTEX_H
 #define TRIAGENS_JUTLAND_BASICS_MUTEX_H 1
 
-#include <Basics/Common.h>
+#include "Basics/Common.h"
 
-#include <Basics/locks.h>
+#include "BasicsC/locks.h"
+
+namespace triagens {
+  namespace basics {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       class Mutex
@@ -42,15 +45,11 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-namespace triagens {
-  namespace basics {
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mutex
 ////////////////////////////////////////////////////////////////////////////////
 
     class Mutex {
-      private:
         Mutex (Mutex const&);
         Mutex& operator= (Mutex const&);
 

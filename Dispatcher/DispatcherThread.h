@@ -32,7 +32,8 @@
 #include <Basics/Common.h>
 
 #include <Basics/Thread.h>
-#include <Rest/Job.h>
+
+#include "Dispatcher/Job.h"
 
 namespace triagens {
   namespace rest {

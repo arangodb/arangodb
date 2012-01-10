@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,12 +22,12 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Achim Brandt
-/// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestVersionHandler.h"
 
-#include <Basics/VariantArray.h>
+#include "Variant/VariantArray.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -36,6 +36,11 @@ using namespace triagens::admin;
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup RestServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -47,10 +52,18 @@ RestVersionHandler::RestVersionHandler (HttpRequest* request, pair<string,string
     _version(data->second) {
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup RestServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -59,7 +72,6 @@ RestVersionHandler::RestVersionHandler (HttpRequest* request, pair<string,string
 bool RestVersionHandler::isDirect () {
   return true;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -74,6 +86,10 @@ HttpHandler::status_e RestVersionHandler::execute () {
   generateResult(result);
   return HANDLER_DONE;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

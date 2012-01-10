@@ -30,7 +30,7 @@
 
 #include <Admin/RestBaseHandler.h>
 
-#include <Basics/Logger.h>
+#include <Logger/Logger.h>
 #include <Rest/HttpResponse.h>
 #include <VocBase/document-collection.h>
 
@@ -42,14 +42,14 @@
 /// JavaScript functions which encapsulate business logic. Actions are
 /// accessible via HTTP.
 ///
-/// Next steps:
+/// Next steps: learn more about
 ///
-/// - learn more about the @ref RestInterface "REST Interface"
-/// - learn more about the @ref CRUDDocument "REST Interface for Documents"
+/// - the @ref RestInterface
+/// - the @ref RestDocument
 ///
-/// Advanced Topics:
+/// Advanced Topics: learn more about
 ///
-/// - learn more about @ref Actions "Actions"
+/// - @ref Actions
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,19 +73,39 @@
 /// - etag:
 ///     A revision of a document has an etag.
 ///
-/// Next steps:
+/// Next steps: learn more about
 ///
-/// - learn more about the @ref CRUDDocument "REST Interface for Documents"
+/// - the @ref RestDocument
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page RestSystem REST Interface for System Administration
+/// @page HttpSystemTOC
 ///
+/// <ol>
+///   <li>@ref HttpSystemCollections "GET /_system/collections"</li>
+///   <li>@ref HttpSystemCollectionLoad "GET /_system/collection/load"</li>
+///   <li>@ref HttpSystemCollectionInfo "GET /_system/collection/info"</li>
+///   <li>@ref HttpSystemCollectionIndexes "GET /_system/collection/indexes"</li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page HttpSystem HTTP Interface for System Administration
+///
+/// @copydoc HttpSystemTOC
+/// <hr>
+///
+/// @anchor HttpSystemCollections
 /// @copydetails JSA_collections
 ///
+/// @anchor HttpSystemCollectionLoad
 /// @copydetails JSA_collection_load
 ///
+/// @anchor HttpSystemCollectionInfo
 /// @copydetails JSA_collection_info
+///
+/// @anchor HttpSystemCollectionIndexes
+/// @copydetails JSA_collection_indexes
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------

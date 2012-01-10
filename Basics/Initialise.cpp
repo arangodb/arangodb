@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,15 +25,15 @@
 /// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Basics/Initialise.h>
+#include "Basics/Initialise.h"
 
-#include <Basics/init.h>
-#include <Basics/error.h>
-#include <Basics/hashes.h>
-#include <Basics/randomx.h>
+#include "BasicsC/init.h"
+#include "BasicsC/error.h"
+#include "BasicsC/hashes.h"
+#include "BasicsC/random.h"
 
-#include <Basics/Logger.h>
-#include <Basics/Random.h>
+#include "Logger/Logger.h"
+#include "Basics/Random.h"
 
 #ifdef TRI_BROKEN_CXA_GUARD
 #include <pthread.h>

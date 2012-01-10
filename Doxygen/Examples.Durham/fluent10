@@ -1,0 +1,25 @@
+avocado> db.geo.drop();
+true
+
+avocado> db.geo.ensureGeoIndex("loc");
+162534834
+
+avocado> for (i = -90;  i <= 90;  i += 10) 
+.......>   for (j = -180; j <= 180; j += 10)
+.......>     db.geo.save({ name : "Name" + i + "-" + j,
+.......>                   loc: [ i, j ] });
+
+avocado> db.geo.count();
+357
+
+avocado> db.geo.near(0,0);
+{ "name" : "Name0-0", "loc" : [ 0, 0 ], "_id" : "162972:24607900" }
+{ "name" : "Name0-10", "loc" : [ 0, 10 ], "_id" : "162972:24673436" }
+.
+.
+{ "name" : "Name-20--10", "loc" : [ -20, -10 ], "_id" : "162972:19692700" }
+{ "name" : "Name-10--20", "loc" : [ -10, -20 ], "_id" : "162972:22051996" }
+...more results...
+
+avocado> db.geo.near(0,0).count();
+100

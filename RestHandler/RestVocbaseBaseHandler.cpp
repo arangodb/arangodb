@@ -27,7 +27,7 @@
 
 #include "RestVocbaseBaseHandler.h"
 
-#include <Basics/string-buffer.h>
+#include <BasicsC/string-buffer.h>
 #include <Basics/StringUtils.h>
 
 #include <Rest/HttpRequest.h>

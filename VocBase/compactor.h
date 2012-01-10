@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_DURHAM_VOC_BASE_COMPACTOR_H
 #define TRIAGENS_DURHAM_VOC_BASE_COMPACTOR_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/common.h>
 
 #include <VocBase/vocbase.h>
 

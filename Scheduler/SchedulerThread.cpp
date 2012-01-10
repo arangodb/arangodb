@@ -28,8 +28,9 @@
 
 #include "SchedulerThread.h"
 
-#include <Basics/Logger.h>
-#include <Rest/Task.h>
+#include <Logger/Logger.h>
+
+#include "Scheduler/Task.h"
 
 using namespace triagens::basics;
 

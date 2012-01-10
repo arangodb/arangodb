@@ -1,0 +1,6 @@
+> db.examples.limit(5);
+{ "age" : 2, "name" : "Name2", "first_name" : "Yes", "_id" : "9496015:11126645" }
+{ "age" : 8, "name" : "Name8", "first_name" : "Yes", "_id" : "9496015:11519861" }
+{ "age" : 6, "name" : "Name6", "first_name" : "Yes", "_id" : "9496015:11388789" }
+{ "age" : 30, "name" : "Meier", "first_name" : "Hugo", "_id" : "9496015:10733429" }
+{ "age" : 25, "name" : "Name25", "first_name" : "Yes", "_id" : "9496015:12633973" }

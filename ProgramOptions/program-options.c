@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Esteban Lombeyda
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "program-options.h"
@@ -30,10 +30,10 @@
 #include <getopt.h>
 #include <regex.h>
 
-#include <Basics/conversions.h>
-#include <Basics/logging.h>
-#include <Basics/string-buffer.h>
-#include <Basics/strings.h>
+#include "BasicsC/conversions.h"
+#include "BasicsC/logging.h"
+#include "BasicsC/string-buffer.h"
+#include "BasicsC/strings.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
@@ -250,6 +250,12 @@ static void ParseFlagArg (char const * userarg, void * value) {
     else if (TRI_CaseEqualString(userarg, "false")) {
       *flag->_value = false;
     }
+    else if (TRI_CaseEqualString(userarg, "1")) {
+      *flag->_value = true;
+    }
+    else if (TRI_CaseEqualString(userarg, "0")) {
+      *flag->_value = false;
+    }
   }
 }
 
@@ -264,7 +270,12 @@ static void CreateFlagOption (po_flag_t * desc, void const * input, void * outpu
 
   po = output;
 
-  InitOptionStructure(&flagOpt, desc->base._name, 0, 0, po->_longopts._length);
+  if (desc->_value == 0) {
+    InitOptionStructure(&flagOpt, desc->base._name, 0, 0, po->_longopts._length);
+  }
+  else {
+    InitOptionStructure(&flagOpt, desc->base._name, 1, 0, po->_longopts._length);
+  }
 
   memset(&item, 0, sizeof(item));
 
@@ -1344,7 +1355,7 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
   TRI_string_buffer_t buffer;
   TRI_PO_item_t * item;
   char const* shortOptions;
-  int i;
+  size_t i;
   int c;
   int idx;
   int maxIdx;
@@ -1359,7 +1370,16 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
     if (item->_desc->_short != '\0') {
       TRI_AppendCharStringBuffer(&buffer, item->_desc->_short);
 
-      if (item->_desc->_type != TRI_PO_FLAG) {
+      if (item->_desc->_type == TRI_PO_FLAG) {
+        po_flag_t* p;
+
+        p = (po_flag_t*) item->_desc;
+
+        if (p->_value != 0) {
+          TRI_AppendCharStringBuffer(&buffer, ':');
+        }
+      }
+      else {
         TRI_AppendCharStringBuffer(&buffer, ':');
       }
     }
@@ -1379,7 +1399,7 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
     c = getopt_long(argc, argv, shortOptions, (const struct option*) options->_longopts._buffer, &idx);
 
     if (c == -1) {
-      for (i = optind;  i < argc;  ++i) {
+      for (i = optind;  i < (size_t) argc;  ++i) {
         TRI_PushBackVectorString(&options->_arguments, TRI_DuplicateString(argv[i]));
       }
 
@@ -1426,6 +1446,7 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
+                                  char const * programName,
                                   char const * filename) {
   FILE* f;
   bool ok;
@@ -1522,13 +1543,23 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
 
       ok = HandleOption(options, section, option, value);
 
-      TRI_FreeString(option);
       TRI_FreeString(value);
 
       if (! ok) {
+        TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
+
+        if (*section != '\0') {
+          fprintf(stderr, "%s: unrecognized option '%s.%s'\n", programName, section, option);
+        }
+        else {
+          fprintf(stderr, "%s: unrecognized option '%s'\n", programName, option);
+        }
+
+        TRI_FreeString(option);
         break;
       }
 
+      TRI_FreeString(option);
       continue;
     }
 
@@ -1543,12 +1574,21 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
 
       ok = HandleOption(options, section, option, "");
 
-      TRI_FreeString(option);
-
       if (! ok) {
+        TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
+
+        if (*section != '\0') {
+          fprintf(stderr, "%s: unrecognized option '%s.%s'\n", programName, section, option);
+        }
+        else {
+          fprintf(stderr, "%s: unrecognized option '%s'\n", programName, option);
+        }
+
+        TRI_FreeString(option);
         break;
       }
 
+      TRI_FreeString(option);
       continue;
     }
 
@@ -1565,14 +1605,19 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
 
       ok = HandleOption(options, tmpSection, option, value);
 
-      TRI_FreeString(tmpSection);
-      TRI_FreeString(option);
       TRI_FreeString(value);
 
       if (! ok) {
+        TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
+        fprintf(stderr, "%s: unrecognized option '%s.%s'\n", programName, tmpSection, option);
+
+        TRI_FreeString(tmpSection);
+        TRI_FreeString(option);
         break;
       }
 
+      TRI_FreeString(tmpSection);
+      TRI_FreeString(option);
       continue;
     }
 
@@ -1588,17 +1633,23 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
 
       ok = HandleOption(options, tmpSection, option, "");
 
-      TRI_FreeString(tmpSection);
-      TRI_FreeString(option);
-
       if (! ok) {
+        TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
+        fprintf(stderr, "%s: unrecognized option '%s.%s'\n", programName, tmpSection, option);
+
+        TRI_FreeString(tmpSection);
+        TRI_FreeString(option);
         break;
       }
 
+      TRI_FreeString(tmpSection);
+      TRI_FreeString(option);
       continue;
     }
 
-    LOG_ERROR("cannot understand line '%s", buffer);
+    TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
+    fprintf(stderr, "%s: unrecognized entry '%s'\n", programName, buffer);
+
     TRI_FreeString(buffer);
     buffer = NULL;
     break;

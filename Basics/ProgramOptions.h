@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -28,10 +28,10 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_PROGRAM_OPTIONS_H
 #define TRIAGENS_JUTLAND_BASICS_PROGRAM_OPTIONS_H 1
 
-#include <Basics/Common.h>
+#include "Basics/Common.h"
 
-#include <Basics/vector.h>
-#include <Basics/ProgramOptionsDescription.h>
+#include "BasicsC/vector.h"
+#include "Basics/ProgramOptionsDescription.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -163,7 +163,7 @@ namespace triagens {
 /// @brief result data
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool extractValues (ProgramOptionsDescription const&, struct TRI_program_options_s*);
+        bool extractValues (ProgramOptionsDescription const&, struct TRI_program_options_s*, set<string> seen);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -179,6 +179,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief bool values
+////////////////////////////////////////////////////////////////////////////////
+
+        map<string, bool*> _valuesBool;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief string values
@@ -215,6 +221,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         set<string> _flags;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flags which are already set
+////////////////////////////////////////////////////////////////////////////////
+
+        set<string> _seen;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief program name if known
+////////////////////////////////////////////////////////////////////////////////
+
+        string _programName;
     };
   }
 }

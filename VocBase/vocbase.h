@@ -28,12 +28,12 @@
 #ifndef TRIAGENS_DURHAM_VOC_BASE_VOCBASE_H
 #define TRIAGENS_DURHAM_VOC_BASE_VOCBASE_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/common.h>
 
-#include <Basics/associative.h>
-#include <Basics/locks.h>
-#include <Basics/threads.h>
-#include <Basics/vector.h>
+#include <BasicsC/associative.h>
+#include <BasicsC/locks.h>
+#include <BasicsC/threads.h>
+#include <BasicsC/vector.h>
 
 #ifdef __cplusplus
 extern "C" {

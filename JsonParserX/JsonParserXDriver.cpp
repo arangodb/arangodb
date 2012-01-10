@@ -27,17 +27,17 @@
 
 #include "JsonParserXDriver.h"
 
-#include <Basics/Logger.h>
-#include <Basics/VariantArray.h>
-#include "Basics/VariantBoolean.h"
-#include "Basics/VariantDouble.h"
-#include "Basics/VariantNull.h"
-#include <Basics/VariantInt32.h>
-#include <Basics/VariantInt64.h>
-#include <Basics/VariantString.h>
-#include <Basics/VariantUInt32.h>
-#include <Basics/VariantUInt64.h>
-#include <Basics/VariantVector.h>
+#include <Logger/Logger.h>
+#include <Variant/VariantArray.h>
+#include <Variant/VariantBoolean.h>
+#include <Variant/VariantDouble.h>
+#include <Variant/VariantInt32.h>
+#include <Variant/VariantInt64.h>
+#include <Variant/VariantNull.h>
+#include <Variant/VariantString.h>
+#include <Variant/VariantUInt32.h>
+#include <Variant/VariantUInt64.h>
+#include <Variant/VariantVector.h>
 
 using namespace triagens::basics;
 

@@ -30,8 +30,8 @@
 
 #include <VocBase/vocbase.h>
 
-#include <Basics/json.h>
-#include <Basics/string-buffer.h>
+#include <BasicsC/json.h>
+#include <BasicsC/string-buffer.h>
 #include <VocBase/result-set.h>
 #include <VocBase/simple-collection.h>
 
@@ -67,6 +67,7 @@ typedef enum {
   TRI_QUE_TYPE_GEO_INDEX,
   TRI_QUE_TYPE_LIMIT,
   TRI_QUE_TYPE_NEAR,
+  TRI_QUE_TYPE_SELECT_FULL_QUERY,
   TRI_QUE_TYPE_SKIP,
   TRI_QUE_TYPE_WITHIN
 }
@@ -241,6 +242,21 @@ TRI_near_query_t;
 /// @brief skip query
 ////////////////////////////////////////////////////////////////////////////////
 
+typedef struct TRI_select_full_query_s {
+  TRI_query_t base;
+
+  TRI_query_t* _operand;
+
+  size_t _length;
+  TRI_shape_pid_t* _pids;
+  TRI_shaped_json_t** _values;
+}
+TRI_select_full_query_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief skip query
+////////////////////////////////////////////////////////////////////////////////
+
 typedef struct TRI_skip_query_s {
   TRI_query_t base;
 
@@ -304,6 +320,17 @@ TRI_query_t* TRI_CreateDocumentQuery (TRI_query_t*, TRI_voc_did_t);
 TRI_query_t* TRI_CreateEdgesQuery (TRI_vocbase_col_t const* edges,
                                    TRI_query_t*,
                                    TRI_edge_direction_e direction);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects elements by example
+///
+/// The query takes ownership of the pids and values.
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_query_t* TRI_CreateSelectFullQuery (TRI_query_t*, 
+                                        size_t n,
+                                        TRI_shape_pid_t* pids,
+                                        TRI_shaped_json_t** values);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an geo-spatial index

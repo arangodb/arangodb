@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -28,12 +28,21 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_ROUND_ROBIN_FIGURES_H
 #define TRIAGENS_JUTLAND_BASICS_ROUND_ROBIN_FIGURES_H 1
 
-#include <Basics/Common.h>
+#include "Basics/Common.h"
 
 #include <math.h>
 
-#include <Basics/Mutex.h>
-#include <Basics/MutexLocker.h>
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     public macros
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Utilities
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief macro to define a new counter
@@ -101,7 +110,7 @@
 #define RRF_DISTRIBUTION(S, n, a)                                           \
   struct n ## Cuts_s {                                                      \
     static vector<double> cuts () {                                         \
-      triagens::basics::RrfVector g; g << a; return g.value;                \
+      triagens::basics::RrfVector g; g << a; return g._value;               \
     }                                                                       \
   };                                                                        \
                                                                             \
@@ -123,7 +132,7 @@
 #define RRF_DISTRIBUTIONS(S, N, n, a)                                              \
   struct n ## Cuts_s {                                                             \
     static vector<double> cuts () {                                                \
-      triagens::basics::RrfVector g; g << a; return g.value;                       \
+      triagens::basics::RrfVector g; g << a; return g._value;                      \
     }                                                                              \
   };                                                                               \
                                                                                    \
@@ -135,303 +144,366 @@
                                                                                    \
   triagens::basics::RrfDistributions<N, n ## Cuts_s> n
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 namespace triagens {
   namespace basics {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief vector generator
-    ////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Utilities
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief vector generator
+////////////////////////////////////////////////////////////////////////////////
 
     struct RrfVector {
+      RrfVector () : _value() {
+      }
+
       RrfVector& operator<< (double v) {
-        value.push_back(v);
+        _value.push_back(v);
         return *this;
       }
 
-      vector<double> value;
+      vector<double> _value;
     };
 
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief a simple counter
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a simple counter
+////////////////////////////////////////////////////////////////////////////////
 
     struct RrfCounter {
       RrfCounter()
-        : count(0) {
+        : _count(0) {
       }
 
       RrfCounter& operator= (RrfCounter const&) {
-        count = 0;
+        _count = 0;
         return *this;
       }
 
-      int32_t count;
+      int32_t _count;
     };
 
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief a simple continuous counter
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a simple continuous counter
+////////////////////////////////////////////////////////////////////////////////
 
     struct RrfContinuous {
       RrfContinuous()
-        : count(0) {
+        : _count(0) {
       }
 
       RrfContinuous& operator= (RrfContinuous const& that) {
         if (this == &that) {
-          count = 0;
+          _count = 0;
         }
         else {
-          count = that.count;
+          _count = that._count;
         }
 
         return *this;
       }
 
-      int32_t count;
+      int32_t _count;
     };
 
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief a figure with count
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a figure with count
+////////////////////////////////////////////////////////////////////////////////
 
     struct RrfFigure {
       RrfFigure()
-        : count(0), sum(0.0) {
+        : _count(0), _sum(0.0) {
       }
 
       RrfFigure& operator= (RrfFigure const&) {
-        count = 0;
-        sum = 0.0;
+        _count = 0;
+        _sum = 0.0;
         return *this;
       }
 
-      int32_t count;
-      double sum;
+      int32_t _count;
+      double _sum;
     };
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief a figure with count
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a figure with count
+////////////////////////////////////////////////////////////////////////////////
 
     template<size_t N>
     struct RrfFigures {
       RrfFigures() {
         for (size_t i = 0;  i < N;  ++i) {
-          count[i] = 0;
-          sum[i] = 0.0;
+          _count[i] = 0;
+          _sum[i] = 0.0;
         }
       }
 
       RrfFigures& operator= (RrfFigures const&) {
         for (size_t i = 0;  i < N;  ++i) {
-          count[i] = 0;
-          sum[i] = 0.0;
+          _count[i] = 0;
+          _sum[i] = 0.0;
         }
 
         return *this;
       }
 
-      uint32_t count[N];
-      double sum[N];
+      uint32_t _count[N];
+      double _sum[N];
     };
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief a distribution with count, min, max, mean, and variance
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a distribution with count, min, max, mean, and variance
+////////////////////////////////////////////////////////////////////////////////
 
     template<typename C>
     struct RrfDistribution {
       RrfDistribution()
-        : count(0), sum(0.0), squares(0.0), minimum(HUGE_VAL), maximum(-HUGE_VAL), cuts(C::cuts()) {
-        counts.resize(cuts.size() + 1);
+        : _count(0), _sum(0.0), _squares(0.0), _minimum(HUGE_VAL), _maximum(-HUGE_VAL), _cuts(C::cuts()), _counts() {
+        _counts.resize(_cuts.size() + 1);
       }
 
       RrfDistribution& operator= (RrfDistribution const&) {
-        count = 0;
-        sum = 0.0;
-        squares = 0.0;
-        minimum = HUGE_VAL;
-        maximum = -HUGE_VAL;
+        _count = 0;
+        _sum = 0.0;
+        _squares = 0.0;
+        _minimum = HUGE_VAL;
+        _maximum = -HUGE_VAL;
         return *this;
       }
 
-      uint32_t count;
-      double sum;
-      double squares;
-      double minimum;
-      double maximum;
-      vector<double> cuts;
-      vector<uint32_t> counts;
+      uint32_t _count;
+      double _sum;
+      double _squares;
+      double _minimum;
+      double _maximum;
+      vector<double> _cuts;
+      vector<uint32_t> _counts;
     };
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief a distribution with count, min, max, mean, and variance
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief many distributions with count, min, max, mean, and variance
+////////////////////////////////////////////////////////////////////////////////
 
     template<size_t N, typename C>
     struct RrfDistributions {
       RrfDistributions()
-        : cuts(C::cuts()) {
+        : _cuts(C::cuts()) {
         for (size_t i = 0;  i < N;  ++i) {
-          counts[i].resize(cuts.size() + 1);
-          sum[i] = 0.0;
-          squares[i] = 0.0;
-          minimum[i] = HUGE_VAL;
-          maximum[i] = -HUGE_VAL;
+          _counts[i].resize(_cuts.size() + 1);
+          _sum[i] = 0.0;
+          _squares[i] = 0.0;
+          _minimum[i] = HUGE_VAL;
+          _maximum[i] = -HUGE_VAL;
         }
       }
 
       RrfDistributions& operator= (RrfDistributions const&) {
         for (size_t i = 0;  i < N;  ++i) {
-          sum[i] = 0.0;
-          squares[i] = 0.0;
-          minimum[i] = HUGE_VAL;
-          maximum[i] = -HUGE_VAL;
+          _sum[i] = 0.0;
+          _squares[i] = 0.0;
+          _minimum[i] = HUGE_VAL;
+          _maximum[i] = -HUGE_VAL;
         }
 
         return *this;
       }
 
-      uint32_t count[N];
-      double sum[N];
-      double squares[N];
-      double minimum[N];
-      double maximum[N];
-      vector<double> cuts;
-      vector<uint32_t> counts[N];
+      uint32_t _count[N];
+      double _sum[N];
+      double _squares[N];
+      double _minimum[N];
+      double _maximum[N];
+      vector<double> _cuts;
+      vector<uint32_t> _counts[N];
     };
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief utilities for round robin distributions
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                           class RoundRobinFigures
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Utilities
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief utilities for round robin distributions
+////////////////////////////////////////////////////////////////////////////////
 
     template<size_t P, size_t N, typename S>
     class RoundRobinFigures {
       public:
 
-        ////////////////////////////////////////////////////////////////////////////////
-        // @brief constructor
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
-        RoundRobinFigures () {
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Utilities
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
 #ifdef TRI_ENABLE_FIGURES
+
+        RoundRobinFigures ()
+          : _current(0), _accessLock() {
           for (size_t i = 0;  i < N;  ++i) {
-            buffer[i] = S();
-            start[i] = 0;
+            _buffer[i] = S();
+            _start[i] = 0;
           }
 
           time_t now = time(0);
-          current = (now / P) % N;
+          _current = (now / P) % N;
 
-          start[current] = (now / P) * P;
-#endif
+          _start[_current] = (now / P) * P;
         }
+
+#else
+
+        RoundRobinFigures () {
+        }
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Utilities
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
       public:
 
-        ////////////////////////////////////////////////////////////////////////////////
-        // @brief increments a counter
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief increments a counter
+////////////////////////////////////////////////////////////////////////////////
 
         template<typename C>
         void incCounter () {
 #ifdef TRI_ENABLE_FIGURES
-          MUTEX_LOCKER(accessLock);
+          MUTEX_LOCKER(_accessLock);
 
           checkTime();
 
-          S& s = buffer[current];
+          S& s = _buffer[_current];
 
-          C::access(s).count += 1;
+          C::access(s)._count += 1;
 #endif
         }
 
-        ////////////////////////////////////////////////////////////////////////////////
-        // @brief decrements a counter
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief decrements a counter
+////////////////////////////////////////////////////////////////////////////////
 
         template<typename C>
         void decCounter () {
 #ifdef TRI_ENABLE_FIGURES
-          MUTEX_LOCKER(accessLock);
+          MUTEX_LOCKER(_accessLock);
 
           checkTime();
 
-          S& s = buffer[current];
+          S& s = _buffer[_current];
 
-          C::access(s).count -= 1;
+          C::access(s)._count -= 1;
 #endif
         }
 
-        ////////////////////////////////////////////////////////////////////////////////
-        // @brief generate a new figure
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate a new figure
+////////////////////////////////////////////////////////////////////////////////
 
         template<typename F>
         void addFigure (double value) {
 #ifdef TRI_ENABLE_FIGURES
-          MUTEX_LOCKER(accessLock);
+          MUTEX_LOCKER(_accessLock);
 
           checkTime();
 
-          S& s = buffer[current];
+          S& s = _buffer[_current];
 
-          F::access(s).count += 1;
-          F::access(s).sum += value;
+          F::access(s)._count += 1;
+          F::access(s)._sum += value;
 #endif
         }
 
-        ////////////////////////////////////////////////////////////////////////////////
-        // @brief generate a new figure
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate a new figure
+////////////////////////////////////////////////////////////////////////////////
 
         template<typename F>
         void addFigure (size_t pos, double value) {
 #ifdef TRI_ENABLE_FIGURES
-          MUTEX_LOCKER(accessLock);
+          MUTEX_LOCKER(_accessLock);
 
           checkTime();
 
-          S& s = buffer[current];
+          S& s = _buffer[_current];
 
-          F::access(s).count[pos] += 1;
-          F::access(s).sum[pos] += value;
+          F::access(s)._count[pos] += 1;
+          F::access(s)._sum[pos] += value;
 #endif
         }
 
-        ////////////////////////////////////////////////////////////////////////////////
-        // @brief generate a new distribution
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate a new distribution
+////////////////////////////////////////////////////////////////////////////////
 
         template<typename F>
         void addDistribution (double value) {
 #ifdef TRI_ENABLE_FIGURES
-          MUTEX_LOCKER(accessLock);
+          MUTEX_LOCKER(_accessLock);
 
           checkTime();
 
-          S& s = buffer[current];
+          S& s = _buffer[_current];
 
-          F::access(s).count += 1;
-          F::access(s).sum += value;
-          F::access(s).squares += double(value * value);
+          F::access(s)._count += 1;
+          F::access(s)._sum += value;
+          F::access(s)._squares += double(value * value);
 
-          if (F::access(s).minimum > value) {
-            F::access(s).minimum = value;
+          if (F::access(s)._minimum > value) {
+            F::access(s)._minimum = value;
           }
 
-          if (F::access(s).maximum < value) {
-            F::access(s).maximum = value;
+          if (F::access(s)._maximum < value) {
+            F::access(s)._maximum = value;
           }
 
-          typename vector<double>::const_iterator i = F::access(s).cuts.begin();
-          vector<uint32_t>::iterator j = F::access(s).counts.begin();
+          typename vector<double>::const_iterator i = F::access(s)._cuts.begin();
+          vector<uint32_t>::iterator j = F::access(s)._counts.begin();
 
-          for(;  i != F::access(s).cuts.end();  ++i, ++j) {
+          for(;  i != F::access(s)._cuts.end();  ++i, ++j) {
             if (value < *i) {
               (*j)++;
               return;
@@ -442,35 +514,35 @@ namespace triagens {
 #endif
         }
 
-        ////////////////////////////////////////////////////////////////////////////////
-        // @brief generate a new distribution
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate a new distribution
+////////////////////////////////////////////////////////////////////////////////
 
         template<typename F>
         void addDistribution (size_t pos, double value) {
 #ifdef TRI_ENABLE_FIGURES
-          MUTEX_LOCKER(accessLock);
+          MUTEX_LOCKER(_accessLock);
 
           checkTime();
 
-          S& s = buffer[current];
+          S& s = _buffer[_current];
 
-          F::access(s).count[pos] += 1;
-          F::access(s).sum[pos] += value;
-          F::access(s).squares[pos] += double(value * value);
+          F::access(s)._count[pos] += 1;
+          F::access(s)._sum[pos] += value;
+          F::access(s)._squares[pos] += double(value * value);
 
-          if (F::access(s).minimum[pos] > value) {
-            F::access(s).minimum[pos] = value;
+          if (F::access(s)._minimum[pos] > value) {
+            F::access(s)._minimum[pos] = value;
           }
 
-          if (F::access(s).maximum[pos] < value) {
-            F::access(s).maximum[pos] = value;
+          if (F::access(s)._maximum[pos] < value) {
+            F::access(s)._maximum[pos] = value;
           }
 
-          typename vector<double>::const_iterator i = F::access(s).cuts.begin();
-          vector<uint32_t>::iterator j = F::access(s).counts[pos].begin();
+          typename vector<double>::const_iterator i = F::access(s)._cuts.begin();
+          vector<uint32_t>::iterator j = F::access(s)._counts[pos].begin();
 
-          for(;  i != F::access(s).cuts.end();  ++i, ++j) {
+          for(;  i != F::access(s)._cuts.end();  ++i, ++j) {
             if (value < *i) {
               (*j)++;
               return;
@@ -481,15 +553,15 @@ namespace triagens {
 #endif
         }
 
-        ////////////////////////////////////////////////////////////////////////////////
-        // @brief returns the list of distributions
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the list of distributions
+////////////////////////////////////////////////////////////////////////////////
 
         vector<S> values (size_t n = N) {
           vector<S> result;
 
 #ifdef TRI_ENABLE_FIGURES
-          MUTEX_LOCKER(accessLock);
+          MUTEX_LOCKER(_accessLock);
 
           checkTime();
 
@@ -497,10 +569,10 @@ namespace triagens {
             n = N;
           }
 
-          size_t j = (current + N - n + 1) % N;
+          size_t j = (_current + N - n + 1) % N;
 
           for (size_t i = 0;  i < n;  ++i) {
-            result.push_back(buffer[j]);
+            result.push_back(_buffer[j]);
             j = (j + 1) % N;
           }
 
@@ -509,15 +581,15 @@ namespace triagens {
           return result;
         }
 
-        ////////////////////////////////////////////////////////////////////////////////
-        // @brief returns the list of distributions and times
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the list of distributions and times
+////////////////////////////////////////////////////////////////////////////////
 
         vector<S> values (vector<time_t>& times, size_t n = N) {
           vector<S> result;
 
 #ifdef TRI_ENABLE_FIGURES
-          MUTEX_LOCKER(accessLock);
+          MUTEX_LOCKER(_accessLock);
 
           checkTime();
 
@@ -527,11 +599,11 @@ namespace triagens {
 
           times.clear();
 
-          size_t j = (current + N - n + 1) % N;
+          size_t j = (_current + N - n + 1) % N;
 
           for (size_t i = 0;  i < n;  ++i) {
-            result.push_back(buffer[j]);
-            times.push_back(start[j]);
+            result.push_back(_buffer[j]);
+            times.push_back(_start[j]);
             j = (j + 1) % N;
           }
 #endif
@@ -541,41 +613,89 @@ namespace triagens {
 
       protected:
 
-        ////////////////////////////////////////////////////////////////////////////////
-        // @brief checks if we have to use a new time intervall
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if we have to use a new time intervall
+////////////////////////////////////////////////////////////////////////////////
 
         void checkTime () {
 #ifdef TRI_ENABLE_FIGURES
           time_t now = time(0);
 
           size_t p1 = now / P;
-          size_t p2 = start[current] / P;
+          size_t p2 = _start[_current] / P;
 
           if (p1 == p2) {
             return;
           }
 
-          S save = buffer[current];
+          S save = _buffer[_current];
 
           for (size_t p = max(p2, p1 - N) + 1;  p <= p1;  ++p) {
-            current = p % N;
+            _current = p % N;
 
-            buffer[current] = save;
-            start[current] = p * P;
+            _buffer[_current] = save;
+            _start[_current] = p * P;
           }
 #endif
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Utilities
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief staticstics ring-buffer
+////////////////////////////////////////////////////////////////////////////////
+
 #ifdef TRI_ENABLE_FIGURES
-        S buffer[N];
-        time_t start[N];
-        size_t current;
-        Mutex accessLock;
+        S _buffer[N];
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief time buffer
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FIGURES
+        time_t _start[N];
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief current position
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FIGURES
+        size_t _current;
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief access lock
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FIGURES
+        Mutex _accessLock;
 #endif
     };
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 #endif
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:

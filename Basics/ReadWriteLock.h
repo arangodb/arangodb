@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -29,11 +29,14 @@
 #ifndef TRIAGENS_JUTLAND_BASICS_READ_WRITE_LOCK_H
 #define TRIAGENS_JUTLAND_BASICS_READ_WRITE_LOCK_H 1
 
-#include <Basics/Common.h>
+#include "Basics/Common.h"
 
-#include <Basics/locks.h>
+#include "BasicsC/locks.h"
 
-#undef READ_WRITE_LOCK_COUNTER
+#undef TRI_READ_WRITE_LOCK_COUNTER
+
+namespace triagens {
+  namespace basics {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class ReadWriteLock
@@ -44,15 +47,11 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-namespace triagens {
-  namespace basics {
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
     class ReadWriteLock {
-      private:
         ReadWriteLock (ReadWriteLock const&);
         ReadWriteLock& operator= (ReadWriteLock const&);
 
@@ -102,10 +101,8 @@ namespace triagens {
 /// @brief check for read locked
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef READ_WRITE_LOCK_COUNTER
-
+#ifdef TRI_READ_WRITE_LOCK_COUNTER
         bool isReadLocked () const;
-
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -118,10 +115,8 @@ namespace triagens {
 /// @brief check for write locked
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef READ_WRITE_LOCK_COUNTER
-
+#ifdef TRI_READ_WRITE_LOCK_COUNTER
         bool isWriteLocked () const;
-
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -167,7 +162,7 @@ namespace triagens {
 /// @brief mutex for read-write counter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef READ_WRITE_LOCK_COUNTER
+#ifdef TRI_READ_WRITE_LOCK_COUNTER
         TRI_mutex_t _mutex;
 #endif
 
@@ -175,7 +170,7 @@ namespace triagens {
 /// @brief read counter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef READ_WRITE_LOCK_COUNTER
+#ifdef TRI_READ_WRITE_LOCK_COUNTER
         int32_t _readLockedCounter;
 #endif
 
@@ -183,7 +178,7 @@ namespace triagens {
 /// @brief write counter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef READ_WRITE_LOCK_COUNTER
+#ifdef TRI_READ_WRITE_LOCK_COUNTER
         int32_t _writeLockedCounter;
 #endif
     };

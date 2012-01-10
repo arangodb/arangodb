@@ -28,10 +28,11 @@
 #ifndef TRIAGENS_DURHAM_VOC_BASE_DOCUMENT_COLLECTION_H
 #define TRIAGENS_DURHAM_VOC_BASE_DOCUMENT_COLLECTION_H 1
 
-#include <VocBase/collection.h>
+#include "VocBase/collection.h"
 
-#include <Basics/json.h>
-#include <VocBase/result-set.h>
+#include "BasicsC/json.h"
+#include "ShapedJson/json-shaper.h"
+#include "VocBase/result-set.h"
 
 #ifdef __cplusplus
 extern "C" {

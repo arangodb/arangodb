@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AvocadoServer.h"
@@ -31,32 +31,26 @@
 
 #include "build.h"
 
-#include <Basics/Logger.h>
-#include <Basics/ProgramOptions.h>
-#include <Basics/ProgramOptionsDescription.h>
-#include <Basics/files.h>
-#include <Basics/init.h>
-#include <Basics/logging.h>
-#include <Basics/safe_cast.h>
-#include <Basics/strings.h>
-
-#include <Rest/ApplicationServerDispatcher.h>
-#include <Rest/HttpHandlerFactory.h>
-#include <Rest/Initialise.h>
-
+#include "Admin/RestHandlerCreator.h"
+#include "Basics/ProgramOptions.h"
+#include "Basics/ProgramOptionsDescription.h"
+#include "Basics/safe_cast.h"
+#include "BasicsC/files.h"
+#include "BasicsC/init.h"
+#include "BasicsC/logging.h"
+#include "BasicsC/strings.h"
+#include "Dispatcher/ApplicationServerDispatcher.h"
 #include "Dispatcher/DispatcherImpl.h"
-
-#include <Admin/RestHandlerCreator.h>
-
+#include "HttpServer/HttpHandlerFactory.h"
+#include "Logger/Logger.h"
+#include "Rest/Initialise.h"
 #include "RestHandler/RestActionHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestSystemActionHandler.h"
-
 #include "RestServer/ActionDispatcherThread.h"
-#include "RestServer/SystemActionDispatcherThread.h"
 #include "RestServer/AvocadoHttpServer.h"
 #include "RestServer/JSLoader.h"
-
+#include "RestServer/SystemActionDispatcherThread.h"
 #include "V8/v8-actions.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-shell.h"
@@ -69,11 +63,10 @@ using namespace triagens::rest;
 using namespace triagens::admin;
 using namespace triagens::avocado;
 
-#include "RestServer/js-actions.h"
-#include "RestServer/js-graph.h"
-#include "RestServer/js-json.h"
-#include "RestServer/js-modules.h"
-#include "RestServer/js-shell.h"
+#include "js/js-actions.h"
+#include "js/js-json.h"
+#include "js/js-modules.h"
+#include "js/js-shell.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -163,7 +156,7 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
     _adminPort("localhost:8530"),
     _dispatcherThreads(1),
     _startupPath(),
-    _startupModules(),
+    _startupModules("js/modules"),
     _actionPath(),
     _systemActionPath(),
     _actionThreads(1),
@@ -190,7 +183,7 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
 ////////////////////////////////////////////////////////////////////////////////
 
 void AvocadoServer::buildApplicationServer () {
-  _applicationServer = ApplicationServerDispatcher::create("[<options>] - starts the triAGENS AvocadoDB", TRIAGENS_VERSION);
+  _applicationServer = ApplicationServerDispatcher::create("[<options>] <database-directory>", TRIAGENS_VERSION);
   _applicationServer->setSystemConfigFile("avocado.conf");
   _applicationServer->setUserConfigFile(".avocado/avocado.conf");
 
@@ -253,8 +246,8 @@ void AvocadoServer::buildApplicationServer () {
   // database options
   // .............................................................................
 
-  additional["DATABASE Options"]
-    ("database.directory", &_databasePath, "path to the database directory")
+  additional["DATABASE Options:help-extended"]
+    ("database.directory", &_databasePath, "path to the database directory (use this option in configuration files instead of passing it via the command line)")
   ;
 
   // .............................................................................
@@ -285,7 +278,6 @@ void AvocadoServer::buildApplicationServer () {
   // .............................................................................
 
   if (! _applicationServer->parse(_argc, _argv, additional)) {
-    TRIAGENS_REST_SHUTDOWN;
     exit(EXIT_FAILURE);
   }
 
@@ -304,10 +296,9 @@ void AvocadoServer::buildApplicationServer () {
   }
 
   if (_startupPath.empty()) {
-    StartupLoader.defineScript("actions.js", JS_actions);
-    StartupLoader.defineScript("graph.js", JS_graph);
-    StartupLoader.defineScript("json.js", JS_json);
     StartupLoader.defineScript("modules.js", JS_modules);
+    StartupLoader.defineScript("actions.js", JS_actions);
+    StartupLoader.defineScript("json.js", JS_json);
     StartupLoader.defineScript("shell.js", JS_shell);
   }
   else {
@@ -322,8 +313,8 @@ void AvocadoServer::buildApplicationServer () {
 
       if (ok) {
         LOGGER_FATAL << "action directory '" << path << "' must be a directory";
+        cerr << "action directory '" << path << "' must be a directory\n";
         LOGGER_INFO << "please use the '--database.directory' option";
-        TRIAGENS_REST_SHUTDOWN;
         exit(EXIT_FAILURE);
       }
 
@@ -331,8 +322,8 @@ void AvocadoServer::buildApplicationServer () {
 
       if (! ok) {
         LOGGER_FATAL << "cannot create action directory '" << path << "': " << TRI_last_error();
+        cerr << "cannot create action directory '" << path << "': " << TRI_last_error() << "\n";
         LOGGER_INFO << "please use the '--database.directory' option";
-        TRIAGENS_REST_SHUTDOWN;
         exit(EXIT_FAILURE);
       }
     }
@@ -371,16 +362,16 @@ void AvocadoServer::buildApplicationServer () {
   if (_daemonMode) {
     if (_pidFile.empty()) {
       LOGGER_FATAL << "no pid-file defined, but daemon mode requested";
+      cerr << "no pid-file defined, but daemon mode requested\n";
       LOGGER_INFO << "please use the '--pid-file' option";
-      TRIAGENS_REST_SHUTDOWN;
       exit(EXIT_FAILURE);
     }
   }
 
   if (_databasePath.empty()) {
     LOGGER_FATAL << "no database path has been supplied, giving up";
+    cerr << "no database path has been supplied, giving up\n";
     LOGGER_INFO << "please use the '--database.directory' option";
-    TRIAGENS_REST_SHUTDOWN;
     exit(EXIT_FAILURE);
   }
 }
@@ -521,7 +512,7 @@ void AvocadoServer::executeShell () {
   v8::Isolate* isolate;
   v8::Persistent<v8::Context> context;
   bool ok;
-  char const* files[] = { "graph.js", "json.js", "modules.js", "shell.js" };
+  char const* files[] = { "modules.js", "json.js", "shell.js" };
   size_t i;
 
   // only simple logging
@@ -544,7 +535,7 @@ void AvocadoServer::executeShell () {
 
   if (context.IsEmpty()) {
     LOGGER_FATAL << "cannot initialize V8 engine";
-    TRIAGENS_REST_SHUTDOWN;
+    cerr << "cannot initialize V8 engine\n";
     exit(EXIT_FAILURE);
   }
 
@@ -563,7 +554,7 @@ void AvocadoServer::executeShell () {
     }
     else {
       LOGGER_FATAL << "cannot load json file '" << files[i] << "'";
-      TRIAGENS_REST_SHUTDOWN;
+      cerr << "cannot load json file '" << files[i] << "'\n";
       exit(EXIT_FAILURE);
     }
   }
@@ -620,8 +611,8 @@ void AvocadoServer::openDatabase () {
 
   if (_vocbase == 0) {
     LOGGER_FATAL << "cannot open database '" << _databasePath << "'";
+    cerr << "cannot open database '" << _databasePath << "'\n";
     LOGGER_INFO << "please use the '--database.directory' option";
-    TRIAGENS_REST_SHUTDOWN;
     exit(EXIT_FAILURE);
   }
 }

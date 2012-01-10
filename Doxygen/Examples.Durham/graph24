@@ -1,0 +1,11 @@
+avocado> v1 = g.addVertex();
+Vertex(<graph>, "153246:8712055")
+
+avocado> v2 = g.addVertex();
+Vertex(<graph>, "153246:8777591")
+
+avocado> v1.addInEdge(v2, "knows", { data : 1 });
+Edge(<graph>, "3999653:8908663")
+
+avocado> v1.getInEdges();
+[ Edge(<graph>, "3999653:8908663") ]

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,24 +22,18 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-vocbase.h"
 
-#include <Basics/conversions.h>
-#include <Basics/csv.h>
-#include <Basics/logging.h>
-#include <Basics/strings.h>
-#include <Basics/StringUtils.h>
-
-#include <VocBase/query.h>
-#include <VocBase/simple-collection.h>
-#include <VocBase/vocbase.h>
-
+#include "Basics/StringUtils.h"
+#include "BasicsC/conversions.h"
+#include "BasicsC/csv.h"
+#include "BasicsC/logging.h"
+#include "BasicsC/strings.h"
+#include "VocBase/simple-collection.h"
 #include "ShapedJson/shaped-json.h"
-
-#include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 
 using namespace std;
@@ -1382,48 +1376,15 @@ static v8::Handle<v8::Value> JS_OutEdgesQuery (v8::Arguments const& argv) {
 ///
 /// @FUN{select()}
 ///
-/// The "select" operator finds all documents which match a given example.
+/// The @FN{select} operator finds all documents.
 ///
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
+/// @verbinclude fluent52
 ///
+/// @FUN{select(@FA{example})}
+///
+/// This version selects all documents with match a given example.
+///
+/// @verbinclude fluent53
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_SelectQuery (v8::Arguments const& argv) {
@@ -1453,6 +1414,58 @@ static v8::Handle<v8::Value> JS_SelectQuery (v8::Arguments const& argv) {
     v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
 
     StoreQuery(result, opQuery->clone(opQuery));
+
+    return scope.Close(result);
+  }
+
+  // .............................................................................
+  // case: one arguments
+  // .............................................................................
+
+  if (argv.Length() == 1) {
+    if (! argv[0]->IsObject()) {
+      return scope.Close(v8::ThrowException(v8::String::New("expecting an object as <example>")));
+    }
+
+    v8::Handle<v8::Object> example = argv[0]->ToObject();
+    v8::Handle<v8::Array> names = example->GetOwnPropertyNames();
+    size_t n = names->Length();
+
+    TRI_shaper_t* shaper = opQuery->_collection->_collection->_shaper;
+
+    TRI_shape_pid_t* pids = (TRI_shape_pid_t*) TRI_Allocate(n * sizeof(TRI_shape_pid_t));
+    TRI_shaped_json_t** values = (TRI_shaped_json_t**) TRI_Allocate(n * sizeof(TRI_shaped_json_t*));
+
+    for (size_t i = 0;  i < n;  ++i) {
+      v8::Handle<v8::Value> key = names->Get(i);
+      v8::Handle<v8::Value> val = example->Get(key);
+
+      v8::String::Utf8Value keyStr(key);
+      pids[i] = shaper->findAttributePathByName(shaper, *keyStr);
+      values[i] = TRI_ShapedJsonV8Object(val, shaper);
+
+      if (*keyStr == 0 || values[i] == 0) {
+        for (size_t j = 0;  j < i;  ++j) {
+          TRI_FreeShapedJson(values[i]);
+        }
+
+        TRI_Free(values);
+        TRI_Free(pids);
+
+        if (*keyStr == 0) {
+          return scope.Close(v8::ThrowException(v8::String::New("cannot convert attribute name to UTF8")));
+        }
+        else if (values[i] == 0) {
+          return scope.Close(v8::ThrowException(v8::String::New("cannot convert value to JSON")));
+        }
+
+        assert(false);
+      }
+    }
+
+    v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
+
+    StoreQuery(result, TRI_CreateSelectFullQuery(opQuery->clone(opQuery), n, pids, values));
 
     return scope.Close(result);
   }
@@ -2123,7 +2136,15 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New(err.c_str())));
   }
 
-  return scope.Close(v8::Number::New(did));
+  char* cidStr = TRI_StringUInt64(collection->base._cid);
+  char* didStr = TRI_StringUInt64(did);
+
+  string name = cidStr + string(":") + didStr;
+
+  TRI_FreeString(didStr);
+  TRI_FreeString(cidStr);
+
+  return scope.Close(v8::String::New(name.c_str()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

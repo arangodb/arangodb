@@ -1,0 +1,2 @@
+avocado> fromJson("{ \"a\" : true, \"b\" : [ 1, 2, 3 ] }");
+{ "a" : true, "b" : [ 1, 2, 3 ] }

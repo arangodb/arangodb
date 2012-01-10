@@ -31,8 +31,9 @@
 
 #include <Basics/Common.h>
 
-#include <Rest/Dispatcher.h>
 #include <Basics/Mutex.h>
+
+#include "Dispatcher/Dispatcher.h"
 
 namespace triagens {
   namespace rest {

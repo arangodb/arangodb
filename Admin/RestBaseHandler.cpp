@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,118 +22,213 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestBaseHandler.h"
 
 #include <boost/scoped_ptr.hpp>
 
-#include <Basics/Logger.h>
-#include <Basics/VariantArray.h>
-#include <Basics/VariantObject.h>
-#include <Basics/StringUtils.h>
-#include <Rest/HttpRequest.h>
-#include <Rest/HttpResponse.h>
-#include <Rest/OutputGenerator.h>
+#include "Basics/StringUtils.h"
+#include "Logger/Logger.h"
+#include "Rest/HttpRequest.h"
+#include "Rest/HttpResponse.h"
+#include "ResultGenerator/OutputGenerator.h"
+#include "Variant/VariantArray.h"
+#include "Variant/VariantBoolean.h"
+#include "Variant/VariantInt32.h"
+#include "Variant/VariantObject.h"
+#include "Variant/VariantString.h"
 
+using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
+using namespace triagens::admin;
 
-namespace triagens {
-  namespace admin {
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
 
-    // -----------------------------------------------------------------------------
-    // constructors and destructors
-    // -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup RestServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
-    RestBaseHandler::RestBaseHandler (HttpRequest* request)
-      : HttpHandler(request) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects an output format
+////////////////////////////////////////////////////////////////////////////////
 
-      if (request->requestType() == HttpRequest::HTTP_REQUEST_GET) {
-        bool found;
-        string const& method = StringUtils::tolower(request->value("__METHOD__", found));
+string SelectResultGenerator (HttpRequest* request) {
+  string format = request->header("accept");
 
-        if (found) {
-          if (method == "put") {
-            LOGGER_TRACE << "forcing method 'put'";
-            request->setRequestType(HttpRequest::HTTP_REQUEST_PUT);
-          }
-          else if (method == "post") {
-            LOGGER_TRACE << "forcing method 'post'";
-            request->setRequestType(HttpRequest::HTTP_REQUEST_POST);
-          }
-          else if (method == "delete") {
-            LOGGER_TRACE << "forcing method 'delete'";
-            request->setRequestType(HttpRequest::HTTP_REQUEST_DELETE);
-          }
-        }
+  if (format.empty()) {
+    return "application/json";
+  }
 
-        string const& body = request->value("__BODY__", found);
+  return format;
+}
 
-        if (found) {
-          LOGGER_TRACE << "forcing body";
-          request->setBody(body);
-        }
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup RestServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+RestBaseHandler::RestBaseHandler (HttpRequest* request)
+  : HttpHandler(request) {
+  bool found;
+
+  if (request->requestType() == HttpRequest::HTTP_REQUEST_GET) {
+    string const& method = StringUtils::tolower(request->value("__METHOD__", found));
+
+    if (found) {
+      if (method == "put") {
+        LOGGER_TRACE << "forcing method 'put'";
+        request->setRequestType(HttpRequest::HTTP_REQUEST_PUT);
+      }
+      else if (method == "post") {
+        LOGGER_TRACE << "forcing method 'post'";
+        request->setRequestType(HttpRequest::HTTP_REQUEST_POST);
+      }
+      else if (method == "delete") {
+        LOGGER_TRACE << "forcing method 'delete'";
+        request->setRequestType(HttpRequest::HTTP_REQUEST_DELETE);
       }
     }
 
-    // -----------------------------------------------------------------------------
-    // public methods
-    // -----------------------------------------------------------------------------
+    string const& body = request->value("__BODY__", found);
 
-    void RestBaseHandler::handleError (TriagensError const& error) {
-      if (response != 0) {
-        delete response;
-      }
-
-      generateError(HttpResponse::SERVER_ERROR, DIAGNOSTIC_INFORMATION(error));
-    }
-
-
-
-    void RestBaseHandler::generateResult (VariantObject* result) {
-      response = new HttpResponse(HttpResponse::OK);
-
-      string contentType;
-      bool ok = OutputGenerator::output("json", response->body(), result, contentType);
-
-      if (ok) {
-        response->setContentType(contentType);
-      }
-      else {
-        delete response;
-        generateError(HttpResponse::SERVER_ERROR, "cannot generate output");
-      }
-
-      delete result;
-    }
-
-
-
-    void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, string const& message) {
-      response = new HttpResponse(code);
-
-      response->body().appendText("{ \"error\" : true, \"message\" : \"" );
-      response->body().appendText(StringUtils::escapeUnicode(message));
-      response->body().appendText("\", \"code\" : ");
-      response->body().appendInteger(code);
-      response->body().appendText("}");
-
-      response->setContentType("application/json");
-    }
-
-
-
-    bool RestBaseHandler::parseBody (InputParser::ObjectDescription& desc) {
-      boost::scoped_ptr<VariantArray> json(InputParser::jsonArray(request));
-      bool ok = desc.parse(json.get());
-
-      if (! ok) {
-        generateError(HttpResponse::BAD, desc.lastError());
-      }
-
-      return ok;
+    if (found) {
+      LOGGER_TRACE << "forcing body";
+      request->setBody(body);
     }
   }
+
+  string const& format = request->value("__OUTPUT__", found);
+
+  if (found) {
+    LOGGER_TRACE << "forcing output format '" << format << "'";
+    request->setHeader("accept", format);
+  }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               HttpHandler methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup RestServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+void RestBaseHandler::handleError (TriagensError const& error) {
+  if (response != 0) {
+    delete response;
+  }
+
+  generateError(HttpResponse::SERVER_ERROR, DIAGNOSTIC_INFORMATION(error));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup RestServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a result
+////////////////////////////////////////////////////////////////////////////////
+
+void RestBaseHandler::generateResult (VariantObject* result) {
+  response = new HttpResponse(HttpResponse::OK);
+
+  string contentType;
+  bool ok = OutputGenerator::output(SelectResultGenerator(request), response->body(), result, contentType);
+
+  if (ok) {
+    response->setContentType(contentType);
+  }
+  else {
+    delete response;
+    generateError(HttpResponse::SERVER_ERROR, "cannot generate output");
+  }
+
+  delete result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates an error
+////////////////////////////////////////////////////////////////////////////////
+
+void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, string const& message) {
+  response = new HttpResponse(HttpResponse::OK);
+
+  VariantArray* result = new VariantArray();
+  result->add("error", new VariantBoolean(true));
+  result->add("message", new VariantString(message));
+  result->add("code", new VariantInt32((int32_t) code));
+
+  string contentType;
+  bool ok = OutputGenerator::output(SelectResultGenerator(request), response->body(), result, contentType);
+
+  if (ok) {
+    response->setContentType(contentType);
+  }
+  else {
+    response->body().appendText("{ \"error\" : true, \"message\" : \"" );
+    response->body().appendText(StringUtils::escapeUnicode(message));
+    response->body().appendText("\", \"code\" : ");
+    response->body().appendInteger(code);
+    response->body().appendText("}");
+
+    response->setContentType("application/json");
+  }
+
+  delete result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parses a request body in json given a description
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestBaseHandler::parseBody (InputParser::ObjectDescription& desc) {
+  boost::scoped_ptr<VariantArray> json(InputParser::jsonArray(request));
+  bool ok = desc.parse(json.get());
+
+  if (! ok) {
+    generateError(HttpResponse::BAD, desc.lastError());
+  }
+
+  return ok;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:

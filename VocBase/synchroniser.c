@@ -27,7 +27,7 @@
 
 #include "synchroniser.h"
 
-#include <Basics/logging.h>
+#include <BasicsC/logging.h>
 
 #include <VocBase/simple-collection.h>
 

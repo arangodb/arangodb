@@ -1,0 +1,90 @@
+dnl -*- mode: Autoconf; -*-
+
+dnl -----------------------------------------------------------------------------------------
+dnl option for ncurses support
+dnl -----------------------------------------------------------------------------------------
+
+tr_NCURSES_DEFAULT="yes"
+
+AC_ARG_ENABLE(ncurses,
+  AS_HELP_STRING([--enable-curses], [enable ncurses support (default: $tr_NCURSES_DEFAULT)]),
+  tr_NCURSES="$enableval",
+  tr_NCURSES="$tr_NCURSES_DEFAULT"
+)
+
+TR_STATIC_ENABLE([ncurses])
+
+dnl -----------------------------------------------------------------------------------------
+dnl checks for ncurses headers and libraries
+dnl -----------------------------------------------------------------------------------------
+
+AC_MSG_NOTICE([--------------------------------------------------------------------------------])
+AC_MSG_NOTICE([CHECKING FOR NCURSES])
+AC_MSG_NOTICE([--------------------------------------------------------------------------------])
+
+AC_LANG(C)
+
+if test "x$tr_NCURSES" = xyes;  then
+  AC_PATH_PROG(NCURSES_CONFIG, ncurses5-config, [], [$PATH:/usr/sbin/])
+
+  if test -z "$NCURSES_CONFIG"; then
+    AC_PATH_PROG(NCURSES_CONFIG, ncurses6-config, [], [$PATH:/usr/sbin/])
+  fi
+
+  if test -n "$NCURSES_CONFIG"; then
+    NCURSES_LIBS="`$NCURSES_CONFIG --libs`"
+    NCURSES_CPPFLAGS="`$NCURSES_CONFIG --cflags`"
+  else
+    AC_MSG_WARN([Please install the ncurses library])
+    tr_NCURSES="no"
+  fi
+fi
+
+if test "x$tr_NCURSES" = xyes;  then
+  TR_ABSOLUTE_LIBRARIES([ncurses], [NCURSES_LIBS])
+
+  if test "x$tr_libraries_found" != xyes;  then
+    AC_MSG_ERROR([Please install the ncurses library])
+  fi
+fi
+
+if test "x$tr_NCURSES" = xyes;  then
+  CPPFLAGS="$CPPFLAGS -DHAVE_NCURSES=1"
+fi
+
+dnl -----------------------------------------------------------------------------------------
+dnl fix include and static libraries
+dnl -----------------------------------------------------------------------------------------
+
+TR_INCLUDE([NCURSES_CPPFLAGS])
+
+TR_STATIC_LIBRARY([ncurses], [NCURSES_LIBS])
+
+dnl -----------------------------------------------------------------------------------------
+dnl add substitutions
+dnl -----------------------------------------------------------------------------------------
+
+AM_CONDITIONAL(ENABLE_NCURSES, test x$tr_NCURSES = xyes)
+
+AC_SUBST(NCURSES_CPPFLAGS)
+AC_SUBST(NCURSES_LDFLAGS)
+AC_SUBST(NCURSES_LIBS)
+
+dnl -----------------------------------------------------------------------------------------
+dnl informational output
+dnl -----------------------------------------------------------------------------------------
+
+if test "x$tr_NCURSES" = xyes;  then
+  LIB_INFO="$LIB_INFO|NCURSES support: enabled"
+
+  FLAG_INFO="$FLAG_INFO|NCURSES_CPPFLAGS: ${NCURSES_CPPFLAGS}"
+  FLAG_INFO="$FLAG_INFO|NCURSES_LDFLAGS:  ${NCURSES_LDFLAGS}"
+  FLAG_INFO="$FLAG_INFO|NCURSES_LIBS:     ${NCURSES_LIBS}"
+else
+  LIB_INFO="$LIB_INFO|NCURSES support: disabled"
+fi
+
+dnl Local Variables:
+dnl mode: outline-minor
+dnl outline-regexp: "^\\(dnl --SECTION--\\)"
+dnl End:

@@ -1,0 +1,7 @@
+avocado> db.examples.parameter();
+{
+ "syncAfterObjects" : 0,
+ "syncAfterBytes" : 0,
+ "syncAfterTime" : 0,
+ "journalSize" : 134217728 
+}

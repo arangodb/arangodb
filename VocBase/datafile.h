@@ -28,9 +28,9 @@
 #ifndef TRIAGENS_DURHAM_VOC_BASE_DATAFILE_H
 #define TRIAGENS_DURHAM_VOC_BASE_DATAFILE_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/common.h>
 
-#include <Basics/locks.h>
+#include <BasicsC/locks.h>
 
 #include <VocBase/vocbase.h>
 

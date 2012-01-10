@@ -28,10 +28,10 @@
 
 #include "JsonXResultGenerator.h"
 
-#include <Basics/Logger.h>
+#include <Logger/Logger.h>
 #include <Basics/StringBuffer.h>
 #include <Basics/StringUtils.h>
-#include <Basics/VariantObject.h>
+#include <Variant/VariantObject.h>
 
 using namespace triagens::basics;
 

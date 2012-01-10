@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_DURHAM_VOC_BASE_BLOB_COLLECTION_H
 #define TRIAGENS_DURHAM_VOC_BASE_BLOB_COLLECTION_H 1
 
-#include <Basics/Common.h>
+#include <BasicsC/common.h>
 
 #include <VocBase/vocbase.h>
 #include <VocBase/collection.h>

@@ -1,0 +1,63 @@
+dnl -*- mode: Autoconf; -*-
+
+dnl -----------------------------------------------------------------------------------------
+dnl check for boost headers and libraries
+dnl -----------------------------------------------------------------------------------------
+
+AC_MSG_NOTICE([--------------------------------------------------------------------------------])
+AC_MSG_NOTICE([CHECKING FOR BOOST])
+AC_MSG_NOTICE([--------------------------------------------------------------------------------])
+
+AC_LANG(C++)
+AC_LINK_IFELSE([AC_LANG_PROGRAM()]) # workaround for a bug in older autoconf
+
+AX_BOOST_BASE([1.33])
+
+if test "x$succeeded" != xyes;  then
+  AC_MSG_ERROR([Please install at least version 1.33 from http://www.boost.org/])
+else
+  tr_BOOST="yes"
+fi
+
+dnl -----------------------------------------------------------------------------------------
+dnl guess boost library suffix
+dnl -----------------------------------------------------------------------------------------
+
+BOOST_SUFFIX=""
+
+case $target in
+  *-apple-darwin*)
+    BOOST_SUFFIX="-mt"
+    ;;
+
+  *)
+    BOOST_SUFFIX=""
+    ;;
+esac
+
+dnl -----------------------------------------------------------------------------------------
+dnl fix include and static libraries
+dnl -----------------------------------------------------------------------------------------
+
+TR_INCLUDE([BOOST_CPPFLAGS])
+
+dnl -----------------------------------------------------------------------------------------
+dnl add substitutions
+dnl -----------------------------------------------------------------------------------------
+
+AC_SUBST(BOOST_CPPFLAGS)
+AC_SUBST(BOOST_LDFLAGS)
+AC_SUBST(BOOST_LIBS)
+
+dnl -----------------------------------------------------------------------------------------
+dnl informational output
+dnl -----------------------------------------------------------------------------------------
+
+FLAG_INFO="$FLAG_INFO|BOOST_CPPFLAGS: ${BOOST_CPPFLAGS}"
+FLAG_INFO="$FLAG_INFO|BOOST_LDFLAGS:  ${BOOST_LDFLAGS}"
+FLAG_INFO="$FLAG_INFO|BOOST_LIBS:     ${BOOST_LIBS}"
+
+dnl Local Variables:
+dnl mode: outline-minor
+dnl outline-regexp: "^\\(dnl --SECTION--\\)"
+dnl End:

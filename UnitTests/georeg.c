@@ -5,19 +5,29 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright by triAGENS GmbH - All rights reserved.
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
+/// The Programs (which include both the software and documentation)
+/// contain proprietary information of triAGENS GmbH; they are
+/// provided under a license agreement containing restrictions on use and
+/// disclosure and are also protected by copyright, patent and other
+/// intellectual and industrial property laws. Reverse engineering,
+/// disassembly or decompilation of the Programs, except to the extent
+/// required to obtain interoperability with other independently created
+/// software or as specified by law, is prohibited.
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+/// The Programs are not intended for use in any nuclear, aviation, mass
+/// transit, medical, or other inherently dangerous applications. It shall
+/// be the licensee's responsibility to take all appropriate fail-safe,
+/// backup, redundancy, and other measures to ensure the safe use of such
+/// applications if the Programs are used for such purposes, and triAGENS
+/// GmbH disclaims liability for any damages caused by such use of
+/// the Programs.
 ///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
+/// This software is the confidential and proprietary information of
+/// triAGENS GmbH. You shall not disclose such confidential and
+/// proprietary information and shall use it only in accordance with the
+/// terms of the license agreement you entered into with triAGENS GmbH.
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
@@ -146,7 +156,7 @@ void coonum(GeoCoordinate * gc, int num)
     gc->data=&ix[num%997];
     for(i=1;i<30;i++)
     {
-        lat=0.0;
+        lat=0.0;  
         lon=0.0;
         if( (j&1)==1 )
         {
@@ -177,9 +187,9 @@ void coonum(GeoCoordinate * gc, int num)
             if(i==25) { lat=0.01822353;  lon=0.01533208; }
             if(i==26) { lat=0.00934434;  lon=0.00800233; }
             if(i==27) { lat=0.00634434;  lon=0.00799320; }
-            if(i==28) { lat=0.00700493;  lon=0.00800769; }
-            if(i==29) { lat=0.00480493;  lon=0.00170769; }
-        }
+            if(i==28) { lat=0.00700493;  lon=0.00800769; }  
+            if(i==29) { lat=0.00480493;  lon=0.00170769; }  
+        }       
         gc->latitude+=lat;
         gc->longitude+=lon;
         j>>=1;
@@ -256,7 +266,7 @@ int main(int argc, char ** argv)
     gcp.data = ix + 64;
     r = GeoIndex_insert(gi,&gcp);
     list1 = GeoIndex_NearestCountPoints(gi,&gcp,1);
-    gccheck(13,list1,  1,"AAAAAAAAAAAAAAAABAAAAAAAA");
+    gccheck(13,list1,  1,"AAAAAAAAAAAAAAAABAAAAAAAA"); 
     gicheck(14,gi);
 
     GeoIndex_free(gi);
@@ -270,26 +280,26 @@ int main(int argc, char ** argv)
 /* do both searches with an empty index  */
 
     list1 = GeoIndex_NearestCountPoints(gi,&gcp1,3);
-    gccheck(20,list1,  0,"AAAAAAAAAAAAAAAAAAAAAAAAA");
+    gccheck(20,list1,  0,"AAAAAAAAAAAAAAAAAAAAAAAAA"); 
     list1 = GeoIndex_PointsWithinRadius(gi,&gcp1,100000.0);
-    gccheck(21,list1,0,"AAAAAAAAAAAAAAAAAAAAAAAAA");
+    gccheck(21,list1,0,"AAAAAAAAAAAAAAAAAAAAAAAAA"); 
 
 /* stick in Jo'burg  */
     gcp4.data=ix + 4;
     r = GeoIndex_insert(gi,&gcp4);
     icheck(22,0,r);
     list1 = GeoIndex_NearestCountPoints(gi,&gcp1,3);
-    gccheck(23,list1,  1,"ABAAAAAAAAAAAAAAAAAAAAAAA");
+    gccheck(23,list1,  1,"ABAAAAAAAAAAAAAAAAAAAAAAA"); 
     list1 = GeoIndex_PointsWithinRadius(gi,&gcp1,10000000.0);
-    gccheck(24,list1,1,"ABAAAAAAAAAAAAAAAAAAAAAAA");
+    gccheck(24,list1,1,"ABAAAAAAAAAAAAAAAAAAAAAAA"); 
 
 /* then take it out again and repeat tests with empty index */
     r = GeoIndex_remove(gi,&gcp4);
     icheck(25,0,r);
     list1 = GeoIndex_NearestCountPoints(gi,&gcp1,3);
-    gccheck(26,list1,  0,"AAAAAAAAAAAAAAAAAAAAAAAAA");
+    gccheck(26,list1,  0,"AAAAAAAAAAAAAAAAAAAAAAAAA"); 
     list1 = GeoIndex_PointsWithinRadius(gi,&gcp1,100000.0);
-    gccheck(27,list1,0,"AAAAAAAAAAAAAAAAAAAAAAAAA");
+    gccheck(27,list1,0,"AAAAAAAAAAAAAAAAAAAAAAAAA"); 
 
 /* try to delete from an empty index  */
 
@@ -380,7 +390,7 @@ int main(int argc, char ** argv)
     icheck(65,-3,i);
 
     gicheck(66,gi);
-
+   
     GeoIndex_free(gi);
 
 /*                                                 */
@@ -498,7 +508,7 @@ int main(int argc, char ** argv)
     pcheck(94,&ix[4],(char *)list1->coordinates[0].data);
 
     list1 = GeoIndex_NearestCountPoints(gi,&gcp,10);
-    gccheck(95,list1,  8,"OPBAAAAAAAAAAAAAAAAAAAAAA");
+    gccheck(95,list1,  8,"OPBAAAAAAAAAAAAAAAAAAAAAA"); 
 
     gcp.latitude  = 0.0;
     gcp.longitude = 20.0;
@@ -507,7 +517,7 @@ int main(int argc, char ** argv)
     icheck(96,0,i);
 
     list1 = GeoIndex_NearestCountPoints(gi,&gcp,10);
-    gccheck(97,list1,  7,"KPBAAAAAAAAAAAAAAAAAAAAAA");
+    gccheck(97,list1,  7,"KPBAAAAAAAAAAAAAAAAAAAAAA"); 
 
     gicheck(98,gi);
     GeoIndex_free(gi);
@@ -540,39 +550,39 @@ int main(int argc, char ** argv)
     gcp.latitude = -83.2;
     gcp.longitude = 19.2;
     list1 = GeoIndex_NearestCountPoints(gi,&gcp,7);
-    gccheck(110,list1,  7,"AAAAAAAAAAAAAAAPHAAAAAAAA");
+    gccheck(110,list1,  7,"AAAAAAAAAAAAAAAPHAAAAAAAA"); 
     gcp.latitude = -83.2;
     gcp.longitude = 19.2;
     list1 = GeoIndex_NearestCountPoints(gi,&gcp,110);
-    gccheck(112,list1,100,"PPPPPPPPPPPPPPPPPPPPPPPPP");
+    gccheck(112,list1,100,"PPPPPPPPPPPPPPPPPPPPPPPPP"); 
     gcp.latitude = -88.2;
     gcp.longitude = 13.2;
     list1 = GeoIndex_NearestCountPoints(gi,&gcp,10);
-    gccheck(114,list1, 10,"AAMPPAAAAAAAAAAAAAAAAAAAA");
+    gccheck(114,list1, 10,"AAMPPAAAAAAAAAAAAAAAAAAAA"); 
     gcp.latitude = -83.2;
     gcp.longitude = -163.2;
     list1 = GeoIndex_NearestCountPoints(gi,&gcp,2);
-    gccheck(116,list1,  2,"AADAAAAAAAAAAAAAAAAAAAAAA");
+    gccheck(116,list1,  2,"AADAAAAAAAAAAAAAAAAAAAAAA"); 
     gcp.latitude = -87.2;
     gcp.longitude = 13.2;
     list1 = GeoIndex_NearestCountPoints(gi,&gcp,1);
-    gccheck(118,list1,  1,"AAAAABAAAAAAAAAAAAAAAAAAA");
+    gccheck(118,list1,  1,"AAAAABAAAAAAAAAAAAAAAAAAA"); 
     gcp.latitude = -83.2;
     gcp.longitude = 19.2;
     list1 = GeoIndex_NearestCountPoints(gi,&gcp,7);
-    gccheck(120,list1,  7,"AAAAAAAAAAAAAAAPHAAAAAAAA");
+    gccheck(120,list1,  7,"AAAAAAAAAAAAAAAPHAAAAAAAA"); 
     gcp.latitude = -83.7;
     gcp.longitude = 19.7;
     list1 = GeoIndex_NearestCountPoints(gi,&gcp,7);
-    gccheck(122,list1,  7,"AAAAAAAAAAAAMPBAAAAAAAAAA");
+    gccheck(122,list1,  7,"AAAAAAAAAAAAMPBAAAAAAAAAA"); 
     gcp.latitude = -83.2;
     gcp.longitude = 19.2;
     list1 = GeoIndex_NearestCountPoints(gi,&gcp,50);
-    gccheck(124,list1, 50,"AAAAAAAAAAPPPPPPPPPPPPDAA");
+    gccheck(124,list1, 50,"AAAAAAAAAAPPPPPPPPPPPPDAA"); 
     gcp.latitude = -83.2;
     gcp.longitude = 19.2;
     list1 = GeoIndex_NearestCountPoints(gi,&gcp,11);
-    gccheck(126,list1, 11,"AAAAAAAAAAAAADAPPBAAAAAAA");
+    gccheck(126,list1, 11,"AAAAAAAAAAAAADAPPBAAAAAAA"); 
     gcp.latitude = -83.2;
     gcp.longitude = 19.2;
     list1 = GeoIndex_NearestCountPoints(gi,&gcp,4);
@@ -580,9 +590,9 @@ int main(int argc, char ** argv)
     gcp.latitude = -83.2;
     gcp.longitude = 19.2;
     list1 = GeoIndex_PointsWithinRadius(gi,&gcp,100000.0);
-    gccheck(150,list1,16,"AAAAAAAAAAAAMPAPPDAAAAAAA");
+    gccheck(150,list1,16,"AAAAAAAAAAAAMPAPPDAAAAAAA"); 
     gicheck(151,gi);
-
+    
     GeoIndex_free(gi);
 
 /*                                                 */
@@ -1107,7 +1117,7 @@ int main(int argc, char ** argv)
 /* forgot to allow for distance greater than pi.radius  */
 /* this went into sin(theta) to give small value, so it */
 /* found that many points were not within 30000 Km      */
-
+ 
     gi=GeoIndex_new();
     la=41.23456789;
     lo=39.87654321;
