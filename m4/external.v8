@@ -72,6 +72,7 @@ dnl grep libev version number
 dnl -----------------------------------------------------------------------------------------
 
 if test "$cross_compiling" = yes; then :
+  TRI_V8_VERSION="V8"
   AC_MSG_WARN([cannot compute V8 version number when cross compiling])
 else
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
