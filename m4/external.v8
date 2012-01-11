@@ -84,7 +84,7 @@ int main (int, char**) {
 }
 
 _ACEOF
-  if test "x`type ac_fn_cxx_try_run`" = "xfunction";  then
+  if test "x`type -t ac_fn_cxx_try_run`" = "xfunction" 2> /dev/null;  then
     AC_MSG_CHECKING([V8 version])
     if ac_fn_cxx_try_run "$LINENO" >conftest.output;  then
       TRI_V8_VERSION=`cat conftest.output`
