@@ -34,27 +34,34 @@ if test "x$tr_NCURSES" = xyes;  then
   if test -n "$NCURSES_CONFIG"; then
     NCURSES_LIBS="`$NCURSES_CONFIG --libs`"
     NCURSES_CPPFLAGS="`$NCURSES_CONFIG --cflags`"
+
+    TR_ABSOLUTE_LIBRARIES([ncurses], [NCURSES_LIBS])
+
+    if test "x$tr_libraries_found" != xyes;  then
+      AC_MSG_ERROR([Please install the ncurses library])
+    fi
+
+    TRI_NCURSES_VERSION="`$NCURSES_CONFIG --version`"
   else
-    AC_MSG_WARN([Please install the ncurses library])
-    tr_NCURSES="no"
+    AC_CHECK_HEADERS(curses.h, [tr_NCURSES="yes"], [tr_NCURSES="no"])
+
+    if test "x$tr_NCURSES" = xyes;  then
+      TR_FIND_C_LIBRARY([ncurses], [ncurses], [NCURSES_LIBS], [setupterm])
+      tr_NCURSES=$tr_library_found
+    fi
+
+    TRI_NCURSES_VERSION="ncurses"
   fi
 fi
 
-if test "x$tr_NCURSES" = xyes;  then
-  TR_ABSOLUTE_LIBRARIES([ncurses], [NCURSES_LIBS])
-
-  if test "x$tr_libraries_found" != xyes;  then
-    AC_MSG_ERROR([Please install the ncurses library])
-  fi
+if test "x$tr_NCURSES" != xyes;  then
+  AC_MSG_ERROR([Please install the ncurses library])
 fi
 
-if test "x$tr_NCURSES" = xyes;  then
-  AC_MSG_CHECKING([NCURSES version])
-  TRI_NCURSES_VERSION="`$NCURSES_CONFIG --version`"
-  AC_MSG_RESULT([$TRI_NCURSES_VERSION])
-  CPPFLAGS="$CPPFLAGS -DHAVE_NCURSES=1"
-  NCURSES_CPPFLAGS="${NCURSES_CPPFLAGS} -DTRI_NCURSES_VERSION='\"${TRI_NCURSES_VERSION}\"'"
-fi
+AC_MSG_CHECKING([NCURSES version])
+AC_MSG_RESULT([$TRI_NCURSES_VERSION])
+CPPFLAGS="$CPPFLAGS -DHAVE_NCURSES=1"
+NCURSES_CPPFLAGS="${NCURSES_CPPFLAGS} -DTRI_NCURSES_VERSION='\"${TRI_NCURSES_VERSION}\"'"
 
 dnl -----------------------------------------------------------------------------------------
 dnl fix include and static libraries
