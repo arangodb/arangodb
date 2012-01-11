@@ -77,7 +77,7 @@ dnl ----------------------------------------------------------------------------
 dnl grep readline version number
 dnl -----------------------------------------------------------------------------------------
 
-if test "x$ch_READLINE" = xyes;  then
+if test "x$tr_READLINE" = xyes;  then
 
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
