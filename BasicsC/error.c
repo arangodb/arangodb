@@ -299,6 +299,8 @@ void TRI_InitialiseError () {
   TRI_set_errno_string(3, "illegal number");
   TRI_set_errno_string(4, "numeric overflow");
   TRI_set_errno_string(5, "illegal option");
+  TRI_set_errno_string(6, "dead process identifier");
+  TRI_set_errno_string(7, "unlocked file");
 
 #if defined(TRI_GCC_THREAD_LOCAL_STORAGE) || defined(TRI_WIN32_THREAD_LOCAL_STORAGE)
   ErrorNumber._number = 0;

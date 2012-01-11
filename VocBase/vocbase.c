@@ -839,6 +839,14 @@ void TRI_InitialiseVocBase () {
 
   // document errors
   TRI_set_errno_string(TRI_VOC_ERROR_DOCUMENT_NOT_FOUND, "document not found");
+
+#ifdef TRI_READLINE_VERSION
+  LOG_TRACE("%s", "$Revision: READLINE " TRI_READLINE_VERSION " $");
+#endif
+
+#ifdef TRI_V8_VERSION
+  LOG_TRACE("%s", "$Revision: V8 " TRI_V8_VERSION " $");
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

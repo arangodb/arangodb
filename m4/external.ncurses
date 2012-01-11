@@ -49,7 +49,11 @@ if test "x$tr_NCURSES" = xyes;  then
 fi
 
 if test "x$tr_NCURSES" = xyes;  then
+  AC_MSG_CHECKING([NCURSES version])
+  TRI_NCURSES_VERSION="`$NCURSES_CONFIG --version`"
+  AC_MSG_RESULT([$TRI_NCURSES_VERSION])
   CPPFLAGS="$CPPFLAGS -DHAVE_NCURSES=1"
+  NCURSES_CPPFLAGS="${NCURSES_CPPFLAGS} -DTRI_NCURSES_VERSION='\"${TRI_NCURSES_VERSION}\"'"
 fi
 
 dnl -----------------------------------------------------------------------------------------
@@ -75,13 +79,14 @@ dnl informational output
 dnl -----------------------------------------------------------------------------------------
 
 if test "x$tr_NCURSES" = xyes;  then
-  LIB_INFO="$LIB_INFO|NCURSES support: enabled"
+  LIB_INFO="$LIB_INFO|NCURSES VERSION: ${TRI_NCURSES_VERSION}"
 
   FLAG_INFO="$FLAG_INFO|NCURSES_CPPFLAGS: ${NCURSES_CPPFLAGS}"
   FLAG_INFO="$FLAG_INFO|NCURSES_LDFLAGS:  ${NCURSES_LDFLAGS}"
   FLAG_INFO="$FLAG_INFO|NCURSES_LIBS:     ${NCURSES_LIBS}"
+  FLAG_INFO="$FLAG_INFO|."
 else
-  LIB_INFO="$LIB_INFO|NCURSES support: disabled"
+  LIB_INFO="$LIB_INFO|NCURSES VERSION: disabled"
 fi
 
 dnl Local Variables:

@@ -45,6 +45,7 @@ case $target in
     ;;
 esac
 
+AC_PROG_CXXCPP
 AC_PROG_CC($list_cc)
 AC_PROG_CXX($list_cxx)
 AC_PROG_CPP

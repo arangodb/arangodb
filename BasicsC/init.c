@@ -32,6 +32,8 @@
 #include "BasicsC/random.h"
 #include "BasicsC/socket-utils.h"
 
+#include "build.h"
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -51,6 +53,12 @@ void TRI_InitialiseC () {
   TRI_InitialiseHashes();
   TRI_InitialiseRandom();
   TRI_InitialiseSockets();
+
+  LOG_TRACE("%s", "$Revision: BASICS-C " TRIAGENS_VERSION " (c) triAGENS GmbH $");
+
+#ifdef TRI_NCURSES_VERSION
+  LOG_TRACE("%s", "$Revision: NCURSES " TRI_NCURSES_VERSION " $");
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

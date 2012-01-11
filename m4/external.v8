@@ -31,17 +31,25 @@ CPPFLAGS="$CPPFLAGS $V8_CPPFLAGS"
 SAVE_LDFLAGS="$LDFLAGS"
 LDFLAGS="$LDFLAGS $V8_LDFLAGS"
 
+SAVE_LIBS="$LIBS"
+
 dnl -----------------------------------------------------------------------------------------
 dnl checks for the V8 library
 dnl -----------------------------------------------------------------------------------------
 
 AC_MSG_NOTICE([--------------------------------------------------------------------------------])
-AC_MSG_NOTICE([CHECKING FOR NCURSES])
+AC_MSG_NOTICE([CHECKING FOR GOOGLE V8])
 AC_MSG_NOTICE([--------------------------------------------------------------------------------])
 
 AC_LANG(C++)
 
-AC_CHECK_LIB([v8], [main], [V8_LIBS="-lv8"], )
+tr_V8="yes"
+
+AX_CXX_CHECK_LIB([v8], [#include <v8.h>], [v8::V8::GetVersion()], [V8_LIBS="-lv8"], [tr_V8="no"])
+
+if test "x$tr_V8" != xyes;  then
+  AC_MSG_ERROR([Please install the V8 library from Google])
+fi
 
 if test "x$V8_CPPFLAGS" != x;  then
   TR_INCLUDE([V8_CPPFLAGS])
@@ -55,17 +63,59 @@ AC_SUBST(V8_CPPFLAGS)
 AC_SUBST(V8_LDFLAGS)
 AC_SUBST(V8_LIBS)
 
+LIBS="$LIBS ${V8_LIBS}"
+LDFLAGS="$LDFLAGS ${V8_LDFLAGS}"
+CPPFLAGS="$CPPFLAGS ${V8_CPPFLAGS}"
+
+dnl -----------------------------------------------------------------------------------------
+dnl grep libev version number
+dnl -----------------------------------------------------------------------------------------
+
+if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <v8.h>
+#include <stdio.h>
+
+int main (int, char**) {
+  printf("%s\n", v8::V8::GetVersion());
+}
+
+_ACEOF
+AC_MSG_CHECKING([V8 version])
+if ac_fn_cxx_try_run "$LINENO" >conftest.output;  then
+  TRI_V8_VERSION=`cat conftest.output`
+  AC_MSG_RESULT([$TRI_V8_VERSION])
+else
+  AC_MSG_RESULT([failed])
+  AC_MSG_ERROR([Please install the V8 library from Google])
+fi
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext conftest.$ac_objext conftest.beam conftest.$ac_ext conftest.output
+
+
 dnl -----------------------------------------------------------------------------------------
 dnl restore flags
 dnl -----------------------------------------------------------------------------------------
 
+LIBS="$SAVE_LIBS"
 LDFLAGS="$SAVE_LDFLAGS"
 CPPFLAGS="$SAVE_CPPFLAGS"
+
+V8_CPPFLAGS="${V8_CPPFLAGS} -DTRI_V8_VERSION='\"${TRI_V8_VERSION}\"'"
 
 dnl -----------------------------------------------------------------------------------------
 dnl informational output
 dnl -----------------------------------------------------------------------------------------
 
+LIB_INFO="$LIB_INFO|V8 VERSION: ${TRI_V8_VERSION}"
+
 FLAG_INFO="$FLAG_INFO|V8_CPPFLAGS: ${V8_CPPFLAGS}"
 FLAG_INFO="$FLAG_INFO|V8_LDFLAGS:  ${V8_LDFLAGS}"
 FLAG_INFO="$FLAG_INFO|V8_LIBS:     ${V8_LIBS}"
+FLAG_INFO="$FLAG_INFO|."
