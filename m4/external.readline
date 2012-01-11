@@ -77,6 +77,8 @@ dnl ----------------------------------------------------------------------------
 dnl grep readline version number
 dnl -----------------------------------------------------------------------------------------
 
+if test "x$ch_READLINE" = xyes;  then
+
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <readline/readline.h>
@@ -95,6 +97,8 @@ eval "$ac_cpp conftest.$ac_ext" | fgrep "long sdnhg36ed" | awk '{print $4 "." $5
 TRI_READLINE_VERSION=`cat conftest.output`
 AC_MSG_RESULT([$TRI_READLINE_VERSION])
 rm -f conftest*
+
+fi
 
 dnl -----------------------------------------------------------------------------------------
 dnl add substitutions
