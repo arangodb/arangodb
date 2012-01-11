@@ -82,7 +82,11 @@ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 #include <readline/readline.h>
 
 main () {
+#if defined(RL_VERSION_MAJOR) && defined(RL_VERSION_MINOR)
   long sdnhg36ed = RL_VERSION_MAJOR RL_VERSION_MINOR ;
+#else
+  long sdnhg36ed = RL_READLINE_VERSION hex ;
+#endif
 }
 
 _ACEOF
