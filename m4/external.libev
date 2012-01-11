@@ -90,6 +90,25 @@ AC_SUBST(LIBEV_LDFLAGS)
 AC_SUBST(LIBEV_LIBS)
 
 dnl -----------------------------------------------------------------------------------------
+dnl grep libev version number
+dnl -----------------------------------------------------------------------------------------
+
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <ev.h>
+
+main () {
+  long sdnhg36ed = EV_VERSION_MAJOR EV_VERSION_MINOR ;
+}
+
+_ACEOF
+AC_MSG_CHECKING([LIBEV version])
+eval "$ac_cpp conftest.$ac_ext" | fgrep "long sdnhg36ed" | awk '{print $4 "." $5}' > conftest.output
+TRI_LIBEV_VERSION=`cat conftest.output`
+AC_MSG_RESULT([$TRI_LIBEV_VERSION])
+rm -f conftest*
+
+dnl -----------------------------------------------------------------------------------------
 dnl restore flags
 dnl -----------------------------------------------------------------------------------------
 
@@ -97,22 +116,21 @@ LIBS="$SAVE_LIBS"
 LDFLAGS="$SAVE_LDFLAGS"
 CPPFLAGS="$SAVE_CPPFLAGS"
 
+LIBEV_CPPFLAGS="${LIBEV_CPPFLAGS} -DTRI_LIBEV_VERSION='\"${TRI_LIBEV_VERSION}\"'"
+
 dnl -----------------------------------------------------------------------------------------
 dnl informational output
 dnl -----------------------------------------------------------------------------------------
 
 if test "x$tr_LIBEV" = xyes;  then
-  if test "x$LIBEV" = x;  then
-    LIB_INFO="$LIB_INFO|LIBEV support: enabled"
+  LIB_INFO="$LIB_INFO|LIBEV VERSION: ${TRI_LIBEV_VERSION}"
 
-    FLAG_INFO="$FLAG_INFO|LIBEV_CPPFLAGS: ${LIBEV_CPPFLAGS}"
-    FLAG_INFO="$FLAG_INFO|LIBEV_LDFLAGS:  ${LIBEV_LDFLAGS}"
-    FLAG_INFO="$FLAG_INFO|LIBEV_LIBS:     ${LIBEV_LIBS}"
-  else
-    LIB_INFO="$LIB_INFO|LIBEV support: enabled (path $LIBEV)"
-  fi
+  FLAG_INFO="$FLAG_INFO|LIBEV_CPPFLAGS: ${LIBEV_CPPFLAGS}"
+  FLAG_INFO="$FLAG_INFO|LIBEV_LDFLAGS:  ${LIBEV_LDFLAGS}"
+  FLAG_INFO="$FLAG_INFO|LIBEV_LIBS:     ${LIBEV_LIBS}"
+  FLAG_INFO="$FLAG_INFO|."
 else
-  LIB_INFO="$LIB_INFO|LIBEV support: disabled"
+  LIB_INFO="$LIB_INFO|LIBEV VERSION: disabled"
 fi
 
 dnl Local Variables:

@@ -33,7 +33,7 @@ avocadodb
 libavocadodb.a
 build.c
 build.info
-config/config.h*
+config/config.h
 Doxygen/avocado.doxy
 Doxygen/html/
 Doxygen/js/

@@ -24,6 +24,10 @@ if test "x$tr_flex_usable" != "xyes"; then
   AC_MSG_ERROR([Please install flex version 2.5.35 or higher from http://ftp.gnu.org/gnu/flex/])
 fi
 
+AC_MSG_CHECKING([FLEX version])
+TRI_FLEX_VERSION=`$LEX --version`
+AC_MSG_RESULT([$TRI_FLEX_VERSION])
+
 AM_CONDITIONAL(ENABLE_FLEX, test "x$tr_flex_usable" = xyes)
 
 dnl -----------------------------------------------------------------------------------------
@@ -50,11 +54,15 @@ if test "x$tr_bison_usable" != "xyes"; then
   AC_MSG_ERROR([Please install bison version 2.4.1 or higher from http://ftp.gnu.org/gnu/bison/])
 fi
 
+AC_MSG_CHECKING([BISON version])
+TRI_BISON_VERSION=`$BISON --version | head -1`
+AC_MSG_RESULT([$TRI_BISON_VERSION])
+
 AM_CONDITIONAL(ENABLE_BISON, test "x$tr_bison_usable" = xyes)
 
 dnl -----------------------------------------------------------------------------------------
 dnl informational output
 dnl -----------------------------------------------------------------------------------------
 
-BASIC_INFO="$BASIC_INFO|ENABLE_FLEX:  ${tr_flex_usable}"
-BASIC_INFO="$BASIC_INFO|ENABLE_BISON: ${tr_bison_usable}"
+LIB_INFO="$LIB_INFO|FLEX VERSION: ${TRI_FLEX_VERSION}"
+LIB_INFO="$LIB_INFO|BISON VERSION: ${TRI_BISON_VERSION}"

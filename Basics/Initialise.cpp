@@ -54,6 +54,11 @@ namespace triagens {
       string revision = "$Revision: BASICS " TRIAGENS_VERSION " (c) triAGENS GmbH $";
       LOGGER_TRACE << revision;
 
+#ifdef BOOST_VERSION
+      revision = "$Revision: BOOST " TRI_BOOST_VERSION " $";
+      LOGGER_TRACE << revision;
+#endif      
+
 #ifdef TRI_BROKEN_CXA_GUARD
       pthread_cond_t cond;
       pthread_cond_init(&cond, 0);

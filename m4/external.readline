@@ -74,6 +74,25 @@ if test "x$tr_READLINE" = xyes -o "x$tr_READLINE" = xmaybe;  then
 fi
 
 dnl -----------------------------------------------------------------------------------------
+dnl grep readline version number
+dnl -----------------------------------------------------------------------------------------
+
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <readline/readline.h>
+
+main () {
+  long sdnhg36ed = RL_VERSION_MAJOR RL_VERSION_MINOR ;
+}
+
+_ACEOF
+AC_MSG_CHECKING([READLINE version])
+eval "$ac_cpp conftest.$ac_ext" | fgrep "long sdnhg36ed" | awk '{print $4 "." $5}' > conftest.output
+TRI_READLINE_VERSION=`cat conftest.output`
+AC_MSG_RESULT([$TRI_READLINE_VERSION])
+rm -f conftest*
+
+dnl -----------------------------------------------------------------------------------------
 dnl add substitutions
 dnl -----------------------------------------------------------------------------------------
 
@@ -93,6 +112,7 @@ CPPFLAGS="$SAVE_CPPFLAGS"
 
 if test "x$tr_READLINE" = xyes;  then
   CPPFLAGS="$CPPFLAGS -DHAVE_READLINE=1"
+  READLINE_CPPFLAGS="${READLINE_CPPFLAGS} -DTRI_READLINE_VERSION='\"${TRI_READLINE_VERSION}\"'"
 fi
 
 dnl -----------------------------------------------------------------------------------------
@@ -100,17 +120,14 @@ dnl informational output
 dnl -----------------------------------------------------------------------------------------
 
 if test "x$tr_READLINE" = xyes;  then
-  if test "x$READLINE" = x;  then
-    LIB_INFO="$LIB_INFO|READLINE support: enabled"
-  else
-    LIB_INFO="$LIB_INFO|READLINE support: enabled (path $READLINE)"
-  fi
+  LIB_INFO="$LIB_INFO|READLINE VERSION: ${TRI_READLINE_VERSION}"
 
   FLAG_INFO="$FLAG_INFO|READLINE_CPPFLAGS: ${READLINE_CPPFLAGS}"
   FLAG_INFO="$FLAG_INFO|READLINE_LDFLAGS:  ${READLINE_LDFLAGS}"
   FLAG_INFO="$FLAG_INFO|READLINE_LIBS:     ${READLINE_LIBS}"
+  FLAG_INFO="$FLAG_INFO|."
 else
-  LIB_INFO="$LIB_INFO|READLINE support: disabled"
+  LIB_INFO="$LIB_INFO|READLINE VERSION: disabled"
 fi
 
 dnl Local Variables:
