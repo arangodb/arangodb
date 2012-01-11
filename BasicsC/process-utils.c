@@ -146,9 +146,14 @@ unsigned int TRI_ProcessSize (TRI_pid_t pid) {
   if (fd > 0) {
     char str[1024];
     process_state_t st;
+    size_t n;
 
-    read(fd, str, 1024);
+    n = read(fd, str, 1024);
     close(fd);
+
+    if (n < 0) {
+      return 0;
+    }
 
     sscanf(str, "%d %s %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %lu %lu %ld %ld %ld %ld %ld %llu %lu", &st.pid,
            (char*) &st.comm, &st.state, &st.ppid, &st.pgrp, &st.session, &st.tty_nr, &st.tpgid,

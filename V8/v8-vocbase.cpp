@@ -2422,10 +2422,7 @@ static v8::Handle<v8::Value> JS_SaveEdgesCol (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
                                             const v8::AccessorInfo& info) {
-  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(info.Holder());
 
@@ -2522,10 +2519,7 @@ static v8::Handle<v8::Value> JS_CollectionsVocBase (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> MapGetEdges (v8::Local<v8::String> name,
                                             const v8::AccessorInfo& info) {
-  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(info.Holder());
 

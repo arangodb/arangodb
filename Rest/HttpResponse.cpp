@@ -398,7 +398,6 @@ namespace triagens {
       basics::Dictionary<char const*>::KeyValue const* begin;
       basics::Dictionary<char const*>::KeyValue const* end;
 
-      bool seenContentLength = false;
       bool seenTransferEncoding = false;
       string transferEncoding;
 
@@ -409,8 +408,8 @@ namespace triagens {
           continue;
         }
 
+        // ignore content-length
         if (strcmp(key, "content-length") == 0) {
-          seenContentLength = true;
           continue;
         }
 

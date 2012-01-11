@@ -47,7 +47,6 @@
 static bool CheckSyncSimCollection (TRI_sim_collection_t* collection) {
   TRI_collection_t* base;
   TRI_datafile_t* journal;
-  TRI_voc_size_t nSynced;
   TRI_voc_size_t nWritten;
   bool ok;
   bool worked;
@@ -73,7 +72,6 @@ static bool CheckSyncSimCollection (TRI_sim_collection_t* collection) {
     TRI_LockCondition(&collection->_journalsCondition);
 
     synced = journal->_synced;
-    nSynced = journal->_nSynced;
 
     written = journal->_written;
     nWritten = journal->_nWritten;
@@ -177,7 +175,6 @@ static bool CheckJournalSimCollection (TRI_sim_collection_t* collection) {
 static bool CheckSyncCompactorSimCollection (TRI_sim_collection_t* collection) {
   TRI_collection_t* base;
   TRI_datafile_t* journal;
-  TRI_voc_size_t nSynced;
   TRI_voc_size_t nWritten;
   bool ok;
   bool worked;
@@ -203,7 +200,6 @@ static bool CheckSyncCompactorSimCollection (TRI_sim_collection_t* collection) {
     TRI_LockCondition(&collection->_journalsCondition);
 
     synced = journal->_synced;
-    nSynced = journal->_nSynced;
 
     written = journal->_written;
     nWritten = journal->_nWritten;
@@ -219,7 +215,6 @@ static bool CheckSyncCompactorSimCollection (TRI_sim_collection_t* collection) {
 
       if (ok) {
         journal->_synced = written;
-        journal->_nSynced = nWritten;
         journal->_lastSynced = ti;
       }
       else {

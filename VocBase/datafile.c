@@ -905,7 +905,14 @@ bool TRI_SealDatafile (TRI_datafile_t* datafile) {
 
   // truncate datafile
   if (ok) {
-    ftruncate(datafile->_fd, datafile->_currentSize);
+    int res;
+
+    res = ftruncate(datafile->_fd, datafile->_currentSize);
+
+    if (res < 0) {
+      TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      LOG_ERROR("cannot truncate datafile '%s': %s", datafile->_filename, TRI_last_error());
+    }
 
     datafile->_isSealed = true;
     datafile->_state = TRI_DF_STATE_READ;
