@@ -253,10 +253,8 @@ static void CreateHeader (TRI_doc_collection_t* c,
                           size_t markerSize,
                           TRI_doc_mptr_t* header,
                           void const* additional) {
-  TRI_sim_collection_t* collection;
   TRI_doc_document_marker_t const* marker;
 
-  collection = (TRI_sim_collection_t*) c;
   marker = (TRI_doc_document_marker_t const*) m;
 
   header->_did = marker->_did;
@@ -347,10 +345,8 @@ static void UpdateHeader (TRI_doc_collection_t* c,
                           size_t markerSize,
                           TRI_doc_mptr_t const* header,
                           TRI_doc_mptr_t* update) {
-  TRI_sim_collection_t* collection;
   TRI_doc_document_marker_t const* marker;
 
-  collection = (TRI_sim_collection_t*) c;
   marker = (TRI_doc_document_marker_t const*) m;
   *update = *header;
 
@@ -632,12 +628,10 @@ static void DebugDatafileInfoDocCollection (TRI_doc_collection_t* collection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void DebugHeaderSimCollection (TRI_sim_collection_t* collection) {
-  size_t n;
   void** end;
   void** ptr;
 
   // update index
-  n = collection->_primaryIndex._nrUsed;
   ptr = collection->_primaryIndex._table;
   end = collection->_primaryIndex._table + collection->_primaryIndex._nrAlloc;
 

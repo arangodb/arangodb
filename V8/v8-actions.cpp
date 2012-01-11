@@ -508,7 +508,7 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
   v8::Handle<v8::Object> res = v8::Object::New();
   v8::Handle<v8::Value> args[2] = { req, res };
 
-  v8::Handle<v8::Value> result = cb->_callback->Call(cb->_callback, 2, args);
+  cb->_callback->Call(cb->_callback, 2, args);
 
   // convert the result
   if (tryCatch.HasCaught()) {

@@ -1961,6 +1961,10 @@ bool TRI_AtHomogeneousListShapedJson (TRI_homogeneous_list_shape_t const* shape,
   ptr = json->_data.data;
   n = * (TRI_shape_length_list_t*) ptr;
 
+  if (n <= position) {
+    return false;
+  }
+
   ptr += sizeof(TRI_shape_length_list_t);
   offsets = (TRI_shape_size_t*) ptr;
 
@@ -1993,6 +1997,10 @@ bool TRI_AtHomogeneousSizedListShapedJson (TRI_homogeneous_sized_list_shape_t co
 
   ptr = json->_data.data;
   n = * (TRI_shape_length_list_t*) ptr;
+
+  if (n <= position) {
+    return false;
+  }
 
   ptr += sizeof(TRI_shape_length_list_t);
 

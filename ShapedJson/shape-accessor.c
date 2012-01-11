@@ -234,7 +234,6 @@ static bool ExecuteBytecodeShapeAccessor (TRI_shape_access_t const* accessor,
   TRI_shape_size_t e;
   TRI_shape_size_t pos;
   TRI_shape_size_t* offsetsV;
-  TRI_shape_t const* shape;
   void* const* ops;
 
   if (accessor->_shape == NULL) {
@@ -242,7 +241,6 @@ static bool ExecuteBytecodeShapeAccessor (TRI_shape_access_t const* accessor,
   }
 
   ops = accessor->_code;
-  shape = NULL;
 
   while (true) {
     TRI_shape_ac_bc_e op;
@@ -255,7 +253,7 @@ static bool ExecuteBytecodeShapeAccessor (TRI_shape_access_t const* accessor,
         return true;
 
       case TRI_SHAPE_AC_SHAPE_PTR:
-        shape = *ops++;
+        ops++;
         break;
 
       case TRI_SHAPE_AC_OFFSET_FIX:
