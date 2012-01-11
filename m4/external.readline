@@ -60,6 +60,7 @@ if test "x$tr_READLINE" = xyes -o "x$tr_READLINE" = xmaybe;  then
   AC_CHECK_HEADERS(readline/readline.h, [tr_READLINE="yes"], [tr_READLINE="no"])
 
   if test "x$tr_READLINE" = xyes;  then
+    LIBS="$LIBS $NCURSES_LIBS" # centos 5.5
     TR_FIND_C_LIBRARY([readline], [readline], [READLINE_LIBS], [readline])
     tr_READLINE=$tr_library_found
   fi

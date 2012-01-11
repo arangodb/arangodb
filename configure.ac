@@ -35,7 +35,7 @@ FLAG_INFO="$FLAG_INFO|."
 m4_include([m4/external.boost])
 m4_include([m4/external.libev])
 m4_include([m4/external.math])
-m4_include([m4/external.ncurses])
+m4_include([m4/external.ncurses]) # before readline
 m4_include([m4/external.readline])
 m4_include([m4/external.openssl])
 m4_include([m4/external.v8])
