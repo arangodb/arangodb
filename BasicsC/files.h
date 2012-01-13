@@ -139,7 +139,7 @@ char* TRI_SlurpFile (char const* filename);
 /// lock on the file is obtained using @FN{flock}.
 ///
 /// On success 0 is returned. An error number is returned on failure. See
-/// @fn{TRI_errno} for details.
+/// @FN{TRI_errno} for details.
 ///
 /// Internally, the functions keeps a list of open pid files. Calling the
 /// function twice with the same @FA{filename} will succeed and will not
