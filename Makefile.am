@@ -89,16 +89,16 @@ wiki: $(WIKI)
 
 .PHONY: BUILD_H_TARGET
 
-BUILT_SOURCES += @builddir@/build.c
-avocado_SOURCES += @builddir@/build.c
+BUILT_SOURCES += build.c
+avocado_SOURCES += build.c
 
-@builddir@/build.c: @srcdir@/build.h
+build.c: build.h
 	@top_srcdir@/config/build_info.sh @srcdir@/build.info > $@
 
-@srcdir@/build.h: BUILD_H_TARGET
+build.h: BUILD_H_TARGET
 
 BUILD_H_TARGET:
-	@top_srcdir@/config/build_header.sh @srcdir@/build.info @srcdir@/build.h
+	@top_srcdir@/config/build_header.sh @srcdir@/build.info build.h
 
 ################################################################################
 ## cleanup
