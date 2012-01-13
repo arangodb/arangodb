@@ -278,7 +278,11 @@ WIKI = \
 	Doxygen/xml/d9/ddd/CommandLineAvocado.md \
 	Doxygen/xml/d7/d40/JSModuleConsole.md \
 	Doxygen/xml/d3/d4b/JSModuleInternal.md \
-	Doxygen/xml/d2/d66/JSModuleFs.md
+	Doxygen/xml/d2/d66/JSModuleFs.md \
+	Doxygen/xml/d9/d26/Compiling.md
+
+Doxygen/xml/d9/d26/Compiling.md: Doxygen/xml/d9/d26/Compiling.xml
+	python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
 
 Doxygen/xml/d9/d52/DefineAction.md: Doxygen/xml/d9/d52/DefineAction.xml
 	python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@

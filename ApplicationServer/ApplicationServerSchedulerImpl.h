@@ -44,6 +44,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page CommandLineScheduler Command-Line Options for Communication
 ///
+/// <hr>
 /// @copydoc CommandLineSchedulerTOC
 /// <hr>
 ///

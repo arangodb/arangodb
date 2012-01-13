@@ -73,6 +73,7 @@
 ///
 /// <hr>
 /// @copydoc CommandLineLoggingTOC
+/// <hr>
 ///
 /// @section GeneralLogging General Logging Options
 ///
@@ -116,6 +117,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page CommandLineRandom Command-Line Options for Random Numbers
 ///
+/// <hr>
 /// @copydoc CommandLineRandomTOC
 /// <hr>
 ///

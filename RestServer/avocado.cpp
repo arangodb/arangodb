@@ -59,6 +59,7 @@ using namespace triagens::avocado;
 ///
 /// <hr>
 /// @copydoc StartStopTOC
+/// <hr>
 ///
 /// @section StartStopDebug Starting the Debug Shell
 ///
@@ -119,7 +120,9 @@ using namespace triagens::avocado;
 ////////////////////////////////////////////////////////////////////////////////
 /// @page CommandLine Command-Line Options
 ///
+/// <hr>
 /// @copydoc CommandLineTOC
+/// <hr>
 ///
 /// @section GeneralOptions General Options
 ///
@@ -182,6 +185,7 @@ using namespace triagens::avocado;
 ////////////////////////////////////////////////////////////////////////////////
 /// @page CommandLineAvocado Command-Line Options for the AvocadoDB
 ///
+/// <hr>
 /// @copydoc CommandLineAvocadoTOC
 /// <hr>
 ///
