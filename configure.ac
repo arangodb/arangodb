@@ -6,7 +6,7 @@ dnl ============================================================================
 dnl PREAMBLE                                     triAGENS GmbH Build Environment
 dnl ============================================================================
 
-AC_INIT([triAGENS AvocadoDB], [0.0.6], [info@triagens.de], [avocado], [http://www.worldofvoc.com])
+AC_INIT([triAGENS AvocadoDB], [0.0.8], [info@triagens.de], [avocado], [http://www.worldofvoc.com])
 
 dnl ----------------------------------------------------------------------------
 dnl auxillary directory for install-sh and missing

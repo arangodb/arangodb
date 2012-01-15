@@ -98,6 +98,7 @@ build.c: build.h
 build.h: BUILD_H_TARGET
 
 BUILD_H_TARGET:
+	@test -f build.h || echo '#define TRIAGENS_VERSION "@PACKAGE_VERSION@"' > build.h
 	@top_srcdir@/config/build_header.sh @srcdir@/build.info build.h
 
 ################################################################################
