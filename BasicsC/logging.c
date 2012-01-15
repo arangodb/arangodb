@@ -1596,6 +1596,9 @@ void TRI_InitialiseLogging (bool threaded) {
 
   // and initialised
   Initialised = true;
+
+  // always close logging at the end
+  atexit(TRI_ShutdownLogging);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

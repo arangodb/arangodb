@@ -7,8 +7,10 @@ if test ! -f "$FILE";  then
   exit 1
 fi
 
+DIR=`dirname $INFO`
+
 if test -d .svn;  then
-  revision=`svnversion`
+  revision=`cd $DIR && svnversion`
 else
   if test ! -f "$INFO";  then
     echo "WARNING: cannot open info file $INFO"
