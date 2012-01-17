@@ -922,6 +922,10 @@ static v8::Handle<v8::Value> JS_ToArrayQuery (v8::Arguments const& argv) {
 /// Selects all documents of a collection and returns a cursor.
 ///
 /// @verbinclude fluent23
+///
+/// The corresponding AQL query would be:
+///
+/// @verbinclude fluent23-aql
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
@@ -1050,7 +1054,11 @@ static v8::Handle<v8::Value> JS_DistanceQuery (v8::Arguments const& argv) {
 /// the empty result set or a result set containing the document with document
 /// identifier @FA{document-identifier}.
 ///
-/// @verbinclude fluent28
+/// @verbinclude fluent54
+///
+/// The corresponding AQL query would be:
+///
+/// @verbinclude fluent54-aql
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DocumentQuery (v8::Arguments const& argv) {
@@ -1233,6 +1241,10 @@ static v8::Handle<v8::Value> JS_GeoQuery (v8::Arguments const& argv) {
 /// this will return the last @CODE{n} documents instead.
 ///
 /// @verbinclude fluent30
+///
+/// The corresponding AQL queries would be:
+///
+/// @verbinclude fluent30-aql
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_LimitQuery (v8::Arguments const& argv) {
@@ -1487,6 +1499,10 @@ static v8::Handle<v8::Value> JS_SelectQuery (v8::Arguments const& argv) {
 /// Skips the first @FA{number} documents.
 ///
 /// @verbinclude fluent31
+///
+/// The corresponding AQL queries would be:
+///
+/// @verbinclude fluent31-aql
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_SkipQuery (v8::Arguments const& argv) {

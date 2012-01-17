@@ -38,6 +38,7 @@
 
 #include "ApplicationServer/ApplicationServerImpl.h"
 #include <Basics/FileUtils.h>
+#include <Basics/safe_cast.h>
 #include <Logger/Logger.h>
 
 using namespace std;
@@ -50,7 +51,7 @@ using namespace triagens::rest;
 // -----------------------------------------------------------------------------
 
 namespace {
-  int forkProcess (string const& pidFile, string const& workingDirectory, string& current) {
+  int forkProcess (string const& pidFile, string const& workingDirectory, string& current, ApplicationServerImpl* applicationServer) {
 
     // check if the pid-file exists
     if (! pidFile.empty()) {
@@ -122,8 +123,13 @@ namespace {
 
     // if we got a good PID, then we can exit the parent process
     if (pid > 0) {
+      LOGGER_DEBUG << "started child process with pid " << pid;
       return 0;
     }
+
+    // reset the logging
+    TRI_InitialiseLogging(TRI_ResetLogging());
+    applicationServer->setupLogging();
 
     // change the file mode mask
     umask(0);
@@ -132,7 +138,7 @@ namespace {
     pid_t sid = setsid();
 
     if (sid < 0) {
-      LOGGER_FATAL << "cannot create sid";
+      cerr << "cannot create sid\n";
       exit(EXIT_FAILURE);
     }
 
@@ -141,7 +147,7 @@ namespace {
       ofstream out(pidFile.c_str(), ios::trunc);
 
       if (! out) {
-        LOGGER_FATAL << "cannot write pid";
+        cerr << "cannot write pid\n";
         exit(EXIT_FAILURE);
       }
 
@@ -153,24 +159,22 @@ namespace {
     current = FileUtils::currentDirectory(&err);
 
     if (err != 0) {
-      LOGGER_FATAL << "cannot get current directory";
+      cerr << "cannot get current directory\n";
       exit(EXIT_FAILURE);
     }
 
     // change the current working directory (TODO must be configurable)
     if (! workingDirectory.empty()) {
       if (! FileUtils::changeDirectory(workingDirectory)) {
-        LOGGER_FATAL << "cannot change into directory '" << workingDirectory << "'";
+        cerr << "cannot change into directory '" << workingDirectory << "'\n";
         exit(EXIT_FAILURE);
       }
       else {
-        LOGGER_DEBUG << "changed into directory '" << workingDirectory << "'";
+        cerr << "changed into directory '" << workingDirectory << "'\n";
       }
     }
 
     // close the standard file descriptors
-    TRI_CloseLogging();
-
     close(STDIN_FILENO);
     close(STDOUT_FILENO);
     close(STDERR_FILENO);
@@ -233,7 +237,7 @@ namespace triagens {
       LOGGER_INFO << "starting up in supervisor mode";
 
       string current;
-      int result = forkProcess(_pidFile, _workingDirectory, current);
+      int result = forkProcess(_pidFile, _workingDirectory, current, safe_cast<ApplicationServerImpl*>(_applicationServer));
 
       // main process
       if (result == 0) {
@@ -260,9 +264,11 @@ namespace triagens {
 
             if (WIFEXITED(status)) {
               if (WEXITSTATUS(status) == 0) {
+                LOGGER_INFO << "child " << pid << " died of natural causes";
                 done = true;
               }
               else {
+                LOGGER_ERROR << "child " << pid << " died of a horrible death, exit status " << WEXITSTATUS(status);
                 done = false;
               }
             }
@@ -271,18 +277,28 @@ namespace triagens {
                 case 2:
                 case 9:
                 case 15:
+                  LOGGER_INFO << "child " << pid << " died of natural causes " << WTERMSIG(status);
                   done = true;
                   break;
 
                 default:
+                  LOGGER_ERROR << "child " << pid << " died of a horrible death, signal " << WTERMSIG(status);
                   done = false;
                   break;
               }
+            }
+            else {
+              LOGGER_ERROR << "child " << pid << " died of a horrible death";
+              done = false;
             }
           }
 
           // child
           else {
+
+            // reset logging
+            TRI_InitialiseLogging(TRI_ResetLogging());
+            safe_cast<ApplicationServerImpl*>(_applicationServer)->setupLogging();
 
             // force child to stop if supervisor dies
 #ifdef TRI_HAVE_PRCTL
@@ -324,7 +340,7 @@ namespace triagens {
       LOGGER_INFO << "starting up in daemon mode";
 
       string current;
-      int result = forkProcess(_pidFile, _workingDirectory, current);
+      int result = forkProcess(_pidFile, _workingDirectory, current, safe_cast<ApplicationServerImpl*>(_applicationServer));
 
       // main process
       if (result == 0) {

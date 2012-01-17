@@ -1,0 +1,3 @@
+aql> select x from five;
+aql> select x from five limit 2;
+aql> select x from five limit -2;
