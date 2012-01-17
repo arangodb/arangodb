@@ -1,0 +1,1 @@
+aql> select x from examples x where d == "148759:5437094";

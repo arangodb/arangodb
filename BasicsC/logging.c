@@ -61,6 +61,12 @@
 static bool Initialised = false;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdown function already installed
+////////////////////////////////////////////////////////////////////////////////
+
+static bool ShutdownInitalised = false;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief log appenders
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1251,6 +1257,8 @@ static void LogAppenderFile_Reopen (TRI_log_appender_t* appender) {
 
   TRI_FreeString(backup);
 
+  TRI_SetCloseOnExecFile(fd);
+
   TRI_LockSpin(&self->_lock);
   old = self->_fd;
   self->_fd = fd;
@@ -1343,6 +1351,8 @@ TRI_log_appender_t* TRI_CreateLogAppenderFile (char const* filename) {
       TRI_Free(appender);
       return NULL;
     }
+
+    TRI_SetCloseOnExecFile(appender->_fd);
 
     appender->_filename = TRI_DuplicateString(filename);
   }
@@ -1559,6 +1569,48 @@ TRI_log_appender_t* TRI_CreateLogAppenderSyslog (char const* name, char const* f
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief resets logging in child process
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ResetLogging () {
+  bool oldThreaded;
+  size_t i;
+
+  Initialised = false;
+  ShutdownInitalised = false;
+  BufferLID = 1;
+
+  for (i = 0;  i < sizeof(BufferCurrent) / sizeof(BufferCurrent[0]);  ++i) {
+    BufferCurrent[i] = 0;
+  }
+
+  LoggingThreadActive = 0;
+  IsHuman = 1;
+  IsException = 1;
+  IsTechnical = 1;
+  IsFunctional = 1;
+  IsDevelopment = 1;
+  IsFatal = 1;
+  IsError = 1;
+  IsWarning = 1;
+  IsInfo = 1;
+  IsDebug = 1;
+  IsTrace = 1;
+  ShowLineNumber = 1;
+  ShowFunction = 1;
+  ShowThreadIdentifier = 1;
+  OutputPrefix = NULL;
+  LoggingActive = 0;
+
+  oldThreaded = ThreadedLogging;
+  ThreadedLogging = false;
+
+  UseFileBasedLogging = false;
+
+  return oldThreaded;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises the logging components
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1598,7 +1650,10 @@ void TRI_InitialiseLogging (bool threaded) {
   Initialised = true;
 
   // always close logging at the end
-  atexit(TRI_ShutdownLogging);
+  if (! ShutdownInitalised) {
+    atexit(TRI_ShutdownLogging);
+    ShutdownInitalised = true;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

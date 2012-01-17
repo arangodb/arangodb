@@ -30,6 +30,9 @@
 
 #include <Basics/Common.h>
 
+#include <pwd.h>
+#include <grp.h>
+
 #include <Basics/ProgramOptions.h>
 #include <Basics/ProgramOptionsDescription.h>
 
@@ -220,6 +223,14 @@ namespace triagens {
 
         void shutdown ();
 
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets up the logging
+////////////////////////////////////////////////////////////////////////////////
+
+        void setupLogging ();
+
       protected:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -262,8 +273,8 @@ namespace triagens {
         vector<ApplicationFeature*> features;
 
       private:
-        void setupLogging ();
         bool readConfigurationFile ();
+        void storeLoggingPrivileges ();
         void dropPriviliges ();
 
       private:
@@ -621,6 +632,9 @@ namespace triagens {
         basics::ProgramOptionsDescription descriptionFile;
 
         vector<string> arguments;
+
+        uid_t _loggingUid;
+        gid_t _loggingGid;
     };
   }
 }

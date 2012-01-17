@@ -29,9 +29,6 @@
 
 #include "build.h"
 
-#include <pwd.h>
-#include <grp.h>
-
 #include <Basics/FileUtils.h>
 #include <Basics/Random.h>
 #include <Basics/StringUtils.h>
@@ -137,6 +134,7 @@ namespace triagens {
 
 
       // setup logging
+      storeLoggingPrivileges();
       setupLogging();
 
 
@@ -328,6 +326,24 @@ namespace triagens {
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     void ApplicationServerImpl::setupLogging () {
+#ifdef TRI_HAVE_SETGID
+      gid_t gid;
+#endif
+
+#ifdef TRI_HAVE_SETUID
+      uid_t uid;
+#endif
+
+#ifdef TRI_HAVE_SETGID
+      gid = getegid();
+      setegid(_loggingGid);
+#endif
+
+#ifdef TRI_HAVE_SETUID
+      uid = geteuid();
+      seteuid(_loggingUid);
+#endif
+
       TRI_CloseLogging();
 
       Logger::setApplicationName(logApplicationName);
@@ -354,6 +370,15 @@ namespace triagens {
 
       TRI_CreateLogAppenderFile(logFile);
       TRI_CreateLogAppenderSyslog(logPrefix, logSyslog);
+
+#ifdef TRI_HAVE_SETGID
+      setegid(gid);
+#endif
+
+#ifdef TRI_HAVE_SETUID
+      seteuid(uid);
+#endif
+
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -457,6 +482,18 @@ namespace triagens {
     // drop privileges
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+    void ApplicationServerImpl::storeLoggingPrivileges () {
+#ifdef TRI_HAVE_SETGID
+      _loggingGid = getegid();
+#endif
+
+#ifdef TRI_HAVE_SETUID
+      _loggingUid = geteuid();
+#endif
+
+    }
+
+
     void ApplicationServerImpl::dropPriviliges () {
 
 #ifdef TRI_HAVE_SETGID
@@ -502,7 +539,7 @@ namespace triagens {
 
         LOGGER_INFO << "changing gid to '" << gidNumber << "'";
 
-        int res = setgid(gidNumber);
+        int res = setegid(gidNumber);
 
         if (res != 0) {
           LOGGER_FATAL << "cannot set gid '" << gid << "', because " << strerror(errno);
@@ -556,7 +593,7 @@ namespace triagens {
 
         LOGGER_INFO << "changing uid to '" << uidNumber << "'";
 
-        int res = setuid(uidNumber);
+        int res = seteuid(uidNumber);
 
         if (res != 0) {
           LOGGER_FATAL << "cannot set uid '" << uid << "', because " << strerror(errno);
