@@ -42,3 +42,6 @@ Doxygen/xml/
 Doxygen/wiki/
 build.sh
 commit.sh
+*.Po
+.deps
+.setup-directories

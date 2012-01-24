@@ -427,7 +427,7 @@ TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
       generateError(HttpResponse::BAD, error);
     }
 
-    return false;
+    return 0;
   }
 
   return json;

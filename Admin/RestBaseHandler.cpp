@@ -183,7 +183,7 @@ void RestBaseHandler::generateResult (VariantObject* result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, string const& message) {
-  response = new HttpResponse(HttpResponse::OK);
+  response = new HttpResponse(code);
 
   VariantArray* result = new VariantArray();
   result->add("error", new VariantBoolean(true));
