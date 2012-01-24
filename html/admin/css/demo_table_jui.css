@@ -277,9 +277,8 @@ table.display tr.even.gradeU {
 	background-color: #eee;
 }
 
-
 tr.odd {
-	background-color: #FFC97C;
+	background-color: #66CC66;
 }
 
 tr.even {
@@ -291,7 +290,7 @@ tr.even {
 
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Misc
+ * Misc - WICHTIG - HIER DRÜBER BG Color normal
  */
 .dataTables_scroll {
 	clear: both;
@@ -373,12 +372,12 @@ table.display tr.odd.row_selected td {
 }
 
 
-/*
+/* WICHTIG - Hier 2nd Color CSS 
  * Sorting classes for columns
  */
 /* For the standard odd/even */
 tr.odd td.sorting_1 {
-	background-color: #FFA340;
+	background-color: #199400;
 }
 
 tr.odd td.sorting_2 {
