@@ -1,0 +1,2 @@
+select u
+from User u

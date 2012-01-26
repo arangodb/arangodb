@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,11 +23,11 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Dr. Oreste Costa-Panaia
-/// @author Copyright 2005-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2005-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_JUTLAND_BASICS_STRING_UTILS_H
-#define TRIAGENS_JUTLAND_BASICS_STRING_UTILS_H 1
+#ifndef TRIAGENS_BASICS_STRING_UTILS_H
+#define TRIAGENS_BASICS_STRING_UTILS_H 1
 
 #include "Basics/Common.h"
 

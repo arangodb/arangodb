@@ -176,7 +176,7 @@ int TRI_CreateLockFile (char const* filename);
 /// used to remove the lock file.
 ////////////////////////////////////////////////////////////////////////////////
 
-int VerifyLockFile (char const* filename);
+int TRI_VerifyLockFile (char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a lock file based on the PID

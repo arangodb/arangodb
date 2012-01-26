@@ -1,0 +1,3 @@
+select { user : u, locations : l }
+from Users u
+list join Locations l on u._id == l.user_id

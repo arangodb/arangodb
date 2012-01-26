@@ -28,23 +28,158 @@
 #ifndef TRIAGENS_DURHAM_VOC_BASE_QUERY_H
 #define TRIAGENS_DURHAM_VOC_BASE_QUERY_H 1
 
-#include <VocBase/vocbase.h>
+#include "VocBase/vocbase.h"
 
-#include <BasicsC/json.h>
-#include <BasicsC/string-buffer.h>
-#include <VocBase/result-set.h>
-#include <VocBase/simple-collection.h>
+#include "ShapedJson/shaped-json.h"
+#include "VocBase/document-collection.h"
+#include "V8/v8-c-utils.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @page BuildExecuteQuery Building and Executing a Query
+///
+/// @section LifeCycleQuery Life-Cycle of a Query
+///
+/// The query life-cycle starts with a string describing the query in the
+/// Avocado query language. For example:
+///
+/// @verbinclude query1
+/// 
+/// In order to get the result the following steps are taken.
+///
+/// - the query is parsed
+/// - an @CODE{TRI_query_t} representation is constructed
+/// - an @CODE{TRI_rc_context_t} is created
+/// - the query is executed in this context
+/// - a @CODE{TRI_rc_cursor_t} is returned
+/// - the @CODE{next} method returns a @CODE{TRI_rc_result_t}
+/// - which can be convert into a JSON or JavaScript object using
+///   the @CODE{TRI_qry_select_t}
+///
+/// @section QueryRepresentation Query Representation
+///
+/// @copydetails TRI_query_t
+///
+/// @subsection QueryRepresentationSelect Query Select Representation
+///
+/// @copydetails TRI_qry_select_t
+///
+/// @section QueryExecution Query Execution
+///
+/// @subsection QueryContext Query Execution Context
+///
+/// @copydetails TRI_rc_context_t
+///
+/// @subsection ResultCursor Result Cursor
+///
+/// @copydetails TRI_rc_cursor_t
+///
+/// @subsection QueryResult Building the Query Result
+///
+/// @copydetails TRI_rc_result_t
+////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_rs_container_s;
-struct TRI_index_s;
+////////////////////////////////////////////////////////////////////////////////
+/// @page AQL Avocado Query Language
+/// 
+/// A query constists of the following parts:
+///
+/// - select clause
+/// - primary collection
+/// - joins
+/// - where clause
+/// - order by
+/// - limit
+///
+/// @section AqlSelect Select Clause
+///
+/// To select all documents unlatered from a collection use
+///
+/// @verbinclude query4
+///
+/// You can also build a new document from the attributes of the result
+///
+/// @verbinclude query5
+///
+/// If the attribute @CODE{name} is unknown, null is used. You can apply
+/// functions to build the result.
+///
+/// @verbinclude query6
+///
+/// The @FN{nvl} returns the second argument in case that the name is unknown.
+/// 
+/// @section AqlFrom Primary Collection
+///
+/// There is one primary collection, which drive the selection process.
+///
+/// @verbinclude query7
+///
+/// @section AqlJoin Joins
+///
+/// It is possible to join other collections.
+///
+/// @subsection AllListJoin List Joins
+///
+/// Joins documents from a second collection. All suitable documents are
+/// returned as list
+///
+/// @verbinclude query8
+///
+/// If an attribute is a object reference, you can compare it the document
+/// itself.
+///
+/// @verbinclude query9
+///
+/// @section AqlWhere Where Clause
+///
+/// @subsection AqlPredicate Comparison and Boolean Operators
+///
+/// - @LIT{==} equality
+/// - @LIT{===} strict equality
+/// - @LIT{!=} inquality
+/// - @LIT{!==} strict inequality
+/// - @LIT{<}, @LIT{<=}, @LIT{>=}, @LIT{>} less than, less than or equal,
+///   greater than or equal, greater than
+/// - @LIT{&&} boolean and operator
+/// - @LIT(||} boolean or operator
+/// - @LIT{!} boolean not operator
+/// - @LIT{in} tests if a key exists
+/// 
+/// Assume that @LIT{doc} is a document, such that the attribute @LIT{d} is a
+/// number, the attribute @LIT{n} is null, and the attribute @LIT{x} does not
+/// exists.  Than the following holds:
+///
+/// <TABLE>
+///   <TR><TH></TH><TH>== null</TH><TH>=== null</TH><TH>=== undefined</TH></TR>
+///   <TR><TD>doc.d</TD><TD>false</TD><TD>false</TD><TD>false</TD></TR>
+///   <TR><TD>doc.n</TD><TD>true</TD><TD>true</TD><TD>false</TD></TR>
+///   <TR><TD>doc.x</TD><TD>true</TD><TD>false</TD><TD>true</TD></TR>
+///   <TR></TR>
+/// <TABLE>
+/// 
+/// @subsection AqlPredicateFunctions Functions
+///
+/// - @LIT{contains} tests if a value exists
+/// - @LIT{distance}, see below
+///
+/// @subsection AqlParameter Parameter
+///
+/// - @LIT{\@0} - positional parameter, starting with 0
+/// - @LIT{\@name\@} - named parameter
+///
+/// @subsection AqlGeoQuery Geo Queries
+/// 
+/// All documents with a given radius:
+///
+/// @verbinclude query10
+///
+/// The nearest documents
+///
+/// @verbinclude query11
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -56,231 +191,280 @@ struct TRI_index_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief query type
+/// @brief execution context of a query
+///
+/// In order to execute a query, you need an execution context. The results are
+/// only valid as long as the context exists. After freeing the context you
+/// should no longer access the result cursor or the result documents.
+///
+/// When creating an execution context, parts of clauses might use JavaScript.
+/// A JavaScript execution context is created for these clauses.
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_rc_context_s {
+  char* _primaryName;
+  TRI_doc_collection_t* _primary;
+
+  TRI_js_exec_context_t _selectClause;
+  TRI_js_exec_context_t _whereClause;
+}
+TRI_rc_context_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the result documents for the next result
+///
+/// The result documents of the next result. When a cursor returns the next set
+/// of documents, it will return these documents as instance of this class.  The
+/// methods @FN{shapedJson} and @FN{toJavaScript} of @CODE{TRI_qry_select_t}
+/// must be used to convert these documents into the final json or JavaScript
+/// result object. Note that a call to @FN{next} will free the current result.
+/// You do not need to free the result returned by @FN{next}, it is destroyed
+/// when the cursor itself is destroyed or when @FN{next} is called again.
+///
+/// The member @CODE{_primary} holds the primary document pointer for the
+/// primary collection.
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_rc_result_s {
+  TRI_rc_context_t* _context;
+
+  TRI_doc_mptr_t* _primary;
+}
+TRI_rc_result_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief select clause type
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_QUE_TYPE_COLLECTION,
-  TRI_QUE_TYPE_DISTANCE,
-  TRI_QUE_TYPE_DOCUMENT,
-  TRI_QUE_TYPE_EDGES,
-  TRI_QUE_TYPE_GEO_INDEX,
-  TRI_QUE_TYPE_LIMIT,
-  TRI_QUE_TYPE_NEAR,
-  TRI_QUE_TYPE_SELECT_FULL_QUERY,
-  TRI_QUE_TYPE_SKIP,
-  TRI_QUE_TYPE_WITHIN
+  TRI_QRY_SELECT_DOCUMENT,
+  TRI_QRY_SELECT_GENERAL
 }
-TRI_que_type_e;
+TRI_qry_select_type_e;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief query result
+/// @brief abstract select clause
+///
+/// A description of the @CODE{select} statement of the Avocado query language.
+/// This class is respsonible for taking an element of type
+/// @CODE{TRI_rc_result_t} as returned by the cursor and transforming it into
+/// either a shaped json object of type @CODE{TRI_shaped_json_t} or a JavaScript
+/// object of type @CODE{v8::Value}. The returned objects are either freed when
+/// the @CODE{TRI_rc_result_t} is deleted or are garbage collected in case of
+/// JavaScript.
+///
+/// The following implementations exist.
+///
+/// @copydetails TRI_qry_select_direct_t
+///
+/// @copydetails TRI_qry_select_general_t
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_query_result_s {
-  char* _cursor;
-  char* _error;
+typedef struct TRI_qry_select_s {
+  TRI_qry_select_type_e _type;
 
-  TRI_voc_size_t _length;
-  TRI_voc_size_t _total;
+  struct TRI_qry_select_s* (*clone) (struct TRI_qry_select_s*);
+  void (*free) (struct TRI_qry_select_s*);
 
-  TRI_voc_size_t _scannedIndexEntries;
-  TRI_voc_size_t _scannedDocuments;
-  TRI_voc_size_t _matchedDocuments;
-
-  struct TRI_doc_mptr_s const** _documents;
-  struct TRI_json_s* _augmented;
+  TRI_shaped_json_t* (*shapedJson) (struct TRI_qry_select_s*, TRI_rc_result_t*);
+  bool (*toJavaScript) (struct TRI_qry_select_s*, TRI_rc_result_t*, void*);
 }
-TRI_query_result_t;
+TRI_qry_select_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief query
+/// @brief built-in select clause for a single, unaltered document
 ///
-/// A query contains the following methods.
+/// If a query returns a document unaltered, then @CODE{TRI_qry_select_direct_t}
+/// can be used. It extracts a given document from the result set and returns
+/// this document without any modification. The member @CODE{_variable} contains
+/// the variable identifier of the result document of the next result to use.
 ///
-/// <b><tt>char* optimise (TRI_query_t**)</tt></b>
+/// For example
 ///
-/// Checks and optimises the query. This might change the pointer. If a new
-/// query is create, the old query is freed. In case of an error, an error
-/// message is returned.
+/// @verbinclude query2
 ///
-/// <b><tt>void execute (TRI_query_t*, TRI_query_result_t*)</tt></b>
+/// will generate a query whose select part consists of an instance of
+/// @CODE{TRI_qry_select_direct_t}. 
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_qry_select_direct_s {
+  TRI_qry_select_t base;
+}
+TRI_qry_select_direct_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief JavaScript select clause
 ///
-/// Executes the query and stores the result set in a @c TRI_query_result_t.
-/// You must call @c optimise before calling @c execute.  In case of an error
-/// during the executing, the error message is stored in the field @c
-/// _error. The query result must be clear using the free method of the @c
-/// TRI_query_result_t.
+/// If a query returns a newly created document, then
+/// @CODE{TRI_qry_select_general_t} can be used. It uses the V8 engine to
+/// compute the document.  The member @CODE{_code} contains the JavaScript code
+/// used to generate the document.  When this code is executed, then the result
+/// documents of the next result are passed into the JavaScript code bound to
+/// variables.
 ///
-/// <b><tt>TRI_json_t* json (TRI_query_t*)</tt></b>
+/// For example
 ///
-/// Returns a json description.
+/// @verbinclude query3
 ///
-/// <b><tt>void stringify (TRI_query_t*, TRI_string_buffer_t*)</tt></b>
+/// will generate new documents containing only @LIT{name} and @LIT{email}.
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_qry_select_general_s {
+  TRI_qry_select_t base;
+
+  char* _code;
+}
+TRI_qry_select_general_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief where clause type
+////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+  TRI_QRY_WHERE_BOOLEAN,
+  TRI_QRY_WHERE_GENERAL
+}
+TRI_qry_where_type_e;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief abstract where clause
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_qry_where_s {
+  TRI_qry_where_type_e _type;
+
+  struct TRI_qry_where_s* (*clone) (struct TRI_qry_where_s*);
+  void (*free) (struct TRI_qry_where_s*);
+
+  bool (*checkCondition) (struct TRI_qry_where_s*, TRI_rc_context_t*, TRI_doc_mptr_t const*);
+}
+TRI_qry_where_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constant where clause
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_qry_where_boolean_s {
+  TRI_qry_where_t base;
+
+  bool _value;
+}
+TRI_qry_where_boolean_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief JavaScript where clause
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_qry_where_general_s {
+  TRI_qry_where_t base;
+
+  char* _code;
+}
+TRI_qry_where_general_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief general query
 ///
-/// Appends a string representation to the buffer.
+/// A query is built using the fluent-interface or the Avocado Query
+/// Language. It is of type @CODE{TRI_query_t}. After the query is built, it can
+/// be executed. An execution returns a result cursor of type
+/// @CODE{TRI_rc_cursor_t}. An execution requires a context of type
+/// @CODE{TRI_rc_context_t}. All result are only vaild for the life-time of this
+/// context.
 ///
-/// <b><tt>TRI_query_t* clone (TRI_query_t*)</tt></b>
+/// It is possible to execute the same query multiple times - even in
+/// parallel. However, each execution run requires it's own context.
 ///
-/// Clones an existing query.
+/// A query contains the following parts:
 ///
-/// <b><tt>void free (TRI_query_t*, bool)</tt></b>
+/// - a description of the result in @CODE{_select}
+/// - the primary collection for the query in @CODE{_primary}
+/// - a list of joins in @CODE{_joins}
+/// - a description of the where clause in @CODE{_where}
+/// - a number limiting the number of returned documents in @CODE{_limit}
+/// - a number of documents to skip in @CODE{_skip}
 ///
-/// Frees all resources associated with the query. If the second parameter is
-/// true, also free all operands. This method will not clear any resources
-/// allocated during an @c execute associated with the @c TRI_query_result_t.
+/// The @CODE{_select} is of type @CODE{TRI_qry_select_t}. This is in general a
+/// representation of the part following the @CODE{select} statement.  There are
+/// at least two implementions. The first one uses a built-in evaluator to
+/// generate the result document from the next set of selected documents. The
+/// second one uses the V8 engine to generate the result.
+///
+/// The @CODE{_primary} is of type @CODE{TRI_doc_collection_t}. This is the
+/// collection following the @CODE{from} statement. The Avocado query language
+/// only supports one collection after the @CODE{from}, this is the primary
+/// collection of the query. All other collections must be joined with this
+/// primary collection.
+///
+/// The @CODE{_joins} attributes contains a vector of joined collections
+/// together with the join condition. The vector elements are of type
+/// @CODE{TRI_qry_join_t}.
+///
+/// The @CODE{_where} attributes contains a description of the where
+/// clause. There are at least two implementations. The first one uses a
+/// built-in evaluator to evaluate the predicate. The second one uses the V8
+/// engine.
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_query_s {
-  TRI_que_type_e _type;
-  TRI_vocbase_col_t const* _collection;
-  bool _isOptimised;
+  TRI_qry_select_t* _select;
+  char* _primaryName;
+  TRI_doc_collection_t* _primary;
+  TRI_vector_pointer_t _joins;
+  TRI_qry_where_t* _where;
 
-  char* (*optimise) (struct TRI_query_s**);
-  void (*execute) (struct TRI_query_s*, TRI_query_result_t*);
-  TRI_json_t* (*json) (struct TRI_query_s*);
-  void (*stringify) (struct TRI_query_s*, TRI_string_buffer_t*);
-  struct TRI_query_s* (*clone) (struct TRI_query_s*);
-  void (*free) (struct TRI_query_s*, bool);
+  TRI_voc_size_t _skip;
+  TRI_voc_ssize_t _limit;
 }
 TRI_query_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief full collection query
+/// @brief the result cursor
+///
+/// The result of a query execution. The metod @FN{next} returns the next
+/// result documents. There is one document for the primary collection and a
+/// list of documents for a list join. The next result documents are delivered
+/// as instance of @CODE{TRI_rc_result_t}. You must call the @FN{free} method
+/// for these instances.
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_collection_query_s {
-  TRI_query_t base;
+typedef struct TRI_rc_cursor_s {
+    TRI_rc_context_t* _context;
+    TRI_qry_select_t* _select;
+
+    TRI_voc_size_t _scannedIndexEntries;
+    TRI_voc_size_t _scannedDocuments;
+    TRI_voc_size_t _matchedDocuments;
+
+    TRI_rc_result_t* (*next)(struct TRI_rc_cursor_s*);
+    bool (*hasNext)(struct TRI_rc_cursor_s*);
 }
-TRI_collection_query_t;
+TRI_rc_cursor_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief distance query
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_distance_query_s {
-  TRI_query_t base;
-
-  TRI_query_t* _operand;
-  char* _distance;
-}
-TRI_distance_query_t;
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public constants
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document query
+/// @addtogroup VocBase
+/// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_document_query_s {
-  TRI_query_t base;
-
-  TRI_query_t* _operand;
-  TRI_voc_did_t _did;
-}
-TRI_document_query_t;
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief edges query
+/// @brief no limit
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_edges_query_s {
-  TRI_query_t base;
-
-  TRI_query_t* _operand;
-
-  TRI_edge_direction_e _direction;
-}
-TRI_edges_query_t;
+#define TRI_QRY_NO_LIMIT ((TRI_voc_ssize_t) INT32_MAX)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief geo index query
+/// @brief no skip
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_geo_index_query_s {
-  TRI_query_t base;
-
-  TRI_query_t* _operand;
-
-  char* _location;
-  char* _latitude;
-  char * _longitude;
-
-  bool _geoJson;
-}
-TRI_geo_index_query_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief limit query
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_limit_query_s {
-  TRI_query_t base;
-
-  TRI_query_t* _operand;
-  TRI_voc_ssize_t _limit;
-}
-TRI_limit_query_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief near query
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_near_query_s {
-  TRI_query_t base;
-
-  TRI_query_t* _operand;
-
-  char* _distance;
-
-  double _latitude;
-  double _longitude;
-
-  TRI_voc_ssize_t _limit;
-}
-TRI_near_query_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief skip query
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_select_full_query_s {
-  TRI_query_t base;
-
-  TRI_query_t* _operand;
-
-  size_t _length;
-  TRI_shape_pid_t* _pids;
-  TRI_shaped_json_t** _values;
-}
-TRI_select_full_query_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief skip query
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_skip_query_s {
-  TRI_query_t base;
-
-  TRI_query_t* _operand;
-  TRI_voc_size_t _skip;
-}
-TRI_skip_query_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief within query
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_within_query_s {
-  TRI_query_t base;
-
-  TRI_query_t* _operand;
-
-  char* _distance;
-
-  double _latitude;
-  double _longitude;
-  double _radius;
-}
-TRI_within_query_t;
+#define TRI_QRY_NO_SKIP ((TRI_voc_size_t) 0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -296,89 +480,49 @@ TRI_within_query_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a full scan of a collection
+/// @brief creates a query
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_query_t* TRI_CreateCollectionQuery (TRI_vocbase_col_t const*);
+TRI_query_t* TRI_CreateQuery (TRI_qry_select_t* selectStmt,
+                              char const* name,
+                              TRI_doc_collection_t* collection);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds the distance to a query
+/// @brief creates a context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_query_t* TRI_CreateDistanceQuery (TRI_query_t*, char const* name);
+TRI_rc_context_t* TRI_CreateContextQuery (TRI_query_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a document
+/// @brief creates a query selection for unaltered documents
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_query_t* TRI_CreateDocumentQuery (TRI_query_t*, TRI_voc_did_t);
+TRI_qry_select_t* TRI_CreateQuerySelectDocument (void);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up edges
+/// @brief creates a query selection for general, generated documents
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_query_t* TRI_CreateEdgesQuery (TRI_vocbase_col_t const* edges,
-                                   TRI_query_t*,
-                                   TRI_edge_direction_e direction);
+TRI_qry_select_t* TRI_CreateQuerySelectGeneral (char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief selects elements by example
-///
-/// The query takes ownership of the pids and values.
+/// @brief creates a query condition for constant conditions
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_query_t* TRI_CreateSelectFullQuery (TRI_query_t*, 
-                                        size_t n,
-                                        TRI_shape_pid_t* pids,
-                                        TRI_shaped_json_t** values);
+TRI_qry_where_t* TRI_CreateQueryWhereBoolean (bool where);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up an geo-spatial index
+/// @brief creates a query condition for general, JavaScript conditions
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_query_t* TRI_CreateGeoIndexQuery (TRI_query_t*,
-                                      char const* location,
-                                      char const* latitude,
-                                      char const* longitude,
-                                      bool geoJson);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief limits an existing query
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_query_t* TRI_CreateLimitQuery (TRI_query_t*, TRI_voc_ssize_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up documents near a given point
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_query_t* TRI_CreateNearQuery (TRI_query_t*,
-                                  double latitude,
-                                  double longitude,
-                                  char const* distance);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief skips elements of an existing query
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_query_t* TRI_CreateSkipQuery (TRI_query_t*, TRI_voc_size_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up documents within a given radius
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_query_t* TRI_CreateWithinQuery (TRI_query_t*,
-                                    double latitude,
-                                    double longitude,
-                                    double radius,
-                                    char const* distance);
+TRI_qry_where_t* TRI_CreateQueryWhereGeneral (char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -390,7 +534,7 @@ TRI_query_t* TRI_CreateWithinQuery (TRI_query_t*,
 /// @brief executes a query
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_result_set_t* TRI_ExecuteQuery (TRI_query_t*);
+TRI_rc_cursor_t* TRI_ExecuteQueryAql (TRI_query_t*, TRI_rc_context_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

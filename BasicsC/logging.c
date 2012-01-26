@@ -537,7 +537,9 @@ static void OutputMessage (TRI_log_level_e level,
     return;
   }
 
-  StoreOutput(level, time(0), message, length);
+  if (severity == TRI_LOG_SEVERITY_HUMAN) {
+    StoreOutput(level, time(0), message, length);
+  }
 
   if (ThreadedLogging) {
     log_message_t msg;

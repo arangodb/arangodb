@@ -240,15 +240,15 @@ AvocadoEdgesCollection.prototype.toJSON = function() {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      AvocadoQuery
+// --SECTION--                                                AvocadoFluentQuery
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief string representation of a query
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoQuery.prototype.toString = function() {
-  if (this instanceof AvocadoQuery) {
+AvocadoFluentQuery.prototype.toString = function() {
+  if (this instanceof AvocadoFluentQuery) {
     return "[query]";
   }
   else {
@@ -260,8 +260,8 @@ AvocadoQuery.prototype.toString = function() {
 /// @brief JSON representation of a query
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoQuery.prototype.toJSON = function() {
-  if (this instanceof AvocadoQuery) {
+AvocadoFluentQuery.prototype.toJSON = function() {
+  if (this instanceof AvocadoFluentQuery) {
     return "[query]";
   }
   else {

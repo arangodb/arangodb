@@ -38,6 +38,104 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
 #include "BasicsC/string-buffer.h"
+#include "BasicsC/locks.h"
+
+#include <sys/file.h>
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Files
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief already initialised
+////////////////////////////////////////////////////////////////////////////////
+
+static bool Initialised = false;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief names of blocking files
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_vector_string_t FileNames;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lock for protected access to vector FileNames
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_read_write_lock_t LockFileNames;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Files
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief linear search of the giving element
+///
+/// @return index of the element in the vector
+///         -1 when the element was not found
+////////////////////////////////////////////////////////////////////////////////
+
+static int __LookupElementVectorString (TRI_vector_string_t * vector, char const * element) {
+  int idx = -1;
+  size_t i;
+
+  TRI_ReadLockReadWriteLock(&LockFileNames);
+  for (i = 0; i < vector->_length; i++) {
+    if (strcmp(element, vector->_buffer[i]) == 0) {
+      idx = i;
+      break;
+    }
+  }
+  TRI_ReadUnlockReadWriteLock(&LockFileNames);
+  return idx;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief callback function for removing all locked files by a process
+////////////////////////////////////////////////////////////////////////////////
+
+static void __RemoveAllLockedFiles (void) {
+  size_t i;
+  TRI_WriteLockReadWriteLock(&LockFileNames);
+  for (i = 0; i < FileNames._length; i++) {
+    TRI_UnlinkFile(FileNames._buffer[i]);
+    TRI_RemoveVectorString(&FileNames, i);
+  }
+  TRI_WriteUnlockReadWriteLock(&LockFileNames);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initializes some structures which are needed by the file functions
+////////////////////////////////////////////////////////////////////////////////
+
+static void TRI_InitialiseFiles (void) {
+  if (Initialised) {
+    return;
+  }
+  TRI_InitVectorString(&FileNames);
+  TRI_InitReadWriteLock(&LockFileNames);
+
+  atexit(&__RemoveAllLockedFiles);
+  Initialised = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -152,7 +250,7 @@ char* TRI_Dirname (char const* path) {
     return TRI_DuplicateString("..");
   }
 
-  for (p = path + (n - m - 1);  path < p;  --p) {
+  for (p = path + (n - m - 1); path < p; --p) {
     if (*p == '/') {
       break;
     }
@@ -203,7 +301,7 @@ char* TRI_Basename (char const* path) {
     return TRI_DuplicateString("");
   }
 
-  for (p = path + (n - m - 1);  path < p;  --p) {
+  for (p = path + (n - m - 1); path < p; --p) {
     if (*p == '/') {
       break;
     }
@@ -263,7 +361,7 @@ TRI_vector_string_t TRI_FilesDirectory (char const* path) {
     if (strcmp(fd.name, ".") != 0 && strcmp(fd.name, "..") != 0) {
       TRI_PushBackVectorString(&result, TRI_DuplicateString(fd.name));
     }
-  } while(_findnext(handle, &fd) != -1);
+  }while(_findnext(handle, &fd) != -1);
 
   _findclose(handle);
 
@@ -465,10 +563,149 @@ char* TRI_SlurpFile (char const* filename) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief creates a lock file based on the PID
 ////////////////////////////////////////////////////////////////////////////////
 
-// Local Variables:
+int TRI_CreateLockFile (char const* filename) {
+  int fd;
+  int rv;
+  int pid;
+  char buf[128];
+  char * fn;
+
+  pid = getpid();
+
+  memset(buf, '\0', 128);
+  sprintf(buf, "%d", pid);
+
+  TRI_InitialiseFiles();
+
+  if (__LookupElementVectorString(&FileNames, filename) >= 0) {
+//    TRI_set_errno(TRI_DF_STATE_LOCK_ERROR);
+    return 0;
+  }
+
+  fd = open(filename, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+
+  if    (fd == -1) {
+    TRI_set_errno(TRI_ERROR_OPEN_ERROR);
+    return TRI_ERROR_OPEN_ERROR;
+  }
+
+  rv = write(fd, buf, sizeof(buf));
+  close(fd);
+
+  if (rv == -1) {
+    TRI_UNLINK(filename);
+    TRI_set_errno(TRI_ERROR_WRITE_ERROR);
+    return TRI_ERROR_WRITE_ERROR;
+  }
+
+  fd = TRI_OPEN(filename, O_RDONLY);
+  rv = flock(fd, LOCK_EX);
+
+  if (rv == -1) { // file may be locked already
+    close(fd);
+    TRI_UNLINK(filename);
+    TRI_set_errno(TRI_ERROR_LOCK_ERROR);
+    return TRI_ERROR_LOCK_ERROR;
+  }
+
+//  close(fd); file descriptor has to be valid for file locking
+
+  fn = TRI_Allocate(strlen(filename) + 1);
+  strcpy(fn, filename);
+
+  TRI_WriteLockReadWriteLock(&LockFileNames);
+  TRI_PushBackVectorString(&FileNames, fn);
+  TRI_WriteUnlockReadWriteLock(&LockFileNames);
+
+  return rv;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief verifies a lock file based on the PID
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_VerifyLockFile (char const* filename) {
+  int fd;
+  pid_t pid;
+  ssize_t n;
+  uint32_t fc;
+  char buffer[128];
+  int can_lock;
+  int rv;
+
+  if (TRI_ExistsFile(filename) == false) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  fd = TRI_OPEN(filename, O_RDONLY);
+
+  n = TRI_READ(fd, buffer, sizeof(buffer));
+  close(fd);
+
+  if (n == 0) { // file empty
+    TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
+    return TRI_ERROR_ILLEGAL_NUMBER;
+  }
+  fc = atoi(buffer);
+
+  if ((fc == 0) || (fc == INT32_MAX) || (fc == INT32_MIN)) {
+    TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
+    return TRI_ERROR_ILLEGAL_NUMBER;
+  }
+
+  pid = fc;
+
+  if (kill(pid, 0) == -1) {
+    TRI_set_errno(TRI_ERROR_DEAD_PID);
+    return TRI_ERROR_DEAD_PID;
+  }
+
+  fd = TRI_OPEN(filename, O_RDONLY);
+  can_lock = flock(fd, LOCK_EX | LOCK_NB);
+  rv = 0;
+  if (can_lock == 0) { // file was not yet be locked
+    TRI_set_errno(TRI_ERROR_UNLOCKED_FILE);
+    flock(fd, LOCK_UN);
+    rv = TRI_ERROR_UNLOCKED_FILE;
+  }
+  TRI_CLOSE(fd);
+  return rv;
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief releases a lock file based on the PID
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_DestroyLockFile (char const* filename) {
+  int fd;
+  int n;
+  int res;
+  TRI_InitialiseFiles();
+  n = __LookupElementVectorString(&FileNames, filename);
+
+  if (n < 0) {
+    ;
+    return -1;
+  }
+
+  fd = open(filename, O_RDWR);
+  res = flock(fd, LOCK_UN);
+  close(fd);
+
+  if (res == 0) {
+    TRI_UnlinkFile(filename);
+    TRI_WriteLockReadWriteLock(&LockFileNames);
+
+    TRI_RemoveVectorString(&FileNames, n);
+    TRI_WriteUnlockReadWriteLock(&LockFileNames);
+  }
+
+  return res;
+}
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

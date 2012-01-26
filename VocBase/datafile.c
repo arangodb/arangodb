@@ -202,6 +202,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
   int res;
   ssize_t len;
   struct stat status;
+  TRI_df_header_marker_t header;
 
   // open the file
   fd = TRI_OPEN(filename, O_RDWR);
@@ -239,7 +240,6 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
   }
 
   // read header from file
-  TRI_df_header_marker_t header;
   ptr = (char*) &header;
   len = sizeof(TRI_df_header_marker_t);
 
@@ -500,6 +500,7 @@ bool TRI_CheckCrcMarkerDatafile (TRI_df_marker_t const* marker) {
   char const* ptr;
   off_t o;
   size_t n;
+  TRI_voc_crc_t crc;
 
   zero = 0;
   o = offsetof(TRI_df_marker_t, _crc);
@@ -511,7 +512,7 @@ bool TRI_CheckCrcMarkerDatafile (TRI_df_marker_t const* marker) {
     return false;
   }
 
-  TRI_voc_crc_t crc = TRI_InitialCrc32();
+  crc = TRI_InitialCrc32();
 
   crc = TRI_BlockCrc32(crc, ptr, o);
   crc = TRI_BlockCrc32(crc, (char*) &zero, n);

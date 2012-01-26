@@ -32,6 +32,7 @@
 
 #include "BasicsC/json.h"
 #include "VocBase/simple-collection.h"
+#include "V8/v8-c-utils.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class V8LineEditor

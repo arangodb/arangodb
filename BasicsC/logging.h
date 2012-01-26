@@ -288,16 +288,16 @@ void TRI_FreeBufferLogging (TRI_vector_t* buffer);
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOG_FATAL(...)                                                                               \
-  do {                                                                                               \
-    if (TRI_IsHumanLogging() && TRI_IsFatalLogging()) {                                                            \
+#define LOG_FATAL(...)                                                                                     \
+  do {                                                                                                     \
+    if (TRI_IsHumanLogging() && TRI_IsFatalLogging()) {                                                    \
       TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_FATAL, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
-    }                                                                                                \
+    }                                                                                                      \
   } while (0)
 
 #else
 
-#define LOG_FATAL(...) /* logging disabled */
+#define LOG_FATAL(...) while (0)
 
 #endif
 
@@ -316,7 +316,7 @@ void TRI_FreeBufferLogging (TRI_vector_t* buffer);
 
 #else
 
-#define LOG_ERROR(...) /* logging disabled */
+#define LOG_ERROR(...) while (0)
 
 #endif
 
@@ -335,7 +335,7 @@ void TRI_FreeBufferLogging (TRI_vector_t* buffer);
 
 #else
 
-#define LOG_WARNING(...) /* logging disabled */
+#define LOG_WARNING(...) while (0)
 
 #endif
 
@@ -354,7 +354,7 @@ void TRI_FreeBufferLogging (TRI_vector_t* buffer);
 
 #else
 
-#define LOG_INFO(...) /* logging disabled */
+#define LOG_INFO(...) while (0)
 
 #endif
 
@@ -373,7 +373,7 @@ void TRI_FreeBufferLogging (TRI_vector_t* buffer);
 
 #else
 
-#define LOG_DEBUG(...) /* logging disabled */
+#define LOG_DEBUG(...) while (0)
 
 #endif
 
@@ -392,7 +392,7 @@ void TRI_FreeBufferLogging (TRI_vector_t* buffer);
 
 #else
 
-#define LOG_TRACE(...) /* logging disabled */
+#define LOG_TRACE(...) while (0)
 
 #endif
 
