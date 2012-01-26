@@ -1,0 +1,4 @@
+select u
+from Users u
+where distance( u.location, [ 10.0, 20 ] ) < 10000
+

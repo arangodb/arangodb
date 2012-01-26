@@ -203,7 +203,7 @@ function PRINT_OBJECT (object, seen, path, names) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      AvocadoQuery
+// --SECTION--                                                AvocadoFluentQuery
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -227,8 +227,36 @@ var queryLimit = 20;
 /// @brief prints a query
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoQuery.prototype.PRINT = function() {
-  if (this instanceof AvocadoQuery) {
+AvocadoFluentQuery.prototype.PRINT = function() {
+  if (this instanceof AvocadoFluentQuery) {
+    var count = 0;
+
+    try {
+      while (this.hasNext() && count++ < queryLimit) {
+        internal.output(JSON.stringify(this.next()), "\n");
+      }
+
+      if (this.hasNext()) {
+        internal.output("...more results...");
+      }
+
+      it = this;
+    }
+    catch (e) {
+      internal.output("encountered error while printing: " + e);
+    }
+  }
+  else {
+    internal.output(this.toString());
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints a query
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCursor.prototype.PRINT = function() {
+  if (this instanceof AvocadoCursor) {
     var count = 0;
 
     try {

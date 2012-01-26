@@ -415,6 +415,7 @@ bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
   int rc;
   struct timespec ts;
   struct timeval tp;
+  uint64_t x, y;
 
   rc = gettimeofday(&tp, NULL);
 
@@ -425,8 +426,8 @@ bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
 
   // Convert from timeval to timespec
   ts.tv_sec  = tp.tv_sec;
-  uint64_t x = (tp.tv_usec * 1000) + (delay * 1000);
-  uint64_t y = (x % 1000000000);
+  x = (tp.tv_usec * 1000) + (delay * 1000);
+  y = (x % 1000000000);
   ts.tv_nsec = y;
   ts.tv_sec  = ts.tv_sec + ((x - y) / 1000000000);
 

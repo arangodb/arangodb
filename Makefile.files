@@ -155,9 +155,10 @@ libavocadodb_a_SOURCES = \
 	VocBase/compactor.c \
 	VocBase/datafile.c \
 	VocBase/document-collection.c \
+	VocBase/fluent-query.c \
+	VocBase/query.c \
 	VocBase/headers.c \
 	VocBase/index.c \
-	VocBase/query.c \
 	VocBase/result-set.c \
 	VocBase/simple-collection.c \
 	VocBase/synchroniser.c \
@@ -214,6 +215,7 @@ avocado_SOURCES = \
 BUILT_SOURCES += \
 	js/js-modules.h \
 	js/js-actions.h \
+	js/js-aql.h \
 	js/js-json.h \
 	js/js-shell.h
 

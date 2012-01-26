@@ -9,7 +9,7 @@ fi
 
 DIR=`dirname $INFO`
 
-if test -d .svn;  then
+if test -d ${DIR}/.svn;  then
   revision=`cd $DIR && svnversion`
 else
   if test ! -f "$INFO";  then

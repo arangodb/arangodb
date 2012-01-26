@@ -1,0 +1,2 @@
+select { name : u.name }
+from Users u

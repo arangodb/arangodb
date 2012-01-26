@@ -64,6 +64,7 @@ using namespace triagens::admin;
 using namespace triagens::avocado;
 
 #include "js/js-actions.h"
+#include "js/js-aql.h"
 #include "js/js-json.h"
 #include "js/js-modules.h"
 #include "js/js-shell.h"
@@ -299,6 +300,7 @@ void AvocadoServer::buildApplicationServer () {
     StartupLoader.defineScript("modules.js", JS_modules);
     StartupLoader.defineScript("actions.js", JS_actions);
     StartupLoader.defineScript("json.js", JS_json);
+    StartupLoader.defineScript("aql.js", JS_aql);
     StartupLoader.defineScript("shell.js", JS_shell);
   }
   else {
@@ -512,7 +514,7 @@ void AvocadoServer::executeShell () {
   v8::Isolate* isolate;
   v8::Persistent<v8::Context> context;
   bool ok;
-  char const* files[] = { "modules.js", "json.js", "shell.js" };
+  char const* files[] = { "modules.js", "json.js", "aql.js", "shell.js" };
   size_t i;
 
   // only simple logging

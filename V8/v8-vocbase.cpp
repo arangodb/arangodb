@@ -32,9 +32,11 @@
 #include "BasicsC/csv.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
-#include "VocBase/simple-collection.h"
 #include "ShapedJson/shaped-json.h"
 #include "V8/v8-utils.h"
+#include "VocBase/fluent-query.h"
+#include "VocBase/query.h"
+#include "VocBase/simple-collection.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -46,7 +48,7 @@ using namespace triagens::basics;
 static bool OptimiseQuery (v8::Handle<v8::Object> queryObject);
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
+// --SECTION--                                                 private constants
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,6 +67,18 @@ static int const SLOT_CLASS = 0;
 ////////////////////////////////////////////////////////////////////////////////
 
 static int const SLOT_QUERY = 1;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief slot for a "cursor"
+////////////////////////////////////////////////////////////////////////////////
+
+static int const SLOT_CURSOR = 1;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief slot for a "where clause"
+////////////////////////////////////////////////////////////////////////////////
+
+static int const SLOT_WHERE = 1;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief slot for a "result set"
@@ -292,6 +306,31 @@ static void StoreResultSet (v8::Handle<v8::Object> rsObject,
 /// @brief weak reference callback for queries
 ////////////////////////////////////////////////////////////////////////////////
 
+static void WeakFluentQueryCallback (v8::Persistent<v8::Value> object, void* parameter) {
+  TRI_fluent_query_t* query;
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  query = (TRI_fluent_query_t*) parameter;
+
+  LOG_TRACE("weak-callback for query called");
+
+  // find the persistent handle
+  v8::Persistent<v8::Value> persistent = v8g->JSFluentQueries[query];
+  v8g->JSFluentQueries.erase(query);
+
+  // dispose and clear the persistent handle
+  persistent.Dispose();
+  persistent.Clear();
+
+  // and free the result set
+  query->free(query, true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief weak reference callback for queries
+////////////////////////////////////////////////////////////////////////////////
+
 static void WeakQueryCallback (v8::Persistent<v8::Value> object, void* parameter) {
   TRI_query_t* query;
   TRI_v8_global_t* v8g;
@@ -310,28 +349,28 @@ static void WeakQueryCallback (v8::Persistent<v8::Value> object, void* parameter
   persistent.Clear();
 
   // and free the result set
-  query->free(query, true);
+  // query->free(query, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stores a query in a javascript object
+/// @brief stores a fluent query in a javascript object
 ////////////////////////////////////////////////////////////////////////////////
 
-static void StoreQuery (v8::Handle<v8::Object> queryObject,
-                        TRI_query_t* query) {
+static void StoreFluentQuery (v8::Handle<v8::Object> queryObject,
+                              TRI_fluent_query_t* query) {
   TRI_v8_global_t* v8g;
 
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
-  if (v8g->JSQueries.find(query) == v8g->JSQueries.end()) {
+  if (v8g->JSFluentQueries.find(query) == v8g->JSFluentQueries.end()) {
     v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(query));
 
     queryObject->SetInternalField(SLOT_QUERY, persistent);
     queryObject->SetInternalField(SLOT_RESULT_SET, v8::Null());
 
-    v8g->JSQueries[query] = persistent;
+    v8g->JSFluentQueries[query] = persistent;
 
-    persistent.MakeWeak(query, WeakQueryCallback);
+    persistent.MakeWeak(query, WeakFluentQueryCallback);
   }
 }
 
@@ -339,8 +378,8 @@ static void StoreQuery (v8::Handle<v8::Object> queryObject,
 /// @brief extracts a query from a javascript object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_query_t* ExtractQuery (v8::Handle<v8::Object> queryObject,
-                                  v8::Handle<v8::String>* err) {
+static TRI_fluent_query_t* ExtractFluentQuery (v8::Handle<v8::Object> queryObject,
+                                               v8::Handle<v8::String>* err) {
   TRI_v8_global_t* v8g;
 
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
@@ -364,9 +403,9 @@ static TRI_query_t* ExtractQuery (v8::Handle<v8::Object> queryObject,
       return false;
     }
 
-    TRI_query_t* query = TRI_CreateCollectionQuery(collection);
+    TRI_fluent_query_t* query = TRI_CreateCollectionQuery(collection);
 
-    StoreQuery(queryObject, query);
+    StoreFluentQuery(queryObject, query);
 
     return query;
   }
@@ -376,7 +415,7 @@ static TRI_query_t* ExtractQuery (v8::Handle<v8::Object> queryObject,
   // .............................................................................
 
   else {
-    TRI_query_t* query = static_cast<TRI_query_t*>(v8::Handle<v8::External>::Cast(value)->Value());
+    TRI_fluent_query_t* query = static_cast<TRI_fluent_query_t*>(v8::Handle<v8::External>::Cast(value)->Value());
 
     if (query == 0) {
       *err = v8::String::New("corrupted query");
@@ -391,8 +430,8 @@ static TRI_query_t* ExtractQuery (v8::Handle<v8::Object> queryObject,
 /// @brief executes a query or uses existing result set
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_result_set_t* ExecuteQuery (v8::Handle<v8::Object> queryObject,
-                                       v8::Handle<v8::String>* err) {
+static TRI_result_set_t* ExecuteFluentQuery (v8::Handle<v8::Object> queryObject,
+                                             v8::Handle<v8::String>* err) {
   v8::Handle<v8::Object> self = queryObject->ToObject();
 
   if (self->InternalFieldCount() <= SLOT_RESULT_SET) {
@@ -416,7 +455,7 @@ static TRI_result_set_t* ExecuteQuery (v8::Handle<v8::Object> queryObject,
       return 0;
     }
 
-    TRI_query_t* query = ExtractQuery(self, err);
+    TRI_fluent_query_t* query = ExtractFluentQuery(self, err);
 
     if (query == 0) {
       return 0;
@@ -512,7 +551,7 @@ static string StringifyQuery (v8::Handle<v8::Value> queryObject) {
   // .............................................................................
 
   else {
-    TRI_query_t* query = static_cast<TRI_query_t*>(v8::Handle<v8::External>::Cast(value)->Value());
+    TRI_fluent_query_t* query = static_cast<TRI_fluent_query_t*>(v8::Handle<v8::External>::Cast(value)->Value());
 
     if (query == 0) {
       return "[corrupted query]";
@@ -544,22 +583,22 @@ static bool OptimiseQuery (v8::Handle<v8::Object> queryObject) {
   value = queryObject->GetInternalField(SLOT_QUERY);
 
   if (value != v8g->CollectionQueryType) {
-    TRI_query_t* query = static_cast<TRI_query_t*>(v8::Handle<v8::External>::Cast(value)->Value());
+    TRI_fluent_query_t* query = static_cast<TRI_fluent_query_t*>(v8::Handle<v8::External>::Cast(value)->Value());
 
     if (query == 0) {
       return false;
     }
 
-    TRI_query_t* optimised = query;
+    TRI_fluent_query_t* optimised = query;
 
     optimised->optimise(&optimised);
 
     if (optimised != query) {
 
       // remove old query
-      v8::Persistent<v8::Value> persistent = v8g->JSQueries[query];
+      v8::Persistent<v8::Value> persistent = v8g->JSFluentQueries[query];
 
-      v8g->JSQueries.erase(query);
+      v8g->JSFluentQueries.erase(query);
       persistent.Dispose();
       persistent.Clear();
 
@@ -567,9 +606,9 @@ static bool OptimiseQuery (v8::Handle<v8::Object> queryObject) {
       persistent = v8::Persistent<v8::Value>::New(v8::External::New(optimised));
       queryObject->SetInternalField(SLOT_QUERY, persistent);
 
-      v8g->JSQueries[optimised] = persistent;
+      v8g->JSFluentQueries[optimised] = persistent;
 
-      persistent.MakeWeak(optimised, WeakQueryCallback);
+      persistent.MakeWeak(optimised, WeakFluentQueryCallback);
     }
   }
 
@@ -589,7 +628,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
   // extract the operand query
   v8::Handle<v8::Object> operand = argv.Holder();
   v8::Handle<v8::String> err;
-  TRI_query_t* opQuery = ExtractQuery(operand, &err);
+  TRI_fluent_query_t* opQuery = ExtractFluentQuery(operand, &err);
 
   if (opQuery == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -630,11 +669,253 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
   // create new query
   // .............................................................................
 
-  v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
+  v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
 
-  StoreQuery(result, TRI_CreateEdgesQuery(edges, opQuery->clone(opQuery), direction));
+  StoreFluentQuery(result, TRI_CreateEdgesQuery(edges, opQuery->clone(opQuery), direction));
 
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stores a query in a javascript object
+////////////////////////////////////////////////////////////////////////////////
+
+static void StoreQuery (v8::Handle<v8::Object> queryObject,
+                        TRI_query_t* query) {
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  if (v8g->JSQueries.find(query) == v8g->JSQueries.end()) {
+    v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(query));
+
+    queryObject->SetInternalField(SLOT_QUERY, persistent);
+
+    v8g->JSQueries[query] = persistent;
+
+    persistent.MakeWeak(query, WeakQueryCallback);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts a query from a javascript object
+////////////////////////////////////////////////////////////////////////////////
+
+/// stj, 2012-01-25: unused, causes compile warnings
+/// static TRI_query_t* ExtractQuery (v8::Handle<v8::Object> queryObject,
+///                                  v8::Handle<v8::String>* err) {
+///  TRI_v8_global_t* v8g;
+///
+///  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+///
+///  // the internal fields QUERY must be present
+///  if (queryObject->InternalFieldCount() <= SLOT_QUERY) {
+///    *err = v8::String::New("corrupted query");
+///    return 0;
+///  }
+///
+///  v8::Handle<v8::Value> value = queryObject->GetInternalField(SLOT_QUERY);
+///  TRI_query_t* query = static_cast<TRI_query_t*>(v8::Handle<v8::External>::Cast(value)->Value());
+///
+///  if (query == 0) {
+///    *err = v8::String::New("corrupted query");
+///    return 0;
+///  }
+///
+///  return query;
+///}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a query or uses existing result set
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_rc_cursor_t* ExecuteQuery (v8::Handle<v8::Object> queryObject,
+                                      v8::Handle<v8::Value>* err) {
+  v8::TryCatch tryCatch;
+
+  if (queryObject->InternalFieldCount() <= SLOT_QUERY) {
+    *err = v8::String::New("corrupted query");
+    return 0;
+  }
+
+  LOG_TRACE("executing query");
+
+  v8::Handle<v8::Value> value = queryObject->GetInternalField(SLOT_QUERY);
+  TRI_query_t* query = static_cast<TRI_query_t*>(v8::Handle<v8::External>::Cast(value)->Value());
+
+  TRI_rc_context_t* context = TRI_CreateContextQuery(query);
+
+  if (context == 0) {
+    if (tryCatch.HasCaught()) {
+      *err = tryCatch.Exception();
+    }
+    else {
+      *err = v8::String::New("cannot create query context");
+    }
+
+    return 0;
+  }
+
+  TRI_rc_cursor_t* cursor = TRI_ExecuteQueryAql(query, context);
+
+  if (cursor == 0) {
+    if (tryCatch.HasCaught()) {
+      *err = tryCatch.Exception();
+    }
+    else {
+      *err = v8::String::New("cannot execute query");
+    }
+
+    return 0;
+  }
+
+  return cursor;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief weak reference callback for cursors
+////////////////////////////////////////////////////////////////////////////////
+
+static void WeakCursorCallback (v8::Persistent<v8::Value> object, void* parameter) {
+  TRI_rc_cursor_t* cursor;
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  cursor = (TRI_rc_cursor_t*) parameter;
+
+  LOG_TRACE("weak-callback for cursor called");
+
+  // find the persistent handle
+  v8::Persistent<v8::Value> persistent = v8g->JSCursors[cursor];
+  v8g->JSCursors.erase(cursor);
+
+  // dispose and clear the persistent handle
+  persistent.Dispose();
+  persistent.Clear();
+
+  // and free the result set
+  // cursor->free(cursor, true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stores a cursor in a javascript object
+////////////////////////////////////////////////////////////////////////////////
+
+static void StoreCursor (v8::Handle<v8::Object> cursorObject,
+                         TRI_rc_cursor_t* cursor) {
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  if (v8g->JSCursors.find(cursor) == v8g->JSCursors.end()) {
+    v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(cursor));
+
+    cursorObject->SetInternalField(SLOT_CURSOR, persistent);
+
+    v8g->JSCursors[cursor] = persistent;
+
+    persistent.MakeWeak(cursor, WeakCursorCallback);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts a cursor from a javascript object
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_rc_cursor_t* ExtractCursor (v8::Handle<v8::Object> cursorObject,
+                                       v8::Handle<v8::String>* err) {
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  // the internal fields CURSOR must be present
+  if (cursorObject->InternalFieldCount() <= SLOT_CURSOR) {
+    *err = v8::String::New("corrupted cursor");
+    return 0;
+  }
+
+  v8::Handle<v8::Value> value = cursorObject->GetInternalField(SLOT_CURSOR);
+  TRI_rc_cursor_t* cursor = static_cast<TRI_rc_cursor_t*>(v8::Handle<v8::External>::Cast(value)->Value());
+
+  if (cursor == 0) {
+    *err = v8::String::New("corrupted cursor");
+    return 0;
+  }
+
+  return cursor;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief weak reference callback for wheres
+////////////////////////////////////////////////////////////////////////////////
+
+static void WeakWhereCallback (v8::Persistent<v8::Value> object, void* parameter) {
+  TRI_qry_where_t* where;
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  where = (TRI_qry_where_t*) parameter;
+
+  LOG_TRACE("weak-callback for where called");
+
+  // find the persistent handle
+  v8::Persistent<v8::Value> persistent = v8g->JSWheres[where];
+  v8g->JSWheres.erase(where);
+
+  // dispose and clear the persistent handle
+  persistent.Dispose();
+  persistent.Clear();
+
+  // and free the result set
+  // where->free(where, true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stores a where clause in a javascript object
+////////////////////////////////////////////////////////////////////////////////
+
+static void StoreWhere (v8::Handle<v8::Object> whereObject,
+                        TRI_qry_where_t* where) {
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  if (v8g->JSWheres.find(where) == v8g->JSWheres.end()) {
+    v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(where));
+
+    whereObject->SetInternalField(SLOT_WHERE, persistent);
+
+    v8g->JSWheres[where] = persistent;
+
+    persistent.MakeWeak(where, WeakWhereCallback);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts a where clause from a javascript object
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_qry_where_t* ExtractWhere (v8::Handle<v8::Object> whereObject,
+                                      v8::Handle<v8::String>* err) {
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  // the internal fields WHERE must be present
+  if (whereObject->InternalFieldCount() <= SLOT_WHERE) {
+    *err = v8::String::New("corrupted where clause");
+    return 0;
+  }
+
+  v8::Handle<v8::Value> value = whereObject->GetInternalField(SLOT_WHERE);
+  TRI_qry_where_t* where = static_cast<TRI_qry_where_t*>(v8::Handle<v8::External>::Cast(value)->Value());
+
+  if (where == 0) {
+    *err = v8::String::New("corrupted where clause");
+    return 0;
+  }
+
+  return where;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -696,7 +977,7 @@ static v8::Handle<v8::Value> JS_CountQuery (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   v8::Handle<v8::String> err;
-  TRI_result_set_t* rs = ExecuteQuery(argv.Holder(), &err);
+  TRI_result_set_t* rs = ExecuteFluentQuery(argv.Holder(), &err);
 
   if (rs == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -743,7 +1024,7 @@ static v8::Handle<v8::Value> JS_ExplainQuery (v8::Arguments const& argv) {
 
   v8::Handle<v8::String> err;
   v8::Handle<v8::Object> self = argv.Holder();
-  TRI_result_set_t* rs = ExecuteQuery(self, &err);
+  TRI_result_set_t* rs = ExecuteFluentQuery(self, &err);
 
   if (rs == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -760,7 +1041,7 @@ static v8::Handle<v8::Value> JS_ExplainQuery (v8::Arguments const& argv) {
   v8::Handle<v8::Value> value = self->GetInternalField(SLOT_QUERY);
 
   if (value != v8g->CollectionQueryType) {
-    TRI_query_t* query = static_cast<TRI_query_t*>(v8::Handle<v8::External>::Cast(value)->Value());
+    TRI_fluent_query_t* query = static_cast<TRI_fluent_query_t*>(v8::Handle<v8::External>::Cast(value)->Value());
 
     if (query == 0) {
       return scope.Close(v8::ThrowException(v8::String::New("corrupted query")));
@@ -773,11 +1054,11 @@ static v8::Handle<v8::Value> JS_ExplainQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks for the next result document
+/// @brief checks for the next result document (TO BE DELETED)
 ///
 /// @FUN{hasNext()}
 ///
-/// The @FN{hasNext} operator returns @LIT{true}, if the cursor still has
+/// The @FN{hasNext} operator returns @LIT{true}, then the cursor still has
 /// documents.  In this case the next document can be accessed using the
 /// @FN{next} operator, which will advance the cursor.
 ///
@@ -788,7 +1069,7 @@ static v8::Handle<v8::Value> JS_HasNextQuery (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   v8::Handle<v8::String> err;
-  TRI_result_set_t* rs = ExecuteQuery(argv.Holder(), &err);
+  TRI_result_set_t* rs = ExecuteFluentQuery(argv.Holder(), &err);
 
   if (rs == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -798,13 +1079,14 @@ static v8::Handle<v8::Value> JS_HasNextQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the next result document
+/// @brief returns the next result document (TO BE DELETED)
 ///
 /// @FUN{next()}
 ///
-/// If the @FN{hasNext} operator returns @LIT{true}, if the cursor still has
+/// If the @FN{hasNext} operator returns @LIT{true}, then the cursor still has
 /// documents.  In this case the next document can be accessed using the @FN{next}
-/// operator, which will advance the cursor.
+/// operator, which will advance the cursor. If you use @FN{next} on an
+/// exhausted cursor, then @LIT{undefined} is returned.
 ///
 /// @verbinclude fluent28
 ////////////////////////////////////////////////////////////////////////////////
@@ -813,7 +1095,7 @@ static v8::Handle<v8::Value> JS_NextQuery (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   v8::Handle<v8::String> err;
-  TRI_result_set_t* rs = ExecuteQuery(argv.Holder(), &err);
+  TRI_result_set_t* rs = ExecuteFluentQuery(argv.Holder(), &err);
 
   if (rs == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -832,11 +1114,11 @@ static v8::Handle<v8::Value> JS_NextQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the next result document reference
+/// @brief returns the next result document reference (TO BE DELETED)
 ///
 /// @FUN{nextRef()}
 ///
-/// If the @FN{hasNext} operator returns @LIT{true}, if the cursor still has
+/// If the @FN{hasNext} operator returns @LIT{true}, then the cursor still has
 /// documents.  In this case the next document reference can be
 /// accessed using the @FN{nextRef} operator, which will advance the
 /// cursor.
@@ -848,7 +1130,7 @@ static v8::Handle<v8::Value> JS_NextRefQuery (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   v8::Handle<v8::String> err;
-  TRI_result_set_t* rs = ExecuteQuery(argv.Holder(), &err);
+  TRI_result_set_t* rs = ExecuteFluentQuery(argv.Holder(), &err);
 
   if (rs == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -898,14 +1180,14 @@ static v8::Handle<v8::Value> JS_OptimiseQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a query and returns the result as array
+/// @brief executes a query and returns the result as array (TO BE DELETED)
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ToArrayQuery (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   v8::Handle<v8::String> err;
-  TRI_result_set_t* rs = ExecuteQuery(argv.Holder(), &err);
+  TRI_result_set_t* rs = ExecuteFluentQuery(argv.Holder(), &err);
 
   if (rs == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -915,7 +1197,7 @@ static v8::Handle<v8::Value> JS_ToArrayQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns all elements
+/// @brief returns all elements (TO BE DELETED)
 ///
 /// @FUN{all()}
 ///
@@ -937,7 +1219,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   // extract the operand query
   v8::Handle<v8::Object> operand = argv.Holder();
   v8::Handle<v8::String> err;
-  TRI_query_t* opQuery = ExtractQuery(operand, &err);
+  TRI_fluent_query_t* opQuery = ExtractFluentQuery(operand, &err);
 
   if (opQuery == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -952,9 +1234,9 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   // .............................................................................
 
   if (argv.Length() == 0) {
-    v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
+    v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
 
-    StoreQuery(result, opQuery->clone(opQuery));
+    StoreFluentQuery(result, opQuery->clone(opQuery));
 
     return scope.Close(result);
   }
@@ -996,7 +1278,7 @@ static v8::Handle<v8::Value> JS_DistanceQuery (v8::Arguments const& argv) {
   // extract the operand query
   v8::Handle<v8::Object> operand = argv.Holder();
   v8::Handle<v8::String> err;
-  TRI_query_t* opQuery = ExtractQuery(operand, &err);
+  TRI_fluent_query_t* opQuery = ExtractFluentQuery(operand, &err);
 
   if (opQuery == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -1011,9 +1293,9 @@ static v8::Handle<v8::Value> JS_DistanceQuery (v8::Arguments const& argv) {
   // .............................................................................
 
   if (argv.Length() == 0) {
-    v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
+    v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
 
-    StoreQuery(result, TRI_CreateDistanceQuery(opQuery->clone(opQuery), "_distance"));
+    StoreFluentQuery(result, TRI_CreateDistanceQuery(opQuery->clone(opQuery), "_distance"));
 
     return scope.Close(result);
   }
@@ -1029,9 +1311,9 @@ static v8::Handle<v8::Value> JS_DistanceQuery (v8::Arguments const& argv) {
       return scope.Close(v8::ThrowException(v8::String::New("<attribute> must be non-empty")));
     }
 
-    v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
+    v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
 
-    StoreQuery(result, TRI_CreateDistanceQuery(opQuery->clone(opQuery), name.c_str()));
+    StoreFluentQuery(result, TRI_CreateDistanceQuery(opQuery->clone(opQuery), name.c_str()));
 
     return scope.Close(result);
   }
@@ -1046,7 +1328,7 @@ static v8::Handle<v8::Value> JS_DistanceQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a document
+/// @brief looks up a document (TO BE DELETED)
 ///
 /// @FUN{document(@FA{document-identifier})}
 ///
@@ -1070,7 +1352,7 @@ static v8::Handle<v8::Value> JS_DocumentQuery (v8::Arguments const& argv) {
   // extract the operand query
   v8::Handle<v8::Object> operand = argv.Holder();
   v8::Handle<v8::String> err;
-  TRI_query_t* opQuery = ExtractQuery(operand, &err);
+  TRI_fluent_query_t* opQuery = ExtractFluentQuery(operand, &err);
 
   if (opQuery == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -1101,9 +1383,9 @@ static v8::Handle<v8::Value> JS_DocumentQuery (v8::Arguments const& argv) {
   // create new query
   // .............................................................................
 
-  v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
+  v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
 
-  StoreQuery(result, TRI_CreateDocumentQuery(opQuery->clone(opQuery), did));
+  StoreFluentQuery(result, TRI_CreateDocumentQuery(opQuery->clone(opQuery), did));
 
   return scope.Close(result);
 }
@@ -1167,7 +1449,7 @@ static v8::Handle<v8::Value> JS_GeoQuery (v8::Arguments const& argv) {
   // extract the operand query
   v8::Handle<v8::Object> operand = argv.Holder();
   v8::Handle<v8::String> err;
-  TRI_query_t* opQuery = ExtractQuery(operand, &err);
+  TRI_fluent_query_t* opQuery = ExtractFluentQuery(operand, &err);
 
   if (opQuery == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -1184,9 +1466,9 @@ static v8::Handle<v8::Value> JS_GeoQuery (v8::Arguments const& argv) {
   if (argv.Length() == 1) {
     string location = TRI_ObjectToString(argv[0]);
 
-    v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
+    v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
 
-    StoreQuery(result, TRI_CreateGeoIndexQuery(opQuery->clone(opQuery), location.c_str(), 0, 0, false));
+    StoreFluentQuery(result, TRI_CreateGeoIndexQuery(opQuery->clone(opQuery), location.c_str(), 0, 0, false));
 
     return scope.Close(result);
   }
@@ -1199,9 +1481,9 @@ static v8::Handle<v8::Value> JS_GeoQuery (v8::Arguments const& argv) {
     string location = TRI_ObjectToString(argv[0]);
     bool geoJson = TRI_ObjectToBoolean(argv[1]);
 
-    v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
+    v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
 
-    StoreQuery(result, TRI_CreateGeoIndexQuery(opQuery->clone(opQuery), location.c_str(), 0, 0, geoJson));
+    StoreFluentQuery(result, TRI_CreateGeoIndexQuery(opQuery->clone(opQuery), location.c_str(), 0, 0, geoJson));
 
     return scope.Close(result);
   }
@@ -1214,9 +1496,9 @@ static v8::Handle<v8::Value> JS_GeoQuery (v8::Arguments const& argv) {
     string latitiude = TRI_ObjectToString(argv[0]);
     string longitude = TRI_ObjectToString(argv[1]);
 
-    v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
+    v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
 
-    StoreQuery(result, TRI_CreateGeoIndexQuery(opQuery->clone(opQuery), 0, latitiude.c_str(), longitude.c_str(), false));
+    StoreFluentQuery(result, TRI_CreateGeoIndexQuery(opQuery->clone(opQuery), 0, latitiude.c_str(), longitude.c_str(), false));
 
     return scope.Close(result);
   }
@@ -1256,7 +1538,7 @@ static v8::Handle<v8::Value> JS_LimitQuery (v8::Arguments const& argv) {
   // extract the operand query
   v8::Handle<v8::Object> operand = argv.Holder();
   v8::Handle<v8::String> err;
-  TRI_query_t* opQuery = ExtractQuery(operand, &err);
+  TRI_fluent_query_t* opQuery = ExtractFluentQuery(operand, &err);
 
   if (opQuery == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -1277,9 +1559,9 @@ static v8::Handle<v8::Value> JS_LimitQuery (v8::Arguments const& argv) {
   // create new query
   // .............................................................................
 
-  v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
+  v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
 
-  StoreQuery(result, TRI_CreateLimitQuery(opQuery->clone(opQuery), (TRI_voc_ssize_t) limit));
+  StoreFluentQuery(result, TRI_CreateLimitQuery(opQuery->clone(opQuery), (TRI_voc_ssize_t) limit));
 
   return scope.Close(result);
 }
@@ -1336,7 +1618,7 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
   // extract the operand query
   v8::Handle<v8::Object> operand = argv.Holder();
   v8::Handle<v8::String> err;
-  TRI_query_t* opQuery = ExtractQuery(operand, &err);
+  TRI_fluent_query_t* opQuery = ExtractFluentQuery(operand, &err);
 
   if (opQuery == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -1354,9 +1636,9 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
     double latitiude = TRI_ObjectToDouble(argv[0]);
     double longitude = TRI_ObjectToDouble(argv[1]);
 
-    v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
+    v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
 
-    StoreQuery(result, TRI_CreateNearQuery(opQuery->clone(opQuery), latitiude, longitude, NULL));
+    StoreFluentQuery(result, TRI_CreateNearQuery(opQuery->clone(opQuery), latitiude, longitude, NULL));
 
     return scope.Close(result);
   }
@@ -1408,7 +1690,7 @@ static v8::Handle<v8::Value> JS_SelectQuery (v8::Arguments const& argv) {
   // extract the operand query
   v8::Handle<v8::Object> operand = argv.Holder();
   v8::Handle<v8::String> err;
-  TRI_query_t* opQuery = ExtractQuery(operand, &err);
+  TRI_fluent_query_t* opQuery = ExtractFluentQuery(operand, &err);
 
   if (opQuery == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -1423,9 +1705,9 @@ static v8::Handle<v8::Value> JS_SelectQuery (v8::Arguments const& argv) {
   // .............................................................................
 
   if (argv.Length() == 0) {
-    v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
+    v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
 
-    StoreQuery(result, opQuery->clone(opQuery));
+    StoreFluentQuery(result, opQuery->clone(opQuery));
 
     return scope.Close(result);
   }
@@ -1475,9 +1757,9 @@ static v8::Handle<v8::Value> JS_SelectQuery (v8::Arguments const& argv) {
       }
     }
 
-    v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
+    v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
 
-    StoreQuery(result, TRI_CreateSelectFullQuery(opQuery->clone(opQuery), n, pids, values));
+    StoreFluentQuery(result, TRI_CreateSelectFullQuery(opQuery->clone(opQuery), n, pids, values));
 
     return scope.Close(result);
   }
@@ -1492,7 +1774,7 @@ static v8::Handle<v8::Value> JS_SelectQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief skips an existing query
+/// @brief skips an existing query (TO BE DELETED)
 ///
 /// @FUN{skip(@FA{number})}
 ///
@@ -1514,7 +1796,7 @@ static v8::Handle<v8::Value> JS_SkipQuery (v8::Arguments const& argv) {
   // extract the operand query
   v8::Handle<v8::Object> operand = argv.Holder();
   v8::Handle<v8::String> err;
-  TRI_query_t* opQuery = ExtractQuery(operand, &err);
+  TRI_fluent_query_t* opQuery = ExtractFluentQuery(operand, &err);
 
   if (opQuery == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -1539,9 +1821,9 @@ static v8::Handle<v8::Value> JS_SkipQuery (v8::Arguments const& argv) {
   // create new query
   // .............................................................................
 
-  v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
+  v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
 
-  StoreQuery(result, TRI_CreateSkipQuery(opQuery->clone(opQuery), (TRI_voc_size_t) skip));
+  StoreFluentQuery(result, TRI_CreateSkipQuery(opQuery->clone(opQuery), (TRI_voc_size_t) skip));
 
   return scope.Close(result);
 }
@@ -1585,7 +1867,7 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
   // extract the operand query
   v8::Handle<v8::Object> operand = argv.Holder();
   v8::Handle<v8::String> err;
-  TRI_query_t* opQuery = ExtractQuery(operand, &err);
+  TRI_fluent_query_t* opQuery = ExtractFluentQuery(operand, &err);
 
   if (opQuery == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -1604,9 +1886,9 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
     double longitude = TRI_ObjectToDouble(argv[1]);
     double radius = TRI_ObjectToDouble(argv[2]);
 
-    v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
+    v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
 
-    StoreQuery(result, TRI_CreateWithinQuery(opQuery->clone(opQuery), latitiude, longitude, radius, NULL));
+    StoreFluentQuery(result, TRI_CreateWithinQuery(opQuery->clone(opQuery), latitiude, longitude, radius, NULL));
 
     return scope.Close(result);
   }
@@ -1617,6 +1899,397 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
 
   else {
     return scope.Close(v8::ThrowException(v8::String::New("usage: within(<latitiude>,<longitude>,<radius>)")));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            AVOCADO QUERY LANGUAGE
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              javascript functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new constant where part from a boolean
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_WhereBooleanAql (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: whereConstant(<boolean>)")));
+  }
+
+  // extract the where clause
+  v8::Handle<v8::Value> whereArg = argv[0];
+  TRI_qry_where_t* where = 0;
+
+  where = TRI_CreateQueryWhereBoolean(TRI_ObjectToBoolean(whereArg));
+
+  // wrap it up
+  v8::Handle<v8::Object> result = v8g->WhereTempl->NewInstance();
+
+  StoreWhere(result, where);
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new where part from a string
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_WhereGeneralAql (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: whereGeneral(<where>)")));
+  }
+
+  // extract the where clause
+  v8::Handle<v8::Value> whereArg = argv[0];
+  TRI_qry_where_t* where = 0;
+
+  string cmd = TRI_ObjectToString(whereArg);
+
+  if (cmd.empty()) {
+    return scope.Close(v8::ThrowException(v8::String::New("<where> must be a valid expression")));
+  }
+
+  where = TRI_CreateQueryWhereGeneral(cmd.c_str());
+
+  // wrap it up
+  v8::Handle<v8::Object> result = v8g->WhereTempl->NewInstance();
+
+  StoreWhere(result, where);
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new query from given parts
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_SelectAql (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  if (argv.Length() != 7) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: select(<select>, <name>, <primary>, <joins>, <where>, <skip>, <limit>)")));
+  }
+
+  // extract the select clause
+  v8::Handle<v8::Value> selectArg = argv[0];
+  TRI_qry_select_t* select;
+
+  if (selectArg->IsNull()) {
+    select = TRI_CreateQuerySelectDocument();
+  }
+  else {
+    string cmd = TRI_ObjectToString(selectArg);
+
+    select = TRI_CreateQuerySelectGeneral(cmd.c_str());
+  }
+
+  // extract the name of primary collection
+  v8::Handle<v8::Value> nameArg = argv[1];
+  string name = TRI_ObjectToString(nameArg);
+
+  if (name.empty()) {
+    return scope.Close(v8::ThrowException(v8::String::New("expecting a none-empty name for <primary>")));
+  }
+
+  // extract the primary collection
+  v8::Handle<v8::Value> primaryArg = argv[2];
+
+  if (! primaryArg->IsObject()) {
+    return scope.Close(v8::ThrowException(v8::String::New("expecting a collection for <primary>")));
+  }
+
+  v8::Handle<v8::Object> primaryObj = primaryArg->ToObject();
+
+  if (primaryObj->InternalFieldCount() <= SLOT_RESULT_SET) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted collection")));
+  }  
+
+  if (primaryObj->GetInternalField(SLOT_QUERY) != v8g->CollectionQueryType) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted collection")));
+  }  
+
+  v8::Handle<v8::String> err;
+  TRI_vocbase_col_t const* collection = LoadCollection(primaryObj, &err);
+
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  // extract the where clause
+  v8::Handle<v8::Value> whereArg = argv[4];
+  TRI_qry_where_t* where = 0;
+
+  if (! whereArg->IsNull()) {
+    where = ExtractWhere(whereArg->ToObject(), &err);
+
+    if (where == 0) {
+      return scope.Close(v8::ThrowException(err));
+    }
+  }
+
+  // extract the skip value
+  TRI_voc_size_t skip = 0;
+  v8::Handle<v8::Value> skipArg = argv[5];
+
+  if (skipArg->IsNull()) {
+    skip = TRI_QRY_NO_SKIP;
+  }
+  else {
+    double s = TRI_ObjectToDouble(skipArg);
+
+    if (s < 0.0) {
+      skip = 0;
+    }
+    else {
+      skip = (TRI_voc_size_t) s;
+    }
+  }
+
+  // extract the limit value
+  TRI_voc_ssize_t limit = 0;
+  v8::Handle<v8::Value> limitArg = argv[6];
+
+  if (limitArg->IsNull()) {
+    limit = TRI_QRY_NO_LIMIT;
+  }
+  else {
+    double l = TRI_ObjectToDouble(limitArg);
+
+    limit = (TRI_voc_ssize_t) l;
+  }
+
+  // create the query
+  TRI_query_t* query = TRI_CreateQuery(select, name.c_str(), collection->_collection);
+
+  query->_where = where;
+  query->_skip = skip;
+  query->_limit = limit;
+
+  // wrap it up
+  v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
+
+  StoreQuery(result, query);
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a query
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  v8::Handle<v8::Value> err;
+  TRI_rc_cursor_t* cursor = ExecuteQuery(argv.Holder(), &err);
+
+  if (cursor == 0) {
+    return v8::ThrowException(err);
+  }
+
+  v8::Handle<v8::Object> result = v8g->CursorTempl->NewInstance();
+
+  StoreCursor(result, cursor);
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                        AQL CURSOR
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              javascript functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the next document
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_NextCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: next()")));
+  }
+
+  v8::Handle<v8::Object> self = argv.Holder();
+  v8::Handle<v8::String> err;
+
+  TRI_rc_cursor_t* cursor = ExtractCursor(self, &err);
+
+  if (cursor == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  TRI_rc_result_t* next = cursor->next(cursor);
+
+  if (next == 0) {
+    return scope.Close(v8::Undefined());
+  }
+
+  TRI_qry_select_t* select = cursor->_select;
+
+  v8::Handle<v8::Value> value;
+  bool ok = select->toJavaScript(select, next, (void*) &value);
+
+  if (! ok) {
+    if (tryCatch.HasCaught()) {
+      return scope.Close(v8::ThrowException(tryCatch.Exception()));
+    }
+    else {
+      return scope.Close(v8::ThrowException(v8::String::New("cannot convert to JavaScript")));
+    }
+  }
+
+  return scope.Close(value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the next document reference
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_NextRefCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: nextRef()")));
+  }
+
+  v8::Handle<v8::Object> self = argv.Holder();
+  v8::Handle<v8::String> err;
+
+  TRI_rc_cursor_t* cursor = ExtractCursor(self, &err);
+
+  if (cursor == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  TRI_rc_result_t* next = cursor->next(cursor);
+
+  if (next == 0) {
+    return scope.Close(v8::Undefined());
+  }
+
+  // always use the primary collection
+  TRI_voc_cid_t cid = cursor->_context->_primary->base._cid;
+  TRI_voc_did_t did = next->_primary->_did;
+
+  string ref = StringUtils::itoa(cid) + ":" + StringUtils::itoa(did);
+
+  return scope.Close(v8::String::New(ref.c_str()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uses the next document
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_UseNextCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: nextRef()")));
+  }
+
+  v8::Handle<v8::Object> self = argv.Holder();
+  v8::Handle<v8::String> err;
+
+  TRI_rc_cursor_t* cursor = ExtractCursor(self, &err);
+
+  if (cursor == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  TRI_rc_result_t* next = cursor->next(cursor);
+
+  if (next == 0) {
+    return scope.Close(v8::Undefined());
+  }
+
+  return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if the cursor is exhausted
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_HasNextCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: hasNext()")));
+  }
+
+  v8::Handle<v8::Object> self = argv.Holder();
+  v8::Handle<v8::String> err;
+
+  TRI_rc_cursor_t* cursor = ExtractCursor(self, &err);
+
+  if (cursor == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  if (cursor->hasNext(cursor)) {
+    return scope.Close(v8::True());
+  }
+  else {
+    return scope.Close(v8::False());
   }
 }
 
@@ -2888,6 +3561,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> DropIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("dropIndex"));
   v8::Handle<v8::String> EdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("edges"));
   v8::Handle<v8::String> EnsureGeoIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureGeoIndex"));
+  v8::Handle<v8::String> ExecuteFuncName = v8::Persistent<v8::String>::New(v8::String::New("execute"));
   v8::Handle<v8::String> ExplainFuncName = v8::Persistent<v8::String>::New(v8::String::New("explain"));
   v8::Handle<v8::String> FiguresFuncName = v8::Persistent<v8::String>::New(v8::String::New("figures"));
   v8::Handle<v8::String> GeoFuncName = v8::Persistent<v8::String>::New(v8::String::New("geo"));
@@ -2909,6 +3583,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> SkipFuncName = v8::Persistent<v8::String>::New(v8::String::New("skip"));
   v8::Handle<v8::String> StatusFuncName = v8::Persistent<v8::String>::New(v8::String::New("status"));
   v8::Handle<v8::String> ToArrayFuncName = v8::Persistent<v8::String>::New(v8::String::New("toArray"));
+  v8::Handle<v8::String> UseNextFuncName = v8::Persistent<v8::String>::New(v8::String::New("useNext"));
   v8::Handle<v8::String> WithinFuncName = v8::Persistent<v8::String>::New(v8::String::New("within"));
 
   // .............................................................................
@@ -2978,7 +3653,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
 
   v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
-  rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
+  rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery)); // TO BE DELETED
   rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountQuery));
   rt->Set(DeleteFuncName, v8::FunctionTemplate::New(JS_DeleteVocbaseCol));
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentQuery));
@@ -2990,7 +3665,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(GeoFuncName, v8::FunctionTemplate::New(JS_GeoQuery));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
   rt->Set(InEdgesFuncName, v8::FunctionTemplate::New(JS_InEdgesQuery));
-  rt->Set(LimitFuncName, v8::FunctionTemplate::New(JS_LimitQuery));
+  rt->Set(LimitFuncName, v8::FunctionTemplate::New(JS_LimitQuery)); // TO BE DELETED
   rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));
   rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
   rt->Set(OutEdgesFuncName, v8::FunctionTemplate::New(JS_OutEdgesQuery));
@@ -2998,9 +3673,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbaseCol));
   rt->Set(SaveFuncName, v8::FunctionTemplate::New(JS_SaveVocbaseCol));
   rt->Set(SelectFuncName, v8::FunctionTemplate::New(JS_SelectQuery));
-  rt->Set(SkipFuncName, v8::FunctionTemplate::New(JS_SkipQuery));
+  rt->Set(SkipFuncName, v8::FunctionTemplate::New(JS_SkipQuery)); // TO BE DELETED
   rt->Set(StatusFuncName, v8::FunctionTemplate::New(JS_StatusVocbaseCol));
-  rt->Set(ToArrayFuncName, v8::FunctionTemplate::New(JS_ToArrayQuery));
+  rt->Set(ToArrayFuncName, v8::FunctionTemplate::New(JS_ToArrayQuery)); // TO BE DELETED
   rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
 
   // must come after SetInternalFieldCount
@@ -3049,11 +3724,11 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
                          ft->GetFunction());
 
   // .............................................................................
-  // generate the query template
+  // generate the fluent query template
   // .............................................................................
 
   ft = v8::FunctionTemplate::New();
-  ft->SetClassName(v8::String::New("AvocadoQuery"));
+  ft->SetClassName(v8::String::New("AvocadoFluentQuery"));
 
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(SLOT_END);
@@ -3079,11 +3754,82 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(ToArrayFuncName, v8::FunctionTemplate::New(JS_ToArrayQuery));
   rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
 
+  v8g->FluentQueryTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+
+  // must come after SetInternalFieldCount
+  context->Global()->Set(v8::String::New("AvocadoFluentQuery"),
+                         ft->GetFunction());
+
+  // .............................................................................
+  // generate the where clause template
+  // .............................................................................
+
+  ft = v8::FunctionTemplate::New();
+  ft->SetClassName(v8::String::New("AvocadoWhereClause"));
+
+  rt = ft->InstanceTemplate();
+  rt->SetInternalFieldCount(SLOT_END);
+
+  v8g->WhereTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+
+  // must come after SetInternalFieldCount
+  context->Global()->Set(v8::String::New("AvocadoWhereClause"),
+                         ft->GetFunction());
+
+  // .............................................................................
+  // generate the query template
+  // .............................................................................
+
+  ft = v8::FunctionTemplate::New();
+  ft->SetClassName(v8::String::New("AvocadoQuery"));
+
+  rt = ft->InstanceTemplate();
+  rt->SetInternalFieldCount(SLOT_END);
+
+  rt->Set(ExecuteFuncName, v8::FunctionTemplate::New(JS_ExecuteAql));
+
   v8g->QueryTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
   // must come after SetInternalFieldCount
   context->Global()->Set(v8::String::New("AvocadoQuery"),
                          ft->GetFunction());
+
+  // .............................................................................
+  // generate the cursor template
+  // .............................................................................
+
+  ft = v8::FunctionTemplate::New();
+  ft->SetClassName(v8::String::New("AvocadoCursor"));
+
+  rt = ft->InstanceTemplate();
+  rt->SetInternalFieldCount(SLOT_END);
+
+  rt->Set(HasNextFuncName, v8::FunctionTemplate::New(JS_HasNextCursor));
+  rt->Set(NextFuncName, v8::FunctionTemplate::New(JS_NextCursor));
+  rt->Set(NextRefFuncName, v8::FunctionTemplate::New(JS_NextRefCursor));
+  rt->Set(UseNextFuncName, v8::FunctionTemplate::New(JS_UseNextCursor));
+
+  v8g->CursorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+
+  // must come after SetInternalFieldCount
+  context->Global()->Set(v8::String::New("AvocadoCursor"),
+                         ft->GetFunction());
+
+  // .............................................................................
+  // create the global functions
+  // .............................................................................
+
+  context->Global()->Set(v8::String::New("AQL_WHERE_BOOLEAN"),
+                         v8::FunctionTemplate::New(JS_WhereBooleanAql)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("AQL_WHERE_GENERAL"),
+                         v8::FunctionTemplate::New(JS_WhereGeneralAql)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("AQL_SELECT"),
+                         v8::FunctionTemplate::New(JS_SelectAql)->GetFunction(),
+                         v8::ReadOnly);
 
   // .............................................................................
   // create the global variables

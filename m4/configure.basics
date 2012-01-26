@@ -77,7 +77,7 @@ if test x$GCC == xyes;  then
     WALL="${WALL} -Werror"
   fi
 
-  WALLC="${WALL} -Wshadow -Wstrict-prototypes"
+  WALLC="${WALL} -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement"
   WALLCXX="${WALL} -Wstrict-null-sentinel -Woverloaded-virtual -Wno-variadic-macros"
 
   if test x$tr_WEFFCXX == xyes;  then

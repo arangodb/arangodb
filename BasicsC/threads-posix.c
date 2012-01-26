@@ -155,12 +155,13 @@ TRI_tid_t TRI_CurrentThreadId () {
 
 bool TRI_StartThread (TRI_thread_t* thread, void (*starter)(void*), void* data) {
   thread_data_t* d;
+  int rc;
 
   d = TRI_Allocate(sizeof(thread_data_t));
   d->starter = starter;
   d->_data = data;
 
-  int rc = pthread_create(thread, 0, &ThreadStarter, d);
+  rc = pthread_create(thread, 0, &ThreadStarter, d);
 
   if (rc != 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);

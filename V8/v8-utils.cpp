@@ -1591,7 +1591,7 @@ v8::Handle<v8::Value> TRI_ObjectJson (TRI_json_t const* json) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a TRI_shaped_json_t into a V8 object
+/// @brief converts a TRI_rs_entry_t into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> TRI_ObjectRSEntry (TRI_doc_collection_t* collection,
@@ -1627,6 +1627,53 @@ v8::Handle<v8::Value> TRI_ObjectRSEntry (TRI_doc_collection_t* collection,
   }
 
   return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a TRI_shaped_json_t into a V8 object
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ObjectDocumentPointer (TRI_doc_collection_t* collection,
+                                TRI_doc_mptr_t const* document,
+                                void* storage) {
+  TRI_df_marker_type_t type;
+  TRI_doc_edge_marker_t* marker;
+  TRI_shape_t const* shape;
+  TRI_shaped_json_t const* shaped;
+  TRI_shaper_t* shaper;
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  shaper = collection->_shaper;
+  shaped = &document->_document;
+  shape = shaper->lookupShapeId(shaper, shaped->_sid);
+
+  if (shape == 0) {
+    LOG_WARNING("cannot find shape #%u", (unsigned int) shaped->_sid);
+    return false;
+  }
+
+  v8::Handle<v8::Value> result = JsonShapeData(shaper,
+                                               shape,
+                                               shaped->_data.data,
+                                               shaped->_data.length);
+
+  if (result->IsObject()) {
+    result->ToObject()->Set(v8g->DidKey, ObjectReference(collection->base._cid, document->_did));
+
+    type = ((TRI_df_marker_t*) document->_data)->_type;
+
+    if (type == TRI_DOC_MARKER_EDGE) {
+      marker = (TRI_doc_edge_marker_t*) document->_data;
+
+      result->ToObject()->Set(v8g->FromKey, ObjectReference(marker->_fromCid, marker->_fromDid));
+      result->ToObject()->Set(v8g->ToKey, ObjectReference(marker->_toCid, marker->_toDid));
+    }
+  }
+
+  * (v8::Handle<v8::Value>*) storage = result;
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1762,6 +1809,163 @@ bool TRI_ObjectToBoolean (v8::Handle<v8::Value> value) {
   }
 
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 EXECUTION CONTEXT
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Utils
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execution context
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct js_exec_context_s {
+  v8::Persistent<v8::Function> _func;
+  v8::Persistent<v8::Object> _arguments;
+}
+js_exec_context_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Utils
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new execution context
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_js_exec_context_t TRI_CreateExecutionContext (char const* script) {
+  js_exec_context_t* ctx;
+
+  // execute script inside the context
+  v8::Handle<v8::Script> compiled = v8::Script::Compile(v8::String::New(script), 
+                                                        v8::String::New("--script--"));
+    
+  // compilation failed, print errors that happened during compilation
+  if (compiled.IsEmpty()) {
+    return 0;
+  }
+    
+  // compute the function
+  v8::Handle<v8::Value> val = compiled->Run();
+    
+  if (val.IsEmpty()) {
+    return 0;
+  }
+
+  ctx = new js_exec_context_t;
+
+  ctx->_func = v8::Persistent<v8::Function>::New(v8::Handle<v8::Function>::Cast(val));
+  ctx->_arguments = v8::Persistent<v8::Object>::New(v8::Object::New());
+
+  // return the handle
+  return (TRI_js_exec_context_t) ctx;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Utils
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief defines a document
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_DefineDocumentExecutionContext (TRI_js_exec_context_t context,
+                                         char const* name,
+                                         TRI_doc_collection_t* collection,
+                                         TRI_doc_mptr_t const* document) {
+  js_exec_context_t* ctx;
+  v8::Handle<v8::Value> result;
+
+  ctx = (js_exec_context_t*) context;
+
+  bool ok = TRI_ObjectDocumentPointer(collection, document, &result);
+
+  if (! ok) {
+    return false;
+  }
+
+  ctx->_arguments->Set(v8::String::New(name), result);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes and destroys an execution context
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ExecuteExecutionContext (TRI_js_exec_context_t context, void* storage) {
+  js_exec_context_t* ctx;
+
+  ctx = (js_exec_context_t*) context;
+
+  // convert back into a handle
+  v8::Persistent<v8::Function> func = ctx->_func;
+
+  // and execute the function
+  v8::Handle<v8::Value> args[] = { ctx->_arguments };
+  v8::Handle<v8::Value> result = func->Call(func, 1, args);
+  
+  if (result.IsEmpty()) {
+    return false;
+  }
+
+  * (v8::Handle<v8::Value>*) storage = result;
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes and destroys an execution context for a condition
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ExecuteConditionExecutionContext (TRI_js_exec_context_t context, bool* r) {
+  js_exec_context_t* ctx;
+
+  ctx = (js_exec_context_t*) context;
+
+  // convert back into a handle
+  v8::Persistent<v8::Function> func = ctx->_func;
+
+  // and execute the function
+  v8::Handle<v8::Value> args[] = { ctx->_arguments };
+  v8::Handle<v8::Value> result = func->Call(func, 1, args);
+  
+  if (result.IsEmpty()) {
+    return false;
+  }
+
+  *r = TRI_ObjectToBoolean(result);
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

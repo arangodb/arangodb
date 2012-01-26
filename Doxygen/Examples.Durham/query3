@@ -1,0 +1,2 @@
+select { name : u.name, email : u.address }
+from User u
