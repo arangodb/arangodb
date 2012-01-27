@@ -1,15 +1,26 @@
 .ui-layout-center {
-    background-color: #E2FFD0;
+    padding-right:10px;
+    padding-top:10px;
+    padding-left: 10px;
+    border-bottom-width: 2px !important;
+    border-color: #333333 !important;
 }
 
 .ui-layout-north {
-    background-color: #FFFFFF;
+    padding-left: 10px;
+    padding-top: 6px;
+    height: 30px !important; 
+    background-color: #333333;
 }
 
-.ui-layout-west {
-    background-color: #E2FFD0;
+.ui-layout-east {
+    width:250px !important;
 }
 
-.ui-layout-resizer {
-    background-color: #E2FFD0;
+.ui-layout-resizer-west {
+    background-color: #333333 !important;
+}
+
+.ui-layout-resizer-north {
+    background-color: #61FE59 !important;
 }

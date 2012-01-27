@@ -1,135 +1,548 @@
 <html>
-	<head>
-			<meta http-equiv="content-type" content="text/html; charset=utf-8" />
-			<link rel="shortcut icon" type="image/ico" href="favicon.ico" />
-			<link rel="stylesheet" type="text/css" href="css/styles.css">
-			<title>Avocado DB - Table Example</title>
-			<style type="text/css" title="screen">
-                        @import "css/demo_page.css";  
-                        @import "css/demo_table_jui.css";
-                        @import "css/jquery-ui-1.7.2.custom.css";
-			
-			body { background-color:#4C4949 }
-			
-			ul#sliding-navigation {
-			  position: absolute;
-			  top: 20px;
-			  left: 0px;
-			  width: 190px;
-			}
-			
-			ul#table-view {
-			  margin-left: 200px;
-			}
-				
-			</style>
-				<script type="text/javascript" language="javascript" src="script/jquery.js"></script>
-				<script type="text/javascript" language="javascript" src="script/jquery.dataTables.js"></script>
-				<script type="text/javascript" charset="utf-8">	</script>
-	</head>
-	
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <link rel="shortcut icon" type="image/ico" href="favicon.ico" />
+    <title>Avocado DB - Table Example</title>
+    <style type="text/css" title="screen">
+      @import "css/demo_table_jui.css";
+      @import "css/jquery-ui-1.8.17.custom.css";
+      @import "css/layout.css";
+      @import "css/jquery.qtip.css";
+    </style>
+    <script type="text/javascript" language="javascript" src="script/jquery.js"></script>
+    <script type="text/javascript" language="javascript" src="script/jquery.dataTables.js"></script>
+    <script type="text/javascript" language="javascript" src="script/jquery.layout-latest.js"></script>
+    <script type="text/javascript" language="javascript" src="script/jquery.qtip.js"></script>
+    <script type="text/javascript" language="javascript" src="script/jquery.jeditable.js"></script>
+  </head>
 
+  <body>
+    <script>
 
-	<body>
-	<h3 style="color:white">Database:</h3>
-	
-	<ul id="sliding-navigation">
-          <li class="sliding-element"><h3 id="navelement1" style="color:black">Navigation Title #1</h3></li>  
-          <li class="sliding-element"><a href="#">Link 1</a></li>  
-          <li class="sliding-element"><a href="#">Link 2</a></li>  
-          <li class="sliding-element"><h3 id="navelement2" style="color:black">Navigation Title #2</h3></li>  
-          <li class="sliding-element"><a href="#">Link 3</a></li>  
-          <li class="sliding-element"><a href="#">Link 4</a></li>  
-        </ul>  
-
-
-	<script>
-		
-		function fnFormatDetails ( oTable, nTr ) {
-    			var aData = oTable.fnGetData( nTr );
-    			var sOut = '<table cellpadding="5" cellspacing="0" border="0" style="padding-left:50px;">';
-    			sOut += '<tr><td>Rendering engine:</td><td>'+aaData[1]+' '+aaData[4]+'</td></tr>';
-    			sOut += '<tr><td>Link to source:</td><td>Could provide a link here</td></tr>';
-    			sOut += '<tr><td>Extra info:</td><td>And any further details here (images etc)</td></tr>';
-    			sOut += '</table>';
+//Formatierung fehlt...
+    
+    var oCache = {
+    iCacheLower: -1
+};
+ 
+function fnSetKey( aoData, sKey, mValue )
+{
+    for ( var i=0, iLen=aoData.length ; i<iLen ; i++ )
+    {
+        if ( aoData[i].name == sKey )
+        {
+            aoData[i].value = mValue;
+        }
+    }
+}
+ 
+function fnGetKey( aoData, sKey )
+{
+    for ( var i=0, iLen=aoData.length ; i<iLen ; i++ )
+    {
+        if ( aoData[i].name == sKey )
+        {
+            return aoData[i].value;
+        }
+    }
+    return null;
+}
+ 
+function fnDataTablesPipeline ( sSource, aoData, fnCallback ) {
+    var iPipe = 5; /* Ajust the pipe size */
      
-    		return sOut;
-		}
-
-
-
-		$(document).ready(function() {
-			
-
-			var nCloneTh = document.createElement( 'th' );
-    			var nCloneTd = document.createElement( 'td' );
-    			nCloneTd.innerHTML = '<img src="images/details_open.png">';
-    			nCloneTd.className = "center";
+    var bNeedServer = false;
+    var sEcho = fnGetKey(aoData, "sEcho");
+    var iRequestStart = fnGetKey(aoData, "iDisplayStart");
+    var iRequestLength = fnGetKey(aoData, "iDisplayLength");
+    var iRequestEnd = iRequestStart + iRequestLength;
+    oCache.iDisplayStart = iRequestStart;
      
-   	 		$('#example thead tr').each( function () {
-        		this.insertBefore( nCloneTh, this.childNodes[0] );
-    			} );
+    /* outside pipeline? */
+    if ( oCache.iCacheLower < 0 || iRequestStart < oCache.iCacheLower || iRequestEnd > oCache.iCacheUpper )
+    {
+        bNeedServer = true;
+    }
      
-    			$('#example tbody tr').each( function () {
-        		this.insertBefore(  nCloneTd.cloneNode( true ), this.childNodes[0] );
-    			} );
+    /* sorting etc changed? */
+    if ( oCache.lastRequest && !bNeedServer )
+    {
+        for( var i=0, iLen=aoData.length ; i<iLen ; i++ )
+        {
+            if ( aoData[i].name != "iDisplayStart" && aoData[i].name != "iDisplayLength" && aoData[i].name != "sEcho" )
+            {
+                if ( aoData[i].value != oCache.lastRequest[i].value )
+                {
+                    bNeedServer = true;
+                    break;
+                }
+            }
+        }
+    }
+     
+    /* Store the request for checking next time around */
+    oCache.lastRequest = aoData.slice();
+     
+    if ( bNeedServer )
+    {
+        if ( iRequestStart < oCache.iCacheLower )
+        {
+            iRequestStart = iRequestStart - (iRequestLength*(iPipe-1));
+            if ( iRequestStart < 0 )
+            {
+                iRequestStart = 0;
+            }
+        }
+         
+        oCache.iCacheLower = iRequestStart;
+        oCache.iCacheUpper = iRequestStart + (iRequestLength * iPipe);
+        oCache.iDisplayLength = fnGetKey( aoData, "iDisplayLength" );
+        fnSetKey( aoData, "iDisplayStart", iRequestStart );
+        fnSetKey( aoData, "iDisplayLength", iRequestLength*iPipe );
+         
+        $.getJSON( sSource, aoData, function (json) {
+            /* Callback processing */
+            oCache.lastJson = jQuery.extend(true, {}, json);
+             
+            if ( oCache.iCacheLower != oCache.iDisplayStart )
+            {
+                json.aaData.splice( 0, oCache.iDisplayStart-oCache.iCacheLower );
+            }
+            json.aaData.splice( oCache.iDisplayLength, json.aaData.length );
+             
+            fnCallback(json)
+        } );
+    }
+    else
+    {
+        json = jQuery.extend(true, {}, oCache.lastJson);
+        json.sEcho = sEcho; /* Update the echo for each response */
+        json.aaData.splice( 0, iRequestStart-oCache.iCacheLower );
+        json.aaData.splice( iRequestLength, json.aaData.length );
+        fnCallback(json);
+        return;
+    }
+}
+ 
+    $(document).ready(function() {
+      
+      //alert(document.location.href);
+      //jQuery Layout init
+      $('body').layout({
+        closable: false,
+        resizable: false,
+        applyDefaultStyles: false,
+        north__spacing_open:2,
+        north__spacing_closed: 2,
+        east__spacing_open: 0,
+        east__spacing_closed: 0,
+      });
+    
+      var xTable;
+      var lastClickedID;
+      var nCloneTh = document.createElement( 'th' );
+      var nCloneTd = document.createElement( 'td' );
+      var nCloneTh2 = document.createElement( 'th' );
+      var nCloneTd2 = document.createElement( 'td' );
 
+      $('#example thead tr').each(function () {
+        this.insertBefore(nCloneTh, this.childNodes[0]);
+      } );
+     
+      $('#example tbody tr').each(function () {
+        this.insertBefore(nCloneTd.cloneNode(true), this.childNodes[0] );
+      });
 
+      $('#subTable thead tr').each(function () {
+        this.insertBefore(nCloneTh2, this.childNodes[0]);
+      } );
+     
+      $('#subTable tbody tr').each(function () {
+        this.insertBefore(nCloneTd2.cloneNode(true), this.childNodes[0] );
+      });
 
-			$.getJSON("http://localhost:8530/_system/collections", function(data) {
-                        	
-				var items=[];
-				document.getElementById('ueberschrift').innerHTML="Directory:  " + data.path;
+      $.getJSON("/_system/collections", function(data) {
+        var items=[];
+        document.getElementById('ueberschrift').innerHTML="Database Directory:  " + data.path;
 	
-				$.each(data.collections, function(key, val) {
-					var temp_status=val.status;
-					
-					if (temp_status == 2) {
-						temp_status = "loaded";
-					}
-					
-					items.push(["", val.id, val.name, temp_status]);
-			    	});
+        $.each(data.collections, function(key, val) {
+          var temp_status=val.status;
+          
+          if (temp_status == 1) {
+            temp_status = "new born";
+            items.push(["", val.id, val.name, temp_status, "", ""]);
+          }
 
-				var oTable = $('#example').dataTable({
-					"sPaginationType": "full_numbers",
-					"bJQueryUI": true,
-					"aoColumnDefs": [
-							{"bSortable": false, "aTargets": [0] }
-							],
-					"aaSorting": [[1, 'asc']],
-					"aaData": items
-				});
-			});
-				
-			$('#example tbody td img').live('click', function () {
-        			var nTr = this.parentNode.parentNode;
-        			if ( this.src.match('details_close') ) {
-            				this.src = "images/details_open.png";
-            				oTable.fnClose( nTr );
-        				}
-        			else {
-            				this.src = "images/details_close.png";
-            				oTable.fnOpen( nTr, fnFormatDetails(oTable, nTr), 'details' );
-        			}
-    			} );
+          if (temp_status == 2) {
+            temp_status = "unloaded";
+            items.push(["<button class=\"ui-button ui-button-text-only ui-widget ui-state-default ui-corner-all\" id=" + val.id + ">load</button>",
+            val.id, val.name, temp_status, "0", "0"]);
+          }
+  
+          if (temp_status == 3) {
+            temp_status = "loaded";
+            items.push([
+              "<img src=images/edit.gif id=" + val.id + " class=" + val.name + "></img>", 
+              val.id, 
+              '<a class="' + val.id + '">' + val.name + '</a>',
+              temp_status, 
+              val.figures.numberDatafiles, 
+              val.figures.sizeAlive, 
+              val.figures.numberAlive, 
+              val.figures.numberDead, 
+              val.figures.sizeDead, 
+              val.figures.numberDeletion
+            ]);
+          }
+         
+          if (temp_status == 4) {
+            temp_statsu = "corrupted";
+            items.push(["", val.id, val.name, temp_status, "", ""]);
+            }
+          });
 
-		});
-		
-	</script>
+        var oTable = $('#example').dataTable( {
+          "bProcessing": true,
+          "fnServerData": fnDataTablesPipeline,
+          "bJQueryUI": true,
+          "aaSorting": [[1, 'asc']],
+          "aaData": items,
+          "sEmptyTable": "No matching data available",
+          "aoColumns": [{ "sClass": "center", "bSortable": false, "sWidth": "100px" },
+            null,
+            null,
+            null,
+            { "sClass": "center" },
+            { "sClass": "center" }
+          ]
+        });
+        
+        $('#example tbody td').live('mouseover', function(event) {
+          
+          var aPos = oTable.fnGetPosition( this );
+          var aData = oTable.fnGetData( this.parentNode );
+
+          if (aData[3] == "loaded") {
+            var sOut = '<table cellpadding="3" cellspacing="0" border="0" >';
+            sOut += '<tr><td>#Datafiles: </td><td>'+aData[4]+' </td></tr>';
+            sOut += '<tr><td>#Alive: </td><td>'+aData[6]+' </td></tr>';
+            sOut += '<tr><td>#Dead: </td><td>'+aData[7]+' </td></tr>';
+            sOut += '<tr><td>#Size Alive: </td><td>'+aData[5]+' </td></tr>';
+            sOut += '<tr><td>#Size Dead: </td><td>'+aData[8]+' </td></tr>';
+            sOut += '<tr><td>#numberDeletion: </td><td>'+aData[9]+' </td></tr>';
+            sOut += '</table>';
+            
+            $(this).qtip({
+              overwrite: false, 
+              content: {
+                text: sOut, 
+                title: '<b>Name: ' + aData[2] + '<br>ID: ' + aData[1],
+              },
+              show: {
+                event: event.type, 
+                ready: true 
+              },
+              position: {
+                my: 'top left',
+                target: 'mouse',
+                viewport: $(window), 
+                adjust: { 
+                  x: 10, y: 10
+                }
+              },
+              style: {
+                classes: 'ui-tooltip-green ui-tooltip-rounded ui-tooltip-shadow'
+              },
+              hide: {
+                fixed: true
+              },
+            }, event); 
+          }
+        })
+        
+ 
+        .each(function(i) {
+        $.attr(this, 'oldtitle', $.attr(this, 'title'));
+        this.removeAttribute('title');
+        });
+
+        $('#example tbody td img ').live('click', function () {
+          if ( this.src.match('edit') ) {
+
+            var collection_sub_id = this.id;
+            $.getJSON("/_system/documents?collection=" + collection_sub_id, function(data) {
+            var sub_items=[];
+            var i = 0;
+            $.each(data.references, function(val) {
+              sub_items.push(["<img src=images/edit.gif id=" + data.references[i] +  "></img><img src=images/delete.png></img>", 
+              data.references[i]]);
+            i = i + 1;
+            });
+
+            xTable = $('#subTable').dataTable( {
+              "fnServerData": fnDataTablesPipeline,
+              "bDestroy": true,
+              "bProcessing": true,
+              "bJQueryUI": true,
+              "aaData": sub_items,
+              "sEmptyTable": "No matching data available",
+              "aoColumns": [ {"bSortable":false, "sClass":"center", "sWidth":"100px"} , {"sClass":"center"}]
+            });
+          });
+
+            $('#detail_view').show();
+            $('#tableWindow').hide();
+            document.getElementById('database_header2').innerHTML=" > " + this.id;
+          }
+        });
+
+        $('#subTable tbody td img ').live('click', function () {
+          if (this.src.match('edit')) {
+            //WICHTIG
+            var doc_items = [];
+            lastClickedID = this.id;
+            var getJSON_sub = "/_document/" + this.id;
+            $.ajax({
+              type: "GET",
+              url: getJSON_sub,
+              contentType: "application/json",
+              success: function(data) {
+                $.each(data, function(key, val) {
+                 doc_items.push([key, val]);
+                 $('#edit_detail_view').show();
+                });
+                yTable = $('#docTable').dataTable( {
+                "bDestroy": true,
+                "bProcessing": true,
+                "aoColumns": [ {"sClass":"center"}, {"sClass":"center"} ],
+                "bJQueryUI": true,
+                "aaData": doc_items,
+                "sEmptyTable": "No matching data available",
+                });
+                var temp_url; 
+                temp_url = "/admin/save.php";
+                $('td', yTable.fnGetNodes()).editable(temp_url, {
+                  "submitdata": function ( value, settings ) {
+                    alert(value);
+                  },
+                  "height": "20px",
+                });
+              },
+              error: function() {
+                alert("Error");
+              }
+            });
+
+            $('#edit_view').show();
+            $('#new_entry_view').hide();
+          }
+        });
+
+        $("button").click(function() {
+          var button_id = this.id; 
+          
+          if (button_id == "back_entry") {
+            xTable.fnClearTable();
+            $('#new_entry_view').hide();
+            $('#edit_view').hide();
+            $('#detail_view').hide();
+            $('#edit_detail_view').hide();
+            $('#tableWindow').show();
+            document.getElementById('database_header2').innerHTML="";
+            return 0;
+          }
+
+          if (button_id == "update_json") {
+            var json_string = document.getElementById('json_user_edit').value;
+            var getJSON_sub_url = "/_document/" + lastClickedID;
+            $.ajax({
+              type: "PUT",
+              url: getJSON_sub_url,
+              contentType: "application/json",
+              data: json_string,
+              statusCode: {
+                204: function() {
+                alert("Done!");
+                $('#edit_detail_view').hide();
+                },
+                400: function() {
+                alert("Error! - Wrong Syntax?!");
+                }
+              }
+            });
+          return 0;
+          }         
+          if (button_id == "new_entry") {
+            $('#edit_view').hide();
+            $('#new_entry_view').show();
+            return 0;
+          }
+  
+          if (button_id == "delete_json") {
+          alert("no function yet");
+          return 0;
+          }
+
+          if (button_id == "add_json") {
+            var json_input_data = document.getElementById('json_new_entry').value; 
+            var json_input_url = "/_document/" + document.getElementById('database_header2').innerHTML;
+            $.ajax({
+              type: "POST",
+              url: json_input_url,
+              contentType: "application/json",
+              data: json_input_data,
+              statusCode: {
+                204: function() {
+                  var collection_sub_id = document.getElementById('database_header2').innerHTML;;
+                  $.getJSON("/_system/documents?collection=" + collection_sub_id, function(data) {
+                    var sub_items=[];
+                    var i = 0;
+                    $.each(data.references, function(val) {
+                      sub_items.push(["<img src=images/edit.gif id=" + data.references[i] +  "></img><img src=images/delete.png></img>", 
+                      data.references[i]]);
+                      i = i + 1;
+                    });
+
+                    xTable = $('#subTable').dataTable( {
+                      "bDestroy": true,
+                      "bProcessing": true,
+                      "bJQueryUI": true,
+                      "aaData": sub_items,
+                      "sEmptyTable": "No matching data available",
+                      "aoColumns": [ {"bSortable":false, "sClass":"center"} , {"sClass":"center"}]
+                    });
+                  });
+                  $('#edit_detail_view').hide();
+                  alert("Done!");
+                },
+                201: function() {
+                  var collection_sub_id = document.getElementById('database_header2').innerHTML;;
+                  $.getJSON("/_system/documents?collection=" + collection_sub_id, function(data) {
+                    var sub_items=[];
+                    var i = 0;
+                    $.each(data.references, function(val) {
+                      sub_items.push(["<img src=images/edit.gif id=" + data.references[i] +  "></img><img src=images/delete.png></img>", 
+                      data.references[i]]);
+                      i = i + 1;
+                    });
+
+                    xTable = $('#subTable').dataTable( {
+                      "bDestroy": true,
+                      "bProcessing": true,
+                      "bJQueryUI": true,
+                      "aaData": sub_items,
+                      "sEmptyTable": "No matching data available",
+                      "aoColumns": [ {"bSortable":false, "sClass":"center"} , {"sClass":"center"}]
+                    });
+                  });
+                  $('#edit_detail_view').hide();
+                  alert("Done!");
+                },
+                400: function() {
+                  alert("Error!");
+                }
+              }
+            });
+
+            
+            return 0;
+          }
+          
+          else {
+            $.ajax({
+              url: "/_system/collection/load?collection=" + button_id, 
+              success: function() {
+                alert('Document: \"' + button_id + '\" loaded');
+                location.reload();
+              },
+              error: function(){
+                alert(button_id + ' error' );
+              }
+            });
+          }
+	});
+      });
+    });
+     
+    </script>
+
+    <div class="ui-layout-north">
+      <b><a href="/admin/index.html" id="database_header1" style="text-decoration: none; color:white">Home</b>
+      <b><a href=# id="database_header2" style="color:white; text-decoration:none"></a></b> 
+    </div>
+
+    <div class="ui-layout-east" bgcolor=grey>
+      <a href="/admin/index.html"><img src="/admin/images/avocado.png" style="width: 100%"></img></a><br>
+      <ul>
+        <li><a href="#test">Aberdeen</a></li>
+        <li><a href="#">Ada</a></li>
+        <li><a href="#">Adamsville</a></li>
+        <li><a href="#">Addyston</a></li>
+        <li><a href="#">Adelphi</a></li>
+      </ul>
+    </div>
 	
-	<ul id="table-view">
-	<h3 id="ueberschrift" style="color:white">Directory:</h3>
-	  <table cellpadding="0" cellspacing="0" border="0" class="display" id="example">
-	    <thead>
-	      <tr>
-	        <th>ID</th>
-                <th>Name</th>
-                <th>Status</th>
-                <th>Datafiles</th>
-                <th>Size Documents</th>
-	      </tr>
-            </thead>
-	</ul>
-</body>
+    <div class="ui-layout-center">
+      <div class="tabelle" id="tableWindow">
+        <i id="ueberschrift" style="color:black">Database Directory:</i>
+        <table cellpadding="0" cellspacing="0" border="0" class="display" id="example">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Status</th>
+              <th>Datafiles</th>
+              <th>Size Documents</th>
+            </tr> 
+          </thead>
+        </table>
+      </div>
+
+      <div id="detail_view" style="display:none">
+        <button class="ui-button ui-button-text-only ui-widget ui-state-default ui-corner-all" id="back_entry">Back</button>
+        <button class="ui-button ui-button-text-only ui-widget ui-state-default ui-corner-all" id="new_entry">Add Document</button><br></br>
+        <table cellpadding="0" cellspacing="0" border="0" class="display" id="subTable">
+          <thead>
+            <tr>
+              <th>ID</th>
+            </tr>
+          </thead>
+        </table>
+      </div>
+
+      <div>
+        <table cellpadding="0" cellspacing="0" border="0" class="display" id="docTable">
+          <thead>
+            <tr>
+             <th>Fields</th>
+             <th>Value</th>
+           <thead>
+         </table>
+      </div>
+ 
+      <div class="sub_right" id="new_entry_view" style="display:none">
+        <form action=textarea.htm">
+          <p>New Collection<br>
+          <textarea id="json_new_entry" cols="50" rows="10"></textarea> 
+          </p>
+        </form>
+
+        <button class="ui-button ui-button-text-only ui-widget ui-state-default ui-corner-all" id="add_json">Add Collection</button>
+   
+      </div>
+
+      <div id="edit_view" style="display:none">
+        <div id="edit_detail_view" style="display:none">
+          <form action="textarea.htm">
+            <p>Edit Collection <br>
+            <textarea id="json_user_edit" cols="50" rows="10">Hier sollte das json file erscheinen</textarea>
+            </p>
+          </form>
+          <button class="ui-button ui-button-text-only ui-widget ui-state-default ui-corner-all" id="update_json"> Update Collection </button>
+        </div>
+        
+      </div>      
+
+    </div>
+  </body>
 </html>
