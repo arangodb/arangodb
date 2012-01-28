@@ -37,9 +37,11 @@
 #include "VocBase/fluent-query.h"
 #include "VocBase/query.h"
 #include "VocBase/simple-collection.h"
+#include "QL/ParserWrapper.h"
 
 using namespace std;
 using namespace triagens::basics;
+using namespace triagens::avocado;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -992,7 +994,7 @@ static v8::Handle<v8::Value> JS_CountQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief explains how a query was executed
+/// @brief explains how a query was executed (TO BE DELETED)
 ///
 /// @FUN{explain()}
 ///
@@ -1150,7 +1152,7 @@ static v8::Handle<v8::Value> JS_NextRefQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief optimises a query
+/// @brief optimises a query (TO BE DELETED)
 ///
 /// @FUN{optimise()}
 ///
@@ -1513,7 +1515,7 @@ static v8::Handle<v8::Value> JS_GeoQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief limits an existing query
+/// @brief limits an existing query (TO BE DELETED)
 ///
 /// @FUN{limit(@FA{number})}
 ///
@@ -1920,7 +1922,232 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new constant where part from a boolean
+/// @brief constructs a new query from a string
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_PrepareAql (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  if (argv.Length() != 2) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_PREPARE(<db>, <query>)")));
+  }
+
+  v8::Handle<v8::Object> dbArg = argv[0]->ToObject();
+  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(dbArg);
+
+  if (vocbase == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+
+  // get the query string
+  v8::Handle<v8::Value> queryArg = argv[1];
+  if (!queryArg->IsString()) {
+    return scope.Close(v8::ThrowException(v8::String::New("expecting string for <query>")));
+  }
+
+  string queryString = TRI_ObjectToString(queryArg);
+
+  // create a parser object
+  ParserWrapper parser = ParserWrapper(queryString.c_str());
+  if (!parser.parse()) {
+    // error object will be freed by parser destructor
+    ParseError *error = parser.getParseError();
+    if (error) {
+      return scope.Close(v8::ThrowException(v8::String::New(error->getDescription().c_str())));
+    }
+    return scope.Close(v8::ThrowException(v8::String::New("got an unknown error from the parser")));
+  }
+
+  if (parser.getQueryType() == QLQueryTypeEmpty) {
+    return scope.Close(v8::ThrowException(v8::String::New("query is empty")));
+  }
+
+  // construct FROM part
+  char *primaryAlias = parser.getPrimaryAlias();
+  char *primaryName  = parser.getPrimaryName();
+
+  if (primaryAlias == 0 || primaryName == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("collection not found")));
+  }
+
+  TRI_vocbase_col_t const* collection = TRI_LoadCollectionVocBase(vocbase, primaryName);
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("collection not found")));
+  }
+
+  // create the query
+  TRI_query_t* query  = TRI_CreateQuery(parser.getSelect(), primaryAlias, collection->_collection);
+
+  query->_where       = parser.getWhere();
+  query->_skip        = parser.getSkip();
+  query->_limit       = parser.getLimit();
+
+  // wrap it up
+  v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
+
+  StoreQuery(result, query);
+  return scope.Close(result);
+}
+
+/*
+static v8::Handle<v8::Value> JS_PrepareAql (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  if (argv.Length() != 2) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_PREPARE(<db>, <query>)")));
+  }
+
+  v8::Handle<v8::Object> dbArg = argv[0]->ToObject();
+  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(dbArg);
+
+  if (vocbase == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+
+
+  // get the query string
+  v8::Handle<v8::Value> queryArg = argv[1];
+
+  if (!queryArg->IsString()) {
+    return scope.Close(v8::ThrowException(v8::String::New("expecting string for <query>")));
+  }
+
+  string queryString = TRI_ObjectToString(queryArg);
+
+  // allocate memory for parser context
+  QL_parser_context_t *parserContext = (QL_parser_context_t*) TRI_Allocate(sizeof(QL_parser_context_t));
+
+  if (!QLParseInit(parserContext, queryString.c_str())) {
+    // initializing parsing context failed
+    return scope.Close(v8::ThrowException(v8::String::New("got an error during parser context initialization")));
+  }
+
+  if (QLparse(parserContext)) {
+    // parse error
+
+    // construct error message
+    QL_error_state_t *errorState = &parserContext->_lexState._errorState;
+
+    ostringstream errorMessage;
+    errorMessage << "Parse error at " << errorState->_line << "," << errorState->_column << ": " << errorState->_message;
+
+    // free memory allocated for parser context
+    QLParseFree(parserContext);
+    
+    return scope.Close(v8::ThrowException(v8::String::New(errorMessage.str().c_str())));
+  }
+
+  if (parserContext->_query->_type == QLQueryTypeEmpty) {
+  } 
+
+  // construct SELECT part
+  TRI_qry_select_t* select = 0;
+  
+  QLOptimize(parserContext->_query->_select._base);
+  QL_ast_query_select_type_e selectType = QLOptimizeGetSelectType(parserContext->_query);
+
+  if (selectType == QLQuerySelectTypeSimple) {
+    select = TRI_CreateQuerySelectDocument();
+  } 
+  else if (selectType == QLQuerySelectTypeEvaluated) {
+    TRI_string_buffer_t *selectJs = QLJavascripterInit();
+    TRI_AppendStringStringBuffer(selectJs, "(function($) { return ");
+    QLJavascripterWalk(selectJs, parserContext->_query->_select._base);
+    TRI_AppendStringStringBuffer(selectJs, " })");
+    select = TRI_CreateQuerySelectGeneral(selectJs->_buffer);
+std::cout << "SELECT CLAUSE IN JS IS: " << selectJs->_buffer << "\n";
+
+    QLJavascripterFree(selectJs);
+  }
+
+  // construct FROM part
+  char *primaryAlias = QLAstQueryGetPrimaryAlias(parserContext->_query);
+  char *primaryName  = QLAstQueryGetPrimaryName(parserContext->_query);
+
+  if (primaryAlias == 0 || primaryName == 0) {
+    // free memory allocated for parser context
+    QLParseFree(parserContext);
+
+    return scope.Close(v8::ThrowException(v8::String::New("collection not found")));
+  }
+
+  TRI_vocbase_col_t const* collection = TRI_LoadCollectionVocBase(vocbase, primaryName);
+  if (collection == 0) {
+    // free memory allocated for parser context
+    QLParseFree(parserContext);
+
+    return scope.Close(v8::ThrowException(v8::String::New("collection not found")));
+  }
+
+
+  // construct WHERE part
+  TRI_qry_where_t* where = 0;
+
+  QLOptimize(parserContext->_query->_where._base);
+  parserContext->_query->_where._type = QLOptimizeGetWhereType(parserContext->_query);
+
+  if (parserContext->_query->_where._type == QLQueryWhereTypeAlwaysTrue) {
+    // where condition is always true 
+    where = TRI_CreateQueryWhereBoolean(true);
+std::cout << "WHERE CLAUSE IS ALWAYS TRUE\n";
+  } 
+  else if (parserContext->_query->_where._type == QLQueryWhereTypeAlwaysFalse) {
+    // where condition is always false
+    where = TRI_CreateQueryWhereBoolean(false);
+std::cout << "WHERE CLAUSE IS ALWAYS FALSE\n";
+  }
+  else {
+    // where condition must be evaluated for each result
+    TRI_string_buffer_t *whereJs = QLJavascripterInit();
+    TRI_AppendStringStringBuffer(whereJs, "(function($) { return (");
+    QLJavascripterWalk(whereJs, parserContext->_query->_where._base);
+    TRI_AppendStringStringBuffer(whereJs, "); })");
+    where = TRI_CreateQueryWhereGeneral(whereJs->_buffer);
+std::cout << "WHERE CLAUSE IN JS IS: " << whereJs->_buffer << "\n";
+    QLJavascripterFree(whereJs);
+  }
+
+
+  // construct LIMIT part
+  TRI_voc_size_t  skip  = 0;
+  TRI_voc_ssize_t limit = 0;
+
+  if (parserContext->_query->_limit._isUsed) {
+    skip  = (TRI_voc_size_t)  parserContext->_query->_limit._offset;
+    limit = (TRI_voc_ssize_t) parserContext->_query->_limit._count;
+  }
+  else {
+    skip  = TRI_QRY_NO_SKIP;
+    limit = TRI_QRY_NO_LIMIT;
+  }
+
+
+  // create the query
+  TRI_query_t* query = TRI_CreateQuery(select, primaryAlias, collection->_collection);
+
+  query->_where = where;
+  query->_skip  = skip;
+  query->_limit = limit;
+
+  // free memory allocated for parser context
+  QLParseFree(parserContext);
+
+  // wrap it up
+  v8::Handle<v8::Object> result = v8g->QueryTempl->NewInstance();
+
+  StoreQuery(result, query);
+  return scope.Close(result);
+}
+*/
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new constant where clause using a boolean
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_WhereBooleanAql (v8::Arguments const& argv) {
@@ -1948,7 +2175,7 @@ static v8::Handle<v8::Value> JS_WhereBooleanAql (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new where part from a string
+/// @brief constructs a new where clause from JavaScript
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_WhereGeneralAql (v8::Arguments const& argv) {
@@ -1982,6 +2209,40 @@ static v8::Handle<v8::Value> JS_WhereGeneralAql (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new constant where clause for primary index
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_WherePrimaryConstAql (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: wherePrimaryConst(<document-identifier>)")));
+  }
+
+  // extract the document identifier
+  TRI_voc_cid_t cid = 0;
+  TRI_voc_did_t did = 0;
+  bool ok = IsDocumentId(argv[0], cid, did);
+
+  if (! ok) {
+    return scope.Close(v8::ThrowException(v8::String::New("expecting a <document-identifier>")));
+  }
+
+  // build document hash access
+  TRI_qry_where_t* where = TRI_CreateQueryWherePrimaryConstant(did);
+
+  // wrap it up
+  v8::Handle<v8::Object> result = v8g->WhereTempl->NewInstance();
+
+  StoreWhere(result, where);
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new query from given parts
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1992,7 +2253,7 @@ static v8::Handle<v8::Value> JS_SelectAql (v8::Arguments const& argv) {
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   if (argv.Length() != 7) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: select(<select>, <name>, <primary>, <joins>, <where>, <skip>, <limit>)")));
+    return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_SELECT(<select>, <name>, <primary>, <joins>, <where>, <skip>, <limit>)")));
   }
 
   // extract the select clause
@@ -3827,8 +4088,16 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
                          v8::FunctionTemplate::New(JS_WhereGeneralAql)->GetFunction(),
                          v8::ReadOnly);
 
+  context->Global()->Set(v8::String::New("AQL_WHERE_PRIMARY_CONST"),
+                         v8::FunctionTemplate::New(JS_WherePrimaryConstAql)->GetFunction(),
+                         v8::ReadOnly);
+
   context->Global()->Set(v8::String::New("AQL_SELECT"),
                          v8::FunctionTemplate::New(JS_SelectAql)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("AQL_PREPARE"),
+                         v8::FunctionTemplate::New(JS_PrepareAql)->GetFunction(),
                          v8::ReadOnly);
 
   // .............................................................................

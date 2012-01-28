@@ -449,6 +449,95 @@ TRI_qry_where_t* TRI_CreateQueryWhereBoolean (bool where) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                               WHERE PRIMARY INDEX
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clones a query condition using the primary index and a constant
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_qry_where_t* CloneQueryWherePrimaryConstant (TRI_qry_where_t* w) {
+  TRI_qry_where_primary_const_t* whereClause;
+
+  whereClause = (TRI_qry_where_primary_const_t*) w;
+
+  return TRI_CreateQueryWherePrimaryConstant(whereClause->_did);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees a query condition using the primary index and a constant
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeQueryWherePrimaryConstant (TRI_qry_where_t* w) {
+  TRI_qry_where_primary_const_t* whereClause;
+
+  whereClause = (TRI_qry_where_primary_const_t*) w;
+
+  TRI_Free(whereClause);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns document identifier for a constant
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_voc_did_t DidQueryWherePrimaryConstant (TRI_qry_where_primary_t* w,
+                                                   TRI_rc_context_t* context) {
+  TRI_qry_where_primary_const_t* whereClause;
+
+  whereClause = (TRI_qry_where_primary_const_t*) w;
+
+  return whereClause->_did;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a query condition using the primary index and a constant
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_qry_where_t* TRI_CreateQueryWherePrimaryConstant (TRI_voc_did_t did) {
+  TRI_qry_where_primary_const_t* result;
+
+  result = TRI_Allocate(sizeof(TRI_qry_where_primary_const_t));
+
+  result->base.base._type = TRI_QRY_WHERE_PRIMARY_CONSTANT;
+
+  result->base.base.clone = CloneQueryWherePrimaryConstant;
+  result->base.base.free = FreeQueryWherePrimaryConstant;
+  result->base.base.checkCondition = NULL;
+
+  result->base.did = DidQueryWherePrimaryConstant;
+
+  result->_did = did;
+
+  return &result->base.base;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                     WHERE GENERAL
 // -----------------------------------------------------------------------------
 
@@ -629,6 +718,53 @@ static void FilterDataNoneQuery (collection_cursor_t* result,
   result->_current = result->_documents;
 
   result->_length = 0;
+  result->_end = result->_documents + result->_length;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lists document from primary index
+////////////////////////////////////////////////////////////////////////////////
+
+static void FilterDataPrimaryQuery (collection_cursor_t* result,
+                                    TRI_sim_collection_t* collection,
+                                    TRI_rc_context_t* context,
+                                    TRI_qry_where_t* w,
+                                    TRI_voc_size_t skip,
+                                    TRI_voc_ssize_t limit) {
+  TRI_doc_mptr_t const* document;
+  TRI_qry_where_primary_const_t* where;
+  TRI_voc_did_t did;
+
+  assert(w != NULL);
+  assert(w->_type == TRI_QRY_WHERE_PRIMARY_CONSTANT);
+
+  where = (TRI_qry_where_primary_const_t*) w;
+
+  result->_documents = TRI_Allocate(sizeof(TRI_doc_mptr_t));
+  result->_current = result->_documents;
+
+  // strange cases
+  if (limit == 0 || 0 < skip) {
+    result->_length = 0;
+  }
+
+  // look up the document
+  else {
+    did = where->base.did(&where->base, context);
+    document = collection->base.read(&collection->base, did);
+
+    // either no or one document
+    if (document == NULL) {
+      result->_length = 0;
+    }
+    else {
+      ++result->base._matchedDocuments;
+      
+      result->_documents[0] = *document;
+      result->_length = 1;
+    }
+  }
+
   result->_end = result->_documents + result->_length;
 }
 
@@ -826,6 +962,9 @@ TRI_rc_cursor_t* TRI_ExecuteQueryAql (TRI_query_t* query, TRI_rc_context_t* cont
       }
 
       where = NULL;
+    }
+    else if (where->_type == TRI_QRY_WHERE_PRIMARY_CONSTANT) {
+      condition = FilterDataPrimaryQuery;
     }
     else {
       where = NULL;

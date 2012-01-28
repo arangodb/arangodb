@@ -31,8 +31,9 @@
 #include "VocBase/vocbase.h"
 
 #include "ShapedJson/shaped-json.h"
-#include "VocBase/document-collection.h"
 #include "V8/v8-c-utils.h"
+#include "VocBase/document-collection.h"
+#include "VocBase/index.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -322,7 +323,8 @@ TRI_qry_select_general_t;
 
 typedef enum {
   TRI_QRY_WHERE_BOOLEAN,
-  TRI_QRY_WHERE_GENERAL
+  TRI_QRY_WHERE_GENERAL,
+  TRI_QRY_WHERE_PRIMARY_CONSTANT
 }
 TRI_qry_where_type_e;
 
@@ -361,6 +363,28 @@ typedef struct TRI_qry_where_general_s {
   char* _code;
 }
 TRI_qry_where_general_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief primary index where clause
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_qry_where_primary_s {
+  TRI_qry_where_t base;
+
+  TRI_voc_did_t (*did) (struct TRI_qry_where_primary_s*, TRI_rc_context_t*);
+}
+TRI_qry_where_primary_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief primary index where clause with a constant document identifier
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_qry_where_primary_const_s {
+  TRI_qry_where_primary_t base;
+
+  TRI_voc_did_t _did;
+}
+TRI_qry_where_primary_const_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief general query
@@ -516,6 +540,12 @@ TRI_qry_where_t* TRI_CreateQueryWhereBoolean (bool where);
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_qry_where_t* TRI_CreateQueryWhereGeneral (char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a query condition using the primary index and a constant
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_qry_where_t* TRI_CreateQueryWherePrimaryConstant (TRI_voc_did_t did);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

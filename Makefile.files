@@ -163,7 +163,17 @@ libavocadodb_a_SOURCES = \
 	VocBase/simple-collection.c \
 	VocBase/synchroniser.c \
 	VocBase/voc-shaper.c \
-	VocBase/vocbase.c
+	VocBase/vocbase.c \
+	QL/ParserWrapper.cpp \
+	QL/ast-node.c \
+	QL/ast-query.c \
+	QL/error.c \
+	QL/formatter.c \
+	QL/javascripter.c \
+	QL/optimize.c \
+	QL/parser-context.c \
+	QL/parser.c \
+	QL/tokens.c
 
 avocado_CPPFLAGS = \
 	@BOOST_CPPFLAGS@ \
@@ -224,7 +234,8 @@ BUILT_SOURCES += \
 ################################################################################
 
 BUILT_SOURCES += \
-	JsonParser/json-parser.c
+	JsonParser/json-parser.c \
+	QL/tokens.c
 
 ################################################################################
 ## FLEX++
@@ -233,6 +244,13 @@ BUILT_SOURCES += \
 BUILT_SOURCES += \
 	V8/v8-json.cpp \
 	JsonParserX/JsonScannerX.cpp
+
+################################################################################
+## BISON
+################################################################################
+
+BUILT_SOURCES += \
+	QL/parser.c
 
 ################################################################################
 ## BISON++
@@ -250,6 +268,7 @@ DOXYGEN = \
 	Doxygen/js/json.c \
 	Doxygen/js/modules.c \
 	Doxygen/js/modules/graph.c \
+	Doxygen/js/modules/jsunity.c \
 	Doxygen/js/shell.c \
 	Doxygen/js/system/collections.c \
 	Doxygen/js/system/indexes.c
@@ -281,7 +300,11 @@ WIKI = \
 	Doxygen/xml/d7/d40/JSModuleConsole.md \
 	Doxygen/xml/d3/d4b/JSModuleInternal.md \
 	Doxygen/xml/d2/d66/JSModuleFs.md \
-	Doxygen/xml/d9/d26/Compiling.md
+	Doxygen/xml/d9/d26/Compiling.md \
+	Doxygen/xml/d3/d5b/jsUnity.md
+
+Doxygen/xml/d3/d5b/jsUnity.md: Doxygen/xml/d3/d5b/jsUnity.xml
+	python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
 
 Doxygen/xml/d9/d26/Compiling.md: Doxygen/xml/d9/d26/Compiling.xml
 	python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@

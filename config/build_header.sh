@@ -3,14 +3,14 @@ INFO="$1"
 FILE="$2"
 
 if test ! -f "$FILE";  then
-  echo "$0: cannot open build file $FILE"
-  exit 1
+  version=`fgrep PACKAGE_VERSION Makefile | awk '{print $3}'`
+  echo "#define TRIAGENS_VERSION \"$version\"" > ${FILE}
 fi
 
 DIR=`dirname $INFO`
 
 if test -d ${DIR}/.svn;  then
-  revision=`cd $DIR && svnversion`
+  revision=`(cd $DIR && svnversion)`
 else
   if test ! -f "$INFO";  then
     echo "WARNING: cannot open info file $INFO"
@@ -39,6 +39,3 @@ if cmp -s $FILE ${FILE}.tmp;  then
 else
   mv ${FILE}.tmp $FILE
 fi
-
-
-

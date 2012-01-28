@@ -80,8 +80,10 @@ function PRINT (value, seen, path, names) {
     internal.output(names[p]);
   }
   else {
-    seen.push(value);
-    names.push(path);
+    if (value instanceof Object) {
+      seen.push(value);
+      names.push(path);
+    }
 
     if (value instanceof Object) {
       if ('PRINT' in value) {
@@ -229,6 +231,34 @@ var queryLimit = 20;
 
 AvocadoFluentQuery.prototype.PRINT = function() {
   if (this instanceof AvocadoFluentQuery) {
+    var count = 0;
+
+    try {
+      while (this.hasNext() && count++ < queryLimit) {
+        internal.output(JSON.stringify(this.next()), "\n");
+      }
+
+      if (this.hasNext()) {
+        internal.output("...more results...");
+      }
+
+      it = this;
+    }
+    catch (e) {
+      internal.output("encountered error while printing: " + e);
+    }
+  }
+  else {
+    internal.output(this.toString());
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints a query
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoFluentQuery2.prototype.PRINT = function() {
+  if (this instanceof AvocadoFluentQuery2) {
     var count = 0;
 
     try {
