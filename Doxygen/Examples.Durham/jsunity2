@@ -1,0 +1,7 @@
+avocado> ju.runTest("test.js");
+2012-01-28T19:10:23Z [10671] INFO Running aqlTestSuite
+2012-01-28T19:10:23Z [10671] INFO 1 test found
+2012-01-28T19:10:23Z [10671] INFO [PASSED] testSizeOfTestCollection
+2012-01-28T19:10:23Z [10671] INFO 1 test passed
+2012-01-28T19:10:23Z [10671] INFO 0 tests failed
+2012-01-28T19:10:23Z [10671] INFO 1 millisecond elapsed
