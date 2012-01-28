@@ -1,0 +1,7 @@
+function aqlTestSuite () {
+  function testSizeOfTestCollection () {
+    assertEqual(5, 5);
+  }
+}
+
+jsUnity.run(aqlTestSuite);
