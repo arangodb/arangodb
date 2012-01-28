@@ -94,30 +94,8 @@ Module.prototype.require = function (path) {
     return ModuleCache[path].exports;
   }
 
-  // try to load the file
-  paths = MODULES_PATH.split(";");
-  content = undefined;
-
-  for (var i = 0;  i < paths.length;  ++i) {
-    var p = paths[i];
-    var n;
-
-    if (p == "") {
-      n = "." + path + ".js"
-    }
-    else {
-      n = p + "/" + path + ".js";
-    }
-
-    if (FS_EXISTS(n)) {
-      content = SYS_READ(n);
-      break;
-    }
-  }
-
-  if (content == undefined) {
-    throw "cannot find a module named '" + path + "' using the module path(s) '" + MODULES_PATH + "'";
-  }
+  // locate file and read content
+  content = internal.readFile(path);
 
   // create a new sandbox and execute
   ModuleCache[path] = module = new Module(path);
@@ -338,6 +316,62 @@ ModuleCache["/internal"].exports.read = SYS_READ;
 ModuleCache["/internal"].exports.sprintf = SYS_SPRINTF;
 ModuleCache["/internal"].exports.time = SYS_TIME;
 internal = ModuleCache["/internal"].exports;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads a file
+////////////////////////////////////////////////////////////////////////////////
+
+internal.readFile = function (path) {
+
+  // try to load the file
+  paths = MODULES_PATH.split(";");
+
+  for (var i = 0;  i < paths.length;  ++i) {
+    var p = paths[i];
+    var n;
+
+    if (p == "") {
+      n = "." + path + ".js"
+    }
+    else {
+      n = p + "/" + path + ".js";
+    }
+
+    if (FS_EXISTS(n)) {
+      return SYS_READ(n);
+    }
+  }
+
+  throw "cannot find a file named '" + path + "' using the module path(s) '" + MODULES_PATH + "'";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief loads a file
+////////////////////////////////////////////////////////////////////////////////
+
+internal.loadFile = function (path) {
+
+  // try to load the file
+  paths = MODULES_PATH.split(";");
+
+  for (var i = 0;  i < paths.length;  ++i) {
+    var p = paths[i];
+    var n;
+
+    if (p == "") {
+      n = "." + path + ".js"
+    }
+    else {
+      n = p + "/" + path + ".js";
+    }
+
+    if (FS_EXISTS(n)) {
+      return SYS_LOAD(n);
+    }
+  }
+
+  throw "cannot find a file named '" + path + "' using the module path(s) '" + MODULES_PATH + "'";
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

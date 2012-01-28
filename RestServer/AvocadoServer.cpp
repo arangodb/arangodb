@@ -595,6 +595,7 @@ void AvocadoServer::executeShell () {
 
     TRI_FreeString(input);
   }
+  console->close();
 
   // and return from the context and isolate
   context->Exit();

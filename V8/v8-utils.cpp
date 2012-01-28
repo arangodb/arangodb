@@ -133,15 +133,15 @@ static bool CheckJavaScript (string const& source) {
   int openBraces;
 
   enum {
-    NORMAL,
-    NORMAL_1,
-    DOUBLE_QUOTE,
-    DOUBLE_QUOTE_ESC,
-    SINGLE_QUOTE,
-    SINGLE_QUOTE_ESC,
-    MULTI_COMMENT,
-    MULTI_COMMENT_1,
-    SINGLE_COMMENT
+    NORMAL,             // start
+    NORMAL_1,           // from NORMAL: seen a single /
+    DOUBLE_QUOTE,       // from NORMAL: seen a single "
+    DOUBLE_QUOTE_ESC,   // from DOUBLE_QUOTE: seen a backslash
+    SINGLE_QUOTE,       // from NORMAL: seen a single '
+    SINGLE_QUOTE_ESC,   // from SINGLE_QUOTE: seen a backslash
+    MULTI_COMMENT,      // from NORMAL_1: seen a *
+    MULTI_COMMENT_1,    // from MULTI_COMMENT, seen a *
+    SINGLE_COMMENT      // from NORMAL_1; seen a /
   }
   state;
 
@@ -232,6 +232,7 @@ static bool CheckJavaScript (string const& source) {
 
         case '/':
           state = NORMAL_1;
+          break;
 
         case '(':
           ++openParen;
@@ -332,7 +333,33 @@ bool V8LineEditor::open () {
   using_history();
   stifle_history(MAX_HISTORY_ENTRIES);
 
-  return read_history(HISTORY_FILENAME) == 0;
+  return read_history(getHistoryPath().c_str()) == 0;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief line editor shutdown
+////////////////////////////////////////////////////////////////////////////////
+
+bool V8LineEditor::close () {
+  return write_history(getHistoryPath().c_str());
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the history file path
+////////////////////////////////////////////////////////////////////////////////
+
+string V8LineEditor::getHistoryPath () {
+  string path;
+  
+  if (getenv("HOME")) {
+    path.append(getenv("HOME"));
+    path += '/';
+  }
+  path.append(HISTORY_FILENAME); 
+
+  return path;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

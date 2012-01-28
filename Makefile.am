@@ -36,6 +36,9 @@ js/js-%.h: @srcdir@/js/%.js .setup-directories
 JsonParser/%.c: @srcdir@/JsonParser/%.l
 	@top_srcdir@/config/flex-c.sh $(LEX) $@ $<
 
+QL/%.c: @srcdir@/QL/%.l
+	@top_srcdir@/config/flex-c.sh $(LEX) $@ $<
+
 ################################################################################
 ## FLEX++
 ################################################################################
@@ -45,6 +48,13 @@ V8/%.cpp: @srcdir@/V8/%.ll
 
 JsonParserX/%.cpp: @srcdir@/JsonParserX/%.ll
 	@top_srcdir@/config/flex-c++.sh $(LEX) $@ $<
+
+################################################################################
+## BISON
+################################################################################
+
+QL/%.c: @srcdir@/QL/%.y
+	@top_srcdir@/config/bison-c.sh $(BISON) $@ $<
 
 ################################################################################
 ## BISON++
