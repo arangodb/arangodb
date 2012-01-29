@@ -538,6 +538,100 @@ TRI_qry_where_t* TRI_CreateQueryWherePrimaryConstant (TRI_voc_did_t did) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   WHERE GEO INDEX
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clones a query condition using the geo index and constants
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_qry_where_t* CloneQueryWhereGeoConstant (TRI_qry_where_t* w) {
+  TRI_qry_where_geo_const_t* whereClause;
+
+  whereClause = (TRI_qry_where_geo_const_t*) w;
+
+  return TRI_CreateQueryWhereGeoConstant(whereClause->_iid,
+                                         whereClause->_coordinates[0],
+                                         whereClause->_coordinates[1]);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees a query condition using the geo index and constants
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeQueryWhereGeoConstant (TRI_qry_where_t* w) {
+  TRI_qry_where_geo_const_t* whereClause;
+
+  whereClause = (TRI_qry_where_geo_const_t*) w;
+
+  TRI_Free(whereClause);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the lattitude and longitude for constants
+////////////////////////////////////////////////////////////////////////////////
+
+static double* CoordinatesQueryWhereGeoConstant (TRI_qry_where_geo_t* w,
+                                                 TRI_rc_context_t* context) {
+  TRI_qry_where_geo_const_t* whereClause;
+
+  whereClause = (TRI_qry_where_geo_const_t*) w;
+
+  return whereClause->_coordinates;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a query condition using the geo index and a constant
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_qry_where_t* TRI_CreateQueryWhereGeoConstant (TRI_idx_iid_t iid,
+                                                  double latitiude,
+                                                  double longitude) {
+  TRI_qry_where_geo_const_t* result;
+
+  result = TRI_Allocate(sizeof(TRI_qry_where_geo_const_t));
+
+  result->base.base._type = TRI_QRY_WHERE_GEO_CONSTANT;
+
+  result->base.base.clone = CloneQueryWhereGeoConstant;
+  result->base.base.free = FreeQueryWhereGeoConstant;
+  result->base.base.checkCondition = NULL;
+
+  result->base.coordinates = CoordinatesQueryWhereGeoConstant;
+
+  result->_coordinates[0] = latitiude;
+  result->_coordinates[1] = longitude;
+
+  return &result->base.base;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                     WHERE GENERAL
 // -----------------------------------------------------------------------------
 

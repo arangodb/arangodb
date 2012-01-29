@@ -43,3 +43,7 @@ Doxygen/wiki/
 build.sh
 commit.sh
 .setup-directories
+QL/parser.c
+QL/parser.h
+QL/parser.output
+QL/tokens.c

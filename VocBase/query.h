@@ -324,6 +324,7 @@ TRI_qry_select_general_t;
 typedef enum {
   TRI_QRY_WHERE_BOOLEAN,
   TRI_QRY_WHERE_GENERAL,
+  TRI_QRY_WHERE_GEO_CONSTANT,
   TRI_QRY_WHERE_PRIMARY_CONSTANT
 }
 TRI_qry_where_type_e;
@@ -385,6 +386,29 @@ typedef struct TRI_qry_where_primary_const_s {
   TRI_voc_did_t _did;
 }
 TRI_qry_where_primary_const_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief geo index where clause
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_qry_where_geo_s {
+  TRI_qry_where_t base;
+
+  double* (*coordinates) (struct TRI_qry_where_geo_s*, TRI_rc_context_t*);
+}
+TRI_qry_where_geo_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief geo index where clause with a constant document identifier
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_qry_where_geo_const_s {
+  TRI_qry_where_geo_t base;
+
+  TRI_idx_iid_t _iid;
+  double _coordinates[2];
+}
+TRI_qry_where_geo_const_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief general query
@@ -546,6 +570,14 @@ TRI_qry_where_t* TRI_CreateQueryWhereGeneral (char const*);
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_qry_where_t* TRI_CreateQueryWherePrimaryConstant (TRI_voc_did_t did);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a query condition using an geo index and a constants
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_qry_where_t* TRI_CreateQueryWhereGeoConstant (TRI_idx_iid_t iid,
+                                                  double latitiude,
+                                                  double longitude);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
