@@ -278,6 +278,28 @@ AvocadoFluentQuery2.prototype.toArray = function () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns all elements
+///
+/// @FUN{all()}
+///
+/// Selects all documents of a collection.
+///
+/// @verbinclude fluent23
+///
+/// The corresponding AQL query would be:
+///
+/// @verbinclude fluent23-aql
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoFluentQuery2.prototype.all = function () {
+  if (this._execution != null) {
+    throw "query is already executing";
+  }
+
+  return this.copyQuery();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -724,16 +746,6 @@ AvocadoFluentQueryInternal.prototype.useNext = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all elements
-///
-/// @FUN{all()}
-///
-/// Selects all documents of a collection.
-///
-/// @verbinclude fluent23
-///
-/// The corresponding AQL query would be:
-///
-/// @verbinclude fluent23-aql
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.T_all = function () {
