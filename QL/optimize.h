@@ -92,7 +92,26 @@ void QLOptimizeBinaryOperator (QL_ast_node_t *);
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief recursively optimize nodes in the AST
+/// @brief optimization function for the ternary operator
+///
+/// this function will optimize the ternary operator if the conditional part is
+/// reducible to a constant. It will substitute the condition with the true 
+/// part if the condition is true, and with the false part if the condition is
+/// false.
+////////////////////////////////////////////////////////////////////////////////
+
+void QLOptimizeTernaryOperator (QL_ast_node_t *);
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimize order by
+////////////////////////////////////////////////////////////////////////////////
+
+void QLOptimizeOrder (QL_ast_node_t*);
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief recursively optimize nodes in an AST expression
 ///
 /// this function will walk the AST recursively and will start optimization from
 /// the bottom-up.
@@ -100,7 +119,7 @@ void QLOptimizeBinaryOperator (QL_ast_node_t *);
 /// nesting levels
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLOptimize (QL_ast_node_t *);
+void QLOptimizeExpression (QL_ast_node_t *);
 
 
 ////////////////////////////////////////////////////////////////////////////////

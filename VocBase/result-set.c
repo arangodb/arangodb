@@ -600,6 +600,39 @@ TRI_rs_container_element_t* TRI_AddDatafileRSContainer (TRI_rs_container_t* cont
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief removes a result set from the doubly linked list
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_RemoveRSContainer (TRI_rs_container_element_t* element) {
+  TRI_rs_container_t* container;
+
+  container = element->_container;
+
+  TRI_LockSpin(&container->_lock);
+
+  // element is at the beginning of the chain
+  if (element->_prev == NULL) {
+    container->_begin = element->_next;
+  }
+  else {
+    element->_prev->_next = element->_next;
+  }
+
+  // element is at the end of the chain
+  if (element->_next == NULL) {
+    container->_end = element->_prev;
+  }
+  else {
+    element->_next->_prev = element->_prev;
+  }
+
+  TRI_UnlockSpin(&container->_lock);
+
+  // free the element
+  TRI_Free(element);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

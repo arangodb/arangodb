@@ -53,6 +53,8 @@ char *QLErrorGetLabel (const QL_error_type_e errorCode) {
       return "collection name '%s' or alias is invalid";
     case ERR_COLLECTION_NAME_REDECLARED:
       return "collection alias '%s' is declared multiple times";
+    case ERR_COLLECTION_NAME_UNDECLARED:
+      return "collection alias '%s' was not declared in the from clause";
     default:     
       return "unknown error";
   }

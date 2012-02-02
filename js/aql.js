@@ -752,6 +752,8 @@ AvocadoCollection.prototype.T_all = function () {
   return new AvocadoFluentQueryInternal(this);
 }
 
+AvocadoEdgesCollection.prototype.T_all = AvocadoCollection.prototype.T_all;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a document
 ////////////////////////////////////////////////////////////////////////////////
@@ -765,6 +767,8 @@ AvocadoCollection.prototype.T_document = function (id) {
   return query;
 }
 
+AvocadoEdgesCollection.prototype.T_document = AvocadoCollection.prototype.T_document;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief limits an existing query
 ////////////////////////////////////////////////////////////////////////////////
@@ -777,6 +781,8 @@ AvocadoCollection.prototype.T_limit = function (limit) {
 
   return query;
 }
+
+AvocadoEdgesCollection.prototype.T_limit = AvocadoCollection.prototype.T_limit;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief skips an existing query
@@ -795,11 +801,13 @@ AvocadoCollection.prototype.T_skip = function (skip) {
   return query;
 }
 
+AvocadoEdgesCollection.prototype.T_skip = AvocadoCollection.prototype.T_skip;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts into an array
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.T_toArray = function () {
+AvocadoCollection.prototype.toArray = function () {
   var cursor;
   var result;
 
@@ -812,6 +820,8 @@ AvocadoCollection.prototype.T_toArray = function () {
 
   return result;
 }
+
+AvocadoEdgesCollection.prototype.toArray = AvocadoCollection.prototype.toArray;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

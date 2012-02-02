@@ -53,6 +53,7 @@
 #include "RestServer/SystemActionDispatcherThread.h"
 #include "V8/v8-actions.h"
 #include "V8/v8-globals.h"
+#include "V8/v8-line-editor.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vocbase.h"
@@ -567,7 +568,7 @@ void AvocadoServer::executeShell () {
   v8::Context::Scope contextScope(context);
   v8::Local<v8::String> name(v8::String::New("(avocado)"));
 
-  V8LineEditor* console = new V8LineEditor();
+  V8LineEditor* console = new V8LineEditor(context, ".avocado");
 
   console->open();
 

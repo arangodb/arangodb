@@ -39,6 +39,15 @@ function aqlTestSuite () {
 
   function setUp () {
     this.collection = db.UnitTestsCollection;
+
+    if (this.collection.count() == 0) {
+      this.collection.save({ name: "one", age: 1 });
+      this.collection.save({ name: "two", age: 2 });
+      this.collection.save({ name: "three", age: 3 });
+      this.collection.save({ name: "four", age: 4 });
+      this.collection.save({ name: "five", age: 5 });
+    }
+
     this.documents = this.collection.T_toArray();
   }
 
@@ -54,7 +63,7 @@ function aqlTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function testSizeOfTestCollection () {
-    assertEqual(5, this.collection.toArray().length);
+    assertEqual(5, this.collection.T_toArray().length);
   }
 
 ////////////////////////////////////////////////////////////////////////////////

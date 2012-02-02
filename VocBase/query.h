@@ -53,9 +53,15 @@ extern "C" {
 ///
 /// - the query is parsed
 /// - an @CODE{TRI_query_t} representation is constructed
+///
+/// Later the query is executed:
+///
 /// - an @CODE{TRI_rc_context_t} is created
 /// - the query is executed in this context
 /// - a @CODE{TRI_rc_cursor_t} is returned
+///
+/// Later the result are accessed:
+///
 /// - the @CODE{next} method returns a @CODE{TRI_rc_result_t}
 /// - which can be convert into a JSON or JavaScript object using
 ///   the @CODE{TRI_qry_select_t}
@@ -208,6 +214,7 @@ typedef struct TRI_rc_context_s {
 
   TRI_js_exec_context_t _selectClause;
   TRI_js_exec_context_t _whereClause;
+  TRI_js_exec_context_t _orderClause;
 }
 TRI_rc_context_t;
 
@@ -230,6 +237,7 @@ typedef struct TRI_rc_result_s {
   TRI_rc_context_t* _context;
 
   TRI_doc_mptr_t* _primary;
+  TRI_json_t _augmention;
 }
 TRI_rc_result_t;
 
@@ -264,7 +272,7 @@ TRI_qry_select_type_e;
 typedef struct TRI_qry_select_s {
   TRI_qry_select_type_e _type;
 
-  struct TRI_qry_select_s* (*clone) (struct TRI_qry_select_s*);
+  struct TRI_qry_select_s* (*clone) (struct TRI_qry_select_s const*);
   void (*free) (struct TRI_qry_select_s*);
 
   TRI_shaped_json_t* (*shapedJson) (struct TRI_qry_select_s*, TRI_rc_result_t*);
@@ -324,7 +332,7 @@ TRI_qry_select_general_t;
 typedef enum {
   TRI_QRY_WHERE_BOOLEAN,
   TRI_QRY_WHERE_GENERAL,
-  TRI_QRY_WHERE_GEO_CONSTANT,
+  TRI_QRY_WHERE_WITHIN_CONSTANT,
   TRI_QRY_WHERE_PRIMARY_CONSTANT
 }
 TRI_qry_where_type_e;
@@ -336,19 +344,28 @@ TRI_qry_where_type_e;
 typedef struct TRI_qry_where_s {
   TRI_qry_where_type_e _type;
 
-  struct TRI_qry_where_s* (*clone) (struct TRI_qry_where_s*);
+  struct TRI_qry_where_s* (*clone) (struct TRI_qry_where_s const*);
   void (*free) (struct TRI_qry_where_s*);
-
-  bool (*checkCondition) (struct TRI_qry_where_s*, TRI_rc_context_t*, TRI_doc_mptr_t const*);
 }
 TRI_qry_where_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief abstract where clause for conditions
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_qry_where_cond_s {
+  TRI_qry_where_t base;
+
+  bool (*checkCondition) (struct TRI_qry_where_cond_s*, TRI_rc_context_t*, TRI_doc_mptr_t const*);
+}
+TRI_qry_where_cond_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constant where clause
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_qry_where_boolean_s {
-  TRI_qry_where_t base;
+  TRI_qry_where_cond_t base;
 
   bool _value;
 }
@@ -359,14 +376,14 @@ TRI_qry_where_boolean_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_qry_where_general_s {
-  TRI_qry_where_t base;
+  TRI_qry_where_cond_t base;
 
   char* _code;
 }
 TRI_qry_where_general_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief primary index where clause
+/// @brief abstract primary index where clause
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_qry_where_primary_s {
@@ -391,24 +408,73 @@ TRI_qry_where_primary_const_t;
 /// @brief geo index where clause
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_qry_where_geo_s {
+typedef struct TRI_qry_where_within_s {
   TRI_qry_where_t base;
 
-  double* (*coordinates) (struct TRI_qry_where_geo_s*, TRI_rc_context_t*);
+  TRI_idx_iid_t _iid;
+  char* _nameDistance;
+
+  double* (*coordinates) (struct TRI_qry_where_within_s*, TRI_rc_context_t*);
+  double (*radius) (struct TRI_qry_where_within_s*, TRI_rc_context_t*);
 }
-TRI_qry_where_geo_t;
+TRI_qry_where_within_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief geo index where clause with a constant document identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_qry_where_geo_const_s {
-  TRI_qry_where_geo_t base;
+typedef struct TRI_qry_where_within_const_s {
+  TRI_qry_where_within_t base;
 
-  TRI_idx_iid_t _iid;
   double _coordinates[2];
+  double _radius;
 }
-TRI_qry_where_geo_const_t;
+TRI_qry_where_within_const_t;
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief order by type
+////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+  TRI_QRY_ORDER_GENERAL
+}
+TRI_qry_order_type_e;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief abstract order by clause
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_qry_order_s {
+  TRI_qry_order_type_e _type;
+
+  struct TRI_qry_order_s* (*clone) (struct TRI_qry_order_s const*);
+  void (*free) (struct TRI_qry_order_s*);
+}
+TRI_qry_order_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief abstract order by clause for conditions
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_qry_order_cond_s {
+  TRI_qry_order_t base;
+
+  bool (*checkCondition) (struct TRI_qry_order_cond_s*, TRI_rc_context_t*, TRI_doc_mptr_t const*);
+}
+TRI_qry_order_cond_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief JavaScript order by clause
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_qry_order_general_s {
+  TRI_qry_order_cond_t base;
+
+  char* _code;
+}
+TRI_qry_order_general_t;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief general query
@@ -429,6 +495,7 @@ TRI_qry_where_geo_const_t;
 /// - the primary collection for the query in @CODE{_primary}
 /// - a list of joins in @CODE{_joins}
 /// - a description of the where clause in @CODE{_where}
+/// - an optional order by clause in @CODE{_order}
 /// - a number limiting the number of returned documents in @CODE{_limit}
 /// - a number of documents to skip in @CODE{_skip}
 ///
@@ -460,6 +527,7 @@ typedef struct TRI_query_s {
   TRI_doc_collection_t* _primary;
   TRI_vector_pointer_t _joins;
   TRI_qry_where_t* _where;
+  TRI_qry_order_t* _order;
 
   TRI_voc_size_t _skip;
   TRI_voc_ssize_t _limit;
@@ -480,10 +548,13 @@ typedef struct TRI_rc_cursor_s {
     TRI_rc_context_t* _context;
     TRI_qry_select_t* _select;
 
+    TRI_vector_pointer_t _containers;
+
     TRI_voc_size_t _scannedIndexEntries;
     TRI_voc_size_t _scannedDocuments;
     TRI_voc_size_t _matchedDocuments;
 
+    void (*free) (struct TRI_rc_cursor_s*);
     TRI_rc_result_t* (*next)(struct TRI_rc_cursor_s*);
     bool (*hasNext)(struct TRI_rc_cursor_s*);
 }
@@ -531,15 +602,29 @@ TRI_rc_cursor_t;
 /// @brief creates a query
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_query_t* TRI_CreateQuery (TRI_qry_select_t* selectStmt,
+TRI_query_t* TRI_CreateQuery (TRI_qry_select_t const* selectStmt,
+                              TRI_qry_where_t  const* whereStmt,
+                              TRI_qry_order_t  const* orderStmt,
                               char const* name,
                               TRI_doc_collection_t* collection);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees a query
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeQuery (TRI_query_t* query);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a context
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_rc_context_t* TRI_CreateContextQuery (TRI_query_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees a context
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeContextQuery (TRI_rc_context_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a query selection for unaltered documents
@@ -575,9 +660,19 @@ TRI_qry_where_t* TRI_CreateQueryWherePrimaryConstant (TRI_voc_did_t did);
 /// @brief creates a query condition using an geo index and a constants
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_qry_where_t* TRI_CreateQueryWhereGeoConstant (TRI_idx_iid_t iid,
-                                                  double latitiude,
-                                                  double longitude);
+TRI_qry_where_t* TRI_CreateQueryWhereWithinConstant (TRI_idx_iid_t iid,
+                                                     char const* nameDistance,
+                                                     double latitiude,
+                                                     double longitude,
+                                                     double radius);
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an order by clause for general JavaScript code
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_qry_order_t* TRI_CreateQueryOrderGeneral (char const*);
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -591,6 +686,30 @@ TRI_qry_where_t* TRI_CreateQueryWhereGeoConstant (TRI_idx_iid_t iid,
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read locks all collections of a query
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ReadLockCollectionsQuery (TRI_query_t* query);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read unlocks all collections of a query
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ReadUnlockCollectionsQuery (TRI_query_t* query);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a gc marker for all collections
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_AddCollectionsCursor (TRI_rc_cursor_t* cursor, TRI_query_t* query);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read unlocks all collections of a query
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_RemoveCollectionsCursor (TRI_rc_cursor_t* cursor);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a query

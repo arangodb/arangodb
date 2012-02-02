@@ -36,31 +36,48 @@
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize a string buffer for the results
+/// @brief initialize the to-Javascript conversion context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_string_buffer_t *QLJavascripterInit (void) {
-  TRI_string_buffer_t *buffer = (TRI_string_buffer_t *) TRI_Allocate(sizeof(TRI_string_buffer_t));
+QL_javascript_conversion_t *QLJavascripterInit (void) {
+  TRI_string_buffer_t        *buffer;
+  QL_javascript_conversion_t *converter;
 
-  if (buffer == 0) {
+  converter = (QL_javascript_conversion_t *)  TRI_Allocate(sizeof(QL_javascript_conversion_t));
+
+  if (converter == 0) { 
     return 0;
   }
+
+  // init
+  converter->_buffer = 0;
+  converter->_prefix = 0;
+
+  buffer = (TRI_string_buffer_t *) TRI_Allocate(sizeof(TRI_string_buffer_t));
+  if (buffer == 0) {
+    TRI_Free(converter);
+    return 0;
+  }
+
   TRI_InitStringBuffer(buffer);
-  return buffer;
+  converter->_buffer = buffer;
+
+  return converter;
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free the result string buffer
+/// @brief free the to-Javascript conversion text
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLJavascripterFree (TRI_string_buffer_t *buffer) {
-  if (buffer == 0) {
+void QLJavascripterFree (QL_javascript_conversion_t *converter) {
+  if (converter == 0) {
     return;
   }
 
-  TRI_FreeStringBuffer(buffer);
-  TRI_Free(buffer);
+  TRI_FreeStringBuffer(converter->_buffer);
+  TRI_Free(converter->_buffer);
+  TRI_Free(converter);
 }
 
 
@@ -68,36 +85,32 @@ void QLJavascripterFree (TRI_string_buffer_t *buffer) {
 /// @brief Walk a horizontal list of elements and print them
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLJavascripterWalkList (TRI_string_buffer_t * buffer, QL_ast_node_t *node) {
+void QLJavascripterWalkList (QL_javascript_conversion_t *converter, QL_ast_node_t *node, 
+                             const char separator, size_t counter) {
   QL_ast_node_t *next; 
-  bool isFirst;
 
   if (node == 0) { 
     return;
   }
 
   next = node->_next; 
-  isFirst=true;
  
   while (next != 0) {
-    if (isFirst) {
-      isFirst=false;
+    if (counter++ > 0) {
+      TRI_AppendCharStringBuffer(converter->_buffer, separator);
     }
-    else {
-      TRI_AppendCharStringBuffer(buffer, ',');
-    }
-    QLJavascripterWalk(buffer, next); 
+    QLJavascripterConvert(converter, next); 
     next = next->_next;
   }
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a javascript string by recursively walking the AST
+/// @brief create a javascript string by recursively walking an expression AST
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLJavascripterWalk (TRI_string_buffer_t *buffer, QL_ast_node_t *node) {
-  QL_ast_node_t *lhs, *rhs, *next;
+void QLJavascripterConvert (QL_javascript_conversion_t *converter, QL_ast_node_t *node) {
+  QL_ast_node_t *lhs, *rhs;
   size_t outLength;
 
   if (node == 0) {
@@ -109,67 +122,68 @@ void QLJavascripterWalk (TRI_string_buffer_t *buffer, QL_ast_node_t *node) {
 
   switch (node->_type) {
     case QLNodeValueUndefined:
-      TRI_AppendStringStringBuffer(buffer, "undefined");
+      TRI_AppendStringStringBuffer(converter->_buffer, "undefined");
       return;
     case QLNodeValueNull:
-      TRI_AppendStringStringBuffer(buffer, "null");
+      TRI_AppendStringStringBuffer(converter->_buffer, "null");
       return;
     case QLNodeValueBool:
-      TRI_AppendStringStringBuffer(buffer, node->_value._boolValue ? "true" : "false");
+      TRI_AppendStringStringBuffer(converter->_buffer, node->_value._boolValue ? "true" : "false");
       return;
     case QLNodeValueString:
-      TRI_AppendCharStringBuffer(buffer, '\'');
-      TRI_AppendStringStringBuffer(buffer, 
+      TRI_AppendCharStringBuffer(converter->_buffer, '\'');
+      TRI_AppendStringStringBuffer(converter->_buffer, 
         TRI_EscapeUtf8String(node->_value._stringValue, strlen(node->_value._stringValue), false, &outLength));
-      TRI_AppendCharStringBuffer(buffer, '\'');
+      TRI_AppendCharStringBuffer(converter->_buffer, '\'');
       return;
     case QLNodeValueNumberInt:
-      TRI_AppendInt64StringBuffer(buffer, node->_value._intValue);
+      TRI_AppendInt64StringBuffer(converter->_buffer, node->_value._intValue);
       return;
     case QLNodeValueNumberDouble:
-      TRI_AppendDoubleStringBuffer(buffer, node->_value._doubleValue);
+      TRI_AppendDoubleStringBuffer(converter->_buffer, node->_value._doubleValue);
       return;
     case QLNodeValueNumberDoubleString:
-      TRI_AppendStringStringBuffer(buffer, node->_value._stringValue);
+      TRI_AppendStringStringBuffer(converter->_buffer, node->_value._stringValue);
       return;
     case QLNodeValueArray:
-      TRI_AppendCharStringBuffer(buffer, '[');
-      QLJavascripterWalkList(buffer, rhs);
-      TRI_AppendCharStringBuffer(buffer, ']');
+      TRI_AppendCharStringBuffer(converter->_buffer, '[');
+      QLJavascripterWalkList(converter, rhs, ',', 0);
+      TRI_AppendCharStringBuffer(converter->_buffer, ']');
       return; 
     case QLNodeValueDocument:
-      TRI_AppendCharStringBuffer(buffer, '{');
-      QLJavascripterWalkList(buffer, rhs);
-      TRI_AppendCharStringBuffer(buffer, '}');
+      TRI_AppendCharStringBuffer(converter->_buffer, '{');
+      QLJavascripterWalkList(converter, rhs, ',', 0);
+      TRI_AppendCharStringBuffer(converter->_buffer, '}');
       return; 
     case QLNodeValueParameterNumeric:
     case QLNodeValueParameterNamed:
       // TODO: 
       return;
     case QLNodeValueIdentifier:
-      TRI_AppendStringStringBuffer(buffer, node->_value._stringValue);
+      TRI_AppendStringStringBuffer(converter->_buffer, node->_value._stringValue);
       return;
     case QLNodeValueNamedValue:
-      QLJavascripterWalk(buffer, lhs);
-      TRI_AppendCharStringBuffer(buffer, ':');
-      QLJavascripterWalk(buffer, rhs);
+      QLJavascripterConvert(converter, lhs);
+      TRI_AppendCharStringBuffer(converter->_buffer, ':');
+      QLJavascripterConvert(converter, rhs);
       return;
-    case QLNodeReferenceAttribute:
-      TRI_AppendStringStringBuffer(buffer, "$['");
-      QLJavascripterWalk(buffer, lhs);
-      TRI_AppendStringStringBuffer(buffer, "']");
-      next = (QL_ast_node_t*) rhs->_next;
-      while (next != 0) {
-        TRI_AppendCharStringBuffer(buffer, '.');
-        QLJavascripterWalk(buffer, next);
-        next = next->_next;
+    case QLNodeReferenceCollectionAlias:
+      if (converter->_prefix == 0) {
+        TRI_AppendStringStringBuffer(converter->_buffer, "$['");
+        TRI_AppendStringStringBuffer(converter->_buffer, node->_value._stringValue);
+        TRI_AppendStringStringBuffer(converter->_buffer, "']");
+      }
+      else {
+        TRI_AppendStringStringBuffer(converter->_buffer, "$['");
+        TRI_AppendStringStringBuffer(converter->_buffer, converter->_prefix);
+        TRI_AppendStringStringBuffer(converter->_buffer, "']");
       }
       return;
     case QLNodeUnaryOperatorPlus:
     case QLNodeUnaryOperatorMinus:
     case QLNodeUnaryOperatorNot:
-      TRI_AppendStringStringBuffer(buffer, QLAstNodeGetUnaryOperatorString(node->_type));
-      QLJavascripterWalk(buffer, lhs);
+      TRI_AppendStringStringBuffer(converter->_buffer, QLAstNodeGetUnaryOperatorString(node->_type));
+      QLJavascripterConvert(converter, lhs);
       return;
     case QLNodeBinaryOperatorAnd: 
     case QLNodeBinaryOperatorOr: 
@@ -186,20 +200,94 @@ void QLJavascripterWalk (TRI_string_buffer_t *buffer, QL_ast_node_t *node) {
     case QLNodeBinaryOperatorMultiply:
     case QLNodeBinaryOperatorDivide:
     case QLNodeBinaryOperatorModulus:
-      QLJavascripterWalk(buffer, lhs);
-      TRI_AppendStringStringBuffer(buffer, QLAstNodeGetBinaryOperatorString(node->_type));
-      QLJavascripterWalk(buffer, rhs);
+    case QLNodeBinaryOperatorIn:
+      TRI_AppendCharStringBuffer(converter->_buffer, '(');
+      QLJavascripterConvert(converter, lhs);
+      TRI_AppendStringStringBuffer(converter->_buffer, QLAstNodeGetBinaryOperatorString(node->_type));
+      QLJavascripterConvert(converter, rhs);
+      TRI_AppendCharStringBuffer(converter->_buffer, ')');
+      return;
+    case QLNodeContainerMemberAccess:
+      QLJavascripterConvert(converter, lhs);
+      QLJavascripterWalkList(converter, rhs, '.', 1);
+      return;
+    case QLNodeContainerTernarySwitch:
+      QLJavascripterConvert(converter, lhs);
+      TRI_AppendCharStringBuffer(converter->_buffer, ':');
+      QLJavascripterConvert(converter, rhs);
       return;
     case QLNodeControlFunctionCall:
-      QLJavascripterWalk(buffer, lhs);
-      TRI_AppendCharStringBuffer(buffer, '(');
-      QLJavascripterWalkList(buffer, rhs);
-      TRI_AppendCharStringBuffer(buffer, ')');
+      QLJavascripterConvert(converter, lhs);
+      TRI_AppendCharStringBuffer(converter->_buffer, '(');
+      QLJavascripterWalkList(converter, rhs, ',', 0);
+      TRI_AppendCharStringBuffer(converter->_buffer, ')');
+      return;
+    case QLNodeControlTernary:
+      TRI_AppendCharStringBuffer(converter->_buffer, '(');
+      QLJavascripterConvert(converter, lhs);
+      TRI_AppendCharStringBuffer(converter->_buffer, '?');
+      QLJavascripterConvert(converter, rhs);
+      TRI_AppendCharStringBuffer(converter->_buffer, ')');
+      return;
     default:
       return;
   }
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a javascript string by recursively walking an order by AST
+////////////////////////////////////////////////////////////////////////////////
+
+void QLJavascripterConvertOrder (QL_javascript_conversion_t *converter, QL_ast_node_t *node) {
+  QL_ast_node_t *lhs, *rhs;
+
+  if (node == 0) {
+    return;
+  }
+
+  lhs = node->_lhs;
+  TRI_AppendCharStringBuffer(converter->_buffer, '(');
+  converter->_prefix = "l";
+  QLJavascripterConvert(converter, lhs); 
+  TRI_AppendCharStringBuffer(converter->_buffer, '>');
+  converter->_prefix = "r";
+  QLJavascripterConvert(converter, lhs); 
+  TRI_AppendCharStringBuffer(converter->_buffer, '?');
+ 
+  rhs = node->_rhs;
+  if (rhs->_value._boolValue) {
+    TRI_AppendStringStringBuffer(converter->_buffer, "1");
+  }
+  else {
+    TRI_AppendStringStringBuffer(converter->_buffer, "-1");
+  }
+
+  TRI_AppendCharStringBuffer(converter->_buffer, ':');
+
+  converter->_prefix = "l";
+  QLJavascripterConvert(converter, lhs);
+  TRI_AppendCharStringBuffer(converter->_buffer, '<');
+  converter->_prefix = "r";
+  QLJavascripterConvert(converter, lhs); 
+  TRI_AppendCharStringBuffer(converter->_buffer, '?');
+
+  if (rhs->_value._boolValue) {
+    TRI_AppendStringStringBuffer(converter->_buffer, "-1");
+  }
+  else {
+    TRI_AppendStringStringBuffer(converter->_buffer, "1");
+  }
+  TRI_AppendCharStringBuffer(converter->_buffer, ':');
+
+  if (node->_next) {
+    QLJavascripterConvertOrder(converter, node->_next);
+  } 
+  else {
+    TRI_AppendCharStringBuffer(converter->_buffer, '0');
+  }
+  TRI_AppendCharStringBuffer(converter->_buffer, ')');
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

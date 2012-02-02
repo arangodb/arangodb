@@ -283,11 +283,13 @@ void QLOptimizeArithmeticOperator (QL_ast_node_t *node) {
       // const * const ==> merge
       QLOptimizeMakeValueNumberDouble(node, lhsValue * rhsValue);
     } 
-    else if (type == QLNodeBinaryOperatorDivide && rhsValue != 0.0) { // TODO: handle division by zero
+    else if (type == QLNodeBinaryOperatorDivide && rhsValue != 0.0) { 
+      // ignore division by zero. div0 will be handled in JS
       // const / const ==> merge
       QLOptimizeMakeValueNumberDouble(node, lhsValue / rhsValue);
     } 
-    else if (type == QLNodeBinaryOperatorModulus && rhsValue != 0.0) { // TODO: handle division by zero
+    else if (type == QLNodeBinaryOperatorModulus && rhsValue != 0.0) { 
+      // ignore division by zero. div0 will be handled in JS
       // const % const ==> merge
       QLOptimizeMakeValueNumberDouble(node, fmod(lhsValue, rhsValue));
     } 
@@ -298,7 +300,8 @@ void QLOptimizeArithmeticOperator (QL_ast_node_t *node) {
     
     if (type == QLNodeBinaryOperatorAdd && lhsValue == 0.0) {
       // 0 + x ==> x
-      QLOptimizeClone(node, rhs);
+      // TODO: by adding 0, the result would become a double. Just copying over rhs is not enough!
+      // QLOptimizeClone(node, rhs);
     }
     else if (type == QLNodeBinaryOperatorMultiply && lhsValue == 0.0) {
       // 0 * x ==> 0
@@ -306,7 +309,8 @@ void QLOptimizeArithmeticOperator (QL_ast_node_t *node) {
     } 
     else if (type == QLNodeBinaryOperatorMultiply && lhsValue == 1.0) {
       // 1 * x ==> x
-      QLOptimizeClone(node, rhs);
+      // TODO: by adding 0, the result would become a double. Just copying over rhs is not enough!
+      // QLOptimizeClone(node, rhs);
     } 
   }
   else if (QLOptimizeCanBeUsedAsArithmeticOperand(rhs)) {
@@ -315,10 +319,12 @@ void QLOptimizeArithmeticOperator (QL_ast_node_t *node) {
     
     if (type == QLNodeBinaryOperatorAdd && rhsValue == 0.0) {
       // x + 0 ==> x
+      // TODO: by adding 0, the result would become a double. Just copying over lhs is not enough!
       QLOptimizeClone(node, lhs);
     }
     else if (type == QLNodeBinaryOperatorSubtract && rhsValue == 0.0) {
       // x - 0 ==> x
+      // TODO: by adding 0, the result would become a double. Just copying over lhs is not enough!
       QLOptimizeClone(node, lhs);
     }
     else if (type == QLNodeBinaryOperatorMultiply && rhsValue == 0.0) {
@@ -327,6 +333,7 @@ void QLOptimizeArithmeticOperator (QL_ast_node_t *node) {
     } 
     else if (type == QLNodeBinaryOperatorMultiply && rhsValue == 1.0) {
       // x * 1 ==> x
+      // TODO: by adding 0, the result would become a double. Just copying over lhs is not enough!
       QLOptimizeClone(node, lhs);
     } 
   }
@@ -454,10 +461,51 @@ void QLOptimizeBinaryOperator (QL_ast_node_t *node) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief recursively optimize nodes in the AST
+/// @brief optimization function for the ternary operator
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLOptimize (QL_ast_node_t *node) {
+void QLOptimizeTernaryOperator (QL_ast_node_t *node) {
+  QL_ast_node_t *lhs, *rhs;
+  bool lhsValue;
+
+  // condition part
+  lhs = node->_lhs;
+   
+  if (QLOptimizeCanBeUsedAsLogicalOperand(lhs)) {
+    lhsValue = QLOptimizeGetBool(lhs);
+    // true and false parts
+    rhs = node->_rhs;
+    if (lhsValue) {
+      QLOptimizeClone(node, rhs->_lhs);
+    }
+    else {
+      QLOptimizeClone(node, rhs->_rhs);
+    }
+  }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief recursively optimize order by
+////////////////////////////////////////////////////////////////////////////////
+
+void QLOptimizeOrder (QL_ast_node_t *node) {
+  QL_ast_node_t *next;
+  
+  next = node->_next;
+  while (next != 0) {
+    // lhs contains the order expression, rhs contains the sort order
+    QLOptimizeExpression(next->_lhs);
+    next = next->_next;
+  }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief recursively optimize nodes in an expression AST
+////////////////////////////////////////////////////////////////////////////////
+
+void QLOptimizeExpression (QL_ast_node_t *node) {
   QL_ast_node_type_e type;
   QL_ast_node_t *lhs, *rhs, *next;
 
@@ -465,26 +513,41 @@ void QLOptimize (QL_ast_node_t *node) {
     return;
   }
   
-  type   = node->_type;
-
+  type = node->_type;
   if (type == QLNodeContainerList) {
-    next   = node->_next;
+    next = node->_next;
     while (next) {
-      QLOptimize(next);
+      if (!QLAstNodeIsValueNode(node)) {
+        // no need to optimize value nodes
+        QLOptimizeExpression(next);
+      }
       next = next->_next;
     }
   }
 
+  if (QLAstNodeIsValueNode(node)) {
+    // exit early, no need to optimize value nodes
+    return;
+  }
+
   lhs = node->_lhs;
   if (lhs != 0) {
-    QLOptimize(lhs);
-    QLOptimizeUnaryOperator(node);
+    QLOptimizeExpression(lhs);
   }
 
   rhs = node->_rhs;
   if (rhs != 0) {
-    QLOptimize(rhs);
+    QLOptimizeExpression(rhs);
+  }
+
+  if (QLAstNodeIsUnaryOperator(node)) {
+    QLOptimizeUnaryOperator(node);
+  }
+  else if (QLAstNodeIsBinaryOperator(node)) {
     QLOptimizeBinaryOperator(node);
+  }
+  else if (QLAstNodeIsTernaryOperator(node)) {
+    QLOptimizeTernaryOperator(node);
   }
 }
 

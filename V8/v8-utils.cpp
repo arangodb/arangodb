@@ -30,9 +30,6 @@
 #include <fstream>
 #include <locale>
 
-#include <readline/readline.h>
-#include <readline/history.h>
-
 #include "Basics/StringUtils.h"
 #include "BasicsC/conversions.h"
 #include "BasicsC/csv.h"
@@ -44,10 +41,6 @@
 #include "ShapedJson/shaped-json.h"
 
 #include "V8/v8-json.h"
-
-#if RL_READLINE_VERSION >= 0x0500
-#define completion_matches rl_completion_matches
-#endif
 
 using namespace std;
 using namespace triagens::basics;
@@ -66,397 +59,6 @@ static v8::Handle<v8::Value> JsonShapeData (TRI_shaper_t* shaper,
                                             TRI_shape_t const* shape,
                                             char const* data,
                                             size_t size);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                class V8LineEditor
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief word break characters
-////////////////////////////////////////////////////////////////////////////////
-
-static char WordBreakCharacters[] = {
-    ' ', '\t', '\n', '"', '\\', '\'', '`', '@',
-    '.', '>', '<', '=', ';', '|', '&', '{', '(',
-    '\0'
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief completion generator
-////////////////////////////////////////////////////////////////////////////////
-
-static char* CompletionGenerator (const char* text, int state) {
-  return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief attempted completion
-////////////////////////////////////////////////////////////////////////////////
-
-static char** AttemptedCompletion (const char* text, int start, int end) {
-  char** result = completion_matches(text, CompletionGenerator);
-  rl_attempted_completion_over = true;
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if javascript is missing a closing bracket
-////////////////////////////////////////////////////////////////////////////////
-
-static bool CheckJavaScript (string const& source) {
-  char const* ptr;
-  char const* end;
-  int openParen;
-  int openBrackets;
-  int openBraces;
-
-  enum {
-    NORMAL,             // start
-    NORMAL_1,           // from NORMAL: seen a single /
-    DOUBLE_QUOTE,       // from NORMAL: seen a single "
-    DOUBLE_QUOTE_ESC,   // from DOUBLE_QUOTE: seen a backslash
-    SINGLE_QUOTE,       // from NORMAL: seen a single '
-    SINGLE_QUOTE_ESC,   // from SINGLE_QUOTE: seen a backslash
-    MULTI_COMMENT,      // from NORMAL_1: seen a *
-    MULTI_COMMENT_1,    // from MULTI_COMMENT, seen a *
-    SINGLE_COMMENT      // from NORMAL_1; seen a /
-  }
-  state;
-
-  openParen = 0;
-  openBrackets = 0;
-  openBraces = 0;
-
-  ptr = source.c_str();
-  end = ptr + source.length();
-  state = NORMAL;
-
-  while (ptr < end) {
-    if (state == DOUBLE_QUOTE) {
-      if (*ptr == '\\') {
-        state = DOUBLE_QUOTE_ESC;
-      }
-      else if (*ptr == '"') {
-        state = NORMAL;
-      }
-
-      ++ptr;
-    }
-    else if (state == DOUBLE_QUOTE_ESC) {
-      state = DOUBLE_QUOTE;
-      ptr++;
-    }
-    else if (state == SINGLE_QUOTE) {
-      if (*ptr == '\\') {
-        state = SINGLE_QUOTE_ESC;
-      }
-      else if (*ptr == '\'') {
-        state = NORMAL;
-      }
-
-      ++ptr;
-    }
-    else if (state == SINGLE_QUOTE_ESC) {
-      state = SINGLE_QUOTE;
-      ptr++;
-    }
-    else if (state == MULTI_COMMENT) {
-      if (*ptr == '*') {
-        state = MULTI_COMMENT_1;
-      }
-
-      ++ptr;
-    }
-    else if (state == MULTI_COMMENT_1) {
-      if (*ptr == '/') {
-        state = NORMAL;
-      }
-
-      ++ptr;
-    }
-    else if (state == SINGLE_COMMENT) {
-      ++ptr;
-
-      if (ptr == end) {
-        state = NORMAL;
-      }
-    }
-    else if (state == NORMAL_1) {
-      switch (*ptr) {
-        case '/':
-          state = SINGLE_COMMENT;
-          ++ptr;
-          break;
-
-        case '*':
-          state = MULTI_COMMENT;
-          ++ptr;
-          break;
-
-        default:
-          state = NORMAL; // try again, do not change ptr
-          break;
-      }
-    }
-    else {
-      switch (*ptr) {
-        case '"':
-          state = DOUBLE_QUOTE;
-          break;
-
-        case '\'':
-          state = SINGLE_QUOTE;
-          break;
-
-        case '/':
-          state = NORMAL_1;
-          break;
-
-        case '(':
-          ++openParen;
-          break;
-
-        case ')':
-          --openParen;
-          break;
-
-        case '[':
-          ++openBrackets;
-          break;
-
-        case ']':
-          --openBrackets;
-          break;
-
-        case '{':
-          ++openBraces;
-          break;
-
-        case '}':
-          --openBraces;
-          break;
-      }
-
-      ++ptr;
-    }
-  }
-
-  return openParen <= 0 && openBrackets <= 0 && openBraces <= 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                           static public variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief history file
-////////////////////////////////////////////////////////////////////////////////
-
-const char* V8LineEditor::HISTORY_FILENAME = ".avocado";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new editor
-////////////////////////////////////////////////////////////////////////////////
-
-V8LineEditor::V8LineEditor ()
-  : current() {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor open
-////////////////////////////////////////////////////////////////////////////////
-
-bool V8LineEditor::open () {
-  rl_initialize();
-  rl_attempted_completion_function = AttemptedCompletion;
-  rl_completer_word_break_characters = WordBreakCharacters;
-
-  rl_bind_key('\t', rl_complete);
-
-  using_history();
-  stifle_history(MAX_HISTORY_ENTRIES);
-
-  return read_history(getHistoryPath().c_str()) == 0;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor shutdown
-////////////////////////////////////////////////////////////////////////////////
-
-bool V8LineEditor::close () {
-  return write_history(getHistoryPath().c_str());
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the history file path
-////////////////////////////////////////////////////////////////////////////////
-
-string V8LineEditor::getHistoryPath () {
-  string path;
-  
-  if (getenv("HOME")) {
-    path.append(getenv("HOME"));
-    path += '/';
-  }
-  path.append(HISTORY_FILENAME); 
-
-  return path;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor prompt
-////////////////////////////////////////////////////////////////////////////////
-
-char* V8LineEditor::prompt (char const* prompt) {
-  string dotdot;
-  char const* p = prompt;
-  size_t len1 = strlen(prompt);
-  size_t len2 = len1;
-
-  if (len1 < 3) {
-    dotdot = "> ";
-    len2 = 2;
-  }
-  else {
-    dotdot = string(len1 - 2, '.') + "> ";
-  }
-
-  char const* sep = "";
-
-  while (true) {
-    char* result = readline(p);
-    p = dotdot.c_str();
-
-    if (result == 0) {
-
-      // give up, if the user pressed control-D on the top-most level
-      if (current.empty()) {
-        return 0;
-      }
-
-      // otherwise clear current content
-      current.clear();
-      break;
-    }
-
-    current += sep;
-    sep = "\n";
-
-    bool c1 = strncmp(result, prompt, len1) == 0;
-    bool c2 = strncmp(result, dotdot.c_str(), len2) == 0;
-
-    while (c1 || c2) {
-      if (c1) {
-        result += len1;
-      }
-      else if (c2) {
-        result += len2;
-      }
-
-      c1 = strncmp(result, prompt, len1) == 0;
-      c2 = strncmp(result, dotdot.c_str(), len2) == 0;
-    }
-
-    current += result;
-    bool ok = CheckJavaScript(current);
-
-    if (ok) {
-      break;
-    }
-  }
-
-  char* line = TRI_DuplicateString(current.c_str());
-  current.clear();
-
-  return line;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add to history
-////////////////////////////////////////////////////////////////////////////////
-
-void V8LineEditor::addHistory (const char* str) {
-  if (*str == '\0') {
-    return;
-  }
-
-  history_set_pos(history_length-1);
-
-  if (current_history()) {
-    do {
-      if (strcmp(current_history()->line, str) == 0) {
-        remove_history(where_history());
-        break;
-      }
-    }
-    while (previous_history());
-  }
-
-  add_history(str);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              CONVERSION FUNCTIONS
@@ -1562,7 +1164,7 @@ v8::Handle<v8::Value> ObjectJsonArray (TRI_json_t const* json) {
     object->Set(v8::String::New(key->_value._string.data), val);
   }
 
-    return object;
+  return object;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1911,6 +1513,24 @@ TRI_js_exec_context_t TRI_CreateExecutionContext (char const* script) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief frees an new execution context
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeExecutionContext (TRI_js_exec_context_t context) {
+  js_exec_context_t* ctx;
+
+  ctx = (js_exec_context_t*) context;
+
+  ctx->_func.Dispose();
+  ctx->_func.Clear();
+
+  ctx->_arguments.Dispose();
+  ctx->_arguments.Clear();
+
+  delete ctx;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1922,6 +1542,37 @@ TRI_js_exec_context_t TRI_CreateExecutionContext (char const* script) {
 /// @addtogroup V8Utils
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets an json array
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_DefineJsonArrayExecutionContext (TRI_js_exec_context_t context,
+                                          TRI_json_t* json) {
+  js_exec_context_t* ctx;
+  v8::Handle<v8::Value> result;
+
+  ctx = (js_exec_context_t*) context;
+
+  assert(json->_type == TRI_JSON_ARRAY);
+
+  size_t n = json->_value._objects._length;
+
+  for (size_t i = 0;  i < n;  i += 2) {
+    TRI_json_t* key = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
+
+    if (key->_type != TRI_JSON_STRING) {
+      continue;
+    }
+
+    TRI_json_t* j = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i + 1);
+    v8::Handle<v8::Value> val = TRI_ObjectJson(j);
+
+    ctx->_arguments->Set(v8::String::New(key->_value._string.data), val);
+  }
+
+  return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines a document
@@ -1943,6 +1594,37 @@ bool TRI_DefineDocumentExecutionContext (TRI_js_exec_context_t context,
   }
 
   ctx->_arguments->Set(v8::String::New(name), result);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief defines an execution context with two documents for comparisons
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_DefineCompareExecutionContext (TRI_js_exec_context_t context,
+                                        TRI_doc_collection_t* collection,
+                                        TRI_doc_mptr_t const* lhs,
+                                        TRI_doc_mptr_t const* rhs) {
+  js_exec_context_t* ctx;
+  v8::Handle<v8::Value> leftValue;
+  v8::Handle<v8::Value> rightValue;
+  bool ok;
+
+  ctx = (js_exec_context_t*) context;
+
+  ok = TRI_ObjectDocumentPointer(collection, lhs, &leftValue);
+  if (! ok) {
+    return false;
+  }
+
+  ok = TRI_ObjectDocumentPointer(collection, rhs, &rightValue);
+  if (! ok) {
+    return false;
+  }
+
+  ctx->_arguments->Set(v8::String::New("l"), leftValue);
+  ctx->_arguments->Set(v8::String::New("r"), rightValue);
 
   return true;
 }
@@ -1992,6 +1674,30 @@ bool TRI_ExecuteConditionExecutionContext (TRI_js_exec_context_t context, bool* 
   }
 
   *r = TRI_ObjectToBoolean(result);
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes and destroys an execution context for order by
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ExecuteOrderExecutionContext (TRI_js_exec_context_t context, int* r) {
+  js_exec_context_t* ctx;
+
+  ctx = (js_exec_context_t*) context;
+
+  // convert back into a handle
+  v8::Persistent<v8::Function> func = ctx->_func;
+
+  // and execute the function
+  v8::Handle<v8::Value> args[] = { ctx->_arguments };
+  v8::Handle<v8::Value> result = func->Call(func, 1, args);
+
+  if (result.IsEmpty()) {
+    return false;
+  }
+
+  *r = (int) TRI_ObjectToDouble(result);
   return true;
 }
 
@@ -2171,6 +1877,8 @@ static v8::Handle<v8::Value> JS_Load (v8::Arguments const& argv) {
   }
 
   bool ok = TRI_ExecuteStringVocBase(v8::Context::GetCurrent(), v8::String::New(content), argv[0], false, true);
+
+  TRI_FreeString(content);
 
   return scope.Close(ok ? v8::True() : v8::False());
 }

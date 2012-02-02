@@ -37,6 +37,7 @@
 #include "VocBase/vocbase.h"
 
 #include "v8-actions.h"
+#include "v8-line-editor.h"
 #include "v8-shell.h"
 #include "v8-utils.h"
 #include "v8-vocbase.h"
@@ -79,7 +80,7 @@ static void RunShell (v8::Handle<v8::Context> context) {
   v8::Context::Scope contextScope(context);
   v8::Local<v8::String> name(v8::String::New("(shell)"));
 
-  V8LineEditor* console = new V8LineEditor();
+  V8LineEditor* console = new V8LineEditor(context, ".avoc");
 
   console->open();
 

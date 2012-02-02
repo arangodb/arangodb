@@ -630,12 +630,13 @@ bool TRI_IterateCollection (TRI_collection_t* collection,
     result = TRI_IterateDatafile(datafile, iterator, data, false);
 
     if (! result) {
-      TRI_DestroyVectorPointer(datafiles);
+      TRI_FreeVectorPointer(datafiles);
+      TRI_FreeVectorPointer(journals);
+      TRI_FreeVectorPointer(compactors);
+
       return false;
     }
   }
-
-  TRI_DestroyVectorPointer(datafiles);
 
   // iterate over all compactors
   n = compactors->_length;
@@ -649,7 +650,10 @@ bool TRI_IterateCollection (TRI_collection_t* collection,
     result = TRI_IterateDatafile(datafile, iterator, data, false);
 
     if (! result) {
-      TRI_DestroyVectorPointer(compactors);
+      TRI_FreeVectorPointer(datafiles);
+      TRI_FreeVectorPointer(journals);
+      TRI_FreeVectorPointer(compactors);
+
       return false;
     }
   }
@@ -666,12 +670,18 @@ bool TRI_IterateCollection (TRI_collection_t* collection,
     result = TRI_IterateDatafile(datafile, iterator, data, false);
 
     if (! result) {
-      TRI_DestroyVectorPointer(journals);
+      TRI_FreeVectorPointer(datafiles);
+      TRI_FreeVectorPointer(journals);
+      TRI_FreeVectorPointer(compactors);
+
       return false;
     }
   }
 
-  TRI_DestroyVectorPointer(journals);
+  TRI_FreeVectorPointer(datafiles);
+  TRI_FreeVectorPointer(journals);
+  TRI_FreeVectorPointer(compactors);
+
   return true;
 }
 
