@@ -1,0 +1,130 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief joins
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Jan Steemann
+/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef TRIAGENS_STORAGE_DURHAM_JOIN
+#define TRIAGENS_STORAGE_DURHAM_JOIN
+
+#include "simple-collection.h"
+#include "cursor.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief possible join types
+////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+  JOIN_TYPE_PRIMARY,
+  JOIN_TYPE_LIST,
+  JOIN_TYPE_INNER,
+  JOIN_TYPE_OUTER
+}
+TRI_join_type_e;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief input for join operator
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_join_feeder_s {
+  TRI_sim_collection_t *_collection;
+  void **_start;
+  void **_end;
+  void **_current;
+  
+  void (*init) (struct TRI_join_feeder_s*);
+  void (*rewind) (struct TRI_join_feeder_s*);
+  TRI_doc_mptr_t *(*current) (struct TRI_join_feeder_s*);
+  TRI_doc_mptr_t *(*next) (struct TRI_join_feeder_s*);
+  void (*free) (struct TRI_join_feeder_s*);
+}
+TRI_join_feeder_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief join data structure
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_join_part_s {
+  TRI_join_feeder_t *_feeder; // data source
+  TRI_resultset_t *_resultset; // result output
+  TRI_join_type_e _type;
+
+  void (*free) (struct TRI_join_part_s*);
+} 
+TRI_join_part_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief multi join container data structure
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_join_s {
+  TRI_vector_pointer_t _parts;
+  
+  void (*free) (struct TRI_join_s*);
+}
+TRI_join_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a join part to a join
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_AddPartJoin(TRI_join_t *, const TRI_join_type_e, TRI_resultset_t *, TRI_sim_collection_t *);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize a join
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_join_t *TRI_CreateJoin(void);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute joins
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ExecuteJoin(TRI_join_t *);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:
+
+
