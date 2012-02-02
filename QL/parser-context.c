@@ -44,7 +44,10 @@ bool QLParseInit (QL_parser_context_t *context, const char *query) {
   TRI_InitVectorPointer(&context->_strings);
   TRI_InitVectorPointer(&context->_listHeads);
   TRI_InitVectorPointer(&context->_listTails);
-
+  
+  // set parse stage
+  context->_stage = STAGE_PARSE;
+ 
   // init lexer/scanner
   QLlex_init(&context->_scanner);
   QLset_extra(context, context->_scanner);
@@ -219,6 +222,10 @@ QL_ast_node_t *QLAstNodeCreate (QL_parser_context_t *context, const QL_ast_node_
   node->_lhs                = 0;
   node->_rhs                = 0;
   node->_next               = 0;
+
+  // set position information
+  node->_line               = QLget_lineno(context->_scanner);
+  node->_column             = QLget_column(context->_scanner);
   
   return node;
 }
@@ -271,6 +278,104 @@ void QLParseContextAddElement (QL_parser_context_t *context, QL_ast_node_t *elem
     }
   }
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pop the current parse context from the stack into the rhs element
+////////////////////////////////////////////////////////////////////////////////
+
+void QLPopIntoRhs (QL_ast_node_t *node, QL_parser_context_t *context) {
+  QL_ast_node_t *popped;
+  popped = QLParseContextPop(context);
+
+  if (node != 0) {
+    node->_rhs = popped;
+  }  
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Register a parse error
+////////////////////////////////////////////////////////////////////////////////
+
+void QLParseRegisterParseError (QL_parser_context_t *context, const QL_error_type_e errorCode, ...) {
+  va_list args;
+
+  // set line and column numbers automatically during parsing
+  context->_lexState._errorState._line    = QLget_lineno(context->_scanner);
+  context->_lexState._errorState._column  = QLget_column(context->_scanner);
+  context->_lexState._errorState._code    = errorCode; 
+  va_start(args, errorCode);
+  context->_lexState._errorState._message = QLParseAllocString(context, QLErrorFormat(errorCode, args)); 
+  va_end(args);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Register a post-parse error
+////////////////////////////////////////////////////////////////////////////////
+
+void QLParseRegisterPostParseError (QL_parser_context_t *context, const int32_t line, 
+                                    const int32_t column, const QL_error_type_e errorCode, ...) {
+  va_list args;
+
+  context->_lexState._errorState._line    = line;
+  context->_lexState._errorState._column  = column;
+  context->_lexState._errorState._code    = errorCode; 
+  va_start(args, errorCode);
+  context->_lexState._errorState._message = QLParseAllocString(context, QLErrorFormat(errorCode, args)); 
+  va_end(args);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Validate the query
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLParseValidate (QL_parser_context_t *context, QL_ast_node_t *node) {
+  QL_ast_node_t *lhs, *rhs, *next;
+  QL_ast_node_type_e type;
+
+  if (node == 0) {
+    return true; 
+  }
+  
+  type = node->_type;
+  if (type == QLNodeContainerList) {
+    next = node->_next;
+    while (next) {
+      if (!QLParseValidate(context, next)) {
+        return false;
+      }
+      next = next->_next;
+    }
+  }
+  
+  if (node->_type == QLNodeReferenceCollectionAlias) {
+    if (!QLAstQueryIsValidAlias(context->_query, node->_value._stringValue)) {
+      QLParseRegisterPostParseError(context, node->_line, node->_column, 
+                                    ERR_COLLECTION_NAME_UNDECLARED, node->_value._stringValue);
+      return false;
+    }
+  }
+
+  lhs = node->_lhs;
+  if (lhs != 0) {
+    if (!QLParseValidate(context, lhs)) { 
+      return false;
+    }
+  }
+
+  rhs = node->_rhs;
+  if (rhs != 0) {
+    if (!QLParseValidate(context, rhs)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

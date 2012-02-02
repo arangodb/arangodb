@@ -53,6 +53,8 @@ typedef enum {
 
   QLNodeContainerList,
   QLNodeContainerOrderElement,
+  QLNodeContainerMemberAccess,
+  QLNodeContainerTernarySwitch,
 
   QLNodeJoinList,
   QLNodeJoinInner,
@@ -74,8 +76,8 @@ typedef enum {
   QLNodeValueNamedValue,
   QLNodeValueOrderDirection,
 
-  QLNodeReferenceAttribute,
   QLNodeReferenceCollection,
+  QLNodeReferenceCollectionAlias,
 
   QLNodeUnaryOperatorPlus,
   QLNodeUnaryOperatorMinus,
@@ -98,7 +100,10 @@ typedef enum {
   QLNodeBinaryOperatorDivide,
   QLNodeBinaryOperatorModulus,
 
-  QLNodeControlFunctionCall
+  QLNodeControlFunctionCall,
+  QLNodeControlTernary,
+
+  QLNodeLast
 } 
 QL_ast_node_type_e;
 
@@ -147,6 +152,8 @@ typedef struct QL_ast_node_s {
     double           _doubleValue;
     char             *_stringValue;
   } _value;
+  int32_t            _line;
+  int32_t            _column;
   void               *_lhs;          // pointer to left child (might be null)
   void               *_rhs;          // pointer to right child (might be null) 
   void               *_next;         // pointer to next node (used for lists, might be null)
@@ -180,6 +187,34 @@ char *QLAstNodeGetUnaryOperatorString (const QL_ast_node_type_e);
 ////////////////////////////////////////////////////////////////////////////////
 
 char *QLAstNodeGetBinaryOperatorString (const QL_ast_node_type_e);
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return whether a node is a unary operator
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLAstNodeIsUnaryOperator (QL_ast_node_t *);
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return whether a node is a value node
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLAstNodeIsValueNode (QL_ast_node_t *);
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return whether a node is a binary operator
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLAstNodeIsBinaryOperator (QL_ast_node_t *);
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return whether a node is the ternary operator
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLAstNodeIsTernaryOperator (QL_ast_node_t *);
 
 
 ////////////////////////////////////////////////////////////////////////////////

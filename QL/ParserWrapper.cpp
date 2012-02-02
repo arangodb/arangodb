@@ -21,8 +21,8 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Jan Steemann
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ParserWrapper.h"
@@ -126,6 +126,18 @@ bool ParserWrapper::parse () {
     return false;
   }
 
+  if (!QLParseValidate(_context, _context->_query->_select._base)) {
+    QL_error_state_t *errorState = &_context->_lexState._errorState;
+    _parseError= new ParseError(errorState->_message, errorState->_line, errorState->_column);
+    return false;
+  }
+
+  if (!QLParseValidate(_context, _context->_query->_where._base)) {
+    QL_error_state_t *errorState = &_context->_lexState._errorState;
+    _parseError= new ParseError(errorState->_message, errorState->_line, errorState->_column);
+    return false;
+  }
+
   return true;
 }
 
@@ -160,19 +172,23 @@ TRI_qry_select_t *ParserWrapper::getSelect () {
   TRI_qry_select_t* select = 0;
 
   if (_isParsed) {
-    QLOptimize(_context->_query->_select._base);
+    QLOptimizeExpression(_context->_query->_select._base);
     QL_ast_query_select_type_e selectType = QLOptimizeGetSelectType(_context->_query);
 
     if (selectType == QLQuerySelectTypeSimple) {
       select = TRI_CreateQuerySelectDocument();
     } 
     else if (selectType == QLQuerySelectTypeEvaluated) {
-      TRI_string_buffer_t *selectJs = QLJavascripterInit();
-      TRI_AppendStringStringBuffer(selectJs, "(function($) { return ");
-      QLJavascripterWalk(selectJs, _context->_query->_select._base);
-      TRI_AppendStringStringBuffer(selectJs, " })");
-      select = TRI_CreateQuerySelectGeneral(selectJs->_buffer);
-      QLJavascripterFree(selectJs);
+      QL_javascript_conversion_t *selectJs = QLJavascripterInit();
+      if (selectJs != 0) {
+        TRI_AppendStringStringBuffer(selectJs->_buffer, "(function($) { return ");
+        QLJavascripterConvert(selectJs, _context->_query->_select._base);
+        TRI_AppendStringStringBuffer(selectJs->_buffer, " })");
+        select = TRI_CreateQuerySelectGeneral(selectJs->_buffer->_buffer);
+        // TODO: REMOVE ME
+        // std::cout << "SELECT: " << selectJs->_buffer->_buffer << "\n";
+        QLJavascripterFree(selectJs);
+      }
     }
   }
 
@@ -214,10 +230,11 @@ TRI_qry_where_t *ParserWrapper::getWhere () {
   TRI_qry_where_t* where = 0;
 
   if (_isParsed) {
-    QLOptimize(_context->_query->_where._base);
-QL_formatter_t f;
-f.indentLevel = 0;
-QLFormatterDump(_context->_query->_where._base, &f, 0);
+    QLOptimizeExpression(_context->_query->_where._base);
+    // TODO: REMOVE ME
+    // QL_formatter_t f;
+    // f.indentLevel = 0;
+    // QLFormatterDump(_context->_query->_where._base, &f, 0);
 
     _context->_query->_where._type = QLOptimizeGetWhereType(_context->_query);
 
@@ -231,17 +248,47 @@ QLFormatterDump(_context->_query->_where._base, &f, 0);
     }
     else {
       // where condition must be evaluated for each result
-      TRI_string_buffer_t *whereJs = QLJavascripterInit();
-      TRI_AppendStringStringBuffer(whereJs, "(function($) { return (");
-      QLJavascripterWalk(whereJs, _context->_query->_where._base);
-      TRI_AppendStringStringBuffer(whereJs, "); })");
-      where = TRI_CreateQueryWhereGeneral(whereJs->_buffer);
-std::cout << "WHERE: " << whereJs->_buffer << "\n";
-      QLJavascripterFree(whereJs);
+      QL_javascript_conversion_t *whereJs = QLJavascripterInit();
+      if (whereJs != 0) {
+        TRI_AppendStringStringBuffer(whereJs->_buffer, "(function($) { return (");
+        QLJavascripterConvert(whereJs, _context->_query->_where._base);
+        TRI_AppendStringStringBuffer(whereJs->_buffer, "); })");
+        where = TRI_CreateQueryWhereGeneral(whereJs->_buffer->_buffer);
+        // TODO: REMOVE ME
+        // std::cout << "WHERE: " << whereJs->_buffer->_buffer << "\n";
+        QLJavascripterFree(whereJs);
+      }
     }
   }
 
   return where;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Create an order clause
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_qry_order_t *ParserWrapper::getOrder () {
+  TRI_qry_order_t* order = 0;
+
+  if (_isParsed ) {
+    if (_context->_query->_order._base) {
+      QLOptimizeOrder(_context->_query->_order._base);
+      QL_javascript_conversion_t *orderJs = QLJavascripterInit();
+      if (orderJs != 0) {
+        TRI_AppendStringStringBuffer(orderJs->_buffer, "(function($) { return (");
+        QLJavascripterConvertOrder(orderJs, (QL_ast_node_t *) _context->_query->_order._base->_next);
+        TRI_AppendStringStringBuffer(orderJs->_buffer, "); })");
+        order = TRI_CreateQueryOrderGeneral(orderJs->_buffer->_buffer);
+        // TODO: REMOVE ME
+        std::cout << "ORDER: " << orderJs->_buffer->_buffer << "\n";
+        QLJavascripterFree(orderJs);
+      }
+    }
+  }
+
+  return order;
 }
 
 

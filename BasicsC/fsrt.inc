@@ -137,6 +137,45 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @def FSRT_INSTANCE
+/// @brief sort instance name
+/// An instance name is necessary if there is more than one sort usage in the 
+/// same program. not having an instance name would lead to redeclaration of
+/// functions and variables. Using a unique instance name avoids that.
+/// The instance name can be passed from the caller by setting FSRT_INSTANCE to
+/// any prefix value, e.g. test
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef FSRT_INSTANCE
+#define FSRT_INSTANCE  
+#define FSRT_HAS_PREFIX 0
+#else
+#define FSRT_HAS_PREFIX 1
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @def FSRT_CONCAT
+/// @brief helper macro to concatenate a prefix and the actual name
+/// the purpose of this macro is to create unique names so multiple instances of
+/// fruit sort can be used in the same program
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @def FSRT_PREFIX
+/// @brief helper macro to concatenate a prefix and the actual name
+/// the purpose of this macro is to create unique names so multiple instances of
+/// fruit sort can be used in the same program
+/// This macro is an indirection macro that is necessary because the argument
+/// substitution process as defined in section 6.10.3 of the C99 standard 
+/// requires it 
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef FSRT_PREFIX
+#define FSRT_CONCAT(prefix, name) prefix ## name
+#define FSRT_PREFIX(prefix, name) FSRT_CONCAT(prefix, name)
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @def FSRT_COUNT
 /// @brief statistics buffer
 ////////////////////////////////////////////////////////////////////////////////
@@ -360,9 +399,9 @@ static uint32_t FSRT_Count [20];
 
 #ifdef FSRT_TYPE
 
-#define FSRT__MED3(fs_x,fs_y,fs_z,fs_s) FSRT_NAM2((fs_x),(fs_y),(fs_z) FSRT__EXTRA_ARGS)
+#define FSRT__MED3(fs_x,fs_y,fs_z,fs_s) FSRT_PREFIX(FSRT_INSTANCE,FSRT_NAM2)((fs_x),(fs_y),(fs_z) FSRT__EXTRA_ARGS)
 
-FSRT__TYPE * FSRT_NAM2 (
+FSRT__TYPE * FSRT_PREFIX(FSRT_INSTANCE,FSRT_NAM2) (
     FSRT__TYPE *        fs_x,
     FSRT__TYPE *        fs_y,
     FSRT__TYPE *        fs_z
@@ -370,9 +409,9 @@ FSRT__TYPE * FSRT_NAM2 (
 
 #else
 
-#define FSRT__MED3(fs_x,fs_y,fs_z,fs_s) FSRT_NAM2((fs_x),(fs_y),(fs_z),(fs_s) FSRT__EXTRA_ARGS)
+#define FSRT__MED3(fs_x,fs_y,fs_z,fs_s) FSRT_PREFIX(FSRT_INSTANCE,FSRT_NAM2)((fs_x),(fs_y),(fs_z),(fs_s) FSRT__EXTRA_ARGS)
 
-FSRT__TYPE * FSRT_NAM2 (
+FSRT__TYPE * FSRT_PREFIX(FSRT_INSTANCE,FSRT_NAM2) (
     FSRT__TYPE *        fs_x,
     FSRT__TYPE *        fs_y,
     FSRT__TYPE *        fs_z,
@@ -396,10 +435,17 @@ FSRT__TYPE * FSRT_NAM2 (
 ////////////////////////////////////////////////////////////////////////////////
 /// @var FSRT_Rand
 /// @brief stores the position of the current random element within the array
+/// If a name prefix was defined, the prefixed variable is always created. If no
+/// name prefix is available, the unprefixed variable will only be created once
+/// to avoid a redeclaration error
 ////////////////////////////////////////////////////////////////////////////////
 
+#if FSRT_HAS_PREFIX 
+uint32_t FSRT_PREFIX(FSRT_INSTANCE,FSRT_Rand);
+#else
 #ifndef FSRT__RAND
-uint32_t FSRT_Rand;
+uint32_t FSRT_PREFIX(FSRT_INSTANCE,FSRT_Rand);
+#endif
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -409,8 +455,9 @@ uint32_t FSRT_Rand;
 
 #ifndef FSRT__RAND
 #define FSRT__RAND \
-  ((fs_b) + FSRT__UNIT * ((FSRT_Rand = FSRT_Rand * 31415 + 27818) % FSRT__DIST(fs_e,fs_b,FSRT__SIZE)))
+  ((fs_b) + FSRT__UNIT * ((FSRT_PREFIX(FSRT_INSTANCE,FSRT_Rand) = FSRT_PREFIX(FSRT_INSTANCE,FSRT_Rand) * 31415 + 27818) % FSRT__DIST(fs_e,fs_b,FSRT__SIZE)))
 #endif
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn void FSRT_NAME (
@@ -782,6 +829,11 @@ void FSRT_NAME (
   }
 }
 
+#undef FSRT_INSTANCE
+#undef FSRT_CONCAT
+#undef FSRT_PREFIX
+#undef FSRT_HAS_PREFIX
+
 #undef FSRT__TYPE
 #undef FSRT__UNIT
 #undef FSRT__SIZE
@@ -827,6 +879,10 @@ void FSRT_NAME (
 //                           parameters and local variables begin with fs_
 //                           changed INSR default to 8
 //                           added description for split-end partitioning
+//
+//  0.96 2012-01-31 steemann added FSRT_INSTANCE and FSRT_PREFIX to be able to 
+//                           create multiple instances of fruitsort in the same 
+//                           program
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////

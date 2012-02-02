@@ -897,6 +897,23 @@ static bool EndWrite (TRI_doc_collection_t* document) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief size of a document collection
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_voc_size_t SizeSimCollection (TRI_doc_collection_t* document) {
+  TRI_sim_collection_t* collection;
+  TRI_voc_size_t result;
+
+  collection = (TRI_sim_collection_t*) document;
+
+  TRI_ReadLockReadWriteLock(&collection->_lock);
+  result = collection->_primaryIndex._nrUsed;
+  TRI_ReadUnlockReadWriteLock(&collection->_lock);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1251,6 +1268,8 @@ static void InitSimCollection (TRI_sim_collection_t* collection,
   collection->base.read = ReadShapedJson;
   collection->base.update = UpdateShapedJson;
   collection->base.destroy = DeleteShapedJson;
+
+  collection->base.size = SizeSimCollection;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1775,7 +1794,7 @@ TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* collection
   // within read-lock the collection
   // .............................................................................
 
-  TRI_WriteLockReadWriteLock(&collection->_lock);
+  TRI_ReadLockReadWriteLock(&collection->_lock);
 
   n = collection->_indexes._length;
 
@@ -1792,13 +1811,47 @@ TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* collection
     }
   }
 
-  TRI_WriteUnlockReadWriteLock(&collection->_lock);
+  TRI_ReadUnlockReadWriteLock(&collection->_lock);
 
   // .............................................................................
   // without read-lock
   // .............................................................................
 
   return vector;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a description of all indexes
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_IndexSimCollection (TRI_sim_collection_t* collection, TRI_idx_iid_t iid) {
+  TRI_index_t* idx = NULL;
+  size_t n;
+  size_t i;
+
+  // .............................................................................
+  // within read-lock the collection
+  // .............................................................................
+
+  TRI_ReadLockReadWriteLock(&collection->_lock);
+
+  n = collection->_indexes._length;
+
+  for (i = 0;  i < n;  ++i) {
+    idx = collection->_indexes._buffer[i];
+
+    if (idx->_iid == iid) {
+      break;
+    }
+  }
+
+  TRI_ReadUnlockReadWriteLock(&collection->_lock);
+
+  // .............................................................................
+  // without read-lock
+  // .............................................................................
+
+  return i < n ? idx : NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

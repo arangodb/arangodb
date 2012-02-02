@@ -43,6 +43,10 @@ const char *QLAstNodeGetName (const QL_ast_node_type_e type) {
       return "list container";
     case QLNodeContainerOrderElement:
       return "order element container";
+    case QLNodeContainerMemberAccess:
+      return "member access";
+    case QLNodeContainerTernarySwitch:
+      return "ternary operator switch";
 
     case QLNodeJoinList:
       return "join: list";
@@ -81,10 +85,10 @@ const char *QLAstNodeGetName (const QL_ast_node_type_e type) {
     case QLNodeValueOrderDirection:
       return "value: orderdirection";
 
-    case QLNodeReferenceAttribute:
-      return "reference: attribute";
     case QLNodeReferenceCollection:
       return "reference: collection";
+    case QLNodeReferenceCollectionAlias:
+      return "reference: collection alias";
 
     case QLNodeUnaryOperatorPlus:
       return "unary: plus";
@@ -128,6 +132,8 @@ const char *QLAstNodeGetName (const QL_ast_node_type_e type) {
     
     case QLNodeControlFunctionCall:
       return "function call";
+    case QLNodeControlTernary:
+      return "ternary operator";
 
     default:
       return "unknown";
@@ -143,6 +149,8 @@ QL_ast_node_type_group_e QLAstNodeGetTypeGroup (const QL_ast_node_type_e type) {
   switch (type) {
     case QLNodeContainerList:
     case QLNodeContainerOrderElement:
+    case QLNodeContainerMemberAccess:
+    case QLNodeContainerTernarySwitch:
       return QLNodeGroupContainer;
     
     case QLNodeJoinList:
@@ -166,8 +174,8 @@ QL_ast_node_type_group_e QLAstNodeGetTypeGroup (const QL_ast_node_type_e type) {
     case QLNodeValueOrderDirection:
       return QLNodeGroupValue;
 
-    case QLNodeReferenceAttribute:
     case QLNodeReferenceCollection:
+    case QLNodeReferenceCollectionAlias:
       return QLNodeGroupReference;
 
     case QLNodeUnaryOperatorPlus:
@@ -194,6 +202,7 @@ QL_ast_node_type_group_e QLAstNodeGetTypeGroup (const QL_ast_node_type_e type) {
       return QLNodeGroupBinaryOperator;
 
     case QLNodeControlFunctionCall:
+    case QLNodeControlTernary:
       return QLNodeGroupControl;
 
     default:
@@ -256,9 +265,38 @@ char *QLAstNodeGetBinaryOperatorString (const QL_ast_node_type_e type) {
       return "/";
     case QLNodeBinaryOperatorModulus:
       return "%";
+    case QLNodeBinaryOperatorIn:
+      return " in ";
     default:
       return "";
   }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return whether a node is a value node
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLAstNodeIsValueNode (QL_ast_node_t *node) {
+  switch (node->_type) {
+    case QLNodeValueUndefined:
+    case QLNodeValueNull:
+    case QLNodeValueBool:
+    case QLNodeValueString:
+    case QLNodeValueNumberInt:
+    case QLNodeValueNumberDouble:
+    case QLNodeValueNumberDoubleString:
+    case QLNodeValueArray:
+    case QLNodeValueDocument:
+    case QLNodeValueParameterNumeric:
+    case QLNodeValueParameterNamed:
+    case QLNodeValueIdentifier:
+    case QLNodeValueNamedValue:
+    case QLNodeValueOrderDirection:
+      return true;
+    default:
+      return false;
+  } 
 }
 
 
@@ -281,6 +319,60 @@ bool QLAstNodeIsArithmeticOperator (QL_ast_node_t *node) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return whether a node is a unary operator
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLAstNodeIsUnaryOperator (QL_ast_node_t *node) {
+  switch (node->_type) {
+    case QLNodeUnaryOperatorPlus:
+    case QLNodeUnaryOperatorMinus:
+    case QLNodeUnaryOperatorNot:
+      return true;
+    default: 
+      return false;
+  }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return whether a node is a binary operator
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLAstNodeIsBinaryOperator (QL_ast_node_t *node) {
+  switch (node->_type) {
+    case QLNodeBinaryOperatorIn:
+    case QLNodeBinaryOperatorAnd:
+    case QLNodeBinaryOperatorOr:
+    case QLNodeBinaryOperatorIdentical:
+    case QLNodeBinaryOperatorUnidentical:
+    case QLNodeBinaryOperatorEqual:
+    case QLNodeBinaryOperatorUnequal:
+    case QLNodeBinaryOperatorLess:
+    case QLNodeBinaryOperatorGreater:
+    case QLNodeBinaryOperatorLessEqual:
+    case QLNodeBinaryOperatorGreaterEqual:
+    case QLNodeBinaryOperatorAdd:
+    case QLNodeBinaryOperatorSubtract:
+    case QLNodeBinaryOperatorMultiply:
+    case QLNodeBinaryOperatorDivide:
+    case QLNodeBinaryOperatorModulus: 
+      return true;
+    default:
+      return false;
+  }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return whether a node is the ternary operator
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLAstNodeIsTernaryOperator (QL_ast_node_t *node) {
+  return (node->_type == QLNodeControlTernary);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether a node is a logical operator
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -288,6 +380,7 @@ bool QLAstNodeIsLogicalOperator (QL_ast_node_t *node) {
   switch (node->_type) {
     case QLNodeBinaryOperatorAnd:
     case QLNodeBinaryOperatorOr:
+    case QLNodeUnaryOperatorNot:
       return true;
     default: 
       return false;

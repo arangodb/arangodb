@@ -129,6 +129,7 @@ libavocadodb_a_SOURCES = \
 	V8/v8-json.cpp \
 	V8/v8-shell.cpp \
 	V8/v8-utils.cpp \
+	V8/v8-line-editor.cpp \
 	V8/v8-vocbase.cpp \
 	Variant/VariantArray.cpp \
 	Variant/VariantBlob.cpp \

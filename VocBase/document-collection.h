@@ -265,6 +265,7 @@ typedef struct TRI_doc_collection_s {
   bool (*destroyLock) (struct TRI_doc_collection_s* collection, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e);
 
   TRI_doc_collection_info_t* (*figures) (struct TRI_doc_collection_s* collection);
+  TRI_voc_size_t (*size) (struct TRI_doc_collection_s* collection);
 }
 TRI_doc_collection_t;
 

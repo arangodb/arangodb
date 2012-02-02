@@ -12,7 +12,7 @@ effort to operate for the administrator.
 3. ./configure --with-boost=PATH_TO_BOOST --with-libev=PATH_TO_LIBEV --with-v8=PATH_TO_V8
 4. make
 5. create a directory `/var/lib/avocado` where you are allowed to read and write
-6. "./avocdb" to start a REST server or "./avocdb --shell" for debugging
+6. "./avocado" to start a REST server or "./avocado --shell" for debugging
 
 ### Mac OS X Hints
 
@@ -23,7 +23,7 @@ If you install AvocadoDB on Mac OS X we collected some hints for you:
 
 ## First Steps
 
-    ./avocdb --shell
+    ./avocado --shell
     avocado> db.examples.count();
     avocado> db.examples.save({ Hallo: "World" });
     avocado> db.examples.select();

@@ -147,7 +147,20 @@
 "!" {
   return NOT;
 }
- 
+
+
+ /* ---------------------------------------------------------------------------
+  * ternary operator
+  * --------------------------------------------------------------------------- */
+
+"?" {
+  return TERNARY;
+}
+
+":" {
+  return COLON;
+}
+
 
  /* ---------------------------------------------------------------------------
   * comparison operators 
@@ -208,15 +221,10 @@
   return IDENTIFIER; 
 }
 
-(0|[1-9][0-9]*)(\.[0-9]+([eE]([\-\+])?[0-9]+)?) {  
+(0|[1-9][0-9]*)(\.[0-9]+([eE]([\-\+])?[0-9]+)?)? {  
   yylval->strval = QLParseAllocString(yyextra, yytext); 
   return REAL; 
 }
-
-([0|[1-9][0-9]*) {
-  yylval->strval = QLParseAllocString(yyextra, yytext); 
-  return INTEGER; 
-} 
 
 \"(\\.|[^\\\"])*\" {
   yylval->strval = QLParseAllocString(yyextra, yytext); 
