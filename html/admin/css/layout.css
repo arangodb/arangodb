@@ -24,3 +24,56 @@
 .ui-layout-resizer-north {
     background-color: #61FE59 !important;
 }
+
+.ui-tooltip-dialogue{
+   max-width: 420px;
+   min-width: 210px;
+ 
+   -moz-box-shadow: 0 0 10px 1px rgba(0,0,0,.5);
+   -webkit-box-shadow: 0 0 10px 1px rgba(0,0,0,.5);
+   box-shadow: 0 0 10px 1px rgba(0,0,0,.5);
+}
+ 
+.ui-tooltip-dialogue .ui-tooltip-content{
+   padding: 10px;
+}
+ 
+.ui-tooltip-dialogue button{
+   float: left;
+   width: 47%;
+   margin-right: 10px;
+   padding: 3px 0;
+ 
+   text-align: center;
+   font-size: 10.5px;
+}
+ 
+.ui-tooltip-dialogue button + button{
+   float: right;
+   margin-right: 0;
+}
+ 
+.ui-tooltip-dialogue input{
+   width: 95%;
+   padding: 3px 0 3px 5px;
+   margin-bottom: 7px;
+ 
+   font-size: 10.5px;
+}
+ 
+.ui-tooltip-dialogue button.full{
+   float: none;
+   width: 100%;
+}
+
+#navigation {
+   text-align: center;
+   text-decoration: none;
+   font-size: 20px;
+   font-family: "Arial","Helvetica","Verdana","sans-serif";
+}
+
+body {
+   font-family: "Arial","Helvetica","Verdana","sans-serif";
+}
+

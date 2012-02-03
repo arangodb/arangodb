@@ -15,116 +15,135 @@
     <script type="text/javascript" language="javascript" src="script/jquery.qtip.js"></script>
     <script type="text/javascript" language="javascript" src="script/jquery.jeditable.js"></script>
   </head>
-
+ 
   <body>
-    <script>
+    <script> 
 
-//Formatierung fehlt...
-    
+    function dialogue(content, title) {
+      $(this).qtip(
+      {
+        content: {
+          text: content,
+          title: title
+        },
+        position: {
+          my: 'center', at: 'center',
+          target: $(window) 
+        },
+        show: {
+          ready: true, 
+          modal: {
+            on: true, 
+            blur: false 
+          }
+        },
+        hide: false,
+        style: 'ui-tooltip-green ui-tooltip-rounded ui-tooltip-dialogue', 
+        events: {
+          render: function(event, api) {
+            $('button', api.elements.content).click(api.hide);
+          },
+          hide: function(event, api) { api.destroy(); }
+        }
+      });
+    }
+
+    function Confirm(question, callback) {
+      var message = $('<p />', { text: question }),
+        ok = $('<button />', { 
+          text: 'Ok',
+          click: function() { callback(true); }
+        }),
+        cancel = $('<button />', { 
+          text: 'Cancel',
+          click: function() { callback(false); }
+        });
+      dialogue( message.add(ok).add(cancel), 'Do you agree?' );
+    }
+
     var oCache = {
-    iCacheLower: -1
-};
+      iCacheLower: -1
+    };
  
-function fnSetKey( aoData, sKey, mValue )
-{
-    for ( var i=0, iLen=aoData.length ; i<iLen ; i++ )
-    {
-        if ( aoData[i].name == sKey )
-        {
-            aoData[i].value = mValue;
+    function fnSetKey( aoData, sKey, mValue )  {
+      for ( var i=0, iLen=aoData.length ; i<iLen ; i++ ) {
+        if ( aoData[i].name == sKey ) {
+          aoData[i].value = mValue;
         }
+      }
     }
-}
  
-function fnGetKey( aoData, sKey )
-{
-    for ( var i=0, iLen=aoData.length ; i<iLen ; i++ )
-    {
-        if ( aoData[i].name == sKey )
-        {
-            return aoData[i].value;
+    function fnGetKey( aoData, sKey ) {
+      for ( var i=0, iLen=aoData.length ; i<iLen ; i++ )  {
+        if ( aoData[i].name == sKey ) {
+          return aoData[i].value;
         }
+      }
+      return null;
     }
-    return null;
-}
  
-function fnDataTablesPipeline ( sSource, aoData, fnCallback ) {
-    var iPipe = 5; /* Ajust the pipe size */
+    function fnDataTablesPipeline ( sSource, aoData, fnCallback ) {
+      var iPipe = 5; /* Ajust the pipe size */
+      var bNeedServer = false;
+      var sEcho = fnGetKey(aoData, "sEcho");
+      var iRequestStart = fnGetKey(aoData, "iDisplayStart");
+      var iRequestLength = fnGetKey(aoData, "iDisplayLength");
+      var iRequestEnd = iRequestStart + iRequestLength;
+      oCache.iDisplayStart = iRequestStart;
      
-    var bNeedServer = false;
-    var sEcho = fnGetKey(aoData, "sEcho");
-    var iRequestStart = fnGetKey(aoData, "iDisplayStart");
-    var iRequestLength = fnGetKey(aoData, "iDisplayLength");
-    var iRequestEnd = iRequestStart + iRequestLength;
-    oCache.iDisplayStart = iRequestStart;
+       if ( oCache.iCacheLower < 0 || iRequestStart < oCache.iCacheLower || iRequestEnd > oCache.iCacheUpper ) {
+         bNeedServer = true;
+       }
      
-    /* outside pipeline? */
-    if ( oCache.iCacheLower < 0 || iRequestStart < oCache.iCacheLower || iRequestEnd > oCache.iCacheUpper )
-    {
-        bNeedServer = true;
-    }
-     
-    /* sorting etc changed? */
-    if ( oCache.lastRequest && !bNeedServer )
-    {
-        for( var i=0, iLen=aoData.length ; i<iLen ; i++ )
-        {
-            if ( aoData[i].name != "iDisplayStart" && aoData[i].name != "iDisplayLength" && aoData[i].name != "sEcho" )
-            {
-                if ( aoData[i].value != oCache.lastRequest[i].value )
-                {
-                    bNeedServer = true;
-                    break;
-                }
+       if ( oCache.lastRequest && !bNeedServer ) {
+         for( var i=0, iLen=aoData.length ; i<iLen ; i++ ) {
+            if ( aoData[i].name != "iDisplayStart" && aoData[i].name != "iDisplayLength" && aoData[i].name != "sEcho" ) {
+              if ( aoData[i].value != oCache.lastRequest[i].value ) {
+                bNeedServer = true;
+                break;
+              }
             }
+          }
         }
-    }
      
-    /* Store the request for checking next time around */
-    oCache.lastRequest = aoData.slice();
-     
-    if ( bNeedServer )
-    {
-        if ( iRequestStart < oCache.iCacheLower )
-        {
+        oCache.lastRequest = aoData.slice();
+        if ( bNeedServer ) {
+          if ( iRequestStart < oCache.iCacheLower ) {
             iRequestStart = iRequestStart - (iRequestLength*(iPipe-1));
-            if ( iRequestStart < 0 )
-            {
-                iRequestStart = 0;
+            if ( iRequestStart < 0 ) {
+              iRequestStart = 0;
             }
-        }
+          }
          
-        oCache.iCacheLower = iRequestStart;
-        oCache.iCacheUpper = iRequestStart + (iRequestLength * iPipe);
-        oCache.iDisplayLength = fnGetKey( aoData, "iDisplayLength" );
-        fnSetKey( aoData, "iDisplayStart", iRequestStart );
-        fnSetKey( aoData, "iDisplayLength", iRequestLength*iPipe );
+          oCache.iCacheLower = iRequestStart;
+          oCache.iCacheUpper = iRequestStart + (iRequestLength * iPipe);
+          oCache.iDisplayLength = fnGetKey( aoData, "iDisplayLength" );
+          fnSetKey( aoData, "iDisplayStart", iRequestStart );
+          fnSetKey( aoData, "iDisplayLength", iRequestLength*iPipe );
          
-        $.getJSON( sSource, aoData, function (json) {
-            /* Callback processing */
+          $.getJSON( sSource, aoData, function (json) {
             oCache.lastJson = jQuery.extend(true, {}, json);
              
-            if ( oCache.iCacheLower != oCache.iDisplayStart )
-            {
-                json.aaData.splice( 0, oCache.iDisplayStart-oCache.iCacheLower );
+            if ( oCache.iCacheLower != oCache.iDisplayStart ) {
+              json.aaData.splice( 0, oCache.iDisplayStart-oCache.iCacheLower );
             }
             json.aaData.splice( oCache.iDisplayLength, json.aaData.length );
-             
             fnCallback(json)
-        } );
+          });
+        }
+        else {
+          json = jQuery.extend(true, {}, oCache.lastJson);
+          json.sEcho = sEcho; /* Update the echo for each response */
+          json.aaData.splice( 0, iRequestStart-oCache.iCacheLower );
+          json.aaData.splice( iRequestLength, json.aaData.length );
+          fnCallback(json);
+          return;
+        }
     }
-    else
-    {
-        json = jQuery.extend(true, {}, oCache.lastJson);
-        json.sEcho = sEcho; /* Update the echo for each response */
-        json.aaData.splice( 0, iRequestStart-oCache.iCacheLower );
-        json.aaData.splice( iRequestLength, json.aaData.length );
-        fnCallback(json);
-        return;
-    }
-}
  
     $(document).ready(function() {
+
+      document.getElementById("save_doc").disabled=true;
       
       //alert(document.location.href);
       //jQuery Layout init
@@ -137,7 +156,7 @@ function fnDataTablesPipeline ( sSource, aoData, fnCallback ) {
         east__spacing_open: 0,
         east__spacing_closed: 0,
       });
-    
+      
       var xTable;
       var lastClickedID;
       var nCloneTh = document.createElement( 'th' );
@@ -274,7 +293,7 @@ function fnDataTablesPipeline ( sSource, aoData, fnCallback ) {
             var sub_items=[];
             var i = 0;
             $.each(data.references, function(val) {
-              sub_items.push(["<img src=images/edit.gif id=" + data.references[i] +  "></img><img src=images/delete.png></img>", 
+              sub_items.push(["<img src=images/edit.gif id=" + data.references[i] +  "></img><img src=images/delete.png id=" + data.references[i] + "></img>", 
               data.references[i]]);
             i = i + 1;
             });
@@ -297,8 +316,21 @@ function fnDataTablesPipeline ( sSource, aoData, fnCallback ) {
         });
 
         $('#subTable tbody td img ').live('click', function () {
+          if (this.src.match('delete')) {
+            var getJSON_sub = "../_document/" + this.id; 
+            Confirm('Really delete this document?', function(yes) {
+              $.ajax({
+                type: 'DELETE',
+                contentType: "application/json",
+                url: getJSON_sub,
+              });
+            });
+            Confirm('Really delete this document?', function(no) {
+              });
+          }
+
           if (this.src.match('edit')) {
-            //WICHTIG
+            document.getElementById('database_header3').innerHTML=" > " + this.id
             var doc_items = [];
             lastClickedID = this.id;
             var getJSON_sub = "/_document/" + this.id;
@@ -308,8 +340,10 @@ function fnDataTablesPipeline ( sSource, aoData, fnCallback ) {
               contentType: "application/json",
               success: function(data) {
                 $.each(data, function(key, val) {
-                 doc_items.push([key, val]);
-                 $('#edit_detail_view').show();
+                  doc_items.push([key, val]);
+                  $('#edit_view').show();
+                  $('#new_document_view').hide();
+                  $('#detail_view').hide();
                 });
                 yTable = $('#docTable').dataTable( {
                 "bDestroy": true,
@@ -319,72 +353,151 @@ function fnDataTablesPipeline ( sSource, aoData, fnCallback ) {
                 "aaData": doc_items,
                 "sEmptyTable": "No matching data available",
                 });
-                var temp_url; 
-                temp_url = "/admin/save.php";
-                $('td', yTable.fnGetNodes()).editable(temp_url, {
-                  "submitdata": function ( value, settings ) {
-                    alert(value);
-                  },
-                  "height": "20px",
+                $('td', yTable.fnGetNodes()).editable(function(value, settings) {
+                  var aPos = yTable.fnGetPosition(this); 
+                  yTable.fnUpdate(value, aPos[0], aPos[1]);
+                  var obj  = yTable.fnGetData();
+
+                  var dummymann = { };
+                  for (var key in obj) {
+                    var element = obj[key];
+                    var namex = new String(obj[key][0]);
+                    if (!namex.match(/^[a-zA-Z_][a-zA-Z0-9_]*$/)) {
+                      alert("Musse fix "+namex);
+                      return 0;
+                    }
+                    if (! isNaN(obj[key][1])) {
+                      dummymann[namex] = Number(obj[key][1]);
+                      $('#save_doc').removeClass('ui-state-disabled');  
+                      document.getElementById("save_doc").disabled=false;   
+                      return value;
+                    }
+                    else {
+                      dummymann[namex] = obj[key][1]; 
+                      $('#save_doc').removeClass('ui-state-disabled');  
+                      document.getElementById("save_doc").disabled=false;  
+                      return value; 
+                    }
+                  } 
+                },{
+                  type: 'textarea', 
+                  submit: 'Ok',
+                  cancel: 'Cancel',
+                  indicator: 'img/indicator.gif'
                 });
               },
               error: function() {
                 alert("Error");
+                return 0;
               }
             });
-
-            $('#edit_view').show();
-            $('#new_entry_view').hide();
           }
         });
 
         $("button").click(function() {
-          var button_id = this.id; 
+          var button_id = this.id;
+          var getJSON_sub = lastClickedID;
+
+          if (button_id == "add_row") {
+            $('#docTable').dataTable().fnAddData( ["key", "val"] );
+            
+              $('td', yTable.fnGetNodes()).editable(function(value, settings) {
+                var aPos = yTable.fnGetPosition(this); 
+                yTable.fnUpdate(value, aPos[0], aPos[1]);
+                var obj  = yTable.fnGetData();
+                var dummymann = { };
+                for (var key in obj) {
+                  var element = obj[key];
+                  var namex = new String(obj[key][0]);
+                  if (!namex.match(/^[a-zA-Z_][a-zA-Z0-9_]*$/)) {
+                    alert("Musse fix "+namex);
+                  }
+                  if (! isNaN(obj[key][1])) {
+                    dummymann[namex] = Number(obj[key][1]);
+                    document.getElementById("save_doc").disabled=false;
+                    $('#save_doc').removeClass('ui-state-disabled');
+                    return value;
+                  }
+                  else {
+                    dummymann[namex] = obj[key][1];
+                    document.getElementById("save_doc").disabled=false;
+                    $('#save_doc').removeClass('ui-state-disabled');
+                    return value;
+                  }
+                } 
+                },{
+                  type: 'textarea', 
+                  submit: 'Ok',
+                  cancel: 'Cancel',
+                  indicator: 'img/indicator.gif'
+                });
+            return 0;
+          } 
           
           if (button_id == "back_entry") {
             xTable.fnClearTable();
-            $('#new_entry_view').hide();
+            $('#new_document_view').hide();
             $('#edit_view').hide();
             $('#detail_view').hide();
-            $('#edit_detail_view').hide();
             $('#tableWindow').show();
             document.getElementById('database_header2').innerHTML="";
             return 0;
           }
 
-          if (button_id == "update_json") {
-            var json_string = document.getElementById('json_user_edit').value;
+          if (button_id == "back_entry2") {
+            $('#edit_view').hide();
+            $('#detail_view').show();
+            return 0;
+          }
+
+          if (button_id == "save_doc") {
+        
+            var obj  = yTable.fnGetData();          
+              alert("obj: " + JSON.stringify(obj));    
+                var dummymann = { };
+                for (var key in obj) {
+                  var element = obj[key];
+                  var namex = new String(obj[key][0]);
+                  if (!namex.match(/^[a-zA-Z_][a-zA-Z0-9_]*$/)) {
+                    alert("Musse fix "+namex);
+                  }
+                  if (! isNaN(obj[key][1])) {
+                    dummymann[namex] = Number(obj[key][1]);
+                  }
+                  else {
+                    dummymann[namex] = obj[key][1];
+                  }
+                }
+
             var getJSON_sub_url = "/_document/" + lastClickedID;
             $.ajax({
               type: "PUT",
               url: getJSON_sub_url,
               contentType: "application/json",
-              data: json_string,
+              data: JSON.stringify(dummymann),
               statusCode: {
                 204: function() {
                 alert("Done!");
-                $('#edit_detail_view').hide();
+                $('#save_doc').addClass('ui-state-disabled');  
+                document.getElementById("save_doc").disabled=true;
                 },
                 400: function() {
                 alert("Error! - Wrong Syntax?!");
                 }
               }
             });
+
           return 0;
-          }         
-          if (button_id == "new_entry") {
+          }
+         
+          if (button_id == "new_document") {
             $('#edit_view').hide();
-            $('#new_entry_view').show();
+            $('#new_document_view').show();
             return 0;
           }
   
-          if (button_id == "delete_json") {
-          alert("no function yet");
-          return 0;
-          }
-
           if (button_id == "add_json") {
-            var json_input_data = document.getElementById('json_new_entry').value; 
+            var json_input_data = document.getElementById('json_new_document').value; 
             var json_input_url = "/_document/" + document.getElementById('database_header2').innerHTML;
             $.ajax({
               type: "POST",
@@ -412,7 +525,6 @@ function fnDataTablesPipeline ( sSource, aoData, fnCallback ) {
                       "aoColumns": [ {"bSortable":false, "sClass":"center"} , {"sClass":"center"}]
                     });
                   });
-                  $('#edit_detail_view').hide();
                   alert("Done!");
                 },
                 201: function() {
@@ -426,7 +538,7 @@ function fnDataTablesPipeline ( sSource, aoData, fnCallback ) {
                       i = i + 1;
                     });
 
-                    xTable = $('#subTable').dataTable( {
+                    xTable = $('#subTable').dataTable({
                       "bDestroy": true,
                       "bProcessing": true,
                       "bJQueryUI": true,
@@ -435,7 +547,6 @@ function fnDataTablesPipeline ( sSource, aoData, fnCallback ) {
                       "aoColumns": [ {"bSortable":false, "sClass":"center"} , {"sClass":"center"}]
                     });
                   });
-                  $('#edit_detail_view').hide();
                   alert("Done!");
                 },
                 400: function() {
@@ -443,8 +554,6 @@ function fnDataTablesPipeline ( sSource, aoData, fnCallback ) {
                 }
               }
             });
-
-            
             return 0;
           }
           
@@ -467,19 +576,21 @@ function fnDataTablesPipeline ( sSource, aoData, fnCallback ) {
     </script>
 
     <div class="ui-layout-north">
-      <b><a href="/admin/index.html" id="database_header1" style="text-decoration: none; color:white">Home</b>
-      <b><a href=# id="database_header2" style="color:white; text-decoration:none"></a></b> 
+    <b><a href="/admin/index.html" id="database_header1" style="text-decoration: none; color:white">Home</b></a>
+      <b><a href=# id="database_header2" style="color:white; text-decoration:none"></a></b>
+      <b><a href=# id="database_header3" style="color:white; text-decoration:none"></a></b> 
     </div>
 
     <div class="ui-layout-east" bgcolor=grey>
       <a href="/admin/index.html"><img src="/admin/images/avocado.png" style="width: 100%"></img></a><br>
-      <ul>
-        <li><a href="#test">Aberdeen</a></li>
-        <li><a href="#">Ada</a></li>
-        <li><a href="#">Adamsville</a></li>
-        <li><a href="#">Addyston</a></li>
-        <li><a href="#">Adelphi</a></li>
-      </ul>
+      <div id = navigation>
+        <ul>
+          <a href="#test">Aberdeen</a><br>
+          <a href="#">Adamsville</a><br>
+          <a href="#">Addyston</a><br>
+          <a href="#">Adelphi</a><br>
+        </ul>
+      </div>
     </div>
 	
     <div class="ui-layout-center">
@@ -500,7 +611,7 @@ function fnDataTablesPipeline ( sSource, aoData, fnCallback ) {
 
       <div id="detail_view" style="display:none">
         <button class="ui-button ui-button-text-only ui-widget ui-state-default ui-corner-all" id="back_entry">Back</button>
-        <button class="ui-button ui-button-text-only ui-widget ui-state-default ui-corner-all" id="new_entry">Add Document</button><br></br>
+        <button class="ui-button ui-button-text-only ui-widget ui-state-default ui-corner-all" id="new_document">Add Document</button><br></br>
         <table cellpadding="0" cellspacing="0" border="0" class="display" id="subTable">
           <thead>
             <tr>
@@ -510,39 +621,20 @@ function fnDataTablesPipeline ( sSource, aoData, fnCallback ) {
         </table>
       </div>
 
-      <div>
+      <div id="edit_view" style="display:none">
+        <button class="ui-button ui-button-text-only ui-widget ui-state-default ui-corner-all" id="back_entry2"> Back </button>
+        <button class="ui-button ui-button-text-only ui-widget ui-state-default ui-corner-all" id="add_row"> Add Line </button>
+        <button class="ui-button ui-button-text-only ui-widget ui-state-default ui-corner-all ui-state-disabled" id="save_doc"> Save Document </button><br></br>
         <table cellpadding="0" cellspacing="0" border="0" class="display" id="docTable">
           <thead>
             <tr>
-             <th>Fields</th>
-             <th>Value</th>
-           <thead>
-         </table>
-      </div>
- 
-      <div class="sub_right" id="new_entry_view" style="display:none">
-        <form action=textarea.htm">
-          <p>New Collection<br>
-          <textarea id="json_new_entry" cols="50" rows="10"></textarea> 
-          </p>
-        </form>
-
-        <button class="ui-button ui-button-text-only ui-widget ui-state-default ui-corner-all" id="add_json">Add Collection</button>
-   
-      </div>
-
-      <div id="edit_view" style="display:none">
-        <div id="edit_detail_view" style="display:none">
-          <form action="textarea.htm">
-            <p>Edit Collection <br>
-            <textarea id="json_user_edit" cols="50" rows="10">Hier sollte das json file erscheinen</textarea>
-            </p>
-          </form>
-          <button class="ui-button ui-button-text-only ui-widget ui-state-default ui-corner-all" id="update_json"> Update Collection </button>
-        </div>
-        
+              <th>Fields</th>
+              <th>Value</th>
+          <thead>
+        </table>
       </div>      
 
     </div>
+
   </body>
 </html>
