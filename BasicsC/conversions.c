@@ -27,8 +27,6 @@
 
 #include "conversions.h"
 
-#include <limits.h>
-
 #include "BasicsC/strings.h"
 #include "BasicsC/string-buffer.h"
 
