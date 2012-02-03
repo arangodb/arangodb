@@ -34,10 +34,10 @@
 
 #include <stdarg.h>
 
-#include "parser.h"
-#include "error.h"
-#include "ast-node.h"
-#include "ast-query.h"
+#include "QL/parser.h"
+#include "QL/error.h"
+#include "QL/ast-node.h"
+#include "QL/ast-query.h"
 
 #ifdef __cplusplus
 extern "C" {

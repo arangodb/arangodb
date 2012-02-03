@@ -30,8 +30,8 @@
 
 #include <BasicsC/conversions.h>
 
-#include "ast-node.h"
-#include "ast-query.h"
+#include "QL/ast-node.h"
+#include "QL/ast-query.h"
 
 
 #ifdef __cplusplus

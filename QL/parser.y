@@ -17,10 +17,10 @@
 #include <BasicsC/conversions.h>
 #include <BasicsC/strings.h>
 
-#include "ast-node.h"
-#include "parser-context.h"
-#include "formatter.h"
-#include "error.h"
+#include "QL/ast-node.h"
+#include "QL/parser-context.h"
+#include "QL/formatter.h"
+#include "QL/error.h"
 
 %}
 

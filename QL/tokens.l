@@ -11,9 +11,9 @@
 #include <BasicsC/common.h>
 #include <BasicsC/strings.h>
 
-#include "ast-node.h"
-#include "parser-context.h"
-#include "parser.h"
+#include "QL/ast-node.h"
+#include "QL/parser-context.h"
+#include "QL/parser.h"
 
 #define YY_EXTRA_TYPE QL_parser_context_t*
 #define YY_USER_ACTION yylloc->first_line = yylineno; yylloc->first_column = yycolumn; yylloc->last_column = yycolumn + yyleng - 1; yycolumn += yyleng;
