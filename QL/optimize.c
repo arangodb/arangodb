@@ -25,8 +25,8 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ast-node.h"
-#include "optimize.h"
+#include "QL/ast-node.h"
+#include "QL/optimize.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions

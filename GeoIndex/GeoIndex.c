@@ -281,14 +281,15 @@ typedef struct
 /* =================================================== */
 double GeoIndex_distance(GeoCoordinate * c1, GeoCoordinate * c2)
 {
-    double x1,y1,z1,x2,y2,z2,mole;
+/* math.h under MacOS defines y1 and j1 as global variable */
+    double xx1,yy1,z1,x2,y2,z2,mole;
     z1=sin(c1->latitude*M_PI/180.0);
-    x1=cos(c1->latitude*M_PI/180.0)*cos(c1->longitude*M_PI/180.0);
-    y1=cos(c1->latitude*M_PI/180.0)*sin(c1->longitude*M_PI/180.0);
+    xx1=cos(c1->latitude*M_PI/180.0)*cos(c1->longitude*M_PI/180.0);
+    yy1=cos(c1->latitude*M_PI/180.0)*sin(c1->longitude*M_PI/180.0);
     z2=sin(c2->latitude*M_PI/180.0);
     x2=cos(c2->latitude*M_PI/180.0)*cos(c2->longitude*M_PI/180.0);
     y2=cos(c2->latitude*M_PI/180.0)*sin(c2->longitude*M_PI/180.0);
-    mole=sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) + (z1-z2)*(z1-z2));
+    mole=sqrt((xx1-x2)*(xx1-x2) + (yy1-y2)*(yy1-y2) + (z1-z2)*(z1-z2));
     if(mole >  2.0) mole = 2.0; /* make sure arcsin succeeds! */
     return 2.0 * EARTHRADIUS * asin(mole/2.0);
 }
@@ -598,20 +599,21 @@ void GeoIndex_free(GeoIndex * gi)
 #define HILBERTMAX 67108863  
 GeoString GeoMkHilbert(GeoCoordinate * c)
 {
-    double x1,y1;
+    /* math.h under MacOS defines y1 and j1 as global variable */
+    double xx1,yy1;
     GeoString z;
     int x,y;
     int i,nz,temp;
-    y1=c->latitude+90.0;
+    yy1=c->latitude+90.0;
     z=0;
-    x1=c->longitude;
+    xx1=c->longitude;
     if(c->longitude < 0.0)
     {
-        x1=c->longitude+180.0;  
+        xx1=c->longitude+180.0;  
         z=1;      
     }
-    x=(int) (x1*STRINGPERDEGREE);
-    y=(int) (y1*STRINGPERDEGREE);
+    x=(int) (xx1*STRINGPERDEGREE);
+    y=(int) (yy1*STRINGPERDEGREE);
     for(i=0;i<26;i++)
     {
         z<<=2;
@@ -671,7 +673,8 @@ GeoString GeoMkHilbert(GeoCoordinate * c)
 void GeoMkDetail(GeoIx * gix, GeoDetailedPoint * gd, GeoCoordinate * c)
 {
 /* entire routine takes about 0.94 microseconds  */
-    double x1,y1,z1,snmd;
+/* math.h under MacOS defines y1 and j1 as global variable */
+    double xx1,yy1,z1,snmd;
     int i;
     gd->gix=gix;
     gd->gc = c;
@@ -684,10 +687,10 @@ void GeoMkDetail(GeoIx * gix, GeoDetailedPoint * gd, GeoCoordinate * c)
 /* And this bit takes about 0.45 microseconds  */
     for(i=0;i<GeoIndexFIXEDPOINTS;i++)
     {
-        x1=(gix->fixed.x)[i];
-        y1=(gix->fixed.y)[i];
+        xx1=(gix->fixed.x)[i];
+        yy1=(gix->fixed.y)[i];
         z1=(gix->fixed.z)[i];
-        snmd=(x1-gd->x)*(x1-gd->x)+(y1-gd->y)*(y1-gd->y)+
+        snmd=(xx1-gd->x)*(xx1-gd->x)+(yy1-gd->y)*(yy1-gd->y)+
                           (z1-gd->z)*(z1-gd->z);
         (gd->fixdist)[i] = asin(sqrt(snmd)/2.0)*ARCSINFIX;      
     }
@@ -845,45 +848,46 @@ void GeoResultsStartCount(GeoResults * gr)
 /* =================================================== */
 void GeoResultsInsertPoint(GeoResults * gr, int slot, double snmd)
 {
-    int i,j1,j2,temp;
+/* math.h under MacOS defines y1 and j1 as global variable */
+    int i,jj1,jj2,temp;
     if(snmd>=gr->snmd[0]) return;
     if(gr->slot[0]==0) gr->pointsct++;
     i=0;     /* i is now considered empty  */
     while(1)
     {
-        j1=2*i+1;
-        j2=2*i+2;
-        if(j1<gr->allocpoints)
+        jj1=2*i+1;
+        jj2=2*i+2;
+        if(jj1<gr->allocpoints)
         {
-            if(j2<gr->allocpoints)
+            if(jj2<gr->allocpoints)
             {
-                if(gr->snmd[j1]>gr->snmd[j2])
+                if(gr->snmd[jj1]>gr->snmd[jj2])
                 {
-                    temp=j1;
-                    j1=j2;
-                    j2=temp;
+                    temp=jj1;
+                    jj1=jj2;
+                    jj2=temp;
                 }
-                    /* so now j2 is >= j1 */
-                if(gr->snmd[j2]<=snmd)
+                    /* so now jj2 is >= jj1 */
+                if(gr->snmd[jj2]<=snmd)
                 {
                     gr->snmd[i]=snmd;
                     gr->slot[i]=slot;
                     return;
                 }
-                gr->snmd[i]=gr->snmd[j2];
-                gr->slot[i]=gr->slot[j2];
-                i=j2;
+                gr->snmd[i]=gr->snmd[jj2];
+                gr->slot[i]=gr->slot[jj2];
+                i=jj2;
                 continue;
             }
-            if(gr->snmd[j1]<=snmd)
+            if(gr->snmd[jj1]<=snmd)
             {
                 gr->snmd[i]=snmd;
                 gr->slot[i]=slot;
                 return;
             }
-            gr->snmd[i]=gr->snmd[j1];
-            gr->slot[i]=gr->slot[j1];
-            i=j1;
+            gr->snmd[i]=gr->snmd[jj1];
+            gr->slot[i]=gr->slot[jj1];
+            i=jj1;
             continue;
         }
         gr->snmd[i]=snmd;

@@ -36,7 +36,7 @@
 #include <BasicsC/hashes.h>
 #include <BasicsC/strings.h>
 
-#include "ast-node.h"
+#include "QL/ast-node.h"
 
 
 #define QL_QUERY_NAME_LEN 64

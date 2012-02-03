@@ -31,7 +31,7 @@
 #include <BasicsC/string-buffer.h>
 #include <BasicsC/strings.h>
 
-#include "ast-node.h"
+#include "QL/ast-node.h"
 
 
 #ifdef __cplusplus
