@@ -1440,6 +1440,17 @@ static void LogAppenderSyslog_Log (TRI_log_appender_t* appender,
     default: priority = LOG_DEBUG;  break;
   }
 
+  if (severity == TRI_LOG_SEVERITY_HUMAN) {
+    switch (level) {
+      case TRI_LOG_LEVEL_FATAL: priority = LOG_CRIT; break;
+      case TRI_LOG_LEVEL_ERROR: priority = LOG_ERR; break;
+      case TRI_LOG_LEVEL_WARNING: priority = LOG_WARNING; break;
+      case TRI_LOG_LEVEL_INFO: priority = LOG_NOTICE; break;
+      case TRI_LOG_LEVEL_DEBUG: priority = LOG_INFO; break;
+      case TRI_LOG_LEVEL_TRACE: priority = LOG_DEBUG; break;
+    }
+  }
+
   syslog(priority, "%s", msg);
 }
 
@@ -1509,7 +1520,7 @@ TRI_log_appender_t* TRI_CreateLogAppenderSyslog (char const* name, char const* f
 
   // no logging
   if (name == NULL || *name == '\0') {
-    return NULL;
+    name = "[voc]";
   }
 
   // allocate space

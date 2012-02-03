@@ -109,6 +109,12 @@ replDict["e_listitem_1"] = "</li>"
 replDict["s_listitem_2"] = "<li>"
 replDict["e_listitem_2"] = "</li>"
 
+replDict["s_listitem_3"] = "<li>"
+replDict["e_listitem_3"] = "</li>"
+
+replDict["s_listitem_4"] = "<li>"
+replDict["e_listitem_4"] = "</li>"
+
 replDict["s_para"] = ""
 replDict["e_para"] = "\n\n"
 
@@ -166,6 +172,8 @@ gencDict["itemizedlist"] = False
 gencDict["orderedlist"] = False
 gencDict["listitem_1"] = False
 gencDict["listitem_2"] = False
+gencDict["listitem_3"] = False
+gencDict["listitem_4"] = False
 
 gencDict["para"] = True
 

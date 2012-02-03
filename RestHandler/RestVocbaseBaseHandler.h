@@ -79,33 +79,33 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page HttpSystemTOC
+/// @page RestSystemTOC
 ///
 /// <ol>
-///   <li>@ref HttpSystemCollections "GET /_system/collections"</li>
-///   <li>@ref HttpSystemCollectionLoad "GET /_system/collection/load"</li>
-///   <li>@ref HttpSystemCollectionInfo "GET /_system/collection/info"</li>
-///   <li>@ref HttpSystemCollectionIndexes "GET /_system/collection/indexes"</li>
+///   <li>@ref RestSystemCollections "GET /_system/collections"</li>
+///   <li>@ref RestSystemCollectionLoad "GET /_system/collection/load"</li>
+///   <li>@ref RestSystemCollectionInfo "GET /_system/collection/info"</li>
+///   <li>@ref RestSystemCollectionIndexes "GET /_system/collection/indexes"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page HttpSystem HTTP Interface for System Administration
+/// @page RestSystem HTTP Interface for System Administration
 ///
 /// <hr>
-/// @copydoc HttpSystemTOC
+/// @copydoc RestSystemTOC
 /// <hr>
 ///
-/// @anchor HttpSystemCollections
+/// @anchor RestSystemCollections
 /// @copydetails JSA_collections
 ///
-/// @anchor HttpSystemCollectionLoad
+/// @anchor RestSystemCollectionLoad
 /// @copydetails JSA_collection_load
 ///
-/// @anchor HttpSystemCollectionInfo
+/// @anchor RestSystemCollectionInfo
 /// @copydetails JSA_collection_info
 ///
-/// @anchor HttpSystemCollectionIndexes
+/// @anchor RestSystemCollectionIndexes
 /// @copydetails JSA_collection_indexes
 ////////////////////////////////////////////////////////////////////////////////
 

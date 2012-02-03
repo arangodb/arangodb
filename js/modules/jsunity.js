@@ -32,7 +32,7 @@ internal.loadFile("jsunity/jsunity");
 jsUnity.log = console;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page jsUnity Using jsUnity
+/// @page jsUnity Using jsUnity and node-jscoverage
 ///
 /// The AvocadoDB contains a wrapper for 
 /// <a href="http://jsunity.com/">jsUnity</a>, a lightyweight universal

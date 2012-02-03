@@ -46,6 +46,9 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 /// instance, to build a new graph with a different edge collection use
 ///
 /// @verbinclude graph26
+///
+/// It is, however, impossible to use different vertices with the same
+/// edges. Edges are tied to the vertices.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////

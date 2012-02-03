@@ -87,11 +87,9 @@ doxygen: Doxygen/avocado.doxy $(DOXYGEN)
 
 .PHONY: wiki
 
-PANDOC = pandoc -f markdown -t markdown
-
 wiki: $(WIKI)
 	@test -d Doxygen/wiki || mkdir Doxygen/wiki
-	for w in $(WIKI); do $(PANDOC) -o Doxygen/wiki/`basename $$w` $$w; done
+	for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/pandoc.sh $$w; done
 
 ################################################################################
 ## build information

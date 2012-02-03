@@ -150,9 +150,9 @@ extern "C" {
 /// - @LIT{!==} strict inequality
 /// - @LIT{<}, @LIT{<=}, @LIT{>=}, @LIT{>} less than, less than or equal,
 ///   greater than or equal, greater than
-/// - @LIT{&&} boolean and operator
-/// - @LIT(||} boolean or operator
-/// - @LIT{!} boolean not operator
+/// - @LIT{&&} boolean @LIT{and} operator
+/// - @LIT{||} boolean @LIT{or} operator
+/// - @LIT{!} boolean @LIT{not} operator
 /// - @LIT{in} tests if a key exists
 /// 
 /// Assume that @LIT{doc} is a document, such that the attribute @LIT{d} is a
@@ -164,8 +164,7 @@ extern "C" {
 ///   <TR><TD>doc.d</TD><TD>false</TD><TD>false</TD><TD>false</TD></TR>
 ///   <TR><TD>doc.n</TD><TD>true</TD><TD>true</TD><TD>false</TD></TR>
 ///   <TR><TD>doc.x</TD><TD>true</TD><TD>false</TD><TD>true</TD></TR>
-///   <TR></TR>
-/// <TABLE>
+/// </TABLE>
 /// 
 /// @subsection AqlPredicateFunctions Functions
 ///
