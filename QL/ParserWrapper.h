@@ -28,7 +28,8 @@
 #ifndef TRIAGENS_QL_PARSERWRAPPER_H
 #define TRIAGENS_QL_PARSERWRAPPER 1
 
-#include <string>
+#include "Basics/Common.h"
+
 #include <iostream>
 #include <ostream>
 #include <sstream>
