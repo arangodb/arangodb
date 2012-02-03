@@ -27,8 +27,6 @@
 
 #include "v8-actions.h"
 
-#include <map>
-
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "BasicsC/conversions.h"
@@ -36,6 +34,7 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 
+#include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vocbase.h"
 

@@ -32,13 +32,14 @@
 #include "BasicsC/csv.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
-#include "ShapedJson/shaped-json.h"
+#include "QL/ParserWrapper.h"
 #include "ShapedJson/shape-accessor.h"
+#include "ShapedJson/shaped-json.h"
+#include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "VocBase/fluent-query.h"
 #include "VocBase/query.h"
 #include "VocBase/simple-collection.h"
-#include "QL/ParserWrapper.h"
 
 using namespace std;
 using namespace triagens::basics;
