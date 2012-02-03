@@ -1077,6 +1077,13 @@ static v8::Handle<v8::Value> JsonShapeData (TRI_shaper_t* shaper,
   return v8::Null();
 }
 
+v8::Handle<v8::Value> TRI_JsonShapeData (TRI_shaper_t* shaper,
+                                         TRI_shape_t const* shape,
+                                         char const* data,
+                                         size_t size) {
+  return JsonShapeData(shaper, shape, data, size);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts identifier into ibject reference
 ////////////////////////////////////////////////////////////////////////////////

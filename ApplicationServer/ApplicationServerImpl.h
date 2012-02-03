@@ -567,6 +567,13 @@ namespace triagens {
 /// log.file option was set), log output is also sent to the system logging
 /// facility. The @CA{arg} is the system log facility to use. See syslog for
 /// further details.
+///
+/// The value of @CA{arg} depends on your syslog configuration. In general it
+/// will be @LIT{user}. Fatal messages are mapped to @LIT{crit}, so if @CA{arg}
+/// is @LIT{user}, these messages will be logged as @LIT{user.crit}.  Error
+/// messages are mapped to @LIT{err}.  Warnings are mapped to @LIT{warn}.  Info
+/// messages are mapped to @LIT{notice}.  Debug messages are mapped to
+/// @LIT{info}.  Trace messages are mapped to @LIT{debug}.
 ////////////////////////////////////////////////////////////////////////////////
 
         string logSyslog;

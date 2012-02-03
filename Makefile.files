@@ -279,30 +279,47 @@ DOXYGEN = \
 ################################################################################
 
 WIKI = \
-	Doxygen/xml/d9/d52/DefineAction.md \
-	Doxygen/xml/d3/d58/CommandLineLogging.md \
-	Doxygen/xml/d4/d0c/ActionsQueryBuilding.md \
-	Doxygen/xml/db/d15/CommandLine.md \
-	Doxygen/xml/d0/d1b/RestDocument.md \
-	Doxygen/xml/d3/d1a/Pagination.md \
-	Doxygen/xml/d2/dbe/StartStop.md \
-	Doxygen/xml/dd/de5/AvocadoScript.md \
-	Doxygen/xml/d6/d3b/JavaScriptFunc.md \
-	Doxygen/xml/d7/daa/Actions.md \
-	Doxygen/xml/d4/d7d/HttpInterface.md \
-	Doxygen/xml/d9/de4/JSModules.md \
-	Doxygen/xml/d2/d35/JSModuleGraph.md \
-	Doxygen/xml/d9/db2/CommandLineScheduler.md \
-	Doxygen/xml/d8/d3d/RestInterface.md \
-	Doxygen/xml/db/d14/GeoCoordinates.md \
-	Doxygen/xml/d3/db6/JavaScriptFuncIndex.md \
-	Doxygen/xml/df/d91/CommandLineRandom.md \
-	Doxygen/xml/d9/ddd/CommandLineAvocado.md \
-	Doxygen/xml/d7/d40/JSModuleConsole.md \
-	Doxygen/xml/d3/d4b/JSModuleInternal.md \
-	Doxygen/xml/d2/d66/JSModuleFs.md \
-	Doxygen/xml/d9/d26/Compiling.md \
-	Doxygen/xml/d3/d5b/jsUnity.md
+        Doxygen/xml/d7/daa/Actions.md \
+        Doxygen/xml/d4/d0c/ActionsQueryBuilding.md \
+        Doxygen/xml/dd/de5/AvocadoScript.md \
+        Doxygen/xml/db/d15/CommandLine.md \
+        Doxygen/xml/d9/ddd/CommandLineAvocado.md \
+        Doxygen/xml/d3/d58/CommandLineLogging.md \
+        Doxygen/xml/df/d91/CommandLineRandom.md \
+        Doxygen/xml/d9/db2/CommandLineScheduler.md \
+        Doxygen/xml/d9/d26/Compiling.md \
+        Doxygen/xml/d9/d52/DefineAction.md \
+        Doxygen/xml/db/d14/GeoCoordinates.md \
+        Doxygen/xml/d1/d83/Graphs.md \
+        Doxygen/xml/d4/d7d/HttpInterface.md \
+        Doxygen/xml/d7/d40/JSModuleConsole.md \
+        Doxygen/xml/d2/d66/JSModuleFs.md \
+        Doxygen/xml/d2/d35/JSModuleGraph.md \
+        Doxygen/xml/d3/d4b/JSModuleInternal.md \
+        Doxygen/xml/d9/de4/JSModules.md \
+        Doxygen/xml/d6/d3b/JavaScriptFunc.md \
+        Doxygen/xml/d3/db6/JavaScriptFuncIndex.md \
+        Doxygen/xml/d3/d1a/Pagination.md \
+        Doxygen/xml/d0/d1b/RestDocument.md \
+        Doxygen/xml/d8/d3d/RestInterface.md \
+        Doxygen/xml/d2/d8a/RestSystem.md \
+        Doxygen/xml/d2/dbe/StartStop.md \
+        Doxygen/xml/dc/d05/UserManual.md \
+        Doxygen/xml/d3/d5b/jsUnity.md \
+        Doxygen/xml/da/db6/InstallManual.md \
+        Doxygen/xml/dd/dd7/RefManual.md
+
+Doxygen/xml/dd/dd7/RefManual.md: Doxygen/xml/dd/dd7/RefManual.xml
+	python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
+
+Doxygen/xml/d2/d8a/RestSystem.md: Doxygen/xml/d2/d8a/RestSystem.xml
+	python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
+
+Doxygen/xml/d1/d83/Graphs.md: Doxygen/xml/d1/d83/Graphs.xml
+	python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
+
+Doxygen/xml/dc/d05/UserManual.md: Doxygen/xml/dc/d05/UserManual.xml
+	python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
 
 Doxygen/xml/d3/d5b/jsUnity.md: Doxygen/xml/d3/d5b/jsUnity.xml
 	python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@

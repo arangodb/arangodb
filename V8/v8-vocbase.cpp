@@ -33,6 +33,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
 #include "ShapedJson/shaped-json.h"
+#include "ShapedJson/shape-accessor.h"
 #include "V8/v8-utils.h"
 #include "VocBase/fluent-query.h"
 #include "VocBase/query.h"
@@ -117,6 +118,12 @@ static int32_t const WRP_RC_CURSOR_TYPE = 4;
 ////////////////////////////////////////////////////////////////////////////////
 
 static int32_t const WRP_QUERY_TYPE = 5;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wrapped class for TRI_shaped_json_t
+////////////////////////////////////////////////////////////////////////////////
+
+static int32_t const WRP_SHAPED_JSON_TYPE = 6;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1379,6 +1386,76 @@ static v8::Handle<v8::Value> JS_DocumentQuery (v8::Arguments const& argv) {
 
   StoreFluentQuery(result, TRI_CreateDocumentQuery(opQuery->clone(opQuery), did));
 
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a document (TEST)
+///
+/// @FUN{document(@FA{document-identifier})}
+///
+/// The @FN{document} operator finds a document given it's identifier.  It returns
+/// the empty result set or a result set containing the document with document
+/// identifier @FA{document-identifier}.
+///
+/// @verbinclude fluent54
+///
+/// The corresponding AQL query would be:
+///
+/// @verbinclude fluent54-aql
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DocumentQueryWrapped (v8::Arguments const& argv) {
+  TRI_v8_global_t* v8g;
+  v8::HandleScope scope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  // extract the operand query
+  v8::Handle<v8::Object> operand = argv.Holder();
+
+  v8::Handle<v8::String> err;
+  TRI_vocbase_col_t const* collection = LoadCollection(operand, &err);
+
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+  
+  // first and only argument schould be an document idenfifier
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: document_wrapped(<document-identifier>)")));
+  }
+
+  v8::Handle<v8::Value> arg1 = argv[0];
+  TRI_voc_cid_t cid = collection->_collection->base._cid;
+  TRI_voc_did_t did;
+
+  if (! IsDocumentId(arg1, cid, did)) {
+    return scope.Close(v8::ThrowException(v8::String::New("<document-idenifier> must be a document identifier")));
+  }
+
+  if (cid != collection->_collection->base._cid) {
+    return scope.Close(v8::ThrowException(v8::String::New("cannot execute cross collection query")));
+  }
+
+  // .............................................................................
+  // get document
+  // .............................................................................
+
+  TRI_doc_mptr_t const* document;
+  
+  collection->_collection->beginRead(collection->_collection);
+  
+  document = collection->_collection->read(collection->_collection, did);  
+
+  collection->_collection->endRead(collection->_collection);
+
+  if (document == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("document not found")));
+  }
+  
+  v8::Handle<v8::Value> result = TRI_WrapShapedJson(&document->_document, collection);
+  
   return scope.Close(result);
 }
 
@@ -3431,6 +3508,195 @@ static v8::Handle<v8::Value> MapGetEdges (v8::Local<v8::String> name,
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ShapedJSON
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects a attribute from the shaped json
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> MapWrappedShapedJson (v8::Local<v8::String> name,
+                                            const v8::AccessorInfo& info) {
+  v8::HandleScope scope;
+
+  // get shaped json
+  TRI_shaped_json_t* document = UnwrapClass<TRI_shaped_json_t>(info.Holder(), WRP_SHAPED_JSON_TYPE);
+  if (document == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted shaped json")));
+  }
+
+  // convert the JavaScript string to a string
+  string key = TRI_ObjectToString(name);
+  
+  
+  if (key == "") {
+    return scope.Close(v8::ThrowException(v8::String::New("name must not be empty")));
+  }  
+  
+  if (key == "toString" || key == "toJSON" || key == "PRINT" || key[0] == '_') {
+    return v8::Handle<v8::Value>();
+  }
+  
+  if (key == "valueOf") {
+    return v8::Handle<v8::Value>(v8::String::New(""));
+  }
+
+  // get collection
+  if (info.Holder()->InternalFieldCount() < SLOT_QUERY) {
+    return scope.Close(v8::ThrowException(v8::String::New("missing collection")));
+  }
+  TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(v8::Handle<v8::External>::Cast(info.Holder()->GetInternalField(SLOT_QUERY))->Value());
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted shaped json")));
+  }
+  
+  // get shape accessor
+  TRI_shaper_t* shaper = collection->_collection->_shaper;
+  TRI_shape_pid_t pid = shaper->findAttributePathByName(shaper, key.c_str()); 
+  TRI_shape_sid_t sid = document->_sid;    
+  TRI_shape_access_t* acc = TRI_ShapeAccessor(shaper, sid, pid);
+
+  if (acc == NULL || acc->_shape == NULL) {
+    return scope.Close(v8::ThrowException(v8::String::New("key not found")));
+  }
+
+  TRI_shape_t const* shape = acc->_shape;
+  
+//  if (acc->_shape->_sid != shaper->_sidNumber) {
+//    return scope.Close(v8::ThrowException(v8::String::New("error in sid")));
+//  }
+
+  // convert to v8 value
+  TRI_shaped_json_t json;
+  if (TRI_ExecuteShapeAccessor(acc, document, &json)) {    
+    return scope.Close(TRI_JsonShapeData(shaper, shape, json._data.data, json._data.length));
+  }
+
+  return scope.Close(v8::ThrowException(v8::String::New("error")));  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects the keys from the shaped json
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
+  v8::HandleScope scope;
+  v8::Handle<v8::Array> result = v8::Array::New();
+  
+  // get shaped json
+  TRI_shaped_json_t* document = UnwrapClass<TRI_shaped_json_t>(info.Holder(), WRP_SHAPED_JSON_TYPE);
+  if (document == 0) {
+    return scope.Close(result);
+  }
+
+  // get collection
+  if (info.Holder()->InternalFieldCount() < SLOT_QUERY) {
+    return scope.Close(result);
+  }
+  TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(v8::Handle<v8::External>::Cast(info.Holder()->GetInternalField(SLOT_QUERY))->Value());
+  if (collection == 0) {
+    return scope.Close(result);
+  }
+  
+  
+  TRI_shaper_t* shaper = collection->_collection->_shaper;  
+  TRI_shape_t const* shape = shaper->lookupShapeId(shaper, document->_sid);
+
+  // check for array shape
+  if (shape == 0 || shape->_type != TRI_SHAPE_ARRAY) {
+    return scope.Close(result);
+  }
+  
+  TRI_array_shape_t const* s;
+  TRI_shape_aid_t const* aids;
+  TRI_shape_size_t i;
+  TRI_shape_size_t n;
+  char const* qtr = 0;
+  uint32_t count = 0;
+
+  // shape is an array
+  s = (TRI_array_shape_t const*) shape;
+  
+  // number of entries
+  n = s->_fixedEntries + s->_variableEntries;
+
+  // calculation position of attribute ids
+  qtr = (char const*) shape;
+  qtr += sizeof(TRI_array_shape_t);
+  qtr += n * sizeof(TRI_shape_sid_t);    
+  aids = (TRI_shape_aid_t const*) qtr;
+  
+  for (i = 0;  i < n;  ++i, ++aids) {      
+    char const* att = shaper->lookupAttributeId(shaper, *aids);
+    if (att) result->Set(count++, v8::String::New(att));        
+  }
+ 
+  return scope.Close(result);  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a property is present and if present, get its attributes.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> name, const v8::AccessorInfo& info) {
+  v8::HandleScope scope;
+
+  // get shaped json
+  TRI_shaped_json_t* document = UnwrapClass<TRI_shaped_json_t>(info.Holder(), WRP_SHAPED_JSON_TYPE);
+  if (document == 0) {
+    return scope.Close(v8::Handle<v8::Integer>());
+  }
+
+  // convert the JavaScript string to a string
+  string key = TRI_ObjectToString(name);
+  
+  
+  if (key == "") {
+    return scope.Close(v8::Handle<v8::Integer>());
+  }  
+  
+  // get collection
+  if (info.Holder()->InternalFieldCount() < SLOT_QUERY) {
+    return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::None)));
+  }
+  TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(v8::Handle<v8::External>::Cast(info.Holder()->GetInternalField(SLOT_QUERY))->Value());
+  if (collection == 0) {
+    return scope.Close(v8::Handle<v8::Integer>());
+  }
+  
+  // get shape accessor
+  TRI_shaper_t* shaper = collection->_collection->_shaper;
+  TRI_shape_pid_t pid = shaper->findAttributePathByName(shaper, key.c_str()); 
+  TRI_shape_sid_t sid = document->_sid;    
+  TRI_shape_access_t* acc = TRI_ShapeAccessor(shaper, sid, pid);
+
+  if (acc == NULL || acc->_shape == NULL) {
+    // key not found
+    return scope.Close(v8::Handle<v8::Integer>());
+  }
+
+  return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(1)));
+  
+//  
+//  TRI_shape_t const* shape = acc->_shape;
+//  
+//  TRI_shaped_json_t json;
+//  if (TRI_ExecuteShapeAccessor(acc, document, &json)) {    
+//    return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(1)));
+//  }
+//
+//  // error
+//  return scope.Close(v8::Handle<v8::Integer>());
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              javascript functions
 // -----------------------------------------------------------------------------
@@ -3713,6 +3979,24 @@ v8::Handle<v8::Object> TRI_WrapEdgesCollection (TRI_vocbase_col_t const* collect
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief wraps a TRI_shaped_json_t
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Object> TRI_WrapShapedJson (TRI_shaped_json_t const* shaped_json, TRI_vocbase_col_t const* collection) {
+  TRI_v8_global_t* v8g;
+  v8::HandleScope scope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  v8::Handle<v8::Object> result = WrapClass(v8g->ShapedJsonTempl, 
+                                            WRP_SHAPED_JSON_TYPE,
+                                            const_cast<TRI_shaped_json_t*>(shaped_json));
+  
+  result->SetInternalField(SLOT_QUERY, v8::External::New(const_cast<TRI_vocbase_col_t*>(collection)));
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3784,6 +4068,8 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> UseNextFuncName = v8::Persistent<v8::String>::New(v8::String::New("useNext"));
   v8::Handle<v8::String> WithinFuncName = v8::Persistent<v8::String>::New(v8::String::New("within"));
 
+  v8::Handle<v8::String> DocumentWrappedFuncName = v8::Persistent<v8::String>::New(v8::String::New("document_wrapped"));
+  
   // .............................................................................
   // query types
   // .............................................................................
@@ -3841,6 +4127,31 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   context->Global()->Set(v8::String::New("AvocadoEdges"),
                          ft->GetFunction());
 
+  
+  // .............................................................................
+  // generate the TRI_shaped_json_t template
+  // .............................................................................
+
+  ft = v8::FunctionTemplate::New();
+  ft->SetClassName(v8::String::New("ShapedJson"));
+
+  rt = ft->InstanceTemplate();
+  rt->SetInternalFieldCount(3);
+  
+  rt->SetNamedPropertyHandler(MapWrappedShapedJson,     // NamedPropertyGetter,
+                              0,                        // NamedPropertySetter setter = 0,
+                              PropertyQueryShapedJson,  // NamedPropertyQuery,
+                              0,                        // NamedPropertyDeleter deleter = 0,
+                              KeysOfShapedJson          // NamedPropertyEnumerator,
+                                                        // Handle<Value> data = Handle<Value>());
+                              );
+
+  v8g->ShapedJsonTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+
+  // must come after SetInternalFieldCount
+  context->Global()->Set(v8::String::New("ShapedJson"),
+                         ft->GetFunction());
+  
   // .............................................................................
   // generate the TRI_vocbase_col_t template
   // .............................................................................
@@ -3874,7 +4185,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbaseCol));
   rt->Set(SaveFuncName, v8::FunctionTemplate::New(JS_SaveVocbaseCol));
   rt->Set(StatusFuncName, v8::FunctionTemplate::New(JS_StatusVocbaseCol));
-
+  
+  rt->Set(DocumentWrappedFuncName, v8::FunctionTemplate::New(JS_DocumentQueryWrapped));
+  
   // must come after SetInternalFieldCount
   context->Global()->Set(v8::String::New("AvocadoCollection"),
                          ft->GetFunction());

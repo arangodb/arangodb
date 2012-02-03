@@ -36,6 +36,100 @@ using namespace triagens::rest;
 using namespace triagens::avocado;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @page UserManual AvocadoDB User Manual
+///
+/// <ol>
+///  <li>Basics
+///   <ol>
+///    <li>@ref StartStop
+///    </li>
+///    <li>@ref HttpInterface
+///     <ol>
+///      <li>@ref RestInterface
+///      </li>
+///       <ol>
+///        <li>@ref RestDocument
+///        </li>
+///       </ol>
+///     </ol>
+///    </li>
+///    <li>Vertices, Edges, and Graphs
+///     <ol>
+///      <li>@ref Graphs
+///      </li>
+///     </ol>
+///    </li>
+///   </ol>
+///  </li>
+///  <li>Advanced Topics
+///   <ol>
+///    <li>Actions
+///     <ol>
+///      <li>@ref Actions
+///      </li>
+///      <li>@ref DefineAction
+///      </li>
+///      <li>@ref ActionsQueryBuilding
+///      </li>
+///     </ol>
+///    </li>
+///    <li>@ref HttpInterface
+///     <ol>
+///      <li>@ref RestSystem
+///      </li>
+///     </ol>
+///    </li>
+///    <li>@ref jsUnity
+///    </li>
+///   </ol>
+///  </li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page InstallManual AvocadoDB Installation Manual
+///
+/// <ol>
+///  <li>Building the AvocadoDB from Scratch
+///   <ol>
+///    <li>@ref Compiling
+///    </li>
+///   </ol>
+///  </li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page RefManual AvocadoDB Reference Manual
+///
+/// <ol>
+///  <li>@ref JSModules
+///   <ol>
+///    <li>@ref JSModuleConsole
+///    </li>
+///    <li>@ref JSModuleFs
+///    </li>
+///    <li>@ref JSModuleGraph
+///    </li>
+///    <li>@ref JSModuleInternal
+///    </li>
+///   </ol>
+///  <li>@ref CommandLine
+///   <ol>
+///    <li>@ref CommandLineAvocado
+///    </li>
+///    <li>@ref CommandLineScheduler
+///    </li>
+///    <li>@ref CommandLineLogging
+///    </li>
+///    <li>@ref CommandLineRandom
+///    </li>
+///   </ol>
+///  </li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @page StartStopTOC
 ///
 /// <ol>
@@ -46,7 +140,7 @@ using namespace triagens::avocado;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page StartStop Starting and Stopping the AvocadoDB
+/// @page StartStop Starting the AvocadoDB
 ///
 /// The AvocadoDB has two mode of operation: as server, where it will answer to
 /// HTTP requests, see @ref HttpInterface, and a debug shell, where you can

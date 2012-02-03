@@ -282,7 +282,7 @@ TRI_qry_order_t *ParserWrapper::getOrder () {
         TRI_AppendStringStringBuffer(orderJs->_buffer, "); })");
         order = TRI_CreateQueryOrderGeneral(orderJs->_buffer->_buffer);
         // TODO: REMOVE ME
-        // std::cout << "ORDER: " << orderJs->_buffer->_buffer << "\n";
+        std::cout << "ORDER: " << orderJs->_buffer->_buffer << "\n";
         QLJavascripterFree(orderJs);
       }
     }

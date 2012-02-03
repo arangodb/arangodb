@@ -41,7 +41,7 @@
 /// <hr>
 ///
 /// @anchor CompilingPrerequisites
-/// @section CompilingPrerequisites
+/// @section Prerequisites
 ///
 /// In order to compile the AvocadoDB, you will need
 ///
@@ -50,7 +50,7 @@
 /// - a recent version of BISON
 ///
 /// - the libev in version 3 or 4
-/// - Google's V8 engine
+/// - a recent version of the Google's V8 engine
 /// - the readline library
 /// - the ncurses library
 /// - the boost header files
