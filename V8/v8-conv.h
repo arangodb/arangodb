@@ -133,7 +133,7 @@ v8::Handle<v8::Value> TRI_JsonShapeData (TRI_shaper_t* shaper,
 /// @brief initialises the V8 conversion module
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Conversions (v8::Handle<v8::Context> context, std::string const& path);
+void TRI_InitV8Conversions (v8::Handle<v8::Context> context);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

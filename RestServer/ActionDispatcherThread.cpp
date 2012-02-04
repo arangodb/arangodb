@@ -32,6 +32,7 @@
 #include "Logger/Logger.h"
 #include "Rest/Initialise.h"
 #include "V8/v8-actions.h"
+#include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
@@ -227,7 +228,13 @@ JSLoader* ActionDisptacherThread::actionLoader () {
 
 void ActionDisptacherThread::initialise () {
   bool ok;
-  char const* files[] = { "modules.js", "actions.js", "json.js" };
+  char const* files[] = { "bootstrap/modules.js",
+                          "bootstrap/print.js",
+                          "server/json.js",
+                          "server/actions.js",
+                          "server/aql.js",
+                          "server/shell.js"
+  };
   size_t i;
 
   // enter a new isolate
@@ -248,6 +255,7 @@ void ActionDisptacherThread::initialise () {
 
   TRI_InitV8VocBridge(_context, _vocbase);
   TRI_InitV8Actions(_context);
+  TRI_InitV8Conversions(_context);
   TRI_InitV8Utils(_context, _startupModules);
   TRI_InitV8Shell(_context);
 

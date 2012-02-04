@@ -253,7 +253,7 @@ JOIN_REPEAT:
   assert(false);
 
 JOIN_END:
-//  printf("JOIN NUM EVAL: %lu\n",numEval);
+  printf("JOIN NUM EVAL: %lu\n",numEval);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

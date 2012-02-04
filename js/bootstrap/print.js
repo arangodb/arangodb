@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief JavaScript server functions
+/// @brief printing
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
@@ -198,115 +198,6 @@ function PRINT_OBJECT (object, seen, path, names) {
   }
 
   internal.output(" }");
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                AvocadoFluentQuery
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief global variable holding the current printed query
-////////////////////////////////////////////////////////////////////////////////
-
-var it = undefined;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief number of results to print
-////////////////////////////////////////////////////////////////////////////////
-
-var queryLimit = 20;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints a query
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoFluentQuery.prototype.PRINT = function() {
-  if (this instanceof AvocadoFluentQuery) {
-    var count = 0;
-
-    try {
-      while (this.hasNext() && count++ < queryLimit) {
-        internal.output(JSON.stringify(this.next()), "\n");
-      }
-
-      if (this.hasNext()) {
-        internal.output("...more results...");
-      }
-
-      it = this;
-    }
-    catch (e) {
-      internal.output("encountered error while printing: " + e);
-    }
-  }
-  else {
-    internal.output(this.toString());
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints a query
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoFluentQuery2.prototype.PRINT = function() {
-  if (this instanceof AvocadoFluentQuery2) {
-    var count = 0;
-
-    try {
-      while (this.hasNext() && count++ < queryLimit) {
-        internal.output(JSON.stringify(this.next()), "\n");
-      }
-
-      if (this.hasNext()) {
-        internal.output("...more results...");
-      }
-
-      it = this;
-    }
-    catch (e) {
-      internal.output("encountered error while printing: " + e);
-    }
-  }
-  else {
-    internal.output(this.toString());
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints a query
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoCursor.prototype.PRINT = function() {
-  if (this instanceof AvocadoCursor) {
-    var count = 0;
-
-    try {
-      while (this.hasNext() && count++ < queryLimit) {
-        internal.output(JSON.stringify(this.next()), "\n");
-      }
-
-      if (this.hasNext()) {
-        internal.output("...more results...");
-      }
-
-      it = this;
-    }
-    catch (e) {
-      internal.output("encountered error while printing: " + e);
-    }
-  }
-  else {
-    internal.output(this.toString());
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
