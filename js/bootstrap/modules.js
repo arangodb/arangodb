@@ -303,10 +303,6 @@ fs = ModuleCache["/fs"].exports;
 ////////////////////////////////////////////////////////////////////////////////
 
 ModuleCache["/internal"] = new Module("/internal");
-ModuleCache["/internal"].exports.AvocadoCollection = AvocadoCollection;
-ModuleCache["/internal"].exports.AvocadoEdgesCollection = AvocadoEdgesCollection;
-ModuleCache["/internal"].exports.db = db;
-ModuleCache["/internal"].exports.edges = edges;
 ModuleCache["/internal"].exports.execute = SYS_EXECUTE;
 ModuleCache["/internal"].exports.load = SYS_LOAD;
 ModuleCache["/internal"].exports.log = SYS_LOG;

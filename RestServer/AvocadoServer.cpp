@@ -52,6 +52,7 @@
 #include "RestServer/JSLoader.h"
 #include "RestServer/SystemActionDispatcherThread.h"
 #include "V8/v8-actions.h"
+#include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-line-editor.h"
 #include "V8/v8-shell.h"
@@ -64,11 +65,12 @@ using namespace triagens::rest;
 using namespace triagens::admin;
 using namespace triagens::avocado;
 
-#include "js/js-actions.h"
-#include "js/js-aql.h"
-#include "js/js-json.h"
-#include "js/js-modules.h"
-#include "js/js-shell.h"
+#include "js/bootstrap/js-print.h"
+#include "js/bootstrap/js-modules.h"
+#include "js/server/js-actions.h"
+#include "js/server/js-aql.h"
+#include "js/server/js-json.h"
+#include "js/server/js-shell.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -298,11 +300,12 @@ void AvocadoServer::buildApplicationServer () {
   }
 
   if (_startupPath.empty()) {
-    StartupLoader.defineScript("modules.js", JS_modules);
-    StartupLoader.defineScript("actions.js", JS_actions);
-    StartupLoader.defineScript("json.js", JS_json);
-    StartupLoader.defineScript("aql.js", JS_aql);
-    StartupLoader.defineScript("shell.js", JS_shell);
+    StartupLoader.defineScript("bootstrap/modules.js", JS_bootstrap_modules);
+    StartupLoader.defineScript("bootstrap/print.js", JS_bootstrap_print);
+    StartupLoader.defineScript("server/actions.js", JS_server_actions);
+    StartupLoader.defineScript("server/aql.js", JS_server_aql);
+    StartupLoader.defineScript("server/json.js", JS_server_json);
+    StartupLoader.defineScript("server/shell.js", JS_server_shell);
   }
   else {
     StartupLoader.setDirectory(_startupPath);
@@ -517,7 +520,12 @@ void AvocadoServer::executeShell () {
   v8::Isolate* isolate;
   v8::Persistent<v8::Context> context;
   bool ok;
-  char const* files[] = { "modules.js", "json.js", "aql.js", "shell.js" };
+  char const* files[] = { "bootstrap/modules.js",
+                          "bootstrap/print.js",
+                          "server/json.js",
+                          "server/aql.js",
+                          "server/shell.js"
+  };
   size_t i;
 
   // only simple logging
@@ -547,6 +555,7 @@ void AvocadoServer::executeShell () {
   context->Enter();
 
   TRI_InitV8VocBridge(context, _vocbase);
+  TRI_InitV8Conversions(context);
   TRI_InitV8Utils(context, _startupModules);
   TRI_InitV8Shell(context);
 

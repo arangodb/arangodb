@@ -225,11 +225,12 @@ avocado_SOURCES = \
 ################################################################################
 
 BUILT_SOURCES += \
-	js/js-modules.h \
-	js/js-actions.h \
-	js/js-aql.h \
-	js/js-json.h \
-	js/js-shell.h
+	js/bootstrap/js-modules.h \
+	js/bootstrap/js-print.h \
+	js/server/js-actions.h \
+	js/server/js-aql.h \
+	js/server/js-json.h \
+	js/server/js-shell.h
 
 ################################################################################
 ## FLEX
@@ -266,12 +267,12 @@ BUILT_SOURCES += \
 ################################################################################
 
 DOXYGEN = \
-	Doxygen/js/actions.c \
-	Doxygen/js/json.c \
-	Doxygen/js/modules.c \
+	Doxygen/js/bootstrap/modules.c \
 	Doxygen/js/modules/graph.c \
 	Doxygen/js/modules/jsunity.c \
-	Doxygen/js/shell.c \
+	Doxygen/js/server/actions.c \
+	Doxygen/js/server/json.c \
+	Doxygen/js/server/shell.c \
 	Doxygen/js/system/collections.c \
 	Doxygen/js/system/indexes.c
 

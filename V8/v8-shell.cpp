@@ -326,15 +326,6 @@ static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
 void TRI_InitV8Shell (v8::Handle<v8::Context> context) {
   v8::HandleScope scope;
 
-  // check the isolate
-  v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
-
-  if (v8g == 0) {
-    v8g = new TRI_v8_global_t;
-    isolate->SetData(v8g);
-  }
-
   // .............................................................................
   // create the global functions
   // .............................................................................

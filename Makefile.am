@@ -22,11 +22,19 @@ include Makefile.files
 .setup-directories:
 	@test -d js || mkdir js
 	@test -d Doxygen/js || mkdir Doxygen/js
-	@test -d Doxygen/js/system || mkdir Doxygen/js/system
+	@test -d Doxygen/js/bootstrap || mkdir Doxygen/js/bootstrap
 	@test -d Doxygen/js/modules || mkdir Doxygen/js/modules
+	@test -d Doxygen/js/server || mkdir Doxygen/js/server
+	@test -d Doxygen/js/system || mkdir Doxygen/js/system
 	@touch $@
 
 js/js-%.h: @srcdir@/js/%.js .setup-directories
+	@top_srcdir@/config/js2c.sh $< > $@
+
+js/bootstrap/js-%.h: @srcdir@/js/bootstrap/%.js .setup-directories
+	@top_srcdir@/config/js2c.sh $< > $@
+
+js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
 	@top_srcdir@/config/js2c.sh $< > $@
 
 ################################################################################

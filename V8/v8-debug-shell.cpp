@@ -204,12 +204,15 @@ int main (int argc, char* argv[]) {
 
   TRI_InitV8VocBridge(context, VocBase);
   TRI_InitV8Actions(context);
+  TRI_InitV8Conversions(context);
   TRI_InitV8Utils(context, ".");
   TRI_InitV8Shell(context);
 
   char const* files[] = {
-    "js/modules.js",
-    "js/shell.js"
+    "js/bootstrap/modules.js",
+    "js/bootstrap/print.js",
+    "js/modules/shell.js",
+    "js/modules/json.js"
   };
 
   for (size_t i = 0;   i < sizeof(files) / sizeof(files[0]);  ++i) {
