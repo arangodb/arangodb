@@ -21,6 +21,9 @@ include Makefile.files
 
 .setup-directories:
 	@test -d js || mkdir js
+	@test -d js/bootstrap || mkdir js/bootstrap
+	@test -d js/modules || mkdir js/modules
+	@test -d js/server || mkdir js/server
 	@test -d Doxygen/js || mkdir Doxygen/js
 	@test -d Doxygen/js/bootstrap || mkdir Doxygen/js/bootstrap
 	@test -d Doxygen/js/modules || mkdir Doxygen/js/modules
