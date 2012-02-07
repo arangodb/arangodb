@@ -36,31 +36,13 @@
 #include "Basics/ProgramOptionsDescription.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/PathHandler.h"
+#include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
 
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::admin;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                          static private variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup RestServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief option for the directory containing the admin files
-////////////////////////////////////////////////////////////////////////////////
-
-string ApplicationAdminServer::optionAdminDirectory;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
@@ -100,8 +82,17 @@ ApplicationAdminServer::ApplicationAdminServer ()
   : _allowLogViewer(false),
     _allowAdminDirectory(false),
     _allowFeConfiguration(false),
-    _allowVersion(false) {
+    _allowVersion(false),
+    _adminDirectory(),
+    _pathOptions(0),
+    _feConfiguration(),
+    _name(),
+    _version() {
   _pathOptions = new PathHandler::Options();
+
+#ifdef _PKGDATADIR_
+  _adminDirectory = string(_PKGDATADIR_) + "/html/admin";
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -202,8 +193,10 @@ void ApplicationAdminServer::addHandlers (HttpHandlerFactory* factory, string co
   // .............................................................................
   
   if (_allowAdminDirectory) {
-    if (! optionAdminDirectory.empty()) {
-      reinterpret_cast<PathHandler::Options*>(_pathOptions)->path = optionAdminDirectory;
+    if (! _adminDirectory.empty()) {
+      LOGGER_INFO << "using JavaScript front-end files stored at '" << _adminDirectory << "'";
+
+      reinterpret_cast<PathHandler::Options*>(_pathOptions)->path = _adminDirectory;
       reinterpret_cast<PathHandler::Options*>(_pathOptions)->contentType = "text/plain";
       reinterpret_cast<PathHandler::Options*>(_pathOptions)->allowSymbolicLink = false;
       reinterpret_cast<PathHandler::Options*>(_pathOptions)->defaultFile = "index.html";
@@ -237,7 +230,7 @@ void ApplicationAdminServer::addHandlers (HttpHandlerFactory* factory, string co
 void ApplicationAdminServer::setupOptions (map<string, basics::ProgramOptionsDescription>& options) {
   if (_allowAdminDirectory) {
     options[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
-      ("server.admin-directory", &optionAdminDirectory, "directory containing the ADMIN front-end")
+      ("server.admin-directory", &_adminDirectory, "directory containing the ADMIN front-end")
     ;
   }
 

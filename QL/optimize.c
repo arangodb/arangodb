@@ -578,20 +578,18 @@ QL_ast_query_select_type_e QLOptimizeGetSelectType (const QL_ast_query_t *query)
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the type of a query's WHERE condition
+/// @brief get the type of a query's WHERE/ON condition
 ////////////////////////////////////////////////////////////////////////////////
 
-QL_ast_query_where_type_e QLOptimizeGetWhereType (const QL_ast_query_t *query) {
-  QL_ast_node_t *whereNode = query->_where._base;
-
-  if (whereNode == 0) {
+QL_ast_query_where_type_e QLOptimizeGetWhereType (const QL_ast_node_t *node) {
+  if (node == 0) {
     // query does not have a WHERE part 
     return QLQueryWhereTypeAlwaysTrue;
   }
   
-  if (QLAstNodeIsBooleanizable(whereNode)) {
+  if (QLAstNodeIsBooleanizable(node)) {
     // WHERE part is constant
-    if (QLOptimizeGetBool(whereNode)) {
+    if (QLOptimizeGetBool(node)) {
       // WHERE is always true
       return QLQueryWhereTypeAlwaysTrue; 
     } 

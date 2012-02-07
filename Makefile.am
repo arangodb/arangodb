@@ -1,13 +1,23 @@
 ACLOCAL_AMFLAGS = -I m4
 
 AM_CFLAGS = 
-AM_CPPFLAGS =
+AM_CXXFLAGS =
+AM_CPPFLAGS = -D_SYSCONFDIR_='"${sysconfdir}"' -D_PKGDATADIR_='"${pkgdatadir}"'
 AM_LDFLAGS =
 BUILT_SOURCES = .setup-directories
 LIBS =
 
 noinst_LIBRARIES = libavocadodb.a
 bin_PROGRAMS = avocado
+
+nobase_pkgdata_DATA = \
+	$(shell find @srcdir@/js/system -name "*.js" -print) \
+	$(shell find @srcdir@/html -name "*.css" -print) \
+	$(shell find @srcdir@/html -name "*.gif" -print) \
+	$(shell find @srcdir@/html -name "*.html" -print) \
+	$(shell find @srcdir@/html -name "*.ico" -print) \
+	$(shell find @srcdir@/html -name "*.js" -print) \
+	$(shell find @srcdir@/html -name "*.png" -print)
 
 ################################################################################
 ## avocado
@@ -87,6 +97,9 @@ Doxygen/js/system/%.c: @srcdir@/js/system/%.js .setup-directories
 	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
 Doxygen/js/modules/%.c: @srcdir@/js/system/%.js .setup-directories
+	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+
+Doxygen/js/bootstrap/%.c: @srcdir@/js/bootstrap/%.js .setup-directories
 	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
 doxygen: Doxygen/avocado.doxy $(DOXYGEN)

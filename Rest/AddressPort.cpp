@@ -53,7 +53,23 @@ namespace triagens {
 
 
     bool AddressPort::split (string const& definition) {
-      size_t n = StringUtils::numEntries(definition, ":");
+      if (definition.empty()) {
+        return false;
+      }
+      
+      if (definition[0] == '[') {
+        // ipv6 address
+        size_t find = definition.find("]:", 1);
+        
+        if (find != string::npos && find + 2 < definition.size()) {
+          address = definition.substr(1, find-1);
+          port = StringUtils::uint32(definition.substr(find+2));
+          return true;
+        }
+        
+      }
+
+      int n = StringUtils::numEntries(definition, ":");
 
       if (n == 1) {
         address = "";

@@ -130,10 +130,10 @@ QL_ast_query_select_type_e QLOptimizeGetSelectType (const QL_ast_query_t*);
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the type of a query's WHERE condition
+/// @brief get the type of a query's WHERE/ON condition
 ////////////////////////////////////////////////////////////////////////////////
 
-QL_ast_query_where_type_e QLOptimizeGetWhereType (const QL_ast_query_t*);
+QL_ast_query_where_type_e QLOptimizeGetWhereType (const QL_ast_node_t*);
 
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -91,7 +91,7 @@ void QLFormatterPrintBlockEnd (QL_formatter_t *formatter,const char *name) {
 
 void QLFormatterPrintInt (QL_formatter_t *formatter,const char *name,uint64_t value) {
   QLFormatterPrintIndentation(formatter);
-  printf("%s: %llu\n",name,value);
+  //printf("%s: %llu\n",name,value);
 }
 
 

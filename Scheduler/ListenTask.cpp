@@ -35,11 +35,13 @@
 
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <netdb.h>
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
 #include <Basics/MutexLocker.h>
+#include <Basics/StringUtils.h>
 #include <BasicsC/socket-utils.h>
 #include <Logger/Logger.h>
 
@@ -81,6 +83,17 @@ namespace triagens {
       bindSocket();
     }
 
+    ListenTask::ListenTask (struct addrinfo *aip, bool reuseAddress)
+      : Task("ListenTask"),
+        readWatcher(0),
+        reuseAddress(reuseAddress),
+        address(""),
+        port(0),
+        listenSocket(0),
+        bound(false),
+        acceptFailures(0) {
+      bindSocket(aip);
+    }
 
 
     ListenTask::~ListenTask () {
@@ -98,16 +111,6 @@ namespace triagens {
     }
 
 
-
-    bool ListenTask::rebind () {
-      MUTEX_LOCKER(changeLock);
-
-      if (bound) {
-        close(listenSocket);
-      }
-
-      return bindSocket();
-    }
 
     // -----------------------------------------------------------------------------
     // Task methods
@@ -216,13 +219,30 @@ namespace triagens {
 
         // handle connection
         ConnectionInfo info;
-
+/*
         info.serverAddress = inet_ntoa(addr_out.sin_addr);
         info.serverPort = port;
 
         info.clientAddress = inet_ntoa(addr.sin_addr);
         info.clientPort = addr.sin_port;
+*/
+        // set client address and port
+        char host[NI_MAXHOST], serv[NI_MAXSERV];           
+        if (getnameinfo((sockaddr*) &addr, len,
+                       host, sizeof(host),
+                       serv, sizeof(serv), NI_NUMERICHOST | NI_NUMERICSERV) == 0) {        
 
+          info.clientAddress = string(host);
+          info.clientPort = addr.sin_port;
+        }
+        else {
+          info.clientAddress = inet_ntoa(addr.sin_addr);
+          info.clientPort = addr.sin_port;          
+        }
+
+        info.serverAddress = address;
+        info.serverPort = port;
+        
         return handleConnected(connfd, info);
       }
 
@@ -235,12 +255,68 @@ namespace triagens {
 
     bool ListenTask::bindSocket () {
       bound = false;
+      listenSocket = -1;
+      
+      struct addrinfo *result, *aip;
+      struct addrinfo hints;
+      int error;
 
-      // create a new socket
-      listenSocket  = socket(AF_INET, SOCK_STREAM, 0);
+      memset(&hints, 0, sizeof (struct addrinfo));
+      hints.ai_family = AF_UNSPEC; // Allow IPv4 or IPv6
+      hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV | AI_ALL;
+      hints.ai_socktype = SOCK_STREAM;
 
-      if (listenSocket < 0) {
-        LOGGER_ERROR << "socket failed with " << errno << " (" << strerror(errno) << ")";
+      string portString = StringUtils::itoa(port);
+
+      if (address.empty()) {
+        LOGGER_ERROR << "get any address";
+        error = getaddrinfo(NULL, portString.c_str(), &hints, &result);
+      }
+      else {
+        error = getaddrinfo(address.c_str(), portString.c_str(), &hints, &result);
+      }
+
+      if (error != 0) {
+        LOGGER_ERROR << "getaddrinfo for host: " << address.c_str() << " => " << gai_strerror(error);
+        return false;
+      }
+      
+      // Try all returned addresses until one works
+      for (aip = result; aip != NULL; aip = aip->ai_next) {
+
+        // try to bind the address info pointer
+        if (bindSocket(aip)) {
+          // OK
+          break;
+        }
+        
+      }
+      
+      freeaddrinfo(result);
+
+      return bound;
+    }
+    
+    
+    
+    bool ListenTask::bindSocket (struct addrinfo *aip) {
+      bound = false;
+      listenSocket = -1;
+            
+      // set address and port
+      char host[NI_MAXHOST], serv[NI_MAXSERV];           
+      if (getnameinfo(aip->ai_addr, aip->ai_addrlen,
+                       host, sizeof(host),
+                       serv, sizeof(serv), NI_NUMERICHOST | NI_NUMERICSERV) == 0) {     
+        
+        address = string(host);
+        port = StringUtils::int32(string(serv));
+
+        LOGGER_TRACE << "bind to address '" << address << "' port '" << string(serv) << "'";
+      }          
+      
+      listenSocket = socket(aip->ai_family, aip->ai_socktype, aip->ai_protocol);
+      if (listenSocket == -1) {
         return false;
       }
 
@@ -248,57 +324,19 @@ namespace triagens {
       if (reuseAddress) {
         int opt = 1;
 
-        if (setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*>(&opt), sizeof(opt)) == -1) {
+        if (setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
           LOGGER_ERROR << "setsockopt failed with " << errno << " (" << strerror(errno) << ")";
           return false;
         }
 
         LOGGER_TRACE << "reuse address flag set";
       }
-
-      // bind to any address
-      sockaddr_in addr;
-
-      if (address.empty()) {
-        memset(&addr, 0, sizeof(addr));
-
-        addr.sin_family      = AF_INET;
-        addr.sin_addr.s_addr = htonl(INADDR_ANY);
-        addr.sin_port        = htons(port);
-      }
-
-      // bind to a given address
-      else {
-        size_t length;
-        char* a = TRI_GetHostByName(address.c_str(), &length);
-
-        if (a == 0) {
-          LOGGER_ERROR << "cannot resolve hostname: " << errno << " (" << strerror(errno) << ")";
-          return false;
-        }
-
-        if (sizeof(addr.sin_addr.s_addr) < length) {
-          LOGGER_ERROR << "IPv6 address are not allowed";
-          return false;
-        }
-
-        // bind socket to an address
-        memset(&addr, 0, sizeof(addr));
-
-        addr.sin_family = AF_INET;
-        memcpy(&(addr.sin_addr.s_addr), a, length);
-        addr.sin_port = htons(port);
-
-        TRI_Free(a);
-      }
-
-      int res = bind(listenSocket, (const sockaddr*) &addr, sizeof(addr));
-
+        
+      int res = bind(listenSocket, aip->ai_addr, aip->ai_addrlen);
       if (res < 0) {
-        close(listenSocket);
-
         LOGGER_ERROR << "bind failed with " << errno << " (" << strerror(errno) << ")";
-
+        (void) close(listenSocket);
+        listenSocket = -1;
         return false;
       }
 
@@ -316,7 +354,7 @@ namespace triagens {
       // set socket to non-blocking
       bool ok = TRI_SetNonBlockingSocket(listenSocket);
 
-      if (! ok) {
+      if (!ok) {
         close(listenSocket);
 
         LOGGER_ERROR << "cannot switch to non-blocking: " << errno << " (" << strerror(errno) << ")";
@@ -327,7 +365,7 @@ namespace triagens {
       // set close on exit
       ok = TRI_SetCloseOnExecSocket(listenSocket);
 
-      if (! ok) {
+      if (!ok) {
         close(listenSocket);
 
         LOGGER_ERROR << "cannot set close-on-exit: " << errno << " (" << strerror(errno) << ")";
@@ -339,5 +377,6 @@ namespace triagens {
 
       return true;
     }
+    
   }
 }

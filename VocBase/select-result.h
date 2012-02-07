@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief cursors and result sets
+/// @brief select result
 ///
 /// @file
 ///
@@ -25,16 +25,14 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_CURSOR
-#define TRIAGENS_DURHAM_VOC_BASE_CURSOR
-
-#include <stdlib.h>
+#ifndef TRIAGENS_DURHAM_VOC_BASE_SELECT_RESULT_H
+#define TRIAGENS_DURHAM_VOC_BASE_SELECT_RESULT_H 1
 
 #include <BasicsC/common.h>
+#include <BasicsC/vector.h>
 #include <BasicsC/strings.h>
 
-#include "VocBase/vocbase.h"
-#include "VocBase/query.h"
+#include "VocBase/document-collection.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -46,133 +44,107 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief result set types
-/// RESULTSET_TYPE_SINGLE means the result set will contain one element per 
-/// result row, RESULTSET_TYPE_MULTI means the result set will contain multiple 
-/// (0..n) elements per result row
+/// @brief result part type (single document or multiple documents)
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  RESULTSET_TYPE_UNDEFINED = 0,
-
-  RESULTSET_TYPE_SINGLE,
-  RESULTSET_TYPE_MULTI
-} 
-TRI_resultset_type_e;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief typedef for result set data
-////////////////////////////////////////////////////////////////////////////////
-
-typedef char TRI_resultset_data_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief result set element (base type)
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_resultset_element_s {
-  void *_data;
-  TRI_resultset_type_e _type;
-  void (*free) (struct TRI_resultset_element_s*);
-  bool (*toJavaScript) (struct TRI_resultset_element_s*, TRI_rc_result_t*, void*);
+  RESULT_PART_SINGLE = 0,
+  RESULT_PART_MULTI  = 1
 }
-TRI_resultset_element_t;
+TRI_select_data_e;
+
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief single result set element
+/// @brief typedef for number of rows in a select result
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_resultset_element_single_s {
-  TRI_doc_mptr_t *_document;
-} 
-TRI_resultset_element_single_t;
+typedef uint32_t TRI_select_size_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief multiple result set element
+/// @brief select input type
 ////////////////////////////////////////////////////////////////////////////////
+ 
+typedef struct TRI_select_feeder_s { 
+  TRI_doc_collection_t* _collection;
 
-typedef struct TRI_resultset_element_multi_s {
-  TRI_voc_size_t _num;
-  TRI_doc_mptr_t **_documents;
-} 
-TRI_resultset_element_multi_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief result set type
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_resultset_s {
-  TRI_voc_size_t _length;
-  TRI_voc_size_t _position;
-  TRI_resultset_type_e _type;
-  char *_alias;
-  TRI_resultset_data_t *_data;
-  TRI_resultset_data_t *_current;
-  size_t _storageUsed;
-  size_t _storageAllocated;
-
-  void (*free) (struct TRI_resultset_s*);
-  TRI_resultset_data_t *(*next)(struct TRI_resultset_s*);
-//  bool (*toJavaScript) (struct TRI_resultset_s*, void*);
-} 
-TRI_resultset_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief result set row type
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_resultset_row_s {
-  TRI_vector_pointer_t _data;
-  bool (*toJavaScript) (struct TRI_resultset_row_s*, void*);
+  void (*init) (struct TRI_select_feeder_s*);
+  void (*rewind) (struct TRI_select_feeder_s*);
+  TRI_doc_mptr_t* (*current) (struct TRI_select_feeder_s*);
+  TRI_doc_mptr_t* (*next) (struct TRI_select_feeder_s*);
 }
-TRI_resultset_row_t;
+TRI_select_feeder_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief cursor type
+/// @brief select data parts type
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_cursor_s {
-  TRI_rc_context_t* _context;
-  TRI_qry_select_t* _select;
+typedef struct TRI_select_datapart_s {
+  char* _alias;
+  TRI_doc_collection_t* _collection;
+  TRI_select_data_e _type;
 
-  TRI_vector_pointer_t _resultsets;
-  TRI_voc_size_t _length;
-  TRI_voc_size_t _position;
-  TRI_resultset_row_t *_currentData;
-
-  void (*free) (struct TRI_cursor_s*);
-  TRI_resultset_row_t* (*next)(struct TRI_cursor_s*);
-  bool (*hasNext)(const struct TRI_cursor_s*);
-  void (*addResultset)(struct TRI_cursor_s*, const TRI_resultset_t*);
+  void (*free) (struct TRI_select_datapart_s*);
 }
-TRI_cursor_t;
+TRI_select_datapart_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add a single document to a single result set
+/// @brief Create a new select datapart instance
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddDocumentSingleResultset(TRI_resultset_t *, const TRI_doc_mptr_t *);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add multiple documents (0..n) to a multiple result set
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_AddDocumentsMultiResultset(TRI_resultset_t *, const TRI_voc_size_t, 
-                                    const TRI_doc_mptr_t **);
+TRI_select_datapart_t* TRI_CreateDataPart(const char*, 
+                                          const TRI_doc_collection_t*,
+                                          const TRI_select_data_e);
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new result set
+/// @brief document index within a select result
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_resultset_t *TRI_CreateResultset(const TRI_resultset_type_e, const char*);
+typedef struct TRI_select_result_index_s {
+  TRI_select_size_t _numAllocated;
+  TRI_select_size_t _numUsed;
+  void *_start;
+  void *_current;
+}
+TRI_select_result_index_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new cursor
+/// @brief document storage within a select result
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_cursor_t *TRI_CreateCursor(TRI_rc_context_t *, TRI_qry_select_t *);
+typedef struct TRI_select_result_documents_s {
+  size_t _bytesAllocated;
+  size_t _bytesUsed;
+  void *_start;
+  void *_current;
+}
+TRI_select_result_documents_t;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief select result type
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_select_result_s {
+  TRI_select_size_t _numRows;
+  TRI_vector_pointer_t* _dataParts;
+  TRI_select_result_index_t _index;
+  TRI_select_result_documents_t _documents;
+
+  void (*free) (struct TRI_select_result_s*);
+}
+TRI_select_result_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Add a document to the result set
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_AddDocumentSelectResult (TRI_select_result_t*, TRI_vector_pointer_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Create a new select result
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_select_result_t* TRI_CreateSelectResult (TRI_vector_pointer_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
