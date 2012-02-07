@@ -230,10 +230,10 @@ void ActionDisptacherThread::initialise () {
   bool ok;
   char const* files[] = { "bootstrap/modules.js",
                           "bootstrap/print.js",
+                          "server/modules.js",
                           "server/json.js",
                           "server/actions.js",
-                          "server/aql.js",
-                          "server/shell.js"
+                          "server/aql.js"
   };
   size_t i;
 

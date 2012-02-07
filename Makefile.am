@@ -2,7 +2,7 @@ ACLOCAL_AMFLAGS = -I m4
 
 AM_CFLAGS = 
 AM_CXXFLAGS =
-AM_CPPFLAGS = -D_SYSCONFDIR_='"${sysconfdir}"' -D_PKGDATADIR_='"${pkgdatadir}"'
+AM_CPPFLAGS = -D_SYSCONFDIR_='"${sysconfdir}"' -D_PKGDATADIR_='"${pkgdatadir}"' -D_DATABASEDIR_='"${localstatedir}/lib/${PACKAGE_TARNAME}"'
 AM_LDFLAGS =
 BUILT_SOURCES = .setup-directories
 LIBS =
@@ -12,6 +12,7 @@ bin_PROGRAMS = avocado
 
 nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/js/system -name "*.js" -print) \
+	$(shell find @srcdir@/js/modules -name "*.js" -print) \
 	$(shell find @srcdir@/html -name "*.css" -print) \
 	$(shell find @srcdir@/html -name "*.gif" -print) \
 	$(shell find @srcdir@/html -name "*.html" -print) \

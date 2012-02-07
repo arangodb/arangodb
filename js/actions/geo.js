@@ -1,6 +1,6 @@
 defineAction("near",
   function (req, res) {
-               var result = req.collection.near(req.lat, req.lon).distance();
+    var result = req.collection.near(req.lat, req.lon).distance();
 
     queryResult(req, res, result);
    },
@@ -15,7 +15,7 @@ defineAction("near",
 
 defineAction("within",
   function (req, res) {
-               var result = req.collection.within(req.lat, req.lon, req.radius).distance();
+    var result = req.collection.within(req.lat, req.lon, req.radius).distance();
 
     queryResult(req, res, result);
    },

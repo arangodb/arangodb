@@ -403,7 +403,7 @@ static size_t GenerateMessage (char* buffer,
 
   TRI_LockSpin(&OutputPrefixLock);
 
-  if (OutputPrefix) {
+  if (OutputPrefix && *OutputPrefix) {
     n = snprintf(buffer + m, size - m, "%s %s ", s, OutputPrefix);
   }
   else {
