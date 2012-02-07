@@ -35,22 +35,32 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::avocado;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       USER MANUAL
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @page UserManual AvocadoDB User Manual
 ///
 /// <ol>
-///  <li>Basics
+///  <li>@ref Basics
 ///   <ol>
 ///    <li>@ref StartStop
+///    </li>
+///    <li>@ref AvocadoScript
+///     <ol>
+///      <li>@ref GeoCoordinates
+///      </li>
+///      <li>@ref Pagination
+///      </li>
+///     </ol>
 ///    </li>
 ///    <li>@ref HttpInterface
 ///     <ol>
 ///      <li>@ref RestInterface
 ///      </li>
-///       <ol>
-///        <li>@ref RestDocument
-///        </li>
-///       </ol>
+///      <li>@ref RestDocument
+///      </li>
 ///     </ol>
 ///    </li>
 ///    <li>Vertices, Edges, and Graphs
@@ -87,6 +97,91 @@ using namespace triagens::avocado;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @page Basics Basics
+///
+/// The AvocadoDB groups documents into collections. Each collection can be
+/// accessed using queries. For simple queries involving just one collection,
+/// you can use a fluent interface from within JavaScript code, see @ref
+/// AvocadoScript. This interface allows you to select documents from one
+/// collection based on simple search criteria. The @ref HttpInterface
+/// lets you create, modify, or delete a single document via HTTP. For 
+/// more complex queries, you can use the Avocado Query Language, which is 
+/// an extension of SQL resp. UNQL.
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page StartStopTOC
+///
+/// <ol>
+///  <li>@ref StartStopHttp "Starting the HTTP Server"</li>
+///  <li>@ref StartStopDebug "Starting the Debug Shell"</li>
+///  <li>@ref StartStopOptions "Frequently Used Options"</li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page StartStop Starting the AvocadoDB
+///
+/// The AvocadoDB has two mode of operation: as server, where it will answer to
+/// HTTP requests, see @ref HttpInterface, and a debug shell, where you can
+/// access the database directly. Using the debug shell allows you to issue all
+/// commands normally available in actions and transactions, see @ref
+/// AvocadoScript.
+///
+/// You should never start more than one server for the same database,
+/// independent from the mode of operation.
+///
+/// <hr>
+/// @copydoc StartStopTOC
+/// <hr>
+///
+/// @section StartStopHttp Starting the HTTP Server
+///
+/// The following command starts the AvocadoDB in server mode. You will be able
+/// to access the server using HTTP request on port 8529. See below for a list
+/// of frequently used options, see @ref CommandLine "here" for a complete list.
+///
+/// @verbinclude start2
+///
+/// @section StartStopDebug Starting the Debug Shell
+///
+/// The following command starts a debug shell. See below for a list of
+/// frequently used options, see @ref CommandLine "here" for a complete list.
+///
+/// @verbinclude start1
+///
+/// @section StartStopOptions Frequently Used Options
+///
+/// The following command-line options are frequently used. For a full
+/// list of options see @ref CommandLine "here".
+///
+/// @CMDOPT{@CA{database-directory}}
+///
+/// Uses the @CA{database-directory} as base directory. There is an alternative
+/// version available for use in configuration files, see @ref
+/// CommandLineAvocado "here".
+///
+/// @copydetails triagens::rest::ApplicationServerImpl::options
+///
+/// @CMDOPT{--log @CA{level}}
+///
+/// Allows the user to choose the level of information which is logged by the
+/// server. The @CA{level} is specified as a string and can be one of the
+/// following values: fatal, error, warning, info, debug, trace.  For more
+/// information see @ref CommandLineLogging "here".
+///
+/// @copydetails triagens::avocado::AvocadoServer::_httpPort
+///
+/// @CMDOPT{--shell}
+///
+/// Opens a debug shell instead of starting the HTTP server.
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               INSTALLATION MANUAL
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
 /// @page InstallManual AvocadoDB Installation Manual
 ///
 /// <ol>
@@ -98,6 +193,10 @@ using namespace triagens::avocado;
 ///  </li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  REFERENCE MANUAL
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page RefManual AvocadoDB Reference Manual
@@ -127,74 +226,6 @@ using namespace triagens::avocado;
 ///   </ol>
 ///  </li>
 /// </ol>
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page StartStopTOC
-///
-/// <ol>
-///  <li>@ref StartStopDebug "Starting the Debug Shell"</li>
-///  <li>@ref StartStopHttp "Starting the HTTP Server"</li>
-///  <li>@ref StartStopOptions "Frequently Used Options"</li>
-/// </ol>
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page StartStop Starting the AvocadoDB
-///
-/// The AvocadoDB has two mode of operation: as server, where it will answer to
-/// HTTP requests, see @ref HttpInterface, and a debug shell, where you can
-/// access the database directly. Using the debug shell allows you to issue all
-/// commands normally available in actions and transactions, see @ref
-/// AvocadoScript.
-///
-/// You should never start more than one server for the same database,
-/// independent from the mode of operation.
-///
-/// <hr>
-/// @copydoc StartStopTOC
-/// <hr>
-///
-/// @section StartStopDebug Starting the Debug Shell
-///
-/// The following command starts a debug shell. See below for a list of
-/// frequently used options, see @ref CommandLine "here" for a complete list.
-///
-/// @verbinclude start1
-///
-/// @section StartStopHttp Starting the HTTP Server
-///
-/// The following command starts the AvocadoDB in server mode. You will be able
-/// to access the server using HTTP request on port 8529. See below for a list
-/// of frequently used options, see @ref CommandLine "here" for a complete list.
-///
-/// @verbinclude start2
-///
-/// @section StartStopOptions Frequently Used Options
-///
-/// The following command-line options are frequently used. For a full
-/// list of options see @ref CommandLine "here".
-///
-/// @CMDOPT{@CA{database-directory}}
-///
-/// Uses the @CA{database-directory} as base directory. There is an alternative
-/// version available for use in configuration files, see @ref
-/// CommandLineAvocado "here".
-///
-/// @copydetails triagens::rest::ApplicationServerImpl::options
-///
-/// @CMDOPT{--log @CA{level}}
-///
-/// Allows the user to choose the level of information which is logged by the
-/// server. The @CA{level} is specified as a string and can be one of the
-/// following values: fatal, error, warning, info, debug, trace.  For more
-/// information see @ref CommandLineLogging "here".
-///
-/// @copydetails triagens::avocado::AvocadoServer::_httpPort
-///
-/// @CMDOPT{--shell}
-///
-/// Opens a debug shell instead of starting the HTTP server.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////

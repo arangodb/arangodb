@@ -231,6 +231,7 @@ avocado_SOURCES = \
 BUILT_SOURCES += \
 	js/bootstrap/js-modules.h \
 	js/bootstrap/js-print.h \
+	js/server/js-modules.h \
 	js/server/js-actions.h \
 	js/server/js-aql.h \
 	js/server/js-json.h \
@@ -274,6 +275,7 @@ DOXYGEN = \
 	Doxygen/js/bootstrap/modules.c \
 	Doxygen/js/modules/graph.c \
 	Doxygen/js/modules/jsunity.c \
+	Doxygen/js/server/modules.c \
 	Doxygen/js/server/actions.c \
 	Doxygen/js/server/json.c \
 	Doxygen/js/server/shell.c \
@@ -313,7 +315,11 @@ WIKI = \
         Doxygen/xml/dc/d05/UserManual.md \
         Doxygen/xml/d3/d5b/jsUnity.md \
         Doxygen/xml/da/db6/InstallManual.md \
-        Doxygen/xml/dd/dd7/RefManual.md
+        Doxygen/xml/dd/dd7/RefManual.md \
+	Doxygen/xml/d8/d3a/Basics.md
+
+Doxygen/xml/d8/d3a/Basics.md: Doxygen/xml/d8/d3a/Basics.xml
+	python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
 
 Doxygen/xml/da/db6/InstallManual.md: Doxygen/xml/da/db6/InstallManual.xml
 	python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@

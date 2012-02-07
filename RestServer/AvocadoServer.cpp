@@ -68,6 +68,7 @@ using namespace triagens::avocado;
 
 #include "js/bootstrap/js-print.h"
 #include "js/bootstrap/js-modules.h"
+#include "js/server/js-modules.h"
 #include "js/server/js-actions.h"
 #include "js/server/js-aql.h"
 #include "js/server/js-json.h"
@@ -171,6 +172,11 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
 
 #ifdef _PKGDATADIR_
   _systemActionPath = string(_PKGDATADIR_) + "/js/system";
+  _startupModules = string(_PKGDATADIR_) + "/js/modules";
+#endif
+
+#ifdef _DATABASEDIR_
+  _databasePath = _DATABASEDIR_;
 #endif
 }
 
@@ -244,7 +250,6 @@ void AvocadoServer::buildApplicationServer () {
 
   additional["PORT Options"]
     ("server.http-port", &_httpPort, "port for client access")
-    ("dispatcher.threads", &_dispatcherThreads, "number of dispatcher threads")
   ;
 
   additional[ApplicationServer::OPTIONS_HIDDEN]
@@ -263,7 +268,7 @@ void AvocadoServer::buildApplicationServer () {
   // JavaScript options
   // .............................................................................
 
-  additional["JAVASCRIPT Options"]
+  additional["JAVASCRIPT Options:help-admin"]
     ("startup.directory", &_startupPath, "path to the directory containing alternate startup scripts")
     ("startup.modules-path", &_startupModules, "one or more directories separated by semicolon")
     ("action.directory", &_actionPath, "path to the action directory, defaults to <database.directory>/_ACTIONS")
@@ -280,6 +285,7 @@ void AvocadoServer::buildApplicationServer () {
 
   additional["Server Options:help-admin"]
     ("server.admin-port", &_adminPort, "http server:port for ADMIN requests")
+    ("dispatcher.threads", &_dispatcherThreads, "number of dispatcher threads")
   ;
 
   // .............................................................................
@@ -308,6 +314,7 @@ void AvocadoServer::buildApplicationServer () {
     LOGGER_INFO << "using built-in JavaScript startup files";
     StartupLoader.defineScript("bootstrap/modules.js", JS_bootstrap_modules);
     StartupLoader.defineScript("bootstrap/print.js", JS_bootstrap_print);
+    StartupLoader.defineScript("server/modules.js", JS_server_modules);
     StartupLoader.defineScript("server/actions.js", JS_server_actions);
     StartupLoader.defineScript("server/aql.js", JS_server_aql);
     StartupLoader.defineScript("server/json.js", JS_server_json);
@@ -413,9 +420,12 @@ int AvocadoServer::startupServer () {
   // create the action dispatcher thread infor
   // .............................................................................
 
+  LOGGER_INFO << "using JavaScript modules path '" << _startupModules << "'";
+
   ActionDisptacherThread::_actionLoader = &ActionLoader;
   ActionDisptacherThread::_startupLoader = &StartupLoader;
   ActionDisptacherThread::_vocbase = _vocbase;
+  ActionDisptacherThread::_startupModules = _startupModules;
 
   SystemActionDisptacherThread::_actionLoader = &SystemActionLoader;
 
@@ -538,6 +548,7 @@ void AvocadoServer::executeShell () {
   bool ok;
   char const* files[] = { "bootstrap/modules.js",
                           "bootstrap/print.js",
+                          "server/modules.js",
                           "server/json.js",
                           "server/aql.js",
                           "server/shell.js"
@@ -569,6 +580,8 @@ void AvocadoServer::executeShell () {
   }
 
   context->Enter();
+
+  LOGGER_INFO << "using JavaScript modules path '" << _startupModules << "'";
 
   TRI_InitV8VocBridge(context, _vocbase);
   TRI_InitV8Conversions(context);

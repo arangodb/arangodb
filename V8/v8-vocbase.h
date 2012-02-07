@@ -31,6 +31,10 @@
 #include "V8/v8-globals.h"
 #include "ShapedJson/shaped-json.h"
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     documentation
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @page AvocadoScript Avocado Script
 ///
@@ -43,7 +47,6 @@
 /// - selection by example
 /// - field selection (aka projection)
 /// - sorting
-/// - cursors
 /// - pagination of the result-set
 ///
 /// Advanced topics are
@@ -106,9 +109,12 @@
 ///
 /// Next steps:
 ///
-/// - learn about @ref GeoCoordinates "geo coordinates"
-/// - learn about @ref Pagination "pagination"
-/// - look at all the @ref JavaScriptFunc "functions"
+/// - learn about @ref SelectionByExample
+/// - learn about @ref FieldSelection
+/// - learn about @ref Sorting
+/// - learn about @ref Pagination
+/// - learn about @ref GeoCoordinates
+/// - look at all the @ref JavaScriptFunc
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
