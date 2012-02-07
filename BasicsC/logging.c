@@ -548,6 +548,7 @@ static void OutputMessage (TRI_log_level_e level,
     msg._message = copy ? TRI_DuplicateString2(message, length) : message;
     msg._length = length;
 
+    // this will COPY the structure log_message_t into the vector
     TRI_LockMutex(&LogMessageQueueLock);
     TRI_PushBackVector(&LogMessageQueue, (void*) &msg);
     TRI_UnlockMutex(&LogMessageQueueLock);
@@ -1664,7 +1665,7 @@ void TRI_InitialiseLogging (bool threaded) {
 
   // always close logging at the end
   if (! ShutdownInitalised) {
-    atexit(TRI_ShutdownLogging);
+    atexit((void (*)(void)) TRI_ShutdownLogging);
     ShutdownInitalised = true;
   }
 }
@@ -1714,9 +1715,9 @@ void TRI_ReopenLogging () {
 /// @brief shut downs the logging components
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ShutdownLogging () {
+bool TRI_ShutdownLogging () {
   if (! Initialised) {
-    return;
+    return ThreadedLogging;
   }
 
   // logging is now inactive
@@ -1749,6 +1750,8 @@ void TRI_ShutdownLogging () {
   TRI_DestroyMutex(&BufferLock);
 
   Initialised = false;
+
+  return ThreadedLogging;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

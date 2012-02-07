@@ -31,6 +31,14 @@
 
 #include <Basics/Common.h>
 
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netdb.h>
+
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <Basics/StringUtils.h>
+
 #include <Basics/Exceptions.h>
 #include <Logger/Logger.h>
 #include <Basics/ReadLocker.h>
@@ -193,16 +201,61 @@ namespace triagens {
         ////////////////////////////////////////////////////////////////////////////////
 
         bool addPort (string const& address, int port, bool reuseAddress) {
-          ListenTask* task = new GeneralListenTask<S>(dynamic_cast<S*>(this), address, port, reuseAddress);
+          struct addrinfo *result, *aip;
+          struct addrinfo hints;
+          int error;
 
-          if (! task->isBound()) {
-            deleteTask(task);
-            return false;
+          memset(&hints, 0, sizeof (struct addrinfo));
+          hints.ai_family = AF_UNSPEC; // Allow IPv4 or IPv6
+          hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV;
+          hints.ai_socktype = SOCK_STREAM;
+          hints.ai_protocol = 0;
+
+          string portString = basics::StringUtils::itoa(port);
+
+          if (address.empty()) {
+            error = getaddrinfo(NULL, portString.c_str(), &hints, &result);
+          }
+          else {
+            error = getaddrinfo(address.c_str(), portString.c_str(), &hints, &result);
           }
 
-          _scheduler->registerTask(task);
+          if (error != 0) {
+            LOGGER_ERROR << "getaddrinfo for host: " << address.c_str() << " => " << gai_strerror(error);
+            return false;
+          }
+          
+          bool gotTask = false;
+          
+          // Try all returned addresses
+          for (aip = result; aip != NULL; aip = aip->ai_next) {
+            
+            ListenTask* task = new GeneralListenTask<S > (dynamic_cast<S*> (this), aip, reuseAddress);
 
-          return true;
+            if (! task->isBound()) {
+              deleteTask(task);
+            }
+            else {
+              _scheduler->registerTask(task);
+              gotTask = true;
+            }
+
+          }
+
+          freeaddrinfo(result);
+          
+          return gotTask;
+
+//          ListenTask* task = new GeneralListenTask<S > (dynamic_cast<S*> (this), address, port, reuseAddress);
+//
+//          if (! task->isBound()) {
+//            deleteTask(task);
+//            return false;
+//          }
+//
+//          _scheduler->registerTask(task);
+//
+//          return true;
         }
 
       public:

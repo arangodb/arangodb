@@ -120,6 +120,7 @@ case $target in
     STATIC_LIBS=""
     DYNAMIC_LIBS=""
     LIBTOOL_LIBS=""
+    USE_DYLD="yes"
     ;;
 
   *)

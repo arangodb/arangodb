@@ -344,7 +344,7 @@ namespace triagens {
       seteuid(_loggingUid);
 #endif
 
-      TRI_CloseLogging();
+      bool threaded = TRI_ShutdownLogging();
 
       Logger::setApplicationName(logApplicationName);
       Logger::setHostName(logHostName);
@@ -367,6 +367,8 @@ namespace triagens {
       TRI_SetLogSeverityLogging(logSeverity);
       TRI_SetPrefixLogging(logPrefix);
       TRI_SetThreadIdentifierLogging(logThreadId);
+
+      TRI_InitialiseLogging(threaded);
 
       TRI_CreateLogAppenderFile(logFile);
       TRI_CreateLogAppenderSyslog(logPrefix, logSyslog);
@@ -392,10 +394,11 @@ namespace triagens {
 
         // do not use init files
         if (StringUtils::tolower(initFile) == string("none")) {
+          LOGGER_INFO << "using no init file at all";
           return true;
         }
 
-        LOGGER_DEBUG << "using init file '" << initFile << "'";
+        LOGGER_INFO << "using init file '" << initFile << "'";
 
         bool ok = options.parse(descriptionFile, initFile);
 
@@ -406,6 +409,9 @@ namespace triagens {
         }
 
         return ok;
+      }
+      else {
+        LOGGER_DEBUG << "no init file has been specified";
       }
 
       // nothing has been specified on the command line regarding configuration file
@@ -424,7 +430,7 @@ namespace triagens {
 
           // check and see if file exists
           if (FileUtils::exists(homeDir)) {
-            LOGGER_DEBUG << "using init file '" << homeDir << "'";
+            LOGGER_INFO << "using user init file '" << homeDir << "'";
 
             bool ok = options.parse(descriptionFile, homeDir);
 
@@ -436,14 +442,21 @@ namespace triagens {
 
             return ok;
           }
+          else {
+            LOGGER_INFO << "no user init file '" << homeDir << "' found";
+          }
+        }
+        else {
+          LOGGER_DEBUG << "no user init file, $HOME is empty";
         }
       }
 
 #ifdef _SYSCONFDIR_
 
       // try the configuration file in the system directory - if there is one
-      // note that the system directory is dependent upon how the user installed
-      // the application server.
+
+      // Please note that the system directory changes depending on
+      // where the user installed the application server.
 
       if (! systemConfigFile.empty()) {
         string sysDir = string(_SYSCONFDIR_);
@@ -458,7 +471,7 @@ namespace triagens {
 
           // check and see if file exists
           if (FileUtils::exists(sysDir)) {
-            LOGGER_DEBUG << "using init file '" << sysDir << "'";
+            LOGGER_INFO << "using init file '" << sysDir << "'";
 
             bool ok = options.parse(descriptionFile, sysDir);
 
@@ -470,6 +483,12 @@ namespace triagens {
 
             return ok;
           }
+          else {
+            LOGGER_INFO << "no system init file '" << sysDir << "' found";
+          }
+        }
+        else {
+          LOGGER_DEBUG << "no system init file, not system directory is known";
         }
       }
 

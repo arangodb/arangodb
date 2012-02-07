@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief joins
+/// @brief %BRIEF%
 ///
 /// @file
 ///
@@ -25,11 +25,14 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_STORAGE_DURHAM_JOIN
-#define TRIAGENS_STORAGE_DURHAM_JOIN
+#ifndef TRIAGENS_DURHAM_VOC_BASE_JOIN_H
+#define TRIAGENS_DURHAM_VOC_BASE_JOIN_H 1
 
-#include "simple-collection.h"
-#include "cursor.h"
+#include <BasicsC/common.h>
+#include <BasicsC/vector.h>
+#include <BasicsC/strings.h>
+
+#include "VocBase/query.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -46,71 +49,54 @@ extern "C" {
 
 typedef enum {
   JOIN_TYPE_PRIMARY,
-  JOIN_TYPE_LIST,
   JOIN_TYPE_INNER,
-  JOIN_TYPE_OUTER
+  JOIN_TYPE_OUTER,
+  JOIN_TYPE_LIST
 }
 TRI_join_type_e;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief input for join operator
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_join_feeder_s {
-  TRI_sim_collection_t *_collection;
-  void **_start;
-  void **_end;
-  void **_current;
-  
-  void (*init) (struct TRI_join_feeder_s*);
-  void (*rewind) (struct TRI_join_feeder_s*);
-  TRI_doc_mptr_t *(*current) (struct TRI_join_feeder_s*);
-  TRI_doc_mptr_t *(*next) (struct TRI_join_feeder_s*);
-  void (*free) (struct TRI_join_feeder_s*);
-}
-TRI_join_feeder_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief join data structure
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_join_part_s {
-  TRI_join_feeder_t *_feeder; // data source
-  TRI_resultset_t *_resultset; // result output
   TRI_join_type_e _type;
+  TRI_qry_where_t* _condition;
+  TRI_doc_collection_t* _collection;
+  char* _collectionName;
+  char* _alias;
+//  TRI_js_exec_context_t _context;
 
   void (*free) (struct TRI_join_part_s*);
 } 
 TRI_join_part_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief multi join container data structure
+/// @brief join container data structure for select queries
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_join_s {
+typedef struct TRI_select_join_s {
   TRI_vector_pointer_t _parts;
   
-  void (*free) (struct TRI_join_s*);
+  void (*free) (struct TRI_select_join_s*);
 }
-TRI_join_t;
+TRI_select_join_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add a join part to a join
+/// @brief Add a part to a select join
 ////////////////////////////////////////////////////////////////////////////////
-
-void TRI_AddPartJoin(TRI_join_t *, const TRI_join_type_e, TRI_resultset_t *, TRI_sim_collection_t *);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize a join
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_join_t *TRI_CreateJoin(void);
+      
+bool TRI_AddPartSelectJoin(TRI_select_join_t*, 
+                           const TRI_join_type_e, 
+                           TRI_qry_where_t*, 
+                           char*, 
+                           char*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief execute joins
+/// @brief Create a new join 
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ExecuteJoin(TRI_join_t *);
+TRI_select_join_t* TRI_CreateSelectJoin (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

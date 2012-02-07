@@ -41,6 +41,7 @@
 #include "v8-shell.h"
 #include "v8-utils.h"
 #include "v8-vocbase.h"
+#include "v8-conv.h"
 
 using namespace v8;
 

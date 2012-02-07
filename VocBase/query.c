@@ -30,6 +30,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
 #include "VocBase/simple-collection.h"
+#include "VocBase/select-result.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   SELECT DOCUMENT
@@ -1445,6 +1446,9 @@ TRI_rc_cursor_t* TRI_ExecuteQueryAql (TRI_query_t* query, TRI_rc_context_t* cont
   cond_fptr condition;
   order_fptr order;
   bool applyPostSkipLimit;
+  TRI_select_result_t* _select;
+  TRI_vector_pointer_t* _dataparts;
+  TRI_select_datapart_t* _datapart;
 
   skip = query->_skip;
   limit = query->_limit;
@@ -1523,6 +1527,18 @@ TRI_rc_cursor_t* TRI_ExecuteQueryAql (TRI_query_t* query, TRI_rc_context_t* cont
   else {
     order = OrderDataGeneralQuery;
   }
+
+
+// stj
+_dataparts = (TRI_vector_pointer_t*) TRI_Allocate(sizeof(TRI_vector_pointer_t));
+TRI_InitVectorPointer(_dataparts);
+_datapart = TRI_CreateDataPart("fux", query->_primary, RESULT_PART_SINGLE);
+TRI_PushBackVectorPointer(_dataparts, _datapart);
+_select = TRI_CreateSelectResult(_dataparts);
+
+if (_select != NULL) {
+  _select->free(_select);
+}
 
   // .............................................................................
   // construct a collection subset

@@ -44,7 +44,7 @@ namespace triagens {
       GeneralListenTask& operator= (GeneralListenTask const&);
 
       public:
-
+/*
         ////////////////////////////////////////////////////////////////////////////////
         /// @brief listen to given address and port
         ////////////////////////////////////////////////////////////////////////////////
@@ -59,6 +59,14 @@ namespace triagens {
 
         GeneralListenTask (S* server, int port, bool reuseAddress)
           : Task("GeneralListenTask"), ListenTask(port, reuseAddress), server(server) {
+        }
+*/
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief listen to given port
+        ////////////////////////////////////////////////////////////////////////////////
+
+        GeneralListenTask (S* server, struct addrinfo *aip, bool reuseAddress)
+          : Task("GeneralListenTask"), ListenTask(aip, reuseAddress), server(server) {
         }
 
       protected:

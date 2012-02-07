@@ -413,7 +413,7 @@ bool QLAstNodeIsRelationalOperator (QL_ast_node_t *node) {
 /// @brief return whether a node is a constant
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLAstNodeIsBooleanizable (QL_ast_node_t *node) {
+bool QLAstNodeIsBooleanizable (const QL_ast_node_t *node) {
   switch (node->_type) {
     case QLNodeValueBool:
     // case QLNodeValueString: // TODO

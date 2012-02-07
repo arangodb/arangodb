@@ -42,6 +42,7 @@
 #include "Dispatcher/ApplicationServerDispatcher.h"
 #include "Dispatcher/DispatcherImpl.h"
 #include "HttpServer/HttpHandlerFactory.h"
+#include "HttpServer/RedirectHandler.h"
 #include "Logger/Logger.h"
 #include "Rest/Initialise.h"
 #include "RestHandler/RestActionHandler.h"
@@ -167,6 +168,10 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
     _databasePath("/var/lib/avocado"),
     _vocbase(0) {
   _workingDirectory = "/var/tmp";
+
+#ifdef _PKGDATADIR_
+  _systemActionPath = string(_PKGDATADIR_) + "/js/system";
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -259,7 +264,7 @@ void AvocadoServer::buildApplicationServer () {
   // .............................................................................
 
   additional["JAVASCRIPT Options"]
-    ("startup.directory", &_startupPath, "path to the directory containing the startup scripts")
+    ("startup.directory", &_startupPath, "path to the directory containing alternate startup scripts")
     ("startup.modules-path", &_startupModules, "one or more directories separated by semicolon")
     ("action.directory", &_actionPath, "path to the action directory, defaults to <database.directory>/_ACTIONS")
   ;
@@ -300,6 +305,7 @@ void AvocadoServer::buildApplicationServer () {
   }
 
   if (_startupPath.empty()) {
+    LOGGER_INFO << "using built-in JavaScript startup files";
     StartupLoader.defineScript("bootstrap/modules.js", JS_bootstrap_modules);
     StartupLoader.defineScript("bootstrap/print.js", JS_bootstrap_print);
     StartupLoader.defineScript("server/actions.js", JS_server_actions);
@@ -308,6 +314,7 @@ void AvocadoServer::buildApplicationServer () {
     StartupLoader.defineScript("server/shell.js", JS_server_shell);
   }
   else {
+    LOGGER_INFO << "using JavaScript startup files at '" << _startupPath << "'";
     StartupLoader.setDirectory(_startupPath);
   }
 
@@ -335,13 +342,20 @@ void AvocadoServer::buildApplicationServer () {
     }
 
     ActionLoader.setDirectory(path);
+
+    LOGGER_INFO << "using database action files at '" << path << "'";
   }
   else {
     ActionLoader.setDirectory(_actionPath);
+    LOGGER_INFO << "using alternate action files at '" << _actionPath << "'";
   }
 
   if (! _systemActionPath.empty()) {
     SystemActionLoader.setDirectory(_systemActionPath);
+    LOGGER_INFO << "using system action files at '" << _systemActionPath << "'";
+  }
+  else {
+    LOGGER_INFO << "system actions are disabled, empty system action path";
   }
 
   // .............................................................................
@@ -462,6 +476,8 @@ int AvocadoServer::startupServer () {
     adminFactory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
     adminFactory->addPrefixHandler(RestVocbaseBaseHandler::ACTION_PATH, RestHandlerCreator<RestActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
     adminFactory->addPrefixHandler(RestVocbaseBaseHandler::SYSTEM_ACTION_PATH, RestHandlerCreator<RestSystemActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
+
+    adminFactory->addHandler("/", RedirectHandler::create, (void*) "/admin/index.html");
 
     _adminHttpServer = _applicationHttpServer->buildServer(adminFactory, adminPorts);
   }

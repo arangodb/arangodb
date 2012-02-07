@@ -242,7 +242,7 @@ bool QLAstNodeIsRelationalOperator (QL_ast_node_t *);
 /// @brief return whether a node is convertable into a bool value
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLAstNodeIsBooleanizable (QL_ast_node_t *);
+bool QLAstNodeIsBooleanizable (const QL_ast_node_t *);
 
 
 ////////////////////////////////////////////////////////////////////////////////

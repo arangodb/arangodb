@@ -3,6 +3,7 @@
 ################################################################################
 
 libavocadodb_a_CPPFLAGS = \
+	$(AM_CPPFLAGS) \
 	@BOOST_CPPFLAGS@ \
 	@LIBEV_CPPFLAGS@ \
 	@MATH_CPPFLAGS@ \
@@ -158,6 +159,8 @@ libavocadodb_a_SOURCES = \
 	VocBase/datafile.c \
 	VocBase/document-collection.c \
 	VocBase/fluent-query.c \
+	VocBase/select-result.c \
+	VocBase/join.c \
 	VocBase/query.c \
 	VocBase/headers.c \
 	VocBase/index.c \
@@ -178,6 +181,7 @@ libavocadodb_a_SOURCES = \
 	QL/tokens.c
 
 avocado_CPPFLAGS = \
+	$(AM_CPPFLAGS) \
 	@BOOST_CPPFLAGS@ \
 	@LIBEV_CPPFLAGS@ \
 	@MATH_CPPFLAGS@ \
@@ -310,6 +314,9 @@ WIKI = \
         Doxygen/xml/d3/d5b/jsUnity.md \
         Doxygen/xml/da/db6/InstallManual.md \
         Doxygen/xml/dd/dd7/RefManual.md
+
+Doxygen/xml/da/db6/InstallManual.md: Doxygen/xml/da/db6/InstallManual.xml
+	python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
 
 Doxygen/xml/dd/dd7/RefManual.md: Doxygen/xml/dd/dd7/RefManual.xml
 	python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@

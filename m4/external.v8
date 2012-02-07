@@ -6,17 +6,20 @@ dnl ----------------------------------------------------------------------------
 
 V8_CPPFLAGS=""
 V8_LDFLAGS=""
+V8_LIBS=""
 
 AC_ARG_WITH(v8,
   AS_HELP_STRING([--with-v8=DIR], [where the v8 library and includes are located]),
   [V8_CPPFLAGS="-I$withval/include"
    V8_LDFLAGS="-L$withval/lib"
+   V8_LIB_PATH="$withval/lib"
    V8="$withval"]
 )
 
 AC_ARG_WITH(v8-lib,
   AS_HELP_STRING([--with-v8-lib=DIR], [where the v8 library is located]),
-  [V8_LDFLAGS="-L$withval"]
+  [V8_LDFLAGS="-L$withval"
+   V8_LIB_PATH="$withval"]
 )
 
 TR_STATIC_ENABLE([v8])
@@ -75,6 +78,8 @@ if test "$cross_compiling" = yes; then :
   TRI_V8_VERSION="V8"
   AC_MSG_WARN([cannot compute V8 version number when cross compiling])
 else
+  if test "x`type -t ac_fn_cxx_try_run`" = "xfunction" 2> /dev/null;  then
+
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <v8.h>
@@ -85,8 +90,19 @@ int main (int, char**) {
 }
 
 _ACEOF
-  if test "x`type -t ac_fn_cxx_try_run`" = "xfunction" 2> /dev/null;  then
+
+    if test "x$V8_LIB_PATH" != x;  then
+      if test "$USE_DYLD" = yes; then
+	save_DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH"
+	DYLD_LIBRARY_PATH="$V8_LIB_PATH:$DYLD_LIBRARY_PATH"
+      else
+	save_LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
+	DYLD_LIBRARY_PATH="$V8_LIB_PATH:$LD_LIBRARY_PATH"
+      fi
+    fi
+
     AC_MSG_CHECKING([V8 version])
+
     if ac_fn_cxx_try_run "$LINENO" >conftest.output;  then
       TRI_V8_VERSION=`cat conftest.output`
       AC_MSG_RESULT([$TRI_V8_VERSION])
@@ -94,12 +110,21 @@ _ACEOF
       AC_MSG_RESULT([failed])
       AC_MSG_ERROR([Please install the V8 library from Google])
     fi
+
+    rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext conftest.$ac_objext conftest.beam conftest.$ac_ext conftest.output
+
+    if test "x$V8_LIB_PATH" != x;  then
+      if test "$USE_DYLD" = yes; then
+	DYLD_LIBRARY_PATH="$save_DYLD_LIBRARY_PATH"
+      else
+	LD_LIBRARY_PATH="$save_LD_LIBRARY_PATH"
+      fi
+    fi
   else
     TRI_V8_VERSION="V8"
     AC_MSG_WARN([cannot compute V8 version number, old autoconf version])
   fi
 fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext conftest.$ac_objext conftest.beam conftest.$ac_ext conftest.output
 
 
 dnl -----------------------------------------------------------------------------------------

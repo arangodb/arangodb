@@ -29,6 +29,8 @@
 #ifndef TRIAGENS_FYN_REST_LISTEN_TASK_H
 #define TRIAGENS_FYN_REST_LISTEN_TASK_H 1
 
+#include <netdb.h>
+
 #include "Scheduler/Task.h"
 
 #include <Basics/Mutex.h>
@@ -54,16 +56,22 @@ namespace triagens {
       public:
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// @brief listen to given address and port
+        /// @brief listen to given address and port (deprecated)
         ////////////////////////////////////////////////////////////////////////////////
 
         ListenTask (string const& address, int port, bool reuseAddress);
 
         ////////////////////////////////////////////////////////////////////////////////
-        /// @brief listen to given port
+        /// @brief listen to given port (deprecated)
         ////////////////////////////////////////////////////////////////////////////////
 
         ListenTask (int port, bool reuseAddress);
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief listen to given adress info pointer
+        ////////////////////////////////////////////////////////////////////////////////
+
+        ListenTask (struct addrinfo *aip, bool reuseAddress);
 
       public:
 
@@ -72,15 +80,6 @@ namespace triagens {
         ////////////////////////////////////////////////////////////////////////////////
 
         bool isBound () const;
-
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief try to rebind to port
-        ///
-        /// Note that this method can only be called before the task has been
-        /// registered.
-        ////////////////////////////////////////////////////////////////////////////////
-
-        bool rebind ();
 
       protected:
 
@@ -132,11 +131,12 @@ namespace triagens {
 
       private:
         bool bindSocket ();
+        bool bindSocket (struct addrinfo *aip);
 
       private:
         bool reuseAddress;
-        string const address;
-        int const port;
+        string address;
+        int port;
         socket_t listenSocket;
         bool bound;
 
