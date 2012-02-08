@@ -8,11 +8,11 @@ effort to operate for the administrator.
 ## Compilation
 
 1. Install Dependencies: V8, boost, libev
-2. autoconf
+2. make setup
 3. ./configure --with-boost=PATH_TO_BOOST --with-libev=PATH_TO_LIBEV --with-v8=PATH_TO_V8
 4. make
 5. create a directory `/var/lib/avocado` where you are allowed to read and write
-6. "./avocado" to start a REST server or "./avocado --shell" for debugging
+6. "./avocado /var/lib/avocado" to start a REST server or "./avocado /var/lib/avocado --shell" for debugging
 
 ### Mac OS X Hints
 
