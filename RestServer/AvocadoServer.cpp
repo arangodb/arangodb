@@ -260,7 +260,7 @@ void AvocadoServer::buildApplicationServer () {
   // database options
   // .............................................................................
 
-  additional["DATABASE Options:help-extended"]
+  additional["DATABASE Options:help-admin"]
     ("database.directory", &_databasePath, "path to the database directory (use this option in configuration files instead of passing it via the command line)")
   ;
 
