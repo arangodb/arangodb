@@ -19,7 +19,6 @@ effort to operate for the administrator.
 If you install AvocadoDB on Mac OS X we collected some hints for you:
 
 * The version of bison delivered with OS X is out of date. Update it before installing.
-* Due to the oddities of the boost library, at least the homebrew version requires some modification: In `/usr/local/Cellar/boost/1.48.0/lib` sym-link the regex, system and programm-option libraries to a name without `-mt`
 
 ## First Steps
 
