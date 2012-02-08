@@ -506,7 +506,7 @@ bool TRI_WritePointer (int fd, void const* buffer, size_t length) {
 bool TRI_fsync (int fd) {
   int res = fsync(fd);
 
-ifdef __APPLE__
+#ifdef __APPLE__
 
   if (res == 0) {
     res = fcntl(fd, F_FULLFSYNC, 0);
