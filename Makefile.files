@@ -273,6 +273,7 @@ BUILT_SOURCES += \
 
 DOXYGEN = \
 	Doxygen/js/bootstrap/modules.c \
+	Doxygen/js/bootstrap/print.c \
 	Doxygen/js/modules/graph.c \
 	Doxygen/js/modules/jsunity.c \
 	Doxygen/js/server/modules.c \

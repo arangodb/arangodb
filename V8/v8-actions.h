@@ -89,8 +89,10 @@
 /// <ol>
 ///  <li>@ref DefineActionDefineAction "defineAction"</li>
 ///  <li>@ref DefineActionDefineSystemAction "defineSystemAction"</li>
-///  <li>@ref JSF_actionResult "actionResult"</li>
-///  <li>@ref JSF_actionError "actionError"</li>
+///  <li>@ref DefineActionActionResult "actionResult"</li>
+///  <li>@ref DefineActionActionError "actionError"</li>
+///  <li>@ref DefineActionQueryResult "queryResult"</li>
+///  <li>@ref DefineActionQueryReferences "queryReferences"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -112,11 +114,17 @@
 /// @anchor DefineActionDefineSystemAction
 /// @copydetails JS_DefineSystemAction
 ///
-/// @anchor JSF_actionResult
+/// @anchor DefineActionActionResult
 /// @copydetails JSF_actionResult
 ///
-/// @anchor JSF_actionError
+/// @anchor DefineActionActionError
 /// @copydetails JSF_actionError
+///
+/// @anchor DefineActionQueryResult
+/// @copydetails JSF_queryResult
+///
+/// @anchor DefineActionQueryReferences
+/// @copydetails JSF_queryReferences
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
