@@ -35,12 +35,14 @@
 #include <direct.h>
 #endif
 
-#include "BasicsC/logging.h"
-#include "BasicsC/strings.h"
-#include "BasicsC/string-buffer.h"
-#include "BasicsC/locks.h"
-
 #include <sys/file.h>
+
+#include "BasicsC/conversions.h"
+#include "BasicsC/locks.h"
+#include "BasicsC/logging.h"
+#include "BasicsC/string-buffer.h"
+#include "BasicsC/strings.h"
+#include "BasicsC/threads.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
