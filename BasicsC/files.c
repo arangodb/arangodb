@@ -585,7 +585,7 @@ int TRI_CreateLockFile (char const* filename) {
     return 0;
   }
 
-  fd = TRI_CERATE(filename, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+  fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
 
   if (fd == -1) {
     TRI_set_errno(TRI_ERROR_OPEN_ERROR);
