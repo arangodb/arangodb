@@ -30,6 +30,10 @@
 
 #include "V8/v8-globals.h"
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     documentation
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @page Actions First Steps with Actions
 ///
@@ -77,60 +81,6 @@
 /// Next steps: learn more about
 ///
 /// - @ref DefineAction
-/// - @ref ActionsQueryBuilding
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page ActionsQueryBuildingTOC
-///
-/// <ol>
-///  <li>@ref ActionsQueryBuildingAll "all"</li>
-///  <li>@ref ActionsQueryBuildingDistance "distance"</li>
-///  <li>@ref ActionsQueryBuildingDocument "document"</li>
-///  <li>@ref ActionsQueryBuildingGeo "geo"</li>
-///  <li>@ref ActionsQueryBuildingLimit "limit"</li>
-///  <li>@ref ActionsQueryBuildingNear "near"</li>
-///  <li>@ref ActionsQueryBuildingSelect "select"</li>
-///  <li>@ref ActionsQueryBuildingSkip "skip"</li>
-///  <li>@ref ActionsQueryBuildingWithin "within"</li>
-/// </ol>
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page ActionsQueryBuilding Query Building Functions for Actions
-///
-/// The following functions can be used to build the result-set.
-///
-/// <hr>
-/// @copydoc ActionsQueryBuildingTOC
-/// <hr>
-///
-/// @anchor ActionsQueryBuildingAll
-/// @copydetails JS_AllQuery
-///
-/// @anchor ActionsQueryBuildingDistance
-/// @copydetails JS_DistanceQuery
-///
-/// @anchor ActionsQueryBuildingDocument
-/// @copydetails JS_DocumentQuery
-///
-/// @anchor ActionsQueryBuildingGeo
-/// @copydetails JS_GeoQuery
-///
-/// @anchor ActionsQueryBuildingLimit
-/// @copydetails JS_LimitQuery
-///
-/// @anchor ActionsQueryBuildingNear
-/// @copydetails JS_NearQuery
-///
-/// @anchor ActionsQueryBuildingSelect
-/// @copydetails JS_SelectQuery
-///
-/// @anchor ActionsQueryBuildingSkip
-/// @copydetails JS_SkipQuery
-///
-/// @anchor ActionsQueryBuildingWithin
-/// @copydetails JS_WithinQuery
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -139,6 +89,8 @@
 /// <ol>
 ///  <li>@ref DefineActionDefineAction "defineAction"</li>
 ///  <li>@ref DefineActionDefineSystemAction "defineSystemAction"</li>
+///  <li>@ref JSF_actionResult "actionResult"</li>
+///  <li>@ref JSF_actionError "actionError"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -146,8 +98,8 @@
 /// @page DefineAction Defining an Action
 ///
 /// Actions are user defined functions and are stored in JavaScript files in a
-/// directory called _ACTIONS under the database directory. System action are
-/// predefined actions used by the server. They are stored in system wide
+/// directory called @LIT{_ACTIONS} under the database directory. System action
+/// are predefined actions used by the server. They are stored in system wide
 /// directory.
 ///
 /// <hr>
@@ -159,6 +111,12 @@
 ///
 /// @anchor DefineActionDefineSystemAction
 /// @copydetails JS_DefineSystemAction
+///
+/// @anchor JSF_actionResult
+/// @copydetails JSF_actionResult
+///
+/// @anchor JSF_actionError
+/// @copydetails JSF_actionError
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------

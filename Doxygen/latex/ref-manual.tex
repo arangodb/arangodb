@@ -1,0 +1,68 @@
+\documentclass[a4paper]{book}
+\usepackage{makeidx}
+\usepackage{graphicx}
+\usepackage{multicol}
+\usepackage{float}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{ifthen}
+\usepackage[table]{xcolor}
+\usepackage{textcomp}
+\usepackage{alltt}
+\usepackage[utf8]{inputenc}
+\usepackage{mathptmx}
+\usepackage[scaled=.90]{helvet}
+\usepackage{courier}
+\usepackage{doxygen}
+\lstset{language=C++,inputencoding=utf8,basicstyle=\footnotesize,breaklines=true,breakatwhitespace=true,tabsize=8,numbers=left }
+\makeindex
+\setcounter{tocdepth}{3}
+\renewcommand{\footrulewidth}{0.4pt}
+\begin{document}
+\begin{titlepage}
+\vspace*{7cm}
+\begin{center}
+{\Large AvocadoDB Reference Manual }\\
+\vspace*{1cm}
+{\large by Dr. Frank Celler}\\
+\vspace*{0.5cm}
+{\small Version 0.1.0}\\
+\end{center}
+\end{titlepage}
+\clearemptydoublepage
+\pagenumbering{roman}
+\tableofcontents
+\clearemptydoublepage
+\pagenumbering{arabic}
+\chapter{JavaScript Modules}
+\label{JSModules}
+\input{d9/de4/JSModules}
+\chapter{Module \char`\"{}console\char`\"{}}
+\label{JSModuleConsole}
+\input{d7/d40/JSModuleConsole}
+\chapter{Module \char`\"{}fs\char`\"{}}
+\label{JSModuleFs}
+\input{d2/d66/JSModuleFs}
+\chapter{Module \char`\"{}graph\char`\"{}}
+\label{JSModuleGraph}
+\input{d2/d35/JSModuleGraph}
+\chapter{Module \char`\"{}internal\char`\"{}}
+\label{JSModuleInternal}
+\input{d3/d4b/JSModuleInternal}
+\chapter{Command-\/Line Options}
+\label{CommandLine}
+\input{db/d15/CommandLine}
+\chapter{Command-\/Line Options for the AvocadoDB}
+\label{CommandLineAvocado}
+\input{d9/ddd/CommandLineAvocado}
+\chapter{Command-\/Line Options for Communication}
+\label{CommandLineScheduler}
+\input{d9/db2/CommandLineScheduler}
+\chapter{Command-\/Line Options for Logging}
+\label{CommandLineLogging}
+\input{d3/d58/CommandLineLogging}
+\chapter{Command-\/Line Options for Random Numbers}
+\label{CommandLineRandom}
+\input{df/d91/CommandLineRandom}
+\printindex
+\end{document}

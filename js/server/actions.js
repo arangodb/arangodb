@@ -38,6 +38,17 @@ var time = SYS_TIME;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a result of a query as documents
+///
+/// @FUN{queryResult(@FA{req}, @FA{res}, @FA{query})}
+///
+/// The functions returns the result of a query using pagination. It assumes
+/// that the request has the numerical parameters @LIT{blocksize} and @LIT{page}
+/// or @LIT{offset}. @LIT{blocksize} determines the maximal number of result
+/// documents to return. You can either specify @LIT{page} or @LIT{offset}.
+/// @LIT{page} is the number of pages to skip, i. e. @LIT{page} *
+/// @LIT{blocksize} documents. @LIT{offset} is the number of documents to skip.
+///
+/// If you are using pagination, than the query must be a sorted query.
 ////////////////////////////////////////////////////////////////////////////////
 
 function queryResult (req, res, query) {
@@ -82,6 +93,9 @@ function queryResult (req, res, query) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a result of a query as references
+///
+/// The methods works like @FN{queryResult} but instead of the documents only
+/// document identifiers are returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 function queryReferences (req, res, query) {
@@ -130,6 +144,9 @@ function queryReferences (req, res, query) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a result
+///
+/// The functions returns a result object. @FA{code} is the status code
+/// to return.
 ////////////////////////////////////////////////////////////////////////////////
 
 function actionResult (req, res, code, result) {
@@ -145,6 +162,10 @@ function actionResult (req, res, code, result) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns an error
+///
+/// The functions returns an error message. The status code is 500 and the
+/// returned object is an array with an attribute @LIT{error} containing
+/// the error message.
 ////////////////////////////////////////////////////////////////////////////////
 
 function actionError (req, res, err) {

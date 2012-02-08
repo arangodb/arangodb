@@ -79,8 +79,6 @@ using namespace triagens::avocado;
 ///      </li>
 ///      <li>@ref DefineAction
 ///      </li>
-///      <li>@ref ActionsQueryBuilding
-///      </li>
 ///     </ol>
 ///    </li>
 ///    <li>@ref HttpInterface
