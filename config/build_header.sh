@@ -13,7 +13,6 @@ if test -d ${DIR}/.svn;  then
   revision=`(cd $DIR && svnversion)`
 else
   if test ! -f "$INFO";  then
-    echo "INFO: cannot open info file $INFO, using exported"
     revision="exported"
   else
     revision=`grep 'Revision:' $INFO | awk '{print $2}'`
