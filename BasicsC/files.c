@@ -89,17 +89,19 @@ static TRI_read_write_lock_t LockFileNames;
 ///         -1 when the element was not found
 ////////////////////////////////////////////////////////////////////////////////
 
-static int __LookupElementVectorString (TRI_vector_string_t * vector, char const * element) {
+static ssize_t LookupElementVectorString (TRI_vector_string_t * vector, char const * element) {
   int idx = -1;
   size_t i;
 
   TRI_ReadLockReadWriteLock(&LockFileNames);
-  for (i = 0; i < vector->_length; i++) {
-    if (strcmp(element, vector->_buffer[i]) == 0) {
+
+  for (i = 0;  i < vector->_length;  i++) {
+    if (TRI_EqualString(element, vector->_buffer[i])) {
       idx = i;
       break;
     }
   }
+
   TRI_ReadUnlockReadWriteLock(&LockFileNames);
   return idx;
 }
@@ -108,13 +110,16 @@ static int __LookupElementVectorString (TRI_vector_string_t * vector, char const
 /// @brief callback function for removing all locked files by a process
 ////////////////////////////////////////////////////////////////////////////////
 
-static void __RemoveAllLockedFiles (void) {
+static void RemoveAllLockedFiles (void) {
   size_t i;
+
   TRI_WriteLockReadWriteLock(&LockFileNames);
-  for (i = 0; i < FileNames._length; i++) {
+
+  for (i = 0;  i < FileNames._length;  i++) {
     TRI_UnlinkFile(FileNames._buffer[i]);
     TRI_RemoveVectorString(&FileNames, i);
   }
+
   TRI_WriteUnlockReadWriteLock(&LockFileNames);
 }
 
@@ -122,14 +127,15 @@ static void __RemoveAllLockedFiles (void) {
 /// @brief initializes some structures which are needed by the file functions
 ////////////////////////////////////////////////////////////////////////////////
 
-static void TRI_InitialiseFiles (void) {
+static void InitialiseLockFiles (void) {
   if (Initialised) {
     return;
   }
+
   TRI_InitVectorString(&FileNames);
   TRI_InitReadWriteLock(&LockFileNames);
 
-  atexit(&__RemoveAllLockedFiles);
+  atexit(&RemoveAllLockedFiles);
   Initialised = true;
 }
 
@@ -500,7 +506,7 @@ bool TRI_WritePointer (int fd, void const* buffer, size_t length) {
 bool TRI_fsync (int fd) {
   int res = fsync(fd);
 
-#ifdef __APPLE__
+ifdef __APPLE__
 
   if (res == 0) {
     res = fcntl(fd, F_FULLFSYNC, 0);
@@ -553,12 +559,10 @@ char* TRI_SlurpFile (char const* filename) {
       return NULL;
     }
 
-
     TRI_AppendString2StringBuffer(&result, buffer, n);
   }
 
   TRI_CLOSE(fd);
-
   return result._buffer;
 }
 
@@ -567,33 +571,32 @@ char* TRI_SlurpFile (char const* filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_CreateLockFile (char const* filename) {
+  TRI_pid_t pid;
+  char* buf;
+  char* fn;
   int fd;
   int rv;
-  int pid;
-  char buf[128];
-  char * fn;
 
-  pid = getpid();
+  InitialiseLockFiles();
 
-  memset(buf, '\0', 128);
-  sprintf(buf, "%d", pid);
-
-  TRI_InitialiseFiles();
-
-  if (__LookupElementVectorString(&FileNames, filename) >= 0) {
-//    TRI_set_errno(TRI_DF_STATE_LOCK_ERROR);
+  if (LookupElementVectorString(&FileNames, filename) >= 0) {
     return 0;
   }
 
-  fd = open(filename, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+  fd = TRI_OPEN(filename, O_CREAT | O_EXCL | O_RDWR);
 
-  if    (fd == -1) {
+  if (fd == -1) {
     TRI_set_errno(TRI_ERROR_OPEN_ERROR);
     return TRI_ERROR_OPEN_ERROR;
   }
 
-  rv = write(fd, buf, sizeof(buf));
-  close(fd);
+  pid = TRI_CurrentProcessId();
+  buf = TRI_StringUInt32(pid);
+
+  rv = TRI_WRITE(fd, buf, sizeof(buf));
+
+  TRI_CLOSE(fd);
+  TRI_FreeString(buf);
 
   if (rv == -1) {
     TRI_UNLINK(filename);
@@ -605,16 +608,15 @@ int TRI_CreateLockFile (char const* filename) {
   rv = flock(fd, LOCK_EX);
 
   if (rv == -1) { // file may be locked already
-    close(fd);
+    TRI_CLOSE(fd);
     TRI_UNLINK(filename);
     TRI_set_errno(TRI_ERROR_LOCK_ERROR);
     return TRI_ERROR_LOCK_ERROR;
   }
 
-//  close(fd); file descriptor has to be valid for file locking
+  //  close(fd); file descriptor has to be valid for file locking
 
-  fn = TRI_Allocate(strlen(filename) + 1);
-  strcpy(fn, filename);
+  fn = TRI_DuplicateString(filename);
 
   TRI_WriteLockReadWriteLock(&LockFileNames);
   TRI_PushBackVectorString(&FileNames, fn);
@@ -629,29 +631,29 @@ int TRI_CreateLockFile (char const* filename) {
 
 int TRI_VerifyLockFile (char const* filename) {
   int fd;
-  pid_t pid;
+  TRI_pid_t pid;
   ssize_t n;
   uint32_t fc;
   char buffer[128];
   int can_lock;
   int rv;
 
-  if (TRI_ExistsFile(filename) == false) {
+  if (! TRI_ExistsFile(filename)) {
     return TRI_ERROR_NO_ERROR;
   }
 
   fd = TRI_OPEN(filename, O_RDONLY);
-
   n = TRI_READ(fd, buffer, sizeof(buffer));
-  close(fd);
+  TRI_CLOSE(fd);
 
   if (n == 0) { // file empty
     TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
     return TRI_ERROR_ILLEGAL_NUMBER;
   }
-  fc = atoi(buffer);
 
-  if ((fc == 0) || (fc == INT32_MAX) || (fc == INT32_MIN)) {
+  fc = TRI_UInt32String(buffer);
+
+  if (TRI_errno() != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
     return TRI_ERROR_ILLEGAL_NUMBER;
   }
@@ -666,11 +668,13 @@ int TRI_VerifyLockFile (char const* filename) {
   fd = TRI_OPEN(filename, O_RDONLY);
   can_lock = flock(fd, LOCK_EX | LOCK_NB);
   rv = 0;
+
   if (can_lock == 0) { // file was not yet be locked
     TRI_set_errno(TRI_ERROR_UNLOCKED_FILE);
     flock(fd, LOCK_UN);
     rv = TRI_ERROR_UNLOCKED_FILE;
   }
+
   TRI_CLOSE(fd);
   return rv;
 
@@ -684,28 +688,33 @@ int TRI_DestroyLockFile (char const* filename) {
   int fd;
   int n;
   int res;
-  TRI_InitialiseFiles();
-  n = __LookupElementVectorString(&FileNames, filename);
+
+  InitialiseLockFiles();
+  n = LookupElementVectorString(&FileNames, filename);
 
   if (n < 0) {
-    ;
     return -1;
   }
 
-  fd = open(filename, O_RDWR);
+  fd = TRI_OPEN(filename, O_RDWR);
   res = flock(fd, LOCK_UN);
-  close(fd);
+  TRI_CLOSE(fd);
 
   if (res == 0) {
     TRI_UnlinkFile(filename);
-    TRI_WriteLockReadWriteLock(&LockFileNames);
 
+    TRI_WriteLockReadWriteLock(&LockFileNames);
     TRI_RemoveVectorString(&FileNames, n);
     TRI_WriteUnlockReadWriteLock(&LockFileNames);
   }
 
   return res;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

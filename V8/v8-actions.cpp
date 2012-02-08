@@ -283,19 +283,19 @@ static v8::Handle<v8::Value> DefineActionHelper (v8::Arguments const& argv, TRI_
 /// @FUN{defineAction(@FA{name}, @FA{callback})}
 ///
 /// Defines an action named @FA{name}, which might contain slashes. The action
-/// can be accessed using the path @c /_action/name. The callback function
-/// is executed as soon as a request is received.
+/// can be accessed using the path @LIT{/_action/@FA{name}}. The
+/// callback function is executed as soon as a request is received.
 ///
 /// @FA{callback}(@FA{request}, @FA{response})
 ///
 /// The request arguments contains a description of the request. A request
-/// parameter @c foo is accessible as @c request.foo.
+/// parameter @LIT{foo} is accessible as @LIT{request.foo}.
 ///
 /// The callback must define the @FA{response}.
 ///
-/// - @FA{response}.responseCode: the response code
-/// - @FA{response}.contentType: the content type of the response
-/// - @FA{response}.body: the body of the response
+/// - @LIT{@FA{response}.responseCode}: the response code
+/// - @LIT{@FA{response}.contentType}: the content type of the response
+/// - @LIT{@FA{response}.body}: the body of the response
 ///
 /// @FUN{defineAction(@FA{request}, @FA{response}, @FA{options})}
 ///
@@ -319,11 +319,15 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
 ///
 /// @FUN{defineSystemAction(@FA{name}, @FA{callback})}
 ///
+/// This function works like @FN{defineAction} but defines a system action
+/// instead of a user action. A system action is only available in the
+/// administration interface and the access path is @LIT{/_system/@FA{name}}.
+///
 /// @FUN{defineSystemAction(@FA{request}, @FA{response}, @FA{options})}
 ///
-/// This functions works like @FN{defineAction} but defines a system action
+/// This function works like @FN{defineAction} but defines a system action
 /// instead of a user action. A system action is only available in the
-/// administration interface and the access path is @c /_action/name.
+/// administration interface and the access path is @LIT{/_action/@FA{name}}.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DefineSystemAction (v8::Arguments const& argv) {
