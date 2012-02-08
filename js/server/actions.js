@@ -94,6 +94,8 @@ function queryResult (req, res, query) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a result of a query as references
 ///
+/// @FUN{queryReferences(@FA{req}, @FA{res}, @FA{query})}
+///
 /// The methods works like @FN{queryResult} but instead of the documents only
 /// document identifiers are returned.
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,6 +147,8 @@ function queryReferences (req, res, query) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a result
 ///
+/// @FUN{actionResult(@FA{req}, @FA{res}, @FA{code}, @FA{result})}
+///
 /// The functions returns a result object. @FA{code} is the status code
 /// to return.
 ////////////////////////////////////////////////////////////////////////////////
@@ -163,9 +167,11 @@ function actionResult (req, res, code, result) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns an error
 ///
+/// @FUN{actionError(@FA{req}, @FA{res}, @FA{errorMessage})}
+///
 /// The functions returns an error message. The status code is 500 and the
 /// returned object is an array with an attribute @LIT{error} containing
-/// the error message.
+/// the error message @FA{errorMessage}.
 ////////////////////////////////////////////////////////////////////////////////
 
 function actionError (req, res, err) {
