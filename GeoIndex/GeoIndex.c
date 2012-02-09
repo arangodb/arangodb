@@ -1,38 +1,28 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief geo index
 ///
-/// @file 
+/// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright by triAGENS GmbH - All rights reserved.
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
-/// The Programs (which include both the software and documentation)
-/// contain proprietary information of triAGENS GmbH; they are
-/// provided under a license agreement containing restrictions on use and
-/// disclosure and are also protected by copyright, patent and other
-/// intellectual and industrial property laws. Reverse engineering,
-/// disassembly or decompilation of the Programs, except to the extent
-/// required to obtain interoperability with other independently created
-/// software or as specified by law, is prohibited.
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
 ///
-/// The Programs are not intended for use in any nuclear, aviation, mass
-/// transit, medical, or other inherently dangerous applications. It shall
-/// be the licensee's responsibility to take all appropriate fail-safe,
-/// backup, redundancy, and other measures to ensure the safe use of such
-/// applications if the Programs are used for such purposes, and triAGENS
-/// GmbH disclaims liability for any damages caused by such use of
-/// the Programs.
+///     http://www.apache.org/licenses/LICENSE-2.0
 ///
-/// This software is the confidential and proprietary information of
-/// triAGENS GmbH. You shall not disclose such confidential and
-/// proprietary information and shall use it only in accordance with the
-/// terms of the license agreement you entered into with triAGENS GmbH.
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author R. A. Parker
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 /* GeoIndex.c -   GeoIndex algorithms                */
@@ -48,7 +38,7 @@
 
 #if GeoIndexFIXEDSET == 2
 #define GeoIndexFIXEDPOINTS 2
-#endif 
+#endif
 #if GeoIndexFIXEDSET == 3
 #define GeoIndexFIXEDPOINTS 3
 #endif
@@ -102,9 +92,9 @@ typedef struct
 /* level is the AVL-level.  It is 1 for a leaf pot,    */
 /* and always at least 1 more and at most 2 more than  */
 /* each of its children, and exactly 1 more than at    */
-/* least one of its children, - the AVL spec.          */ 
+/* least one of its children, - the AVL spec.          */
 /* "points" lists the slotid of the points.  This is   */
-/* only used for a leaf pot.                           */ 
+/* only used for a leaf pot.                           */
 /* =================================================== */
 typedef struct
 {
@@ -236,7 +226,7 @@ typedef struct
 /* point is too low, and otherwise putting both the    */
 /* children onto the stack (since it is faster to do   */
 /* this than suffer the cache miss to determine whether*/
-/* either or both of the children can be rejected)     */     
+/* either or both of the children can be rejected)     */
 /* =================================================== */
 typedef struct
 {
@@ -596,7 +586,7 @@ void GeoIndex_free(GeoIndex * gi)
     /* integers for use making a GeoString      */
 #define STRINGPERDEGREE 372827.01
     /* 2^26 - 1 = 0x3ffffff                     */
-#define HILBERTMAX 67108863  
+#define HILBERTMAX 67108863
 GeoString GeoMkHilbert(GeoCoordinate * c)
 {
     /* math.h under MacOS defines y1 and j1 as global variable */
@@ -609,8 +599,8 @@ GeoString GeoMkHilbert(GeoCoordinate * c)
     xx1=c->longitude;
     if(c->longitude < 0.0)
     {
-        xx1=c->longitude+180.0;  
-        z=1;      
+        xx1=c->longitude+180.0;
+        z=1;
     }
     x=(int) (xx1*STRINGPERDEGREE);
     y=(int) (yy1*STRINGPERDEGREE);
@@ -692,7 +682,7 @@ void GeoMkDetail(GeoIx * gix, GeoDetailedPoint * gd, GeoCoordinate * c)
         z1=(gix->fixed.z)[i];
         snmd=(xx1-gd->x)*(xx1-gd->x)+(yy1-gd->y)*(yy1-gd->y)+
                           (z1-gd->z)*(z1-gd->z);
-        (gd->fixdist)[i] = asin(sqrt(snmd)/2.0)*ARCSINFIX;      
+        (gd->fixdist)[i] = asin(sqrt(snmd)/2.0)*ARCSINFIX;
     }
 }
 /* =================================================== */
@@ -892,7 +882,7 @@ void GeoResultsInsertPoint(GeoResults * gr, int slot, double snmd)
         }
         gr->snmd[i]=snmd;
         gr->slot[i]=slot;
-        return;     
+        return;
     }
 }
 /* =================================================== */
@@ -970,7 +960,7 @@ GeoCoordinates * GeoAnswers (GeoIx * gix, GeoResults * gr)
         if(slot==0) continue;
         ans->coordinates[j].latitude =
                      (gix->gc)[slot].latitude;
-        ans->coordinates[j].longitude = 
+        ans->coordinates[j].longitude =
                      (gix->gc)[slot].longitude;
         ans->coordinates[j].data =
                      (gix->gc)[slot].data;
@@ -1073,7 +1063,7 @@ GeoCoordinates * GeoIndex_PointsWithinRadius(GeoIndex * gi,
     {
         gk.stacksize--;
         pot=gk.potid[gk.stacksize];
-        if(GeoPotJunk(&gd,pot)) 
+        if(GeoPotJunk(&gd,pot))
             continue;
         gp=gix->pots+pot;
         if(gp->LorLeaf==0)
@@ -1117,7 +1107,7 @@ GeoCoordinates * GeoIndex_PointsWithinRadius(GeoIndex * gi,
 /* readily rejected) some care is taken when a pot is  */
 /* not rejected to put the one most likely to contain  */
 /* useful points onto the top of the stack for early   */
-/* processing.                                         */ 
+/* processing.                                         */
 /* =================================================== */
 GeoCoordinates * GeoIndex_NearestCountPoints(GeoIndex * gi,
                     GeoCoordinate * c, int count)
@@ -1316,7 +1306,7 @@ int GeoFind(GeoPath * gt, GeoDetailedPoint * gd)
             gt->pathlength++;
             if(gp->LorLeaf == 0) break;
             pot=gp->RorPoints;
-        }           
+        }
     }
     return 2;
 }
@@ -1534,7 +1524,7 @@ int GeoIndex_insert(GeoIndex * gi, GeoCoordinate * c)
 /* first move the points from pot to pot2          */
         gp2->LorLeaf=0;    /* leaf pot  */
         gp2->RorPoints=gp->RorPoints;
-        for(i=0;i<gp->RorPoints;i++) 
+        for(i=0;i<gp->RorPoints;i++)
             gp2->points[i]=gp->points[i];
 /* move the first half of the points from pot2 to pot1 */
         for(i=0;i<(GeoIndexPOTSIZE/2);i++)
@@ -1606,7 +1596,7 @@ int GeoIndex_insert(GeoIndex * gi, GeoCoordinate * c)
             if(gd.fixdist[i] > gix->pots[gt.path[j]].maxdist[i])
                 gix->pots[gt.path[j]].maxdist[i] = gd.fixdist[i];
             else break;
-            j--; 
+            j--;
         }
     }
 /* just need to balance the tree  */
@@ -1776,9 +1766,9 @@ int GeoIndex_remove(GeoIndex * gi, GeoCoordinate * c)
 /*  Left Brother Few  */
                     gpp->LorLeaf = 0;
                     i=0;
-                    for(j=0;j<gpb->RorPoints;j++)  
+                    for(j=0;j<gpb->RorPoints;j++)
                         gpp->points[i++]=gpb->points[j];
-                    for(j=0;j<gp->RorPoints;j++)  
+                    for(j=0;j<gp->RorPoints;j++)
                         gpp->points[i++]=gp->points[j];
                     gpp->RorPoints=i;
                     GeoIndexFreePot(gix,pot);
@@ -1827,12 +1817,12 @@ int GeoIndex_remove(GeoIndex * gi, GeoCoordinate * c)
 /*  Left Nephew Few  */
                     potc=gpb->RorPoints;
                     i=gp->RorPoints;
-                    for(j=0;j<gpn->RorPoints;j++)  
+                    for(j=0;j<gpn->RorPoints;j++)
                         gp->points[i++]=gpn->points[j];
                     gp->RorPoints=i;
                     gpp->RorPoints=potc;
                     gpp->middle=gpb->middle;
-                    gp->end=gpp->middle;                   
+                    gp->end=gpp->middle;
                     GeoIndexFreePot(gix,potn);
                     GeoIndexFreePot(gix,potb);
                     GeoPopulateMaxdist(gix,gp,gsa);
@@ -1883,9 +1873,9 @@ int GeoIndex_remove(GeoIndex * gi, GeoCoordinate * c)
 /* observe this is identical to Left Brother Few  */
                     gpp->LorLeaf = 0;
                     i=0;
-                    for(j=0;j<gpb->RorPoints;j++)  
+                    for(j=0;j<gpb->RorPoints;j++)
                         gpp->points[i++]=gpb->points[j];
-                    for(j=0;j<gp->RorPoints;j++)  
+                    for(j=0;j<gp->RorPoints;j++)
                         gpp->points[i++]=gp->points[j];
                     gpp->RorPoints=i;
                     GeoIndexFreePot(gix,pot);
@@ -1934,7 +1924,7 @@ int GeoIndex_remove(GeoIndex * gi, GeoCoordinate * c)
 /*  Right Nephew Few  */
                     potc=gpb->LorLeaf;
                     i=gp->RorPoints;
-                    for(j=0;j<gpn->RorPoints;j++)  
+                    for(j=0;j<gpn->RorPoints;j++)
                         gp->points[i++]=gpn->points[j];
                     gp->RorPoints=i;
                     gpp->LorLeaf=potc;
@@ -2140,13 +2130,13 @@ int RecursivePotValidate (GeoIx * gix, int pot, int * usage)
         for(i=0;i<gp->RorPoints;i++)
         {
             GeoMkDetail(gix,&gd,gix->gc + gp->points[i]);
-            for(j=0;j<GeoIndexFIXEDPOINTS;j++) 
+            for(j=0;j<GeoIndexFIXEDPOINTS;j++)
                 if(maxdist[j]<gd.fixdist[j]) maxdist[j]= gd.fixdist[j];
             if(gd.gs<gp->start) return 8;
             if(gd.gs>gp->end) return 9;
         }
-        for(j=0;j<GeoIndexFIXEDPOINTS;j++) 
-            if(maxdist[j]!=gp->maxdist[j])    
+        for(j=0;j<GeoIndexFIXEDPOINTS;j++)
+            if(maxdist[j]!=gp->maxdist[j])
                 return 7;
         usage[1]+=gp->RorPoints;
         return 0;
@@ -2169,10 +2159,10 @@ int RecursivePotValidate (GeoIx * gix, int pot, int * usage)
         if(gp->start != gpa->start) return 11;
         if(gp->end != gpb->end) return 12;
         for(j=0;j<GeoIndexFIXEDPOINTS;j++) maxdist[j]=gpa->maxdist[j];
-        for(j=0;j<GeoIndexFIXEDPOINTS;j++) 
+        for(j=0;j<GeoIndexFIXEDPOINTS;j++)
             if(maxdist[j]<gpb->maxdist[j]) maxdist[j]=gpb->maxdist[j];
-        for(j=0;j<GeoIndexFIXEDPOINTS;j++) 
-            if(maxdist[j]!=gp->maxdist[j])    
+        for(j=0;j<GeoIndexFIXEDPOINTS;j++)
+            if(maxdist[j]!=gp->maxdist[j])
                 return 13;
         i=RecursivePotValidate (gix,gp->LorLeaf,usage);
         if(i!=0) return i;

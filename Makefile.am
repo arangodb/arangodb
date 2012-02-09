@@ -20,6 +20,9 @@ nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/html -name "*.js" -print) \
 	$(shell find @srcdir@/html -name "*.png" -print)
 
+install-data-local:
+	test -d @localstatedir@/lib/avocado || mkdir -p @localstatedir@/lib/avocado
+
 ################################################################################
 ## avocado
 ################################################################################
