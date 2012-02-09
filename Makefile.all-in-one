@@ -4,9 +4,9 @@
 ## LIBEV
 ################################################################################
 
-BUILT_SOURCES += @top_srcdir@/3rdParty/libev/.libs/libev.a
+BUILT_SOURCES += @LIBEV_LIBS@
 
-@top_srcdir@/3rdParty/libev/.libs/libev.a:
+@LIBEV_LIBS@:
 	@echo
 	@echo "--------------------------------------------------------------------------------"
 	@echo "BUILDING LIBEV"
@@ -34,21 +34,9 @@ if ENABLE_32BIT
 V8_BUILD_VERSION=ia32.release
 endif
 
-if ENABLE_DARWIN
+BUILT_SOURCES += $(V8_LIBS)
 
-V8_BUILT_SOURCES = \
-	@top_srcdir@/3rdParty/V8//libv8.a \
-else
-
-V8_BUILT_SOURCES = \
-	@top_srcdir@/3rdParty/V8/out/$(V8_BUILD_VERSION)/libv8_base.a \
-	@top_srcdir@/3rdParty/V8/out/$(V8_BUILD_VERSION)/libv8_nosnapshot.a
-
-endif
-
-BUILT_SOURCES += $(V8_BUILT_SOURCE)
-
-$(V8_BUILT_SOURCE):
+$(V8_LIBS):
 	@echo
 	@echo "--------------------------------------------------------------------------------"
 	@echo "BUILDING V8"

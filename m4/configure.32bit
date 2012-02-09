@@ -12,7 +12,7 @@ case $target_cpu in
     ;;
 esac
 
-if text "x$tr_BITS" == "x64";  then
+if test "x$tr_BITS" == "x64";  then
   AC_ARG_ENABLE(32bit,
     AS_HELP_STRING([--enable-32bit], [force 32bit compilation (default: no)]),
 
@@ -34,7 +34,7 @@ dnl ----------------------------------------------------------------------------
 dnl informational output
 dnl -----------------------------------------------------------------------------------------
 
-if text "x$tr_BITS" == "x64";  then
+if test "x$tr_BITS" == "x64";  then
   if test "x$tr_32BIT" = xyes;  then
     BASIC_INFO="$BASIC_INFO|32bit: enabled"
   else

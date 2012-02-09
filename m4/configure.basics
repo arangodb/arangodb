@@ -12,6 +12,16 @@ AC_CANONICAL_BUILD
 AC_CANONICAL_HOST
 AC_CANONICAL_TARGET
 
+tr_DARWIN="no"
+
+case $target in
+  *-apple-darwin*)
+    tr_DARWIN="yes"
+    ;;
+esac
+
+AM_CONDITIONAL(ENABLE_DARWIN, test "x$tr_DARWIN" = xyes)
+
 dnl -----------------------------------------------------------------------------------------
 dnl use automake to generate Makfile.in
 dnl -----------------------------------------------------------------------------------------
@@ -36,8 +46,6 @@ case $target in
     list_cc="[gcc-4 gcc-3 gcc cc]"
     list_cxx="[g++-4 g++-3 g++ cxx]"
 
-    tr_DARWIN="yes"
-
     ;;
 
   *) 
@@ -46,8 +54,6 @@ case $target in
 
     ;;
 esac
-
-AM_CONDITIONAL(ENABLE_DARWIN, "x$tr_DARWIN" = "xyes")
 
 AC_PROG_CXXCPP
 AC_PROG_CC($list_cc)
