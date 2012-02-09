@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief selects and select result sets
+/// @brief SELECT result data structures and functionality 
 ///
 /// @file
 ///
@@ -35,19 +35,54 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Growth factor for select memory allocation
+/// @brief Initial size for result index (in number of rows)
+///
+/// The index buffer will get an initial pre-allocation of this amount of rows
+/// to save multiple calls to malloc() for the first few additions of rows. 
+/// re-allocation is postponed until we have collected a few rows already. 
+/// This will save realloc overhead for smaller result sets.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_SELECT_RESULT_GROWTH_FACTOR 1.5
+#define INDEX_INIT_SIZE       32
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Initial size for result data storage (in number of bytes)
+///
+/// The result data buffer will get an initial pre-allocation of this amount of 
+/// bytes to save multiple calls to malloc() for the first few additions of 
+/// results. re-allocation is postponed until we have collected a few rows 
+/// already. This will save realloc overhead for smaller result sets.
+////////////////////////////////////////////////////////////////////////////////
+
+#define RESULT_INIT_SIZE      128
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Growth factor for index memory allocation
+///
+/// For each re-allocation, the memory size will be increased by at least this
+/// factor.
+////////////////////////////////////////////////////////////////////////////////
+
+#define INDEX_GROWTH_FACTOR   1.5
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Growth factor for result data memory allocation
+///
+/// For each re-allocation, the memory size will be increased by at least this
+/// factor.
+////////////////////////////////////////////////////////////////////////////////
+
+#define RESULT_GROWTH_FACTOR  1.5
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Free memory allocated for dataparts
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FreeDataPart(TRI_select_datapart_t* datapart) {
-  if (datapart->_alias != NULL) {
+static void FreeDataPart (TRI_select_datapart_t* datapart) {
+  if (datapart->_alias) {
     TRI_Free(datapart->_alias);
   }
+
   TRI_Free(datapart);
 }
 
@@ -57,93 +92,142 @@ static void FreeDataPart(TRI_select_datapart_t* datapart) {
 
 TRI_select_datapart_t* TRI_CreateDataPart(const char* alias, 
                                           const TRI_doc_collection_t* collection,
-                                          const TRI_select_data_e type) {
+                                          const TRI_select_part_e type) {
   TRI_select_datapart_t* datapart;
 
   datapart = (TRI_select_datapart_t*) TRI_Allocate(sizeof(TRI_select_datapart_t));
-  if (datapart == NULL) {
+  if (!datapart) {
     return NULL;
   }
 
-  datapart->_alias = TRI_DuplicateString(alias);
+  datapart->_alias      = TRI_DuplicateString(alias);
   datapart->_collection = (TRI_doc_collection_t*) collection;
-  datapart->_type = type;
-  datapart->free = FreeDataPart;
+  datapart->_type       = type;
+
+  datapart->free        = FreeDataPart;
 
   return datapart;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get document pointer for a specific row
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_sr_documents_t* GetSelectResult (const TRI_select_result_t* result, 
+                                       const TRI_select_size_t rowNum) {
+
+  TRI_sr_index_t* docPtr = (TRI_sr_index_t*) result->_index._start;
+  return (TRI_sr_documents_t*) *(docPtr + rowNum);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get pointer to document index start
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_sr_index_t* FirstSelectResult (const TRI_select_result_t* result) {
+  return result->_index._start;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get pointer to document index end
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_sr_index_t* LastSelectResult (const TRI_select_result_t* result) {
+  TRI_sr_index_t* docPtr = (TRI_sr_index_t*) result->_index._start;
+  return (TRI_sr_index_t*) (docPtr + result->_index._numUsed);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Free memory allocated for select result
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FreeSelectResult (TRI_select_result_t* _select) {
+static void FreeSelectResult (TRI_select_result_t* result) {
   TRI_select_datapart_t* datapart;
   size_t i;
 
-  if (_select->_index._start != NULL) {
-    TRI_Free(_select->_index._start);
+  if (result->_index._start) {
+    TRI_Free(result->_index._start);
   }
 
-  if (_select->_documents._start != NULL) {
-    TRI_Free(_select->_documents._start);
+  if (result->_documents._start) {
+    TRI_Free(result->_documents._start);
   }
 
-  for (i = 0; i < _select->_dataParts->_length; i++) {
-    datapart = (TRI_select_datapart_t*) _select->_dataParts->_buffer[i];
+  for (i = 0; i < result->_dataParts->_length; i++) {
+    datapart = (TRI_select_datapart_t*) result->_dataParts->_buffer[i];
     datapart->free(datapart);
   }
 
-  TRI_DestroyVectorPointer(_select->_dataParts);
-  TRI_Free(_select->_dataParts);
+  TRI_DestroyVectorPointer(result->_dataParts);
+  TRI_Free(result->_dataParts);
 
-  TRI_Free(_select);
+  TRI_Free(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Initialise a select result
+///
+/// This will also pre-allocate initial memory for the result set index and data
 ////////////////////////////////////////////////////////////////////////////////
 
-static void InitSelectResult (TRI_select_result_t* _select, 
+static void InitSelectResult (TRI_select_result_t* result, 
                               TRI_vector_pointer_t* dataparts) {
-  _select->_index._numAllocated = 0;
-  _select->_index._numUsed = 0;
-  _select->_index._start = 0;
 
-  _select->_documents._bytesAllocated = 0;
-  _select->_documents._bytesUsed = 0;
-  _select->_documents._start = 0;
-  _select->_documents._current = 0;
+  assert(INDEX_INIT_SIZE > 0);
+  assert(INDEX_GROWTH_FACTOR > 1.0);
+  assert(RESULT_INIT_SIZE > 0);
+  assert(RESULT_GROWTH_FACTOR > 1.0);
+
+  result->_index._numAllocated       = 0;
+  result->_index._numUsed            = 0;
+  result->_index._start              = TRI_Allocate(INDEX_INIT_SIZE * 
+                                                    sizeof(TRI_sr_index_t));
+  result->_index._current            = result->_index._start;
+  if (result->_index._start) {
+    result->_index._numAllocated     = INDEX_INIT_SIZE;
+  } 
+
+  result->_documents._bytesAllocated = 0;
+  result->_documents._bytesUsed      = 0;
+  result->_documents._start          = TRI_Allocate(RESULT_INIT_SIZE);
+  result->_documents._current        = result->_documents._start;
+  if (result->_documents._start) {
+    result->_documents._bytesAllocated = RESULT_INIT_SIZE;
+  } 
   
-  _select->_dataParts = dataparts;
+  result->_dataParts = dataparts;
 
-  _select->_numRows = 0;
+  result->_numRows = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Increase storage size for select result index
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IncreaseIndexStorageSelectResult (TRI_select_result_t* _select, 
+static bool IncreaseIndexStorageSelectResult (TRI_select_result_t* result, 
                                               const size_t numNeeded) {
-  void *start;
+  TRI_sr_index_t* start;
   size_t newSize;
  
-  newSize = (size_t) _select->_index._numAllocated + numNeeded;
-  if (newSize < 
-    (size_t) (_select->_index._numAllocated * TRI_SELECT_RESULT_GROWTH_FACTOR)) {
-    newSize = (size_t) (_select->_index._numAllocated * TRI_SELECT_RESULT_GROWTH_FACTOR);
+  // Extend by at least INDEX_GROWTH_FACTOR to save the cost of at least some
+  // reallocations
+  newSize = (size_t) result->_index._numAllocated + numNeeded;
+  if (newSize < (size_t) (result->_index._numAllocated * INDEX_GROWTH_FACTOR)) {
+    newSize = (size_t) (result->_index._numAllocated * INDEX_GROWTH_FACTOR);
   }
 
-  start = realloc(_select->_index._start, newSize * sizeof(void *));
-  if (start == 0) {
+  assert(newSize > result->_index._numAllocated);
+
+  start = realloc(result->_index._start, newSize * sizeof(TRI_sr_index_t));
+  if (!start) {
     return false;
   }
-  _select->_index._numAllocated = newSize;
-  
-  _select->_index._start = start;
-  _select->_index._current = (uint8_t *) start + 
-                             (_select->_index._numUsed * sizeof(void *));
+  result->_index._numAllocated = newSize; // number of entries allocated
+
+  // Index start pointer might have been moved by realloc, so save the new 
+  // position and calculate the end position
+  result->_index._start = start;
+  result->_index._current = ((TRI_sr_index_t*) start) + result->_index._numUsed;
 
   return true;
 }
@@ -152,104 +236,190 @@ static bool IncreaseIndexStorageSelectResult (TRI_select_result_t* _select,
 /// @brief Increase storage size for select documents data
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IncreaseDocumentsStorageSelectResult(TRI_select_result_t* _select, 
-                                                 size_t bytesNeeded) {
+static bool IncreaseDocumentsStorageSelectResult (TRI_select_result_t* result, 
+                                                  const size_t bytesNeeded) {
+  TRI_sr_documents_t* start;
+  TRI_sr_index_t* indexStart;
+  TRI_sr_index_t* indexEnd;
+  TRI_sr_index_t value;
+  size_t diff;
   size_t newSize;
-  void* start;
 
-  newSize = (size_t) _select->_documents._bytesAllocated + bytesNeeded;
-  if (newSize < (size_t) (_select->_documents._bytesAllocated * 1.5)) {
-    newSize = (size_t) (_select->_documents._bytesAllocated * 1.5);
+  // Extend by at least RESULT_GROWTH_FACTOR to save the cost of at least some
+  // reallocations
+  newSize = (size_t) result->_documents._bytesAllocated + bytesNeeded;
+  if (newSize < (size_t) (result->_documents._bytesAllocated * RESULT_GROWTH_FACTOR)) {
+    newSize = (size_t) (result->_documents._bytesAllocated * RESULT_GROWTH_FACTOR);
   }
 
-  start = realloc(_select->_documents._start, newSize);
-  if (start == 0) {
+  assert(newSize > result->_documents._bytesAllocated);
+
+  start = (TRI_sr_documents_t*) realloc(result->_documents._start, newSize);
+  if (!start) {
     return false;
   }
 
-  if (start != _select->_documents._start && _select->_documents._start != 0) {
-    // FIXME: adjust entries in index
-    assert(false);
-  }
-  _select->_documents._bytesAllocated = newSize;
+  // calc movement
+  diff = start - (TRI_sr_documents_t*) result->_documents._start;
 
-  _select->_documents._start = start;
-  _select->_documents._current = (uint8_t *) start + _select->_documents._bytesUsed;
+  // realloc might move the data. if it does, we need to adjust the index as well
+  if ((start != result->_documents._start) && (result->_documents._start != 0)) {
+    // data was moved, now adjust entries in index
+    indexStart = (TRI_sr_index_t*) result->_index._start;
+    indexEnd = (TRI_sr_index_t*) result->_index._current;
+
+    while (indexStart < indexEnd) {
+      value = *indexStart;
+      *indexStart++ = (TRI_sr_index_t) (((TRI_sr_index_t*) value) + diff);
+    }
+  }
+  result->_documents._bytesAllocated = newSize;
+  result->_documents._start = start;
+  result->_documents._current = result->_documents._current + diff;
 
   return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Get the required storage size for a document result
+/// @brief Get the required storage size for a row result of a join
+///
+/// A result row of a join might contain data from multiple collections. Results
+/// might also be single documents or multiple documents, depending on the join
+/// type. 
+/// This function will calculate the total required size to store all documents 
+/// of all collections of the row result.
 ////////////////////////////////////////////////////////////////////////////////
 
-static size_t GetDocumentSizeSelectResult (const TRI_select_result_t* _select, 
-                                           const TRI_vector_pointer_t* documents) {
-  TRI_vector_pointer_t* part;
-  size_t i, total;
+static size_t GetJoinDocumentSize (const TRI_select_join_t* join) {
+  TRI_join_part_t* part;
+  size_t i, n, total;
 
   total = 0;
-  for (i = 0; i < documents->_length; i++) {
+
+  for (i = 0; i < join->_parts._length; i++) {
+    part = (TRI_join_part_t*) join->_parts._buffer[i];
+    if (part->_type == JOIN_TYPE_LIST) {
+      n = part->_listDocuments._length;
+    }
+    else {
+      n = 1;
+    }
     total += sizeof(TRI_select_size_t);
-    part = (TRI_vector_pointer_t*) documents->_buffer[i];
-    total += sizeof(TRI_doc_mptr_t*) * part->_length;
+    total += (size_t) (sizeof(TRI_sr_documents_t) * n);
   }
 
   return total;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Add a document to the result set
+/// @brief Add documents from a join to the result set
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddDocumentSelectResult (TRI_select_result_t* _select, 
-                                  TRI_vector_pointer_t* documents) {
+bool TRI_AddJoinSelectResult (TRI_select_result_t* result, TRI_select_join_t* join) {
+  TRI_sr_index_t* indexPtr;
+  TRI_sr_documents_t* docPtr;
   TRI_select_size_t* numPtr;
-  TRI_doc_mptr_t** dataPtr;
-  void* startPtr;
-  TRI_vector_pointer_t* part;
+  TRI_join_part_t* part;
+  TRI_doc_mptr_t* document;
   size_t numNeeded; 
   size_t bytesNeeded;
   size_t i, j;
 
-  numNeeded = documents->_length;
-  if (_select->_index._numUsed + documents->_length > _select->_index._numAllocated) {
-    if (!IncreaseIndexStorageSelectResult(_select, numNeeded)) {
+  // need space for one pointer 
+  numNeeded = 1;
+
+  if (result->_index._numUsed + numNeeded > result->_index._numAllocated) {
+    if (!IncreaseIndexStorageSelectResult(result, numNeeded)) {
       return false;
     } 
   }
 
-  bytesNeeded = GetDocumentSizeSelectResult(_select, documents);
-  if (_select->_documents._bytesUsed + bytesNeeded > _select->_documents._bytesAllocated) {
-    if (!IncreaseDocumentsStorageSelectResult(_select, bytesNeeded)) {
+  bytesNeeded = GetJoinDocumentSize(join);
+  if (result->_documents._bytesUsed + bytesNeeded > result->_documents._bytesAllocated) {
+    if (!IncreaseDocumentsStorageSelectResult(result, bytesNeeded)) {
       return false;
     } 
   }
 
-  // store pointer to document
-  startPtr = _select->_index._current;
-  dataPtr = (TRI_doc_mptr_t**) startPtr; 
-  *dataPtr++ = startPtr;
-  _select->_index._current = (void*) dataPtr;
-  _select->_index._numUsed++;
+  // store pointer to document in index
+  docPtr = result->_documents._current;
+  indexPtr = (TRI_sr_index_t*) result->_index._current;
+  *indexPtr++ = (TRI_sr_index_t) docPtr;
+
+  result->_index._current = (TRI_sr_index_t*) indexPtr;
+  result->_index._numUsed++;
 
   // store document data
-  startPtr = _select->_documents._current;
-  numPtr = (TRI_select_size_t*) startPtr;
-  for (i = 0; i < documents->_length; i++) {
-    part = (TRI_vector_pointer_t*) documents->_buffer[i];
-    *numPtr++ = part->_length;
-    dataPtr = (TRI_doc_mptr_t**) numPtr;
-    for (j = 0; j < part->_length; j++) {
-      *dataPtr++ = (TRI_doc_mptr_t*) part->_buffer[j];
+  numPtr = (TRI_select_size_t*) docPtr;
+  for (i = 0; i < join->_parts._length; i++) {
+    part = (TRI_join_part_t*) join->_parts._buffer[i];
+    if (part->_type == JOIN_TYPE_LIST) {
+      // multiple documents
+      *numPtr++ = part->_listDocuments._length;
+      docPtr = (TRI_sr_documents_t*) numPtr;
+      for (j = 0; j < part->_listDocuments._length; j++) {
+        document = (TRI_doc_mptr_t*) part->_listDocuments._buffer[j];
+
+        *docPtr++ = (TRI_sr_documents_t) document->_data;
+      }
+    } 
+    else {
+      // single document
+      *numPtr++ = 1;
+      docPtr = (TRI_sr_documents_t*) numPtr;
+      document = (TRI_doc_mptr_t*) part->_singleDocument;
+      *docPtr++ = (TRI_sr_documents_t) document->_data;
     }
-    numPtr = (TRI_select_size_t*) dataPtr;
+    numPtr = (TRI_select_size_t*) docPtr;
   }
 
-  _select->_documents._bytesUsed += bytesNeeded;
-  _select->_documents._current = numPtr;
+  result->_documents._bytesUsed += bytesNeeded;
+  result->_documents._current = (TRI_sr_documents_t*) numPtr;
 
-  _select->_numRows++;
+  result->_numRows++;
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Slice a select result (apply skip/limit)
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_SliceSelectResult (TRI_select_result_t* result, 
+                            const TRI_voc_size_t skip, 
+                            const TRI_voc_ssize_t limit) {
+  TRI_sr_index_t* oldIndex;
+  TRI_sr_index_t* newIndex;
+  size_t newSize;
+ 
+  if (result->_numRows == 0 || !result->_index._start) {
+    // no need to do anything
+    return true;
+  }
+
+  // allocate new space for document index
+  newSize = (size_t) limit;
+  if (limit == 0) {
+    newSize = 1;
+  }
+
+  newIndex = (TRI_sr_index_t*) TRI_Allocate(newSize * sizeof(TRI_sr_index_t));
+  if (!newIndex) {
+    // error: memory allocation failed
+    return false;
+  }
+
+  oldIndex = (TRI_sr_index_t*) result->_index._start;
+
+  memcpy(newIndex, oldIndex + skip, limit * sizeof(TRI_sr_index_t));
+
+  TRI_Free(oldIndex);
+
+  result->_numRows             = limit;
+  result->_index._start        = newIndex;
+  result->_index._current      = newIndex + 1;
+  result->_index._numAllocated = newSize;
+  result->_index._numUsed      = (size_t) limit;
 
   return true;
 }
@@ -265,13 +435,35 @@ TRI_select_result_t* TRI_CreateSelectResult (TRI_vector_pointer_t *dataparts) {
   if (!result) {
     return NULL;
   }
+
   InitSelectResult(result, dataparts);
 
-  result->free = FreeSelectResult;
+  result->getAt = GetSelectResult;
+  result->first = FirstSelectResult;
+  result->last  = LastSelectResult;
+  result->free  = FreeSelectResult;
 
   return result;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Convert a raw data document pointer into a master pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_MarkerMasterPointer (void const* data, TRI_doc_mptr_t* header) {
+  TRI_doc_document_marker_t const* marker;
+  size_t markerSize = sizeof(TRI_doc_document_marker_t);
+  marker = (TRI_doc_document_marker_t const*) data;
+
+  header->_did = marker->_did;
+  header->_rid = marker->_rid;
+  header->_fid = 0; // should be datafile->_fid, but we do not have this info here
+  header->_deletion = 0;
+  header->_data = data;
+  header->_document._sid = marker->_shape;
+  header->_document._data.length = marker->base._size - markerSize;
+  header->_document._data.data = ((char*) marker) + markerSize;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -282,5 +474,3 @@ TRI_select_result_t* TRI_CreateSelectResult (TRI_vector_pointer_t *dataparts) {
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-
-

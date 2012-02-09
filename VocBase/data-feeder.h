@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief joins
+/// @brief data feeder for selects
 ///
 /// @file
 ///
@@ -25,16 +25,10 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_JOIN_H
-#define TRIAGENS_DURHAM_VOC_BASE_JOIN_H 1
+#ifndef TRIAGENS_DURHAM_VOC_BASE_DATA_FEEDER_H
+#define TRIAGENS_DURHAM_VOC_BASE_DATA_FEEDER_H 1
 
-#include <BasicsC/common.h>
-#include <BasicsC/vector.h>
-#include <BasicsC/strings.h>
-
-#include "VocBase/where.h"
-#include "VocBase/context.h"
-#include "VocBase/data-feeder.h"
+#include "VocBase/simple-collection.h"
 #include "VocBase/result.h"
 
 #ifdef __cplusplus
@@ -47,62 +41,39 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief possible join types
+/// @brief data feeder for selects
+///
+/// A data feeder is used to access the documents in a collection sequentially.
+/// The documents are accessed in order of definition in the collection's hash
+/// table. The hash table might also contain empty entries (nil pointers) or
+/// deleted documents. The data feeder abstracts all this and provides easy 
+/// access to all (relevant) documents in the hash table. 
+/// For each collection in a join, one data feeder will be used. If a collection 
+/// is invoked multiple times in a select (e.g. A INNER JOIN A) then there will
+/// be multiple data feeders (in this case for collection A). This is because
+/// the data feeder also contains state information (current position) that is
+/// distinct for multiple instances in the same join
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum {
-  JOIN_TYPE_PRIMARY,
-  JOIN_TYPE_INNER,
-  JOIN_TYPE_OUTER,
-  JOIN_TYPE_LIST
-}
-TRI_join_type_e;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief join data structure
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_join_part_s {
-  TRI_data_feeder_t *_feeder; // data source
-  TRI_join_type_e _type;
-  TRI_qry_where_t* _condition;
-  TRI_doc_collection_t* _collection;
-  char* _collectionName;
-  char* _alias;
-  TRI_doc_mptr_t* _singleDocument;
-  TRI_vector_pointer_t _listDocuments;
-  TRI_js_exec_context_t _context;
-
-  void (*free) (struct TRI_join_part_s*);
-} 
-TRI_join_part_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief join container data structure for select queries
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_select_join_s {
-  TRI_vector_pointer_t _parts;
+typedef struct TRI_data_feeder_s {
+  const TRI_doc_collection_t* _collection;
+  void **_start;
+  void **_end;
+  void **_current;
   
-  void (*free) (struct TRI_select_join_s*);
+  void (*init) (struct TRI_data_feeder_s*);
+  void (*rewind) (struct TRI_data_feeder_s*);
+  TRI_doc_mptr_t* (*current) (struct TRI_data_feeder_s*);
+  bool (*eof) (struct TRI_data_feeder_s*);
+  void (*free) (struct TRI_data_feeder_s*);
 }
-TRI_select_join_t;
+TRI_data_feeder_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Add a part to a select join
-////////////////////////////////////////////////////////////////////////////////
-      
-bool TRI_AddPartSelectJoin (TRI_select_join_t*, 
-                            const TRI_join_type_e, 
-                            TRI_qry_where_t*, 
-                            char*, 
-                            char*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Create a new join 
+/// @brief Create a new data feeder
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_select_join_t* TRI_CreateSelectJoin (void);
+TRI_data_feeder_t* TRI_CreateDataFeeder(const TRI_doc_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

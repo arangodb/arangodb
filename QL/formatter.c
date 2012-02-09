@@ -133,7 +133,7 @@ void QLFormatterDump (QL_ast_node_t *node, QL_formatter_t *formatter,const int b
   type   = node->_type;
   name   = QLAstNodeGetName(type);
 
-  if (type == QLNodeContainerList || QLAstNodeGetTypeGroup(type) == QLNodeGroupJoin) {
+  if (type == QLNodeContainerList) {
     next   = node->_next;
     QLFormatterPrintBlockStart(formatter,name);
     QLFormatterIndentationInc(formatter);
@@ -150,7 +150,8 @@ void QLFormatterDump (QL_ast_node_t *node, QL_formatter_t *formatter,const int b
   QLFormatterIndentationInc(formatter);
   
   if (type == QLNodeValueString || type ==QLNodeValueNumberDoubleString || 
-      type == QLNodeValueIdentifier || type == QLNodeValueParameterNamed) { 
+      type == QLNodeValueIdentifier || type == QLNodeValueParameterNamed || 
+      type == QLNodeReferenceCollectionAlias) { 
     QLFormatterPrintStr(formatter,"value",node->_value._stringValue);
   } else if (type == QLNodeValueNumberInt) { 
     QLFormatterPrintInt(formatter,"value",node->_value._intValue);

@@ -235,6 +235,9 @@ TRI_select_join_t* ParserWrapper::getJoins () {
 
   QL_ast_node_t *node = (QL_ast_node_t *) _context->_query->_from._base;
   node = (QL_ast_node_t *) node->_next;
+  //QL_formatter_t f;
+  //f.indentLevel = 0;
+  //QLFormatterDump(_context->_query->_from._base, &f, 0);
 
   assert(node != 0);
 
@@ -352,9 +355,9 @@ TRI_qry_order_t* ParserWrapper::getOrder () {
     QLOptimizeOrder(_context->_query->_order._base);
     QL_javascript_conversion_t *orderJs = QLJavascripterInit();
     if (orderJs != 0) {
-      TRI_AppendStringStringBuffer(orderJs->_buffer, "(function($) { return (");
+      TRI_AppendStringStringBuffer(orderJs->_buffer, "(function($){var lhs,rhs;");
       QLJavascripterConvertOrder(orderJs, (QL_ast_node_t *) _context->_query->_order._base->_next);
-      TRI_AppendStringStringBuffer(orderJs->_buffer, "); })");
+      TRI_AppendStringStringBuffer(orderJs->_buffer, "})");
       order = TRI_CreateQueryOrderGeneral(orderJs->_buffer->_buffer);
       // TODO: REMOVE ME
       // std::cout << "ORDER: " << orderJs->_buffer->_buffer << "\n";

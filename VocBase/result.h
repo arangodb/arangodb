@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief joins
+/// @brief select result definitions
 ///
 /// @file
 ///
@@ -25,17 +25,8 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_JOIN_H
-#define TRIAGENS_DURHAM_VOC_BASE_JOIN_H 1
-
-#include <BasicsC/common.h>
-#include <BasicsC/vector.h>
-#include <BasicsC/strings.h>
-
-#include "VocBase/where.h"
-#include "VocBase/context.h"
-#include "VocBase/data-feeder.h"
-#include "VocBase/result.h"
+#ifndef TRIAGENS_DURHAM_VOCBASE_RESULT_H
+#define TRIAGENS_DURHAM_VOCBASE_RESULT_H 1
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,62 +38,24 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief possible join types
+/// @brief typedef for number of rows in a select result
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum {
-  JOIN_TYPE_PRIMARY,
-  JOIN_TYPE_INNER,
-  JOIN_TYPE_OUTER,
-  JOIN_TYPE_LIST
-}
-TRI_join_type_e;
+typedef uint32_t TRI_select_size_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief join data structure
+/// @brief Typedef for the data contained in the document index
+/// (@ref TRI_select_result_index_t)
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_join_part_s {
-  TRI_data_feeder_t *_feeder; // data source
-  TRI_join_type_e _type;
-  TRI_qry_where_t* _condition;
-  TRI_doc_collection_t* _collection;
-  char* _collectionName;
-  char* _alias;
-  TRI_doc_mptr_t* _singleDocument;
-  TRI_vector_pointer_t _listDocuments;
-  TRI_js_exec_context_t _context;
-
-  void (*free) (struct TRI_join_part_s*);
-} 
-TRI_join_part_t;
+typedef void* TRI_sr_index_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief join container data structure for select queries
+/// @brief Typedef for the result data contained in the document index
+/// (@ref TRI_select_result_document_t)
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_select_join_s {
-  TRI_vector_pointer_t _parts;
-  
-  void (*free) (struct TRI_select_join_s*);
-}
-TRI_select_join_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Add a part to a select join
-////////////////////////////////////////////////////////////////////////////////
-      
-bool TRI_AddPartSelectJoin (TRI_select_join_t*, 
-                            const TRI_join_type_e, 
-                            TRI_qry_where_t*, 
-                            char*, 
-                            char*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Create a new join 
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_select_join_t* TRI_CreateSelectJoin (void);
+typedef void* TRI_sr_documents_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

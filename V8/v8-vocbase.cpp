@@ -775,7 +775,6 @@ static TRI_rc_cursor_t* ExecuteQuery (v8::Handle<v8::Object> queryObject,
   }
 
   TRI_rc_cursor_t* cursor = TRI_ExecuteQueryAql(query, context);
-
   if (cursor == 0) {
     TRI_FreeContextQuery(context);
 
@@ -909,15 +908,7 @@ static v8::Handle<v8::Object> WrapWhere (TRI_qry_where_t* where) {
 
   return whereObject;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts a where clause from a javascript object
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_qry_where_t* UnwrapWhere (v8::Handle<v8::Object> whereObject) {
-  return UnwrapClass<TRI_qry_where_t>(whereObject, WRP_QRY_WHERE_TYPE);
-}
-
+ 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -2033,25 +2024,16 @@ static v8::Handle<v8::Value> JS_PrepareAql (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("query is empty")));
   }
 
-  // construct FROM part
-  char *primaryAlias = parser.getPrimaryAlias();
-  char *primaryName  = parser.getPrimaryName();
-
-  if (primaryAlias == 0 || primaryName == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("collection not found")));
-  }
-
-  TRI_vocbase_col_t const* collection = TRI_LoadCollectionVocBase(vocbase, primaryName);
-  if (collection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("collection not found")));
-  }
-
   // create the query
-  TRI_query_t* query  = TRI_CreateQuery(parser.getSelect(),
+  TRI_query_t* query  = TRI_CreateQuery(vocbase,
+                                        parser.getSelect(),
                                         parser.getWhere(),
                                         parser.getOrder(),
-                                        primaryAlias,
-                                        collection->_collection);
+                                        parser.getJoins());
+
+  if (!query) {
+    return scope.Close(v8::ThrowException(v8::String::New("could not create query")));
+  }
 
   query->_skip        = parser.getSkip();
   query->_limit       = parser.getLimit();
@@ -2200,66 +2182,32 @@ static v8::Handle<v8::Value> JS_SelectAql (v8::Arguments const& argv) {
 
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
-  if (argv.Length() != 7) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_SELECT(<select>, <name>, <primary>, <joins>, <where>, <skip>, <limit>)")));
+  if (argv.Length() != 4) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_SELECT(<db>, <collectionname>, <skip>, <limit>)")));
   }
 
-  // extract the select clause
-  v8::Handle<v8::Value> selectArg = argv[0];
+  v8::Handle<v8::Object> dbArg = argv[0]->ToObject();
+  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(dbArg, WRP_VOCBASE_TYPE);
+
+  if (vocbase == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+
+  // select clause
   TRI_qry_select_t* select;
+  select = TRI_CreateQuerySelectDocument();
 
-  if (selectArg->IsNull()) {
-    select = TRI_CreateQuerySelectDocument();
-  }
-  else {
-    string cmd = TRI_ObjectToString(selectArg);
-
-    select = TRI_CreateQuerySelectGeneral(cmd.c_str());
-  }
-
-  // extract the name of primary collection
   v8::Handle<v8::Value> nameArg = argv[1];
   string name = TRI_ObjectToString(nameArg);
 
   if (name.empty()) {
     select->free(select);
-    return scope.Close(v8::ThrowException(v8::String::New("expecting a none-empty name for <primary>")));
-  }
-
-  // extract the primary collection
-  v8::Handle<v8::Value> primaryArg = argv[2];
-
-  if (! primaryArg->IsObject()) {
-    select->free(select);
-    return scope.Close(v8::ThrowException(v8::String::New("expecting a collection for <primary>")));
-  }
-
-  v8::Handle<v8::Object> primaryObj = primaryArg->ToObject();
-
-  v8::Handle<v8::String> err;
-  TRI_vocbase_col_t const* collection = LoadCollection(primaryObj, &err);
-
-  if (collection == 0) {
-    select->free(select);
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  // extract the where clause
-  v8::Handle<v8::Value> whereArg = argv[4];
-  TRI_qry_where_t* where = 0;
-
-  if (! whereArg->IsNull()) {
-    where = UnwrapWhere(whereArg->ToObject());
-
-    if (where == 0) {
-      select->free(select);
-      return scope.Close(v8::ThrowException(v8::String::New("corrupted where")));
-    }
+    return scope.Close(v8::ThrowException(v8::String::New("expecting a non-empty name for <collectionname>")));
   }
 
   // extract the skip value
   TRI_voc_size_t skip = 0;
-  v8::Handle<v8::Value> skipArg = argv[5];
+  v8::Handle<v8::Value> skipArg = argv[2];
 
   if (skipArg->IsNull()) {
     skip = TRI_QRY_NO_SKIP;
@@ -2277,7 +2225,7 @@ static v8::Handle<v8::Value> JS_SelectAql (v8::Arguments const& argv) {
 
   // extract the limit value
   TRI_voc_ssize_t limit = 0;
-  v8::Handle<v8::Value> limitArg = argv[6];
+  v8::Handle<v8::Value> limitArg = argv[3];
 
   if (limitArg->IsNull()) {
     limit = TRI_QRY_NO_LIMIT;
@@ -2288,17 +2236,30 @@ static v8::Handle<v8::Value> JS_SelectAql (v8::Arguments const& argv) {
     limit = (TRI_voc_ssize_t) l;
   }
 
+  TRI_select_join_t* join;
+  join = TRI_CreateSelectJoin();
+  if (!join) {
+    select->free(select);
+    return scope.Close(v8::ThrowException(v8::String::New("could not create join struct")));
+  }
+  
+  TRI_AddPartSelectJoin(join, JOIN_TYPE_PRIMARY, NULL, 
+                        (char*) name.c_str(), (char*) "alias");
+
   // create the query
-  TRI_query_t* query = TRI_CreateQuery(select,
-                                       where,
+  TRI_query_t* query = TRI_CreateQuery(vocbase,
+                                       select,
+                                       NULL,
                                        NULL, 
-                                       name.c_str(), 
-                                       collection->_collection);
+                                       join); 
+
+  if (!query) {
+    select->free(select);
+    return scope.Close(v8::ThrowException(v8::String::New("could not create query object")));
+  }
 
   query->_skip = skip;
   query->_limit = limit;
-
-  select->free(select);
 
   // wrap it up
   return scope.Close(WrapQuery(query));
@@ -2420,7 +2381,6 @@ static v8::Handle<v8::Value> JS_NextRefCursor (v8::Arguments const& argv) {
   // always use the primary collection
   TRI_voc_cid_t cid = cursor->_context->_primary->base._cid;
   TRI_voc_did_t did = next->_primary->_did;
-
   string ref = StringUtils::itoa(cid) + ":" + StringUtils::itoa(did);
 
   return scope.Close(v8::String::New(ref.c_str()));

@@ -153,6 +153,9 @@ libavocadodb_a_SOURCES = \
 	Variant/VariantUInt64.cpp \
 	Variant/VariantUInt8.cpp \
 	Variant/VariantVector.cpp \
+	VocBase/data-feeder.c \
+	VocBase/join-execute.c \
+	VocBase/order.c \
 	VocBase/blob-collection.c \
 	VocBase/collection.c \
 	VocBase/compactor.c \

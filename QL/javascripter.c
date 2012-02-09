@@ -176,7 +176,8 @@ void QLJavascripterConvert (QL_javascript_conversion_t *converter, QL_ast_node_t
       else {
         TRI_AppendStringStringBuffer(converter->_buffer, "$['");
         TRI_AppendStringStringBuffer(converter->_buffer, converter->_prefix);
-        TRI_AppendStringStringBuffer(converter->_buffer, "']");
+        TRI_AppendStringStringBuffer(converter->_buffer, "'].");
+        TRI_AppendStringStringBuffer(converter->_buffer, node->_value._stringValue);
       }
       return;
     case QLNodeUnaryOperatorPlus:
@@ -234,59 +235,40 @@ void QLJavascripterConvert (QL_javascript_conversion_t *converter, QL_ast_node_t
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a javascript string by recursively walking an order by AST
 ////////////////////////////////////////////////////////////////////////////////
 
 void QLJavascripterConvertOrder (QL_javascript_conversion_t *converter, QL_ast_node_t *node) {
-  QL_ast_node_t *lhs, *rhs;
+  QL_ast_node_t *lhs, *rhs, *start;
 
   if (node == 0) {
     return;
   }
 
-  lhs = node->_lhs;
-  TRI_AppendCharStringBuffer(converter->_buffer, '(');
-  converter->_prefix = "l";
-  QLJavascripterConvert(converter, lhs); 
-  TRI_AppendCharStringBuffer(converter->_buffer, '>');
-  converter->_prefix = "r";
-  QLJavascripterConvert(converter, lhs); 
-  TRI_AppendCharStringBuffer(converter->_buffer, '?');
- 
-  rhs = node->_rhs;
-  if (rhs->_value._boolValue) {
-    TRI_AppendStringStringBuffer(converter->_buffer, "1");
+  start = node;
+  while (node != 0) {
+    lhs = node->_lhs;
+    TRI_AppendStringStringBuffer(converter->_buffer, "lhs=");
+    converter->_prefix = "l";
+    QLJavascripterConvert(converter, lhs); 
+    TRI_AppendStringStringBuffer(converter->_buffer, ";rhs=");
+    converter->_prefix = "r";
+    QLJavascripterConvert(converter, lhs); 
+    
+    rhs = node->_rhs;
+    if (rhs->_value._boolValue) {
+      TRI_AppendStringStringBuffer(converter->_buffer, ";if(lhs<rhs)return -1;if(lhs>rhs)return 1;");
+    } 
+    else {
+      TRI_AppendStringStringBuffer(converter->_buffer, ";if(lhs<rhs)return 1;if(lhs>rhs)return -1;");
+    }
+    if (node->_next == 0) {
+      break;
+    }
+    node = node->_next;
   }
-  else {
-    TRI_AppendStringStringBuffer(converter->_buffer, "-1");
-  }
-
-  TRI_AppendCharStringBuffer(converter->_buffer, ':');
-
-  converter->_prefix = "l";
-  QLJavascripterConvert(converter, lhs);
-  TRI_AppendCharStringBuffer(converter->_buffer, '<');
-  converter->_prefix = "r";
-  QLJavascripterConvert(converter, lhs); 
-  TRI_AppendCharStringBuffer(converter->_buffer, '?');
-
-  if (rhs->_value._boolValue) {
-    TRI_AppendStringStringBuffer(converter->_buffer, "-1");
-  }
-  else {
-    TRI_AppendStringStringBuffer(converter->_buffer, "1");
-  }
-  TRI_AppendCharStringBuffer(converter->_buffer, ':');
-
-  if (node->_next) {
-    QLJavascripterConvertOrder(converter, node->_next);
-  } 
-  else {
-    TRI_AppendCharStringBuffer(converter->_buffer, '0');
-  }
-  TRI_AppendCharStringBuffer(converter->_buffer, ')');
+  TRI_AppendStringStringBuffer(converter->_buffer, "return 0;");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

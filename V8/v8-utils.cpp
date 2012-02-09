@@ -174,7 +174,130 @@ bool TRI_DefineJsonArrayExecutionContext (TRI_js_exec_context_t context,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief defines a document
+/// @brief defines documents in a join/where
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_DefineWhereExecutionContext (TRI_js_exec_context_t context,
+                                      const TRI_select_join_t* join,
+                                      const size_t level,
+                                      const bool isJoin) {
+  js_exec_context_t* ctx;
+  TRI_doc_mptr_t* document;
+  
+  ctx = (js_exec_context_t*) context;
+
+  for (size_t i = 0; i <= level; i++) {
+    TRI_join_part_t* part = (TRI_join_part_t*) join->_parts._buffer[i];
+
+    if (part->_type != JOIN_TYPE_LIST || (isJoin && (level == i))) {
+      // part is a single-document container
+      document = (TRI_doc_mptr_t*) part->_singleDocument;
+      if (!document) {
+        ctx->_arguments->Set(v8::String::New(part->_alias), v8::Null());
+      } 
+      else {
+        v8::Handle<v8::Value> result;
+        bool ok = TRI_ObjectDocumentPointer(part->_collection, document, &result);
+        if (!ok) {
+          return false;
+        }
+        ctx->_arguments->Set(v8::String::New(part->_alias), result);
+      }
+    }
+    else {
+      // part is a multi-document container
+      v8::Handle<v8::Array> array = v8::Array::New();
+      size_t pos = 0;
+      for (size_t n = 0; n < part->_listDocuments._length; n++) {
+        document = (TRI_doc_mptr_t*) part->_listDocuments._buffer[n];
+        if (document) {
+          v8::Handle<v8::Value> result;
+          bool ok = TRI_ObjectDocumentPointer(part->_collection, document, &result);
+          if (!ok) {
+            return false;
+          }
+          array->Set(pos++, result);
+        }
+      }
+      ctx->_arguments->Set(v8::String::New(part->_alias), array);
+    }
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief defines a document composed of multiple elements
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_DefineSelectExecutionContext (TRI_js_exec_context_t context,
+                                       TRI_rc_result_t* resultState) {
+  js_exec_context_t* ctx;
+  TRI_sr_documents_t document;
+  TRI_sr_documents_t* docPtr;
+  TRI_select_size_t* numPtr;
+  TRI_select_size_t num;
+  TRI_select_result_t* result;
+ 
+  numPtr = (TRI_select_size_t*) resultState->_dataPtr;
+  if (!numPtr) {
+    return false;
+  }
+  result = resultState->_selectResult;
+
+  ctx = (js_exec_context_t*) context;
+
+  for (size_t i = 0; i < result->_dataParts->_length; i++) {
+    TRI_select_datapart_t* part = (TRI_select_datapart_t*) result->_dataParts->_buffer[i];
+
+    num = *numPtr++;
+    docPtr = (TRI_sr_documents_t*) numPtr;
+
+    if (part->_type == RESULT_PART_SINGLE) {
+      document = (TRI_sr_documents_t) *docPtr++;
+      if (!document) {
+        ctx->_arguments->Set(v8::String::New(part->_alias), v8::Null());
+      } 
+      else {
+        v8::Handle<v8::Value> result;
+        TRI_doc_mptr_t masterPointer;
+        TRI_MarkerMasterPointer(document, &masterPointer);
+        bool ok = TRI_ObjectDocumentPointer(part->_collection, &masterPointer, &result);
+        if (!ok) {
+          return false;
+        }
+        ctx->_arguments->Set(v8::String::New(part->_alias), result);
+      }
+    }
+    else {
+      // part is a multi-document container
+      v8::Handle<v8::Array> array = v8::Array::New();
+      size_t pos = 0;
+      for (size_t i = 0; i < num; i++) {
+        document = (TRI_sr_documents_t) *docPtr++;
+        if (document) {
+          v8::Handle<v8::Value> result;
+          TRI_doc_mptr_t masterPointer;
+          TRI_MarkerMasterPointer(document, &masterPointer);
+          bool ok = TRI_ObjectDocumentPointer(part->_collection, &masterPointer, &result);
+          if (!ok) {
+            return false;
+          }
+          array->Set(pos++, result);
+        }
+      }
+      ctx->_arguments->Set(v8::String::New(part->_alias), array);
+    }
+    
+    numPtr = (TRI_select_size_t*) docPtr;
+  }
+
+  return true;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief defines a single document
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_DefineDocumentExecutionContext (TRI_js_exec_context_t context,
@@ -188,7 +311,7 @@ bool TRI_DefineDocumentExecutionContext (TRI_js_exec_context_t context,
 
   bool ok = TRI_ObjectDocumentPointer(collection, document, &result);
 
-  if (! ok) {
+  if (!ok) {
     return false;
   }
 
@@ -198,29 +321,86 @@ bool TRI_DefineDocumentExecutionContext (TRI_js_exec_context_t context,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Create a v8 object from a document list
+////////////////////////////////////////////////////////////////////////////////
+
+static bool MakeObject (TRI_select_result_t* result, TRI_sr_documents_t* docPtr, void* storage) {
+  TRI_sr_documents_t document;
+  TRI_select_size_t* numPtr;
+  TRI_select_size_t num;
+
+  v8::Handle<v8::Object> obj = v8::Object::New();
+
+  numPtr = (TRI_select_size_t*) docPtr;
+  
+  for (size_t i = 0; i < result->_dataParts->_length; i++) {
+    TRI_select_datapart_t* part = 
+      (TRI_select_datapart_t*) result->_dataParts->_buffer[i];
+
+    num = *numPtr++;
+    docPtr = (TRI_sr_documents_t*) numPtr;
+
+    if (part->_type == RESULT_PART_SINGLE) {
+      document = (TRI_sr_documents_t) *docPtr++;
+      if (!document) {
+        obj->Set(v8::String::New(part->_alias), v8::Null());
+      } 
+      else {
+        v8::Handle<v8::Value> result;
+        TRI_doc_mptr_t masterPointer;
+        TRI_MarkerMasterPointer(document, &masterPointer);
+        bool ok = TRI_ObjectDocumentPointer(part->_collection, &masterPointer, &result);
+        if (!ok) {
+          return false;
+        }
+        obj->Set(v8::String::New(part->_alias), result);
+      }
+    }
+    else {
+      // part is a multi-document container
+      v8::Handle<v8::Array> array = v8::Array::New();
+      size_t pos = 0;
+      for (size_t i = 0; i < num; i++) {
+        document = (TRI_sr_documents_t) *docPtr++;
+        if (document) {
+          v8::Handle<v8::Value> result;
+          TRI_doc_mptr_t masterPointer;
+          TRI_MarkerMasterPointer(document, &masterPointer);
+          bool ok = TRI_ObjectDocumentPointer(part->_collection, &masterPointer, &result);
+          if (!ok) {
+            return false;
+          }
+          array->Set(pos++, result);
+        }
+      }
+      obj->Set(v8::String::New(part->_alias), array);
+    }
+    
+    numPtr = (TRI_select_size_t*) docPtr;
+  }
+
+  * (v8::Handle<v8::Object>*) storage = obj;
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief defines an execution context with two documents for comparisons
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_DefineCompareExecutionContext (TRI_js_exec_context_t context,
-                                        TRI_doc_collection_t* collection,
-                                        TRI_doc_mptr_t const* lhs,
-                                        TRI_doc_mptr_t const* rhs) {
+                                        TRI_select_result_t* result,
+                                        TRI_sr_documents_t* left,
+                                        TRI_sr_documents_t* right) {
   js_exec_context_t* ctx;
-  v8::Handle<v8::Value> leftValue;
-  v8::Handle<v8::Value> rightValue;
-  bool ok;
-
+  
   ctx = (js_exec_context_t*) context;
+  assert(ctx);
+  v8::Handle<v8::Object> leftValue;
+  v8::Handle<v8::Object> rightValue;
 
-  ok = TRI_ObjectDocumentPointer(collection, lhs, &leftValue);
-  if (! ok) {
-    return false;
-  }
-
-  ok = TRI_ObjectDocumentPointer(collection, rhs, &rightValue);
-  if (! ok) {
-    return false;
-  }
+  MakeObject(result, left, &leftValue);
+  MakeObject(result, right, &rightValue);
 
   ctx->_arguments->Set(v8::String::New("l"), leftValue);
   ctx->_arguments->Set(v8::String::New("r"), rightValue);
@@ -236,7 +416,6 @@ bool TRI_ExecuteExecutionContext (TRI_js_exec_context_t context, void* storage) 
   js_exec_context_t* ctx;
 
   ctx = (js_exec_context_t*) context;
-
   // convert back into a handle
   v8::Persistent<v8::Function> func = ctx->_func;
 
