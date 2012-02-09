@@ -170,7 +170,7 @@ namespace {
         exit(EXIT_FAILURE);
       }
       else {
-        cerr << "changed into directory '" << workingDirectory << "'\n";
+        LOGGER_INFO << "changed into directory '" << workingDirectory << "'";
       }
     }
 
