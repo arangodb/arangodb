@@ -11,9 +11,9 @@ if test "x$tr_DARWIN" == xyes;  then
   V8_LIBS="${srcdir}/3rdParty/V8/libv8.a"
 else
   if test "x$tr_BITS" == x64;  then
-    V8_LIBS="${srcdir}/3rdParty/V8/out/x64.release/libv8_base.a ${srcdir}/3rdParty/V8/out/x64.release/libv8_nosnapshot.a"
+    V8_LIBS="${srcdir}/3rdParty/V8/out/x64.release/obj.target/tools/gyp/libv8_base.a ${srcdir}/3rdParty/V8/out/x64.release/obj.target/tools/gyp/libv8_nosnapshot.a"
   else
-    V8_LIBS="${srcdir}/3rdParty/V8/out/ia32.release/libv8_base.a ${srcdir}/3rdParty/V8/out/ia32.release/libv8_nosnapshot.a"
+    V8_LIBS="${srcdir}/3rdParty/V8/out/ia32.release/obj.target/tools/gyp/libv8_base.a ${srcdir}/3rdParty/V8/out/ia32.release/obj.target/tools/gyp/libv8_nosnapshot.a"
   fi
 fi
 
