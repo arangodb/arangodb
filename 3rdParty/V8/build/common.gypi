@@ -297,7 +297,7 @@
               '-fdata-sections',
               '-ffunction-sections',
               '-fomit-frame-pointer',
-              '-O3',
+              '-O2',
             ],
             'conditions': [
               [ 'gcc_version==44 and clang==0', {
@@ -316,7 +316,7 @@
           }],
           ['OS=="mac"', {
             'xcode_settings': {
-              'GCC_OPTIMIZATION_LEVEL': '3',  # -O3
+              'GCC_OPTIMIZATION_LEVEL': '2',  # -O2
 
               # -fstrict-aliasing.  Mainline gcc
               # enables this at -O2 and above,
