@@ -4,23 +4,42 @@ dnl ----------------------------------------------------------------------------
 dnl option for 32bit/64bit compile
 dnl -----------------------------------------------------------------------------------------
 
-AC_ARG_ENABLE(32bit,
-  AS_HELP_STRING([--enable-32bit], [force 32bit compilation (default: no)]),
+tr_BITS=32
 
-  tr_32BIT="$enableval"
+case $target_cpu in
+  x86_64*)
+    tr_BITS=64
+    ;;
+esac
 
-  if test "x$enableval" = xyes;  then
-    CXXFLAGS="$CXXFLAGS -m32"
-    CFLAGS="$CFLAGS -m32"
-    LDFLAGS="$LDFLAGS -m32"
-  fi,
-  tr_32BIT="no"
-)
+if text "x$tr_BITS" == "x64";  then
+  AC_ARG_ENABLE(32bit,
+    AS_HELP_STRING([--enable-32bit], [force 32bit compilation (default: no)]),
+
+    tr_32BIT="$enableval"
+
+    if test "x$enableval" = xyes;  then
+      CXXFLAGS="$CXXFLAGS -m32"
+      CFLAGS="$CFLAGS -m32"
+      LDFLAGS="$LDFLAGS -m32"
+    fi,
+    tr_32BIT="no"
+  )
+fi
+
+AM_CONDITIONAL(ENABLE_64BIT, test "x$tr_BITS" = x64)
+AM_CONDITIONAL(ENABLE_32BIT, test "x$tr_BITS" = x32)
 
 dnl -----------------------------------------------------------------------------------------
 dnl informational output
 dnl -----------------------------------------------------------------------------------------
 
-if test "x$tr_32BIT" = xyes;  then
+if text "x$tr_BITS" == "x64";  then
+  if test "x$tr_32BIT" = xyes;  then
+    BASIC_INFO="$BASIC_INFO|32bit: enabled"
+  else
+    BASIC_INFO="$BASIC_INFO|64bit: enabled"
+  fi
+else
   BASIC_INFO="$BASIC_INFO|32bit: enabled"
 fi
