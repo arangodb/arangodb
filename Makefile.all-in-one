@@ -1,0 +1,53 @@
+# -*- mode: Makefile; -*-
+
+################################################################################
+## LIBEV
+################################################################################
+
+BUILT_SOURCES += @top_srcdir@/3rdParty/libev/.libs/libev.a
+
+@top_srcdir@/3rdParty/libev/.libs/libev.a:
+	@echo
+	@echo "--------------------------------------------------------------------------------"
+	@echo "BUILDING LIBEV"
+	@echo "--------------------------------------------------------------------------------"
+	@echo
+
+	cd @top_srcdir@/3rdParty/libev && ./configure --disable-shared
+	cd @top_srcdir@/3rdParty/libev && make
+
+	@echo
+	@echo "--------------------------------------------------------------------------------"
+	@echo "BUILD LIBEV FINISHED"
+	@echo "--------------------------------------------------------------------------------"
+	@echo
+
+################################################################################
+## V8
+################################################################################
+
+if ENABLE_64BIT
+V8_BUILD_VERSION=x64.release
+endif
+
+if ENABLE_32BIT
+V8_BUILD_VERSION=ia32.release
+endif
+
+BUILT_SOURCES += @top_srcdir@/3rdParty/V8/out/$(V8_BUILD_VERSION)/obj.target/tools/gyp/libv8_base.a
+BUILT_SOURCES += @top_srcdir@/3rdParty/V8/out/$(V8_BUILD_VERSION)/obj.target/tools/gyp/libv8_nosnapshot.a
+
+@top_srcdir@/3rdParty/V8/out/$(V8_BUILD_VERSION)/obj.target/tools/gyp/libv8_base.a @top_srcdir@/3rdParty/V8/out/$(V8_BUILD_VERSION)/obj.target/tools/gyp/libv8_nosnapshot.a:
+	@echo
+	@echo "--------------------------------------------------------------------------------"
+	@echo "BUILDING V8"
+	@echo "--------------------------------------------------------------------------------"
+	@echo
+
+	cd @top_srcdir@/3rdParty/V8 && make library=static standalone=off $(V8_BUILD_VERSION)
+
+	@echo
+	@echo "--------------------------------------------------------------------------------"
+	@echo "BUILD V8 FINISHED"
+	@echo "--------------------------------------------------------------------------------"
+	@echo
