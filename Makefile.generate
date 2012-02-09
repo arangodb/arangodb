@@ -1,0 +1,79 @@
+# -*- mode: Makefile; -*-
+
+################################################################################
+## JavaScript source code as header
+################################################################################
+
+.setup-directories:
+	@test -d js || mkdir js
+	@test -d js/bootstrap || mkdir js/bootstrap
+	@test -d js/modules || mkdir js/modules
+	@test -d js/server || mkdir js/server
+	@test -d Doxygen/js || mkdir Doxygen/js
+	@test -d Doxygen/js/bootstrap || mkdir Doxygen/js/bootstrap
+	@test -d Doxygen/js/modules || mkdir Doxygen/js/modules
+	@test -d Doxygen/js/server || mkdir Doxygen/js/server
+	@test -d Doxygen/js/system || mkdir Doxygen/js/system
+	@touch $@
+
+js/js-%.h: @srcdir@/js/%.js .setup-directories
+	@top_srcdir@/config/js2c.sh $< > $@
+
+js/bootstrap/js-%.h: @srcdir@/js/bootstrap/%.js .setup-directories
+	@top_srcdir@/config/js2c.sh $< > $@
+
+js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
+	@top_srcdir@/config/js2c.sh $< > $@
+
+################################################################################
+## FLEX
+################################################################################
+
+JsonParser/%.c: @srcdir@/JsonParser/%.l
+	@top_srcdir@/config/flex-c.sh $(LEX) $@ $<
+
+QL/%.c: @srcdir@/QL/%.l
+	@top_srcdir@/config/flex-c.sh $(LEX) $@ $<
+
+################################################################################
+## FLEX++
+################################################################################
+
+V8/%.cpp: @srcdir@/V8/%.ll
+	@top_srcdir@/config/flex-c++.sh $(LEX) $@ $<
+
+JsonParserX/%.cpp: @srcdir@/JsonParserX/%.ll
+	@top_srcdir@/config/flex-c++.sh $(LEX) $@ $<
+
+################################################################################
+## BISON
+################################################################################
+
+QL/%.c: @srcdir@/QL/%.y
+	@top_srcdir@/config/bison-c.sh $(BISON) $@ $<
+
+################################################################################
+## BISON++
+################################################################################
+
+JsonParserX/%.cpp: @srcdir@/JsonParserX/%.yy
+	@top_srcdir@/config/bison-c++.sh $(BISON) $@ $<
+
+################################################################################
+## Doxygen
+################################################################################
+
+.PHONY: Doxygen/js Doxygen/js/system Doxygen/js/modules
+
+Doxygen/js/%.c: @srcdir@/js/%.js .setup-directories
+	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+
+Doxygen/js/system/%.c: @srcdir@/js/system/%.js .setup-directories
+	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+
+Doxygen/js/modules/%.c: @srcdir@/js/system/%.js .setup-directories
+	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+
+Doxygen/js/bootstrap/%.c: @srcdir@/js/bootstrap/%.js .setup-directories
+	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+
