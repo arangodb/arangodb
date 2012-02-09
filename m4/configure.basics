@@ -36,6 +36,8 @@ case $target in
     list_cc="[gcc-4 gcc-3 gcc cc]"
     list_cxx="[g++-4 g++-3 g++ cxx]"
 
+    tr_DARWIN="yes"
+
     ;;
 
   *) 
@@ -44,6 +46,8 @@ case $target in
 
     ;;
 esac
+
+AM_CONDITIONAL(ENABLE_DARWIN, "x$tr_DARWIN" = "xyes")
 
 AC_PROG_CXXCPP
 AC_PROG_CC($list_cc)
