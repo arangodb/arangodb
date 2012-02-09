@@ -34,6 +34,10 @@
 #include "V8/v8-c-utils.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/index.h"
+#include "VocBase/join.h"
+#include "VocBase/join-execute.h"
+#include "VocBase/where.h"
+#include "VocBase/order.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -92,18 +96,23 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 /// @page AQL Avocado Query Language
 /// 
-/// A query constists of the following parts:
+/// Queries can be used to extract arbitrary data from one or multiple
+/// collections. A query needs to be composed in the Avocado Query Language
+/// (AQL). AQL is somewhat similar, but not identical, to SQL.
 ///
+/// An AQL SELECT query consists of the following parts:
 /// - select clause
-/// - primary collection
-/// - joins
+/// - collections queried and their join conditions
 /// - where clause
 /// - order by
 /// - limit
 ///
-/// @section AqlSelect Select Clause
+/// The select clause and collections always need to be specified in an AQL
+/// query, but where clause, order by and limit are optional elements.
 ///
-/// To select all documents unlatered from a collection use
+/// @section AqlSelect Select clause
+///
+/// To select all documents from a collection use without alteration use
 ///
 /// @verbinclude query4
 ///
@@ -197,50 +206,6 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief execution context of a query
-///
-/// In order to execute a query, you need an execution context. The results are
-/// only valid as long as the context exists. After freeing the context you
-/// should no longer access the result cursor or the result documents.
-///
-/// When creating an execution context, parts of clauses might use JavaScript.
-/// A JavaScript execution context is created for these clauses.
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_rc_context_s {
-  char* _primaryName;
-  TRI_doc_collection_t* _primary;
-
-  TRI_js_exec_context_t _selectClause;
-  TRI_js_exec_context_t _whereClause;
-  TRI_js_exec_context_t _orderClause;
-}
-TRI_rc_context_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the result documents for the next result
-///
-/// The result documents of the next result. When a cursor returns the next set
-/// of documents, it will return these documents as instance of this class.  The
-/// methods @FN{shapedJson} and @FN{toJavaScript} of @CODE{TRI_qry_select_t}
-/// must be used to convert these documents into the final json or JavaScript
-/// result object. Note that a call to @FN{next} will free the current result.
-/// You do not need to free the result returned by @FN{next}, it is destroyed
-/// when the cursor itself is destroyed or when @FN{next} is called again.
-///
-/// The member @CODE{_primary} holds the primary document pointer for the
-/// primary collection.
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_rc_result_s {
-  TRI_rc_context_t* _context;
-
-  TRI_doc_mptr_t* _primary;
-  TRI_json_t _augmention;
-}
-TRI_rc_result_t;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief select clause type
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -325,157 +290,6 @@ typedef struct TRI_qry_select_general_s {
 TRI_qry_select_general_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief where clause type
-////////////////////////////////////////////////////////////////////////////////
-
-typedef enum {
-  TRI_QRY_WHERE_BOOLEAN,
-  TRI_QRY_WHERE_GENERAL,
-  TRI_QRY_WHERE_WITHIN_CONSTANT,
-  TRI_QRY_WHERE_PRIMARY_CONSTANT
-}
-TRI_qry_where_type_e;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract where clause
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_qry_where_s {
-  TRI_qry_where_type_e _type;
-
-  struct TRI_qry_where_s* (*clone) (struct TRI_qry_where_s const*);
-  void (*free) (struct TRI_qry_where_s*);
-}
-TRI_qry_where_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract where clause for conditions
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_qry_where_cond_s {
-  TRI_qry_where_t base;
-
-  bool (*checkCondition) (struct TRI_qry_where_cond_s*, TRI_rc_context_t*, TRI_doc_mptr_t const*);
-}
-TRI_qry_where_cond_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constant where clause
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_qry_where_boolean_s {
-  TRI_qry_where_cond_t base;
-
-  bool _value;
-}
-TRI_qry_where_boolean_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief JavaScript where clause
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_qry_where_general_s {
-  TRI_qry_where_cond_t base;
-
-  char* _code;
-}
-TRI_qry_where_general_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract primary index where clause
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_qry_where_primary_s {
-  TRI_qry_where_t base;
-
-  TRI_voc_did_t (*did) (struct TRI_qry_where_primary_s*, TRI_rc_context_t*);
-}
-TRI_qry_where_primary_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief primary index where clause with a constant document identifier
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_qry_where_primary_const_s {
-  TRI_qry_where_primary_t base;
-
-  TRI_voc_did_t _did;
-}
-TRI_qry_where_primary_const_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief geo index where clause
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_qry_where_within_s {
-  TRI_qry_where_t base;
-
-  TRI_idx_iid_t _iid;
-  char* _nameDistance;
-
-  double* (*coordinates) (struct TRI_qry_where_within_s*, TRI_rc_context_t*);
-  double (*radius) (struct TRI_qry_where_within_s*, TRI_rc_context_t*);
-}
-TRI_qry_where_within_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief geo index where clause with a constant document identifier
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_qry_where_within_const_s {
-  TRI_qry_where_within_t base;
-
-  double _coordinates[2];
-  double _radius;
-}
-TRI_qry_where_within_const_t;
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief order by type
-////////////////////////////////////////////////////////////////////////////////
-
-typedef enum {
-  TRI_QRY_ORDER_GENERAL
-}
-TRI_qry_order_type_e;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract order by clause
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_qry_order_s {
-  TRI_qry_order_type_e _type;
-
-  struct TRI_qry_order_s* (*clone) (struct TRI_qry_order_s const*);
-  void (*free) (struct TRI_qry_order_s*);
-}
-TRI_qry_order_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract order by clause for conditions
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_qry_order_cond_s {
-  TRI_qry_order_t base;
-
-  bool (*checkCondition) (struct TRI_qry_order_cond_s*, TRI_rc_context_t*, TRI_doc_mptr_t const*);
-}
-TRI_qry_order_cond_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief JavaScript order by clause
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_qry_order_general_s {
-  TRI_qry_order_cond_t base;
-
-  char* _code;
-}
-TRI_qry_order_general_t;
-
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief general query
 ///
 /// A query is built using the fluent-interface or the Avocado Query
@@ -521,12 +335,13 @@ TRI_qry_order_general_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_query_s {
+  TRI_vocbase_t* _vocbase;
   TRI_qry_select_t* _select;
   char* _primaryName;
   TRI_doc_collection_t* _primary;
-  TRI_vector_pointer_t _joins;
   TRI_qry_where_t* _where;
   TRI_qry_order_t* _order;
+  TRI_select_join_t* _joins;
 
   TRI_voc_size_t _skip;
   TRI_voc_ssize_t _limit;
@@ -546,6 +361,7 @@ TRI_query_t;
 typedef struct TRI_rc_cursor_s {
     TRI_rc_context_t* _context;
     TRI_qry_select_t* _select;
+    TRI_select_result_t* _selectResult;
 
     TRI_vector_pointer_t _containers;
 
@@ -601,11 +417,11 @@ TRI_rc_cursor_t;
 /// @brief creates a query
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_query_t* TRI_CreateQuery (TRI_qry_select_t const* selectStmt,
+TRI_query_t* TRI_CreateQuery (TRI_vocbase_t* vocBase,
+                              TRI_qry_select_t const* selectStmt,
                               TRI_qry_where_t  const* whereStmt,
                               TRI_qry_order_t  const* orderStmt,
-                              char const* name,
-                              TRI_doc_collection_t* collection);
+                              TRI_select_join_t* joins);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees a query
@@ -664,14 +480,6 @@ TRI_qry_where_t* TRI_CreateQueryWhereWithinConstant (TRI_idx_iid_t iid,
                                                      double latitiude,
                                                      double longitude,
                                                      double radius);
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an order by clause for general JavaScript code
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_qry_order_t* TRI_CreateQueryOrderGeneral (char const*);
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

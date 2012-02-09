@@ -27,7 +27,6 @@
 
 #include "VocBase/join.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocBase
 /// @{
@@ -44,6 +43,18 @@ static void FreePart (TRI_join_part_t* part) {
 
   if (part->_collectionName) {
     TRI_Free(part->_collectionName);
+  }
+
+  if (part->_feeder) {
+    part->_feeder->free(part->_feeder);
+  }
+
+  if (part->_context) {
+    TRI_FreeExecutionContext(part->_context);
+  }
+
+  if (part->_listDocuments._buffer) {  
+    TRI_DestroyVectorPointer(&part->_listDocuments);
   }
 
   TRI_Free(part);
@@ -75,19 +86,31 @@ bool TRI_AddPartSelectJoin (TRI_select_join_t* join, const TRI_join_type_e type,
                             char* alias) {
   
   TRI_join_part_t* part;
+  TRI_qry_where_general_t* conditionGeneral;
   
-  assert(join != 0);
+  assert(join != NULL);
   part = (TRI_join_part_t*) TRI_Allocate(sizeof(TRI_join_part_t));
 
-  if (part == 0) {
+  if (!part) {
     return false;
   }
-   
+
+  // initialize vector for list joins
+  TRI_InitVectorPointer(&part->_listDocuments);
+  part->_context = NULL;
+  part->_singleDocument = NULL;
+  part->_feeder = NULL; 
   part->_type = type;
   part->_condition = condition;
-  part->_collection = 0;
+  part->_collection = NULL;
   part->_collectionName = TRI_DuplicateString(collectionName);
   part->_alias = TRI_DuplicateString(alias);
+  
+  if (part->_condition != NULL && part->_condition->_type == TRI_QRY_WHERE_GENERAL) {
+    conditionGeneral = (TRI_qry_where_general_t*) part->_condition;
+    part->_context = TRI_CreateExecutionContext(conditionGeneral->_code);
+  }
+  
   part->free = FreePart; 
 
   TRI_PushBackVectorPointer(&join->_parts, part);
@@ -102,7 +125,7 @@ TRI_select_join_t* TRI_CreateSelectJoin (void) {
   TRI_select_join_t* join;
 
   join = (TRI_select_join_t*) TRI_Allocate(sizeof(TRI_select_join_t));
-  if (join == NULL) {
+  if (!join) {
     return NULL;
   }
 
@@ -115,7 +138,6 @@ TRI_select_join_t* TRI_CreateSelectJoin (void) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
 
 // Local Variables:
 // mode: outline-minor

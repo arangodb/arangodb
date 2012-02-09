@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief joins
+/// @brief js execution context
 ///
 /// @file
 ///
@@ -21,21 +21,15 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
+/// @author Dr. Frank Celler
 /// @author Jan Steemann
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_JOIN_H
-#define TRIAGENS_DURHAM_VOC_BASE_JOIN_H 1
+#ifndef TRIAGENS_DURHAM_VOC_BASE_CONTEXT_H
+#define TRIAGENS_DURHAM_VOC_BASE_CONTEXT_H 1
 
-#include <BasicsC/common.h>
-#include <BasicsC/vector.h>
-#include <BasicsC/strings.h>
-
-#include "VocBase/where.h"
-#include "VocBase/context.h"
-#include "VocBase/data-feeder.h"
-#include "VocBase/result.h"
+#include "VocBase/document-collection.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -46,63 +40,56 @@ extern "C" {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 EXECUTION CONTEXT
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief possible join types
+/// @brief JavaScript execution context
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum {
-  JOIN_TYPE_PRIMARY,
-  JOIN_TYPE_INNER,
-  JOIN_TYPE_OUTER,
-  JOIN_TYPE_LIST
+typedef void* TRI_js_exec_context_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execution context of a query
+///
+/// In order to execute a query, you need an execution context. The results are
+/// only valid as long as the context exists. After freeing the context you
+/// should no longer access the result cursor or the result documents.
+///
+/// When creating an execution context, parts of clauses might use JavaScript.
+/// A JavaScript execution context is created for these clauses.
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_rc_context_s {
+  TRI_doc_collection_t* _primary;
+  char* _primaryName;
+
+  TRI_js_exec_context_t _selectClause;
+  TRI_js_exec_context_t _whereClause;
+  TRI_js_exec_context_t _orderClause;
 }
-TRI_join_type_e;
+TRI_rc_context_t;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief join data structure
+/// @brief creates a new execution context
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_join_part_s {
-  TRI_data_feeder_t *_feeder; // data source
-  TRI_join_type_e _type;
-  TRI_qry_where_t* _condition;
-  TRI_doc_collection_t* _collection;
-  char* _collectionName;
-  char* _alias;
-  TRI_doc_mptr_t* _singleDocument;
-  TRI_vector_pointer_t _listDocuments;
-  TRI_js_exec_context_t _context;
-
-  void (*free) (struct TRI_join_part_s*);
-} 
-TRI_join_part_t;
+TRI_js_exec_context_t TRI_CreateExecutionContext (char const* script);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief join container data structure for select queries
+/// @brief frees an new execution context
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_select_join_s {
-  TRI_vector_pointer_t _parts;
-  
-  void (*free) (struct TRI_select_join_s*);
-}
-TRI_select_join_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Add a part to a select join
-////////////////////////////////////////////////////////////////////////////////
-      
-bool TRI_AddPartSelectJoin (TRI_select_join_t*, 
-                            const TRI_join_type_e, 
-                            TRI_qry_where_t*, 
-                            char*, 
-                            char*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Create a new join 
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_select_join_t* TRI_CreateSelectJoin (void);
+void TRI_FreeExecutionContext (TRI_js_exec_context_t context);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -118,4 +105,5 @@ TRI_select_join_t* TRI_CreateSelectJoin (void);
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
+
 

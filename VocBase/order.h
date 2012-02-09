@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief joins
+/// @brief order by
 ///
 /// @file
 ///
@@ -25,17 +25,13 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_JOIN_H
-#define TRIAGENS_DURHAM_VOC_BASE_JOIN_H 1
+#ifndef TRIAGENS_DURHAM_VOC_BASE_ORDER_H
+#define TRIAGENS_DURHAM_VOC_BASE_ORDER_H 1
 
-#include <BasicsC/common.h>
-#include <BasicsC/vector.h>
-#include <BasicsC/strings.h>
-
-#include "VocBase/where.h"
+#include "VocBase/vocbase.h"
+#include "VocBase/select-result.h"
 #include "VocBase/context.h"
-#include "VocBase/data-feeder.h"
-#include "VocBase/result.h"
+#include "V8/v8-c-utils.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,62 +43,65 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief possible join types
+/// @brief order by types
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  JOIN_TYPE_PRIMARY,
-  JOIN_TYPE_INNER,
-  JOIN_TYPE_OUTER,
-  JOIN_TYPE_LIST
+  TRI_QRY_ORDER_GENERAL
 }
-TRI_join_type_e;
+TRI_qry_order_type_e;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief join data structure
+/// @brief abstract order by clause
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_join_part_s {
-  TRI_data_feeder_t *_feeder; // data source
-  TRI_join_type_e _type;
-  TRI_qry_where_t* _condition;
-  TRI_doc_collection_t* _collection;
-  char* _collectionName;
-  char* _alias;
-  TRI_doc_mptr_t* _singleDocument;
-  TRI_vector_pointer_t _listDocuments;
-  TRI_js_exec_context_t _context;
+typedef struct TRI_qry_order_s {
+  TRI_qry_order_type_e _type;
 
-  void (*free) (struct TRI_join_part_s*);
-} 
-TRI_join_part_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief join container data structure for select queries
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_select_join_s {
-  TRI_vector_pointer_t _parts;
-  
-  void (*free) (struct TRI_select_join_s*);
+  struct TRI_qry_order_s* (*clone) (struct TRI_qry_order_s const*);
+  void (*free) (struct TRI_qry_order_s*);
 }
-TRI_select_join_t;
+TRI_qry_order_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Add a part to a select join
-////////////////////////////////////////////////////////////////////////////////
-      
-bool TRI_AddPartSelectJoin (TRI_select_join_t*, 
-                            const TRI_join_type_e, 
-                            TRI_qry_where_t*, 
-                            char*, 
-                            char*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Create a new join 
+/// @brief abstract order by clause for conditions
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_select_join_t* TRI_CreateSelectJoin (void);
+typedef struct TRI_qry_order_cond_s {
+  TRI_qry_order_t base;
+}
+TRI_qry_order_cond_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief JavaScript order by clause
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_qry_order_general_s {
+  TRI_qry_order_cond_t base;
+
+  char* _code;
+}
+TRI_qry_order_general_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Order by function typedef
+////////////////////////////////////////////////////////////////////////////////
+
+typedef void (*TRI_order_fptr_t) (TRI_rc_result_t*,
+                                  TRI_qry_order_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief General order by function (uses JavaScript code)
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_OrderDataGeneralQuery (TRI_rc_result_t*,
+                                TRI_qry_order_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an order by clause for general JavaScript code
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_qry_order_t* TRI_CreateQueryOrderGeneral (char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

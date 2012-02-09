@@ -27,10 +27,9 @@
 
 #include "query.h"
 
-#include "BasicsC/logging.h"
-#include "BasicsC/strings.h"
+#include <BasicsC/logging.h>
+#include <BasicsC/strings.h>
 #include "VocBase/simple-collection.h"
-#include "VocBase/select-result.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   SELECT DOCUMENT
@@ -66,22 +65,27 @@ static void FreeQuerySelectDocument (TRI_qry_select_t* s) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts result to shaped json
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_shaped_json_t* ShapedJsonSelectDocument (TRI_qry_select_t* s,
-                                                    TRI_rc_result_t* document) {
-  return &document->_primary->_document;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief converts result to JavaScript
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool ToJavaScriptSelectDocument (TRI_qry_select_t* s,
-                                        TRI_rc_result_t* document,
+                                        TRI_rc_result_t* result,
                                         void* storage) {
-  return TRI_ObjectDocumentPointer(document->_context->_primary, document->_primary, storage);
+
+  TRI_doc_mptr_t masterPointer;
+  TRI_doc_mptr_t* document;
+  TRI_select_size_t* numPtr;
+  TRI_select_size_t num;
+  TRI_select_result_t* selectResult = result->_selectResult;
+  TRI_select_datapart_t* part = (TRI_select_datapart_t*) selectResult->_dataParts->_buffer[0];
+
+  numPtr = (TRI_select_size_t*) result->_dataPtr;
+  num = *numPtr++;
+  assert(num == 1);
+  document = *((TRI_sr_documents_t*) numPtr);
+  TRI_MarkerMasterPointer(document, &masterPointer);
+
+  return TRI_ObjectDocumentPointer(part->_collection, &masterPointer, storage);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,7 +114,6 @@ TRI_qry_select_t* TRI_CreateQuerySelectDocument () {
 
   result->base.clone = CloneQuerySelectDocument;
   result->base.free = FreeQuerySelectDocument;
-  result->base.shapedJson = ShapedJsonSelectDocument;
   result->base.toJavaScript = ToJavaScriptSelectDocument;
 
   return &result->base;
@@ -159,25 +162,16 @@ static void FreeQuerySelectGeneral (TRI_qry_select_t* s) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts result to shaped json
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_shaped_json_t* ShapedJsonSelectGeneral (TRI_qry_select_t* s,
-                                                   TRI_rc_result_t* document) {
-  return &document->_primary->_document;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief converts result to JavaScript
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool ToJavaScriptSelectGeneral (TRI_qry_select_t* s,
-                                       TRI_rc_result_t* document,
+                                       TRI_rc_result_t* result,
                                        void* storage) {
   TRI_rc_context_t* context;
   TRI_js_exec_context_t* execContext;
 
-  context = document->_context;
+  context = result->_context;
   execContext = context->_selectClause;
 
   if (execContext == NULL) {
@@ -186,12 +180,12 @@ static bool ToJavaScriptSelectGeneral (TRI_qry_select_t* s,
   }
 
   // first define the augumentation, they might get overwritten
-  if (document->_augmention._type == TRI_JSON_ARRAY) {
-    TRI_DefineJsonArrayExecutionContext(execContext, &document->_augmention);
+  if (result->_augmention._type == TRI_JSON_ARRAY) {
+    TRI_DefineJsonArrayExecutionContext(execContext, &result->_augmention);
   }
 
-  // define the primary collection
-  TRI_DefineDocumentExecutionContext(execContext, context->_primaryName, context->_primary, document->_primary);
+  // define the documents
+  TRI_DefineSelectExecutionContext(execContext, result);
 
   // execute everything
   return TRI_ExecuteExecutionContext(execContext, storage);
@@ -223,7 +217,6 @@ TRI_qry_select_t* TRI_CreateQuerySelectGeneral (char const* clause) {
 
   result->base.clone = CloneQuerySelectGeneral;
   result->base.free = FreeQuerySelectGeneral;
-  result->base.shapedJson = ShapedJsonSelectGeneral;
   result->base.toJavaScript = ToJavaScriptSelectGeneral;
 
   result->_code = TRI_DuplicateString(clause);
@@ -265,16 +258,12 @@ doc_mptr_list_t;
 typedef struct collection_cursor_s {
   TRI_rc_cursor_t base;
 
-  TRI_voc_size_t _length;
-
-  size_t _nListJoins;
+  TRI_select_size_t _length;
+  TRI_select_size_t _currentRow;
 
   TRI_doc_mptr_t* _documents;
   TRI_doc_mptr_t* _current;
   TRI_doc_mptr_t* _end;
-
-  doc_mptr_list_t* _listJoins;
-  doc_mptr_list_t* _listJoinsCurrent;
 
   TRI_json_t* _augmentions;
   TRI_json_t* _currentAugmention;
@@ -293,15 +282,6 @@ typedef void (*cond_fptr) (collection_cursor_t*,
                            TRI_qry_where_t*,
                            TRI_voc_size_t,
                            TRI_voc_ssize_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief order by function
-////////////////////////////////////////////////////////////////////////////////
-
-typedef void (*order_fptr) (collection_cursor_t*,
-                            TRI_sim_collection_t*,
-                            TRI_rc_context_t*,
-                            TRI_qry_order_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -324,9 +304,9 @@ static TRI_rc_result_t* NextCollectionCursor (TRI_rc_cursor_t* c) {
   collection_cursor_t* cursor;
 
   cursor = (collection_cursor_t*) c;
-
-  if (cursor->_current < cursor->_end) {
-    cursor->_result._primary = cursor->_current++;
+  if (cursor->_currentRow < cursor->_length) {
+    cursor->_result._dataPtr = 
+      cursor->_result._selectResult->getAt(cursor->_result._selectResult, cursor->_currentRow++);
 
     if (cursor->_augmentions != NULL) {
       cursor->_result._augmention = *cursor->_currentAugmention++;
@@ -347,7 +327,7 @@ static bool HasNextCollectionCursor (TRI_rc_cursor_t* c) {
 
   cursor = (collection_cursor_t*) c;
 
-  return cursor->_current < cursor->_end;
+  return cursor->_currentRow < cursor->_length;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -360,8 +340,12 @@ static void FreeCollectionCursor (TRI_rc_cursor_t* c) {
   size_t i;
 
   cursor = (collection_cursor_t*) c;
-  slct = cursor->base._select;
 
+  // free result set
+  cursor->_result._selectResult->free(cursor->_result._selectResult);
+
+  // free select
+  slct = cursor->base._select;
   slct->free(slct);
 
   TRI_RemoveCollectionsCursor(&cursor->base);
@@ -384,60 +368,35 @@ static void FreeCollectionCursor (TRI_rc_cursor_t* c) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief applys a skip and limit
+/// @brief applys a skip and limit on the result set
 ////////////////////////////////////////////////////////////////////////////////
 
-static void TransformDataSkipLimit (collection_cursor_t* result,
+static bool TransformDataSkipLimit (TRI_rc_result_t* result,
                                     TRI_voc_size_t skip,
                                     TRI_voc_ssize_t limit) {
-  TRI_voc_size_t length;
-  TRI_doc_mptr_t const* src;
 
+  TRI_select_result_t* _result = result->_selectResult;
+   
   // return nothing
-  if (limit == 0) {
-    result->_length = 0;
-    result->_end = result->_documents + result->_length;
-    return;
-  }
-
-  if (result->_length <= skip) {
-    result->_length = 0;
-    result->_end = result->_documents + result->_length;
-    return;
+  if (limit == 0 || _result->_numRows <= skip) {
+    return TRI_SliceSelectResult(_result, 0, 0);
   }
 
   // positive limit, skip and slice from front
-  if (0 < limit) {
-    src = result->_documents + skip;
+  if (limit > 0) {
+    if (_result->_numRows - skip < limit) {
+      return TRI_SliceSelectResult(_result, skip, _result->_numRows - skip);
+    }
 
-    if (result->_length - skip < limit) {
-      length = result->_length - skip;
-    }
-    else {
-      length = limit;
-    }
+    return TRI_SliceSelectResult(_result, skip, limit);
   }
 
   // negative limit, slice from back
-  else {
-
-    if (result->_length - skip < -limit) {
-      src = result->_documents;
-      length = result->_length - skip;
-    }
-    else {
-      src = result->_documents + (result->_length - skip + limit);
-      length = -limit;
-    }
+  if (_result->_numRows - skip < -limit) {
+    return TRI_SliceSelectResult(_result, 0, _result->_numRows - skip);
   }
 
-  // and move
-  if (result->_documents != src) {
-    memmove(result->_documents, src, length * sizeof(TRI_doc_mptr_t));
-  }
-
-  result->_length = length;
-  result->_end = result->_documents + result->_length;
+  return TRI_SliceSelectResult(_result, _result->_numRows - skip + limit, -limit);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -508,7 +467,7 @@ TRI_qry_where_t* TRI_CreateQueryWhereBoolean (bool where) {
   result->base.base.clone = CloneQueryWhereBoolean;
   result->base.base.free = FreeQueryWhereBoolean;
 
-  result->base.checkCondition = NULL;
+  //result->base.checkCondition = NULL;
 
   result->_value = where;
 
@@ -649,6 +608,7 @@ static void FreeQueryWhereGeneral (TRI_qry_where_t* w) {
 /// @brief checks the where condition
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 static bool CheckConditionWhereGeneral (TRI_qry_where_cond_t* w,
                                         TRI_rc_context_t* context,
                                         TRI_doc_mptr_t const* document) {
@@ -674,6 +634,7 @@ static bool CheckConditionWhereGeneral (TRI_qry_where_cond_t* w,
 
   return result;
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -702,7 +663,7 @@ TRI_qry_where_t* TRI_CreateQueryWhereGeneral (char const* clause) {
   result->base.base.clone = CloneQueryWhereGeneral;
   result->base.base.free = FreeQueryWhereGeneral;
 
-  result->base.checkCondition = CheckConditionWhereGeneral;
+  //result->base.checkCondition = CheckConditionWhereGeneral;
 
   result->_code = TRI_DuplicateString(clause);
 
@@ -785,67 +746,6 @@ static double RadiusQueryWhereWithinConstant (TRI_qry_where_within_t* w,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create result from geo result
-////////////////////////////////////////////////////////////////////////////////
-
-static void StoreGeoResult (collection_cursor_t* result,
-                            GeoCoordinates* cors,
-                            char const* attribute) {
-  GeoCoordinate* end;
-  GeoCoordinate* ptr;
-  TRI_doc_mptr_t* wtr;
-  TRI_json_t* atr;
-  TRI_json_t num;
-  double* dtr;
-  size_t n;
-
-  if (cors == NULL) {
-    return;
-  }
-
-  n = cors->length;
-
-  // copy the documents
-  result->_documents = (TRI_doc_mptr_t*) (wtr = TRI_Allocate(sizeof(TRI_doc_mptr_t) * n));
-
-  if (attribute != NULL) {
-    result->_augmentions = (TRI_json_t*) (atr = TRI_Allocate(sizeof(TRI_json_t) * n));
-  }
-
-  ptr = cors->coordinates;
-  end = cors->coordinates + n;
-
-  if (attribute == NULL) {
-    for (;  ptr < end;  ++ptr, ++wtr) {
-      *wtr = * (TRI_doc_mptr_t*) ptr->data;
-    }
-  }
-  else {
-    dtr = cors->distances;
-
-    for (;  ptr < end;  ++ptr, ++wtr, ++atr, ++dtr) {
-      *wtr = * (TRI_doc_mptr_t*) ptr->data;
-
-      TRI_InitArrayJson(atr);
-      TRI_InitNumberJson(&num, *dtr);
-      TRI_Insert2ArrayJson(atr, attribute, &num);
-    }
-  }
-
-  GeoIndex_CoordinatesFree(cors);
-
-  result->_length = n;
-  result->base._scannedIndexEntries += n;
-
-  result->_current = result->_documents;
-  result->_end = result->_documents + result->_length;
-
-  if (attribute != NULL) {
-    result->_currentAugmention = result->_augmentions;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -893,359 +793,10 @@ TRI_qry_where_t* TRI_CreateQueryWhereWithinConstant (TRI_idx_iid_t iid,
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  FILTER FUNCTIONS
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lists all documents
-////////////////////////////////////////////////////////////////////////////////
-
-static void FilterDataCollectionQuery (collection_cursor_t* result,
-                                       TRI_sim_collection_t* collection,
-                                       TRI_rc_context_t* context,
-                                       TRI_qry_where_t* where,
-                                       TRI_voc_size_t skip,
-                                       TRI_voc_ssize_t limit) {
-  TRI_doc_mptr_t* qtr;
-  size_t total;
-  void** end;
-  void** ptr;
-
-  assert(where == NULL);
-  assert(result->_documents == NULL);
-  assert(0 <= limit);
-
-  result->_documents = (qtr = TRI_Allocate(sizeof(TRI_doc_mptr_t) * (collection->_primaryIndex._nrUsed)));
-
-  ptr = collection->_primaryIndex._table;
-  end = collection->_primaryIndex._table + collection->_primaryIndex._nrAlloc;
-
-  for (total = 0;  ptr < end && total < limit;  ++ptr) {
-    ++result->base._scannedDocuments;
-
-    if (*ptr) {
-      TRI_doc_mptr_t* mptr = *ptr;
-
-      if (mptr->_deletion == 0) {
-        ++result->base._matchedDocuments;
-
-        if (0 < skip) {
-          --skip;
-          continue;
-        }
-
-        *qtr++ = *mptr;
-        total++;
-      }
-    }
-  }
-
-  result->_length = total;
-  result->_current = result->_documents;
-  result->_end = result->_documents + result->_length;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lists no documents
-////////////////////////////////////////////////////////////////////////////////
-
-static void FilterDataNoneQuery (collection_cursor_t* result,
-                                 TRI_sim_collection_t* collection,
-                                 TRI_rc_context_t* context,
-                                 TRI_qry_where_t* where,
-                                 TRI_voc_size_t skip,
-                                 TRI_voc_ssize_t limit) {
-  assert(where == NULL);
-  assert(result->_documents == NULL);
-
-  result->_documents = TRI_Allocate(sizeof(TRI_doc_mptr_t));
-
-  result->_length = 0;
-  result->_current = result->_documents;
-  result->_end = result->_documents + result->_length;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lists document from primary index
-////////////////////////////////////////////////////////////////////////////////
-
-static void FilterDataPrimaryQuery (collection_cursor_t* result,
-                                    TRI_sim_collection_t* collection,
-                                    TRI_rc_context_t* context,
-                                    TRI_qry_where_t* w,
-                                    TRI_voc_size_t skip,
-                                    TRI_voc_ssize_t limit) {
-  TRI_doc_mptr_t const* document;
-  TRI_qry_where_primary_const_t* where;
-  TRI_voc_did_t did;
-
-  assert(w != NULL);
-  assert(w->_type == TRI_QRY_WHERE_PRIMARY_CONSTANT);
-  assert(result->_documents == NULL);
-  assert(0 <= limit);
-
-  where = (TRI_qry_where_primary_const_t*) w;
-
-  result->_documents = TRI_Allocate(sizeof(TRI_doc_mptr_t));
-
-  // strange cases
-  if (limit == 0 || 0 < skip) {
-    result->_length = 0;
-  }
-
-  // look up the document
-  else {
-    did = where->base.did(&where->base, context);
-    document = collection->base.read(&collection->base, did);
-
-    // either no or one document
-    if (document == NULL) {
-      result->_length = 0;
-    }
-    else {
-      ++result->base._matchedDocuments;
-      
-      result->_documents[0] = *document;
-      result->_length = 1;
-    }
-  }
-
-  result->_current = result->_documents;
-  result->_end = result->_documents + result->_length;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief list of filtered documents
-////////////////////////////////////////////////////////////////////////////////
-
-static void FilterDataGeneralQuery (collection_cursor_t* result,
-                                    TRI_sim_collection_t* collection,
-                                    TRI_rc_context_t* context,
-                                    TRI_qry_where_t* w,
-                                    TRI_voc_size_t skip,
-                                    TRI_voc_ssize_t limit) {
-  TRI_qry_where_cond_t* where;
-  TRI_doc_mptr_t* qtr;
-  size_t total;
-  void** end;
-  void** ptr;
-
-  assert(w != NULL);
-  assert(result->_documents == NULL);
-  assert(0 <= limit);
-
-  where = (TRI_qry_where_cond_t*) w;
-
-  assert(where->checkCondition != NULL);
-
-  result->_documents = (qtr = TRI_Allocate(sizeof(TRI_doc_mptr_t) * (collection->_primaryIndex._nrUsed)));
-
-  ptr = collection->_primaryIndex._table;
-  end = collection->_primaryIndex._table + collection->_primaryIndex._nrAlloc;
-
-  for (total = 0;  ptr < end && total < limit;  ++ptr) {
-    ++result->base._scannedDocuments;
-
-    if (*ptr) {
-      TRI_doc_mptr_t* mptr = *ptr;
-
-      if (mptr->_deletion == 0) {
-        if (where->checkCondition(where, context, mptr)) {
-          ++result->base._matchedDocuments;
-
-          if (0 < skip) {
-            --skip;
-            continue;
-          }
-
-          *qtr++ = *mptr;
-          total++;
-        }
-      }
-    }
-  }
-
-  result->_length = total;
-  result->_current = result->_documents;
-  result->_end = result->_documents + total;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lists document from within geo index
-////////////////////////////////////////////////////////////////////////////////
-
-static void FilterDataWithinQuery (collection_cursor_t* result,
-                                   TRI_sim_collection_t* collection,
-                                   TRI_rc_context_t* context,
-                                   TRI_qry_where_t* w,
-                                   TRI_voc_size_t skip,
-                                   TRI_voc_ssize_t limit) {
-  GeoCoordinates* cors;
-  TRI_index_t* idx;
-  TRI_qry_where_within_t* where;
-  double* ll;
-  double radius;
-
-  assert(w != NULL);
-  assert(w->_type == TRI_QRY_WHERE_WITHIN_CONSTANT);
-  assert(result->_documents == NULL);
-  assert(0 <= limit);
-
-  where = (TRI_qry_where_within_t*) w;
-
-  // locate the index
-  idx = TRI_IndexSimCollection(collection, where->_iid);
-
-  if (idx == NULL) {
-    return;
-  }
-
-  // locate all documents within a given radius
-  ll = where->coordinates(where, context);
-  radius = where->radius(where, context);
-  cors = TRI_WithinGeoIndex(idx, ll[0], ll[1], radius);
-
-  // and create result
-  StoreGeoResult(result, cors, where->_nameDistance);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                          ORDER BY
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief callback function used for order by comparisons (called by fruitsort)
-////////////////////////////////////////////////////////////////////////////////
-
-static int OrderDataCompareFunc(const TRI_doc_mptr_t *left, const TRI_doc_mptr_t *right, size_t size, void *data) {
-  TRI_rc_context_t *context = (TRI_rc_context_t *) data;
-  bool ok;
-  int result;
-
-  TRI_DefineCompareExecutionContext(context->_orderClause, context->_primary, left, right);
-  ok = TRI_ExecuteOrderExecutionContext(context->_orderClause, &result);
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fruitsort initialization parameters
-///
-/// Included fsrt.inc with these parameters will create a function OrderData()
-/// that is used to do the sorting. OrderData() will call OrderDataCompareFunc()
-/// to do the actual element comparisons
-////////////////////////////////////////////////////////////////////////////////
-
-#define FSRT_INSTANCE Query
-#define FSRT_NAME OrderData
-#define FSRT_TYPE TRI_doc_mptr_t
-#define FSRT_EXTRA_ARGS context
-#define FSRT_EXTRA_DECL TRI_rc_context_t *context
-#define FSRT_COMP(l,r,s) OrderDataCompareFunc(l,r,s)
-
-uint32_t QueryFSRT_Rand = 0;
-static uint32_t QuerySortRandomGenerator (void) {
-  return (QueryFSRT_Rand = QueryFSRT_Rand * 31415 + 27818);
-}
-#define FSRT__RAND \
-  ((fs_b) + FSRT__UNIT * (QuerySortRandomGenerator() % FSRT__DIST(fs_e,fs_b,FSRT__SIZE)))
-
-#include <BasicsC/fsrt.inc>
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes sorting
-////////////////////////////////////////////////////////////////////////////////
-
-static void OrderDataGeneralQuery (collection_cursor_t *result,
-                                   TRI_sim_collection_t* collection,
-                                   TRI_rc_context_t* context,
-                                   TRI_qry_order_t* o) {
-  TRI_js_exec_context_t* execContext;
-
-  assert(result != NULL);
-  assert(o != NULL);
-  assert(result->_documents != NULL);
-
-  if (result->_length == 0) {
-    // result set is empty, no need to sort it
-    return;
-  }
-
-  execContext = context->_orderClause;
-
-  if (execContext == NULL) {
-    LOG_ERROR("no JavaScript context for order is known");
-    return;
-  }
-  
-  OrderData(result->_current, result->_end, context);
-}
-
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clones an order by clause for general JavaScript conditions
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_qry_order_t* CloneQueryOrderGeneral (TRI_qry_order_t const* o) {
-  TRI_qry_order_general_t* orderClause;
-
-  orderClause = (TRI_qry_order_general_t*) o;
-
-  return TRI_CreateQueryOrderGeneral(orderClause->_code);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees an order by clause for general JavaScript conditions
-////////////////////////////////////////////////////////////////////////////////
-
-static void FreeQueryOrderGeneral (TRI_qry_order_t* o) {
-  TRI_qry_order_general_t* orderClause;
-
-  orderClause = (TRI_qry_order_general_t*) o;
-
-  TRI_FreeString(orderClause->_code);
-  TRI_Free(orderClause);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an order by clause for general JavaScript code
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_qry_order_t* TRI_CreateQueryOrderGeneral (char const* clause) {
-  TRI_qry_order_general_t* result;
-
-  result = TRI_Allocate(sizeof(TRI_qry_order_general_t));
-
-  result->base.base._type = TRI_QRY_ORDER_GENERAL;
-
-  result->base.base.clone = CloneQueryOrderGeneral;
-  result->base.base.free = FreeQueryOrderGeneral;
-
-  result->_code = TRI_DuplicateString(clause);
-
-  return &result->base.base;
-}
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             QUERY
@@ -1260,28 +811,59 @@ TRI_qry_order_t* TRI_CreateQueryOrderGeneral (char const* clause) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+static bool InitCollectionsQuery (TRI_query_t* query) {
+  TRI_join_part_t* part;
+  TRI_vocbase_col_t const* collection;
+  size_t i;
+
+  assert(query->_vocbase);
+
+  for (i = 0 ; i < query->_joins->_parts._length; i++) {
+    part = (TRI_join_part_t*) query->_joins->_parts._buffer[i];
+    assert(part->_collection == NULL);
+    assert(part->_alias);
+    collection = TRI_LoadCollectionVocBase(query->_vocbase, part->_collectionName);
+    if (!collection) {
+      return false;
+    }
+    part->_collection = (TRI_doc_collection_t*) collection->_collection;
+    if (part->_type == JOIN_TYPE_PRIMARY) {
+      query->_primaryName = TRI_DuplicateString(part->_alias);
+      query->_primary = part->_collection;
+    }
+  }
+
+  return true;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a query
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_query_t* TRI_CreateQuery (TRI_qry_select_t const* selectStmt,
+TRI_query_t* TRI_CreateQuery (TRI_vocbase_t* vocbase,
+                              TRI_qry_select_t const* selectStmt,
                               TRI_qry_where_t const* whereStmt,
                               TRI_qry_order_t const* orderStmt,
-                              char const* name,
-                              TRI_doc_collection_t* collection) {
+                              TRI_select_join_t* joins) {
   TRI_query_t* query;
 
   query = TRI_Allocate(sizeof(TRI_query_t));
+  if (!query) {
+    return NULL;
+  }
 
+  query->_vocbase = vocbase;
   query->_select = selectStmt->clone(selectStmt);
-  query->_primaryName = TRI_DuplicateString(name);
-  query->_primary = collection;
   query->_where = whereStmt == NULL ? NULL : whereStmt->clone(whereStmt);
   query->_order = orderStmt == NULL ? NULL : orderStmt->clone(orderStmt);
+  query->_joins = joins;
   query->_skip = TRI_QRY_NO_SKIP;
   query->_limit = TRI_QRY_NO_LIMIT;
 
-  TRI_InitVectorPointer(&query->_joins);
+  if (!InitCollectionsQuery(query)) {
+    TRI_FreeQuery(query);
+    return NULL;
+  }
 
   return query;
 }
@@ -1298,6 +880,9 @@ void TRI_FreeQuery (TRI_query_t* query) {
   }
   if (query->_order != NULL) {
     query->_order->free(query->_order);
+  }
+  if (query->_joins != NULL) {
+    query->_joins->free(query->_joins);
   }
 
   TRI_FreeString(query->_primaryName);
@@ -1395,7 +980,15 @@ void TRI_FreeContextQuery (TRI_rc_context_t* context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ReadLockCollectionsQuery (TRI_query_t* query) {
-  query->_primary->beginRead(query->_primary);
+  TRI_join_part_t* part;
+  size_t i;
+
+  // note: the same collection might be read-locked multiple times here
+  for (i = 0; i < query->_joins->_parts._length; i++) {
+    part = (TRI_join_part_t*) query->_joins->_parts._buffer[i];
+    assert(part->_collection);
+    part->_collection->beginRead(part->_collection);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1403,7 +996,16 @@ void TRI_ReadLockCollectionsQuery (TRI_query_t* query) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ReadUnlockCollectionsQuery (TRI_query_t* query) {
-  query->_primary->endRead(query->_primary);
+  TRI_join_part_t* part;
+  size_t i = query->_joins->_parts._length;
+
+  // note: the same collection might be read-unlocked multiple times here
+  while (i > 0) {
+    i--;
+    part = (TRI_join_part_t*) query->_joins->_parts._buffer[i];
+    assert(part->_collection);
+    part->_collection->endRead(part->_collection);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1411,14 +1013,22 @@ void TRI_ReadUnlockCollectionsQuery (TRI_query_t* query) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddCollectionsCursor (TRI_rc_cursor_t* cursor, TRI_query_t* query) {
+  TRI_join_part_t* part;
   TRI_rs_container_element_t* ce;
+  size_t i;
 
-  ce = TRI_AddResultSetRSContainer(&query->_primary->_resultSets);
-  TRI_PushBackVectorPointer(&cursor->_containers, ce);
+  // note: the same collection might be added multiple times here
+  for (i = 0; i < query->_joins->_parts._length; i++) {
+    part = (TRI_join_part_t*) query->_joins->_parts._buffer[i];
+    assert(part->_collection);
+    ce = TRI_AddResultSetRSContainer(&part->_collection->_resultSets);
+    TRI_PushBackVectorPointer(&cursor->_containers, ce);
+  }
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read unlocks all collections of a query
+/// @brief removes the gc markers for all collections of a query
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_RemoveCollectionsCursor (TRI_rc_cursor_t* cursor) {
@@ -1442,13 +1052,11 @@ TRI_rc_cursor_t* TRI_ExecuteQueryAql (TRI_query_t* query, TRI_rc_context_t* cont
   TRI_qry_where_t* where;
   TRI_voc_size_t skip;
   TRI_voc_ssize_t limit;
+  TRI_select_result_t* selectResult;
   collection_cursor_t* cursor;
-  cond_fptr condition;
-  order_fptr order;
+  TRI_order_fptr_t order;
   bool applyPostSkipLimit;
-  TRI_select_result_t* _select;
-  TRI_vector_pointer_t* _dataparts;
-  TRI_select_datapart_t* _datapart;
+  bool emptyQuery;
 
   skip = query->_skip;
   limit = query->_limit;
@@ -1460,98 +1068,64 @@ TRI_rc_cursor_t* TRI_ExecuteQueryAql (TRI_query_t* query, TRI_rc_context_t* cont
     applyPostSkipLimit = true;
   }
 
-  if (query->_order) {
+  if (query->_order && (query->_skip > 0 || query->_limit != TRI_QRY_NO_LIMIT)) {
     // query has an order by. we must postpone limit to after sorting
     limit = TRI_QRY_NO_LIMIT;
     skip = 0;
     applyPostSkipLimit = true;
   }
-
-  // .............................................................................
-  // case: no WHERE clause, no JOIN
-  // .............................................................................
-
-  if (query->_where == NULL) {
-    condition = FilterDataCollectionQuery;
-    where = NULL;
-  }
-
-  // .............................................................................
-  // case: WHERE clause, no JOIN
-  // .............................................................................
-
-  else {
-    where = query->_where;
-
-    if (where->_type == TRI_QRY_WHERE_GENERAL) {
-      condition = FilterDataGeneralQuery;
-    }
-    else if (where->_type == TRI_QRY_WHERE_BOOLEAN) {
-      TRI_qry_where_boolean_t* b;
-
-      b = (TRI_qry_where_boolean_t*) where;
-
-      if (b->_value) {
-        condition = FilterDataCollectionQuery;
-      }
-      else {
-        condition = FilterDataNoneQuery;
-
-        limit = 0;
-        skip = 0;
-        applyPostSkipLimit = false;
-      }
-
-      where = NULL;
-    }
-    else if (where->_type == TRI_QRY_WHERE_PRIMARY_CONSTANT) {
-      condition = FilterDataPrimaryQuery;
-    }
-    else if (where->_type == TRI_QRY_WHERE_WITHIN_CONSTANT) {
-      condition = FilterDataWithinQuery;
-
-      limit = TRI_QRY_NO_LIMIT;
-      skip = 0;
-      applyPostSkipLimit = true;
-    }
-    else {
-      where = NULL;
-      condition = FilterDataNoneQuery;
-      assert(false);
-    }
-  }
-
+  
   if (query->_order == NULL) {
     order = NULL;
   } 
   else {
-    order = OrderDataGeneralQuery;
+    order = TRI_OrderDataGeneralQuery;
   }
 
+  // set up where condition
+  emptyQuery = false;
+  where = 0;
 
-// stj
-_dataparts = (TRI_vector_pointer_t*) TRI_Allocate(sizeof(TRI_vector_pointer_t));
-TRI_InitVectorPointer(_dataparts);
-_datapart = TRI_CreateDataPart("fux", query->_primary, RESULT_PART_SINGLE);
-TRI_PushBackVectorPointer(_dataparts, _datapart);
-_select = TRI_CreateSelectResult(_dataparts);
+  if (query->_where != NULL) {
+    where = query->_where;
+    if (where->_type == TRI_QRY_WHERE_BOOLEAN) {
+      TRI_qry_where_boolean_t* b;
+      b = (TRI_qry_where_boolean_t*) where;
+      if (!b->_value) {
+        emptyQuery = true;
+      }
+      where = NULL;
+    }
+    else if (where->_type == TRI_QRY_WHERE_PRIMARY_CONSTANT) {
+      assert(false);
+    }
+    else if (where->_type == TRI_QRY_WHERE_WITHIN_CONSTANT) {
+      assert(false);
+    }
+  }
 
-if (_select != NULL) {
-  _select->free(_select);
-}
+  // create a select result container for the joins
+  selectResult = TRI_JoinSelectResult(query->_joins);
+  if (!selectResult) {
+    return NULL;
+  }
 
   // .............................................................................
   // construct a collection subset
   // .............................................................................
-
+  
   cursor = TRI_Allocate(sizeof(collection_cursor_t));
+  if (!cursor) {
+    selectResult->free(selectResult);
+    return NULL;
+  }
   cursor->base._context = context;
   cursor->base._select = query->_select->clone(query->_select);
-
   cursor->base.next = NextCollectionCursor;
   cursor->base.hasNext = HasNextCollectionCursor;
   cursor->base.free = FreeCollectionCursor;
-
+  cursor->_result._selectResult = selectResult;
+  cursor->_result._dataPtr = NULL;
   cursor->_result._context = context;
   cursor->_result._augmention._type = TRI_JSON_UNUSED;
 
@@ -1562,25 +1136,12 @@ if (_select != NULL) {
   // .............................................................................
 
   TRI_ReadLockCollectionsQuery(query);
-
   TRI_AddCollectionsCursor(&cursor->base, query);
-
-
-  if (query->_primary->base._type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
-    condition(cursor, (TRI_sim_collection_t*) query->_primary, context, where, skip, limit);
+ 
+  // Execute joins
+  if (!emptyQuery) {
+    TRI_ExecuteJoins(selectResult, query->_joins, where, context, skip, limit);
   }
-  else {
-    cursor->base.free(&cursor->base);
-
-    LOG_ERROR("unknown collection type '%lu'", (unsigned long) query->_primary->base._type);
-    return 0;
-  }
-
-  // order by
-  if (query->_order != NULL) {
-    order(cursor, (TRI_sim_collection_t*) query->_primary, context, query->_order);
-  }
-
 
   TRI_ReadUnlockCollectionsQuery(query);
 
@@ -1588,11 +1149,19 @@ if (_select != NULL) {
   // outside a read transaction
   // .............................................................................
 
-  // apply a negative limit
-
-  if (applyPostSkipLimit) {
-    TransformDataSkipLimit(cursor, query->_skip, query->_limit);
+  // order by
+  if (order) {
+    order(&cursor->_result, query->_order);
   }
+
+  // apply a negative limit or a limit after ordering
+  if (applyPostSkipLimit) {
+    TransformDataSkipLimit(&cursor->_result, query->_skip, query->_limit);
+  }
+  
+  // adjust cursor length
+  cursor->_length = selectResult->_numRows; 
+  cursor->_currentRow = 0;
 
   return &cursor->base;
 }
@@ -1605,3 +1174,4 @@ if (_select != NULL) {
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
+

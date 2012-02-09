@@ -153,9 +153,12 @@ select_clause:
   ;	
 
 from_clause:
-    FROM from_list {
+    FROM {
       // from part of a SELECT
-      $$ = $2;
+      QL_ast_node_t *list = QLAstNodeCreate(context,QLNodeContainerList);
+      QLParseContextPush(context, list); 
+    } from_list {
+      $$ = QLParseContextPop(context);
     }
   ;	      						
 
@@ -175,8 +178,8 @@ from_list:
           YYABORT;
         }
       }
-
-      $$ = $1;
+      
+      QLParseContextAddElement(context, $1);
     } 
   | from_list join_type collection_reference ON expression {
       // multi-table query
@@ -185,9 +188,8 @@ from_list:
 
       $$ = $2;
       if ($$ != 0) {
-        $$->_lhs  = $1;
-        $$->_rhs  = $3;
-        $$->_next = $5;
+        $$->_lhs  = $3;
+        $$->_rhs  = $5;
       }
       
       if (lhs != 0 && rhs != 0) {
@@ -200,6 +202,8 @@ from_list:
           YYABORT;
         }
       }
+      
+      QLParseContextAddElement(context, $2);
     }
   ;
 
@@ -457,12 +461,6 @@ outer_join:
     }
   | LEFT JOIN {
       $$ = QLAstNodeCreate(context,QLNodeJoinLeft);
-    }
-  | RIGHT JOIN {
-      $$ = QLAstNodeCreate(context,QLNodeJoinRight);
-    }
-  | RIGHT OUTER JOIN {
-      $$ = QLAstNodeCreate(context,QLNodeJoinRight);
     }
   ;
 
