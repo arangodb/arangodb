@@ -34,17 +34,32 @@ if ENABLE_32BIT
 V8_BUILD_VERSION=ia32.release
 endif
 
-BUILT_SOURCES += @top_srcdir@/3rdParty/V8/out/$(V8_BUILD_VERSION)/obj.target/tools/gyp/libv8_base.a
-BUILT_SOURCES += @top_srcdir@/3rdParty/V8/out/$(V8_BUILD_VERSION)/obj.target/tools/gyp/libv8_nosnapshot.a
+if ENABLE_DARWIN
 
-@top_srcdir@/3rdParty/V8/out/$(V8_BUILD_VERSION)/obj.target/tools/gyp/libv8_base.a @top_srcdir@/3rdParty/V8/out/$(V8_BUILD_VERSION)/obj.target/tools/gyp/libv8_nosnapshot.a:
+V8_BUILT_SOURCES = \
+	@top_srcdir@/3rdParty/V8//libv8.a \
+else
+
+V8_BUILT_SOURCES = \
+	@top_srcdir@/3rdParty/V8/out/$(V8_BUILD_VERSION)/libv8_base.a \
+	@top_srcdir@/3rdParty/V8/out/$(V8_BUILD_VERSION)/libv8_nosnapshot.a
+
+endif
+
+BUILT_SOURCES += $(V8_BUILT_SOURCE)
+
+$(V8_BUILT_SOURCE):
 	@echo
 	@echo "--------------------------------------------------------------------------------"
 	@echo "BUILDING V8"
 	@echo "--------------------------------------------------------------------------------"
 	@echo
 
-	cd @top_srcdir@/3rdParty/V8 && make library=static standalone=off $(V8_BUILD_VERSION)
+if ENABLE_DARWIN
+	cd @top_srcdir@/3rdParty/V8 && scons snapshot=off library=static mode=release arch=x64
+else
+	cd @top_srcdir@/3rdParty/V8 && make library=static snapshot=off $(V8_BUILD_VERSION)
+endif
 
 	@echo
 	@echo "--------------------------------------------------------------------------------"
