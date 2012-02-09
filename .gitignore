@@ -3,7 +3,6 @@ autom4te.cache
 avocado
 avocadodb
 BasicsC/local-configuration.h
-build.c
 build.info
 build.sh
 commit.sh
@@ -16,7 +15,6 @@ config/version.sh
 .dirstamp
 Doxygen/avocado.doxy
 Doxygen/html/
-Doxygen/js/
 Doxygen/latex/
 Doxygen/wiki/
 Doxygen/xml/
@@ -48,3 +46,8 @@ QL/parser.output
 .setup-directories
 stamp-h*
 .svn
+.libs
+*.lo
+*.la
+config.h
+3rdParty/libev/libtool
