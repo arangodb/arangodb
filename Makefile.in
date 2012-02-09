@@ -25,6 +25,11 @@
 ################################################################################
 ################################################################################
 
+# -*- mode: Makefile; -*-
+
+################################################################################
+################################################################################
+
 
 
 VPATH = @srcdir@
@@ -50,7 +55,7 @@ target_triplet = @target@
 bin_PROGRAMS = avocado$(EXEEXT)
 DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.all-in-one \
 	$(srcdir)/Makefile.am $(srcdir)/Makefile.files \
-	$(srcdir)/Makefile.in \
+	$(srcdir)/Makefile.generate $(srcdir)/Makefile.in \
 	$(top_srcdir)/BasicsC/local-configuration.h.in \
 	$(top_srcdir)/Doxygen/avocado.doxy.in \
 	$(top_srcdir)/config/config.h.in $(top_srcdir)/configure \
@@ -506,10 +511,7 @@ BUILT_SOURCES = js/bootstrap/js-modules.h js/bootstrap/js-print.h \
 	js/server/js-aql.h js/server/js-json.h js/server/js-shell.h \
 	JsonParser/json-parser.c QL/tokens.c V8/v8-json.cpp \
 	JsonParserX/JsonScannerX.cpp QL/parser.c \
-	JsonParserX/JsonParserX.cpp \
-	@top_srcdir@/3rdParty/libev/.libs/libev.a \
-	@top_srcdir@/3rdParty/V8/out/$(V8_BUILD_VERSION)/obj.target/tools/gyp/libv8_base.a \
-	@top_srcdir@/3rdParty/V8/out/$(V8_BUILD_VERSION)/obj.target/tools/gyp/libv8_nosnapshot.a
+	JsonParserX/JsonParserX.cpp @LIBEV_LIBS@ $(V8_LIBS)
 noinst_LIBRARIES = libavocadodb.a
 nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/js/system -name "*.js" -print) \
@@ -804,7 +806,7 @@ all: $(BUILT_SOURCES)
 .SUFFIXES: .c .cpp .o .obj
 am--refresh:
 	@:
-$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/Makefile.all-in-one $(am__configure_deps)
+$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/Makefile.generate $(srcdir)/Makefile.all-in-one $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -5151,7 +5153,75 @@ Doxygen/xml/d3/d4b/JSModuleInternal.md: Doxygen/xml/d3/d4b/JSModuleInternal.xml
 Doxygen/xml/d2/d66/JSModuleFs.md: Doxygen/xml/d2/d66/JSModuleFs.xml
 	python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
 
-@top_srcdir@/3rdParty/libev/.libs/libev.a:
+.setup-directories:
+	@test -d js || mkdir js
+	@test -d js/bootstrap || mkdir js/bootstrap
+	@test -d js/modules || mkdir js/modules
+	@test -d js/server || mkdir js/server
+	@test -d Doxygen/js || mkdir Doxygen/js
+	@test -d Doxygen/js/bootstrap || mkdir Doxygen/js/bootstrap
+	@test -d Doxygen/js/modules || mkdir Doxygen/js/modules
+	@test -d Doxygen/js/server || mkdir Doxygen/js/server
+	@test -d Doxygen/js/system || mkdir Doxygen/js/system
+	@touch $@
+
+js/js-%.h: @srcdir@/js/%.js .setup-directories
+	@top_srcdir@/config/js2c.sh $< > $@
+
+js/bootstrap/js-%.h: @srcdir@/js/bootstrap/%.js .setup-directories
+	@top_srcdir@/config/js2c.sh $< > $@
+
+js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
+	@top_srcdir@/config/js2c.sh $< > $@
+
+################################################################################
+################################################################################
+
+JsonParser/%.c: @srcdir@/JsonParser/%.l
+	@top_srcdir@/config/flex-c.sh $(LEX) $@ $<
+
+QL/%.c: @srcdir@/QL/%.l
+	@top_srcdir@/config/flex-c.sh $(LEX) $@ $<
+
+################################################################################
+################################################################################
+
+V8/%.cpp: @srcdir@/V8/%.ll
+	@top_srcdir@/config/flex-c++.sh $(LEX) $@ $<
+
+JsonParserX/%.cpp: @srcdir@/JsonParserX/%.ll
+	@top_srcdir@/config/flex-c++.sh $(LEX) $@ $<
+
+################################################################################
+################################################################################
+
+QL/%.c: @srcdir@/QL/%.y
+	@top_srcdir@/config/bison-c.sh $(BISON) $@ $<
+
+################################################################################
+################################################################################
+
+JsonParserX/%.cpp: @srcdir@/JsonParserX/%.yy
+	@top_srcdir@/config/bison-c++.sh $(BISON) $@ $<
+
+################################################################################
+################################################################################
+
+.PHONY: Doxygen/js Doxygen/js/system Doxygen/js/modules
+
+Doxygen/js/%.c: @srcdir@/js/%.js .setup-directories
+	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+
+Doxygen/js/system/%.c: @srcdir@/js/system/%.js .setup-directories
+	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+
+Doxygen/js/modules/%.c: @srcdir@/js/system/%.js .setup-directories
+	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+
+Doxygen/js/bootstrap/%.c: @srcdir@/js/bootstrap/%.js .setup-directories
+	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+
+@LIBEV_LIBS@:
 	@echo
 	@echo "--------------------------------------------------------------------------------"
 	@echo "BUILDING LIBEV"
@@ -5167,14 +5237,15 @@ Doxygen/xml/d2/d66/JSModuleFs.md: Doxygen/xml/d2/d66/JSModuleFs.xml
 	@echo "--------------------------------------------------------------------------------"
 	@echo
 
-@top_srcdir@/3rdParty/V8/out/$(V8_BUILD_VERSION)/obj.target/tools/gyp/libv8_base.a @top_srcdir@/3rdParty/V8/out/$(V8_BUILD_VERSION)/obj.target/tools/gyp/libv8_nosnapshot.a:
+$(V8_LIBS):
 	@echo
 	@echo "--------------------------------------------------------------------------------"
 	@echo "BUILDING V8"
 	@echo "--------------------------------------------------------------------------------"
 	@echo
 
-	cd @top_srcdir@/3rdParty/V8 && make library=static standalone=off $(V8_BUILD_VERSION)
+@ENABLE_DARWIN_TRUE@	cd @top_srcdir@/3rdParty/V8 && scons snapshot=off library=static mode=release arch=x64
+@ENABLE_DARWIN_FALSE@	cd @top_srcdir@/3rdParty/V8 && make library=static snapshot=off $(V8_BUILD_VERSION)
 
 	@echo
 	@echo "--------------------------------------------------------------------------------"
@@ -5184,8 +5255,6 @@ Doxygen/xml/d2/d66/JSModuleFs.md: Doxygen/xml/d2/d66/JSModuleFs.xml
 
 ################################################################################
 ################################################################################
-
-# include Makefile.generate
 
 ################################################################################
 ################################################################################

@@ -28,7 +28,7 @@ install-data-local:
 ################################################################################
 
 include Makefile.files
-# include Makefile.generate
+include Makefile.generate
 include Makefile.all-in-one
 
 ################################################################################
