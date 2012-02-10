@@ -67,7 +67,6 @@ typedef void* TRI_js_exec_context_t;
 
 typedef struct TRI_rc_context_s {
   TRI_doc_collection_t* _primary;
-  char* _primaryName;
 
   TRI_js_exec_context_t _selectClause;
   TRI_js_exec_context_t _whereClause;

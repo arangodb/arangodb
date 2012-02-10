@@ -605,38 +605,6 @@ static void FreeQueryWhereGeneral (TRI_qry_where_t* w) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the where condition
-////////////////////////////////////////////////////////////////////////////////
-
-/*
-static bool CheckConditionWhereGeneral (TRI_qry_where_cond_t* w,
-                                        TRI_rc_context_t* context,
-                                        TRI_doc_mptr_t const* document) {
-  TRI_js_exec_context_t* execContext;
-  bool result;
-  bool ok;
-
-  execContext = context->_whereClause;
-
-  if (execContext == NULL) {
-    LOG_ERROR("no JavaScript context for where is known");
-    return false;
-  }
-
-  TRI_DefineDocumentExecutionContext(execContext, context->_primaryName, context->_primary, document);
-
-  ok = TRI_ExecuteConditionExecutionContext(execContext, &result);
-
-  if (! ok) {
-    LOG_ERROR("cannot execute JavaScript where clause");
-    return false;
-  }
-
-  return result;
-}
-*/
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -828,7 +796,6 @@ static bool InitCollectionsQuery (TRI_query_t* query) {
     }
     part->_collection = (TRI_doc_collection_t*) collection->_collection;
     if (part->_type == JOIN_TYPE_PRIMARY) {
-      query->_primaryName = TRI_DuplicateString(part->_alias);
       query->_primary = part->_collection;
     }
   }
@@ -885,7 +852,6 @@ void TRI_FreeQuery (TRI_query_t* query) {
     query->_joins->free(query->_joins);
   }
 
-  TRI_FreeString(query->_primaryName);
   TRI_Free(query);
 }
 
@@ -902,7 +868,6 @@ TRI_rc_context_t* TRI_CreateContextQuery (TRI_query_t* query) {
   context = TRI_Allocate(sizeof(TRI_rc_context_t));
 
   context->_primary = query->_primary;
-  context->_primaryName = TRI_DuplicateString(query->_primaryName);
 
   // check if we need a JavaScript execution context
   if (query->_select->_type == TRI_QRY_SELECT_GENERAL) {
@@ -958,7 +923,6 @@ void TRI_FreeContextQuery (TRI_rc_context_t* context) {
     TRI_FreeExecutionContext(context->_orderClause);
   }
   
-  TRI_FreeString(context->_primaryName);
   TRI_Free(context);
 }
 

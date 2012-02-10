@@ -49,7 +49,6 @@ static int OrderDataCompareFunc (const TRI_sr_index_t* left,
 
   TRI_rc_result_t* resultState = (TRI_rc_result_t*) data;
   TRI_rc_context_t* context = resultState->_context;
-  bool ok;
   int result;
 
   assert(context);
@@ -58,7 +57,7 @@ static int OrderDataCompareFunc (const TRI_sr_index_t* left,
                                     resultState->_selectResult, 
                                     (TRI_sr_documents_t*) *left, 
                                     (TRI_sr_documents_t*) *right);
-  ok = TRI_ExecuteOrderExecutionContext(context->_orderClause, &result);
+  TRI_ExecuteOrderExecutionContext(context->_orderClause, &result);
 
   return result;
 }
