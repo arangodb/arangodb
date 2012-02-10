@@ -99,15 +99,20 @@
 /// @subsection CompilingAIOPrerequisites Basic System Requirements
 ///////////////////////////////////////////////////////////////////
 ///
-/// Verify that your system contains
+/// Verify that your system contains:
 ///
 /// - the GNU C++ compiler "g++" and standard C++ libraries
 /// - the GNU make
 ///
-/// In addition you will need the following libraries
+/// In addition you will need the following libraries:
 ///
 /// - the GNU readline library
 /// - the GNU ncurses library in version 5 or 6
+///
+/// Under Mac OS X you need to install:
+///
+/// - Xcode
+/// - scons
 ///
 /// @subsection DownloadSourceAIO Download the Source
 /////////////////////////////////////////////////////
