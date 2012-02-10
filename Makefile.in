@@ -35,16 +35,6 @@
 ################################################################################
 ################################################################################
 
-# -*- mode: Makefile; -*-
-
-################################################################################
-################################################################################
-
-# -*- mode: Makefile; -*-
-
-################################################################################
-################################################################################
-
 
 
 VPATH = @srcdir@
@@ -69,9 +59,8 @@ host_triplet = @host@
 target_triplet = @target@
 bin_PROGRAMS = avocado$(EXEEXT)
 DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.all-in-one \
-	$(srcdir)/Makefile.am $(srcdir)/Makefile.bison \
-	$(srcdir)/Makefile.doxygen $(srcdir)/Makefile.files \
-	$(srcdir)/Makefile.flex $(srcdir)/Makefile.in \
+	$(srcdir)/Makefile.am $(srcdir)/Makefile.doxygen \
+	$(srcdir)/Makefile.files $(srcdir)/Makefile.in \
 	$(srcdir)/Makefile.javascript \
 	$(top_srcdir)/BasicsC/local-configuration.h.in \
 	$(top_srcdir)/Doxygen/avocado.doxy.in \
@@ -520,14 +509,7 @@ BUILT_SOURCES = $(JAVASCRIPT_HEADER) $(FLEX_FILES) $(FLEXXX_FILES) \
 
 ################################################################################
 ################################################################################
-
-################################################################################
-################################################################################
-
-################################################################################
-################################################################################
-CLEANUP = $(DOXYGEN) $(WIKI) $(JAVASCRIPT_HEADER) $(BISON_FILES) \
-	$(BISONXX_FILES) $(FLEX_FILES) $(FLEXXX_FILES)
+CLEANUP = $(DOXYGEN) $(WIKI) $(JAVASCRIPT_HEADER)
 noinst_LIBRARIES = libavocadodb.a
 nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/js/system -name "*.js" -print) \
@@ -863,7 +845,7 @@ all: $(BUILT_SOURCES)
 .SUFFIXES: .c .cpp .o .obj
 am--refresh:
 	@:
-$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/Makefile.doxygen $(srcdir)/Makefile.javascript $(srcdir)/Makefile.bison $(srcdir)/Makefile.flex $(srcdir)/Makefile.all-in-one $(am__configure_deps)
+$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/Makefile.doxygen $(srcdir)/Makefile.javascript $(srcdir)/Makefile.all-in-one $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -5325,30 +5307,6 @@ js/bootstrap/js-%.h: @srcdir@/js/bootstrap/%.js .setup-directories
 js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
 	@top_srcdir@/config/js2c.sh $< > $@
 
-QL/%.c: @srcdir@/QL/%.y
-	@top_srcdir@/config/bison-c.sh $(BISON) $@ $<
-
-################################################################################
-################################################################################
-
-JsonParserX/%.cpp: @srcdir@/JsonParserX/%.yy
-	@top_srcdir@/config/bison-c++.sh $(BISON) $@ $<
-
-JsonParser/%.c: @srcdir@/JsonParser/%.l
-	@top_srcdir@/config/flex-c.sh $(LEX) $@ $<
-
-QL/%.c: @srcdir@/QL/%.l
-	@top_srcdir@/config/flex-c.sh $(LEX) $@ $<
-
-################################################################################
-################################################################################
-
-V8/%.cpp: @srcdir@/V8/%.ll
-	@top_srcdir@/config/flex-c++.sh $(LEX) $@ $<
-
-JsonParserX/%.cpp: @srcdir@/JsonParserX/%.ll
-	@top_srcdir@/config/flex-c++.sh $(LEX) $@ $<
-
 @LIBEV_LIBS@:
 	@echo
 	@echo "--------------------------------------------------------------------------------"
@@ -5383,6 +5341,9 @@ $(V8_LIBS):
 
 ################################################################################
 ################################################################################
+
+# include Makefile.bison
+# include Makefile.flex
 
 ################################################################################
 ################################################################################

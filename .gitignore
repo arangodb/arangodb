@@ -39,7 +39,6 @@ m4/configure.tex
 m4/external.boost-test
 m4/external.libxml2
 Makefile
-Makefile.in
 *.o
 *.Po
 QL/parser.output
