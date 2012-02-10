@@ -27,7 +27,6 @@
 
 #include "QL/ast-node.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup QL
 /// @{
@@ -37,7 +36,7 @@
 /// @brief get text/label for a node based on its type
 ////////////////////////////////////////////////////////////////////////////////
 
-const char *QLAstNodeGetName (const QL_ast_node_type_e type) {
+const char* QLAstNodeGetName (const QL_ast_node_type_e type) {
   switch (type) {
     case QLNodeContainerList:
       return "list container";
@@ -140,7 +139,6 @@ const char *QLAstNodeGetName (const QL_ast_node_type_e type) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the type group of a node based on its type
 ////////////////////////////////////////////////////////////////////////////////
@@ -210,12 +208,11 @@ QL_ast_node_type_group_e QLAstNodeGetTypeGroup (const QL_ast_node_type_e type) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the label string for a unary operator
 ////////////////////////////////////////////////////////////////////////////////
 
-char *QLAstNodeGetUnaryOperatorString (const QL_ast_node_type_e type) {
+char* QLAstNodeGetUnaryOperatorString (const QL_ast_node_type_e type) {
   switch (type) {
     case QLNodeUnaryOperatorPlus:
       return "+";
@@ -228,12 +225,11 @@ char *QLAstNodeGetUnaryOperatorString (const QL_ast_node_type_e type) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the label string for a binary operator
 ////////////////////////////////////////////////////////////////////////////////
 
-char *QLAstNodeGetBinaryOperatorString (const QL_ast_node_type_e type) {
+char* QLAstNodeGetBinaryOperatorString (const QL_ast_node_type_e type) {
   switch (type) {
     case QLNodeBinaryOperatorAnd: 
       return "&&";
@@ -272,12 +268,11 @@ char *QLAstNodeGetBinaryOperatorString (const QL_ast_node_type_e type) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether a node is a value node
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLAstNodeIsValueNode (QL_ast_node_t *node) {
+bool QLAstNodeIsValueNode (const QL_ast_node_t* node) {
   switch (node->_type) {
     case QLNodeValueUndefined:
     case QLNodeValueNull:
@@ -299,12 +294,11 @@ bool QLAstNodeIsValueNode (QL_ast_node_t *node) {
   } 
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether a node is a logical operator
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLAstNodeIsArithmeticOperator (QL_ast_node_t *node) {
+bool QLAstNodeIsArithmeticOperator (const QL_ast_node_t* node) {
   switch (node->_type) {
     case QLNodeBinaryOperatorAdd:
     case QLNodeBinaryOperatorSubtract:
@@ -317,12 +311,11 @@ bool QLAstNodeIsArithmeticOperator (QL_ast_node_t *node) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether a node is a unary operator
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLAstNodeIsUnaryOperator (QL_ast_node_t *node) {
+bool QLAstNodeIsUnaryOperator (const QL_ast_node_t* node) {
   switch (node->_type) {
     case QLNodeUnaryOperatorPlus:
     case QLNodeUnaryOperatorMinus:
@@ -333,12 +326,11 @@ bool QLAstNodeIsUnaryOperator (QL_ast_node_t *node) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether a node is a binary operator
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLAstNodeIsBinaryOperator (QL_ast_node_t *node) {
+bool QLAstNodeIsBinaryOperator (const QL_ast_node_t* node) {
   switch (node->_type) {
     case QLNodeBinaryOperatorIn:
     case QLNodeBinaryOperatorAnd:
@@ -362,21 +354,19 @@ bool QLAstNodeIsBinaryOperator (QL_ast_node_t *node) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether a node is the ternary operator
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLAstNodeIsTernaryOperator (QL_ast_node_t *node) {
+bool QLAstNodeIsTernaryOperator (const QL_ast_node_t* node) {
   return (node->_type == QLNodeControlTernary);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether a node is a logical operator
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLAstNodeIsLogicalOperator (QL_ast_node_t *node) {
+bool QLAstNodeIsLogicalOperator (const QL_ast_node_t* node) {
   switch (node->_type) {
     case QLNodeBinaryOperatorAnd:
     case QLNodeBinaryOperatorOr:
@@ -387,12 +377,11 @@ bool QLAstNodeIsLogicalOperator (QL_ast_node_t *node) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether a node is a relational operator
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLAstNodeIsRelationalOperator (QL_ast_node_t *node) {
+bool QLAstNodeIsRelationalOperator (const QL_ast_node_t* node) {
   switch (node->_type) {
     case QLNodeBinaryOperatorIdentical:
     case QLNodeBinaryOperatorUnidentical:
@@ -408,12 +397,11 @@ bool QLAstNodeIsRelationalOperator (QL_ast_node_t *node) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether a node is a constant
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLAstNodeIsBooleanizable (const QL_ast_node_t *node) {
+bool QLAstNodeIsBooleanizable (const QL_ast_node_t* node) {
   switch (node->_type) {
     case QLNodeValueBool:
     // case QLNodeValueString: // TODO
