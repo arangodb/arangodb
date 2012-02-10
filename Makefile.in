@@ -35,6 +35,16 @@
 ################################################################################
 ################################################################################
 
+# -*- mode: Makefile; -*-
+
+################################################################################
+################################################################################
+
+# -*- mode: Makefile; -*-
+
+################################################################################
+################################################################################
+
 
 
 VPATH = @srcdir@
@@ -59,30 +69,45 @@ host_triplet = @host@
 target_triplet = @target@
 bin_PROGRAMS = avocado$(EXEEXT)
 DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.all-in-one \
-	$(srcdir)/Makefile.am $(srcdir)/Makefile.doxygen \
-	$(srcdir)/Makefile.files $(srcdir)/Makefile.in \
+	$(srcdir)/Makefile.am $(srcdir)/Makefile.bison \
+	$(srcdir)/Makefile.doxygen $(srcdir)/Makefile.files \
+	$(srcdir)/Makefile.flex $(srcdir)/Makefile.in \
 	$(srcdir)/Makefile.javascript \
 	$(top_srcdir)/BasicsC/local-configuration.h.in \
 	$(top_srcdir)/Doxygen/avocado.doxy.in \
 	$(top_srcdir)/config/config.h.in $(top_srcdir)/configure \
 	config/compile config/config.guess config/config.sub \
 	config/depcomp config/install-sh config/missing
+
+################################################################################
+################################################################################
+@ENABLE_FLEX_TRUE@am__append_1 = $(FLEX_FILES) $(FLEXXX_FILES)
+
+################################################################################
+################################################################################
+@ENABLE_BISON_TRUE@am__append_2 = $(BISON_FILES) $(BISONXX_FILES)
+@ENABLE_ALL_IN_ONE_TRUE@am__append_3 = @LIBEV_LIBS@ $(V8_LIBS)
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
+	$(top_srcdir)/m4/ax_boost_base.m4 \
+	$(top_srcdir)/m4/ax_cxx_check_lib.m4 \
 	$(top_srcdir)/m4/configure.basics \
 	$(top_srcdir)/m4/configure.static \
 	$(top_srcdir)/m4/configure.32bit \
 	$(top_srcdir)/m4/configure.logging \
 	$(top_srcdir)/m4/configure.largefile \
 	$(top_srcdir)/m4/configure.threads \
-	$(top_srcdir)/m4/configure.dot \
-	$(top_srcdir)/m4/all-in-one.boost \
-	$(top_srcdir)/m4/all-in-one.libev \
-	$(top_srcdir)/m4/all-in-one.v8 $(top_srcdir)/m4/external.math \
+	$(top_srcdir)/m4/configure.dot $(top_srcdir)/m4/configure.flex \
+	$(top_srcdir)/m4/configure.bison \
+	$(top_srcdir)/m4/external.math \
 	$(top_srcdir)/m4/external.ncurses \
 	$(top_srcdir)/m4/external.readline \
 	$(top_srcdir)/m4/external.openssl \
+	$(top_srcdir)/m4/all-in-one.boost \
+	$(top_srcdir)/m4/all-in-one.libev \
+	$(top_srcdir)/m4/all-in-one.v8 $(top_srcdir)/m4/external.boost \
+	$(top_srcdir)/m4/external.libev $(top_srcdir)/m4/external.v8 \
 	$(top_srcdir)/m4/configure.information \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
@@ -367,6 +392,7 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
+BISON = @BISON@
 BOOST_CPPFLAGS = @BOOST_CPPFLAGS@
 BOOST_LDFLAGS = @BOOST_LDFLAGS@
 BOOST_LIBS = @BOOST_LIBS@
@@ -397,6 +423,9 @@ INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LDFLAGS = @LDFLAGS@
+LEX = @LEX@
+LEXLIB = @LEXLIB@
+LEX_OUTPUT_ROOT = @LEX_OUTPUT_ROOT@
 LIBEV_CPPFLAGS = @LIBEV_CPPFLAGS@
 LIBEV_LDFLAGS = @LIBEV_LDFLAGS@
 LIBEV_LIBS = @LIBEV_LIBS@
@@ -502,14 +531,15 @@ AM_CPPFLAGS = -D_SYSCONFDIR_='"${sysconfdir}"' -D_PKGDATADIR_='"${pkgdatadir}"' 
 AM_LDFLAGS = 
 BUILT_SOURCES = $(JAVASCRIPT_HEADER) $(FLEX_FILES) $(FLEXXX_FILES) \
 	$(BISON_FILES) $(BISONXX_FILES) Doxygen/.setup-directories \
-	.setup-directories @LIBEV_LIBS@ $(V8_LIBS)
+	.setup-directories $(am__append_3)
 
 ################################################################################
 ################################################################################
 
 ################################################################################
 ################################################################################
-CLEANUP = $(DOXYGEN) $(WIKI) $(JAVASCRIPT_HEADER)
+CLEANUP = $(DOXYGEN) $(WIKI) $(JAVASCRIPT_HEADER) $(am__append_1) \
+	$(am__append_2)
 noinst_LIBRARIES = libavocadodb.a
 nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/js/system -name "*.js" -print) \
@@ -833,11 +863,11 @@ WIKI = \
         Doxygen/xml/dd/dd7/RefManual.md \
 	Doxygen/xml/d8/d3a/Basics.md
 
-@ENABLE_32BIT_TRUE@V8_BUILD_VERSION = ia32
+@ENABLE_32BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@V8_BUILD_VERSION = ia32
 
 ################################################################################
 ################################################################################
-@ENABLE_64BIT_TRUE@V8_BUILD_VERSION = x64
+@ENABLE_64BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@V8_BUILD_VERSION = x64
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -845,7 +875,7 @@ all: $(BUILT_SOURCES)
 .SUFFIXES: .c .cpp .o .obj
 am--refresh:
 	@:
-$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/Makefile.doxygen $(srcdir)/Makefile.javascript $(srcdir)/Makefile.all-in-one $(am__configure_deps)
+$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/Makefile.doxygen $(srcdir)/Makefile.javascript $(srcdir)/Makefile.flex $(srcdir)/Makefile.bison $(srcdir)/Makefile.all-in-one $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -5307,43 +5337,64 @@ js/bootstrap/js-%.h: @srcdir@/js/bootstrap/%.js .setup-directories
 js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
 	@top_srcdir@/config/js2c.sh $< > $@
 
-@LIBEV_LIBS@:
-	@echo
-	@echo "--------------------------------------------------------------------------------"
-	@echo "BUILDING LIBEV"
-	@echo "--------------------------------------------------------------------------------"
-	@echo
+@ENABLE_FLEX_TRUE@JsonParser/%.c: @srcdir@/JsonParser/%.l
+@ENABLE_FLEX_TRUE@	@top_srcdir@/config/flex-c.sh $(LEX) $@ $<
 
-	cd @top_srcdir@/3rdParty/libev && ./configure --disable-shared
-	cd @top_srcdir@/3rdParty/libev && make
-
-	@echo
-	@echo "--------------------------------------------------------------------------------"
-	@echo "BUILD LIBEV FINISHED"
-	@echo "--------------------------------------------------------------------------------"
-	@echo
-
-$(V8_LIBS):
-	@echo
-	@echo "--------------------------------------------------------------------------------"
-	@echo "BUILDING V8"
-	@echo "--------------------------------------------------------------------------------"
-	@echo
-
-@ENABLE_DARWIN_TRUE@	cd @top_srcdir@/3rdParty/V8 && scons snapshot=off library=static mode=release arch=$(V8_BUILD_VERSION)
-@ENABLE_DARWIN_FALSE@	cd @top_srcdir@/3rdParty/V8 && make library=static snapshot=off $(V8_BUILD_VERSION).release
-
-	@echo
-	@echo "--------------------------------------------------------------------------------"
-	@echo "BUILD V8 FINISHED"
-	@echo "--------------------------------------------------------------------------------"
-	@echo
+@ENABLE_FLEX_TRUE@QL/%.c: @srcdir@/QL/%.l
+@ENABLE_FLEX_TRUE@	@top_srcdir@/config/flex-c.sh $(LEX) $@ $<
 
 ################################################################################
 ################################################################################
 
-# include Makefile.bison
-# include Makefile.flex
+@ENABLE_FLEX_TRUE@V8/%.cpp: @srcdir@/V8/%.ll
+@ENABLE_FLEX_TRUE@	@top_srcdir@/config/flex-c++.sh $(LEX) $@ $<
+
+@ENABLE_FLEX_TRUE@JsonParserX/%.cpp: @srcdir@/JsonParserX/%.ll
+@ENABLE_FLEX_TRUE@	@top_srcdir@/config/flex-c++.sh $(LEX) $@ $<
+
+@ENABLE_BISON_TRUE@QL/%.c: @srcdir@/QL/%.y
+@ENABLE_BISON_TRUE@	@top_srcdir@/config/bison-c.sh $(BISON) $@ $<
+
+################################################################################
+################################################################################
+
+@ENABLE_BISON_TRUE@JsonParserX/%.cpp: @srcdir@/JsonParserX/%.yy
+@ENABLE_BISON_TRUE@	@top_srcdir@/config/bison-c++.sh $(BISON) $@ $<
+
+@ENABLE_ALL_IN_ONE_TRUE@@LIBEV_LIBS@:
+@ENABLE_ALL_IN_ONE_TRUE@	@echo
+@ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_TRUE@	@echo "BUILDING LIBEV"
+@ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_TRUE@	@echo
+
+@ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/libev && ./configure --disable-shared
+@ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/libev && make
+
+@ENABLE_ALL_IN_ONE_TRUE@	@echo
+@ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_TRUE@	@echo "BUILD LIBEV FINISHED"
+@ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_TRUE@	@echo
+
+@ENABLE_ALL_IN_ONE_TRUE@$(V8_LIBS):
+@ENABLE_ALL_IN_ONE_TRUE@	@echo
+@ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_TRUE@	@echo "BUILDING V8"
+@ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_TRUE@	@echo
+
+@ENABLE_ALL_IN_ONE_TRUE@@ENABLE_DARWIN_TRUE@	cd @top_srcdir@/3rdParty/V8 && scons snapshot=off library=static mode=release arch=$(V8_BUILD_VERSION)
+@ENABLE_ALL_IN_ONE_TRUE@@ENABLE_DARWIN_FALSE@	cd @top_srcdir@/3rdParty/V8 && make library=static snapshot=off $(V8_BUILD_VERSION).release
+
+@ENABLE_ALL_IN_ONE_TRUE@	@echo
+@ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_TRUE@	@echo "BUILD V8 FINISHED"
+@ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_ALL_IN_ONE_TRUE@	@echo
+
+################################################################################
+################################################################################
 
 ################################################################################
 ################################################################################

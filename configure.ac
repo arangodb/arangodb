@@ -16,6 +16,34 @@ AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_MACRO_DIR([m4])
 
 dnl ============================================================================
+dnl OPTIONS                                              BISON, FLEX, ALL-IN-ONE
+dnl ============================================================================
+
+AC_ARG_ENABLE(bison,
+  AS_HELP_STRING([--enable-bison], [enable BISON]),
+  [tr_BISON="${enableval:-yes}"],
+  [tr_BISON=no]
+)
+
+AM_CONDITIONAL(ENABLE_BISON, test "x$tr_BISON" = xyes)
+
+AC_ARG_ENABLE(flex,
+  AS_HELP_STRING([--enable-flex], [enable FLEX]),
+  [tr_FLEX="${enableval:-yes}"],
+  [tr_FLEX=no]
+)
+
+AM_CONDITIONAL(ENABLE_FLEX, test "x$tr_FLEX" = xyes)
+
+AC_ARG_ENABLE(all-in-one,
+  AS_HELP_STRING([--enable-all-in-one], [enable supplied V8, BOOST, LIBEV]),
+  [tr_ALL_IN_ONE="${enableval:-yes}"],
+  [tr_ALL_IN_ONE=yes]
+)
+
+AM_CONDITIONAL(ENABLE_ALL_IN_ONE, test "x$tr_ALL_IN_ONE" = xyes)
+
+dnl ============================================================================
 dnl CHECKS                                 HOST, PROGRAMS, COMPILER, LIB, SYSTEM
 dnl ============================================================================
 
@@ -27,22 +55,38 @@ m4_include([m4/configure.32bit])
 m4_include([m4/configure.logging])
 m4_include([m4/configure.largefile])
 m4_include([m4/configure.threads])
-dnl m4_include([m4/configure.flex-bison])
 m4_include([m4/configure.dot])
+
+if test "x$tr_FLEX" = xyes;  then
+  m4_include([m4/configure.flex])
+else
+  BASIC_INFO="$BASIC_INFO|FLEX: disabled"
+fi
+
+if test "x$tr_BISON" = xyes;  then
+  m4_include([m4/configure.bison])
+else
+  BASIC_INFO="$BASIC_INFO|BISON: disabled"
+fi
 
 FLAG_INFO="$FLAG_INFO|."
 
-m4_include([m4/all-in-one.boost])
-m4_include([m4/all-in-one.libev])
-m4_include([m4/all-in-one.v8])
-
-dnl m4_include([m4/external.boost])
-dnl m4_include([m4/external.libev])
 m4_include([m4/external.math])
 m4_include([m4/external.ncurses]) # before readline
 m4_include([m4/external.readline])
 m4_include([m4/external.openssl])
-dnl m4_include([m4/external.v8])
+
+if test "x$tr_ALL_IN_ONE" = xyes;  then
+  m4_include([m4/all-in-one.boost])
+  m4_include([m4/all-in-one.libev])
+  m4_include([m4/all-in-one.v8])
+  BASIC_INFO="$BASIC_INFO|ALL-IN-ONE: enabled"
+else
+  m4_include([m4/external.boost])
+  m4_include([m4/external.libev])
+  m4_include([m4/external.v8])
+  BASIC_INFO="$BASIC_INFO|ALL-IN-ONE: disabled"
+fi
 
 CPPFLAGS="$CPPFLAGS -DGEO_TRIAGENS=1"
 
