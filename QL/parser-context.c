@@ -38,7 +38,7 @@
 /// @brief initializes the parser context for a query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLParseInit (QL_parser_context_t *context, const char *query) {
+bool QLParseInit (QL_parser_context_t* context, const char* query) {
   // init vectors needed for book-keeping memory
   TRI_InitVectorPointer(&context->_nodes);
   TRI_InitVectorPointer(&context->_strings);
@@ -72,12 +72,11 @@ bool QLParseInit (QL_parser_context_t *context, const char *query) {
   return true;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free all memory allocated in context of a query
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLParseFree (QL_parser_context_t *context) {
+void QLParseFree (QL_parser_context_t* context) {
   size_t i;
   void *nodePtr;
   char *stringPtr;
@@ -128,33 +127,30 @@ void QLParseFree (QL_parser_context_t *context) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief keep track of an allocated ast node
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLParseRegisterNode (QL_parser_context_t *context, QL_ast_node_t *element) {
+void QLParseRegisterNode (QL_parser_context_t* context, QL_ast_node_t* element) {
   TRI_PushBackVectorPointer(&context->_nodes, element);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free an ast node
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLParseFreeNode (QL_ast_node_t *element) {
+void QLParseFreeNode (QL_ast_node_t* element) {
   if (element != 0) {
     TRI_Free(element);
     element = 0;
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies a string and keeps track of its memory location in a vector
 ////////////////////////////////////////////////////////////////////////////////
 
-char *QLParseAllocString (QL_parser_context_t *context, const char *string) {
+char* QLParseAllocString (QL_parser_context_t* context, const char* string) {
   // do string duplication
   char *copy = TRI_DuplicateString(string);
 
@@ -162,12 +158,13 @@ char *QLParseAllocString (QL_parser_context_t *context, const char *string) {
   return QLParseRegisterString(context, copy);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies a string part and keeps track of its memory location in a vector
 ////////////////////////////////////////////////////////////////////////////////
 
-char *QLParseAllocString2 (QL_parser_context_t *context, const char *string, const size_t length) {
+char* QLParseAllocString2 (QL_parser_context_t* context, 
+                           const char* string, 
+                           const size_t length) {
   // do string part duplication
   char *copy = TRI_DuplicateString2(string, length);
 
@@ -175,35 +172,32 @@ char *QLParseAllocString2 (QL_parser_context_t *context, const char *string, con
   return QLParseRegisterString(context, copy);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief keep track of an allocated string
 ////////////////////////////////////////////////////////////////////////////////
 
-char *QLParseRegisterString (QL_parser_context_t *context, const char *string) {
+char* QLParseRegisterString (QL_parser_context_t* context, const char* string) {
   TRI_PushBackVectorPointer(&context->_strings, (char *) string);
 
   return (char*) string;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a string
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLParseFreeString (char *string) {
+void QLParseFreeString (char* string) {
   if (string != 0) {
     TRI_Free(string);
     string = 0;
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new node for the ast
 ////////////////////////////////////////////////////////////////////////////////
 
-QL_ast_node_t *QLAstNodeCreate (QL_parser_context_t *context, const QL_ast_node_type_e type) { 
+QL_ast_node_t* QLAstNodeCreate (QL_parser_context_t* context, const QL_ast_node_type_e type) { 
   // allocate memory
   QL_ast_node_t *node = (QL_ast_node_t *) TRI_Allocate(sizeof(QL_ast_node_t));
 
@@ -230,22 +224,20 @@ QL_ast_node_t *QLAstNodeCreate (QL_parser_context_t *context, const QL_ast_node_
   return node;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief open a new context layer for the parser
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLParseContextPush (QL_parser_context_t *context, QL_ast_node_t *element) {
+void QLParseContextPush (QL_parser_context_t* context, QL_ast_node_t* element) {
   TRI_PushBackVectorPointer(&context->_listHeads, element);
   TRI_PushBackVectorPointer(&context->_listTails, element);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief close the current context layer of the parser and return it
 ////////////////////////////////////////////////////////////////////////////////
 
-QL_ast_node_t *QLParseContextPop (QL_parser_context_t *context) {
+QL_ast_node_t* QLParseContextPop (QL_parser_context_t* context) {
   QL_ast_node_t *head;
   size_t i;
 
@@ -264,8 +256,8 @@ QL_ast_node_t *QLParseContextPop (QL_parser_context_t *context) {
 /// @brief add an element to the current parsing context
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLParseContextAddElement (QL_parser_context_t *context, QL_ast_node_t *element) {
-  QL_ast_node_t *last;
+void QLParseContextAddElement (QL_parser_context_t* context, QL_ast_node_t* element) {
+  QL_ast_node_t* last;
   size_t i;
 
   i = context->_listTails._length;
@@ -279,12 +271,11 @@ void QLParseContextAddElement (QL_parser_context_t *context, QL_ast_node_t *elem
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pop the current parse context from the stack into the rhs element
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLPopIntoRhs (QL_ast_node_t *node, QL_parser_context_t *context) {
+void QLPopIntoRhs (QL_ast_node_t* node, QL_parser_context_t* context) {
   QL_ast_node_t *popped;
   popped = QLParseContextPop(context);
 
@@ -293,12 +284,12 @@ void QLPopIntoRhs (QL_ast_node_t *node, QL_parser_context_t *context) {
   }  
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Register a parse error
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLParseRegisterParseError (QL_parser_context_t *context, const QL_error_type_e errorCode, ...) {
+void QLParseRegisterParseError (QL_parser_context_t* context, 
+                                const QL_error_type_e errorCode, ...) {
   va_list args;
 
   // set line and column numbers automatically during parsing
@@ -310,13 +301,14 @@ void QLParseRegisterParseError (QL_parser_context_t *context, const QL_error_typ
   va_end(args);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Register a post-parse error
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLParseRegisterPostParseError (QL_parser_context_t *context, const int32_t line, 
-                                    const int32_t column, const QL_error_type_e errorCode, ...) {
+void QLParseRegisterPostParseError (QL_parser_context_t* context, 
+                                    const int32_t line, 
+                                    const int32_t column, 
+                                    const QL_error_type_e errorCode, ...) {
   va_list args;
 
   context->_lexState._errorState._line    = line;
@@ -327,12 +319,11 @@ void QLParseRegisterPostParseError (QL_parser_context_t *context, const int32_t 
   va_end(args);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Validate the query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLParseValidate (QL_parser_context_t *context, QL_ast_node_t *node) {
+bool QLParseValidate (QL_parser_context_t* context, QL_ast_node_t* node) {
   QL_ast_node_t *lhs, *rhs, *next;
   QL_ast_node_type_e type;
 
@@ -375,7 +366,6 @@ bool QLParseValidate (QL_parser_context_t *context, QL_ast_node_t *node) {
 
   return true;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

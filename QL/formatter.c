@@ -33,30 +33,27 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Increase indentation
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLFormatterIndentationInc (QL_formatter_t *formatter) {
+void QLFormatterIndentationInc (QL_formatter_t* formatter) {
   formatter->indentLevel++;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Decrease indentation
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLFormatterIndentationDec (QL_formatter_t *formatter) {
+void QLFormatterIndentationDec (QL_formatter_t* formatter) {
   formatter->indentLevel--;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Print current indentation
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLFormatterPrintIndentation (QL_formatter_t *formatter) {
+void QLFormatterPrintIndentation (QL_formatter_t* formatter) {
   unsigned int i=0;
 
   for (; i < formatter->indentLevel; i++) {
@@ -64,63 +61,57 @@ void QLFormatterPrintIndentation (QL_formatter_t *formatter) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Print start of a block
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLFormatterPrintBlockStart (QL_formatter_t *formatter,const char *name) {
+void QLFormatterPrintBlockStart (QL_formatter_t* formatter, const char* name) {
   QLFormatterPrintIndentation(formatter);
   printf("%s {\n",name);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Print end of a block
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLFormatterPrintBlockEnd (QL_formatter_t *formatter,const char *name) {
+void QLFormatterPrintBlockEnd (QL_formatter_t* formatter, const char* name) {
   QLFormatterPrintIndentation(formatter);
   printf("}\n");
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Print an indented int value
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLFormatterPrintInt (QL_formatter_t *formatter,const char *name,uint64_t value) {
+void QLFormatterPrintInt (QL_formatter_t* formatter, const char* name, uint64_t value) {
   QLFormatterPrintIndentation(formatter);
-  //printf("%s: %llu\n",name,value);
+  printf("%s: %lu\n",name,(unsigned long) value);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Print an indented double value
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLFormatterPrintDouble (QL_formatter_t *formatter,const char *name,double value) {
+void QLFormatterPrintDouble (QL_formatter_t* formatter, const char* name, double value) {
   QLFormatterPrintIndentation(formatter);
   printf("%s: %f\n",name,value);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Print an indented string value
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLFormatterPrintStr (QL_formatter_t *formatter,const char *name,const char *value) {
+void QLFormatterPrintStr (QL_formatter_t* formatter, const char* name, const char* value) {
   QLFormatterPrintIndentation(formatter);
   printf("%s: %s\n",name,value);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Recursively dump an AST
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLFormatterDump (QL_ast_node_t *node, QL_formatter_t *formatter,const int blockBehaviour) {
-  const char *name;
+void QLFormatterDump (QL_ast_node_t* node, QL_formatter_t* formatter, const int blockBehaviour) {
+  const char* name;
   QL_ast_node_type_e  type;
   QL_ast_node_t       *lhs;
   QL_ast_node_t       *rhs;
@@ -179,6 +170,9 @@ void QLFormatterDump (QL_ast_node_t *node, QL_formatter_t *formatter,const int b
   QLFormatterPrintBlockEnd(formatter,"");
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

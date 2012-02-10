@@ -216,7 +216,7 @@
   * literals
   * --------------------------------------------------------------------------- */
 
-[_a-zA-Z][_a-zA-Z0-9]* { 
+([a-zA-Z][_a-zA-Z0-9]*|_+[a-zA-Z]+[_a-zA-Z0-9]*) { 
   yylval->strval = QLParseAllocString(yyextra, yytext); 
   return IDENTIFIER; 
 }
