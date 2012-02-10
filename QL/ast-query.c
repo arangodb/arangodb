@@ -37,7 +37,6 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Hash function used to hash collection aliases
 ////////////////////////////////////////////////////////////////////////////////
@@ -48,7 +47,6 @@ static uint64_t HashKey (TRI_associative_pointer_t* array, void const* key) {
   return TRI_FnvHashString(k);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Hash function used to hash elements in the collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,7 +56,6 @@ static uint64_t HashElement (TRI_associative_pointer_t* array, void const* eleme
 
   return TRI_FnvHashString(collection->_alias);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Comparison function used to determine hash key equality
@@ -71,11 +68,9 @@ static bool EqualKeyElement (TRI_associative_pointer_t* array, void const* key, 
   return TRI_EqualString(k, collection->_alias);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -90,7 +85,7 @@ static bool EqualKeyElement (TRI_associative_pointer_t* array, void const* key, 
 /// @brief Initialize data structures for a query
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLAstQueryInit (QL_ast_query_t *query) {
+void QLAstQueryInit (QL_ast_query_t* query) {
   query->_type = QLQueryTypeUndefined;
   query->_from._base     = 0;
   query->_where._base    = 0;
@@ -104,14 +99,13 @@ void QLAstQueryInit (QL_ast_query_t *query) {
                              0);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief De-allocate data structures for a query
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLAstQueryFree (QL_ast_query_t *query) {
+void QLAstQueryFree (QL_ast_query_t* query) {
   size_t i; 
-  void *ptr;
+  void* ptr;
 
   // destroy all elements in collection array
   for (i = 0; i < query->_from._collections._nrAlloc; i++) {
@@ -126,21 +120,22 @@ void QLAstQueryFree (QL_ast_query_t *query) {
   TRI_DestroyAssociativePointer(&query->_from._collections);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Check if a collection was defined in a query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLAstQueryIsValidAlias (QL_ast_query_t *query, const char *alias) {
+bool QLAstQueryIsValidAlias (QL_ast_query_t* query, const char* alias) {
   return (0 != TRI_LookupByKeyAssociativePointer (&query->_from._collections, alias));
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Add a collection to the query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLAstQueryAddCollection (QL_ast_query_t *query, const char *name, const char *alias, const bool isPrimary) {
+bool QLAstQueryAddCollection (QL_ast_query_t* query, 
+                              const char* name, 
+                              const char* alias, 
+                              const bool isPrimary) {
   QL_ast_query_collection_t *collection;
   QL_ast_query_collection_t *previous;
 
@@ -165,12 +160,11 @@ bool QLAstQueryAddCollection (QL_ast_query_t *query, const char *name, const cha
   return true;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the name of the primary collection used in the query
 ////////////////////////////////////////////////////////////////////////////////
 
-char *QLAstQueryGetPrimaryName (const QL_ast_query_t *query) {
+char* QLAstQueryGetPrimaryName (const QL_ast_query_t* query) {
   size_t i;
   QL_ast_query_collection_t *collection;
 
@@ -184,11 +178,11 @@ char *QLAstQueryGetPrimaryName (const QL_ast_query_t *query) {
   return 0;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the alias of the primary collection used in the query
 ////////////////////////////////////////////////////////////////////////////////
-char *QLAstQueryGetPrimaryAlias (const QL_ast_query_t *query) {
+
+char* QLAstQueryGetPrimaryAlias (const QL_ast_query_t* query) {
   size_t i;
   QL_ast_query_collection_t *collection;
 
@@ -202,11 +196,9 @@ char *QLAstQueryGetPrimaryAlias (const QL_ast_query_t *query) {
   return 0;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
 
 // Local Variables:
 // mode: outline-minor
