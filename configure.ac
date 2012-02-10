@@ -27,18 +27,22 @@ m4_include([m4/configure.32bit])
 m4_include([m4/configure.logging])
 m4_include([m4/configure.largefile])
 m4_include([m4/configure.threads])
-m4_include([m4/configure.flex-bison])
+dnl m4_include([m4/configure.flex-bison])
 m4_include([m4/configure.dot])
 
 FLAG_INFO="$FLAG_INFO|."
 
-m4_include([m4/external.boost])
-m4_include([m4/external.libev])
+m4_include([m4/all-in-one.boost])
+m4_include([m4/all-in-one.libev])
+m4_include([m4/all-in-one.v8])
+
+dnl m4_include([m4/external.boost])
+dnl m4_include([m4/external.libev])
 m4_include([m4/external.math])
 m4_include([m4/external.ncurses]) # before readline
 m4_include([m4/external.readline])
 m4_include([m4/external.openssl])
-m4_include([m4/external.v8])
+dnl m4_include([m4/external.v8])
 
 CPPFLAGS="$CPPFLAGS -DGEO_TRIAGENS=1"
 

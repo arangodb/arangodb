@@ -1,3 +1,5 @@
+# -*- mode: Makefile; -*-
+
 ################################################################################
 ## avocadodb
 ################################################################################
@@ -231,7 +233,7 @@ avocado_SOURCES = \
 ## JavaScript source code as header
 ################################################################################
 
-BUILT_SOURCES += \
+JAVASCRIPT_HEADER = \
 	js/bootstrap/js-modules.h \
 	js/bootstrap/js-print.h \
 	js/server/js-modules.h \
@@ -240,35 +242,46 @@ BUILT_SOURCES += \
 	js/server/js-json.h \
 	js/server/js-shell.h
 
+
+BUILT_SOURCES += $(JAVASCRIPT_HEADER)
+
 ################################################################################
 ## FLEX
 ################################################################################
 
-BUILT_SOURCES += \
+FLEX_FILES = \
 	JsonParser/json-parser.c \
 	QL/tokens.c
+
+BUILT_SOURCES += $(FLEX_FILES)
 
 ################################################################################
 ## FLEX++
 ################################################################################
 
-BUILT_SOURCES += \
+FLEXXX_FILES = \
 	V8/v8-json.cpp \
 	JsonParserX/JsonScannerX.cpp
+
+BUILT_SOURCES += $(FLEXXX_FILES)
 
 ################################################################################
 ## BISON
 ################################################################################
 
-BUILT_SOURCES += \
+BISON_FILES = \
 	QL/parser.c
+
+BUILT_SOURCES += $(BISON_FILES)
 
 ################################################################################
 ## BISON++
 ################################################################################
 
-BUILT_SOURCES += \
+BISONXX_FILES = \
 	JsonParserX/JsonParserX.cpp
+
+BUILT_SOURCES += $(BISONXX_FILES)
 
 ################################################################################
 ## DOXYGEN

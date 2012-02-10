@@ -1,0 +1,39 @@
+dnl -*- mode: Autoconf; -*-
+
+dnl -----------------------------------------------------------------------------------------
+dnl option for LIBEV support
+dnl -----------------------------------------------------------------------------------------
+
+LIBEV_CPPFLAGS="-I${srcdir}/3rdParty/libev"
+LIBEV_LDFLAGS=""
+LIBEV_LIBS="${srcdir}/3rdParty/libev/.libs/libev.a"
+
+TRI_LIBEV_VERSION="4.11"
+
+dnl -----------------------------------------------------------------------------------------
+dnl add substitutions
+dnl -----------------------------------------------------------------------------------------
+
+AM_CONDITIONAL(ENABLE_LIBEV, test "xyes" = xyes)
+
+AC_SUBST(LIBEV_CPPFLAGS)
+AC_SUBST(LIBEV_LDFLAGS)
+AC_SUBST(LIBEV_LIBS)
+
+LIBEV_CPPFLAGS="${LIBEV_CPPFLAGS} -DTRI_LIBEV_VERSION='\"${TRI_LIBEV_VERSION}\"'"
+
+dnl -----------------------------------------------------------------------------------------
+dnl informational output
+dnl -----------------------------------------------------------------------------------------
+
+LIB_INFO="$LIB_INFO|LIBEV VERSION: ${TRI_LIBEV_VERSION}"
+
+FLAG_INFO="$FLAG_INFO|LIBEV_CPPFLAGS: ${LIBEV_CPPFLAGS}"
+FLAG_INFO="$FLAG_INFO|LIBEV_LDFLAGS:  ${LIBEV_LDFLAGS}"
+FLAG_INFO="$FLAG_INFO|LIBEV_LIBS:     ${LIBEV_LIBS}"
+FLAG_INFO="$FLAG_INFO|."
+
+dnl Local Variables:
+dnl mode: outline-minor
+dnl outline-regexp: "^\\(dnl --SECTION--\\)"
+dnl End:
