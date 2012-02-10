@@ -79,9 +79,9 @@
      COLON = 295,
      TERNARY = 296,
      FCALL = 297,
-     MEMBER = 298,
-     UPLUS = 299,
-     UMINUS = 300
+     UPLUS = 298,
+     UMINUS = 299,
+     MEMBER = 300
    };
 #endif
 

@@ -32,10 +32,17 @@ include Makefile.files
 include Makefile.doxygen
 include Makefile.javascript
 
-# include Makefile.bison
-# include Makefile.flex
+if ENABLE_FLEX
+include Makefile.flex
+endif
 
+if ENABLE_BISON
+include Makefile.bison
+endif
+
+if ENABLE_ALL_IN_ONE
 include Makefile.all-in-one
+endif
 
 ################################################################################
 ## cleanup
