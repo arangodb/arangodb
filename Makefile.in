@@ -25,11 +25,6 @@
 ################################################################################
 ################################################################################
 
-# -*- mode: Makefile; -*-
-
-################################################################################
-################################################################################
-
 
 
 VPATH = @srcdir@
@@ -55,7 +50,7 @@ target_triplet = @target@
 bin_PROGRAMS = avocado$(EXEEXT)
 DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.all-in-one \
 	$(srcdir)/Makefile.am $(srcdir)/Makefile.files \
-	$(srcdir)/Makefile.generate $(srcdir)/Makefile.in \
+	$(srcdir)/Makefile.in \
 	$(top_srcdir)/BasicsC/local-configuration.h.in \
 	$(top_srcdir)/Doxygen/avocado.doxy.in \
 	$(top_srcdir)/config/config.h.in $(top_srcdir)/configure \
@@ -489,7 +484,7 @@ top_srcdir = @top_srcdir@
 ACLOCAL_AMFLAGS = -I m4
 AM_CFLAGS = 
 AM_CXXFLAGS = 
-AM_CPPFLAGS = -D_SYSCONFDIR_='"${sysconfdir}"' -D_PKGDATADIR_='"${pkgdatadir}"' -D_DATABASEDIR_='"${localstatedir}/lib/${PACKAGE_TARNAME}"'
+AM_CPPFLAGS = -D_SYSCONFDIR_='"${sysconfdir}"' -D_PKGDATADIR_='"${pkgdatadir}"' -D_DATABASEDIR_='"${pkgdatadir}"'
 AM_LDFLAGS = 
 
 ################################################################################
@@ -806,7 +801,7 @@ all: $(BUILT_SOURCES)
 .SUFFIXES: .c .cpp .o .obj
 am--refresh:
 	@:
-$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/Makefile.generate $(srcdir)/Makefile.all-in-one $(am__configure_deps)
+$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/Makefile.all-in-one $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -5153,74 +5148,6 @@ Doxygen/xml/d3/d4b/JSModuleInternal.md: Doxygen/xml/d3/d4b/JSModuleInternal.xml
 Doxygen/xml/d2/d66/JSModuleFs.md: Doxygen/xml/d2/d66/JSModuleFs.xml
 	python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
 
-.setup-directories:
-	@test -d js || mkdir js
-	@test -d js/bootstrap || mkdir js/bootstrap
-	@test -d js/modules || mkdir js/modules
-	@test -d js/server || mkdir js/server
-	@test -d Doxygen/js || mkdir Doxygen/js
-	@test -d Doxygen/js/bootstrap || mkdir Doxygen/js/bootstrap
-	@test -d Doxygen/js/modules || mkdir Doxygen/js/modules
-	@test -d Doxygen/js/server || mkdir Doxygen/js/server
-	@test -d Doxygen/js/system || mkdir Doxygen/js/system
-	@touch $@
-
-js/js-%.h: @srcdir@/js/%.js .setup-directories
-	@top_srcdir@/config/js2c.sh $< > $@
-
-js/bootstrap/js-%.h: @srcdir@/js/bootstrap/%.js .setup-directories
-	@top_srcdir@/config/js2c.sh $< > $@
-
-js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
-	@top_srcdir@/config/js2c.sh $< > $@
-
-################################################################################
-################################################################################
-
-JsonParser/%.c: @srcdir@/JsonParser/%.l
-	@top_srcdir@/config/flex-c.sh $(LEX) $@ $<
-
-QL/%.c: @srcdir@/QL/%.l
-	@top_srcdir@/config/flex-c.sh $(LEX) $@ $<
-
-################################################################################
-################################################################################
-
-V8/%.cpp: @srcdir@/V8/%.ll
-	@top_srcdir@/config/flex-c++.sh $(LEX) $@ $<
-
-JsonParserX/%.cpp: @srcdir@/JsonParserX/%.ll
-	@top_srcdir@/config/flex-c++.sh $(LEX) $@ $<
-
-################################################################################
-################################################################################
-
-QL/%.c: @srcdir@/QL/%.y
-	@top_srcdir@/config/bison-c.sh $(BISON) $@ $<
-
-################################################################################
-################################################################################
-
-JsonParserX/%.cpp: @srcdir@/JsonParserX/%.yy
-	@top_srcdir@/config/bison-c++.sh $(BISON) $@ $<
-
-################################################################################
-################################################################################
-
-.PHONY: Doxygen/js Doxygen/js/system Doxygen/js/modules
-
-Doxygen/js/%.c: @srcdir@/js/%.js .setup-directories
-	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
-
-Doxygen/js/system/%.c: @srcdir@/js/system/%.js .setup-directories
-	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
-
-Doxygen/js/modules/%.c: @srcdir@/js/system/%.js .setup-directories
-	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
-
-Doxygen/js/bootstrap/%.c: @srcdir@/js/bootstrap/%.js .setup-directories
-	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
-
 @LIBEV_LIBS@:
 	@echo
 	@echo "--------------------------------------------------------------------------------"
@@ -5255,6 +5182,8 @@ $(V8_LIBS):
 
 ################################################################################
 ################################################################################
+
+# include Makefile.generate
 
 ################################################################################
 ################################################################################

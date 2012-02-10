@@ -51,3 +51,4 @@ stamp-h*
 *.la
 config.h
 3rdParty/libev/libtool
+out

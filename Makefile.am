@@ -2,7 +2,7 @@ ACLOCAL_AMFLAGS = -I m4
 
 AM_CFLAGS = 
 AM_CXXFLAGS =
-AM_CPPFLAGS = -D_SYSCONFDIR_='"${sysconfdir}"' -D_PKGDATADIR_='"${pkgdatadir}"' -D_DATABASEDIR_='"${localstatedir}/lib/${PACKAGE_TARNAME}"'
+AM_CPPFLAGS = -D_SYSCONFDIR_='"${sysconfdir}"' -D_PKGDATADIR_='"${pkgdatadir}"' -D_DATABASEDIR_='"${pkgdatadir}"'
 AM_LDFLAGS =
 BUILT_SOURCES = 
 LIBS =
@@ -28,7 +28,7 @@ install-data-local:
 ################################################################################
 
 include Makefile.files
-include Makefile.generate
+# include Makefile.generate
 include Makefile.all-in-one
 
 ################################################################################
