@@ -2,7 +2,7 @@ ACLOCAL_AMFLAGS = -I m4
 
 AM_CFLAGS = 
 AM_CXXFLAGS =
-AM_CPPFLAGS = -D_SYSCONFDIR_='"${sysconfdir}"' -D_PKGDATADIR_='"${pkgdatadir}"' -D_DATABASEDIR_='"${pkgdatadir}"'
+AM_CPPFLAGS = -D_SYSCONFDIR_='"${sysconfdir}"' -D_PKGDATADIR_='"${pkgdatadir}"' -D_DATABASEDIR_='"${localstatedir}/${PACKAGE_TARNAME}"'
 AM_LDFLAGS =
 BUILT_SOURCES = 
 LIBS =
