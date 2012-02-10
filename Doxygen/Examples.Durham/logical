@@ -1,0 +1,4 @@
+1 && 0
+true || false
+!u.isInvalid
+u.age in [0, 1, 2]

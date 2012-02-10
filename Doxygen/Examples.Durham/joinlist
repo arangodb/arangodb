@@ -1,0 +1,3 @@
+SELECT { person: u, locations: locs }
+FROM users u
+LIST JOIN locations locs ON (u.id == locs.uid)
