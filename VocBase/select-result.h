@@ -88,7 +88,7 @@ TRI_select_datapart_t* TRI_CreateDataPart (const char*,
 /// This index is a structure that allows quick and random access to all 
 /// rows in the select result. It will contain one pointer for each row.
 /// The index pointer points to the start of the data storage 
-/// (@ref TRI_select_result_document_t) for all documents of all collections of 
+/// (@ref TRI_select_result_documents_t) for all documents of all collections of 
 /// that row.
 ////////////////////////////////////////////////////////////////////////////////
 

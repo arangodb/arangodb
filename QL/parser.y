@@ -106,8 +106,8 @@ void QLerror (YYLTYPE *locp,QL_parser_context_t *context, const char *err) {
 %left '*' '/' '%'
 %right NOT
 %left FCALL
-%left MEMBER
 %nonassoc UMINUS UPLUS
+%left MEMBER
 
 %start query
 
