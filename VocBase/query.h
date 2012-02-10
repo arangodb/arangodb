@@ -337,7 +337,6 @@ TRI_qry_select_general_t;
 typedef struct TRI_query_s {
   TRI_vocbase_t* _vocbase;
   TRI_qry_select_t* _select;
-  char* _primaryName;
   TRI_doc_collection_t* _primary;
   TRI_qry_where_t* _where;
   TRI_qry_order_t* _order;

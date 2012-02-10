@@ -295,31 +295,6 @@ bool TRI_DefineSelectExecutionContext (TRI_js_exec_context_t context,
   return true;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief defines a single document
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_DefineDocumentExecutionContext (TRI_js_exec_context_t context,
-                                         char const* name,
-                                         TRI_doc_collection_t* collection,
-                                         TRI_doc_mptr_t const* document) {
-  js_exec_context_t* ctx;
-  v8::Handle<v8::Value> result;
-
-  ctx = (js_exec_context_t*) context;
-
-  bool ok = TRI_ObjectDocumentPointer(collection, document, &result);
-
-  if (!ok) {
-    return false;
-  }
-
-  ctx->_arguments->Set(v8::String::New(name), result);
-
-  return true;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Create a v8 object from a document list
 ////////////////////////////////////////////////////////////////////////////////
@@ -1267,11 +1242,8 @@ bool TRI_ExecuteStringVocBase (v8::Handle<v8::Context> context,
                                v8::Handle<v8::Value> name,
                                bool printResult,
                                bool reportExceptions) {
-  TRI_v8_global_t* v8g;
   v8::HandleScope handleScope;
   v8::TryCatch tryCatch;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Script> script = v8::Script::Compile(source, name);
 

@@ -1398,10 +1398,7 @@ static v8::Handle<v8::Value> JS_DocumentQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DocumentQueryWrapped (v8::Arguments const& argv) {
-  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   // extract the operand query
   v8::Handle<v8::Object> operand = argv.Holder();
@@ -1986,9 +1983,6 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_PrepareAql (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   if (argv.Length() != 2) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_PREPARE(<db>, <query>)")));
@@ -2049,9 +2043,6 @@ static v8::Handle<v8::Value> JS_PrepareAql (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_WhereBooleanAql (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   if (argv.Length() != 1) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: whereConstant(<boolean>)")));
@@ -2073,9 +2064,6 @@ static v8::Handle<v8::Value> JS_WhereBooleanAql (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_WhereGeneralAql (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   if (argv.Length() != 1) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: whereGeneral(<where>)")));
@@ -2103,9 +2091,6 @@ static v8::Handle<v8::Value> JS_WhereGeneralAql (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_WherePrimaryConstAql (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   if (argv.Length() != 1) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: wherePrimaryConst(<document-identifier>)")));
@@ -2133,9 +2118,6 @@ static v8::Handle<v8::Value> JS_WherePrimaryConstAql (v8::Arguments const& argv)
 
 static v8::Handle<v8::Value> JS_WhereWithinConstAql (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   char* nameDistance;
 
@@ -2178,9 +2160,6 @@ static v8::Handle<v8::Value> JS_WhereWithinConstAql (v8::Arguments const& argv) 
 
 static v8::Handle<v8::Value> JS_SelectAql (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   if (argv.Length() != 4) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_SELECT(<db>, <collectionname>, <skip>, <limit>)")));
@@ -2272,10 +2251,6 @@ static v8::Handle<v8::Value> JS_SelectAql (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
   v8::Handle<v8::Value> err;
   TRI_rc_cursor_t* cursor = ExecuteQuery(argv.Holder(), &err);
 
@@ -2310,10 +2285,6 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_NextCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
   v8::TryCatch tryCatch;
-
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: next()")));
@@ -2357,10 +2328,6 @@ static v8::Handle<v8::Value> JS_NextRefCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
   v8::TryCatch tryCatch;
 
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: nextRef()")));
   }
@@ -2394,10 +2361,6 @@ static v8::Handle<v8::Value> JS_UseNextCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
   v8::TryCatch tryCatch;
 
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: nextRef()")));
   }
@@ -2424,9 +2387,6 @@ static v8::Handle<v8::Value> JS_UseNextCursor (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_HasNextCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: hasNext()")));
