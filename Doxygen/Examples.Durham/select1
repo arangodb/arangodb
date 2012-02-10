@@ -1,0 +1,2 @@
+SELECT collection-alias 
+FROM collection-name collection-alias

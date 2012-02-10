@@ -1,0 +1,3 @@
+SELECT { name : u.name, latitude : locs.latitude ? locs.latitude : null, longitude : locs.longitude ? locs.longitude : null }
+FROM users u
+LEFT JOIN locations locs ON (u.id == locs.uid)

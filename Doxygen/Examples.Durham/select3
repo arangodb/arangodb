@@ -1,0 +1,17 @@
+SELECT { } 
+FROM users u
+
+SELECT { name: "yikes!" }
+FROM users u
+
+SELECT { age: 15, likes: [ "fishing", "swimming"] }
+FROM users u
+
+SELECT { name: u.name, age: u.age } 
+FROM users u
+
+SELECT { name: u.name, nextAge : u.age + 1 } 
+FROM users u
+
+SELECT { person: { name: u.name, age: u.u_age }, likes: [ "fishing", "swimming"] } 
+FROM users u
