@@ -1,7 +1,7 @@
 dnl -*- mode: Autoconf; -*-
 
 dnl -----------------------------------------------------------------------------------------
-dnl option for V8
+dnl option for V8 support
 dnl -----------------------------------------------------------------------------------------
 
 V8_CPPFLAGS=""
@@ -65,6 +65,10 @@ dnl ----------------------------------------------------------------------------
 AC_SUBST(V8_CPPFLAGS)
 AC_SUBST(V8_LDFLAGS)
 AC_SUBST(V8_LIBS)
+
+dnl -----------------------------------------------------------------------------------------
+dnl save flags
+dnl -----------------------------------------------------------------------------------------
 
 LIBS="$LIBS ${V8_LIBS}"
 LDFLAGS="$LDFLAGS ${V8_LDFLAGS}"
@@ -147,3 +151,8 @@ FLAG_INFO="$FLAG_INFO|V8_CPPFLAGS: ${V8_CPPFLAGS}"
 FLAG_INFO="$FLAG_INFO|V8_LDFLAGS:  ${V8_LDFLAGS}"
 FLAG_INFO="$FLAG_INFO|V8_LIBS:     ${V8_LIBS}"
 FLAG_INFO="$FLAG_INFO|."
+
+dnl Local Variables:
+dnl mode: outline-minor
+dnl outline-regexp: "^\\(dnl --SECTION--\\)"
+dnl End:

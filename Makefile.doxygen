@@ -1,0 +1,56 @@
+# -*- mode: Makefile; -*-
+
+################################################################################
+## Doxygen Conversions
+################################################################################
+
+.PHONY: Doxygen/js Doxygen/js/system Doxygen/js/modules
+
+BUILT_SOURCES += Doxygen/.setup-directories
+
+Doxygen/.setup-directories:
+	@test -d Doxygen/js || mkdir Doxygen/js
+	@test -d Doxygen/js/bootstrap || mkdir Doxygen/js/bootstrap
+	@test -d Doxygen/js/modules || mkdir Doxygen/js/modules
+	@test -d Doxygen/js/server || mkdir Doxygen/js/server
+	@test -d Doxygen/js/system || mkdir Doxygen/js/system
+	@touch $@
+
+Doxygen/js/%.c: @srcdir@/js/%.js Doxygen/.setup-directories
+	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+
+Doxygen/js/system/%.c: @srcdir@/js/system/%.js Doxygen/.setup-directories
+	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+
+Doxygen/js/modules/%.c: @srcdir@/js/system/%.js Doxygen/.setup-directories
+	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+
+Doxygen/js/bootstrap/%.c: @srcdir@/js/bootstrap/%.js Doxygen/.setup-directories
+	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+
+################################################################################
+## Doxygen
+################################################################################
+
+.PHONY: doxygen
+
+doxygen: Doxygen/avocado.doxy $(DOXYGEN)
+	doxygen Doxygen/avocado.doxy
+
+################################################################################
+## wiki
+################################################################################
+
+.PHONY: wiki
+
+wiki: $(WIKI)
+	@test -d Doxygen/wiki || mkdir Doxygen/wiki
+	for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/pandoc.sh $$w; done
+
+################################################################################
+## CLEANUP
+################################################################################
+
+CLEANUP += $(DOXYGEN) $(WIKI)
+
+
