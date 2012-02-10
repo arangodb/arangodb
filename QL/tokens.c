@@ -2001,7 +2001,9 @@ static void QL_load_buffer_state  (yyscan_t yyscanner)
 
 #ifndef __cplusplus
 #ifndef _WIN32
+#ifndef _WIN32
 extern int isatty (int );
+#endif
 #endif
 #endif /* __cplusplus */
     

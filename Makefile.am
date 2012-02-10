@@ -32,8 +32,8 @@ include Makefile.files
 include Makefile.doxygen
 include Makefile.javascript
 
-include Makefile.bison
-include Makefile.flex
+dnl include Makefile.bison
+dnl include Makefile.flex
 
 include Makefile.all-in-one
 
