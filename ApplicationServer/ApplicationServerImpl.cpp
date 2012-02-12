@@ -55,6 +55,7 @@ namespace triagens {
         initFile(),
         userConfigFile(),
         systemConfigFile(),
+        systemConfigPath(),
         uid(),
         gid(),
         logApplicationName("triagens"),
@@ -451,36 +452,68 @@ namespace triagens {
         }
       }
 
+      if (systemConfigPath.empty()) {
+
 #ifdef _SYSCONFDIR_
 
-      // try the configuration file in the system directory - if there is one
+        // try the configuration file in the system directory - if there is one
 
-      // Please note that the system directory changes depending on
-      // where the user installed the application server.
+        // Please note that the system directory changes depending on
+        // where the user installed the application server.
 
-      if (! systemConfigFile.empty()) {
-        string sysDir = string(_SYSCONFDIR_);
-
-        if (! sysDir.empty()) {
-          if (sysDir[sysDir.size() - 1] != '/') {
-            sysDir += "/" + systemConfigFile;
+        if (! systemConfigFile.empty()) {
+          string sysDir = string(_SYSCONFDIR_);
+          
+          if (! sysDir.empty()) {
+            if (sysDir[sysDir.size() - 1] != '/') {
+              sysDir += "/" + systemConfigFile;
+            }
+            else {
+              sysDir += systemConfigFile;
+            }
+            
+            // check and see if file exists
+            if (FileUtils::exists(sysDir)) {
+              LOGGER_INFO << "using init file '" << sysDir << "'";
+              
+              bool ok = options.parse(descriptionFile, sysDir);
+              
+              // observe that this is treated as an error - the configuration file exists
+              // but for some reason can not be parsed. Best to report an error
+              if (! ok) {
+                cout << options.lastError() << endl;
+              }
+              
+              return ok;
+            }
+            else {
+              LOGGER_INFO << "no system init file '" << sysDir << "' found";
+            }
           }
           else {
-            sysDir += systemConfigFile;
+            LOGGER_DEBUG << "no system init file, not system directory is known";
           }
+        }
 
+#endif
+
+      }
+      else {
+        if (! systemConfigFile.empty()) {
+          string sysDir = systemConfigPath + "/" + systemConfigFile;
+            
           // check and see if file exists
           if (FileUtils::exists(sysDir)) {
             LOGGER_INFO << "using init file '" << sysDir << "'";
-
+              
             bool ok = options.parse(descriptionFile, sysDir);
-
+              
             // observe that this is treated as an error - the configuration file exists
             // but for some reason can not be parsed. Best to report an error
             if (! ok) {
               cout << options.lastError() << endl;
             }
-
+            
             return ok;
           }
           else {
@@ -488,11 +521,9 @@ namespace triagens {
           }
         }
         else {
-          LOGGER_DEBUG << "no system init file, not system directory is known";
+          LOGGER_DEBUG << "no system init file specified";
         }
       }
-
-#endif
 
       return true;
     }

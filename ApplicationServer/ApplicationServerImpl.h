@@ -161,8 +161,9 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setSystemConfigFile (string const& name) {
+        void setSystemConfigFile (string const& name, string const& path) {
           systemConfigFile = name;
+          systemConfigPath = path;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -354,6 +355,7 @@ namespace triagens {
         string initFile;
         string userConfigFile;
         string systemConfigFile;
+        string systemConfigPath;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the user id to use for the process

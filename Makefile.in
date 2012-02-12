@@ -5190,7 +5190,7 @@ uninstall-am: uninstall-binPROGRAMS uninstall-nobase_pkgdataDATA
 
 
 install-data-local:
-	test -d @localstatedir@/lib/avocado || mkdir -p @localstatedir@/lib/avocado
+	test -d @localstatedir@//${PACKAGE_TARNAME} || mkdir -p @localstatedir@//${PACKAGE_TARNAME}
 
 Doxygen/xml/d8/d3a/Basics.md: Doxygen/xml/d8/d3a/Basics.xml
 	python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
