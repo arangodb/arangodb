@@ -90,8 +90,10 @@ ApplicationAdminServer::ApplicationAdminServer ()
     _version() {
   _pathOptions = new PathHandler::Options();
 
+#ifndef TRI_ENABLE_RELATIVE
 #ifdef _PKGDATADIR_
   _adminDirectory = string(_PKGDATADIR_) + "/html/admin";
+#endif
 #endif
 }
 
@@ -130,6 +132,15 @@ void ApplicationAdminServer::allowLogViewer () {
 
 void ApplicationAdminServer::allowAdminDirectory () {
   _allowAdminDirectory = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief allows for a webadmin directory
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationAdminServer::allowAdminDirectory (string const& adminDirectory) {
+  _allowAdminDirectory = true;
+  _adminDirectory = adminDirectory;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -16,7 +16,7 @@ AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_MACRO_DIR([m4])
 
 dnl ============================================================================
-dnl OPTIONS                                              BISON, FLEX, ALL-IN-ONE
+dnl OPTIONS                                        BISON, FLEX, ALL-IN-ONE, PATH
 dnl ============================================================================
 
 AC_ARG_ENABLE(bison,
@@ -43,6 +43,18 @@ AC_ARG_ENABLE(all-in-one,
 
 AM_CONDITIONAL(ENABLE_ALL_IN_ONE, test "x$tr_ALL_IN_ONE" = xyes)
 
+AC_ARG_ENABLE(relative,
+  AS_HELP_STRING([--enable-relative], [all path are relative to the binary]),
+  [tr_RELATIVE="${enableval:-yes}"],
+  [tr_RELATIVE=no]
+)
+
+if test "x$tr_RELATIVE" = xyes;  then
+  AC_DEFINE_UNQUOTED(TRI_ENABLE_RELATIVE, 1, [true if relative paths should be used])
+fi
+
+AM_CONDITIONAL(ENABLE_RELATIVE, test "x$tr_RELATIVE" = xyes)
+
 dnl ============================================================================
 dnl CHECKS                                 HOST, PROGRAMS, COMPILER, LIB, SYSTEM
 dnl ============================================================================
@@ -59,14 +71,22 @@ m4_include([m4/configure.dot])
 
 if test "x$tr_FLEX" = xyes;  then
   m4_include([m4/configure.flex])
+  BASIC_INFO="$BASIC_INFO|FLEX: enabled"
 else
   BASIC_INFO="$BASIC_INFO|FLEX: disabled"
 fi
 
 if test "x$tr_BISON" = xyes;  then
   m4_include([m4/configure.bison])
+  BASIC_INFO="$BASIC_INFO|BISON: enabled"
 else
   BASIC_INFO="$BASIC_INFO|BISON: disabled"
+fi
+
+if test "x$tr_RELATIVE" = xyes;  then
+  BASIC_INFO="$BASIC_INFO|RELATIVE PATHS: enabled"
+else
+  BASIC_INFO="$BASIC_INFO|RELATIVE PATHS: disabled"
 fi
 
 FLAG_INFO="$FLAG_INFO|."

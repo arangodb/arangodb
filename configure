@@ -725,6 +725,8 @@ build_os
 build_vendor
 build_cpu
 build
+ENABLE_RELATIVE_FALSE
+ENABLE_RELATIVE_TRUE
 ENABLE_ALL_IN_ONE_FALSE
 ENABLE_ALL_IN_ONE_TRUE
 ENABLE_FLEX_FALSE
@@ -775,6 +777,7 @@ enable_option_checking
 enable_bison
 enable_flex
 enable_all_in_one
+enable_relative
 enable_silent_rules
 enable_dependency_tracking
 enable_error_on_warning
@@ -1444,6 +1447,7 @@ Optional Features:
   --enable-bison          enable BISON
   --enable-flex           enable FLEX
   --enable-all-in-one     enable supplied V8, BOOST, LIBEV
+  --enable-relative       all path are relative to the binary
   --enable-silent-rules          less verbose build output (undo: `make V=1')
   --disable-silent-rules         verbose build output (undo: `make V=0')
   --disable-dependency-tracking  speeds up one-time build
@@ -2562,6 +2566,32 @@ fi
 else
   ENABLE_ALL_IN_ONE_TRUE='#'
   ENABLE_ALL_IN_ONE_FALSE=
+fi
+
+
+# Check whether --enable-relative was given.
+if test "${enable_relative+set}" = set; then :
+  enableval=$enable_relative; tr_RELATIVE="${enableval:-yes}"
+else
+  tr_RELATIVE=no
+
+fi
+
+
+if test "x$tr_RELATIVE" = xyes;  then
+
+cat >>confdefs.h <<_ACEOF
+#define TRI_ENABLE_RELATIVE 1
+_ACEOF
+
+fi
+
+ if test "x$tr_RELATIVE" = xyes; then
+  ENABLE_RELATIVE_TRUE=
+  ENABLE_RELATIVE_FALSE='#'
+else
+  ENABLE_RELATIVE_TRUE='#'
+  ENABLE_RELATIVE_FALSE=
 fi
 
 
@@ -6586,6 +6616,7 @@ fi
 
 LIB_INFO="$LIB_INFO|FLEX VERSION: ${TRI_FLEX_VERSION}"
 
+  BASIC_INFO="$BASIC_INFO|FLEX: enabled"
 else
   BASIC_INFO="$BASIC_INFO|FLEX: disabled"
 fi
@@ -6676,8 +6707,15 @@ fi
 
 LIB_INFO="$LIB_INFO|BISON VERSION: ${TRI_BISON_VERSION}"
 
+  BASIC_INFO="$BASIC_INFO|BISON: enabled"
 else
   BASIC_INFO="$BASIC_INFO|BISON: disabled"
+fi
+
+if test "x$tr_RELATIVE" = xyes;  then
+  BASIC_INFO="$BASIC_INFO|RELATIVE PATHS: enabled"
+else
+  BASIC_INFO="$BASIC_INFO|RELATIVE PATHS: disabled"
 fi
 
 FLAG_INFO="$FLAG_INFO|."
@@ -9217,6 +9255,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_ALL_IN_ONE_TRUE}" && test -z "${ENABLE_ALL_IN_ONE_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_ALL_IN_ONE\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_RELATIVE_TRUE}" && test -z "${ENABLE_RELATIVE_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_RELATIVE\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_DARWIN_TRUE}" && test -z "${ENABLE_DARWIN_FALSE}"; then

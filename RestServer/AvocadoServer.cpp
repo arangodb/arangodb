@@ -35,6 +35,7 @@
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/safe_cast.h"
+#include "Basics/FileUtils.h"
 #include "BasicsC/files.h"
 #include "BasicsC/init.h"
 #include "BasicsC/logging.h"
@@ -154,12 +155,13 @@ static DispatcherThread* SystemActionDisptacherThreadCreator (DispatcherQueue* q
 AvocadoServer::AvocadoServer (int argc, char** argv)
   : _argc(argc),
     _argv(argv),
+    _binaryPath(),
     _applicationAdminServer(0),
     _applicationHttpServer(0),
     _httpServer(0),
     _adminHttpServer(0),
-    _httpPort("localhost:8529"),
-    _adminPort("localhost:8530"),
+    _httpPort("127.0.0.1:8529"),
+    _adminPort("127.0.0.1:8530"),
     _dispatcherThreads(1),
     _startupPath(),
     _startupModules("js/modules"),
@@ -168,15 +170,62 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
     _actionThreads(1),
     _databasePath("/var/lib/avocado"),
     _vocbase(0) {
-  _workingDirectory = "/var/tmp";
+  char* p;
+
+  // check if name contains a '/'
+  p = argv[0];
+
+  for (;  *p && *p != '/';  ++p) {
+  }
+
+  // contains a path
+  if (*p) {
+    p = TRI_Dirname(argv[0]);
+    _binaryPath = (p == 0 || *p == '\0') ? "" : p;
+    TRI_FreeString(p);
+  }
+
+  // check PATH variable
+  else {
+    p = getenv("PATH");
+
+    if (p == 0) {
+      _binaryPath = "";
+    }
+    else {
+      vector<string> files = StringUtils::split(p, ":");
+
+      for (vector<string>::iterator i = files.begin();  i != files.end();  ++i) {
+        string full = *i + "/" + argv[0];
+
+        if (FileUtils::exists(full)) {
+          _binaryPath = *i;
+          break;
+        }
+      }
+    }
+  }
+
+#ifdef TRI_ENABLE_RELATIVE
+
+    _workingDirectory = _binaryPath + "/../tmp";
+    _systemActionPath = _binaryPath + "/../share/avocado/js/system";
+    _startupModules = _binaryPath + "/../share/avocado/js/modules";
+    _databasePath = _binaryPath + "/../var/avocado";
+
+#else
+
+    _workingDirectory = "/var/tmp";
 
 #ifdef _PKGDATADIR_
-  _systemActionPath = string(_PKGDATADIR_) + "/js/system";
-  _startupModules = string(_PKGDATADIR_) + "/js/modules";
+    _systemActionPath = string(_PKGDATADIR_) + "/js/system";
+    _startupModules = string(_PKGDATADIR_) + "/js/modules";
 #endif
 
 #ifdef _DATABASEDIR_
-  _databasePath = _DATABASEDIR_;
+    _databasePath = _DATABASEDIR_;
+#endif
+
 #endif
 }
 
@@ -199,7 +248,13 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
 
 void AvocadoServer::buildApplicationServer () {
   _applicationServer = ApplicationServerDispatcher::create("[<options>] <database-directory>", TRIAGENS_VERSION);
+
+#ifdef TRI_ENABLE_RELATIVE
+  _applicationServer->setSystemConfigFile("avocado.conf", _binaryPath + "/../etc/");
+#else
   _applicationServer->setSystemConfigFile("avocado.conf");
+#endif
+
   _applicationServer->setUserConfigFile(".avocado/avocado.conf");
 
   // .............................................................................
@@ -215,7 +270,12 @@ void AvocadoServer::buildApplicationServer () {
   _applicationAdminServer = ApplicationAdminServer::create(_applicationServer);
   _applicationServer->addFeature(_applicationAdminServer);
 
+#ifdef TRI_ENABLE_RELATIVE
+  _applicationAdminServer->allowAdminDirectory(_binaryPath + "/../share/avocado/html/admin");
+#else
   _applicationAdminServer->allowAdminDirectory();
+#endif
+
   _applicationAdminServer->allowLogViewer();
   _applicationAdminServer->allowVersion("avocado", TRIAGENS_VERSION);
 
@@ -240,6 +300,7 @@ void AvocadoServer::buildApplicationServer () {
     ("daemon", "run as daemon")
     ("supervisor", "starts a supervisor and runs as daemon")
     ("pid-file", &_pidFile, "pid-file in daemon mode")
+    ("working directory", &_workingDirectory, "working directory in daemon mode")
   ;
 
   // .............................................................................

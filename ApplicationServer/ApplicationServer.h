@@ -96,7 +96,15 @@ namespace triagens {
         /// @brief sets the name of the system config file
         ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void setSystemConfigFile (string const& name) = 0;
+        virtual void setSystemConfigFile (string const& name, string const& path) = 0;
+
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief sets the name of the system config file
+        ////////////////////////////////////////////////////////////////////////////////
+
+        void setSystemConfigFile (string const& name) {
+          return setSystemConfigFile(name, "");
+        }
 
         ////////////////////////////////////////////////////////////////////////////////
         /// @brief sets the name of the user config file
