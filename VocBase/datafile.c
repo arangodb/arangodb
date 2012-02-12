@@ -34,7 +34,7 @@
 #include <BasicsC/strings.h>
 #include <BasicsC/files.h>
 
-// #define DEBUG_DATAFILE 1
+#define DEBUG_DATAFILE 1
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions

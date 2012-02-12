@@ -153,7 +153,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
 
         // check the document header
         ptr = datafile->_data;
-        ptr += sizeof(TRI_df_header_marker_t);
+        ptr += ((sizeof(TRI_df_header_marker_t) + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;;
         cm = (TRI_col_header_marker_t*) ptr;
 
         if (cm->base._type != TRI_COL_MARKER_HEADER) {
