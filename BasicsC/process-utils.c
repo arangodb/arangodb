@@ -121,23 +121,26 @@ process_state_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the size of the current process
+/// @brief returns information about the current process
 ////////////////////////////////////////////////////////////////////////////////
 
-unsigned int TRI_ProcessSizeSelf () {
-  return TRI_ProcessSize(TRI_CurrentProcessId());
+TRI_process_info_t TRI_ProcessInfoSelf () {
+  return TRI_ProcessInfo(TRI_CurrentProcessId());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the size of an process
+/// @brief returns information about the process
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_HAVE_LINUX_PROC
 
-unsigned int TRI_ProcessSize (TRI_pid_t pid) {
+TRI_process_info_t TRI_ProcessInfo (TRI_pid_t pid) {
   char fn[1024];
   int fd;
   unsigned int vsize;
+  TRI_process_info_t result;
+
+  memset(&result, 0, sizeof(result));
 
   snprintf(fn, sizeof(fn), "/proc/%d/stat", pid);
   fd = open(fn, O_RDONLY);
@@ -152,28 +155,44 @@ unsigned int TRI_ProcessSize (TRI_pid_t pid) {
     close(fd);
 
     if (n < 0) {
-      return 0;
+      return result;
     }
 
-    sscanf(str, "%d %s %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %lu %lu %ld %ld %ld %ld %ld %llu %lu", &st.pid,
-           (char*) &st.comm, &st.state, &st.ppid, &st.pgrp, &st.session, &st.tty_nr, &st.tpgid,
+    sscanf(str, "%d %s %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %lu %lu %ld %ld %ld %ld %ld %llu %lu %ld",
+           &st.pid, (char*) &st.comm, &st.state, &st.ppid, &st.pgrp, &st.session, &st.tty_nr, &st.tpgid,
            &st.flags, &st.minflt, &st.cminflt, &st.majflt, &st.cmajflt, &st.utime, &st.stime,
            &st.cutime, &st.cstime, &st.priority, &st.nice, &st.num_threads, &st.itrealvalue,
-           &st.starttime, &st.vsize);
+           &st.starttime, &st.vsize, &st.rss);
 
-    vsize = st.vsize;
+    result._minorPageFaults = st.minflt;
+    result._majorPageFaults = st.majflt;
+    result._userTime = st.utime;
+    result._systemTime = st.stime;
+    result._numberThreads = st.num_threads;
+    result._residentSize = st.rss;
+    result._virtualSize = st.vsize;
   }
 
-  return vsize;
-}
-
-#else
-
-unsigned int TRI_ProcessSize (TRI_pid_t pid) {
-  return 0;
+  return result;
 }
 
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the size of the current process
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t TRI_ProcessSizeSelf () {
+  return TRI_ProcessSize(TRI_CurrentProcessId());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the size of an process
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t TRI_ProcessSize (TRI_pid_t pid) {
+  return TRI_ProcessInfo(pid)._virtualSize;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
