@@ -28,6 +28,9 @@ Doxygen/js/modules/%.c: @srcdir@/js/system/%.js Doxygen/.setup-directories
 Doxygen/js/bootstrap/%.c: @srcdir@/js/bootstrap/%.js Doxygen/.setup-directories
 	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
+Doxygen/xml/%.md: Doxygen/xml/%.xml
+	python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
+
 ################################################################################
 ## Doxygen
 ################################################################################
