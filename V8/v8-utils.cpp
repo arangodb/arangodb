@@ -35,6 +35,7 @@
 #include "BasicsC/csv.h"
 #include "BasicsC/files.h"
 #include "BasicsC/logging.h"
+#include "BasicsC/process-utils.h"
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/strings.h"
 
@@ -810,6 +811,30 @@ static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the current process information
+///
+/// @FUN{internal.processStat()}
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ProcessStat (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  v8::Handle<v8::Object> result = v8::Object::New();
+
+  TRI_process_info_t info = TRI_ProcessInfoSelf();
+
+  result->Set(v8::String::New("minorPageFaults"), v8::Number::New(info._minorPageFaults));
+  result->Set(v8::String::New("majorPageFaults"), v8::Number::New(info._majorPageFaults));
+  result->Set(v8::String::New("userTime"), v8::Number::New(info._userTime));
+  result->Set(v8::String::New("systemTime"), v8::Number::New(info._systemTime));
+  result->Set(v8::String::New("numberThreads"), v8::Number::New(info._numberThreads));
+  result->Set(v8::String::New("residentSize"), v8::Number::New(info._residentSize));
+  result->Set(v8::String::New("virtualSize"), v8::Number::New(info._virtualSize));
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief formats the arguments
 ///
 /// @FUN{internal.sprintf(@FA{format}, @FA{argument1}, ...)}
@@ -1320,6 +1345,10 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
 
   context->Global()->Set(v8::String::New("SYS_READ"),
                          v8::FunctionTemplate::New(JS_Read)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("SYS_PROCESS_STAT"),
+                         v8::FunctionTemplate::New(JS_ProcessStat)->GetFunction(),
                          v8::ReadOnly);
 
   context->Global()->Set(v8::String::New("SYS_SPRINTF"),
