@@ -45,21 +45,15 @@
 ///    </li>
 ///   </ol>
 ///  </li>
-///  <li>@ref CompilingMaster
+///  <li>@ref CompilingDevel
 ///   <ol>
-///    <li>@ref CompilingMasterPrerequisites
+///    <li>@ref CompilingDevelPrerequisites
 ///    </li>
-///    <li>@ref DownloadSourceMaster
+///    <li>@ref DownloadSourceDevel
 ///    </li>
-///    <li>@ref CompilingMasterSetup
+///    <li>@ref CompilingDevelSetup
 ///    </li>
-///    <li>@ref CompilingMasterConfigure
-///    </li>
-///    <li>@ref CompilingMasterCompile
-///    </li>
-///    <li>@ref CompilingMasterTest
-///    </li>
-///    <li>@ref CompilingMasterInstall
+///    <li>@ref CompilingDevelConfigure
 ///    </li>
 ///   </ol>
 ///  </li>
@@ -76,25 +70,27 @@
 /// any Posix compliant compiler. Please let us know, whether you successfully
 /// compiled it with another C++ compiler.
 ///
-/// There are two branches:
+/// There are possibilities:
 ///
-/// - all-in-one: this branch contains the source code of the AvocadoDB, all
-///                generated files from the autotools, FLEX, and BISON as well
-///                as a version of V8, libev and boost
+/// - all-in-one: this version contains the source code of the AvocadoDB, all
+///               generated files from the autotools, FLEX, and BISON as well
+///               as a version of V8, libev and boost
 ///
-/// - master: this branch contains the development version of the AvocadoDB, use
-///           this branch, if you want to make changes to AvocadoDB source
+/// - devel: this version contains the development version of the AvocadoDB.
+///          Use this branch, if you want to make changes to AvocadoDB 
+///          source.
 ///
-/// The master branch requires a complete development environment, while the
-/// all-in-one branch allows you to compile the AvocadoDB without installing
-/// all the prerequisites.
+/// The devel version requires a complete development environment, while the
+/// all-in-one version allows you to compile the AvocadoDB without installing
+/// all the prerequisites. The disadvantage is that it takes longer to compile
+/// and you cannot make changes to the flex or bison files.
 ///
 /// <hr>
 /// @copydoc CompilingTOC
 /// <hr>
 ///
-/// @section CompilingAIO All In One Branch
-///////////////////////////////////////////
+/// @section CompilingAIO All-In-One Version
+////////////////////////////////////////////
 ///
 /// @subsection CompilingAIOPrerequisites Basic System Requirements
 ///////////////////////////////////////////////////////////////////
@@ -109,7 +105,7 @@
 /// - the GNU readline library
 /// - the GNU ncurses library in version 5 or 6
 ///
-/// Under Mac OS X you need to install:
+/// Under Mac OS X you also need to install:
 ///
 /// - Xcode
 /// - scons
@@ -119,10 +115,7 @@
 ///
 /// Download the latest source using GIT:
 ///
-/// @LIT{git clone -b all-in-one git://github.com/triAGENS/AvocadoDB.git}
-///
-/// Note that you must use the @LIT{-b} option to check out the branch
-/// @LIT{all-in-one}.
+/// @LIT{git clone git://github.com/triAGENS/AvocadoDB.git}
 ///
 /// @subsection CompilingAIOConfigure Configure
 ///////////////////////////////////////////////
@@ -135,8 +128,8 @@
 ///
 /// @LIT{./configure}
 ///
-/// to setup the makefiles. This will check for the various system
-/// characteristics and installed libraries.
+/// to setup the makefiles. This will check the various system characteristics
+/// and installed libraries.
 ///
 /// @subsection CompilingAIOCompile Compile
 ///////////////////////////////////////////
@@ -181,10 +174,10 @@
 /// You must be root to do this or at least have write permission to the
 /// corresponding directories.
 ///
-/// @section CompilingMaster Master Branch
-//////////////////////////////////////////
+/// @section CompilingDevel Devel Version
+/////////////////////////////////////////
 ///
-/// @subsection CompilingMasterPrerequisites Basic System Requirements
+/// @subsection CompilingDevelPrerequisites Basic System Requirements
 //////////////////////////////////////////////////////////////////////
 ///
 /// Verify that your system contains
@@ -192,8 +185,8 @@
 /// - the GNU C++ compiler "g++" and standard C++ libraries
 /// - the GNU autotools (autoconf, automake)
 /// - the GNU make
-/// - the GNU scanner generator FLEX
-/// - the GNU parser generator BISON
+/// - the GNU scanner generator FLEX, at least version 2.3.35
+/// - the GNU parser generator BISON, at least version 2.4
 ///
 /// In addition you will need the following libraries
 ///
@@ -209,7 +202,7 @@
 ///
 /// Install or download the prerequisites
 ///
-/// - boost development package (see www.boost.org), at least version 1.33
+/// - boost development package (see www.boost.org)
 /// - Google's V8 engine (see code.google.com/p/v8)
 /// - libev (see software.schmorp.de/pkg/libev.html) 
 ///
@@ -217,15 +210,15 @@
 /// there packages. Please note that you have to install the
 /// development packages.
 ///
-/// @subsection DownloadSourceMaster Download the Source
-////////////////////////////////////////////////////////
+/// @subsection DownloadSourceDevel Download the Source
+///////////////////////////////////////////////////////
 ///
 /// Download the latest source using GIT:
 ///
 /// @LIT{git clone git://github.com/triAGENS/AvocadoDB.git}
 ///
-/// @subsection CompilingMasterSetup Setup
-//////////////////////////////////////////
+/// @subsection CompilingDevelSetup Setup
+/////////////////////////////////////////
 ///
 /// Switch into the AvocadoDB directory
 ///
@@ -240,60 +233,23 @@
 /// This will call aclocal, autoheader, automake, and autoconf in the correct
 /// order.
 ///
-/// @subsection CompilingMasterConfigure Configure
-//////////////////////////////////////////////////
+/// @subsection CompilingDevelConfigure Configure
+/////////////////////////////////////////////////
 ///
 /// In order to configure the build environment execute
 ///
-/// @LIT{./configure}
+/// @LIT{./configure --disable-all-in-one --enable-bison --enable-flex}
 ///
 /// to setup the makefiles. This will check for the various system
 /// characteristics and installed libraries. If the configure scripts fail to
 /// find the boost library, check that C++ is installed and working and that the
 /// boost-devel package was successfully installed.
 ///
-/// @subsection CompilingMasterCompile Compile
-//////////////////////////////////////////////
+/// Specifying @LIT{disable-all-in-one} will tell the build system
+/// to use the installed system versions of boost, V8, and libev
+/// instead of compiling these libaries in the make run.
 ///
-/// Compile the program by executing
-///
-/// @LIT{make}
-///
-/// This will compile the AvocadoDB and create a binary of the server in
-///
-/// @LIT{./avocadodb}
-///
-/// @subsection CompilingMasterTest Test
-////////////////////////////////////////
-///
-/// Check the binary by starting it using the command line.
-///
-/// @LIT{./avocado --server.http-port 12345 /tmp/vocbase}
-///
-/// This will start up the AvocadoDB and listen for HTTP requests on port 12345
-/// bound to any address. You should see the startup messages
-///
-/// @verbinclude startup1
-///
-/// Use your favorite browser to access the URL
-///
-/// @LIT{http://localhost:12345/version}
-///
-/// This should produce a JSON object like
-///
-/// @LIT{\{"server":"avocado"\,"version":"0.0.8 [exported]"\}}
-///
-/// as result.
-///
-/// @subsection CompilingMasterInstall Install
-//////////////////////////////////////////////
-///
-/// Install everything by executing
-///
-/// @LIT{make install}
-///
-/// You must be root to do this or at least have write permission to the
-/// corresponding directories.
+/// Now continue with @ref CompilingAIOCompile.
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
