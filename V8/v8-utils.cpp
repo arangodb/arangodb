@@ -814,6 +814,31 @@ static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
 /// @brief returns the current process information
 ///
 /// @FUN{internal.processStat()}
+///
+/// Returns information about the current process:
+///
+/// - minorPageFaults: The number of minor faults the process has made
+///   which have not required loading a memory page from disk.
+///   
+/// - majorPageFaults: The number of major faults the process has made
+///   which have required loading a memory page from disk.
+///
+/// - userTime: Amount of time that this process has been scheduled in
+///   user mode, measured in clock ticks.
+///
+/// - systemTime: Amount of time that this process has been scheduled
+///   in kernel mode, measured in clock ticks.
+///
+/// - numberThreads: Number of threads in this process.
+///
+/// - residentSize: Resident Set Size: number of pages the process has
+///   in real memory.  This is just the pages which count toward text,
+///   data, or stack space.  This does not include pages which have
+///   not been demand-loaded in, or which are swapped out.
+///
+/// - virtualSize: Virtual memory size in bytes.
+///
+/// @verbinclude system1
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ProcessStat (v8::Arguments const& argv) {
