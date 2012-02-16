@@ -256,6 +256,8 @@ fs = ModuleCache["/fs"].exports;
 ///   <li>@ref JSModuleInternalLoad "internal.load"</li>
 ///   <li>@ref JSModuleInternalLogLevel "internal.log"</li>
 ///   <li>@ref JSModuleInternalLogLevel "internal.logLevel"</li>
+///   <li>@ref JSModuleInternalOutput "internal.output"</li>
+///   <li>@ref JSModuleInternalProcessStat "internal.processStat"</li>
 ///   <li>@ref JSModuleInternalRead "internal.read"</li>
 ///   <li>@ref JSModuleInternalSPrintF "internal.sprintf"</li>
 ///   <li>@ref JSModuleInternalTime "internal.time"</li>
@@ -283,6 +285,9 @@ fs = ModuleCache["/fs"].exports;
 /// @anchor JSModuleInternalLogLevel
 /// @copydetails JS_LogLevel
 ///
+/// @anchor JSModuleInternalOutput
+/// @copydetails JS_Output
+///
 /// @anchor JSModuleInternalRead
 /// @copydetails JS_Read
 ///
@@ -308,6 +313,7 @@ ModuleCache["/internal"].exports.load = SYS_LOAD;
 ModuleCache["/internal"].exports.log = SYS_LOG;
 ModuleCache["/internal"].exports.logLevel = SYS_LOG_LEVEL;
 ModuleCache["/internal"].exports.output = SYS_OUTPUT;
+ModuleCache["/internal"].exports.processStat = SYS_PROCESS_STAT;
 ModuleCache["/internal"].exports.read = SYS_READ;
 ModuleCache["/internal"].exports.sprintf = SYS_SPRINTF;
 ModuleCache["/internal"].exports.time = SYS_TIME;
