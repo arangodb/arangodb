@@ -4,6 +4,22 @@
 ## LIBEV
 ################################################################################
 
+if ENABLE_64BIT
+LIBEV_BUILD_VERSION=ARCH.x64
+endif
+
+if ENABLE_32BIT
+LIBEV_BUILD_VERSION=ARCH.ia32
+endif
+
+if ENABLE_FORCE_32BIT
+LIBEV_CFLAGS_32=-m32 -O2 -g
+LIBEV_LDFLAGS_32=-m32
+else
+LIBEV_CFLAGS_32=-O2 -g
+LIBEV_LDFLAGS_32=
+endif
+
 BUILT_SOURCES += @LIBEV_LIBS@
 
 @LIBEV_LIBS@:
@@ -13,8 +29,9 @@ BUILT_SOURCES += @LIBEV_LIBS@
 	@echo "--------------------------------------------------------------------------------"
 	@echo
 
-	cd @top_srcdir@/3rdParty/libev && ./configure --disable-shared
-	cd @top_srcdir@/3rdParty/libev && make
+	mkdir @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) || true
+	cd @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) && CFLAGS="$(LIBEV_CFLAGS_32)" orig_CFLAGS="$(LIBEV_CFLAGS_32)" LDFLAGS="$(LIBEV_LDFLAGS_32)" ../configure --disable-shared
+	cd @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) && make
 
 	@echo
 	@echo "--------------------------------------------------------------------------------"
@@ -45,6 +62,7 @@ $(V8_LIBS):
 
 if ENABLE_DARWIN
 	cd @top_srcdir@/3rdParty/V8 && scons snapshot=off library=static mode=release arch=$(V8_BUILD_VERSION)
+	cd @top_srcdir@/3rdParty/V8 && mv libv8.a libv8_$(V8_BUILD_VERSION).a
 else
 	cd @top_srcdir@/3rdParty/V8 && make library=static snapshot=off $(V8_BUILD_VERSION).release
 endif
