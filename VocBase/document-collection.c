@@ -155,6 +155,9 @@ static TRI_doc_collection_info_t* Figures (TRI_doc_collection_t* document) {
   size_t i;
 
   info = TRI_Allocate(sizeof(TRI_doc_collection_info_t));
+  if (!info) {
+    return NULL;
+  }
 
   info->_numberDatafiles = document->_datafileInfo._nrUsed;
 
@@ -219,6 +222,10 @@ TRI_datafile_t* CreateJournalDocCollection (TRI_doc_collection_t* collection, bo
 
   // construct a suitable filename
   number = TRI_StringUInt32(TRI_NewTickVocBase());
+  if (number == NULL) {
+    LOG_ERROR("out of memory when creating journal number");
+    return NULL;
+  }
 
   if (compactor) {
     jname = TRI_Concatenate3String("journal-", number, ".db");
@@ -227,7 +234,19 @@ TRI_datafile_t* CreateJournalDocCollection (TRI_doc_collection_t* collection, bo
     jname = TRI_Concatenate3String("compactor-", number, ".db");
   }
 
+  if (jname == NULL) {
+    TRI_FreeString(number);
+    LOG_ERROR("out of memory when creating journal name");
+    return NULL;
+  }
+
   filename = TRI_Concatenate2File(collection->base._directory, jname);
+  if (filename == NULL) {
+    TRI_FreeString(number);
+    TRI_FreeString(jname);
+    LOG_ERROR("out of memory when creating journal filename");
+    return NULL;
+  }
   TRI_FreeString(number);
   TRI_FreeString(jname);
 
@@ -357,8 +376,23 @@ bool CloseJournalDocCollection (TRI_doc_collection_t* collection,
   }
 
   number = TRI_StringUInt32(journal->_fid);
+  if (!number) {
+    return false;
+  }
+
   dname = TRI_Concatenate3String("datafile-", number, ".db");
+  if (!dname) {
+    TRI_FreeString(number);
+    return false;
+  }
+
   filename = TRI_Concatenate2File(collection->base._directory, dname);
+  if (!filename) {
+    TRI_FreeString(number);
+    TRI_FreeString(dname);
+    return false;
+  }
+
   TRI_FreeString(dname);
   TRI_FreeString(number);
 
@@ -367,9 +401,11 @@ bool CloseJournalDocCollection (TRI_doc_collection_t* collection,
   if (! ok) {
     TRI_RemoveVectorPointer(vector, position);
     TRI_PushBackVectorPointer(&collection->base._datafiles, journal);
+    TRI_FreeString(filename);
 
     return false;
   }
+  TRI_FreeString(filename);
 
   LOG_TRACE("closed journal '%s'", journal->_filename);
 
@@ -466,6 +502,9 @@ TRI_doc_datafile_info_t* TRI_FindDatafileInfoDocCollection (TRI_doc_collection_t
   }
 
   dfi = TRI_Allocate(sizeof(TRI_doc_datafile_info_t));
+  if (!dfi) {
+    return NULL;
+  }
 
   dfi->_fid = fid;
 

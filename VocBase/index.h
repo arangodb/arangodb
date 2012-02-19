@@ -33,6 +33,7 @@
 #include "BasicsC/json.h"
 #include "ShapedJson/shaped-json.h"
 #include "GeoIndex/GeoIndex.h"
+#include "HashIndex/hashindex.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -67,9 +68,23 @@ typedef TRI_voc_tick_t TRI_idx_iid_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_IDX_TYPE_GEO_INDEX
+  TRI_IDX_TYPE_PRIMARY_INDEX,
+  TRI_IDX_TYPE_GEO_INDEX,
+  TRI_IDX_TYPE_HASH_INDEX
 }
 TRI_idx_type_e;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief index definition struct as used by the query optimizer
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_index_definition_s {
+  TRI_idx_iid_t _iid;
+  TRI_idx_type_e _type;
+  TRI_vector_string_t _fields;
+  bool _isUnique;
+}
+TRI_index_definition_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief index base class
@@ -104,6 +119,19 @@ typedef struct TRI_geo_index_s {
 }
 TRI_geo_index_t;
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hash index
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_hash_index_s {
+  TRI_index_t base;
+
+  HashIndex* _hashIndex;    // effectively the associative array
+  TRI_vector_t* _shapeList; // a list of shape pid which identifies the fields of the index
+  
+} TRI_hash_index_t;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,6 +160,20 @@ bool TRI_RemoveIndex (struct TRI_doc_collection_s* collection, TRI_index_t* idx)
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_SaveIndex (struct TRI_doc_collection_s*, TRI_index_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the definitions of all index files for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vector_pointer_t TRI_GetCollectionIndexes(const TRI_vocbase_t* vocbase,
+                                              const char* collectionName);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the names of all index files for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vector_string_t TRI_GetCollectionIndexFiles(const TRI_vocbase_t* vocbase,
+                                                const char* collectionName);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -212,6 +254,36 @@ GeoCoordinates* TRI_NearestGeoIndex (TRI_index_t*,
                                      double lat,
                                      double lon,
                                      size_t count);
+
+                                     
+                                     
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                        HASH INDEX
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+
+HashIndexElements* TRI_LookupHashIndex (TRI_index_t*, TRI_json_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a hash-index
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_CreateHashIndex (struct TRI_doc_collection_s*,
+                                  TRI_vector_t* shapeList);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

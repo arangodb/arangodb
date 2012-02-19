@@ -286,6 +286,14 @@ struct TRI_index_s* TRI_LookupGeoIndex2SimCollection (TRI_sim_collection_t* coll
                                                       TRI_shape_pid_t longitude);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a hash index
+///
+/// Note that the caller must hold at least a read-lock.
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t*, const TRI_vector_t*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -300,6 +308,14 @@ TRI_idx_iid_t TRI_EnsureGeoIndexSimCollection (TRI_sim_collection_t* collection,
 TRI_idx_iid_t TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* collection,
                                                 char const* latitude,
                                                 char const* longitude);
+                                                
+                                                
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds or returns an existing hash index to a collection
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_idx_iid_t TRI_EnsureHashIndexSimCollection (TRI_sim_collection_t* collection,
+                                                const TRI_vector_t* attributes);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -354,10 +354,14 @@ TRI_vector_string_t TRI_FilesDirectory (char const* path) {
   struct _finddata_t fd;
   intptr_t handle;
   char* filter;
-
+  
   TRI_InitVectorString(&result);
 
   filter = TRI_Concatenate2String(path, "\\*");
+  if (!filter) {
+    return result;
+  }
+
   handle = _findfirst(filter, &fd);
   TRI_FreeString(filter);
 

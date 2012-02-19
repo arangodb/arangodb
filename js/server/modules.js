@@ -82,7 +82,11 @@ ModuleCache["/internal"].exports.AvocadoEdgesCollection = AvocadoEdgesCollection
 ////////////////////////////////////////////////////////////////////////////////
 
 ModuleCache["/avocado"] = new Module("/avocado");
-ModuleCache["/avocado"].exports.defineHttpSystemAction = defineSystemAction;
+
+if (typeof defineSystemAction == "function") {
+  ModuleCache["/avocado"].exports.defineHttpSystemAction = defineSystemAction;
+}
+
 avocado = ModuleCache["/avocado"].exports;
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -91,6 +91,7 @@ HttpHandler::status_e RestActionHandler::execute () {
 
   // prepare logging
   static LoggerData::Task const logExecute(ACTION_PATH + " [execute]");
+  static LoggerData::Task const logHead(ACTION_PATH + " [head]");
   static LoggerData::Task const logIllegal(ACTION_PATH + " [illegal]");
 
   LoggerData::Task const * task = &logIllegal;
@@ -100,6 +101,7 @@ HttpHandler::status_e RestActionHandler::execute () {
     case HttpRequest::HTTP_REQUEST_GET: task = &logExecute; break;
     case HttpRequest::HTTP_REQUEST_POST: task = &logIllegal; break;
     case HttpRequest::HTTP_REQUEST_PUT: task = &logIllegal; break;
+    case HttpRequest::HTTP_REQUEST_HEAD: task = &logHead; break;
     case HttpRequest::HTTP_REQUEST_ILLEGAL: task = &logIllegal; break;
   }
 
