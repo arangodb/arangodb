@@ -51,3 +51,4 @@ stamp-h*
 config.h
 3rdParty/libev/libtool
 out
+3rdParty/libev/ARCH.x64
