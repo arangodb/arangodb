@@ -326,7 +326,7 @@ void TRI_ExecuteJoins (TRI_select_result_t* results,
   // (values will be decreased during join execution)
   _skip = skip;
   _limit = limit;
- 
+
   // execute the join
   RecursiveJoin(results, join, 0, where, context, &_skip, &_limit);
   
@@ -339,7 +339,9 @@ void TRI_ExecuteJoins (TRI_select_result_t* results,
       part->_listDocuments._buffer = NULL;
     }
     if (part->_feeder) {
+      // free data feeder early, we don't need it any longer
       part->_feeder->free(part->_feeder);
+      part->_feeder = NULL;
     }
   }
 }

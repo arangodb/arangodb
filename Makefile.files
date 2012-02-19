@@ -74,6 +74,7 @@ libavocadodb_a_SOURCES = \
 	Dispatcher/Job.cpp \
 	GeneralServer/GeneralFigures.cpp \
 	GeoIndex/GeoIndex.c \
+	HashIndex/hashindex.c \
 	HttpServer/ApplicationHttpServer.cpp \
 	HttpServer/ApplicationHttpServerImpl.cpp \
 	HttpServer/HttpCommTask.cpp \

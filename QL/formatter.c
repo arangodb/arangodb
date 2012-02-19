@@ -25,7 +25,6 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "QL/formatter.h" 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -38,7 +37,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 void QLFormatterIndentationInc (QL_formatter_t* formatter) {
-  formatter->indentLevel++;
+  formatter->_indentLevel++;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -46,7 +45,7 @@ void QLFormatterIndentationInc (QL_formatter_t* formatter) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void QLFormatterIndentationDec (QL_formatter_t* formatter) {
-  formatter->indentLevel--;
+  formatter->_indentLevel--;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -56,7 +55,7 @@ void QLFormatterIndentationDec (QL_formatter_t* formatter) {
 void QLFormatterPrintIndentation (QL_formatter_t* formatter) {
   unsigned int i=0;
 
-  for (; i < formatter->indentLevel; i++) {
+  for (; i < formatter->_indentLevel; i++) {
      printf("  ");
   }
 }
@@ -112,10 +111,10 @@ void QLFormatterPrintStr (QL_formatter_t* formatter, const char* name, const cha
 
 void QLFormatterDump (QL_ast_node_t* node, QL_formatter_t* formatter, const int blockBehaviour) {
   const char* name;
-  QL_ast_node_type_e  type;
-  QL_ast_node_t       *lhs;
-  QL_ast_node_t       *rhs;
-  QL_ast_node_t       *next;
+  QL_ast_node_type_e type;
+  QL_ast_node_t* lhs;
+  QL_ast_node_t* rhs;
+  QL_ast_node_t* next;
 
   if (node == 0) {
     return;
@@ -140,8 +139,10 @@ void QLFormatterDump (QL_ast_node_t* node, QL_formatter_t* formatter, const int 
   QLFormatterPrintBlockStart(formatter,name);
   QLFormatterIndentationInc(formatter);
   
-  if (type == QLNodeValueString || type ==QLNodeValueNumberDoubleString || 
-      type == QLNodeValueIdentifier || type == QLNodeValueParameterNamed || 
+  if (type == QLNodeValueString || 
+      type == QLNodeValueNumberDoubleString || 
+      type == QLNodeValueIdentifier || 
+      type == QLNodeValueParameterNamed || 
       type == QLNodeReferenceCollectionAlias) { 
     QLFormatterPrintStr(formatter,"value",node->_value._stringValue);
   } else if (type == QLNodeValueNumberInt) { 

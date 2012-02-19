@@ -387,31 +387,36 @@ void AvocadoServer::buildApplicationServer () {
   }
 
   if (_actionPath.empty()) {
-    string path = TRI_Concatenate2File(_databasePath.c_str(), "_ACTIONS");
+    char* path = TRI_Concatenate2File(_databasePath.c_str(), "_ACTIONS");
+    string pathString(path);
+    if (path) {
+      // memleak otherwise
+      TRI_Free(path);
+    }
 
-    if (! TRI_IsDirectory(path.c_str())) {
-      bool ok = TRI_ExistsFile(path.c_str());
+    if (! TRI_IsDirectory(pathString.c_str())) {
+      bool ok = TRI_ExistsFile(pathString.c_str());
 
       if (ok) {
-        LOGGER_FATAL << "action directory '" << path << "' must be a directory";
-        cerr << "action directory '" << path << "' must be a directory\n";
+        LOGGER_FATAL << "action directory '" << pathString << "' must be a directory";
+        cerr << "action directory '" << pathString << "' must be a directory\n";
         LOGGER_INFO << "please use the '--database.directory' option";
         exit(EXIT_FAILURE);
       }
 
-      ok = TRI_CreateDirectory(path.c_str());
+      ok = TRI_CreateDirectory(pathString.c_str());
 
       if (! ok) {
-        LOGGER_FATAL << "cannot create action directory '" << path << "': " << TRI_last_error();
-        cerr << "cannot create action directory '" << path << "': " << TRI_last_error() << "\n";
+        LOGGER_FATAL << "cannot create action directory '" << pathString << "': " << TRI_last_error();
+        cerr << "cannot create action directory '" << pathString << "': " << TRI_last_error() << "\n";
         LOGGER_INFO << "please use the '--database.directory' option";
         exit(EXIT_FAILURE);
       }
     }
 
-    ActionLoader.setDirectory(path);
+    ActionLoader.setDirectory(pathString);
 
-    LOGGER_INFO << "using database action files at '" << path << "'";
+    LOGGER_INFO << "using database action files at '" << pathString << "'";
   }
   else {
     ActionLoader.setDirectory(_actionPath);
@@ -681,6 +686,7 @@ void AvocadoServer::executeShell () {
 
     if (input == 0) {
       printf("bye...\n");
+      TRI_FreeString(input);
       break;
     }
 
@@ -698,6 +704,8 @@ void AvocadoServer::executeShell () {
     TRI_FreeString(input);
   }
   console->close();
+
+  delete console;
 
   // and return from the context and isolate
   context->Exit();

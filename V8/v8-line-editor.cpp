@@ -396,7 +396,9 @@ bool V8LineEditor::open () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool V8LineEditor::close () {
-  return write_history(getHistoryPath().c_str());
+  bool result = write_history(getHistoryPath().c_str());
+
+  return result;
 }
 
 
@@ -436,13 +438,14 @@ char* V8LineEditor::prompt (char const* prompt) {
   }
 
   char const* sep = "";
+  char* originalLine = 0; 
 
   while (true) {
     char* result = readline(p);
+    originalLine = result;
     p = dotdot.c_str();
 
     if (result == 0) {
-
       // give up, if the user pressed control-D on the top-most level
       if (_current.empty()) {
         return 0;
@@ -477,10 +480,16 @@ char* V8LineEditor::prompt (char const* prompt) {
     if (ok) {
       break;
     }
+    TRI_Free(originalLine);
   }
 
   char* line = TRI_DuplicateString(_current.c_str());
   _current.clear();
+
+  // avoid memleaks
+  if (originalLine != 0) {
+    TRI_Free(originalLine);
+  }
 
   return line;
 }

@@ -72,16 +72,17 @@
      FALSE = 288,
      UNDEFINED = 289,
      IDENTIFIER = 290,
-     PARAMETER = 291,
-     PARAMETER_NAMED = 292,
-     STRING = 293,
-     REAL = 294,
-     COLON = 295,
-     TERNARY = 296,
-     FCALL = 297,
-     UPLUS = 298,
-     UMINUS = 299,
-     MEMBER = 300
+     QUOTED_IDENTIFIER = 291,
+     PARAMETER = 292,
+     PARAMETER_NAMED = 293,
+     STRING = 294,
+     REAL = 295,
+     COLON = 296,
+     TERNARY = 297,
+     FCALL = 298,
+     UPLUS = 299,
+     UMINUS = 300,
+     MEMBER = 301
    };
 #endif
 
@@ -92,7 +93,7 @@ typedef union YYSTYPE
 {
 
 /* Line 1676 of yacc.c  */
-#line 27 "QL/parser.y"
+#line 33 "QL/parser.y"
 
   QL_ast_node_t *node;
   int intval;
@@ -102,7 +103,7 @@ typedef union YYSTYPE
 
 
 /* Line 1676 of yacc.c  */
-#line 106 "QL/parser.h"
+#line 107 "QL/parser.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */

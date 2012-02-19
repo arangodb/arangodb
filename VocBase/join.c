@@ -44,6 +44,10 @@ static void FreePart (TRI_join_part_t* part) {
   if (part->_collectionName) {
     TRI_Free(part->_collectionName);
   }
+  
+  if (part->_condition) {
+    part->_condition->free(part->_condition);
+  }
 
   if (part->_feeder) {
     part->_feeder->free(part->_feeder);

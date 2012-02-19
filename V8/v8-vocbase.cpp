@@ -30,6 +30,7 @@
 #include "Basics/StringUtils.h"
 #include "BasicsC/conversions.h"
 #include "BasicsC/csv.h"
+#include "BasicsC/json.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
 #include "QL/ParserWrapper.h"
@@ -222,6 +223,7 @@ static bool IsDocumentId (v8::Handle<v8::Value> arg, TRI_voc_cid_t& cid, TRI_voc
 
 static TRI_vocbase_col_t const* LoadCollection (v8::Handle<v8::Object> collection,
                                                 v8::Handle<v8::String>* err) {
+                                                
   TRI_vocbase_col_t const* col = UnwrapClass<TRI_vocbase_col_t>(collection, WRP_VOCBASE_COL_TYPE);
 
   if (col == 0) {
@@ -258,9 +260,7 @@ static TRI_vocbase_col_t const* LoadCollection (v8::Handle<v8::Object> collectio
   }
   else {
     LOG_INFO("loading collection: '%s'", col->_name);
-
     col = TRI_LoadCollectionVocBase(col->_vocbase, col->_name);
-
     LOG_DEBUG("collection loaded");
   }
 
@@ -752,6 +752,7 @@ static TRI_rc_cursor_t* ExecuteQuery (v8::Handle<v8::Object> queryObject,
                                       v8::Handle<v8::Value>* err) {
   v8::TryCatch tryCatch;
 
+  
   TRI_query_t* query = UnwrapClass<TRI_query_t>(queryObject, WRP_QUERY_TYPE);
   
   if (query == 0) {
@@ -759,6 +760,7 @@ static TRI_rc_cursor_t* ExecuteQuery (v8::Handle<v8::Object> queryObject,
     return 0;
   }
 
+  
   LOG_TRACE("executing query");
 
   TRI_rc_context_t* context = TRI_CreateContextQuery(query);
@@ -1207,6 +1209,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
+  
   // extract the operand query
   v8::Handle<v8::Object> operand = argv.Holder();
   v8::Handle<v8::String> err;
@@ -1474,6 +1477,120 @@ static v8::Handle<v8::Value> JS_InEdgesQuery (v8::Arguments const& argv) {
   return EdgesQuery(TRI_EDGE_IN, argv);
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief indicates a particular index which is to be used with the select statement
+///
+/// @FUN{@FA{index-id})}
+///
+/// The @FN{index id} stores which index should be used for the selection
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_IndexToUse (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  
+  assert(false);
+  /*
+  // ..........................................................................
+  // Attempt to load the collection which has been passed to us here.
+  // ..........................................................................
+  v8::Handle<v8::String> err;
+  const TRI_vocbase_col_t* col = LoadCollection(argv.Holder(), &err);
+
+  if (col == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+  
+  // ..........................................................................
+  // Currently only simple collections are supported
+  // ..........................................................................
+  TRI_doc_collection_t* collection = col->_collection;
+  if (collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
+  }
+  TRI_sim_collection_t* sim = (TRI_sim_collection_t*) collection;
+
+  
+  // ..........................................................................
+  // Need an index identifier as the only parameter
+  // ..........................................................................  
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("index(id) requires an index identifier")));
+  }
+
+  // ..........................................................................
+  // Check that the parameter sent to us is an integer
+  // ..........................................................................
+  v8::Handle<v8::Value> argument = argv[0];
+  if (!argument->IsInt32()) {
+    return scope.Close(v8::ThrowException(v8::String::New("index(id) requires an INTEGER index identifier")));
+  }
+
+  // ..........................................................................
+  // Obtain a list of index objects stored for the collection
+  // ..........................................................................
+  TRI_vector_pointer_t* indexes = TRI_IndexesSimCollection(sim);
+  size_t n = indexes->_length;
+
+  // ..........................................................................
+  // Check that there is actually such an index
+  // ..........................................................................
+  if (n == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("There are no indexes to set as the default.")));
+  }  
+
+  int64_t defaultIndexID = 0;
+  
+  for (size_t i = 0;  i < n;  ++i) {
+  
+    TRI_json_t* idx = (TRI_json_t*) indexes->_buffer[i];
+    v8::Handle<v8::Value> value = TRI_ObjectJson(idx);
+    if (!value->IsObject()) {
+      return scope.Close(v8::ThrowException(v8::String::New("Internal Error. Invalid index definition received.")));
+    }
+    v8::Handle<v8::Object> object = value->ToObject();
+    
+    
+    // ........................................................................
+    // Determine the index id 
+    // ........................................................................
+    v8::Handle<v8::Value> indexId = object->Get(v8::String::New("iid"));
+    
+    
+    // ........................................................................
+    // Does the index id equal that of the specified by the user?
+    // ........................................................................
+    if (indexId->IntegerValue() != argument->IntegerValue()) {
+      continue;
+    }  
+    
+    // ........................................................................
+    // Determine the type of index and check that this type of index can be
+    // set as the default one.
+    // ........................................................................
+    v8::Handle<v8::Value> indexType = object->Get(v8::String::New("type"));
+    if (!indexType->IsString()) {
+      return scope.Close(v8::ThrowException(v8::String::New("Internal Error. Invalid index definition received.")));
+    }
+    v8::String::AsciiValue text(indexType);
+    string indexTypeString = string(*text);
+
+    if (indexTypeString != "hash" && indexTypeString != "skiplist") {
+      return scope.Close(v8::ThrowException(v8::String::New("Invalid index type to set as default.\nCurrently supported default indexes are \"hash\" and \"skiplist\".")));
+    }    
+    
+    defaultIndexID = indexId->IntegerValue();
+    break;
+  }
+  
+  
+  return scope.Close(v8::Integer::New(23));
+  
+  */
+  
+  return scope.Close(v8::ThrowException(v8::String::New("Internal Error. Not implemented.")));
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a geo-spatial index
 ///
@@ -1709,6 +1826,7 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: near(<latitiude>,<longitude>)")));
   }
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up all outbound edges
@@ -2004,7 +2122,7 @@ static v8::Handle<v8::Value> JS_PrepareAql (v8::Arguments const& argv) {
   string queryString = TRI_ObjectToString(queryArg);
 
   // create a parser object
-  ParserWrapper parser = ParserWrapper(queryString.c_str());
+  ParserWrapper parser = ParserWrapper(vocbase, queryString.c_str());
   if (!parser.parse()) {
     // error object will be freed by parser destructor
     ParseError *error = parser.getParseError();
@@ -2113,6 +2231,69 @@ static v8::Handle<v8::Value> JS_WherePrimaryConstAql (v8::Arguments const& argv)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new constant where clause for a hash index
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_WhereHashConstAql (const v8::Arguments& argv) {
+  v8::HandleScope scope;
+  TRI_v8_global_t* v8g;
+  TRI_json_t* parameterList;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  if (argv.Length() < 2) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_WHERE_HASH_CONST(<index-identifier>, <value 1>, <value 2>,..., <value n>)")));
+  }
+
+  
+  // ..........................................................................
+  // check that the first parameter sent is a double value
+  // ..........................................................................
+  bool inValidType = true;
+  TRI_idx_iid_t iid = TRI_ObjectToDouble(argv[0], inValidType); 
+  
+  if (inValidType || iid == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("<index-identifier> must be an positive integer")));       
+  }  
+
+
+  // ..........................................................................
+  // Store the index field parameters in a json object 
+  // ..........................................................................
+  parameterList = TRI_CreateListJson();
+
+  for (int j = 1; j < argv.Length(); ++j) {  
+    v8::Handle<v8::Value> parameter = argv[j];
+    if (parameter->IsBoolean() ) {
+      v8::Handle<v8::Boolean> booleanParameter = parameter->ToBoolean();
+      TRI_PushBackListJson(parameterList, TRI_CreateBooleanJson(booleanParameter->Value() ));
+    }    
+    else if (parameter->IsNumber() ) {
+      v8::Handle<v8::Number> numberParameter = parameter->ToNumber();
+      TRI_PushBackListJson(parameterList, TRI_CreateNumberJson(numberParameter->Value() ));
+    }
+    else if (parameter->IsString() ) {
+      v8::Handle<v8::String>  stringParameter= parameter->ToString();
+      v8::String::Utf8Value str(stringParameter);
+      TRI_PushBackListJson(parameterList, TRI_CreateStringCopyJson(*str));
+    }
+    else {
+      return scope.Close(v8::ThrowException(v8::String::New("type value not currently supported for hash index")));       
+    }
+  }
+  
+
+  // build document hash access
+  TRI_qry_where_t* where = TRI_CreateQueryWhereHashConstant(iid, parameterList);
+
+  // wrap it up
+  return scope.Close(WrapWhere(where));
+  
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new constant where clause for geo index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2157,6 +2338,61 @@ static v8::Handle<v8::Value> JS_WhereWithinConstAql (v8::Arguments const& argv) 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new query from given parts
 ////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_HashSelectAql (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 2) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_SELECT(collection, where)")));
+  }
+
+  // ...........................................................................
+  // extract the primary collection
+  // ...........................................................................
+  v8::Handle<v8::Value> collectionArg = argv[0];
+  if (! collectionArg->IsObject()) {
+    return scope.Close(v8::ThrowException(v8::String::New("expecting a COLLECTION as second argument")));
+  }
+  v8::Handle<v8::Object> collectionObj = collectionArg->ToObject();
+  v8::Handle<v8::String> err;
+  const TRI_vocbase_col_t* collection = LoadCollection(collectionObj, &err);
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  
+  // ...........................................................................
+  // Extract there hash where clause
+  // ...........................................................................
+  v8::Handle<v8::Value> whereArg = argv[1];
+  TRI_qry_where_t* where = 0;
+  if (whereArg->IsNull()) {
+    return scope.Close(v8::ThrowException(v8::String::New("expecting a WHERE object as third argument")));
+  }
+  v8::Handle<v8::Object> whereObj = whereArg->ToObject();
+  where = UnwrapClass<TRI_qry_where_t>(whereObj, WRP_QRY_WHERE_TYPE);
+  if (where == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted WHERE")));
+  }
+    
+  
+  // ...........................................................................
+  // Create the hash query 
+  // ...........................................................................
+  TRI_query_t* query = TRI_CreateHashQuery(where, collection->_collection); 
+  if (!query) {
+    return scope.Close(v8::ThrowException(v8::String::New("could not create query object")));
+  }
+
+
+  // ...........................................................................
+  // wrap it up
+  // ...........................................................................
+  return scope.Close(WrapQuery(query));
+  
+}
+
+
 
 static v8::Handle<v8::Value> JS_SelectAql (v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -2281,6 +2517,26 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the next document
 ////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_CountCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: count()")));
+  }
+
+  v8::Handle<v8::Object> self = argv.Holder();
+  TRI_rc_cursor_t* cursor = UnwrapCursor(self);
+
+  if (cursor == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
+  }
+
+  
+  return scope.Close(v8::Number::New(cursor->_matchedDocuments));
+  
+}
 
 static v8::Handle<v8::Value> JS_NextCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -2458,6 +2714,168 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
   TRI_doc_collection_t* collection = col->_collection;
 
   return scope.Close(v8::Number::New(collection->size(collection)));
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a hash index exists
+///
+/// @FUN{ensureHashIndex(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
+///
+/// Creates a hash index on all documents using attributes as paths to
+/// the fields. At least one attribute must be given. The value of this attribute must be a list. 
+/// All documents, which do not have the attribute path or 
+/// with ore or more values that are not suitable, are ignored.
+///
+/// In case that the index was successfully created, the index indetifier
+/// is returned.
+///
+/// @verbinclude fluent14
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_EnsureHashIndexVocbaseCol (v8::Arguments const& argv) {
+
+  v8::HandleScope scope;  
+  v8::Handle<v8::String> err;
+  
+  
+  // .............................................................................
+  // Check that we have a valid collection                      
+  // .............................................................................
+  TRI_vocbase_col_t const* col = LoadCollection(argv.Holder(), &err);
+  
+  if (col == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  
+  // .............................................................................
+  // Check collection type
+  // .............................................................................
+  TRI_doc_collection_t* collection = col->_collection;
+  
+  if (collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
+  }
+  TRI_sim_collection_t* sim = (TRI_sim_collection_t*) collection;
+
+  
+  // .............................................................................
+  // Return string when there is an error of some sort.
+  // .............................................................................
+  string errorString;
+  
+  
+  // .............................................................................
+  // Ensure that there is at least one string parameter sent to this method
+  // .............................................................................  
+  if (argv.Length() == 0) {
+    errorString = "one or more string parameters required for the ensureHashIndex(...) command";
+    return scope.Close(v8::String::New(errorString.c_str(),errorString.length()));
+  }
+  
+    
+  // .............................................................................
+  // The index id which will either be an existing one or a newly created 
+  // hash index. 
+  // .............................................................................  
+  TRI_idx_iid_t iid = 0;
+  
+  
+  // .............................................................................
+  // Create a list of paths, these will be used to create a list of shapes
+  // which will be used by the hash index.
+  // .............................................................................
+  
+  TRI_vector_t attributes;
+  TRI_InitVector(&attributes,sizeof(char*));
+  
+  bool ok = true;
+  
+  for (int j = 0; j < argv.Length(); ++j) {
+  
+    v8::Handle<v8::Value> argument = argv[j];
+    if (! argument->IsString() ) {
+      errorString = "invalid parameter passed to ensureHashIndex(...) command";
+      ok = false;
+      break;
+    }
+    
+    // ...........................................................................
+    // convert the argument into a "C" string
+    // ...........................................................................
+    
+    v8::String::Utf8Value argumentString(argument);   
+    char* cArgument = (char*) (TRI_Allocate(argumentString.length() + 1));       
+    if (cArgument == NULL) {
+      errorString = "insuffient memory to complete ensureHashIndex(...) command";
+      ok = false;
+      break;
+    }  
+	
+    memcpy(cArgument, *argumentString, argumentString.length());
+    TRI_PushBackVector(&attributes,&cArgument);
+  }
+
+  
+  // .............................................................................
+  // Check that each parameter is unique
+  // .............................................................................
+  
+  for (size_t j = 0; j < attributes._length; ++j) {  
+    char* left = *((char**) (TRI_AtVector(&attributes, j)));	
+    for (size_t k = j + 1; k < attributes._length; ++k) {
+      char* right = *((char**) (TRI_AtVector(&attributes, k)));
+      if (strcmp(left,right) == 0) {
+        errorString = "duplicate parameters sent to ensureHashIndex(...) command";
+        //printf("%s:%s:%u:%s:%s\n",__FILE__,__FUNCTION__,__LINE__,left,right);
+        ok = false;
+        break;
+      }	  
+    }
+  }    
+     
+  
+  // .............................................................................
+  // Some sort of error occurred -- display error message and abort index creation
+  // (or index retrieval).
+  // .............................................................................
+  
+  if (!ok) {
+    // ...........................................................................
+    // Remove the memory allocated to the list of attributes used for the hash index
+    // ...........................................................................   
+    for (size_t j = 0; j < attributes._length; ++j) {
+      char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
+      TRI_Free(cArgument);
+    }    
+    TRI_DestroyVector(&attributes);
+    return scope.Close(v8::String::New(errorString.c_str(),errorString.length()));
+  }  
+  
+  
+  // .............................................................................
+  // Actually create the index here
+  // .............................................................................
+  iid = TRI_EnsureHashIndexSimCollection(sim, &attributes);
+
+  // .............................................................................
+  // Remove the memory allocated to the list of attributes used for the hash index
+  // .............................................................................   
+  for (size_t j = 0; j < attributes._length; ++j) {
+    char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
+    TRI_Free(cArgument);
+  }    
+  TRI_DestroyVector(&attributes);
+
+  if (iid == 0) {
+    return scope.Close(v8::String::New("hash index could not be created"));
+  }  
+  
+  // .............................................................................
+  // Return the newly assigned index identifier
+  // .............................................................................
+  return scope.Close(v8::Number::New(iid));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2744,6 +3162,7 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
 
   v8::Handle<v8::String> err;
   TRI_vocbase_col_t const* col = LoadCollection(argv.Holder(), &err);
+
 
   if (col == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -3321,7 +3740,7 @@ static v8::Handle<v8::Value> JS_CollectionsVocBase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
-
+  
   if (vocbase == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
   }
@@ -3686,6 +4105,7 @@ static v8::Handle<v8::Value> JS_CollectionsEdges (v8::Arguments const& argv) {
 ///
 /// - @ref JS_DropIndexVocbaseCol "dropIndex"
 /// - @ref JS_EnsureGeoIndexVocbaseCol "ensureGeoIndex"
+/// - @ref JS_EnsureHashIndexVocbaseCol "ensureHashIndex"
 /// - @ref JS_GetIndexesVocbaseCol "getIndexes"
 ///
 /// @section JSFQueries Query Functions
@@ -3750,6 +4170,8 @@ static v8::Handle<v8::Value> JS_CollectionsEdges (v8::Arguments const& argv) {
 /// @copydetails JS_DropIndexVocbaseCol
 ///
 /// @copydetails JS_EnsureGeoIndexVocbaseCol
+///
+/// @copydetails JS_EnsureHashIndexVocbaseCol
 ///
 /// @copydetails JS_GetIndexesVocbaseCol
 ///
@@ -3964,12 +4386,14 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> DropIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("dropIndex"));
   v8::Handle<v8::String> EdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("edges"));
   v8::Handle<v8::String> EnsureGeoIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureGeoIndex"));
+  v8::Handle<v8::String> EnsureHashIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureHashIndex"));
   v8::Handle<v8::String> ExecuteFuncName = v8::Persistent<v8::String>::New(v8::String::New("execute"));
   v8::Handle<v8::String> ExplainFuncName = v8::Persistent<v8::String>::New(v8::String::New("explain"));
   v8::Handle<v8::String> FiguresFuncName = v8::Persistent<v8::String>::New(v8::String::New("figures"));
   v8::Handle<v8::String> GeoFuncName = v8::Persistent<v8::String>::New(v8::String::New("geo"));
   v8::Handle<v8::String> GetIndexesFuncName = v8::Persistent<v8::String>::New(v8::String::New("getIndexes"));
   v8::Handle<v8::String> HasNextFuncName = v8::Persistent<v8::String>::New(v8::String::New("hasNext"));
+  v8::Handle<v8::String> IndexToUse = v8::Persistent<v8::String>::New(v8::String::New("index"));
   v8::Handle<v8::String> InEdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("inEdges"));
   v8::Handle<v8::String> LimitFuncName = v8::Persistent<v8::String>::New(v8::String::New("limit"));
   v8::Handle<v8::String> LoadFuncName = v8::Persistent<v8::String>::New(v8::String::New("load"));
@@ -4099,8 +4523,12 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(DeleteFuncName, v8::FunctionTemplate::New(JS_DeleteVocbaseCol));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
+  
+  rt->Set(EnsureHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureHashIndexVocbaseCol));
+
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
+  
   rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));
   rt->Set(ParameterFuncName, v8::FunctionTemplate::New(JS_ParameterVocbaseCol));
   rt->Set(ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbaseCol));
@@ -4139,6 +4567,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
+  
+  // todo ensure hash index
+  
   rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));
   rt->Set(ParameterFuncName, v8::FunctionTemplate::New(JS_ParameterVocbaseCol));
   rt->Set(ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceEdgesCol));
@@ -4169,6 +4600,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(ExplainFuncName, v8::FunctionTemplate::New(JS_ExplainQuery));
   rt->Set(GeoFuncName, v8::FunctionTemplate::New(JS_GeoQuery));
   rt->Set(HasNextFuncName, v8::FunctionTemplate::New(JS_HasNextQuery));
+  rt->Set(IndexToUse, v8::FunctionTemplate::New(JS_IndexToUse));
   rt->Set(InEdgesFuncName, v8::FunctionTemplate::New(JS_InEdgesQuery));
   rt->Set(LimitFuncName, v8::FunctionTemplate::New(JS_LimitQuery));
   rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
@@ -4236,6 +4668,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(NextFuncName, v8::FunctionTemplate::New(JS_NextCursor));
   rt->Set(NextRefFuncName, v8::FunctionTemplate::New(JS_NextRefCursor));
   rt->Set(UseNextFuncName, v8::FunctionTemplate::New(JS_UseNextCursor));
+  rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountCursor));
 
   v8g->CursorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
@@ -4255,6 +4688,10 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
                          v8::FunctionTemplate::New(JS_WhereGeneralAql)->GetFunction(),
                          v8::ReadOnly);
 
+  context->Global()->Set(v8::String::New("AQL_WHERE_HASH_CONST"),
+                         v8::FunctionTemplate::New(JS_WhereHashConstAql)->GetFunction(),
+                         v8::ReadOnly);
+                         
   context->Global()->Set(v8::String::New("AQL_WHERE_PRIMARY_CONST"),
                          v8::FunctionTemplate::New(JS_WherePrimaryConstAql)->GetFunction(),
                          v8::ReadOnly);
@@ -4265,6 +4702,10 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
 
   context->Global()->Set(v8::String::New("AQL_SELECT"),
                          v8::FunctionTemplate::New(JS_SelectAql)->GetFunction(),
+                         v8::ReadOnly);
+                         
+  context->Global()->Set(v8::String::New("AQL_HASH_SELECT"),
+                         v8::FunctionTemplate::New(JS_HashSelectAql)->GetFunction(),
                          v8::ReadOnly);
 
   context->Global()->Set(v8::String::New("AQL_PREPARE"),
