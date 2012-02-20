@@ -25,4 +25,4 @@ Please note that this is a very early version if AvocadoDB. There will be
 bugs and we'd realy appreciate it if you 
 <a href="https://github.com/triAGENS/AvocadoDB/issues">report</a> them:
 
-    https://github.com/triAGENS/AvocadoDB/issues
+  https://github.com/triAGENS/AvocadoDB/issues
