@@ -86,7 +86,7 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.all-in-one \
 ################################################################################
 ################################################################################
 @ENABLE_BISON_TRUE@am__append_2 = $(BISON_FILES) $(BISONXX_FILES)
-@ENABLE_ALL_IN_ONE_TRUE@am__append_3 = @LIBEV_LIBS@ $(V8_LIBS)
+@ENABLE_ALL_IN_ONE_TRUE@am__append_3 = @LIBEV_LIBS@ @V8_LIBS@
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
@@ -5309,7 +5309,9 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
 @ENABLE_BISON_TRUE@JsonParserX/%.cpp: @srcdir@/JsonParserX/%.yy
 @ENABLE_BISON_TRUE@	@top_srcdir@/config/bison-c++.sh $(BISON) $@ $<
 
-@ENABLE_ALL_IN_ONE_TRUE@@LIBEV_LIBS@:
+@ENABLE_ALL_IN_ONE_TRUE@@LIBEV_LIBS@: .libev-build
+
+@ENABLE_ALL_IN_ONE_TRUE@.libev-build:
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "BUILDING LIBEV"
@@ -5320,13 +5322,17 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
 @ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) && CFLAGS="$(LIBEV_CFLAGS_32)" orig_CFLAGS="$(LIBEV_CFLAGS_32)" LDFLAGS="$(LIBEV_LDFLAGS_32)" ../configure --disable-shared
 @ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) && make
 
+@ENABLE_ALL_IN_ONE_TRUE@	touch .libev-build
+
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "BUILD LIBEV FINISHED"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 
-@ENABLE_ALL_IN_ONE_TRUE@$(V8_LIBS):
+@ENABLE_ALL_IN_ONE_TRUE@@V8_LIBS@: .v8-build
+
+@ENABLE_ALL_IN_ONE_TRUE@.v8-build:
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "BUILDING V8"
@@ -5336,6 +5342,8 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
 @ENABLE_ALL_IN_ONE_TRUE@@ENABLE_DARWIN_TRUE@	cd @top_srcdir@/3rdParty/V8 && scons snapshot=off library=static mode=release arch=$(V8_BUILD_VERSION)
 @ENABLE_ALL_IN_ONE_TRUE@@ENABLE_DARWIN_TRUE@	cd @top_srcdir@/3rdParty/V8 && mv libv8.a libv8_$(V8_BUILD_VERSION).a
 @ENABLE_ALL_IN_ONE_TRUE@@ENABLE_DARWIN_FALSE@	cd @top_srcdir@/3rdParty/V8 && make library=static snapshot=off $(V8_BUILD_VERSION).release
+
+@ENABLE_ALL_IN_ONE_TRUE@	touch .v8-build
 
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"

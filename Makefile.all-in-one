@@ -22,7 +22,9 @@ endif
 
 BUILT_SOURCES += @LIBEV_LIBS@
 
-@LIBEV_LIBS@:
+@LIBEV_LIBS@: .libev-build
+
+.libev-build:
 	@echo
 	@echo "--------------------------------------------------------------------------------"
 	@echo "BUILDING LIBEV"
@@ -32,6 +34,8 @@ BUILT_SOURCES += @LIBEV_LIBS@
 	mkdir @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) || true
 	cd @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) && CFLAGS="$(LIBEV_CFLAGS_32)" orig_CFLAGS="$(LIBEV_CFLAGS_32)" LDFLAGS="$(LIBEV_LDFLAGS_32)" ../configure --disable-shared
 	cd @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) && make
+
+	touch .libev-build
 
 	@echo
 	@echo "--------------------------------------------------------------------------------"
