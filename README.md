@@ -14,15 +14,24 @@ effort to operate for the administrator.
 5. create a directory `/var/lib/avocado` where you are allowed to read and write
 6. "./avocado /var/lib/avocado" to start a REST server or "./avocado /var/lib/avocado --shell" for debugging
 
-### Mac OS X Hints
-
-If you install AvocadoDB on Mac OS X we collected some hints for you:
-
-* The version of bison delivered with OS X is out of date. Update it before installing.
-
 ## First Steps
 
     ./avocado --shell
     avocado> db.examples.count();
     avocado> db.examples.save({ Hallo: "World" });
     avocado> db.examples.select();
+
+## Caveat
+
+Please note that this is a very early version if AvocadoDB. There will be
+bugs and we'd realy appreciate it if you report them:
+
+    https://github.com/triAGENS/AvocadoDB/issues
+
+To start AvocadoDB, run:
+
+     avocado
+
+To start AvocadoDB with an interactive (REPL) shell, run:
+
+     avocado --shell
