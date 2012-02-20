@@ -63,6 +63,7 @@ namespace triagens {
         enum HttpRequestType {
           HTTP_REQUEST_DELETE,
           HTTP_REQUEST_GET,
+          HTTP_REQUEST_HEAD,
           HTTP_REQUEST_POST,
           HTTP_REQUEST_PUT,
           HTTP_REQUEST_ILLEGAL

@@ -25,6 +25,8 @@
 /// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var defineHttpSystemAction = require("avocado").defineHttpSystemAction;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                            administration actions
 // -----------------------------------------------------------------------------
@@ -42,7 +44,7 @@
 /// Returns information about all indexes of a collection of the database.
 ////////////////////////////////////////////////////////////////////////////////
 
-defineSystemAction("collection/indexes",
+defineHttpSystemAction("collection/indexes",
   function (req, res) {
     try {
       result = {};

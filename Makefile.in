@@ -86,7 +86,7 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.all-in-one \
 ################################################################################
 ################################################################################
 @ENABLE_BISON_TRUE@am__append_2 = $(BISON_FILES) $(BISONXX_FILES)
-@ENABLE_ALL_IN_ONE_TRUE@am__append_3 = @LIBEV_LIBS@ $(V8_LIBS)
+@ENABLE_ALL_IN_ONE_TRUE@am__append_3 = @LIBEV_LIBS@ @V8_LIBS@
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
@@ -191,6 +191,7 @@ am_libavocadodb_a_OBJECTS =  \
 	Dispatcher/libavocadodb_a-Job.$(OBJEXT) \
 	GeneralServer/libavocadodb_a-GeneralFigures.$(OBJEXT) \
 	GeoIndex/libavocadodb_a-GeoIndex.$(OBJEXT) \
+	HashIndex/libavocadodb_a-hashindex.$(OBJEXT) \
 	HttpServer/libavocadodb_a-ApplicationHttpServer.$(OBJEXT) \
 	HttpServer/libavocadodb_a-ApplicationHttpServerImpl.$(OBJEXT) \
 	HttpServer/libavocadodb_a-HttpCommTask.$(OBJEXT) \
@@ -621,6 +622,7 @@ libavocadodb_a_SOURCES = \
 	Dispatcher/Job.cpp \
 	GeneralServer/GeneralFigures.cpp \
 	GeoIndex/GeoIndex.c \
+	HashIndex/hashindex.c \
 	HttpServer/ApplicationHttpServer.cpp \
 	HttpServer/ApplicationHttpServerImpl.cpp \
 	HttpServer/HttpCommTask.cpp \
@@ -862,6 +864,12 @@ WIKI = \
         Doxygen/xml/UserManual.md \
         Doxygen/xml/jsUnity.md
 
+@ENABLE_32BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.ia32
+@ENABLE_64BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.x64
+@ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_FALSE@LIBEV_CFLAGS_32 = -O2 -g
+@ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_TRUE@LIBEV_CFLAGS_32 = -m32 -O2 -g
+@ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_FALSE@LIBEV_LDFLAGS_32 = 
+@ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_TRUE@LIBEV_LDFLAGS_32 = -m32
 @ENABLE_32BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@V8_BUILD_VERSION = ia32
 
 ################################################################################
@@ -1107,6 +1115,14 @@ GeoIndex/$(DEPDIR)/$(am__dirstamp):
 	@: > GeoIndex/$(DEPDIR)/$(am__dirstamp)
 GeoIndex/libavocadodb_a-GeoIndex.$(OBJEXT): GeoIndex/$(am__dirstamp) \
 	GeoIndex/$(DEPDIR)/$(am__dirstamp)
+HashIndex/$(am__dirstamp):
+	@$(MKDIR_P) HashIndex
+	@: > HashIndex/$(am__dirstamp)
+HashIndex/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) HashIndex/$(DEPDIR)
+	@: > HashIndex/$(DEPDIR)/$(am__dirstamp)
+HashIndex/libavocadodb_a-hashindex.$(OBJEXT):  \
+	HashIndex/$(am__dirstamp) HashIndex/$(DEPDIR)/$(am__dirstamp)
 HttpServer/$(am__dirstamp):
 	@$(MKDIR_P) HttpServer
 	@: > HttpServer/$(am__dirstamp)
@@ -1587,6 +1603,7 @@ mostlyclean-compile:
 	-rm -f Dispatcher/libavocadodb_a-Job.$(OBJEXT)
 	-rm -f GeneralServer/libavocadodb_a-GeneralFigures.$(OBJEXT)
 	-rm -f GeoIndex/libavocadodb_a-GeoIndex.$(OBJEXT)
+	-rm -f HashIndex/libavocadodb_a-hashindex.$(OBJEXT)
 	-rm -f HttpServer/libavocadodb_a-ApplicationHttpServer.$(OBJEXT)
 	-rm -f HttpServer/libavocadodb_a-ApplicationHttpServerImpl.$(OBJEXT)
 	-rm -f HttpServer/libavocadodb_a-HttpCommTask.$(OBJEXT)
@@ -1770,6 +1787,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Dispatcher/$(DEPDIR)/libavocadodb_a-Job.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@GeneralServer/$(DEPDIR)/libavocadodb_a-GeneralFigures.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@GeoIndex/$(DEPDIR)/libavocadodb_a-GeoIndex.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@HashIndex/$(DEPDIR)/libavocadodb_a-hashindex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@HttpServer/$(DEPDIR)/libavocadodb_a-ApplicationHttpServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@HttpServer/$(DEPDIR)/libavocadodb_a-ApplicationHttpServerImpl.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@HttpServer/$(DEPDIR)/libavocadodb_a-HttpCommTask.Po@am__quote@
@@ -2308,6 +2326,22 @@ GeoIndex/libavocadodb_a-GeoIndex.obj: GeoIndex/GeoIndex.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='GeoIndex/GeoIndex.c' object='GeoIndex/libavocadodb_a-GeoIndex.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libavocadodb_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o GeoIndex/libavocadodb_a-GeoIndex.obj `if test -f 'GeoIndex/GeoIndex.c'; then $(CYGPATH_W) 'GeoIndex/GeoIndex.c'; else $(CYGPATH_W) '$(srcdir)/GeoIndex/GeoIndex.c'; fi`
+
+HashIndex/libavocadodb_a-hashindex.o: HashIndex/hashindex.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libavocadodb_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT HashIndex/libavocadodb_a-hashindex.o -MD -MP -MF HashIndex/$(DEPDIR)/libavocadodb_a-hashindex.Tpo -c -o HashIndex/libavocadodb_a-hashindex.o `test -f 'HashIndex/hashindex.c' || echo '$(srcdir)/'`HashIndex/hashindex.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) HashIndex/$(DEPDIR)/libavocadodb_a-hashindex.Tpo HashIndex/$(DEPDIR)/libavocadodb_a-hashindex.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='HashIndex/hashindex.c' object='HashIndex/libavocadodb_a-hashindex.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libavocadodb_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o HashIndex/libavocadodb_a-hashindex.o `test -f 'HashIndex/hashindex.c' || echo '$(srcdir)/'`HashIndex/hashindex.c
+
+HashIndex/libavocadodb_a-hashindex.obj: HashIndex/hashindex.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libavocadodb_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT HashIndex/libavocadodb_a-hashindex.obj -MD -MP -MF HashIndex/$(DEPDIR)/libavocadodb_a-hashindex.Tpo -c -o HashIndex/libavocadodb_a-hashindex.obj `if test -f 'HashIndex/hashindex.c'; then $(CYGPATH_W) 'HashIndex/hashindex.c'; else $(CYGPATH_W) '$(srcdir)/HashIndex/hashindex.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) HashIndex/$(DEPDIR)/libavocadodb_a-hashindex.Tpo HashIndex/$(DEPDIR)/libavocadodb_a-hashindex.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='HashIndex/hashindex.c' object='HashIndex/libavocadodb_a-hashindex.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libavocadodb_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o HashIndex/libavocadodb_a-hashindex.obj `if test -f 'HashIndex/hashindex.c'; then $(CYGPATH_W) 'HashIndex/hashindex.c'; else $(CYGPATH_W) '$(srcdir)/HashIndex/hashindex.c'; fi`
 
 JsonParser/libavocadodb_a-json-parser.o: JsonParser/json-parser.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libavocadodb_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT JsonParser/libavocadodb_a-json-parser.o -MD -MP -MF JsonParser/$(DEPDIR)/libavocadodb_a-json-parser.Tpo -c -o JsonParser/libavocadodb_a-json-parser.o `test -f 'JsonParser/json-parser.c' || echo '$(srcdir)/'`JsonParser/json-parser.c
@@ -5057,6 +5091,8 @@ distclean-generic:
 	-rm -f GeneralServer/$(am__dirstamp)
 	-rm -f GeoIndex/$(DEPDIR)/$(am__dirstamp)
 	-rm -f GeoIndex/$(am__dirstamp)
+	-rm -f HashIndex/$(DEPDIR)/$(am__dirstamp)
+	-rm -f HashIndex/$(am__dirstamp)
 	-rm -f HttpServer/$(DEPDIR)/$(am__dirstamp)
 	-rm -f HttpServer/$(am__dirstamp)
 	-rm -f HttpsServer/$(DEPDIR)/$(am__dirstamp)
@@ -5101,7 +5137,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-local \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) V8/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) V8/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -5149,7 +5185,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) V8/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) V8/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -5280,8 +5316,9 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 
-@ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/libev && ./configure --disable-shared
-@ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/libev && make
+@ENABLE_ALL_IN_ONE_TRUE@	mkdir @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) || true
+@ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) && CFLAGS="$(LIBEV_CFLAGS_32)" orig_CFLAGS="$(LIBEV_CFLAGS_32)" LDFLAGS="$(LIBEV_LDFLAGS_32)" ../configure --disable-shared
+@ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) && make
 
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
@@ -5289,7 +5326,9 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 
-@ENABLE_ALL_IN_ONE_TRUE@$(V8_LIBS):
+@ENABLE_ALL_IN_ONE_TRUE@@V8_LIBS@: .v8-build
+
+@ENABLE_ALL_IN_ONE_TRUE@.v8-build:
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "BUILDING V8"
@@ -5297,7 +5336,10 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 
 @ENABLE_ALL_IN_ONE_TRUE@@ENABLE_DARWIN_TRUE@	cd @top_srcdir@/3rdParty/V8 && scons snapshot=off library=static mode=release arch=$(V8_BUILD_VERSION)
+@ENABLE_ALL_IN_ONE_TRUE@@ENABLE_DARWIN_TRUE@	cd @top_srcdir@/3rdParty/V8 && mv libv8.a libv8_$(V8_BUILD_VERSION).a
 @ENABLE_ALL_IN_ONE_TRUE@@ENABLE_DARWIN_FALSE@	cd @top_srcdir@/3rdParty/V8 && make library=static snapshot=off $(V8_BUILD_VERSION).release
+
+@ENABLE_ALL_IN_ONE_TRUE@	touch .v8-build
 
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"

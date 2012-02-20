@@ -656,6 +656,8 @@ ENABLE_LOGGER_TIMING_FALSE
 ENABLE_LOGGER_TIMING_TRUE
 ENABLE_LOGGER_FALSE
 ENABLE_LOGGER_TRUE
+ENABLE_FORCE_32BIT_FALSE
+ENABLE_FORCE_32BIT_TRUE
 ENABLE_32BIT_FALSE
 ENABLE_32BIT_TRUE
 ENABLE_64BIT_FALSE
@@ -5521,6 +5523,7 @@ fi
 
 
 tr_BITS=32
+tr_BITS_32=no
 
 case $target_cpu in
   x86_64*)
@@ -5531,16 +5534,14 @@ esac
 if test "x$tr_BITS" == "x64";  then
   # Check whether --enable-32bit was given.
 if test "${enable_32bit+set}" = set; then :
-  enableval=$enable_32bit; tr_32BIT="$enableval"
-
-    if test "x$enableval" = xyes;  then
+  enableval=$enable_32bit; if test "x$enableval" = xyes;  then
       CXXFLAGS="$CXXFLAGS -m32"
       CFLAGS="$CFLAGS -m32"
       LDFLAGS="$LDFLAGS -m32"
-    fi
-else
-  tr_32BIT="no"
 
+      tr_BITS=32
+      tr_BITS_32=yes
+    fi
 fi
 
 fi
@@ -5561,16 +5562,20 @@ else
   ENABLE_32BIT_FALSE=
 fi
 
-
-
-if test "x$tr_BITS" == "x64";  then
-  if test "x$tr_32BIT" = xyes;  then
-    BASIC_INFO="$BASIC_INFO|32bit: enabled"
-  else
-    BASIC_INFO="$BASIC_INFO|64bit: enabled"
-  fi
+ if test "x$tr_BITS_32" = xyes; then
+  ENABLE_FORCE_32BIT_TRUE=
+  ENABLE_FORCE_32BIT_FALSE='#'
 else
+  ENABLE_FORCE_32BIT_TRUE='#'
+  ENABLE_FORCE_32BIT_FALSE=
+fi
+
+
+
+if test "x$tr_32BIT" = xyes;  then
   BASIC_INFO="$BASIC_INFO|32bit: enabled"
+else
+  BASIC_INFO="$BASIC_INFO|64bit: enabled"
 fi
 
 
@@ -8205,7 +8210,12 @@ FLAG_INFO="$FLAG_INFO|."
 
 LIBEV_CPPFLAGS="-I${srcdir}/3rdParty/libev"
 LIBEV_LDFLAGS=""
-LIBEV_LIBS="${srcdir}/3rdParty/libev/.libs/libev.a"
+
+if test "x$tr_BITS" = x64;  then
+  LIBEV_LIBS="${srcdir}/3rdParty/libev/ARCH.x64/.libs/libev.a"
+else
+  LIBEV_LIBS="${srcdir}/3rdParty/libev/ARCH.ia32/.libs/libev.a"
+fi
 
 TRI_LIBEV_VERSION="4.11"
 
@@ -8240,7 +8250,11 @@ V8_CPPFLAGS="-I${srcdir}/3rdParty/V8/include"
 V8_LDFLAGS=""
 
 if test "x$tr_DARWIN" == xyes;  then
-  V8_LIBS="${srcdir}/3rdParty/V8/libv8.a"
+  if test "x$tr_BITS" == x64;  then
+    V8_LIBS="${srcdir}/3rdParty/V8/libv8_x64.a"
+  else
+    V8_LIBS="${srcdir}/3rdParty/V8/libv8_ia32.a"
+  fi
 else
   if test "x$tr_BITS" == x64;  then
     V8_LIBS="${srcdir}/3rdParty/V8/out/x64.release/obj.target/tools/gyp/libv8_base.a ${srcdir}/3rdParty/V8/out/x64.release/obj.target/tools/gyp/libv8_nosnapshot.a"
@@ -9295,6 +9309,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_32BIT_TRUE}" && test -z "${ENABLE_32BIT_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_32BIT\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_FORCE_32BIT_TRUE}" && test -z "${ENABLE_FORCE_32BIT_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_FORCE_32BIT\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_LOGGER_TRUE}" && test -z "${ENABLE_LOGGER_FALSE}"; then

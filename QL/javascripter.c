@@ -25,25 +25,22 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "QL/javascripter.h"
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup QL
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize the to-Javascript conversion context
 ////////////////////////////////////////////////////////////////////////////////
 
-QL_javascript_conversion_t *QLJavascripterInit (void) {
-  TRI_string_buffer_t        *buffer;
-  QL_javascript_conversion_t *converter;
+QL_javascript_conversion_t* QLJavascripterInit (void) {
+  TRI_string_buffer_t* buffer;
+  QL_javascript_conversion_t* converter;
 
-  converter = (QL_javascript_conversion_t *)  TRI_Allocate(sizeof(QL_javascript_conversion_t));
+  converter = (QL_javascript_conversion_t*)  TRI_Allocate(sizeof(QL_javascript_conversion_t));
 
   if (converter == 0) { 
     return 0;
@@ -53,7 +50,7 @@ QL_javascript_conversion_t *QLJavascripterInit (void) {
   converter->_buffer = 0;
   converter->_prefix = 0;
 
-  buffer = (TRI_string_buffer_t *) TRI_Allocate(sizeof(TRI_string_buffer_t));
+  buffer = (TRI_string_buffer_t*) TRI_Allocate(sizeof(TRI_string_buffer_t));
   if (buffer == 0) {
     TRI_Free(converter);
     return 0;
@@ -65,12 +62,11 @@ QL_javascript_conversion_t *QLJavascripterInit (void) {
   return converter;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free the to-Javascript conversion text
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLJavascripterFree (QL_javascript_conversion_t *converter) {
+void QLJavascripterFree (QL_javascript_conversion_t* converter) {
   if (converter == 0) {
     return;
   }
@@ -80,14 +76,15 @@ void QLJavascripterFree (QL_javascript_conversion_t *converter) {
   TRI_Free(converter);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Walk a horizontal list of elements and print them
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLJavascripterWalkList (QL_javascript_conversion_t *converter, QL_ast_node_t *node, 
-                             const char separator, size_t counter) {
-  QL_ast_node_t *next; 
+void QLJavascripterWalkList (QL_javascript_conversion_t* converter, 
+                             QL_ast_node_t* node, 
+                             const char separator, 
+                             size_t counter) {
+  QL_ast_node_t* next; 
 
   if (node == 0) { 
     return;
@@ -109,7 +106,8 @@ void QLJavascripterWalkList (QL_javascript_conversion_t *converter, QL_ast_node_
 /// @brief create a javascript string by recursively walking an expression AST
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLJavascripterConvert (QL_javascript_conversion_t *converter, QL_ast_node_t *node) {
+void QLJavascripterConvert (QL_javascript_conversion_t* converter, 
+                            QL_ast_node_t* node) {
   QL_ast_node_t *lhs, *rhs;
   size_t outLength;
 
@@ -239,7 +237,8 @@ void QLJavascripterConvert (QL_javascript_conversion_t *converter, QL_ast_node_t
 /// @brief create a javascript string by recursively walking an order by AST
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLJavascripterConvertOrder (QL_javascript_conversion_t *converter, QL_ast_node_t *node) {
+void QLJavascripterConvertOrder (QL_javascript_conversion_t* converter, 
+                                 QL_ast_node_t* node) {
   QL_ast_node_t *lhs, *rhs, *start;
 
   if (node == 0) {
@@ -274,7 +273,6 @@ void QLJavascripterConvertOrder (QL_javascript_conversion_t *converter, QL_ast_n
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
 
 // Local Variables:
 // mode: outline-minor

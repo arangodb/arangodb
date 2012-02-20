@@ -6,7 +6,12 @@ dnl ----------------------------------------------------------------------------
 
 LIBEV_CPPFLAGS="-I${srcdir}/3rdParty/libev"
 LIBEV_LDFLAGS=""
-LIBEV_LIBS="${srcdir}/3rdParty/libev/.libs/libev.a"
+
+if test "x$tr_BITS" = x64;  then
+  LIBEV_LIBS="${srcdir}/3rdParty/libev/ARCH.x64/.libs/libev.a"
+else
+  LIBEV_LIBS="${srcdir}/3rdParty/libev/ARCH.ia32/.libs/libev.a"
+fi
 
 TRI_LIBEV_VERSION="4.11"
 

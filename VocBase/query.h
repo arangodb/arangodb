@@ -94,7 +94,7 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page AQL Avocado Query Language
+/// @page AQL Avocado Query Language (AQL)
 /// 
 /// Queries can be used to extract arbitrary data from one or multiple
 /// collections. A query needs to be composed in the Avocado Query Language
@@ -129,15 +129,14 @@ extern "C" {
 /// @subsection AqlNames Names
 ///
 /// In general, names are used to identify objects (collections, attributes,
-/// functions in queries. Allowed characters in names are the letters @LIT{a}
-/// to @LIT{z} (both in lower and upper case), the numbers @LIT{0} to @LIT{9},
-/// and the underscore (@LIT{_}) symbol.
-///
-/// A name must not start with a number. If a name starts with the underscore
-/// character, it must also contain at least of letter character.
+/// functions in queries. 
 /// 
-/// The maximum length of a name is 64 bytes. All names are case-sensitive.
-/// Keywords must not be used as names.
+/// The maximum length of any name is 64 bytes. All names are case-sensitive.
+///
+/// Keywords must not be used as names. Instead, if a reserved keyword should
+/// be as used a query, the name must be enclosed in backticks. Enclosing a 
+/// name in backticks allows to use otherwise-reserved words as names, e.g. 
+/// @LIT{`select`}.
 ///
 /// @subsubsection AqlCollectionNames Collection names and aliases
 ///
@@ -146,6 +145,16 @@ extern "C" {
 /// each collection used. The alias can be any (unquoted) string, as long as
 /// it is unique within the context of the query. This means the same alias
 /// cannot be declared multiple times in the same query.
+///
+/// Allowed characters in collection names are the letters @LIT{a} to @LIT{z} 
+/// (both in lower and upper case) and the numbers @LIT{0} to @LIT{9}. A 
+/// collection name must always start with a letter.
+///
+/// Allowed characters in aliases are the letters @LIT{a} to @LIT{z} (both in
+/// lower and upper case), the numbers @LIT{0} to @LIT{9} and the underscore 
+/// (@LIT{_}) symbol. An alias must not start with a number. If an alias
+/// starts with the underscore character, it must also contain at least one 
+/// letter (a-z or A-Z).
 ///
 /// @verbinclude collectionnames
 /// 
@@ -174,8 +183,11 @@ extern "C" {
 /// 
 /// @verbinclude strings
 ///
-/// The string encoding is always UTF-8. It is not possible to store arbitrary
-/// binary data if it is not UTF-8 encoded.
+/// The string encoding is always UTF-8. It is currently not possible to use 
+/// arbitrary binary data if it is not UTF-8 encoded. A workaround to use
+/// binary data is to encode the data using base64 or other algorithms on the
+/// application side before storing, and decoding it on application side after
+/// retrieval.
 /// 
 /// @subsubsection AqlLiteralsNumber Numeric literals
 ///
@@ -297,11 +309,15 @@ extern "C" {
 ///
 /// The @LIT{&&} operator returns the first operand if it evaluates to 
 /// @CODE{false}. It returns the result of the evaluation of the second
-///  operand otherwise.
+/// operand otherwise. 
 ///
 /// The @LIT{||} operators returns the first operand if it evaluates to
 /// @CODE{true}. Otherwise it returns the result of the evaluation of 
 /// the second operand.
+///
+/// Both @LIT{&&} and @LIT{||} use short-circuit evaluation and only
+/// evaluate the second operand if the result of the operation cannot be
+/// determined by the first operand alone.
 ///
 /// @subsubsection AqlOperatorsArit Arithmetic operators
 ///
@@ -442,6 +458,7 @@ extern "C" {
 /// @LIT{collection-definition}s. @LIT{join-type} is one of 
 /// - @LIT{INNER JOIN}
 /// - @LIT{LEFT JOIN} 
+/// - @LIT{RIGHT JOIN} 
 /// - @LIT{LIST JOIN}
 ///
 /// The @LIT{on-expression} consists of the @LIT{ON} keyword, followed by
@@ -466,10 +483,10 @@ extern "C" {
 /// right side (and vice versa), this means that each document from either
 /// side might appear multiple times in the result.
 ///
-/// @subsubsection AllOuterJoin Left (outer) join
+/// @subsubsection AllOuterJoin Left and right (outer) joins
 ///
-/// A left (outer) join outputs the documents from both the left and right hand sides
-/// of the join if, and only if the @LIT{on-condition} is true.
+/// A left (outer) join outputs the documents from both the left and right hand 
+/// sides of the join if, and only if the @LIT{on-condition} is true.
 ///
 /// Additionally, it will output the document on the left hand side of the join
 /// if no matching document on the right side can be found. If this is the case, 
@@ -487,8 +504,9 @@ extern "C" {
 /// once. Altogether this means all documents from the left hand side will be 
 /// contained in the result set at least once.
 ///
-/// Right joins are currently not supported, but they can be expressed as left 
-/// joins with the operands swapped.
+/// A right (outer) join acts like a left (outer join) but the roles of the
+/// left and right operands are swapped. Thus, right joins are implemented as 
+/// reversed left joins (i.e. left joins with their operands swapped).
 ///
 /// @subsubsection AllInnerJoin List join
 ///
@@ -745,10 +763,12 @@ TRI_rc_cursor_t;
 /// @brief creates a query
 ////////////////////////////////////////////////////////////////////////////////
 
+TRI_query_t* TRI_CreateHashQuery (const TRI_qry_where_t*, TRI_doc_collection_t*);
+
 TRI_query_t* TRI_CreateQuery (TRI_vocbase_t* vocBase,
-                              TRI_qry_select_t const* selectStmt,
-                              TRI_qry_where_t  const* whereStmt,
-                              TRI_qry_order_t  const* orderStmt,
+                              TRI_qry_select_t* selectStmt,
+                              TRI_qry_where_t* whereStmt,
+                              TRI_qry_order_t* orderStmt,
                               TRI_select_join_t* joins);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -792,6 +812,13 @@ TRI_qry_where_t* TRI_CreateQueryWhereBoolean (bool where);
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_qry_where_t* TRI_CreateQueryWhereGeneral (char const*);
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a query condition for a hash with constant parameters
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_qry_where_t* TRI_CreateQueryWhereHashConstant (TRI_idx_iid_t, TRI_json_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a query condition using the primary index and a constant

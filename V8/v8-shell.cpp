@@ -325,7 +325,7 @@ static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
 
 void TRI_InitV8Shell (v8::Handle<v8::Context> context) {
   v8::HandleScope scope;
-
+  
   // .............................................................................
   // create the global functions
   // .............................................................................

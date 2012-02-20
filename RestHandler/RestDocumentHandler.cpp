@@ -83,6 +83,7 @@ HttpHandler::status_e RestDocumentHandler::execute () {
     case HttpRequest::HTTP_REQUEST_GET: task = &logRead; break;
     case HttpRequest::HTTP_REQUEST_POST: task = &logCreate; break;
     case HttpRequest::HTTP_REQUEST_PUT: task = &logUpdate; break;
+    case HttpRequest::HTTP_REQUEST_HEAD: task = &logIllegal; break;
     case HttpRequest::HTTP_REQUEST_ILLEGAL: task = &logIllegal; break;
   }
 
@@ -98,6 +99,7 @@ HttpHandler::status_e RestDocumentHandler::execute () {
     case HttpRequest::HTTP_REQUEST_PUT: res = updateDocument(); break;
     case HttpRequest::HTTP_REQUEST_DELETE: res = deleteDocument(); break;
 
+    case HttpRequest::HTTP_REQUEST_HEAD:
     case HttpRequest::HTTP_REQUEST_ILLEGAL:
       res = false;
       generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);

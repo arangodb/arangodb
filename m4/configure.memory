@@ -1,0 +1,27 @@
+dnl -*- mode: Autoconf; -*-
+
+dnl -----------------------------------------------------------------------------------------
+dnl option for memory failures
+dnl -----------------------------------------------------------------------------------------
+
+AC_ARG_ENABLE(memfail,
+  AS_HELP_STRING([--enable-memfail], [enables memory allocation failures (default: no)]),
+  tr_MEMFAIL="${enableval:-yes}",
+  tr_MEMFAIL=no
+)
+
+if test "x$tr_MEMFAIL" = xyes; then
+  AC_DEFINE_UNQUOTED(TRI_ENABLE_MEMFAIL, 1, [true if memory allocation failures are enabled])
+fi
+
+AM_CONDITIONAL(ENABLE_MEMFAIL, test "x$tr_MEMFAIL" = xyes)
+
+dnl -----------------------------------------------------------------------------------------
+dnl informational output
+dnl -----------------------------------------------------------------------------------------
+
+if test "x$tr_MEMFAIL" = xyes;  then
+  BASIC_INFO="$BASIC_INFO|MEMFAIL: enabled"
+else
+  BASIC_INFO="$BASIC_INFO|MEMFAIL: disabled"
+fi

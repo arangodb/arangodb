@@ -37,7 +37,7 @@
 #include <BasicsC/strings.h>
 
 #include "QL/ast-node.h"
-
+#include "VocBase/vocbase.h"
 
 #define QL_QUERY_NAME_LEN 64
 
@@ -87,6 +87,18 @@ typedef enum {
   QLQueryWhereTypeAlwaysFalse
 } 
 QL_ast_query_where_type_e;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ORDER BY types of a query
+////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+  QLQueryOrderTypeUndefined = 0,
+
+  QLQueryOrderTypeMustEvaluate,
+  QLQueryOrderTypeNone
+} 
+QL_ast_query_order_type_e;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief SELECT part of a query 
@@ -156,6 +168,7 @@ typedef struct QL_ast_query_s {
   QL_ast_query_where_t   _where;
   QL_ast_query_order_t   _order;
   QL_ast_query_limit_t   _limit;
+  const TRI_vocbase_t*   _vocbase;
 } 
 QL_ast_query_t;
 
@@ -164,9 +177,10 @@ QL_ast_query_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct QL_ast_query_collection_s {
-  char *_name;
-  char *_alias;
+  char* _name;
+  char* _alias;
   bool _isPrimary;
+  size_t _refCount;
 } 
 QL_ast_query_collection_t;
 
@@ -174,13 +188,25 @@ QL_ast_query_collection_t;
 /// @brief Initialize data structures for a query
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLAstQueryInit (QL_ast_query_t*);
+void QLAstQueryInit (const TRI_vocbase_t*, QL_ast_query_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief De-allocate data structures for a query
 ////////////////////////////////////////////////////////////////////////////////
 
 void QLAstQueryFree (QL_ast_query_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the ref count for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+size_t QLAstQueryGetRefCount (QL_ast_query_t*, const char*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Increment ref count for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+void QLAstQueryAddRefCount (QL_ast_query_t*, const char*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Check if a collection was defined in a query
@@ -192,13 +218,7 @@ bool QLAstQueryIsValidAlias (QL_ast_query_t*, const char*);
 /// @brief Add a collection to the query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLAstQueryAddCollection (QL_ast_query_t*, const char*, const char*, const bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the name of the primary collection used in the query
-////////////////////////////////////////////////////////////////////////////////
-
-char* QLAstQueryGetPrimaryName (const QL_ast_query_t*);
+bool QLAstQueryAddCollection (QL_ast_query_t*, const char*, const char*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the alias of the primary collection used in the query

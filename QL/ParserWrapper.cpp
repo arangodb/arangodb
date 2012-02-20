@@ -36,7 +36,6 @@ using namespace triagens::avocado;
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class ParseError
 // -----------------------------------------------------------------------------
@@ -75,8 +74,9 @@ string ParseError::getDescription () const {
 /// @brief Create a new instance
 ////////////////////////////////////////////////////////////////////////////////
 
-ParserWrapper::ParserWrapper (const char *query) : 
-  _query(query), _parseError(0), _isParsed(false) {
+ParserWrapper::ParserWrapper (const TRI_vocbase_t* vocbase, const char* query) : 
+  _vocbase(vocbase), _query(query), _parseError(0), 
+  _isParsed(false), _isOptimized(false) {
   _context = (QL_parser_context_t*) TRI_Allocate(sizeof(QL_parser_context_t));
 }
 
@@ -88,6 +88,7 @@ ParserWrapper::~ParserWrapper () {
   if (_context != 0) {
     QLParseFree(_context);
   }
+
   if (_parseError) {
     delete _parseError;
   }
@@ -112,30 +113,36 @@ bool ParserWrapper::parse () {
 
   _isParsed = true;
 
-  if (!QLParseInit(_context, _query)) {
+  if (!QLParseInit(_vocbase,_context, _query)) {
     return false;
   }
 
   if (QLparse(_context)) {
     // parse error
-    QL_error_state_t *errorState = &_context->_lexState._errorState;
-    _parseError= new ParseError(errorState->_message, errorState->_line, errorState->_column);
+    setParseError();
     return false;
   }
 
   if (!QLParseValidate(_context, _context->_query->_select._base)) {
-    QL_error_state_t *errorState = &_context->_lexState._errorState;
-    _parseError= new ParseError(errorState->_message, errorState->_line, errorState->_column);
+    setParseError();
     return false;
   }
 
   if (!QLParseValidate(_context, _context->_query->_where._base)) {
-    QL_error_state_t *errorState = &_context->_lexState._errorState;
-    _parseError= new ParseError(errorState->_message, errorState->_line, errorState->_column);
+    setParseError();
     return false;
   }
 
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Register the parse error set by the parser
+////////////////////////////////////////////////////////////////////////////////
+
+void ParserWrapper::setParseError () {
+  QL_error_state_t* errorState = &_context->_lexState._errorState;
+  _parseError= new ParseError(errorState->_message, errorState->_line, errorState->_column);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,6 +166,32 @@ QL_ast_query_type_e ParserWrapper::getQueryType () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Run optimizations on the different query parts
+////////////////////////////////////////////////////////////////////////////////
+ 
+void ParserWrapper::optimize () { 
+  if (!_isParsed) {
+    return;
+  }
+
+  if (_isOptimized) {
+    return;
+  }
+
+  QLOptimizeExpression(_context->_query->_select._base);
+  QLOptimizeExpression(_context->_query->_where._base);
+  if (_context->_query->_order._base) {
+    QLOptimizeOrder(_context->_query->_order._base);
+  }
+
+  QLOptimizeFrom(_context);
+
+  QLOptimizeDetermineIndexes(_context->_query);
+
+  _isOptimized = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Create a select clause
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -169,14 +202,15 @@ TRI_qry_select_t* ParserWrapper::getSelect () {
     return 0;
   }
 
-  QLOptimizeExpression(_context->_query->_select._base);
+  optimize();
+
   QL_ast_query_select_type_e selectType = QLOptimizeGetSelectType(_context->_query);
 
   if (selectType == QLQuerySelectTypeSimple) {
     select = TRI_CreateQuerySelectDocument();
   } 
   else if (selectType == QLQuerySelectTypeEvaluated) {
-    QL_javascript_conversion_t *selectJs = QLJavascripterInit();
+    QL_javascript_conversion_t* selectJs = QLJavascripterInit();
     if (selectJs != 0) {
       TRI_AppendStringStringBuffer(selectJs->_buffer, "(function($) { return ");
       QLJavascripterConvert(selectJs, _context->_query->_select._base);
@@ -192,30 +226,6 @@ TRI_qry_select_t* ParserWrapper::getSelect () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Get the alias of the primary collection
-////////////////////////////////////////////////////////////////////////////////
-
-char* ParserWrapper::getPrimaryAlias () {
-  if (_isParsed) {
-    return QLAstQueryGetPrimaryAlias(_context->_query);
-  }
-
-  return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Get the name of the primary collection
-////////////////////////////////////////////////////////////////////////////////
-
-char* ParserWrapper::getPrimaryName () {
-  if (_isParsed) {
-    return QLAstQueryGetPrimaryName(_context->_query);
-  }
-
-  return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Create joins
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -228,33 +238,34 @@ TRI_select_join_t* ParserWrapper::getJoins () {
     return NULL;
   }
 
+  optimize();
+
   join = TRI_CreateSelectJoin();
   if (!join) {
     return NULL;
   }
 
-  QL_ast_node_t *node = (QL_ast_node_t *) _context->_query->_from._base;
-  node = (QL_ast_node_t *) node->_next;
+  QL_ast_node_t* node = (QL_ast_node_t*) _context->_query->_from._base;
+  node = (QL_ast_node_t*) node->_next;
   //QL_formatter_t f;
-  //f.indentLevel = 0;
+  //f._indentLevel = 0;
   //QLFormatterDump(_context->_query->_from._base, &f, 0);
 
   assert(node != 0);
 
   // primary table
-  QL_ast_node_t *lhs = (QL_ast_node_t *) node->_lhs;
-  QL_ast_node_t *rhs = (QL_ast_node_t *) node->_rhs;
+  QL_ast_node_t* lhs = (QL_ast_node_t*) node->_lhs;
+  QL_ast_node_t* rhs = (QL_ast_node_t*) node->_rhs;
   collectionName = lhs->_value._stringValue;
   collectionAlias = rhs->_value._stringValue;
 
   TRI_AddPartSelectJoin(join, JOIN_TYPE_PRIMARY, NULL, collectionName, collectionAlias);
 
   while (node->_next) {
-    node = (QL_ast_node_t *) node->_next;
-    QL_ast_node_t *ref = (QL_ast_node_t *) node->_lhs;
-    QL_ast_node_t *condition = (QL_ast_node_t *) node->_rhs;
+    node = (QL_ast_node_t*) node->_next;
+    QL_ast_node_t* ref = (QL_ast_node_t*) node->_lhs;
+    QL_ast_node_t* condition = (QL_ast_node_t*) node->_rhs;
 
-    QLOptimizeExpression(condition);
     QL_ast_query_where_type_e conditionType = QLOptimizeGetWhereType(condition);
 
     TRI_qry_where_t* joinWhere = 0;
@@ -262,14 +273,22 @@ TRI_select_join_t* ParserWrapper::getJoins () {
     if (conditionType == QLQueryWhereTypeAlwaysTrue) {
       // join condition is always true 
       joinWhere = TRI_CreateQueryWhereBoolean(true);
+      if (!joinWhere) {
+        join->free(join);
+        return NULL;
+      }
     } 
     else if (conditionType == QLQueryWhereTypeAlwaysFalse) {
       // join condition is always false
       joinWhere = TRI_CreateQueryWhereBoolean(false);
+      if (!joinWhere) {
+        join->free(join);
+        return NULL;
+      }
     }
     else {
-      // where condition must be evaluated for each result
-      QL_javascript_conversion_t *conditionJs = QLJavascripterInit();
+      // join condition must be evaluated for each result
+      QL_javascript_conversion_t* conditionJs = QLJavascripterInit();
       if (conditionJs != 0) {
         TRI_AppendStringStringBuffer(conditionJs->_buffer, "(function($) { return (");
         QLJavascripterConvert(conditionJs, condition);
@@ -277,10 +296,14 @@ TRI_select_join_t* ParserWrapper::getJoins () {
         joinWhere = TRI_CreateQueryWhereGeneral(conditionJs->_buffer->_buffer);
         QLJavascripterFree(conditionJs);
       }
+      if (!joinWhere) {
+        join->free(join);
+        return NULL;
+      }
     }
 
-    collectionName = ((QL_ast_node_t *) (ref->_lhs))->_value._stringValue;
-    collectionAlias = ((QL_ast_node_t *) (ref->_rhs))->_value._stringValue;
+    collectionName = ((QL_ast_node_t*) (ref->_lhs))->_value._stringValue;
+    collectionAlias = ((QL_ast_node_t*) (ref->_rhs))->_value._stringValue;
 
     if (node->_type == QLNodeJoinList) {
       TRI_AddPartSelectJoin(join, JOIN_TYPE_LIST, joinWhere, collectionName, collectionAlias);
@@ -288,7 +311,7 @@ TRI_select_join_t* ParserWrapper::getJoins () {
     else if (node->_type == QLNodeJoinInner) {
       TRI_AddPartSelectJoin(join, JOIN_TYPE_INNER, joinWhere, collectionName, collectionAlias);
     }
-    else if (node->_type == QLNodeJoinLeft || node->_type == QLNodeJoinRight) {
+    else if (node->_type == QLNodeJoinLeft) {
       TRI_AddPartSelectJoin(join, JOIN_TYPE_OUTER, joinWhere, collectionName, collectionAlias);
     }
   }
@@ -307,10 +330,10 @@ TRI_qry_where_t* ParserWrapper::getWhere () {
     return NULL;
   }
 
-  QLOptimizeExpression(_context->_query->_where._base);
+  optimize();
   // TODO: REMOVE ME
   // QL_formatter_t f;
-  // f.indentLevel = 0;
+  // f._indentLevel = 0;
   // QLFormatterDump(_context->_query->_where._base, &f, 0);
 
   _context->_query->_where._type = QLOptimizeGetWhereType(_context->_query->_where._base);
@@ -325,7 +348,7 @@ TRI_qry_where_t* ParserWrapper::getWhere () {
   }
   else {
     // where condition must be evaluated for each result
-    QL_javascript_conversion_t *whereJs = QLJavascripterInit();
+    QL_javascript_conversion_t* whereJs = QLJavascripterInit();
     if (whereJs != 0) {
       TRI_AppendStringStringBuffer(whereJs->_buffer, "(function($) { return (");
       QLJavascripterConvert(whereJs, _context->_query->_where._base);
@@ -350,19 +373,22 @@ TRI_qry_order_t* ParserWrapper::getOrder () {
   if (!_isParsed ) {
     return NULL;
   }
+  
+  optimize();
 
-  if (_context->_query->_order._base) {
-    QLOptimizeOrder(_context->_query->_order._base);
-    QL_javascript_conversion_t *orderJs = QLJavascripterInit();
-    if (orderJs != 0) {
-      TRI_AppendStringStringBuffer(orderJs->_buffer, "(function($){var lhs,rhs;");
-      QLJavascripterConvertOrder(orderJs, (QL_ast_node_t *) _context->_query->_order._base->_next);
-      TRI_AppendStringStringBuffer(orderJs->_buffer, "})");
-      order = TRI_CreateQueryOrderGeneral(orderJs->_buffer->_buffer);
-      // TODO: REMOVE ME
-      // std::cout << "ORDER: " << orderJs->_buffer->_buffer << "\n";
-      QLJavascripterFree(orderJs);
-    }
+  if (QLOptimizeGetOrderType(_context->_query->_order._base) == QLQueryOrderTypeNone) {
+    return 0;
+  }
+
+  QL_javascript_conversion_t* orderJs = QLJavascripterInit();
+  if (orderJs != 0) {
+    TRI_AppendStringStringBuffer(orderJs->_buffer, "(function($){var lhs,rhs;");
+    QLJavascripterConvertOrder(orderJs, (QL_ast_node_t*) _context->_query->_order._base->_next);
+    TRI_AppendStringStringBuffer(orderJs->_buffer, "})");
+    order = TRI_CreateQueryOrderGeneral(orderJs->_buffer->_buffer);
+    // TODO: REMOVE ME
+    // std::cout << "ORDER: " << orderJs->_buffer->_buffer << "\n";
+    QLJavascripterFree(orderJs);
   }
 
   return order;

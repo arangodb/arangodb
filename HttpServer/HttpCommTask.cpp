@@ -111,10 +111,11 @@ namespace triagens {
           switch (request->requestType()) {
             case HttpRequest::HTTP_REQUEST_GET:
             case HttpRequest::HTTP_REQUEST_DELETE:
+            case HttpRequest::HTTP_REQUEST_HEAD:
               bodyLength = request->contentLength();
 
               if (bodyLength > 0) {
-                LOGGER_DEBUG << "received http GET/DELETE request with body length, this should not happen";
+                LOGGER_DEBUG << "received http GET/DELETE/HEAD request with body length, this should not happen";
                 readRequestBody = true;
               }
               else {

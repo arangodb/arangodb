@@ -25,6 +25,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var httpSystemAction = require("avocado").defineHttpSystemAction;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                            administration actions
 // -----------------------------------------------------------------------------
@@ -34,15 +36,7 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns information about all indexes of a collection
-///
-/// @REST{GET /_system/collection/indexes?collection=@FA{identifier}}
-///
-/// Returns information about all indexes of a collection of the database.
-////////////////////////////////////////////////////////////////////////////////
-
-defineSystemAction("status",
+httpSystemAction("status",
   function (req, res) {
     try {
       result = {};
