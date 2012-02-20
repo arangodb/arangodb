@@ -25,6 +25,8 @@
 /// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var defineHttpSystemAction = require("avocado").defineHttpSystemAction;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                            administration actions
 // -----------------------------------------------------------------------------
@@ -55,7 +57,7 @@
 /// @verbinclude rest15
 ////////////////////////////////////////////////////////////////////////////////
 
-defineSystemAction("collections",
+defineHttpSystemAction("collections",
   function (req, res) {
     var colls;
     var coll;
@@ -92,7 +94,7 @@ defineSystemAction("collections",
 /// @verbinclude restX
 ////////////////////////////////////////////////////////////////////////////////
 
-defineSystemAction("collection/load",
+defineHttpSystemAction("collection/load",
   function (req, res) {
     try {
       req.collection.load();
@@ -120,7 +122,7 @@ defineSystemAction("collection/load",
 /// @verbinclude rest16
 ////////////////////////////////////////////////////////////////////////////////
 
-defineSystemAction("collection/info",
+defineHttpSystemAction("collection/info",
   function (req, res) {
     try {
       result = {};
@@ -148,7 +150,7 @@ defineSystemAction("collection/info",
 /// @REST{GET /_system/documents}
 ////////////////////////////////////////////////////////////////////////////////
 
-defineSystemAction("documents",
+defineHttpSystemAction("documents",
   function (req, res) {
     queryReferences(req, res, req.collection.all());
   },

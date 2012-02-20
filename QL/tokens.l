@@ -221,6 +221,11 @@
   return IDENTIFIER; 
 }
 
+`(\\.|[^\\`])*` {
+  yylval->strval = QLParseAllocString(yyextra, yytext); 
+  return QUOTED_IDENTIFIER;
+}
+
 (0|[1-9][0-9]*)(\.[0-9]+([eE]([\-\+])?[0-9]+)?)? {  
   yylval->strval = QLParseAllocString(yyextra, yytext); 
   return REAL; 
@@ -235,7 +240,7 @@
   yylval->strval = QLParseAllocString(yyextra, yytext); 
   return STRING;
 }
- 
+
 
  /* ---------------------------------------------------------------------------
   * parameters

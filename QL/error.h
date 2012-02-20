@@ -51,12 +51,14 @@ extern "C" {
 typedef enum {
   ERR_OK                               = 0,
   ERR_PARSE                            = 1,
+  ERR_OOM                              = 2,
   ERR_NUMBER_OUT_OF_RANGE              = 100,
   ERR_PARAMETER_NUMBER_OUT_OF_RANGE    = 101,
   ERR_LIMIT_VALUE_OUT_OF_RANGE         = 102,
   ERR_COLLECTION_NAME_INVALID          = 110, 
-  ERR_COLLECTION_NAME_REDECLARED       = 111, 
-  ERR_COLLECTION_NAME_UNDECLARED       = 112, 
+  ERR_COLLECTION_ALIAS_REDECLARED      = 111, 
+  ERR_COLLECTION_ALIAS_UNDECLARED      = 112, 
+  ERR_COLLECTION_ALIAS_INVALID         = 113, 
 
   ERR_LAST       
 }
@@ -67,14 +69,13 @@ QL_error_type_e;
 /// @brief get label/translation for an error code
 ////////////////////////////////////////////////////////////////////////////////
 
-char *QLErrorGetLabel (const QL_error_type_e);
+char* QLErrorGetLabel (const QL_error_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a formatted error message with wildcards replaced
 ////////////////////////////////////////////////////////////////////////////////
 
-char *QLErrorFormat(const QL_error_type_e, va_list args);
-
+char* QLErrorFormat(const QL_error_type_e, va_list args);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

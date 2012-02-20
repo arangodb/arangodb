@@ -38,7 +38,9 @@
 /// @brief initializes the parser context for a query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLParseInit (QL_parser_context_t* context, const char* query) {
+bool QLParseInit (const TRI_vocbase_t* vocbase, 
+                  QL_parser_context_t* context, 
+                  const char* query) {
   // init vectors needed for book-keeping memory
   TRI_InitVectorPointer(&context->_nodes);
   TRI_InitVectorPointer(&context->_strings);
@@ -67,7 +69,7 @@ bool QLParseInit (QL_parser_context_t* context, const char* query) {
     return false;
   }
 
-  QLAstQueryInit(context->_query);
+  QLAstQueryInit(vocbase, context->_query);
 
   return true;
 }
@@ -125,6 +127,8 @@ void QLParseFree (QL_parser_context_t* context) {
     TRI_Free(context->_query);
     context->_query = 0;
   }
+
+  TRI_Free(context);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -320,19 +324,71 @@ void QLParseRegisterPostParseError (QL_parser_context_t* context,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Validate a collection name
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLParseValidateCollectionName (const char* name) {
+  const char* p = name;
+  char c;
+  size_t length = 0;
+   
+  while ('\0' != (c = *p++)) {
+    if (!(c >= 'A' && c <= 'Z') && !(c >= 'a' && c <= 'z')) {
+      return false;
+    } 
+    length++;
+  }
+  
+  return ((length > 0) && (length <= QL_QUERY_NAME_LEN));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Validate a collection alias
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLParseValidateCollectionAlias (const char* name) {
+  const char* p = name;
+  char c;
+  size_t totalLength = 0;
+  size_t charLength = 0;
+   
+  c = *p;
+  // must start with one these chars
+  if (!(c >= 'A' && c <= 'Z') && !(c >= 'a' && c <= 'z') && !(c == '_')) {
+    return false;
+  }
+
+  while ('\0' != (c = *p++)) {
+    if (!(c >= 'A' && c <= 'Z') && !(c >= 'a' && c <= 'z') && !(c >= '0' && c <='9') && !(c == '_')) {
+      return false;
+    } 
+    if (!(c >= '0' && c <='9') && !(c == '_')) {
+      // must include at least one letter
+      charLength++;
+    }
+    totalLength++;
+  }
+
+  // if no letter is contained, the alias is invalid
+  if (charLength == 0) {
+    return false;
+  }
+  
+  return ((totalLength > 0) && (totalLength <= QL_QUERY_NAME_LEN));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Validate the query
 ////////////////////////////////////////////////////////////////////////////////
 
 bool QLParseValidate (QL_parser_context_t* context, QL_ast_node_t* node) {
   QL_ast_node_t *lhs, *rhs, *next;
-  QL_ast_node_type_e type;
 
   if (node == 0) {
     return true; 
   }
   
-  type = node->_type;
-  if (type == QLNodeContainerList) {
+  if (node->_type == QLNodeContainerList) {
     next = node->_next;
     while (next) {
       if (!QLParseValidate(context, next)) {
@@ -344,8 +400,11 @@ bool QLParseValidate (QL_parser_context_t* context, QL_ast_node_t* node) {
   
   if (node->_type == QLNodeReferenceCollectionAlias) {
     if (!QLAstQueryIsValidAlias(context->_query, node->_value._stringValue)) {
-      QLParseRegisterPostParseError(context, node->_line, node->_column, 
-                                    ERR_COLLECTION_NAME_UNDECLARED, node->_value._stringValue);
+      QLParseRegisterPostParseError(context, 
+                                    node->_line, 
+                                    node->_column, 
+                                    ERR_COLLECTION_ALIAS_UNDECLARED, 
+                                    node->_value._stringValue);
       return false;
     }
   }

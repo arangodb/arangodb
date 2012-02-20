@@ -85,8 +85,9 @@ static bool EqualKeyElement (TRI_associative_pointer_t* array, void const* key, 
 /// @brief Initialize data structures for a query
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLAstQueryInit (QL_ast_query_t* query) {
-  query->_type = QLQueryTypeUndefined;
+void QLAstQueryInit (const TRI_vocbase_t* vocbase, QL_ast_query_t* query) {
+  query->_vocbase        = vocbase;
+  query->_type           = QLQueryTypeUndefined;
   query->_from._base     = 0;
   query->_where._base    = 0;
   query->_order._base    = 0;
@@ -121,11 +122,40 @@ void QLAstQueryFree (QL_ast_query_t* query) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the ref count for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+size_t QLAstQueryGetRefCount (QL_ast_query_t* query, const char* alias) {
+  QL_ast_query_collection_t* collection = (QL_ast_query_collection_t*) 
+    TRI_LookupByKeyAssociativePointer(&query->_from._collections, alias);
+
+  if (collection != 0) {
+    return collection->_refCount;
+  }
+
+  // return a number > 0 if collection not found so nothing happens with it
+  return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Increment ref count for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+void QLAstQueryAddRefCount (QL_ast_query_t* query, const char* alias) {
+  QL_ast_query_collection_t* collection = (QL_ast_query_collection_t*) 
+    TRI_LookupByKeyAssociativePointer(&query->_from._collections, alias);
+
+  if (collection != 0) {
+    ++collection->_refCount;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Check if a collection was defined in a query
 ////////////////////////////////////////////////////////////////////////////////
 
 bool QLAstQueryIsValidAlias (QL_ast_query_t* query, const char* alias) {
-  return (0 != TRI_LookupByKeyAssociativePointer (&query->_from._collections, alias));
+  return (0 != TRI_LookupByKeyAssociativePointer(&query->_from._collections, alias));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,12 +164,12 @@ bool QLAstQueryIsValidAlias (QL_ast_query_t* query, const char* alias) {
 
 bool QLAstQueryAddCollection (QL_ast_query_t* query, 
                               const char* name, 
-                              const char* alias, 
-                              const bool isPrimary) {
-  QL_ast_query_collection_t *collection;
-  QL_ast_query_collection_t *previous;
+                              const char* alias) { 
+  QL_ast_query_collection_t* collection;
+  QL_ast_query_collection_t* previous;
 
-  previous =  (QL_ast_query_collection_t *) TRI_LookupByKeyAssociativePointer (&query->_from._collections, alias);
+  previous = (QL_ast_query_collection_t*) 
+             TRI_LookupByKeyAssociativePointer (&query->_from._collections, alias);
 
   if (previous != 0) {
     // element is already present - return an error
@@ -151,31 +181,18 @@ bool QLAstQueryAddCollection (QL_ast_query_t* query,
     return false;
   }
 
-  collection->_name      = (char *) name;
-  collection->_alias     = (char *) alias;
-  collection->_isPrimary = isPrimary;
+  collection->_name      = (char*) name;
+  collection->_alias     = (char*) alias;
+  // first collection added is always the primary collection
+  collection->_isPrimary = (&query->_from._collections._nrUsed == 0);
+  collection->_refCount  = 0; // will be used later when optimizing joins
 
-  TRI_InsertKeyAssociativePointer(&query->_from._collections, collection->_alias, collection, true);
+  TRI_InsertKeyAssociativePointer(&query->_from._collections, 
+                                  collection->_alias, 
+                                  collection, 
+                                  true);
 
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the name of the primary collection used in the query
-////////////////////////////////////////////////////////////////////////////////
-
-char* QLAstQueryGetPrimaryName (const QL_ast_query_t* query) {
-  size_t i;
-  QL_ast_query_collection_t *collection;
-
-  for (i = 0; i < query->_from._collections._nrAlloc; i++) {
-    collection = query->_from._collections._table[i];
-    if (collection != 0 && collection->_isPrimary) {
-      return collection->_name;
-    }
-  }
-  
-  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -141,7 +141,7 @@ int QLget_column (void*);
 /// for later garbage collection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLParseInit (QL_parser_context_t*, const char*);
+bool QLParseInit (const TRI_vocbase_t*, QL_parser_context_t*, const char*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free all memory allocated in context of a query
@@ -253,10 +253,29 @@ void QLParseRegisterPostParseError (QL_parser_context_t*, const int32_t,
                                     const int32_t, const QL_error_type_e, ...);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Validate a collection name
+///
+/// Currently, a collection name must consist of the letters A-Z or a-z only
+/// Its length must not exceed QL_QUERY_NAME_LEN chars.
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLParseValidateCollectionName (const char*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Validate a collection alias
+///
+/// Currently, a collection name must consist of the letters A-Z or a-z only
+/// Its length must not exceed QL_QUERY_NAME_LEN chars.
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLParseValidateCollectionAlias (const char*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Validate the query
 ///
-/// Currently only validates if all used collection names are actually declared
-/// in the query's from clause
+/// Currently validates if all used collection names are actually declared in
+/// the query's from clause.
+/// Furthermore validates collection names for syntactic correctness.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool QLParseValidate (QL_parser_context_t*, QL_ast_node_t*);

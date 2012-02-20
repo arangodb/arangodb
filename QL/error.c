@@ -39,22 +39,26 @@
 /// @brief get label/translation for an error code
 ////////////////////////////////////////////////////////////////////////////////
 
-char *QLErrorGetLabel (const QL_error_type_e errorCode) {
+char* QLErrorGetLabel (const QL_error_type_e errorCode) {
   switch (errorCode) {
     case ERR_PARSE:
       return "parse error: %s";
+    case ERR_OOM:
+      return "out of memory";
     case ERR_NUMBER_OUT_OF_RANGE:
       return "number '%s' is out of range";
-    case ERR_LIMIT_VALUE_OUT_OF_RANGE:
-      return "limit value '%s' is out of range";
     case ERR_PARAMETER_NUMBER_OUT_OF_RANGE:
       return "parameter number '%s' is out of range";
+    case ERR_LIMIT_VALUE_OUT_OF_RANGE:
+      return "limit value '%s' is out of range";
     case ERR_COLLECTION_NAME_INVALID:
-      return "collection name '%s' or alias is invalid";
-    case ERR_COLLECTION_NAME_REDECLARED:
-      return "collection alias '%s' is declared multiple times";
-    case ERR_COLLECTION_NAME_UNDECLARED:
-      return "collection alias '%s' was not declared in the from clause";
+      return "collection name '%s' is invalid";
+    case ERR_COLLECTION_ALIAS_INVALID:
+      return "collection alias '%s' is invalid";
+    case ERR_COLLECTION_ALIAS_REDECLARED:
+      return "collection alias '%s' is declared multiple times in the same query";
+    case ERR_COLLECTION_ALIAS_UNDECLARED:
+      return "collection alias '%s' is used but was not declared in the from clause";
     default:     
       return "unknown error";
   }
@@ -65,7 +69,7 @@ char *QLErrorGetLabel (const QL_error_type_e errorCode) {
 /// @brief create a formatted error message with wildcards replaced
 ////////////////////////////////////////////////////////////////////////////////
 
-char *QLErrorFormat(const QL_error_type_e errorCode, va_list args) {
+char* QLErrorFormat(const QL_error_type_e errorCode, va_list args) {
   char buffer[1024];
   char *format;
 

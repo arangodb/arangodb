@@ -262,6 +262,9 @@ static void ScanPath (TRI_vocbase_t* vocbase, char const* path) {
     }
 
     file = TRI_Concatenate2File(path, name);
+    if (!file) {
+      continue;
+    }
 
     if (TRI_IsDirectory(file)) {
       TRI_col_info_t info;
@@ -280,7 +283,7 @@ static void ScanPath (TRI_vocbase_t* vocbase, char const* path) {
           LOG_DEBUG("added simple document collection from '%s'", file);
         }
         else {
-          LOG_DEBUG("skiping collection of unknown type %d", (int) type);
+          LOG_DEBUG("skipping collection of unknown type %d", (int) type);
         }
       }
     }
@@ -290,6 +293,8 @@ static void ScanPath (TRI_vocbase_t* vocbase, char const* path) {
 
     TRI_FreeString(file);
   }
+
+  TRI_DestroyVectorString(&files);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -414,7 +419,17 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
 
   // setup vocbase structure
   vocbase = TRI_Allocate(sizeof(TRI_vocbase_t));
+  if (!vocbase) {
+    LOG_ERROR("out of memory when opening vocbase");
+    return NULL;
+  }
+
   vocbase->_path = TRI_DuplicateString(path);
+  if (!vocbase->_path) {
+    TRI_Free(vocbase);
+    LOG_ERROR("out of memory when opening vocbase");
+    return NULL;
+  }
 
   TRI_InitReadWriteLock(&vocbase->_lock);
 

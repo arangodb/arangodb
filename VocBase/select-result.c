@@ -218,7 +218,7 @@ static bool IncreaseIndexStorageSelectResult (TRI_select_result_t* result,
 
   assert(newSize > result->_index._numAllocated);
 
-  start = realloc(result->_index._start, newSize * sizeof(TRI_sr_index_t));
+  start = TRI_Reallocate(result->_index._start, newSize * sizeof(TRI_sr_index_t));
   if (!start) {
     return false;
   }
@@ -254,7 +254,7 @@ static bool IncreaseDocumentsStorageSelectResult (TRI_select_result_t* result,
 
   assert(newSize > result->_documents._bytesAllocated);
 
-  start = (TRI_sr_documents_t*) realloc(result->_documents._start, newSize);
+  start = (TRI_sr_documents_t*) TRI_Reallocate(result->_documents._start, newSize);
   if (!start) {
     return false;
   }
@@ -368,7 +368,13 @@ bool TRI_AddJoinSelectResult (TRI_select_result_t* result, TRI_select_join_t* jo
       *numPtr++ = 1;
       docPtr = (TRI_sr_documents_t*) numPtr;
       document = (TRI_doc_mptr_t*) part->_singleDocument;
-      *docPtr++ = (TRI_sr_documents_t) document->_data;
+      if (document) {
+        // document is null
+        *docPtr++ = (TRI_sr_documents_t) document->_data;
+      } 
+      else {
+        *docPtr++ = 0;
+      }
     }
     numPtr = (TRI_select_size_t*) docPtr;
   }
