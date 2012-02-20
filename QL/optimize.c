@@ -209,6 +209,46 @@ double QLOptimizeGetDouble (const QL_ast_node_t const* node) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a document declaration is static or dynamic
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLOptimizeIsStaticDocument (QL_ast_node_t* node) {
+  bool result;
+
+  if (node->_next) {
+    while (node->_next) {
+      result = QLOptimizeIsStaticDocument(node->_next);
+      if (!result) {
+        return false;
+      }
+      node = node->_next;
+    }
+    return true;
+  }
+
+  if (node->_lhs) {
+    result = QLOptimizeIsStaticDocument(node->_lhs);
+    if (!result) {
+      return false;
+    }
+  }
+  if (node->_rhs) {
+    result = QLOptimizeIsStaticDocument(node->_rhs);
+    if (!result) {
+      return false;
+    }
+  }
+  if (node->_type == QLNodeReferenceCollectionAlias ||
+      node->_type == QLNodeControlFunctionCall ||
+      node->_type == QLNodeControlTernary ||
+      node->_type == QLNodeContainerMemberAccess) {
+    return false;
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a node to a null value node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -870,6 +910,10 @@ void QLOptimizeFreeRangeVector (TRI_vector_pointer_t* vector) {
     if (range->_field) {
       TRI_Free(range->_field);
     }
+    
+    if (range->_refValue._field) {
+      TRI_FreeString(range->_refValue._field);
+    }
     TRI_Free(range);
   }
 
@@ -922,9 +966,20 @@ static TRI_vector_pointer_t* QLOptimizeCombineRanges (const QL_ast_node_type_e t
       }
     }
 
+
     previous = QLOptimizeGetRangeByHash(range->_hash, vector);
+    if (type == QLNodeBinaryOperatorOr) {
+      // only use logical || operator for same field. if field name differs, an ||
+      // effectively kills all ranges
+      if (vector->_length >0 && !previous) { 
+        QLOptimizeFreeRangeVector(vector);
+        TRI_InitVectorPointer(vector);
+        goto EXIT;
+      }
+    }
+
     if (!previous) {
-      // push range on stack
+      // push range into result vector
       TRI_PushBackVectorPointer(vector, range);
 
       // remove range from original vector to avoid double freeing
@@ -1298,6 +1353,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (QL_ast_node_t* memberNode,
   QL_optimize_range_t* range;
   TRI_string_buffer_t* name;
   QL_ast_node_t* lhs;
+  QL_javascript_conversion_t* documentJs;
 
   // get the field name 
   name = QLOptimizeGetMemberNameString(memberNode, false);
@@ -1313,6 +1369,9 @@ static QL_optimize_range_t* QLOptimizeCreateRange (QL_ast_node_t* memberNode,
     return NULL;
   }
 
+  range->_refValue._field = NULL;
+  range->_refValue._collection = NULL;
+
   // get value
   if (valueNode->_type == QLNodeValueNumberDouble || 
       valueNode->_type == QLNodeValueNumberDoubleString) {
@@ -1322,7 +1381,13 @@ static QL_optimize_range_t* QLOptimizeCreateRange (QL_ast_node_t* memberNode,
   else if (valueNode->_type == QLNodeValueString) {
     // range is of type string
     range->_valueType = RANGE_TYPE_STRING;
-  } 
+  }
+  else if (valueNode->_type == QLNodeValueDocument) {
+    range->_valueType = RANGE_TYPE_JSON;
+  }
+  else if (valueNode->_type == QLNodeContainerMemberAccess) {
+    range->_valueType = RANGE_TYPE_FIELD;
+  }
   else {
     assert(false);
   }
@@ -1340,13 +1405,36 @@ static QL_optimize_range_t* QLOptimizeCreateRange (QL_ast_node_t* memberNode,
   if (type == QLNodeBinaryOperatorIdentical || 
       type == QLNodeBinaryOperatorEqual) {
     // === and == ,  range is [ value (inc) ... value (inc) ]
-    if (range->_valueType == RANGE_TYPE_DOUBLE) {
+    if (range->_valueType == RANGE_TYPE_FIELD) {
+      range->_refValue._collection = 
+        ((QL_ast_node_t*) valueNode->_lhs)->_value._stringValue;
+      name = QLOptimizeGetMemberNameString(valueNode, false);
+      if (name) {
+        range->_refValue._field = TRI_DuplicateString(name->_buffer);
+        TRI_FreeStringBuffer(name);
+        TRI_Free(name);
+      }
+    }
+    else if (range->_valueType == RANGE_TYPE_DOUBLE) {
       range->_minValue._doubleValue = QLOptimizeGetDouble(valueNode);
       range->_maxValue._doubleValue = range->_minValue._doubleValue;
     }
-    else if (range->_valueType == RANGE_TYPE_STRING) {
+    else if (range->_valueType == RANGE_TYPE_STRING) { 
       range->_minValue._stringValue = valueNode->_value._stringValue;
       range->_maxValue._stringValue = range->_minValue._stringValue;
+    }
+    else if (range->_valueType == RANGE_TYPE_JSON) {
+      documentJs = QLJavascripterInit();
+      if (!documentJs) {
+        TRI_FreeStringBuffer(name);
+        TRI_Free(name);
+        TRI_Free(range);
+        return NULL;
+      }
+      QLJavascripterConvert(documentJs, valueNode);
+      range->_minValue._stringValue = documentJs->_buffer->_buffer;
+      range->_maxValue._stringValue = range->_minValue._stringValue;
+      QLJavascripterFree(documentJs);
     }
     range->_minStatus = RANGE_VALUE_INCLUDED;
     range->_maxStatus = RANGE_VALUE_INCLUDED;
@@ -1449,19 +1537,43 @@ TRI_vector_pointer_t* QLOptimizeCondition (QL_ast_node_t* node) {
            type == QLNodeBinaryOperatorLessEqual ||
            type == QLNodeBinaryOperatorGreaterEqual) {
     // comparison operator 
-
     if (lhs->_type == QLNodeContainerMemberAccess && 
+        rhs->_type == QLNodeContainerMemberAccess) {
+      // collection.attribute relop collection.attribute
+      return QLOptimizeMergeRangeVectors(
+        QLOptimizeCreateRangeVector(QLOptimizeCreateRange(lhs, rhs, type)),
+        QLOptimizeCreateRangeVector(QLOptimizeCreateRange(rhs, lhs, type))
+      );
+    }
+    else if (lhs->_type == QLNodeContainerMemberAccess &&
+        (type == QLNodeBinaryOperatorIdentical || 
+         type == QLNodeBinaryOperatorEqual) &&
+        rhs->_type == QLNodeValueDocument && 
+        QLOptimizeIsStaticDocument(rhs)) {
+      // collection.attribute == document
+      return QLOptimizeCreateRangeVector(QLOptimizeCreateRange(lhs, rhs, type));
+    }
+    else if (lhs->_type == QLNodeContainerMemberAccess && 
         (rhs->_type == QLNodeValueNumberDouble || 
          rhs->_type == QLNodeValueNumberDoubleString || 
          rhs->_type == QLNodeValueString)) {
-      // collection.attrbiute relop value
+      // collection.attribute relop value
       return QLOptimizeCreateRangeVector(QLOptimizeCreateRange(lhs, rhs, type));
+    }
+    else if (rhs->_type == QLNodeContainerMemberAccess &&
+             (type == QLNodeBinaryOperatorIdentical ||
+              type == QLNodeBinaryOperatorEqual) &&
+             lhs->_type == QLNodeValueDocument &&
+             QLOptimizeIsStaticDocument(lhs)) {
+      // document == collection.attribute
+      return QLOptimizeCreateRangeVector(QLOptimizeCreateRange(rhs, lhs, type));
     } else if (rhs->_type == QLNodeContainerMemberAccess && 
                (lhs->_type == QLNodeValueNumberDouble || 
                 lhs->_type == QLNodeValueNumberDoubleString || 
-                lhs->_type == QLNodeValueString)) {
+                lhs->_type == QLNodeValueString)) { 
       // value relop collection.attrbiute 
-      return QLOptimizeCreateRangeVector(QLOptimizeCreateRange(rhs, lhs, type));
+      return QLOptimizeCreateRangeVector(
+        QLOptimizeCreateRange(rhs, lhs, QLAstNodeGetReversedRelationalOperator(type)));
     }
   }
 
@@ -1555,22 +1667,25 @@ void QLOptimizeDetermineIndexes (QL_ast_query_t* query) {
   TRI_index_definition_t* indexDefinition;
   QL_ast_node_t* node;
   char* collectionName;
+  char* alias;
   size_t i, j, k, matches;
   size_t count = 0;
 
 return;
   node = (QL_ast_node_t*) query->_from._base->_next;
-
   assert(node != 0);
-
+  
+  // enum all collections used in query
   while (node != 0) {
     ranges = 0;
     if (count++ == 0) {
       collectionName = ((QL_ast_node_t*) node->_lhs)->_value._stringValue;
+      alias = ((QL_ast_node_t*) node->_rhs)->_value._stringValue;
       ranges = QLOptimizeCondition(query->_where._base);
     }
     else {
       collectionName = ((QL_ast_node_t*) ((QL_ast_node_t*) node->_lhs)->_lhs)->_value._stringValue;
+      alias = ((QL_ast_node_t*) ((QL_ast_node_t*) node->_lhs)->_rhs)->_value._stringValue;
     }
 
     // accessType = TABLE_SCAN;
@@ -1578,6 +1693,7 @@ return;
     if (ranges) {
       indexDefinitions = TRI_GetCollectionIndexes(query->_vocbase, collectionName);
 
+      // enum all indexes
       for (i = 0; i < indexDefinitions._length; i++) {
         indexDefinition = (TRI_index_definition_t*) indexDefinitions._buffer[i];
 
@@ -1585,8 +1701,8 @@ return;
         for (j = 0 ; j < indexDefinition->_fields._length; j++) {
           for (k = 0; k < ranges->_length; k++) {
             range = (QL_optimize_range_t*) ranges->_buffer[k];
-            // check if collection is the same
-            if (strcmp(range->_collection, collectionName) != 0) {
+            // check if collection name matches
+            if (strcmp(range->_collection, alias) != 0) {
               continue;
             }
 
@@ -1606,7 +1722,8 @@ return;
                   range->_minValue._doubleValue != range->_maxValue._doubleValue) {
                 continue; 
               }
-              if (range->_valueType == RANGE_TYPE_STRING && 
+              if ((range->_valueType == RANGE_TYPE_STRING || 
+                   range->_valueType == RANGE_TYPE_JSON) && 
                   strcmp(range->_minValue._stringValue, range->_maxValue._stringValue) != 0) {
                 continue; 
               }

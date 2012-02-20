@@ -209,6 +209,32 @@ QL_ast_node_type_group_e QLAstNodeGetTypeGroup (const QL_ast_node_type_e type) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the reverse of a relational operator
+////////////////////////////////////////////////////////////////////////////////
+
+QL_ast_node_type_e QLAstNodeGetReversedRelationalOperator (const QL_ast_node_type_e type) {
+  if (type == QLNodeBinaryOperatorIdentical || 
+      type == QLNodeBinaryOperatorEqual ||
+      type == QLNodeBinaryOperatorUnidentical ||
+      type == QLNodeBinaryOperatorUnequal) {
+    return type;
+  }
+  if (type == QLNodeBinaryOperatorLess) {
+    return QLNodeBinaryOperatorGreaterEqual;
+  }
+  if (type == QLNodeBinaryOperatorLessEqual) {
+    return QLNodeBinaryOperatorGreater;
+  }
+  if (type == QLNodeBinaryOperatorGreater) {
+    return QLNodeBinaryOperatorLessEqual;
+  }
+  if (type == QLNodeBinaryOperatorGreaterEqual) {
+    return QLNodeBinaryOperatorLess;
+  }
+  assert(false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the label string for a unary operator
 ////////////////////////////////////////////////////////////////////////////////
 
