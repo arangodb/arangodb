@@ -408,7 +408,6 @@ void AvocadoServer::buildApplicationServer () {
 
       if (! ok) {
         LOGGER_FATAL << "cannot create action directory '" << pathString << "': " << TRI_last_error();
-        cerr << "cannot create action directory '" << pathString << "': " << TRI_last_error() << "\n";
         LOGGER_INFO << "please use the '--database.directory' option";
         exit(EXIT_FAILURE);
       }
