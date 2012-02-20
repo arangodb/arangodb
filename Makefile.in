@@ -5309,7 +5309,9 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
 @ENABLE_BISON_TRUE@JsonParserX/%.cpp: @srcdir@/JsonParserX/%.yy
 @ENABLE_BISON_TRUE@	@top_srcdir@/config/bison-c++.sh $(BISON) $@ $<
 
-@ENABLE_ALL_IN_ONE_TRUE@@LIBEV_LIBS@:
+@ENABLE_ALL_IN_ONE_TRUE@@LIBEV_LIBS@: .libev-build
+
+@ENABLE_ALL_IN_ONE_TRUE@.libev-build:
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "BUILDING LIBEV"
@@ -5319,6 +5321,8 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
 @ENABLE_ALL_IN_ONE_TRUE@	mkdir @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) || true
 @ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) && CFLAGS="$(LIBEV_CFLAGS_32)" orig_CFLAGS="$(LIBEV_CFLAGS_32)" LDFLAGS="$(LIBEV_LDFLAGS_32)" ../configure --disable-shared
 @ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) && make
+
+@ENABLE_ALL_IN_ONE_TRUE@	touch .libev-build
 
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
