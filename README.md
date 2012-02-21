@@ -16,9 +16,11 @@ effort to operate for the administrator.
 
 ### Mac OS X Hints
 
-If you install AvocadoDB on Mac OS X we collected some hints for you:
+On Mac OS X you can install AvocadoDB using the packagemanager [Homebrew](http://mxcl.github.com/homebrew/). We are currently waiting for approval of our package, therefore you need to use this:
 
-* The version of bison delivered with OS X is out of date. Update it before installing.
+* `brew install https://raw.github.com/tisba/homebrew/master/Library/Formula/avocadodb.rb`
+
+This will install AvocadoDB and all dependencies. 
 
 ## First Steps
 
