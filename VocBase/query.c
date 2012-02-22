@@ -1142,7 +1142,6 @@ static void FilterDataHashQuery(collection_cursor_t* cursor,TRI_query_t* query,
   TRI_doc_mptr_t* wtr; 
   TRI_doc_mptr_t* doc;
   
-  
   cursor->base._context = context;
   cursor->base._select  = query->_select->clone(query->_select);
    
@@ -1192,15 +1191,13 @@ static void FilterDataHashQuery(collection_cursor_t* cursor,TRI_query_t* query,
     
     for (size_t j = 0; j < hashElements->_numElements; ++j) {
       // should not be necessary to check that documents have not been deleted    
-      doc = (TRI_doc_mptr_t*)((hashElements->_elements[j])->data);
+      doc = (TRI_doc_mptr_t*)((hashElements->_elements[j]).data);
       if (doc->_deletion) {
         continue;
       }
-      
       if (cursor->_current == 0) {
         cursor->_current = wtr;
       }
-      
       ++cursor->base._matchedDocuments;
       ++cursor->_length;
       *wtr = *doc;
@@ -1290,7 +1287,7 @@ TRI_rc_cursor_t* TRI_ExecuteQueryAql (TRI_query_t* query, TRI_rc_context_t* cont
   }
 
   // create a select result container for the joins
-  selectResult = TRI_JoinSelectResult(query->_joins);
+  selectResult = TRI_JoinSelectResult(query->_vocbase, query->_joins);
   if (!selectResult) {
     return NULL;
   }

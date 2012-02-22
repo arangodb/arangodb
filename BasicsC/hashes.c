@@ -95,6 +95,27 @@ uint64_t TRI_FnvHashString (char const* buffer) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief computes a FNV hash for strings with a length
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t TRI_FnvHashBlock (uint64_t hash, char const* buffer, size_t length) {
+  uint64_t nMagicPrime;
+  size_t   j;
+
+  nMagicPrime = 0x00000100000001b3ULL;
+
+  for (j = 0; j < length; ++j) {
+    hash ^= buffer[j];
+    hash *= nMagicPrime;
+  }
+  return hash;
+}
+
+uint64_t TRI_FnvHashBlockInitial (void) {
+  return (0xcbf29ce484222325ULL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

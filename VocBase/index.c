@@ -31,6 +31,7 @@
 #include <BasicsC/files.h>
 #include <BasicsC/json.h>
 #include <BasicsC/logging.h>
+#include <BasicsC/string-buffer.h>
 #include <BasicsC/strings.h>
 #include <VocBase/simple-collection.h>
 
@@ -170,6 +171,7 @@ TRI_vector_pointer_t TRI_GetCollectionIndexes(const TRI_vocbase_t* vocbase,
   char* temp3;
   TRI_idx_iid_t indexId;
   TRI_idx_type_e indexType;
+  bool indexUnique;
   uint32_t numFields;
   size_t i;
   uint32_t j;
@@ -181,11 +183,11 @@ TRI_vector_pointer_t TRI_GetCollectionIndexes(const TRI_vocbase_t* vocbase,
   indexDefinition = (TRI_index_definition_t*) TRI_Allocate(sizeof(TRI_index_definition_t));
   if (indexDefinition) {
     TRI_InitVectorString(&indexDefinition->_fields);
-    indexDefinition->_iid      = 1; // what to do with this id?
+    indexDefinition->_iid      = 0; // note: this id is ignored
     indexDefinition->_type     = TRI_IDX_TYPE_PRIMARY_INDEX;
-    indexDefinition->_isUnique = true; 
+    indexDefinition->_isUnique = true; // primary index is always unique
 
-    TRI_PushBackVectorString(&indexDefinition->_fields, "_id");
+    TRI_PushBackVectorString(&indexDefinition->_fields, "_id"); // name of field
     TRI_PushBackVectorPointer(&indexes, indexDefinition);
   }
 
@@ -217,6 +219,15 @@ TRI_vector_pointer_t TRI_GetCollectionIndexes(const TRI_vocbase_t* vocbase,
     indexId = (uint64_t) numVal->_value._number;
     if (indexId == 0) {
       goto NEXT_INDEX;
+    }
+
+    // read uniqueness information
+    strVal = TRI_LookupArrayJson(json, "unique");
+    if (!strVal || strVal->_type != TRI_JSON_BOOLEAN) {
+      indexUnique = false; // default is non-unique index
+    }
+    else {
+      indexUnique = strVal->_value._boolean;
     }
 
     // read index type
@@ -251,7 +262,7 @@ TRI_vector_pointer_t TRI_GetCollectionIndexes(const TRI_vocbase_t* vocbase,
       TRI_InitVectorString(&indexDefinition->_fields);
       indexDefinition->_iid      = indexId;
       indexDefinition->_type     = indexType;
-      indexDefinition->_isUnique = false; // currently hard-coded
+      indexDefinition->_isUnique = indexUnique;
 
       // read field names 
       for (j = 0; j < numFields ; j++) {
@@ -412,14 +423,14 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
   // in-homogenous list
   if (acc->_shape->_type == TRI_SHAPE_LIST) {
     ok = TRI_ExecuteShapeAccessor(acc, document, &list);
-    len = TRI_LengthListShapedJson((TRI_list_shape_t*) acc->_shape, &list);
+    len = TRI_LengthListShapedJson((const TRI_list_shape_t*) acc->_shape, &list);
 
     if (len < 2) {
       return false;
     }
 
     // latitude
-    ok = TRI_AtListShapedJson((TRI_list_shape_t*) acc->_shape, &list, 0, &entry);
+    ok = TRI_AtListShapedJson((const TRI_list_shape_t*) acc->_shape, &list, 0, &entry);
 
     if (! ok || entry._sid != shaper->_sidNumber) {
       return false;
@@ -428,7 +439,7 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
     *latitude = * (double*) entry._data.data;
 
     // longitude
-    ok = TRI_AtListShapedJson((TRI_list_shape_t*) acc->_shape, &list, 1, &entry);
+    ok = TRI_AtListShapedJson((const TRI_list_shape_t*) acc->_shape, &list, 1, &entry);
 
     if (!ok || entry._sid != shaper->_sidNumber) {
       return false;
@@ -441,9 +452,9 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
 
   // homogenous list
   else if (acc->_shape->_type == TRI_SHAPE_HOMOGENEOUS_LIST) {
-    TRI_homogeneous_list_shape_t* hom;
+    const TRI_homogeneous_list_shape_t* hom;
 
-    hom = (TRI_homogeneous_list_shape_t*) acc->_shape;
+    hom = (const TRI_homogeneous_list_shape_t*) acc->_shape;
 
     if (hom->_sidEntry != shaper->_sidNumber) {
       return false;
@@ -455,14 +466,14 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
       return false;
     }
 
-    len = TRI_LengthHomogeneousListShapedJson((TRI_homogeneous_list_shape_t*) acc->_shape, &list);
+    len = TRI_LengthHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*) acc->_shape, &list);
 
     if (len < 2) {
       return false;
     }
 
     // latitude
-    ok = TRI_AtHomogeneousListShapedJson((TRI_homogeneous_list_shape_t*) acc->_shape, &list, 0, &entry);
+    ok = TRI_AtHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*) acc->_shape, &list, 0, &entry);
 
     if (! ok) {
       return false;
@@ -471,7 +482,7 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
     *latitude = * (double*) entry._data.data;
 
     // longitude
-    ok = TRI_AtHomogeneousListShapedJson((TRI_homogeneous_list_shape_t*) acc->_shape, &list, 1, &entry);
+    ok = TRI_AtHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*) acc->_shape, &list, 1, &entry);
 
     if (! ok) {
       return false;
@@ -484,9 +495,9 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
 
   // homogeneous list
   else if (acc->_shape->_type == TRI_SHAPE_HOMOGENEOUS_SIZED_LIST) {
-    TRI_homogeneous_sized_list_shape_t* hom;
+    const TRI_homogeneous_sized_list_shape_t* hom;
 
-    hom = (TRI_homogeneous_sized_list_shape_t*) acc->_shape;
+    hom = (const TRI_homogeneous_sized_list_shape_t*) acc->_shape;
 
     if (hom->_sidEntry != shaper->_sidNumber) {
       return false;
@@ -498,14 +509,14 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
       return false;
     }
 
-    len = TRI_LengthHomogeneousSizedListShapedJson((TRI_homogeneous_sized_list_shape_t*) acc->_shape, &list);
+    len = TRI_LengthHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*) acc->_shape, &list);
 
     if (len < 2) {
       return false;
     }
 
     // latitude
-    ok = TRI_AtHomogeneousSizedListShapedJson((TRI_homogeneous_sized_list_shape_t*) acc->_shape, &list, 0, &entry);
+    ok = TRI_AtHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*) acc->_shape, &list, 0, &entry);
 
     if (! ok) {
       return false;
@@ -514,7 +525,7 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
     *latitude = * (double*) entry._data.data;
 
     // longitude
-    ok = TRI_AtHomogeneousSizedListShapedJson((TRI_homogeneous_sized_list_shape_t*) acc->_shape, &list, 1, &entry);
+    ok = TRI_AtHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*) acc->_shape, &list, 1, &entry);
 
     if (! ok) {
       return false;
@@ -947,32 +958,46 @@ GeoCoordinates* TRI_NearestGeoIndex (TRI_index_t* idx,
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief attempts to locate an entry in the hash index
 ////////////////////////////////////////////////////////////////////////////////
 
+// .............................................................................
+// Warning: who ever calls this function is responsible for destroying
+// HashIndexElements* results
+// .............................................................................
 HashIndexElements* TRI_LookupHashIndex(TRI_index_t* idx, TRI_json_t* parameterList) {
   TRI_hash_index_t* hashIndex;
   HashIndexElements* result;
   HashIndexElement  element;
+  TRI_shaper_t*     shaper;
+  
   
   element.numFields = parameterList->_value._objects._length;
   element.fields    = TRI_Allocate( sizeof(TRI_json_t) * element.numFields);
   if (element.fields == NULL) {
-    LOG_WARNING("out-of-memory in InsertHashIndex");
+    LOG_WARNING("out-of-memory in LookupHashIndex");
     return false;
   }  
     
+  hashIndex = (TRI_hash_index_t*) idx;
+  shaper = hashIndex->base._collection->_shaper;
     
   for (size_t j = 0; j < element.numFields; ++j) {
-    TRI_json_t* object = (TRI_json_t*) (TRI_AtVector(&(parameterList->_value._objects),j));
-    element.fields[j] = *object;
+    TRI_json_t*        jsonObject   = (TRI_json_t*) (TRI_AtVector(&(parameterList->_value._objects),j));
+    TRI_shaped_json_t* shapedObject = TRI_ShapedJsonJson(shaper,jsonObject);
+    element.fields[j] = *shapedObject;
   }
   
+  if (hashIndex->_unique) {
+    result = HashIndex_find(hashIndex->_hashIndex, &element);
+  }
+  else {
+    result = MultiHashIndex_find(hashIndex->_hashIndex, &element);
+    for (int j = 0; j < result->_numElements; ++j) {  
+    }  
+  }
   
-  hashIndex = (TRI_hash_index_t*) idx;
-  result = HashIndex_find(hashIndex->_hashIndex, &element);
   TRI_Free(element.fields);
   
   return result;  
@@ -980,18 +1005,140 @@ HashIndexElements* TRI_LookupHashIndex(TRI_index_t* idx, TRI_json_t* parameterLi
 
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief helper for hashing
+////////////////////////////////////////////////////////////////////////////////
+
+static bool HashIndexHelper(const TRI_hash_index_t* hashIndex, 
+                            HashIndexElement* hashElement,
+                            const TRI_doc_mptr_t* document,
+                            const TRI_shaped_json_t* shapedDoc) {
+  union { void* p; void const* c; } cnv;
+  TRI_shaped_json_t shapedObject;
+  TRI_shape_access_t* acc;
+
+  
+  if (shapedDoc != NULL) {
+  
+    // ..........................................................................
+    // Attempting to locate a hash entry using TRI_shaped_json_t object. Use this
+    // when we wish to remove a hash entry and we only have the "keys" rather than
+    // having the document (from which the keys would follow).
+    // ..........................................................................
+    
+    hashElement->data = NULL;
+    
+ 
+    for (size_t j = 0; j < hashIndex->_shapeList->_length; ++j) {
+      
+      TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(hashIndex->_shapeList,j)));
+      
+      // ..........................................................................
+      // Determine if document has that particular shape 
+      // ..........................................................................
+      acc = TRI_ShapeAccessor(hashIndex->base._collection->_shaper, shapedDoc->_sid, shape);
+      if (acc == NULL || acc->_shape == NULL) {
+        TRI_Free(hashElement->fields);
+        return false;
+      }  
+      
+      
+      // ..........................................................................
+      // Extract the field
+      // ..........................................................................    
+      if (! TRI_ExecuteShapeAccessor(acc, shapedDoc, &shapedObject)) {
+        TRI_Free(acc);
+        TRI_Free(hashElement->fields);
+        return false;
+      }
+      
+      
+      // ..........................................................................
+      // Store the json shaped Object -- this is what will be hashed
+      // ..........................................................................    
+      hashElement->fields[j] = shapedObject;
+      TRI_Free(acc);
+    }  // end of for loop
+      
+  }
+  
+  
+  
+  else if (document != NULL) {
+  
+    // ..........................................................................
+    // Assign the document to the HashIndexElement structure - so that it can later
+    // be retreived.
+    // ..........................................................................
+    cnv.c = document;
+    hashElement->data = cnv.p;
+ 
+    
+    for (size_t j = 0; j < hashIndex->_shapeList->_length; ++j) {
+      
+      TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(hashIndex->_shapeList,j)));
+      
+      // ..........................................................................
+      // Determine if document has that particular shape 
+      // ..........................................................................
+      acc = TRI_ShapeAccessor(hashIndex->base._collection->_shaper, document->_document._sid, shape);
+      if (acc == NULL || acc->_shape == NULL) {
+        TRI_Free(hashElement->fields);
+        return false;
+      }  
+      
+      
+      // ..........................................................................
+      // Extract the field
+      // ..........................................................................    
+      if (! TRI_ExecuteShapeAccessor(acc, &(document->_document), &shapedObject)) {
+        TRI_Free(acc);
+        TRI_Free(hashElement->fields);
+        return false;
+      }
+      
+
+      /* start oreste: 
+      TRI_json_t* object;
+      TRI_string_buffer_t buffer;
+      TRI_InitStringBuffer(&buffer);
+      object = TRI_JsonShapedJson(hashIndex->base._collection->_shaper, &shapedObject);
+      TRI_Stringify2Json(&buffer,object);
+      printf("%s:%u:%s\n",__FILE__,__LINE__,buffer._buffer);
+      printf("%s:%u:%f:\n",__FILE__,__LINE__,*((double*)(shapedObject._data.data)));
+      TRI_DestroyStringBuffer(&buffer);
+      TRI_Free(object);
+      object = NULL;                      
+       end oreste */
+      
+      // ..........................................................................
+      // Store the field
+      // ..........................................................................    
+      hashElement->fields[j] = shapedObject;
+      TRI_Free(acc);
+    }  // end of for loop
+  }
+  
+  else {
+    return false;
+  }
+  
+  return true;
+  
+} // end of static function HashIndexHelper
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief hash indexes a document
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool InsertHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
-  union { void* p; void const* c; } cnv;
-  HashIndexElement* hashElement;
-  TRI_shaper_t* shaper;
+
+  HashIndexElement hashElement;
   TRI_hash_index_t* hashIndex;
   int res;
-  TRI_shape_sid_t sid;
-  TRI_shape_access_t* acc;
-  
+  bool ok;
 
   // ............................................................................
   // Obtain the hash index structure
@@ -1002,84 +1149,41 @@ static bool InsertHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
     return false;
   }
   
+
   // ............................................................................
-  // Prepare document so that it can be stored as part of the hash index
+  // Allocate storage to shaped json objects stored as a simple list.
+  // These will be used for hashing.
   // ............................................................................
-  hashElement = (HashIndexElement*)(TRI_Allocate( sizeof(HashIndexElement) ));
-  if (hashElement == NULL) {
+    
+  hashElement.numFields = hashIndex->_shapeList->_length;
+  hashElement.fields    = TRI_Allocate( sizeof(TRI_shaped_json_t) * hashElement.numFields);
+  if (hashElement.fields == NULL) {
     LOG_WARNING("out-of-memory in InsertHashIndex");
     return false;
   }  
-  cnv.c = doc;
-  hashElement->data = cnv.p;
-
-
-  // ............................................................................
-  // Obtain the shaper structure for the collection
-  // ............................................................................
-  shaper = hashIndex->base._collection->_shaper;
-  
-  
-  // ............................................................................
-  // For each attribute obtain the data blob which forms part of the index
-  // ............................................................................
-  sid = doc->_document._sid;
-  hashElement->numFields = hashIndex->_shapeList->_length;
-  hashElement->fields    = TRI_Allocate( sizeof(TRI_json_t) * hashElement->numFields);
-  
-  if (hashElement->fields == NULL) {
-    LOG_WARNING("out-of-memory in InsertHashIndex");
+  ok = HashIndexHelper(hashIndex, &hashElement, doc, NULL);
+    
+  if (!ok) {
     return false;
-  }  
-    
-    
-  for (size_t j = 0; j < hashIndex->_shapeList->_length; ++j) {
-    TRI_json_t* object;
-    TRI_shaped_json_t shapedObject;
-    
-    TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(hashIndex->_shapeList,j)));
-    
-    // ..........................................................................
-    // Determine if document has that particular shape 
-    // ..........................................................................
-    acc = TRI_ShapeAccessor(shaper, sid, shape);
-    if (acc == NULL || acc->_shape == NULL) {
-      TRI_Free(hashElement->fields);
-      return false;
-    }  
-    
-    
-    // ..........................................................................
-    // Extract the field
-    // ..........................................................................    
-    if (! TRI_ExecuteShapeAccessor(acc, &(doc->_document), &shapedObject)) {
-      TRI_Free(hashElement->fields);
-      return false;
-    }
-    // ..........................................................................
-    // Store the field
-    // ..........................................................................    
-    else {
-      object = TRI_JsonShapedJson(shaper, &shapedObject);
-      hashElement->fields[j] = *object;
-      TRI_Free(object);
-      object = NULL;
-    }
-
-    /* oreste remove debug stuff     
-    if (hashElement->fields[j]._type == TRI_JSON_NUMBER) {
-      printf("%s:%u:number=%f\n",__FILE__,__LINE__,hashElement->fields[j]._value._number);  
-    }
-    else if (hashElement->fields[j]._type == TRI_JSON_STRING) {
-      printf("%s:%u:string length=%u:%s\n",__FILE__,__LINE__,hashElement->fields[j]._value._string.length,hashElement->fields[j]._value._string.data);  
-    }
-    else if (false) {
-    }
-    */
+  }    
+  
+  
+  // ............................................................................
+  // Fill the json field list from the document for unique hash index
+  // ............................................................................
+  
+  if (hashIndex->_unique) {
+    res = HashIndex_insert(hashIndex->_hashIndex, &hashElement);
   }
-
-
-  res = HashIndex_insert(hashIndex->_hashIndex, hashElement);
+  
+  // ............................................................................
+  // Fill the json field list from the document for non-unique hash index
+  // ............................................................................
+  
+  else {
+    res = MultiHashIndex_insert(hashIndex->_hashIndex, &hashElement);
+  }
+  
 
   if (res == -1) {
     LOG_WARNING("found duplicate entry in hash-index, should not happen");
@@ -1156,6 +1260,7 @@ static TRI_json_t* JsonHashIndex (TRI_index_t* idx, TRI_doc_collection_t* collec
   }
 
   TRI_Insert2ArrayJson(json, "iid", TRI_CreateNumberJson(idx->_iid));
+  TRI_Insert2ArrayJson(json, "unique", TRI_CreateBooleanJson(hashIndex->_unique));
   TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("hash"));
   TRI_Insert2ArrayJson(json, "field_count", TRI_CreateNumberJson(hashIndex->_shapeList->_length));
   for (size_t j = 0; j < hashIndex->_shapeList->_length; ++j) {
@@ -1169,12 +1274,215 @@ static TRI_json_t* JsonHashIndex (TRI_index_t* idx, TRI_doc_collection_t* collec
   return json;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes a document from a hash index
+////////////////////////////////////////////////////////////////////////////////
+
 static bool RemoveHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
-  return false;
+
+  HashIndexElement hashElement;
+  TRI_hash_index_t* hashIndex;
+  bool result;
+  
+
+  // ............................................................................
+  // Obtain the hash index structure
+  // ............................................................................
+  hashIndex = (TRI_hash_index_t*) idx;
+  if (idx == NULL) {
+    LOG_WARNING("internal error in RemoveHashIndex");
+    return false;
+  }
+
+
+  // ............................................................................
+  // Allocate some memory for the HashIndexElement structure
+  // ............................................................................
+
+  hashElement.numFields = hashIndex->_shapeList->_length;
+  hashElement.fields    = TRI_Allocate( sizeof(TRI_shaped_json_t) * hashElement.numFields);
+  if (hashElement.fields == NULL) {
+    LOG_WARNING("out-of-memory in InsertHashIndex");
+    return false;
+  }  
+  
+  // ..........................................................................
+  // Fill the json field list from the document
+  // ..........................................................................
+  if (!HashIndexHelper(hashIndex, &hashElement, doc, NULL)) {
+    return false;
+  }    
+
+  
+  // ............................................................................
+  // Attempt the removal for unique hash indexes
+  // ............................................................................
+  
+  if (hashIndex->_unique) {
+    result = HashIndex_remove(hashIndex->_hashIndex, &hashElement);
+  } 
+  
+  // ............................................................................
+  // Attempt the removal for non-unique hash indexes
+  // ............................................................................
+  
+  else {
+    result = MultiHashIndex_remove(hashIndex->_hashIndex, &hashElement);
+  }
+  
+  
+  return result;
 }
 
-static bool UpdateHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_shaped_json_t const* old) {
-  return false;
+
+static bool UpdateHashIndex (TRI_index_t* idx, const TRI_doc_mptr_t* newDoc, 
+                             const TRI_shaped_json_t* oldDoc) {
+                             
+  // ..........................................................................
+  // Note: The oldDoc is represented by the TRI_shaped_json_t rather than by
+  //       a TRI_doc_mptr_t object. However for non-unique indexes we must
+  //       pass the document shape to the hash remove function.
+  // ..........................................................................
+  
+  union { void* p; void const* c; } cnv;
+  HashIndexElement hashElement;
+  TRI_hash_index_t* hashIndex;
+  bool result;
+  bool ok;
+  int  res;  
+
+  
+  // ............................................................................
+  // Obtain the hash index structure
+  // ............................................................................
+  
+  hashIndex = (TRI_hash_index_t*) idx;
+  if (idx == NULL) {
+    LOG_WARNING("internal error in UpdateHashIndex");
+    return false;
+  }
+
+
+  // ............................................................................
+  // Allocate some memory for the HashIndexElement structure
+  // ............................................................................
+
+  hashElement.numFields = hashIndex->_shapeList->_length;
+  hashElement.fields    = TRI_Allocate( sizeof(TRI_shaped_json_t) * hashElement.numFields);
+  if (hashElement.fields == NULL) {
+    LOG_WARNING("out-of-memory in UpdateHashIndex");
+    return false;
+  }  
+      
+  
+  // ............................................................................
+  // Update for unique hash index
+  // ............................................................................
+  
+  
+  // ............................................................................
+  // Fill in the fields with the values from oldDoc
+  // ............................................................................
+  
+  if (hashIndex->_unique) {
+  
+      
+    if (HashIndexHelper(hashIndex, &hashElement, NULL, oldDoc)) {
+    
+      // ............................................................................
+      // We must fill the hashElement with the value of the document shape -- this
+      // is necessary when we attempt to remove non-unique hash indexes.
+      // ............................................................................
+      cnv.c = newDoc; // we are assuming here that the doc ptr does not change
+      hashElement.data = cnv.p;
+      
+      
+      // ............................................................................
+      // Remove the hash index entry and return.
+      // ............................................................................
+      if (!HashIndex_remove(hashIndex->_hashIndex, &hashElement)) {
+        LOG_WARNING("could not remove old document from hash index in UpdateHashIndex");
+      }
+      
+    }    
+
+
+    // ............................................................................
+    // Fill the json simple list from the document
+    // ............................................................................
+    if (!HashIndexHelper(hashIndex, &hashElement, newDoc, NULL)) {
+      // ..........................................................................
+      // probably fields do not match  
+      // ..........................................................................
+      return false;
+    }    
+
+
+    // ............................................................................
+    // Attempt to add the hash entry from the new doc
+    // ............................................................................
+    res = HashIndex_insert(hashIndex->_hashIndex, &hashElement);
+  }
+
+  
+  // ............................................................................
+  // Update for non-unique hash index
+  // ............................................................................
+
+  else {
+  
+    // ............................................................................
+    // Fill in the fields with the values from oldDoc
+    // ............................................................................    
+    
+    if (HashIndexHelper(hashIndex, &hashElement, NULL, oldDoc)) {
+      // ............................................................................
+      // We must fill the hashElement with the value of the document shape -- this
+      // is necessary when we attempt to remove non-unique hash indexes.
+      // ............................................................................
+      cnv.c = newDoc;
+      hashElement.data = cnv.p;
+      
+      // ............................................................................
+      // Remove the hash index entry and return.
+      // ............................................................................
+      if (!MultiHashIndex_remove(hashIndex->_hashIndex, &hashElement)) {
+        LOG_WARNING("could not remove old document from hash index in UpdateHashIndex");
+      }
+      
+    }    
+
+
+    // ............................................................................
+    // Fill the shaped json simple list from the document
+    // ............................................................................
+    if (!HashIndexHelper(hashIndex, &hashElement, newDoc, NULL)) {
+      // ..........................................................................
+      // probably fields do not match  
+      // ..........................................................................
+      return false;
+    }    
+
+
+    // ............................................................................
+    // Attempt to add the hash entry from the new doc
+    // ............................................................................
+    res = MultiHashIndex_insert(hashIndex->_hashIndex, &hashElement);
+    
+  }
+  
+  if (res == -1) {
+    LOG_WARNING("found duplicate entry in hash-index, should not happen");
+  }
+  else if (res == -2) {
+    LOG_WARNING("out-of-memory in hash-index");
+  }
+  else if (res == -99) {
+    LOG_DEBUG("unknown error, ignoring entry");
+  }
+
+  return res == 0;
 }
   
 
@@ -1183,7 +1491,8 @@ static bool UpdateHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_sh
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateHashIndex (struct TRI_doc_collection_s* collection,
-                                  TRI_vector_t* shapeList) {
+                                  TRI_vector_t* shapeList,
+                                  bool unique) {
   TRI_hash_index_t* hashIndex;
   hashIndex = TRI_Allocate(sizeof(TRI_hash_index_t));
   if (!hashIndex) {
@@ -1198,6 +1507,7 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_doc_collection_s* collection,
   hashIndex->base.json   = JsonHashIndex;
   hashIndex->base.remove = RemoveHashIndex;
   hashIndex->base.update = UpdateHashIndex;
+  hashIndex->_unique     = unique;
   
   // ...........................................................................
   // Copy the contents of the shape list vector into a new vector and store this
@@ -1214,7 +1524,13 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_doc_collection_s* collection,
     TRI_PushBackVector(hashIndex->_shapeList,&shape);
   }
 
-  hashIndex->_hashIndex = HashIndex_new();
+  
+  if (unique) {
+    hashIndex->_hashIndex = HashIndex_new();
+  }
+  else {
+    hashIndex->_hashIndex = MultiHashIndex_new();
+  }  
   
   return &hashIndex->base;
 }

@@ -64,7 +64,8 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
 
 static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collection,
                                                   const TRI_vector_t* attributes,
-                                                  TRI_idx_iid_t iid);
+                                                  TRI_idx_iid_t iid,
+                                                  bool unique);
                                                  
 static uint64_t HashKeyHeader (TRI_associative_pointer_t* array, void const* key);
 
@@ -258,9 +259,10 @@ static void CreateHeader (TRI_doc_collection_t* c,
                           size_t markerSize,
                           TRI_doc_mptr_t* header,
                           void const* additional) {
-  TRI_doc_document_marker_t const* marker;
+                          
+  const TRI_doc_document_marker_t* marker;
 
-  marker = (TRI_doc_document_marker_t const*) m;
+  marker = (const TRI_doc_document_marker_t*) m;
 
   header->_did = marker->_did;
   header->_rid = marker->_rid;
@@ -269,7 +271,7 @@ static void CreateHeader (TRI_doc_collection_t* c,
   header->_data = marker;
   header->_document._sid = marker->_shape;
   header->_document._data.length = marker->base._size - markerSize;
-  header->_document._data.data = ((char*) marker) + markerSize;
+  header->_document._data.data = ((const char*) marker) + markerSize;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1131,7 +1133,8 @@ static void OpenIndex (char const* filename, void* data) {
   char* error;
   char* fieldChar;
   int intCount;
-  
+  bool ok;
+  bool uniqueIndex;
   json = TRI_JsonFile(filename, &error);
 
   if (json == NULL) {
@@ -1193,46 +1196,96 @@ static void OpenIndex (char const* filename, void* data) {
   // ...........................................................................
   else if (TRI_EqualString(typeStr, "hash")) {
   
-    TRI_InitVector(&attributes, sizeof(char*));
+    // .........................................................................
+    // Initialise the ok value
+    // .........................................................................
+    ok = true;
+    
   
-    iis = TRI_LookupArrayJson(json, "iid");
-    iid = 0;
-    if (iis != NULL && iis->_type == TRI_JSON_NUMBER) {
-      iid = iis->_value._number;
-    }
+    // .........................................................................
+    // Initialise the vector in which we store the fields on which the hashing
+    // will be based.
+    // .........................................................................
+    TRI_InitVector(&attributes, sizeof(char*));
+
     
-    fieldCount = 0;
-    fieldCount = TRI_LookupArrayJson(json, "field_count");
-    intCount = 0;
-    if ( (fieldCount != NULL) && (fieldCount->_type == TRI_JSON_NUMBER) ) {
-      intCount = fieldCount->_value._number;
-    }
-    
-    if (intCount > 0) {
-      fieldChar = TRI_Allocate(30);
-      if (!fieldChar) {
-        TRI_FreeJson(json);
-        TRI_DestroyVector(&attributes);
-        return;
+    // .........................................................................
+    // Determine the id of the hash index
+    // .........................................................................
+    if (ok) {
+      iis = TRI_LookupArrayJson(json, "iid");
+      iid = 0;
+      if (iis != NULL && iis->_type == TRI_JSON_NUMBER) {
+        iid = iis->_value._number;
       }
+      else {
+        LOG_WARNING("ignore hash-index, id could not be located");
+        ok = false;
+      }  
+    }    
+    
+    // .........................................................................
+    // Determine if the hash index is unique or non-unique
+    // .........................................................................
+    if (ok) {
+      gjs = TRI_LookupArrayJson(json, "unique");
+      uniqueIndex = false;
+      if (gjs != NULL && gjs->_type == TRI_JSON_BOOLEAN) {
+        uniqueIndex = gjs->_value._boolean;
+      }
+      else {
+        LOG_WARNING("ignore hash-index, could not determine if unique or non-unique");
+        ok = false;
+      }  
+    }
+    
+    
+    // .........................................................................
+    // Extract the list of fields
+    // .........................................................................
+    if (ok) {
+      fieldCount = 0;
+      fieldCount = TRI_LookupArrayJson(json, "field_count");
+      intCount = 0;
+      if ( (fieldCount != NULL) && (fieldCount->_type == TRI_JSON_NUMBER) ) {
+        intCount = fieldCount->_value._number;
+      }
+      if (intCount < 1) {
+        LOG_WARNING("ignore hash-index, field count missing");
+        ok = false;
+      }      
+    }
+    
+    if (ok) {
+      fieldChar = TRI_Allocate(30);
+      if (fieldChar == NULL) {
+        LOG_WARNING("ignore hash-index, field count missing");
+        ok = false;
+      }
+    }
+    
+    if (ok) {
       for (int j = 0; j < intCount; ++j) {
         sprintf(fieldChar,"field_%i",j);
         fieldStr = TRI_LookupArrayJson(json, fieldChar);
         if (fieldStr->_type != TRI_JSON_STRING) {
-          LOG_ERROR("invalid field name for hash index");
-          TRI_FreeJson(json);
-          TRI_DestroyVector(&attributes);
-          TRI_Free(fieldChar);
-          return;
-        }
+          LOG_WARNING("ignore hash-index, invalid field name for hash index");
+          ok = false;
+          break;
+        }  
         TRI_PushBackVector(&attributes, &(fieldStr->_value._string.data));
-      }      
+      }  
       TRI_Free(fieldChar);
-      CreateHashIndexSimCollection (doc, &attributes, iid); 
-    } 
-    else {
-      LOG_WARNING("ignore hash-index, need either field list and field count");
     }
+    
+            
+    if (ok) {   
+      CreateHashIndexSimCollection (doc, &attributes, iid, uniqueIndex); 
+    } 
+    
+    // .........................................................................
+    // Free the vector 
+    // .........................................................................
     TRI_DestroyVector(&attributes);
   }
   
@@ -2212,7 +2265,8 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
 
 static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collection,
                                                   const TRI_vector_t* attributes,
-                                                  TRI_idx_iid_t iid) {
+                                                  TRI_idx_iid_t iid,
+                                                  bool unique) {
   TRI_index_t* idx     = NULL;
   TRI_shaper_t* shaper = collection->base._shaper;
   TRI_vector_t shapes;
@@ -2248,7 +2302,7 @@ static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collecti
   // ...........................................................................
   // Create the hash index
   // ...........................................................................
-  idx = TRI_CreateHashIndex(&collection->base,&shapes);
+  idx = TRI_CreateHashIndex(&collection->base,&shapes, unique);
   
 
   // ...........................................................................
@@ -2359,7 +2413,12 @@ TRI_index_t* TRI_LookupGeoIndex2SimCollection (TRI_sim_collection_t* collection,
 TRI_index_t* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t* collection,
                                                const TRI_vector_t* shapes) {
   TRI_index_t* matchedIndex = NULL;											   
-  //TRI_shaper_t* shaper      = collection->base._shaper;
+  
+  // ...........................................................................
+  // Note: This function does NOT differentiate between non-unique and unique
+  //       hash indexes. The first hash index which matches the attributes
+  //       (shapes parameter) will be returned.
+  // ...........................................................................
   
   
   // ........................................................................... 
@@ -2488,7 +2547,8 @@ TRI_idx_iid_t TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* collection
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_idx_iid_t TRI_EnsureHashIndexSimCollection(TRI_sim_collection_t* collection,
-                                               const TRI_vector_t* attributes) {
+                                               const TRI_vector_t* attributes,
+                                               bool unique) {
   TRI_index_t* idx;
   bool ok;
 
@@ -2502,7 +2562,7 @@ TRI_idx_iid_t TRI_EnsureHashIndexSimCollection(TRI_sim_collection_t* collection,
   // Given the list of attributes (as strings) 
   // .............................................................................
 
-  idx = CreateHashIndexSimCollection(collection, attributes, 0);
+  idx = CreateHashIndexSimCollection(collection, attributes, 0, unique);
   
   if (idx == NULL) {
     TRI_WriteUnlockReadWriteLock(&collection->_lock);
@@ -2525,6 +2585,7 @@ TRI_idx_iid_t TRI_EnsureHashIndexSimCollection(TRI_sim_collection_t* collection,
   
   return ok ? idx->_iid : 0;
 }                                                
+
 
                                                 
 ////////////////////////////////////////////////////////////////////////////////

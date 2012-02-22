@@ -41,6 +41,10 @@ static void FreePart (TRI_join_part_t* part) {
     TRI_Free(part->_alias);
   }
 
+  if (part->_ranges) {
+    // TODO: free ranges
+  }
+
   if (part->_collectionName) {
     TRI_Free(part->_collectionName);
   }
@@ -85,8 +89,11 @@ static void FreeSelectJoin (TRI_select_join_t* join) {
 /// @brief Add a part to a select join
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddPartSelectJoin (TRI_select_join_t* join, const TRI_join_type_e type, 
-                            TRI_qry_where_t* condition, char* collectionName, 
+bool TRI_AddPartSelectJoin (TRI_select_join_t* join, 
+                            const TRI_join_type_e type, 
+                            TRI_qry_where_t* condition,
+                            TRI_vector_pointer_t* ranges, 
+                            char* collectionName, 
                             char* alias) {
   
   TRI_join_part_t* part;
@@ -106,6 +113,7 @@ bool TRI_AddPartSelectJoin (TRI_select_join_t* join, const TRI_join_type_e type,
   part->_feeder = NULL; 
   part->_type = type;
   part->_condition = condition;
+  part->_ranges = ranges;
   part->_collection = NULL;
   part->_collectionName = TRI_DuplicateString(collectionName);
   part->_alias = TRI_DuplicateString(alias);

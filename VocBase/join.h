@@ -66,6 +66,7 @@ typedef struct TRI_join_part_s {
   TRI_data_feeder_t *_feeder; // data source
   TRI_join_type_e _type;
   TRI_qry_where_t* _condition;
+  TRI_vector_pointer_t* _ranges;
   TRI_doc_collection_t* _collection;
   char* _collectionName;
   char* _alias;
@@ -83,6 +84,7 @@ TRI_join_part_t;
 
 typedef struct TRI_select_join_s {
   TRI_vector_pointer_t _parts;
+  TRI_vocbase_t* _vocbase;
   
   void (*free) (struct TRI_select_join_s*);
 }
@@ -95,6 +97,7 @@ TRI_select_join_t;
 bool TRI_AddPartSelectJoin (TRI_select_join_t*, 
                             const TRI_join_type_e, 
                             TRI_qry_where_t*, 
+                            TRI_vector_pointer_t*,
                             char*, 
                             char*);
 
