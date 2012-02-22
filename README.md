@@ -10,7 +10,13 @@ effort to operate for the administrator.
 Please check the <a href="https://github.com/triAGENS/AvocadoDB/wiki">wiki</a>
 for installation and compilation instructions:
 
-  https://github.com/triAGENS/AvocadoDB/wiki
+### Mac OS X Hints
+
+On Mac OS X you can install AvocadoDB using the packagemanager [Homebrew](http://mxcl.github.com/homebrew/). We are currently waiting for approval of our package, therefore you need to use this:
+
+* `brew install https://raw.github.com/tisba/homebrew/master/Library/Formula/avocadodb.rb`
+
+This will install AvocadoDB and all dependencies. 
 
 ## First Steps
 
