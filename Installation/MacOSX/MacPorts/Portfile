@@ -1,0 +1,137 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+# $Id$
+
+PortSystem              1.0
+
+name                    AvocadoDB
+version                 0.1.2
+categories              databases
+platforms               darwin
+license			Apache License, version 2.0
+maintainers             triagens.de:f.celler
+
+description             a NoSQL document store that grows with your project
+
+long_description        Our mission: projects are different, project requirements \
+                        change. We want to offer with AvocadoDB a most universally \
+                        applicable nosql database which can be used in a maximum \
+                        number of different use cases. In buzzword bingo language: \
+                        we want to become the MySql in nosql – without MySql’s \
+                        annoyances of course. \
+                        (See the WWW page for details.)
+                        
+supported_archs         i386 x86_64
+
+homepage                http://www.avocadodb.org
+
+fetch.type		git
+git.url                 https://github.com/triAGENS/AvocadoDB
+git.branch		v0.1.2
+
+depends_build           port:bison \
+                        port:flex
+
+configure.args          --enable-all-in-one \
+                        --enable-bison \
+			--enable-flex \
+			--disable-dbdir
+
+build.target            all 
+
+################################################################################
+
+set dbgroup avocado
+set dbuser avocado
+
+set dbdir ${prefix}/var/avocado
+
+set sbindir ${prefix}/sbin
+
+set etcbase ${prefix}/etc/voc
+set etcdir ${etcbase}/avocado
+
+set logbase ${prefix}/var/log/voc
+set logdir ${logbase}/avocado
+
+################################################################################
+
+post-destroot {
+    addgroup ${dbgroup}
+    adduser ${dbuser} gid=[existsgroup ${dbgroup}]
+
+    xinstall -d -m 1777 \
+        ${destroot}${etcbase}
+
+    xinstall -d -m 755 -o ${dbuser} -g ${dbgroup} \
+        ${destroot}${etcdir}
+
+    xinstall -m 644 -o ${dbuser} -g ${dbgroup} \
+        ${worksrcpath}/Installation/MacOSX/MacPorts/avocado.conf \
+        ${destroot}${prefix}/etc/voc/avocado.conf.sample
+
+    xinstall -d -m 1777 \
+        ${destroot}${logbase}
+
+    xinstall -d -m 755 -o ${dbuser} -g ${dbgroup} \
+        ${destroot}${logdir}
+
+    xinstall -d -m 755 -o ${dbuser} -g ${dbgroup} \
+        ${destroot}${dbdir}
+
+    xinstall -d -m 755 \
+        ${destroot}${prefix}/Library/LaunchDaemons 
+
+    xinstall -m 644 \
+        ${worksrcpath}/Installation/MacOSX/MacPorts/org.avocadodb.plist \
+        ${destroot}${prefix}/Library/LaunchDaemons/org.avocadodb.plist.sample
+
+    destroot.keepdirs-append \
+        ${destroot}${logdir} \
+        ${destroot}${dbdir}
+
+    reinplace "s|/usr/sbin|${sbindir}/|g"   ${destroot}${prefix}/Library/LaunchDaemons/org.avocadodb.plist.sample
+    reinplace "s|/etc|${etcdir}|g"          ${destroot}${prefix}/Library/LaunchDaemons/org.avocadodb.plist.sample
+
+    reinplace "s|/var/log|${logdir}|g"      ${destroot}${prefix}/etc/voc/avocado.conf.sample
+}
+
+################################################################################
+
+post-activate {
+    if {![file exists ${prefix}/Library/LaunchDaemons/org.avocadodb.plist]} {
+        file copy ${prefix}/Library/LaunchDaemons/org.avocadodb.plist.sample \
+            ${prefix}/Library/LaunchDaemons/org.avocadodb.plist
+    }
+
+    if {![file exists ${prefix}/etc/voc/avocado.conf]} {
+        file copy ${prefix}/etc/voc/avocado.conf.sample \
+            ${prefix}/etc/voc/avocado.conf
+    }
+}
+
+################################################################################
+
+notes "
+To start up the AvocadoDB server instance, use
+
+    sudo launchctl load ${prefix}/Library/LaunchDaemons/org.avocadodb.plist
+    
+The server will response on port 8529 to client request and you can use
+
+    http://localhost:8530/
+
+to access the administration interface.
+
+To stop up the AvocadoDB server instance, use
+
+    sudo launchctl unload ${prefix}/Library/LaunchDaemons/org.avocadodb.plist
+
+Please note that this is a very early version if AvocadoDB. There will be
+bugs and we'd realy appreciate it if you report them:
+
+    https://github.com/triAGENS/AvocadoDB/issues
+
+You find the configuration file at
+
+    ${prefix}/etc/voc/avocado.conf
+"
