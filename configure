@@ -727,6 +727,8 @@ build_os
 build_vendor
 build_cpu
 build
+ENABLE_INSTALL_DBDIR_FALSE
+ENABLE_INSTALL_DBDIR_TRUE
 ENABLE_RELATIVE_FALSE
 ENABLE_RELATIVE_TRUE
 ENABLE_ALL_IN_ONE_FALSE
@@ -780,6 +782,7 @@ enable_bison
 enable_flex
 enable_all_in_one
 enable_relative
+enable_install_dbdir
 enable_silent_rules
 enable_dependency_tracking
 enable_error_on_warning
@@ -1450,6 +1453,7 @@ Optional Features:
   --enable-flex           enable FLEX
   --enable-all-in-one     enable supplied V8, BOOST, LIBEV
   --enable-relative       all path are relative to the binary
+  --enable-install-dbdir  install an empty database directory
   --enable-silent-rules          less verbose build output (undo: `make V=1')
   --disable-silent-rules         verbose build output (undo: `make V=0')
   --disable-dependency-tracking  speeds up one-time build
@@ -2594,6 +2598,24 @@ fi
 else
   ENABLE_RELATIVE_TRUE='#'
   ENABLE_RELATIVE_FALSE=
+fi
+
+
+# Check whether --enable-install-dbdir was given.
+if test "${enable_install_dbdir+set}" = set; then :
+  enableval=$enable_install_dbdir; tr_RELATIVE="${enableval:-yes}"
+else
+  tr_RELATIVE=yes
+
+fi
+
+
+ if test "x$tr_DBDIR" = xyes; then
+  ENABLE_INSTALL_DBDIR_TRUE=
+  ENABLE_INSTALL_DBDIR_FALSE='#'
+else
+  ENABLE_INSTALL_DBDIR_TRUE='#'
+  ENABLE_INSTALL_DBDIR_FALSE=
 fi
 
 
@@ -9286,6 +9308,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_RELATIVE_TRUE}" && test -z "${ENABLE_RELATIVE_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_RELATIVE\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_INSTALL_DBDIR_TRUE}" && test -z "${ENABLE_INSTALL_DBDIR_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_INSTALL_DBDIR\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_DARWIN_TRUE}" && test -z "${ENABLE_DARWIN_FALSE}"; then
