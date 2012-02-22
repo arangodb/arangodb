@@ -105,7 +105,6 @@ function aqlTestSuite () {
     if (limit !== undefined) {
       query += ' LIMIT ' + limit;
     }
-    print("Q: " + query);
 
     return query;
   }

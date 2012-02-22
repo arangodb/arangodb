@@ -385,7 +385,7 @@ bool TRI_DefineCompareExecutionContext (TRI_js_exec_context_t context,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes and destroys an execution context
+/// @brief executes an execution context
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ExecuteExecutionContext (TRI_js_exec_context_t context, void* storage) {
@@ -408,7 +408,7 @@ bool TRI_ExecuteExecutionContext (TRI_js_exec_context_t context, void* storage) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes and destroys an execution context for a condition
+/// @brief executes an execution context for a condition
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ExecuteConditionExecutionContext (TRI_js_exec_context_t context, bool* r) {
@@ -432,7 +432,53 @@ bool TRI_ExecuteConditionExecutionContext (TRI_js_exec_context_t context, bool* 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes and destroys an execution context for order by
+/// @brief executes an execution context for ref access
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ExecuteRefExecutionContext (TRI_js_exec_context_t context, TRI_json_t* r) {
+  js_exec_context_t* ctx;
+
+  ctx = (js_exec_context_t*) context;
+
+  // convert back into a handle
+  v8::Persistent<v8::Function> func = ctx->_func;
+
+  // and execute the function
+  v8::Handle<v8::Value> args[] = { ctx->_arguments };
+  v8::Handle<v8::Value> result = func->Call(func, 1, args);
+  
+  if (result.IsEmpty() || !result->IsArray()) {
+    return false;
+  }
+    
+  v8::Handle<v8::Object> obj = result->ToObject(); 
+
+  size_t position = 0;
+  while (true) {
+    if (!obj->Has(position)) {
+      break;
+    }
+    v8::Handle<v8::Value> parameter = obj->Get(position++);
+    if (parameter->IsNumber()) {
+      v8::Handle<v8::Number> numberParameter = parameter->ToNumber();
+      TRI_PushBackListJson(r, TRI_CreateNumberJson(numberParameter->Value()));
+    }
+    else if (parameter->IsString() ) {
+      v8::Handle<v8::String>  stringParameter= parameter->ToString();
+      v8::String::Utf8Value str(stringParameter);
+      TRI_PushBackListJson(r, TRI_CreateStringCopyJson(*str));
+    }
+    else {
+      continue;
+      return false;
+    }
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes an execution context for order by
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ExecuteOrderExecutionContext (TRI_js_exec_context_t context, int* r) {

@@ -333,7 +333,12 @@ bool QLParseValidateCollectionName (const char* name) {
   size_t length = 0;
    
   while ('\0' != (c = *p++)) {
-    if (!(c >= 'A' && c <= 'Z') && !(c >= 'a' && c <= 'z')) {
+    if (length == 0) {
+      if (!(c >= 'A' && c <= 'Z') && !(c >= 'a' && c <= 'z')) {
+        return false;
+      } 
+    }
+    if (!(c >= 'A' && c <= 'Z') && !(c >= 'a' && c <= 'z') && !(c >= '0' && c <= '9')) {
       return false;
     } 
     length++;

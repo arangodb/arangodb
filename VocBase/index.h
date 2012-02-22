@@ -129,7 +129,7 @@ typedef struct TRI_hash_index_s {
 
   HashIndex* _hashIndex;    // effectively the associative array
   TRI_vector_t* _shapeList; // a list of shape pid which identifies the fields of the index
-  
+  bool _unique;
 } TRI_hash_index_t;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -283,7 +283,8 @@ HashIndexElements* TRI_LookupHashIndex (TRI_index_t*, TRI_json_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateHashIndex (struct TRI_doc_collection_s*,
-                                  TRI_vector_t* shapeList);
+                                  TRI_vector_t* shapeList,
+                                  bool unique);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

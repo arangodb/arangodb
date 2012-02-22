@@ -71,6 +71,12 @@ extern "C" {
 ///   but is not referenced anywhere in the select, where, or order by clauses,
 ///   it will not influence the results produced by the query. There is no need 
 ///   to execute the join on the collection and thus the join is removed.
+/// - range optimization: invalid value ranges in the where clause are detected
+///   for fields if the values are numbers or strings and the operators equality,
+///   greater/greater than, less/less than are used, and the range conditions
+///   are combined with logical ands. For example, the following range condition
+///   will be detected as being impossible and removed: 
+///   @LIT{users.id > 3 && users.id < 3}
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -108,7 +114,6 @@ typedef enum {
   RANGE_TYPE_DOUBLE = 2,
   RANGE_TYPE_STRING = 3,
   RANGE_TYPE_JSON   = 4
-
 }
 QL_optimize_range_value_type_e;
 
@@ -134,9 +139,9 @@ QL_optimize_range_value_type_e;
 /// unrestricted ranges.
 ///
 /// Infinity is indicated by _minStatus or _maxStatus set to 
-/// (@ref RANGE_VALUE_INFINITE). If the value is not infinity, the status 
-/// indicates whether the bounds value is included (@ref RANGE_VALUE_INCLUDED) 
-/// or not included (@ref RANGE_VALUE_EXCLUDED) in the range.
+/// (RANGE_VALUE_INFINITE). If the value is not infinity, the status 
+/// indicates whether the bounds value is included (RANGE_VALUE_INCLUDED) 
+/// or not included (RANGE_VALUE_EXCLUDED) in the range.
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct QL_optimize_range_s {
@@ -153,7 +158,7 @@ typedef struct QL_optimize_range_s {
   } _maxValue;
   struct {
     char* _collection;
-    char *_field;
+    char* _field;
   } _refValue;
   uint64_t _hash;
   QL_optimize_range_type_e _minStatus;
@@ -270,12 +275,6 @@ QL_ast_query_where_type_e QLOptimizeGetWhereType (const QL_ast_node_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 QL_ast_query_order_type_e QLOptimizeGetOrderType (const QL_ast_node_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief determine which indexes to use for a query
-////////////////////////////////////////////////////////////////////////////////
-
-void QLOptimizeDetermineIndexes (QL_ast_query_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

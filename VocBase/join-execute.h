@@ -31,6 +31,7 @@
 #include "VocBase/select-result.h"
 #include "VocBase/join.h"
 #include "VocBase/data-feeder.h"
+#include "QL/optimize.h"
 #include "V8/v8-c-utils.h"
 
 #ifdef __cplusplus
@@ -46,7 +47,8 @@ extern "C" {
 /// @brief Create a new select result from a join definition
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_select_result_t* TRI_JoinSelectResult (TRI_select_join_t*);
+TRI_select_result_t* TRI_JoinSelectResult (const TRI_vocbase_t*, 
+                                           TRI_select_join_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Execute joins

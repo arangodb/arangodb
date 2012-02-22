@@ -122,8 +122,31 @@ static bool isEqualJsonJson (const TRI_json_t* left, const TRI_json_t* right) {
 }  // end of function isEqualJsonJson
 
 
+static bool isEqualShapedJsonShapedJson (const TRI_shaped_json_t* left, const TRI_shaped_json_t* right) {
 
-static size_t hashJson (const size_t hash, const TRI_json_t* data) {
+  int result;
+  
+  if (left == NULL && right == NULL) {
+    return true;
+  }
+
+  if (left == NULL && right != NULL) {
+    return false;
+  }
+
+  if (left != NULL && right == NULL) {
+    return false;
+  }
+
+  if (left->_data.length != right->_data.length) {
+    return false;
+  }
+  
+  return ( memcmp(left->_data.data,right->_data.data, left->_data.length) == 0);   
+}  // end of function isEqualShapedJsonShapedJson
+
+
+static uint64_t hashJson (const size_t hash, const TRI_json_t* data) {
 
   size_t newHash;
   
@@ -142,16 +165,19 @@ static size_t hashJson (const size_t hash, const TRI_json_t* data) {
     }  
     
     case TRI_JSON_BOOLEAN: {
-      return TRI_BlockCrc32(hash, (const char*)(&(data->_value._boolean)), sizeof(bool));
+      return TRI_FnvHashBlock(hash, (const char*)(&(data->_value._boolean)), sizeof(bool)); 
+      // return TRI_BlockCrc32(hash, (const char*)(&(data->_value._boolean)), sizeof(bool));
     }  
     
     case TRI_JSON_NUMBER: {
-      return TRI_BlockCrc32(hash, (const char*)(&(data->_value._number)), sizeof(double));
+      return TRI_FnvHashBlock(hash, (const char*)(&(data->_value._number)), sizeof(double)); 
+      //return TRI_BlockCrc32(hash, (const char*)(&(data->_value._number)), sizeof(double));
     }  
        
     case TRI_JSON_STRING: {
       if (data->_value._string.length > 0) {
-        return TRI_BlockCrc32(hash, data->_value._string.data, data->_value._string.length);
+        return TRI_FnvHashBlock(hash, data->_value._string.data, data->_value._string.length);
+        //return TRI_BlockCrc32(hash, data->_value._string.data, data->_value._string.length);
       }  
       return hash;
     }      
@@ -188,7 +214,14 @@ static size_t hashJson (const size_t hash, const TRI_json_t* data) {
   return hash;
 }  // end of function isEqualJsonJson
 
+
+static uint64_t hashShapedJson (const uint64_t hash, const TRI_shaped_json_t* shapedJson) {
+  return TRI_FnvHashBlock(hash, shapedJson->_data.data, shapedJson->_data.length); 
+}  // end of function hashShapedJson
+
+
 // .............................................................................
+// marks an element in the unique assoc array as being 'cleared' or 'empty'
 // .............................................................................
 static void clearElement(struct TRI_associative_array_s* associativeArray, void* element) {
   HashIndexElement* hElement = (HashIndexElement*)(element);
@@ -199,6 +232,7 @@ static void clearElement(struct TRI_associative_array_s* associativeArray, void*
 
 
 // .............................................................................
+// returns true if an element in the unique assoc array is 'empty'
 // .............................................................................
 static bool isEmptyElement (struct TRI_associative_array_s* associativeArray, void* element) {
   HashIndexElement* hElement = (HashIndexElement*)(element);
@@ -212,6 +246,8 @@ static bool isEmptyElement (struct TRI_associative_array_s* associativeArray, vo
 
 
 // .............................................................................
+// Determines if two elements of the unique assoc array are equal
+// Two elements are 'equal' if the shaped json content is equal. 
 // .............................................................................
 static bool isEqualElementElement (struct TRI_associative_array_s* associativeArray, 
                                    void* leftElement, void* rightElement) {
@@ -227,9 +263,7 @@ static bool isEqualElementElement (struct TRI_associative_array_s* associativeAr
   }
 
   for (size_t j = 0; j < hLeftElement->numFields; j++) {
-    TRI_json_t* left   = (j + hLeftElement->fields);
-    TRI_json_t* right  = (j + hRightElement->fields);
-    if (!isEqualJsonJson(left, right)) {
+    if (!isEqualShapedJsonShapedJson((j + hLeftElement->fields), (j + hRightElement->fields))) {
       return false;
     }
   }
@@ -239,6 +273,8 @@ static bool isEqualElementElement (struct TRI_associative_array_s* associativeAr
 
 
 // .............................................................................
+// Determines if two elements of the unique assoc array are equal
+// Two elements are 'equal' if the shaped json content is equal. 
 // .............................................................................
 static bool isEqualKeyElement (struct TRI_associative_array_s* associativeArray, 
                                void* leftElement, void* rightElement) {
@@ -254,9 +290,7 @@ static bool isEqualKeyElement (struct TRI_associative_array_s* associativeArray,
   }
 
   for (size_t j = 0; j < hLeftElement->numFields; j++) {
-    TRI_json_t* left   = (j + hLeftElement->fields);
-    TRI_json_t* right  = (j + hRightElement->fields);
-    if (!isEqualJsonJson(left, right)) {
+    if (!isEqualShapedJsonShapedJson((j + hLeftElement->fields), (j + hRightElement->fields))) {
       return false;
     }
   }
@@ -270,27 +304,20 @@ static bool isEqualKeyElement (struct TRI_associative_array_s* associativeArray,
 // .............................................................................
 static uint64_t hashElement (struct TRI_associative_array_s* associativeArray, void* element) {
   HashIndexElement* hElement = (HashIndexElement*)(element);
-  size_t hash = TRI_InitialCrc32();
-  
+  uint64_t hash = TRI_FnvHashBlockInitial();
   for (size_t j = 0; j < hElement->numFields; j++) {
-    hash = hashJson(hash, (j + hElement->fields) );
+    hash = hashShapedJson(hash, (j + hElement->fields) );
   }
-  
-  hash = TRI_FinalCrc32(hash);
-  //printf("%s:%u:%u\n",__FILE__,__LINE__,hash);
   return  hash;
 }
 
 
 static uint64_t hashKey (struct TRI_associative_array_s* associativeArray, void* element) {
   HashIndexElement* hElement = (HashIndexElement*)(element);
-  size_t hash = TRI_InitialCrc32();
-  
+  uint64_t hash = TRI_FnvHashBlockInitial();
   for (size_t j = 0; j < hElement->numFields; j++) {
-    hash = hashJson(hash, (j + hElement->fields) );
+    hash = hashShapedJson(hash, (j + hElement->fields) );
   }
-  
-  hash = TRI_FinalCrc32(hash);
   return  hash;
 }
 
@@ -309,13 +336,14 @@ HashIndex* HashIndex_new() {
     return NULL;
   }
 
-  hashIndex->associativeArray = malloc(sizeof(TRI_associative_array_t));
-  if (hashIndex->associativeArray == NULL) {
-    free(hashIndex);
+  hashIndex->unique = true;
+  hashIndex->assocArray.uniqueArray = TRI_Allocate(sizeof(TRI_associative_array_t));
+  if (hashIndex->assocArray.uniqueArray == NULL) {
+    TRI_Free(hashIndex);
     return NULL;
   }    
     
-  TRI_InitAssociativeArray(hashIndex->associativeArray,
+  TRI_InitAssociativeArray(hashIndex->assocArray.uniqueArray,
                            sizeof(HashIndexElement),
                            hashKey,
                            hashElement,
@@ -334,7 +362,7 @@ HashIndex* HashIndex_new() {
 
 int HashIndex_add(HashIndex* hashIndex, HashIndexElement* element) {
   bool result;
-  result = TRI_InsertElementAssociativeArray(hashIndex->associativeArray, element, false);
+  result = TRI_InsertElementAssociativeArray(hashIndex->assocArray.uniqueArray, element, false);
   if (result) {
     return 0;
   }    
@@ -343,27 +371,27 @@ int HashIndex_add(HashIndex* hashIndex, HashIndexElement* element) {
 
 
 // ...............................................................................
-// Locates an entry within the associative array
+// Locates an entry within the unique associative array
 // ...............................................................................
 
 HashIndexElements* HashIndex_find(HashIndex* hashIndex, HashIndexElement* element) {
   HashIndexElement* result;
-  HashIndexElements* elements;
+  HashIndexElements* results;
 
-  elements = TRI_Allocate(sizeof(HashIndexElements));    
+  results = TRI_Allocate(sizeof(HashIndexElements));    
   
-  result = (HashIndexElement*) (TRI_FindByElementAssociativeArray(hashIndex->associativeArray, element)); 
+  result = (HashIndexElement*) (TRI_FindByElementAssociativeArray(hashIndex->assocArray.uniqueArray, element)); 
   
   if (result != NULL) {
-    elements->_elements    = TRI_Allocate(sizeof(HashIndexElement*) * 1); // unique hash index maximum number is 1
-    elements->_elements[0] = result;
-    elements->_numElements = 1;
+    results->_elements    = TRI_Allocate(sizeof(HashIndexElement) * 1); // unique hash index maximum number is 1
+    results->_elements[0] = *result;
+    results->_numElements = 1;
   }
   else {
-    elements->_elements    = NULL;
-    elements->_numElements = 0;
+    results->_elements    = NULL;
+    results->_numElements = 0;
   }
-  return elements;
+  return results;
 }
 
 
@@ -380,9 +408,11 @@ int HashIndex_insert(HashIndex* hashIndex, HashIndexElement* element) {
 // Removes an entry from the associative array
 // ...............................................................................
 
-bool HashIndex_removeIndex(HashIndex* hashIndex, const HashIndexElement* element) {
-  assert(false);
-  return false;
+bool HashIndex_remove(HashIndex* hashIndex, HashIndexElement* element) {
+  bool result;
+
+  result = TRI_RemoveElementAssociativeArray(hashIndex->assocArray.uniqueArray, element, NULL); 
+  return result;
 }
 
 
@@ -393,6 +423,229 @@ bool HashIndex_removeIndex(HashIndex* hashIndex, const HashIndexElement* element
 
 bool HashIndex_update(HashIndex* hashIndex, const HashIndexElement* beforeElement, 
                       const HashIndexElement* afterElement) {
+  assert(false);
+  return false;                      
+}
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// Multi-hash non-unique hash indexes
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+
+
+//------------------------------------------------------------------------------
+// Private methods
+//------------------------------------------------------------------------------
+
+
+// .............................................................................
+// Marks an entry in the non-unique associative array as being 'cleared'. 
+// .............................................................................
+static void multiClearElement(struct TRI_multi_array_s* multiArray, void* element) {
+  HashIndexElement* hElement = (HashIndexElement*)(element);
+  if (element != NULL) {
+    hElement->data = 0;
+  }  
+}
+
+
+// .............................................................................
+// Determines if an entry in the associative array is marked as being empty (cleared)
+// .............................................................................
+static bool isMultiEmptyElement (struct TRI_multi_array_s* multiArray, void* element) {
+  HashIndexElement* hElement = (HashIndexElement*)(element);
+  if (element != NULL) {
+    if (hElement->data == 0) {
+      return true;
+    }
+  }  
+  return false;
+}
+
+
+// .............................................................................
+// Returns true if document pointers are the same, otherwise returns false
+// .............................................................................
+static bool isMultiEqualElementElement (struct TRI_multi_array_s* multiArray, 
+                                        void* leftElement, void* rightElement) {
+  HashIndexElement* hLeftElement  = (HashIndexElement*)(leftElement);
+  HashIndexElement* hRightElement = (HashIndexElement*)(rightElement);
+  int result;
+  
+  if (leftElement == NULL || rightElement == NULL) {
+    return false;
+  }    
+  
+  return (hLeftElement->data == hRightElement->data); 
+}
+
+
+// .............................................................................
+// Returns true if the "key" matches that of the element
+// .............................................................................
+static bool isMultiEqualKeyElement (struct TRI_multi_array_s* multiArray, 
+                                    void* leftElement, void* rightElement) {
+  HashIndexElement* hLeftElement  = (HashIndexElement*)(leftElement);
+  HashIndexElement* hRightElement = (HashIndexElement*)(rightElement);
+  int result;
+  
+  if (leftElement == NULL || rightElement == NULL) {
+    return false;
+  }    
+  
+  if (hLeftElement->numFields != hRightElement->numFields) {
+    return false; // should never happen
+  }
+
+  for (size_t j = 0; j < hLeftElement->numFields; j++) {
+    TRI_shaped_json_t* left   = (j + hLeftElement->fields);
+    TRI_shaped_json_t* right  = (j + hRightElement->fields);
+    if (!isEqualShapedJsonShapedJson(left, right)) {
+      return false;
+    }
+  }
+  
+  return true;
+}
+
+
+// .............................................................................
+// The actual hashing occurs here
+// .............................................................................
+static uint64_t multiHashElement (struct TRI_multi_array_s* multiArray, void* element) {
+  HashIndexElement* hElement = (HashIndexElement*)(element);
+  uint64_t hash = TRI_FnvHashBlockInitial();
+  for (size_t j = 0; j < hElement->numFields; j++) {
+    hash = hashShapedJson(hash, (j + hElement->fields) );
+    //printf("%s:%u:%u:%f\n",__FILE__,__LINE__,hash, *((double*)((j + hElement->fields)->_data.data)));
+  }
+  return  hash;
+}
+
+
+static uint64_t multiHashKey (struct TRI_multi_array_s* multiArray, void* element) {
+  HashIndexElement* hElement = (HashIndexElement*)(element);
+  uint64_t hash = TRI_FnvHashBlockInitial();
+  for (size_t j = 0; j < hElement->numFields; j++) {
+    hash = hashShapedJson(hash, (j + hElement->fields) );
+    //printf("%s:%u:%u:%f\n",__FILE__,__LINE__,hash, *((double*)((j + hElement->fields)->_data.data)));
+  }
+  return  hash;
+}
+
+
+
+
+// .............................................................................
+// Creates a new multi associative array
+// .............................................................................
+
+HashIndex* MultiHashIndex_new() {
+  HashIndex* hashIndex;
+
+  hashIndex = TRI_Allocate(sizeof(HashIndex));
+  if (hashIndex == NULL) {
+    return NULL;
+  }
+
+  hashIndex->unique = false;
+  hashIndex->assocArray.nonUniqueArray = TRI_Allocate(sizeof(TRI_multi_array_t));
+  if (hashIndex->assocArray.nonUniqueArray == NULL) {
+    TRI_Free(hashIndex);
+    return NULL;
+  }    
+    
+  TRI_InitMultiArray(hashIndex->assocArray.nonUniqueArray,
+                     sizeof(HashIndexElement),
+                     multiHashKey,
+                     multiHashElement,
+                     multiClearElement,
+                     isMultiEmptyElement,
+                     isMultiEqualKeyElement,
+                     isMultiEqualElementElement);
+  
+  return hashIndex;
+}
+
+
+
+
+// ...............................................................................
+// Adds (inserts) a data element into the associative array (hash index)
+// ...............................................................................
+
+int MultiHashIndex_add(HashIndex* hashIndex, HashIndexElement* element) {
+  bool result;
+  result = TRI_InsertElementMultiArray(hashIndex->assocArray.nonUniqueArray, element, false);
+  if (result) {
+    return 0;
+  }    
+  return -1;
+}
+
+
+// ...............................................................................
+// Locates an entry within the associative array
+// ...............................................................................
+
+HashIndexElements* MultiHashIndex_find(HashIndex* hashIndex, HashIndexElement* element) {
+  TRI_vector_pointer_t result;
+  HashIndexElements* results;
+  size_t j;
+  
+  results = TRI_Allocate(sizeof(HashIndexElements));    
+  
+  // .............................................................................
+  // We can only use the LookupByKey method for non-unique hash indexes, since
+  // we want more than one result returned!
+  // .............................................................................
+  result  = TRI_LookupByKeyMultiArray (hashIndex->assocArray.nonUniqueArray, element); 
+
+  
+  if (result._length == 0) {
+    results->_elements    = NULL;
+    results->_numElements = 0;
+  }
+  else {  
+    results->_numElements = result._length;
+    results->_elements = TRI_Allocate(sizeof(HashIndexElement) * result._length); 
+    for (j = 0; j < result._length; ++j) {  
+      results->_elements[j] = *((HashIndexElement*)(result._buffer[j]));
+    }  
+  }
+  TRI_DestroyVectorPointer(&result);
+  return results;
+}
+
+
+// ...............................................................................
+// An alias for addIndex 
+// ...............................................................................
+
+int MultiHashIndex_insert(HashIndex* hashIndex, HashIndexElement* element) {
+  return MultiHashIndex_add(hashIndex,element);
+} 
+
+
+// ...............................................................................
+// Removes an entry from the associative array
+// ...............................................................................
+
+bool MultiHashIndex_remove(HashIndex* hashIndex, HashIndexElement* element) {
+  bool result;
+  result = TRI_RemoveElementMultiArray(hashIndex->assocArray.nonUniqueArray, element, NULL); 
+  return result;
+}
+
+
+// ...............................................................................
+// updates and entry from the associative array, first removes beforeElement, 
+//  then adds the afterElement
+// ...............................................................................
+
+bool MultiHashIndex_update(HashIndex* hashIndex, HashIndexElement* beforeElement, 
+                           HashIndexElement* afterElement) {
   assert(false);
   return false;                      
 }

@@ -37,32 +37,40 @@
 
 #include <BasicsC/common.h>
 #include <BasicsC/associative.h>
+#include <BasicsC/associative-multi.h>
 #include <BasicsC/hashes.h>
 #include "ShapedJson/shaped-json.h"
 
 // ...............................................................................
-// Define the structure of a hashindex
+// Define the structure of a unique or non-unique hashindex
 // ...............................................................................
 
 typedef struct {
-  TRI_associative_array_t* associativeArray;
+  union {
+    TRI_associative_array_t* uniqueArray;
+    TRI_multi_array_t* nonUniqueArray;
+  } assocArray;   
+  bool unique; 
 } HashIndex;
 
 
-// ...............................................................................
-// Define the structure of element
-// ...............................................................................
-
 typedef struct {
-  size_t numFields;   // the number of fields
-  TRI_json_t* fields; // list of blob pointers
-  void*  data;        // master document pointer
+  size_t numFields;          // the number of fields
+  TRI_shaped_json_t* fields; // list of shaped json objects the blob of data within will be hashed
+  void*  data;               // master document pointer
 } HashIndexElement;
 
 typedef struct {
   size_t _numElements;
-  HashIndexElement** _elements;
+  HashIndexElement* _elements; // simple list of elements
 } HashIndexElements;  
+
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// Unique hash indexes
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 
 
@@ -74,6 +82,26 @@ HashIndexElements* HashIndex_find (HashIndex*, HashIndexElement*);
 
 int HashIndex_insert (HashIndex*, HashIndexElement*);
 
-bool HashIndex_removeIndex (HashIndex*, const HashIndexElement*); 
+bool HashIndex_remove (HashIndex*, HashIndexElement*); 
 
 bool HashIndex_update (HashIndex*, const HashIndexElement*, const HashIndexElement*);
+
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// Multi-hash non-unique hash indexes
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+
+
+HashIndex* MultiHashIndex_new (void);
+
+int MultiHashIndex_add (HashIndex*, HashIndexElement*);
+
+HashIndexElements* MultiHashIndex_find (HashIndex*, HashIndexElement*); 
+
+int MultiHashIndex_insert (HashIndex*, HashIndexElement*);
+
+bool MultiHashIndex_remove (HashIndex*, HashIndexElement*); 
+
+bool MultiHashIndex_update (HashIndex*, HashIndexElement*, HashIndexElement*);

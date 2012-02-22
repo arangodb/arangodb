@@ -315,7 +315,10 @@ TRI_idx_iid_t TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* collection
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_idx_iid_t TRI_EnsureHashIndexSimCollection (TRI_sim_collection_t* collection,
-                                                const TRI_vector_t* attributes);
+                                                const TRI_vector_t* attributes,
+                                                bool unique);
+
+                                                
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

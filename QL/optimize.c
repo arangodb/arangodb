@@ -830,6 +830,11 @@ void QLOptimizeFrom (const QL_parser_context_t* context) {
     if (node->_rhs) {
       // optimize on clause
       QLOptimizeExpression(node->_rhs);
+      if (node->_type == QLNodeJoinInner &&
+          QLOptimizeGetWhereType(node->_rhs) == QLQueryWhereTypeAlwaysFalse) {
+        // inner join condition is always false, query will have no results
+        // TODO: set marker that query is empty
+      }
     }
     next = node->_next;
     if (next == 0) {
@@ -907,13 +912,31 @@ void QLOptimizeFreeRangeVector (TRI_vector_pointer_t* vector) {
       continue;
     }
     
+    if (range->_collection) {
+      TRI_Free(range->_collection);
+    }
+    
     if (range->_field) {
       TRI_Free(range->_field);
+    }
+
+    if (range->_refValue._collection) {
+      TRI_FreeString(range->_refValue._collection);
     }
     
     if (range->_refValue._field) {
       TRI_FreeString(range->_refValue._field);
     }
+
+    if ((range->_valueType == RANGE_TYPE_STRING || range->_valueType == RANGE_TYPE_JSON)
+        && range->_minValue._stringValue) {
+      TRI_FreeString(range->_minValue._stringValue);
+    }
+    if ((range->_valueType == RANGE_TYPE_STRING || range->_valueType == RANGE_TYPE_JSON) 
+        && range->_maxValue._stringValue) {
+      TRI_FreeString(range->_maxValue._stringValue);
+    }
+
     TRI_Free(range);
   }
 
@@ -1369,7 +1392,9 @@ static QL_optimize_range_t* QLOptimizeCreateRange (QL_ast_node_t* memberNode,
     return NULL;
   }
 
-  range->_refValue._field = NULL;
+  range->_collection           = NULL;
+  range->_field                = NULL;
+  range->_refValue._field      = NULL;
   range->_refValue._collection = NULL;
 
   // get value
@@ -1394,7 +1419,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (QL_ast_node_t* memberNode,
 
   // store collection, field name and hash
   lhs = memberNode->_lhs;
-  range->_collection = lhs->_value._stringValue;
+  range->_collection = TRI_DuplicateString(lhs->_value._stringValue);
   range->_field      = TRI_DuplicateString(name->_buffer);
   range->_hash       = QLOptimizeGetMemberNameHash(memberNode);
 
@@ -1406,8 +1431,8 @@ static QL_optimize_range_t* QLOptimizeCreateRange (QL_ast_node_t* memberNode,
       type == QLNodeBinaryOperatorEqual) {
     // === and == ,  range is [ value (inc) ... value (inc) ]
     if (range->_valueType == RANGE_TYPE_FIELD) {
-      range->_refValue._collection = 
-        ((QL_ast_node_t*) valueNode->_lhs)->_value._stringValue;
+      range->_refValue._collection = TRI_DuplicateString(
+        ((QL_ast_node_t*) valueNode->_lhs)->_value._stringValue);
       name = QLOptimizeGetMemberNameString(valueNode, false);
       if (name) {
         range->_refValue._field = TRI_DuplicateString(name->_buffer);
@@ -1420,7 +1445,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (QL_ast_node_t* memberNode,
       range->_maxValue._doubleValue = range->_minValue._doubleValue;
     }
     else if (range->_valueType == RANGE_TYPE_STRING) { 
-      range->_minValue._stringValue = valueNode->_value._stringValue;
+      range->_minValue._stringValue = TRI_DuplicateString(valueNode->_value._stringValue);
       range->_maxValue._stringValue = range->_minValue._stringValue;
     }
     else if (range->_valueType == RANGE_TYPE_JSON) {
@@ -1452,7 +1477,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (QL_ast_node_t* memberNode,
       range->_minValue._doubleValue = QLOptimizeGetDouble(valueNode);
     }
     else if (range->_valueType == RANGE_TYPE_STRING) {
-      range->_minValue._stringValue = valueNode->_value._stringValue;
+      range->_minValue._stringValue = TRI_DuplicateString(valueNode->_value._stringValue);
     }
 
     if (type == QLNodeBinaryOperatorGreaterEqual) {
@@ -1472,7 +1497,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (QL_ast_node_t* memberNode,
       range->_maxValue._doubleValue = QLOptimizeGetDouble(valueNode);
     }
     else if (range->_valueType == RANGE_TYPE_STRING) {
-      range->_maxValue._stringValue = valueNode->_value._stringValue;
+      range->_maxValue._stringValue = TRI_DuplicateString(valueNode->_value._stringValue);
     }
 
     range->_minStatus = RANGE_VALUE_INFINITE;
@@ -1654,102 +1679,6 @@ QL_ast_query_order_type_e QLOptimizeGetOrderType (const QL_ast_node_t* node) {
 
   // ORDER BY is constant (same for all records) and can be ignored
   return QLQueryOrderTypeNone;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief determine which indexes to use for a query
-////////////////////////////////////////////////////////////////////////////////
-
-void QLOptimizeDetermineIndexes (QL_ast_query_t* query) {
-  TRI_vector_pointer_t* ranges;
-  QL_optimize_range_t* range;
-  TRI_vector_pointer_t indexDefinitions;
-  TRI_index_definition_t* indexDefinition;
-  QL_ast_node_t* node;
-  char* collectionName;
-  char* alias;
-  size_t i, j, k, matches;
-  size_t count = 0;
-
-return;
-  node = (QL_ast_node_t*) query->_from._base->_next;
-  assert(node != 0);
-  
-  // enum all collections used in query
-  while (node != 0) {
-    ranges = 0;
-    if (count++ == 0) {
-      collectionName = ((QL_ast_node_t*) node->_lhs)->_value._stringValue;
-      alias = ((QL_ast_node_t*) node->_rhs)->_value._stringValue;
-      ranges = QLOptimizeCondition(query->_where._base);
-    }
-    else {
-      collectionName = ((QL_ast_node_t*) ((QL_ast_node_t*) node->_lhs)->_lhs)->_value._stringValue;
-      alias = ((QL_ast_node_t*) ((QL_ast_node_t*) node->_lhs)->_rhs)->_value._stringValue;
-    }
-
-    // accessType = TABLE_SCAN;
-
-    if (ranges) {
-      indexDefinitions = TRI_GetCollectionIndexes(query->_vocbase, collectionName);
-
-      // enum all indexes
-      for (i = 0; i < indexDefinitions._length; i++) {
-        indexDefinition = (TRI_index_definition_t*) indexDefinitions._buffer[i];
-
-        matches = 0;
-        for (j = 0 ; j < indexDefinition->_fields._length; j++) {
-          for (k = 0; k < ranges->_length; k++) {
-            range = (QL_optimize_range_t*) ranges->_buffer[k];
-            // check if collection name matches
-            if (strcmp(range->_collection, alias) != 0) {
-              continue;
-            }
-
-            // check if field names match
-            if (strcmp(indexDefinition->_fields._buffer[j], range->_field) != 0) {
-              continue;
-            }
-
-            if (indexDefinition->_type == TRI_IDX_TYPE_PRIMARY_INDEX ||
-                indexDefinition->_type == TRI_IDX_TYPE_HASH_INDEX) {
-              // check if index can be used (primary and hash index only support equality comparisons)
-              if (range->_minStatus == RANGE_VALUE_INFINITE || 
-                  range->_maxStatus == RANGE_VALUE_INFINITE) {
-                continue;
-              }
-              if (range->_valueType == RANGE_TYPE_DOUBLE && 
-                  range->_minValue._doubleValue != range->_maxValue._doubleValue) {
-                continue; 
-              }
-              if ((range->_valueType == RANGE_TYPE_STRING || 
-                   range->_valueType == RANGE_TYPE_JSON) && 
-                  strcmp(range->_minValue._stringValue, range->_maxValue._stringValue) != 0) {
-                continue; 
-              }
-            }
-
-            matches++;
-            break;
-          }
-        }
-
-        if (matches == indexDefinition->_fields._length) {
-          printf("PICKING INDEX iid: %lu, TYPE: %lu UNIQUE: %lu\n",(unsigned long) indexDefinition->_iid, (unsigned long) indexDefinition->_type, (unsigned long) indexDefinition->_isUnique);
-          for (j = 0; j < indexDefinition->_fields._length; j++) {
-            printf("- FIELD: %s\n", indexDefinition->_fields._buffer[j]);
-          }
-        } 
-      }
-
-      TRI_DestroyVectorPointer(&indexDefinitions);
-
-      QLOptimizeFreeRangeVector(ranges);
-      TRI_Free(ranges);
-    }
-
-    node = node->_next;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
