@@ -15,6 +15,12 @@
 		<string>/etc/voc/avocado.conf</string>
 	</array>
 
+        <key>UserName</key>
+        <string>avocado</string>
+
+        <key>GroupName</key>
+        <string>avocado</string>
+
 	<key>RunAtLoad</key>
 	<true/>
 </dict>
