@@ -142,6 +142,10 @@ namespace triagens {
 
 
     void ShutdownRest () {
+#ifdef TRI_HAVE_POSIX_THREADS
+        opensslCleanup();
+#endif
+
       TRI_ShutdownUrl();
 
       TRIAGENS_BASICS_SHUTDOWN;

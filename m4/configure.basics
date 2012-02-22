@@ -87,8 +87,21 @@ if test x$GCC == xyes;  then
     WALL="${WALL} -Werror"
   fi
 
+  if test x$tr_DARWIN == xyes;  then
+    WALL="${WALL} -Wno-deprecated-declarations"
+  fi
+
   WALLC="${WALL} -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement"
-  WALLCXX="${WALL} -Wstrict-null-sentinel -Woverloaded-virtual -Wno-variadic-macros"
+  WALLCXX="${WALL} -Woverloaded-virtual -Wno-variadic-macros"
+
+  case $CXX in
+    *clang++*)
+      ;;
+
+    *)
+      WALLCXX="${WALLCXX} -Wstrict-null-sentinel"
+      ;;
+  esac
 
   if test x$tr_WEFFCXX == xyes;  then
     WALLCXX="${WALLCXX} -Weffc++"

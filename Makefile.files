@@ -4,17 +4,7 @@
 ## avocadodb
 ################################################################################
 
-libavocadodb_a_CPPFLAGS = \
-	$(AM_CPPFLAGS) \
-	@BOOST_CPPFLAGS@ \
-	@LIBEV_CPPFLAGS@ \
-	@MATH_CPPFLAGS@ \
-	@NCURSES_CPPFLAGS@ \
-	@OPENSSL_CPPFLAGS@ \
-	@READLINE_CPPFLAGS@ \
-	@V8_CPPFLAGS@
-
-libavocadodb_a_SOURCES = \
+avocado_SOURCES = \
 	Admin/ApplicationAdminServer.cpp \
 	Admin/RestAdminBaseHandler.cpp \
 	Admin/RestAdminFeConfigurationHandler.cpp \
@@ -99,6 +89,16 @@ libavocadodb_a_SOURCES = \
 	Logger/LoggerStream.cpp \
 	Logger/LoggerTiming.cpp \
 	ProgramOptions/program-options.c \
+	QL/ParserWrapper.cpp \
+	QL/ast-node.c \
+	QL/ast-query.c \
+	QL/error.c \
+	QL/formatter.c \
+	QL/javascripter.c \
+	QL/optimize.c \
+	QL/parser-context.c \
+	QL/parser.c \
+	QL/tokens.c \
 	Rest/AddressPort.cpp \
 	Rest/AnyServer.cpp \
 	Rest/HttpRequest.cpp \
@@ -106,6 +106,16 @@ libavocadodb_a_SOURCES = \
 	Rest/Initialise.cpp \
 	Rest/SslInterface.cpp \
 	Rest/Url.cpp \
+	RestHandler/RestActionHandler.cpp \
+	RestHandler/RestDocumentHandler.cpp \
+	RestHandler/RestSystemActionHandler.cpp \
+	RestHandler/RestVocbaseBaseHandler.cpp \
+	RestServer/ActionDispatcherThread.cpp \
+	RestServer/AvocadoHttpServer.cpp \
+	RestServer/AvocadoServer.cpp \
+	RestServer/JSLoader.cpp \
+	RestServer/SystemActionDispatcherThread.cpp \
+	RestServer/avocado.cpp \
 	ResultGenerator/HtmlResultGenerator.cpp \
 	ResultGenerator/Initialise.cpp \
 	ResultGenerator/JsonResultGenerator.cpp \
@@ -130,11 +140,11 @@ libavocadodb_a_SOURCES = \
 	ShapedJson/shape-accessor.c \
 	ShapedJson/shaped-json.c \
 	V8/v8-actions.cpp \
+	V8/v8-conv.cpp \
 	V8/v8-json.cpp \
+	V8/v8-line-editor.cpp \
 	V8/v8-shell.cpp \
 	V8/v8-utils.cpp \
-	V8/v8-conv.cpp \
-	V8/v8-line-editor.cpp \
 	V8/v8-vocbase.cpp \
 	Variant/VariantArray.cpp \
 	Variant/VariantBlob.cpp \
@@ -156,79 +166,25 @@ libavocadodb_a_SOURCES = \
 	Variant/VariantUInt64.cpp \
 	Variant/VariantUInt8.cpp \
 	Variant/VariantVector.cpp \
-	VocBase/data-feeder.c \
-	VocBase/join-execute.c \
-	VocBase/order.c \
 	VocBase/blob-collection.c \
 	VocBase/collection.c \
 	VocBase/compactor.c \
+	VocBase/data-feeder.c \
 	VocBase/datafile.c \
 	VocBase/document-collection.c \
 	VocBase/fluent-query.c \
-	VocBase/select-result.c \
-	VocBase/join.c \
-	VocBase/query.c \
 	VocBase/headers.c \
 	VocBase/index.c \
+	VocBase/join-execute.c \
+	VocBase/join.c \
+	VocBase/order.c \
+	VocBase/query.c \
 	VocBase/result-set.c \
+	VocBase/select-result.c \
 	VocBase/simple-collection.c \
 	VocBase/synchroniser.c \
 	VocBase/voc-shaper.c \
-	VocBase/vocbase.c \
-	QL/ParserWrapper.cpp \
-	QL/ast-node.c \
-	QL/ast-query.c \
-	QL/error.c \
-	QL/formatter.c \
-	QL/javascripter.c \
-	QL/optimize.c \
-	QL/parser-context.c \
-	QL/parser.c \
-	QL/tokens.c
-
-avocado_CPPFLAGS = \
-	$(AM_CPPFLAGS) \
-	@BOOST_CPPFLAGS@ \
-	@LIBEV_CPPFLAGS@ \
-	@MATH_CPPFLAGS@ \
-	@NCURSES_CPPFLAGS@ \
-	@OPENSSL_CPPFLAGS@ \
-	@READLINE_CPPFLAGS@ \
-	@V8_CPPFLAGS@
-
-avocado_LDFLAGS = \
-	-L. \
-	@BOOST_LDFLAGS@ \
-	@LIBEV_LDFLAGS@ \
-	@MATH_LDFLAGS@ \
-	@NCURSES_LDFLAGS@ \
-	@OPENSSL_LDFLAGS@ \
-	@READLINE_LDFLAGS@ \
-	@V8_LDFLAGS@
-
-avocado_LDADD = \
-	-lavocadodb \
-	@BOOST_LIBS@ \
-	@LIBEV_LIBS@ \
-	@MATH_LIBS@ \
-	@NCURSES_LIBS@ \
-	@OPENSSL_LIBS@ \
-	@READLINE_LIBS@ \
-	@V8_LIBS@
-
-avocado_DEPENDENCIES = @builddir@/libavocadodb.a
-
-avocado_SOURCES = \
-	RestHandler/RestActionHandler.cpp \
-	RestHandler/RestDocumentHandler.cpp \
-	RestHandler/RestSystemActionHandler.cpp \
-	RestHandler/RestVocbaseBaseHandler.cpp \
-	RestServer/ActionDispatcherThread.cpp \
-	RestServer/AvocadoHttpServer.cpp \
-	RestServer/AvocadoServer.cpp \
-	RestServer/JSLoader.cpp \
-	RestServer/SystemActionDispatcherThread.cpp \
-	RestServer/avocado.cpp
+	VocBase/vocbase.c
 
 ################################################################################
 ## JavaScript source code as header
@@ -242,7 +198,6 @@ JAVASCRIPT_HEADER = \
 	js/server/js-aql.h \
 	js/server/js-json.h \
 	js/server/js-shell.h
-
 
 BUILT_SOURCES += $(JAVASCRIPT_HEADER)
 

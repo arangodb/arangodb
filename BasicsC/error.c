@@ -186,7 +186,7 @@ char const* TRI_last_error () {
   }
   else {
     err = eptr->_number;
-    err = eptr->_sys;
+    sys = eptr->_sys;
   }
 
 #else
@@ -229,6 +229,7 @@ int TRI_set_errno (int error) {
 #elif defined(TRI_HAVE_POSIX_THREADS)
 
   tri_error_t* eptr;
+  int copyErrno = errno;
 
   eptr = pthread_getspecific(ErrorKey);
 
@@ -240,7 +241,7 @@ int TRI_set_errno (int error) {
   eptr->_number = error;
 
   if (error == TRI_ERROR_SYS_ERROR) {
-    eptr->_sys = errno;
+    eptr->_sys = copyErrno;
   }
   else {
     eptr->_sys = 0;

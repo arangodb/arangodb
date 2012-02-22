@@ -1104,7 +1104,7 @@ static TRI_json_t* JsonHashIndex (TRI_index_t* idx, TRI_doc_collection_t* collec
   TRI_json_t* json;
   const TRI_shape_path_t* path;
   TRI_hash_index_t* hashIndex;
-  char** fieldList;
+  char const** fieldList;
   char* fieldCounter;
   
   // ..........................................................................  

@@ -38,6 +38,7 @@
 #include "QL/ast-query.h"
 #include "QL/parser-context.h"
 #include "QL/formatter.h"
+#include "QL/javascripter.h"
 #include "VocBase/index.h"
 
 #ifdef __cplusplus
@@ -98,12 +99,16 @@ QL_optimize_range_type_e;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Range value types 
 ///
-/// Currently supported types are doubles (numbers) and strings
+/// Currently supported types are collection attributes (fields), doubles 
+/// (numbers), strings, and JSON documents.
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  RANGE_TYPE_DOUBLE = 0,
-  RANGE_TYPE_STRING = 1
+  RANGE_TYPE_FIELD  = 1,
+  RANGE_TYPE_DOUBLE = 2,
+  RANGE_TYPE_STRING = 3,
+  RANGE_TYPE_JSON   = 4
+
 }
 QL_optimize_range_value_type_e;
 
@@ -146,6 +151,10 @@ typedef struct QL_optimize_range_s {
     double _doubleValue;
     char* _stringValue;
   } _maxValue;
+  struct {
+    char* _collection;
+    char *_field;
+  } _refValue;
   uint64_t _hash;
   QL_optimize_range_type_e _minStatus;
   QL_optimize_range_type_e _maxStatus;

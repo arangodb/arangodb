@@ -92,11 +92,11 @@ namespace triagens {
 
             // directly execute the handler within the scheduler thread
             if (handler->isDirect()) {
-              Handler::status_e status = handleRequestDirectly(task, handler);
+              Handler::status_e status = this->handleRequestDirectly(task, handler);
 
               if (status != Handler::HANDLER_REQUEUE) {
                 done = true;
-                destroyHandler(handler);
+                this->destroyHandler(handler);
               }
               else {
                 continue;
@@ -109,7 +109,7 @@ namespace triagens {
 
               if (atask == 0) {
                 LOGGER_WARNING << "task is indirect, but not asynchronous";
-                destroyHandler(handler);
+                this->destroyHandler(handler);
                 return false;
               }
               else {
@@ -127,7 +127,7 @@ namespace triagens {
             else {
               LOGGER_WARNING << "no dispatcher is known";
 
-              destroyHandler(handler);
+              this->destroyHandler(handler);
               return false;
             }
           }

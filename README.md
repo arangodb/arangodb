@@ -7,12 +7,8 @@ effort to operate for the administrator.
 
 ## Compilation
 
-1. Install Dependencies: V8, boost, libev
-2. make setup
-3. ./configure --with-boost=PATH_TO_BOOST --with-libev=PATH_TO_LIBEV --with-v8=PATH_TO_V8
-4. make
-5. create a directory `/var/lib/avocado` where you are allowed to read and write
-6. "./avocado /var/lib/avocado" to start a REST server or "./avocado /var/lib/avocado --shell" for debugging
+Please check the <a href="https://github.com/triAGENS/AvocadoDB/wiki">wiki</a>
+for installation and compilation instructions:
 
 ### Mac OS X Hints
 
@@ -28,3 +24,11 @@ This will install AvocadoDB and all dependencies.
     avocado> db.examples.count();
     avocado> db.examples.save({ Hallo: "World" });
     avocado> db.examples.select();
+
+## Caveat
+
+Please note that this is a very early version if AvocadoDB. There will be
+bugs and we'd realy appreciate it if you 
+<a href="https://github.com/triAGENS/AvocadoDB/issues">report</a> them:
+
+  https://github.com/triAGENS/AvocadoDB/issues
