@@ -159,6 +159,22 @@ bool QLAstQueryIsValidAlias (QL_ast_query_t* query, const char* alias) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Return the collection name for its alias
+////////////////////////////////////////////////////////////////////////////////
+
+char* QLAstQueryGetCollectionNameForAlias (QL_ast_query_t* query, 
+                                           const char* alias) {
+  QL_ast_query_collection_t* collection;
+
+  collection = (QL_ast_query_collection_t*) 
+    TRI_LookupByKeyAssociativePointer(&query->_from._collections, alias);
+  if (!collection) {
+    return NULL;
+  }
+  return collection->_name;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Add a collection to the query
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -30,7 +30,7 @@ boost
 
             protected:
 
-            ~error_info_base() throw()
+            virtual ~error_info_base() throw()
                 {
                 }
             };

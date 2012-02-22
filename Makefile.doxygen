@@ -54,6 +54,6 @@ wiki: $(WIKI)
 ## CLEANUP
 ################################################################################
 
-CLEANUP += $(DOXYGEN) $(WIKI)
+CLEANUP += $(DOXYGEN) $(WIKI) $(subst Doxygen/xml,Doxygen/wiki,$(WIKI))
 
 
