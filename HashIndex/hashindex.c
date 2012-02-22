@@ -217,7 +217,6 @@ static bool isEqualElementElement (struct TRI_associative_array_s* associativeAr
                                    void* leftElement, void* rightElement) {
   HashIndexElement* hLeftElement  = (HashIndexElement*)(leftElement);
   HashIndexElement* hRightElement = (HashIndexElement*)(rightElement);
-  int result;
   
   if (leftElement == NULL || rightElement == NULL) {
     return false;
@@ -245,7 +244,6 @@ static bool isEqualKeyElement (struct TRI_associative_array_s* associativeArray,
                                void* leftElement, void* rightElement) {
   HashIndexElement* hLeftElement  = (HashIndexElement*)(leftElement);
   HashIndexElement* hRightElement = (HashIndexElement*)(rightElement);
-  int result;
   
   if (leftElement == NULL || rightElement == NULL) {
     return false;
@@ -270,7 +268,7 @@ static bool isEqualKeyElement (struct TRI_associative_array_s* associativeArray,
 // .............................................................................
 // The actual hashing occurs here
 // .............................................................................
-static size_t hashElement (struct TRI_associative_array_s* associativeArray, void* element) {
+static uint64_t hashElement (struct TRI_associative_array_s* associativeArray, void* element) {
   HashIndexElement* hElement = (HashIndexElement*)(element);
   size_t hash = TRI_InitialCrc32();
   
@@ -284,7 +282,7 @@ static size_t hashElement (struct TRI_associative_array_s* associativeArray, voi
 }
 
 
-static size_t hashKey (struct TRI_associative_array_s* associativeArray, void* element) {
+static uint64_t hashKey (struct TRI_associative_array_s* associativeArray, void* element) {
   HashIndexElement* hElement = (HashIndexElement*)(element);
   size_t hash = TRI_InitialCrc32();
   

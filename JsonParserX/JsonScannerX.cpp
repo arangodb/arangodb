@@ -838,6 +838,7 @@ static void yy_flex_strncpy (char *,yyconst char *,int ,yyscan_t yyscanner);
 static int yy_flex_strlen (yyconst char * ,yyscan_t yyscanner);
 #endif
 
+#define YY_NO_INPUT
 #ifndef YY_NO_INPUT
 /* %if-c-only Standard (non-C++) definition */
 /* %not-for-header */

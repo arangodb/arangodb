@@ -36,20 +36,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTIONS--                                               triagens namespace
-// -----------------------------------------------------------------------------
-
-namespace triagens {
-  using namespace std;
-
-  typedef TRI_blob_t blob_t;
-  typedef TRI_datetime_t datetime_t;
-  typedef TRI_date_t date_t;
-  typedef TRI_seconds_t seconds_t;
-  typedef TRI_msec_t msec_t;
-}
-
-// -----------------------------------------------------------------------------
 // --SECTION--           C++ header files that are always present on all systems
 // -----------------------------------------------------------------------------
 
@@ -64,6 +50,20 @@ namespace triagens {
 #include <stack>
 #include <string>
 #include <vector>
+
+// -----------------------------------------------------------------------------
+// --SECTIONS--                                               triagens namespace
+// -----------------------------------------------------------------------------
+
+namespace triagens {
+  using namespace std;
+
+  typedef TRI_blob_t blob_t;
+  typedef TRI_datetime_t datetime_t;
+  typedef TRI_date_t date_t;
+  typedef TRI_seconds_t seconds_t;
+  typedef TRI_msec_t msec_t;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 noncopyable class

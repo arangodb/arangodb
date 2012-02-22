@@ -413,7 +413,7 @@ static TRI_fluent_query_t* ExtractFluentQuery (v8::Handle<v8::Object> queryObjec
     TRI_vocbase_col_t const* collection = LoadCollection(queryObject, err);
 
     if (collection == 0) {
-      return false;
+      return 0;
     }
 
     TRI_fluent_query_t* query = TRI_CreateCollectionQuery(collection);
