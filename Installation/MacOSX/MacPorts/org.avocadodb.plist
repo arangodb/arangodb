@@ -12,7 +12,7 @@
 	<array>
 		<string>/usr/sbin/avocado</string>
 		<string>-c</string>
-		<string>/etc/avocado.conf</string>
+		<string>/etc/voc/avocado.conf</string>
 	</array>
 
 	<key>RunAtLoad</key>
