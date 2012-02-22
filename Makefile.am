@@ -46,7 +46,7 @@ nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/html -name "*.png" -print)
 
 install-data-local:
-	test -d @localstatedir@//${PACKAGE_TARNAME} || mkdir -p @localstatedir@//${PACKAGE_TARNAME}
+	test -d @localstatedir@/${PACKAGE_TARNAME} || mkdir -p @localstatedir@/${PACKAGE_TARNAME}
 
 ################################################################################
 ## avocadodb
