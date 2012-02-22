@@ -1667,7 +1667,7 @@ static bool CreateImmediateIndexes (TRI_sim_collection_t* collection,
 
     ok = idx->insert(idx, header);
 
-    i < n ? idx : NULL;
+    // i < n ? idx : NULL;
     if (! ok) {
       result = false;
     }

@@ -321,10 +321,8 @@ static bool ToJavaScriptHashDocument (TRI_qry_select_t* s,
                                       TRI_rc_result_t* result,
                                       void* storage) {
 
-  TRI_doc_mptr_t masterPointer;
   TRI_doc_mptr_t* document;
   TRI_doc_collection_t* collection;  
-  TRI_sim_collection_t* simCollection; 
 
   collection = result->_context->_primary;  
 
@@ -354,7 +352,6 @@ static bool ToJavaScriptHashDocument (TRI_qry_select_t* s,
 static TRI_rc_result_t* NextHashCollectionCursor (TRI_rc_cursor_t* c) {
   collection_cursor_t* cursor;
   TRI_doc_collection_t* collection;
-  TRI_sim_collection_t* simCollection; 
 
   cursor = (collection_cursor_t*) c;
   collection = cursor->base._context->_primary;
