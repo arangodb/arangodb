@@ -2124,6 +2124,7 @@ maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
 	-test -z "$(BUILT_SOURCES)" || rm -f $(BUILT_SOURCES)
+@ENABLE_INSTALL_DBDIR_FALSE@install-data-local:
 clean: clean-am
 
 clean-am: clean-generic clean-local clean-sbinPROGRAMS mostlyclean-am
@@ -2217,8 +2218,8 @@ uninstall-am: uninstall-nobase_pkgdataDATA uninstall-sbinPROGRAMS
 	uninstall-sbinPROGRAMS
 
 
-install-data-local:
-	test -d @localstatedir@//${PACKAGE_TARNAME} || mkdir -p @localstatedir@//${PACKAGE_TARNAME}
+@ENABLE_INSTALL_DBDIR_TRUE@install-data-local:
+@ENABLE_INSTALL_DBDIR_TRUE@	test -d @localstatedir@/${PACKAGE_TARNAME} || mkdir -p @localstatedir@/${PACKAGE_TARNAME}
 
 .PHONY: Doxygen/js Doxygen/js/system Doxygen/js/modules
 
