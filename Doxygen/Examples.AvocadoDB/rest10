@@ -1,4 +1,4 @@
-> curl --data @- -X PUT --header 'etag: "13865833"' \
+> curl --data @- -X PUT --header 'etag: "13865833"'
 >      --dump - http://localhost:8529/collection/9496015/13658604
 { "Hallo" : "Me" }
 
@@ -11,7 +11,7 @@ server: triagens GmbH High-Performance HTTP Server
   "message" : "document /collection/9496015:13658604 has been altered",
   "code" : 409}
 
-> curl --data @- -X PUT --header 'etag: "13865833"' \
+> curl --data @- -X PUT --header 'etag: "13865833"'
 >      --dump - http://localhost:8529/collection/9496015:13658604?policy=last
 { "Hallo" : "Me" }
 
