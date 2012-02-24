@@ -1,4 +1,4 @@
-> curl -X GET --dump - http://localhost:8529/collection/9496015/13658604
+> curl -X GET --dump - http://localhost:8529/collection/example/9496015:13658604
 HTTP/1.1 200 OK
 content-type: application/json
 connection: Keep-Alive
