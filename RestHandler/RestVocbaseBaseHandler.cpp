@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,18 +22,18 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestVocbaseBaseHandler.h"
 
-#include <BasicsC/string-buffer.h>
-#include <Basics/StringUtils.h>
+#include "BasicsC/string-buffer.h"
+#include "Basics/StringUtils.h"
 
-#include <Rest/HttpRequest.h>
+#include "Rest/HttpRequest.h"
 
-#include <VocBase/document-collection.h>
-#include <VocBase/result-set.h>
+#include "VocBase/document-collection.h"
+#include "VocBase/result-set.h"
 
 #include "ShapedJson/shaped-json.h"
 
@@ -89,13 +89,13 @@ string RestVocbaseBaseHandler::SYSTEM_ACTION_PATH = "/_system";
 /// @brief document path
 ////////////////////////////////////////////////////////////////////////////////
 
-string RestVocbaseBaseHandler::DOCUMENT_PATH = "/_document";
+string RestVocbaseBaseHandler::DOCUMENT_PATH = "/collection";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection path
 ////////////////////////////////////////////////////////////////////////////////
 
-string RestVocbaseBaseHandler::COLLECTION_PATH = "/_collection";
+string RestVocbaseBaseHandler::COLLECTION_PATH = "/collection";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -119,7 +119,7 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler (HttpRequest* request, TRI_vocbas
     _vocbase(vocbase),
     _collection(0),
     _documentCollection(0),
-    _resultSet(0),
+    _barrier(0),
     _timing(),
     _timingResult(RES_FAIL) {
 }
@@ -129,8 +129,8 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler (HttpRequest* request, TRI_vocbas
 ////////////////////////////////////////////////////////////////////////////////
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler () {
-  if (_resultSet != 0) {
-    _resultSet->free(_resultSet);
+  if (_barrier != 0) {
+    TRI_FreeBarrier(_barrier);
   }
 
   LOGGER_REQUEST_IN_END_I(_timing) << _timingResult;
@@ -175,7 +175,7 @@ void RestVocbaseBaseHandler::generateCreated (TRI_voc_cid_t cid, TRI_voc_did_t d
   response = new HttpResponse(HttpResponse::CREATED);
 
   response->setHeader("ETag", "\"" + StringUtils::itoa(rid) + "\"");
-  response->setHeader("location", DOCUMENT_PATH + "/" + StringUtils::itoa(cid) + ":" + StringUtils::itoa(did));
+  response->setHeader("location", DOCUMENT_PATH + "/" + StringUtils::itoa(cid) + "/" + StringUtils::itoa(did));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -191,7 +191,7 @@ void RestVocbaseBaseHandler::generateCollectionNotFound (string const& cid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateDocumentNotFound (string const& cid, string const& did) {
-  generateError(HttpResponse::NOT_FOUND, "document " + DOCUMENT_PATH + "/" + cid + ":" + did + " not found");
+  generateError(HttpResponse::NOT_FOUND, "document " + DOCUMENT_PATH + "/" + cid + "/" + did + " not found");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -199,7 +199,7 @@ void RestVocbaseBaseHandler::generateDocumentNotFound (string const& cid, string
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateConflict (string const& cid, string const& did) {
-  generateError(HttpResponse::CONFLICT, "document " + DOCUMENT_PATH + "/" + cid + ":" + did + " is been altered");
+  generateError(HttpResponse::CONFLICT, "document " + DOCUMENT_PATH + "/" + cid + ":" + did + " has been altered");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -214,56 +214,74 @@ void RestVocbaseBaseHandler::generateNotImplemented (string const& path) {
 /// @brief generates next entry from a result set
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateResultSetNext () {
-  if (_resultSet == 0 || ! _resultSet->hasNext(_resultSet)) {
-    generateError(HttpResponse::SERVER_ERROR, "result set is empty");
+void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
+                                               bool generateDocument) {
+  if (document == 0 || _documentCollection == 0) {
+    generateError(HttpResponse::SERVER_ERROR, "document or collection is null");
     return;
   }
 
-  TRI_doc_collection_t* collection = _resultSet->_containerElement->_container->_collection;
-
-  // executes a result set query
-  TRI_rs_entry_t const* entry = _resultSet->next(_resultSet);
-
   // add document identifier to buffer
-  string id = StringUtils::itoa(_collection->_cid) + ":" + StringUtils::itoa(entry->_did);
-
-  TRI_json_t augmented;
-
-  if (entry->_augmented._type != TRI_JSON_ARRAY) {
-    augmented._type = TRI_JSON_ARRAY;
-    TRI_InitVector(&augmented._value._objects, sizeof(TRI_json_t));
-  }
-  else {
-    TRI_CopyToJson(&augmented, &entry->_augmented);
-  }
-
-  TRI_Insert2ArrayJson(&augmented, "_id", TRI_CreateStringCopyJson(id.c_str()));
-
-  // convert object to string
   TRI_string_buffer_t buffer;
-  TRI_InitStringBuffer(&buffer);
 
-  TRI_StringifyAugmentedShapedJson(collection->_shaper, &buffer, &entry->_document, &augmented);
+  if (generateDocument) {
+    string id = StringUtils::itoa(_documentCollection->base._cid) + ":" + StringUtils::itoa(document->_did);
 
-  TRI_DestroyJson(&augmented);
+    TRI_json_t augmented;
+
+    TRI_InitArrayJson(&augmented);
+
+    TRI_Insert2ArrayJson(&augmented, "_id", TRI_CreateStringCopyJson(id.c_str()));
+    TRI_Insert2ArrayJson(&augmented, "_rev", TRI_CreateNumberJson(document->_rid));
+
+    // convert object to string
+    TRI_InitStringBuffer(&buffer);
+
+    TRI_StringifyAugmentedShapedJson(_documentCollection->_shaper, &buffer, &document->_document, &augmented);
+
+    TRI_DestroyJson(&augmented);
+  }
 
   // and generate a response
   response = new HttpResponse(HttpResponse::OK);
   response->setContentType("application/json");
-  response->setHeader("ETag", "\"" + StringUtils::itoa(entry->_rid) + "\"");
+  response->setHeader("ETag", "\"" + StringUtils::itoa(document->_rid) + "\"");
 
-  response->body().appendText(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
+  if (generateDocument) {
+    response->body().appendText(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
 
-  TRI_DestroyStringBuffer(&buffer);
+    TRI_DestroyStringBuffer(&buffer);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief splits a document reference into to parts
 ////////////////////////////////////////////////////////////////////////////////
 
-vector<string> RestVocbaseBaseHandler::splitDocumentReference (string const& name) {
-  return StringUtils::split(name, ":");
+bool RestVocbaseBaseHandler::splitDocumentReference (string const& name, string& did) {
+  vector<string> doc = StringUtils::split(name, ":");
+
+  switch (doc.size()) {
+    case 1:
+      did = doc[0];
+      break;
+
+    case 2:
+      did = doc[1];
+
+      if (StringUtils::uint64(doc[0]) != _documentCollection->base._cid) {
+        generateError(HttpResponse::BAD, "cross-collection object reference");
+        return false;
+      }
+
+      break;
+
+    default:
+      generateError(HttpResponse::BAD, "missing or illegal document identifier");
+      return false;
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -437,14 +455,9 @@ TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
 /// @brief sets the restult-set, needs a loaded collection
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::findDocument (string const& doc) {
-  if (_resultSet != 0) {
-    _resultSet->free(_resultSet);
-    _resultSet = 0;
-  }
-
+TRI_doc_mptr_t const* RestVocbaseBaseHandler::findDocument (string const& doc) {
   if (_documentCollection == 0) {
-    return;
+    return 0;
   }
 
   uint32_t id = StringUtils::uint32(doc);
@@ -456,15 +469,19 @@ void RestVocbaseBaseHandler::findDocument (string const& doc) {
   _documentCollection->beginRead(_documentCollection);
 
   TRI_doc_mptr_t const* document = _documentCollection->read(_documentCollection, id);
-  TRI_rs_container_element_t* ce = TRI_AddResultSetRSContainer(&_documentCollection->_resultSets);
 
-  _resultSet = TRI_CreateRSSingle(_documentCollection, ce, document, 1);
+  // keep the oldest barrier
+  if (_barrier != 0) {
+    _barrier = TRI_CreateBarrierElement(&_documentCollection->_barrierList);
+  }
 
   _documentCollection->endRead(_documentCollection);
 
   // .............................................................................
   // outside read transaction
   // .............................................................................
+
+  return document;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
