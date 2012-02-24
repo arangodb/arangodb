@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_AVOCADO_DB_REST_HANDLER_REST_DOCUMENT_HANDLER_H
-#define TRIAGENS_AVOCADO_DB_REST_HANDLER_REST_DOCUMENT_HANDLER_H 1
+#ifndef TRIAGENS_REST_HANDLER_REST_COLLECTION_HANDLER_H
+#define TRIAGENS_REST_HANDLER_REST_COLLECTION_HANDLER_H 1
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
@@ -34,10 +34,12 @@
 /// @page RestDocumentTOC
 ///
 /// <ol>
-///   <li>@ref RestDocumentCreate "POST /_document"</li>
-///   <li>@ref RestDocumentRead "GET /_document"</li>
-///   <li>@ref RestDocumentUpdate "PUT /_document"</li>
-///   <li>@ref RestDocumentDelete "DELETE /_document"</li>
+///   <li>@ref RestCollectionCreate "POST /collection/<collection-identifier>"</li>
+///   <li>@ref RestCollectionRead "GET /collection/<collection-identifier>/<document-identifier>"</li>
+///   <li>@ref RestCollectionReadAll "GET /collection/<collection-identifier>"</li>
+///   <li>@ref RestCollectionUpdate "PUT /collection/<collection-identifier>/<document-identifier>"</li>
+///   <li>@ref RestCollectionDelete "DELETE /collection/<collection-identifier>/<document-identifier>"</li>
+///   <li>@ref RestCollectionHead "HEAD /collection/<collection-identifier>/<document-identifier>"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -47,27 +49,39 @@
 /// The basic operations (create, read, update, delete) for documents are mapped
 /// to the standard HTTP methods (POST, GET, PUT, DELETE). An identifier for the
 /// revision is returned in the "ETag" field. If you modify a document, you can
-/// use the "ETag" field to detect conflicts.
+/// use the "ETag" field to detect conflicts. The revision of a document can be
+/// checking using the HTTP method HEAD.
 ///
 /// <hr>
 /// @copydoc RestDocumentTOC
 /// <hr>
 ///
-/// @anchor RestDocumentCreate
-/// @copydetails triagens::avocado::RestDocumentHandler::createDocument
+/// @anchor RestCollectionCreate
+/// @copydetails triagens::avocado::RestCollectionHandler::createDocument
+/// <hr>
 ///
-/// @anchor RestDocumentRead
-/// @copydetails triagens::avocado::RestDocumentHandler::readDocument
+/// @anchor RestCollectionRead
+/// @copydetails triagens::avocado::RestCollectionHandler::readSingleDocument
+/// <hr>
 ///
-/// @anchor RestDocumentUpdate
-/// @copydetails triagens::avocado::RestDocumentHandler::updateDocument
+/// @anchor RestCollectionReadAll
+/// @copydetails triagens::avocado::RestCollectionHandler::readAllDocuments
+/// <hr>
 ///
-/// @anchor RestDocumentDelete
-/// @copydetails triagens::avocado::RestDocumentHandler::deleteDocument
+/// @anchor RestCollectionUpdate
+/// @copydetails triagens::avocado::RestCollectionHandler::updateDocument
+/// <hr>
+///
+/// @anchor RestCollectionDelete
+/// @copydetails triagens::avocado::RestCollectionHandler::deleteDocument
+/// <hr>
+///
+/// @anchor RestCollectionHead
+/// @copydetails triagens::avocado::RestCollectionHandler::checkDocument
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               RestDocumentHandler
+// --SECTION--                                             RestCollectionHandler
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -79,14 +93,23 @@ namespace triagens {
   namespace avocado {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document request handler
+/// @brief collection request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestDocumentHandler : public RestVocbaseBaseHandler {
+    class RestCollectionHandler : public RestVocbaseBaseHandler {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -94,11 +117,20 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestDocumentHandler (rest::HttpRequest* request, struct TRI_vocbase_s* vocbase);
+        RestCollectionHandler (rest::HttpRequest* request, struct TRI_vocbase_s* vocbase);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -130,10 +162,22 @@ namespace triagens {
       bool createDocument ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reads a document
+/// @brief reads a single or all documents
 ////////////////////////////////////////////////////////////////////////////////
 
       bool readDocument ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads a single document
+////////////////////////////////////////////////////////////////////////////////
+
+      bool readSingleDocument (bool generateBody);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads all documents
+////////////////////////////////////////////////////////////////////////////////
+
+      bool readAllDocuments ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a document
@@ -146,6 +190,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       bool deleteDocument ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads a single document head
+////////////////////////////////////////////////////////////////////////////////
+
+      bool checkDocument ();
     };
   }
 }
