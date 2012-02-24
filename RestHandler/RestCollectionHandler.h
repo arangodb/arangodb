@@ -34,12 +34,12 @@
 /// @page RestDocumentTOC
 ///
 /// <ol>
-///   <li>@ref RestCollectionCreate "POST /collection/<collection-identifier>"</li>
-///   <li>@ref RestCollectionRead "GET /collection/<collection-identifier>/<document-identifier>"</li>
-///   <li>@ref RestCollectionReadAll "GET /collection/<collection-identifier>"</li>
-///   <li>@ref RestCollectionUpdate "PUT /collection/<collection-identifier>/<document-identifier>"</li>
-///   <li>@ref RestCollectionDelete "DELETE /collection/<collection-identifier>/<document-identifier>"</li>
-///   <li>@ref RestCollectionHead "HEAD /collection/<collection-identifier>/<document-identifier>"</li>
+///   <li>@ref RestCollectionCreate "POST /collection/@FA{<collection-identifier>}"</li>
+///   <li>@ref RestCollectionRead "GET /collection/@FA{<collection-identifier>}/@FA{<document-identifier>}"</li>
+///   <li>@ref RestCollectionReadAll "GET /collection/@FA{<collection-identifier>}"</li>
+///   <li>@ref RestCollectionUpdate "PUT /collection/@FA{<collection-identifier>}/@FA{<document-identifier>}"</li>
+///   <li>@ref RestCollectionDelete "DELETE /collection/@FA{<collection-identifier>}/@FA{<document-identifier>}"</li>
+///   <li>@ref RestCollectionHead "HEAD /collection/@FA{<collection-identifier>}/@FA{<document-identifier>}"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
