@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2011-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,13 +22,13 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 void dummy_28 ();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                            Module
+// --SECTION--                                                 Module "internal"
 // -----------------------------------------------------------------------------
 
 void dummy_32 ();
@@ -52,6 +52,59 @@ void dummy_46 ();
 ////////////////////////////////////////////////////////////////////////////////
 
 void dummy_50 ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  Module "avocado"
+// -----------------------------------------------------------------------------
+
+void dummy_54 ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page JSModuleAvocadoTOC
+///
+/// <ol>
+///   <li>@ref JSModuleAvocadoDefineHttpSystemAction "avocado.defineHttpSystemAction"</li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+void dummy_62 ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page JSModuleAvocado Module "avocado"
+///
+/// The following functions are used avocadoly.
+///
+/// <hr>
+/// @copydoc JSModuleAvocadoTOC
+/// <hr>
+///
+/// @anchor JSModuleAvocadoDefineHttpSystemAction
+/// @copydetails JS_DefineSystemAction
+////////////////////////////////////////////////////////////////////////////////
+
+void dummy_75 ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8ModuleAvocado
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+void dummy_80 ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief avocado module
+////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+void dummy_92 ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+void dummy_96 ();
 
 // Local Variables:
 // mode: outline-minor

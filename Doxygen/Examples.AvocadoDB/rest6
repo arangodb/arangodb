@@ -1,4 +1,4 @@
-> curl --data '@'- -X POST --dump - http://localhost:8529/_document/examples
+> curl --data @- -X POST --dump - http://localhost:8529/collection/examples
 { "Hallo" : "World" }
 
 HTTP/1.1 201 Created
@@ -6,5 +6,5 @@ content-type: text/plain;charset=utf-8
 connection: Keep-Alive
 server: triagens GmbH High-Performance HTTP Server
 etag: "13389200"
-location: /_document/9496015:13389200
+location: /collection/9496015/13389200
 content-length: 0
