@@ -1,4 +1,4 @@
-> curl -X DELETE --header 'etag: "13865833"' \
+> curl -X DELETE --header 'etag: "13865833"'
 >                --dump - http://localhost:8529/collection/9496015/13658604
 HTTP/1.1 409 Conflict
 content-type: application/json

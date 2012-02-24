@@ -1,4 +1,4 @@
-> curl --data @- -X PUT \
+> curl --data @- -X PUT
 >      --dump - http://localhost:8529/collection/9496015:13658604?_rev=1234567
 {}
 
