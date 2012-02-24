@@ -1816,6 +1816,9 @@ TRI_shaped_json_t* TRI_ShapedJsonJson (TRI_shaper_t* shaper, TRI_json_t const* j
 #endif
 
   shaped = TRI_Allocate(sizeof(TRI_shaped_json_t));
+  if (!shaped) {
+    return NULL;
+  }
 
   shaped->_sid = dst._sid;
   shaped->_data.length = (uint32_t) dst._size;

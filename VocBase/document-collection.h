@@ -32,7 +32,7 @@
 
 #include "BasicsC/json.h"
 #include "ShapedJson/json-shaper.h"
-#include "VocBase/result-set.h"
+#include "VocBase/barrier.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -239,7 +239,7 @@ typedef struct TRI_doc_collection_s {
   TRI_collection_t base;
 
   TRI_shaper_t* _shaper;
-  TRI_rs_container_t _resultSets;
+  TRI_barrier_list_t _barrierList;
   TRI_associative_pointer_t _datafileInfo;
 
   bool (*beginRead) (struct TRI_doc_collection_s*);

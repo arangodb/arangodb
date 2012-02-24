@@ -1095,7 +1095,7 @@ static v8::Handle<v8::Value> JS_NextQuery (v8::Arguments const& argv) {
   }
 
   if (rs->hasNext(rs)) {
-    TRI_doc_collection_t* collection = rs->_containerElement->_container->_collection;
+    TRI_doc_collection_t* collection = rs->_barrier->_container->_collection;
     TRI_shaper_t* shaper = collection->_shaper;
     TRI_rs_entry_t const* entry = rs->next(rs);
 
@@ -1130,7 +1130,7 @@ static v8::Handle<v8::Value> JS_NextRefQuery (v8::Arguments const& argv) {
   }
 
   if (rs->hasNext(rs)) {
-    TRI_doc_collection_t* collection = rs->_containerElement->_container->_collection;
+    TRI_doc_collection_t* collection = rs->_barrier->_container->_collection;
     TRI_rs_entry_t const* entry = rs->next(rs);
 
     string ref = StringUtils::itoa(collection->base._cid) + ":" + StringUtils::itoa(entry->_did);
@@ -2862,7 +2862,7 @@ static v8::Handle<v8::Value> JS_EnsureHashIndexVocbaseCol (v8::Arguments const& 
       ok = false;
       break;
     }  
-	
+        
     memcpy(cArgument, *argumentString, argumentString.length());
     TRI_PushBackVector(&attributes,&cArgument);
   }
@@ -2873,7 +2873,7 @@ static v8::Handle<v8::Value> JS_EnsureHashIndexVocbaseCol (v8::Arguments const& 
   // .............................................................................
   
   for (size_t j = 0; j < attributes._length; ++j) {  
-    char* left = *((char**) (TRI_AtVector(&attributes, j)));	
+    char* left = *((char**) (TRI_AtVector(&attributes, j)));    
     for (size_t k = j + 1; k < attributes._length; ++k) {
       char* right = *((char**) (TRI_AtVector(&attributes, k)));
       if (strcmp(left,right) == 0) {
@@ -2881,7 +2881,7 @@ static v8::Handle<v8::Value> JS_EnsureHashIndexVocbaseCol (v8::Arguments const& 
         //printf("%s:%s:%u:%s:%s\n",__FILE__,__FUNCTION__,__LINE__,left,right);
         ok = false;
         break;
-      }	  
+      }   
     }
   }    
      
@@ -3025,7 +3025,7 @@ static v8::Handle<v8::Value> JS_EnsureMultiHashIndexVocbaseCol (v8::Arguments co
       ok = false;
       break;
     }  
-	
+        
     memcpy(cArgument, *argumentString, argumentString.length());
     TRI_PushBackVector(&attributes,&cArgument);
   }
@@ -3036,14 +3036,14 @@ static v8::Handle<v8::Value> JS_EnsureMultiHashIndexVocbaseCol (v8::Arguments co
   // .............................................................................
   
   for (size_t j = 0; j < attributes._length; ++j) {  
-    char* left = *((char**) (TRI_AtVector(&attributes, j)));	
+    char* left = *((char**) (TRI_AtVector(&attributes, j)));    
     for (size_t k = j + 1; k < attributes._length; ++k) {
       char* right = *((char**) (TRI_AtVector(&attributes, k)));
       if (strcmp(left,right) == 0) {
         errorString = "duplicate parameters sent to ensureMultiHashIndex(...) command";
         ok = false;
         break;
-      }	  
+      }   
     }
   }    
      

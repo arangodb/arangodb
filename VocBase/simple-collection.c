@@ -259,10 +259,9 @@ static void CreateHeader (TRI_doc_collection_t* c,
                           size_t markerSize,
                           TRI_doc_mptr_t* header,
                           void const* additional) {
-                          
-  const TRI_doc_document_marker_t* marker;
+  TRI_doc_document_marker_t const* marker;
 
-  marker = (const TRI_doc_document_marker_t*) m;
+  marker = (TRI_doc_document_marker_t const*) m;
 
   header->_did = marker->_did;
   header->_rid = marker->_rid;
@@ -271,7 +270,7 @@ static void CreateHeader (TRI_doc_collection_t* c,
   header->_data = marker;
   header->_document._sid = marker->_shape;
   header->_document._data.length = marker->base._size - markerSize;
-  header->_document._data.data = ((const char*) marker) + markerSize;
+  header->_document._data.data = ((char*) marker) + markerSize;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2278,7 +2277,7 @@ static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collecti
   // Determine the shape ids for the attributes
   // ...........................................................................
   for (size_t j = 0; j < attributes->_length; ++j) {
-    char* shapeString     = *((char**)(TRI_AtVector(attributes,j)));	
+    char* shapeString     = *((char**)(TRI_AtVector(attributes,j)));    
     TRI_shape_pid_t shape = shaper->findAttributePathByName(shaper, shapeString);   
     TRI_PushBackVector(&shapes,&shape);
   }
@@ -2412,7 +2411,7 @@ TRI_index_t* TRI_LookupGeoIndex2SimCollection (TRI_sim_collection_t* collection,
 
 TRI_index_t* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t* collection,
                                                const TRI_vector_t* shapes) {
-  TRI_index_t* matchedIndex = NULL;											   
+  TRI_index_t* matchedIndex = NULL;                                                                                        
   
   // ...........................................................................
   // Note: This function does NOT differentiate between non-unique and unique
@@ -2430,26 +2429,26 @@ TRI_index_t* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t* collection,
     TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
     bool found                  = true;
 
-	
+        
     // .........................................................................
-    // check that the type of the index is in fact a hash index	
+    // check that the type of the index is in fact a hash index 
     // .........................................................................
-	
+        
     if (idx->_type != TRI_IDX_TYPE_HASH_INDEX) {
       continue;
     }
 
-	
+        
     // .........................................................................
     // check that the number of shapes (fields) in the hash index matches that
     // of the number of attributes
     // .........................................................................
-	
+        
     if (shapes->_length != hashIndex->_shapeList->_length) {
       continue;
     }
-	
-	
+        
+        
     // .........................................................................
     // Go through all the attributes and see if they match
     // .........................................................................
@@ -2459,10 +2458,10 @@ TRI_index_t* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t* collection,
       TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(shapes,k)));
       if (field != shape) {
         found = false;
-        break;    	
-      }	
+        break;          
+      } 
     }  
-	
+        
 
     if (found) {
       matchedIndex = idx;

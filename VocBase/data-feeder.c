@@ -276,9 +276,11 @@ static void RewindFeederPrimaryLookup (TRI_data_feeder_t* feeder) {
                                     true);
     if (TRI_ExecuteRefExecutionContext (state->_context, parameters)) {
       if (parameters->_type != TRI_JSON_LIST) {
+        TRI_FreeJson(parameters);
         return;
       }
       if (parameters->_value._objects._length != 1) {
+        TRI_FreeJson(parameters);
         return;
       }
 
@@ -408,6 +410,7 @@ static void InitFeederHashLookup (TRI_data_feeder_t* feeder) {
   QL_optimize_range_t* range;
   TRI_data_feeder_hash_lookup_t* state;
   TRI_json_t* parameters;
+  TRI_json_t* doc;
   TRI_string_buffer_t* buffer;
   size_t i;
   
@@ -416,6 +419,7 @@ static void InitFeederHashLookup (TRI_data_feeder_t* feeder) {
   state->_context  = NULL;
   state->_position = 0;
 
+  state->_hashElements = NULL;
   state->_index = TRI_IndexSimCollection((TRI_sim_collection_t*) feeder->_collection, 
                                          feeder->_indexId);
   if (!state->_index) {
@@ -465,16 +469,20 @@ static void InitFeederHashLookup (TRI_data_feeder_t* feeder) {
     for (i = 0; i < feeder->_ranges->_length; i++) {
       range = (QL_optimize_range_t*) feeder->_ranges->_buffer[i];
       if (range->_valueType == RANGE_TYPE_STRING) {
-        TRI_PushBackListJson(parameters, 
+        TRI_PushBack2ListJson(parameters, 
             TRI_CreateStringCopyJson(range->_minValue._stringValue));
       }
       else if (range->_valueType == RANGE_TYPE_DOUBLE) {
-        TRI_PushBackListJson(parameters, 
+        TRI_PushBack2ListJson(parameters, 
             TRI_CreateNumberJson(range->_minValue._doubleValue));
       }
       else if (range->_valueType == RANGE_TYPE_JSON) {
-        TRI_PushBackListJson(parameters, 
-            TRI_JsonString(range->_minValue._stringValue));
+        doc = TRI_JsonString(range->_minValue._stringValue);
+        if (!doc) {
+          TRI_FreeJson(parameters);
+          return;
+        }
+        TRI_PushBackListJson(parameters, doc);
       }
     }
     state->_hashElements = TRI_LookupHashIndex(state->_index, parameters);
@@ -494,9 +502,14 @@ static void RewindFeederHashLookup (TRI_data_feeder_t* feeder) {
    
   state = (TRI_data_feeder_hash_lookup_t*) feeder->_state;
   state->_position = 0;
-  state->_hashElements = NULL;
 
   if (feeder->_accessType == ACCESS_REF) {
+    if (state->_hashElements) {
+      TRI_Free(state->_hashElements->_elements);
+      TRI_Free(state->_hashElements);
+    }
+    state->_hashElements = NULL;
+
     if (!state->_context) {
       return;
     }
@@ -511,6 +524,7 @@ static void RewindFeederHashLookup (TRI_data_feeder_t* feeder) {
     if (TRI_ExecuteRefExecutionContext (state->_context, parameters)) {
       state->_hashElements = TRI_LookupHashIndex(state->_index, parameters);
     }
+ 
     TRI_FreeJson(parameters);
   }
 }
@@ -563,6 +577,10 @@ static void FreeFeederHashLookup (TRI_data_feeder_t* feeder) {
   TRI_data_feeder_hash_lookup_t* state;
 
   state = (TRI_data_feeder_hash_lookup_t*) feeder->_state;
+  if (state->_hashElements) {
+    TRI_Free(state->_hashElements->_elements);
+    TRI_Free(state->_hashElements);
+  }
 
   if (state->_context) {
     TRI_FreeExecutionContext(state->_context);

@@ -1307,7 +1307,7 @@ bool TRI_ObjectDocumentPointer (TRI_doc_collection_t* collection,
 v8::Handle<v8::Array> TRI_ArrayResultSet (TRI_result_set_t* rs) {
   v8::Handle<v8::Array> array = v8::Array::New();
 
-  TRI_doc_collection_t* collection = rs->_containerElement->_container->_collection;
+  TRI_doc_collection_t* collection = rs->_barrier->_container->_collection;
   TRI_shaper_t* shaper = collection->_shaper;
 
   size_t pos;

@@ -31,8 +31,9 @@
 #include "V8/v8-globals.h"
 
 #include "BasicsC/json.h"
-#include "VocBase/simple-collection.h"
 #include "V8/v8-c-utils.h"
+#include "VocBase/result-set.h"
+#include "VocBase/simple-collection.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              CONVERSION FUNCTIONS

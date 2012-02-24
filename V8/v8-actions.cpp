@@ -29,6 +29,7 @@
 
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/StringUtils.h"
 #include "BasicsC/conversions.h"
 #include "BasicsC/logging.h"
 #include "Rest/HttpRequest.h"
@@ -435,6 +436,24 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
   // check if we know a callback
   map<string, void*>::iterator i = actions->find(name);
 
+  size_t pos = request->suffix().size();
+  
+  if (i == actions->end()) {
+    // no direct callback found
+    
+    vector<string> tmpSuffix(request->suffix());
+    
+    // find longest prefix
+    while(tmpSuffix.size() > 1 && i == actions->end()) {
+      tmpSuffix.pop_back();
+      --pos;
+      string tmpName = StringUtils::join(tmpSuffix, '/');
+      LOG_DEBUG("find prefix '%s' for category %d", tmpName.c_str(), (int) category);
+      i = actions->find(tmpName);      
+    }
+    
+  }
+    
   if (i == actions->end()) {
     LOG_DEBUG("unknown action '%s' for category %d", name.c_str(), (int) category);
     return new HttpResponse(HttpResponse::NOT_FOUND);
@@ -442,9 +461,71 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
 
   action_t* cb = (action_t*) i->second;
 
-  // that up the request
+  // setup the request
   v8::Handle<v8::Object> req = v8::Object::New();
 
+// Example:  
+//      {
+//        "_suffix":[
+//          "suffix1",
+//          "suffix2"
+//        ],
+//        "_headers":
+//            {
+//              "accept":"text/html",
+//              "accept-encoding":"gzip, deflate",
+//              "accept-language":"de-de,en-us;q=0.7,en;q=0.3",
+//              "user-agent":"Mozilla/5.0"
+//            },
+//        "_requestType":"GET",
+//        "_requestBody":"... only for PUT and POST ...",
+//      } 
+  
+  // copy suffix 
+  v8::Handle<v8::Array> v8SuffixArray = v8::Array::New();
+  vector<string> const& suffix = request->suffix();
+  int index = 0;
+  for (size_t s = pos; s < suffix.size(); ++s) {
+    v8SuffixArray->Set(index++, v8::String::New(suffix[s].c_str()));
+  }
+  req->Set(v8::Handle<v8::String>(v8::String::New("_suffix")), v8SuffixArray);
+  
+  // copy header fields
+  v8::Handle<v8::Object> v8HeaderfildsObject = v8::Object::New();
+  map<string, string> const& headers = request->headers();
+  map<string, string>::const_iterator iter = headers.begin();
+  for (; iter != headers.end(); ++iter) {
+    v8HeaderfildsObject->Set(v8::String::New(iter->first.c_str()), v8::String::New(iter->second.c_str()));
+  }
+  req->Set(v8::Handle<v8::String>(v8::String::New("_headers")), v8HeaderfildsObject);  
+  
+  switch (request->requestType()) {
+    case HttpRequest::HTTP_REQUEST_POST: 
+      req->Set(v8::Handle<v8::String>(v8::String::New("_requestType")),
+               v8::Handle<v8::String>(v8::String::New("POST")));
+      req->Set(v8::Handle<v8::String>(v8::String::New("_requestBody")),
+               v8::Handle<v8::String>(v8::String::New(request->body().c_str())));
+      break;
+    case HttpRequest::HTTP_REQUEST_PUT:
+      req->Set(v8::Handle<v8::String>(v8::String::New("_requestType")),
+               v8::Handle<v8::String>(v8::String::New("PUT")));
+      req->Set(v8::Handle<v8::String>(v8::String::New("_requestBody")),
+               v8::Handle<v8::String>(v8::String::New(request->body().c_str())));
+      break;
+    case HttpRequest::HTTP_REQUEST_DELETE: 
+      req->Set(v8::Handle<v8::String>(v8::String::New("_requestType")),
+               v8::Handle<v8::String>(v8::String::New("DELETE")));
+      break;
+    case HttpRequest::HTTP_REQUEST_HEAD: 
+      req->Set(v8::Handle<v8::String>(v8::String::New("_requestType")),
+               v8::Handle<v8::String>(v8::String::New("HEAD")));
+      break;
+    default:
+      req->Set(v8::Handle<v8::String>(v8::String::New("_requestType")),
+               v8::Handle<v8::String>(v8::String::New("GET")));
+  }
+  
+  
   map<string, string> values = request->values();
 
   for (map<string, string>::iterator i = values.begin();  i != values.end();  ++i) {
@@ -539,6 +620,18 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
       response->body().appendText(TRI_ObjectToString(res->Get(v8g->BodyKey)));
     }
 
+    if (res->Has(v8g->HeadersKey)) {
+      v8::Handle<v8::Value> val = res->Get(v8g->HeadersKey);
+      v8::Handle<v8::Object> v8Headers = val.As<v8::Object>();
+      if (v8Headers->IsObject()) {
+        v8::Handle<v8::Array> props = v8Headers->GetPropertyNames();
+        for (size_t i = 0; i < props->Length(); i++) {          
+          v8::Handle<v8::Value> key = props->Get(v8::Integer::New(i));
+          response->setHeader(TRI_ObjectToString(key), TRI_ObjectToString(v8Headers->Get(key)));
+        }
+      }
+    }
+
     return response;
   }
 }
@@ -576,6 +669,7 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context) {
   // .............................................................................
 
   v8g->BodyKey = v8::Persistent<v8::String>::New(v8::String::New("body"));
+  v8g->HeadersKey = v8::Persistent<v8::String>::New(v8::String::New("headers"));
   v8g->ContentType = v8::Persistent<v8::String>::New(v8::String::New("contentType"));
   v8g->ParametersKey = v8::Persistent<v8::String>::New(v8::String::New("parameters"));
   v8g->ResponseCodeKey = v8::Persistent<v8::String>::New(v8::String::New("responseCode"));

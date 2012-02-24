@@ -42,12 +42,7 @@ extern "C" {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page indexusage Index usage
+/// @page IndexUsage Index usage
 /// 
 /// When executing a query, the database will automatically check if it can use 
 /// an index to speed up the query. It will check all available indexes for the
@@ -66,8 +61,23 @@ extern "C" {
 ///
 /// An index can only be used if the WHERE/JOIN conditions refer to indexed 
 /// attributes. It depends on the index type what kinds of comparisons are allowed
-/// in order to use the index. It also depends on the index type whether just a
+/// in order to use the index. For example, the primary index and hash indexes
+/// only support equality comparisons whereas other index types might allow
+/// range queries as well. It also depends on the index type whether just a
 /// subset of the indexed attributes is sufficient in order to use an index.
+///
+/// The query optimizer needs to detect that an index can actually be used, and
+/// it will only allow using indexes if the indexed attributes are not used in
+/// combination with logical @LIT{||} or logical @LIT{!}. Furthermore, the
+/// optimizer currently cannot make use of indexes if the same attribute is
+/// compared to multiple values at the same time (i.e. a so-called in-list
+/// comparison). For example, the following condition would not allow to use
+/// an index: @LIT{WHERE users.id == 3 || users.id == 4 || users.id == 9}
+///
+/// There is no way to explicitly specify which index to use/prefer/reject in a
+/// query as there sometimes is in other database products.
+///
+/// @section Index types
 /// 
 /// There are the following index types:
 /// - primary index (automatically created for the "_id" attribute of a collection)
@@ -119,9 +129,11 @@ extern "C" {
 /// - If no index can be used to access the documents in a collection, a full 
 ///   collection scan will be done. 
 ///
-/// There is no way to explicitly specify which index to use/prefer/reject in a
-/// query as there sometimes is in other database products.
-///
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////

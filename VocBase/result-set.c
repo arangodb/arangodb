@@ -33,12 +33,6 @@
 #include <VocBase/document-collection.h>
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
-
-static void RemoveContainerElement (TRI_result_set_t* rs);
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                SINGLE RESULT SETS
 // -----------------------------------------------------------------------------
 
@@ -123,7 +117,7 @@ static TRI_voc_size_t CountRSSingle (TRI_result_set_t* rs, bool current) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeRSSingle (TRI_result_set_t* rs) {
-  RemoveContainerElement(rs);
+  TRI_FreeBarrier(rs->_barrier);
 
   TRI_Free(rs->_info._cursor);
   TRI_Free(rs);
@@ -147,7 +141,7 @@ static void FreeRSSingle (TRI_result_set_t* rs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_result_set_t* TRI_CreateRSSingle (TRI_doc_collection_t* collection,
-                                      TRI_rs_container_element_t* containerElement,
+                                      TRI_barrier_t* barrier,
                                       TRI_doc_mptr_t const* header,
                                       TRI_voc_size_t total) {
   doc_rs_single_t* rs;
@@ -162,7 +156,7 @@ TRI_result_set_t* TRI_CreateRSSingle (TRI_doc_collection_t* collection,
   rs->base.free = FreeRSSingle;
 
   rs->base._id = TRI_NewTickVocBase();
-  rs->base._containerElement = containerElement;
+  rs->base._barrier = barrier;
 
   if (header == NULL) {
     rs->_empty = true;
@@ -299,7 +293,7 @@ static void FreeRSVector (TRI_result_set_t* rs) {
 
   rss = (doc_rs_vector_t*) rs;
 
-  RemoveContainerElement(rs);
+  TRI_FreeBarrier(rs->_barrier);
 
   if (rss->_entries != NULL) {
     ptr = rss->_entries;
@@ -334,7 +328,7 @@ static void FreeRSVector (TRI_result_set_t* rs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_result_set_t* TRI_CreateRSVector (TRI_doc_collection_t* collection,
-                                      TRI_rs_container_element_t* containerElement,
+                                      TRI_barrier_t* barrier,
                                       TRI_doc_mptr_t const** header,
                                       TRI_json_t const* augmented,
                                       TRI_voc_size_t length,
@@ -355,7 +349,7 @@ TRI_result_set_t* TRI_CreateRSVector (TRI_doc_collection_t* collection,
   rs->base.free = FreeRSVector;
 
   rs->base._id = TRI_NewTickVocBase();
-  rs->base._containerElement = containerElement;
+  rs->base._barrier = barrier;
 
   if (length == 0) {
     rs->_length = 0;
@@ -403,233 +397,6 @@ TRI_result_set_t* TRI_CreateRSVector (TRI_doc_collection_t* collection,
   rs->_total = total;
 
   return &rs->base;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                             RESULT SETS CONTAINER
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a result set from the doubly linked list
-////////////////////////////////////////////////////////////////////////////////
-
-static void RemoveContainerElement (TRI_result_set_t* rs) {
-  TRI_rs_container_t* container;
-  TRI_rs_container_element_t* element;
-
-  element = rs->_containerElement;
-  container = element->_container;
-
-  TRI_LockSpin(&container->_lock);
-
-  // element is at the beginning of the chain
-  if (element->_prev == NULL) {
-    container->_begin = element->_next;
-  }
-  else {
-    element->_prev->_next = element->_next;
-  }
-
-  // element is at the end of the chain
-  if (element->_next == NULL) {
-    container->_end = element->_prev;
-  }
-  else {
-    element->_next->_prev = element->_prev;
-  }
-
-  TRI_UnlockSpin(&container->_lock);
-
-  // free the element
-  TRI_Free(element);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a result set container
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitRSContainer (TRI_rs_container_t* container, TRI_doc_collection_t* collection) {
-  container->_collection = collection;
-
-  TRI_InitSpin(&container->_lock);
-
-  container->_begin = NULL;
-  container->_end = NULL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a result set container
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyRSContainer (TRI_rs_container_t* container) {
-  TRI_rs_container_element_t* ptr;
-  TRI_rs_container_element_t* next;
-
-  ptr = container->_begin;
-
-  while (ptr != NULL) {
-    next = ptr->_next;
-    ptr->_container = NULL;
-    ptr = next;
-  }
-
-  TRI_DestroySpin(&container->_lock);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a result set to the end of the doubly linked list
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_rs_container_element_t* TRI_AddResultSetRSContainer (TRI_rs_container_t* container) {
-  TRI_rs_container_element_t* element;
-
-  element = TRI_Allocate(sizeof(TRI_rs_container_element_t));
-
-  element->_type = TRI_RSCE_RESULT_SET;
-  element->_container = container;
-  element->_resultSet = NULL;
-  element->_datafile = NULL;
-  element->datafileCallback = NULL;
-
-  TRI_LockSpin(&container->_lock);
-
-  // empty list
-  if (container->_end == NULL) {
-    element->_next = NULL;
-    element->_prev = NULL;
-
-    container->_begin = element;
-    container->_end = element;
-  }
-
-  // add to the end
-  else {
-    element->_next = NULL;
-    element->_prev = container->_end;
-
-    container->_end->_next = element;
-    container->_end = element;
-  }
-
-  TRI_UnlockSpin(&container->_lock);
-
-  return element;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an callback to the result set container
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_rs_container_element_t* TRI_AddDatafileRSContainer (TRI_rs_container_t* container,
-                                                        TRI_datafile_t* datafile,
-                                                        void (*callback) (struct TRI_datafile_s*, void*),
-                                                        void* data) {
-  TRI_rs_container_element_t* element;
-
-  element = TRI_Allocate(sizeof(TRI_rs_container_element_t));
-
-  element->_type = TRI_RSCE_DATAFILE;
-  element->_container = container;
-  element->_resultSet = NULL;
-  element->_datafile = datafile;
-  element->_datafileData = data;
-  element->datafileCallback = callback;
-
-  TRI_LockSpin(&container->_lock);
-
-  // empty list
-  if (container->_end == NULL) {
-    element->_next = NULL;
-    element->_prev = NULL;
-
-    container->_begin = element;
-    container->_end = element;
-  }
-
-  // add to the end
-  else {
-    element->_next = NULL;
-    element->_prev = container->_end;
-
-    container->_end->_next = element;
-    container->_end = element;
-  }
-
-  TRI_UnlockSpin(&container->_lock);
-
-  return element;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a result set from the doubly linked list
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_RemoveRSContainer (TRI_rs_container_element_t* element) {
-  TRI_rs_container_t* container;
-
-  container = element->_container;
-
-  TRI_LockSpin(&container->_lock);
-
-  // element is at the beginning of the chain
-  if (element->_prev == NULL) {
-    container->_begin = element->_next;
-  }
-  else {
-    element->_prev->_next = element->_next;
-  }
-
-  // element is at the end of the chain
-  if (element->_next == NULL) {
-    container->_end = element->_prev;
-  }
-  else {
-    element->_next->_prev = element->_prev;
-  }
-
-  TRI_UnlockSpin(&container->_lock);
-
-  // free the element
-  TRI_Free(element);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

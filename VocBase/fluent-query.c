@@ -2798,7 +2798,7 @@ TRI_fluent_query_t* TRI_CreateWithinQuery (TRI_fluent_query_t* operand,
 
 TRI_result_set_t* TRI_ExecuteQuery (TRI_fluent_query_t* query) {
   TRI_doc_collection_t* collection = query->_collection->_collection;
-  TRI_rs_container_element_t* ce;
+  TRI_barrier_t* ce;
   TRI_fluent_query_result_t result;
   TRI_result_set_t* rs;
   TRI_rs_info_t info;
@@ -2824,7 +2824,7 @@ TRI_result_set_t* TRI_ExecuteQuery (TRI_fluent_query_t* query) {
 
   collection->beginRead(collection);
 
-  ce = TRI_AddResultSetRSContainer(&collection->_resultSets);
+  ce = TRI_CreateBarrierElement(&collection->_barrierList);
 
   query->execute(query, &result);
 
@@ -2844,8 +2844,6 @@ TRI_result_set_t* TRI_ExecuteQuery (TRI_fluent_query_t* query) {
                             result._length,
                             result._total);
   }
-
-  ce->_resultSet = rs;
 
   collection->endRead(collection);
 

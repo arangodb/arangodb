@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief result set
+/// @brief delete barriers for datafiles
 ///
 /// @file
 ///
@@ -25,15 +25,10 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_RESULT_SET_H
-#define TRIAGENS_DURHAM_VOC_BASE_RESULT_SET_H 1
+#ifndef TRIAGENS_DURHAM_VOC_BASE_BARRIER_H
+#define TRIAGENS_DURHAM_VOC_BASE_BARRIER_H 1
 
-#include "VocBase/vocbase.h"
-
-#include "BasicsC/json.h"
 #include "BasicsC/locks.h"
-#include "ShapedJson/shaped-json.h"
-#include "VocBase/datafile.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,9 +39,7 @@ extern "C" {
 // -----------------------------------------------------------------------------
 
 struct TRI_doc_collection_s;
-struct TRI_doc_mptr_s;
-struct TRI_barrier_list_s;
-struct TRI_barrier_s;
+struct TRI_datafile_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -58,65 +51,46 @@ struct TRI_barrier_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief an identifier for result sets
+/// @brief barrier element type
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef TRI_voc_tick_t TRI_rs_id_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief information about the execution
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_rs_info_s {
-  char* _cursor;
-
-  TRI_voc_size_t _scannedIndexEntries;
-  TRI_voc_size_t _scannedDocuments;
-  TRI_voc_size_t _matchedDocuments;
-
-  double _runtime;
+typedef enum {
+  TRI_BARRIER_ELEMENT,
+  TRI_BARRIER_DATAFILE
 }
-TRI_rs_info_t;
+TRI_barrier_type_e;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief result set entry
+/// @brief barrier element
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_rs_entry_s {
-  TRI_shaped_json_t _document;
-  TRI_json_t _augmented;
-  TRI_df_marker_type_e _type;
+typedef struct TRI_barrier_s {
+  struct TRI_barrier_s* _prev;
+  struct TRI_barrier_s* _next;
 
-  TRI_voc_did_t _did;
-  TRI_voc_rid_t _rid;
+  struct TRI_barrier_list_s* _container;
 
-  TRI_voc_cid_t _fromCid;
-  TRI_voc_did_t _fromDid;
+  TRI_barrier_type_e _type;
 
-  TRI_voc_cid_t _toCid;
-  TRI_voc_did_t _toDid;
+  struct TRI_datafile_s* _datafile;
+  void* _datafileData;
+  void (*datafileCallback) (struct TRI_datafile_s*, void*);
 }
-TRI_rs_entry_t;
+TRI_barrier_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a result set
+/// @brief doubly linked list of barriers
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_result_set_s {
-  TRI_rs_id_t _id;
-  TRI_rs_info_t _info;
+typedef struct TRI_barrier_list_s {
+  struct TRI_doc_collection_s* _collection;
 
-  struct TRI_barrier_s* _barrier;
+  TRI_spin_t _lock;
 
-  char* _error;
-
-  bool (*hasNext) (struct TRI_result_set_s*);
-  TRI_rs_entry_t const* (*next) (struct TRI_result_set_s*);
-  TRI_voc_size_t (*count) (struct TRI_result_set_s*, bool current);
-
-  void (*free) (struct TRI_result_set_s*);
+  TRI_barrier_t* _begin;
+  TRI_barrier_t* _end;
 }
-TRI_result_set_t;
+TRI_barrier_list_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -132,24 +106,37 @@ TRI_result_set_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a single result set
+/// @brief initialises a result set container
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_result_set_t* TRI_CreateRSSingle (struct TRI_doc_collection_s* collection,
-                                      struct TRI_barrier_s* containerElement,
-                                      struct TRI_doc_mptr_s const* header,
-                                      TRI_voc_size_t total);
+void TRI_InitBarrierList (TRI_barrier_list_t* container, struct TRI_doc_collection_s* collection);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a full result set
+/// @brief destroys a result set container
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_result_set_t* TRI_CreateRSVector (struct TRI_doc_collection_s* collection,
-                                      struct TRI_barrier_s* containerElement,
-                                      struct TRI_doc_mptr_s const** header,
-                                      TRI_json_t const* augmented,
-                                      TRI_voc_size_t length,
-                                      TRI_voc_size_t total);
+void TRI_DestroyBarrierList (TRI_barrier_list_t* container);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new barrier element
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_barrier_t* TRI_CreateBarrierElement (TRI_barrier_list_t* container);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new datafile deletion barrier
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_barrier_t* TRI_CreateBarrierDatafile (TRI_barrier_list_t* container,
+                                          struct TRI_datafile_s* datafile,
+                                          void (*callback) (struct TRI_datafile_s*, void*),
+                                          void* data);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes and frees a barrier element or datafile deletion marker
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeBarrier (TRI_barrier_t* element);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
