@@ -820,6 +820,7 @@ void QLOptimizeFrom (const QL_parser_context_t* context) {
   QL_ast_node_t* next = 0;
   QL_ast_node_t* node = (QL_ast_node_t*) context->_query->_from._base;
 
+  // count usages of collections in select, where and order clause
   QLOptimizeCountRefs(context);
 
   responsibleNode = node;
@@ -848,6 +849,7 @@ void QLOptimizeFrom (const QL_parser_context_t* context) {
         (next->_type == QLNodeJoinLeft || 
          next->_type == QLNodeJoinRight || 
          next->_type == QLNodeJoinList)) {
+      // collection is joined but unused in select, where, order clause
       // remove unused list or outer joined collections
       // move joined collection one up
       node->_next = next->_next;
@@ -928,13 +930,18 @@ void QLOptimizeFreeRangeVector (TRI_vector_pointer_t* vector) {
       TRI_FreeString(range->_refValue._field);
     }
 
-    if ((range->_valueType == RANGE_TYPE_STRING || range->_valueType == RANGE_TYPE_JSON)
-        && range->_minValue._stringValue) {
+    if (range->_valueType == RANGE_TYPE_JSON) {
+      // minValue and maxValue point to the same string, just free it once!
       TRI_FreeString(range->_minValue._stringValue);
     }
-    if ((range->_valueType == RANGE_TYPE_STRING || range->_valueType == RANGE_TYPE_JSON) 
-        && range->_maxValue._stringValue) {
-      TRI_FreeString(range->_maxValue._stringValue);
+
+    if (range->_valueType == RANGE_TYPE_STRING) {
+      if (range->_minValue._stringValue) {
+        TRI_FreeString(range->_minValue._stringValue);
+      }
+      if (range->_maxValue._stringValue) {
+        TRI_FreeString(range->_maxValue._stringValue);
+      }
     }
 
     TRI_Free(range);
@@ -1407,7 +1414,8 @@ static QL_optimize_range_t* QLOptimizeCreateRange (QL_ast_node_t* memberNode,
     // range is of type string
     range->_valueType = RANGE_TYPE_STRING;
   }
-  else if (valueNode->_type == QLNodeValueDocument) {
+  else if (valueNode->_type == QLNodeValueDocument || 
+           valueNode->_type == QLNodeValueArray) {
     range->_valueType = RANGE_TYPE_JSON;
   }
   else if (valueNode->_type == QLNodeContainerMemberAccess) {
@@ -1457,9 +1465,15 @@ static QL_optimize_range_t* QLOptimizeCreateRange (QL_ast_node_t* memberNode,
         return NULL;
       }
       QLJavascripterConvert(documentJs, valueNode);
-      range->_minValue._stringValue = documentJs->_buffer->_buffer;
+      range->_minValue._stringValue = TRI_DuplicateString(documentJs->_buffer->_buffer);
       range->_maxValue._stringValue = range->_minValue._stringValue;
       QLJavascripterFree(documentJs);
+      if (!range->_minValue._stringValue) {
+        TRI_FreeStringBuffer(name);
+        TRI_Free(name);
+        TRI_Free(range);
+        return NULL;
+      }
     }
     range->_minStatus = RANGE_VALUE_INCLUDED;
     range->_maxStatus = RANGE_VALUE_INCLUDED;
@@ -1563,7 +1577,9 @@ TRI_vector_pointer_t* QLOptimizeCondition (QL_ast_node_t* node) {
            type == QLNodeBinaryOperatorGreaterEqual) {
     // comparison operator 
     if (lhs->_type == QLNodeContainerMemberAccess && 
-        rhs->_type == QLNodeContainerMemberAccess) {
+        rhs->_type == QLNodeContainerMemberAccess &&
+        (type == QLNodeBinaryOperatorIdentical ||
+         type == QLNodeBinaryOperatorEqual)) {
       // collection.attribute relop collection.attribute
       return QLOptimizeMergeRangeVectors(
         QLOptimizeCreateRangeVector(QLOptimizeCreateRange(lhs, rhs, type)),
@@ -1573,7 +1589,7 @@ TRI_vector_pointer_t* QLOptimizeCondition (QL_ast_node_t* node) {
     else if (lhs->_type == QLNodeContainerMemberAccess &&
         (type == QLNodeBinaryOperatorIdentical || 
          type == QLNodeBinaryOperatorEqual) &&
-        rhs->_type == QLNodeValueDocument && 
+        (rhs->_type == QLNodeValueDocument || rhs->_type == QLNodeValueArray) && 
         QLOptimizeIsStaticDocument(rhs)) {
       // collection.attribute == document
       return QLOptimizeCreateRangeVector(QLOptimizeCreateRange(lhs, rhs, type));

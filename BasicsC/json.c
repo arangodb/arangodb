@@ -151,9 +151,11 @@ TRI_json_t* TRI_CreateNullJson () {
   TRI_json_t* result;
 
   result = (TRI_json_t*) TRI_Allocate(sizeof(TRI_json_t));
-  if (!result) {
+
+  if (result == NULL) {
     return NULL;
   }
+
   result->_type = TRI_JSON_NULL;
 
   return result;
@@ -167,9 +169,11 @@ TRI_json_t* TRI_CreateBooleanJson (bool value) {
   TRI_json_t* result;
 
   result = (TRI_json_t*) TRI_Allocate(sizeof(TRI_json_t));
-  if (!result) {
+
+  if (result == NULL) {
     return NULL;
   }
+
   result->_type = TRI_JSON_BOOLEAN;
   result->_value._boolean = value;
 
@@ -184,9 +188,11 @@ TRI_json_t* TRI_CreateNumberJson (double value) {
   TRI_json_t* result;
 
   result = (TRI_json_t*) TRI_Allocate(sizeof(TRI_json_t));
-  if (!result) {
+
+  if (result == NULL) {
     return NULL;
   }
+
   result->_type = TRI_JSON_NUMBER;
   result->_value._number = value;
 
@@ -213,9 +219,11 @@ TRI_json_t* TRI_CreateStringJson (char* value) {
   length = strlen(value);
 
   result = (TRI_json_t*) TRI_Allocate(sizeof(TRI_json_t));
-  if (!result) {
+
+  if (result == NULL) {
     return NULL;
   }
+
   result->_type = TRI_JSON_STRING;
   result->_value._string.length = length + 1;
   result->_value._string.data = value;
@@ -234,13 +242,16 @@ TRI_json_t* TRI_CreateStringCopyJson (char const* value) {
   length = strlen(value);
 
   result = (TRI_json_t*) TRI_Allocate(sizeof(TRI_json_t));
-  if (!result) {
+
+  if (result == NULL) {
     return NULL;
   }
+
   result->_type = TRI_JSON_STRING;
   result->_value._string.length = length + 1;
   result->_value._string.data = TRI_DuplicateString2(value, length);
-  if (!result->_value._string.data) {
+
+  if (result->_value._string.data == NULL) {
     TRI_Free(result);
     return NULL;
   }
@@ -256,9 +267,11 @@ TRI_json_t* TRI_CreateString2Json (char* value, size_t length) {
   TRI_json_t* result;
 
   result = (TRI_json_t*) TRI_Allocate(sizeof(TRI_json_t));
-  if (!result) {
+
+  if (result == NULL) {
     return NULL;
   }
+
   result->_type = TRI_JSON_STRING;
   result->_value._string.length = length + 1;
   result->_value._string.data = value;
@@ -274,13 +287,16 @@ TRI_json_t* TRI_CreateString2CopyJson (char const* value, size_t length) {
   TRI_json_t* result;
 
   result = (TRI_json_t*) TRI_Allocate(sizeof(TRI_json_t));
-  if (!result) {
+
+  if (result == NULL) {
     return NULL;
   }
+
   result->_type = TRI_JSON_STRING;
   result->_value._string.length = length + 1;
   result->_value._string.data = TRI_DuplicateString2(value, length);
-  if (!result->_value._string.data) {
+
+  if (result->_value._string.data == NULL) {
     TRI_Free(result);
     return NULL;
   }
@@ -296,9 +312,11 @@ TRI_json_t* TRI_CreateListJson () {
   TRI_json_t* result;
 
   result = (TRI_json_t*) TRI_Allocate(sizeof(TRI_json_t));
-  if (!result) {
+
+  if (result == NULL) {
     return NULL;
   }
+
   result->_type = TRI_JSON_LIST;
   TRI_InitVector(&result->_value._objects, sizeof(TRI_json_t));
 
@@ -313,9 +331,11 @@ TRI_json_t* TRI_CreateArrayJson () {
   TRI_json_t* result;
 
   result = (TRI_json_t*) TRI_Allocate(sizeof(TRI_json_t));
-  if (!result) {
+
+  if (result == NULL) {
     return NULL;
   }
+
   result->_type = TRI_JSON_ARRAY;
   TRI_InitVector(&result->_value._objects, sizeof(TRI_json_t));
 
@@ -356,12 +376,10 @@ void TRI_DestroyJson (TRI_json_t* object) {
 
       for (i = 0;  i < n;  ++i) {
         TRI_json_t* v = TRI_AtVector(&object->_value._objects, i);
-
         TRI_DestroyJson(v);
       }
 
       TRI_DestroyVector(&object->_value._objects);
-
       break;
   }
 }
@@ -410,6 +428,8 @@ void TRI_PushBack2ListJson (TRI_json_t* list, TRI_json_t* object) {
   assert(list->_type == TRI_JSON_LIST);
 
   TRI_PushBackVector(&list->_value._objects, object);
+
+  TRI_Free(object);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -427,7 +447,8 @@ void TRI_InsertArrayJson (TRI_json_t* object, char const* name, TRI_json_t* subo
   copy._type = TRI_JSON_STRING;
   copy._value._string.length = length + 1;
   copy._value._string.data = TRI_DuplicateString2(name, length); // including '\0'
-  if (!copy._value._string.data) {
+
+  if (copy._value._string.data == NULL) {
     // OOM
     return;
   }
@@ -454,13 +475,15 @@ void TRI_Insert2ArrayJson (TRI_json_t* object, char const* name, TRI_json_t* sub
   copy._value._string.length = length + 1;
   copy._value._string.data = TRI_DuplicateString2(name, length); // including '\0'
 
-  if (!copy._value._string.data) {
+  if (copy._value._string.data == NULL) {
     // OOM
     return;
   }
 
   TRI_PushBackVector(&object->_value._objects, &copy);
   TRI_PushBackVector(&object->_value._objects, subobject);
+
+  TRI_Free(subobject);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -551,7 +574,8 @@ bool TRI_SaveJson (char const* filename, TRI_json_t const* object) {
   ssize_t m;
 
   tmp = TRI_Concatenate2String(filename, ".tmp");
-  if (!tmp) {
+
+  if (tmp == NULL) {
     return false;
   }
 
@@ -671,9 +695,11 @@ TRI_json_t* TRI_CopyJson (TRI_json_t* src) {
   TRI_json_t* dst;
 
   dst = (TRI_json_t*) TRI_Allocate(sizeof(TRI_json_t));
-  if (!dst) {
+
+  if (dst == NULL) {
     return NULL;
   }
+
   TRI_CopyToJson(dst, src);
 
   return dst;

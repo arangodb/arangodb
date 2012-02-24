@@ -61,7 +61,9 @@ static uint64_t HashElement (TRI_associative_pointer_t* array, void const* eleme
 /// @brief Comparison function used to determine hash key equality
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool EqualKeyElement (TRI_associative_pointer_t* array, void const* key, void const* element) {
+static bool EqualKeyElement (TRI_associative_pointer_t* array, 
+                             void const* key, 
+                             void const* element) {
   char const* k = (char const*) key;
   QL_ast_query_collection_t *collection = (QL_ast_query_collection_t*) element;
 
@@ -154,8 +156,30 @@ void QLAstQueryAddRefCount (QL_ast_query_t* query, const char* alias) {
 /// @brief Check if a collection was defined in a query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLAstQueryIsValidAlias (QL_ast_query_t* query, const char* alias) {
+bool QLAstQueryIsValidAlias (QL_ast_query_t* query, 
+                             const char* alias, 
+                             const size_t order) {
   return (0 != TRI_LookupByKeyAssociativePointer(&query->_from._collections, alias));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Check if a collection was defined in a query, taking order of 
+/// declaration into account
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLAstQueryIsValidAliasOrdered (QL_ast_query_t* query, 
+                                    const char* alias, 
+                                    const size_t order) {
+  QL_ast_query_collection_t* collection;
+
+  collection = (QL_ast_query_collection_t*) 
+    TRI_LookupByKeyAssociativePointer(&query->_from._collections, alias);
+
+  if (!collection) {
+    return false;
+  }
+
+  return (collection->_declarationOrder <= order);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -183,6 +207,7 @@ bool QLAstQueryAddCollection (QL_ast_query_t* query,
                               const char* alias) { 
   QL_ast_query_collection_t* collection;
   QL_ast_query_collection_t* previous;
+  size_t num;
 
   previous = (QL_ast_query_collection_t*) 
              TRI_LookupByKeyAssociativePointer (&query->_from._collections, alias);
@@ -192,17 +217,20 @@ bool QLAstQueryAddCollection (QL_ast_query_t* query,
     return false;
   }
 
-  collection = (QL_ast_query_collection_t *) TRI_Allocate(sizeof(QL_ast_query_collection_t));
+  collection = 
+    (QL_ast_query_collection_t *) TRI_Allocate(sizeof(QL_ast_query_collection_t));
   if (collection == 0) { 
     return false;
   }
 
-  collection->_name      = (char*) name;
-  collection->_alias     = (char*) alias;
-  // first collection added is always the primary collection
-  collection->_isPrimary = (&query->_from._collections._nrUsed == 0);
-  collection->_refCount  = 0; // will be used later when optimizing joins
+  num = query->_from._collections._nrUsed;
 
+  collection->_name             = (char*) name;
+  collection->_alias            = (char*) alias;
+  // first collection added is always the primary collection
+  collection->_isPrimary        = (num == 0);
+  collection->_refCount         = 0; // will be used later when optimizing joins
+  collection->_declarationOrder = num + 1;
   TRI_InsertKeyAssociativePointer(&query->_from._collections, 
                                   collection->_alias, 
                                   collection, 

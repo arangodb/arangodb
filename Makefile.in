@@ -192,7 +192,7 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Rest/HttpRequest.$(OBJEXT) Rest/HttpResponse.$(OBJEXT) \
 	Rest/Initialise.$(OBJEXT) Rest/SslInterface.$(OBJEXT) \
 	Rest/Url.$(OBJEXT) RestHandler/RestActionHandler.$(OBJEXT) \
-	RestHandler/RestDocumentHandler.$(OBJEXT) \
+	RestHandler/RestCollectionHandler.$(OBJEXT) \
 	RestHandler/RestSystemActionHandler.$(OBJEXT) \
 	RestHandler/RestVocbaseBaseHandler.$(OBJEXT) \
 	RestServer/ActionDispatcherThread.$(OBJEXT) \
@@ -236,7 +236,7 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Variant/VariantUInt16.$(OBJEXT) \
 	Variant/VariantUInt32.$(OBJEXT) \
 	Variant/VariantUInt64.$(OBJEXT) Variant/VariantUInt8.$(OBJEXT) \
-	Variant/VariantVector.$(OBJEXT) \
+	Variant/VariantVector.$(OBJEXT) VocBase/barrier.$(OBJEXT) \
 	VocBase/blob-collection.$(OBJEXT) VocBase/collection.$(OBJEXT) \
 	VocBase/compactor.$(OBJEXT) VocBase/data-feeder.$(OBJEXT) \
 	VocBase/datafile.$(OBJEXT) \
@@ -612,7 +612,7 @@ avocado_SOURCES = \
 	Rest/SslInterface.cpp \
 	Rest/Url.cpp \
 	RestHandler/RestActionHandler.cpp \
-	RestHandler/RestDocumentHandler.cpp \
+	RestHandler/RestCollectionHandler.cpp \
 	RestHandler/RestSystemActionHandler.cpp \
 	RestHandler/RestVocbaseBaseHandler.cpp \
 	RestServer/ActionDispatcherThread.cpp \
@@ -671,6 +671,7 @@ avocado_SOURCES = \
 	Variant/VariantUInt64.cpp \
 	Variant/VariantUInt8.cpp \
 	Variant/VariantVector.cpp \
+	VocBase/barrier.c \
 	VocBase/blob-collection.c \
 	VocBase/collection.c \
 	VocBase/compactor.c \
@@ -1206,7 +1207,7 @@ RestHandler/$(DEPDIR)/$(am__dirstamp):
 	@: > RestHandler/$(DEPDIR)/$(am__dirstamp)
 RestHandler/RestActionHandler.$(OBJEXT): RestHandler/$(am__dirstamp) \
 	RestHandler/$(DEPDIR)/$(am__dirstamp)
-RestHandler/RestDocumentHandler.$(OBJEXT):  \
+RestHandler/RestCollectionHandler.$(OBJEXT):  \
 	RestHandler/$(am__dirstamp) \
 	RestHandler/$(DEPDIR)/$(am__dirstamp)
 RestHandler/RestSystemActionHandler.$(OBJEXT):  \
@@ -1374,6 +1375,8 @@ VocBase/$(am__dirstamp):
 VocBase/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) VocBase/$(DEPDIR)
 	@: > VocBase/$(DEPDIR)/$(am__dirstamp)
+VocBase/barrier.$(OBJEXT): VocBase/$(am__dirstamp) \
+	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/blob-collection.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/collection.$(OBJEXT): VocBase/$(am__dirstamp) \
@@ -1520,7 +1523,7 @@ mostlyclean-compile:
 	-rm -f Rest/SslInterface.$(OBJEXT)
 	-rm -f Rest/Url.$(OBJEXT)
 	-rm -f RestHandler/RestActionHandler.$(OBJEXT)
-	-rm -f RestHandler/RestDocumentHandler.$(OBJEXT)
+	-rm -f RestHandler/RestCollectionHandler.$(OBJEXT)
 	-rm -f RestHandler/RestSystemActionHandler.$(OBJEXT)
 	-rm -f RestHandler/RestVocbaseBaseHandler.$(OBJEXT)
 	-rm -f RestServer/ActionDispatcherThread.$(OBJEXT)
@@ -1579,6 +1582,7 @@ mostlyclean-compile:
 	-rm -f Variant/VariantUInt64.$(OBJEXT)
 	-rm -f Variant/VariantUInt8.$(OBJEXT)
 	-rm -f Variant/VariantVector.$(OBJEXT)
+	-rm -f VocBase/barrier.$(OBJEXT)
 	-rm -f VocBase/blob-collection.$(OBJEXT)
 	-rm -f VocBase/collection.$(OBJEXT)
 	-rm -f VocBase/compactor.$(OBJEXT)
@@ -1704,7 +1708,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Rest/$(DEPDIR)/SslInterface.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Rest/$(DEPDIR)/Url.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestHandler/$(DEPDIR)/RestActionHandler.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@RestHandler/$(DEPDIR)/RestDocumentHandler.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@RestHandler/$(DEPDIR)/RestCollectionHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestHandler/$(DEPDIR)/RestSystemActionHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestHandler/$(DEPDIR)/RestVocbaseBaseHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/ActionDispatcherThread.Po@am__quote@
@@ -1763,6 +1767,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Variant/$(DEPDIR)/VariantUInt64.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Variant/$(DEPDIR)/VariantUInt8.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Variant/$(DEPDIR)/VariantVector.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/barrier.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/blob-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/compactor.Po@am__quote@
@@ -2252,7 +2257,7 @@ Doxygen/xml/%.md: Doxygen/xml/%.xml
 .PHONY: doxygen
 
 doxygen: Doxygen/avocado.doxy $(DOXYGEN)
-	doxygen Doxygen/avocado.doxy
+	doxygen Doxygen/avocado.doxy > /dev/null
 
 ################################################################################
 ################################################################################

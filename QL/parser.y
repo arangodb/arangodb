@@ -73,6 +73,7 @@ void QLerror (YYLTYPE *locp,QL_parser_context_t *context, const char *err) {
 %type <node> collection_reference;
 %type <node> collection_name;
 %type <node> collection_alias;
+%type <node> geo_expression;
 %type <node> where_clause;
 %type <node> order_clause;
 %type <node> order_list;
@@ -95,6 +96,7 @@ void QLerror (YYLTYPE *locp,QL_parser_context_t *context, const char *err) {
 %token WHERE 
 %token JOIN LIST INNER OUTER LEFT RIGHT ON
 %token ORDER BY ASC DESC
+%token WITHIN NEAR
 %token LIMIT
 %token AND OR NOT IN 
 %token ASSIGNMENT GREATER LESS GREATER_EQUAL LESS_EQUAL EQUAL UNEQUAL IDENTICAL UNIDENTICAL
@@ -172,23 +174,34 @@ from_clause:
   ;	      						
 
 from_list:
-    collection_reference {
+    collection_reference geo_expression {
       // single table query
       ABORT_IF_OOM($1);
       QLParseContextAddElement(context, $1);
     } 
-  | from_list join_type collection_reference ON expression {
+  | from_list join_type collection_reference geo_expression ON expression {
       // multi-table query
       ABORT_IF_OOM($2);
       ABORT_IF_OOM($3);
-      ABORT_IF_OOM($5);
+      ABORT_IF_OOM($6);
       $$ = $2;
       $$->_lhs  = $3;
-      $$->_rhs  = $5;
+      $$->_rhs  = $6;
       
       QLParseContextAddElement(context, $2);
     }
   ;
+
+geo_expression:
+    /* empty */ {
+      $$ = 0;
+    }
+  | WITHIN collection_alias ASSIGNMENT '(' object_access ',' object_access ',' REAL ',' REAL ',' REAL ')' {
+    }
+  | NEAR collection_alias ASSIGNMENT '(' object_access ',' object_access ',' REAL ',' REAL ',' REAL ')' {
+    }
+  ;
+
 
 where_clause:
     /* empty */ {
@@ -370,15 +383,16 @@ attribute:
 
 named_attribute:
     IDENTIFIER COLON expression {
-      QL_ast_node_t* identifier = QLAstNodeCreate(context, QLNodeValueIdentifier);
-      ABORT_IF_OOM(identifier);
+      size_t outLength;
+      QL_ast_node_t* str = QLAstNodeCreate(context, QLNodeValueString);
+      ABORT_IF_OOM(str);
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($3);
-      identifier->_value._stringValue = $1;
+      str->_value._stringValue = QLParseRegisterString(context, TRI_UnescapeUtf8String($1, strlen($1), &outLength)); 
 
       $$ = QLAstNodeCreate(context, QLNodeValueNamedValue);
       ABORT_IF_OOM($$);
-      $$->_lhs = identifier;
+      $$->_lhs = str;
       $$->_rhs = $3;
     }
   | STRING COLON expression {

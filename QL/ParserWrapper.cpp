@@ -113,7 +113,7 @@ bool ParserWrapper::parse () {
 
   _isParsed = true;
 
-  if (!QLParseInit(_vocbase,_context, _query)) {
+  if (!QLParseInit(_vocbase, _context, _query)) {
     return false;
   }
 
@@ -123,16 +123,44 @@ bool ParserWrapper::parse () {
     return false;
   }
 
-  if (!QLParseValidate(_context, _context->_query->_select._base)) {
+  size_t order;
+  if (!QLParseValidateCollections(_context, 
+                                  _context->_query->_select._base, 
+                                  &QLAstQueryIsValidAlias,
+                                  &order)) {
+    // select expression invalid
     setParseError();
     return false;
   }
 
-  if (!QLParseValidate(_context, _context->_query->_where._base)) {
+  if (!QLParseValidateCollections(_context, 
+                                  _context->_query->_where._base,
+                                  &QLAstQueryIsValidAlias,
+                                  &order)) {
+    // where expression invalid
     setParseError();
     return false;
   }
-
+  
+  if (!QLParseValidateCollections(_context, 
+                                  _context->_query->_order._base,
+                                  &QLAstQueryIsValidAlias,
+                                  &order)) {
+    // where expression invalid
+    setParseError();
+    return false;
+  }
+  
+  order = 0;
+  if (!QLParseValidateCollections(_context, 
+                                  _context->_query->_from._base,
+                                  &QLAstQueryIsValidAliasOrdered,
+                                  &order)) {
+    // from expression(s) invalid
+    setParseError();
+    return false;
+  }
+  
   return true;
 }
 

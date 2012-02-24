@@ -154,12 +154,42 @@ bool TRI_SaveIndex (TRI_doc_collection_t* collection, TRI_index_t* idx) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief free an existing index definition
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeIndexDefinition (TRI_index_definition_t* definition) {
+  TRI_DestroyVectorString(&definition->_fields);
+  TRI_Free(definition);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free an existing index definitions vector
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeIndexDefinitions (TRI_vector_pointer_t* definitions) {
+  TRI_index_definition_t* definition;
+  size_t i;
+
+  if (!definitions) {
+    return;
+  }
+
+  for (i = 0; i < definitions->_length; i++) {
+    definition = (TRI_index_definition_t*) definitions->_buffer[i];
+    assert(definition);
+    TRI_FreeIndexDefinition(definition);
+  }
+
+  TRI_FreeVectorPointer(definitions);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the definitions of all index files for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t TRI_GetCollectionIndexes(const TRI_vocbase_t* vocbase,
-                                              const char* collectionName) {
-  TRI_vector_pointer_t indexes;
+TRI_vector_pointer_t* TRI_GetCollectionIndexes(const TRI_vocbase_t* vocbase,
+                                               const char* collectionName) {
+  TRI_vector_pointer_t* indexes;
   TRI_index_definition_t* indexDefinition;
   TRI_vector_string_t indexFiles;
   TRI_json_t* json;
@@ -177,7 +207,12 @@ TRI_vector_pointer_t TRI_GetCollectionIndexes(const TRI_vocbase_t* vocbase,
   uint32_t j;
  
   assert(vocbase); 
-  TRI_InitVectorPointer(&indexes);
+
+  indexes = (TRI_vector_pointer_t*) TRI_Allocate(sizeof(TRI_vector_pointer_t));
+  if (!indexes) {
+    return NULL;
+  }
+  TRI_InitVectorPointer(indexes);
 
   // add "pseudo" primary index
   indexDefinition = (TRI_index_definition_t*) TRI_Allocate(sizeof(TRI_index_definition_t));
@@ -187,8 +222,11 @@ TRI_vector_pointer_t TRI_GetCollectionIndexes(const TRI_vocbase_t* vocbase,
     indexDefinition->_type     = TRI_IDX_TYPE_PRIMARY_INDEX;
     indexDefinition->_isUnique = true; // primary index is always unique
 
-    TRI_PushBackVectorString(&indexDefinition->_fields, "_id"); // name of field
-    TRI_PushBackVectorPointer(&indexes, indexDefinition);
+    temp3 = TRI_DuplicateString("_id");
+    if (temp3) {
+      TRI_PushBackVectorString(&indexDefinition->_fields, temp3); // name of field
+    }
+    TRI_PushBackVectorPointer(indexes, indexDefinition);
   }
 
   // get all index filenames
@@ -257,7 +295,8 @@ TRI_vector_pointer_t TRI_GetCollectionIndexes(const TRI_vocbase_t* vocbase,
     }
 
     // create the index definition
-    indexDefinition = (TRI_index_definition_t*) TRI_Allocate(sizeof(TRI_index_definition_t));
+    indexDefinition = 
+      (TRI_index_definition_t*) TRI_Allocate(sizeof(TRI_index_definition_t));
     if (indexDefinition) {
       TRI_InitVectorString(&indexDefinition->_fields);
       indexDefinition->_iid      = indexId;
@@ -287,7 +326,7 @@ TRI_vector_pointer_t TRI_GetCollectionIndexes(const TRI_vocbase_t* vocbase,
         TRI_Free(indexDefinition);
       } 
       else {
-        TRI_PushBackVectorPointer(&indexes, indexDefinition);
+        TRI_PushBackVectorPointer(indexes, indexDefinition);
       }
     }
 
@@ -977,7 +1016,7 @@ HashIndexElements* TRI_LookupHashIndex(TRI_index_t* idx, TRI_json_t* parameterLi
   element.fields    = TRI_Allocate( sizeof(TRI_json_t) * element.numFields);
   if (element.fields == NULL) {
     LOG_WARNING("out-of-memory in LookupHashIndex");
-    return false;
+    return NULL;
   }  
     
   hashIndex = (TRI_hash_index_t*) idx;
@@ -985,8 +1024,9 @@ HashIndexElements* TRI_LookupHashIndex(TRI_index_t* idx, TRI_json_t* parameterLi
     
   for (size_t j = 0; j < element.numFields; ++j) {
     TRI_json_t*        jsonObject   = (TRI_json_t*) (TRI_AtVector(&(parameterList->_value._objects),j));
-    TRI_shaped_json_t* shapedObject = TRI_ShapedJsonJson(shaper,jsonObject);
+    TRI_shaped_json_t* shapedObject = TRI_ShapedJsonJson(shaper, jsonObject);
     element.fields[j] = *shapedObject;
+    TRI_Free(shapedObject);
   }
   
   if (hashIndex->_unique) {
@@ -994,10 +1034,11 @@ HashIndexElements* TRI_LookupHashIndex(TRI_index_t* idx, TRI_json_t* parameterLi
   }
   else {
     result = MultiHashIndex_find(hashIndex->_hashIndex, &element);
-    for (int j = 0; j < result->_numElements; ++j) {  
-    }  
   }
-  
+
+  for (size_t j = 0; j < element.numFields; ++j) {
+    TRI_DestroyShapedJson(element.fields + j);
+  }
   TRI_Free(element.fields);
   
   return result;  
@@ -1037,6 +1078,9 @@ static bool HashIndexHelper(const TRI_hash_index_t* hashIndex,
       // ..........................................................................
       acc = TRI_ShapeAccessor(hashIndex->base._collection->_shaper, shapedDoc->_sid, shape);
       if (acc == NULL || acc->_shape == NULL) {
+        if (acc != NULL) {
+          TRI_FreeShapeAccessor(acc);
+        }
         TRI_Free(hashElement->fields);
         return false;
       }  
@@ -1046,7 +1090,7 @@ static bool HashIndexHelper(const TRI_hash_index_t* hashIndex,
       // Extract the field
       // ..........................................................................    
       if (! TRI_ExecuteShapeAccessor(acc, shapedDoc, &shapedObject)) {
-        TRI_Free(acc);
+        TRI_FreeShapeAccessor(acc);
         TRI_Free(hashElement->fields);
         return false;
       }
@@ -1056,7 +1100,7 @@ static bool HashIndexHelper(const TRI_hash_index_t* hashIndex,
       // Store the json shaped Object -- this is what will be hashed
       // ..........................................................................    
       hashElement->fields[j] = shapedObject;
-      TRI_Free(acc);
+      TRI_FreeShapeAccessor(acc);
     }  // end of for loop
       
   }
@@ -1082,6 +1126,9 @@ static bool HashIndexHelper(const TRI_hash_index_t* hashIndex,
       // ..........................................................................
       acc = TRI_ShapeAccessor(hashIndex->base._collection->_shaper, document->_document._sid, shape);
       if (acc == NULL || acc->_shape == NULL) {
+        if (acc != NULL) {
+          TRI_FreeShapeAccessor(acc);
+        }
         TRI_Free(hashElement->fields);
         return false;
       }  
@@ -1091,7 +1138,7 @@ static bool HashIndexHelper(const TRI_hash_index_t* hashIndex,
       // Extract the field
       // ..........................................................................    
       if (! TRI_ExecuteShapeAccessor(acc, &(document->_document), &shapedObject)) {
-        TRI_Free(acc);
+        TRI_FreeShapeAccessor(acc);
         TRI_Free(hashElement->fields);
         return false;
       }
@@ -1114,7 +1161,7 @@ static bool HashIndexHelper(const TRI_hash_index_t* hashIndex,
       // Store the field
       // ..........................................................................    
       hashElement->fields[j] = shapedObject;
-      TRI_Free(acc);
+      TRI_FreeShapeAccessor(acc);
     }  // end of for loop
   }
   

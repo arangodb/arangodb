@@ -129,10 +129,10 @@ void QLJavascripterConvert (QL_javascript_conversion_t* converter,
       TRI_AppendStringStringBuffer(converter->_buffer, node->_value._boolValue ? "true" : "false");
       return;
     case QLNodeValueString:
-      TRI_AppendCharStringBuffer(converter->_buffer, '\'');
+      TRI_AppendCharStringBuffer(converter->_buffer, '"');
       TRI_AppendStringStringBuffer(converter->_buffer, 
         TRI_EscapeUtf8String(node->_value._stringValue, strlen(node->_value._stringValue), false, &outLength));
-      TRI_AppendCharStringBuffer(converter->_buffer, '\'');
+      TRI_AppendCharStringBuffer(converter->_buffer, '"');
       return;
     case QLNodeValueNumberInt:
       TRI_AppendInt64StringBuffer(converter->_buffer, node->_value._intValue);

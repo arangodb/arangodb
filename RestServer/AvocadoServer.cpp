@@ -47,7 +47,7 @@
 #include "Logger/Logger.h"
 #include "Rest/Initialise.h"
 #include "RestHandler/RestActionHandler.h"
-#include "RestHandler/RestDocumentHandler.h"
+#include "RestHandler/RestCollectionHandler.h"
 #include "RestHandler/RestSystemActionHandler.h"
 #include "RestServer/ActionDispatcherThread.h"
 #include "RestServer/AvocadoHttpServer.h"
@@ -529,7 +529,7 @@ int AvocadoServer::startupServer () {
 
     _applicationAdminServer->addBasicHandlers(factory);
 
-    factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
+    factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestCollectionHandler>::createData<TRI_vocbase_t*>, _vocbase);
     factory->addPrefixHandler(RestVocbaseBaseHandler::ACTION_PATH, RestHandlerCreator<RestActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
 
     _httpServer = _applicationHttpServer->buildServer(new AvocadoHttpServer(scheduler, dispatcher), factory, ports);
@@ -548,7 +548,7 @@ int AvocadoServer::startupServer () {
     _applicationAdminServer->addBasicHandlers(adminFactory);
     _applicationAdminServer->addHandlers(adminFactory, "/admin");
 
-    adminFactory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
+    adminFactory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestCollectionHandler>::createData<TRI_vocbase_t*>, _vocbase);
     adminFactory->addPrefixHandler(RestVocbaseBaseHandler::ACTION_PATH, RestHandlerCreator<RestActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
     adminFactory->addPrefixHandler(RestVocbaseBaseHandler::SYSTEM_ACTION_PATH, RestHandlerCreator<RestSystemActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
 

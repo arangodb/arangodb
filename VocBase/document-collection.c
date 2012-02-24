@@ -446,7 +446,7 @@ void TRI_InitDocCollection (TRI_doc_collection_t* collection,
 
   collection->figures = Figures;
 
-  TRI_InitRSContainer(&collection->_resultSets, collection);
+  TRI_InitBarrierList(&collection->_barrierList, collection);
 
   TRI_InitAssociativePointer(&collection->_datafileInfo,
                              HashKeyDatafile,
@@ -465,7 +465,7 @@ void TRI_DestroyDocCollection (TRI_doc_collection_t* collection) {
   }
 
   TRI_DestroyAssociativePointer(&collection->_datafileInfo);
-  TRI_DestroyRSContainer(&collection->_resultSets);
+  TRI_DestroyBarrierList(&collection->_barrierList);
 
   TRI_DestroyCollection(&collection->base);
 }

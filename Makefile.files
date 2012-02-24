@@ -107,7 +107,7 @@ avocado_SOURCES = \
 	Rest/SslInterface.cpp \
 	Rest/Url.cpp \
 	RestHandler/RestActionHandler.cpp \
-	RestHandler/RestDocumentHandler.cpp \
+	RestHandler/RestCollectionHandler.cpp \
 	RestHandler/RestSystemActionHandler.cpp \
 	RestHandler/RestVocbaseBaseHandler.cpp \
 	RestServer/ActionDispatcherThread.cpp \
@@ -166,6 +166,7 @@ avocado_SOURCES = \
 	Variant/VariantUInt64.cpp \
 	Variant/VariantUInt8.cpp \
 	Variant/VariantVector.cpp \
+	VocBase/barrier.c \
 	VocBase/blob-collection.c \
 	VocBase/collection.c \
 	VocBase/compactor.c \

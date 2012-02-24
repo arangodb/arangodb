@@ -331,7 +331,7 @@ static uint64_t hashKey (struct TRI_associative_array_s* associativeArray, void*
 HashIndex* HashIndex_new() {
   HashIndex* hashIndex;
 
-  hashIndex = malloc(sizeof(HashIndex));
+  hashIndex = TRI_Allocate(sizeof(HashIndex));
   if (hashIndex == NULL) {
     return NULL;
   }

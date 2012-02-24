@@ -47,19 +47,27 @@ using namespace triagens::avocado;
 ///   <ol>
 ///    <li>@ref StartStop
 ///    </li>
-///    <li>@ref AvocadoScript
-///     <ol>
-///      <li>@ref GeoCoordinates
-///      </li>
-///      <li>@ref Pagination
-///      </li>
-///     </ol>
-///    </li>
 ///    <li>@ref HttpInterface
 ///     <ol>
 ///      <li>@ref RestInterface
 ///      </li>
 ///      <li>@ref RestDocument
+///      </li>
+///     </ol>
+///    </li>
+///    <li>@ref AQL
+///     <ol>
+///      <li>@ref Optimizer
+///      </li>
+///      <li>@ref IndexUsage
+///      </li>
+///     </ol>
+///    </li>
+///    <li>@ref AvocadoScript
+///     <ol>
+///      <li>@ref GeoCoordinates
+///      </li>
+///      <li>@ref Pagination
 ///      </li>
 ///     </ol>
 ///    </li>
@@ -183,11 +191,9 @@ using namespace triagens::avocado;
 /// @page InstallManual AvocadoDB Installation Manual
 ///
 /// <ol>
-///  <li>Building the AvocadoDB from Scratch
-///   <ol>
-///    <li>@ref Compiling
-///    </li>
-///   </ol>
+///  <li>@ref Installing
+///  <li>
+///  <li>@ref Compiling
 ///  </li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////

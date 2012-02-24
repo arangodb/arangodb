@@ -37,9 +37,9 @@ static TRI_data_feeder_t* DetermineIndexUsage (const TRI_vocbase_t* vocbase,
                                                const TRI_select_join_t* join,
                                                const size_t level,
                                                const TRI_join_part_t* part) {
-  TRI_vector_pointer_t indexDefinitions;
+  TRI_vector_pointer_t* indexDefinitions;
   TRI_index_definition_t* indexDefinition;
-  TRI_data_feeder_t* feeder;
+  TRI_data_feeder_t* feeder = NULL;
   QL_optimize_range_t* range;
   TRI_vector_pointer_t matches;
   size_t i, j, k;
@@ -50,13 +50,17 @@ static TRI_data_feeder_t* DetermineIndexUsage (const TRI_vocbase_t* vocbase,
   if (part->_ranges) {
     TRI_InitVectorPointer(&matches);
     indexDefinitions = TRI_GetCollectionIndexes(vocbase, part->_collectionName);
+    if (!indexDefinitions) {
+      goto EXIT2;
+    }
     
     // enum all indexes
-    for (i = 0; i < indexDefinitions._length; i++) {
-      indexDefinition = (TRI_index_definition_t*) indexDefinitions._buffer[i];
+    for (i = 0; i < indexDefinitions->_length; i++) {
+      indexDefinition = (TRI_index_definition_t*) indexDefinitions->_buffer[i];
 
       // reset compare state
       if (matches._length) {
+        TRI_DestroyVectorPointer(&matches);
         TRI_InitVectorPointer(&matches);
       }
       numFields = 0;
@@ -173,9 +177,11 @@ static TRI_data_feeder_t* DetermineIndexUsage (const TRI_vocbase_t* vocbase,
     }
 
 EXIT:
-    TRI_DestroyVectorPointer(&indexDefinitions);
+    TRI_FreeIndexDefinitions(indexDefinitions);
     TRI_DestroyVectorPointer(&matches);
   }
+
+EXIT2:
 
   if (!feeder) {
     // if no index can be used, we'll do a full table scan

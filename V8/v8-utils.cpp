@@ -461,16 +461,15 @@ bool TRI_ExecuteRefExecutionContext (TRI_js_exec_context_t context, TRI_json_t* 
     v8::Handle<v8::Value> parameter = obj->Get(position++);
     if (parameter->IsNumber()) {
       v8::Handle<v8::Number> numberParameter = parameter->ToNumber();
-      TRI_PushBackListJson(r, TRI_CreateNumberJson(numberParameter->Value()));
+      TRI_PushBack2ListJson(r, TRI_CreateNumberJson(numberParameter->Value()));
     }
     else if (parameter->IsString() ) {
       v8::Handle<v8::String>  stringParameter= parameter->ToString();
       v8::String::Utf8Value str(stringParameter);
-      TRI_PushBackListJson(r, TRI_CreateStringCopyJson(*str));
+      TRI_PushBack2ListJson(r, TRI_CreateStringCopyJson(*str));
     }
     else {
       continue;
-      return false;
     }
   }
 

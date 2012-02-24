@@ -177,10 +177,11 @@ QL_ast_query_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct QL_ast_query_collection_s {
-  char* _name;
-  char* _alias;
-  bool _isPrimary;
+  char*  _name;
+  char*  _alias;
+  bool   _isPrimary;
   size_t _refCount;
+  size_t _declarationOrder;
 } 
 QL_ast_query_collection_t;
 
@@ -212,7 +213,14 @@ void QLAstQueryAddRefCount (QL_ast_query_t*, const char*);
 /// @brief Check if a collection was defined in a query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLAstQueryIsValidAlias (QL_ast_query_t*, const char*);
+bool QLAstQueryIsValidAlias (QL_ast_query_t*, const char*, const size_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Check if a collection was defined in a query, taking order of 
+/// declaration into account
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLAstQueryIsValidAliasOrdered (QL_ast_query_t*, const char*, const size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Return the collection name for its alias

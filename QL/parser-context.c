@@ -301,7 +301,8 @@ void QLParseRegisterParseError (QL_parser_context_t* context,
   context->_lexState._errorState._column  = QLget_column(context->_scanner);
   context->_lexState._errorState._code    = errorCode; 
   va_start(args, errorCode);
-  context->_lexState._errorState._message = QLParseAllocString(context, QLErrorFormat(errorCode, args)); 
+  context->_lexState._errorState._message = QLParseAllocString(context, 
+                                            QLErrorFormat(errorCode, args)); 
   va_end(args);
 }
 
@@ -319,7 +320,8 @@ void QLParseRegisterPostParseError (QL_parser_context_t* context,
   context->_lexState._errorState._column  = column;
   context->_lexState._errorState._code    = errorCode; 
   va_start(args, errorCode);
-  context->_lexState._errorState._message = QLParseAllocString(context, QLErrorFormat(errorCode, args)); 
+  context->_lexState._errorState._message = QLParseAllocString(context, 
+                                            QLErrorFormat(errorCode, args)); 
   va_end(args);
 }
 
@@ -334,11 +336,14 @@ bool QLParseValidateCollectionName (const char* name) {
    
   while ('\0' != (c = *p++)) {
     if (length == 0) {
-      if (!(c >= 'A' && c <= 'Z') && !(c >= 'a' && c <= 'z')) {
+      if (!(c >= 'A' && c <= 'Z') && 
+          !(c >= 'a' && c <= 'z')) {
         return false;
       } 
     }
-    if (!(c >= 'A' && c <= 'Z') && !(c >= 'a' && c <= 'z') && !(c >= '0' && c <= '9')) {
+    if (!(c >= 'A' && c <= 'Z') && 
+        !(c >= 'a' && c <= 'z') && 
+        !(c >= '0' && c <= '9')) {
       return false;
     } 
     length++;
@@ -359,15 +364,21 @@ bool QLParseValidateCollectionAlias (const char* name) {
    
   c = *p;
   // must start with one these chars
-  if (!(c >= 'A' && c <= 'Z') && !(c >= 'a' && c <= 'z') && !(c == '_')) {
+  if (!(c >= 'A' && c <= 'Z') && 
+      !(c >= 'a' && c <= 'z') && 
+      !(c == '_')) {
     return false;
   }
 
   while ('\0' != (c = *p++)) {
-    if (!(c >= 'A' && c <= 'Z') && !(c >= 'a' && c <= 'z') && !(c >= '0' && c <='9') && !(c == '_')) {
+    if (!(c >= 'A' && c <= 'Z') && 
+        !(c >= 'a' && c <= 'z') && 
+        !(c >= '0' && c <='9') && 
+        !(c == '_')) {
       return false;
     } 
-    if (!(c >= '0' && c <='9') && !(c == '_')) {
+    if (!(c >= '0' && c <='9') && 
+        !(c == '_')) {
       // must include at least one letter
       charLength++;
     }
@@ -383,10 +394,13 @@ bool QLParseValidateCollectionAlias (const char* name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Validate the query
+/// @brief Validate the collections used in a query part
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLParseValidate (QL_parser_context_t* context, QL_ast_node_t* node) {
+bool QLParseValidateCollections (QL_parser_context_t* context, 
+                                 QL_ast_node_t* node,
+                                 QL_parser_validate_func validateFunc,
+                                 size_t* order) {
   QL_ast_node_t *lhs, *rhs, *next;
 
   if (node == 0) {
@@ -396,15 +410,19 @@ bool QLParseValidate (QL_parser_context_t* context, QL_ast_node_t* node) {
   if (node->_type == QLNodeContainerList) {
     next = node->_next;
     while (next) {
-      if (!QLParseValidate(context, next)) {
+      if (!QLParseValidateCollections(context, next, validateFunc, order)) {
         return false;
       }
       next = next->_next;
     }
   }
   
+  if (node->_type == QLNodeReferenceCollection) {
+    ++(*order);
+  }
+  
   if (node->_type == QLNodeReferenceCollectionAlias) {
-    if (!QLAstQueryIsValidAlias(context->_query, node->_value._stringValue)) {
+    if (!validateFunc(context->_query, node->_value._stringValue, *order)) {
       QLParseRegisterPostParseError(context, 
                                     node->_line, 
                                     node->_column, 
@@ -416,14 +434,14 @@ bool QLParseValidate (QL_parser_context_t* context, QL_ast_node_t* node) {
 
   lhs = node->_lhs;
   if (lhs != 0) {
-    if (!QLParseValidate(context, lhs)) { 
+    if (!QLParseValidateCollections(context, lhs, validateFunc, order)) { 
       return false;
     }
   }
 
   rhs = node->_rhs;
   if (rhs != 0) {
-    if (!QLParseValidate(context, rhs)) {
+    if (!QLParseValidateCollections(context, rhs, validateFunc, order)) {
       return false;
     }
   }

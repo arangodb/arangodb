@@ -1090,11 +1090,11 @@ void TRI_ReadUnlockCollectionsQuery (TRI_query_t* query) {
 
 void TRI_AddCollectionsCursor (TRI_rc_cursor_t* cursor, TRI_query_t* query) {
   TRI_join_part_t* part;
-  TRI_rs_container_element_t* ce;
+  TRI_barrier_t* ce;
   size_t i;
 
   if (query->_joins == NULL) {
-    ce = TRI_AddResultSetRSContainer(&query->_primary->_resultSets);
+    ce = TRI_CreateBarrierElement(&query->_primary->_barrierList);
     TRI_PushBackVectorPointer(&cursor->_containers, ce);
     return;
   }
@@ -1104,7 +1104,7 @@ void TRI_AddCollectionsCursor (TRI_rc_cursor_t* cursor, TRI_query_t* query) {
   for (i = 0; i < query->_joins->_parts._length; i++) {
     part = (TRI_join_part_t*) query->_joins->_parts._buffer[i];
     assert(part->_collection);
-    ce = TRI_AddResultSetRSContainer(&part->_collection->_resultSets);
+    ce = TRI_CreateBarrierElement(&part->_collection->_barrierList);
     TRI_PushBackVectorPointer(&cursor->_containers, ce);
   }
 }
@@ -1115,13 +1115,13 @@ void TRI_AddCollectionsCursor (TRI_rc_cursor_t* cursor, TRI_query_t* query) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_RemoveCollectionsCursor (TRI_rc_cursor_t* cursor) {
-  TRI_rs_container_element_t* ce;
+  TRI_barrier_t* ce;
   size_t i;
 
   for (i = 0;  i < cursor->_containers._length;  ++i) {
     ce = cursor->_containers._buffer[i];
 
-    TRI_RemoveRSContainer(ce);
+    TRI_FreeBarrier(ce);
   }
 
   cursor->_containers._length = 0;

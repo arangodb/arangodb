@@ -46,11 +46,13 @@ extern "C" {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page optimizer Query optimizer
+/// @page Optimizer Query optimizer
 /// 
 /// The AQL query optimizer inspects incoming select queries and applies simple
 /// transformations to optimize them. The goal of all optimization is to do
 /// less work when executing the query and produce the results faster.
+///
+/// @section Optimizer transformations
 /// 
 /// Currently, the AQL query optimizer applies the following transformations:
 /// - constant folding: numeric literals, boolean values and null are folded 
@@ -77,6 +79,15 @@ extern "C" {
 ///   are combined with logical ands. For example, the following range condition
 ///   will be detected as being impossible and removed: 
 ///   @LIT{users.id > 3 && users.id < 3}
+///
+/// @section Optimizer issues
+///
+/// The optimizer currently cannot optimize subconditions combined with a 
+/// logical @LIT{||}. Furthermore, it will not optimize negated conditions or
+/// subconditions. It can only combine multiple subconditions on the same 
+/// attribute if the compare values have the same type (numeric or string).
+/// The optimizer will not merge conditions from the where clause and any of the
+/// on clauses although this might be theoretically possible in some cases.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
