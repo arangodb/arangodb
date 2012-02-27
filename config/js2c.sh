@@ -1,5 +1,5 @@
 #!/bin/bash
-NAME=`echo $1 | sed -e 's:^\(.*/\)*js/\(.*\)\.js$:\2:' | tr "/" "_"`
+NAME=`echo $1 | sed -e 's:^\(.*/\)*js/\(.*\)\.js$:\2:' | tr "/-" "__"`
 
 cat $1 \
   | sed -e 's:\(["\]\):\\\1:g' \

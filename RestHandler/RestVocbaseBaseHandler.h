@@ -37,23 +37,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page HttpInterface Lightweight HTTP Interface
 ///
-/// The AvocadoDB has a REST interface for accessing the resources. It provides
-/// a lightweight HTTP interface to execute actions. Actions are small
-/// JavaScript functions which encapsulate business logic. Actions are
-/// accessible via HTTP.
-///
-/// Next steps: learn more about
-///
-/// - the @ref RestInterface
-/// - the @ref RestDocument
-///
-/// Advanced Topics: learn more about
-///
-/// - @ref Actions
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page RestInterface REST Interface
+/// The AvocadoDB has a REST interface for accessing the resources. It
+/// also provides a lightweight HTTP interface to execute actions. Actions are
+/// small JavaScript functions which encapsulate business logic.
 ///
 /// Each resource has an identifier, which allows to access the given resource.
 ///
@@ -76,6 +62,10 @@
 /// Next steps: learn more about
 ///
 /// - the @ref RestDocument
+///
+/// Advanced Topics: learn more about
+///
+/// - @ref Actions
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////

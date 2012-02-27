@@ -211,7 +211,7 @@ bool TRI_CloseSimCollection (TRI_sim_collection_t* collection);
 TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a description of all indexes
+/// @brief returns a description of an index
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_IndexSimCollection (TRI_sim_collection_t*, TRI_idx_iid_t);

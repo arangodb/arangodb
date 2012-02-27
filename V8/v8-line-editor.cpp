@@ -130,7 +130,7 @@ static char* CompletionGenerator (char const* text, int state) {
 
     // compute all possible completions
     v8::Handle<v8::Array> properties;
-    v8::Handle<v8::String> cpl = v8::String::New("COMPLETIONS");
+    v8::Handle<v8::String> cpl = v8::String::New("_COMPLETIONS");
 
     if (current->HasOwnProperty(cpl)) {
       v8::Handle<v8::Value> funcVal = current->Get(cpl);

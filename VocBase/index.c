@@ -158,7 +158,8 @@ bool TRI_SaveIndex (TRI_doc_collection_t* collection, TRI_index_t* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeIndexDefinition (TRI_index_definition_t* definition) {
-  TRI_DestroyVectorString(&definition->_fields);
+  assert(definition->_fields);
+  TRI_FreeVectorString(definition->_fields);
   TRI_Free(definition);
 }
 
@@ -184,6 +185,100 @@ void TRI_FreeIndexDefinitions (TRI_vector_pointer_t* definitions) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief read the fields of an index from a json structure and return them
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_vector_string_t* GetFieldsIndex (const TRI_idx_type_e indexType,
+                                            TRI_json_t* json,
+                                            TRI_index_geo_variant_e* geoVariant) {
+  TRI_vector_string_t* fields;
+  TRI_json_t* strVal;
+  TRI_json_t* strVal2;
+  char* temp1;
+  char* temp2;
+  char* temp3;
+  uint32_t numFields;
+  size_t i;
+
+  *geoVariant = INDEX_GEO_NONE;
+  fields = (TRI_vector_string_t*) TRI_Allocate(sizeof(TRI_vector_string_t));
+  if (!fields) {
+    return NULL;
+  }
+
+  TRI_InitVectorString(fields);
+  if (indexType == TRI_IDX_TYPE_GEO_INDEX) {
+    strVal = TRI_LookupArrayJson(json, "location");
+    if (!strVal || strVal->_type != TRI_JSON_STRING) {
+      strVal = TRI_LookupArrayJson(json, "latitude");
+      if (!strVal || strVal->_type != TRI_JSON_STRING) {
+        return fields;
+      }
+      strVal2 = TRI_LookupArrayJson(json, "longitude");
+      if (!strVal2 || strVal2->_type != TRI_JSON_STRING) {
+        return fields;
+      }
+      temp1 = TRI_DuplicateString(strVal->_value._string.data);
+      if (!temp1) {
+        return fields;
+      }
+      TRI_PushBackVectorString(fields, temp1);
+
+      temp1 = TRI_DuplicateString(strVal2->_value._string.data);
+      if (!temp1) {
+        return fields;
+      }
+      TRI_PushBackVectorString(fields, temp1);
+      *geoVariant = INDEX_GEO_INDIVIDUAL_LAT_LON;
+    }
+    else {
+      *geoVariant = INDEX_GEO_COMBINED_LON_LAT;
+
+      strVal2 = TRI_LookupArrayJson(json, "geoJson");
+      if (strVal2 && strVal2->_type == TRI_JSON_BOOLEAN) {
+        if (strVal2->_value._boolean) {
+          *geoVariant = INDEX_GEO_COMBINED_LAT_LON;
+        }
+      }
+      TRI_PushBackVectorString(fields, strVal->_value._string.data);
+    }
+  }
+  else {
+    // read number of fields
+    strVal = TRI_LookupArrayJson(json, "field_count");
+    if (!strVal || strVal->_type != TRI_JSON_NUMBER) {
+      return fields;
+    }
+    
+    numFields = (uint32_t) strVal->_value._number;
+    if (numFields == 0) {
+      return fields;
+    }
+
+    // read field names 
+    for (i = 0; i < numFields ; i++) {
+      temp1 = TRI_StringUInt32(i);
+      if (temp1) {
+        temp2 = TRI_Concatenate2String("field_", temp1); 
+        if (temp2) {
+          strVal = TRI_LookupArrayJson(json, temp2);
+          if (strVal && strVal->_type == TRI_JSON_STRING) {
+            temp3 = TRI_DuplicateString(strVal->_value._string.data);
+            if (temp3) {
+              TRI_PushBackVectorString(fields, temp3);
+            }
+          }
+          TRI_FreeString(temp2);
+        }
+        TRI_FreeString(temp1);
+      }
+    }
+  }
+
+  return fields;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the definitions of all index files for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -191,20 +286,18 @@ TRI_vector_pointer_t* TRI_GetCollectionIndexes(const TRI_vocbase_t* vocbase,
                                                const char* collectionName) {
   TRI_vector_pointer_t* indexes;
   TRI_index_definition_t* indexDefinition;
+  TRI_index_geo_variant_e geoVariant;
   TRI_vector_string_t indexFiles;
+  TRI_vector_string_t* fields;
   TRI_json_t* json;
   TRI_json_t* strVal;
   TRI_json_t* numVal;
   char* error;
-  char* temp1;
-  char* temp2;
-  char* temp3;
+  char* temp;
   TRI_idx_iid_t indexId;
   TRI_idx_type_e indexType;
   bool indexUnique;
-  uint32_t numFields;
   size_t i;
-  uint32_t j;
  
   assert(vocbase); 
 
@@ -217,14 +310,20 @@ TRI_vector_pointer_t* TRI_GetCollectionIndexes(const TRI_vocbase_t* vocbase,
   // add "pseudo" primary index
   indexDefinition = (TRI_index_definition_t*) TRI_Allocate(sizeof(TRI_index_definition_t));
   if (indexDefinition) {
-    TRI_InitVectorString(&indexDefinition->_fields);
+    indexDefinition->_fields = TRI_Allocate(sizeof(TRI_vector_string_t));
+    if (!indexDefinition->_fields) {
+      TRI_Free(indexDefinition);
+      return NULL;
+    }
+
+    TRI_InitVectorString(indexDefinition->_fields);
     indexDefinition->_iid      = 0; // note: this id is ignored
     indexDefinition->_type     = TRI_IDX_TYPE_PRIMARY_INDEX;
     indexDefinition->_isUnique = true; // primary index is always unique
 
-    temp3 = TRI_DuplicateString("_id");
-    if (temp3) {
-      TRI_PushBackVectorString(&indexDefinition->_fields, temp3); // name of field
+    temp = TRI_DuplicateString("_id");
+    if (temp) {
+      TRI_PushBackVectorString(indexDefinition->_fields, temp); // name of field
     }
     TRI_PushBackVectorPointer(indexes, indexDefinition);
   }
@@ -284,51 +383,31 @@ TRI_vector_pointer_t* TRI_GetCollectionIndexes(const TRI_vocbase_t* vocbase,
       goto NEXT_INDEX;
     }
 
-    // read number of fields
-    numVal = TRI_LookupArrayJson(json, "field_count");
-    if (!numVal && numVal->_type != TRI_JSON_NUMBER) {
+    fields = GetFieldsIndex(indexType, json, &geoVariant);
+    if (!fields) {
       goto NEXT_INDEX;
     }
-    numFields = (uint32_t) numVal->_value._number;
-    if (numFields == 0) {
+    if (fields->_length == 0) {
+      TRI_DestroyVectorString(fields);
+      TRI_Free(fields);
       goto NEXT_INDEX;
     }
 
     // create the index definition
     indexDefinition = 
       (TRI_index_definition_t*) TRI_Allocate(sizeof(TRI_index_definition_t));
-    if (indexDefinition) {
-      TRI_InitVectorString(&indexDefinition->_fields);
-      indexDefinition->_iid      = indexId;
-      indexDefinition->_type     = indexType;
-      indexDefinition->_isUnique = indexUnique;
-
-      // read field names 
-      for (j = 0; j < numFields ; j++) {
-        temp1 = TRI_StringUInt32(j);
-        if (temp1) {
-          temp2 = TRI_Concatenate2String("field_", temp1); 
-          if (temp2) {
-            strVal = TRI_LookupArrayJson(json, temp2);
-            if (strVal && strVal->_type == TRI_JSON_STRING) {
-              temp3 = TRI_DuplicateString(strVal->_value._string.data);
-              if (temp3) {
-                TRI_PushBackVectorString(&indexDefinition->_fields, temp3);
-              }
-            }
-            TRI_FreeString(temp2);
-          }
-          TRI_FreeString(temp1);
-        }
-      }
-
-      if (indexDefinition->_fields._length == 0) {
-        TRI_Free(indexDefinition);
-      } 
-      else {
-        TRI_PushBackVectorPointer(indexes, indexDefinition);
-      }
+    if (!indexDefinition) {
+      TRI_FreeVectorString(fields);
+      goto NEXT_INDEX;
     }
+
+    indexDefinition->_iid        = indexId;
+    indexDefinition->_type       = indexType;
+    indexDefinition->_isUnique   = indexUnique;
+    indexDefinition->_fields     = fields;
+    indexDefinition->_geoVariant = geoVariant;
+
+    TRI_PushBackVectorPointer(indexes, indexDefinition);
 
 NEXT_INDEX:
     TRI_FreeJson(json);

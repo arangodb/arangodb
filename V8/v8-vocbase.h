@@ -30,6 +30,7 @@
 
 #include "V8/v8-globals.h"
 #include "ShapedJson/shaped-json.h"
+#include "VocBase/document-collection.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     documentation
@@ -218,7 +219,9 @@ v8::Handle<v8::Object> TRI_WrapEdgesCollection (TRI_vocbase_col_t const*);
 /// @brief wraps a TRI_shaped_json_t
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Object> TRI_WrapShapedJson (TRI_shaped_json_t const*, TRI_vocbase_col_t const*);
+v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
+                                          TRI_doc_mptr_t const* document,
+                                          TRI_barrier_t* barrier);
         
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a TRI_vocbase_t global context

@@ -46,6 +46,8 @@ const char* QLAstNodeGetName (const QL_ast_node_type_e type) {
       return "member access";
     case QLNodeContainerTernarySwitch:
       return "ternary operator switch";
+    case QLNodeContainerCoordinatePair:
+      return "coordinate pair";
 
     case QLNodeJoinList:
       return "join: list";
@@ -81,6 +83,8 @@ const char* QLAstNodeGetName (const QL_ast_node_type_e type) {
       return "value: identifier";
     case QLNodeValueNamedValue:
       return "value: named value";
+    case QLNodeValueCoordinate:
+      return "value: geo coordinate";
     case QLNodeValueOrderDirection:
       return "value: orderdirection";
 
@@ -88,6 +92,11 @@ const char* QLAstNodeGetName (const QL_ast_node_type_e type) {
       return "reference: collection";
     case QLNodeReferenceCollectionAlias:
       return "reference: collection alias";
+
+    case QLNodeRestrictWithin:
+      return "within restrictor";
+    case QLNodeRestrictNear:
+      return "near restrictor";
 
     case QLNodeUnaryOperatorPlus:
       return "unary: plus";
@@ -149,6 +158,7 @@ QL_ast_node_type_group_e QLAstNodeGetTypeGroup (const QL_ast_node_type_e type) {
     case QLNodeContainerOrderElement:
     case QLNodeContainerMemberAccess:
     case QLNodeContainerTernarySwitch:
+    case QLNodeContainerCoordinatePair:
       return QLNodeGroupContainer;
     
     case QLNodeJoinList:
@@ -169,12 +179,18 @@ QL_ast_node_type_group_e QLAstNodeGetTypeGroup (const QL_ast_node_type_e type) {
     case QLNodeValueParameterNumeric:
     case QLNodeValueParameterNamed:
     case QLNodeValueIdentifier:
+    case QLNodeValueNamedValue:
+    case QLNodeValueCoordinate:
     case QLNodeValueOrderDirection:
       return QLNodeGroupValue;
 
     case QLNodeReferenceCollection:
     case QLNodeReferenceCollectionAlias:
       return QLNodeGroupReference;
+    
+    case QLNodeRestrictWithin:
+    case QLNodeRestrictNear:
+      return QLNodeGroupRestrict;
 
     case QLNodeUnaryOperatorPlus:
     case QLNodeUnaryOperatorMinus:
