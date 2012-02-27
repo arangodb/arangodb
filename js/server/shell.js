@@ -52,7 +52,7 @@ var queryLimit = 20;
 /// @brief prints a query
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoFluentQuery.prototype.PRINT = function() {
+AvocadoFluentQuery.prototype._PRINT = function() {
   if (this instanceof AvocadoFluentQuery) {
     var count = 0;
 
@@ -80,7 +80,7 @@ AvocadoFluentQuery.prototype.PRINT = function() {
 /// @brief prints a query
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoFluentQuery2.prototype.PRINT = function() {
+AvocadoFluentQuery2.prototype._PRINT = function() {
   if (this instanceof AvocadoFluentQuery2) {
     var count = 0;
 
@@ -108,7 +108,7 @@ AvocadoFluentQuery2.prototype.PRINT = function() {
 /// @brief prints a query
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCursor.prototype.PRINT = function() {
+AvocadoCursor.prototype._PRINT = function() {
   if (this instanceof AvocadoCursor) {
     var count = 0;
 
@@ -126,6 +126,19 @@ AvocadoCursor.prototype.PRINT = function() {
     catch (e) {
       internal.output("encountered error while printing: " + e);
     }
+  }
+  else {
+    internal.output(this.toString());
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints a shaped json
+////////////////////////////////////////////////////////////////////////////////
+
+ShapedJson.prototype._PRINT = function(seen, path, names) {
+  if (this instanceof ShapedJson) {
+    PRINT_OBJECT(this, seen, path, names);
   }
   else {
     internal.output(this.toString());

@@ -245,7 +245,7 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	VocBase/index.$(OBJEXT) VocBase/join-execute.$(OBJEXT) \
 	VocBase/join.$(OBJEXT) VocBase/order.$(OBJEXT) \
 	VocBase/query.$(OBJEXT) VocBase/result-set.$(OBJEXT) \
-	VocBase/select-result.$(OBJEXT) \
+	VocBase/select-result.$(OBJEXT) VocBase/shadow-data.$(OBJEXT) \
 	VocBase/simple-collection.$(OBJEXT) \
 	VocBase/synchroniser.$(OBJEXT) VocBase/voc-shaper.$(OBJEXT) \
 	VocBase/vocbase.$(OBJEXT)
@@ -687,6 +687,7 @@ avocado_SOURCES = \
 	VocBase/query.c \
 	VocBase/result-set.c \
 	VocBase/select-result.c \
+	VocBase/shadow-data.c \
 	VocBase/simple-collection.c \
 	VocBase/synchroniser.c \
 	VocBase/voc-shaper.c \
@@ -702,7 +703,8 @@ JAVASCRIPT_HEADER = \
 	js/server/js-actions.h \
 	js/server/js-aql.h \
 	js/server/js-json.h \
-	js/server/js-shell.h
+	js/server/js-shell.h \
+	js/server/js-simple-query.h
 
 
 ################################################################################
@@ -742,6 +744,7 @@ DOXYGEN = \
 	Doxygen/js/server/actions.c \
 	Doxygen/js/server/json.c \
 	Doxygen/js/server/shell.c \
+	Doxygen/js/server/simple-query.c \
 	Doxygen/js/system/collections.c \
 	Doxygen/js/system/indexes.c
 
@@ -773,8 +776,8 @@ WIKI = \
         Doxygen/xml/Pagination.md \
         Doxygen/xml/RefManual.md \
         Doxygen/xml/RestDocument.md \
-        Doxygen/xml/RestInterface.md \
         Doxygen/xml/RestSystem.md \
+	Doxygen/xml/SimpleQueries.md \
         Doxygen/xml/StartStop.md \
         Doxygen/xml/UserManual.md \
         Doxygen/xml/jsUnity.md
@@ -1407,6 +1410,8 @@ VocBase/result-set.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/select-result.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
+VocBase/shadow-data.$(OBJEXT): VocBase/$(am__dirstamp) \
+	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/simple-collection.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/synchroniser.$(OBJEXT): VocBase/$(am__dirstamp) \
@@ -1598,6 +1603,7 @@ mostlyclean-compile:
 	-rm -f VocBase/query.$(OBJEXT)
 	-rm -f VocBase/result-set.$(OBJEXT)
 	-rm -f VocBase/select-result.$(OBJEXT)
+	-rm -f VocBase/shadow-data.$(OBJEXT)
 	-rm -f VocBase/simple-collection.$(OBJEXT)
 	-rm -f VocBase/synchroniser.$(OBJEXT)
 	-rm -f VocBase/voc-shaper.$(OBJEXT)
@@ -1783,6 +1789,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/result-set.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/select-result.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/shadow-data.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/simple-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/synchroniser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/voc-shaper.Po@am__quote@

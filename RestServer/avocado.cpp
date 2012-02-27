@@ -47,11 +47,9 @@ using namespace triagens::avocado;
 ///   <ol>
 ///    <li>@ref StartStop
 ///    </li>
-///    <li>@ref HttpInterface
+///    <li>AvocadoScript
 ///     <ol>
-///      <li>@ref RestInterface
-///      </li>
-///      <li>@ref RestDocument
+///      <li>@ref SimpleQueries
 ///      </li>
 ///     </ol>
 ///    </li>
@@ -74,6 +72,16 @@ using namespace triagens::avocado;
 ///    <li>Vertices, Edges, and Graphs
 ///     <ol>
 ///      <li>@ref Graphs
+///      </li>
+///     </ol>
+///    </li>
+///   </ol>
+///  </li>
+///  <li>Client Communication
+///   <ol>
+///    <li>@ref HttpInterface
+///     <ol>
+///      <li>@ref RestDocument
 ///      </li>
 ///     </ol>
 ///    </li>

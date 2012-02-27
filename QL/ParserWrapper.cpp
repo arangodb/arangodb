@@ -266,6 +266,8 @@ TRI_qry_select_t* ParserWrapper::getSelect () {
 TRI_select_join_t* ParserWrapper::getJoins () {
   TRI_select_join_t* join = 0;
   TRI_vector_pointer_t* ranges;
+  TRI_join_type_e joinType;
+  QL_ast_query_collection_t* collection;
   char* collectionName;
   char* collectionAlias;
 
@@ -294,8 +296,23 @@ TRI_select_join_t* ParserWrapper::getJoins () {
   collectionName = lhs->_value._stringValue;
   collectionAlias = rhs->_value._stringValue;
 
-  ranges = QLOptimizeCondition(_context->_query->_where._base);
-  TRI_AddPartSelectJoin(join, JOIN_TYPE_PRIMARY, NULL, ranges, collectionName, collectionAlias);
+  collection = (QL_ast_query_collection_t*) 
+    TRI_LookupByKeyAssociativePointer(&_context->_query->_from._collections, collectionAlias);
+
+  if (collection->_restriction) {
+    ranges = NULL;
+  }
+  else {
+    ranges = QLOptimizeCondition(_context->_query->_where._base);
+  }
+
+  TRI_AddPartSelectJoin(join, 
+                        JOIN_TYPE_PRIMARY, 
+                        NULL, 
+                        ranges, 
+                        collectionName, 
+                        collectionAlias,
+                        QLAstQueryCloneRestriction(collection->_restriction));
 
   while (node->_next) {
     node = (QL_ast_node_t*) node->_next;
@@ -306,6 +323,8 @@ TRI_select_join_t* ParserWrapper::getJoins () {
 
     TRI_qry_where_t* joinWhere = 0;
     ranges = NULL;
+    collection = (QL_ast_query_collection_t*) 
+      TRI_LookupByKeyAssociativePointer(&_context->_query->_from._collections, collectionAlias);
 
     if (conditionType == QLQueryWhereTypeAlwaysTrue) {
       // join condition is always true 
@@ -332,7 +351,9 @@ TRI_select_join_t* ParserWrapper::getJoins () {
         TRI_AppendStringStringBuffer(conditionJs->_buffer, "); })");
         joinWhere = TRI_CreateQueryWhereGeneral(conditionJs->_buffer->_buffer);
         QLJavascripterFree(conditionJs);
-        ranges = QLOptimizeCondition(condition);
+        if (!collection->_restriction) {
+          ranges = QLOptimizeCondition(condition);
+        }
       }
       if (!joinWhere) {
         join->free(join);
@@ -342,17 +363,27 @@ TRI_select_join_t* ParserWrapper::getJoins () {
 
     collectionName = ((QL_ast_node_t*) (ref->_lhs))->_value._stringValue;
     collectionAlias = ((QL_ast_node_t*) (ref->_rhs))->_value._stringValue;
-  
 
     if (node->_type == QLNodeJoinList) {
-      TRI_AddPartSelectJoin(join, JOIN_TYPE_LIST, joinWhere, ranges, collectionName, collectionAlias);
+      joinType = JOIN_TYPE_LIST;
     }
     else if (node->_type == QLNodeJoinInner) {
-      TRI_AddPartSelectJoin(join, JOIN_TYPE_INNER, joinWhere, ranges, collectionName, collectionAlias);
+      joinType = JOIN_TYPE_INNER;
     }
     else if (node->_type == QLNodeJoinLeft) {
-      TRI_AddPartSelectJoin(join, JOIN_TYPE_OUTER, joinWhere, ranges, collectionName, collectionAlias);
+      joinType = JOIN_TYPE_OUTER;
     }
+    else {
+      assert(false);
+    }
+  
+    TRI_AddPartSelectJoin(join, 
+                          joinType, 
+                          joinWhere, 
+                          ranges, 
+                          collectionName, 
+                          collectionAlias,
+                          QLAstQueryCloneRestriction(collection->_restriction));
   }
 
   return join;

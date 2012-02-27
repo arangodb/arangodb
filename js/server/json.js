@@ -45,16 +45,16 @@ AvocadoCollection.prototype.toString = function() {
     status = this.status();
 
     if (status == 1) {
-      return "[new born collection at " + JSON.stringify(this._name) + "]";
+      return "[new born collection " + JSON.stringify(this._name) + "]";
     }
     else if (status == 2) {
-      return "[unloaded collection at " + JSON.stringify(this._name) + "]";
+      return "[unloaded collection " + JSON.stringify(this._name) + "]";
     }
     else if (status == 3) {
-      return "[collection at " + JSON.stringify(this._name) + "]";
+      return "[collection " + JSON.stringify(this._name) + "]";
     }
     else {
-      return "[corrupted collection at " + JSON.stringify(this._name) + "]";
+      return "[corrupted collection " + JSON.stringify(this._name) + "]";
     }
   }
   else {
@@ -190,16 +190,16 @@ AvocadoEdgesCollection.prototype.toString = function() {
     status = this.status();
 
     if (status == 1) {
-      return "[new born collection at " + JSON.stringify(this._name) + "]";
+      return "[new born collection " + JSON.stringify(this._name) + "]";
     }
     else if (status == 2) {
-      return "[unloaded collection at " + JSON.stringify(this._name) + "]";
+      return "[unloaded collection " + JSON.stringify(this._name) + "]";
     }
     else if (status == 3) {
-      return "[collection at " + JSON.stringify(this._name) + "]";
+      return "[collection " + JSON.stringify(this._name) + "]";
     }
     else {
-      return "[corrupted collection at " + JSON.stringify(this._name) + "]";
+      return "[corrupted collection " + JSON.stringify(this._name) + "]";
     }
   }
   else {
@@ -218,16 +218,16 @@ AvocadoEdgesCollection.prototype.toJSON = function() {
     status = this.status();
 
     if (status == 1) {
-      return "[new born collection at " + JSON.stringify(this._name) + "]";
+      return "[new born collection " + JSON.stringify(this._name) + "]";
     }
     else if (status == 2) {
-      return "[unloaded collection at " + JSON.stringify(this._name) + "]";
+      return "[unloaded collection " + JSON.stringify(this._name) + "]";
     }
     else if (status == 3) {
-      return "[collection at " + JSON.stringify(this._name) + "]";
+      return "[collection " + JSON.stringify(this._name) + "]";
     }
     else {
-      return "[corrupted collection at " + JSON.stringify(this._name) + "]";
+      return "[corrupted collection " + JSON.stringify(this._name) + "]";
     }
   }
   else {

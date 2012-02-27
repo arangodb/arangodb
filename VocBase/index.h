@@ -75,14 +75,27 @@ typedef enum {
 TRI_idx_type_e;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief geo index variants
+////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+  INDEX_GEO_NONE = 0,
+  INDEX_GEO_INDIVIDUAL_LAT_LON,
+  INDEX_GEO_COMBINED_LAT_LON,
+  INDEX_GEO_COMBINED_LON_LAT
+}
+TRI_index_geo_variant_e;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief index definition struct as used by the query optimizer
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_index_definition_s {
   TRI_idx_iid_t _iid;
   TRI_idx_type_e _type;
-  TRI_vector_string_t _fields;
+  TRI_vector_string_t* _fields;
   bool _isUnique;
+  TRI_index_geo_variant_e _geoVariant;
 }
 TRI_index_definition_t;
 

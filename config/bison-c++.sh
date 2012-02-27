@@ -32,11 +32,15 @@ test -f ${PREFIX}.cpp || exit 1
 
 DIR=`dirname ${OUTPUT}`
 
-cp ${DIR}/position.hh ${DIR}/position.hh.tmp
+mv ${DIR}/position.hh ${DIR}/position.hh.tmp
 
 sed -e 's/\(pos1.filename && pos2.filename && .pos1.filename == .pos2.filename\)/(&)/g' \
     ${DIR}/position.hh.tmp > ${DIR}/position.hh 
 
+# give some information
+diff -u ${DIR}/position.hh.tmp ${DIR}/position.hh 
+
+# cleanup
 rm -f ${DIR}/position.hh.tmp
 
 

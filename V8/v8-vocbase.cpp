@@ -80,6 +80,12 @@ static int const SLOT_CLASS = 1;
 static int const SLOT_QUERY = 2;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief slot for a "barrier"
+////////////////////////////////////////////////////////////////////////////////
+
+static int const SLOT_BARRIER = 2;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief slot for a "result set"
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -123,6 +129,11 @@ static int32_t const WRP_QUERY_TYPE = 5;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapped class for TRI_shaped_json_t
+///
+/// Layout:
+/// - SLOT_CLASS_TYPE
+/// - SLOT_CLASS
+/// - SLOT_BARRIER
 ////////////////////////////////////////////////////////////////////////////////
 
 static int32_t const WRP_SHAPED_JSON_TYPE = 6;
@@ -157,7 +168,7 @@ static v8::Handle<v8::Object> WrapClass (v8::Persistent<v8::ObjectTemplate> clas
   // create the new handle to return, and set its template type
   v8::Handle<v8::Object> result = classTempl->NewInstance();
 
-  // point the 0 index Field to the c++ pointer for unwrapping later
+  // set the c++ pointer for unwrapping later
   result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(type));
   result->SetInternalField(SLOT_CLASS, v8::External::New(y));
 
@@ -170,7 +181,7 @@ static v8::Handle<v8::Object> WrapClass (v8::Persistent<v8::ObjectTemplate> clas
 
 template<class T>
 static T* UnwrapClass (v8::Handle<v8::Object> obj, int32_t type) {
-  if (obj->InternalFieldCount() < SLOT_CLASS) {
+  if (obj->InternalFieldCount() <= SLOT_CLASS) {
     return 0;
   }
 
@@ -724,7 +735,7 @@ static v8::Handle<v8::Object> WrapQuery (TRI_query_t* query) {
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> queryObject = v8g->QueryTempl->NewInstance();
-  map< TRI_query_t*, v8::Persistent<v8::Value> >::iterator i = v8g->JSQueries.find(query);
+  map< void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSQueries.find(query);
 
   if (i == v8g->JSQueries.end()) {
     v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(query));
@@ -828,7 +839,7 @@ static v8::Handle<v8::Object> WrapCursor (TRI_rc_cursor_t* cursor) {
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> cursorObject = v8g->CursorTempl->NewInstance();
-  map< TRI_rc_cursor_t*, v8::Persistent<v8::Value> >::iterator i = v8g->JSCursors.find(cursor);
+  map< void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSCursors.find(cursor);
 
   if (i == v8g->JSCursors.end()) {
     v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(cursor));
@@ -891,7 +902,7 @@ static v8::Handle<v8::Object> WrapWhere (TRI_qry_where_t* where) {
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> whereObject = v8g->WhereTempl->NewInstance();
-  map< TRI_qry_where_t*, v8::Persistent<v8::Value> >::iterator i = v8g->JSWheres.find(where);
+  map< void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSWheres.find(where);
 
   if (i == v8g->JSWheres.end()) {
     v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(where));
@@ -1204,44 +1215,135 @@ static v8::Handle<v8::Value> JS_ToArrayQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
-  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
 
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-  
-  // extract the operand query
+  // extract the collection
   v8::Handle<v8::Object> operand = argv.Holder();
-  v8::Handle<v8::String> err;
-  TRI_fluent_query_t* opQuery = ExtractFluentQuery(operand, &err);
 
-  if (opQuery == 0) {
+  v8::Handle<v8::String> err;
+  TRI_vocbase_col_t const* collection = LoadCollection(operand, &err);
+
+  if (collection == 0) {
     return scope.Close(v8::ThrowException(err));
   }
+  
+  // handle various collection types
+  TRI_doc_collection_t* doc = collection->_collection;
 
-  if (IsExecutedQuery(operand)) {
-    return scope.Close(v8::ThrowException(v8::String::New("query already executed")));
+  if (doc->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
   }
 
-  // .............................................................................
-  // case: no arguments
-  // .............................................................................
+  TRI_sim_collection_t* sim = (TRI_sim_collection_t*) doc;
 
-  if (argv.Length() == 0) {
-    v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
-
-    StoreFluentQuery(result, opQuery->clone(opQuery));
-
-    return scope.Close(result);
+  // expecting two arguments
+  if (argv.Length() != 2) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: ALL(<skip>, <limit>)")));
   }
 
+  TRI_voc_size_t skip = TRI_QRY_NO_SKIP;
+  TRI_voc_ssize_t limit = TRI_QRY_NO_LIMIT;
+
+  if (! argv[0]->IsNull()) {
+    skip = TRI_ObjectToDouble(argv[0]);
+  }
+
+  if (! argv[1]->IsNull()) {
+    limit = TRI_ObjectToDouble(argv[1]);
+  }
+
+  v8::Handle<v8::Object> result = v8::Object::New();
+
+  v8::Handle<v8::Array> documents = v8::Array::New();
+  result->Set(v8::String::New("documents"), documents);
+
   // .............................................................................
-  // error case
+  // inside a read transaction
   // .............................................................................
 
-  else {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: all()")));
+  collection->_collection->beginRead(collection->_collection);
+  
+  size_t total = sim->_primaryIndex._nrUsed;
+  uint32_t count = 0;
+
+  if (0 < total && 0 != limit) {
+    TRI_barrier_t* barrier = 0;
+
+    // skip from the beginning
+    if (0 <= limit) {
+      void** ptr = sim->_primaryIndex._table;
+      void** end = sim->_primaryIndex._table + sim->_primaryIndex._nrAlloc;
+
+      for (;  ptr < end && (TRI_voc_ssize_t) count < limit;  ++ptr) {
+        if (*ptr) {
+          TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
+          
+          if (d->_deletion == 0) {
+            if (0 < skip) {
+              --skip;
+            }
+            else {
+              if (barrier == 0) {
+                barrier = TRI_CreateBarrierElement(&doc->_barrierList);
+              }
+            
+              documents->Set(count, TRI_WrapShapedJson(collection, d, barrier));
+              ++count;
+            }
+          }
+        }
+      }
+    }
+
+    // skip at the end
+    else {
+      limit = -limit;
+
+      void** beg = sim->_primaryIndex._table;
+      void** ptr = sim->_primaryIndex._table + sim->_primaryIndex._nrAlloc - 1;
+
+      for (;  beg <= ptr && (TRI_voc_ssize_t) count < limit;  --ptr) {
+        if (*ptr) {
+          TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
+          
+          if (d->_deletion == 0) {
+            if (0 < skip) {
+              --skip;
+            }
+            else {
+              if (barrier == 0) {
+                barrier = TRI_CreateBarrierElement(&doc->_barrierList);
+              }
+            
+              documents->Set(count, TRI_WrapShapedJson(collection, d, barrier));
+              ++count;
+            }
+          }
+        }
+      }
+
+      // swap result
+      if (1 < count) {
+        for (uint32_t i = 0, j = count - 1;  i < j;  ++i, --j) {
+          v8::Handle<v8::Value> tmp1 = documents->Get(i);
+          v8::Handle<v8::Value> tmp2 = documents->Get(j);
+          documents->Set(i, tmp2);
+          documents->Set(j, tmp1);
+        }
+      }
+    }
   }
+
+  collection->_collection->endRead(collection->_collection);
+
+  // .............................................................................
+  // outside a write transaction
+  // .............................................................................
+
+  result->Set(v8::String::New("total"), v8::Number::New(total));
+  result->Set(v8::String::New("count"), v8::Number::New(count));
+
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1322,88 +1424,27 @@ static v8::Handle<v8::Value> JS_DistanceQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a document (TO BE DELETED)
+/// @brief looks up a document
 ///
 /// @FUN{document(@FA{document-identifier})}
 ///
-/// The @FN{document} operator finds a document given it's identifier.  It returns
-/// the empty result set or a result set containing the document with document
-/// identifier @FA{document-identifier}.
+/// The @FN{document} operator finds a document given it's identifier.  It
+/// returns the document. Undefined is returned if the document identifier is
+/// not valid.
 ///
-/// @verbinclude fluent54
+/// Note that the returned docuement contains two pseudo-attributes, namely
+/// @LIT{_id} and @LIT{_rev}. The attribute @LIT{_id} contains the document
+/// reference and @LIT{_rev} contains the document revision.
 ///
-/// The corresponding AQL query would be:
+/// @EXAMPLES
 ///
-/// @verbinclude fluent54-aql
+/// @verbinclude simple1
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DocumentQuery (v8::Arguments const& argv) {
-  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
 
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-  // extract the operand query
-  v8::Handle<v8::Object> operand = argv.Holder();
-  v8::Handle<v8::String> err;
-  TRI_fluent_query_t* opQuery = ExtractFluentQuery(operand, &err);
-
-  if (opQuery == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  if (IsExecutedQuery(operand)) {
-    return scope.Close(v8::ThrowException(v8::String::New("query already executed")));
-  }
-
-  // first and only argument schould be an document idenfifier
-  if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: document(<document-identifier>)")));
-  }
-
-  v8::Handle<v8::Value> arg1 = argv[0];
-  TRI_voc_cid_t cid = opQuery->_collection->_collection->base._cid;
-  TRI_voc_did_t did;
-
-  if (! IsDocumentId(arg1, cid, did)) {
-    return scope.Close(v8::ThrowException(v8::String::New("<document-idenifier> must be a document identifier")));
-  }
-
-  if (cid != opQuery->_collection->_collection->base._cid) {
-    return scope.Close(v8::ThrowException(v8::String::New("cannot execute cross collection query")));
-  }
-
-  // .............................................................................
-  // create new query
-  // .............................................................................
-
-  v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
-
-  StoreFluentQuery(result, TRI_CreateDocumentQuery(opQuery->clone(opQuery), did));
-
-  return scope.Close(result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a document (TEST)
-///
-/// @FUN{document(@FA{document-identifier})}
-///
-/// The @FN{document} operator finds a document given it's identifier.  It returns
-/// the empty result set or a result set containing the document with document
-/// identifier @FA{document-identifier}.
-///
-/// @verbinclude fluent54
-///
-/// The corresponding AQL query would be:
-///
-/// @verbinclude fluent54-aql
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_DocumentQueryWrapped (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  // extract the operand query
+  // extract the collection
   v8::Handle<v8::Object> operand = argv.Holder();
 
   v8::Handle<v8::String> err;
@@ -1436,17 +1477,31 @@ static v8::Handle<v8::Value> JS_DocumentQueryWrapped (v8::Arguments const& argv)
 
   TRI_doc_mptr_t const* document;
   
+  // .............................................................................
+  // inside a read transaction
+  // .............................................................................
+
   collection->_collection->beginRead(collection->_collection);
   
   document = collection->_collection->read(collection->_collection, did);  
+  v8::Handle<v8::Value> result;
+
+  if (document != 0) {
+    TRI_barrier_t* barrier;
+
+    barrier = TRI_CreateBarrierElement(&collection->_collection->_barrierList);
+    result = TRI_WrapShapedJson(collection, document, barrier);
+  }
 
   collection->_collection->endRead(collection->_collection);
+
+  // .............................................................................
+  // outside a write transaction
+  // .............................................................................
 
   if (document == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("document not found")));
   }
-  
-  v8::Handle<v8::Value> result = TRI_WrapShapedJson(&document->_document, collection);
   
   return scope.Close(result);
 }
@@ -2509,7 +2564,8 @@ static v8::Handle<v8::Value> JS_SelectAql (v8::Arguments const& argv) {
                         NULL, 
                         NULL,
                         (char*) name.c_str(), 
-                        (char*) "alias");
+                        (char*) "alias",
+                        NULL);
 
   // create the query
   TRI_query_t* query = TRI_CreateQuery(vocbase,
@@ -2731,7 +2787,7 @@ static v8::Handle<v8::Value> JS_HasNextCursor (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief counts the number of documents in a result set
+/// @brief counts the number of documents in a result set (TO BE DELETED)
 ///
 /// @FUN{count()}
 ///
@@ -2765,331 +2821,6 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
 
   return scope.Close(v8::Number::New(collection->size(collection)));
 }
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that a hash index exists
-///
-/// @FUN{ensureHashIndex(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
-///
-/// Creates a hash index on all documents using attributes as paths to
-/// the fields. At least one attribute must be given. The value of this attribute must be a list. 
-/// All documents, which do not have the attribute path or 
-/// with ore or more values that are not suitable, are ignored.
-///
-/// In case that the index was successfully created, the index indetifier
-/// is returned.
-///
-/// @verbinclude fluent14
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_EnsureHashIndexVocbaseCol (v8::Arguments const& argv) {
-
-  v8::HandleScope scope;  
-  v8::Handle<v8::String> err;
-  
-  
-  // .............................................................................
-  // Check that we have a valid collection                      
-  // .............................................................................
-  TRI_vocbase_col_t const* col = LoadCollection(argv.Holder(), &err);
-  
-  if (col == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  
-  // .............................................................................
-  // Check collection type
-  // .............................................................................
-  TRI_doc_collection_t* collection = col->_collection;
-  
-  if (collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
-    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
-  }
-  TRI_sim_collection_t* sim = (TRI_sim_collection_t*) collection;
-
-  
-  // .............................................................................
-  // Return string when there is an error of some sort.
-  // .............................................................................
-  string errorString;
-  
-  
-  // .............................................................................
-  // Ensure that there is at least one string parameter sent to this method
-  // .............................................................................  
-  if (argv.Length() == 0) {
-    errorString = "one or more string parameters required for the ensureHashIndex(...) command";
-    return scope.Close(v8::String::New(errorString.c_str(),errorString.length()));
-  }
-  
-    
-  // .............................................................................
-  // The index id which will either be an existing one or a newly created 
-  // hash index. 
-  // .............................................................................  
-  TRI_idx_iid_t iid = 0;
-  
-  
-  // .............................................................................
-  // Create a list of paths, these will be used to create a list of shapes
-  // which will be used by the hash index.
-  // .............................................................................
-  
-  TRI_vector_t attributes;
-  TRI_InitVector(&attributes,sizeof(char*));
-  
-  bool ok = true;
-  
-  for (int j = 0; j < argv.Length(); ++j) {
-  
-    v8::Handle<v8::Value> argument = argv[j];
-    if (! argument->IsString() ) {
-      errorString = "invalid parameter passed to ensureHashIndex(...) command";
-      ok = false;
-      break;
-    }
-    
-    // ...........................................................................
-    // convert the argument into a "C" string
-    // ...........................................................................
-    
-    v8::String::Utf8Value argumentString(argument);   
-    char* cArgument = (char*) (TRI_Allocate(argumentString.length() + 1));       
-    if (cArgument == NULL) {
-      errorString = "insuffient memory to complete ensureHashIndex(...) command";
-      ok = false;
-      break;
-    }  
-        
-    memcpy(cArgument, *argumentString, argumentString.length());
-    TRI_PushBackVector(&attributes,&cArgument);
-  }
-
-  
-  // .............................................................................
-  // Check that each parameter is unique
-  // .............................................................................
-  
-  for (size_t j = 0; j < attributes._length; ++j) {  
-    char* left = *((char**) (TRI_AtVector(&attributes, j)));    
-    for (size_t k = j + 1; k < attributes._length; ++k) {
-      char* right = *((char**) (TRI_AtVector(&attributes, k)));
-      if (strcmp(left,right) == 0) {
-        errorString = "duplicate parameters sent to ensureHashIndex(...) command";
-        //printf("%s:%s:%u:%s:%s\n",__FILE__,__FUNCTION__,__LINE__,left,right);
-        ok = false;
-        break;
-      }   
-    }
-  }    
-     
-  
-  // .............................................................................
-  // Some sort of error occurred -- display error message and abort index creation
-  // (or index retrieval).
-  // .............................................................................
-  
-  if (!ok) {
-    // ...........................................................................
-    // Remove the memory allocated to the list of attributes used for the hash index
-    // ...........................................................................   
-    for (size_t j = 0; j < attributes._length; ++j) {
-      char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
-      TRI_Free(cArgument);
-    }    
-    TRI_DestroyVector(&attributes);
-    return scope.Close(v8::String::New(errorString.c_str(),errorString.length()));
-  }  
-  
-  
-  // .............................................................................
-  // Actually create the index here
-  // .............................................................................
-  iid = TRI_EnsureHashIndexSimCollection(sim, &attributes, true);
-
-  // .............................................................................
-  // Remove the memory allocated to the list of attributes used for the hash index
-  // .............................................................................   
-  for (size_t j = 0; j < attributes._length; ++j) {
-    char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
-    TRI_Free(cArgument);
-  }    
-  TRI_DestroyVector(&attributes);
-
-  if (iid == 0) {
-    return scope.Close(v8::String::New("hash index could not be created"));
-  }  
-  
-  // .............................................................................
-  // Return the newly assigned index identifier
-  // .............................................................................
-  return scope.Close(v8::Number::New(iid));
-}
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that a hash index exists
-///
-/// @FUN{ensureMutliHashIndex(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
-///
-/// Creates a non-unique hash index on all documents using attributes as paths to
-/// the fields. At least one attribute must be given. 
-/// All documents, which do not have the attribute path or 
-/// with one or more values that are not suitable, are ignored.
-///
-/// In case that the index was successfully created, the index indetifier
-/// is returned.
-///
-/// @verbinclude fluent14
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_EnsureMultiHashIndexVocbaseCol (v8::Arguments const& argv) {
-
-  v8::HandleScope scope;  
-  v8::Handle<v8::String> err;
-  
-  
-  // .............................................................................
-  // Check that we have a valid collection                      
-  // .............................................................................
-  TRI_vocbase_col_t const* col = LoadCollection(argv.Holder(), &err);
-  
-  if (col == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  
-  // .............................................................................
-  // Check collection type
-  // .............................................................................
-  TRI_doc_collection_t* collection = col->_collection;
-  
-  if (collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
-    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
-  }
-  TRI_sim_collection_t* sim = (TRI_sim_collection_t*) collection;
-
-  
-  // .............................................................................
-  // Return string when there is an error of some sort.
-  // .............................................................................
-  string errorString;
-  
-  
-  // .............................................................................
-  // Ensure that there is at least one string parameter sent to this method
-  // .............................................................................  
-  if (argv.Length() == 0) {
-    errorString = "one or more string parameters required for the ensureMultiHashIndex(...) command";
-    return scope.Close(v8::String::New(errorString.c_str(),errorString.length()));
-  }
-  
-    
-  // .............................................................................
-  // The index id which will either be an existing one or a newly created 
-  // hash index. 
-  // .............................................................................  
-  TRI_idx_iid_t iid = 0;
-  
-  
-  // .............................................................................
-  // Create a list of paths, these will be used to create a list of shapes
-  // which will be used by the hash index.
-  // .............................................................................
-  
-  TRI_vector_t attributes;
-  TRI_InitVector(&attributes,sizeof(char*));
-  
-  bool ok = true;
-  
-  for (int j = 0; j < argv.Length(); ++j) {
-  
-    v8::Handle<v8::Value> argument = argv[j];
-    if (! argument->IsString() ) {
-      errorString = "invalid parameter passed to ensureMultiHashIndex(...) command";
-      ok = false;
-      break;
-    }
-    
-    // ...........................................................................
-    // convert the argument into a "C" string
-    // ...........................................................................
-    
-    v8::String::Utf8Value argumentString(argument);   
-    char* cArgument = (char*) (TRI_Allocate(argumentString.length() + 1));       
-    if (cArgument == NULL) {
-      errorString = "insuffient memory to complete ensureMultiHashIndex(...) command";
-      ok = false;
-      break;
-    }  
-        
-    memcpy(cArgument, *argumentString, argumentString.length());
-    TRI_PushBackVector(&attributes,&cArgument);
-  }
-
-  
-  // .............................................................................
-  // Check that each parameter is unique
-  // .............................................................................
-  
-  for (size_t j = 0; j < attributes._length; ++j) {  
-    char* left = *((char**) (TRI_AtVector(&attributes, j)));    
-    for (size_t k = j + 1; k < attributes._length; ++k) {
-      char* right = *((char**) (TRI_AtVector(&attributes, k)));
-      if (strcmp(left,right) == 0) {
-        errorString = "duplicate parameters sent to ensureMultiHashIndex(...) command";
-        ok = false;
-        break;
-      }   
-    }
-  }    
-     
-  
-  // .............................................................................
-  // Some sort of error occurred -- display error message and abort index creation
-  // (or index retrieval).
-  // .............................................................................
-  
-  if (!ok) {
-    // ...........................................................................
-    // Remove the memory allocated to the list of attributes used for the hash index
-    // ...........................................................................   
-    for (size_t j = 0; j < attributes._length; ++j) {
-      char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
-      TRI_Free(cArgument);
-    }    
-    TRI_DestroyVector(&attributes);
-    return scope.Close(v8::String::New(errorString.c_str(),errorString.length()));
-  }  
-  
-  // .............................................................................
-  // Actually create the index here
-  // .............................................................................
-  iid = TRI_EnsureHashIndexSimCollection(sim, &attributes, false);
-
-  // .............................................................................
-  // Remove the memory allocated to the list of attributes used for the hash index
-  // .............................................................................   
-  for (size_t j = 0; j < attributes._length; ++j) {
-    char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
-    TRI_Free(cArgument);
-  }    
-  TRI_DestroyVector(&attributes);
-
-  if (iid == 0) {
-    return scope.Close(v8::String::New("non-unique hash index could not be created"));
-  }  
-  
-  // .............................................................................
-  // Return the newly assigned index identifier
-  // .............................................................................
-  return scope.Close(v8::Number::New(iid));
-}
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
@@ -3315,6 +3046,328 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
   else {
     return scope.Close(v8::ThrowException(v8::String::New("usage: ensureGeoIndex(<latitiude>, <longitude>) or ensureGeoIndex(<location>, [<geojson>])")));
   }
+
+  return scope.Close(v8::Number::New(iid));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a hash index exists
+///
+/// @FUN{ensureHashIndex(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
+///
+/// Creates a hash index on all documents using attributes as paths to the
+/// fields. At least one attribute must be given. The value of this attribute
+/// must be a list. All documents, which do not have the attribute path or with
+/// ore or more values that are not suitable, are ignored.
+///
+/// In case that the index was successfully created, the index indetifier
+/// is returned.
+///
+/// @verbinclude fluent14
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_EnsureHashIndexVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;  
+  v8::Handle<v8::String> err;
+  
+  // .............................................................................
+  // Check that we have a valid collection                      
+  // .............................................................................
+
+  TRI_vocbase_col_t const* col = LoadCollection(argv.Holder(), &err);
+  
+  if (col == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+  
+  // .............................................................................
+  // Check collection type
+  // .............................................................................
+
+  TRI_doc_collection_t* collection = col->_collection;
+  
+  if (collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
+  }
+
+  TRI_sim_collection_t* sim = (TRI_sim_collection_t*) collection;
+  
+  // .............................................................................
+  // Ensure that there is at least one string parameter sent to this method
+  // .............................................................................  
+
+  if (argv.Length() == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("one or more string parameters required for the ensureHashIndex(...) command")));
+  }
+  
+  // .............................................................................
+  // The index id which will either be an existing one or a newly created 
+  // hash index. 
+  // .............................................................................  
+
+  TRI_idx_iid_t iid = 0;
+  
+  // .............................................................................
+  // Return string when there is an error of some sort.
+  // .............................................................................
+
+  string errorString;
+  
+  // .............................................................................
+  // Create a list of paths, these will be used to create a list of shapes
+  // which will be used by the hash index.
+  // .............................................................................
+  
+  TRI_vector_t attributes;
+  TRI_InitVector(&attributes,sizeof(char*));
+  
+  bool ok = true;
+  
+  for (int j = 0; j < argv.Length(); ++j) {
+    v8::Handle<v8::Value> argument = argv[j];
+
+    if (! argument->IsString() ) {
+      errorString = "invalid parameter passed to ensureHashIndex(...) command";
+      ok = false;
+      break;
+    }
+    
+    // ...........................................................................
+    // convert the argument into a "C" string
+    // ...........................................................................
+    
+    v8::String::Utf8Value argumentString(argument);   
+    char* cArgument = *argumentString == 0 ? 0 : TRI_DuplicateString(*argumentString);
+
+    if (cArgument == NULL) {
+      errorString = "insuffient memory to complete ensureHashIndex(...) command";
+      ok = false;
+      break;
+    }  
+
+    TRI_PushBackVector(&attributes,&cArgument);
+  }
+  
+  // .............................................................................
+  // Check that each parameter is unique
+  // .............................................................................
+  
+  for (size_t j = 0; j < attributes._length; ++j) {  
+    char* left = *((char**) (TRI_AtVector(&attributes, j)));    
+
+    for (size_t k = j + 1; k < attributes._length; ++k) {
+      char* right = *((char**) (TRI_AtVector(&attributes, k)));
+
+      if (TRI_EqualString(left, right)) {
+        errorString = "duplicate parameters sent to ensureHashIndex(...) command";
+        ok = false;
+        break;
+      }   
+    }
+  }    
+  
+  // .............................................................................
+  // Some sort of error occurred -- display error message and abort index creation
+  // (or index retrieval).
+  // .............................................................................
+  
+  if (!ok) {
+
+    // Remove the memory allocated to the list of attributes used for the hash index
+    for (size_t j = 0; j < attributes._length; ++j) {
+      char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
+      TRI_Free(cArgument);
+    }    
+
+    TRI_DestroyVector(&attributes);
+    return scope.Close(v8::ThrowException(v8::String::New(errorString.c_str(), errorString.length())));
+  }  
+  
+  // .............................................................................
+  // Actually create the index here
+  // .............................................................................
+
+  iid = TRI_EnsureHashIndexSimCollection(sim, &attributes, true);
+
+  // .............................................................................
+  // Remove the memory allocated to the list of attributes used for the hash index
+  // .............................................................................   
+
+  for (size_t j = 0; j < attributes._length; ++j) {
+    char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
+    TRI_Free(cArgument);
+  }    
+
+  TRI_DestroyVector(&attributes);
+
+  if (iid == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("hash index could not be created")));
+  }  
+  
+  // .............................................................................
+  // Return the newly assigned index identifier
+  // .............................................................................
+
+  return scope.Close(v8::Number::New(iid));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a hash index exists
+///
+/// @FUN{ensureMutliHashIndex(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
+///
+/// Creates a non-unique hash index on all documents using attributes as paths
+/// to the fields. At least one attribute must be given. All documents, which do
+/// not have the attribute path or with one or more values that are not
+/// suitable, are ignored.
+///
+/// In case that the index was successfully created, the index indetifier
+/// is returned.
+///
+/// @verbinclude fluent14
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_EnsureMultiHashIndexVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;  
+  v8::Handle<v8::String> err;
+  
+  // .............................................................................
+  // Check that we have a valid collection                      
+  // .............................................................................
+
+  TRI_vocbase_col_t const* col = LoadCollection(argv.Holder(), &err);
+  
+  if (col == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+  
+  // .............................................................................
+  // Check collection type
+  // .............................................................................
+
+  TRI_doc_collection_t* collection = col->_collection;
+  
+  if (collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
+  }
+
+  TRI_sim_collection_t* sim = (TRI_sim_collection_t*) collection;
+
+  // .............................................................................
+  // Ensure that there is at least one string parameter sent to this method
+  // .............................................................................  
+
+  if (argv.Length() == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("one or more string parameters required for the ensureHashIndex(...) command")));
+  }
+  
+  // .............................................................................
+  // The index id which will either be an existing one or a newly created 
+  // hash index. 
+  // .............................................................................  
+
+  TRI_idx_iid_t iid = 0;
+  
+  // .............................................................................
+  // Return string when there is an error of some sort.
+  // .............................................................................
+
+  string errorString;
+  
+  // .............................................................................
+  // Create a list of paths, these will be used to create a list of shapes
+  // which will be used by the hash index.
+  // .............................................................................
+  
+  TRI_vector_t attributes;
+  TRI_InitVector(&attributes,sizeof(char*));
+  
+  bool ok = true;
+  
+  for (int j = 0; j < argv.Length(); ++j) {
+    v8::Handle<v8::Value> argument = argv[j];
+
+    if (! argument->IsString() ) {
+      errorString = "invalid parameter passed to ensureMultiHashIndex(...) command";
+      ok = false;
+      break;
+    }
+    
+    // ...........................................................................
+    // convert the argument into a "C" string
+    // ...........................................................................
+    
+    v8::String::Utf8Value argumentString(argument);   
+    char* cArgument = *argumentString == 0 ? 0 : TRI_DuplicateString(*argumentString);
+
+    if (cArgument == NULL) {
+      errorString = "insuffient memory to complete ensureMultiHashIndex(...) command";
+      ok = false;
+      break;
+    }  
+        
+    TRI_PushBackVector(&attributes,&cArgument);
+  }
+  
+  // .............................................................................
+  // Check that each parameter is unique
+  // .............................................................................
+  
+  for (size_t j = 0; j < attributes._length; ++j) {  
+    char* left = *((char**) (TRI_AtVector(&attributes, j)));    
+
+    for (size_t k = j + 1; k < attributes._length; ++k) {
+      char* right = *((char**) (TRI_AtVector(&attributes, k)));
+
+      if (TRI_EqualString(left,right)) {
+        errorString = "duplicate parameters sent to ensureMultiHashIndex(...) command";
+        ok = false;
+        break;
+      }   
+    }
+  }    
+  
+  // .............................................................................
+  // Some sort of error occurred -- display error message and abort index creation
+  // (or index retrieval).
+  // .............................................................................
+  
+  if (!ok) {
+
+    // Remove the memory allocated to the list of attributes used for the hash index
+    for (size_t j = 0; j < attributes._length; ++j) {
+      char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
+      TRI_Free(cArgument);
+    }    
+
+    TRI_DestroyVector(&attributes);
+    return scope.Close(v8::ThrowException(v8::String::New(errorString.c_str(), errorString.length())));
+  }  
+  
+  // .............................................................................
+  // Actually create the index here
+  // .............................................................................
+
+  iid = TRI_EnsureHashIndexSimCollection(sim, &attributes, false);
+
+  // .............................................................................
+  // Remove the memory allocated to the list of attributes used for the hash index
+  // .............................................................................   
+
+  for (size_t j = 0; j < attributes._length; ++j) {
+    char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
+    TRI_Free(cArgument);
+  }    
+
+  TRI_DestroyVector(&attributes);
+
+  if (iid == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("non-unique hash index could not be created")));
+  }  
+  
+  // .............................................................................
+  // Return the newly assigned index identifier
+  // .............................................................................
 
   return scope.Close(v8::Number::New(iid));
 }
@@ -3910,9 +3963,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
 
   if (   key == "toString"
       || key == "toJSON"
-      || key == "hasOwnProperties"
-      || key == "COMPLETIONS"
-      || key == "PRINT"
+      || key == "hasOwnProperty"
       || key[0] == '_') {
     return v8::Handle<v8::Value>();
   }
@@ -4039,9 +4090,7 @@ static v8::Handle<v8::Value> MapGetEdges (v8::Local<v8::String> name,
 
   if (   key == "toString"
       || key == "toJSON"
-      || key == "hasOwnProperties"
-      || key == "COMPLETIONS"
-      || key == "PRINT"
+      || key == "hasOwnProperty"
       || key[0] == '_') {
     return v8::Handle<v8::Value>();
   }
@@ -4056,195 +4105,6 @@ static v8::Handle<v8::Value> MapGetEdges (v8::Local<v8::String> name,
 
   return scope.Close(TRI_WrapEdgesCollection(collection));
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ShapedJSON
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief selects a attribute from the shaped json
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> MapWrappedShapedJson (v8::Local<v8::String> name,
-                                            const v8::AccessorInfo& info) {
-  v8::HandleScope scope;
-
-  // get shaped json
-  TRI_shaped_json_t* document = UnwrapClass<TRI_shaped_json_t>(info.Holder(), WRP_SHAPED_JSON_TYPE);
-  if (document == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted shaped json")));
-  }
-
-  // convert the JavaScript string to a string
-  string key = TRI_ObjectToString(name);
-  
-  
-  if (key == "") {
-    return scope.Close(v8::ThrowException(v8::String::New("name must not be empty")));
-  }  
-  
-  if (key == "toString" || key == "toJSON" || key == "PRINT" || key[0] == '_') {
-    return v8::Handle<v8::Value>();
-  }
-  
-  if (key == "valueOf") {
-    return v8::Handle<v8::Value>(v8::String::New(""));
-  }
-
-  // get collection
-  if (info.Holder()->InternalFieldCount() < SLOT_QUERY) {
-    return scope.Close(v8::ThrowException(v8::String::New("missing collection")));
-  }
-  TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(v8::Handle<v8::External>::Cast(info.Holder()->GetInternalField(SLOT_QUERY))->Value());
-  if (collection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted shaped json")));
-  }
-  
-  // get shape accessor
-  TRI_shaper_t* shaper = collection->_collection->_shaper;
-  TRI_shape_pid_t pid = shaper->findAttributePathByName(shaper, key.c_str()); 
-  TRI_shape_sid_t sid = document->_sid;    
-  TRI_shape_access_t* acc = TRI_ShapeAccessor(shaper, sid, pid);
-
-  if (acc == NULL || acc->_shape == NULL) {
-    return scope.Close(v8::ThrowException(v8::String::New("key not found")));
-  }
-
-  TRI_shape_t const* shape = acc->_shape;
-  
-//  if (acc->_shape->_sid != shaper->_sidNumber) {
-//    return scope.Close(v8::ThrowException(v8::String::New("error in sid")));
-//  }
-
-  // convert to v8 value
-  TRI_shaped_json_t json;
-  if (TRI_ExecuteShapeAccessor(acc, document, &json)) {    
-    return scope.Close(TRI_JsonShapeData(shaper, shape, json._data.data, json._data.length));
-  }
-
-  return scope.Close(v8::ThrowException(v8::String::New("error")));  
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief selects the keys from the shaped json
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
-  v8::HandleScope scope;
-  v8::Handle<v8::Array> result = v8::Array::New();
-  
-  // get shaped json
-  TRI_shaped_json_t* document = UnwrapClass<TRI_shaped_json_t>(info.Holder(), WRP_SHAPED_JSON_TYPE);
-  if (document == 0) {
-    return scope.Close(result);
-  }
-
-  // get collection
-  if (info.Holder()->InternalFieldCount() < SLOT_QUERY) {
-    return scope.Close(result);
-  }
-  TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(v8::Handle<v8::External>::Cast(info.Holder()->GetInternalField(SLOT_QUERY))->Value());
-  if (collection == 0) {
-    return scope.Close(result);
-  }
-  
-  
-  TRI_shaper_t* shaper = collection->_collection->_shaper;  
-  TRI_shape_t const* shape = shaper->lookupShapeId(shaper, document->_sid);
-
-  // check for array shape
-  if (shape == 0 || shape->_type != TRI_SHAPE_ARRAY) {
-    return scope.Close(result);
-  }
-  
-  TRI_array_shape_t const* s;
-  TRI_shape_aid_t const* aids;
-  TRI_shape_size_t i;
-  TRI_shape_size_t n;
-  char const* qtr = 0;
-  uint32_t count = 0;
-
-  // shape is an array
-  s = (TRI_array_shape_t const*) shape;
-  
-  // number of entries
-  n = s->_fixedEntries + s->_variableEntries;
-
-  // calculation position of attribute ids
-  qtr = (char const*) shape;
-  qtr += sizeof(TRI_array_shape_t);
-  qtr += n * sizeof(TRI_shape_sid_t);    
-  aids = (TRI_shape_aid_t const*) qtr;
-  
-  for (i = 0;  i < n;  ++i, ++aids) {      
-    char const* att = shaper->lookupAttributeId(shaper, *aids);
-    if (att) result->Set(count++, v8::String::New(att));        
-  }
- 
-  return scope.Close(result);  
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check if a property is present and if present, get its attributes.
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> name, const v8::AccessorInfo& info) {
-  v8::HandleScope scope;
-
-  // get shaped json
-  TRI_shaped_json_t* document = UnwrapClass<TRI_shaped_json_t>(info.Holder(), WRP_SHAPED_JSON_TYPE);
-  if (document == 0) {
-    return scope.Close(v8::Handle<v8::Integer>());
-  }
-
-  // convert the JavaScript string to a string
-  string key = TRI_ObjectToString(name);
-  
-  
-  if (key == "") {
-    return scope.Close(v8::Handle<v8::Integer>());
-  }  
-  
-  // get collection
-  if (info.Holder()->InternalFieldCount() < SLOT_QUERY) {
-    return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::None)));
-  }
-  TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(v8::Handle<v8::External>::Cast(info.Holder()->GetInternalField(SLOT_QUERY))->Value());
-  if (collection == 0) {
-    return scope.Close(v8::Handle<v8::Integer>());
-  }
-  
-  // get shape accessor
-  TRI_shaper_t* shaper = collection->_collection->_shaper;
-  TRI_shape_pid_t pid = shaper->findAttributePathByName(shaper, key.c_str()); 
-  TRI_shape_sid_t sid = document->_sid;    
-  TRI_shape_access_t* acc = TRI_ShapeAccessor(shaper, sid, pid);
-
-  if (acc == NULL || acc->_shape == NULL) {
-    // key not found
-    return scope.Close(v8::Handle<v8::Integer>());
-  }
-
-  return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(1)));
-  
-//  
-//  TRI_shape_t const* shape = acc->_shape;
-//  
-//  TRI_shaped_json_t json;
-//  if (TRI_ExecuteShapeAccessor(acc, document, &json)) {    
-//    return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(1)));
-//  }
-//
-//  // error
-//  return scope.Close(v8::Handle<v8::Integer>());
-}
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -4284,6 +4144,228 @@ static v8::Handle<v8::Value> JS_CollectionsEdges (v8::Arguments const& argv) {
   TRI_DestroyVectorPointer(&colls);
 
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             SHAPED JSON FUNCTIONS
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief weak reference callback for a bridge
+////////////////////////////////////////////////////////////////////////////////
+
+static void WeakBridgeCallback (v8::Persistent<v8::Value> object, void* parameter) {
+  TRI_barrier_t* barrier;
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  barrier = (TRI_barrier_t*) parameter;
+
+  LOG_TRACE("weak-callback for barrier called");
+
+  // find the persistent handle
+  v8::Persistent<v8::Value> persistent = v8g->JSBarriers[barrier];
+  v8g->JSBarriers.erase(barrier);
+
+  // dispose and clear the persistent handle
+  persistent.Dispose();
+  persistent.Clear();
+
+  // free the barrier
+  TRI_FreeBarrier(barrier);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects an attribute from the shaped json
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
+                                               const v8::AccessorInfo& info) {
+  v8::HandleScope scope;
+
+  // sanity check
+  v8::Handle<v8::Object> self = info.Holder();
+
+  if (self->InternalFieldCount() <= SLOT_BARRIER) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted shaped json")));
+  }
+
+  // get shaped json
+  TRI_shaped_json_t* document = UnwrapClass<TRI_shaped_json_t>(self, WRP_SHAPED_JSON_TYPE);
+
+  if (document == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted shaped json")));
+  }
+
+  TRI_barrier_t* barrier = static_cast<TRI_barrier_t*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_BARRIER))->Value());
+  TRI_doc_collection_t* collection = barrier->_container->_collection;
+
+  // convert the JavaScript string to a string
+  string key = TRI_ObjectToString(name);
+  
+  if (key == "") {
+    return scope.Close(v8::ThrowException(v8::String::New("name must not be empty")));
+  }  
+  
+  if (key[0] == '_') {
+    return scope.Close(v8::Handle<v8::Value>());
+  }
+
+  // get shape accessor
+  TRI_shaper_t* shaper = collection->_shaper;
+  TRI_shape_pid_t pid = shaper->findAttributePathByName(shaper, key.c_str()); 
+  TRI_shape_sid_t sid = document->_sid;    
+  TRI_shape_access_t* acc = TRI_ShapeAccessor(shaper, sid, pid);
+
+  if (acc == NULL || acc->_shape == NULL) {
+    return scope.Close(v8::Handle<v8::Value>());
+  }
+
+  // convert to v8 value
+  TRI_shape_t const* shape = acc->_shape;
+  TRI_shaped_json_t json;
+
+  if (TRI_ExecuteShapeAccessor(acc, document, &json)) {    
+    return scope.Close(TRI_JsonShapeData(shaper, shape, json._data.data, json._data.length));
+  }
+
+  return scope.Close(v8::ThrowException(v8::String::New("cannot extract attribute")));  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects the keys from the shaped json
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
+  v8::HandleScope scope;
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  v8::Handle<v8::Array> result = v8::Array::New();
+  
+  // sanity check
+  v8::Handle<v8::Object> self = info.Holder();
+
+  if (self->InternalFieldCount() <= SLOT_BARRIER) {
+    return scope.Close(result);
+  }
+
+  // get shaped json
+  TRI_shaped_json_t* document = UnwrapClass<TRI_shaped_json_t>(info.Holder(), WRP_SHAPED_JSON_TYPE);
+
+  if (document == 0) {
+    return scope.Close(result);
+  }
+
+  TRI_barrier_t* barrier = static_cast<TRI_barrier_t*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_BARRIER))->Value());
+  TRI_doc_collection_t* collection = barrier->_container->_collection;
+
+  // check for array shape
+  TRI_shaper_t* shaper = collection->_shaper;  
+  TRI_shape_t const* shape = shaper->lookupShapeId(shaper, document->_sid);
+
+  if (shape == 0 || shape->_type != TRI_SHAPE_ARRAY) {
+    return scope.Close(result);
+  }
+  
+  TRI_array_shape_t const* s;
+  TRI_shape_aid_t const* aids;
+  TRI_shape_size_t i;
+  TRI_shape_size_t n;
+  char const* qtr = 0;
+  uint32_t count = 0;
+
+  // shape is an array
+  s = (TRI_array_shape_t const*) shape;
+  
+  // number of entries
+  n = s->_fixedEntries + s->_variableEntries;
+
+  // calculation position of attribute ids
+  qtr = (char const*) shape;
+  qtr += sizeof(TRI_array_shape_t);
+  qtr += n * sizeof(TRI_shape_sid_t);    
+  aids = (TRI_shape_aid_t const*) qtr;
+  
+  for (i = 0;  i < n;  ++i, ++aids) {      
+    char const* att = shaper->lookupAttributeId(shaper, *aids);
+
+    if (att) {
+      result->Set(count++, v8::String::New(att));        
+    }
+  }
+
+  result->Set(count++, v8g->DidKey);
+  result->Set(count++, v8g->RevKey);
+ 
+  return scope.Close(result);  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a property is present
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> name, const v8::AccessorInfo& info) {
+  v8::HandleScope scope;
+
+  // sanity check
+  v8::Handle<v8::Object> self = info.Holder();
+
+  if (self->InternalFieldCount() <= SLOT_BARRIER) {
+    return scope.Close(v8::Handle<v8::Integer>());
+  }
+
+  // get shaped json
+  TRI_shaped_json_t* document = UnwrapClass<TRI_shaped_json_t>(self, WRP_SHAPED_JSON_TYPE);
+
+  if (document == 0) {
+    return scope.Close(v8::Handle<v8::Integer>());
+  }
+
+  TRI_barrier_t* barrier = static_cast<TRI_barrier_t*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_BARRIER))->Value());
+  TRI_doc_collection_t* collection = barrier->_container->_collection;
+
+  // convert the JavaScript string to a string
+  string key = TRI_ObjectToString(name);
+  
+  if (key == "") {
+    return scope.Close(v8::Handle<v8::Integer>());
+  }  
+  
+  if (key == "_id") {
+    return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::ReadOnly)));
+  }  
+  
+  if (key == "_rev") {
+    return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::ReadOnly)));
+  }  
+  
+  // get shape accessor
+  TRI_shaper_t* shaper = collection->_shaper;
+  TRI_shape_pid_t pid = shaper->findAttributePathByName(shaper, key.c_str()); 
+  TRI_shape_sid_t sid = document->_sid;    
+  TRI_shape_access_t* acc = TRI_ShapeAccessor(shaper, sid, pid);
+
+  // key not found
+  if (acc == NULL || acc->_shape == NULL) {
+    return scope.Close(v8::Handle<v8::Integer>());
+  }
+
+  return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::ReadOnly)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4470,7 +4552,9 @@ v8::Handle<v8::Object> TRI_WrapVocBase (TRI_vocbase_t const* database) {
                                             WRP_VOCBASE_TYPE,
                                             const_cast<TRI_vocbase_t*>(database));
 
-  result->Set(v8::String::New("_path"), v8::String::New(database->_path));
+  result->Set(v8::String::New("_path"),
+              v8::String::New(database->_path),
+              v8::ReadOnly);
 
   return scope.Close(result);
 }
@@ -4488,7 +4572,9 @@ v8::Handle<v8::Object> TRI_WrapEdges (TRI_vocbase_t const* database) {
                                             WRP_VOCBASE_TYPE,
                                             const_cast<TRI_vocbase_t*>(database));
 
-  result->Set(v8::String::New("_path"), v8::String::New(database->_path));
+  result->Set(v8::String::New("_path"),
+              v8::String::New(database->_path),
+              v8::ReadOnly);
 
   return scope.Close(result);
 }
@@ -4509,8 +4595,13 @@ v8::Handle<v8::Object> TRI_WrapCollection (TRI_vocbase_col_t const* collection) 
   result->SetInternalField(SLOT_QUERY, v8g->CollectionQueryType);
   result->SetInternalField(SLOT_RESULT_SET, v8::Null());
 
-  result->Set(v8::String::New("_name"), v8::String::New(collection->_name));
-  result->Set(v8::String::New("_id"), v8::Number::New(collection->_cid));
+  result->Set(v8::String::New("_name"),
+              v8::String::New(collection->_name),
+              v8::ReadOnly);
+
+  result->Set(v8::String::New("_id"),
+              v8::Number::New(collection->_cid),
+              v8::ReadOnly);
 
   return scope.Close(result);
 }
@@ -4531,8 +4622,13 @@ v8::Handle<v8::Object> TRI_WrapEdgesCollection (TRI_vocbase_col_t const* collect
   result->SetInternalField(SLOT_QUERY, v8g->CollectionQueryType);
   result->SetInternalField(SLOT_RESULT_SET, v8::Null());
 
-  result->Set(v8::String::New("_name"), v8::String::New(collection->_name));
-  result->Set(v8::String::New("_id"), v8::Number::New(collection->_cid));
+  result->Set(v8::String::New("_name"),
+              v8::String::New(collection->_name),
+              v8::ReadOnly);
+
+  result->Set(v8::String::New("_id"),
+              v8::Number::New(collection->_cid),
+              v8::ReadOnly);
 
   return scope.Close(result);
 }
@@ -4541,17 +4637,44 @@ v8::Handle<v8::Object> TRI_WrapEdgesCollection (TRI_vocbase_col_t const* collect
 /// @brief wraps a TRI_shaped_json_t
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Object> TRI_WrapShapedJson (TRI_shaped_json_t const* shaped_json, TRI_vocbase_col_t const* collection) {
+v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
+                                          TRI_doc_mptr_t const* document,
+                                          TRI_barrier_t* barrier) {
   TRI_v8_global_t* v8g;
   v8::HandleScope scope;
 
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-  v8::Handle<v8::Object> result = WrapClass(v8g->ShapedJsonTempl, 
-                                            WRP_SHAPED_JSON_TYPE,
-                                            const_cast<TRI_shaped_json_t*>(shaped_json));
-  
-  result->SetInternalField(SLOT_QUERY, v8::External::New(const_cast<TRI_vocbase_col_t*>(collection)));
 
+  // create the new handle to return, and set its template type
+  v8::Handle<v8::Object> result = v8g->ShapedJsonTempl->NewInstance();
+
+  // point the 0 index Field to the c++ pointer for unwrapping later
+  result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_SHAPED_JSON_TYPE));
+  result->SetInternalField(SLOT_CLASS, v8::External::New(const_cast<TRI_shaped_json_t*>(&document->_document)));
+
+  map< void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSBarriers.find(barrier);
+
+  if (i == v8g->JSBarriers.end()) {
+    v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(barrier));
+    result->SetInternalField(SLOT_BARRIER, persistent);
+
+    v8g->JSBarriers[barrier] = persistent;
+
+    persistent.MakeWeak(barrier, WeakBridgeCallback);
+  }
+  else {
+    result->SetInternalField(SLOT_BARRIER, i->second);
+  }
+
+  // store the document reference
+  TRI_voc_did_t did = document->_did;
+  TRI_voc_rid_t rid = document->_rid;
+
+  string ref = StringUtils::itoa(collection->_collection->base._cid) + ":" + StringUtils::itoa(did);
+  result->Set(v8g->DidKey, v8::String::New(ref.c_str()), v8::ReadOnly);
+  result->Set(v8g->RevKey, v8::Number::New(rid), v8::ReadOnly);
+  
+  // and return
   return scope.Close(result);
 }
 
@@ -4592,9 +4715,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   // local function names
   // .............................................................................
 
-  v8::Handle<v8::String> AllFuncName = v8::Persistent<v8::String>::New(v8::String::New("all"));
+  v8::Handle<v8::String> AllFuncName = v8::Persistent<v8::String>::New(v8::String::New("ALL"));
   v8::Handle<v8::String> CollectionsFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collections"));
-  v8::Handle<v8::String> CompletionsFuncName = v8::Persistent<v8::String>::New(v8::String::New("COMPLETIONS"));
+  v8::Handle<v8::String> CompletionsFuncName = v8::Persistent<v8::String>::New(v8::String::New("_COMPLETIONS"));
   v8::Handle<v8::String> CountFuncName = v8::Persistent<v8::String>::New(v8::String::New("count"));
   v8::Handle<v8::String> DeleteFuncName = v8::Persistent<v8::String>::New(v8::String::New("delete"));
   v8::Handle<v8::String> DistanceFuncName = v8::Persistent<v8::String>::New(v8::String::New("distance"));
@@ -4630,8 +4753,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> UseNextFuncName = v8::Persistent<v8::String>::New(v8::String::New("useNext"));
   v8::Handle<v8::String> WithinFuncName = v8::Persistent<v8::String>::New(v8::String::New("within"));
 
-  v8::Handle<v8::String> DocumentWrappedFuncName = v8::Persistent<v8::String>::New(v8::String::New("document_wrapped"));
-  
   // .............................................................................
   // query types
   // .............................................................................
@@ -4646,6 +4767,14 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8g->SyncAfterBytesKey = v8::Persistent<v8::String>::New(v8::String::New("syncAfterBytes"));
   v8g->SyncAfterObjectsKey = v8::Persistent<v8::String>::New(v8::String::New("syncAfterObjects"));
   v8g->SyncAfterTimeKey = v8::Persistent<v8::String>::New(v8::String::New("syncAfterTime"));
+
+  if (v8g->DidKey.IsEmpty()) {
+    v8g->DidKey = v8::Persistent<v8::String>::New(v8::String::New("_id"));
+  }
+
+  if (v8g->RevKey.IsEmpty()) {
+    v8g->RevKey = v8::Persistent<v8::String>::New(v8::String::New("_rev"));
+  }
 
   // .............................................................................
   // generate the TRI_vocbase_t template
@@ -4700,8 +4829,8 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(3);
   
-  rt->SetNamedPropertyHandler(MapWrappedShapedJson,     // NamedPropertyGetter,
-                              0,                        // NamedPropertySetter setter = 0,
+  rt->SetNamedPropertyHandler(MapGetShapedJson,         // NamedPropertyGetter,
+                              0,                        // NamedPropertySetter setter = 0
                               PropertyQueryShapedJson,  // NamedPropertyQuery,
                               0,                        // NamedPropertyDeleter deleter = 0,
                               KeysOfShapedJson          // NamedPropertyEnumerator,
@@ -4726,8 +4855,8 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
 
   v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
-  rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery)); // TO BE DELETED
-  rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentQuery)); // TO BE DELETED
+  rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
+  rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentQuery));
   rt->Set(EdgesFuncName, v8::FunctionTemplate::New(JS_EdgesQuery));
   rt->Set(GeoFuncName, v8::FunctionTemplate::New(JS_GeoQuery));
   rt->Set(InEdgesFuncName, v8::FunctionTemplate::New(JS_InEdgesQuery));
@@ -4752,8 +4881,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbaseCol));
   rt->Set(SaveFuncName, v8::FunctionTemplate::New(JS_SaveVocbaseCol));
   rt->Set(StatusFuncName, v8::FunctionTemplate::New(JS_StatusVocbaseCol));
-  
-  rt->Set(DocumentWrappedFuncName, v8::FunctionTemplate::New(JS_DocumentQueryWrapped));
   
   // must come after SetInternalFieldCount
   context->Global()->Set(v8::String::New("AvocadoCollection"),
@@ -4810,10 +4937,8 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(SLOT_END);
 
-  rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
   rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountQuery));
   rt->Set(DistanceFuncName, v8::FunctionTemplate::New(JS_DistanceQuery));
-  rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentQuery));
   rt->Set(EdgesFuncName, v8::FunctionTemplate::New(JS_EdgesQuery));
   rt->Set(ExplainFuncName, v8::FunctionTemplate::New(JS_ExplainQuery));
   rt->Set(GeoFuncName, v8::FunctionTemplate::New(JS_GeoQuery));

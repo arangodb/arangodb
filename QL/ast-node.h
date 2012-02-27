@@ -54,6 +54,7 @@ typedef enum {
   QLNodeContainerOrderElement,
   QLNodeContainerMemberAccess,
   QLNodeContainerTernarySwitch,
+  QLNodeContainerCoordinatePair,
 
   QLNodeJoinList,
   QLNodeJoinInner,
@@ -73,10 +74,14 @@ typedef enum {
   QLNodeValueParameterNamed,
   QLNodeValueIdentifier,
   QLNodeValueNamedValue,
+  QLNodeValueCoordinate,
   QLNodeValueOrderDirection,
 
   QLNodeReferenceCollection,
   QLNodeReferenceCollectionAlias,
+
+  QLNodeRestrictWithin,
+  QLNodeRestrictNear,
 
   QLNodeUnaryOperatorPlus,
   QLNodeUnaryOperatorMinus,
@@ -119,6 +124,7 @@ typedef enum {
   QLNodeGroupJoin,
   QLNodeGroupValue,
   QLNodeGroupReference,
+  QLNodeGroupRestrict,
   QLNodeGroupBinaryOperator,
   QLNodeGroupUnaryOperator,
   QLNodeGroupControl

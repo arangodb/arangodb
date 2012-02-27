@@ -111,8 +111,8 @@ extern "C" {
 ///
 /// @subsection AqlKeywords Keywords
 ///
-/// For example, the terms @CODE{SELECT}, @CODE{FROM}, @CODE{JOIN}, and 
-/// @CODE{WHERE} are keywords. Keywords have a special meaning in the language
+/// For example, the terms @LIT{SELECT}, @LIT{FROM}, @LIT{JOIN}, and 
+/// @LIT{WHERE} are keywords. Keywords have a special meaning in the language
 /// and are used by the language parser to uniquely identify the meaning of a
 /// query part.
 ///
@@ -203,8 +203,8 @@ extern "C" {
 /// @subsubsection AqlLiteralsSpecial Special values
 ///
 /// There are also special predefined literals for the boolean values 
-/// @CODE{true} and @CODE{false}. There are also predefined @CODE{null} and
-/// @CODE{undefined} values.
+/// @LIT{true} and @LIT{false}. There are also predefined @LIT{null} and
+/// @LIT{undefined} values.
 ///
 /// @verbinclude specials
 ///
@@ -308,11 +308,11 @@ extern "C" {
 /// The @LIT{!} operator returns boolean value.
 ///
 /// The @LIT{&&} operator returns the first operand if it evaluates to 
-/// @CODE{false}. It returns the result of the evaluation of the second
+/// @LIT{false}. It returns the result of the evaluation of the second
 /// operand otherwise. 
 ///
 /// The @LIT{||} operators returns the first operand if it evaluates to
-/// @CODE{true}. Otherwise it returns the result of the evaluation of 
+/// @LIT{true}. Otherwise it returns the result of the evaluation of 
 /// the second operand.
 ///
 /// Both @LIT{&&} and @LIT{||} use short-circuit evaluation and only
@@ -392,7 +392,7 @@ extern "C" {
 /// The @LIT{select-expression} determines the structure of the documents to
 /// be returned by the select.
 /// There are two ways to define the structure of the documents to return.
-/// Therefore, the @LIT{select-expression} can either be @CODE{collection-alias} 
+/// Therefore, the @LIT{select-expression} can either be @LIT{collection-alias} 
 /// or a newly constructed document.
 ///
 /// To select all documents from a collection without alteration use the
@@ -449,7 +449,7 @@ extern "C" {
 /// @subsection AqlJoin Multi collection access (joins)
 ///
 /// Data from multiple collections can be accessed together in one query, provided
-/// the documents match. This is called joining.
+/// the documents from the collections satisfy some criteria. This is called joining.
 /// There are 3 different types of joins, but all have the same structure:
 ///
 /// @verbinclude join
@@ -466,10 +466,13 @@ extern "C" {
 /// 
 /// The @LIT{left-collection} and @LIT{right-collection} values define which
 /// collections should be joined to together, the @LIT{join-types} determines
-/// how to join, and the @CODE{on-expression} determines what is considered a 
-/// match.
+/// how to join, and the @LIT{on-expression} determines what match criteria should
+/// be applied.
 ///
-/// Multiple joins are evaluated from left to right.
+/// Multiple joins are evaluated from left to right. That means @LIT{on-expression}s 
+/// can only contain references to collections that have been specified before
+/// (left) of them. References to collections specified on the right of them 
+/// will cause a parse error.
 ///
 /// @subsubsection AllInnerJoin Inner join
 /// 
@@ -517,6 +520,51 @@ extern "C" {
 ///
 /// @verbinclude joinleft
 ///
+/// @subsection GeoQueries Geo restrictions
+///
+/// AQL supports special geo restrictions in case a collection has a geo index 
+/// defined for it. These queries can be used to find document that have coordinates
+/// attached to them that are located around some two-dimensional geo point 
+/// (reference point).
+///
+/// There are two types of geo queries:
+/// - WITHIN: finds all documents that have coordinates that are within a certain
+///   radius around the reference point
+/// - NEAR: finds the first n documents whose coordinates have the least distance
+///   to the reference point
+///
+/// For all geo queries, the distance between the coordinates as specified in the
+/// document and the reference point. This distance is returned as an additional
+/// (virtual) collection. This collection can be used in other parts of the
+/// query (e.g. WHERE condition) by using its alias.
+///
+/// Geo queries extend the FROM/JOIN syntax as follows:
+///
+/// @verbinclude geoquery
+///
+/// For the @LIT{geo-alias}, the same naming rules apply as for normal collections. 
+/// It must be unique within the query. The @LIT{document-coordinate} can either be
+/// an array of two attribute names, or two separate attribute names, separated by
+/// a comma. The attribute names in @LIT{document-coordinate} must refer to the
+/// @LIT{collection-alias} specified directly before the geo query. The first
+/// attribute is interpreted as the latitude attribute name, the second as the 
+/// longitude attribute name.
+///
+/// The reference coordinate can either be an array of two numbers, or or two 
+/// separate numbers, separated by a comma. The first number is interpreted as the
+/// latitude value, the second number as the longitude value of the reference point.
+///
+/// @verbinclude geo1
+/// 
+/// For WITHIN, the @LIT{radius} is specified in meters.
+/// For NEAR, the @LIT{number-of-documents} value will restrict the result to at
+/// most this number of documents.
+///
+/// Geo restrictions can be used for joined collections as well. In this case, the
+/// restriction is applied first to find the relevant documents from the collection,
+/// and afterwards, the ON condition specified for the join is evaluated. Evaluating
+/// the ON condition might further reduce the result. 
+///
 /// @section AqlWhere Where clause
 ///
 /// The where clause can be specified to restrict the result to documents that
@@ -525,6 +573,8 @@ extern "C" {
 /// The where clause is initiated by the @LIT{WHERE} keyword, followed by an
 /// expression that defines the search condition. A document is included
 /// in the result if the search condition evaluates to @LIT{true}.
+///
+/// Geo restrictions cannot be used in the where clause.
 ///
 /// @section AqlParameter Parameters
 ///

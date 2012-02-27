@@ -635,6 +635,161 @@ TRI_data_feeder_t* TRI_CreateDataFeederHashLookup (const TRI_doc_collection_t* c
   return feeder;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                         geo index
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief init geo index data feeder
+////////////////////////////////////////////////////////////////////////////////
+
+static void InitFeederGeoLookup (TRI_data_feeder_t* feeder) {
+  TRI_data_feeder_geo_lookup_t* state;
+  
+  state = (TRI_data_feeder_geo_lookup_t*) feeder->_state;
+  state->_isEmpty  = true;
+  state->_position = 0;
+  state->_coordinates = NULL;
+
+  state->_index = TRI_IndexSimCollection((TRI_sim_collection_t*) feeder->_collection, 
+                                         feeder->_indexId);
+  if (!state->_index) {
+    return;
+  }
+  if (!state->_restriction) {
+    return;
+  }
+  
+  state->_isEmpty = false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rewind geo index data feeder
+////////////////////////////////////////////////////////////////////////////////
+
+static void RewindFeederGeoLookup (TRI_data_feeder_t* feeder) {
+  TRI_data_feeder_geo_lookup_t* state;
+   
+  state = (TRI_data_feeder_geo_lookup_t*) feeder->_state;
+  state->_position = 0;
+
+  if (state->_restriction->_type == RESTRICT_WITHIN) {
+    state->_coordinates = TRI_WithinGeoIndex(state->_index, 
+                          state->_restriction->_lat, 
+                          state->_restriction->_lon, 
+                          state->_restriction->_arg._radius);
+  }
+  else {
+    state->_coordinates = TRI_NearestGeoIndex(state->_index, 
+                          state->_restriction->_lat, 
+                          state->_restriction->_lon, 
+                          state->_restriction->_arg._numDocuments);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get current item from geo index feeder
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_doc_mptr_t* CurrentFeederGeoLookup (TRI_data_feeder_t* feeder) {
+  TRI_data_feeder_geo_lookup_t* state;
+  TRI_doc_mptr_t* document;
+
+  state = (TRI_data_feeder_geo_lookup_t*) feeder->_state;
+  if (state->_isEmpty || !state->_coordinates) { 
+    return NULL;
+  }
+
+  while (state->_position < state->_coordinates->length) {
+    document = (TRI_doc_mptr_t*) ((state->_coordinates->coordinates[state->_position++].data));
+    if (document && !document->_deletion) {
+      return document;
+    }
+  }
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if geo index data feeder is at eof
+////////////////////////////////////////////////////////////////////////////////
+
+bool EofFeederGeoLookup (TRI_data_feeder_t* feeder) {
+  TRI_data_feeder_geo_lookup_t* state;
+  
+  state = (TRI_data_feeder_geo_lookup_t*) feeder->_state;
+  if (state->_isEmpty || 
+      !state->_coordinates ||
+      state->_position >= state->_coordinates->length) {
+    return true;
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free geo index data feeder
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeFeederGeoLookup (TRI_data_feeder_t* feeder) {
+  TRI_data_feeder_geo_lookup_t* state;
+
+  state = (TRI_data_feeder_geo_lookup_t*) feeder->_state;
+  if (state->_coordinates) {
+    GeoIndex_CoordinatesFree(state->_coordinates);
+  }
+
+  if (state) {
+    TRI_Free(state);
+  }
+
+  if (feeder) {
+    TRI_Free(feeder);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Create a new data feeder for geo lookups
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_data_feeder_t* TRI_CreateDataFeederGeoLookup (const TRI_doc_collection_t* collection,
+                                                  TRI_join_t* join,
+                                                  size_t level,
+                                                  QL_ast_query_geo_restriction_t* restriction) {
+  TRI_data_feeder_t* feeder;
+  TRI_data_feeder_geo_lookup_t* state;
+  
+  feeder = (TRI_data_feeder_t*) TRI_Allocate(sizeof(TRI_data_feeder_t));
+  if (!feeder) {
+    return NULL;
+  }
+  
+  feeder->_state = (TRI_data_feeder_geo_lookup_t*) 
+    TRI_Allocate(sizeof(TRI_data_feeder_geo_lookup_t));
+
+  state = (TRI_data_feeder_geo_lookup_t*) feeder->_state;
+
+  if (!state) {
+    TRI_Free(feeder);
+    return NULL;
+  }
+
+  state->_restriction = restriction;
+
+  feeder->_type       = FEEDER_GEO_LOOKUP;
+  feeder->_level      = level;
+  feeder->_join       = join;
+  feeder->_collection = collection;
+  feeder->_ranges     = NULL;
+
+  feeder->init        = InitFeederGeoLookup; 
+  feeder->rewind      = RewindFeederGeoLookup;
+  feeder->current     = CurrentFeederGeoLookup;
+  feeder->eof         = EofFeederGeoLookup;
+  feeder->free        = FreeFeederGeoLookup;
+  
+  return feeder;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
