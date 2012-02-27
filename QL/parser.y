@@ -73,7 +73,13 @@ void QLerror (YYLTYPE *locp,QL_parser_context_t *context, const char *err) {
 %type <node> collection_reference;
 %type <node> collection_name;
 %type <node> collection_alias;
-%type <node> geo_expression;
+%type <node> geo_restriction;
+%type <node> geo_reference;
+%type <node> geo_1dreference;
+%type <node> geo_2dreference;
+%type <node> geo_value;
+%type <node> geo_1dvalue;
+%type <node> geo_2dvalue;
 %type <node> where_clause;
 %type <node> order_clause;
 %type <node> order_list;
@@ -174,12 +180,19 @@ from_clause:
   ;	      						
 
 from_list:
-    collection_reference geo_expression {
+    collection_reference geo_restriction {
       // single table query
       ABORT_IF_OOM($1);
       QLParseContextAddElement(context, $1);
+
+      if ($2) {
+        if (!QLAstQueryAddGeoRestriction(context->_query, $1, $2)) {
+          QLParseRegisterParseError(context, ERR_GEO_RESTRICTION_INVALID, ((QL_ast_node_t*) $2->_lhs)->_value._stringValue);
+          YYABORT;
+        }
+      }
     } 
-  | from_list join_type collection_reference geo_expression ON expression {
+  | from_list join_type collection_reference geo_restriction ON expression {
       // multi-table query
       ABORT_IF_OOM($2);
       ABORT_IF_OOM($3);
@@ -192,17 +205,173 @@ from_list:
     }
   ;
 
-geo_expression:
-    /* empty */ {
-      $$ = 0;
-    }
-  | WITHIN collection_alias ASSIGNMENT '(' object_access ',' object_access ',' REAL ',' REAL ',' REAL ')' {
-    }
-  | NEAR collection_alias ASSIGNMENT '(' object_access ',' object_access ',' REAL ',' REAL ',' REAL ')' {
+geo_2dvalue: 
+    '[' geo_1dvalue ',' geo_1dvalue ']' {
+      ABORT_IF_OOM($2);
+      ABORT_IF_OOM($4);
+
+      $$ = QLAstNodeCreate(context, QLNodeValueCoordinate);
+      ABORT_IF_OOM($$);
+
+      $$->_lhs = $2;
+      $$->_rhs = $4;
     }
   ;
 
+geo_1dvalue:
+    REAL {
+      double d;
 
+      $$ = QLAstNodeCreate(context, QLNodeValueNumberDouble);
+      ABORT_IF_OOM($$);
+      ABORT_IF_OOM($1);
+      
+      d = TRI_DoubleString($1);
+      if (TRI_errno() != TRI_ERROR_NO_ERROR && d != 0.0) {
+        QLParseRegisterParseError(context, ERR_NUMBER_OUT_OF_RANGE, $1);
+        YYABORT;
+      }
+      $$->_value._doubleValue = d; 
+    }
+  | '-' REAL %prec UMINUS { 
+      double d;
+
+      $$ = QLAstNodeCreate(context, QLNodeValueNumberDouble);
+      ABORT_IF_OOM($$);
+      ABORT_IF_OOM($2);
+      
+      d = TRI_DoubleString($2);
+      if (TRI_errno() != TRI_ERROR_NO_ERROR && d != 0.0) {
+        QLParseRegisterParseError(context, ERR_NUMBER_OUT_OF_RANGE, $2);
+        YYABORT;
+      }
+      $$->_value._doubleValue = -1.0 * d; 
+    }
+  ;
+
+geo_value:
+    geo_2dvalue {
+      ABORT_IF_OOM($1);
+      $$ = $1;
+    }
+  | geo_1dvalue ',' geo_1dvalue {
+      ABORT_IF_OOM($1);
+      ABORT_IF_OOM($3);
+
+      $$ = QLAstNodeCreate(context, QLNodeValueCoordinate);
+      ABORT_IF_OOM($$);
+
+      $$->_lhs = $1;
+      $$->_rhs = $3;
+    }
+  ;
+
+geo_2dreference:
+    '[' geo_1dreference ',' geo_1dreference ']' {
+      ABORT_IF_OOM($2);
+      ABORT_IF_OOM($4);
+
+      $$ = QLAstNodeCreate(context, QLNodeValueCoordinate);
+      ABORT_IF_OOM($$);
+      $$->_lhs = $2;
+      $$->_rhs = $4;
+    }
+  ;
+
+geo_1dreference:
+    collection_alias {
+      QL_ast_node_t* list = QLAstNodeCreate(context, QLNodeContainerList);
+      ABORT_IF_OOM(list);
+      QLParseContextPush(context, list); 
+    } object_access %prec MEMBER {
+      $$ = QLAstNodeCreate(context, QLNodeContainerMemberAccess);
+      ABORT_IF_OOM($$);
+      ABORT_IF_OOM($1);
+      $$->_lhs = $1;
+      QLPopIntoRhs($$, context);
+    }
+  ;
+
+geo_reference: 
+    geo_2dreference {
+      ABORT_IF_OOM($1);
+      $$ = $1;
+    }
+  | geo_1dreference ',' geo_1dreference {
+      ABORT_IF_OOM($1);
+      ABORT_IF_OOM($3);
+
+      $$ = QLAstNodeCreate(context, QLNodeValueCoordinate);
+      ABORT_IF_OOM($$);
+      $$->_lhs = $1;
+      $$->_rhs = $3;
+    }
+  ;
+
+geo_restriction:
+    /* empty */ {
+      $$ = 0;
+    }
+  | WITHIN collection_alias ASSIGNMENT '(' geo_reference ',' geo_value ',' REAL ')' {
+      QL_ast_node_t* comp;
+      double distance;
+      
+      ABORT_IF_OOM($2);
+      ABORT_IF_OOM($5);
+      ABORT_IF_OOM($7);
+      ABORT_IF_OOM($9);
+      
+      $$ = QLAstNodeCreate(context, QLNodeRestrictWithin);
+      ABORT_IF_OOM($$);
+
+      distance = TRI_DoubleString($9);
+      if (TRI_errno() != TRI_ERROR_NO_ERROR) {
+        QLParseRegisterParseError(context, ERR_NUMBER_OUT_OF_RANGE, $9);
+        YYABORT;
+      }
+      $$->_value._doubleValue = distance;
+
+      comp = QLAstNodeCreate(context, QLNodeContainerCoordinatePair);
+      ABORT_IF_OOM(comp);
+      comp->_lhs = $5;
+      comp->_rhs = $7;
+
+      $$->_lhs = $2;
+      $$->_rhs = comp;
+    }
+  | NEAR collection_alias ASSIGNMENT '(' geo_reference ',' geo_value ',' REAL ')' {
+      QL_ast_node_t* comp;
+      int64_t num;
+      
+      ABORT_IF_OOM($2);
+      ABORT_IF_OOM($5);
+      ABORT_IF_OOM($7);
+      ABORT_IF_OOM($9);
+      
+      $$ = QLAstNodeCreate(context, QLNodeRestrictNear);
+      ABORT_IF_OOM($$);
+
+      num = TRI_Int64String($9);
+      if (TRI_errno() != TRI_ERROR_NO_ERROR) {
+        QLParseRegisterParseError(context, ERR_LIMIT_VALUE_OUT_OF_RANGE, $9);
+        YYABORT;
+      }
+      $$->_value._intValue = num;
+
+      comp = QLAstNodeCreate(context, QLNodeContainerCoordinatePair);
+      ABORT_IF_OOM(comp);
+      comp->_lhs = $5;
+      comp->_rhs = $7;
+
+      $$->_lhs = $2;
+      $$->_rhs = comp;
+    }
+    /*
+  | NEAR collection_alias ASSIGNMENT '(' geo_reference ',' geo_value ',' geo_value ',' REAL ')' {
+    }
+    */
+  ;
+  
 where_clause:
     /* empty */ {
       $$ = 0;

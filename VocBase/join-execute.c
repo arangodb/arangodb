@@ -33,6 +33,71 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Determine which geo indexes to use in a query
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_data_feeder_t* DetermineGeoIndexUsage (const TRI_vocbase_t* vocbase,
+                                                  const TRI_select_join_t* join,
+                                                  const size_t level,
+                                                  const TRI_join_part_t* part) {
+  TRI_vector_pointer_t* indexDefinitions;
+  TRI_index_definition_t* indexDefinition;
+  TRI_data_feeder_t* feeder = NULL;
+  size_t i;
+ 
+  assert(part->_restriction);
+
+  indexDefinitions = TRI_GetCollectionIndexes(vocbase, part->_collectionName);
+  if (!indexDefinitions) {
+    return feeder;
+  }
+    
+  // enum all indexes
+  for (i = 0; i < indexDefinitions->_length; i++) {
+    indexDefinition = (TRI_index_definition_t*) indexDefinitions->_buffer[i];
+
+    if (indexDefinition->_type != TRI_IDX_TYPE_GEO_INDEX) {
+      // ignore all indexes except geo indexes here
+      continue;
+    }
+
+    if (indexDefinition->_fields->_length != 2) {
+      continue;
+    }
+
+    if (strcmp(indexDefinition->_fields->_buffer[0],
+        part->_restriction->_compareLat._field) != 0) {
+      continue;
+    }
+    
+    if (strcmp(indexDefinition->_fields->_buffer[1],
+        part->_restriction->_compareLon._field) != 0) {
+      continue;
+    }
+
+    feeder = 
+      TRI_CreateDataFeederGeoLookup((TRI_doc_collection_t*) part->_collection, 
+                                    (TRI_join_t*) join, 
+                                    level,
+                                    part->_restriction);
+
+    if (feeder) {
+      // set up addtl data for feeder
+      feeder->_indexId = indexDefinition->_iid;
+      break;
+    }
+  }
+
+  TRI_FreeIndexDefinitions(indexDefinitions);
+
+  return feeder;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Determine which indexes to use in a query
+////////////////////////////////////////////////////////////////////////////////
+
 static TRI_data_feeder_t* DetermineIndexUsage (const TRI_vocbase_t* vocbase,
                                                const TRI_select_join_t* join,
                                                const size_t level,
@@ -43,10 +108,13 @@ static TRI_data_feeder_t* DetermineIndexUsage (const TRI_vocbase_t* vocbase,
   QL_optimize_range_t* range;
   TRI_vector_pointer_t matches;
   size_t i, j, k;
+  size_t numFieldsDefined;
+  size_t numFields;
+  size_t numConsts;
   size_t indexLength = 0;
-  size_t numFields = 0;
-  size_t numConsts = 0;
-        
+
+  assert(!part->_restriction);
+
   if (part->_ranges) {
     TRI_InitVectorPointer(&matches);
     indexDefinitions = TRI_GetCollectionIndexes(vocbase, part->_collectionName);
@@ -58,6 +126,11 @@ static TRI_data_feeder_t* DetermineIndexUsage (const TRI_vocbase_t* vocbase,
     for (i = 0; i < indexDefinitions->_length; i++) {
       indexDefinition = (TRI_index_definition_t*) indexDefinitions->_buffer[i];
 
+      if (indexDefinition->_type == TRI_IDX_TYPE_GEO_INDEX) {
+        // ignore all geo indexes here
+        continue;
+      }
+
       // reset compare state
       if (matches._length) {
         TRI_DestroyVectorPointer(&matches);
@@ -66,7 +139,8 @@ static TRI_data_feeder_t* DetermineIndexUsage (const TRI_vocbase_t* vocbase,
       numFields = 0;
       numConsts = 0;
 
-      for (j = 0 ; j < indexDefinition->_fields._length; j++) {
+      numFieldsDefined = indexDefinition->_fields->_length;
+      for (j = 0 ; j < numFieldsDefined; j++) {
         // enumerate all fields from the index definition and 
         // check all ranges we found for the collection
 
@@ -78,7 +152,8 @@ static TRI_data_feeder_t* DetermineIndexUsage (const TRI_vocbase_t* vocbase,
           }
 
           // check if field names match
-          if (strcmp(indexDefinition->_fields._buffer[j], range->_field) != 0) {
+          if (strcmp(indexDefinition->_fields->_buffer[j], 
+                     range->_field) != 0) {
             continue;
           }
 
@@ -126,7 +201,7 @@ static TRI_data_feeder_t* DetermineIndexUsage (const TRI_vocbase_t* vocbase,
         }
       }
 
-      if (matches._length == indexDefinition->_fields._length) {
+      if (matches._length == numFieldsDefined) {
         // we have found as many matches as defined in the index definition
         // that means the index is fully covered in the condition
 
@@ -137,9 +212,10 @@ static TRI_data_feeder_t* DetermineIndexUsage (const TRI_vocbase_t* vocbase,
             feeder->free(feeder);
           }
 
-          feeder = TRI_CreateDataFeederPrimaryLookup((TRI_doc_collection_t*) part->_collection, 
-                                                     (TRI_join_t*) join, 
-                                                     level);
+          feeder = 
+            TRI_CreateDataFeederPrimaryLookup((TRI_doc_collection_t*) part->_collection, 
+                                              (TRI_join_t*) join, 
+                                              level);
           if (feeder) {
             // we always exit if we can use the primary index
             // the primary index guarantees uniqueness
@@ -148,7 +224,7 @@ static TRI_data_feeder_t* DetermineIndexUsage (const TRI_vocbase_t* vocbase,
           }
         } 
 
-        if (indexLength < indexDefinition->_fields._length) {
+        if (indexLength < numFieldsDefined) {
           // if the index found contains more fields than the one we previously found, 
           // we use the new one 
           // (assumption: the more fields index, the less selective is the index)
@@ -159,16 +235,17 @@ static TRI_data_feeder_t* DetermineIndexUsage (const TRI_vocbase_t* vocbase,
               feeder->free(feeder);
             }
 
-            feeder = TRI_CreateDataFeederHashLookup((TRI_doc_collection_t*) part->_collection, 
-                                                    (TRI_join_t*) join, 
-                                                    level);
+            feeder = 
+              TRI_CreateDataFeederHashLookup((TRI_doc_collection_t*) part->_collection, 
+                                             (TRI_join_t*) join, 
+                                             level);
             if (feeder) {
               // set up addtl data for feeder
               feeder->_indexId = indexDefinition->_iid;
               feeder->_ranges = TRI_CopyVectorPointer(&matches);
 
               // for further comparisons
-              indexLength = indexDefinition->_fields._length;
+              indexLength = numFieldsDefined;
             }
           }
         }
@@ -236,7 +313,13 @@ TRI_select_result_t* TRI_JoinSelectResult (const TRI_vocbase_t* vocbase,
     }
 
     // determine the access type (index usage/full table scan) for collection
-    part->_feeder = DetermineIndexUsage(vocbase, join, i, part);
+    if (part->_restriction) {
+      part->_feeder = DetermineGeoIndexUsage(vocbase, join, i, part);
+    }
+    else {
+      part->_feeder = DetermineIndexUsage(vocbase, join, i, part);
+    }
+
     if (!part->_feeder) {
       error = true;
     }

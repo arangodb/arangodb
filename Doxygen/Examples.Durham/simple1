@@ -1,0 +1,5 @@
+avocado> id = db.examples.save({ Hallo : "World" });
+"148759:5437094"
+
+avocado> doc = db.examples.document(id);
+{ "Hallo" : "World", "_id" : "148759:5437094", "_rev" : 5437095 }

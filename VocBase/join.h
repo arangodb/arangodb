@@ -70,6 +70,7 @@ typedef struct TRI_join_part_s {
   TRI_doc_collection_t* _collection;
   char* _collectionName;
   char* _alias;
+  QL_ast_query_geo_restriction_t* _restriction;
   TRI_doc_mptr_t* _singleDocument;
   TRI_vector_pointer_t _listDocuments;
   TRI_js_exec_context_t _context;
@@ -99,7 +100,8 @@ bool TRI_AddPartSelectJoin (TRI_select_join_t*,
                             TRI_qry_where_t*, 
                             TRI_vector_pointer_t*,
                             char*, 
-                            char*);
+                            char*,
+                            QL_ast_query_geo_restriction_t*); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Create a new join 

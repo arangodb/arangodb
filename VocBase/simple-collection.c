@@ -1972,7 +1972,7 @@ TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* collection
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a description of all indexes
+/// @brief returns a description of anindex
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_IndexSimCollection (TRI_sim_collection_t* collection, TRI_idx_iid_t iid) {

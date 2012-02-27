@@ -32,6 +32,7 @@
 #include "VocBase/join.h"
 #include "VocBase/data-feeder.h"
 #include "QL/optimize.h"
+#include "QL/ast-query.h"
 #include "V8/v8-c-utils.h"
 
 #ifdef __cplusplus

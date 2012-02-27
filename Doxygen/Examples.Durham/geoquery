@@ -1,0 +1,5 @@
+FROM collection-name collection-alias
+WITHIN geo-alias = ( document-coordinate, reference-coordinate, radius )
+
+FROM collection-name collection-alias
+NEAR geo-alias = ( document-coordinate, reference-coordinate, number-of-documents )

@@ -182,6 +182,7 @@ avocado_SOURCES = \
 	VocBase/query.c \
 	VocBase/result-set.c \
 	VocBase/select-result.c \
+	VocBase/shadow-data.c \
 	VocBase/simple-collection.c \
 	VocBase/synchroniser.c \
 	VocBase/voc-shaper.c \
@@ -198,7 +199,8 @@ JAVASCRIPT_HEADER = \
 	js/server/js-actions.h \
 	js/server/js-aql.h \
 	js/server/js-json.h \
-	js/server/js-shell.h
+	js/server/js-shell.h \
+	js/server/js-simple-query.h
 
 BUILT_SOURCES += $(JAVASCRIPT_HEADER)
 
@@ -253,6 +255,7 @@ DOXYGEN = \
 	Doxygen/js/server/actions.c \
 	Doxygen/js/server/json.c \
 	Doxygen/js/server/shell.c \
+	Doxygen/js/server/simple-query.c \
 	Doxygen/js/system/collections.c \
 	Doxygen/js/system/indexes.c
 
@@ -285,8 +288,8 @@ WIKI = \
         Doxygen/xml/Pagination.md \
         Doxygen/xml/RefManual.md \
         Doxygen/xml/RestDocument.md \
-        Doxygen/xml/RestInterface.md \
         Doxygen/xml/RestSystem.md \
+	Doxygen/xml/SimpleQueries.md \
         Doxygen/xml/StartStop.md \
         Doxygen/xml/UserManual.md \
         Doxygen/xml/jsUnity.md
