@@ -38,68 +38,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Hash a member name for comparisons
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t QLOptimizeGetMemberNameHash (QL_ast_node_t* node) {
-  QL_ast_node_t *lhs, *rhs;
-  uint64_t hashValue;
-
-  lhs = node->_lhs;
-  hashValue = TRI_FnvHashString(lhs->_value._stringValue);
-  
-  rhs = node->_rhs;
-  node = rhs->_next;
-
-  while (node) {
-    hashValue ^= TRI_FnvHashString(node->_value._stringValue);
-    node = node->_next;
-  }
-
-  return hashValue;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Create a string from a member name
-///
-/// The result string may or may not include the collection name
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_string_buffer_t* QLOptimizeGetMemberNameString (QL_ast_node_t* node, 
-                                                           bool includeCollection) {
-  QL_ast_node_t *lhs, *rhs;
-  TRI_string_buffer_t* buffer;
-
-  buffer = (TRI_string_buffer_t*) TRI_Allocate(sizeof(TRI_string_buffer_t));
-  if (!buffer) {
-    return 0;
-  }
-
-  TRI_InitStringBuffer(buffer);
-
-  if (includeCollection) {
-    // add collection part
-    lhs = node->_lhs;
-    TRI_AppendStringStringBuffer(buffer, lhs->_value._stringValue);
-    TRI_AppendCharStringBuffer(buffer, '.');
-  }
-  
-  rhs = node->_rhs;
-  node = rhs->_next;
-
-  while (node) {
-    // add individual name parts
-    TRI_AppendStringStringBuffer(buffer, node->_value._stringValue);
-    node = node->_next;
-    if (node) {
-      TRI_AppendCharStringBuffer(buffer, '.');
-    }
-  }
-
-  return buffer;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether a node is optimizable as an arithmetic operand
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -531,7 +469,7 @@ static bool QLOptimizeMemberComparison (QL_ast_node_t* node) {
   rhs = node->_rhs;
   type = node->_type;
 
-  isSameMember = (QLOptimizeGetMemberNameHash(lhs) == QLOptimizeGetMemberNameHash(rhs));
+  isSameMember = (QLAstQueryGetMemberNameHash(lhs) == QLAstQueryGetMemberNameHash(rhs));
   if (isSameMember) {
     if (type == QLNodeBinaryOperatorIdentical || 
         type == QLNodeBinaryOperatorEqual || 
@@ -1386,7 +1324,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (QL_ast_node_t* memberNode,
   QL_javascript_conversion_t* documentJs;
 
   // get the field name 
-  name = QLOptimizeGetMemberNameString(memberNode, false);
+  name = QLAstQueryGetMemberNameString(memberNode, false);
   if (!name) {
     return NULL;
   }
@@ -1429,7 +1367,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (QL_ast_node_t* memberNode,
   lhs = memberNode->_lhs;
   range->_collection = TRI_DuplicateString(lhs->_value._stringValue);
   range->_field      = TRI_DuplicateString(name->_buffer);
-  range->_hash       = QLOptimizeGetMemberNameHash(memberNode);
+  range->_hash       = QLAstQueryGetMemberNameHash(memberNode);
 
   // we can now free the temporary name buffer
   TRI_FreeStringBuffer(name);
@@ -1441,7 +1379,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (QL_ast_node_t* memberNode,
     if (range->_valueType == RANGE_TYPE_FIELD) {
       range->_refValue._collection = TRI_DuplicateString(
         ((QL_ast_node_t*) valueNode->_lhs)->_value._stringValue);
-      name = QLOptimizeGetMemberNameString(valueNode, false);
+      name = QLAstQueryGetMemberNameString(valueNode, false);
       if (name) {
         range->_refValue._field = TRI_DuplicateString(name->_buffer);
         TRI_FreeStringBuffer(name);

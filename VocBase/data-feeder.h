@@ -41,6 +41,10 @@
 extern "C" {
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     documentation
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @page IndexUsage Index usage
 /// 
@@ -168,7 +172,8 @@ TRI_index_access_type_e;
 typedef enum {
   FEEDER_TABLE_SCAN      = 1,
   FEEDER_PRIMARY_LOOKUP  = 2,
-  FEEDER_HASH_LOOKUP     = 3
+  FEEDER_HASH_LOOKUP     = 3,
+  FEEDER_GEO_LOOKUP      = 4
 }
 TRI_data_feeder_type_e;
 
@@ -327,6 +332,32 @@ TRI_data_feeder_hash_lookup_t;
 TRI_data_feeder_t* TRI_CreateDataFeederHashLookup (const TRI_doc_collection_t*,
                                                    TRI_join_t*,
                                                    size_t);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                         geo index
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internals/guts of geo index data feeder
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_data_feeder_geo_lookup_s {
+  bool _isEmpty;
+  TRI_index_t* _index;
+  QL_ast_query_geo_restriction_t* _restriction;
+  GeoCoordinates* _coordinates;
+  size_t _position;
+}
+TRI_data_feeder_geo_lookup_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Create a new data feeder (geo index lookup)
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_data_feeder_t* TRI_CreateDataFeederGeoLookup (const TRI_doc_collection_t*,
+                                                  TRI_join_t*,
+                                                  size_t,
+                                                  QL_ast_query_geo_restriction_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

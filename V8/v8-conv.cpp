@@ -496,7 +496,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
       continue;
     }
 
-    if (TRI_EqualString(*keyStr, "_id")) {
+    if ((*keyStr)[0] == '_') {
       --p;
       continue;
     }

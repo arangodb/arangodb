@@ -25,15 +25,12 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "QL/error.h"
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup QL
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get label/translation for an error code
@@ -59,17 +56,18 @@ char* QLErrorGetLabel (const QL_error_type_e errorCode) {
       return "collection alias '%s' is declared multiple times in the same query";
     case ERR_COLLECTION_ALIAS_UNDECLARED:
       return "collection alias '%s' is used but was not declared in the from clause";
+    case ERR_GEO_RESTRICTION_INVALID:
+      return "geo restriction for alias '%s' is invalid";
     default:     
       return "unknown error";
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a formatted error message with wildcards replaced
 ////////////////////////////////////////////////////////////////////////////////
 
-char* QLErrorFormat(const QL_error_type_e errorCode, va_list args) {
+char* QLErrorFormat (const QL_error_type_e errorCode, va_list args) {
   char buffer[1024];
   char *format;
 

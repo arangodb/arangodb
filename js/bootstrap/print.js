@@ -44,7 +44,7 @@ var internal = require("internal");
 /// Only available in shell mode.
 ///
 /// Prints the arguments. If an argument is an object having a
-/// function @FN{PRINT}, then this function is called. Otherwise @FN{toJson} is
+/// function @FN{_PRINT}, then this function is called. Otherwise @FN{toJson} is
 /// used.  A final newline is printed
 ///
 /// @verbinclude fluent40
@@ -86,8 +86,8 @@ function PRINT (value, seen, path, names) {
     }
 
     if (value instanceof Object) {
-      if ('PRINT' in value) {
-        value.PRINT(seen, path, names);
+      if ('_PRINT' in value) {
+        value._PRINT(seen, path, names);
       }
       else if (value.__proto__ === Object.prototype) {
         PRINT_OBJECT(value, seen, path, names);
@@ -125,7 +125,7 @@ function PRINT (value, seen, path, names) {
 /// @brief JSON representation of an array
 ////////////////////////////////////////////////////////////////////////////////
 
-Array.prototype.PRINT = function(seen, path, names) {
+Array.prototype._PRINT = function(seen, path, names) {
   if (this.length == 0) {
     internal.output("[ ]");
   }
@@ -161,7 +161,7 @@ Array.prototype.PRINT = function(seen, path, names) {
 /// @brief prints a function
 ////////////////////////////////////////////////////////////////////////////////
 
-Function.prototype.PRINT = function() {
+Function.prototype._PRINT = function() {
   internal.output(this.toString());
 }
 

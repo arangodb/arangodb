@@ -31,10 +31,12 @@
 #include <inttypes.h>
 
 #include <BasicsC/common.h>
+#include <BasicsC/conversions.h>
 #include <BasicsC/vector.h>
 #include <BasicsC/associative.h>
 #include <BasicsC/hashes.h>
 #include <BasicsC/strings.h>
+#include <BasicsC/string-buffer.h>
 
 #include "QL/ast-node.h"
 #include "VocBase/vocbase.h"
@@ -151,6 +153,49 @@ typedef struct QL_ast_query_limit_s {
 QL_ast_query_limit_t;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Geo restriction types
+////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+  RESTRICT_WITHIN = 1,
+  RESTRICT_NEAR   = 2
+}
+QL_ast_query_geo_restriction_e;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief single geo restriction 
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct QL_ast_query_geo_restriction_s {
+  char* _alias;
+  QL_ast_query_geo_restriction_e _type;
+  struct {
+    char* _collection;
+    char* _field;
+  } _compareLat;
+  struct {
+    char* _collection;
+    char* _field;
+  } _compareLon;
+  double _lat;
+  double _lon;
+  union {
+    double _radius;
+    size_t _numDocuments;
+  } _arg;
+}
+QL_ast_query_geo_restriction_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Geo restrictions of a query
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct QL_ast_query_geo_s {
+  TRI_associative_pointer_t _restrictions;
+} 
+QL_ast_query_geo_t;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Query declaration
 ///
 /// A query consists of multiple parts, e.g. the selection part, the from part
@@ -168,6 +213,7 @@ typedef struct QL_ast_query_s {
   QL_ast_query_where_t   _where;
   QL_ast_query_order_t   _order;
   QL_ast_query_limit_t   _limit;
+  QL_ast_query_geo_t     _geo;
   const TRI_vocbase_t*   _vocbase;
 } 
 QL_ast_query_t;
@@ -177,11 +223,12 @@ QL_ast_query_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct QL_ast_query_collection_s {
-  char*  _name;
-  char*  _alias;
-  bool   _isPrimary;
-  size_t _refCount;
-  size_t _declarationOrder;
+  char*                           _name;
+  char*                           _alias;
+  bool                            _isPrimary;
+  size_t                          _refCount;
+  size_t                          _declarationOrder;
+  QL_ast_query_geo_restriction_t* _restriction;
 } 
 QL_ast_query_collection_t;
 
@@ -239,6 +286,44 @@ bool QLAstQueryAddCollection (QL_ast_query_t*, const char*, const char*);
 ////////////////////////////////////////////////////////////////////////////////
 
 char* QLAstQueryGetPrimaryAlias (const QL_ast_query_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a geo restriction prototype
+////////////////////////////////////////////////////////////////////////////////
+
+QL_ast_query_geo_restriction_t* QLAstQueryCreateRestriction (void);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone a geo restriction 
+////////////////////////////////////////////////////////////////////////////////
+
+QL_ast_query_geo_restriction_t* QLAstQueryCloneRestriction (const QL_ast_query_geo_restriction_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free a geo restriction 
+////////////////////////////////////////////////////////////////////////////////
+      
+void QLAstQueryFreeRestriction (QL_ast_query_geo_restriction_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a geo restriction 
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLAstQueryAddGeoRestriction (QL_ast_query_t*, 
+                                  const QL_ast_node_t*, 
+                                  const QL_ast_node_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Create a string from a member name
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_string_buffer_t* QLAstQueryGetMemberNameString (QL_ast_node_t*, bool); 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Hash a member name for comparisons
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t QLAstQueryGetMemberNameHash (QL_ast_node_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
