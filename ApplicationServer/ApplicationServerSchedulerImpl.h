@@ -30,7 +30,7 @@
 
 #include "ApplicationServer/ApplicationServerImpl.h"
 
-#include <Basics/ConditionVariable.h>
+#include "Basics/ConditionVariable.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page CommandLineSchedulerTOC

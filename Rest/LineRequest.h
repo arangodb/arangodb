@@ -35,8 +35,6 @@
 #include <Basics/StringBuffer.h>
 #include <Basics/StringUtils.h>
 
-using namespace triagens::basics;
-
 namespace triagens {
   namespace rest {
 

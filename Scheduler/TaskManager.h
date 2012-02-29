@@ -36,6 +36,7 @@
 namespace triagens {
   namespace rest {
     class Task;
+    class Scheduler;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @ingroup Scheduler
