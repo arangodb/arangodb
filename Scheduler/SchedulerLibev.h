@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_FYN_SCHEDULER_SCHEDULER_LIBEV_H
 #define TRIAGENS_FYN_SCHEDULER_SCHEDULER_LIBEV_H 1
 
-#include "Scheduler/SchedulerImpl.h"
+#include "Scheduler/Scheduler.h"
 
 #include <Basics/Mutex.h>
 
@@ -40,7 +40,7 @@ namespace triagens {
     /// @brief input-output scheduler using libev
     ////////////////////////////////////////////////////////////////////////////////
 
-    class SchedulerLibev : public SchedulerImpl {
+    class SchedulerLibev : public Scheduler {
       public:
 
         ////////////////////////////////////////////////////////////////////////////////

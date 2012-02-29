@@ -27,9 +27,8 @@
 
 #include "ApplicationServerSchedulerImpl.h"
 
-#include <Basics/Exceptions.h>
-#include <Logger/Logger.h>
-
+#include "Basics/Exceptions.h"
+#include "Logger/Logger.h"
 #include "Scheduler/PeriodicTask.h"
 #include "Scheduler/SchedulerLibev.h"
 #include "Scheduler/SignalTask.h"
@@ -48,7 +47,7 @@ namespace {
   /// @brief handles control-c
   ////////////////////////////////////////////////////////////////////////////////
 
-  class ControlCTask : public SignalTask {
+  class ControlCTask : public rest::SignalTask {
     public:
       ControlCTask (ApplicationServer* server)
         : Task("Control-C"), SignalTask(), server(server) {
