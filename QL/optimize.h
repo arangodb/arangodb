@@ -224,7 +224,8 @@ TRI_vector_pointer_t* QLOptimizeCondition (TRI_query_node_t*);
 /// @brief get the type of a query's SELECT part
 ////////////////////////////////////////////////////////////////////////////////
 
-QL_ast_query_select_type_e QLOptimizeGetSelectType (const QL_ast_query_t* const);
+QL_ast_query_select_type_e QLOptimizeGetSelectType (const TRI_query_node_t* const,
+                                                    const char*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the type of a query's WHERE/ON condition

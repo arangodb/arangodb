@@ -31,11 +31,11 @@
 #include "VocBase/vocbase.h"
 
 #include "ShapedJson/shaped-json.h"
-#include "V8/v8-c-utils.h"
+//#include "V8/v8-c-utils.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/index.h"
 #include "VocBase/join.h"
-#include "VocBase/join-execute.h"
+//#include "VocBase/join-execute.h"
 #include "VocBase/where.h"
 #include "VocBase/order.h"
 
@@ -821,11 +821,13 @@ TRI_query_t* TRI_CreateHashQuery (const TRI_qry_where_t*, TRI_doc_collection_t*)
 
 TRI_query_t* TRI_CreateSkiplistQuery (const TRI_qry_where_t*, TRI_doc_collection_t*);
 
-TRI_query_t* TRI_CreateQuery (TRI_vocbase_t* vocBase,
-                              TRI_qry_select_t* selectStmt,
-                              TRI_qry_where_t* whereStmt,
-                              TRI_qry_order_t* orderStmt,
-                              TRI_select_join_t* joins);
+TRI_query_t* TRI_CreateQuery (TRI_vocbase_t*,
+                              TRI_qry_select_t*,
+                              TRI_qry_where_t*,
+                              TRI_qry_order_t*,
+                              TRI_select_join_t*,
+                              TRI_voc_size_t,
+                              TRI_voc_ssize_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees a query

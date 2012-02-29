@@ -28,6 +28,7 @@
 #include "VocBase/data-feeder.h"
 #include "VocBase/join.h"
 #include "V8/v8-c-utils.h"
+#include "QL/optimize.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocBase

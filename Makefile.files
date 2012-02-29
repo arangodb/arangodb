@@ -89,7 +89,6 @@ avocado_SOURCES = \
 	Logger/LoggerStream.cpp \
 	Logger/LoggerTiming.cpp \
 	ProgramOptions/program-options.c \
-	QL/ParserWrapper.cpp \
 	QL/ast-query.c \
 	QL/formatter.c \
 	QL/optimize.c \
