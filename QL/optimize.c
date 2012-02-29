@@ -193,8 +193,8 @@ static void QLOptimizeMakeValueBool (TRI_query_node_t* node,
                                      const bool value) {
   node->_type               = TRI_QueryNodeValueBool;
   node->_value._boolValue   = value;
-  node->_lhs                = 0;
-  node->_rhs                = 0;
+  node->_lhs                = NULL;
+  node->_rhs                = NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -205,8 +205,8 @@ static void QLOptimizeMakeValueNumberDouble (TRI_query_node_t* node,
                                              const double value) {
   node->_type               = TRI_QueryNodeValueNumberDouble;
   node->_value._doubleValue = value;
-  node->_lhs                = 0;
-  node->_rhs                = 0;
+  node->_lhs                = NULL;
+  node->_rhs                = NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1478,12 +1478,12 @@ TRI_vector_pointer_t* QLOptimizeCondition (TRI_query_node_t* node) {
   TRI_vector_pointer_t* combinedRanges;
   TRI_query_node_type_e type;
 
-  if (node == 0) {
-    return 0;
+  if (!node) {
+    return NULL;
   }
 
   if (TRI_QueryNodeIsValueNode(node)) {
-    return 0;
+    return NULL;
   }
 
   type = node->_type;
@@ -1558,25 +1558,23 @@ TRI_vector_pointer_t* QLOptimizeCondition (TRI_query_node_t* node) {
     }
   }
 
-  return 0;
+  return NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the type of a query's SELECT part
 ////////////////////////////////////////////////////////////////////////////////
 
-QL_ast_query_select_type_e QLOptimizeGetSelectType (const QL_ast_query_t* const query) {
-  char* alias;
-  TRI_query_node_t* selectNode = query->_select._base;
-
+QL_ast_query_select_type_e QLOptimizeGetSelectType (const TRI_query_node_t* const selectNode, 
+                                                    const char* primaryAlias) {
   if (!selectNode) {
     return QLQuerySelectTypeUndefined; 
   }
 
-  if (selectNode->_type == TRI_QueryNodeValueIdentifier && selectNode->_value._stringValue != 0) {
-    alias = QLAstQueryGetPrimaryAlias(query);
+  if (selectNode->_type == TRI_QueryNodeValueIdentifier && 
+      selectNode->_value._stringValue) {
 
-    if (alias && strcmp(alias, selectNode->_value._stringValue) == 0) {
+    if (primaryAlias && strcmp(primaryAlias, selectNode->_value._stringValue) == 0) {
       // primary document alias specified as (only) SELECT part
       return QLQuerySelectTypeSimple;
     }

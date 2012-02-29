@@ -33,17 +33,17 @@
 #include "BasicsC/json.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
-#include "QL/ParserWrapper.h"
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "VocBase/query.h"
+#include "VocBase/query-base.h"
+#include "VocBase/query-parse.h"
 #include "VocBase/simple-collection.h"
 
 using namespace std;
 using namespace triagens::basics;
-using namespace triagens::avocado;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private constants
@@ -115,10 +115,16 @@ static int32_t const WRP_QRY_WHERE_TYPE = 3;
 static int32_t const WRP_RC_CURSOR_TYPE = 4;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief wrapped class for TRI_query_instance_t
+////////////////////////////////////////////////////////////////////////////////
+
+static int32_t const WRP_QUERY_INSTANCE_TYPE = 5;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapped class for TRI_query_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static int32_t const WRP_QUERY_TYPE = 5;
+static int32_t const WRP_QUERY_TYPE = 6;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapped class for TRI_shaped_json_t
@@ -129,7 +135,7 @@ static int32_t const WRP_QUERY_TYPE = 5;
 /// - SLOT_BARRIER
 ////////////////////////////////////////////////////////////////////////////////
 
-static int32_t const WRP_SHAPED_JSON_TYPE = 6;
+static int32_t const WRP_SHAPED_JSON_TYPE = 7;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -529,7 +535,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief weak reference callback for queries
+/// @brief weak reference callback for query
 ////////////////////////////////////////////////////////////////////////////////
 
 static void WeakQueryCallback (v8::Persistent<v8::Value> object, void* parameter) {
@@ -549,7 +555,7 @@ static void WeakQueryCallback (v8::Persistent<v8::Value> object, void* parameter
   persistent.Dispose();
   persistent.Clear();
 
-  // and free the result set
+  // and free the instance
   TRI_FreeQuery(query);
 }
 
@@ -559,7 +565,7 @@ static void WeakQueryCallback (v8::Persistent<v8::Value> object, void* parameter
 
 static v8::Handle<v8::Object> WrapQuery (TRI_query_t* query) {
   TRI_v8_global_t* v8g;
-
+  
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> queryObject = v8g->QueryTempl->NewInstance();
@@ -584,6 +590,61 @@ static v8::Handle<v8::Object> WrapQuery (TRI_query_t* query) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief weak reference callback for query instances
+////////////////////////////////////////////////////////////////////////////////
+
+static void WeakQueryInstanceCallback (v8::Persistent<v8::Value> object, void* parameter) {
+  TRI_query_instance_t* instance;
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  instance = (TRI_query_instance_t*) parameter;
+
+  LOG_TRACE("weak-callback for query instance called");
+
+  // find the persistent handle
+  v8::Persistent<v8::Value> persistent = v8g->JSQueryInstances[instance];
+  v8g->JSQueryInstances.erase(instance);
+
+  // dispose and clear the persistent handle
+  persistent.Dispose();
+  persistent.Clear();
+
+  // and free the instance
+  TRI_FreeQueryInstance(instance);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stores a query instance in a javascript object
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Object> WrapQueryInstance (TRI_query_instance_t* instance) {
+  TRI_v8_global_t* v8g;
+  
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  v8::Handle<v8::Object> queryInstance = v8g->QueryInstanceTempl->NewInstance();
+  map< void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSQueryInstances.find(instance);
+
+  if (i == v8g->JSQueryInstances.end()) {
+    v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(instance));
+
+    queryInstance->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_QUERY_INSTANCE_TYPE));
+    queryInstance->SetInternalField(SLOT_CLASS, persistent);
+
+    v8g->JSQueryInstances[instance] = persistent;
+
+    persistent.MakeWeak(instance, WeakQueryInstanceCallback);
+  }
+  else {
+    queryInstance->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_QUERY_INSTANCE_TYPE));
+    queryInstance->SetInternalField(SLOT_CLASS, i->second);
+  }
+
+  return queryInstance;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Create a query error in a javascript object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -604,21 +665,18 @@ static v8::Handle<v8::Object> CreateQueryErrorObject (TRI_query_error_t* error) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a query or uses existing result set
+/// @brief executes a query or uses existing result set - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_rc_cursor_t* ExecuteQuery (v8::Handle<v8::Object> queryObject,
                                       v8::Handle<v8::Value>* err) {
   v8::TryCatch tryCatch;
 
-  
   TRI_query_t* query = UnwrapClass<TRI_query_t>(queryObject, WRP_QUERY_TYPE);
-  
   if (query == 0) {
     *err = v8::String::New("corrupted query");
     return 0;
   }
-
   
   LOG_TRACE("executing query");
 
@@ -635,10 +693,57 @@ static TRI_rc_cursor_t* ExecuteQuery (v8::Handle<v8::Object> queryObject,
     return 0;
   }
 
-  printf("%s:%d\n",__FILE__,__LINE__);
   TRI_rc_cursor_t* cursor = TRI_ExecuteQueryAql(query, context);
-  printf("%s:%d\n",__FILE__,__LINE__);
   if (cursor == 0) {
+    TRI_FreeContextQuery(context);
+
+    if (tryCatch.HasCaught()) {
+      *err = tryCatch.Exception();
+    }
+    else {
+      *err = v8::String::New("cannot execute query");
+    }
+
+    return 0;
+  }
+
+  return cursor;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a query instance or uses existing result set
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_rc_cursor_t* ExecuteQueryInstance (v8::Handle<v8::Object> queryObject,
+                                              v8::Handle<v8::Value>* err) {
+  v8::TryCatch tryCatch;
+
+  TRI_query_instance_t* instance = UnwrapClass<TRI_query_instance_t>(queryObject, WRP_QUERY_INSTANCE_TYPE);
+  
+  if (!instance) {
+    *err = v8::String::New("corrupted query instance");
+    return 0;
+  }
+  
+  TRI_query_t* query = instance->_query;
+
+  LOG_TRACE("executing query");
+
+  TRI_rc_context_t* context = TRI_CreateContextQuery(query);
+
+  if (!context) {
+    if (tryCatch.HasCaught()) {
+      *err = tryCatch.Exception();
+    }
+    else {
+      *err = v8::String::New("cannot create query context");
+    }
+
+    return 0;
+  }
+
+  TRI_rc_cursor_t* cursor = TRI_ExecuteQueryAql(query, context);
+  if (!cursor) {
     TRI_FreeContextQuery(context);
 
     if (tryCatch.HasCaught()) {
@@ -718,7 +823,7 @@ static TRI_rc_cursor_t* UnwrapCursor (v8::Handle<v8::Object> cursorObject) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief weak reference callback for wheres
+/// @brief weak reference callback for wheres - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static void WeakWhereCallback (v8::Persistent<v8::Value> object, void* parameter) {
@@ -743,7 +848,7 @@ static void WeakWhereCallback (v8::Persistent<v8::Value> object, void* parameter
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stores a where clause in a javascript object
+/// @brief stores a where clause in a javascript object - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Object> WrapWhere (TRI_qry_where_t* where) {
@@ -1238,7 +1343,7 @@ static v8::Handle<v8::Value> JS_PrepareAql (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 2) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_PREPARE(<db>, <query>)")));
+    return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_PREPARE(<db>, <querystring>)")));
   }
 
   v8::Handle<v8::Object> dbArg = argv[0]->ToObject();
@@ -1251,7 +1356,7 @@ static v8::Handle<v8::Value> JS_PrepareAql (v8::Arguments const& argv) {
   // get the query string
   v8::Handle<v8::Value> queryArg = argv[1];
   if (!queryArg->IsString()) {
-    return scope.Close(v8::ThrowException(v8::String::New("expecting string for <query>")));
+    return scope.Close(v8::ThrowException(v8::String::New("expecting string for <querystring>")));
   }
 
   string queryString = TRI_ObjectToString(queryArg);
@@ -1263,8 +1368,11 @@ static v8::Handle<v8::Value> JS_PrepareAql (v8::Arguments const& argv) {
     if (ok) {
       TRI_query_instance_t* instance = TRI_CreateQueryInstance(template_);
       if (instance) {
+        return scope.Close(WrapQueryInstance(instance));
       }
-      TRI_FreeQueryInstance(instance);
+      else {
+        TRI_FreeQueryTemplate(template_);
+      }
     }
     else {
       v8::Handle<v8::Object> errorObject = CreateQueryErrorObject(&template_->_error);
@@ -1272,39 +1380,12 @@ static v8::Handle<v8::Value> JS_PrepareAql (v8::Arguments const& argv) {
       return scope.Close(errorObject);
     }
   }
-  //return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
-
-  ParserWrapper parser = ParserWrapper(vocbase, queryString.c_str());
-  if (!parser.parse()) {
-    // error object will be freed by parser destructor
-    ParseError* error = parser.getParseError();
-    if (error) {
-      return scope.Close(v8::ThrowException(v8::String::New(error->getDescription().c_str())));
-    }
-    return scope.Close(v8::ThrowException(v8::String::New("got an unknown error from the parser")));
-  }
-
-  // create the query
-  TRI_query_t* query  = TRI_CreateQuery(vocbase,
-                                        parser.getSelect(),
-                                        parser.getWhere(),
-                                        parser.getOrder(),
-                                        parser.getJoins());
-
-  if (!query) {
-    return scope.Close(v8::ThrowException(v8::String::New("could not create query")));
-  }
-
-  query->_skip        = parser.getSkip();
-  query->_limit       = parser.getLimit();
-
-  // wrap it up
-  return scope.Close(WrapQuery(query));
+  return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new constant where clause using a boolean
+/// @brief constructs a new constant where clause using a boolean - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_WhereBooleanAql (v8::Arguments const& argv) {
@@ -1325,7 +1406,7 @@ static v8::Handle<v8::Value> JS_WhereBooleanAql (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new where clause from JavaScript
+/// @brief constructs a new where clause from JavaScript - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_WhereGeneralAql (v8::Arguments const& argv) {
@@ -1352,7 +1433,7 @@ static v8::Handle<v8::Value> JS_WhereGeneralAql (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new constant where clause for primary index
+/// @brief constructs a new constant where clause for primary index - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_WherePrimaryConstAql (v8::Arguments const& argv) {
@@ -1413,6 +1494,9 @@ static TRI_json_t* ConvertHelper(v8::Handle<v8::Value> parameter) {
   return NULL;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_WhereHashConstAql (const v8::Arguments& argv) {
   v8::HandleScope scope;
@@ -1486,6 +1570,9 @@ static v8::Handle<v8::Value> JS_WhereHashConstAql (const v8::Arguments& argv) {
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_WhereSkiplistConstAql (const v8::Arguments& argv) {
   v8::HandleScope scope;
@@ -1537,7 +1624,7 @@ static v8::Handle<v8::Value> JS_WhereSkiplistConstAql (const v8::Arguments& argv
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new constant where clause for geo index
+/// @brief constructs a new constant where clause for geo index - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_WhereWithinConstAql (v8::Arguments const& argv) {
@@ -1579,7 +1666,7 @@ static v8::Handle<v8::Value> JS_WhereWithinConstAql (v8::Arguments const& argv) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new query from given parts
+/// @brief constructs a new query from given parts - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_HashSelectAql (v8::Arguments const& argv) {
@@ -1632,9 +1719,11 @@ static v8::Handle<v8::Value> JS_HashSelectAql (v8::Arguments const& argv) {
   // wrap it up
   // ...........................................................................
   return scope.Close(WrapQuery(query));
-  
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new query from given parts - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_SkiplistSelectAql (v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -1690,6 +1779,9 @@ static v8::Handle<v8::Value> JS_SkiplistSelectAql (v8::Arguments const& argv) {
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a select query - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_SelectAql (v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -1768,22 +1860,21 @@ static v8::Handle<v8::Value> JS_SelectAql (v8::Arguments const& argv) {
                                        select,
                                        NULL,
                                        NULL, 
-                                       join); 
+                                       join,
+                                       skip,
+                                       limit); 
 
   if (!query) {
     select->free(select);
     return scope.Close(v8::ThrowException(v8::String::New("could not create query object")));
   }
 
-  query->_skip = skip;
-  query->_limit = limit;
-
   // wrap it up
   return scope.Close(WrapQuery(query));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a query
+/// @brief executes a query - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
@@ -1791,6 +1882,23 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
 
   v8::Handle<v8::Value> err;
   TRI_rc_cursor_t* cursor = ExecuteQuery(argv.Holder(), &err);
+
+  if (cursor == 0) {
+    return v8::ThrowException(err);
+  }
+
+  return scope.Close(WrapCursor(cursor));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a query instance
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ExecuteQueryInstance (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  v8::Handle<v8::Value> err;
+  TRI_rc_cursor_t* cursor = ExecuteQueryInstance(argv.Holder(), &err);
 
   if (cursor == 0) {
     return v8::ThrowException(err);
@@ -4291,6 +4399,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   context->Global()->Set(v8::String::New("AvocadoEdgesCollection"),
                          ft->GetFunction());
 
+/* DEPRECATED */
   // .............................................................................
   // generate the where clause template
   // .............................................................................
@@ -4324,6 +4433,25 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   // must come after SetInternalFieldCount
   context->Global()->Set(v8::String::New("AvocadoQuery"),
                          ft->GetFunction());
+/* DEPRECATED END */
+  
+  // .............................................................................
+  // generate the query instance template
+  // .............................................................................
+
+  ft = v8::FunctionTemplate::New();
+  ft->SetClassName(v8::String::New("AvocadoQueryInstance"));
+
+  rt = ft->InstanceTemplate();
+  rt->SetInternalFieldCount(2);
+
+  rt->Set(ExecuteFuncName, v8::FunctionTemplate::New(JS_ExecuteQueryInstance));
+
+  v8g->QueryInstanceTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+
+  // must come after SetInternalFieldCount
+  context->Global()->Set(v8::String::New("AvocadoQueryInstance"),
+                         ft->GetFunction());
 
   // .............................................................................
   // generate the query error template
@@ -4334,8 +4462,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
 
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(2);
-
- // rt->Set(ExecuteFuncName, v8::FunctionTemplate::New(JS_ExecuteAql));
 
   v8g->QueryErrorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
@@ -4369,6 +4495,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   // create the global functions
   // .............................................................................
 
+/* DEPRECATED */
   context->Global()->Set(v8::String::New("AQL_WHERE_BOOLEAN"),
                          v8::FunctionTemplate::New(JS_WhereBooleanAql)->GetFunction(),
                          v8::ReadOnly);
@@ -4404,7 +4531,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   context->Global()->Set(v8::String::New("AQL_SL_SELECT"),
                          v8::FunctionTemplate::New(JS_SkiplistSelectAql)->GetFunction(),
                          v8::ReadOnly);
-
+/* DEPRECATED END */
   context->Global()->Set(v8::String::New("AQL_PREPARE"),
                          v8::FunctionTemplate::New(JS_PrepareAql)->GetFunction(),
                          v8::ReadOnly);

@@ -39,12 +39,10 @@
 #include <BasicsC/string-buffer.h>
 
 #include "VocBase/query-node.h"
-#include "VocBase/vocbase.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup QL
@@ -106,6 +104,7 @@ QL_ast_query_order_type_e;
 
 typedef struct QL_ast_query_select_s {
   TRI_query_node_t* _base;
+  QL_ast_query_select_type_e _type;
 } 
 QL_ast_query_select_t;
 
@@ -125,7 +124,7 @@ QL_ast_query_from_t;
 
 typedef struct QL_ast_query_where_s {
   TRI_query_node_t* _base;
-  QL_ast_query_where_type_e  _type;
+  QL_ast_query_where_type_e _type;
 } 
 QL_ast_query_where_t;
 
@@ -135,6 +134,7 @@ QL_ast_query_where_t;
 
 typedef struct QL_ast_query_order_s {
   TRI_query_node_t* _base;
+  QL_ast_query_order_type_e _type;
 } 
 QL_ast_query_order_t;
 
@@ -212,7 +212,6 @@ typedef struct QL_ast_query_s {
   QL_ast_query_order_t   _order;
   QL_ast_query_limit_t   _limit;
   QL_ast_query_geo_t     _geo;
-  const TRI_vocbase_t*   _vocbase;
 } 
 QL_ast_query_t;
 
@@ -234,7 +233,7 @@ QL_ast_query_collection_t;
 /// @brief Initialize data structures for a query
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLAstQueryInit (const TRI_vocbase_t*, QL_ast_query_t*);
+void QLAstQueryInit (QL_ast_query_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief De-allocate data structures for a query

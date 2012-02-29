@@ -31,6 +31,7 @@
 #include "BasicsC/string-buffer.h"
 #include <BasicsC/strings.h>
 #include "VocBase/simple-collection.h"
+#include "VocBase/join-execute.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   SELECT DOCUMENT
@@ -538,8 +539,6 @@ TRI_qry_where_t* TRI_CreateQueryWhereBoolean (bool where) {
   result->base.base.clone = CloneQueryWhereBoolean;
   result->base.base.free = FreeQueryWhereBoolean;
 
-  //result->base.checkCondition = NULL;
-
   result->_value = where;
 
   return &result->base.base;
@@ -984,7 +983,9 @@ TRI_query_t* TRI_CreateQuery (TRI_vocbase_t* vocbase,
                               TRI_qry_select_t* selectStmt,
                               TRI_qry_where_t* whereStmt,
                               TRI_qry_order_t* orderStmt,
-                              TRI_select_join_t* joins) {
+                              TRI_select_join_t* joins,
+                              TRI_voc_size_t skip,
+                              TRI_voc_ssize_t limit) {
   TRI_query_t* query;
 
   query = TRI_Allocate(sizeof(TRI_query_t));
@@ -997,8 +998,8 @@ TRI_query_t* TRI_CreateQuery (TRI_vocbase_t* vocbase,
   query->_where = whereStmt;
   query->_order = orderStmt;
   query->_joins = joins;
-  query->_skip = TRI_QRY_NO_SKIP;
-  query->_limit = TRI_QRY_NO_LIMIT;
+  query->_skip = skip;
+  query->_limit = limit;
 
   if (!InitCollectionsQuery(query)) {
     TRI_FreeQuery(query);

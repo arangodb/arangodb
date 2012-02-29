@@ -35,7 +35,7 @@
 #include "VocBase/simple-collection.h"
 #include "VocBase/result.h"
 #include "VocBase/context.h"
-#include "QL/optimize.h"
+#include "QL/ast-query.h"
 
 #ifdef __cplusplus
 extern "C" {

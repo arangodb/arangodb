@@ -56,11 +56,47 @@ function print () {
       internal.output(" ");
     }
 
-    PRINT(arguments[i], [], "~", []);
+    if (typeof(arguments[i]) === "string") {
+      internal.output(arguments[i]);      
+    } 
+    else {
+      PRINT(arguments[i], [], "~", []);
+    }
   }
 
   internal.output("\n");
 }
+
+var characterQuoteCache = {
+  '\b': '\\b', // ASCII 8, Backspace
+  '\t': '\\t', // ASCII 9, Tab
+  '\n': '\\n', // ASCII 10, Newline
+  '\f': '\\f', // ASCII 12, Formfeed
+  '\r': '\\r', // ASCII 13, Carriage Return
+  '\"': '\\"',
+  '\\': '\\\\'
+};
+
+function QuoteSingleJSONCharacter(c) {
+  if (c in characterQuoteCache) {
+    return characterQuoteCache[c];
+  }
+  var charCode = c.charCodeAt(0);
+  var result;
+  if (charCode < 16) result = '\\u000';
+  else if (charCode < 256) result = '\\u00';
+  else if (charCode < 4096) result = '\\u0';
+  else result = '\\u';
+  result += charCode.toString(16);
+  characterQuoteCache[c] = result;
+  return result;
+}
+
+function QuoteJSONString(str) {
+ var quotable = /[\\\"\x00-\x1f]/g;
+ return '"' + str.replace(quotable, QuoteSingleJSONCharacter) + '"';
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints objects to standard output without a new-line
@@ -103,7 +139,12 @@ function PRINT (value, seen, path, names) {
       internal.output("undefined");
     }
     else {
-      internal.output("" + value);
+      if (typeof(value) === "string") {
+        internal.output(QuoteJSONString(value));
+      } 
+      else {
+        internal.output("" + value);        
+      }
     }
   }
 }
@@ -191,7 +232,7 @@ function PRINT_OBJECT (object, seen, path, names) {
     if (object.hasOwnProperty(k)) {
       var val = object[k];
 
-      internal.output(sep, k, " : ");
+      internal.output(sep, QuoteJSONString(k), " : ");
       PRINT(val, seen, path + "[" + k + "]", names);
       sep = ", ";
     }

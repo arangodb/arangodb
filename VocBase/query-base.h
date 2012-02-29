@@ -35,6 +35,7 @@
 #include <BasicsC/hashes.h>
 #include <BasicsC/json.h>
 
+#include "VocBase/query.h"
 #include "VocBase/query-node.h"
 #include "VocBase/query-error.h"
 #include "VocBase/vocbase.h"
@@ -188,6 +189,8 @@ typedef struct TRI_query_instance_s {
   bool                       _doAbort;
   TRI_query_error_t          _error;
   TRI_associative_pointer_t  _bindParameters;
+
+  TRI_query_t*               _query;
 }
 TRI_query_instance_t;
 

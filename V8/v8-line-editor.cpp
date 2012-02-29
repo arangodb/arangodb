@@ -155,16 +155,19 @@ static char* CompletionGenerator (char const* text, int state) {
 
       for (size_t i = 0;  i < n;  ++i) {
         v8::Handle<v8::Value> v = properties->Get(i);
-        
+                  
         v8::String::Utf8Value str(v);
         char const* s = *str;
         
         if (s != 0) {
+          
+          string x = (current->Get(v)->IsFunction()) ? "()" : "";
+                  
           if (*prefix == '\0') {
-            result.push_back(path + s);
+            result.push_back(path + s + x);
           }
           else if (TRI_IsPrefixString(s, prefix)) {
-            result.push_back(path + s);
+            result.push_back(path + s + x);
           }
         }
       }

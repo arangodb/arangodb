@@ -84,15 +84,24 @@ static bool ValidateQueryTemplate (TRI_query_template_t* const template_) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool OptimizeQueryTemplate (TRI_query_template_t* const template_) {
+  char *primaryAlias = QLAstQueryGetPrimaryAlias(template_->_query);
+
   // optimize select clause
   QLOptimizeExpression(template_->_query->_select._base);
+  template_->_query->_select._type = QLOptimizeGetSelectType(template_->_query->_select._base,
+                                                             primaryAlias);
 
   // optimize where clause
   QLOptimizeExpression(template_->_query->_where._base);
+  template_->_query->_where._type = QLOptimizeGetWhereType(template_->_query->_where._base);
 
   // optimize order clause
   if (template_->_query->_order._base) {
     QLOptimizeOrder(template_->_query->_order._base);
+    template_->_query->_order._type = QLOptimizeGetOrderType(template_->_query->_order._base);
+  }
+  else {
+    template_->_query->_order._type = QLQueryOrderTypeNone;
   }
 
   // optimize joins/on clauses

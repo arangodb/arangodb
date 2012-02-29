@@ -183,9 +183,8 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Logger/LoggerData.$(OBJEXT) Logger/LoggerInfo.$(OBJEXT) \
 	Logger/LoggerStream.$(OBJEXT) Logger/LoggerTiming.$(OBJEXT) \
 	ProgramOptions/program-options.$(OBJEXT) \
-	QL/ParserWrapper.$(OBJEXT) QL/ast-query.$(OBJEXT) \
-	QL/formatter.$(OBJEXT) QL/optimize.$(OBJEXT) \
-	QL/parser.$(OBJEXT) QL/tokens.$(OBJEXT) \
+	QL/ast-query.$(OBJEXT) QL/formatter.$(OBJEXT) \
+	QL/optimize.$(OBJEXT) QL/parser.$(OBJEXT) QL/tokens.$(OBJEXT) \
 	Rest/AddressPort.$(OBJEXT) Rest/AnyServer.$(OBJEXT) \
 	Rest/HttpRequest.$(OBJEXT) Rest/HttpResponse.$(OBJEXT) \
 	Rest/Initialise.$(OBJEXT) Rest/SslInterface.$(OBJEXT) \
@@ -596,7 +595,6 @@ avocado_SOURCES = \
 	Logger/LoggerStream.cpp \
 	Logger/LoggerTiming.cpp \
 	ProgramOptions/program-options.c \
-	QL/ParserWrapper.cpp \
 	QL/ast-query.c \
 	QL/formatter.c \
 	QL/optimize.c \
@@ -1168,8 +1166,6 @@ QL/$(am__dirstamp):
 QL/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) QL/$(DEPDIR)
 	@: > QL/$(DEPDIR)/$(am__dirstamp)
-QL/ParserWrapper.$(OBJEXT): QL/$(am__dirstamp) \
-	QL/$(DEPDIR)/$(am__dirstamp)
 QL/ast-query.$(OBJEXT): QL/$(am__dirstamp) \
 	QL/$(DEPDIR)/$(am__dirstamp)
 QL/formatter.$(OBJEXT): QL/$(am__dirstamp) \
@@ -1521,7 +1517,6 @@ mostlyclean-compile:
 	-rm -f Logger/LoggerStream.$(OBJEXT)
 	-rm -f Logger/LoggerTiming.$(OBJEXT)
 	-rm -f ProgramOptions/program-options.$(OBJEXT)
-	-rm -f QL/ParserWrapper.$(OBJEXT)
 	-rm -f QL/ast-query.$(OBJEXT)
 	-rm -f QL/formatter.$(OBJEXT)
 	-rm -f QL/optimize.$(OBJEXT)
@@ -1708,7 +1703,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Logger/$(DEPDIR)/LoggerStream.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Logger/$(DEPDIR)/LoggerTiming.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ProgramOptions/$(DEPDIR)/program-options.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@QL/$(DEPDIR)/ParserWrapper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@QL/$(DEPDIR)/ast-query.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@QL/$(DEPDIR)/formatter.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@QL/$(DEPDIR)/optimize.Po@am__quote@

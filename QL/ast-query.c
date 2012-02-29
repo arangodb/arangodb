@@ -113,12 +113,11 @@ static bool EqualRestrictionKeyElement (TRI_associative_pointer_t* array,
 /// @brief Initialize data structures for a query
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLAstQueryInit (const TRI_vocbase_t* vocbase, QL_ast_query_t* query) {
-  query->_vocbase        = vocbase;
+void QLAstQueryInit (QL_ast_query_t* query) {
   query->_type           = QLQueryTypeUndefined;
-  query->_from._base     = 0;
-  query->_where._base    = 0;
-  query->_order._base    = 0;
+  query->_from._base     = NULL;
+  query->_where._base    = NULL;
+  query->_order._base    = NULL;
   query->_limit._isUsed  = false;
 
   TRI_InitAssociativePointer(&query->_from._collections,
@@ -359,7 +358,6 @@ QL_ast_query_geo_restriction_t* QLAstQueryCloneRestriction
   dest->_lat = source->_lat;
   dest->_lon = source->_lon;
   dest->_arg = source->_arg;
- printf("3\n");
 
   return dest;
 }
