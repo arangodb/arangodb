@@ -73,6 +73,8 @@ using namespace triagens::avocado;
 ///     <ol>
 ///      <li>@ref Graphs
 ///      </li>
+///      <li>@ref JSModuleGraph
+///      </li>
 ///     </ol>
 ///    </li>
 ///   </ol>

@@ -34,7 +34,7 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 ////////////////////////////////////////////////////////////////////////////////
 /// @page Graphs First Steps with Graphs
 ///
-/// Graphs consists of vertices and edges. The vertex collection contains the
+/// A Graph consists of vertices and edges. The vertex collection contains the
 /// documents forming the vertices. The edge collection contains the documents
 /// forming the edges. Together both collections form a graph. Assume that
 /// the vertex collection is called @LIT{vertices} and the edges collection
@@ -49,6 +49,10 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 ///
 /// It is, however, impossible to use different vertices with the same
 /// edges. Edges are tied to the vertices.
+///
+/// Next steps: learn more about
+///
+/// - @ref JSModuleGraph
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
