@@ -1,4 +1,4 @@
-> curl --data @- -X PUT --dump - http://localhost:8529/_document/9496015:13658604
+> curl --data @- -X PUT --dump - http://localhost:8529/collection/9496015/13658604
 { "Hallo" : "You" }
 
 HTTP/1.1 204 No Content
@@ -8,12 +8,13 @@ server: triagens GmbH High-Performance HTTP Server
 etag: "13865832"
 content-length: 0
 
-> curl -X GET --dump - http://localhost:8529/_document/9496015:13658604
+> curl -X GET --dump - http://localhost:8529/collection/9496015/13658604
 HTTP/1.1 200 OK
 content-type: application/json
 connection: Keep-Alive
 server: triagens GmbH High-Performance HTTP Server
 etag: "13865832"
-content-length: 41
 
-{"Hallo":"You","_id":"9496015:13658604"}
+{ "Hallo" : "You", 
+  "_id" : "9496015:13658604",
+  "_rev" : 13865832 }

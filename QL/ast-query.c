@@ -27,7 +27,6 @@
 
 #include "QL/ast-query.h"
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -51,8 +50,9 @@ static uint64_t HashKey (TRI_associative_pointer_t* array, void const* key) {
 /// @brief Hash function used to hash elements in the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashElement (TRI_associative_pointer_t* array, void const* element) {
-  QL_ast_query_collection_t *collection = (QL_ast_query_collection_t*) element;
+static uint64_t HashCollectionElement (TRI_associative_pointer_t* array, 
+                                       void const* element) {
+  QL_ast_query_collection_t* collection = (QL_ast_query_collection_t*) element;
 
   return TRI_FnvHashString(collection->_alias);
 }
@@ -61,11 +61,39 @@ static uint64_t HashElement (TRI_associative_pointer_t* array, void const* eleme
 /// @brief Comparison function used to determine hash key equality
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool EqualKeyElement (TRI_associative_pointer_t* array, void const* key, void const* element) {
+static bool EqualCollectionKeyElement (TRI_associative_pointer_t* array, 
+                                       void const* key, 
+                                       void const* element) {
   char const* k = (char const*) key;
-  QL_ast_query_collection_t *collection = (QL_ast_query_collection_t*) element;
+  QL_ast_query_collection_t* collection = (QL_ast_query_collection_t*) element;
 
   return TRI_EqualString(k, collection->_alias);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Hash function used to hash geo restrictions
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashRestrictionElement (TRI_associative_pointer_t* array, 
+                                        void const* element) {
+  QL_ast_query_geo_restriction_t* restriction = 
+    (QL_ast_query_geo_restriction_t*) element;
+
+  return TRI_FnvHashString(restriction->_alias);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Comparison function used to determine hash key equality
+////////////////////////////////////////////////////////////////////////////////
+
+static bool EqualRestrictionKeyElement (TRI_associative_pointer_t* array, 
+                                        void const* key, 
+                                        void const* element) {
+  char const* k = (char const*) key;
+  QL_ast_query_geo_restriction_t* restriction = 
+    (QL_ast_query_geo_restriction_t*) element;
+
+  return TRI_EqualString(k, restriction->_alias);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -86,16 +114,22 @@ static bool EqualKeyElement (TRI_associative_pointer_t* array, void const* key, 
 ////////////////////////////////////////////////////////////////////////////////
 
 void QLAstQueryInit (QL_ast_query_t* query) {
-  query->_type = QLQueryTypeUndefined;
-  query->_from._base     = 0;
-  query->_where._base    = 0;
-  query->_order._base    = 0;
+  query->_type           = QLQueryTypeUndefined;
+  query->_from._base     = NULL;
+  query->_where._base    = NULL;
+  query->_order._base    = NULL;
   query->_limit._isUsed  = false;
 
   TRI_InitAssociativePointer(&query->_from._collections,
                              HashKey,
-                             HashElement,
-                             EqualKeyElement,
+                             HashCollectionElement,
+                             EqualCollectionKeyElement,
+                             0);
+  
+  TRI_InitAssociativePointer(&query->_geo._restrictions,
+                             HashKey,
+                             HashRestrictionElement,
+                             EqualRestrictionKeyElement,
                              0);
 }
 
@@ -104,28 +138,109 @@ void QLAstQueryInit (QL_ast_query_t* query) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void QLAstQueryFree (QL_ast_query_t* query) {
+  QL_ast_query_collection_t* collection;
+  QL_ast_query_geo_restriction_t* restriction;
   size_t i; 
-  void* ptr;
 
   // destroy all elements in collection array
   for (i = 0; i < query->_from._collections._nrAlloc; i++) {
-    ptr = query->_from._collections._table[i];
-
-    if (ptr != 0) {
-      TRI_Free(ptr);
+    collection = (QL_ast_query_collection_t*) query->_from._collections._table[i];
+    if (collection) {
+      TRI_Free(collection);
     }
   }
-
-  // destroy array itself
+  // destroy collection array itself
   TRI_DestroyAssociativePointer(&query->_from._collections);
+  
+  
+  // destroy all elements in restrictions array
+  for (i = 0; i < query->_geo._restrictions._nrAlloc; i++) {
+    restriction = (QL_ast_query_geo_restriction_t*) query->_geo._restrictions._table[i];
+    if (restriction) {
+      QLAstQueryFreeRestriction(restriction);
+    }
+  }
+  // destroy restrictions array
+  TRI_DestroyAssociativePointer(&query->_geo._restrictions);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the ref count for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+size_t QLAstQueryGetRefCount (QL_ast_query_t* query, const char* alias) {
+  QL_ast_query_collection_t* collection = (QL_ast_query_collection_t*) 
+    TRI_LookupByKeyAssociativePointer(&query->_from._collections, alias);
+
+  if (collection != 0) {
+    return collection->_refCount;
+  }
+
+  // return a number > 0 if collection not found so nothing happens with it
+  return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Increment ref count for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+void QLAstQueryAddRefCount (QL_ast_query_t* query, const char* alias) {
+  QL_ast_query_collection_t* collection = (QL_ast_query_collection_t*) 
+    TRI_LookupByKeyAssociativePointer(&query->_from._collections, alias);
+
+  if (collection != 0) {
+    ++collection->_refCount;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Check if a collection was defined in a query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLAstQueryIsValidAlias (QL_ast_query_t* query, const char* alias) {
-  return (0 != TRI_LookupByKeyAssociativePointer (&query->_from._collections, alias));
+bool QLAstQueryIsValidAlias (QL_ast_query_t* query, 
+                             const char* alias, 
+                             const size_t order) {
+  if (0 != TRI_LookupByKeyAssociativePointer(&query->_from._collections, alias)) {
+    return true;
+  }
+
+  return (0 != TRI_LookupByKeyAssociativePointer(&query->_geo._restrictions, alias));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Check if a collection was defined in a query, taking order of 
+/// declaration into account
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLAstQueryIsValidAliasOrdered (QL_ast_query_t* query, 
+                                    const char* alias, 
+                                    const size_t order) {
+  QL_ast_query_collection_t* collection;
+
+  collection = (QL_ast_query_collection_t*) 
+    TRI_LookupByKeyAssociativePointer(&query->_from._collections, alias);
+
+  if (!collection) {
+    return false;
+  }
+
+  return (collection->_declarationOrder <= order);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Return the collection name for its alias
+////////////////////////////////////////////////////////////////////////////////
+
+char* QLAstQueryGetCollectionNameForAlias (QL_ast_query_t* query, 
+                                           const char* alias) {
+  QL_ast_query_collection_t* collection;
+
+  collection = (QL_ast_query_collection_t*) 
+    TRI_LookupByKeyAssociativePointer(&query->_from._collections, alias);
+  if (!collection) {
+    return NULL;
+  }
+  return collection->_name;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,48 +249,48 @@ bool QLAstQueryIsValidAlias (QL_ast_query_t* query, const char* alias) {
 
 bool QLAstQueryAddCollection (QL_ast_query_t* query, 
                               const char* name, 
-                              const char* alias, 
-                              const bool isPrimary) {
-  QL_ast_query_collection_t *collection;
-  QL_ast_query_collection_t *previous;
+                              const char* alias) { 
+  QL_ast_query_collection_t* collection;
+  void* previous;
+  size_t num;
 
-  previous =  (QL_ast_query_collection_t *) TRI_LookupByKeyAssociativePointer (&query->_from._collections, alias);
-
-  if (previous != 0) {
-    // element is already present - return an error
+  previous = (void*) TRI_LookupByKeyAssociativePointer(&query->_from._collections, 
+                                                       alias);
+  if (previous) {
+    // alias has already been declared for another collection - return an error
     return false;
   }
 
-  collection = (QL_ast_query_collection_t *) TRI_Allocate(sizeof(QL_ast_query_collection_t));
-  if (collection == 0) { 
+  previous = (void*) TRI_LookupByKeyAssociativePointer(&query->_geo._restrictions, 
+                                                       alias);
+  if (previous) {
+    // alias has already been declared for a geo restriction - return an error
     return false;
   }
 
-  collection->_name      = (char *) name;
-  collection->_alias     = (char *) alias;
-  collection->_isPrimary = isPrimary;
 
-  TRI_InsertKeyAssociativePointer(&query->_from._collections, collection->_alias, collection, true);
+  collection = (QL_ast_query_collection_t *) 
+    TRI_Allocate(sizeof(QL_ast_query_collection_t));
+  if (!collection) { 
+    return false;
+  }
+
+  num = query->_from._collections._nrUsed;
+
+  collection->_name             = (char*) name;
+  collection->_alias            = (char*) alias;
+  // first collection added is always the primary collection
+  collection->_isPrimary        = (num == 0);
+  collection->_refCount         = 0; // will be used later when optimizing joins
+  collection->_declarationOrder = num + 1;
+  collection->_geoRestriction   = NULL;
+
+  TRI_InsertKeyAssociativePointer(&query->_from._collections, 
+                                  collection->_alias, 
+                                  collection, 
+                                  true);
 
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the name of the primary collection used in the query
-////////////////////////////////////////////////////////////////////////////////
-
-char* QLAstQueryGetPrimaryName (const QL_ast_query_t* query) {
-  size_t i;
-  QL_ast_query_collection_t *collection;
-
-  for (i = 0; i < query->_from._collections._nrAlloc; i++) {
-    collection = query->_from._collections._table[i];
-    if (collection != 0 && collection->_isPrimary) {
-      return collection->_name;
-    }
-  }
-  
-  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -194,6 +309,269 @@ char* QLAstQueryGetPrimaryAlias (const QL_ast_query_t* query) {
   }
   
   return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a geo restriction prototype
+////////////////////////////////////////////////////////////////////////////////
+
+QL_ast_query_geo_restriction_t* QLAstQueryCreateRestriction (void) {
+  QL_ast_query_geo_restriction_t* restriction;
+  
+  restriction = (QL_ast_query_geo_restriction_t*) 
+    TRI_Allocate(sizeof(QL_ast_query_geo_restriction_t));
+  if (!restriction) {
+    return NULL;
+  }
+  restriction->_alias                  = NULL;
+  restriction->_compareLat._collection = NULL;
+  restriction->_compareLat._field      = NULL;
+  restriction->_compareLon._collection = NULL;
+  restriction->_compareLon._field      = NULL;
+
+  return restriction;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone a geo restriction 
+////////////////////////////////////////////////////////////////////////////////
+
+QL_ast_query_geo_restriction_t* QLAstQueryCloneRestriction 
+  (const QL_ast_query_geo_restriction_t* source) {
+  QL_ast_query_geo_restriction_t* dest;
+ 
+  if (!source) {
+    return NULL;
+  }
+   
+  dest = QLAstQueryCreateRestriction();
+  if (!dest) {
+    return NULL;
+  }
+  
+  dest->_type = source->_type;
+  dest->_alias = TRI_DuplicateString(source->_alias);
+  dest->_compareLat._collection = TRI_DuplicateString(source->_compareLat._collection);
+  dest->_compareLat._field = TRI_DuplicateString(source->_compareLat._field);
+  dest->_compareLon._collection = TRI_DuplicateString(source->_compareLon._collection);
+  dest->_compareLon._field = TRI_DuplicateString(source->_compareLon._field);
+  dest->_lat = source->_lat;
+  dest->_lon = source->_lon;
+  dest->_arg = source->_arg;
+
+  return dest;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free a geo restriction 
+////////////////////////////////////////////////////////////////////////////////
+      
+void QLAstQueryFreeRestriction (QL_ast_query_geo_restriction_t* restriction) {
+  if (restriction->_compareLat._collection) {
+    TRI_Free(restriction->_compareLat._collection);
+  }
+  if (restriction->_compareLat._field) {
+    TRI_Free(restriction->_compareLat._field);
+  }
+  if (restriction->_compareLon._collection) {
+    TRI_Free(restriction->_compareLon._collection);
+  }
+  if (restriction->_compareLon._field) {
+    TRI_Free(restriction->_compareLon._field);
+  }
+  TRI_Free(restriction);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a geo restriction 
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLAstQueryAddGeoRestriction (QL_ast_query_t* query,
+                                  const TRI_query_node_t* collectionNode,
+                                  const TRI_query_node_t* restrictionNode) {
+  TRI_query_node_t* valueNode;
+  QL_ast_query_collection_t* collection;
+  QL_ast_query_geo_restriction_t* restriction;
+  TRI_string_buffer_t* fieldName;
+  char* alias;
+  char* collectionAlias;
+  void* previous;
+
+  if (!collectionNode || !restrictionNode) {
+    return false;
+  }
+
+  alias = restrictionNode->_lhs->_value._stringValue;
+  assert(alias);
+
+  previous = (void*) TRI_LookupByKeyAssociativePointer(&query->_from._collections, 
+                                                       alias);
+  if (previous) {
+    // alias is already used for another collection
+    return false;
+  }
+
+  previous = (void*) TRI_LookupByKeyAssociativePointer(&query->_geo._restrictions, 
+                                                       alias);
+  if (previous) {
+    // alias is already used for another geo restriction 
+    return false;
+  }
+
+  collectionAlias = ((TRI_query_node_t*) collectionNode->_rhs)->_value._stringValue;
+  assert(collectionAlias);
+
+  collection = (QL_ast_query_collection_t*) 
+    TRI_LookupByKeyAssociativePointer(&query->_from._collections, collectionAlias);
+
+  if (!collection) {
+    // collection is not present - should not happen
+    return false;
+  }
+
+  assert(restrictionNode->_lhs);
+  assert(restrictionNode->_rhs);
+
+  restriction = QLAstQueryCreateRestriction();
+  if (!restriction) {
+    return false;
+  }
+  restriction->_alias = alias;
+
+  if (restrictionNode->_type == TRI_QueryNodeRestrictWithin) {
+    restriction->_type = RESTRICT_WITHIN;
+  }
+  else {
+    restriction->_type = RESTRICT_NEAR;
+  }
+
+  // compare field 1
+  valueNode = restrictionNode->_rhs->_lhs->_lhs;
+  if (strcmp(valueNode->_lhs->_value._stringValue,
+             collectionAlias) != 0) {
+    // field is from other collection, not valid!
+    QLAstQueryFreeRestriction(restriction);
+    return false;
+  }
+
+  fieldName = QLAstQueryGetMemberNameString(valueNode, false);
+  if (fieldName) {
+    restriction->_compareLat._collection = 
+      TRI_DuplicateString(valueNode->_lhs->_value._stringValue);
+    restriction->_compareLat._field = TRI_DuplicateString(fieldName->_buffer);
+    TRI_FreeStringBuffer(fieldName);
+    TRI_Free(fieldName);
+  }
+  else {
+    QLAstQueryFreeRestriction(restriction);
+    return false;
+  }
+
+  // compare field 2
+  valueNode = restrictionNode->_rhs->_lhs->_rhs;
+  if (strcmp(valueNode->_lhs->_value._stringValue,
+             collectionAlias) != 0) {
+    // field is from other collection, not valid!
+    QLAstQueryFreeRestriction(restriction);
+    return false;
+  }
+
+  fieldName = QLAstQueryGetMemberNameString(valueNode, false);
+  if (fieldName) {
+    restriction->_compareLon._collection = 
+      TRI_DuplicateString(valueNode->_lhs->_value._stringValue);
+    restriction->_compareLon._field = TRI_DuplicateString(fieldName->_buffer);
+    TRI_FreeStringBuffer(fieldName);
+    TRI_Free(fieldName);
+  } 
+  else {
+    QLAstQueryFreeRestriction(restriction);
+    return false;
+  }
+
+  // lat value
+  valueNode = restrictionNode->_rhs->_rhs->_lhs;
+  restriction->_lat = valueNode->_value._doubleValue;  
+
+  // lon value
+  valueNode = restrictionNode->_rhs->_rhs->_rhs;
+  restriction->_lon = valueNode->_value._doubleValue;  
+
+  if (restrictionNode->_type == TRI_QueryNodeRestrictWithin) {
+    restriction->_arg._radius = restrictionNode->_value._doubleValue;
+  }
+  else {
+    restriction->_arg._numDocuments = restrictionNode->_value._intValue;
+  }
+
+  TRI_InsertKeyAssociativePointer(&query->_geo._restrictions, 
+      alias, 
+      restriction, 
+      true);
+
+  collection->_geoRestriction = restriction;
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Create a string from a member name
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_string_buffer_t* QLAstQueryGetMemberNameString (TRI_query_node_t* node, 
+                                                    bool includeCollection) {
+  TRI_query_node_t *lhs, *rhs;
+  TRI_string_buffer_t* buffer;
+
+  buffer = (TRI_string_buffer_t*) TRI_Allocate(sizeof(TRI_string_buffer_t));
+  if (!buffer) {
+    return NULL;
+  }
+
+  TRI_InitStringBuffer(buffer);
+
+  if (includeCollection) {
+    // add collection part
+    lhs = node->_lhs;
+    TRI_AppendStringStringBuffer(buffer, lhs->_value._stringValue);
+    TRI_AppendCharStringBuffer(buffer, '.');
+  }
+  
+  rhs = node->_rhs;
+  node = rhs->_next;
+
+  while (node) {
+    // add individual name parts
+    TRI_AppendStringStringBuffer(buffer, node->_value._stringValue);
+    node = node->_next;
+    if (node) {
+      TRI_AppendCharStringBuffer(buffer, '.');
+    }
+  }
+
+  return buffer;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Hash a member name for comparisons
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t QLAstQueryGetMemberNameHash (TRI_query_node_t* node) {
+  TRI_query_node_t *lhs, *rhs;
+  uint64_t hashValue;
+
+  lhs = node->_lhs;
+  hashValue = TRI_FnvHashString(lhs->_value._stringValue);
+  
+  rhs = node->_rhs;
+  node = rhs->_next;
+
+  while (node) {
+    hashValue ^= TRI_FnvHashString(node->_value._stringValue);
+    node = node->_next;
+  }
+
+  return hashValue;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

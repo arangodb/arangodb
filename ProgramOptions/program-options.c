@@ -1348,9 +1348,7 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
                                        int argc,
                                        char ** argv) {
   extern char *optarg;
-  extern int opterr;
   extern int optind;
-  extern int optopt;
 
   TRI_string_buffer_t buffer;
   TRI_PO_item_t * item;

@@ -46,7 +46,7 @@ namespace triagens {
     class HttpRequest;
 
     namespace InputParser {
-      class ObjectDescriptionImpl;
+      struct ObjectDescriptionImpl;
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @ingroup Utilities

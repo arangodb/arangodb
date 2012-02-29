@@ -1,0 +1,1 @@
+SELECT { name: u.name } FROM users u WHERE u.name == 'Fox'

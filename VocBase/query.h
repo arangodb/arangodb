@@ -31,11 +31,11 @@
 #include "VocBase/vocbase.h"
 
 #include "ShapedJson/shaped-json.h"
-#include "V8/v8-c-utils.h"
+//#include "V8/v8-c-utils.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/index.h"
 #include "VocBase/join.h"
-#include "VocBase/join-execute.h"
+//#include "VocBase/join-execute.h"
 #include "VocBase/where.h"
 #include "VocBase/order.h"
 
@@ -94,14 +94,14 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page AQL Avocado Query Language
+/// @page AQL Avocado Query Language (AQL)
 /// 
 /// Queries can be used to extract arbitrary data from one or multiple
 /// collections. A query needs to be composed in the Avocado Query Language
 /// (AQL).
 ///
 /// The purpose of AQL is somewhat similar to SQL, but the language has
-/// notable differences to it. This means that AQL queries cannot be run in 
+/// notable differences to SQL. This means that AQL queries cannot be run in 
 /// an SQL database and vice versa.
 ///
 /// @section AqlBasics Language basics
@@ -109,10 +109,14 @@ extern "C" {
 /// AQL consists mainly of keywords, names, literals, compound types, and 
 /// operators.
 ///
+/// An example AQL query looks like this:
+///
+/// @verbinclude query0
+///
 /// @subsection AqlKeywords Keywords
 ///
-/// For example, the terms @CODE{SELECT}, @CODE{FROM}, @CODE{JOIN}, and 
-/// @CODE{WHERE} are keywords. Keywords have a special meaning in the language
+/// For example, the terms @LIT{SELECT}, @LIT{FROM}, @LIT{JOIN}, and 
+/// @LIT{WHERE} are keywords. Keywords have a special meaning in the language
 /// and are used by the language parser to uniquely identify the meaning of a
 /// query part.
 ///
@@ -129,15 +133,14 @@ extern "C" {
 /// @subsection AqlNames Names
 ///
 /// In general, names are used to identify objects (collections, attributes,
-/// functions in queries. Allowed characters in names are the letters @LIT{a}
-/// to @LIT{z} (both in lower and upper case), the numbers @LIT{0} to @LIT{9},
-/// and the underscore (@LIT{_}) symbol.
-///
-/// A name must not start with a number. If a name starts with the underscore
-/// character, it must also contain at least of letter character.
+/// functions in queries. 
 /// 
-/// The maximum length of a name is 64 bytes. All names are case-sensitive.
-/// Keywords must not be used as names.
+/// The maximum length of any name is 64 bytes. All names are case-sensitive.
+///
+/// Keywords must not be used as names. Instead, if a reserved keyword should
+/// be as used a query, the name must be enclosed in backticks. Enclosing a 
+/// name in backticks allows to use otherwise-reserved words as names, e.g. 
+/// @LIT{`select`}.
 ///
 /// @subsubsection AqlCollectionNames Collection names and aliases
 ///
@@ -146,6 +149,16 @@ extern "C" {
 /// each collection used. The alias can be any (unquoted) string, as long as
 /// it is unique within the context of the query. This means the same alias
 /// cannot be declared multiple times in the same query.
+///
+/// Allowed characters in collection names are the letters @LIT{a} to @LIT{z} 
+/// (both in lower and upper case) and the numbers @LIT{0} to @LIT{9}. A 
+/// collection name must always start with a letter.
+///
+/// Allowed characters in aliases are the letters @LIT{a} to @LIT{z} (both in
+/// lower and upper case), the numbers @LIT{0} to @LIT{9} and the underscore 
+/// (@LIT{_}) symbol. An alias must not start with a number. If an alias
+/// starts with the underscore character, it must also contain at least one 
+/// letter (a-z or A-Z).
 ///
 /// @verbinclude collectionnames
 /// 
@@ -174,8 +187,11 @@ extern "C" {
 /// 
 /// @verbinclude strings
 ///
-/// The string encoding is always UTF-8. It is not possible to store arbitrary
-/// binary data if it is not UTF-8 encoded.
+/// The string encoding is always UTF-8. It is currently not possible to use 
+/// arbitrary binary data if it is not UTF-8 encoded. A workaround to use
+/// binary data is to encode the data using base64 or other algorithms on the
+/// application side before storing, and decoding it on application side after
+/// retrieval.
 /// 
 /// @subsubsection AqlLiteralsNumber Numeric literals
 ///
@@ -191,8 +207,8 @@ extern "C" {
 /// @subsubsection AqlLiteralsSpecial Special values
 ///
 /// There are also special predefined literals for the boolean values 
-/// @CODE{true} and @CODE{false}. There are also predefined @CODE{null} and
-/// @CODE{undefined} values.
+/// @LIT{true} and @LIT{false}. There are also predefined @LIT{null} and
+/// @LIT{undefined} values.
 ///
 /// @verbinclude specials
 ///
@@ -296,12 +312,16 @@ extern "C" {
 /// The @LIT{!} operator returns boolean value.
 ///
 /// The @LIT{&&} operator returns the first operand if it evaluates to 
-/// @CODE{false}. It returns the result of the evaluation of the second
-///  operand otherwise.
+/// @LIT{false}. It returns the result of the evaluation of the second
+/// operand otherwise. 
 ///
 /// The @LIT{||} operators returns the first operand if it evaluates to
-/// @CODE{true}. Otherwise it returns the result of the evaluation of 
+/// @LIT{true}. Otherwise it returns the result of the evaluation of 
 /// the second operand.
+///
+/// Both @LIT{&&} and @LIT{||} use short-circuit evaluation and only
+/// evaluate the second operand if the result of the operation cannot be
+/// determined by the first operand alone.
 ///
 /// @subsubsection AqlOperatorsArit Arithmetic operators
 ///
@@ -376,7 +396,7 @@ extern "C" {
 /// The @LIT{select-expression} determines the structure of the documents to
 /// be returned by the select.
 /// There are two ways to define the structure of the documents to return.
-/// Therefore, the @LIT{select-expression} can either be @CODE{collection-alias} 
+/// Therefore, the @LIT{select-expression} can either be @LIT{collection-alias} 
 /// or a newly constructed document.
 ///
 /// To select all documents from a collection without alteration use the
@@ -433,7 +453,7 @@ extern "C" {
 /// @subsection AqlJoin Multi collection access (joins)
 ///
 /// Data from multiple collections can be accessed together in one query, provided
-/// the documents match. This is called joining.
+/// the documents from the collections satisfy some criteria. This is called joining.
 /// There are 3 different types of joins, but all have the same structure:
 ///
 /// @verbinclude join
@@ -442,6 +462,7 @@ extern "C" {
 /// @LIT{collection-definition}s. @LIT{join-type} is one of 
 /// - @LIT{INNER JOIN}
 /// - @LIT{LEFT JOIN} 
+/// - @LIT{RIGHT JOIN} 
 /// - @LIT{LIST JOIN}
 ///
 /// The @LIT{on-expression} consists of the @LIT{ON} keyword, followed by
@@ -449,10 +470,13 @@ extern "C" {
 /// 
 /// The @LIT{left-collection} and @LIT{right-collection} values define which
 /// collections should be joined to together, the @LIT{join-types} determines
-/// how to join, and the @CODE{on-expression} determines what is considered a 
-/// match.
+/// how to join, and the @LIT{on-expression} determines what match criteria should
+/// be applied.
 ///
-/// Multiple joins are evaluated from left to right.
+/// Multiple joins are evaluated from left to right. That means @LIT{on-expression}s 
+/// can only contain references to collections that have been specified before
+/// (left) of them. References to collections specified on the right of them 
+/// will cause a parse error.
 ///
 /// @subsubsection AllInnerJoin Inner join
 /// 
@@ -466,10 +490,10 @@ extern "C" {
 /// right side (and vice versa), this means that each document from either
 /// side might appear multiple times in the result.
 ///
-/// @subsubsection AllOuterJoin Left (outer) join
+/// @subsubsection AllOuterJoin Left and right (outer) joins
 ///
-/// A left (outer) join outputs the documents from both the left and right hand sides
-/// of the join if, and only if the @LIT{on-condition} is true.
+/// A left (outer) join outputs the documents from both the left and right hand 
+/// sides of the join if, and only if the @LIT{on-condition} is true.
 ///
 /// Additionally, it will output the document on the left hand side of the join
 /// if no matching document on the right side can be found. If this is the case, 
@@ -487,8 +511,9 @@ extern "C" {
 /// once. Altogether this means all documents from the left hand side will be 
 /// contained in the result set at least once.
 ///
-/// Right joins are currently not supported, but they can be expressed as left 
-/// joins with the operands swapped.
+/// A right (outer) join acts like a left (outer join) but the roles of the
+/// left and right operands are swapped. Thus, right joins are implemented as 
+/// reversed left joins (i.e. left joins with their operands swapped).
 ///
 /// @subsubsection AllInnerJoin List join
 ///
@@ -499,6 +524,51 @@ extern "C" {
 ///
 /// @verbinclude joinleft
 ///
+/// @subsection GeoQueries Geo restrictions
+///
+/// AQL supports special geo restrictions in case a collection has a geo index 
+/// defined for it. These queries can be used to find document that have coordinates
+/// attached to them that are located around some two-dimensional geo point 
+/// (reference point).
+///
+/// There are two types of geo queries:
+/// - WITHIN: finds all documents that have coordinates that are within a certain
+///   radius around the reference point
+/// - NEAR: finds the first n documents whose coordinates have the least distance
+///   to the reference point
+///
+/// For all geo queries, the distance between the coordinates as specified in the
+/// document and the reference point. This distance is returned as an additional
+/// (virtual) collection. This collection can be used in other parts of the
+/// query (e.g. WHERE condition) by using its alias.
+///
+/// Geo queries extend the FROM/JOIN syntax as follows:
+///
+/// @verbinclude geoquery
+///
+/// For the @LIT{geo-alias}, the same naming rules apply as for normal collections. 
+/// It must be unique within the query. The @LIT{document-coordinate} can either be
+/// an array of two attribute names, or two separate attribute names, separated by
+/// a comma. The attribute names in @LIT{document-coordinate} must refer to the
+/// @LIT{collection-alias} specified directly before the geo query. The first
+/// attribute is interpreted as the latitude attribute name, the second as the 
+/// longitude attribute name.
+///
+/// The reference coordinate can either be an array of two numbers, or or two 
+/// separate numbers, separated by a comma. The first number is interpreted as the
+/// latitude value, the second number as the longitude value of the reference point.
+///
+/// @verbinclude geo1
+/// 
+/// For WITHIN, the @LIT{radius} is specified in meters.
+/// For NEAR, the @LIT{number-of-documents} value will restrict the result to at
+/// most this number of documents.
+///
+/// Geo restrictions can be used for joined collections as well. In this case, the
+/// restriction is applied first to find the relevant documents from the collection,
+/// and afterwards, the ON condition specified for the join is evaluated. Evaluating
+/// the ON condition might further reduce the result. 
+///
 /// @section AqlWhere Where clause
 ///
 /// The where clause can be specified to restrict the result to documents that
@@ -507,6 +577,8 @@ extern "C" {
 /// The where clause is initiated by the @LIT{WHERE} keyword, followed by an
 /// expression that defines the search condition. A document is included
 /// in the result if the search condition evaluates to @LIT{true}.
+///
+/// Geo restrictions cannot be used in the where clause.
 ///
 /// @section AqlParameter Parameters
 ///
@@ -745,11 +817,17 @@ TRI_rc_cursor_t;
 /// @brief creates a query
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_query_t* TRI_CreateQuery (TRI_vocbase_t* vocBase,
-                              TRI_qry_select_t const* selectStmt,
-                              TRI_qry_where_t  const* whereStmt,
-                              TRI_qry_order_t  const* orderStmt,
-                              TRI_select_join_t* joins);
+TRI_query_t* TRI_CreateHashQuery (const TRI_qry_where_t*, TRI_doc_collection_t*);
+
+TRI_query_t* TRI_CreateSkiplistQuery (const TRI_qry_where_t*, TRI_doc_collection_t*);
+
+TRI_query_t* TRI_CreateQuery (TRI_vocbase_t*,
+                              TRI_qry_select_t*,
+                              TRI_qry_where_t*,
+                              TRI_qry_order_t*,
+                              TRI_select_join_t*,
+                              TRI_voc_size_t,
+                              TRI_voc_ssize_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees a query
@@ -792,6 +870,19 @@ TRI_qry_where_t* TRI_CreateQueryWhereBoolean (bool where);
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_qry_where_t* TRI_CreateQueryWhereGeneral (char const*);
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a query condition for a hash with constant parameters
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_qry_where_t* TRI_CreateQueryWhereHashConstant (TRI_idx_iid_t, TRI_json_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a query condition for a hash with constant parameters
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_qry_where_t* TRI_CreateQueryWhereSkiplistConstant (TRI_idx_iid_t, TRI_json_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a query condition using the primary index and a constant

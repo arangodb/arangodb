@@ -206,6 +206,7 @@ ALIASES += CMDOPT{1}="<tt><b>\1</b></tt>"
 ALIASES += CA{1}="<var>\1</var>"
 ALIASES += CO{1}="<tt>\1</tt>"
 ALIASES += REST{1}="<tt><b>\1</b></tt>"
+ALIASES += EXAMPLES="<b>Examples</b><br>"
 
 # Set the OPTIMIZE_OUTPUT_FOR_C tag to YES if your project consists of C
 # sources only. Doxygen will then generate output that is more tailored for C.

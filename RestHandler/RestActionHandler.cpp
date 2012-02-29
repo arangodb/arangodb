@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,18 +22,15 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestActionHandler.h"
 
-#include <Basics/StringUtils.h>
-
-#include <Rest/HttpRequest.h>
-
-#include <VocBase/document-collection.h>
-#include <VocBase/result-set.h>
-#include <VocBase/vocbase.h>
+#include "Basics/StringUtils.h"
+#include "Rest/HttpRequest.h"
+#include "VocBase/document-collection.h"
+#include "VocBase/vocbase.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -91,6 +88,7 @@ HttpHandler::status_e RestActionHandler::execute () {
 
   // prepare logging
   static LoggerData::Task const logExecute(ACTION_PATH + " [execute]");
+  static LoggerData::Task const logHead(ACTION_PATH + " [head]");
   static LoggerData::Task const logIllegal(ACTION_PATH + " [illegal]");
 
   LoggerData::Task const * task = &logIllegal;
@@ -100,6 +98,7 @@ HttpHandler::status_e RestActionHandler::execute () {
     case HttpRequest::HTTP_REQUEST_GET: task = &logExecute; break;
     case HttpRequest::HTTP_REQUEST_POST: task = &logIllegal; break;
     case HttpRequest::HTTP_REQUEST_PUT: task = &logIllegal; break;
+    case HttpRequest::HTTP_REQUEST_HEAD: task = &logHead; break;
     case HttpRequest::HTTP_REQUEST_ILLEGAL: task = &logIllegal; break;
   }
 

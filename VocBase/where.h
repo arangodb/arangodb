@@ -50,6 +50,8 @@ extern "C" {
 typedef enum {
   TRI_QRY_WHERE_BOOLEAN,
   TRI_QRY_WHERE_GENERAL,
+  TRI_QRY_WHERE_HASH_CONSTANT,
+  TRI_QRY_WHERE_SKIPLIST_CONSTANT,
   TRI_QRY_WHERE_WITHIN_CONSTANT,
   TRI_QRY_WHERE_PRIMARY_CONSTANT
 }
@@ -146,6 +148,30 @@ typedef struct TRI_qry_where_within_const_s {
   double _radius;
 }
 TRI_qry_where_within_const_t;
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hash index where
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_qry_where_hash_const_s {
+  TRI_qry_where_t base;
+  TRI_idx_iid_t _iid;
+  TRI_json_t* _parameters; // a json list object
+}
+TRI_qry_where_hash_const_t;
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief skiplist index where
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_qry_where_skiplist_const_s {
+  TRI_qry_where_t base;
+  TRI_idx_iid_t _iid;
+  TRI_json_t* _parameters; // a json list object
+}
+TRI_qry_where_skiplist_const_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

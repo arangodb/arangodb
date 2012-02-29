@@ -1,0 +1,10 @@
+> curl -X GET --dump - http://localhost:8529/collection/example/9496015:13658604
+HTTP/1.1 200 OK
+content-type: application/json
+connection: Keep-Alive
+server: triagens GmbH High-Performance HTTP Server
+etag: "13658605"
+
+{ "Hallo" : "World",
+  "_id" : "9496015:13658604",
+  "_rev" : 13658605 }

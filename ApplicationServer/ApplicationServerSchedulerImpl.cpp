@@ -47,7 +47,7 @@ namespace {
   /// @brief handles control-c
   ////////////////////////////////////////////////////////////////////////////////
 
-  class ControlCTask : public rest::SignalTask {
+  class ControlCTask : public SignalTask {
     public:
       ControlCTask (ApplicationServer* server)
         : Task("Control-C"), SignalTask(), server(server) {

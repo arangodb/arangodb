@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,38 +22,24 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_AVOCADO_DB_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H
-#define TRIAGENS_AVOCADO_DB_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H 1
+#ifndef TRIAGENS_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H
+#define TRIAGENS_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H 1
 
-#include <Admin/RestBaseHandler.h>
+#include "Admin/RestBaseHandler.h"
 
-#include <Logger/Logger.h>
-#include <Rest/HttpResponse.h>
-#include <VocBase/document-collection.h>
+#include "Logger/Logger.h"
+#include "Rest/HttpResponse.h"
+#include "VocBase/document-collection.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page HttpInterface Lightweight HTTP Interface
 ///
-/// The AvocadoDB has a REST interface for accessing the resources. It provides
-/// a lightweight HTTP interface to execute actions. Actions are small
-/// JavaScript functions which encapsulate business logic. Actions are
-/// accessible via HTTP.
-///
-/// Next steps: learn more about
-///
-/// - the @ref RestInterface
-/// - the @ref RestDocument
-///
-/// Advanced Topics: learn more about
-///
-/// - @ref Actions
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page RestInterface REST Interface
+/// The AvocadoDB has a REST interface for accessing the resources. It
+/// also provides a lightweight HTTP interface to execute actions. Actions are
+/// small JavaScript functions which encapsulate business logic.
 ///
 /// Each resource has an identifier, which allows to access the given resource.
 ///
@@ -76,6 +62,10 @@
 /// Next steps: learn more about
 ///
 /// - the @ref RestDocument
+///
+/// Advanced Topics: learn more about
+///
+/// - @ref Actions
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -272,13 +262,13 @@ namespace triagens {
 /// @brief generates first entry from a result set
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateResultSetNext ();
+        void generateDocument (TRI_doc_mptr_t const*, bool generateBody);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief splits a document reference into to parts
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<string> splitDocumentReference (string const& name);
+        bool splitDocumentReference (string const& name, string& did);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the revision
@@ -314,7 +304,7 @@ namespace triagens {
 /// @brief sets the rest set, needs the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        void findDocument (string const& doc);
+        TRI_doc_mptr_t const* findDocument (string const& doc);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -350,10 +340,10 @@ namespace triagens {
         struct TRI_doc_collection_s* _documentCollection;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a result set
+/// @brief a barrier for deletion
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_result_set_s* _resultSet;
+        struct TRI_barrier_s* _barrier;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief timing data structure

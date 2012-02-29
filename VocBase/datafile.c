@@ -34,7 +34,7 @@
 #include <BasicsC/strings.h>
 #include <BasicsC/files.h>
 
-#define DEBUG_DATAFILE 1
+// #define DEBUG_DATAFILE 1
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -303,6 +303,9 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
 
   // create datafile structure
   datafile = TRI_Allocate(sizeof(TRI_datafile_t));
+  if (!datafile) {
+    // TODO: FIXME
+  }
 
   InitDatafile(datafile,
                TRI_DuplicateString(filename),
@@ -408,6 +411,9 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
 
   // create datafile structure
   datafile = TRI_Allocate(sizeof(TRI_datafile_t));
+  if (!datafile) {
+    // TODO: FIXME
+  }
 
   InitDatafile(datafile,
                TRI_DuplicateString(filename),

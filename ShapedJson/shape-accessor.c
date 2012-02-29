@@ -220,6 +220,8 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
 
   memcpy(cv.v, ops._buffer, ops._length * sizeof(void*));
 
+  TRI_DestroyVectorPointer(&ops);
+
   return true;
 }
 
@@ -297,6 +299,18 @@ static bool ExecuteBytecodeShapeAccessor (TRI_shape_access_t const* accessor,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief free a shape accessor
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeShapeAccessor (TRI_shape_access_t* accessor) {
+  assert(accessor);
+  if (accessor->_code) {
+    TRI_Free((void*) accessor->_code);
+  }
+  TRI_Free(accessor);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a shape accessor
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -307,15 +321,19 @@ TRI_shape_access_t* TRI_ShapeAccessor (TRI_shaper_t* shaper,
   bool ok;
 
   accessor = TRI_Allocate(sizeof(TRI_shape_access_t));
+  if (!accessor) {
+    return NULL;
+  }
   accessor->_sid = sid;
   accessor->_pid = pid;
+  accessor->_code = NULL;
   ok = BytecodeShapeAccessor(shaper, accessor);
 
   if (ok) {
     return accessor;
   }
 
-  TRI_Free(accessor);
+  TRI_FreeShapeAccessor(accessor);
   return NULL;
 }
 

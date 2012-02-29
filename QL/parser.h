@@ -53,35 +53,38 @@
      BY = 269,
      ASC = 270,
      DESC = 271,
-     LIMIT = 272,
-     AND = 273,
-     OR = 274,
-     NOT = 275,
-     IN = 276,
-     ASSIGNMENT = 277,
-     GREATER = 278,
-     LESS = 279,
-     GREATER_EQUAL = 280,
-     LESS_EQUAL = 281,
-     EQUAL = 282,
-     UNEQUAL = 283,
-     IDENTICAL = 284,
-     UNIDENTICAL = 285,
-     NULLX = 286,
-     TRUE = 287,
-     FALSE = 288,
-     UNDEFINED = 289,
-     IDENTIFIER = 290,
-     PARAMETER = 291,
-     PARAMETER_NAMED = 292,
-     STRING = 293,
-     REAL = 294,
-     COLON = 295,
-     TERNARY = 296,
-     FCALL = 297,
-     UPLUS = 298,
-     UMINUS = 299,
-     MEMBER = 300
+     WITHIN = 272,
+     NEAR = 273,
+     LIMIT = 274,
+     AND = 275,
+     OR = 276,
+     NOT = 277,
+     IN = 278,
+     ASSIGNMENT = 279,
+     GREATER = 280,
+     LESS = 281,
+     GREATER_EQUAL = 282,
+     LESS_EQUAL = 283,
+     EQUAL = 284,
+     UNEQUAL = 285,
+     IDENTICAL = 286,
+     UNIDENTICAL = 287,
+     NULLX = 288,
+     TRUE = 289,
+     FALSE = 290,
+     UNDEFINED = 291,
+     IDENTIFIER = 292,
+     QUOTED_IDENTIFIER = 293,
+     PARAMETER = 294,
+     PARAMETER_NAMED = 295,
+     STRING = 296,
+     REAL = 297,
+     COLON = 298,
+     TERNARY = 299,
+     FCALL = 300,
+     UPLUS = 301,
+     UMINUS = 302,
+     MEMBER = 303
    };
 #endif
 
@@ -92,9 +95,9 @@ typedef union YYSTYPE
 {
 
 /* Line 1676 of yacc.c  */
-#line 27 "QL/parser.y"
+#line 32 "QL/parser.y"
 
-  QL_ast_node_t *node;
+  TRI_query_node_t* node;
   int intval;
   double floatval;
   char *strval;
@@ -102,7 +105,7 @@ typedef union YYSTYPE
 
 
 /* Line 1676 of yacc.c  */
-#line 106 "QL/parser.h"
+#line 109 "QL/parser.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */

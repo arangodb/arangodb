@@ -211,7 +211,7 @@ bool TRI_CloseSimCollection (TRI_sim_collection_t* collection);
 TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a description of all indexes
+/// @brief returns a description of an index
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_IndexSimCollection (TRI_sim_collection_t*, TRI_idx_iid_t);
@@ -286,6 +286,23 @@ struct TRI_index_s* TRI_LookupGeoIndex2SimCollection (TRI_sim_collection_t* coll
                                                       TRI_shape_pid_t longitude);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a hash index
+///
+/// Note that the caller must hold at least a read-lock.
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t*, const TRI_vector_t*);
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a skiplist index
+///
+/// Note that the caller must hold at least a read-lock.
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_LookupSkiplistIndexSimCollection (TRI_sim_collection_t*, const TRI_vector_t*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -300,6 +317,25 @@ TRI_idx_iid_t TRI_EnsureGeoIndexSimCollection (TRI_sim_collection_t* collection,
 TRI_idx_iid_t TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* collection,
                                                 char const* latitude,
                                                 char const* longitude);
+                                                
+                                                
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds or returns an existing hash index to a collection
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_idx_iid_t TRI_EnsureHashIndexSimCollection (TRI_sim_collection_t* collection,
+                                                const TRI_vector_t* attributes,
+                                                bool unique);
+
+                                                
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds or returns an existing hash index to a collection
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_idx_iid_t TRI_EnsureSkiplistIndexSimCollection (TRI_sim_collection_t* collection,
+                                                    const TRI_vector_t* attributes,
+                                                    bool unique);
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

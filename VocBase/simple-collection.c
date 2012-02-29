@@ -27,17 +27,14 @@
 
 #include "simple-collection.h"
 
-#include <BasicsC/conversions.h>
-#include <BasicsC/files.h>
-#include <BasicsC/hashes.h>
-#include <BasicsC/logging.h>
-#include <BasicsC/strings.h>
-
-#include <VocBase/index.h>
-#include <VocBase/result-set.h>
-#include <VocBase/voc-shaper.h>
-
+#include "BasicsC/conversions.h"
+#include "BasicsC/files.h"
+#include "BasicsC/hashes.h"
+#include "BasicsC/logging.h"
+#include "BasicsC/strings.h"
 #include "ShapedJson/shape-accessor.h"
+#include "VocBase/index.h"
+#include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -61,6 +58,16 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
                                                  bool geoJson,
                                                  TRI_idx_iid_t iid);
 
+static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collection,
+                                                  const TRI_vector_t* attributes,
+                                                  TRI_idx_iid_t iid,
+                                                  bool unique);
+                                                 
+static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* collection,
+                                                      const TRI_vector_t* attributes,
+                                                      TRI_idx_iid_t iid,
+                                                      bool unique);
+                                                 
 static uint64_t HashKeyHeader (TRI_associative_pointer_t* array, void const* key);
 
 static uint64_t HashElementDocument (TRI_associative_pointer_t* array, void const* element);
@@ -278,6 +285,7 @@ static TRI_doc_mptr_t* CreateDocument (TRI_sim_collection_t* collection,
                                        TRI_voc_size_t bodySize,
                                        TRI_df_marker_t** result,
                                        void const* additional) {
+
   TRI_datafile_t* journal;
   TRI_doc_mptr_t* header;
   TRI_voc_size_t total;
@@ -1116,11 +1124,17 @@ static void OpenIndex (char const* filename, void* data) {
   TRI_json_t* loc;
   TRI_json_t* lon;
   TRI_json_t* type;
+  TRI_json_t* fieldCount;
+  TRI_json_t* fieldStr;
+  TRI_vector_t attributes;
   TRI_sim_collection_t* doc;
   bool geoJson;
   char const* typeStr;
   char* error;
-
+  char* fieldChar;
+  int intCount;
+  bool ok;
+  bool uniqueIndex;
   json = TRI_JsonFile(filename, &error);
 
   if (json == NULL) {
@@ -1145,7 +1159,9 @@ static void OpenIndex (char const* filename, void* data) {
   typeStr = type->_value._string.data;
   doc = (TRI_sim_collection_t*) data;
 
+  // ...........................................................................
   // geo index
+  // ...........................................................................
   if (TRI_EqualString(typeStr, "geo")) {
     loc = TRI_LookupArrayJson(json, "location");
     lat = TRI_LookupArrayJson(json, "latitude");
@@ -1154,7 +1170,7 @@ static void OpenIndex (char const* filename, void* data) {
     gjs = TRI_LookupArrayJson(json, "geoJson");
     iid = 0;
     geoJson = false;
-
+    
     if (iis != NULL && iis->_type == TRI_JSON_NUMBER) {
       iid = iis->_value._number;
     }
@@ -1174,6 +1190,205 @@ static void OpenIndex (char const* filename, void* data) {
     }
   }
 
+  
+  // ...........................................................................
+  // Hash Index
+  // ...........................................................................
+  else if (TRI_EqualString(typeStr, "hash")) {
+  
+    // .........................................................................
+    // Initialise the ok value
+    // .........................................................................
+    ok = true;
+    
+  
+    // .........................................................................
+    // Initialise the vector in which we store the fields on which the hashing
+    // will be based.
+    // .........................................................................
+    TRI_InitVector(&attributes, sizeof(char*));
+
+    
+    // .........................................................................
+    // Determine the id of the hash index
+    // .........................................................................
+    if (ok) {
+      iis = TRI_LookupArrayJson(json, "iid");
+      iid = 0;
+      if (iis != NULL && iis->_type == TRI_JSON_NUMBER) {
+        iid = iis->_value._number;
+      }
+      else {
+        LOG_WARNING("ignore hash-index, id could not be located");
+        ok = false;
+      }  
+    }    
+    
+    // .........................................................................
+    // Determine if the hash index is unique or non-unique
+    // .........................................................................
+    if (ok) {
+      gjs = TRI_LookupArrayJson(json, "unique");
+      uniqueIndex = false;
+      if (gjs != NULL && gjs->_type == TRI_JSON_BOOLEAN) {
+        uniqueIndex = gjs->_value._boolean;
+      }
+      else {
+        LOG_WARNING("ignore hash-index, could not determine if unique or non-unique");
+        ok = false;
+      }  
+    }
+    
+    
+    // .........................................................................
+    // Extract the list of fields
+    // .........................................................................
+    if (ok) {
+      fieldCount = 0;
+      fieldCount = TRI_LookupArrayJson(json, "field_count");
+      intCount = 0;
+      if ( (fieldCount != NULL) && (fieldCount->_type == TRI_JSON_NUMBER) ) {
+        intCount = fieldCount->_value._number;
+      }
+      if (intCount < 1) {
+        LOG_WARNING("ignore hash-index, field count missing");
+        ok = false;
+      }      
+    }
+    
+    if (ok) {
+      fieldChar = TRI_Allocate(30);
+      if (fieldChar == NULL) {
+        LOG_WARNING("ignore hash-index, field count missing");
+        ok = false;
+      }
+    }
+    
+    if (ok) {
+      for (int j = 0; j < intCount; ++j) {
+        sprintf(fieldChar,"field_%i",j);
+        fieldStr = TRI_LookupArrayJson(json, fieldChar);
+        if (fieldStr->_type != TRI_JSON_STRING) {
+          LOG_WARNING("ignore hash-index, invalid field name for hash index");
+          ok = false;
+          break;
+        }  
+        TRI_PushBackVector(&attributes, &(fieldStr->_value._string.data));
+      }  
+      TRI_Free(fieldChar);
+    }
+    
+            
+    if (ok) {   
+      CreateHashIndexSimCollection (doc, &attributes, iid, uniqueIndex); 
+    } 
+    
+    // .........................................................................
+    // Free the vector 
+    // .........................................................................
+    TRI_DestroyVector(&attributes);
+  }
+
+
+
+  // ...........................................................................
+  // Skiplist Index
+  // ...........................................................................
+  else if (TRI_EqualString(typeStr, "skiplist")) {
+  
+    // .........................................................................
+    // Initialise the ok value
+    // .........................................................................
+    ok = true;
+    
+  
+    // .........................................................................
+    // Initialise the vector in which we store the fields on which the hashing
+    // will be based.
+    // .........................................................................
+    TRI_InitVector(&attributes, sizeof(char*));
+
+    
+    // .........................................................................
+    // Determine the id of the hash index
+    // .........................................................................
+    if (ok) {
+      iis = TRI_LookupArrayJson(json, "iid");
+      iid = 0;
+      if (iis != NULL && iis->_type == TRI_JSON_NUMBER) {
+        iid = iis->_value._number;
+      }
+      else {
+        LOG_WARNING("ignore skiplist-index, id could not be located");
+        ok = false;
+      }  
+    }    
+    
+    // .........................................................................
+    // Determine if the skiplist index is unique or non-unique
+    // .........................................................................
+    if (ok) {
+      gjs = TRI_LookupArrayJson(json, "unique");
+      uniqueIndex = false;
+      if (gjs != NULL && gjs->_type == TRI_JSON_BOOLEAN) {
+        uniqueIndex = gjs->_value._boolean;
+      }
+      else {
+        LOG_WARNING("ignore skiplist-index, could not determine if unique or non-unique");
+        ok = false;
+      }  
+    }
+    
+    
+    // .........................................................................
+    // Extract the list of fields
+    // .........................................................................
+    if (ok) {
+      fieldCount = 0;
+      fieldCount = TRI_LookupArrayJson(json, "field_count");
+      intCount = 0;
+      if ( (fieldCount != NULL) && (fieldCount->_type == TRI_JSON_NUMBER) ) {
+        intCount = fieldCount->_value._number;
+      }
+      if (intCount < 1) {
+        LOG_WARNING("ignore skiplist-index, field count missing");
+        ok = false;
+      }      
+    }
+    
+    if (ok) {
+      fieldChar = TRI_Allocate(30);
+      if (fieldChar == NULL) {
+        LOG_WARNING("ignore skiplist-index, field count missing");
+        ok = false;
+      }
+    }
+    
+    if (ok) {
+      for (int j = 0; j < intCount; ++j) {
+        sprintf(fieldChar,"field_%i",j);
+        fieldStr = TRI_LookupArrayJson(json, fieldChar);
+        if (fieldStr->_type != TRI_JSON_STRING) {
+          LOG_WARNING("ignore skiplist-index, invalid field name for skiplist index");
+          ok = false;
+          break;
+        }  
+        TRI_PushBackVector(&attributes, &(fieldStr->_value._string.data));
+      }  
+      TRI_Free(fieldChar);
+    }
+    
+            
+    if (ok) {   
+      CreateSkiplistIndexSimCollection (doc, &attributes, iid, uniqueIndex); 
+    } 
+    
+    // .........................................................................
+    // Free the vector 
+    // .........................................................................
+    TRI_DestroyVector(&attributes);
+  }
+  
   // ups
   else {
     LOG_WARNING("ignoring unknown index type '%s'", typeStr);
@@ -1182,7 +1397,8 @@ static void OpenIndex (char const* filename, void* data) {
   TRI_FreeJson(json);
 }
 
-////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief hashes an edge header
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1305,6 +1521,11 @@ TRI_sim_collection_t* TRI_CreateSimCollection (char const* path, TRI_col_paramet
 
   // first create the document collection
   doc = TRI_Allocate(sizeof(TRI_sim_collection_t));
+  if (!doc) {
+    LOG_ERROR("cannot create document");
+    return NULL;
+  }
+
   collection = TRI_CreateCollection(&doc->base.base, path, &info);
 
   if (collection == NULL) {
@@ -1406,6 +1627,10 @@ TRI_sim_collection_t* TRI_OpenSimCollection (char const* path) {
 
   // first open the document collection
   doc = TRI_Allocate(sizeof(TRI_sim_collection_t));
+  if (!doc) {
+    return NULL;
+  }
+
   collection = TRI_OpenCollection(&doc->base.base, path);
 
   if (collection == NULL) {
@@ -1417,6 +1642,13 @@ TRI_sim_collection_t* TRI_OpenSimCollection (char const* path) {
 
   // then the shape collection
   shapes = TRI_Concatenate2File(collection->_directory, "SHAPES");
+  if (!shapes) {
+    TRI_CloseCollection(collection);
+    TRI_FreeCollection(collection);
+    TRI_Free(doc);
+    return NULL;
+  }
+
   shaper = TRI_OpenVocShaper(shapes);
   TRI_FreeString(shapes);
 
@@ -1529,6 +1761,10 @@ static bool CreateImmediateIndexes (TRI_sim_collection_t* collection,
 
     // IN
     entry = TRI_Allocate(sizeof(TRI_edge_header_t));
+    if (!entry) {
+      // TODO: what to do in this case?
+      return false;
+    }
     entry->_mptr = header;
     entry->_direction = TRI_EDGE_IN;
     entry->_cid = edge->_toCid;
@@ -1537,6 +1773,10 @@ static bool CreateImmediateIndexes (TRI_sim_collection_t* collection,
 
     // OUT
     entry = TRI_Allocate(sizeof(TRI_edge_header_t));
+    if (!entry) {
+      // TODO: what to do in this case?
+      return false;
+    }
     entry->_mptr = header;
     entry->_direction = TRI_EDGE_OUT;
     entry->_cid = edge->_fromCid;
@@ -1545,6 +1785,10 @@ static bool CreateImmediateIndexes (TRI_sim_collection_t* collection,
 
     // ANY
     entry = TRI_Allocate(sizeof(TRI_edge_header_t));
+    if (!entry) {
+      // TODO: what to do in this case?
+      return false;
+    }
     entry->_mptr = header;
     entry->_direction = TRI_EDGE_ANY;
     entry->_cid = edge->_toCid;
@@ -1553,6 +1797,10 @@ static bool CreateImmediateIndexes (TRI_sim_collection_t* collection,
 
     if (edge->_toCid != edge->_fromCid || edge->_toDid != edge->_fromDid) {
       entry = TRI_Allocate(sizeof(TRI_edge_header_t));
+      if (!entry) {
+        // TODO: what to do in this case?
+        return false;
+      }
       entry->_mptr = header;
       entry->_direction = TRI_EDGE_ANY;
       entry->_cid = edge->_fromCid;
@@ -1572,6 +1820,7 @@ static bool CreateImmediateIndexes (TRI_sim_collection_t* collection,
 
     ok = idx->insert(idx, header);
 
+    // i < n ? idx : NULL;
     if (! ok) {
       result = false;
     }
@@ -1744,7 +1993,7 @@ static void FillIndex (TRI_sim_collection_t* collection,
   size_t scanned;
   void** end;
   void** ptr;
-
+  bool ok;
   // update index
   n = collection->_primaryIndex._nrUsed;
   ptr = collection->_primaryIndex._table;
@@ -1756,7 +2005,7 @@ static void FillIndex (TRI_sim_collection_t* collection,
     if (*ptr) {
       ++scanned;
 
-      idx->insert(idx, *ptr);
+      ok = idx->insert(idx, *ptr);
 
       if (scanned % 10000 == 0) {
         LOG_INFO("indexed %ld of %ld documents", scanned, n);
@@ -1788,6 +2037,9 @@ TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* collection
   size_t i;
 
   vector = TRI_Allocate(sizeof(TRI_vector_pointer_t));
+  if (!vector) {
+    return NULL;
+  }
   TRI_InitVectorPointer(vector);
 
   // .............................................................................
@@ -1821,7 +2073,7 @@ TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* collection
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a description of all indexes
+/// @brief returns a description of anindex
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_IndexSimCollection (TRI_sim_collection_t* collection, TRI_idx_iid_t iid) {
@@ -1839,7 +2091,7 @@ TRI_index_t* TRI_IndexSimCollection (TRI_sim_collection_t* collection, TRI_idx_i
 
   for (i = 0;  i < n;  ++i) {
     idx = collection->_indexes._buffer[i];
-
+    
     if (idx->_iid == iid) {
       break;
     }
@@ -1865,6 +2117,10 @@ bool TRI_DropIndexSimCollection (TRI_sim_collection_t* collection, TRI_idx_iid_t
   size_t i;
 
   vector = TRI_Allocate(sizeof(TRI_vector_pointer_t));
+  if (!vector) {
+    return false;
+  }
+
   found = NULL;
   TRI_InitVectorPointer(vector);
 
@@ -2102,6 +2358,157 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
   return idx;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a hash index to the collection
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collection,
+                                                  const TRI_vector_t* attributes,
+                                                  TRI_idx_iid_t iid,
+                                                  bool unique) {
+  TRI_index_t* idx     = NULL;
+  TRI_shaper_t* shaper = collection->base._shaper;
+  TRI_vector_t shapes;
+  
+  TRI_InitVector(&shapes, sizeof(TRI_shape_pid_t));
+
+
+  // ...........................................................................
+  // Determine the shape ids for the attributes
+  // ...........................................................................
+  for (size_t j = 0; j < attributes->_length; ++j) {
+    char* shapeString     = *((char**)(TRI_AtVector(attributes,j)));    
+    TRI_shape_pid_t shape = shaper->findAttributePathByName(shaper, shapeString);   
+    TRI_PushBackVector(&shapes,&shape);
+  }
+  
+  
+  // ...........................................................................
+  // Attempt to find an existing index which matches the attributes above.
+  // If a suitable index is found, return that one otherwise we need to create
+  // a new one.
+  // ...........................................................................
+  idx = TRI_LookupHashIndexSimCollection(collection, &shapes);
+  
+  
+  if (idx != NULL) {
+    TRI_DestroyVector(&shapes);
+    LOG_TRACE("hash-index already created");
+    return idx;
+  }
+
+
+  // ...........................................................................
+  // Create the hash index
+  // ...........................................................................
+  idx = TRI_CreateHashIndex(&collection->base,&shapes, unique);
+  
+
+  // ...........................................................................
+  // If index id given, use it otherwise use the default.
+  // ...........................................................................
+  if (iid) {
+    idx->_iid = iid;
+  }
+  
+  
+  // ...........................................................................
+  // initialises the index with all existing documents
+  // ...........................................................................
+  FillIndex(collection, idx);
+
+  
+  // ...........................................................................
+  // store index
+  // ...........................................................................
+  TRI_PushBackVectorPointer(&collection->_indexes, idx);
+
+  
+  // ...........................................................................
+  // release memory allocated to vector
+  // ...........................................................................
+  TRI_DestroyVector(&shapes);
+  
+  return idx;  
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a skiplist index to the collection
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* collection,
+                                                      const TRI_vector_t* attributes,
+                                                      TRI_idx_iid_t iid,
+                                                      bool unique) {
+  TRI_index_t* idx     = NULL;
+  TRI_shaper_t* shaper = collection->base._shaper;
+  TRI_vector_t shapes;
+  
+  TRI_InitVector(&shapes, sizeof(TRI_shape_pid_t));
+
+
+  // ...........................................................................
+  // Determine the shape ids for the attributes
+  // ...........................................................................
+  for (size_t j = 0; j < attributes->_length; ++j) {
+    char* shapeString     = *((char**)(TRI_AtVector(attributes,j)));    
+    TRI_shape_pid_t shape = shaper->findAttributePathByName(shaper, shapeString);   
+    TRI_PushBackVector(&shapes,&shape);
+  }
+  
+  
+  // ...........................................................................
+  // Attempt to find an existing index which matches the attributes above.
+  // If a suitable index is found, return that one otherwise we need to create
+  // a new one.
+  // ...........................................................................
+  idx = TRI_LookupSkiplistIndexSimCollection(collection, &shapes);
+  
+  
+  if (idx != NULL) {
+    TRI_DestroyVector(&shapes);
+    LOG_TRACE("skiplist-index already created");
+    return idx;
+  }
+
+
+  // ...........................................................................
+  // Create the skiplist index
+  // ...........................................................................
+  idx = TRI_CreateSkiplistIndex(&collection->base,&shapes, unique);
+  
+
+  // ...........................................................................
+  // If index id given, use it otherwise use the default.
+  // ...........................................................................
+  if (iid) {
+    idx->_iid = iid;
+  }
+  
+  
+  // ...........................................................................
+  // initialises the index with all existing documents
+  // ...........................................................................
+  FillIndex(collection, idx);
+
+  
+  // ...........................................................................
+  // store index
+  // ...........................................................................
+  TRI_PushBackVectorPointer(&collection->_indexes, idx);
+
+  
+  // ...........................................................................
+  // release memory allocated to vector
+  // ...........................................................................
+  TRI_DestroyVector(&shapes);
+  
+  return idx;  
+}
+                                                  
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -2173,6 +2580,142 @@ TRI_index_t* TRI_LookupGeoIndex2SimCollection (TRI_sim_collection_t* collection,
   return NULL;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a hash index (unique or non-unique)
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t* collection,
+                                               const TRI_vector_t* shapes) {
+  TRI_index_t* matchedIndex = NULL;                                                                                        
+  
+  // ...........................................................................
+  // Note: This function does NOT differentiate between non-unique and unique
+  //       hash indexes. The first hash index which matches the attributes
+  //       (shapes parameter) will be returned.
+  // ...........................................................................
+  
+  
+  // ........................................................................... 
+  // go through every index and see if we have a match 
+  // ........................................................................... 
+  
+  for (size_t j = 0;  j < collection->_indexes._length;  ++j) {
+    TRI_index_t* idx            = collection->_indexes._buffer[j];
+    TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
+    bool found                  = true;
+
+        
+    // .........................................................................
+    // check that the type of the index is in fact a hash index 
+    // .........................................................................
+        
+    if (idx->_type != TRI_IDX_TYPE_HASH_INDEX) {
+      continue;
+    }
+
+        
+    // .........................................................................
+    // check that the number of shapes (fields) in the hash index matches that
+    // of the number of attributes
+    // .........................................................................
+        
+    if (shapes->_length != hashIndex->_shapeList->_length) {
+      continue;
+    }
+        
+        
+    // .........................................................................
+    // Go through all the attributes and see if they match
+    // .........................................................................
+
+    for (size_t k = 0; k < shapes->_length; ++k) {
+      TRI_shape_pid_t field = *((TRI_shape_pid_t*)(TRI_AtVector(hashIndex->_shapeList,k)));   
+      TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(shapes,k)));
+      if (field != shape) {
+        found = false;
+        break;          
+      } 
+    }  
+        
+
+    if (found) {
+      matchedIndex = idx;
+      break;
+    }    
+  }
+  
+  return matchedIndex;  
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a skiplist index (unique or non-unique)
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_LookupSkiplistIndexSimCollection (TRI_sim_collection_t* collection,
+                                                   const TRI_vector_t* shapes) {
+  TRI_index_t* matchedIndex = NULL;                                                                                        
+  
+  // ...........................................................................
+  // Note: This function does NOT differentiate between non-unique and unique
+  //       skiplist indexes. The first index which matches the attributes
+  //       (shapes parameter) will be returned.
+  // ...........................................................................
+  
+  
+  // ........................................................................... 
+  // go through every index and see if we have a match 
+  // ........................................................................... 
+  
+  for (size_t j = 0;  j < collection->_indexes._length;  ++j) {
+    TRI_index_t* idx                    = collection->_indexes._buffer[j];
+    TRI_skiplist_index_t* skiplistIndex = (TRI_skiplist_index_t*) idx;
+    bool found                          = true;
+
+        
+    // .........................................................................
+    // check that the type of the index is in fact a skiplist index 
+    // .........................................................................
+        
+    if (idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX) {
+      continue;
+    }
+
+        
+    // .........................................................................
+    // check that the number of shapes (fields) in the index matches that
+    // of the number of attributes
+    // .........................................................................
+        
+    if (shapes->_length != skiplistIndex->_shapeList->_length) {
+      continue;
+    }
+        
+        
+    // .........................................................................
+    // Go through all the attributes and see if they match
+    // .........................................................................
+
+    for (size_t k = 0; k < shapes->_length; ++k) {
+      TRI_shape_pid_t field = *((TRI_shape_pid_t*)(TRI_AtVector(skiplistIndex->_shapeList,k)));   
+      TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(shapes,k)));
+      if (field != shape) {
+        found = false;
+        break;          
+      } 
+    }  
+        
+
+    if (found) {
+      matchedIndex = idx;
+      break;
+    }    
+  }
+  
+  return matchedIndex;  
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists
 ////////////////////////////////////////////////////////////////////////////////
@@ -2241,6 +2784,97 @@ TRI_idx_iid_t TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* collection
   return ok ? idx->_iid : 0;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a hash index exists
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_idx_iid_t TRI_EnsureHashIndexSimCollection(TRI_sim_collection_t* collection,
+                                               const TRI_vector_t* attributes,
+                                               bool unique) {
+  TRI_index_t* idx;
+  bool ok;
+
+  // .............................................................................
+  // within write-lock the collection
+  // .............................................................................
+  TRI_WriteLockReadWriteLock(&collection->_lock);
+
+  
+  // ............................................................................. 
+  // Given the list of attributes (as strings) 
+  // .............................................................................
+
+  idx = CreateHashIndexSimCollection(collection, attributes, 0, unique);
+  
+  if (idx == NULL) {
+    TRI_WriteUnlockReadWriteLock(&collection->_lock);
+    return 0;
+  }
+
+  TRI_WriteUnlockReadWriteLock(&collection->_lock);
+
+  // .............................................................................
+  // without write-lock
+  // .............................................................................
+
+  ok = TRI_SaveIndex(&collection->base, idx);
+
+  if (ok) {
+  }  
+  else {
+    assert(0);
+  }
+  
+  return ok ? idx->_iid : 0;
+}                                                
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a skiplist index exists
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_idx_iid_t TRI_EnsureSkiplistIndexSimCollection(TRI_sim_collection_t* collection,
+                                                   const TRI_vector_t* attributes,
+                                                   bool unique) {
+  TRI_index_t* idx;
+  bool ok;
+
+  // .............................................................................
+  // within write-lock the collection
+  // .............................................................................
+  TRI_WriteLockReadWriteLock(&collection->_lock);
+
+  
+  // ............................................................................. 
+  // Given the list of attributes (as strings) 
+  // .............................................................................
+
+  idx = CreateSkiplistIndexSimCollection(collection, attributes, 0, unique);
+  
+  if (idx == NULL) {
+    TRI_WriteUnlockReadWriteLock(&collection->_lock);
+    return 0;
+  }
+
+  TRI_WriteUnlockReadWriteLock(&collection->_lock);
+
+  // .............................................................................
+  // without write-lock
+  // .............................................................................
+
+  ok = TRI_SaveIndex(&collection->base, idx);
+
+  if (ok) {
+  }  
+  else {
+    assert(0);
+  }
+  
+  return ok ? idx->_iid : 0;
+}                                                
+
+                                                
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////

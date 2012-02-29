@@ -119,59 +119,7 @@ AvocadoFluentQueryInternal.prototype.constructor = AvocadoFluentQueryInternal;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a document
-///
-/// @FUN{document(@FA{document-identifier})}
-///
-/// The @FN{document} operator finds a document given it's identifier.  It
-/// returns the empty result set or a result set containing the document with
-/// document identifier @FA{document-identifier}.
-///
-/// @verbinclude fluent54
-///
-/// The corresponding AQL query would be:
-///
-/// @verbinclude fluent54-aql
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoFluentQuery2.prototype.document = function (id) {
-  var copy;
-  var doc;
-
-  if (this._execution != null) {
-    throw "query is already executing";
-  }
-
-  copy = this.copyQuery();
-
-  // try to find a document
-  while (copy.hasNext()) {
-    doc = copy.next();
-
-    if (doc._id == id) {
-      return new AvocadoFluentQueryArray(this._collection, [ doc ]);
-    }
-  }
-
-  // nothing found
-  return new AvocadoFluentQueryArray(this._collection, []);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief limits an existing query
-///
-/// @FUN{limit(@FA{number})}
-///
-/// Limits a result to the first @FA{number} documents. Specifying a limit of
-/// @CODE{0} returns no documents at all. If you do not need a limit, just do
-/// not add the limit operator. If you specifiy a negtive limit of @CODE{-n},
-/// this will return the last @CODE{n} documents instead.
-///
-/// @verbinclude fluent30
-///
-/// The corresponding AQL queries would be:
-///
-/// @verbinclude fluent30-aql
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoFluentQuery2.prototype.limit = function (limit) {
@@ -233,34 +181,7 @@ AvocadoFluentQuery2.prototype.limit = function (limit) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoFluentQuery2.prototype.skip = function (skip) {
-  var copy;
-
-  if (skip == null) {
-    skip = 0;
-  }
-
-  if (skip < 0) {
-    throw "skip must be non-negative";
-  }
-
-  if (this._execution != null) {
-    throw "query is already executing";
-  }
-
-  copy = this.copyQuery();
-
-  if (skip != 0) {
-    if (copy._limit == null) {
-      copy._skip = copy._skip + skip;
-    }
-    else {
-      copy = new AvocadoFluentQueryAbstract(copy._collection, copy);
-
-      copy._skip = skip;
-    }
-  }
-
-  return copy;
+  return "DELETE";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -514,53 +435,7 @@ AvocadoFluentQueryArray.prototype.copyQuery = function() {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoFluentQueryArray.prototype.execute = function () {
-  if (this._execution == null) {
-    this._execution = true;
-
-    if (this._skip == null || this._skip <= 0) {
-      this._skip = 0;
-    }
-
-    if (this._skip != 0 && this._limit == null) {
-      this._current = this._skip;
-    }
-    else if (this._limit != null) {
-      var documents;
-      var start;
-      var end;
-
-      if (0 == this._limit) {
-        start = 0;
-        end = 0;
-      }
-      else if (0 < this._limit) {
-        start = this._skip;
-        end = this._skip + this._limit;
-      }
-      else {
-        start = this._documents.length + this._limit - this._skip;
-        end = this._documents.length - this._skip;
-      }
-
-      if (start < 0) {
-        start = 0;
-      }
-
-      if (this._documents.length < end) {
-        end = this._documents.length;
-      }
-
-      documents = [];
-
-      for (var i = start;  i < end;  ++i) {
-        documents.push(this._documents[i]);
-      }
-
-      this._documents = documents;
-      this._skip = 0;
-      this._limit = null;
-    }
-  }
+  return "DELETE";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -581,9 +456,7 @@ AvocadoFluentQueryArray.prototype.execute = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoFluentQueryArray.prototype.hasNext = function () {
-  this.execute();
-
-  return this._current < this._documents.length;
+  return "DELETE";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -591,14 +464,7 @@ AvocadoFluentQueryArray.prototype.hasNext = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoFluentQueryArray.prototype.next = function() {
-  this.execute();
-
-  if (this._current < this._documents.length) {
-    return this._documents[this._current++];
-  }
-  else {
-    return undefined;
-  }
+  return "DELETE";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -606,14 +472,7 @@ AvocadoFluentQueryArray.prototype.next = function() {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoFluentQueryArray.prototype.nextRef = function() {
-  this.execute();
-
-  if (this._current < this._documents.length) {
-    return this._documents[this._current++]._id;
-  }
-  else {
-    return undefined;
-  }
+  return "DELETE";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -621,11 +480,7 @@ AvocadoFluentQueryArray.prototype.nextRef = function() {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoFluentQueryArray.prototype.useNext = function() {
-  this.execute();
-
-  if (this._current < this._documents.length) {
-    this._current++;
-  }
+  return "DELETE";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -756,7 +611,7 @@ AvocadoFluentQueryInternal.prototype.useNext = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.T_all = function () {
-  return new AvocadoFluentQueryInternal(this);
+  return "DELETE";
 }
 
 AvocadoEdgesCollection.prototype.T_all = AvocadoCollection.prototype.T_all;
@@ -766,12 +621,7 @@ AvocadoEdgesCollection.prototype.T_all = AvocadoCollection.prototype.T_all;
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.T_document = function (id) {
-  var query;
-
-  query = new AvocadoFluentQueryInternal(this);
-  query._where = AQL_WHERE_PRIMARY_CONST(id);
-
-  return query;
+  return "DOCUMENT";
 }
 
 AvocadoEdgesCollection.prototype.T_document = AvocadoCollection.prototype.T_document;
@@ -781,12 +631,7 @@ AvocadoEdgesCollection.prototype.T_document = AvocadoCollection.prototype.T_docu
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.T_limit = function (limit) {
-  var query;
-
-  query = new AvocadoFluentQueryInternal(this);
-  query._limit = limit;
-
-  return query;
+  return "DELETE";
 }
 
 AvocadoEdgesCollection.prototype.T_limit = AvocadoCollection.prototype.T_limit;
@@ -796,16 +641,7 @@ AvocadoEdgesCollection.prototype.T_limit = AvocadoCollection.prototype.T_limit;
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.T_skip = function (skip) {
-  var query;
-
-  if (skip < 0) {
-    throw "skip must be non-negative";
-  }
-
-  query = new AvocadoFluentQueryInternal(this);
-  query._skip = skip;
-
-  return query;
+  return "DELETE";
 }
 
 AvocadoEdgesCollection.prototype.T_skip = AvocadoCollection.prototype.T_skip;
@@ -815,17 +651,7 @@ AvocadoEdgesCollection.prototype.T_skip = AvocadoCollection.prototype.T_skip;
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.toArray = function () {
-  var cursor;
-  var result;
-
-  cursor = this.T_all();
-  result = [];
-
-  while (cursor.hasNext()) {
-    result.push(cursor.next());
-  }
-
-  return result;
+  return "DELETE";
 }
 
 AvocadoEdgesCollection.prototype.toArray = AvocadoCollection.prototype.toArray;

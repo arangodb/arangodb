@@ -130,7 +130,7 @@ static char* CompletionGenerator (char const* text, int state) {
 
     // compute all possible completions
     v8::Handle<v8::Array> properties;
-    v8::Handle<v8::String> cpl = v8::String::New("COMPLETIONS");
+    v8::Handle<v8::String> cpl = v8::String::New("_COMPLETIONS");
 
     if (current->HasOwnProperty(cpl)) {
       v8::Handle<v8::Value> funcVal = current->Get(cpl);
@@ -155,16 +155,19 @@ static char* CompletionGenerator (char const* text, int state) {
 
       for (size_t i = 0;  i < n;  ++i) {
         v8::Handle<v8::Value> v = properties->Get(i);
-        
+                  
         v8::String::Utf8Value str(v);
         char const* s = *str;
         
         if (s != 0) {
+          
+          string x = (current->Get(v)->IsFunction()) ? "()" : "";
+                  
           if (*prefix == '\0') {
-            result.push_back(path + s);
+            result.push_back(path + s + x);
           }
           else if (TRI_IsPrefixString(s, prefix)) {
-            result.push_back(path + s);
+            result.push_back(path + s + x);
           }
         }
       }
@@ -396,7 +399,9 @@ bool V8LineEditor::open () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool V8LineEditor::close () {
-  return write_history(getHistoryPath().c_str());
+  bool result = write_history(getHistoryPath().c_str());
+
+  return result;
 }
 
 
@@ -436,13 +441,14 @@ char* V8LineEditor::prompt (char const* prompt) {
   }
 
   char const* sep = "";
+  char* originalLine = 0; 
 
   while (true) {
     char* result = readline(p);
+    originalLine = result;
     p = dotdot.c_str();
 
     if (result == 0) {
-
       // give up, if the user pressed control-D on the top-most level
       if (_current.empty()) {
         return 0;
@@ -477,10 +483,16 @@ char* V8LineEditor::prompt (char const* prompt) {
     if (ok) {
       break;
     }
+    TRI_Free(originalLine);
   }
 
   char* line = TRI_DuplicateString(_current.c_str());
   _current.clear();
+
+  // avoid memleaks
+  if (originalLine != 0) {
+    TRI_Free(originalLine);
+  }
 
   return line;
 }

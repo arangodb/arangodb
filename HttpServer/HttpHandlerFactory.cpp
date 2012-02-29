@@ -144,7 +144,31 @@ namespace triagens {
           }
         }
 
-        if (! prefix.empty()) {
+        if (prefix.empty()) {
+          LOGGER_TRACE << "no prefix handler found, trying catch all";
+          
+          i = ii.find("/");
+          if (i != ii.end()) {
+            LOGGER_TRACE << "found catch all handler '/'";
+
+            size_t l = 1;
+            size_t n = path.find_first_of('/', l);
+
+            while (n != string::npos) {
+              request->addSuffix(path.substr(l, n - l));
+              l = n + 1;
+              n = path.find_first_of('/', l);
+            }
+
+            if (l < path.size()) {
+              request->addSuffix(path.substr(l));
+            }
+            prefix = "/";
+            request->setRequestPath(prefix);            
+          }
+        }
+
+        else {
           LOGGER_TRACE << "found prefix match '" << prefix << "'";
 
           size_t l = prefix.size() + 1;

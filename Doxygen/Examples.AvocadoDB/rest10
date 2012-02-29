@@ -1,23 +1,18 @@
-> curl -X GET --dump - http://localhost:8529/_document/9496015:13658604
-HTTP/1.1 200 OK
-content-type: application/json
-connection: Keep-Alive
-server: triagens GmbH High-Performance HTTP Server
-etag: "14252313"
-content-length: 43
-
-> curl --data @- -X PUT --header 'etag: "13865833"' --dump - http://localhost:8529/_document/9496015:13658604
+> curl --data @- -X PUT --header 'etag: "13865833"'
+>      --dump - http://localhost:8529/collection/9496015/13658604
 { "Hallo" : "Me" }
 
 HTTP/1.1 409 Conflict
 content-type: application/json
 connection: Keep-Alive
 server: triagens GmbH High-Performance HTTP Server
-content-length: 101
 
-{ "error" : true, "message" : "document /_document/9496015:13658604 is been altered", "code" : 409}
+{ "error" : true,
+  "message" : "document /collection/9496015:13658604 has been altered",
+  "code" : 409}
 
-> curl --data @- -X PUT --header 'etag: "13865833"' --dump - http://localhost:8529/_document/9496015:13658604?policy=last
+> curl --data @- -X PUT --header 'etag: "13865833"'
+>      --dump - http://localhost:8529/collection/9496015:13658604?policy=last
 { "Hallo" : "Me" }
 
 HTTP/1.1 204 No Content

@@ -1,0 +1,7 @@
+> curl -X HEAD --dump - http://localhost:8529/collection/9496015/13658604
+HTTP/1.1 200 OK
+content-type: application/json
+connection: Keep-Alive
+server: triagens GmbH High-Performance HTTP Server
+etag: "13658605"
+content-length: 0

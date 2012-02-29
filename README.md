@@ -7,18 +7,16 @@ effort to operate for the administrator.
 
 ## Compilation
 
-1. Install Dependencies: V8, boost, libev
-2. make setup
-3. ./configure --with-boost=PATH_TO_BOOST --with-libev=PATH_TO_LIBEV --with-v8=PATH_TO_V8
-4. make
-5. create a directory `/var/lib/avocado` where you are allowed to read and write
-6. "./avocado /var/lib/avocado" to start a REST server or "./avocado /var/lib/avocado --shell" for debugging
+Please check the <a href="https://github.com/triAGENS/AvocadoDB/wiki">wiki</a>
+for installation and compilation instructions:
 
 ### Mac OS X Hints
 
-If you install AvocadoDB on Mac OS X we collected some hints for you:
+On Mac OS X you can install AvocadoDB using the packagemanager [Homebrew](http://mxcl.github.com/homebrew/). We are currently waiting for approval of our package, therefore you need to use this:
 
-* The version of bison delivered with OS X is out of date. Update it before installing.
+* `brew install https://raw.github.com/tisba/homebrew/master/Library/Formula/avocadodb.rb`
+
+This will install AvocadoDB and all dependencies. 
 
 ## First Steps
 
@@ -26,3 +24,11 @@ If you install AvocadoDB on Mac OS X we collected some hints for you:
     avocado> db.examples.count();
     avocado> db.examples.save({ Hallo: "World" });
     avocado> db.examples.select();
+
+## Caveat
+
+Please note that this is a very early version if AvocadoDB. There will be
+bugs and we'd realy appreciate it if you 
+<a href="https://github.com/triAGENS/AvocadoDB/issues">report</a> them:
+
+  https://github.com/triAGENS/AvocadoDB/issues

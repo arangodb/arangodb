@@ -25,19 +25,18 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_QL_FORMATTER
-#define TRIAGENS_DURHAM_QL_FORMATTER
+#ifndef TRIAGENS_DURHAM_QL_FORMATTER_H
+#define TRIAGENS_DURHAM_QL_FORMATTER_H 1
 
 #include <string.h>
 #include <stdio.h>
 #include <inttypes.h>
 
-#include "QL/ast-node.h"
+#include "VocBase/query-node.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup QL
@@ -49,7 +48,7 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct QL_formatter_s {
-  unsigned int indentLevel;
+  unsigned int _indentLevel;
 } 
 QL_formatter_t;
 
@@ -105,7 +104,7 @@ void QLFormatterPrintStr (QL_formatter_t*, const char*, const char*);
 /// @brief Recursively dump an AST
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLFormatterDump (QL_ast_node_t*,QL_formatter_t*, const int);
+void QLFormatterDump (TRI_query_node_t*, QL_formatter_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
