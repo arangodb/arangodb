@@ -26,12 +26,12 @@
 /// @author Copyright 2008-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_FYN_REST_SIGNAL_TASK_H
-#define TRIAGENS_FYN_REST_SIGNAL_TASK_H 1
+#ifndef TRIAGENS_FYN_REST_SIGNAL_TASK2_H
+#define TRIAGENS_FYN_REST_SIGNAL_TASK2_H 1
 
 #include "Scheduler/Task.h"
 
-#include <Basics/Mutex.h>
+#include "Basics/Mutex.h"
 
 namespace triagens {
   namespace rest {

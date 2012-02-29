@@ -118,7 +118,6 @@ libavocadodb_a_SOURCES = \
 	Scheduler/ListenTask.cpp \
 	Scheduler/PeriodicTask.cpp \
 	Scheduler/Scheduler.cpp \
-	Scheduler/SchedulerImpl.cpp \
 	Scheduler/SchedulerLibev.cpp \
 	Scheduler/SchedulerThread.cpp \
 	Scheduler/SignalTask.cpp \

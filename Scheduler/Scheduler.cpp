@@ -28,17 +28,331 @@
 
 #include "Scheduler.h"
 
-#include "Scheduler/SchedulerLibev.h"
+#include <Logger/Logger.h>
+#include <Basics/MutexLocker.h>
+#include <Basics/StringUtils.h>
+#include <Basics/Thread.h>
 
-namespace triagens {
-  namespace rest {
+#include "Scheduler/Task.h"
+#include "Scheduler/SchedulerThread.h"
 
-    // -----------------------------------------------------------------------------
-    // constructors and destructors
-    // -----------------------------------------------------------------------------
+using namespace triagens::basics;
+using namespace triagens::rest;
 
-    Scheduler* Scheduler::create () {
-      return new SchedulerLibev();
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Scheduler
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a scheduler
+////////////////////////////////////////////////////////////////////////////////
+
+Scheduler::Scheduler (size_t nrThreads)
+  : nrThreads(nrThreads),
+    stopping(0),
+    nextLoop(0) {
+
+  // check for multi-threading scheduler
+  multiThreading = (nrThreads > 1);
+  
+  if (! multiThreading) {
+    nrThreads = 1;
+  }
+
+  // report status
+  LOGGER_TRACE << "scheduler is " << (multiThreading ? "multi" : "single") << "-threaded, "
+               << "number of threads = " << nrThreads;
+
+  // setup signal handlers
+  initialiseSignalHandlers();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructs a scheduler
+////////////////////////////////////////////////////////////////////////////////
+
+Scheduler::~Scheduler () {
+
+  // delete the open tasks
+  for (set<Task*>::iterator i = taskRegistered.begin();  i != taskRegistered.end();  ++i) {
+    deleteTask(*i);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Threading
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief starts scheduler, keeps running
+////////////////////////////////////////////////////////////////////////////////
+
+bool Scheduler::start (ConditionVariable* cv) {
+  MUTEX_LOCKER(schedulerLock);
+
+  // start the schedulers threads
+  for (size_t i = 0;  i < nrThreads;  ++i) {
+    bool ok = threads[i]->start(cv);
+
+    if (! ok) {
+      LOGGER_FATAL << "cannot start threads";
+      return false;
+    }
+  }
+
+  // and wait until the threads are started
+  bool waiting = true;
+
+  while (waiting) {
+    waiting = false;
+
+    usleep(1000);
+
+    for (size_t i = 0;  i < nrThreads;  ++i) {
+      if (! threads[i]->isRunning()) {
+        waiting = true;
+        LOGGER_TRACE << "waiting for thread #" << i << " to start";
+      }
+    }
+  }
+  
+  LOGGER_TRACE << "all scheduler threads are up and running";
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief starts shutdown sequence
+////////////////////////////////////////////////////////////////////////////////
+
+void Scheduler::beginShutdown () {
+  if (stopping != 0) {
+    return;
+  }
+  
+  MUTEX_LOCKER(schedulerLock);
+  
+  if (stopping == 0) {
+    LOGGER_DEBUG << "beginning shutdown sequence of scheduler";
+    
+    stopping = 1;
+    
+    for (size_t i = 0;  i < nrThreads;  ++i) {
+      threads[i]->beginShutdown();
     }
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if scheduler is shuting down
+////////////////////////////////////////////////////////////////////////////////
+
+bool Scheduler::isShutdownInProgress () {
+  return stopping != 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if scheduler is still running
+////////////////////////////////////////////////////////////////////////////////
+
+bool Scheduler::isRunning () {
+  MUTEX_LOCKER(schedulerLock);
+
+  for (size_t i = 0;  i < nrThreads;  ++i) {
+    if (threads[i]->isRunning()) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief registers a new task
+////////////////////////////////////////////////////////////////////////////////
+
+void Scheduler::registerTask (Task* task) {
+  if (stopping != 0) {
+    return;
+  }
+
+  SchedulerThread* thread = 0;
+
+  {
+    MUTEX_LOCKER(schedulerLock);
+
+    LOGGER_TRACE << "registerTask for task " << task;
+
+    size_t n = 0;
+
+    if (multiThreading && ! task->needsMainEventLoop()) {
+      n = (++nextLoop) % nrThreads;
+    }
+
+    thread = threads[n];
+
+    task2thread[task] = thread;
+    taskRegistered.insert(task);
+    ++current[task->getName()];
+  }
+
+  thread->registerTask(this, task);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unregisters a task
+////////////////////////////////////////////////////////////////////////////////
+
+void Scheduler::unregisterTask (Task* task) {
+  if (stopping != 0) {
+    return;
+  }
+
+  SchedulerThread* thread = 0;
+
+  {
+    MUTEX_LOCKER(schedulerLock);
+
+    map<Task*, SchedulerThread*>::iterator i = task2thread.find(task);
+
+    if (i == task2thread.end()) {
+      LOGGER_WARNING << "unregisterTask called for a unknown task " << task;
+
+      return;
+    }
+    else {
+      LOGGER_TRACE << "unregisterTask for task " << task;
+
+      thread = i->second;
+
+      if (taskRegistered.count(task) > 0) {
+        taskRegistered.erase(task);
+        --current[task->getName()];
+      }
+    }
+  }
+
+  thread->unregisterTask(task);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys task
+////////////////////////////////////////////////////////////////////////////////
+
+void Scheduler::destroyTask (Task* task) {
+  if (stopping != 0) {
+    return;
+  }
+
+  SchedulerThread* thread = 0;
+
+  {
+    MUTEX_LOCKER(schedulerLock);
+
+    map<Task*, SchedulerThread*>::iterator i = task2thread.find(task);
+
+    if (i == task2thread.end()) {
+      LOGGER_WARNING << "destroyTask called for a unknown task " << task;
+
+      return;
+    }
+    else {
+      LOGGER_TRACE << "destroyTask for task " << task;
+      
+      thread = i->second;
+      
+      if (taskRegistered.count(task) > 0) {
+        taskRegistered.erase(task);
+        --current[task->getName()];
+      }
+      
+      task2thread.erase(i);
+    }
+  }
+  
+  thread->destroyTask(task);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief called to display current status
+////////////////////////////////////////////////////////////////////////////////
+
+void Scheduler::reportStatus () {
+  if (TRI_IsDebugLogging(__FILE__)) {
+    MUTEX_LOCKER(schedulerLock);
+
+    string status = "scheduler: ";
+    
+    LoggerInfo info;
+    info << LoggerData::Task("scheduler status");
+    
+    for (map<string, int>::const_iterator i = current.begin();  i != current.end();  ++i) {
+      string val = StringUtils::itoa(i->second);
+      
+      status += i->first + " = " + val + " ";
+      
+      info
+      << LoggerData::Extra(i->first)
+      << LoggerData::Extra(val);
+    }
+    
+    LOGGER_DEBUG_I(info)
+    << status;
+    
+    LOGGER_HEARTBEAT_I(info);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            static private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Scheduler
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inialises the signal handlers for the scheduler
+////////////////////////////////////////////////////////////////////////////////
+
+void Scheduler::initialiseSignalHandlers () {
+  struct sigaction action;
+  memset(&action, 0, sizeof(action));
+  sigfillset(&action.sa_mask);
+  
+  // ignore broken pipes
+  action.sa_handler = SIG_IGN;
+  
+  int res = sigaction(SIGPIPE, &action, 0);
+  
+  if (res < 0) {
+    LOGGER_ERROR << "cannot initialise signal handlers for pipe";
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:

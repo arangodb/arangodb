@@ -235,7 +235,6 @@ am_libavocadodb_a_OBJECTS =  \
 	Scheduler/libavocadodb_a-ListenTask.$(OBJEXT) \
 	Scheduler/libavocadodb_a-PeriodicTask.$(OBJEXT) \
 	Scheduler/libavocadodb_a-Scheduler.$(OBJEXT) \
-	Scheduler/libavocadodb_a-SchedulerImpl.$(OBJEXT) \
 	Scheduler/libavocadodb_a-SchedulerLibev.$(OBJEXT) \
 	Scheduler/libavocadodb_a-SchedulerThread.$(OBJEXT) \
 	Scheduler/libavocadodb_a-SignalTask.$(OBJEXT) \
@@ -665,7 +664,6 @@ libavocadodb_a_SOURCES = \
 	Scheduler/ListenTask.cpp \
 	Scheduler/PeriodicTask.cpp \
 	Scheduler/Scheduler.cpp \
-	Scheduler/SchedulerImpl.cpp \
 	Scheduler/SchedulerLibev.cpp \
 	Scheduler/SchedulerThread.cpp \
 	Scheduler/SignalTask.cpp \
@@ -1276,8 +1274,6 @@ Scheduler/libavocadodb_a-PeriodicTask.$(OBJEXT):  \
 	Scheduler/$(am__dirstamp) Scheduler/$(DEPDIR)/$(am__dirstamp)
 Scheduler/libavocadodb_a-Scheduler.$(OBJEXT):  \
 	Scheduler/$(am__dirstamp) Scheduler/$(DEPDIR)/$(am__dirstamp)
-Scheduler/libavocadodb_a-SchedulerImpl.$(OBJEXT):  \
-	Scheduler/$(am__dirstamp) Scheduler/$(DEPDIR)/$(am__dirstamp)
 Scheduler/libavocadodb_a-SchedulerLibev.$(OBJEXT):  \
 	Scheduler/$(am__dirstamp) Scheduler/$(DEPDIR)/$(am__dirstamp)
 Scheduler/libavocadodb_a-SchedulerThread.$(OBJEXT):  \
@@ -1651,7 +1647,6 @@ mostlyclean-compile:
 	-rm -f Scheduler/libavocadodb_a-ListenTask.$(OBJEXT)
 	-rm -f Scheduler/libavocadodb_a-PeriodicTask.$(OBJEXT)
 	-rm -f Scheduler/libavocadodb_a-Scheduler.$(OBJEXT)
-	-rm -f Scheduler/libavocadodb_a-SchedulerImpl.$(OBJEXT)
 	-rm -f Scheduler/libavocadodb_a-SchedulerLibev.$(OBJEXT)
 	-rm -f Scheduler/libavocadodb_a-SchedulerThread.$(OBJEXT)
 	-rm -f Scheduler/libavocadodb_a-SignalTask.$(OBJEXT)
@@ -1834,7 +1829,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Scheduler/$(DEPDIR)/libavocadodb_a-ListenTask.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Scheduler/$(DEPDIR)/libavocadodb_a-PeriodicTask.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Scheduler/$(DEPDIR)/libavocadodb_a-Scheduler.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@Scheduler/$(DEPDIR)/libavocadodb_a-SchedulerImpl.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Scheduler/$(DEPDIR)/libavocadodb_a-SchedulerLibev.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Scheduler/$(DEPDIR)/libavocadodb_a-SchedulerThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Scheduler/$(DEPDIR)/libavocadodb_a-SignalTask.Po@am__quote@
@@ -4070,22 +4064,6 @@ Scheduler/libavocadodb_a-Scheduler.obj: Scheduler/Scheduler.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Scheduler/Scheduler.cpp' object='Scheduler/libavocadodb_a-Scheduler.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libavocadodb_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o Scheduler/libavocadodb_a-Scheduler.obj `if test -f 'Scheduler/Scheduler.cpp'; then $(CYGPATH_W) 'Scheduler/Scheduler.cpp'; else $(CYGPATH_W) '$(srcdir)/Scheduler/Scheduler.cpp'; fi`
-
-Scheduler/libavocadodb_a-SchedulerImpl.o: Scheduler/SchedulerImpl.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libavocadodb_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT Scheduler/libavocadodb_a-SchedulerImpl.o -MD -MP -MF Scheduler/$(DEPDIR)/libavocadodb_a-SchedulerImpl.Tpo -c -o Scheduler/libavocadodb_a-SchedulerImpl.o `test -f 'Scheduler/SchedulerImpl.cpp' || echo '$(srcdir)/'`Scheduler/SchedulerImpl.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) Scheduler/$(DEPDIR)/libavocadodb_a-SchedulerImpl.Tpo Scheduler/$(DEPDIR)/libavocadodb_a-SchedulerImpl.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Scheduler/SchedulerImpl.cpp' object='Scheduler/libavocadodb_a-SchedulerImpl.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libavocadodb_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o Scheduler/libavocadodb_a-SchedulerImpl.o `test -f 'Scheduler/SchedulerImpl.cpp' || echo '$(srcdir)/'`Scheduler/SchedulerImpl.cpp
-
-Scheduler/libavocadodb_a-SchedulerImpl.obj: Scheduler/SchedulerImpl.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libavocadodb_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT Scheduler/libavocadodb_a-SchedulerImpl.obj -MD -MP -MF Scheduler/$(DEPDIR)/libavocadodb_a-SchedulerImpl.Tpo -c -o Scheduler/libavocadodb_a-SchedulerImpl.obj `if test -f 'Scheduler/SchedulerImpl.cpp'; then $(CYGPATH_W) 'Scheduler/SchedulerImpl.cpp'; else $(CYGPATH_W) '$(srcdir)/Scheduler/SchedulerImpl.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) Scheduler/$(DEPDIR)/libavocadodb_a-SchedulerImpl.Tpo Scheduler/$(DEPDIR)/libavocadodb_a-SchedulerImpl.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Scheduler/SchedulerImpl.cpp' object='Scheduler/libavocadodb_a-SchedulerImpl.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libavocadodb_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o Scheduler/libavocadodb_a-SchedulerImpl.obj `if test -f 'Scheduler/SchedulerImpl.cpp'; then $(CYGPATH_W) 'Scheduler/SchedulerImpl.cpp'; else $(CYGPATH_W) '$(srcdir)/Scheduler/SchedulerImpl.cpp'; fi`
 
 Scheduler/libavocadodb_a-SchedulerLibev.o: Scheduler/SchedulerLibev.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libavocadodb_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT Scheduler/libavocadodb_a-SchedulerLibev.o -MD -MP -MF Scheduler/$(DEPDIR)/libavocadodb_a-SchedulerLibev.Tpo -c -o Scheduler/libavocadodb_a-SchedulerLibev.o `test -f 'Scheduler/SchedulerLibev.cpp' || echo '$(srcdir)/'`Scheduler/SchedulerLibev.cpp
