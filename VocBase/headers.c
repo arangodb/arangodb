@@ -71,6 +71,7 @@ simple_headers_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClearSimpleHeaders (TRI_doc_mptr_t* header, size_t headerSize) {
+  assert(header);
   memset(header, 0, headerSize);
 }
 
@@ -88,6 +89,9 @@ static TRI_doc_mptr_t* RequestSimpleHeaders (TRI_headers_t* h) {
     char* ptr;
 
     begin = TRI_Allocate(NUMBER_HEADERS_PER_BLOCK * headers->_headerSize);
+    if (!begin) {
+      // TODO: FIXME
+    }
     ptr = begin + headers->_headerSize * (NUMBER_HEADERS_PER_BLOCK - 1);
 
     header = NULL;
@@ -151,6 +155,9 @@ static void ReleaseSimpleHeaders (TRI_headers_t* h, TRI_doc_mptr_t* header) {
 TRI_headers_t* TRI_CreateSimpleHeaders (size_t headerSize) {
   simple_headers_t* headers = TRI_Allocate(sizeof(simple_headers_t));
 
+  if (!headers) {
+    // TODO: FIXME
+  }
   headers->base.request = RequestSimpleHeaders;
   headers->base.verify = VerifySimpleHeaders;
   headers->base.release = ReleaseSimpleHeaders;

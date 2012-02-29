@@ -49,7 +49,7 @@ void dummy_39 ();
 /// Only available in shell mode.
 ///
 /// Prints the arguments. If an argument is an object having a
-/// function @FN{PRINT}, then this function is called. Otherwise @FN{toJson} is
+/// function @FN{_PRINT}, then this function is called. Otherwise @FN{toJson} is
 /// used.  A final newline is printed
 ///
 /// @verbinclude fluent40
@@ -92,10 +92,11 @@ void dummy_124 ();
 /// @brief JSON representation of an array
 ////////////////////////////////////////////////////////////////////////////////
 
-void JSF_Array_prototype_PRINT (int seen, int path, int names) {}
 
 
 
+
+void dummy_147 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -120,7 +121,8 @@ void dummy_160 ();
 /// @brief prints a function
 ////////////////////////////////////////////////////////////////////////////////
 
-void JSF_Function_prototype_PRINT (int ) {}
+
+void dummy_168 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2011-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,32 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page JSModuleAvocadoTOC
+///
+/// <ol>
+///   <li>@ref JSModuleAvocadoDefineHttpSystemAction "avocado.defineHttpSystemAction"</li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page JSModuleAvocado Module "avocado"
+///
+/// The following functions are used avocadoly.
+///
+/// <hr>
+/// @copydoc JSModuleAvocadoTOC
+/// <hr>
+///
+/// @anchor JSModuleAvocadoDefineHttpSystemAction
+/// @copydetails JS_DefineSystemAction
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                            Module
+// --SECTION--                                                 Module "internal"
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -42,6 +63,51 @@ ModuleCache["/internal"].exports.db = db;
 ModuleCache["/internal"].exports.edges = edges;
 ModuleCache["/internal"].exports.AvocadoCollection = AvocadoCollection;
 ModuleCache["/internal"].exports.AvocadoEdgesCollection = AvocadoEdgesCollection;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  Module "avocado"
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8ModuleAvocado
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief avocado module
+////////////////////////////////////////////////////////////////////////////////
+
+ModuleCache["/avocado"] = new Module("/avocado");
+
+if (typeof defineSystemAction == "function") {
+  ModuleCache["/avocado"].exports.defineHttpSystemAction = defineSystemAction;
+}
+
+avocado = ModuleCache["/avocado"].exports;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             Module "simple-query"
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8ModuleSimpleQuery
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+try {
+  require("simple-query");
+}
+catch (err) {
+  console.error("while loading 'simple-query' module: " + err);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

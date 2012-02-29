@@ -368,7 +368,7 @@ static void CompactifyDatafile (TRI_sim_collection_t* collection, TRI_voc_fid_t 
   }
 
   // add a deletion marker to the result set container
-  TRI_AddDatafileRSContainer(&collection->base._resultSets, df, RemoveDatafileCallback, &collection->base.base);
+  TRI_CreateBarrierDatafile(&collection->base._barrierList, df, RemoveDatafileCallback, &collection->base.base);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -429,16 +429,16 @@ static void CompactifySimCollection (TRI_sim_collection_t* collection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void CleanupSimCollection (TRI_sim_collection_t* collection) {
-  TRI_rs_container_t* container;
-  TRI_rs_container_element_t* element;
+  TRI_barrier_list_t* container;
+  TRI_barrier_t* element;
 
-  container = &collection->base._resultSets;
+  container = &collection->base._barrierList;
   element = NULL;
 
   // check and remove a datafile element at the beginning of the list
   TRI_LockSpin(&container->_lock);
 
-  if (container->_begin != NULL && container->_begin->_type == TRI_RSCE_DATAFILE) {
+  if (container->_begin != NULL && container->_begin->_type == TRI_BARRIER_DATAFILE) {
     element = container->_begin;
 
     container->_begin = element->_next;

@@ -34,7 +34,7 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 ////////////////////////////////////////////////////////////////////////////////
 /// @page Graphs First Steps with Graphs
 ///
-/// Graphs consists of vertices and edges. The vertex collection contains the
+/// A Graph consists of vertices and edges. The vertex collection contains the
 /// documents forming the vertices. The edge collection contains the documents
 /// forming the edges. Together both collections form a graph. Assume that
 /// the vertex collection is called @LIT{vertices} and the edges collection
@@ -49,6 +49,10 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 ///
 /// It is, however, impossible to use different vertices with the same
 /// edges. Edges are tied to the vertices.
+///
+/// Next steps: learn more about
+///
+/// - @ref JSModuleGraph
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -436,7 +440,7 @@ Edge.prototype.properties = function () {
 /// @brief edge printing
 ////////////////////////////////////////////////////////////////////////////////
 
-Edge.prototype.PRINT = function (seen, path, names) {
+Edge.prototype._PRINT = function (seen, path, names) {
   if (! this._id) {
     internal.output("[deleted Edge]");
   }
@@ -880,7 +884,7 @@ Vertex.prototype.setProperty = function (name, value) {
 /// @brief vertex representation
 ////////////////////////////////////////////////////////////////////////////////
 
-Vertex.prototype.PRINT = function (seen, path, names) {
+Vertex.prototype._PRINT = function (seen, path, names) {
   if (! this._id) {
     internal.output("[deleted Vertex]");
   }
@@ -1108,7 +1112,7 @@ Graph.prototype.getVertices = function () {
       return all.hasNext();
     };
 
-    this.PRINT = function(seen, path, names) {
+    this._PRINT = function(seen, path, names) {
       internal.output("[vertex iterator]");
     }
   };
@@ -1151,7 +1155,7 @@ Graph.prototype.getEdges = function () {
       return all.hasNext();
     };
 
-    this.PRINT = function(seen, path, names) {
+    this._PRINT = function(seen, path, names) {
       internal.output("[edge iterator]");
     }
   };
@@ -1249,7 +1253,7 @@ Graph.prototype.constructEdge = function(id) {
 /// @brief graph printing
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype.PRINT = function (seen, path, names) {
+Graph.prototype._PRINT = function (seen, path, names) {
   internal.output("Graph(\"", this._vertices._name, "\", \"" + this._edges._name, "\")");
 }
 

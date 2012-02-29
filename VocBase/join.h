@@ -66,11 +66,19 @@ typedef struct TRI_join_part_s {
   TRI_data_feeder_t *_feeder; // data source
   TRI_join_type_e _type;
   TRI_qry_where_t* _condition;
+  TRI_vector_pointer_t* _ranges;
   TRI_doc_collection_t* _collection;
   char* _collectionName;
   char* _alias;
+  QL_ast_query_geo_restriction_t* _geoRestriction;
   TRI_doc_mptr_t* _singleDocument;
   TRI_vector_pointer_t _listDocuments;
+  struct {
+    size_t _size;
+    char* _alias;
+    void* _singleValue;
+    TRI_vector_pointer_t _listValues;
+  } _extraData;
   TRI_js_exec_context_t _context;
 
   void (*free) (struct TRI_join_part_s*);
@@ -83,6 +91,7 @@ TRI_join_part_t;
 
 typedef struct TRI_select_join_s {
   TRI_vector_pointer_t _parts;
+  TRI_vocbase_t* _vocbase;
   
   void (*free) (struct TRI_select_join_s*);
 }
@@ -95,8 +104,10 @@ TRI_select_join_t;
 bool TRI_AddPartSelectJoin (TRI_select_join_t*, 
                             const TRI_join_type_e, 
                             TRI_qry_where_t*, 
+                            TRI_vector_pointer_t*,
                             char*, 
-                            char*);
+                            char*,
+                            QL_ast_query_geo_restriction_t*); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Create a new join 

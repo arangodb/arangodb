@@ -25,7 +25,6 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "QL/formatter.h" 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -38,7 +37,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 void QLFormatterIndentationInc (QL_formatter_t* formatter) {
-  formatter->indentLevel++;
+  formatter->_indentLevel++;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -46,7 +45,7 @@ void QLFormatterIndentationInc (QL_formatter_t* formatter) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void QLFormatterIndentationDec (QL_formatter_t* formatter) {
-  formatter->indentLevel--;
+  formatter->_indentLevel--;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -56,7 +55,7 @@ void QLFormatterIndentationDec (QL_formatter_t* formatter) {
 void QLFormatterPrintIndentation (QL_formatter_t* formatter) {
   unsigned int i=0;
 
-  for (; i < formatter->indentLevel; i++) {
+  for (; i < formatter->_indentLevel; i++) {
      printf("  ");
   }
 }
@@ -110,26 +109,26 @@ void QLFormatterPrintStr (QL_formatter_t* formatter, const char* name, const cha
 /// @brief Recursively dump an AST
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLFormatterDump (QL_ast_node_t* node, QL_formatter_t* formatter, const int blockBehaviour) {
+void QLFormatterDump (TRI_query_node_t* node, QL_formatter_t* formatter) {
   const char* name;
-  QL_ast_node_type_e  type;
-  QL_ast_node_t       *lhs;
-  QL_ast_node_t       *rhs;
-  QL_ast_node_t       *next;
+  TRI_query_node_type_e type;
+  TRI_query_node_t* lhs;
+  TRI_query_node_t* rhs;
+  TRI_query_node_t* next;
 
-  if (node == 0) {
+  if (!node) {
     return;
   }
 
   type   = node->_type;
-  name   = QLAstNodeGetName(type);
+  name   = TRI_QueryNodeGetName(type);
 
-  if (type == QLNodeContainerList) {
+  if (type == TRI_QueryNodeContainerList) {
     next   = node->_next;
     QLFormatterPrintBlockStart(formatter,name);
     QLFormatterIndentationInc(formatter);
     while (next) {
-      QLFormatterDump(next,formatter,1);
+      QLFormatterDump(next,formatter);
       next = next->_next;
     }
     QLFormatterIndentationDec(formatter);
@@ -140,30 +139,32 @@ void QLFormatterDump (QL_ast_node_t* node, QL_formatter_t* formatter, const int 
   QLFormatterPrintBlockStart(formatter,name);
   QLFormatterIndentationInc(formatter);
   
-  if (type == QLNodeValueString || type ==QLNodeValueNumberDoubleString || 
-      type == QLNodeValueIdentifier || type == QLNodeValueParameterNamed || 
-      type == QLNodeReferenceCollectionAlias) { 
-    QLFormatterPrintStr(formatter,"value",node->_value._stringValue);
-  } else if (type == QLNodeValueNumberInt) { 
-    QLFormatterPrintInt(formatter,"value",node->_value._intValue);
-  } else if (type == QLNodeValueNumberDouble) { 
-    QLFormatterPrintDouble(formatter,"value",node->_value._doubleValue);
-  } else if (type == QLNodeValueBool) {
-    QLFormatterPrintStr(formatter,"value",node->_value._boolValue ? "true" : "false");
-  } else if (type == QLNodeValueOrderDirection) {
-    QLFormatterPrintStr(formatter,"value",node->_value._boolValue ? "asc" : "desc");
-  } else if (type == QLNodeValueParameterNumeric) {
-    QLFormatterPrintInt(formatter,"value",node->_value._intValue);
+  if (type == TRI_QueryNodeValueString || 
+      type == TRI_QueryNodeValueNumberDoubleString || 
+      type == TRI_QueryNodeValueIdentifier || 
+      type == TRI_QueryNodeValueParameterNamed || 
+      type == TRI_QueryNodeReferenceCollectionAlias) { 
+    QLFormatterPrintStr(formatter,"value", node->_value._stringValue);
+  } else if (type == TRI_QueryNodeValueNumberInt) { 
+    QLFormatterPrintInt(formatter,"value", node->_value._intValue);
+  } else if (type == TRI_QueryNodeValueNumberDouble) { 
+    QLFormatterPrintDouble(formatter,"value", node->_value._doubleValue);
+  } else if (type == TRI_QueryNodeValueBool) {
+    QLFormatterPrintStr(formatter,"value", node->_value._boolValue ? "true" : "false");
+  } else if (type == TRI_QueryNodeValueOrderDirection) {
+    QLFormatterPrintStr(formatter,"value", node->_value._boolValue ? "asc" : "desc");
+  } else if (type == TRI_QueryNodeValueParameterNumeric) {
+    QLFormatterPrintInt(formatter,"value", node->_value._intValue);
   }
 
   lhs    = node->_lhs;
-  if (lhs != 0) {
-    QLFormatterDump(lhs,formatter,0);
+  if (lhs) {
+    QLFormatterDump(lhs, formatter);
   }
 
   rhs    = node->_rhs;
-  if (rhs != 0) { 
-    QLFormatterDump(rhs,formatter,0);
+  if (rhs) { 
+    QLFormatterDump(rhs, formatter);
   }
 
   QLFormatterIndentationDec(formatter);

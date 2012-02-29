@@ -38,7 +38,7 @@ Doxygen/xml/%.md: Doxygen/xml/%.xml
 .PHONY: doxygen
 
 doxygen: Doxygen/avocado.doxy $(DOXYGEN)
-	doxygen Doxygen/avocado.doxy
+	doxygen Doxygen/avocado.doxy > /dev/null
 
 ################################################################################
 ## wiki
@@ -54,6 +54,6 @@ wiki: $(WIKI)
 ## CLEANUP
 ################################################################################
 
-CLEANUP += $(DOXYGEN) $(WIKI)
+CLEANUP += $(DOXYGEN) $(WIKI) $(subst Doxygen/xml,Doxygen/wiki,$(WIKI))
 
 

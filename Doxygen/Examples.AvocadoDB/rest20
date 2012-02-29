@@ -1,0 +1,14 @@
+> curl -X GET --dump - http://localhost:8529/collection/173560
+HTTP/1.1 200 OK
+connection: Keep-Alive
+content-type: application/json
+server: triagens GmbH High-Performance HTTP Server
+
+{ "documents" : [
+    "/collection/173560/1973117",
+    "/collection/173560/1854703",
+    "/collection/173560/1946150",
+    "/collection/173560/2075398",
+    "/collection/173560/1680888"
+  ]
+}

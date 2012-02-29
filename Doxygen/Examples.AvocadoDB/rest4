@@ -1,10 +1,11 @@
-> curl --data '@'- -X POST --dump - http://localhost:8529/_document/9496016
+> curl --data @- -X POST --dump - http://localhost:8529/collection/9496016
 { "Hallo" : "World" }
 
 HTTP/1.1 404 Not Found
 content-type: application/json
 connection: Keep-Alive
 server: triagens GmbH High-Performance HTTP Server
-content-length: 90
 
-{ "error" : true, "message" : "collection /_collection/9496016 not found", "code" : 404}
+{ "error" : true, 
+  "message" : "collection /collection/9496016 not found",
+  "code" : 404}

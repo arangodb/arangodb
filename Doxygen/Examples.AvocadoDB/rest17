@@ -1,0 +1,9 @@
+> curl --dump - http://localhost:8529/collection/145169/2176785
+HTTP/1.1 404 Not Found
+content-type: application/json
+connection: Keep-Alive
+server: triagens GmbH High-Performance HTTP Server
+
+{ "error" : true, 
+  "message" : "collection /collection/145169 not found", 
+  "code" : 404 }

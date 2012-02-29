@@ -176,6 +176,15 @@ TRI_process_info_t TRI_ProcessInfo (TRI_pid_t pid) {
   return result;
 }
 
+#else
+
+TRI_process_info_t TRI_ProcessInfo (TRI_pid_t pid) {
+  TRI_process_info_t result;
+
+  memset(&result, 0, sizeof(result));
+  return result;
+}
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

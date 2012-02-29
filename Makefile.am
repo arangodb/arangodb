@@ -1,15 +1,39 @@
 ACLOCAL_AMFLAGS = -I m4
 
-AM_CFLAGS = 
-AM_CXXFLAGS =
-AM_CPPFLAGS = -D_SYSCONFDIR_='"${sysconfdir}"' -D_PKGDATADIR_='"${pkgdatadir}"' -D_DATABASEDIR_='"${localstatedir}/${PACKAGE_TARNAME}"'
-AM_LDFLAGS =
+AM_CPPFLAGS = \
+	-D_SYSCONFDIR_='"${sysconfdir}"' \
+	-D_PKGDATADIR_='"${pkgdatadir}"' \
+	-D_DATABASEDIR_='"${localstatedir}/${PACKAGE_TARNAME}"' \
+	@BOOST_CPPFLAGS@ \
+	@LIBEV_CPPFLAGS@ \
+	@MATH_CPPFLAGS@ \
+	@NCURSES_CPPFLAGS@ \
+	@OPENSSL_CPPFLAGS@ \
+	@READLINE_CPPFLAGS@ \
+	@V8_CPPFLAGS@
+
+AM_LDFLAGS = \
+	@BOOST_LDFLAGS@ \
+	@LIBEV_LDFLAGS@ \
+	@MATH_LDFLAGS@ \
+	@NCURSES_LDFLAGS@ \
+	@OPENSSL_LDFLAGS@ \
+	@READLINE_LDFLAGS@ \
+	@V8_LDFLAGS@
+
+LIBS = \
+	@BOOST_LIBS@ \
+	@LIBEV_LIBS@ \
+	@MATH_LIBS@ \
+	@NCURSES_LIBS@ \
+	@OPENSSL_LIBS@ \
+	@READLINE_LIBS@ \
+	@V8_LIBS@
+
 BUILT_SOURCES = 
 CLEANUP =
-LIBS =
 
-noinst_LIBRARIES = libavocadodb.a
-bin_PROGRAMS = avocado
+sbin_PROGRAMS = avocado
 
 nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/js/system -name "*.js" -print) \
@@ -21,11 +45,13 @@ nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/html -name "*.js" -print) \
 	$(shell find @srcdir@/html -name "*.png" -print)
 
+if ENABLE_INSTALL_DBDIR
 install-data-local:
-	test -d @localstatedir@//${PACKAGE_TARNAME} || mkdir -p @localstatedir@//${PACKAGE_TARNAME}
+	test -d @localstatedir@/${PACKAGE_TARNAME} || mkdir -p @localstatedir@/${PACKAGE_TARNAME}
+endif
 
 ################################################################################
-## avocado
+## avocadodb
 ################################################################################
 
 include Makefile.files

@@ -126,8 +126,10 @@ replDict["e_row"] = ""
 
 replDict["s_sect1"] = ""
 replDict["s_sect2"] = ""
+replDict["s_sect3"] = ""
 replDict["e_sect1"] = ""
 replDict["e_sect2"] = ""
+replDict["e_sect3"] = ""
 
 replDict["s_table"] = "\n{| %s\n" % table_format
 replDict["e_table"] = "\n|}\n"
@@ -135,9 +137,11 @@ replDict["e_table"] = "\n|}\n"
 replDict["s_title_1"] = "# "
 replDict["s_title_2"] = "## "
 replDict["s_title_3"] = "### "
+replDict["s_title_4"] = "#### "
 replDict["e_title_1"] = "\n\n"
 replDict["e_title_2"] = "\n\n"
 replDict["e_title_3"] = "\n\n"
+replDict["e_title_4"] = "\n\n"
 
 replDict["s_ulink"] = "["
 replDict["e_ulink"] = "]"
@@ -183,12 +187,14 @@ gencDict["row"] = True
 
 gencDict["sect1"] = False
 gencDict["sect2"] = False
+gencDict["sect3"] = False
 
 gencDict["table"] = True
 
 gencDict["title_1"] = True
 gencDict["title_2"] = True
 gencDict["title_3"] = True
+gencDict["title_4"] = True
 
 gencDict["ulink"] = True
 
@@ -225,7 +231,7 @@ path = []
 gencode = []
 
 ################################################################################
-#### @brief titel level (sect1, sect2)
+#### @brief titel level (sect1, sect2, sect3)
 ################################################################################
 
 titlevel = 1
@@ -271,6 +277,7 @@ def start_element(name, attrs):
     
     if   name == "sect1": titlevel = 2
     elif name == "sect2": titlevel = 3
+    elif name == "sect3": titlevel = 4
     elif name == "entry": tabentry = True
     elif name == "verbatim": verbatim = True
     elif name == "itemizedlist": listlevel = listlevel + 1
@@ -293,7 +300,7 @@ def start_element(name, attrs):
         genc = gencDict["%s" % name]
     #endif
 
-    if name == "sect1" or name == "sect2":
+    if name == "sect1" or name == "sect2" or name == "sect3":
         text += "<a name=\"%s\"></a>\n\n" % convert_link(attrs['id'], True)
 
     gencode.append(genc)
@@ -331,6 +338,7 @@ def end_element(name):
     
     if   name == "sect1": titlevel = 1
     elif name == "sect2": titlevel = 2
+    elif name == "sect3": titlevel = 3
     elif name == "listitem": listitem = False
     elif name == "entry": tabentry = False
     elif name == "verbatim": verbatim = False

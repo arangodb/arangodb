@@ -147,7 +147,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef FSRT_INSTANCE
-#define FSRT_INSTANCE  
+#define FSRT_INSTANCE Single
 #define FSRT_HAS_PREFIX 0
 #else
 #define FSRT_HAS_PREFIX 1

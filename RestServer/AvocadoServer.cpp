@@ -47,7 +47,7 @@
 #include "Logger/Logger.h"
 #include "Rest/Initialise.h"
 #include "RestHandler/RestActionHandler.h"
-#include "RestHandler/RestDocumentHandler.h"
+#include "RestHandler/RestCollectionHandler.h"
 #include "RestHandler/RestSystemActionHandler.h"
 #include "RestServer/ActionDispatcherThread.h"
 #include "RestServer/AvocadoHttpServer.h"
@@ -67,12 +67,12 @@ using namespace triagens::rest;
 using namespace triagens::admin;
 using namespace triagens::avocado;
 
-#include "js/bootstrap/js-print.h"
 #include "js/bootstrap/js-modules.h"
-#include "js/server/js-modules.h"
+#include "js/bootstrap/js-print.h"
 #include "js/server/js-actions.h"
 #include "js/server/js-aql.h"
 #include "js/server/js-json.h"
+#include "js/server/js-modules.h"
 #include "js/server/js-shell.h"
 
 // -----------------------------------------------------------------------------
@@ -387,31 +387,35 @@ void AvocadoServer::buildApplicationServer () {
   }
 
   if (_actionPath.empty()) {
-    string path = TRI_Concatenate2File(_databasePath.c_str(), "_ACTIONS");
+    char* path = TRI_Concatenate2File(_databasePath.c_str(), "_ACTIONS");
+    string pathString(path);
+    if (path) {
+      // memleak otherwise
+      TRI_Free(path);
+    }
 
-    if (! TRI_IsDirectory(path.c_str())) {
-      bool ok = TRI_ExistsFile(path.c_str());
+    if (! TRI_IsDirectory(pathString.c_str())) {
+      bool ok = TRI_ExistsFile(pathString.c_str());
 
       if (ok) {
-        LOGGER_FATAL << "action directory '" << path << "' must be a directory";
-        cerr << "action directory '" << path << "' must be a directory\n";
+        LOGGER_FATAL << "action directory '" << pathString << "' must be a directory";
+        cerr << "action directory '" << pathString << "' must be a directory\n";
         LOGGER_INFO << "please use the '--database.directory' option";
         exit(EXIT_FAILURE);
       }
 
-      ok = TRI_CreateDirectory(path.c_str());
+      ok = TRI_CreateDirectory(pathString.c_str());
 
       if (! ok) {
-        LOGGER_FATAL << "cannot create action directory '" << path << "': " << TRI_last_error();
-        cerr << "cannot create action directory '" << path << "': " << TRI_last_error() << "\n";
+        LOGGER_FATAL << "cannot create action directory '" << pathString << "': " << TRI_last_error();
         LOGGER_INFO << "please use the '--database.directory' option";
         exit(EXIT_FAILURE);
       }
     }
 
-    ActionLoader.setDirectory(path);
+    ActionLoader.setDirectory(pathString);
 
-    LOGGER_INFO << "using database action files at '" << path << "'";
+    LOGGER_INFO << "using database action files at '" << pathString << "'";
   }
   else {
     ActionLoader.setDirectory(_actionPath);
@@ -525,7 +529,7 @@ int AvocadoServer::startupServer () {
 
     _applicationAdminServer->addBasicHandlers(factory);
 
-    factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
+    factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestCollectionHandler>::createData<TRI_vocbase_t*>, _vocbase);
     factory->addPrefixHandler(RestVocbaseBaseHandler::ACTION_PATH, RestHandlerCreator<RestActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
 
     _httpServer = _applicationHttpServer->buildServer(new AvocadoHttpServer(scheduler, dispatcher), factory, ports);
@@ -544,7 +548,7 @@ int AvocadoServer::startupServer () {
     _applicationAdminServer->addBasicHandlers(adminFactory);
     _applicationAdminServer->addHandlers(adminFactory, "/admin");
 
-    adminFactory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
+    adminFactory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestCollectionHandler>::createData<TRI_vocbase_t*>, _vocbase);
     adminFactory->addPrefixHandler(RestVocbaseBaseHandler::ACTION_PATH, RestHandlerCreator<RestActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
     adminFactory->addPrefixHandler(RestVocbaseBaseHandler::SYSTEM_ACTION_PATH, RestHandlerCreator<RestSystemActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
 
@@ -681,6 +685,7 @@ void AvocadoServer::executeShell () {
 
     if (input == 0) {
       printf("bye...\n");
+      TRI_FreeString(input);
       break;
     }
 
@@ -698,6 +703,8 @@ void AvocadoServer::executeShell () {
     TRI_FreeString(input);
   }
   console->close();
+
+  delete console;
 
   // and return from the context and isolate
   context->Exit();

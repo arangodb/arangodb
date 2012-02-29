@@ -47,6 +47,20 @@ using namespace triagens::avocado;
 ///   <ol>
 ///    <li>@ref StartStop
 ///    </li>
+///    <li>AvocadoScript
+///     <ol>
+///      <li>@ref SimpleQueries
+///      </li>
+///     </ol>
+///    </li>
+///    <li>@ref AQL
+///     <ol>
+///      <li>@ref Optimizer
+///      </li>
+///      <li>@ref IndexUsage
+///      </li>
+///     </ol>
+///    </li>
 ///    <li>@ref AvocadoScript
 ///     <ol>
 ///      <li>@ref GeoCoordinates
@@ -55,17 +69,21 @@ using namespace triagens::avocado;
 ///      </li>
 ///     </ol>
 ///    </li>
-///    <li>@ref HttpInterface
-///     <ol>
-///      <li>@ref RestInterface
-///      </li>
-///      <li>@ref RestDocument
-///      </li>
-///     </ol>
-///    </li>
 ///    <li>Vertices, Edges, and Graphs
 ///     <ol>
 ///      <li>@ref Graphs
+///      </li>
+///      <li>@ref JSModuleGraph
+///      </li>
+///     </ol>
+///    </li>
+///   </ol>
+///  </li>
+///  <li>Client Communication
+///   <ol>
+///    <li>@ref HttpInterface
+///     <ol>
+///      <li>@ref RestDocument
 ///      </li>
 ///     </ol>
 ///    </li>
@@ -183,11 +201,9 @@ using namespace triagens::avocado;
 /// @page InstallManual AvocadoDB Installation Manual
 ///
 /// <ol>
-///  <li>Building the AvocadoDB from Scratch
-///   <ol>
-///    <li>@ref Compiling
-///    </li>
-///   </ol>
+///  <li>@ref Installing
+///  <li>
+///  <li>@ref Compiling
 ///  </li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
@@ -335,6 +351,7 @@ using namespace triagens::avocado;
 int main (int argc, char* argv[]) {
   TRIAGENS_RESULT_GENERATOR_INITIALISE;
   TRI_InitialiseVocBase();
+  TRI_InitialiseQueryErrors();
 
   // create and start a AvocadoDB server
   AvocadoServer server(argc, argv);

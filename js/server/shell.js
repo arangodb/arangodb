@@ -37,78 +37,10 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief global variable holding the current printed query
-////////////////////////////////////////////////////////////////////////////////
-
-var it = undefined;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief number of results to print
-////////////////////////////////////////////////////////////////////////////////
-
-var queryLimit = 20;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a query
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoFluentQuery.prototype.PRINT = function() {
-  if (this instanceof AvocadoFluentQuery) {
-    var count = 0;
-
-    try {
-      while (this.hasNext() && count++ < queryLimit) {
-        internal.output(JSON.stringify(this.next()), "\n");
-      }
-
-      if (this.hasNext()) {
-        internal.output("...more results...");
-      }
-
-      it = this;
-    }
-    catch (e) {
-      internal.output("encountered error while printing: " + e);
-    }
-  }
-  else {
-    internal.output(this.toString());
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints a query
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoFluentQuery2.prototype.PRINT = function() {
-  if (this instanceof AvocadoFluentQuery2) {
-    var count = 0;
-
-    try {
-      while (this.hasNext() && count++ < queryLimit) {
-        internal.output(JSON.stringify(this.next()), "\n");
-      }
-
-      if (this.hasNext()) {
-        internal.output("...more results...");
-      }
-
-      it = this;
-    }
-    catch (e) {
-      internal.output("encountered error while printing: " + e);
-    }
-  }
-  else {
-    internal.output(this.toString());
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints a query
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoCursor.prototype.PRINT = function() {
+AvocadoCursor.prototype._PRINT = function() {
   if (this instanceof AvocadoCursor) {
     var count = 0;
 
@@ -126,6 +58,19 @@ AvocadoCursor.prototype.PRINT = function() {
     catch (e) {
       internal.output("encountered error while printing: " + e);
     }
+  }
+  else {
+    internal.output(this.toString());
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints a shaped json
+////////////////////////////////////////////////////////////////////////////////
+
+ShapedJson.prototype._PRINT = function(seen, path, names) {
+  if (this instanceof ShapedJson) {
+    PRINT_OBJECT(this, seen, path, names);
   }
   else {
     internal.output(this.toString());

@@ -92,19 +92,28 @@ static void FreeDataPart (TRI_select_datapart_t* datapart) {
 
 TRI_select_datapart_t* TRI_CreateDataPart(const char* alias, 
                                           const TRI_doc_collection_t* collection,
-                                          const TRI_select_part_e type) {
+                                          const TRI_select_part_e type,
+                                          const size_t extraDataSize) {
   TRI_select_datapart_t* datapart;
+  
+  if (extraDataSize) {
+    assert(!collection);
+  }
+  if (collection) {
+    assert(extraDataSize == 0);
+  }
 
   datapart = (TRI_select_datapart_t*) TRI_Allocate(sizeof(TRI_select_datapart_t));
   if (!datapart) {
     return NULL;
   }
 
-  datapart->_alias      = TRI_DuplicateString(alias);
-  datapart->_collection = (TRI_doc_collection_t*) collection;
-  datapart->_type       = type;
+  datapart->_alias         = TRI_DuplicateString(alias);
+  datapart->_collection    = (TRI_doc_collection_t*) collection;
+  datapart->_type          = type;
+  datapart->_extraDataSize = extraDataSize;
 
-  datapart->free        = FreeDataPart;
+  datapart->free           = FreeDataPart;
 
   return datapart;
 }
@@ -218,7 +227,7 @@ static bool IncreaseIndexStorageSelectResult (TRI_select_result_t* result,
 
   assert(newSize > result->_index._numAllocated);
 
-  start = realloc(result->_index._start, newSize * sizeof(TRI_sr_index_t));
+  start = TRI_Reallocate(result->_index._start, newSize * sizeof(TRI_sr_index_t));
   if (!start) {
     return false;
   }
@@ -254,7 +263,7 @@ static bool IncreaseDocumentsStorageSelectResult (TRI_select_result_t* result,
 
   assert(newSize > result->_documents._bytesAllocated);
 
-  start = (TRI_sr_documents_t*) realloc(result->_documents._start, newSize);
+  start = (TRI_sr_documents_t*) TRI_Reallocate(result->_documents._start, newSize);
   if (!start) {
     return false;
   }
@@ -300,12 +309,24 @@ static size_t GetJoinDocumentSize (const TRI_select_join_t* join) {
     part = (TRI_join_part_t*) join->_parts._buffer[i];
     if (part->_type == JOIN_TYPE_LIST) {
       n = part->_listDocuments._length;
+
+      // adjust for extra data
+      total += part->_extraData._size * n;
     }
     else {
       n = 1;
     }
+
+    // number of documents
     total += sizeof(TRI_select_size_t);
+    // document pointers
     total += (size_t) (sizeof(TRI_sr_documents_t) * n);
+
+    // adjust for extra data
+    if (part->_extraData._size) {
+      total += sizeof(TRI_select_size_t);
+      total += part->_extraData._size;
+    }
   }
 
   return total;
@@ -362,13 +383,41 @@ bool TRI_AddJoinSelectResult (TRI_select_result_t* result, TRI_select_join_t* jo
 
         *docPtr++ = (TRI_sr_documents_t) document->_data;
       }
+
+      if (part->_extraData._size) {
+        // copy extra data
+        assert(part->_listDocuments._length == part->_extraData._listValues._length);
+        numPtr = (TRI_select_size_t*) docPtr;
+        *numPtr++ = part->_listDocuments._length;
+        docPtr = (TRI_sr_documents_t*) numPtr;
+
+        for (j = 0; j < part->_extraData._listValues._length; j++) {
+          memcpy(docPtr, part->_extraData._listValues._buffer[j], part->_extraData._size);
+          docPtr = (TRI_sr_documents_t*) ((uint8_t*) docPtr + part->_extraData._size);
+        }
+      }
     } 
     else {
       // single document
       *numPtr++ = 1;
       docPtr = (TRI_sr_documents_t*) numPtr;
       document = (TRI_doc_mptr_t*) part->_singleDocument;
-      *docPtr++ = (TRI_sr_documents_t) document->_data;
+      if (document) {
+        *docPtr++ = (TRI_sr_documents_t) document->_data;
+      } 
+      else {
+        // document is null
+        *docPtr++ = 0;
+      }
+
+      if (part->_extraData._size) {
+        // copy extra data
+        numPtr = (TRI_select_size_t*) docPtr;
+        *numPtr++ = 1;
+        docPtr = (TRI_sr_documents_t*) numPtr;
+        memcpy(docPtr, part->_extraData._singleValue, part->_extraData._size);
+        docPtr = (TRI_sr_documents_t*) ((uint8_t*) docPtr + part->_extraData._size);
+      }
     }
     numPtr = (TRI_select_size_t*) docPtr;
   }

@@ -266,6 +266,10 @@ namespace triagens {
           buffer->appendText("DELETE ");
           break;
 
+        case HTTP_REQUEST_HEAD:
+          buffer->appendText("HEAD ");
+          break;
+
         default:
           buffer->appendText("UNKNOWN ");
           break;
@@ -447,6 +451,9 @@ namespace triagens {
             else if (strcmp(keyBegin, "get") == 0) {
               type = HTTP_REQUEST_GET;
             }
+            else if (strcmp(keyBegin, "head") == 0) {
+              type = HTTP_REQUEST_HEAD;
+            }
 
             // extract the path and decode the url and parameters
             if (type != HTTP_REQUEST_ILLEGAL) {
@@ -531,6 +538,9 @@ namespace triagens {
             }
             else if (strcmp(keyBegin, "get") == 0) {
               type = HTTP_REQUEST_GET;
+            }
+            else if (strcmp(keyBegin, "head") == 0) {
+              type = HTTP_REQUEST_HEAD;
             }
           }
         }

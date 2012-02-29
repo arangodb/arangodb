@@ -50,9 +50,9 @@ extern "C" {
 /// - a list (aka array)
 /// - a object (aka associative array or hash or document)
 ///
-/// In general JSON documents are schema-free. They can have any number of
+/// In theory JSON documents are schema-free. They can have any number of
 /// attributes and an attribute value can be any JSON object. However, in
-/// real life JSON documents often share a common shape. In order to take
+/// practice JSON documents often share a common shape. In order to take
 /// advantage of this fact, JSON objects can be converted into
 /// @ref TRI_shaped_json_t instances together with a shape described by an
 /// @ref TRI_shape_t instance.
