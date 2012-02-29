@@ -27,15 +27,11 @@
 
 #include "RestVocbaseBaseHandler.h"
 
-#include "BasicsC/string-buffer.h"
 #include "Basics/StringUtils.h"
-
+#include "BasicsC/string-buffer.h"
 #include "Rest/HttpRequest.h"
-
-#include "VocBase/document-collection.h"
-#include "VocBase/result-set.h"
-
 #include "ShapedJson/shaped-json.h"
+#include "VocBase/document-collection.h"
 
 using namespace std;
 using namespace triagens::basics;

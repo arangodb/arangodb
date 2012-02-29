@@ -240,14 +240,14 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	VocBase/compactor.$(OBJEXT) VocBase/data-feeder.$(OBJEXT) \
 	VocBase/datafile.$(OBJEXT) \
 	VocBase/document-collection.$(OBJEXT) \
-	VocBase/fluent-query.$(OBJEXT) VocBase/headers.$(OBJEXT) \
-	VocBase/index.$(OBJEXT) VocBase/join-execute.$(OBJEXT) \
-	VocBase/join.$(OBJEXT) VocBase/order.$(OBJEXT) \
-	VocBase/query-base.$(OBJEXT) VocBase/query-error.$(OBJEXT) \
+	VocBase/headers.$(OBJEXT) VocBase/index.$(OBJEXT) \
+	VocBase/join-execute.$(OBJEXT) VocBase/join.$(OBJEXT) \
+	VocBase/order.$(OBJEXT) VocBase/query-base.$(OBJEXT) \
+	VocBase/query-error.$(OBJEXT) \
 	VocBase/query-javascript.$(OBJEXT) \
 	VocBase/query-node.$(OBJEXT) VocBase/query-parse.$(OBJEXT) \
-	VocBase/query.$(OBJEXT) VocBase/result-set.$(OBJEXT) \
-	VocBase/select-result.$(OBJEXT) VocBase/shadow-data.$(OBJEXT) \
+	VocBase/query.$(OBJEXT) VocBase/select-result.$(OBJEXT) \
+	VocBase/shadow-data.$(OBJEXT) \
 	VocBase/simple-collection.$(OBJEXT) \
 	VocBase/synchroniser.$(OBJEXT) VocBase/voc-shaper.$(OBJEXT) \
 	VocBase/vocbase.$(OBJEXT)
@@ -678,7 +678,6 @@ avocado_SOURCES = \
 	VocBase/data-feeder.c \
 	VocBase/datafile.c \
 	VocBase/document-collection.c \
-	VocBase/fluent-query.c \
 	VocBase/headers.c \
 	VocBase/index.c \
 	VocBase/join-execute.c \
@@ -690,7 +689,6 @@ avocado_SOURCES = \
 	VocBase/query-node.c \
 	VocBase/query-parse.c \
 	VocBase/query.c \
-	VocBase/result-set.c \
 	VocBase/select-result.c \
 	VocBase/shadow-data.c \
 	VocBase/simple-collection.c \
@@ -1399,8 +1397,6 @@ VocBase/datafile.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/document-collection.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
-VocBase/fluent-query.$(OBJEXT): VocBase/$(am__dirstamp) \
-	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/headers.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/index.$(OBJEXT): VocBase/$(am__dirstamp) \
@@ -1422,8 +1418,6 @@ VocBase/query-node.$(OBJEXT): VocBase/$(am__dirstamp) \
 VocBase/query-parse.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/query.$(OBJEXT): VocBase/$(am__dirstamp) \
-	VocBase/$(DEPDIR)/$(am__dirstamp)
-VocBase/result-set.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/select-result.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
@@ -1609,7 +1603,6 @@ mostlyclean-compile:
 	-rm -f VocBase/data-feeder.$(OBJEXT)
 	-rm -f VocBase/datafile.$(OBJEXT)
 	-rm -f VocBase/document-collection.$(OBJEXT)
-	-rm -f VocBase/fluent-query.$(OBJEXT)
 	-rm -f VocBase/headers.$(OBJEXT)
 	-rm -f VocBase/index.$(OBJEXT)
 	-rm -f VocBase/join-execute.$(OBJEXT)
@@ -1621,7 +1614,6 @@ mostlyclean-compile:
 	-rm -f VocBase/query-node.$(OBJEXT)
 	-rm -f VocBase/query-parse.$(OBJEXT)
 	-rm -f VocBase/query.$(OBJEXT)
-	-rm -f VocBase/result-set.$(OBJEXT)
 	-rm -f VocBase/select-result.$(OBJEXT)
 	-rm -f VocBase/shadow-data.$(OBJEXT)
 	-rm -f VocBase/simple-collection.$(OBJEXT)
@@ -1798,7 +1790,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/data-feeder.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/datafile.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/document-collection.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/fluent-query.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/headers.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/index.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/join-execute.Po@am__quote@
@@ -1810,7 +1801,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-node.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-parse.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/result-set.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/select-result.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/shadow-data.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/simple-collection.Po@am__quote@

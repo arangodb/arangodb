@@ -27,18 +27,14 @@
 
 #include "simple-collection.h"
 
-#include <BasicsC/conversions.h>
-#include <BasicsC/files.h>
-#include <BasicsC/hashes.h>
-#include <BasicsC/logging.h>
-#include <BasicsC/strings.h>
-
-#include <VocBase/index.h>
-#include <VocBase/result-set.h>
-#include <VocBase/voc-shaper.h>
-
+#include "BasicsC/conversions.h"
+#include "BasicsC/files.h"
+#include "BasicsC/hashes.h"
+#include "BasicsC/logging.h"
+#include "BasicsC/strings.h"
 #include "ShapedJson/shape-accessor.h"
-
+#include "VocBase/index.h"
+#include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations

@@ -31,7 +31,6 @@
 #include "BasicsC/string-buffer.h"
 #include "Rest/HttpRequest.h"
 #include "VocBase/simple-collection.h"
-#include "VocBase/result-set.h"
 #include "VocBase/vocbase.h"
 
 using namespace triagens::basics;

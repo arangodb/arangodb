@@ -28,11 +28,8 @@
 #include "RestActionHandler.h"
 
 #include "Basics/StringUtils.h"
-
 #include "Rest/HttpRequest.h"
-
 #include "VocBase/document-collection.h"
-#include "VocBase/result-set.h"
 #include "VocBase/vocbase.h"
 
 using namespace std;
