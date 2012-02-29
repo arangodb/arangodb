@@ -38,7 +38,6 @@
 #include "ShapedJson/shaped-json.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
-#include "VocBase/fluent-query.h"
 #include "VocBase/query.h"
 #include "VocBase/simple-collection.h"
 
@@ -404,119 +403,6 @@ static void StoreGeoResult (TRI_vocbase_col_t const* collection,
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief weak reference callback for queries
-////////////////////////////////////////////////////////////////////////////////
-
-static void WeakFluentQueryCallback (v8::Persistent<v8::Value> object, void* parameter) {
-  TRI_fluent_query_t* query;
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-  query = (TRI_fluent_query_t*) parameter;
-
-  LOG_TRACE("weak-callback for query called");
-
-  // find the persistent handle
-  v8::Persistent<v8::Value> persistent = v8g->JSFluentQueries[query];
-  v8g->JSFluentQueries.erase(query);
-
-  // dispose and clear the persistent handle
-  persistent.Dispose();
-  persistent.Clear();
-
-  // and free the result set
-  query->free(query, true);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stores a fluent query in a javascript object
-////////////////////////////////////////////////////////////////////////////////
-
-static void StoreFluentQuery (v8::Handle<v8::Object> queryObject,
-                              TRI_fluent_query_t* query) {
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-  if (v8g->JSFluentQueries.find(query) == v8g->JSFluentQueries.end()) {
-    v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(query));
-
-    queryObject->SetInternalField(SLOT_QUERY, persistent);
-    queryObject->SetInternalField(SLOT_RESULT_SET, v8::Null());
-
-    v8g->JSFluentQueries[query] = persistent;
-
-    persistent.MakeWeak(query, WeakFluentQueryCallback);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts a query from a javascript object
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_fluent_query_t* ExtractFluentQuery (v8::Handle<v8::Object> queryObject,
-                                               v8::Handle<v8::String>* err) {
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-  // the internal fields QUERY and RESULT_SET must be present
-  if (queryObject->InternalFieldCount() <= SLOT_RESULT_SET) {
-    *err = v8::String::New("corrupted query");
-    return 0;
-  }
-
-  v8::Handle<v8::Value> value = queryObject->GetInternalField(SLOT_QUERY);
-
-  // .............................................................................
-  // special case: the whole collection
-  // .............................................................................
-
-  if (value == v8g->CollectionQueryType) {
-    TRI_vocbase_col_t const* collection = LoadCollection(queryObject, err);
-
-    if (collection == 0) {
-      return 0;
-    }
-
-    TRI_fluent_query_t* query = TRI_CreateCollectionQuery(collection);
-
-    StoreFluentQuery(queryObject, query);
-
-    return query;
-  }
-
-  // .............................................................................
-  // standard case: a normal query
-  // .............................................................................
-
-  else {
-    TRI_fluent_query_t* query = static_cast<TRI_fluent_query_t*>(v8::Handle<v8::External>::Cast(value)->Value());
-
-    if (query == 0) {
-      *err = v8::String::New("corrupted query");
-      return 0;
-    }
-
-    return query;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns true if a query has been executed
-////////////////////////////////////////////////////////////////////////////////
-
-static bool IsExecutedQuery (v8::Handle<v8::Object> query) {
-  if (query->InternalFieldCount() <= SLOT_RESULT_SET) {
-    return false;
-  }
-
-  v8::Handle<v8::Value> value = query->GetInternalField(SLOT_RESULT_SET);
-
-  return value->IsNull() ? false : true;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up edges
@@ -1155,120 +1041,6 @@ static v8::Handle<v8::Value> JS_InEdgesQuery (v8::Arguments const& argv) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief indicates a particular index which is to be used with the select statement
-///
-/// @FUN{@FA{index-id})}
-///
-/// The @FN{index id} stores which index should be used for the selection
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_IndexToUse (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  
-  assert(false);
-  /*
-  // ..........................................................................
-  // Attempt to load the collection which has been passed to us here.
-  // ..........................................................................
-  v8::Handle<v8::String> err;
-  const TRI_vocbase_col_t* col = LoadCollection(argv.Holder(), &err);
-
-  if (col == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-  
-  // ..........................................................................
-  // Currently only simple collections are supported
-  // ..........................................................................
-  TRI_doc_collection_t* collection = col->_collection;
-  if (collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
-    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
-  }
-  TRI_sim_collection_t* sim = (TRI_sim_collection_t*) collection;
-
-  
-  // ..........................................................................
-  // Need an index identifier as the only parameter
-  // ..........................................................................  
-  if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(v8::String::New("index(id) requires an index identifier")));
-  }
-
-  // ..........................................................................
-  // Check that the parameter sent to us is an integer
-  // ..........................................................................
-  v8::Handle<v8::Value> argument = argv[0];
-  if (!argument->IsInt32()) {
-    return scope.Close(v8::ThrowException(v8::String::New("index(id) requires an INTEGER index identifier")));
-  }
-
-  // ..........................................................................
-  // Obtain a list of index objects stored for the collection
-  // ..........................................................................
-  TRI_vector_pointer_t* indexes = TRI_IndexesSimCollection(sim);
-  size_t n = indexes->_length;
-
-  // ..........................................................................
-  // Check that there is actually such an index
-  // ..........................................................................
-  if (n == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("There are no indexes to set as the default.")));
-  }  
-
-  int64_t defaultIndexID = 0;
-  
-  for (size_t i = 0;  i < n;  ++i) {
-  
-    TRI_json_t* idx = (TRI_json_t*) indexes->_buffer[i];
-    v8::Handle<v8::Value> value = TRI_ObjectJson(idx);
-    if (!value->IsObject()) {
-      return scope.Close(v8::ThrowException(v8::String::New("Internal Error. Invalid index definition received.")));
-    }
-    v8::Handle<v8::Object> object = value->ToObject();
-    
-    
-    // ........................................................................
-    // Determine the index id 
-    // ........................................................................
-    v8::Handle<v8::Value> indexId = object->Get(v8::String::New("iid"));
-    
-    
-    // ........................................................................
-    // Does the index id equal that of the specified by the user?
-    // ........................................................................
-    if (indexId->IntegerValue() != argument->IntegerValue()) {
-      continue;
-    }  
-    
-    // ........................................................................
-    // Determine the type of index and check that this type of index can be
-    // set as the default one.
-    // ........................................................................
-    v8::Handle<v8::Value> indexType = object->Get(v8::String::New("type"));
-    if (!indexType->IsString()) {
-      return scope.Close(v8::ThrowException(v8::String::New("Internal Error. Invalid index definition received.")));
-    }
-    v8::String::AsciiValue text(indexType);
-    string indexTypeString = string(*text);
-
-    if (indexTypeString != "hash" && indexTypeString != "skiplist") {
-      return scope.Close(v8::ThrowException(v8::String::New("Invalid index type to set as default.\nCurrently supported default indexes are \"hash\" and \"skiplist\".")));
-    }    
-    
-    defaultIndexID = indexId->IntegerValue();
-    break;
-  }
-  
-  
-  return scope.Close(v8::Integer::New(23));
-  
-  */
-  
-  return scope.Close(v8::ThrowException(v8::String::New("Internal Error. Not implemented.")));
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief finds points near a given coordinate
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1346,7 +1118,6 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
   return scope.Close(result);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up all outbound edges
 ///
@@ -1365,185 +1136,81 @@ static v8::Handle<v8::Value> JS_OutEdgesQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief selects elements by example
-///
-/// @FUN{select()}
-///
-/// The @FN{select} operator finds all documents.
-///
-/// @verbinclude fluent52
-///
-/// @FUN{select(@FA{example})}
-///
-/// This version selects all documents with match a given example.
-///
-/// @verbinclude fluent53
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_SelectQuery (v8::Arguments const& argv) {
-  TRI_v8_global_t* v8g;
-  v8::HandleScope scope;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-  // extract the operand query
-  v8::Handle<v8::Object> operand = argv.Holder();
-  v8::Handle<v8::String> err;
-  TRI_fluent_query_t* opQuery = ExtractFluentQuery(operand, &err);
-
-  if (opQuery == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  if (IsExecutedQuery(operand)) {
-    return scope.Close(v8::ThrowException(v8::String::New("query already executed")));
-  }
-
-  // .............................................................................
-  // case: no arguments
-  // .............................................................................
-
-  if (argv.Length() == 0) {
-    v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
-
-    StoreFluentQuery(result, opQuery->clone(opQuery));
-
-    return scope.Close(result);
-  }
-
-  // .............................................................................
-  // case: one arguments
-  // .............................................................................
-
-  if (argv.Length() == 1) {
-    if (! argv[0]->IsObject()) {
-      return scope.Close(v8::ThrowException(v8::String::New("expecting an object as <example>")));
-    }
-
-    v8::Handle<v8::Object> example = argv[0]->ToObject();
-    v8::Handle<v8::Array> names = example->GetOwnPropertyNames();
-    size_t n = names->Length();
-
-    TRI_shaper_t* shaper = opQuery->_collection->_collection->_shaper;
-
-    TRI_shape_pid_t* pids = (TRI_shape_pid_t*) TRI_Allocate(n * sizeof(TRI_shape_pid_t));
-    TRI_shaped_json_t** values = (TRI_shaped_json_t**) TRI_Allocate(n * sizeof(TRI_shaped_json_t*));
-
-    for (size_t i = 0;  i < n;  ++i) {
-      v8::Handle<v8::Value> key = names->Get(i);
-      v8::Handle<v8::Value> val = example->Get(key);
-
-      v8::String::Utf8Value keyStr(key);
-      pids[i] = shaper->findAttributePathByName(shaper, *keyStr);
-      values[i] = TRI_ShapedJsonV8Object(val, shaper);
-
-      if (*keyStr == 0 || values[i] == 0) {
-        for (size_t j = 0;  j < i;  ++j) {
-          TRI_FreeShapedJson(values[i]);
-        }
-
-        TRI_Free(values);
-        TRI_Free(pids);
-
-        if (*keyStr == 0) {
-          return scope.Close(v8::ThrowException(v8::String::New("cannot convert attribute name to UTF8")));
-        }
-        else if (values[i] == 0) {
-          return scope.Close(v8::ThrowException(v8::String::New("cannot convert value to JSON")));
-        }
-
-        assert(false);
-      }
-    }
-
-    v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
-
-    StoreFluentQuery(result, TRI_CreateSelectFullQuery(opQuery->clone(opQuery), n, pids, values));
-
-    return scope.Close(result);
-  }
-
-  // .............................................................................
-  // error case
-  // .............................................................................
-
-  else {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: select([<example>])")));
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief finds points within a given radius
-///
-/// @FUN{within(@FA{latitiude}, @FA{longitude}, @FA{radius})}
-///
-/// This will find all documents with in a given radius around the coordinate
-/// (@FA{latitiude}, @FA{longitude}). The returned list is unsorted.
-///
-/// @verbinclude fluent32
-///
-/// If you need the distance as well, then you can use
-///
-/// @FUN{within(@FA{latitiude}, @FA{longitude}, @FA{radius}).distance()}
-///
-/// This will add an attribute @LIT{_distance} to all documents returned, which
-/// contains the distance between the given point and the document in meter.
-///
-/// @verbinclude fluent33
-///
-/// @FUN{within(@FA{latitiude}, @FA{longitude}, @FA{radius}).distance(@FA{name})}
-///
-/// This will add an attribute @FA{name} to all documents returned, which
-/// contains the distance between the given point and the document in meter.
-///
-/// @verbinclude fluent34
-///
-/// If you have more then one geo-spatial index, you can use the @FN{geo}
-/// operator to select a particular index.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
-  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
 
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-  // extract the operand query
+  // extract the collection
   v8::Handle<v8::Object> operand = argv.Holder();
-  v8::Handle<v8::String> err;
-  TRI_fluent_query_t* opQuery = ExtractFluentQuery(operand, &err);
 
-  if (opQuery == 0) {
+  v8::Handle<v8::String> err;
+  TRI_vocbase_col_t const* collection = LoadCollection(operand, &err);
+
+  if (collection == 0) {
     return scope.Close(v8::ThrowException(err));
   }
+  
+  // handle various collection types
+  TRI_doc_collection_t* doc = collection->_collection;
 
-  if (IsExecutedQuery(operand)) {
-    return scope.Close(v8::ThrowException(v8::String::New("query already executed")));
+  if (doc->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
   }
 
-  // .............................................................................
-  // within(latitiude, longitude, radius)
-  // .............................................................................
-
-  if (argv.Length() == 3) {
-    double latitiude = TRI_ObjectToDouble(argv[0]);
-    double longitude = TRI_ObjectToDouble(argv[1]);
-    double radius = TRI_ObjectToDouble(argv[2]);
-
-    v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
-
-    StoreFluentQuery(result, TRI_CreateWithinQuery(opQuery->clone(opQuery), latitiude, longitude, radius, NULL));
-
-    return scope.Close(result);
+  // expect: NEAR(<index-id>, <latitiude>, <longitude>, <limit>)
+  if (argv.Length() != 4) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: NEAR(<index-id>, <latitiude>, <longitude>, <limit>)")));
   }
 
+  // extract the index
+  TRI_idx_iid_t iid = TRI_ObjectToDouble(argv[0]);
+  TRI_index_t* idx = TRI_LookupIndex(doc, iid);
+
+  if (idx == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("unknown index identifier")));
+  }
+
+  if (idx->_type != TRI_IDX_TYPE_GEO_INDEX) {
+    return scope.Close(v8::ThrowException(v8::String::New("index must be a geo-index")));
+  }
+
+  // extract latitiude and longitude
+  double latitude = TRI_ObjectToDouble(argv[1]);
+  double longitude = TRI_ObjectToDouble(argv[2]);
+
+  // extract the limit
+  double radius = TRI_ObjectToDouble(argv[3]);
+
+  // setup result
+  v8::Handle<v8::Object> result = v8::Object::New();
+
+  v8::Handle<v8::Array> documents = v8::Array::New();
+  result->Set(v8::String::New("documents"), documents);
+
+  v8::Handle<v8::Array> distances = v8::Array::New();
+  result->Set(v8::String::New("distances"), distances);
+
   // .............................................................................
-  // error case
+  // inside a read transaction
   // .............................................................................
 
-  else {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: within(<latitiude>,<longitude>,<radius>)")));
+  collection->_collection->beginRead(collection->_collection);
+  
+  GeoCoordinates* cors = TRI_WithinGeoIndex(idx, latitude, longitude, radius);
+
+  if (cors != 0) {
+    StoreGeoResult(collection, cors, documents, distances);
   }
+
+  collection->_collection->endRead(collection->_collection);
+
+  // .............................................................................
+  // outside a write transaction
+  // .............................................................................
+
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2316,24 +1983,7 @@ static v8::Handle<v8::Value> JS_HasNextCursor (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief counts the number of documents in a result set (TO BE DELETED)
-///
-/// @FUN{count()}
-///
-/// The @FN{count} operator counts the number of document in the result set and
-/// returns that number. The @FN{count} operator ignores any limits and returns
-/// the total number of documents found.
-///
-/// @verbinclude fluent24
-///
-/// @FUN{count(@LIT{true})}
-///
-/// If the result set was limited by the @FN{limit} operator or documents were
-/// skiped using the @FN{skip} operator, the @FN{count} operator with argument
-/// @LIT{true} will use the number of elements in the final result set - after
-/// applying @FN{limit} and @FN{skip}.
-///
-/// @verbinclude fluent25
+/// @brief counts the number of documents in a result set
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
@@ -2350,9 +2000,6 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
 
   return scope.Close(v8::Number::New(collection->size(collection)));
 }
-
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
@@ -3229,9 +2876,6 @@ static v8::Handle<v8::Value> JS_EnsureMultiSkiplistIndexVocbaseCol (v8::Argument
   // .............................................................................
   return scope.Close(v8::Number::New(iid));
 }
-
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the figures of a collection
@@ -4237,130 +3881,6 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
 // --SECTION--                                                            MODULE
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @page JavaScriptFuncIndex JavaScript Function Index
-///
-/// @section JSFDatabaseSelection Database Selection
-///
-/// - @ref MapGetVocBase "db".@FA{database}
-///
-/// - @ref MapGetVocBase "edges".@FA{database}
-///
-/// @section JSFDatabases Database Functions
-///
-/// - @ref JS_ParameterVocbaseCol "parameter"
-///
-/// @subsection JSFDocument Database Document Functions
-///
-/// - @ref JS_DeleteVocbaseCol "delete"
-/// - @ref JS_ReplaceVocbaseCol "replace"
-/// - @ref JS_SaveVocbaseCol "save"
-/// - @ref JS_SaveEdgesCol "save" for edges
-///
-/// @subsection JSFIndex Database Index Functions
-///
-/// - @ref JS_DropIndexVocbaseCol "dropIndex"
-/// - @ref JS_EnsureGeoIndexVocbaseCol "ensureGeoIndex"
-/// - @ref JS_EnsureHashIndexVocbaseCol "ensureHashIndex"
-/// - @ref JS_EnsureMultiHashIndexVocbaseCol "ensureMultiHashIndex"
-/// - @ref JS_GetIndexesVocbaseCol "getIndexes"
-///
-/// @section JSFQueries Query Functions
-///
-/// @subsection JSFQueryBuilding Query Building Functions
-///
-/// - @ref JS_AllQuery "all"
-/// - @ref JS_DistanceQuery "distance"
-/// - @ref JS_DocumentQuery "document"
-/// - @ref JS_NearQuery "near"
-/// - @ref JS_SelectQuery "select"
-/// - @ref JS_WithinQuery "within"
-///
-/// @section JSFGlobal Global Functions
-///
-/// - @ref JS_Execute "execute"
-/// - @ref JS_Load "load"
-/// - @ref JS_LogLevel "logLevel"
-/// - @ref JS_Output "output"
-/// - @ref JSF_print "print"
-/// - @ref JS_ProcessCsvFile "processCsvFile"
-/// - @ref JS_ProcessJsonFile "processJsonFile"
-/// - @ref JS_Read "read"
-/// - @ref JS_Time "time"
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page JavaScriptFunc JavaScript Functions
-///
-/// @section JSFDatabaseSelection Database Selection
-///
-/// @ref MapGetVocBase "db".@FA{database}
-///
-/// @section JSFDatabases Database Functions
-///
-/// @copydetails JS_ParameterVocbaseCol
-///
-/// @subsection JSFDocument Database Document Functions
-///
-/// @copydetails JS_DeleteVocbaseCol
-///
-/// @copydetails JS_ReplaceVocbaseCol
-///
-/// @copydetails JS_SaveVocbaseCol
-///
-/// @copydetails JS_SaveEdgesCol
-///
-/// @subsection JSFIndex Database Index Functions
-///
-/// @copydetails JS_DropIndexVocbaseCol
-///
-/// @copydetails JS_EnsureGeoIndexVocbaseCol
-///
-/// @copydetails JS_EnsureHashIndexVocbaseCol
-///
-/// @copydetails JS_EnsureMultiHashIndexVocbaseCol
-///
-/// @copydetails JS_GetIndexesVocbaseCol
-///
-/// @section JSFQueries Query Functions
-///
-/// @subsection JSFQueryBuilding Query Building Functions
-///
-/// @copydetails JS_AllQuery
-///
-/// @copydetails JS_DistanceQuery
-///
-/// @copydetails JS_DocumentQuery
-///
-/// @copydetails JS_NearQuery
-///
-/// @copydetails JS_SelectQuery
-///
-/// @copydetails JS_WithinQuery
-///
-/// @subsection JSFQueryExecuting Query Execution Functions
-///
-/// @section JSFGlobal Global Functions
-///
-/// @copydetails JS_Execute
-///
-/// @copydetails JS_Load
-///
-/// @copydetails JS_LogLevel
-///
-/// @copydetails JS_Output
-///
-/// @copydetails JSF_print
-///
-/// @copydetails JS_ProcessCsvFile
-///
-/// @copydetails JS_ProcessJsonFile
-///
-/// @copydetails JS_Read
-///
-/// @copydetails JS_Time
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -4557,6 +4077,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> AllFuncName = v8::Persistent<v8::String>::New(v8::String::New("ALL"));
   v8::Handle<v8::String> CompletionsFuncName = v8::Persistent<v8::String>::New(v8::String::New("_COMPLETIONS"));
   v8::Handle<v8::String> NearFuncName = v8::Persistent<v8::String>::New(v8::String::New("NEAR"));
+  v8::Handle<v8::String> WithinFuncName = v8::Persistent<v8::String>::New(v8::String::New("WITHIN"));
 
   v8::Handle<v8::String> CollectionsFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collections"));
   v8::Handle<v8::String> CountFuncName = v8::Persistent<v8::String>::New(v8::String::New("count"));
@@ -4593,7 +4114,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> StatusFuncName = v8::Persistent<v8::String>::New(v8::String::New("status"));
   v8::Handle<v8::String> ToArrayFuncName = v8::Persistent<v8::String>::New(v8::String::New("toArray"));
   v8::Handle<v8::String> UseNextFuncName = v8::Persistent<v8::String>::New(v8::String::New("useNext"));
-  v8::Handle<v8::String> WithinFuncName = v8::Persistent<v8::String>::New(v8::String::New("within"));
 
   // .............................................................................
   // query types
@@ -4706,31 +4226,26 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
   rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
-  rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentQuery));
-  rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
-  rt->Set(SelectFuncName, v8::FunctionTemplate::New(JS_SelectQuery));
-  rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
-
   rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountVocbaseCol));
   rt->Set(DeleteFuncName, v8::FunctionTemplate::New(JS_DeleteVocbaseCol));
+  rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentQuery));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
-  
   rt->Set(EnsureHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureHashIndexVocbaseCol));
   rt->Set(EnsureMultiHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureMultiHashIndexVocbaseCol));
-
-  rt->Set(EnsureSkiplistIndexFuncName, v8::FunctionTemplate::New(JS_EnsureSkiplistIndexVocbaseCol));
   rt->Set(EnsureMultiSkiplistIndexFuncName, v8::FunctionTemplate::New(JS_EnsureMultiSkiplistIndexVocbaseCol));
-  
+  rt->Set(EnsureSkiplistIndexFuncName, v8::FunctionTemplate::New(JS_EnsureSkiplistIndexVocbaseCol));
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
-  
   rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));
+  rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
   rt->Set(ParameterFuncName, v8::FunctionTemplate::New(JS_ParameterVocbaseCol));
-  rt->Set(ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbaseCol));
-  rt->Set(SaveFuncName, v8::FunctionTemplate::New(JS_SaveVocbaseCol));
   rt->Set(StatusFuncName, v8::FunctionTemplate::New(JS_StatusVocbaseCol));
+  rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
   
+  rt->Set(SaveFuncName, v8::FunctionTemplate::New(JS_SaveVocbaseCol));
+  rt->Set(ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbaseCol));
+
   // must come after SetInternalFieldCount
   context->Global()->Set(v8::String::New("AvocadoCollection"),
                          ft->GetFunction());
@@ -4746,53 +4261,34 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->SetInternalFieldCount(SLOT_END);
 
   rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
-  rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentQuery));
-  rt->Set(EdgesFuncName, v8::FunctionTemplate::New(JS_EdgesQuery));
-  rt->Set(InEdgesFuncName, v8::FunctionTemplate::New(JS_InEdgesQuery));
-  rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
-  rt->Set(OutEdgesFuncName, v8::FunctionTemplate::New(JS_OutEdgesQuery));
-  rt->Set(SelectFuncName, v8::FunctionTemplate::New(JS_SelectQuery));
-  rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
-
   rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountVocbaseCol));
   rt->Set(DeleteFuncName, v8::FunctionTemplate::New(JS_DeleteVocbaseCol));
+  rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentQuery));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
+  rt->Set(EnsureHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureHashIndexVocbaseCol));
+  rt->Set(EnsureMultiHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureMultiHashIndexVocbaseCol));
+  rt->Set(EnsureMultiSkiplistIndexFuncName, v8::FunctionTemplate::New(JS_EnsureMultiSkiplistIndexVocbaseCol));
+  rt->Set(EnsureSkiplistIndexFuncName, v8::FunctionTemplate::New(JS_EnsureSkiplistIndexVocbaseCol));
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
-  
-  // todo ensure hash index
-  
   rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));
+  rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
   rt->Set(ParameterFuncName, v8::FunctionTemplate::New(JS_ParameterVocbaseCol));
+  rt->Set(StatusFuncName, v8::FunctionTemplate::New(JS_StatusVocbaseCol));
+  rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
+
   rt->Set(ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceEdgesCol));
   rt->Set(SaveFuncName, v8::FunctionTemplate::New(JS_SaveEdgesCol));
-  rt->Set(StatusFuncName, v8::FunctionTemplate::New(JS_StatusVocbaseCol));
+
+  rt->Set(EdgesFuncName, v8::FunctionTemplate::New(JS_EdgesQuery));
+  rt->Set(InEdgesFuncName, v8::FunctionTemplate::New(JS_InEdgesQuery));
+  rt->Set(OutEdgesFuncName, v8::FunctionTemplate::New(JS_OutEdgesQuery));
 
   v8g->EdgesColTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
   // must come after SetInternalFieldCount
   context->Global()->Set(v8::String::New("AvocadoEdgesCollection"),
-                         ft->GetFunction());
-
-  // .............................................................................
-  // generate the fluent query template
-  // .............................................................................
-
-  ft = v8::FunctionTemplate::New();
-  ft->SetClassName(v8::String::New("AvocadoFluentQuery"));
-
-  rt = ft->InstanceTemplate();
-  rt->SetInternalFieldCount(SLOT_END);
-
-  rt->Set(IndexToUse, v8::FunctionTemplate::New(JS_IndexToUse));
-  rt->Set(SelectFuncName, v8::FunctionTemplate::New(JS_SelectQuery));
-  rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
-
-  v8g->FluentQueryTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
-
-  // must come after SetInternalFieldCount
-  context->Global()->Set(v8::String::New("AvocadoFluentQuery"),
                          ft->GetFunction());
 
   // .............................................................................

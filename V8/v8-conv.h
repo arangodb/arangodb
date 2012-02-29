@@ -32,7 +32,6 @@
 
 #include "BasicsC/json.h"
 #include "V8/v8-c-utils.h"
-#include "VocBase/result-set.h"
 #include "VocBase/simple-collection.h"
 
 // -----------------------------------------------------------------------------
@@ -65,20 +64,6 @@ bool TRI_IdentifiersObjectReference (v8::Handle<v8::Value>, TRI_voc_cid_t&, TRI_
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> TRI_ObjectJson (TRI_json_t const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a TRI_shaped_json_t into a V8 object
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Value> TRI_ObjectRSEntry (TRI_doc_collection_t*,
-                                         TRI_shaper_t*,
-                                         TRI_rs_entry_t const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a TRI_result_set_t into a V8 array
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Array> TRI_ArrayResultSet (TRI_result_set_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts an V8 object to a TRI_shaped_json_t

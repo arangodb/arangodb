@@ -43,6 +43,7 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 ///  <li>@ref GeoQueries
 ///   <ol>
 ///    <li>@ref SimpleQueryNear "db.@FA{collection}.near()"</li>
+///    <li>@ref SimpleQueryWithin "db.@FA{collection}.within()"</li>
 ///    <li>@ref SimpleQueryGeo "db.@FA{collection}.geo()"</li>
 ///   </ol>
 ///  </li>
@@ -120,6 +121,10 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 /// @copydetails JSF_AvocadoCollection_prototype_near
 /// <hr>
 ///
+/// @anchor SimpleQueryWithin
+/// @copydetails JSF_AvocadoCollection_prototype_within
+/// <hr>
+///
 /// @anchor SimpleQueryGeo
 /// @copydetails JSF_AvocadoCollection_prototype_geo
 ///
@@ -150,6 +155,8 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 /// The @FN{skip} operator skips over the first n documents. So, in order to
 /// create result pages with 10 result documents per page, you can use
 /// @CODE{skip(n * 10).limit(10)} to access the 10 documents on the n.th page.
+/// This result should be sorted, so that the pagination works in a predicable
+/// way.
 ///
 /// @anchor SimpleQueryLimit
 /// @copydetails JSF_SimpleQuery_prototype_limit
@@ -258,10 +265,46 @@ AvocadoCollection.prototype.near = function (lat, lon) {
   return new SimpleQueryNear(this, lat, lon);
 }
 
-AvocadoEdgesCollection.prototype.all = AvocadoCollection.prototype.near;
+AvocadoEdgesCollection.prototype.near = AvocadoCollection.prototype.near;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a near query for a collection
+/// @brief constructs a within query for a collection
+///
+/// @FUN{within(@FA{latitiude}, @FA{longitude}, @FA{radius})}
+///
+/// This will find all documents with in a given radius around the coordinate
+/// (@FA{latitiude}, @FA{longitude}). The returned list is sorted by distance.
+///
+/// In order to use the @FN{within} operator, a geo index must be defined for the
+/// collection. This index also defines which attribute holds the coordinates
+/// for the document.  If you have more then one geo-spatial index, you can use
+/// the @FN{geo} operator to select a particular index.
+///
+/// @FUN{within(@FA{latitiude}, @FA{longitude}, @FA{radius}).distance()}
+///
+/// This will add an attribute @LIT{_distance} to all documents returned, which
+/// contains the distance between the given point and the document in meter.
+///
+/// @FUN{within(@FA{latitiude}, @FA{longitude}, @FA{radius}).distance(@FA{name})}
+///
+/// This will add an attribute @FA{name} to all documents returned, which
+/// contains the distance between the given point and the document in meter.
+///
+/// @EXAMPLES
+///
+/// To find all documents within a radius of 2000 km use:
+///
+/// @verbinclude simple17
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.within = function (lat, lon, radius) {
+  return new SimpleQueryWithin(this, lat, lon, radius);
+}
+
+AvocadoEdgesCollection.prototype.within = AvocadoCollection.prototype.within;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a geo index selection
 ///
 /// @FUN{geo(@FA{location})}
 ///
@@ -1043,6 +1086,14 @@ SimpleQueryGeo.prototype.near = function (lat, lon) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a within query for an index
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQueryGeo.prototype.within = function (lat, lon, radius) {
+  return new SimpleQueryWithin(this._collection, lat, lon, radius, this._index);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1229,6 +1280,181 @@ SimpleQueryNear.prototype.distance = function (attribute) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                               SIMPLE QUERY WITHIN
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup SimpleQuery
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief all query
+////////////////////////////////////////////////////////////////////////////////
+
+function SimpleQueryWithin (collection, latitiude, longitude, radius, iid) {
+  var idx;
+
+  this._collection = collection;
+  this._latitude = latitiude;
+  this._longitude = longitude;
+  this._index = (iid === undefined ? null : iid);
+  this._radius = radius;
+  this._distance = null;
+
+  if (iid == null) {
+    idx = collection.getIndexes();
+    
+    for (var i = 0;  i < idx.length;  ++i) {
+      var index = idx[i];
+      
+      if (index.type == "geo") {
+        if (this._index == null) {
+          this._index = index.iid;
+        }
+        else if (index.iid < this._index) {
+          this._index = index.iid;
+        }
+      }
+    }
+  }
+    
+  if (this._index == null) {
+    throw "an geo-index must be known";
+  }
+}
+
+SimpleQueryWithin.prototype = new SimpleQuery();
+SimpleQueryWithin.prototype.constructor = SimpleQueryWithin;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup SimpleQuery
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clones an all query
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQueryWithin.prototype.clone = function () {
+  var query;
+
+  query = new SimpleQueryWithin(this._collection, this._latitude, this._longitude, this._radius, this._index);
+  query._skip = this._skip;
+  query._limit = this._limit;
+  query._distance = this._distance;
+
+  return query;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes an all query
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQueryWithin.prototype.execute = function () {
+  var result;
+  var documents;
+  var distances;
+  var limit;
+
+  if (this._execution == null) {
+    result = this._collection.WITHIN(this._index, this._latitude, this._longitude, this._radius);
+    documents = result.documents;
+    distances = result.distances;
+
+    if (this._distance != null) {
+      for (var i = this._skip;  i < documents.length;  ++i) {
+        documents[i][this._distance] = distances[i];
+      }
+    }
+
+    this._execution = new SimpleQueryArray(result.documents);
+    this._execution._skip = this._skip;
+    this._execution._limit = this._limit;
+    this._countQuery = result.documents.length - this._skip;
+    this._countTotal = result.documents.length;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print a within query
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQueryWithin.prototype._PRINT = function () {
+  var text;
+
+  text = "SimpleQueryWithin("
+       + this._collection._name
+       + ", "
+       + this._latitude
+       + ", "
+       + this._longitude
+       + ", "
+       + this._radius
+       + ", "
+       + this._index
+       + ")";
+
+  if (this._skip != null && this._skip != 0) {
+    text += ".skip(" + this._skip + ")";
+  }
+
+  if (this._limit != null) {
+    text += ".limit(" + this._limit + ")";
+  }
+
+  internal.output(text);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup SimpleQuery
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQueryWithin.prototype.distance = function (attribute) {
+  var clone;
+
+  clone = this.clone();
+
+  if (attribute) {
+    clone._distance = attribute;
+  }
+  else {
+    clone._distance = "distance";
+  }
+
+  return clone;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
 
@@ -1242,6 +1468,9 @@ exports.AvocadoEdgesCollection = AvocadoEdgesCollection;
 exports.SimpleQuery = SimpleQuery;
 exports.SimpleQueryAll = SimpleQueryAll;
 exports.SimpleQueryArray = SimpleQueryArray;
+exports.SimpleQueryGeo = SimpleQueryGeo;
+exports.SimpleQueryNear = SimpleQueryNear;
+exports.SimpleQueryWithin = SimpleQueryWithin;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

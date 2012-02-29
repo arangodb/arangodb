@@ -126,10 +126,121 @@
 /// First create an index.
 ///
 /// @copydetails JS_EnsureGeoIndexVocbaseCol
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page JavaScriptFuncIndex JavaScript Function Index
 ///
-/// @section WithinOperator The Within Operator
+/// @section JSFDatabaseSelection Database Selection
 ///
-/// @copydetails JS_WithinQuery
+/// - @ref MapGetVocBase "db".@FA{database}
+///
+/// - @ref MapGetVocBase "edges".@FA{database}
+///
+/// @section JSFDatabases Database Functions
+///
+/// - @ref JS_ParameterVocbaseCol "parameter"
+///
+/// @subsection JSFDocument Database Document Functions
+///
+/// - @ref JS_DeleteVocbaseCol "delete"
+/// - @ref JS_ReplaceVocbaseCol "replace"
+/// - @ref JS_SaveVocbaseCol "save"
+/// - @ref JS_SaveEdgesCol "save" for edges
+///
+/// @subsection JSFIndex Database Index Functions
+///
+/// - @ref JS_DropIndexVocbaseCol "dropIndex"
+/// - @ref JS_EnsureGeoIndexVocbaseCol "ensureGeoIndex"
+/// - @ref JS_EnsureHashIndexVocbaseCol "ensureHashIndex"
+/// - @ref JS_EnsureMultiHashIndexVocbaseCol "ensureMultiHashIndex"
+/// - @ref JS_GetIndexesVocbaseCol "getIndexes"
+///
+/// @section JSFQueries Query Functions
+///
+/// @subsection JSFQueryBuilding Query Building Functions
+///
+/// - @ref JS_AllQuery "all"
+/// - @ref JS_DocumentQuery "document"
+/// - @ref JS_SelectQuery "select"
+///
+/// @section JSFGlobal Global Functions
+///
+/// - @ref JS_Execute "execute"
+/// - @ref JS_Load "load"
+/// - @ref JS_LogLevel "logLevel"
+/// - @ref JS_Output "output"
+/// - @ref JSF_print "print"
+/// - @ref JS_ProcessCsvFile "processCsvFile"
+/// - @ref JS_ProcessJsonFile "processJsonFile"
+/// - @ref JS_Read "read"
+/// - @ref JS_Time "time"
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page JavaScriptFunc JavaScript Functions
+///
+/// @section JSFDatabaseSelection Database Selection
+///
+/// @ref MapGetVocBase "db".@FA{database}
+///
+/// @section JSFDatabases Database Functions
+///
+/// @copydetails JS_ParameterVocbaseCol
+///
+/// @subsection JSFDocument Database Document Functions
+///
+/// @copydetails JS_DeleteVocbaseCol
+///
+/// @copydetails JS_ReplaceVocbaseCol
+///
+/// @copydetails JS_SaveVocbaseCol
+///
+/// @copydetails JS_SaveEdgesCol
+///
+/// @subsection JSFIndex Database Index Functions
+///
+/// @copydetails JS_DropIndexVocbaseCol
+///
+/// @copydetails JS_EnsureGeoIndexVocbaseCol
+///
+/// @copydetails JS_EnsureHashIndexVocbaseCol
+///
+/// @copydetails JS_EnsureMultiHashIndexVocbaseCol
+///
+/// @copydetails JS_GetIndexesVocbaseCol
+///
+/// @section JSFQueries Query Functions
+///
+/// @subsection JSFQueryBuilding Query Building Functions
+///
+/// @copydetails JS_DocumentQuery
+///
+/// @copydetails JS_NearQuery
+///
+/// @copydetails JS_SelectQuery
+///
+/// @subsection JSFQueryExecuting Query Execution Functions
+///
+/// @section JSFGlobal Global Functions
+///
+/// @copydetails JS_Execute
+///
+/// @copydetails JS_Load
+///
+/// @copydetails JS_LogLevel
+///
+/// @copydetails JS_Output
+///
+/// @copydetails JSF_print
+///
+/// @copydetails JS_ProcessCsvFile
+///
+/// @copydetails JS_ProcessJsonFile
+///
+/// @copydetails JS_Read
+///
+/// @copydetails JS_Time
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------

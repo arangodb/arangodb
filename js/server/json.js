@@ -239,40 +239,6 @@ AvocadoEdgesCollection.prototype.toJSON = function() {
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                AvocadoFluentQuery
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief string representation of a query
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoFluentQuery.prototype.toString = function() {
-  if (this instanceof AvocadoFluentQuery) {
-    return "[query]";
-  }
-  else {
-    return "[object]";
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief JSON representation of a query
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoFluentQuery.prototype.toJSON = function() {
-  if (this instanceof AvocadoFluentQuery) {
-    return "[query]";
-  }
-  else {
-    return "[object]";
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"

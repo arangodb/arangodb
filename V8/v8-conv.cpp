@@ -1251,45 +1251,6 @@ v8::Handle<v8::Value> TRI_ObjectJson (TRI_json_t const* json) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a TRI_rs_entry_t into a V8 object
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Value> TRI_ObjectRSEntry (TRI_doc_collection_t* collection,
-                                         TRI_shaper_t* shaper,
-                                         TRI_rs_entry_t const* entry) {
-  TRI_shape_t const* shape;
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-  shape = shaper->lookupShapeId(shaper, entry->_document._sid);
-
-  if (shape == 0) {
-    LOG_WARNING("cannot find shape #%u", (unsigned int) entry->_document._sid);
-    return v8::Null();
-  }
-
-  v8::Handle<v8::Value> result = JsonShapeData(shaper,
-                                               shape,
-                                               entry->_document._data.data,
-                                               entry->_document._data.length);
-
-  if (result->IsObject()) {
-    result->ToObject()->Set(v8g->DidKey, TRI_ObjectReference(collection->base._cid, entry->_did));
-
-    if (entry->_type == TRI_DOC_MARKER_EDGE) {
-      result->ToObject()->Set(v8g->FromKey, TRI_ObjectReference(entry->_fromCid, entry->_fromDid));
-      result->ToObject()->Set(v8g->ToKey, TRI_ObjectReference(entry->_toCid, entry->_toDid));
-    }
-  }
-
-  if (entry->_augmented._type != TRI_JSON_UNUSED) {
-    TRI_AugmentObject(result, &entry->_augmented);
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a TRI_shaped_json_t into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1334,27 +1295,6 @@ bool TRI_ObjectDocumentPointer (TRI_doc_collection_t* collection,
   * (v8::Handle<v8::Value>*) storage = result;
 
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a TRI_result_set_t into a V8 array
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Array> TRI_ArrayResultSet (TRI_result_set_t* rs) {
-  v8::Handle<v8::Array> array = v8::Array::New();
-
-  TRI_doc_collection_t* collection = rs->_barrier->_container->_collection;
-  TRI_shaper_t* shaper = collection->_shaper;
-
-  size_t pos;
-
-  for (pos = 0;  rs->hasNext(rs);  ++pos) {
-    TRI_rs_entry_t const* entry = rs->next(rs);
-
-    array->Set(pos, TRI_ObjectRSEntry(collection, shaper, entry));
-  }
-
-  return array;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
