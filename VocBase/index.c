@@ -904,6 +904,7 @@ static TRI_json_t* JsonGeoIndex (TRI_index_t* idx, TRI_doc_collection_t* collect
   TRI_Insert2ArrayJson(json, "iid", TRI_CreateNumberJson(idx->_iid));
   TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("geo"));
   TRI_Insert2ArrayJson(json, "location", TRI_CreateStringCopyJson(location));
+  TRI_Insert2ArrayJson(json, "geoJson", TRI_CreateBooleanJson(geo->_geoJson));
 
   return json;
 }
