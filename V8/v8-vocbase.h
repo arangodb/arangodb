@@ -121,65 +121,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page GeoCoordinates Geo Coordinates
 ///
-/// The AvocadoDB allows to selects documents based on geographic
-/// coordinates. In order for this to work, a geo-spatial index must be defined.
-/// This index will use a very elaborate algorithm to lookup neighbours that is
-/// a magnitude faster than a simple R* index.
-///
-/// In general a geo coordinate is a pair of latitude and longitude.  This can
-/// either be an list with two elements like @CODE{[ -10\, +30 ]} (latitude
-/// first, followed by longitude) or an object like @CODE{{ lon: -10\, lat: +30
-/// }}. In order to find all documents within a given radius around a
-/// coordinate use the @FN{within} operator. In order to find all
-/// documents near a given document use the @FN{near} operator.
-///
-/// It is possible to define more than one geo-spatial index per collection.  In
-/// this case you must give a hint which of indexes should be used in a query.
-///
 /// @section EnsureGeoIndex Create a Geo-Spatial Index
 ///
 /// First create an index.
 ///
 /// @copydetails JS_EnsureGeoIndexVocbaseCol
 ///
-/// @section NearOperator The Near Operator
-///
-/// @copydetails JS_NearQuery
-///
 /// @section WithinOperator The Within Operator
 ///
 /// @copydetails JS_WithinQuery
-///
-/// @section GeoOperator The Geo Operator
-///
-/// @copydetails JS_GeoQuery
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page Pagination Pagination
-///
-/// @section LimitOperator The Limit Operator
-///
-/// If, for example, you display the result of a user search, then you are in
-/// general not interested in the completed result set, but only the first 10
-/// documents. In this case, you can the @FN{limit} operator. This operators
-/// works like LIMIT in MySQL, it specifies a maximal number of documents to
-/// return.
-///
-/// @verbinclude fluent4
-///
-/// @copydetails JS_LimitQuery
-///
-/// @section SkipOperator The Skip Operator
-///
-/// @FN{skip} used together with @FN{limit} can be used to implement
-/// pagination.  The @FN{skip} operator skips over the first n documents. So, in
-/// order to create result pages with 10 result documents per page, you can use
-/// @CODE{skip(n * 10).limit(10)} to access the n.th page.
-///
-/// @verbinclude fluent5
-///
-/// @copydetails JS_SkipQuery
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------

@@ -1037,83 +1037,6 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds distance to a result set
-///
-/// @FUN{distance()}
-///
-/// Aguments the result-set of a @FN{near} or @FN{within} query with the
-/// distance between the document and the given point. The distance is returned
-/// in an attribute @LIT{_distance}. This is the distance in meters.
-///
-/// @verbinclude fluent26
-///
-/// @FUN{distance(@FA{name})}
-///
-/// Same as above, with the exception, that the distance is returned in an
-/// attribute called @FA{name}.
-///
-/// @verbinclude fluent27
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_DistanceQuery (v8::Arguments const& argv) {
-  TRI_v8_global_t* v8g;
-  v8::HandleScope scope;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-  // extract the operand query
-  v8::Handle<v8::Object> operand = argv.Holder();
-  v8::Handle<v8::String> err;
-  TRI_fluent_query_t* opQuery = ExtractFluentQuery(operand, &err);
-
-  if (opQuery == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  if (IsExecutedQuery(operand)) {
-    return scope.Close(v8::ThrowException(v8::String::New("query already executed")));
-  }
-
-  // .............................................................................
-  // case: no arguments
-  // .............................................................................
-
-  if (argv.Length() == 0) {
-    v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
-
-    StoreFluentQuery(result, TRI_CreateDistanceQuery(opQuery->clone(opQuery), "_distance"));
-
-    return scope.Close(result);
-  }
-
-  // .............................................................................
-  // case: <distance>
-  // .............................................................................
-
-  else if (argv.Length() == 1) {
-    string name = TRI_ObjectToString(argv[0]);
-
-    if (name.empty()) {
-      return scope.Close(v8::ThrowException(v8::String::New("<attribute> must be non-empty")));
-    }
-
-    v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
-
-    StoreFluentQuery(result, TRI_CreateDistanceQuery(opQuery->clone(opQuery), name.c_str()));
-
-    return scope.Close(result);
-  }
-
-  // .............................................................................
-  // error case
-  // .............................................................................
-
-  else {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: distance([<attribute>])")));
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a document
 ///
 /// @FUN{document(@FA{document-identifier})}
@@ -1344,141 +1267,9 @@ static v8::Handle<v8::Value> JS_IndexToUse (v8::Arguments const& argv) {
   
   return scope.Close(v8::ThrowException(v8::String::New("Internal Error. Not implemented.")));
 }
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a geo-spatial index
-///
-/// @FUN{geo(@FA{location})}
-///
-/// The next @FN{near} operator will use the specific geo-spatial index.
-///
-/// @FUN{geo(@FA{location}, @LIT{true})}
-///
-/// The next @FN{near} or @FN{within} operator will use the specific geo-spatial
-/// index.
-///
-/// @FUN{geo(@FA{latitiude}, @FA{longitude})}
-///
-/// The next @FN{near} or @FN{within} operator will use the specific geo-spatial
-/// index.
-///
-/// Assume you have a location stored as list in the attribute @LIT{home}
-/// and a destination stored in the attribute @LIT{work}. Than you can use the
-/// @FN{geo} operator to select, which coordinates to use in a near query.
-///
-/// @verbinclude fluent15
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_GeoQuery (v8::Arguments const& argv) {
-  TRI_v8_global_t* v8g;
-  v8::HandleScope scope;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-  // extract the operand query
-  v8::Handle<v8::Object> operand = argv.Holder();
-  v8::Handle<v8::String> err;
-  TRI_fluent_query_t* opQuery = ExtractFluentQuery(operand, &err);
-
-  if (opQuery == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  if (IsExecutedQuery(operand)) {
-    return scope.Close(v8::ThrowException(v8::String::New("query already executed")));
-  }
-
-  // .............................................................................
-  // case: <location>
-  // .............................................................................
-
-  if (argv.Length() == 1) {
-    string location = TRI_ObjectToString(argv[0]);
-
-    v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
-
-    StoreFluentQuery(result, TRI_CreateGeoIndexQuery(opQuery->clone(opQuery), location.c_str(), 0, 0, false));
-
-    return scope.Close(result);
-  }
-
-  // .............................................................................
-  // case: <location>, <geoJson>
-  // .............................................................................
-
-  else if (argv.Length() == 2 && (argv[1]->IsBoolean() || argv[1]->IsBooleanObject())) {
-    string location = TRI_ObjectToString(argv[0]);
-    bool geoJson = TRI_ObjectToBoolean(argv[1]);
-
-    v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
-
-    StoreFluentQuery(result, TRI_CreateGeoIndexQuery(opQuery->clone(opQuery), location.c_str(), 0, 0, geoJson));
-
-    return scope.Close(result);
-  }
-
-  // .............................................................................
-  // case: <latitiude>, <longitude>
-  // .............................................................................
-
-  else if (argv.Length() == 2) {
-    string latitiude = TRI_ObjectToString(argv[0]);
-    string longitude = TRI_ObjectToString(argv[1]);
-
-    v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
-
-    StoreFluentQuery(result, TRI_CreateGeoIndexQuery(opQuery->clone(opQuery), 0, latitiude.c_str(), longitude.c_str(), false));
-
-    return scope.Close(result);
-  }
-
-  // .............................................................................
-  // error case
-  // .............................................................................
-
-  else {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: geo(<location>|<latitiude>,<longitude>)")));
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds points near a given coordinate
-///
-/// @FUN{near(@FA{latitiude}, @FA{longitude})}
-///
-/// This will find at most 100 documents near the coordinate (@FA{latitiude},
-/// @FA{longitude}). The returned list is sorted according to the distance, with
-/// the nearest document coming first.
-///
-/// @verbinclude fluent10
-///
-/// If you need the distance as well, then you can use
-///
-/// @FUN{near(@FA{latitiude}, @FA{longitude}).distance()}
-///
-/// This will add an attribute @LIT{_distance} to all documents returned, which
-/// contains the distance between the given point and the document in meter.
-///
-/// @verbinclude fluent11
-///
-/// @FUN{near(@FA{latitiude}, @FA{longitude}).distance(@FA{name})}
-///
-/// This will add an attribute @FA{name} to all documents returned, which
-/// contains the distance between the given point and the document in meter.
-///
-/// @verbinclude fluent12
-///
-/// @FUN{near(@FA{latitiude}, @FA{longitude}).limit(@FA{count})}
-///
-/// Limits the result to @FA{count} documents. Note that @FA{count} can be more
-/// than 100. To get less or more than 100 documents with distances, use
-///
-/// @FUN{near(@FA{latitiude}, @FA{longitude}).distance().limit(@FA{count})}
-///
-/// This will return the first @FA{count} documents together with their
-/// distances in meters.
-///
-/// @verbinclude fluent13
-///
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
@@ -4481,8 +4272,6 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
 /// - @ref JS_AllQuery "all"
 /// - @ref JS_DistanceQuery "distance"
 /// - @ref JS_DocumentQuery "document"
-/// - @ref JS_GeoQuery "geo"
-/// - @ref JS_LimitQuery "limit"
 /// - @ref JS_NearQuery "near"
 /// - @ref JS_SelectQuery "select"
 /// - @ref JS_WithinQuery "within"
@@ -4542,10 +4331,6 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
 /// @copydetails JS_DistanceQuery
 ///
 /// @copydetails JS_DocumentQuery
-///
-/// @copydetails JS_GeoQuery
-///
-/// @copydetails JS_LimitQuery
 ///
 /// @copydetails JS_NearQuery
 ///
@@ -4922,7 +4707,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
 
   rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentQuery));
-  rt->Set(GeoFuncName, v8::FunctionTemplate::New(JS_GeoQuery));
   rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
   rt->Set(SelectFuncName, v8::FunctionTemplate::New(JS_SelectQuery));
   rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
@@ -4964,7 +4748,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentQuery));
   rt->Set(EdgesFuncName, v8::FunctionTemplate::New(JS_EdgesQuery));
-  rt->Set(GeoFuncName, v8::FunctionTemplate::New(JS_GeoQuery));
   rt->Set(InEdgesFuncName, v8::FunctionTemplate::New(JS_InEdgesQuery));
   rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
   rt->Set(OutEdgesFuncName, v8::FunctionTemplate::New(JS_OutEdgesQuery));
@@ -5002,8 +4785,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(SLOT_END);
 
-  rt->Set(DistanceFuncName, v8::FunctionTemplate::New(JS_DistanceQuery));
-  rt->Set(GeoFuncName, v8::FunctionTemplate::New(JS_GeoQuery));
   rt->Set(IndexToUse, v8::FunctionTemplate::New(JS_IndexToUse));
   rt->Set(SelectFuncName, v8::FunctionTemplate::New(JS_SelectQuery));
   rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
@@ -5128,7 +4909,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
                          v8::FunctionTemplate::New(JS_SkiplistSelectAql)->GetFunction(),
                          v8::ReadOnly);
 
-                         
   context->Global()->Set(v8::String::New("AQL_PREPARE"),
                          v8::FunctionTemplate::New(JS_PrepareAql)->GetFunction(),
                          v8::ReadOnly);

@@ -777,7 +777,6 @@ WIKI = \
         Doxygen/xml/JSModules.md \
         Doxygen/xml/JavaScriptFunc.md \
         Doxygen/xml/JavaScriptFuncIndex.md \
-        Doxygen/xml/Pagination.md \
         Doxygen/xml/RefManual.md \
         Doxygen/xml/RestDocument.md \
         Doxygen/xml/RestSystem.md \

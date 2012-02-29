@@ -38,6 +38,16 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 ///    <li>@ref SimpleQueryDocument "db.@FA{collection}.document(@FA{document-reference})"</li>
 ///    <li>@ref SimpleQueryAll "db.@FA{collection}.all()"</li>
 ///    <li>@ref SimpleQueryCount "@FA{query}.count()"</li>
+///   </ol>
+///  </li>
+///  <li>@ref GeoQueries
+///   <ol>
+///    <li>@ref SimpleQueryNear "db.@FA{collection}.near()"</li>
+///    <li>@ref SimpleQueryGeo "db.@FA{collection}.geo()"</li>
+///   </ol>
+///  </li>
+///  <li>@ref EdgesQueries
+///   <ol>
 ///    <li>@ref SimpleQueryEdges "edges.@FA{collection}.edges()"</li>
 ///    <li>@ref SimpleQueryInEdges "edges.@FA{collection}.inEdges()"</li>
 ///    <li>@ref SimpleQueryOutEdges "edges.@FA{collection}.outEdges()"</li>
@@ -72,6 +82,7 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 /// <hr>
 ///
 /// @section Queries Queries
+////////////////////////////
 ///
 /// @anchor SimpleQueryDocument
 /// @copydetails JS_DocumentQuery
@@ -82,8 +93,38 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 /// <hr>
 ///
 /// @anchor SimpleQueryCount
-/// @copydetails JSF_SimpleQueryAll_prototype_count
+/// @copydetails JSF_SimpleQuery_prototype_count
+///
+/// @section GeoQueries Geo Queries
+///////////////////////////////////
+///
+/// The AvocadoDB allows to selects documents based on geographic
+/// coordinates. In order for this to work, a geo-spatial index must be defined.
+/// This index will use a very elaborate algorithm to lookup neighbours that is
+/// a magnitude faster than a simple R* index.
+///
+/// In general a geo coordinate is a pair of latitude and longitude.  This can
+/// either be an list with two elements like @CODE{[ -10\, +30 ]} (latitude
+/// first, followed by longitude) or an object like @CODE{{ lon: -10\, lat: +30
+/// }}. In order to find all documents within a given radius around a
+/// coordinate use the @FN{within} operator. In order to find all
+/// documents near a given document use the @FN{near} operator.
+///
+/// It is possible to define more than one geo-spatial index per collection.  In
+/// this case you must give a hint using the @FN{geo} operator which of indexes
+/// should be used in a query.
+///
 /// <hr>
+///
+/// @anchor SimpleQueryNear
+/// @copydetails JSF_AvocadoCollection_prototype_near
+/// <hr>
+///
+/// @anchor SimpleQueryGeo
+/// @copydetails JSF_AvocadoCollection_prototype_geo
+///
+/// @section EdgesQueries Edges Queries
+///////////////////////////////////////
 ///
 /// @anchor SimpleQueryEdges
 /// @copydetails JS_EdgesQuery
@@ -97,6 +138,18 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 /// @copydetails JS_OutEdgesQuery
 ///
 /// @section Pagination Pagination
+//////////////////////////////////
+///
+/// If, for example, you display the result of a user search, then you are in
+/// general not interested in the completed result set, but only the first 10 or
+/// so documents. Or maybe the next 10 documents for the second page. In this
+/// case, you can the @FN{skip} and @FN{limit} operators. These operators works
+/// like LIMIT in MySQL.
+///
+/// @FN{skip} used together with @FN{limit} can be used to implement pagination.
+/// The @FN{skip} operator skips over the first n documents. So, in order to
+/// create result pages with 10 result documents per page, you can use
+/// @CODE{skip(n * 10).limit(10)} to access the 10 documents on the n.th page.
 ///
 /// @anchor SimpleQueryLimit
 /// @copydetails JSF_SimpleQuery_prototype_limit
@@ -108,15 +161,15 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 /// @section SequentialAccess Sequential Access
 ///
 /// @anchor SimpleQueryHasNext
-/// @copydetails JSF_SimpleQueryAll_prototype_hasNext
+/// @copydetails JSF_SimpleQuery_prototype_hasNext
 /// <hr>
 ///
 /// @anchor SimpleQueryNext
-/// @copydetails JSF_SimpleQueryAll_prototype_next
+/// @copydetails JSF_SimpleQuery_prototype_next
 /// <hr>
 ///
 /// @anchor SimpleQueryNextRef
-/// @copydetails JSF_SimpleQueryAll_prototype_nextRef
+/// @copydetails JSF_SimpleQuery_prototype_nextRef
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
@@ -165,9 +218,10 @@ AvocadoEdgesCollection.prototype.all = AvocadoCollection.prototype.all;
 ///
 /// The default will find at most 100 documents near the coordinate
 /// (@FA{latitiude}, @FA{longitude}). The returned list is sorted according to
-/// the distance, with the nearest document coming first.  It is possible to
-/// change this limit using the @FA{limit} operator.  In order to paginate the
-/// result use @FA{skip} and @FA{limit}.
+/// the distance, with the nearest document coming first. If there are near
+/// documents of equal distance, documents are chosen randomly from this set
+/// until the limit is reached. It is possible to change the limit using the
+/// @FA{limit} operator.
 ///
 /// In order to use the @FN{near} operator, a geo index must be defined for the
 /// collection. This index also defines which attribute holds the coordinates
@@ -179,8 +233,6 @@ AvocadoEdgesCollection.prototype.all = AvocadoCollection.prototype.all;
 /// Limits the result to @FA{limit} documents. Note that @FA{limit} can be more
 /// than 100, this will raise the default limit.
 ///
-/// If you need the distance as well, then you can use
-///
 /// @FUN{near(@FA{latitiude}, @FA{longitude}).distance()}
 ///
 /// This will add an attribute @LIT{distance} to all documents returned, which
@@ -191,6 +243,15 @@ AvocadoEdgesCollection.prototype.all = AvocadoCollection.prototype.all;
 /// This will add an attribute @FA{name} to all documents returned, which
 /// contains the distance between the given point and the document in meter.
 ///
+/// @EXAMPLES
+///
+/// To get the nearst two locations:
+///
+/// @verbinclude simple14
+///
+/// If you need the distance as well, then you can use:
+///
+/// @verbinclude simple15
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.near = function (lat, lon) {
@@ -198,6 +259,87 @@ AvocadoCollection.prototype.near = function (lat, lon) {
 }
 
 AvocadoEdgesCollection.prototype.all = AvocadoCollection.prototype.near;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a near query for a collection
+///
+/// @FUN{geo(@FA{location})}
+///
+/// The next @FN{near} or @FN{within} operator will use the specific geo-spatial
+/// index.
+///
+/// @FUN{geo(@FA{location}, @LIT{true})}
+///
+/// The next @FN{near} or @FN{within} operator will use the specific geo-spatial
+/// index.
+///
+/// @FUN{geo(@FA{latitiude}, @FA{longitude})}
+///
+/// The next @FN{near} or @FN{within} operator will use the specific geo-spatial
+/// index.
+///
+/// @EXAMPLES
+///
+/// Assume you have a location stored as list in the attribute @LIT{home}
+/// and a destination stored in the attribute @LIT{work}. Than you can use the
+/// @FN{geo} operator to select, which coordinates to use in a near query.
+///
+/// @verbinclude simple16
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.geo = function(loc, order) {
+  var idx;
+
+  var locateGeoIndex1 = function(collection, loc, order) {
+    var inds = collection.getIndexes();
+    
+    for (var i = 0;  i < inds.length;  ++i) {
+      var index = inds[i];
+      
+      if (index.type == "geo") {
+        if (index.location == loc && index.geoJson == order) {
+          return index;
+        }
+      }
+    }
+    
+    return null;
+  };
+
+  var locateGeoIndex2 = function(collection, lat, lon) {
+    var inds = collection.getIndexes();
+    
+    for (var i = 0;  i < inds.length;  ++i) {
+      var index = inds[i];
+      
+      if (index.type == "geo") {
+        if (index.latitude == lat && index.longitude == lon) {
+          return index;
+        }
+      }
+    }
+    
+    return null;
+  };
+
+  if (order === undefined) {
+    idx = locateGeoIndex1(this, loc, false);
+  }
+  else if (typeof order === "boolean") {
+    idx = locateGeoIndex1(this, loc, order);
+  }
+  else {
+    idx = locateGeoIndex2(this, loc, order);
+  }
+
+  if (idx == null) {
+    throw "cannot find a suitable geo index";
+  }
+
+  return new SimpleQueryGeo(this, idx.iid);
+}
+
+AvocadoEdgesCollection.prototype.geo = AvocadoCollection.geo;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -824,6 +966,86 @@ SimpleQueryArray.prototype.nextRef = function() {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  SIMPLE QUERY GEO
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup SimpleQuery
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief geo index
+////////////////////////////////////////////////////////////////////////////////
+
+function SimpleQueryGeo (collection, index) {
+  this._collection = collection;
+  this._index = index;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup SimpleQuery
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print a geo index
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQueryGeo.prototype._PRINT = function () {
+  var text;
+
+  text = "GeoIndex("
+       + this._collection._name
+       + ", "
+       + this._index
+       + ")";
+
+  internal.output(text);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup SimpleQuery
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a near query for an index
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQueryGeo.prototype.near = function (lat, lon) {
+  return new SimpleQueryNear(this._collection, lat, lon, this._index);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 SIMPLE QUERY NEAR
 // -----------------------------------------------------------------------------
@@ -943,7 +1165,7 @@ SimpleQueryNear.prototype.execute = function () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print an all query
+/// @brief print a near query
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQueryNear.prototype._PRINT = function () {
@@ -1020,10 +1242,6 @@ exports.AvocadoEdgesCollection = AvocadoEdgesCollection;
 exports.SimpleQuery = SimpleQuery;
 exports.SimpleQueryAll = SimpleQueryAll;
 exports.SimpleQueryArray = SimpleQueryArray;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
