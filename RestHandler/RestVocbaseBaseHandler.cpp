@@ -199,7 +199,7 @@ void RestVocbaseBaseHandler::generateDocumentNotFound (string const& cid, string
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateConflict (string const& cid, string const& did) {
-  generateError(HttpResponse::CONFLICT, "document " + DOCUMENT_PATH + "/" + cid + ":" + did + " has been altered");
+  generateError(HttpResponse::CONFLICT, "document " + DOCUMENT_PATH + "/" + cid + "/" + did + " has been altered");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

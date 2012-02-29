@@ -25,8 +25,8 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_QL_OPTIMIZE
-#define TRIAGENS_DURHAM_QL_OPTIMIZE
+#ifndef TRIAGENS_DURHAM_QL_OPTIMIZE_H 
+#define TRIAGENS_DURHAM_QL_OPTIMIZE_H 1
 
 #include <BasicsC/conversions.h>
 #include <BasicsC/hashes.h>
@@ -34,12 +34,12 @@
 #include <BasicsC/strings.h>
 #include <BasicsC/string-buffer.h>
 
-#include "QL/ast-node.h"
+#include "VocBase/query-node.h"
 #include "QL/ast-query.h"
-#include "QL/parser-context.h"
 #include "QL/formatter.h"
-#include "QL/javascripter.h"
+#include "VocBase/query-javascript.h"
 #include "VocBase/index.h"
+#include "VocBase/query-parse.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -182,63 +182,10 @@ typedef struct QL_optimize_range_s {
 QL_optimize_range_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether a node is optimizable as an arithmetic operand
-////////////////////////////////////////////////////////////////////////////////
-
-bool QLOptimizeCanBeUsedAsArithmeticOperand (const QL_ast_node_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether a node is optimizable as a relational operand
-////////////////////////////////////////////////////////////////////////////////
-
-bool QLOptimizeCanBeUsedAsRelationalOperand (const QL_ast_node_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether a node is optimizable as a logical operand
-////////////////////////////////////////////////////////////////////////////////
-
-bool QLOptimizeCanBeUsedAsLogicalOperand (const QL_ast_node_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief optimization function for unary operators
-///
-/// this function will optimize unary plus and unary minus operators that are
-/// used together with constant values, e.g. it will merge the two nodes "-" and
-/// "1" to a "-1".
-////////////////////////////////////////////////////////////////////////////////
-
-void QLOptimizeUnaryOperator (QL_ast_node_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief optimization function for binary operators
-///
-/// this function will optimize arithmetic, relational and logical operators 
-/// that are used together with constant values. It will replace the binary 
-/// operator with the result of the optimization. 
-/// The node will therefore change its type from a binary operator to a value
-/// type node. The former sub nodes (lhs and rhs) of the binary operator will 
-/// be unlinked, but not be freed here.
-/// Freeing memory is done later when the whole query structure is deallocated.
-////////////////////////////////////////////////////////////////////////////////
-
-void QLOptimizeBinaryOperator (QL_ast_node_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief optimization function for the ternary operator
-///
-/// this function will optimize the ternary operator if the conditional part is
-/// reducible to a constant. It will substitute the condition with the true 
-/// part if the condition is true, and with the false part if the condition is
-/// false.
-////////////////////////////////////////////////////////////////////////////////
-
-void QLOptimizeTernaryOperator (QL_ast_node_t*);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief optimize order by by removing constant parts
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLOptimizeOrder (QL_ast_node_t*);
+void QLOptimizeOrder (TRI_query_node_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief recursively optimize nodes in an AST expression
@@ -249,13 +196,13 @@ void QLOptimizeOrder (QL_ast_node_t*);
 /// nesting levels
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLOptimizeExpression (QL_ast_node_t*);
+void QLOptimizeExpression (TRI_query_node_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimize from/joins
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLOptimizeFrom (const QL_parser_context_t* context);
+void QLOptimizeFrom (TRI_query_template_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Free all existing ranges in a range vector
@@ -271,25 +218,25 @@ void QLOptimizeFreeRangeVector (TRI_vector_pointer_t*);
 /// tries to find suitable ranges for index accesses etc.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* QLOptimizeCondition (QL_ast_node_t*);
+TRI_vector_pointer_t* QLOptimizeCondition (TRI_query_node_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the type of a query's SELECT part
 ////////////////////////////////////////////////////////////////////////////////
 
-QL_ast_query_select_type_e QLOptimizeGetSelectType (const QL_ast_query_t*);
+QL_ast_query_select_type_e QLOptimizeGetSelectType (const QL_ast_query_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the type of a query's WHERE/ON condition
 ////////////////////////////////////////////////////////////////////////////////
 
-QL_ast_query_where_type_e QLOptimizeGetWhereType (const QL_ast_node_t*);
+QL_ast_query_where_type_e QLOptimizeGetWhereType (const TRI_query_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the type of a query's ORDER BY condition
 ////////////////////////////////////////////////////////////////////////////////
 
-QL_ast_query_order_type_e QLOptimizeGetOrderType (const QL_ast_node_t*);
+QL_ast_query_order_type_e QLOptimizeGetOrderType (const TRI_query_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

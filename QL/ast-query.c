@@ -52,7 +52,7 @@ static uint64_t HashKey (TRI_associative_pointer_t* array, void const* key) {
 
 static uint64_t HashCollectionElement (TRI_associative_pointer_t* array, 
                                        void const* element) {
-  QL_ast_query_collection_t *collection = (QL_ast_query_collection_t*) element;
+  QL_ast_query_collection_t* collection = (QL_ast_query_collection_t*) element;
 
   return TRI_FnvHashString(collection->_alias);
 }
@@ -201,7 +201,11 @@ void QLAstQueryAddRefCount (QL_ast_query_t* query, const char* alias) {
 bool QLAstQueryIsValidAlias (QL_ast_query_t* query, 
                              const char* alias, 
                              const size_t order) {
-  return (0 != TRI_LookupByKeyAssociativePointer(&query->_from._collections, alias));
+  if (0 != TRI_LookupByKeyAssociativePointer(&query->_from._collections, alias)) {
+    return true;
+  }
+
+  return (0 != TRI_LookupByKeyAssociativePointer(&query->_geo._restrictions, alias));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -280,7 +284,7 @@ bool QLAstQueryAddCollection (QL_ast_query_t* query,
   collection->_isPrimary        = (num == 0);
   collection->_refCount         = 0; // will be used later when optimizing joins
   collection->_declarationOrder = num + 1;
-  collection->_restriction      = NULL;
+  collection->_geoRestriction   = NULL;
 
   TRI_InsertKeyAssociativePointer(&query->_from._collections, 
                                   collection->_alias, 
@@ -355,6 +359,7 @@ QL_ast_query_geo_restriction_t* QLAstQueryCloneRestriction
   dest->_lat = source->_lat;
   dest->_lon = source->_lon;
   dest->_arg = source->_arg;
+ printf("3\n");
 
   return dest;
 }
@@ -384,13 +389,12 @@ void QLAstQueryFreeRestriction (QL_ast_query_geo_restriction_t* restriction) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool QLAstQueryAddGeoRestriction (QL_ast_query_t* query,
-                                  const QL_ast_node_t* collectionNode,
-                                  const QL_ast_node_t* restrictionNode) {
-  QL_ast_node_t* valueNode;
+                                  const TRI_query_node_t* collectionNode,
+                                  const TRI_query_node_t* restrictionNode) {
+  TRI_query_node_t* valueNode;
   QL_ast_query_collection_t* collection;
   QL_ast_query_geo_restriction_t* restriction;
   TRI_string_buffer_t* fieldName;
-  size_t limit;
   char* alias;
   char* collectionAlias;
   void* previous;
@@ -399,7 +403,7 @@ bool QLAstQueryAddGeoRestriction (QL_ast_query_t* query,
     return false;
   }
 
-  alias = ((QL_ast_node_t*) restrictionNode->_lhs)->_value._stringValue;
+  alias = restrictionNode->_lhs->_value._stringValue;
   assert(alias);
 
   previous = (void*) TRI_LookupByKeyAssociativePointer(&query->_from._collections, 
@@ -416,7 +420,7 @@ bool QLAstQueryAddGeoRestriction (QL_ast_query_t* query,
     return false;
   }
 
-  collectionAlias = ((QL_ast_node_t*) collectionNode->_rhs)->_value._stringValue;
+  collectionAlias = ((TRI_query_node_t*) collectionNode->_rhs)->_value._stringValue;
   assert(collectionAlias);
 
   collection = (QL_ast_query_collection_t*) 
@@ -436,7 +440,7 @@ bool QLAstQueryAddGeoRestriction (QL_ast_query_t* query,
   }
   restriction->_alias = alias;
 
-  if (restrictionNode->_type == QLNodeRestrictWithin) {
+  if (restrictionNode->_type == TRI_QueryNodeRestrictWithin) {
     restriction->_type = RESTRICT_WITHIN;
   }
   else {
@@ -444,9 +448,8 @@ bool QLAstQueryAddGeoRestriction (QL_ast_query_t* query,
   }
 
   // compare field 1
-  valueNode = 
-    ((QL_ast_node_t*) ((QL_ast_node_t*) restrictionNode->_rhs)->_lhs)->_lhs;
-  if (strcmp(((QL_ast_node_t*) valueNode->_lhs)->_value._stringValue,
+  valueNode = restrictionNode->_rhs->_lhs->_lhs;
+  if (strcmp(valueNode->_lhs->_value._stringValue,
              collectionAlias) != 0) {
     // field is from other collection, not valid!
     QLAstQueryFreeRestriction(restriction);
@@ -456,7 +459,7 @@ bool QLAstQueryAddGeoRestriction (QL_ast_query_t* query,
   fieldName = QLAstQueryGetMemberNameString(valueNode, false);
   if (fieldName) {
     restriction->_compareLat._collection = 
-      TRI_DuplicateString(((QL_ast_node_t*) valueNode->_lhs)->_value._stringValue);
+      TRI_DuplicateString(valueNode->_lhs->_value._stringValue);
     restriction->_compareLat._field = TRI_DuplicateString(fieldName->_buffer);
     TRI_FreeStringBuffer(fieldName);
     TRI_Free(fieldName);
@@ -467,9 +470,8 @@ bool QLAstQueryAddGeoRestriction (QL_ast_query_t* query,
   }
 
   // compare field 2
-  valueNode = 
-    ((QL_ast_node_t*) ((QL_ast_node_t*) restrictionNode->_rhs)->_lhs)->_rhs;
-  if (strcmp(((QL_ast_node_t*) valueNode->_lhs)->_value._stringValue,
+  valueNode = restrictionNode->_rhs->_lhs->_rhs;
+  if (strcmp(valueNode->_lhs->_value._stringValue,
              collectionAlias) != 0) {
     // field is from other collection, not valid!
     QLAstQueryFreeRestriction(restriction);
@@ -479,7 +481,7 @@ bool QLAstQueryAddGeoRestriction (QL_ast_query_t* query,
   fieldName = QLAstQueryGetMemberNameString(valueNode, false);
   if (fieldName) {
     restriction->_compareLon._collection = 
-      TRI_DuplicateString(((QL_ast_node_t*) valueNode->_lhs)->_value._stringValue);
+      TRI_DuplicateString(valueNode->_lhs->_value._stringValue);
     restriction->_compareLon._field = TRI_DuplicateString(fieldName->_buffer);
     TRI_FreeStringBuffer(fieldName);
     TRI_Free(fieldName);
@@ -490,16 +492,14 @@ bool QLAstQueryAddGeoRestriction (QL_ast_query_t* query,
   }
 
   // lat value
-  valueNode = 
-    ((QL_ast_node_t*) ((QL_ast_node_t*) restrictionNode->_rhs)->_rhs)->_lhs;
+  valueNode = restrictionNode->_rhs->_rhs->_lhs;
   restriction->_lat = valueNode->_value._doubleValue;  
 
   // lon value
-  valueNode = 
-    ((QL_ast_node_t*) ((QL_ast_node_t*) restrictionNode->_rhs)->_rhs)->_rhs;
+  valueNode = restrictionNode->_rhs->_rhs->_rhs;
   restriction->_lon = valueNode->_value._doubleValue;  
 
-  if (restrictionNode->_type == QLNodeRestrictWithin) {
+  if (restrictionNode->_type == TRI_QueryNodeRestrictWithin) {
     restriction->_arg._radius = restrictionNode->_value._doubleValue;
   }
   else {
@@ -507,11 +507,11 @@ bool QLAstQueryAddGeoRestriction (QL_ast_query_t* query,
   }
 
   TRI_InsertKeyAssociativePointer(&query->_geo._restrictions, 
-      collectionAlias, 
+      alias, 
       restriction, 
       true);
 
-  collection->_restriction = restriction;
+  collection->_geoRestriction = restriction;
 
   return true;
 }
@@ -520,9 +520,9 @@ bool QLAstQueryAddGeoRestriction (QL_ast_query_t* query,
 /// @brief Create a string from a member name
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_string_buffer_t* QLAstQueryGetMemberNameString (QL_ast_node_t* node, 
+TRI_string_buffer_t* QLAstQueryGetMemberNameString (TRI_query_node_t* node, 
                                                     bool includeCollection) {
-  QL_ast_node_t *lhs, *rhs;
+  TRI_query_node_t *lhs, *rhs;
   TRI_string_buffer_t* buffer;
 
   buffer = (TRI_string_buffer_t*) TRI_Allocate(sizeof(TRI_string_buffer_t));
@@ -558,8 +558,8 @@ TRI_string_buffer_t* QLAstQueryGetMemberNameString (QL_ast_node_t* node,
 /// @brief Hash a member name for comparisons
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t QLAstQueryGetMemberNameHash (QL_ast_node_t* node) {
-  QL_ast_node_t *lhs, *rhs;
+uint64_t QLAstQueryGetMemberNameHash (TRI_query_node_t* node) {
+  TRI_query_node_t *lhs, *rhs;
   uint64_t hashValue;
 
   lhs = node->_lhs;

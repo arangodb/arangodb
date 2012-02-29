@@ -47,12 +47,6 @@ using namespace triagens::basics;
 using namespace triagens::avocado;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
-
-static bool OptimiseQuery (v8::Handle<v8::Object> queryObject);
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 private constants
 // -----------------------------------------------------------------------------
 
@@ -145,6 +139,25 @@ static int32_t const WRP_SHAPED_JSON_TYPE = 6;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  HELPER FUNCTIONS
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     private types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct {
+  double _distance;
+  void const* _data;
+}
+geo_coordinate_distance_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -289,6 +302,93 @@ static TRI_vocbase_col_t const* LoadCollection (v8::Handle<v8::Object> collectio
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sorts geo coordinates
+////////////////////////////////////////////////////////////////////////////////
+
+static int CompareGeoCoordinateDistance (geo_coordinate_distance_t* left, geo_coordinate_distance_t* right) {
+  if (left->_distance < right->_distance) {
+    return -1;
+  }
+  else if (left->_distance > right->_distance) {
+    return 1;
+  }
+  else {
+    return 0;
+  }
+}
+
+#define FSRT_NAME SortGeoCoordinates
+#define FSRT_NAM2 SortGeoCoordinatesTmp
+#define FSRT_TYPE geo_coordinate_distance_t
+
+#define FSRT_COMP(l,r,s) CompareGeoCoordinateDistance(l,r)
+
+uint32_t FSRT_Rand = 0;
+
+static uint32_t RandomGeoCoordinateDistance (void) {
+  return (FSRT_Rand = FSRT_Rand * 31415 + 27818);
+}
+
+#define FSRT__RAND \
+  ((fs_b) + FSRT__UNIT * (RandomGeoCoordinateDistance() % FSRT__DIST(fs_e,fs_b,FSRT__SIZE)))
+
+#include <BasicsC/fsrt.inc>
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create result
+////////////////////////////////////////////////////////////////////////////////
+
+static void StoreGeoResult (TRI_vocbase_col_t const* collection,
+                            GeoCoordinates* cors,
+                            v8::Handle<v8::Array>& documents,
+                            v8::Handle<v8::Array>& distances) {
+  GeoCoordinate* end;
+  GeoCoordinate* ptr;
+  TRI_doc_mptr_t const** wtr;
+  double* dtr;
+  geo_coordinate_distance_t* gnd;
+  geo_coordinate_distance_t* gtr;
+  geo_coordinate_distance_t* tmp;
+  size_t n;
+  uint32_t i;
+  TRI_barrier_t* barrier;
+
+  // sort the result
+  n = cors->length;
+
+  if (n == 0) {
+    return;
+  }
+
+  gtr = (tmp = (geo_coordinate_distance_t*) TRI_Allocate(sizeof(geo_coordinate_distance_t) * n));
+  gnd = tmp + n;
+
+  ptr = cors->coordinates;
+  end = cors->coordinates + n;
+
+  dtr = cors->distances;
+
+  for (;  ptr < end;  ++ptr, ++dtr, ++gtr) {
+    gtr->_distance = *dtr;
+    gtr->_data = ptr->data;
+  }
+
+  GeoIndex_CoordinatesFree(cors);
+
+  SortGeoCoordinates(tmp, gnd);
+
+  barrier = TRI_CreateBarrierElement(&((TRI_doc_collection_t*) collection->_collection)->_barrierList);
+
+  // copy the documents
+  for (gtr = tmp, i = 0;  gtr < gnd;  ++gtr, ++wtr, ++i) {
+    documents->Set(i, TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) gtr->_data, barrier));
+    distances->Set(i, v8::Number::New(gtr->_distance));
+  }
+
+  TRI_Free(tmp);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -304,52 +404,6 @@ static TRI_vocbase_col_t const* LoadCollection (v8::Handle<v8::Object> collectio
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief weak reference callback for result sets
-////////////////////////////////////////////////////////////////////////////////
-
-static void WeakResultSetCallback (v8::Persistent<v8::Value> object, void* parameter) {
-  TRI_result_set_t* rs;
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-  rs = (TRI_result_set_t*) parameter;
-
-  LOG_TRACE("weak-callback for result-set called");
-
-  // find the persistent handle
-  v8::Persistent<v8::Value> persistent = v8g->JSResultSets[rs];
-  v8g->JSResultSets.erase(rs);
-
-  // dispose and clear the persistent handle
-  persistent.Dispose();
-  persistent.Clear();
-
-  // and free the result set
-  rs->free(rs);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stores a result set in a javascript object
-////////////////////////////////////////////////////////////////////////////////
-
-static void StoreResultSet (v8::Handle<v8::Object> rsObject,
-                            TRI_result_set_t* rs) {
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-  if (v8g->JSResultSets.find(rs) == v8g->JSResultSets.end()) {
-    v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(rs));
-
-    rsObject->SetInternalField(SLOT_RESULT_SET, persistent);
-
-    v8g->JSResultSets[rs] = persistent;
-
-    persistent.MakeWeak(rs, WeakResultSetCallback);
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief weak reference callback for queries
@@ -451,77 +505,6 @@ static TRI_fluent_query_t* ExtractFluentQuery (v8::Handle<v8::Object> queryObjec
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a query or uses existing result set
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_result_set_t* ExecuteFluentQuery (v8::Handle<v8::Object> queryObject,
-                                             v8::Handle<v8::String>* err) {
-  v8::Handle<v8::Object> self = queryObject->ToObject();
-
-  if (self->InternalFieldCount() <= SLOT_RESULT_SET) {
-    *err = v8::String::New("corrupted query");
-    return 0;
-  }
-
-  v8::Handle<v8::Value> value = self->GetInternalField(SLOT_RESULT_SET);
-
-  // .............................................................................
-  // case: unexecuted query
-  // .............................................................................
-
-  if (value->IsNull()) {
-    LOG_TRACE("executing query");
-
-    bool ok = OptimiseQuery(self);
-
-    if (! ok) {
-      *err = v8::String::New("corrupted query");
-      return 0;
-    }
-
-    TRI_fluent_query_t* query = ExtractFluentQuery(self, err);
-
-    if (query == 0) {
-      return 0;
-    }
-
-    // execute the query and get a result set
-    TRI_result_set_t* rs = TRI_ExecuteQuery(query);
-
-    if (rs == 0) {
-      *err = v8::String::New("cannot execute query");
-      return 0;
-    }
-
-    if (rs->_error != 0) {
-      *err = v8::String::New(rs->_error);
-      rs->free(rs);
-
-      return 0;
-    }
-
-    StoreResultSet(queryObject, rs);
-
-    return rs;
-  }
-
-  // .............................................................................
-  // case: already executed query
-  // .............................................................................
-
-  else {
-    TRI_result_set_t* rs = static_cast<TRI_result_set_t*>(v8::Handle<v8::External>::Cast(value)->Value());
-
-    if (rs == 0) {
-      *err = v8::String::New("cannot extract result set");
-      return 0;
-    }
-
-    return rs;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true if a query has been executed
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -536,168 +519,127 @@ static bool IsExecutedQuery (v8::Handle<v8::Object> query) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stringifies a query
-////////////////////////////////////////////////////////////////////////////////
-
-static string StringifyQuery (v8::Handle<v8::Value> queryObject) {
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-  if (! queryObject->IsObject()) {
-    return "[unknown]";
-  }
-
-  v8::Handle<v8::Object> self = queryObject->ToObject();
-
-  if (self->InternalFieldCount() <= SLOT_RESULT_SET) {
-    return "[unknown]";
-  }
-
-  v8::Handle<v8::Value> value = self->GetInternalField(SLOT_QUERY);
-
-  // .............................................................................
-  // special case: the whole collection
-  // .............................................................................
-
-  if (value == v8g->CollectionQueryType) {
-    TRI_vocbase_col_t const* col = UnwrapClass<TRI_vocbase_col_t>(self, WRP_VOCBASE_COL_TYPE);
-
-    if (col == 0) {
-      return "[unknown collection]";
-    }
-
-    return "[collection \"" + string(col->_name) + "\"]";
-  }
-
-  // .............................................................................
-  // standard case: a normal query
-  // .............................................................................
-
-  else {
-    TRI_fluent_query_t* query = static_cast<TRI_fluent_query_t*>(v8::Handle<v8::External>::Cast(value)->Value());
-
-    if (query == 0) {
-      return "[corrupted query]";
-    }
-
-    TRI_string_buffer_t buffer;
-    TRI_InitStringBuffer(&buffer);
-
-    query->stringify(query, &buffer);
-    string name = TRI_BeginStringBuffer(&buffer);
-
-    TRI_DestroyStringBuffer(&buffer);
-
-    return name;
-  }
-
-  return TRI_DuplicateString("[corrupted]");
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief optimises a query
-////////////////////////////////////////////////////////////////////////////////
-
-static bool OptimiseQuery (v8::Handle<v8::Object> queryObject) {
-  v8::Handle<v8::Value> value;
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-  value = queryObject->GetInternalField(SLOT_QUERY);
-
-  if (value != v8g->CollectionQueryType) {
-    TRI_fluent_query_t* query = static_cast<TRI_fluent_query_t*>(v8::Handle<v8::External>::Cast(value)->Value());
-
-    if (query == 0) {
-      return false;
-    }
-
-    TRI_fluent_query_t* optimised = query;
-
-    optimised->optimise(&optimised);
-
-    if (optimised != query) {
-
-      // remove old query
-      v8::Persistent<v8::Value> persistent = v8g->JSFluentQueries[query];
-
-      v8g->JSFluentQueries.erase(query);
-      persistent.Dispose();
-      persistent.Clear();
-
-      // add optimised query
-      persistent = v8::Persistent<v8::Value>::New(v8::External::New(optimised));
-      queryObject->SetInternalField(SLOT_QUERY, persistent);
-
-      v8g->JSFluentQueries[optimised] = persistent;
-
-      persistent.MakeWeak(optimised, WeakFluentQueryCallback);
-    }
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up edges
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arguments const& argv) {
-  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
 
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-  // extract the operand query
+  // extract the collection
   v8::Handle<v8::Object> operand = argv.Holder();
-  v8::Handle<v8::String> err;
-  TRI_fluent_query_t* opQuery = ExtractFluentQuery(operand, &err);
 
-  if (opQuery == 0) {
+  v8::Handle<v8::String> err;
+  TRI_vocbase_col_t const* collection = LoadCollection(operand, &err);
+
+  if (collection == 0) {
     return scope.Close(v8::ThrowException(err));
   }
+  
+  // handle various collection types
+  TRI_doc_collection_t* doc = collection->_collection;
 
-  if (IsExecutedQuery(operand)) {
-    return scope.Close(v8::ThrowException(v8::String::New("query already executed")));
+  if (doc->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
   }
 
-  // first and only argument schould be an document idenfifier
+  TRI_sim_collection_t* sim = (TRI_sim_collection_t*) doc;
+
+  // first and only argument schould be a list of document idenfifier
   if (argv.Length() != 1) {
     switch (direction) {
       case TRI_EDGE_UNUSED:
-        return scope.Close(v8::ThrowException(v8::String::New("usage: noneEdge(<edges-collection>)")));
+        return scope.Close(v8::ThrowException(v8::String::New("usage: edge(<vertices>)")));
 
       case TRI_EDGE_IN:
-        return scope.Close(v8::ThrowException(v8::String::New("usage: inEdge(<edges-collection>)")));
+        return scope.Close(v8::ThrowException(v8::String::New("usage: inEdge(<vertices>)")));
 
       case TRI_EDGE_OUT:
-        return scope.Close(v8::ThrowException(v8::String::New("usage: outEdge(<edges-collection>)")));
+        return scope.Close(v8::ThrowException(v8::String::New("usage: outEdge(<vertices>)")));
 
       case TRI_EDGE_ANY:
-        return scope.Close(v8::ThrowException(v8::String::New("usage: edge(<edges-collection>)")));
+        return scope.Close(v8::ThrowException(v8::String::New("usage: edge(<vertices>)")));
     }
   }
 
-  if (! argv[0]->IsObject()) {
-    return scope.Close(v8::ThrowException(v8::String::New("<edges-collection> must be an object")));
-  }
-
-  TRI_vocbase_col_t const* edges = LoadCollection(argv[0]->ToObject(), &err);
-
-  if (edges == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
+  // setup result
+  v8::Handle<v8::Array> documents = v8::Array::New();
 
   // .............................................................................
-  // create new query
+  // inside a read transaction
   // .............................................................................
 
-  v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
+  collection->_collection->beginRead(collection->_collection);
 
-  StoreFluentQuery(result, TRI_CreateEdgesQuery(edges, opQuery->clone(opQuery), direction));
+  TRI_barrier_t* barrier = 0;
+  size_t count = 0;
 
-  return scope.Close(result);
+  // argument is a list of vertices
+  if (argv[0]->IsArray()) {
+    v8::Handle<v8::Array> vertices = v8::Handle<v8::Array>::Cast(argv[0]);
+    uint32_t len = vertices->Length();
+
+    for (uint32_t i = 0;  i < len;  ++i) {
+      TRI_vector_pointer_t edges;
+      v8::Handle<v8::Value> val = vertices->Get(i);
+      
+      TRI_voc_cid_t cid;
+      TRI_voc_did_t did;
+      bool ok;
+      
+      ok = TRI_IdentifiersObjectReference(vertices->Get(i), cid, did);
+      
+      if (! ok || cid == 0) {
+        continue;
+      }
+      
+      edges = TRI_LookupEdgesSimCollection(sim, direction, cid, did);
+      
+      for (size_t j = 0;  j < edges._length;  ++j) {
+        if (barrier == 0) {
+          barrier = TRI_CreateBarrierElement(&doc->_barrierList);
+        }
+        
+        documents->Set(count++, TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) edges._buffer[j], barrier));
+      }
+      
+      TRI_DestroyVectorPointer(&edges);
+    }
+  }
+
+  // argument is a single vertex
+  else {
+    TRI_vector_pointer_t edges;
+    TRI_voc_cid_t cid;
+    TRI_voc_did_t did;
+    bool ok;
+      
+    ok = TRI_IdentifiersObjectReference(argv[0], cid, did);
+
+    if (! ok) {
+      collection->_collection->endRead(collection->_collection);
+      return scope.Close(v8::ThrowException(v8::String::New("<vertices> must be an array or a single object-reference")));
+    }
+
+    edges = TRI_LookupEdgesSimCollection(sim, direction, cid, did);
+      
+    for (size_t j = 0;  j < edges._length;  ++j) {
+      if (barrier == 0) {
+        barrier = TRI_CreateBarrierElement(&doc->_barrierList);
+      }
+        
+      documents->Set(count++, TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) edges._buffer[j], barrier));
+    }
+    
+    TRI_DestroyVectorPointer(&edges);
+  }
+  
+  collection->_collection->endRead(collection->_collection);
+
+  // .............................................................................
+  // outside a write transaction
+  // .............................................................................
+
+  return scope.Close(documents);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -756,6 +698,26 @@ static v8::Handle<v8::Object> WrapQuery (TRI_query_t* query) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Create a query error in a javascript object
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Object> CreateQueryErrorObject (TRI_query_error_t* error) {
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  v8::Handle<v8::Object> errorObject = v8g->QueryErrorTempl->NewInstance();
+  errorObject->Set(v8::String::New("code"), 
+                   v8::Integer::New(TRI_GetCodeQueryError(error)),
+                   v8::ReadOnly);
+  errorObject->Set(v8::String::New("message"), 
+                   v8::String::New(TRI_GetStringQueryError(error)),
+                   v8::ReadOnly);
+
+  return errorObject;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a query or uses existing result set
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -787,7 +749,9 @@ static TRI_rc_cursor_t* ExecuteQuery (v8::Handle<v8::Object> queryObject,
     return 0;
   }
 
+  printf("%s:%d\n",__FILE__,__LINE__);
   TRI_rc_cursor_t* cursor = TRI_ExecuteQueryAql(query, context);
+  printf("%s:%d\n",__FILE__,__LINE__);
   if (cursor == 0) {
     TRI_FreeContextQuery(context);
 
@@ -936,282 +900,7 @@ static v8::Handle<v8::Object> WrapWhere (TRI_qry_where_t* where) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a query into a fluent interface representation
-///
-/// @FUN{show()}
-///
-/// Shows the representation of the query.
-///
-/// MISSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-///
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_ShowQuery (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  v8::Handle<v8::Object> self = argv.Holder();
-
-  string result = StringifyQuery(self);
-
-  return scope.Close(v8::String::New(result.c_str()));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief counts the number of documents in a result set
-///
-/// @FUN{count()}
-///
-/// The @FN{count} operator counts the number of document in the result set and
-/// returns that number. The @FN{count} operator ignores any limits and returns
-/// the total number of documents found.
-///
-/// @verbinclude fluent24
-///
-/// @FUN{count(@LIT{true})}
-///
-/// If the result set was limited by the @FN{limit} operator or documents were
-/// skiped using the @FN{skip} operator, the @FN{count} operator with argument
-/// @LIT{true} will use the number of elements in the final result set - after
-/// applying @FN{limit} and @FN{skip}.
-///
-/// @verbinclude fluent25
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_CountQuery (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  v8::Handle<v8::String> err;
-  TRI_result_set_t* rs = ExecuteFluentQuery(argv.Holder(), &err);
-
-  if (rs == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  if (0 < argv.Length() && argv[0]->IsTrue()) {
-    return scope.Close(v8::Number::New(rs->count(rs, true)));
-  }
-  else {
-    return scope.Close(v8::Number::New(rs->count(rs, false)));
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief explains how a query was executed (TO BE DELETED)
-///
-/// @FUN{explain()}
-///
-/// In order to optimise queries you need to know how the storage engine
-/// executed that type of query. You can use the @FN{explain} operator to see
-/// how a query was executed.
-///
-/// @verbinclude fluent9
-///
-/// The @FN{explain} operator returns an object with the following attributes.
-///
-/// - cursor:
-///     describes how the result set was computed.
-/// - scannedIndexEntries:
-///     how many index entries were scanned
-/// - scannedDocuments:
-///     how many documents were scanned
-/// - matchedDocuments:
-///     the sum of all matched documents in each step
-/// - runtime:
-///     the runtime in seconds
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_ExplainQuery (v8::Arguments const& argv) {
-  TRI_v8_global_t* v8g;
-  v8::HandleScope scope;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-  v8::Handle<v8::String> err;
-  v8::Handle<v8::Object> self = argv.Holder();
-  TRI_result_set_t* rs = ExecuteFluentQuery(self, &err);
-
-  if (rs == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  v8::Handle<v8::Object> result = v8::Object::New();
-
-  result->Set(v8::String::New("cursor"), v8::String::New(rs->_info._cursor));
-  result->Set(v8::String::New("scannedIndexEntries"), v8::Number::New(rs->_info._scannedIndexEntries));
-  result->Set(v8::String::New("scannedDocuments"), v8::Number::New(rs->_info._scannedDocuments));
-  result->Set(v8::String::New("matchedDocuments"), v8::Number::New(rs->_info._matchedDocuments));
-  result->Set(v8::String::New("runtime"), v8::Number::New(rs->_info._runtime));
-
-  v8::Handle<v8::Value> value = self->GetInternalField(SLOT_QUERY);
-
-  if (value != v8g->CollectionQueryType) {
-    TRI_fluent_query_t* query = static_cast<TRI_fluent_query_t*>(v8::Handle<v8::External>::Cast(value)->Value());
-
-    if (query == 0) {
-      return scope.Close(v8::ThrowException(v8::String::New("corrupted query")));
-    }
-
-    result->Set(v8::String::New("query"), TRI_ObjectJson(query->json(query)));
-  }
-
-  return scope.Close(result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks for the next result document (TO BE DELETED)
-///
-/// @FUN{hasNext()}
-///
-/// The @FN{hasNext} operator returns @LIT{true}, then the cursor still has
-/// documents.  In this case the next document can be accessed using the
-/// @FN{next} operator, which will advance the cursor.
-///
-/// @verbinclude fluent3
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_HasNextQuery (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  v8::Handle<v8::String> err;
-  TRI_result_set_t* rs = ExecuteFluentQuery(argv.Holder(), &err);
-
-  if (rs == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  return scope.Close(rs->hasNext(rs) ? v8::True() : v8::False());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the next result document (TO BE DELETED)
-///
-/// @FUN{next()}
-///
-/// If the @FN{hasNext} operator returns @LIT{true}, then the cursor still has
-/// documents.  In this case the next document can be accessed using the @FN{next}
-/// operator, which will advance the cursor. If you use @FN{next} on an
-/// exhausted cursor, then @LIT{undefined} is returned.
-///
-/// @verbinclude fluent28
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_NextQuery (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  v8::Handle<v8::String> err;
-  TRI_result_set_t* rs = ExecuteFluentQuery(argv.Holder(), &err);
-
-  if (rs == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  if (rs->hasNext(rs)) {
-    TRI_doc_collection_t* collection = rs->_barrier->_container->_collection;
-    TRI_shaper_t* shaper = collection->_shaper;
-    TRI_rs_entry_t const* entry = rs->next(rs);
-
-    return scope.Close(TRI_ObjectRSEntry(collection, shaper, entry));
-  }
-  else {
-    return scope.Close(v8::Undefined());
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the next result document reference (TO BE DELETED)
-///
-/// @FUN{nextRef()}
-///
-/// If the @FN{hasNext} operator returns @LIT{true}, then the cursor still has
-/// documents.  In this case the next document reference can be
-/// accessed using the @FN{nextRef} operator, which will advance the
-/// cursor.
-///
-/// @verbinclude fluent51
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_NextRefQuery (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  v8::Handle<v8::String> err;
-  TRI_result_set_t* rs = ExecuteFluentQuery(argv.Holder(), &err);
-
-  if (rs == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  if (rs->hasNext(rs)) {
-    TRI_doc_collection_t* collection = rs->_barrier->_container->_collection;
-    TRI_rs_entry_t const* entry = rs->next(rs);
-
-    string ref = StringUtils::itoa(collection->base._cid) + ":" + StringUtils::itoa(entry->_did);
-
-    return scope.Close(v8::String::New(ref.c_str()));
-  }
-  else {
-    return scope.Close(v8::Undefined());
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief optimises a query (TO BE DELETED)
-///
-/// @FUN{optimise()}
-///
-/// Optimises a query. This is done automatically when executing a query.
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_OptimiseQuery (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  v8::Handle<v8::Object> self = argv.Holder();
-
-  if (self->InternalFieldCount() <= SLOT_RESULT_SET) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted query")));
-  }
-
-  if (IsExecutedQuery(self)) {
-    return scope.Close(v8::ThrowException(v8::String::New("query already executed")));
-  }
-
-  bool ok = OptimiseQuery(self);
-
-  if (! ok) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted query")));
-  }
-
-  return scope.Close(self);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a query and returns the result as array (TO BE DELETED)
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_ToArrayQuery (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  v8::Handle<v8::String> err;
-  TRI_result_set_t* rs = ExecuteFluentQuery(argv.Holder(), &err);
-
-  if (rs == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  return scope.Close(TRI_ArrayResultSet(rs));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns all elements (TO BE DELETED)
-///
-/// @FUN{all()}
-///
-/// Selects all documents of a collection and returns a cursor.
-///
-/// @verbinclude fluent23
-///
-/// The corresponding AQL query would be:
-///
-/// @verbinclude fluent23-aql
+/// @brief returns all elements
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
@@ -1252,6 +941,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
     limit = TRI_ObjectToDouble(argv[1]);
   }
 
+  // setup result
   v8::Handle<v8::Object> result = v8::Object::New();
 
   v8::Handle<v8::Array> documents = v8::Array::New();
@@ -1507,12 +1197,16 @@ static v8::Handle<v8::Value> JS_DocumentQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up all edges
+/// @brief looks up all edges for a set of vertices
 ///
-/// @FUN{@FA{edges-collection})}
+/// @FUN{edges(@FA{vertices})}
 ///
-/// The @FN{edges} operator finds all edges starting from (outbound) or
-/// ending in (inbound) the current vertices.
+/// The @FN{edges} operator finds all edges starting from (outbound) or ending
+/// in (inbound) a document from @FA{vertices}.
+///
+/// @EXAMPLES
+///
+/// @verbinclude simple11
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_EdgesQuery (v8::Arguments const& argv) {
@@ -1522,10 +1216,14 @@ static v8::Handle<v8::Value> JS_EdgesQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up all inbound edges
 ///
-/// @FUN{@FA{edges-collection})}
+/// @FUN{inEdges(@FA{vertices})}
 ///
-/// The @FN{edges} operator finds all edges starting from (outbound)
-/// or ending in (inbound) the current vertices.
+/// The @FN{edges} operator finds all edges ending in (inbound) a document from
+/// @FA{vertices}.
+///
+/// @EXAMPLES
+///
+/// @verbinclude simple11
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_InEdgesQuery (v8::Arguments const& argv) {
@@ -1743,60 +1441,6 @@ static v8::Handle<v8::Value> JS_GeoQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief limits an existing query (TO BE DELETED)
-///
-/// @FUN{limit(@FA{number})}
-///
-/// Limits a result to the first @FA{number} documents. Specifying a limit of
-/// @CODE{0} returns no documents at all. If you do not need a limit, just do
-/// not add the limit operator. If you specifiy a negtive limit of @CODE{-n},
-/// this will return the last @CODE{n} documents instead.
-///
-/// @verbinclude fluent30
-///
-/// The corresponding AQL queries would be:
-///
-/// @verbinclude fluent30-aql
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_LimitQuery (v8::Arguments const& argv) {
-  TRI_v8_global_t* v8g;
-  v8::HandleScope scope;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-  // extract the operand query
-  v8::Handle<v8::Object> operand = argv.Holder();
-  v8::Handle<v8::String> err;
-  TRI_fluent_query_t* opQuery = ExtractFluentQuery(operand, &err);
-
-  if (opQuery == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  if (IsExecutedQuery(operand)) {
-    return scope.Close(v8::ThrowException(v8::String::New("query already executed")));
-  }
-
-  // first and only argument schould be an integer
-  if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: limit(<limit>)")));
-  }
-
-  double limit = TRI_ObjectToDouble(argv[0]);
-
-  // .............................................................................
-  // create new query
-  // .............................................................................
-
-  v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
-
-  StoreFluentQuery(result, TRI_CreateLimitQuery(opQuery->clone(opQuery), (TRI_voc_ssize_t) limit));
-
-  return scope.Close(result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief finds points near a given coordinate
 ///
 /// @FUN{near(@FA{latitiude}, @FA{longitude})}
@@ -1835,61 +1479,94 @@ static v8::Handle<v8::Value> JS_LimitQuery (v8::Arguments const& argv) {
 ///
 /// @verbinclude fluent13
 ///
-/// If you have more then one geo-spatial index, you can use the @FN{geo}
-/// operator to select a particular index.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
-  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
 
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-  // extract the operand query
+  // extract the collection
   v8::Handle<v8::Object> operand = argv.Holder();
-  v8::Handle<v8::String> err;
-  TRI_fluent_query_t* opQuery = ExtractFluentQuery(operand, &err);
 
-  if (opQuery == 0) {
+  v8::Handle<v8::String> err;
+  TRI_vocbase_col_t const* collection = LoadCollection(operand, &err);
+
+  if (collection == 0) {
     return scope.Close(v8::ThrowException(err));
   }
+  
+  // handle various collection types
+  TRI_doc_collection_t* doc = collection->_collection;
 
-  if (IsExecutedQuery(operand)) {
-    return scope.Close(v8::ThrowException(v8::String::New("query already executed")));
+  if (doc->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
   }
 
-  // .............................................................................
-  // near(latitiude, longitude)
-  // .............................................................................
-
-  if (argv.Length() == 2) {
-    double latitiude = TRI_ObjectToDouble(argv[0]);
-    double longitude = TRI_ObjectToDouble(argv[1]);
-
-    v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
-
-    StoreFluentQuery(result, TRI_CreateNearQuery(opQuery->clone(opQuery), latitiude, longitude, NULL));
-
-    return scope.Close(result);
+  // expect: NEAR(<index-id>, <latitiude>, <longitude>, <limit>)
+  if (argv.Length() != 4) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: NEAR(<index-id>, <latitiude>, <longitude>, <limit>)")));
   }
 
+  // extract the index
+  TRI_idx_iid_t iid = TRI_ObjectToDouble(argv[0]);
+  TRI_index_t* idx = TRI_LookupIndex(doc, iid);
+
+  if (idx == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("unknown index identifier")));
+  }
+
+  if (idx->_type != TRI_IDX_TYPE_GEO_INDEX) {
+    return scope.Close(v8::ThrowException(v8::String::New("index must be a geo-index")));
+  }
+
+  // extract latitiude and longitude
+  double latitude = TRI_ObjectToDouble(argv[1]);
+  double longitude = TRI_ObjectToDouble(argv[2]);
+
+  // extract the limit
+  TRI_voc_ssize_t limit = TRI_ObjectToDouble(argv[3]);
+
+  // setup result
+  v8::Handle<v8::Object> result = v8::Object::New();
+
+  v8::Handle<v8::Array> documents = v8::Array::New();
+  result->Set(v8::String::New("documents"), documents);
+
+  v8::Handle<v8::Array> distances = v8::Array::New();
+  result->Set(v8::String::New("distances"), distances);
+
   // .............................................................................
-  // error case
+  // inside a read transaction
   // .............................................................................
 
-  else {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: near(<latitiude>,<longitude>)")));
+  collection->_collection->beginRead(collection->_collection);
+  
+  GeoCoordinates* cors = TRI_NearestGeoIndex(idx, latitude, longitude, limit);
+
+  if (cors != 0) {
+    StoreGeoResult(collection, cors, documents, distances);
   }
+
+  collection->_collection->endRead(collection->_collection);
+
+  // .............................................................................
+  // outside a write transaction
+  // .............................................................................
+
+  return scope.Close(result);
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up all outbound edges
 ///
-/// @FUN{@FA{edges-collection})}
+/// @FUN{outEdges(@FA{vertices})}
 ///
-/// The @FN{edges} operator finds all edges starting from (outbound)
-/// the current vertices.
+/// The @FN{edges} operator finds all edges starting from (outbound) a document
+/// from @FA{vertices}.
+///
+/// @EXAMPLES
+///
+/// @verbinclude simple13
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_OutEdgesQuery (v8::Arguments const& argv) {
@@ -2002,61 +1679,6 @@ static v8::Handle<v8::Value> JS_SelectQuery (v8::Arguments const& argv) {
   else {
     return scope.Close(v8::ThrowException(v8::String::New("usage: select([<example>])")));
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief skips an existing query (TO BE DELETED)
-///
-/// @FUN{skip(@FA{number})}
-///
-/// Skips the first @FA{number} documents.
-///
-/// @verbinclude fluent31
-///
-/// The corresponding AQL queries would be:
-///
-/// @verbinclude fluent31-aql
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_SkipQuery (v8::Arguments const& argv) {
-  TRI_v8_global_t* v8g;
-  v8::HandleScope scope;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-  // extract the operand query
-  v8::Handle<v8::Object> operand = argv.Holder();
-  v8::Handle<v8::String> err;
-  TRI_fluent_query_t* opQuery = ExtractFluentQuery(operand, &err);
-
-  if (opQuery == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  if (IsExecutedQuery(operand)) {
-    return scope.Close(v8::ThrowException(v8::String::New("query already executed")));
-  }
-
-  // first and only argument schould be an integer
-  if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: skip(<number>)")));
-  }
-
-  double skip = TRI_ObjectToDouble(argv[0]);
-
-  if (skip < 0.0) {
-    skip = 0.0;
-  }
-
-  // .............................................................................
-  // create new query
-  // .............................................................................
-
-  v8::Handle<v8::Object> result = v8g->FluentQueryTempl->NewInstance();
-
-  StoreFluentQuery(result, TRI_CreateSkipQuery(opQuery->clone(opQuery), (TRI_voc_size_t) skip));
-
-  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2177,18 +1799,31 @@ static v8::Handle<v8::Value> JS_PrepareAql (v8::Arguments const& argv) {
   string queryString = TRI_ObjectToString(queryArg);
 
   // create a parser object
+  TRI_query_template_t* template_ = TRI_CreateQueryTemplate(queryString.c_str(), vocbase);
+  if (template_) {
+    bool ok = TRI_ParseQueryTemplate(template_);
+    if (ok) {
+      TRI_query_instance_t* instance = TRI_CreateQueryInstance(template_);
+      if (instance) {
+      }
+      TRI_FreeQueryInstance(instance);
+    }
+    else {
+      v8::Handle<v8::Object> errorObject = CreateQueryErrorObject(&template_->_error);
+      TRI_FreeQueryTemplate(template_);
+      return scope.Close(errorObject);
+    }
+  }
+  //return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
+
   ParserWrapper parser = ParserWrapper(vocbase, queryString.c_str());
   if (!parser.parse()) {
     // error object will be freed by parser destructor
-    ParseError *error = parser.getParseError();
+    ParseError* error = parser.getParseError();
     if (error) {
       return scope.Close(v8::ThrowException(v8::String::New(error->getDescription().c_str())));
     }
     return scope.Close(v8::ThrowException(v8::String::New("got an unknown error from the parser")));
-  }
-
-  if (parser.getQueryType() == QLQueryTypeEmpty) {
-    return scope.Close(v8::ThrowException(v8::String::New("query is empty")));
   }
 
   // create the query
@@ -2394,6 +2029,55 @@ static v8::Handle<v8::Value> JS_WhereHashConstAql (const v8::Arguments& argv) {
 
 
 
+static v8::Handle<v8::Value> JS_WhereSkiplistConstAql (const v8::Arguments& argv) {
+  v8::HandleScope scope;
+  TRI_v8_global_t* v8g;
+  TRI_json_t* parameterList;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  if (argv.Length() < 2) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_WHERE_SL_CONST(<index-identifier>, <value 1>, <value 2>,..., <value n>)")));
+  }
+
+  
+  // ..........................................................................
+  // check that the first parameter sent is a double value
+  // ..........................................................................
+  bool inValidType = true;
+  TRI_idx_iid_t iid = TRI_ObjectToDouble(argv[0], inValidType); 
+  
+  if (inValidType || iid == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("<index-identifier> must be an positive integer")));       
+  }  
+
+
+  // ..........................................................................
+  // Store the index field parameters in a json object 
+  // ..........................................................................
+  parameterList = TRI_CreateListJson();
+  if (!parameterList) {
+    return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
+  }
+
+  for (int j = 1; j < argv.Length(); ++j) {  
+    v8::Handle<v8::Value> parameter = argv[j];
+    TRI_json_t* jsonParameter = ConvertHelper(parameter);
+    if (jsonParameter == NULL) { // NOT the null json value! 
+      return scope.Close(v8::ThrowException(v8::String::New("type value not currently supported for skiplist index")));       
+    }
+    TRI_PushBackListJson(parameterList, jsonParameter);
+  }
+  
+
+  // build where
+  TRI_qry_where_t* where = TRI_CreateQueryWhereSkiplistConstant(iid, parameterList);
+
+  // wrap it up
+  return scope.Close(WrapWhere(where));
+  
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new constant where clause for geo index
 ////////////////////////////////////////////////////////////////////////////////
@@ -2481,6 +2165,60 @@ static v8::Handle<v8::Value> JS_HashSelectAql (v8::Arguments const& argv) {
   // Create the hash query 
   // ...........................................................................
   TRI_query_t* query = TRI_CreateHashQuery(where, collection->_collection); 
+  if (!query) {
+    return scope.Close(v8::ThrowException(v8::String::New("could not create query object")));
+  }
+
+
+  // ...........................................................................
+  // wrap it up
+  // ...........................................................................
+  return scope.Close(WrapQuery(query));
+  
+}
+
+
+static v8::Handle<v8::Value> JS_SkiplistSelectAql (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 2) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_SL_SELECT(collection, where)")));
+  }
+
+  // ...........................................................................
+  // extract the primary collection
+  // ...........................................................................
+  v8::Handle<v8::Value> collectionArg = argv[0];
+  if (! collectionArg->IsObject()) {
+    return scope.Close(v8::ThrowException(v8::String::New("expecting a COLLECTION as second argument")));
+  }
+  v8::Handle<v8::Object> collectionObj = collectionArg->ToObject();
+  v8::Handle<v8::String> err;
+  const TRI_vocbase_col_t* collection = LoadCollection(collectionObj, &err);
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  
+  // ...........................................................................
+  // Extract the where clause
+  // ...........................................................................
+  v8::Handle<v8::Value> whereArg = argv[1];
+  TRI_qry_where_t* where = 0;
+  if (whereArg->IsNull()) {
+    return scope.Close(v8::ThrowException(v8::String::New("expecting a WHERE object as third argument")));
+  }
+  v8::Handle<v8::Object> whereObj = whereArg->ToObject();
+  where = UnwrapClass<TRI_qry_where_t>(whereObj, WRP_QRY_WHERE_TYPE);
+  if (where == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted WHERE")));
+  }
+    
+  
+  // ...........................................................................
+  // Create the skiplist query 
+  // ...........................................................................
+  TRI_query_t* query = TRI_CreateSkiplistQuery(where, collection->_collection); 
   if (!query) {
     return scope.Close(v8::ThrowException(v8::String::New("could not create query object")));
   }
@@ -2821,6 +2559,9 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
 
   return scope.Close(v8::Number::New(collection->size(collection)));
 }
+
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
@@ -3371,6 +3112,335 @@ static v8::Handle<v8::Value> JS_EnsureMultiHashIndexVocbaseCol (v8::Arguments co
 
   return scope.Close(v8::Number::New(iid));
 }
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a skiplist index exists
+///
+/// @FUN{ensureSLIndex(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
+///
+/// Creates a skiplist index on all documents using attributes as paths to
+/// the fields. At least one attribute must be given.  
+/// All documents, which do not have the attribute path or 
+/// with ore or more values that are not suitable, are ignored.
+///
+/// In case that the index was successfully created, the index indetifier
+/// is returned.
+///
+/// @verbinclude fluent14
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_EnsureSkiplistIndexVocbaseCol (v8::Arguments const& argv) {
+
+  v8::HandleScope scope;  
+  v8::Handle<v8::String> err;
+  
+  
+  // .............................................................................
+  // Check that we have a valid collection                      
+  // .............................................................................
+  TRI_vocbase_col_t const* col = LoadCollection(argv.Holder(), &err);
+  
+  if (col == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  
+  // .............................................................................
+  // Check collection type
+  // .............................................................................
+  TRI_doc_collection_t* collection = col->_collection;
+  
+  if (collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
+  }
+  TRI_sim_collection_t* sim = (TRI_sim_collection_t*) collection;
+
+  
+  // .............................................................................
+  // Return string when there is an error of some sort.
+  // .............................................................................
+  string errorString;
+  
+  
+  // .............................................................................
+  // Ensure that there is at least one string parameter sent to this method
+  // .............................................................................  
+  if (argv.Length() == 0) {
+    errorString = "one or more string parameters required for the ensureSLIndex(...) command";
+    return scope.Close(v8::String::New(errorString.c_str(),errorString.length()));
+  }
+  
+    
+  // .............................................................................
+  // The index id which will either be an existing one or a newly created 
+  // hash index. 
+  // .............................................................................  
+  TRI_idx_iid_t iid = 0;
+  
+  
+  // .............................................................................
+  // Create a list of paths, these will be used to create a list of shapes
+  // which will be used by the hash index.
+  // .............................................................................
+  
+  TRI_vector_t attributes;
+  TRI_InitVector(&attributes,sizeof(char*));
+  
+  bool ok = true;
+  
+  for (int j = 0; j < argv.Length(); ++j) {
+  
+    v8::Handle<v8::Value> argument = argv[j];
+    if (! argument->IsString() ) {
+      errorString = "invalid parameter passed to ensureSLIndex(...) command";
+      ok = false;
+      break;
+    }
+    
+    // ...........................................................................
+    // convert the argument into a "C" string
+    // ...........................................................................
+    
+    v8::String::Utf8Value argumentString(argument);   
+    char* cArgument = (char*) (TRI_Allocate(argumentString.length() + 1));       
+    if (cArgument == NULL) {
+      errorString = "insuffient memory to complete ensureSLIndex(...) command";
+      ok = false;
+      break;
+    }  
+        
+    memcpy(cArgument, *argumentString, argumentString.length());
+    TRI_PushBackVector(&attributes,&cArgument);
+  }
+
+  
+  // .............................................................................
+  // Check that each parameter is unique
+  // .............................................................................
+  
+  for (size_t j = 0; j < attributes._length; ++j) {  
+    char* left = *((char**) (TRI_AtVector(&attributes, j)));    
+    for (size_t k = j + 1; k < attributes._length; ++k) {
+      char* right = *((char**) (TRI_AtVector(&attributes, k)));
+      if (strcmp(left,right) == 0) {
+        errorString = "duplicate parameters sent to ensureSLIndex(...) command";
+        //printf("%s:%s:%u:%s:%s\n",__FILE__,__FUNCTION__,__LINE__,left,right);
+        ok = false;
+        break;
+      }   
+    }
+  }    
+     
+  
+  // .............................................................................
+  // Some sort of error occurred -- display error message and abort index creation
+  // (or index retrieval).
+  // .............................................................................
+  
+  if (!ok) {
+    // ...........................................................................
+    // Remove the memory allocated to the list of attributes used for the hash index
+    // ...........................................................................   
+    for (size_t j = 0; j < attributes._length; ++j) {
+      char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
+      TRI_Free(cArgument);
+    }    
+    TRI_DestroyVector(&attributes);
+    return scope.Close(v8::String::New(errorString.c_str(),errorString.length()));
+  }  
+  
+  
+  // .............................................................................
+  // Actually create the index here
+  // .............................................................................
+  iid = TRI_EnsureSkiplistIndexSimCollection(sim, &attributes, true);
+
+  // .............................................................................
+  // Remove the memory allocated to the list of attributes used for the hash index
+  // .............................................................................   
+  for (size_t j = 0; j < attributes._length; ++j) {
+    char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
+    TRI_Free(cArgument);
+  }    
+  TRI_DestroyVector(&attributes);
+
+  if (iid == 0) {
+    return scope.Close(v8::String::New("skiplist index could not be created"));
+  }  
+  
+  // .............................................................................
+  // Return the newly assigned index identifier
+  // .............................................................................
+  return scope.Close(v8::Number::New(iid));
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a multi skiplist index exists
+///
+/// @FUN{ensureMultiSLIndex(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
+///
+/// Creates a multi skiplist index on all documents using attributes as paths to
+/// the fields. At least one attribute must be given.  
+/// All documents, which do not have the attribute path or 
+/// with ore or more values that are not suitable, are ignored.
+///
+/// In case that the index was successfully created, the index indetifier
+/// is returned.
+///
+/// @verbinclude fluent14
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_EnsureMultiSkiplistIndexVocbaseCol (v8::Arguments const& argv) {
+
+  v8::HandleScope scope;  
+  v8::Handle<v8::String> err;
+  
+  
+  // .............................................................................
+  // Check that we have a valid collection                      
+  // .............................................................................
+  TRI_vocbase_col_t const* col = LoadCollection(argv.Holder(), &err);
+  
+  if (col == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  
+  // .............................................................................
+  // Check collection type
+  // .............................................................................
+  TRI_doc_collection_t* collection = col->_collection;
+  
+  if (collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
+  }
+  TRI_sim_collection_t* sim = (TRI_sim_collection_t*) collection;
+
+  
+  // .............................................................................
+  // Return string when there is an error of some sort.
+  // .............................................................................
+  string errorString;
+  
+  
+  // .............................................................................
+  // Ensure that there is at least one string parameter sent to this method
+  // .............................................................................  
+  if (argv.Length() == 0) {
+    errorString = "one or more string parameters required for the ensureMutliSLIndex(...) command";
+    return scope.Close(v8::String::New(errorString.c_str(),errorString.length()));
+  }
+  
+    
+  // .............................................................................
+  // The index id which will either be an existing one or a newly created 
+  // hash index. 
+  // .............................................................................  
+  TRI_idx_iid_t iid = 0;
+  
+  
+  // .............................................................................
+  // Create a list of paths, these will be used to create a list of shapes
+  // which will be used by the hash index.
+  // .............................................................................
+  
+  TRI_vector_t attributes;
+  TRI_InitVector(&attributes,sizeof(char*));
+  
+  bool ok = true;
+  
+  for (int j = 0; j < argv.Length(); ++j) {
+  
+    v8::Handle<v8::Value> argument = argv[j];
+    if (! argument->IsString() ) {
+      errorString = "invalid parameter passed to ensureMultiSLIndex(...) command";
+      ok = false;
+      break;
+    }
+    
+    // ...........................................................................
+    // convert the argument into a "C" string
+    // ...........................................................................
+    
+    v8::String::Utf8Value argumentString(argument);   
+    char* cArgument = (char*) (TRI_Allocate(argumentString.length() + 1));       
+    if (cArgument == NULL) {
+      errorString = "insuffient memory to complete ensureMultiSLIndex(...) command";
+      ok = false;
+      break;
+    }  
+        
+    memcpy(cArgument, *argumentString, argumentString.length());
+    TRI_PushBackVector(&attributes,&cArgument);
+  }
+
+  
+  // .............................................................................
+  // Check that each parameter is unique
+  // .............................................................................
+  
+  for (size_t j = 0; j < attributes._length; ++j) {  
+    char* left = *((char**) (TRI_AtVector(&attributes, j)));    
+    for (size_t k = j + 1; k < attributes._length; ++k) {
+      char* right = *((char**) (TRI_AtVector(&attributes, k)));
+      if (strcmp(left,right) == 0) {
+        errorString = "duplicate parameters sent to ensureMultiSLIndex(...) command";
+        ok = false;
+        break;
+      }   
+    }
+  }    
+     
+  
+  // .............................................................................
+  // Some sort of error occurred -- display error message and abort index creation
+  // (or index retrieval).
+  // .............................................................................
+  
+  if (!ok) {
+    // ...........................................................................
+    // Remove the memory allocated to the list of attributes used for the hash index
+    // ...........................................................................   
+    for (size_t j = 0; j < attributes._length; ++j) {
+      char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
+      TRI_Free(cArgument);
+    }    
+    TRI_DestroyVector(&attributes);
+    return scope.Close(v8::String::New(errorString.c_str(),errorString.length()));
+  }  
+  
+  
+  // .............................................................................
+  // Actually create the index here
+  // .............................................................................
+  iid = TRI_EnsureSkiplistIndexSimCollection(sim, &attributes, false);
+
+  // .............................................................................
+  // Remove the memory allocated to the list of attributes used for the hash index
+  // .............................................................................   
+  for (size_t j = 0; j < attributes._length; ++j) {
+    char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
+    TRI_Free(cArgument);
+  }    
+  TRI_DestroyVector(&attributes);
+
+  if (iid == 0) {
+    return scope.Close(v8::String::New("multi skiplist index could not be created"));
+  }  
+  
+  // .............................................................................
+  // Return the newly assigned index identifier
+  // .............................................................................
+  return scope.Close(v8::Number::New(iid));
+}
+
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the figures of a collection
@@ -4415,17 +4485,7 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
 /// - @ref JS_LimitQuery "limit"
 /// - @ref JS_NearQuery "near"
 /// - @ref JS_SelectQuery "select"
-/// - @ref JS_SkipQuery "skip"
 /// - @ref JS_WithinQuery "within"
-///
-/// @subsection JSFQueryExecuting Query Execution Functions
-///
-/// - @ref JS_CountQuery "count"
-/// - @ref JS_ExplainQuery "explain"
-/// - @ref JS_HasNextQuery "hasNext"
-/// - @ref JS_NextQuery "next"
-/// - @ref JS_NextRefQuery "nextRef"
-/// - @ref JS_ShowQuery "show"
 ///
 /// @section JSFGlobal Global Functions
 ///
@@ -4491,23 +4551,9 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
 ///
 /// @copydetails JS_SelectQuery
 ///
-/// @copydetails JS_SkipQuery
-///
 /// @copydetails JS_WithinQuery
 ///
 /// @subsection JSFQueryExecuting Query Execution Functions
-///
-/// @copydetails JS_CountQuery
-///
-/// @copydetails JS_ExplainQuery
-///
-/// @copydetails JS_HasNextQuery
-///
-/// @copydetails JS_NextQuery
-///
-/// @copydetails JS_NextRefQuery
-///
-/// @copydetails JS_ShowQuery
 ///
 /// @section JSFGlobal Global Functions
 ///
@@ -4670,10 +4716,18 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
   TRI_voc_did_t did = document->_did;
   TRI_voc_rid_t rid = document->_rid;
 
-  string ref = StringUtils::itoa(collection->_collection->base._cid) + ":" + StringUtils::itoa(did);
-  result->Set(v8g->DidKey, v8::String::New(ref.c_str()), v8::ReadOnly);
+  result->Set(v8g->DidKey, TRI_ObjectReference(collection->_collection->base._cid, did), v8::ReadOnly);
   result->Set(v8g->RevKey, v8::Number::New(rid), v8::ReadOnly);
   
+  TRI_df_marker_type_t type = ((TRI_df_marker_t*) document->_data)->_type;
+
+  if (type == TRI_DOC_MARKER_EDGE) {
+    TRI_doc_edge_marker_t* marker = (TRI_doc_edge_marker_t*) document->_data;
+
+    result->Set(v8g->FromKey, TRI_ObjectReference(marker->_fromCid, marker->_fromDid));
+    result->Set(v8g->ToKey, TRI_ObjectReference(marker->_toCid, marker->_toDid));
+  }
+
   // and return
   return scope.Close(result);
 }
@@ -4716,8 +4770,10 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   // .............................................................................
 
   v8::Handle<v8::String> AllFuncName = v8::Persistent<v8::String>::New(v8::String::New("ALL"));
-  v8::Handle<v8::String> CollectionsFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collections"));
   v8::Handle<v8::String> CompletionsFuncName = v8::Persistent<v8::String>::New(v8::String::New("_COMPLETIONS"));
+  v8::Handle<v8::String> NearFuncName = v8::Persistent<v8::String>::New(v8::String::New("NEAR"));
+
+  v8::Handle<v8::String> CollectionsFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collections"));
   v8::Handle<v8::String> CountFuncName = v8::Persistent<v8::String>::New(v8::String::New("count"));
   v8::Handle<v8::String> DeleteFuncName = v8::Persistent<v8::String>::New(v8::String::New("delete"));
   v8::Handle<v8::String> DistanceFuncName = v8::Persistent<v8::String>::New(v8::String::New("distance"));
@@ -4727,6 +4783,8 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> EnsureGeoIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureGeoIndex"));
   v8::Handle<v8::String> EnsureHashIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureHashIndex"));
   v8::Handle<v8::String> EnsureMultiHashIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureMultiHashIndex"));
+  v8::Handle<v8::String> EnsureSkiplistIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureSLIndex"));
+  v8::Handle<v8::String> EnsureMultiSkiplistIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureMultiSLIndex"));
   v8::Handle<v8::String> ExecuteFuncName = v8::Persistent<v8::String>::New(v8::String::New("execute"));
   v8::Handle<v8::String> ExplainFuncName = v8::Persistent<v8::String>::New(v8::String::New("explain"));
   v8::Handle<v8::String> FiguresFuncName = v8::Persistent<v8::String>::New(v8::String::New("figures"));
@@ -4737,7 +4795,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> InEdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("inEdges"));
   v8::Handle<v8::String> LimitFuncName = v8::Persistent<v8::String>::New(v8::String::New("limit"));
   v8::Handle<v8::String> LoadFuncName = v8::Persistent<v8::String>::New(v8::String::New("load"));
-  v8::Handle<v8::String> NearFuncName = v8::Persistent<v8::String>::New(v8::String::New("near"));
   v8::Handle<v8::String> NextFuncName = v8::Persistent<v8::String>::New(v8::String::New("next"));
   v8::Handle<v8::String> NextRefFuncName = v8::Persistent<v8::String>::New(v8::String::New("nextRef"));
   v8::Handle<v8::String> OptimiseFuncName = v8::Persistent<v8::String>::New(v8::String::New("optimise"));
@@ -4774,6 +4831,14 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
 
   if (v8g->RevKey.IsEmpty()) {
     v8g->RevKey = v8::Persistent<v8::String>::New(v8::String::New("_rev"));
+  }
+
+  if (v8g->FromKey.IsEmpty()) {
+    v8g->FromKey = v8::Persistent<v8::String>::New(v8::String::New("_from"));
+  }
+
+  if (v8g->ToKey.IsEmpty()) {
+    v8g->ToKey = v8::Persistent<v8::String>::New(v8::String::New("_to"));
   }
 
   // .............................................................................
@@ -4857,11 +4922,8 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
 
   rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentQuery));
-  rt->Set(EdgesFuncName, v8::FunctionTemplate::New(JS_EdgesQuery));
   rt->Set(GeoFuncName, v8::FunctionTemplate::New(JS_GeoQuery));
-  rt->Set(InEdgesFuncName, v8::FunctionTemplate::New(JS_InEdgesQuery));
   rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
-  rt->Set(OutEdgesFuncName, v8::FunctionTemplate::New(JS_OutEdgesQuery));
   rt->Set(SelectFuncName, v8::FunctionTemplate::New(JS_SelectQuery));
   rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
 
@@ -4873,6 +4935,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(EnsureHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureHashIndexVocbaseCol));
   rt->Set(EnsureMultiHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureMultiHashIndexVocbaseCol));
 
+  rt->Set(EnsureSkiplistIndexFuncName, v8::FunctionTemplate::New(JS_EnsureSkiplistIndexVocbaseCol));
+  rt->Set(EnsureMultiSkiplistIndexFuncName, v8::FunctionTemplate::New(JS_EnsureMultiSkiplistIndexVocbaseCol));
+  
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
   
@@ -4937,24 +5002,10 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(SLOT_END);
 
-  rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountQuery));
   rt->Set(DistanceFuncName, v8::FunctionTemplate::New(JS_DistanceQuery));
-  rt->Set(EdgesFuncName, v8::FunctionTemplate::New(JS_EdgesQuery));
-  rt->Set(ExplainFuncName, v8::FunctionTemplate::New(JS_ExplainQuery));
   rt->Set(GeoFuncName, v8::FunctionTemplate::New(JS_GeoQuery));
-  rt->Set(HasNextFuncName, v8::FunctionTemplate::New(JS_HasNextQuery));
   rt->Set(IndexToUse, v8::FunctionTemplate::New(JS_IndexToUse));
-  rt->Set(InEdgesFuncName, v8::FunctionTemplate::New(JS_InEdgesQuery));
-  rt->Set(LimitFuncName, v8::FunctionTemplate::New(JS_LimitQuery));
-  rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
-  rt->Set(NextFuncName, v8::FunctionTemplate::New(JS_NextQuery));
-  rt->Set(NextRefFuncName, v8::FunctionTemplate::New(JS_NextRefQuery));
-  rt->Set(OptimiseFuncName, v8::FunctionTemplate::New(JS_OptimiseQuery));
-  rt->Set(OutEdgesFuncName, v8::FunctionTemplate::New(JS_OutEdgesQuery));
   rt->Set(SelectFuncName, v8::FunctionTemplate::New(JS_SelectQuery));
-  rt->Set(ShowFuncName, v8::FunctionTemplate::New(JS_ShowQuery));
-  rt->Set(SkipFuncName, v8::FunctionTemplate::New(JS_SkipQuery));
-  rt->Set(ToArrayFuncName, v8::FunctionTemplate::New(JS_ToArrayQuery));
   rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
 
   v8g->FluentQueryTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
@@ -4998,6 +5049,24 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
                          ft->GetFunction());
 
   // .............................................................................
+  // generate the query error template
+  // .............................................................................
+
+  ft = v8::FunctionTemplate::New();
+  ft->SetClassName(v8::String::New("AvocadoQueryError"));
+
+  rt = ft->InstanceTemplate();
+  rt->SetInternalFieldCount(2);
+
+ // rt->Set(ExecuteFuncName, v8::FunctionTemplate::New(JS_ExecuteAql));
+
+  v8g->QueryErrorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+
+  // must come after SetInternalFieldCount
+  context->Global()->Set(v8::String::New("AvocadoQueryError"),
+                         ft->GetFunction());
+
+  // .............................................................................
   // generate the cursor template
   // .............................................................................
 
@@ -5035,6 +5104,10 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
                          v8::FunctionTemplate::New(JS_WhereHashConstAql)->GetFunction(),
                          v8::ReadOnly);
                          
+  context->Global()->Set(v8::String::New("AQL_WHERE_SL_CONST"),
+                         v8::FunctionTemplate::New(JS_WhereSkiplistConstAql)->GetFunction(),
+                         v8::ReadOnly);
+                         
   context->Global()->Set(v8::String::New("AQL_WHERE_PRIMARY_CONST"),
                          v8::FunctionTemplate::New(JS_WherePrimaryConstAql)->GetFunction(),
                          v8::ReadOnly);
@@ -5051,6 +5124,11 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
                          v8::FunctionTemplate::New(JS_HashSelectAql)->GetFunction(),
                          v8::ReadOnly);
 
+  context->Global()->Set(v8::String::New("AQL_SL_SELECT"),
+                         v8::FunctionTemplate::New(JS_SkiplistSelectAql)->GetFunction(),
+                         v8::ReadOnly);
+
+                         
   context->Global()->Set(v8::String::New("AQL_PREPARE"),
                          v8::FunctionTemplate::New(JS_PrepareAql)->GetFunction(),
                          v8::ReadOnly);

@@ -233,7 +233,6 @@ void ActionDisptacherThread::initialise () {
                           "server/modules.js",
                           "server/json.js",
                           "server/actions.js",
-                          "server/simple-query.js",
                           "server/aql.js"
   };
   size_t i;

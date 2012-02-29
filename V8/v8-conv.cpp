@@ -1073,43 +1073,10 @@ static v8::Handle<v8::Value> JsonShapeData (TRI_shaper_t* shaper,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts identifier into ibject reference
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> ObjectReference (TRI_voc_cid_t cid, TRI_voc_did_t did) {
-  v8::HandleScope scope;
-  TRI_string_buffer_t buffer;
-
-  TRI_InitStringBuffer(&buffer);
-  TRI_AppendUInt64StringBuffer(&buffer, cid);
-  TRI_AppendStringStringBuffer(&buffer, ":");
-  TRI_AppendUInt64StringBuffer(&buffer, did);
-
-  v8::Handle<v8::String> ref = v8::String::New(buffer._buffer);
-
-  TRI_DestroyStringBuffer(&buffer);
-
-  return scope.Close(ref);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Conversions
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a TRI_json_t NULL into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> ObjectJsonNull (TRI_json_t const* json) {
+static v8::Handle<v8::Value> ObjectJsonNull (TRI_json_t const* json) {
   return v8::Null();
 }
 
@@ -1117,7 +1084,7 @@ v8::Handle<v8::Value> ObjectJsonNull (TRI_json_t const* json) {
 /// @brief converts a TRI_json_t BOOLEAN into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> ObjectJsonBoolean (TRI_json_t const* json) {
+static v8::Handle<v8::Value> ObjectJsonBoolean (TRI_json_t const* json) {
   return json->_value._boolean ? v8::True() : v8::False();
 }
 
@@ -1125,7 +1092,7 @@ v8::Handle<v8::Value> ObjectJsonBoolean (TRI_json_t const* json) {
 /// @brief converts a TRI_json_t NUMBER into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> ObjectJsonNumber (TRI_json_t const* json) {
+static v8::Handle<v8::Value> ObjectJsonNumber (TRI_json_t const* json) {
   return v8::Number::New(json->_value._number);
 }
 
@@ -1133,7 +1100,7 @@ v8::Handle<v8::Value> ObjectJsonNumber (TRI_json_t const* json) {
 /// @brief converts a TRI_json_t NUMBER into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> ObjectJsonString (TRI_json_t const* json) {
+static v8::Handle<v8::Value> ObjectJsonString (TRI_json_t const* json) {
   return v8::String::New(json->_value._string.data);
 }
 
@@ -1141,7 +1108,7 @@ v8::Handle<v8::Value> ObjectJsonString (TRI_json_t const* json) {
 /// @brief converts a TRI_json_t ARRAY into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> ObjectJsonArray (TRI_json_t const* json) {
+static v8::Handle<v8::Value> ObjectJsonArray (TRI_json_t const* json) {
   v8::Handle<v8::Object> object = v8::Object::New();
 
   size_t n = json->_value._objects._length;
@@ -1166,7 +1133,7 @@ v8::Handle<v8::Value> ObjectJsonArray (TRI_json_t const* json) {
 /// @brief converts a TRI_json_t LIST into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> ObjectJsonList (TRI_json_t const* json) {
+static v8::Handle<v8::Value> ObjectJsonList (TRI_json_t const* json) {
   v8::Handle<v8::Array> object = v8::Array::New();
 
   size_t n = json->_value._objects._length;
@@ -1179,6 +1146,75 @@ v8::Handle<v8::Value> ObjectJsonList (TRI_json_t const* json) {
   }
 
     return object;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Conversions
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts identifier into a object reference
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> TRI_ObjectReference (TRI_voc_cid_t cid, TRI_voc_did_t did) {
+  v8::HandleScope scope;
+  TRI_string_buffer_t buffer;
+
+  TRI_InitStringBuffer(&buffer);
+  TRI_AppendUInt64StringBuffer(&buffer, cid);
+  TRI_AppendStringStringBuffer(&buffer, ":");
+  TRI_AppendUInt64StringBuffer(&buffer, did);
+
+  v8::Handle<v8::String> ref = v8::String::New(buffer._buffer);
+
+  TRI_DestroyStringBuffer(&buffer);
+
+  return scope.Close(ref);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extratcs identifiers from a object reference
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IdentifiersObjectReference (v8::Handle<v8::Value> value, TRI_voc_cid_t& cid, TRI_voc_did_t& did) {
+  bool error;
+
+  cid = 0;
+  did = 0;
+
+  if (value->IsNumber() || value->IsNumberObject()) {
+    did = TRI_ObjectToDouble(value, error);
+    return ! error;
+  }
+
+  string v = TRI_ObjectToString(value);
+
+  vector<string> doc = StringUtils::split(v, ":");
+
+  switch (doc.size()) {
+    case 1:
+      did = StringUtils::uint64(doc[1]);
+      return did != 0;
+
+    case 2:
+      cid = StringUtils::uint64(doc[0]);
+      did = StringUtils::uint64(doc[1]);
+      return cid != 0 && did != 0;
+
+    default:
+      return false;
+  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1238,11 +1274,11 @@ v8::Handle<v8::Value> TRI_ObjectRSEntry (TRI_doc_collection_t* collection,
                                                entry->_document._data.length);
 
   if (result->IsObject()) {
-    result->ToObject()->Set(v8g->DidKey, ObjectReference(collection->base._cid, entry->_did));
+    result->ToObject()->Set(v8g->DidKey, TRI_ObjectReference(collection->base._cid, entry->_did));
 
     if (entry->_type == TRI_DOC_MARKER_EDGE) {
-      result->ToObject()->Set(v8g->FromKey, ObjectReference(entry->_fromCid, entry->_fromDid));
-      result->ToObject()->Set(v8g->ToKey, ObjectReference(entry->_toCid, entry->_toDid));
+      result->ToObject()->Set(v8g->FromKey, TRI_ObjectReference(entry->_fromCid, entry->_fromDid));
+      result->ToObject()->Set(v8g->ToKey, TRI_ObjectReference(entry->_toCid, entry->_toDid));
     }
   }
 
@@ -1283,15 +1319,15 @@ bool TRI_ObjectDocumentPointer (TRI_doc_collection_t* collection,
                                                shaped->_data.length);
 
   if (result->IsObject()) {
-    result->ToObject()->Set(v8g->DidKey, ObjectReference(collection->base._cid, document->_did));
+    result->ToObject()->Set(v8g->DidKey, TRI_ObjectReference(collection->base._cid, document->_did));
 
     type = ((TRI_df_marker_t*) document->_data)->_type;
 
     if (type == TRI_DOC_MARKER_EDGE) {
       marker = (TRI_doc_edge_marker_t*) document->_data;
 
-      result->ToObject()->Set(v8g->FromKey, ObjectReference(marker->_fromCid, marker->_fromDid));
-      result->ToObject()->Set(v8g->ToKey, ObjectReference(marker->_toCid, marker->_toDid));
+      result->ToObject()->Set(v8g->FromKey, TRI_ObjectReference(marker->_fromCid, marker->_fromDid));
+      result->ToObject()->Set(v8g->ToKey, TRI_ObjectReference(marker->_toCid, marker->_toDid));
     }
   }
 

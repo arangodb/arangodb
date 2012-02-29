@@ -70,9 +70,15 @@ typedef struct TRI_join_part_s {
   TRI_doc_collection_t* _collection;
   char* _collectionName;
   char* _alias;
-  QL_ast_query_geo_restriction_t* _restriction;
+  QL_ast_query_geo_restriction_t* _geoRestriction;
   TRI_doc_mptr_t* _singleDocument;
   TRI_vector_pointer_t _listDocuments;
+  struct {
+    size_t _size;
+    char* _alias;
+    void* _singleValue;
+    TRI_vector_pointer_t _listValues;
+  } _extraData;
   TRI_js_exec_context_t _context;
 
   void (*free) (struct TRI_join_part_s*);

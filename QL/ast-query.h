@@ -38,10 +38,8 @@
 #include <BasicsC/strings.h>
 #include <BasicsC/string-buffer.h>
 
-#include "QL/ast-node.h"
+#include "VocBase/query-node.h"
 #include "VocBase/vocbase.h"
-
-#define QL_QUERY_NAME_LEN 64
 
 #ifdef __cplusplus
 extern "C" {
@@ -107,7 +105,7 @@ QL_ast_query_order_type_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct QL_ast_query_select_s {
-  QL_ast_node_t      *_base;
+  TRI_query_node_t* _base;
 } 
 QL_ast_query_select_t;
 
@@ -116,7 +114,7 @@ QL_ast_query_select_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct QL_ast_query_from_s {
-  QL_ast_node_t             *_base;
+  TRI_query_node_t* _base;
   TRI_associative_pointer_t _collections;
 } 
 QL_ast_query_from_t;
@@ -126,7 +124,7 @@ QL_ast_query_from_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct QL_ast_query_where_s {
-  QL_ast_node_t              *_base;
+  TRI_query_node_t* _base;
   QL_ast_query_where_type_e  _type;
 } 
 QL_ast_query_where_t;
@@ -136,7 +134,7 @@ QL_ast_query_where_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct QL_ast_query_order_s {
-  QL_ast_node_t           *_base;
+  TRI_query_node_t* _base;
 } 
 QL_ast_query_order_t;
 
@@ -228,7 +226,7 @@ typedef struct QL_ast_query_collection_s {
   bool                            _isPrimary;
   size_t                          _refCount;
   size_t                          _declarationOrder;
-  QL_ast_query_geo_restriction_t* _restriction;
+  QL_ast_query_geo_restriction_t* _geoRestriction;
 } 
 QL_ast_query_collection_t;
 
@@ -297,7 +295,8 @@ QL_ast_query_geo_restriction_t* QLAstQueryCreateRestriction (void);
 /// @brief clone a geo restriction 
 ////////////////////////////////////////////////////////////////////////////////
 
-QL_ast_query_geo_restriction_t* QLAstQueryCloneRestriction (const QL_ast_query_geo_restriction_t*);
+QL_ast_query_geo_restriction_t* QLAstQueryCloneRestriction 
+  (const QL_ast_query_geo_restriction_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a geo restriction 
@@ -310,20 +309,20 @@ void QLAstQueryFreeRestriction (QL_ast_query_geo_restriction_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool QLAstQueryAddGeoRestriction (QL_ast_query_t*, 
-                                  const QL_ast_node_t*, 
-                                  const QL_ast_node_t*);
+                                  const TRI_query_node_t*,
+                                  const TRI_query_node_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Create a string from a member name
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_string_buffer_t* QLAstQueryGetMemberNameString (QL_ast_node_t*, bool); 
+TRI_string_buffer_t* QLAstQueryGetMemberNameString (TRI_query_node_t*, bool); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Hash a member name for comparisons
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t QLAstQueryGetMemberNameHash (QL_ast_node_t*);
+uint64_t QLAstQueryGetMemberNameHash (TRI_query_node_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

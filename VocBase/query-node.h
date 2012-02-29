@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief AST node declarations
+/// @brief query node declarations
 ///
 /// @file
 ///
@@ -25,19 +25,18 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_QL_ASTNODE
-#define TRIAGENS_DURHAM_QL_ASTNODE
+#ifndef TRIAGENS_DURHAM_VOC_BASE_QUERY_NODE_H
+#define TRIAGENS_DURHAM_VOC_BASE_QUERY_NODE_H 1
 
 #include <BasicsC/common.h>
 #include <BasicsC/vector.h>
-
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup QL
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -48,68 +47,68 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  QLNodeUndefined = 0,
+  TRI_QueryNodeUndefined = 0,
 
-  QLNodeContainerList,
-  QLNodeContainerOrderElement,
-  QLNodeContainerMemberAccess,
-  QLNodeContainerTernarySwitch,
-  QLNodeContainerCoordinatePair,
+  TRI_QueryNodeContainerList,
+  TRI_QueryNodeContainerOrderElement,
+  TRI_QueryNodeContainerMemberAccess,
+  TRI_QueryNodeContainerTernarySwitch,
+  TRI_QueryNodeContainerCoordinatePair,
 
-  QLNodeJoinList,
-  QLNodeJoinInner,
-  QLNodeJoinLeft,
-  QLNodeJoinRight, 
+  TRI_QueryNodeJoinList,
+  TRI_QueryNodeJoinInner,
+  TRI_QueryNodeJoinLeft,
+  TRI_QueryNodeJoinRight, 
 
-  QLNodeValueUndefined,
-  QLNodeValueNull,
-  QLNodeValueBool,
-  QLNodeValueString,
-  QLNodeValueNumberInt,
-  QLNodeValueNumberDouble,
-  QLNodeValueNumberDoubleString,
-  QLNodeValueArray,
-  QLNodeValueDocument,
-  QLNodeValueParameterNumeric,
-  QLNodeValueParameterNamed,
-  QLNodeValueIdentifier,
-  QLNodeValueNamedValue,
-  QLNodeValueCoordinate,
-  QLNodeValueOrderDirection,
+  TRI_QueryNodeValueUndefined,
+  TRI_QueryNodeValueNull,
+  TRI_QueryNodeValueBool,
+  TRI_QueryNodeValueString,
+  TRI_QueryNodeValueNumberInt,
+  TRI_QueryNodeValueNumberDouble,
+  TRI_QueryNodeValueNumberDoubleString,
+  TRI_QueryNodeValueArray,
+  TRI_QueryNodeValueDocument,
+  TRI_QueryNodeValueParameterNumeric,
+  TRI_QueryNodeValueParameterNamed,
+  TRI_QueryNodeValueIdentifier,
+  TRI_QueryNodeValueNamedValue,
+  TRI_QueryNodeValueCoordinate,
+  TRI_QueryNodeValueOrderDirection,
 
-  QLNodeReferenceCollection,
-  QLNodeReferenceCollectionAlias,
+  TRI_QueryNodeReferenceCollection,
+  TRI_QueryNodeReferenceCollectionAlias,
 
-  QLNodeRestrictWithin,
-  QLNodeRestrictNear,
+  TRI_QueryNodeRestrictWithin,
+  TRI_QueryNodeRestrictNear,
 
-  QLNodeUnaryOperatorPlus,
-  QLNodeUnaryOperatorMinus,
-  QLNodeUnaryOperatorNot,
+  TRI_QueryNodeUnaryOperatorPlus,
+  TRI_QueryNodeUnaryOperatorMinus,
+  TRI_QueryNodeUnaryOperatorNot,
 
-  QLNodeBinaryOperatorIn,
-  QLNodeBinaryOperatorAnd,
-  QLNodeBinaryOperatorOr,
-  QLNodeBinaryOperatorIdentical,
-  QLNodeBinaryOperatorUnidentical,
-  QLNodeBinaryOperatorEqual,
-  QLNodeBinaryOperatorUnequal,
-  QLNodeBinaryOperatorLess,
-  QLNodeBinaryOperatorGreater,
-  QLNodeBinaryOperatorLessEqual,
-  QLNodeBinaryOperatorGreaterEqual,
-  QLNodeBinaryOperatorAdd,
-  QLNodeBinaryOperatorSubtract,
-  QLNodeBinaryOperatorMultiply,
-  QLNodeBinaryOperatorDivide,
-  QLNodeBinaryOperatorModulus,
+  TRI_QueryNodeBinaryOperatorIn,
+  TRI_QueryNodeBinaryOperatorAnd,
+  TRI_QueryNodeBinaryOperatorOr,
+  TRI_QueryNodeBinaryOperatorIdentical,
+  TRI_QueryNodeBinaryOperatorUnidentical,
+  TRI_QueryNodeBinaryOperatorEqual,
+  TRI_QueryNodeBinaryOperatorUnequal,
+  TRI_QueryNodeBinaryOperatorLess,
+  TRI_QueryNodeBinaryOperatorGreater,
+  TRI_QueryNodeBinaryOperatorLessEqual,
+  TRI_QueryNodeBinaryOperatorGreaterEqual,
+  TRI_QueryNodeBinaryOperatorAdd,
+  TRI_QueryNodeBinaryOperatorSubtract,
+  TRI_QueryNodeBinaryOperatorMultiply,
+  TRI_QueryNodeBinaryOperatorDivide,
+  TRI_QueryNodeBinaryOperatorModulus,
 
-  QLNodeControlFunctionCall,
-  QLNodeControlTernary,
+  TRI_QueryNodeControlFunctionCall,
+  TRI_QueryNodeControlTernary,
 
-  QLNodeLast
+  TRI_QueryNodeLast
 } 
-QL_ast_node_type_e;
+TRI_query_node_type_e;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AST node type groups enumeration
@@ -118,18 +117,18 @@ QL_ast_node_type_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  QLNodeGroupUndefined = 0,
+  TRI_QueryNodeGroupUndefined = 0,
 
-  QLNodeGroupContainer,
-  QLNodeGroupJoin,
-  QLNodeGroupValue,
-  QLNodeGroupReference,
-  QLNodeGroupRestrict,
-  QLNodeGroupBinaryOperator,
-  QLNodeGroupUnaryOperator,
-  QLNodeGroupControl
+  TRI_QueryNodeGroupContainer,
+  TRI_QueryNodeGroupJoin,
+  TRI_QueryNodeGroupValue,
+  TRI_QueryNodeGroupReference,
+  TRI_QueryNodeGroupRestrict,
+  TRI_QueryNodeGroupBinaryOperator,
+  TRI_QueryNodeGroupUnaryOperator,
+  TRI_QueryNodeGroupControl
 } 
-QL_ast_node_type_group_e;
+TRI_query_node_type_group_e;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AST node structure
@@ -147,99 +146,97 @@ QL_ast_node_type_group_e;
 /// used to represent arrays and objects.
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct QL_ast_node_s {
-  QL_ast_node_type_e _type;
+typedef struct TRI_query_node_s {
+  TRI_query_node_type_e     _type;
   union {
-    bool             _boolValue;
-    int64_t          _intValue;
-    double           _doubleValue;
-    char             *_stringValue;
+    bool                    _boolValue;
+    int64_t                 _intValue;
+    double                  _doubleValue;
+    char*                   _stringValue;
   } _value;
-  int32_t            _line;
-  int32_t            _column;
-  void               *_lhs;          // pointer to left child (might be null)
-  void               *_rhs;          // pointer to right child (might be null) 
-  void               *_next;         // pointer to next node (used for lists, might be null)
+  struct TRI_query_node_s*  _lhs;   // pointer to left child (might be null)
+  struct TRI_query_node_s*  _rhs;   // pointer to right child (might be null) 
+  struct TRI_query_node_s*  _next;  // pointer to next node (used for lists, might be null)
 }
-QL_ast_node_t;
+TRI_query_node_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get text/label for a node based on its type
 ////////////////////////////////////////////////////////////////////////////////
 
-const char* QLAstNodeGetName (const QL_ast_node_type_e); 
+const char* TRI_QueryNodeGetName (const TRI_query_node_type_e); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the type group of a node based on its type
 ////////////////////////////////////////////////////////////////////////////////
 
-QL_ast_node_type_group_e QLAstNodeGetTypeGroup (const QL_ast_node_type_e); 
+TRI_query_node_type_group_e TRI_QueryNodeGetTypeGroup (const TRI_query_node_type_e); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the reverse of a relational operator
 ////////////////////////////////////////////////////////////////////////////////
 
-QL_ast_node_type_e QLAstNodeGetReversedRelationalOperator (const QL_ast_node_type_e);
+TRI_query_node_type_e TRI_QueryNodeGetReversedRelationalOperator (const TRI_query_node_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the label string for a unary operator
 ////////////////////////////////////////////////////////////////////////////////
 
-char* QLAstNodeGetUnaryOperatorString (const QL_ast_node_type_e);
+char* TRI_QueryNodeGetUnaryOperatorString (const TRI_query_node_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the label string for a binary operator
 ////////////////////////////////////////////////////////////////////////////////
 
-char* QLAstNodeGetBinaryOperatorString (const QL_ast_node_type_e);
+char* TRI_QueryNodeGetBinaryOperatorString (const TRI_query_node_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether a node is a unary operator
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLAstNodeIsUnaryOperator (const QL_ast_node_t*);
+bool TRI_QueryNodeIsUnaryOperator (const TRI_query_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether a node is a value node
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLAstNodeIsValueNode (const QL_ast_node_t*);
+bool TRI_QueryNodeIsValueNode (const TRI_query_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether a node is a binary operator
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLAstNodeIsBinaryOperator (const QL_ast_node_t*);
+bool TRI_QueryNodeIsBinaryOperator (const TRI_query_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether a node is the ternary operator
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLAstNodeIsTernaryOperator (const QL_ast_node_t*);
+bool TRI_QueryNodeIsTernaryOperator (const TRI_query_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether a node is a logical operator
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLAstNodeIsLogicalOperator (const QL_ast_node_t*);
+bool TRI_QueryNodeIsLogicalOperator (const TRI_query_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether a node is an arithmetic operator
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLAstNodeIsArithmeticOperator (const QL_ast_node_t*);
+bool TRI_QueryNodeIsArithmeticOperator (const TRI_query_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether a node is a relational operator
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLAstNodeIsRelationalOperator (const QL_ast_node_t*);
+bool TRI_QueryNodeIsRelationalOperator (const TRI_query_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether a node is convertable into a bool value
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLAstNodeIsBooleanizable (const QL_ast_node_t*);
+bool TRI_QueryNodeIsBooleanizable (const TRI_query_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -255,4 +252,3 @@ bool QLAstNodeIsBooleanizable (const QL_ast_node_t*);
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-

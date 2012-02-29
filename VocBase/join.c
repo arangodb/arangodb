@@ -33,6 +33,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get size of extra data in standard join parts
+////////////////////////////////////////////////////////////////////////////////
+
+static size_t GetExtraDataSizeVoid (TRI_join_part_t* part) {
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get size of extra data in geo join parts
+////////////////////////////////////////////////////////////////////////////////
+
+static size_t GetExtraDataSizeGeo (TRI_join_part_t* part) {
+  return sizeof(double);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Free join part memory
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -95,7 +111,7 @@ bool TRI_AddPartSelectJoin (TRI_select_join_t* join,
                             TRI_vector_pointer_t* ranges, 
                             char* collectionName, 
                             char* alias,
-                            QL_ast_query_geo_restriction_t* restriction) {
+                            QL_ast_query_geo_restriction_t* geoRestriction) {
   
   TRI_join_part_t* part;
   TRI_qry_where_general_t* conditionGeneral;
@@ -118,13 +134,22 @@ bool TRI_AddPartSelectJoin (TRI_select_join_t* join,
   part->_collection = NULL;
   part->_collectionName = TRI_DuplicateString(collectionName);
   part->_alias = TRI_DuplicateString(alias);
-  part->_restriction = restriction;
+  part->_geoRestriction = geoRestriction;
   
   if (part->_condition != NULL && part->_condition->_type == TRI_QRY_WHERE_GENERAL) {
     conditionGeneral = (TRI_qry_where_general_t*) part->_condition;
     part->_context = TRI_CreateExecutionContext(conditionGeneral->_code);
   }
-  
+
+  // determine size of extra data to store  
+  if (part->_geoRestriction) {
+    part->_extraData._size = GetExtraDataSizeGeo(part);
+    part->_extraData._alias = part->_geoRestriction->_alias;
+  }
+  else {
+    part->_extraData._size = GetExtraDataSizeVoid(part);
+    part->_extraData._alias = NULL;
+  }
   part->free = FreePart; 
 
   TRI_PushBackVectorPointer(&join->_parts, part);

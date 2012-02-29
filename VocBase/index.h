@@ -34,6 +34,7 @@
 #include "ShapedJson/shaped-json.h"
 #include "GeoIndex/GeoIndex.h"
 #include "HashIndex/hashindex.h"
+#include "SkipLists/skiplistIndex.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -70,7 +71,8 @@ typedef TRI_voc_tick_t TRI_idx_iid_t;
 typedef enum {
   TRI_IDX_TYPE_PRIMARY_INDEX,
   TRI_IDX_TYPE_GEO_INDEX,
-  TRI_IDX_TYPE_HASH_INDEX
+  TRI_IDX_TYPE_HASH_INDEX,
+  TRI_IDX_TYPE_SKIPLIST_INDEX
 }
 TRI_idx_type_e;
 
@@ -145,6 +147,19 @@ typedef struct TRI_hash_index_s {
   bool _unique;
 } TRI_hash_index_t;
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief skiplist index
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_skiplist_index_s {
+  TRI_index_t base;
+
+  SkiplistIndex* _skiplistIndex;    // effectively the skiplist
+  TRI_vector_t* _shapeList; // a list of shape pid which identifies the fields of the index
+  bool _unique;
+} TRI_skiplist_index_t;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -175,6 +190,12 @@ bool TRI_RemoveIndex (struct TRI_doc_collection_s* collection, TRI_index_t* idx)
 bool TRI_SaveIndex (struct TRI_doc_collection_s*, TRI_index_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up an index identifier
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_LookupIndex (struct TRI_doc_collection_s*, TRI_idx_iid_t);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief free an existing index definition
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -190,15 +211,15 @@ void TRI_FreeIndexDefinitions (TRI_vector_pointer_t*);
 /// @brief gets the definitions of all index files for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* TRI_GetCollectionIndexes(const TRI_vocbase_t* vocbase,
-                                               const char* collectionName);
+TRI_vector_pointer_t* TRI_GetCollectionIndexes (const TRI_vocbase_t* vocbase,
+                                                const char* collectionName);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the names of all index files for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_string_t TRI_GetCollectionIndexFiles(const TRI_vocbase_t* vocbase,
-                                                const char* collectionName);
+TRI_vector_string_t TRI_GetCollectionIndexFiles (const TRI_vocbase_t* vocbase,
+                                                 const char* collectionName);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -311,6 +332,38 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_doc_collection_s*,
                                   TRI_vector_t* shapeList,
                                   bool unique);
 
+                                  
+                                  
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    SKIPLIST INDEX
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+
+SkiplistIndexElements* TRI_LookupSkiplistIndex (TRI_index_t*, TRI_json_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a hash-index
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_doc_collection_s*,
+                                      TRI_vector_t* shapeList,
+                                      bool unique);
+
+                                  
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////

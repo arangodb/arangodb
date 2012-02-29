@@ -659,11 +659,11 @@ static yyconst flex_int32_t yy_rule_can_match_eol[48] =
 
 static yyconst flex_int16_t yy_rule_linenum[47] =
     {   0,
-       49,   53,   57,   61,   65,   69,   73,   77,   81,   85,
-       89,   93,   97,  101,  105,  109,  118,  122,  126,  130,
-      139,  143,  152,  156,  160,  169,  173,  182,  186,  190,
-      194,  198,  202,  206,  210,  214,  223,  232,  237,  242,
-      247,  252,  262,  267,  277,  281
+       53,   57,   61,   65,   69,   73,   77,   81,   85,   89,
+       93,   97,  101,  105,  109,  113,  122,  126,  130,  134,
+      143,  147,  156,  160,  164,  173,  177,  186,  190,  194,
+      198,  202,  206,  210,  214,  218,  227,  236,  241,  246,
+      251,  256,  266,  271,  281,  285
     } ;
 
 /* The intent behind this definition is that it'll catch
@@ -676,30 +676,34 @@ static yyconst flex_int16_t yy_rule_linenum[47] =
 #include <BasicsC/common.h>
 #include <BasicsC/strings.h>
 
-#include "QL/ast-node.h"
-#include "QL/parser-context.h"
+#include "VocBase/query-node.h"
+#include "VocBase/query-base.h"
+#include "VocBase/query-parse.h"
 #include "QL/parser.h"
 
-#define YY_EXTRA_TYPE QL_parser_context_t*
-#define YY_USER_ACTION yylloc->first_line = yylineno; yylloc->first_column = yycolumn; yylloc->last_column = yycolumn + yyleng - 1; yycolumn += yyleng;
+#define YY_EXTRA_TYPE TRI_query_template_t*
+
+// currently we do not use the positioning information
+// #define YY_USER_ACTION yylloc->first_line = yylineno; yylloc->first_column = yycolumn; yylloc->last_column = yycolumn + yyleng - 1; yycolumn += yyleng;
 
 #define YY_NO_INPUT 1
 
-#define YY_INPUT(resultBuffer,resultState,maxBytesToRead) {          \
-  int length = (yyextra)->_lexState._length;                         \
-                                                                     \
-  if (length > maxBytesToRead) {                                     \
-    length = maxBytesToRead;                                         \
-  }                                                                  \
-  if (length > 0) {                                                  \
-    memcpy(resultBuffer, (yyextra)->_lexState._buffer,length);       \
-    (yyextra)->_lexState._buffer += length;                          \
-    (yyextra)->_lexState._length -= length;                          \
-    resultState = length;                                            \
-  }                                                                  \
-  else {                                                             \
-    resultState = YY_NULL;                                           \
-  }                                                                  \
+#define YY_INPUT(resultBuffer, resultState, maxBytesToRead) {            \
+  TRI_query_parser_t* parser = (yyextra)->_parser;                       \
+  int length = parser->_length;                                          \
+                                                                         \
+  if (length > maxBytesToRead) {                                         \
+    length = maxBytesToRead;                                             \
+  }                                                                      \
+  if (length > 0) {                                                      \
+    memcpy(resultBuffer, parser->_buffer, length);                       \
+    parser->_buffer += length;                                           \
+    parser->_length -= length;                                           \
+    resultState = length;                                                \
+  }                                                                      \
+  else {                                                                 \
+    resultState = YY_NULL;                                               \
+  }                                                                      \
 }
 
 #define INITIAL 0
@@ -1379,7 +1383,7 @@ YY_RULE_SETUP
 case 38:
 YY_RULE_SETUP
 { 
-  yylval->strval = QLParseAllocString(yyextra, yytext); 
+  yylval->strval = TRI_ParseQueryAllocString(yyextra, yytext); 
   return IDENTIFIER; 
 }
 	YY_BREAK
@@ -1387,14 +1391,14 @@ case 39:
 /* rule 39 can match eol */
 YY_RULE_SETUP
 {
-  yylval->strval = QLParseAllocString(yyextra, yytext); 
+  yylval->strval = TRI_ParseQueryAllocString(yyextra, yytext); 
   return QUOTED_IDENTIFIER;
 }
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
 {  
-  yylval->strval = QLParseAllocString(yyextra, yytext); 
+  yylval->strval = TRI_ParseQueryAllocString(yyextra, yytext); 
   return REAL; 
 }
 	YY_BREAK
@@ -1402,7 +1406,7 @@ case 41:
 /* rule 41 can match eol */
 YY_RULE_SETUP
 {
-  yylval->strval = QLParseAllocString(yyextra, yytext); 
+  yylval->strval = TRI_ParseQueryAllocString(yyextra, yytext); 
   return STRING;
 }
 	YY_BREAK
@@ -1410,7 +1414,7 @@ case 42:
 /* rule 42 can match eol */
 YY_RULE_SETUP
 {
-  yylval->strval = QLParseAllocString(yyextra, yytext); 
+  yylval->strval = TRI_ParseQueryAllocString(yyextra, yytext); 
   return STRING;
 }
 	YY_BREAK
@@ -1420,14 +1424,14 @@ YY_RULE_SETUP
 case 43:
 YY_RULE_SETUP
 {
-  yylval->strval = QLParseAllocString(yyextra, yytext + 1); 
+  yylval->strval = TRI_ParseQueryAllocString(yyextra, yytext + 1); 
   return PARAMETER;
 }
 	YY_BREAK
 case 44:
 YY_RULE_SETUP
 {
-  yylval->strval = QLParseAllocString2(yyextra, yytext + 1 , strlen(yytext) - 2);
+  yylval->strval = TRI_ParseQueryAllocString2(yyextra, yytext + 1 , strlen(yytext) - 2);
   return PARAMETER_NAMED;
 }
 	YY_BREAK

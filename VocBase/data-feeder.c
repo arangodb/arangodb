@@ -26,12 +26,49 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VocBase/data-feeder.h"
+#include "VocBase/join.h"
 #include "V8/v8-c-utils.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        type independent functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a new base data data feeder struct
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_data_feeder_t* CreateDataFeeder (const TRI_data_feeder_type_e type,
+                                            const TRI_doc_collection_t* collection,
+                                            const TRI_join_t* join,
+                                            size_t level) {
+  TRI_data_feeder_t* feeder;
+  
+  feeder = (TRI_data_feeder_t*) TRI_Allocate(sizeof(TRI_data_feeder_t));
+  if (!feeder) {
+    return NULL;
+  }
+  
+  feeder->_type       = type;
+  feeder->_level      = level;
+  feeder->_join       = (TRI_select_join_t*) join;
+  feeder->_part       = (TRI_join_part_t*) ((TRI_select_join_t*) join)->_parts._buffer[level];
+  feeder->_collection = collection;
+  feeder->_ranges     = NULL;
+  feeder->_state      = NULL;
+
+  feeder->init        = NULL;
+  feeder->rewind      = NULL;
+  feeder->current     = NULL;
+  feeder->eof         = NULL;
+  feeder->free        = NULL;
+  
+  return feeder;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        table scan
@@ -45,6 +82,8 @@ static void InitFeederTableScan (TRI_data_feeder_t* feeder) {
   TRI_sim_collection_t* collection;
   TRI_doc_mptr_t* document;
   TRI_data_feeder_table_scan_t* state;
+
+  feeder->_accessType = ACCESS_ALL;
 
   collection = (TRI_sim_collection_t*) feeder->_collection;
   state = (TRI_data_feeder_table_scan_t*) feeder->_state;
@@ -99,29 +138,34 @@ static void RewindFeederTableScan (TRI_data_feeder_t* feeder) {
 /// @brief get current item from table scan data feeder and advance next pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t* CurrentFeederTableScan (TRI_data_feeder_t* feeder) {
+static bool CurrentFeederTableScan (TRI_data_feeder_t* feeder) {
   TRI_doc_mptr_t* document;
   TRI_data_feeder_table_scan_t* state;
+  TRI_join_part_t* part;
   
   state = (TRI_data_feeder_table_scan_t*) feeder->_state;
+  part = (TRI_join_part_t*) feeder->_part;
 
   while (state->_current < state->_end) {
     document = (TRI_doc_mptr_t*) *(state->_current);
 
     state->_current++;
     if (document && document->_deletion == 0) {
-      return document;
+      part->_singleDocument = document;
+      return true;
     }
   }
+    
+  part->_singleDocument = NULL;
 
-  return NULL;
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if table scan data feeder is at eof
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EofFeederTableScan (TRI_data_feeder_t* feeder) {
+static bool EofFeederTableScan (TRI_data_feeder_t* feeder) {
   TRI_data_feeder_table_scan_t* state;
 
   state = (TRI_data_feeder_table_scan_t*) feeder->_state;
@@ -158,7 +202,7 @@ TRI_data_feeder_t* TRI_CreateDataFeederTableScan (const TRI_doc_collection_t* co
                                                   size_t level) {
   TRI_data_feeder_t* feeder;
 
-  feeder = (TRI_data_feeder_t*) TRI_Allocate(sizeof(TRI_data_feeder_t));
+  feeder = CreateDataFeeder(FEEDER_TABLE_SCAN, collection, join, level);
   if (!feeder) {
     return NULL;
   }
@@ -170,11 +214,6 @@ TRI_data_feeder_t* TRI_CreateDataFeederTableScan (const TRI_doc_collection_t* co
     TRI_Free(feeder);
     return NULL;
   }
-
-  feeder->_type       = FEEDER_TABLE_SCAN;
-  feeder->_accessType = ACCESS_ALL;
-  feeder->_collection = collection;
-  feeder->_ranges     = NULL;
 
   feeder->init        = InitFeederTableScan;
   feeder->rewind      = RewindFeederTableScan;
@@ -304,29 +343,34 @@ static void RewindFeederPrimaryLookup (TRI_data_feeder_t* feeder) {
 /// @brief get current item from primary index feeder
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t* CurrentFeederPrimaryLookup (TRI_data_feeder_t* feeder) {
+static bool CurrentFeederPrimaryLookup (TRI_data_feeder_t* feeder) {
   TRI_sim_collection_t* collection;
   QL_optimize_range_t* range;
   TRI_data_feeder_primary_lookup_t* state;
+  TRI_join_part_t* part;
   
   state = (TRI_data_feeder_primary_lookup_t*) feeder->_state;
+  part = (TRI_join_part_t*) feeder->_part;
 
   if (state->_hasCompared || state->_isEmpty) {
-    return NULL;
+    part->_singleDocument = NULL;
+    return false;
   }
-
+  
   state->_hasCompared = true;
   range = (QL_optimize_range_t*) feeder->_ranges->_buffer[0];
   collection = (TRI_sim_collection_t*) feeder->_collection;
-  return (TRI_doc_mptr_t*) 
+  part->_singleDocument = (TRI_doc_mptr_t*) 
     TRI_LookupByKeyAssociativePointer(&collection->_primaryIndex, &state->_didValue);
+
+  return (part->_singleDocument != NULL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if primary index data feeder is at eof
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EofFeederPrimaryLookup (TRI_data_feeder_t* feeder) {
+static bool EofFeederPrimaryLookup (TRI_data_feeder_t* feeder) {
   TRI_data_feeder_primary_lookup_t* state;
   
   state = (TRI_data_feeder_primary_lookup_t*) feeder->_state;
@@ -370,7 +414,7 @@ TRI_data_feeder_t* TRI_CreateDataFeederPrimaryLookup (const TRI_doc_collection_t
                                                       size_t level) {
   TRI_data_feeder_t* feeder;
 
-  feeder = (TRI_data_feeder_t*) TRI_Allocate(sizeof(TRI_data_feeder_t));
+  feeder = CreateDataFeeder(FEEDER_PRIMARY_LOOKUP, collection, join, level);
   if (!feeder) {
     return NULL;
   }
@@ -383,12 +427,6 @@ TRI_data_feeder_t* TRI_CreateDataFeederPrimaryLookup (const TRI_doc_collection_t
   }
 
   // init feeder
-  feeder->_type       = FEEDER_PRIMARY_LOOKUP;
-  feeder->_level      = level;
-  feeder->_join       = join;
-  feeder->_collection = collection;
-  feeder->_ranges     = NULL;
-
   feeder->init        = InitFeederPrimaryLookup; 
   feeder->rewind      = RewindFeederPrimaryLookup;
   feeder->current     = CurrentFeederPrimaryLookup;
@@ -533,30 +571,36 @@ static void RewindFeederHashLookup (TRI_data_feeder_t* feeder) {
 /// @brief get current item from hash lookup feeder
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t* CurrentFeederHashLookup (TRI_data_feeder_t* feeder) {
+static bool CurrentFeederHashLookup (TRI_data_feeder_t* feeder) {
   TRI_data_feeder_hash_lookup_t* state;
   TRI_doc_mptr_t* document;
+  TRI_join_part_t* part;
 
   state = (TRI_data_feeder_hash_lookup_t*) feeder->_state;
+  part = (TRI_join_part_t*) feeder->_part;
+
   if (state->_isEmpty || !state->_hashElements) {
-    return NULL;
+    part->_singleDocument = NULL;
+    return false;
   }
 
   while (state->_position < state->_hashElements->_numElements) {
     document = (TRI_doc_mptr_t*) ((state->_hashElements->_elements[state->_position++]).data);
     if (document && !document->_deletion) {
-      return document;
+      part->_singleDocument = document;
+      return true;
     }
   }
 
-  return NULL;
+  part->_singleDocument = NULL;
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if hash lookup data feeder is at eof
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EofFeederHashLookup (TRI_data_feeder_t* feeder) {
+static bool EofFeederHashLookup (TRI_data_feeder_t* feeder) {
   TRI_data_feeder_hash_lookup_t* state;
   
   state = (TRI_data_feeder_hash_lookup_t*) feeder->_state;
@@ -608,11 +652,12 @@ TRI_data_feeder_t* TRI_CreateDataFeederHashLookup (const TRI_doc_collection_t* c
                                                    TRI_join_t* join,
                                                    size_t level) {
   TRI_data_feeder_t* feeder;
-
-  feeder = (TRI_data_feeder_t*) TRI_Allocate(sizeof(TRI_data_feeder_t));
+  
+  feeder = CreateDataFeeder(FEEDER_HASH_LOOKUP, collection, join, level);
   if (!feeder) {
     return NULL;
   }
+  
   feeder->_state = (TRI_data_feeder_hash_lookup_t*) 
     TRI_Allocate(sizeof(TRI_data_feeder_hash_lookup_t));
   if (!feeder->_state) {
@@ -620,17 +665,258 @@ TRI_data_feeder_t* TRI_CreateDataFeederHashLookup (const TRI_doc_collection_t* c
     return NULL;
   }
 
-  feeder->_type       = FEEDER_HASH_LOOKUP;
-  feeder->_level      = level;
-  feeder->_join       = join;
-  feeder->_collection = collection;
-  feeder->_ranges     = NULL;
-
   feeder->init        = InitFeederHashLookup; 
   feeder->rewind      = RewindFeederHashLookup;
   feeder->current     = CurrentFeederHashLookup;
   feeder->eof         = EofFeederHashLookup;
   feeder->free        = FreeFeederHashLookup;
+  
+  return feeder;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                         skiplists
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free skiplist index elements
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeSkiplistElements (SkiplistIndexElements* elements) {
+  TRI_Free(elements->_elements);
+  TRI_Free(elements);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief init skiplist data feeder
+////////////////////////////////////////////////////////////////////////////////
+
+static void InitFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
+  QL_optimize_range_t* range;
+  TRI_data_feeder_skiplist_lookup_t* state;
+  TRI_json_t* parameters;
+  TRI_json_t* doc;
+  TRI_string_buffer_t* buffer;
+  size_t i;
+  
+  state = (TRI_data_feeder_skiplist_lookup_t*) feeder->_state;
+  state->_isEmpty  = true;
+  state->_context  = NULL;
+  state->_position = 0;
+
+  state->_skiplistElements = NULL;
+  state->_index = TRI_IndexSimCollection((TRI_sim_collection_t*) feeder->_collection, 
+                                         feeder->_indexId);
+  if (!state->_index) {
+    return;
+  }
+  assert(feeder->_ranges); 
+  assert(feeder->_ranges->_length >= 1);
+  
+  range = (QL_optimize_range_t*) feeder->_ranges->_buffer[0];
+  if (range->_valueType == RANGE_TYPE_FIELD) {
+    // ref access
+    feeder->_accessType = ACCESS_REF; 
+    buffer = (TRI_string_buffer_t*) TRI_Allocate(sizeof(TRI_string_buffer_t));
+    if (!buffer) {
+      return;
+    }
+
+    TRI_AppendStringStringBuffer(buffer, "(function($) { return [");
+    for (i = 0; i < feeder->_ranges->_length; i++) {
+      range = (QL_optimize_range_t*) feeder->_ranges->_buffer[i];
+      if (i > 0) {
+        TRI_AppendCharStringBuffer(buffer, ',');
+      }
+      TRI_AppendStringStringBuffer(buffer, "$['");
+      TRI_AppendStringStringBuffer(buffer, range->_refValue._collection);
+      TRI_AppendStringStringBuffer(buffer, "'].");
+      TRI_AppendStringStringBuffer(buffer, range->_refValue._field);
+    }
+    TRI_AppendStringStringBuffer(buffer, "] })");
+    state->_context = TRI_CreateExecutionContext(buffer->_buffer);
+
+    TRI_FreeStringBuffer(buffer);
+    TRI_Free(buffer);
+
+    if (!state->_context) {
+      return;
+    }
+  }
+  else {
+    // const access
+    feeder->_accessType = ACCESS_CONST;
+     
+    parameters = TRI_CreateListJson();
+    if (!parameters) {
+      return;
+    }
+    for (i = 0; i < feeder->_ranges->_length; i++) {
+      range = (QL_optimize_range_t*) feeder->_ranges->_buffer[i];
+      if (range->_valueType == RANGE_TYPE_STRING) {
+        TRI_PushBack2ListJson(parameters, 
+            TRI_CreateStringCopyJson(range->_minValue._stringValue));
+      }
+      else if (range->_valueType == RANGE_TYPE_DOUBLE) {
+        TRI_PushBack2ListJson(parameters, 
+            TRI_CreateNumberJson(range->_minValue._doubleValue));
+      }
+      else if (range->_valueType == RANGE_TYPE_JSON) {
+        doc = TRI_JsonString(range->_minValue._stringValue);
+        if (!doc) {
+          TRI_FreeJson(parameters);
+          return;
+        }
+        TRI_PushBackListJson(parameters, doc);
+      }
+    }
+    state->_skiplistElements = TRI_LookupSkiplistIndex(state->_index, parameters);
+    TRI_FreeJson(parameters);
+  }
+
+  state->_isEmpty = false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rewind skiplist data feeder
+////////////////////////////////////////////////////////////////////////////////
+
+static void RewindFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
+  TRI_data_feeder_skiplist_lookup_t* state;
+  TRI_json_t* parameters;
+   
+  state = (TRI_data_feeder_skiplist_lookup_t*) feeder->_state;
+  state->_position = 0;
+
+  if (feeder->_accessType == ACCESS_REF) {
+    if (state->_skiplistElements) {
+      FreeSkiplistElements(state->_skiplistElements);
+    }
+    state->_skiplistElements = NULL;
+
+    if (!state->_context) {
+      return;
+    }
+    parameters = TRI_CreateListJson();
+    if (!parameters) {
+      return;
+    }
+    TRI_DefineWhereExecutionContext(state->_context, 
+                                    (TRI_join_t*) feeder->_join, 
+                                    feeder->_level, 
+                                    true);
+    if (TRI_ExecuteRefExecutionContext (state->_context, parameters)) {
+      state->_skiplistElements = TRI_LookupSkiplistIndex(state->_index, parameters);
+    }
+ 
+    TRI_FreeJson(parameters);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get current item from skiplist feeder
+////////////////////////////////////////////////////////////////////////////////
+
+static bool CurrentFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
+  TRI_data_feeder_skiplist_lookup_t* state;
+  TRI_doc_mptr_t* document;
+  TRI_join_part_t* part;
+
+  state = (TRI_data_feeder_skiplist_lookup_t*) feeder->_state;
+  part = (TRI_join_part_t*) feeder->_part;
+
+  if (state->_isEmpty || !state->_skiplistElements) {
+    part->_singleDocument = NULL;
+    return false;
+  }
+
+  while (state->_position < state->_skiplistElements->_numElements) {
+    document = (TRI_doc_mptr_t*) ((state->_skiplistElements->_elements[state->_position++]).data);
+    if (document && !document->_deletion) {
+      part->_singleDocument = document;
+      return true;
+    }
+  }
+
+  part->_singleDocument = NULL;
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if skiplist data feeder is at eof
+////////////////////////////////////////////////////////////////////////////////
+
+static bool EofFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
+  TRI_data_feeder_skiplist_lookup_t* state;
+  
+  state = (TRI_data_feeder_skiplist_lookup_t*) feeder->_state;
+  if (state->_isEmpty || 
+      !state->_skiplistElements || 
+      state->_position >= state->_skiplistElements->_numElements) {
+    return true;
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free skiplist lookup data feeder
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
+  TRI_data_feeder_skiplist_lookup_t* state;
+
+  state = (TRI_data_feeder_skiplist_lookup_t*) feeder->_state;
+  if (state->_skiplistElements) {
+    FreeSkiplistElements(state->_skiplistElements);
+  }
+
+  if (state->_context) {
+    TRI_FreeExecutionContext(state->_context);
+  }
+
+  if (state) {
+    TRI_Free(state);
+  }
+
+  if (feeder->_ranges) {
+    TRI_DestroyVectorPointer(feeder->_ranges);
+    TRI_Free(feeder->_ranges);
+  }
+
+  if (feeder) {
+    TRI_Free(feeder);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Create a new data feeder for skiplist lookups
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_data_feeder_t* TRI_CreateDataFeederSkiplistLookup (const TRI_doc_collection_t* collection,
+                                                       TRI_join_t* join,
+                                                       size_t level) {
+  TRI_data_feeder_t* feeder;
+
+  printf("SKIPLISTS ARE YET UNSUPPORTED. TERMINATING\n");
+  exit(1);  
+  feeder = CreateDataFeeder(FEEDER_SKIPLIST_LOOKUP, collection, join, level);
+  if (!feeder) {
+    return NULL;
+  }
+  
+  feeder->_state = (TRI_data_feeder_skiplist_lookup_t*) 
+    TRI_Allocate(sizeof(TRI_data_feeder_skiplist_lookup_t));
+  if (!feeder->_state) {
+    TRI_Free(feeder);
+    return NULL;
+  }
+
+  feeder->init        = InitFeederSkiplistLookup; 
+  feeder->rewind      = RewindFeederSkiplistLookup;
+  feeder->current     = CurrentFeederSkiplistLookup;
+  feeder->eof         = EofFeederSkiplistLookup;
+  feeder->free        = FreeFeederSkiplistLookup;
   
   return feeder;
 }
@@ -691,29 +977,43 @@ static void RewindFeederGeoLookup (TRI_data_feeder_t* feeder) {
 /// @brief get current item from geo index feeder
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t* CurrentFeederGeoLookup (TRI_data_feeder_t* feeder) {
+static bool CurrentFeederGeoLookup (TRI_data_feeder_t* feeder) {
   TRI_data_feeder_geo_lookup_t* state;
   TRI_doc_mptr_t* document;
+  TRI_join_part_t* part;
+  size_t position;
 
   state = (TRI_data_feeder_geo_lookup_t*) feeder->_state;
+  part = (TRI_join_part_t*) feeder->_part;
+
   if (state->_isEmpty || !state->_coordinates) { 
-    return NULL;
+    part->_singleDocument = NULL;
+    part->_extraData._singleValue = NULL;
+    return false;
   }
 
   while (state->_position < state->_coordinates->length) {
-    document = (TRI_doc_mptr_t*) ((state->_coordinates->coordinates[state->_position++].data));
+    position = state->_position++;
+    document = (TRI_doc_mptr_t*) ((state->_coordinates->coordinates[position].data));
     if (document && !document->_deletion) {
-      return document;
+      part->_singleDocument = document;
+      // store extra data
+      part->_extraData._singleValue = &state->_coordinates->distances[position];
+
+      return true;
     }
   }
-  return NULL;
+
+  part->_singleDocument = NULL;
+  part->_extraData._singleValue = NULL;
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if geo index data feeder is at eof
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EofFeederGeoLookup (TRI_data_feeder_t* feeder) {
+static bool EofFeederGeoLookup (TRI_data_feeder_t* feeder) {
   TRI_data_feeder_geo_lookup_t* state;
   
   state = (TRI_data_feeder_geo_lookup_t*) feeder->_state;
@@ -758,7 +1058,7 @@ TRI_data_feeder_t* TRI_CreateDataFeederGeoLookup (const TRI_doc_collection_t* co
   TRI_data_feeder_t* feeder;
   TRI_data_feeder_geo_lookup_t* state;
   
-  feeder = (TRI_data_feeder_t*) TRI_Allocate(sizeof(TRI_data_feeder_t));
+  feeder = CreateDataFeeder(FEEDER_GEO_LOOKUP, collection, join, level);
   if (!feeder) {
     return NULL;
   }
@@ -774,12 +1074,6 @@ TRI_data_feeder_t* TRI_CreateDataFeederGeoLookup (const TRI_doc_collection_t* co
   }
 
   state->_restriction = restriction;
-
-  feeder->_type       = FEEDER_GEO_LOOKUP;
-  feeder->_level      = level;
-  feeder->_join       = join;
-  feeder->_collection = collection;
-  feeder->_ranges     = NULL;
 
   feeder->init        = InitFeederGeoLookup; 
   feeder->rewind      = RewindFeederGeoLookup;

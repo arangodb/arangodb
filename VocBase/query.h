@@ -101,13 +101,17 @@ extern "C" {
 /// (AQL).
 ///
 /// The purpose of AQL is somewhat similar to SQL, but the language has
-/// notable differences to it. This means that AQL queries cannot be run in 
+/// notable differences to SQL. This means that AQL queries cannot be run in 
 /// an SQL database and vice versa.
 ///
 /// @section AqlBasics Language basics
 ///
 /// AQL consists mainly of keywords, names, literals, compound types, and 
 /// operators.
+///
+/// An example AQL query looks like this:
+///
+/// @verbinclude query0
 ///
 /// @subsection AqlKeywords Keywords
 ///
@@ -815,6 +819,8 @@ TRI_rc_cursor_t;
 
 TRI_query_t* TRI_CreateHashQuery (const TRI_qry_where_t*, TRI_doc_collection_t*);
 
+TRI_query_t* TRI_CreateSkiplistQuery (const TRI_qry_where_t*, TRI_doc_collection_t*);
+
 TRI_query_t* TRI_CreateQuery (TRI_vocbase_t* vocBase,
                               TRI_qry_select_t* selectStmt,
                               TRI_qry_where_t* whereStmt,
@@ -869,6 +875,12 @@ TRI_qry_where_t* TRI_CreateQueryWhereGeneral (char const*);
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_qry_where_t* TRI_CreateQueryWhereHashConstant (TRI_idx_iid_t, TRI_json_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a query condition for a hash with constant parameters
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_qry_where_t* TRI_CreateQueryWhereSkiplistConstant (TRI_idx_iid_t, TRI_json_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a query condition using the primary index and a constant

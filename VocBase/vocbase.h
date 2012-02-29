@@ -87,6 +87,9 @@ extern size_t PageSize;
 ///
 /// If you add a new error code, you must also add the description in
 /// @ref TRI_InitialiseVocBase.
+///
+/// Please note that the error numbers defined here must not conflict with error
+/// numbers defined for other parts of the program (e.g. in VocBase/vocbase.h)
 ////////////////////////////////////////////////////////////////////////////////
 
 enum {

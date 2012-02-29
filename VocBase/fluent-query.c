@@ -724,206 +724,6 @@ static void FreeDocumentQuery (TRI_fluent_query_t* qry, bool descend) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       EDGES QUERY
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief optimises an edges lookup
-////////////////////////////////////////////////////////////////////////////////
-
-static char* OptimiseEdgesQuery (TRI_fluent_query_t** qry) {
-  TRI_edges_query_t* query;
-  char* e;
-
-  query = (TRI_edges_query_t*) *qry;
-
-  // sanity check
-  if (! query->base._collection->_loaded) {
-    return TRI_Concatenate3String("collection \"", query->base._collection->_name, "\" not loaded");
-  }
-
-  if (query->base._collection->_type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
-    return TRI_DuplicateString("cannot handle collection type");
-  }
-
-  // check if query is already optimised
-  if (query->base._isOptimised) {
-    return NULL;
-  }
-
-  // optimise operand
-  e = query->_operand->optimise(&query->_operand);
-
-  if (e != NULL) {
-    return e;
-  }
-
-  query->base._isOptimised = true;
-  return NULL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes an edges lookup
-////////////////////////////////////////////////////////////////////////////////
-
-static void ExecuteEdgesQuery (TRI_fluent_query_t* qry,
-                               TRI_fluent_query_result_t* result) {
-  TRI_edges_query_t* query;
-  TRI_sim_collection_t* edgesCollection;
-  TRI_vector_pointer_t v;
-  size_t i;
-  size_t j;
-
-  query = (TRI_edges_query_t*) qry;
-
-  // execute the sub-query
-  query->_operand->execute(query->_operand, result);
-
-  if (result->_error) {
-    return;
-  }
-
-  TRI_AppendString(&result->_cursor, ">edges");
-
-  // without any documents there will be no edges
-  if (result->_length == 0) {
-    return;
-  }
-
-  // create a vector for the result
-  TRI_InitVectorPointer(&v);
-
-  edgesCollection = (TRI_sim_collection_t*) query->base._collection->_collection;
-
-  // for each document get the edges
-  for (i = 0;  i < result->_length;  ++i) {
-    TRI_doc_mptr_t const* mptr;
-    TRI_vector_pointer_t edges;
-
-    mptr = result->_documents[i];
-    edges = TRI_LookupEdgesSimCollection(edgesCollection,
-                                         query->_direction,
-                                         query->_operand->_collection->_cid,
-                                         mptr->_did);
-
-    for (j = 0;  j < edges._length;  ++j) {
-      TRI_PushBackVectorPointer(&v, edges._buffer[j]);
-    }
-
-    TRI_DestroyVectorPointer(&edges);
-  }
-
-  // free any old results
-  FreeAugmented(result);
-  FreeDocuments(result);
-
-  result->_documents = (TRI_doc_mptr_t const**) v._buffer;
-  result->_total = result->_length = v._length;
-  result->_scannedDocuments += v._length;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief json representation of an edges lookup
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_json_t* JsonEdgesQuery (TRI_fluent_query_t* qry) {
-  TRI_json_t* json;
-  TRI_edges_query_t* query;
-
-  query = (TRI_edges_query_t*) qry;
-  json = TRI_CreateArrayJson();
-
-  TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("edges"));
-  TRI_Insert2ArrayJson(json, "operand", query->_operand->json(query->_operand));
-  TRI_Insert2ArrayJson(json, "direction", TRI_CreateNumberJson(query->_direction));
-  TRI_Insert2ArrayJson(json, "edge-collection", TRI_CreateNumberJson(query->base._collection->_cid));
-
-  return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief appends a string representation of an edges lookup
-////////////////////////////////////////////////////////////////////////////////
-
-static void StringifyEdgesQuery (TRI_fluent_query_t* qry, TRI_string_buffer_t* buffer) {
-  TRI_edges_query_t* query;
-
-  query = (TRI_edges_query_t*) qry;
-
-  switch (query->_direction) {
-    case TRI_EDGE_IN:
-      TRI_AppendStringStringBuffer(buffer, "inEdges(\"");
-      break;
-
-    case TRI_EDGE_OUT:
-      TRI_AppendStringStringBuffer(buffer, "outEdges(\"");
-      break;
-
-    case TRI_EDGE_ANY:
-      TRI_AppendStringStringBuffer(buffer, "edges(\"");
-      break;
-
-    case TRI_EDGE_UNUSED:
-      TRI_AppendStringStringBuffer(buffer, "nonEdges(\"");
-      break;
-  }
-
-  TRI_AppendUInt64StringBuffer(buffer, query->base._collection->_cid);
-
-  TRI_AppendStringStringBuffer(buffer, "\")");
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clones an edges lookup
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_fluent_query_t* CloneEdgesQuery (TRI_fluent_query_t* qry) {
-  TRI_edges_query_t* clone;
-  TRI_edges_query_t* query;
-
-  clone = TRI_Allocate(sizeof(TRI_edges_query_t));
-  query = (TRI_edges_query_t*) qry;
-
-  CloneQuery(&clone->base, &query->base);
-
-  clone->_operand = query->_operand == NULL ? NULL : query->_operand->clone(query->_operand);
-  clone->_direction = query->_direction;
-
-  return &clone->base;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees a edges lookup
-////////////////////////////////////////////////////////////////////////////////
-
-static void FreeEdgesQuery (TRI_fluent_query_t* qry, bool descend) {
-  TRI_edges_query_t* query;
-
-  query = (TRI_edges_query_t*) qry;
-
-  if (descend) {
-    if (query->_operand != NULL) {
-      query->_operand->free(query->_operand, descend);
-    }
-  }
-
-  TRI_Free(query);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                   GEO INDEX QUERY
 // -----------------------------------------------------------------------------
 
@@ -1368,25 +1168,6 @@ static void FreeLimitQuery (TRI_fluent_query_t* qry, bool descend) {
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct {
-  double _distance;
-  void const* _data;
-}
-geo_coordinate_distance_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
@@ -1439,38 +1220,6 @@ static TRI_geo_index_t* LocateGeoIndex (TRI_fluent_query_t* query) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sorts geo coordinates
-////////////////////////////////////////////////////////////////////////////////
-
-static int CompareGeoCoordinateDistance (geo_coordinate_distance_t* left, geo_coordinate_distance_t* right) {
-  if (left->_distance < right->_distance) {
-    return -1;
-  }
-  else if (left->_distance > right->_distance) {
-    return 1;
-  }
-  else {
-    return 0;
-  }
-}
-
-#define FSRT_NAME SortGeoCoordinates
-#define FSRT_TYPE geo_coordinate_distance_t
-
-#define FSRT_COMP(l,r,s) CompareGeoCoordinateDistance(l,r)
-
-uint32_t FSRT_Rand = 0;
-
-static uint32_t RandomGeoCoordinateDistance (void) {
-  return (FSRT_Rand = FSRT_Rand * 31415 + 27818);
-}
-
-#define FSRT__RAND \
-  ((fs_b) + FSRT__UNIT * (RandomGeoCoordinateDistance() % FSRT__DIST(fs_e,fs_b,FSRT__SIZE)))
-
-#include <BasicsC/fsrt.inc>
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief uses a specific geo-spatial index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1521,74 +1270,6 @@ static TRI_geo_index_t* LookupGeoIndex (TRI_geo_index_query_t* query) {
   }
 
   return (TRI_geo_index_t*) idx;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create result
-////////////////////////////////////////////////////////////////////////////////
-
-static void GeoResult (GeoCoordinates* cors,
-                       char const* distance,
-                       TRI_fluent_query_result_t* result) {
-  GeoCoordinate* end;
-  GeoCoordinate* ptr;
-  TRI_doc_mptr_t const** wtr;
-  double* dtr;
-  geo_coordinate_distance_t* gnd;
-  geo_coordinate_distance_t* gtr;
-  geo_coordinate_distance_t* tmp;
-  size_t n;
-
-  if (cors == NULL) {
-    result->_error = TRI_DuplicateString("cannot execute geo index search");
-    return;
-  }
-
-  // sort the result
-  n = cors->length;
-
-  gtr = (tmp = TRI_Allocate(sizeof(geo_coordinate_distance_t) * n));
-  gnd = tmp + n;
-
-  ptr = cors->coordinates;
-  end = cors->coordinates + n;
-
-  dtr = cors->distances;
-
-  for (;  ptr < end;  ++ptr, ++dtr, ++gtr) {
-    gtr->_distance = *dtr;
-    gtr->_data = ptr->data;
-  }
-
-  GeoIndex_CoordinatesFree(cors);
-
-  SortGeoCoordinates(tmp, gnd);
-
-  // copy the documents
-  result->_documents = (TRI_doc_mptr_t const**) (wtr = TRI_Allocate(sizeof(TRI_doc_mptr_t*) * n));
-
-  for (gtr = tmp;  gtr < gnd;  ++gtr, ++wtr) {
-    *wtr = gtr->_data;
-  }
-
-  // copy the distance
-  if (distance != NULL) {
-    TRI_json_t* atr;
-
-    result->_augmented = (atr = TRI_Allocate(sizeof(TRI_json_t) * n));
-
-    for (gtr = tmp;  gtr < gnd;  ++gtr, ++atr) {
-      atr->_type = TRI_JSON_ARRAY;
-      TRI_InitVector(&atr->_value._objects, sizeof(TRI_json_t));
-
-      TRI_InsertArrayJson(atr, distance, TRI_CreateNumberJson(gtr->_distance));
-    }
-  }
-
-  TRI_Free(tmp);
-
-  result->_total = result->_length = n;
-  result->_scannedIndexEntries += n;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1678,7 +1359,7 @@ static void ExecuteNearQuery (TRI_fluent_query_t* qry,
   }
 
   // and append result
-  GeoResult(cors, query->_distance, result);
+  // GeoResult(cors, query->_distance, result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2389,7 +2070,7 @@ static void ExecuteWithinQuery (TRI_fluent_query_t* qry,
   cors = TRI_WithinGeoIndex(&idx->base, query->_latitude, query->_longitude, query->_radius);
 
   // and create result
-  GeoResult(cors, query->_distance, result);
+  // GeoResult(cors, query->_distance, result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2564,34 +2245,6 @@ TRI_fluent_query_t* TRI_CreateDocumentQuery (TRI_fluent_query_t* operand, TRI_vo
 
   query->_operand = operand;
   query->_did = did;
-
-  return &query->base;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up edges
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_fluent_query_t* TRI_CreateEdgesQuery (TRI_vocbase_col_t const* edges,
-                                   TRI_fluent_query_t* operand,
-                                   TRI_edge_direction_e direction) {
-  TRI_edges_query_t* query;
-
-  query = TRI_Allocate(sizeof(TRI_edges_query_t));
-
-  query->base._type = TRI_QUE_TYPE_EDGES;
-  query->base._collection = edges;
-  query->base._isOptimised = false;
-
-  query->base.optimise = OptimiseEdgesQuery;
-  query->base.execute = ExecuteEdgesQuery;
-  query->base.json = JsonEdgesQuery;
-  query->base.stringify = StringifyEdgesQuery;
-  query->base.clone = CloneEdgesQuery;
-  query->base.free = FreeEdgesQuery;
-
-  query->_operand = operand;
-  query->_direction = direction;
 
   return &query->base;
 }

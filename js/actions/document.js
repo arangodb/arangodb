@@ -8,13 +8,11 @@ function getDocument(req, res) {
     var collection = decodeURIComponent(req._suffix[0]);
     var documentId = decodeURIComponent(req._suffix[1]);
     var result = {
-      "collection" : collection,
-      "documentId" : documentId,
       "document" : {}
     };
   
     
-    result.document = db[collection].document_wrapped(documentId);
+    result.document = db[collection].document(documentId);
     actionResultOK(req, res, 200, result);    
   }
   catch (e) {
@@ -31,14 +29,15 @@ function deleteDocument(req, res) {
   try {
     var collection = decodeURIComponent(req._suffix[0]);
     var documentId = decodeURIComponent(req._suffix[1]);
-    var result = {
-      "collection" : collection,
-      "documentId" : documentId      
-    };
+    
+    var result = {};
   
     
     if (db[collection].delete(documentId)) {
-      result.document = undefined;
+      result = { 
+        "deleted" : true,
+        "_id" : documentId
+      };
       actionResultOK(req, res, 200, result);          
     }
     else {
@@ -62,8 +61,8 @@ function postDocument(req, res) {
     var id = db[collection].save(json);
 
     var result = {
-      "collection" : collection,
-      "documentId" : id
+      "created" : true,
+      "_id" : id
     };
       
     actionResultOK(req, res, 201, result);    
@@ -86,8 +85,8 @@ function putDocument(req, res) {
     var id = db[collection].replace(documentId, json);
 
     var result = {
-      "collection" : collection,
-      "documentId" : id
+      "updated" : true,
+      "_id" : id
     };
       
     actionResultOK(req, res, 202, result);    
