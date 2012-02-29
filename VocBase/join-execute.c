@@ -46,7 +46,7 @@ static TRI_data_feeder_t* DetermineGeoIndexUsage (const TRI_vocbase_t* vocbase,
   TRI_data_feeder_t* feeder = NULL;
   size_t i;
  
-  assert(part->_restriction);
+  assert(part->_geoRestriction);
 
   indexDefinitions = TRI_GetCollectionIndexes(vocbase, part->_collectionName);
   if (!indexDefinitions) {
@@ -67,12 +67,12 @@ static TRI_data_feeder_t* DetermineGeoIndexUsage (const TRI_vocbase_t* vocbase,
     }
 
     if (strcmp(indexDefinition->_fields->_buffer[0],
-        part->_restriction->_compareLat._field) != 0) {
+               part->_geoRestriction->_compareLat._field) != 0) {
       continue;
     }
     
     if (strcmp(indexDefinition->_fields->_buffer[1],
-        part->_restriction->_compareLon._field) != 0) {
+               part->_geoRestriction->_compareLon._field) != 0) {
       continue;
     }
 
@@ -80,7 +80,7 @@ static TRI_data_feeder_t* DetermineGeoIndexUsage (const TRI_vocbase_t* vocbase,
       TRI_CreateDataFeederGeoLookup((TRI_doc_collection_t*) part->_collection, 
                                     (TRI_join_t*) join, 
                                     level,
-                                    part->_restriction);
+                                    part->_geoRestriction);
 
     if (feeder) {
       // set up addtl data for feeder
@@ -113,7 +113,7 @@ static TRI_data_feeder_t* DetermineIndexUsage (const TRI_vocbase_t* vocbase,
   size_t numConsts;
   size_t indexLength = 0;
 
-  assert(!part->_restriction);
+  assert(!part->_geoRestriction);
 
   if (part->_ranges) {
     TRI_InitVectorPointer(&matches);
@@ -228,17 +228,27 @@ static TRI_data_feeder_t* DetermineIndexUsage (const TRI_vocbase_t* vocbase,
           // if the index found contains more fields than the one we previously found, 
           // we use the new one 
           // (assumption: the more fields index, the less selective is the index)
-          if (indexDefinition->_type == TRI_IDX_TYPE_HASH_INDEX) {
+          if (indexDefinition->_type == TRI_IDX_TYPE_HASH_INDEX ||
+              indexDefinition->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
             // use a hash index defined for the collection
             if (feeder) {
               // free any other feeder previously set up
               feeder->free(feeder);
             }
 
-            feeder = 
-              TRI_CreateDataFeederHashLookup((TRI_doc_collection_t*) part->_collection, 
-                                             (TRI_join_t*) join, 
-                                             level);
+            if (indexDefinition->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+              feeder = 
+                TRI_CreateDataFeederSkiplistLookup((TRI_doc_collection_t*) part->_collection, 
+                                                   (TRI_join_t*) join, 
+                                                   level);
+            }
+            else {
+              feeder = 
+                TRI_CreateDataFeederHashLookup((TRI_doc_collection_t*) part->_collection, 
+                                               (TRI_join_t*) join, 
+                                               level);
+            }
+
             if (feeder) {
               // set up addtl data for feeder
               feeder->_indexId = indexDefinition->_iid;
@@ -271,14 +281,25 @@ EXIT2:
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Return data part type for a join part
+/// @brief Return document data part type for a join part
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline TRI_select_part_e JoinPartDataPartType(const TRI_join_type_e type) {
+static inline TRI_select_part_e GetDocumentDataPartType(const TRI_join_type_e type) {
   if (type == JOIN_TYPE_LIST) {
-    return RESULT_PART_MULTI;
+    return RESULT_PART_DOCUMENT_MULTI;
   }
-  return RESULT_PART_SINGLE;
+  return RESULT_PART_DOCUMENT_SINGLE;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Return value data part type for a join part
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_select_part_e GetValueDataPartType(const TRI_join_type_e type) {
+  if (type == JOIN_TYPE_LIST) {
+    return RESULT_PART_VALUE_MULTI;
+  }
+  return RESULT_PART_VALUE_SINGLE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -302,25 +323,47 @@ TRI_select_result_t* TRI_JoinSelectResult (const TRI_vocbase_t* vocbase,
   TRI_InitVectorPointer(dataparts);
   for (i = 0; i < join->_parts._length; i++) {
     part = (TRI_join_part_t*) join->_parts._buffer[i];
-    datapart = TRI_CreateDataPart(part->_alias, 
-                                  part->_collection, 
-                                  JoinPartDataPartType(part->_type));
-    if (datapart) {
-      TRI_PushBackVectorPointer(dataparts, datapart);
+    if (part) {
+      datapart = TRI_CreateDataPart(part->_alias, 
+                                    part->_collection, 
+                                    GetDocumentDataPartType(part->_type),
+                                    0);
+      if (datapart) {
+        TRI_PushBackVectorPointer(dataparts, datapart);
+
+        // if result contains some artificial extra data, create an additional
+        // result part for it
+        if (part->_extraData._size) {
+          datapart = TRI_CreateDataPart(part->_extraData._alias,
+                                        NULL,
+                                        GetValueDataPartType(part->_type),
+                                        part->_extraData._size);
+
+          if (datapart) {
+            TRI_PushBackVectorPointer(dataparts, datapart);
+          }
+          else {
+            error = true;
+          }
+        }
+      } 
+      else {
+        error = true;
+      }
+
+      // determine the access type (index usage/full table scan) for collection
+      if (part->_geoRestriction) {
+        part->_feeder = DetermineGeoIndexUsage(vocbase, join, i, part);
+      }
+      else {
+        part->_feeder = DetermineIndexUsage(vocbase, join, i, part);
+      }
+  
+      if (!part->_feeder) {
+        error = true;
+      }
     } 
     else {
-      error = true;
-    }
-
-    // determine the access type (index usage/full table scan) for collection
-    if (part->_restriction) {
-      part->_feeder = DetermineGeoIndexUsage(vocbase, join, i, part);
-    }
-    else {
-      part->_feeder = DetermineIndexUsage(vocbase, join, i, part);
-    }
-
-    if (!part->_feeder) {
       error = true;
     }
   }
@@ -400,7 +443,6 @@ static void RecursiveJoin (TRI_select_result_t* results,
                            TRI_voc_ssize_t *limit) {
   TRI_join_part_t* part;
   TRI_data_feeder_t* feeder;
-  TRI_doc_mptr_t* document;
   size_t numJoins;
   bool joinMatch = false;
 
@@ -422,19 +464,17 @@ static void RecursiveJoin (TRI_select_result_t* results,
   if (part->_type == JOIN_TYPE_LIST) {
     // join type is aggregate (list join)
     assert(level > 0);
-    part->_singleDocument = NULL;
     TRI_ClearVectorPointer(&part->_listDocuments);
+    TRI_ClearVectorPointer(&part->_extraData._listValues);
 
     while (true) {
       // get next document
-      document = feeder->current(feeder);
-      if (!document) {
+      if (!feeder->current(feeder)) {
         // end of documents in collection
         // exit this join
         break;
       }
 
-      part->_singleDocument = document;
       if (part->_condition && part->_context) {
         // check ON clause
         if (!CheckJoinClause(join, level)) {
@@ -443,7 +483,8 @@ static void RecursiveJoin (TRI_select_result_t* results,
       }
 
       // push documents into vector
-      TRI_PushBackVectorPointer(&part->_listDocuments, document);
+      TRI_PushBackVectorPointer(&part->_listDocuments, part->_singleDocument);
+      TRI_PushBackVectorPointer(&part->_extraData._listValues, part->_extraData._singleValue);
     }
     
     // all documents collected in vector
@@ -485,21 +526,19 @@ static void RecursiveJoin (TRI_select_result_t* results,
 
   while (true) {
     // get next document
-    document = feeder->current(feeder);
-
-    if (!document) {
+    if (!feeder->current(feeder)) {
       // end of documents in collection
       // exit this join
       break;
     }
 
-    part->_singleDocument = document;
     if (level > 0 && part->_condition && part->_context) {
       // check ON clause
       if (!CheckJoinClause(join, level)) {
         if (part->_type == JOIN_TYPE_OUTER) {
           // set document to null in outer join
           part->_singleDocument = NULL;
+          part->_extraData._singleValue = NULL;
 
           // left join: if we are not at the last document of the left
           // joined collection, we continue
@@ -576,7 +615,6 @@ void TRI_ExecuteJoins (TRI_select_result_t* results,
 
     part->_feeder->init(part->_feeder);
   }
-
   // execute the join
   RecursiveJoin(results, join, 0, where, context, &_skip, &_limit);
   
@@ -587,7 +625,11 @@ void TRI_ExecuteJoins (TRI_select_result_t* results,
     if (part->_type == JOIN_TYPE_LIST) {
       TRI_DestroyVectorPointer(&part->_listDocuments);
       part->_listDocuments._buffer = NULL;
+
+      TRI_DestroyVectorPointer(&part->_extraData._listValues);
+      part->_extraData._listValues._buffer = NULL;
     }
+
     if (part->_feeder) {
       // free data feeder early, we don't need it any longer
       part->_feeder->free(part->_feeder);

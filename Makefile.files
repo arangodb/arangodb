@@ -90,13 +90,9 @@ avocado_SOURCES = \
 	Logger/LoggerTiming.cpp \
 	ProgramOptions/program-options.c \
 	QL/ParserWrapper.cpp \
-	QL/ast-node.c \
 	QL/ast-query.c \
-	QL/error.c \
 	QL/formatter.c \
-	QL/javascripter.c \
 	QL/optimize.c \
-	QL/parser-context.c \
 	QL/parser.c \
 	QL/tokens.c \
 	Rest/AddressPort.cpp \
@@ -139,6 +135,8 @@ avocado_SOURCES = \
 	ShapedJson/json-shaper.c \
 	ShapedJson/shape-accessor.c \
 	ShapedJson/shaped-json.c \
+	SkipLists/skiplist.c \
+	SkipLists/skiplistIndex.c \
 	V8/v8-actions.cpp \
 	V8/v8-conv.cpp \
 	V8/v8-json.cpp \
@@ -179,6 +177,11 @@ avocado_SOURCES = \
 	VocBase/join-execute.c \
 	VocBase/join.c \
 	VocBase/order.c \
+	VocBase/query-base.c \
+	VocBase/query-error.c \
+	VocBase/query-javascript.c \
+	VocBase/query-node.c \
+	VocBase/query-parse.c \
 	VocBase/query.c \
 	VocBase/result-set.c \
 	VocBase/select-result.c \
@@ -199,8 +202,7 @@ JAVASCRIPT_HEADER = \
 	js/server/js-actions.h \
 	js/server/js-aql.h \
 	js/server/js-json.h \
-	js/server/js-shell.h \
-	js/server/js-simple-query.h
+	js/server/js-shell.h
 
 BUILT_SOURCES += $(JAVASCRIPT_HEADER)
 
@@ -251,11 +253,11 @@ DOXYGEN = \
 	Doxygen/js/bootstrap/print.c \
 	Doxygen/js/modules/graph.c \
 	Doxygen/js/modules/jsunity.c \
+	Doxygen/js/modules/simple-query.c \
 	Doxygen/js/server/modules.c \
 	Doxygen/js/server/actions.c \
 	Doxygen/js/server/json.c \
 	Doxygen/js/server/shell.c \
-	Doxygen/js/server/simple-query.c \
 	Doxygen/js/system/collections.c \
 	Doxygen/js/system/indexes.c
 

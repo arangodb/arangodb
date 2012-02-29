@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief error codes and translations
+/// @brief AST to javascript-string conversion functions
 ///
 /// @file
 ///
@@ -25,56 +25,58 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_QL_ERROR
-#define TRIAGENS_DURHAM_QL_ERROR
+#ifndef TRIAGENS_DURHAM_VOC_BASE_QUERY_JAVASCRIPT_H
+#define TRIAGENS_DURHAM_VOC_BASE_QUERY_JAVASCRIPT_H 1
 
-#include <stdarg.h>
-#include <stdio.h>
-
+#include <BasicsC/string-buffer.h>
 #include <BasicsC/strings.h>
 
+#include "VocBase/query-node.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup QL
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief enumeration of possible parse errors 
+/// @brief to-Javascript conversion context
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum {
-  ERR_OK                               = 0,
-  ERR_PARSE                            = 1,
-  ERR_OOM                              = 2,
-  ERR_NUMBER_OUT_OF_RANGE              = 100,
-  ERR_PARAMETER_NUMBER_OUT_OF_RANGE    = 101,
-  ERR_LIMIT_VALUE_OUT_OF_RANGE         = 102,
-  ERR_COLLECTION_NAME_INVALID          = 110, 
-  ERR_COLLECTION_ALIAS_REDECLARED      = 111, 
-  ERR_COLLECTION_ALIAS_UNDECLARED      = 112, 
-  ERR_COLLECTION_ALIAS_INVALID         = 113, 
-  ERR_GEO_RESTRICTION_INVALID          = 115, 
-
-  ERR_LAST       
+typedef struct QL_query_javascript_converter_s {
+  TRI_string_buffer_t* _buffer;
+  char*                _prefix;
 }
-QL_error_type_e;
+TRI_query_javascript_converter_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get label/translation for an error code
+/// @brief initialize the to-Javascript conversion context
 ////////////////////////////////////////////////////////////////////////////////
 
-char* QLErrorGetLabel (const QL_error_type_e);
+TRI_query_javascript_converter_t* TRI_InitQueryJavascript (void);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a formatted error message with wildcards replaced
+/// @brief free the to-Javascript conversion text
 ////////////////////////////////////////////////////////////////////////////////
 
-char* QLErrorFormat (const QL_error_type_e, va_list args);
+void TRI_FreeQueryJavascript (TRI_query_javascript_converter_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a javascript string by recursively walking an expression AST
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ConvertQueryJavascript (TRI_query_javascript_converter_t*, 
+                                 const TRI_query_node_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a javascript string by recursively walking an order by AST
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ConvertOrderQueryJavascript (TRI_query_javascript_converter_t*, 
+                                      const TRI_query_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

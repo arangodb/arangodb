@@ -55,8 +55,10 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  RESULT_PART_SINGLE = 0,
-  RESULT_PART_MULTI  = 1
+  RESULT_PART_DOCUMENT_SINGLE = 0,
+  RESULT_PART_DOCUMENT_MULTI  = 1,
+  RESULT_PART_VALUE_SINGLE    = 2,
+  RESULT_PART_VALUE_MULTI     = 3
 }
 TRI_select_part_e;
 
@@ -69,6 +71,7 @@ typedef struct TRI_select_datapart_s {
   char* _alias;
   TRI_doc_collection_t* _collection;
   TRI_select_part_e _type;
+  size_t _extraDataSize;
 
   void (*free) (struct TRI_select_datapart_s*);
 }
@@ -80,7 +83,8 @@ TRI_select_datapart_t;
 
 TRI_select_datapart_t* TRI_CreateDataPart (const char*, 
                                            const TRI_doc_collection_t*,
-                                           const TRI_select_part_e);
+                                           const TRI_select_part_e,
+                                           const size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document index within a select result

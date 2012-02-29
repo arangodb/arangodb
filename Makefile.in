@@ -183,10 +183,8 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Logger/LoggerData.$(OBJEXT) Logger/LoggerInfo.$(OBJEXT) \
 	Logger/LoggerStream.$(OBJEXT) Logger/LoggerTiming.$(OBJEXT) \
 	ProgramOptions/program-options.$(OBJEXT) \
-	QL/ParserWrapper.$(OBJEXT) QL/ast-node.$(OBJEXT) \
-	QL/ast-query.$(OBJEXT) QL/error.$(OBJEXT) \
-	QL/formatter.$(OBJEXT) QL/javascripter.$(OBJEXT) \
-	QL/optimize.$(OBJEXT) QL/parser-context.$(OBJEXT) \
+	QL/ParserWrapper.$(OBJEXT) QL/ast-query.$(OBJEXT) \
+	QL/formatter.$(OBJEXT) QL/optimize.$(OBJEXT) \
 	QL/parser.$(OBJEXT) QL/tokens.$(OBJEXT) \
 	Rest/AddressPort.$(OBJEXT) Rest/AnyServer.$(OBJEXT) \
 	Rest/HttpRequest.$(OBJEXT) Rest/HttpResponse.$(OBJEXT) \
@@ -220,7 +218,8 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Scheduler/Task.$(OBJEXT) Scheduler/TimerTask.$(OBJEXT) \
 	ShapedJson/json-shaper.$(OBJEXT) \
 	ShapedJson/shape-accessor.$(OBJEXT) \
-	ShapedJson/shaped-json.$(OBJEXT) V8/v8-actions.$(OBJEXT) \
+	ShapedJson/shaped-json.$(OBJEXT) SkipLists/skiplist.$(OBJEXT) \
+	SkipLists/skiplistIndex.$(OBJEXT) V8/v8-actions.$(OBJEXT) \
 	V8/v8-conv.$(OBJEXT) V8/v8-json.$(OBJEXT) \
 	V8/v8-line-editor.$(OBJEXT) V8/v8-shell.$(OBJEXT) \
 	V8/v8-utils.$(OBJEXT) V8/v8-vocbase.$(OBJEXT) \
@@ -244,6 +243,9 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	VocBase/fluent-query.$(OBJEXT) VocBase/headers.$(OBJEXT) \
 	VocBase/index.$(OBJEXT) VocBase/join-execute.$(OBJEXT) \
 	VocBase/join.$(OBJEXT) VocBase/order.$(OBJEXT) \
+	VocBase/query-base.$(OBJEXT) VocBase/query-error.$(OBJEXT) \
+	VocBase/query-javascript.$(OBJEXT) \
+	VocBase/query-node.$(OBJEXT) VocBase/query-parse.$(OBJEXT) \
 	VocBase/query.$(OBJEXT) VocBase/result-set.$(OBJEXT) \
 	VocBase/select-result.$(OBJEXT) VocBase/shadow-data.$(OBJEXT) \
 	VocBase/simple-collection.$(OBJEXT) \
@@ -595,13 +597,9 @@ avocado_SOURCES = \
 	Logger/LoggerTiming.cpp \
 	ProgramOptions/program-options.c \
 	QL/ParserWrapper.cpp \
-	QL/ast-node.c \
 	QL/ast-query.c \
-	QL/error.c \
 	QL/formatter.c \
-	QL/javascripter.c \
 	QL/optimize.c \
-	QL/parser-context.c \
 	QL/parser.c \
 	QL/tokens.c \
 	Rest/AddressPort.cpp \
@@ -644,6 +642,8 @@ avocado_SOURCES = \
 	ShapedJson/json-shaper.c \
 	ShapedJson/shape-accessor.c \
 	ShapedJson/shaped-json.c \
+	SkipLists/skiplist.c \
+	SkipLists/skiplistIndex.c \
 	V8/v8-actions.cpp \
 	V8/v8-conv.cpp \
 	V8/v8-json.cpp \
@@ -684,6 +684,11 @@ avocado_SOURCES = \
 	VocBase/join-execute.c \
 	VocBase/join.c \
 	VocBase/order.c \
+	VocBase/query-base.c \
+	VocBase/query-error.c \
+	VocBase/query-javascript.c \
+	VocBase/query-node.c \
+	VocBase/query-parse.c \
 	VocBase/query.c \
 	VocBase/result-set.c \
 	VocBase/select-result.c \
@@ -703,8 +708,7 @@ JAVASCRIPT_HEADER = \
 	js/server/js-actions.h \
 	js/server/js-aql.h \
 	js/server/js-json.h \
-	js/server/js-shell.h \
-	js/server/js-simple-query.h
+	js/server/js-shell.h
 
 
 ################################################################################
@@ -740,11 +744,11 @@ DOXYGEN = \
 	Doxygen/js/bootstrap/print.c \
 	Doxygen/js/modules/graph.c \
 	Doxygen/js/modules/jsunity.c \
+	Doxygen/js/modules/simple-query.c \
 	Doxygen/js/server/modules.c \
 	Doxygen/js/server/actions.c \
 	Doxygen/js/server/json.c \
 	Doxygen/js/server/shell.c \
-	Doxygen/js/server/simple-query.c \
 	Doxygen/js/system/collections.c \
 	Doxygen/js/system/indexes.c
 
@@ -1169,17 +1173,11 @@ QL/$(DEPDIR)/$(am__dirstamp):
 	@: > QL/$(DEPDIR)/$(am__dirstamp)
 QL/ParserWrapper.$(OBJEXT): QL/$(am__dirstamp) \
 	QL/$(DEPDIR)/$(am__dirstamp)
-QL/ast-node.$(OBJEXT): QL/$(am__dirstamp) QL/$(DEPDIR)/$(am__dirstamp)
 QL/ast-query.$(OBJEXT): QL/$(am__dirstamp) \
 	QL/$(DEPDIR)/$(am__dirstamp)
-QL/error.$(OBJEXT): QL/$(am__dirstamp) QL/$(DEPDIR)/$(am__dirstamp)
 QL/formatter.$(OBJEXT): QL/$(am__dirstamp) \
 	QL/$(DEPDIR)/$(am__dirstamp)
-QL/javascripter.$(OBJEXT): QL/$(am__dirstamp) \
-	QL/$(DEPDIR)/$(am__dirstamp)
 QL/optimize.$(OBJEXT): QL/$(am__dirstamp) QL/$(DEPDIR)/$(am__dirstamp)
-QL/parser-context.$(OBJEXT): QL/$(am__dirstamp) \
-	QL/$(DEPDIR)/$(am__dirstamp)
 QL/parser.$(OBJEXT): QL/$(am__dirstamp) QL/$(DEPDIR)/$(am__dirstamp)
 QL/tokens.$(OBJEXT): QL/$(am__dirstamp) QL/$(DEPDIR)/$(am__dirstamp)
 Rest/$(am__dirstamp):
@@ -1310,6 +1308,16 @@ ShapedJson/shape-accessor.$(OBJEXT): ShapedJson/$(am__dirstamp) \
 	ShapedJson/$(DEPDIR)/$(am__dirstamp)
 ShapedJson/shaped-json.$(OBJEXT): ShapedJson/$(am__dirstamp) \
 	ShapedJson/$(DEPDIR)/$(am__dirstamp)
+SkipLists/$(am__dirstamp):
+	@$(MKDIR_P) SkipLists
+	@: > SkipLists/$(am__dirstamp)
+SkipLists/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) SkipLists/$(DEPDIR)
+	@: > SkipLists/$(DEPDIR)/$(am__dirstamp)
+SkipLists/skiplist.$(OBJEXT): SkipLists/$(am__dirstamp) \
+	SkipLists/$(DEPDIR)/$(am__dirstamp)
+SkipLists/skiplistIndex.$(OBJEXT): SkipLists/$(am__dirstamp) \
+	SkipLists/$(DEPDIR)/$(am__dirstamp)
 V8/$(am__dirstamp):
 	@$(MKDIR_P) V8
 	@: > V8/$(am__dirstamp)
@@ -1403,6 +1411,16 @@ VocBase/join-execute.$(OBJEXT): VocBase/$(am__dirstamp) \
 VocBase/join.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/order.$(OBJEXT): VocBase/$(am__dirstamp) \
+	VocBase/$(DEPDIR)/$(am__dirstamp)
+VocBase/query-base.$(OBJEXT): VocBase/$(am__dirstamp) \
+	VocBase/$(DEPDIR)/$(am__dirstamp)
+VocBase/query-error.$(OBJEXT): VocBase/$(am__dirstamp) \
+	VocBase/$(DEPDIR)/$(am__dirstamp)
+VocBase/query-javascript.$(OBJEXT): VocBase/$(am__dirstamp) \
+	VocBase/$(DEPDIR)/$(am__dirstamp)
+VocBase/query-node.$(OBJEXT): VocBase/$(am__dirstamp) \
+	VocBase/$(DEPDIR)/$(am__dirstamp)
+VocBase/query-parse.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/query.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
@@ -1511,13 +1529,9 @@ mostlyclean-compile:
 	-rm -f Logger/LoggerTiming.$(OBJEXT)
 	-rm -f ProgramOptions/program-options.$(OBJEXT)
 	-rm -f QL/ParserWrapper.$(OBJEXT)
-	-rm -f QL/ast-node.$(OBJEXT)
 	-rm -f QL/ast-query.$(OBJEXT)
-	-rm -f QL/error.$(OBJEXT)
 	-rm -f QL/formatter.$(OBJEXT)
-	-rm -f QL/javascripter.$(OBJEXT)
 	-rm -f QL/optimize.$(OBJEXT)
-	-rm -f QL/parser-context.$(OBJEXT)
 	-rm -f QL/parser.$(OBJEXT)
 	-rm -f QL/tokens.$(OBJEXT)
 	-rm -f Rest/AddressPort.$(OBJEXT)
@@ -1560,6 +1574,8 @@ mostlyclean-compile:
 	-rm -f ShapedJson/json-shaper.$(OBJEXT)
 	-rm -f ShapedJson/shape-accessor.$(OBJEXT)
 	-rm -f ShapedJson/shaped-json.$(OBJEXT)
+	-rm -f SkipLists/skiplist.$(OBJEXT)
+	-rm -f SkipLists/skiplistIndex.$(OBJEXT)
 	-rm -f V8/v8-actions.$(OBJEXT)
 	-rm -f V8/v8-conv.$(OBJEXT)
 	-rm -f V8/v8-json.$(OBJEXT)
@@ -1600,6 +1616,11 @@ mostlyclean-compile:
 	-rm -f VocBase/join-execute.$(OBJEXT)
 	-rm -f VocBase/join.$(OBJEXT)
 	-rm -f VocBase/order.$(OBJEXT)
+	-rm -f VocBase/query-base.$(OBJEXT)
+	-rm -f VocBase/query-error.$(OBJEXT)
+	-rm -f VocBase/query-javascript.$(OBJEXT)
+	-rm -f VocBase/query-node.$(OBJEXT)
+	-rm -f VocBase/query-parse.$(OBJEXT)
 	-rm -f VocBase/query.$(OBJEXT)
 	-rm -f VocBase/result-set.$(OBJEXT)
 	-rm -f VocBase/select-result.$(OBJEXT)
@@ -1697,13 +1718,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Logger/$(DEPDIR)/LoggerTiming.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ProgramOptions/$(DEPDIR)/program-options.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@QL/$(DEPDIR)/ParserWrapper.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@QL/$(DEPDIR)/ast-node.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@QL/$(DEPDIR)/ast-query.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@QL/$(DEPDIR)/error.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@QL/$(DEPDIR)/formatter.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@QL/$(DEPDIR)/javascripter.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@QL/$(DEPDIR)/optimize.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@QL/$(DEPDIR)/parser-context.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@QL/$(DEPDIR)/parser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@QL/$(DEPDIR)/tokens.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Rest/$(DEPDIR)/AddressPort.Po@am__quote@
@@ -1746,6 +1763,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@ShapedJson/$(DEPDIR)/json-shaper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ShapedJson/$(DEPDIR)/shape-accessor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ShapedJson/$(DEPDIR)/shaped-json.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@SkipLists/$(DEPDIR)/skiplist.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@SkipLists/$(DEPDIR)/skiplistIndex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-actions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-conv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-json.Po@am__quote@
@@ -1786,6 +1805,11 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/join-execute.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/join.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/order.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-base.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-error.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-javascript.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-node.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-parse.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/result-set.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/select-result.Po@am__quote@
@@ -2125,6 +2149,8 @@ distclean-generic:
 	-rm -f Scheduler/$(am__dirstamp)
 	-rm -f ShapedJson/$(DEPDIR)/$(am__dirstamp)
 	-rm -f ShapedJson/$(am__dirstamp)
+	-rm -f SkipLists/$(DEPDIR)/$(am__dirstamp)
+	-rm -f SkipLists/$(am__dirstamp)
 	-rm -f V8/$(DEPDIR)/$(am__dirstamp)
 	-rm -f V8/$(am__dirstamp)
 	-rm -f Variant/$(DEPDIR)/$(am__dirstamp)
@@ -2143,7 +2169,7 @@ clean-am: clean-generic clean-local clean-sbinPROGRAMS mostlyclean-am
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) V8/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SkipLists/$(DEPDIR) V8/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -2191,7 +2217,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) V8/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SkipLists/$(DEPDIR) V8/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

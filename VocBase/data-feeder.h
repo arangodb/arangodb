@@ -58,7 +58,7 @@ extern "C" {
 /// @LIT{users u1 INNER JOIN users u2 ON (u1.id == u2.id)}, then there will be 
 /// a separate index selection per collection instance.
 ///
-/// @section Requirements
+/// @section IndexRequirement Requirements
 ///
 /// Which index is used depends on which indexes are available for the collections
 /// used and what is contained in the query's WHERE and JOIN conditions.
@@ -81,14 +81,14 @@ extern "C" {
 /// There is no way to explicitly specify which index to use/prefer/reject in a
 /// query as there sometimes is in other database products.
 ///
-/// @section Index types
+/// @section IndexTypes Index types
 /// 
 /// There are the following index types:
 /// - primary index (automatically created for the "_id" attribute of a collection)
 /// - hash index (used-defined index on one or many attributes of a collection)
 /// - geo index (user-defined index on two attributes of a collection)
 ///
-/// @subsection Primary index
+/// @subsection PrimaryIndex Primary index
 ///
 /// The collection's primary index will only be used to access the documents of a
 /// collection if the WHERE/JOIN condition for the collection contains an equality
@@ -99,7 +99,7 @@ extern "C" {
 /// A collection's primary index will not be used for any comparison other than
 /// equality comparisons or for multi-attribute predicates.
 ///
-/// @subsection Hash index
+/// @subsection HashIndex Hash index
 ///
 /// Hash indexes for collections can be used if all of the indexed attributes are
 /// specified in the WHERE/JOIN condition. It is not sufficient to use just a subset
@@ -115,13 +115,23 @@ extern "C" {
 /// A hash index will not be used for any comparison other than equality comparsions
 /// or for conditions that do not contain all indexed attributes.
 ///
-/// @section Index preference
+/// @subsection GeoIndex Geo index
+///
+/// Geo indexes are automatically used when a geo restriction is specified for a
+/// collection in the FROM clause of a query. Geo indexes are ignored for all other
+/// conditions specified in the ON or WHERE clauses of a query.
+/// 
+/// @section IndexPreference Index preference
 /// 
 /// As mentioned before, The index selection process will pick the most appropriate
 /// index for each collection. The definition of "appropriate" in this context is:
 ///
-/// - If the primary index can be used, it will be used. The reason for this is that
-///   the primary index is unique and guaranteed to return at most one document.
+/// - If a geo restriction is specified for a collection, the most appropriate geo
+///   index for the collection will be used. If there is no geo index defined for
+///   the collection, the query will fail.
+/// - If no geo restriction is specified and the primary index can be used, the 
+///   primary index will be used. The reason for this is that the primary index is 
+///   unique and guaranteed to return at most one document.
 ///   Furthermore, the primary index is present in memory anyway and access to it is
 ///   fast.
 /// - If the primary index cannot be used, all candidate hash indexes will be
@@ -145,6 +155,8 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
                                                       
 typedef void TRI_join_t;
+
+typedef void TRI_part_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         general feeder attributes
@@ -173,7 +185,8 @@ typedef enum {
   FEEDER_TABLE_SCAN      = 1,
   FEEDER_PRIMARY_LOOKUP  = 2,
   FEEDER_HASH_LOOKUP     = 3,
-  FEEDER_GEO_LOOKUP      = 4
+  FEEDER_SKIPLIST_LOOKUP = 4,
+  FEEDER_GEO_LOOKUP      = 5
 }
 TRI_data_feeder_type_e;
 
@@ -230,13 +243,14 @@ typedef struct TRI_data_feeder_s {
   TRI_idx_iid_t _indexId;
   TRI_vector_pointer_t* _ranges;
   TRI_join_t* _join;
+  TRI_part_t* _part;
   size_t _level;
   void* _state;
   const TRI_doc_collection_t* _collection;
   
   void (*init) (struct TRI_data_feeder_s*);
   void (*rewind) (struct TRI_data_feeder_s*);
-  TRI_doc_mptr_t* (*current) (struct TRI_data_feeder_s*);
+  bool (*current) (struct TRI_data_feeder_s*);
   bool (*eof) (struct TRI_data_feeder_s*);
   void (*free) (struct TRI_data_feeder_s*);
 }
@@ -312,7 +326,7 @@ TRI_data_feeder_t* TRI_CreateDataFeederPrimaryLookup (const TRI_doc_collection_t
 /// @brief internals/guts of hash lookup data feeder
 ///
 /// The hash index data feeder will use a unique or non-unique hash index 
-/// defined for a collection. It will return any documents available in the 
+/// defined for a collection. It will return any documents available in the hash
 /// for the compare values. It supports const and ref access.  
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -332,6 +346,35 @@ TRI_data_feeder_hash_lookup_t;
 TRI_data_feeder_t* TRI_CreateDataFeederHashLookup (const TRI_doc_collection_t*,
                                                    TRI_join_t*,
                                                    size_t);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                         skiplists
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internals/guts of skiplist data feeder
+///
+/// The skiplist data feeder will use a unique or non-unique skiplist
+/// defined for a collection. It will return any documents available in the list
+/// for the compare values. It supports const and ref access.  
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_data_feeder_skiplist_lookup_s {
+  bool _isEmpty;
+  TRI_index_t* _index;
+  SkiplistIndexElements* _skiplistElements;
+  TRI_js_exec_context_t _context;
+  size_t _position;
+}
+TRI_data_feeder_skiplist_lookup_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Create a new data feeder (skiplist lookup)
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_data_feeder_t* TRI_CreateDataFeederSkiplistLookup (const TRI_doc_collection_t*,
+                                                       TRI_join_t*,
+                                                       size_t);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         geo index

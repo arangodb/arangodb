@@ -54,9 +54,9 @@ extern "C" {
 typedef struct TRI_shadow_s {
   int64_t _rc;
 
-    TRI_voc_cid_t _cid;
-    TRI_voc_did_t _did;
-    TRI_voc_rid_t _rid;
+  TRI_voc_cid_t _cid;
+  TRI_voc_did_t _did;
+  TRI_voc_rid_t _rid;
 
   void* _data;
 }

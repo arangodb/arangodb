@@ -11,30 +11,34 @@
 #include <BasicsC/common.h>
 #include <BasicsC/strings.h>
 
-#include "QL/ast-node.h"
-#include "QL/parser-context.h"
+#include "VocBase/query-node.h"
+#include "VocBase/query-base.h"
+#include "VocBase/query-parse.h"
 #include "QL/parser.h"
 
-#define YY_EXTRA_TYPE QL_parser_context_t*
-#define YY_USER_ACTION yylloc->first_line = yylineno; yylloc->first_column = yycolumn; yylloc->last_column = yycolumn + yyleng - 1; yycolumn += yyleng;
+#define YY_EXTRA_TYPE TRI_query_template_t*
+
+// currently we do not use the positioning information
+// #define YY_USER_ACTION yylloc->first_line = yylineno; yylloc->first_column = yycolumn; yylloc->last_column = yycolumn + yyleng - 1; yycolumn += yyleng;
 
 #define YY_NO_INPUT 1
 
-#define YY_INPUT(resultBuffer,resultState,maxBytesToRead) {          \
-  int length = (yyextra)->_lexState._length;                         \
-                                                                     \
-  if (length > maxBytesToRead) {                                     \
-    length = maxBytesToRead;                                         \
-  }                                                                  \
-  if (length > 0) {                                                  \
-    memcpy(resultBuffer, (yyextra)->_lexState._buffer,length);       \
-    (yyextra)->_lexState._buffer += length;                          \
-    (yyextra)->_lexState._length -= length;                          \
-    resultState = length;                                            \
-  }                                                                  \
-  else {                                                             \
-    resultState = YY_NULL;                                           \
-  }                                                                  \
+#define YY_INPUT(resultBuffer, resultState, maxBytesToRead) {            \
+  TRI_query_parser_t* parser = (yyextra)->_parser;                       \
+  int length = parser->_length;                                          \
+                                                                         \
+  if (length > maxBytesToRead) {                                         \
+    length = maxBytesToRead;                                             \
+  }                                                                      \
+  if (length > 0) {                                                      \
+    memcpy(resultBuffer, parser->_buffer, length);                       \
+    parser->_buffer += length;                                           \
+    parser->_length -= length;                                           \
+    resultState = length;                                                \
+  }                                                                      \
+  else {                                                                 \
+    resultState = YY_NULL;                                               \
+  }                                                                      \
 }
 
 %}
@@ -230,27 +234,27 @@
   * --------------------------------------------------------------------------- */
 
 ([a-zA-Z][_a-zA-Z0-9]*|_+[a-zA-Z]+[_a-zA-Z0-9]*) { 
-  yylval->strval = QLParseAllocString(yyextra, yytext); 
+  yylval->strval = TRI_ParseQueryAllocString(yyextra, yytext); 
   return IDENTIFIER; 
 }
 
 `(\\.|[^\\`])*` {
-  yylval->strval = QLParseAllocString(yyextra, yytext); 
+  yylval->strval = TRI_ParseQueryAllocString(yyextra, yytext); 
   return QUOTED_IDENTIFIER;
 }
 
 (0|[1-9][0-9]*)(\.[0-9]+([eE]([\-\+])?[0-9]+)?)? {  
-  yylval->strval = QLParseAllocString(yyextra, yytext); 
+  yylval->strval = TRI_ParseQueryAllocString(yyextra, yytext); 
   return REAL; 
 }
 
 \"(\\.|[^\\\"])*\" {
-  yylval->strval = QLParseAllocString(yyextra, yytext); 
+  yylval->strval = TRI_ParseQueryAllocString(yyextra, yytext); 
   return STRING;
 }
 
 '(\\.|[^\\'])*' {
-  yylval->strval = QLParseAllocString(yyextra, yytext); 
+  yylval->strval = TRI_ParseQueryAllocString(yyextra, yytext); 
   return STRING;
 }
 
@@ -260,12 +264,12 @@
   * --------------------------------------------------------------------------- */
 
 @(0|[1-9][0-9]*) {
-  yylval->strval = QLParseAllocString(yyextra, yytext + 1); 
+  yylval->strval = TRI_ParseQueryAllocString(yyextra, yytext + 1); 
   return PARAMETER;
 }
 
 @[a-zA-Z][a-zA-Z0-9_]+@ {
-  yylval->strval = QLParseAllocString2(yyextra, yytext + 1 , strlen(yytext) - 2);
+  yylval->strval = TRI_ParseQueryAllocString2(yyextra, yytext + 1 , strlen(yytext) - 2);
   return PARAMETER_NAMED;
 }
 

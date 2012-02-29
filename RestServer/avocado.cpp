@@ -349,6 +349,7 @@ using namespace triagens::avocado;
 int main (int argc, char* argv[]) {
   TRIAGENS_RESULT_GENERATOR_INITIALISE;
   TRI_InitialiseVocBase();
+  TRI_InitialiseQueryErrors();
 
   // create and start a AvocadoDB server
   AvocadoServer server(argc, argv);

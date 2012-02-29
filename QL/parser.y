@@ -3,35 +3,34 @@
 %name-prefix="QL"
 %locations
 %defines
-%parse-param { QL_parser_context_t *context }
-%lex-param { void *scanner }
+%parse-param { TRI_query_template_t* const template_ }
+%lex-param { void* scanner }
 %error-verbose
 
 %{
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
 
 #include <BasicsC/common.h>
 #include <BasicsC/conversions.h>
 #include <BasicsC/strings.h>
 
-#include "QL/ast-node.h"
-#include "QL/parser-context.h"
-#include "QL/formatter.h"
-#include "QL/error.h"
+#include "VocBase/query-node.h"
+#include "VocBase/query-base.h"
+#include "VocBase/query-parse.h"
+#include "VocBase/query-error.h"
 
 #define ABORT_IF_OOM(ptr) \
   if (!ptr) { \
-    QLParseRegisterParseError(context, ERR_OOM); \
+    TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_OOM, NULL); \
     YYABORT; \
   }
 
 %}
 
 %union {
-  QL_ast_node_t *node;
+  TRI_query_node_t* node;
   int intval;
   double floatval;
   char *strval;
@@ -39,16 +38,13 @@
 
 
 %{
-int QLlex (YYSTYPE *,YYLTYPE *, void *);
+int QLlex (YYSTYPE*, YYLTYPE*, void*);
 
-void QLerror (YYLTYPE *locp,QL_parser_context_t *context, const char *err) {
-  context->_lexState._errorState._code      = ERR_PARSE; 
-  context->_lexState._errorState._message   = QLParseAllocString(context, (char *) err);
-  context->_lexState._errorState._line      = locp->first_line;
-  context->_lexState._errorState._column    = locp->first_column;
+void QLerror (YYLTYPE* locp, TRI_query_template_t* const template_, const char* err) {
+  TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_PARSE, err); 
 }
 
-#define scanner context->_scanner
+#define scanner template_->_parser->_scanner
 %}
 
 %type <strval> STRING
@@ -142,18 +138,18 @@ query:
 
 empty_query:
     { 
-      context->_query->_type        = QLQueryTypeEmpty;
+      template_->_query->_type        = QLQueryTypeEmpty;
     }
   ;
 
 select_query:
     SELECT select_clause from_clause where_clause order_clause limit_clause {
       // full blown SELECT query
-      context->_query->_type         = QLQueryTypeSelect;
-      context->_query->_select._base = $2;
-      context->_query->_from._base   = $3;
-      context->_query->_where._base  = $4;
-      context->_query->_order._base  = $5;
+      template_->_query->_type         = QLQueryTypeSelect;
+      template_->_query->_select._base = $2;
+      template_->_query->_from._base   = $3;
+      template_->_query->_where._base  = $4;
+      template_->_query->_order._base  = $5;
     }
   ;
 
@@ -170,11 +166,11 @@ select_clause:
 from_clause:
     FROM {
       // from part of a SELECT
-      QL_ast_node_t* list = QLAstNodeCreate(context, QLNodeContainerList);
+      TRI_query_node_t* list = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerList);
       ABORT_IF_OOM(list);
-      QLParseContextPush(context, list); 
+      TRI_ParseQueryContextPush(template_, list); 
     } from_list {
-      $$ = QLParseContextPop(context);
+      $$ = TRI_ParseQueryContextPop(template_);
       ABORT_IF_OOM($$);
     }
   ;	      						
@@ -183,11 +179,11 @@ from_list:
     collection_reference geo_restriction {
       // single table query
       ABORT_IF_OOM($1);
-      QLParseContextAddElement(context, $1);
+      TRI_ParseQueryContextAddElement(template_, $1);
 
       if ($2) {
-        if (!QLAstQueryAddGeoRestriction(context->_query, $1, $2)) {
-          QLParseRegisterParseError(context, ERR_GEO_RESTRICTION_INVALID, ((QL_ast_node_t*) $2->_lhs)->_value._stringValue);
+        if (!QLAstQueryAddGeoRestriction(template_->_query, $1, $2)) {
+          TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_GEO_RESTRICTION_INVALID, ((TRI_query_node_t*) $2->_lhs)->_value._stringValue);
           YYABORT;
         }
       }
@@ -201,7 +197,14 @@ from_list:
       $$->_lhs  = $3;
       $$->_rhs  = $6;
       
-      QLParseContextAddElement(context, $2);
+      if ($4) {
+        if (!QLAstQueryAddGeoRestriction(template_->_query, $3, $4)) {
+          TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_GEO_RESTRICTION_INVALID, ((TRI_query_node_t*) $4->_lhs)->_value._stringValue);
+          YYABORT;
+        }
+      }
+      
+      TRI_ParseQueryContextAddElement(template_, $2);
     }
   ;
 
@@ -210,7 +213,7 @@ geo_2dvalue:
       ABORT_IF_OOM($2);
       ABORT_IF_OOM($4);
 
-      $$ = QLAstNodeCreate(context, QLNodeValueCoordinate);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueCoordinate);
       ABORT_IF_OOM($$);
 
       $$->_lhs = $2;
@@ -222,13 +225,13 @@ geo_1dvalue:
     REAL {
       double d;
 
-      $$ = QLAstNodeCreate(context, QLNodeValueNumberDouble);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueNumberDouble);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       
       d = TRI_DoubleString($1);
       if (TRI_errno() != TRI_ERROR_NO_ERROR && d != 0.0) {
-        QLParseRegisterParseError(context, ERR_NUMBER_OUT_OF_RANGE, $1);
+        TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, $1);
         YYABORT;
       }
       $$->_value._doubleValue = d; 
@@ -236,13 +239,13 @@ geo_1dvalue:
   | '-' REAL %prec UMINUS { 
       double d;
 
-      $$ = QLAstNodeCreate(context, QLNodeValueNumberDouble);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueNumberDouble);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($2);
       
       d = TRI_DoubleString($2);
       if (TRI_errno() != TRI_ERROR_NO_ERROR && d != 0.0) {
-        QLParseRegisterParseError(context, ERR_NUMBER_OUT_OF_RANGE, $2);
+        TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, $2);
         YYABORT;
       }
       $$->_value._doubleValue = -1.0 * d; 
@@ -258,7 +261,7 @@ geo_value:
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($3);
 
-      $$ = QLAstNodeCreate(context, QLNodeValueCoordinate);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueCoordinate);
       ABORT_IF_OOM($$);
 
       $$->_lhs = $1;
@@ -271,7 +274,7 @@ geo_2dreference:
       ABORT_IF_OOM($2);
       ABORT_IF_OOM($4);
 
-      $$ = QLAstNodeCreate(context, QLNodeValueCoordinate);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueCoordinate);
       ABORT_IF_OOM($$);
       $$->_lhs = $2;
       $$->_rhs = $4;
@@ -280,15 +283,15 @@ geo_2dreference:
 
 geo_1dreference:
     collection_alias {
-      QL_ast_node_t* list = QLAstNodeCreate(context, QLNodeContainerList);
+      TRI_query_node_t* list = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerList);
       ABORT_IF_OOM(list);
-      QLParseContextPush(context, list); 
+      TRI_ParseQueryContextPush(template_, list); 
     } object_access %prec MEMBER {
-      $$ = QLAstNodeCreate(context, QLNodeContainerMemberAccess);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerMemberAccess);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       $$->_lhs = $1;
-      QLPopIntoRhs($$, context);
+      TRI_ParseQueryPopIntoRhs($$, template_);
     }
   ;
 
@@ -301,7 +304,7 @@ geo_reference:
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($3);
 
-      $$ = QLAstNodeCreate(context, QLNodeValueCoordinate);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueCoordinate);
       ABORT_IF_OOM($$);
       $$->_lhs = $1;
       $$->_rhs = $3;
@@ -313,7 +316,7 @@ geo_restriction:
       $$ = 0;
     }
   | WITHIN collection_alias ASSIGNMENT '(' geo_reference ',' geo_value ',' REAL ')' {
-      QL_ast_node_t* comp;
+      TRI_query_node_t* comp;
       double distance;
       
       ABORT_IF_OOM($2);
@@ -321,17 +324,17 @@ geo_restriction:
       ABORT_IF_OOM($7);
       ABORT_IF_OOM($9);
       
-      $$ = QLAstNodeCreate(context, QLNodeRestrictWithin);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeRestrictWithin);
       ABORT_IF_OOM($$);
 
       distance = TRI_DoubleString($9);
       if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-        QLParseRegisterParseError(context, ERR_NUMBER_OUT_OF_RANGE, $9);
+        TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, $9);
         YYABORT;
       }
       $$->_value._doubleValue = distance;
 
-      comp = QLAstNodeCreate(context, QLNodeContainerCoordinatePair);
+      comp = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerCoordinatePair);
       ABORT_IF_OOM(comp);
       comp->_lhs = $5;
       comp->_rhs = $7;
@@ -340,7 +343,7 @@ geo_restriction:
       $$->_rhs = comp;
     }
   | NEAR collection_alias ASSIGNMENT '(' geo_reference ',' geo_value ',' REAL ')' {
-      QL_ast_node_t* comp;
+      TRI_query_node_t* comp;
       int64_t num;
       
       ABORT_IF_OOM($2);
@@ -348,17 +351,17 @@ geo_restriction:
       ABORT_IF_OOM($7);
       ABORT_IF_OOM($9);
       
-      $$ = QLAstNodeCreate(context, QLNodeRestrictNear);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeRestrictNear);
       ABORT_IF_OOM($$);
 
       num = TRI_Int64String($9);
       if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-        QLParseRegisterParseError(context, ERR_LIMIT_VALUE_OUT_OF_RANGE, $9);
+        TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE, $9);
         YYABORT;
       }
       $$->_value._intValue = num;
 
-      comp = QLAstNodeCreate(context, QLNodeContainerCoordinatePair);
+      comp = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerCoordinatePair);
       ABORT_IF_OOM(comp);
       comp->_lhs = $5;
       comp->_rhs = $7;
@@ -389,11 +392,11 @@ order_clause:
     }
   | ORDER BY {
       // order by part of a query
-      QL_ast_node_t* list = QLAstNodeCreate(context, QLNodeContainerList);
+      TRI_query_node_t* list = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerList);
       ABORT_IF_OOM(list);
-      QLParseContextPush(context, list); 
+      TRI_ParseQueryContextPush(template_, list); 
     } order_list {
-      $$ = QLParseContextPop(context);
+      $$ = TRI_ParseQueryContextPop(template_);
       ABORT_IF_OOM($$);
     }
   ;
@@ -401,17 +404,17 @@ order_clause:
 order_list:
     order_element {
       ABORT_IF_OOM($1);
-      QLParseContextAddElement(context, $1);
+      TRI_ParseQueryContextAddElement(template_, $1);
     }
   | order_list ',' order_element {
       ABORT_IF_OOM($3);
-      QLParseContextAddElement(context, $3);
+      TRI_ParseQueryContextAddElement(template_, $3);
     }
   ;
 
 order_element:
     expression order_direction {
-      $$ = QLAstNodeCreate(context, QLNodeContainerOrderElement);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerOrderElement);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($2);
@@ -422,17 +425,17 @@ order_element:
 
 order_direction:
     /* empty */ {
-      $$ = QLAstNodeCreate(context, QLNodeValueOrderDirection);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueOrderDirection);
       ABORT_IF_OOM($$);
       $$->_value._boolValue = true;
     }
   | ASC {
-      $$ = QLAstNodeCreate(context, QLNodeValueOrderDirection);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueOrderDirection);
       ABORT_IF_OOM($$);
       $$->_value._boolValue = true;
     }
   | DESC {
-      $$ = QLAstNodeCreate(context, QLNodeValueOrderDirection);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueOrderDirection);
       ABORT_IF_OOM($$);
       $$->_value._boolValue = false;
     }
@@ -446,26 +449,26 @@ limit_clause:
       int64_t d = TRI_Int64String($2);
 
       if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-        QLParseRegisterParseError(context, ERR_LIMIT_VALUE_OUT_OF_RANGE, $2);
+        TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE, $2);
         YYABORT;
       }
       
-      context->_query->_limit._isUsed = true;
-      context->_query->_limit._offset = 0; 
-      context->_query->_limit._count  = d; 
+      template_->_query->_limit._isUsed = true;
+      template_->_query->_limit._offset = 0; 
+      template_->_query->_limit._count  = d; 
     }
   | LIMIT '-' REAL {
       // limit - value
       int64_t d = TRI_Int64String($3);
 
       if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-        QLParseRegisterParseError(context, ERR_LIMIT_VALUE_OUT_OF_RANGE, $3);
+        TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE, $3);
         YYABORT;
       }
       
-      context->_query->_limit._isUsed = true;
-      context->_query->_limit._offset = 0; 
-      context->_query->_limit._count  = -d; 
+      template_->_query->_limit._isUsed = true;
+      template_->_query->_limit._offset = 0; 
+      template_->_query->_limit._count  = -d; 
     }
   | LIMIT REAL ',' REAL { 
       // limit value, value
@@ -473,19 +476,19 @@ limit_clause:
       
       d1 = TRI_Int64String($2);
       if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-        QLParseRegisterParseError(context, ERR_LIMIT_VALUE_OUT_OF_RANGE, $2);
+        TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE, $2);
         YYABORT;
       }
 
       d2 = TRI_Int64String($4);
       if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-        QLParseRegisterParseError(context, ERR_LIMIT_VALUE_OUT_OF_RANGE, $4);
+        TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE, $4);
         YYABORT;
       }
 
-      context->_query->_limit._isUsed = true;
-      context->_query->_limit._offset = d1; 
-      context->_query->_limit._count  = d2;
+      template_->_query->_limit._isUsed = true;
+      template_->_query->_limit._offset = d1; 
+      template_->_query->_limit._count  = d2;
     }
   | LIMIT REAL ',' '-' REAL { 
       // limit value, -value
@@ -493,19 +496,19 @@ limit_clause:
       
       d1 = TRI_Int64String($2);
       if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-        QLParseRegisterParseError(context, ERR_LIMIT_VALUE_OUT_OF_RANGE, $2);
+        TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE, $2);
         YYABORT;
       }
 
       d2 = TRI_Int64String($5);
       if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-        QLParseRegisterParseError(context, ERR_LIMIT_VALUE_OUT_OF_RANGE, $5);
+        TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE, $5);
         YYABORT;
       }
 
-      context->_query->_limit._isUsed = true;
-      context->_query->_limit._offset = d1; 
-      context->_query->_limit._count  = -d2;
+      template_->_query->_limit._isUsed = true;
+      template_->_query->_limit._offset = d1; 
+      template_->_query->_limit._count  = -d2;
     }
   ;
 
@@ -517,29 +520,29 @@ document:
     }
   | '{' '}' {
       // empty document
-      $$ = QLAstNodeCreate(context, QLNodeValueDocument);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueDocument);
       ABORT_IF_OOM($$);
     }
   | '{' {
       // listing of document attributes
-      QL_ast_node_t* list = QLAstNodeCreate(context, QLNodeContainerList);
+      TRI_query_node_t* list = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerList);
       ABORT_IF_OOM(list);
-      QLParseContextPush(context, list); 
+      TRI_ParseQueryContextPush(template_, list); 
     } attribute_list '}' {
-      $$ = QLAstNodeCreate(context, QLNodeValueDocument);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueDocument);
       ABORT_IF_OOM($$);
-      QLPopIntoRhs($$, context);
+      TRI_ParseQueryPopIntoRhs($$, template_);
     }
   ;
 
 attribute_list:
     attribute {
       ABORT_IF_OOM($1);
-      QLParseContextAddElement(context, $1);
+      TRI_ParseQueryContextAddElement(template_, $1);
     }
   | attribute_list ',' attribute {
       ABORT_IF_OOM($3);
-      QLParseContextAddElement(context, $3);
+      TRI_ParseQueryContextAddElement(template_, $3);
     }
   ;
 
@@ -553,26 +556,26 @@ attribute:
 named_attribute:
     IDENTIFIER COLON expression {
       size_t outLength;
-      QL_ast_node_t* str = QLAstNodeCreate(context, QLNodeValueString);
+      TRI_query_node_t* str = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueString);
       ABORT_IF_OOM(str);
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($3);
-      str->_value._stringValue = QLParseRegisterString(context, TRI_UnescapeUtf8String($1, strlen($1), &outLength)); 
+      str->_value._stringValue = TRI_ParseQueryRegisterString(template_, TRI_UnescapeUtf8String($1, strlen($1), &outLength)); 
 
-      $$ = QLAstNodeCreate(context, QLNodeValueNamedValue);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueNamedValue);
       ABORT_IF_OOM($$);
       $$->_lhs = str;
       $$->_rhs = $3;
     }
   | STRING COLON expression {
       size_t outLength;
-      QL_ast_node_t* str = QLAstNodeCreate(context, QLNodeValueString);
+      TRI_query_node_t* str = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueString);
       ABORT_IF_OOM(str);
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($3);
-      str->_value._stringValue = QLParseRegisterString(context, TRI_UnescapeUtf8String($1 + 1, strlen($1) - 2, &outLength)); 
+      str->_value._stringValue = TRI_ParseQueryRegisterString(template_, TRI_UnescapeUtf8String($1 + 1, strlen($1) - 2, &outLength)); 
 
-      $$ = QLAstNodeCreate(context, QLNodeValueNamedValue);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueNamedValue);
       ABORT_IF_OOM($$);
       $$->_lhs = str;
       $$->_rhs = $3;
@@ -586,24 +589,24 @@ collection_reference:
       ABORT_IF_OOM($2);
       ABORT_IF_OOM($2->_value._stringValue);
 
-      if (!QLParseValidateCollectionName($1->_value._stringValue)) {
+      if (!TRI_ParseQueryValidateCollectionName($1->_value._stringValue)) {
         // validate collection name
-        QLParseRegisterParseError(context, ERR_COLLECTION_NAME_INVALID, $1->_value._stringValue);
+        TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_COLLECTION_NAME_INVALID, $1->_value._stringValue);
         YYABORT;
       }
 
-      if (!QLParseValidateCollectionAlias($2->_value._stringValue)) {
+      if (!TRI_ParseQueryValidateCollectionAlias($2->_value._stringValue)) {
         // validate alias
-        QLParseRegisterParseError(context, ERR_COLLECTION_ALIAS_INVALID, $2->_value._stringValue);
+        TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_COLLECTION_ALIAS_INVALID, $2->_value._stringValue);
         YYABORT;
       }
 
-      if (!QLAstQueryAddCollection(context->_query, $1->_value._stringValue, $2->_value._stringValue)) {
-        QLParseRegisterParseError(context, ERR_COLLECTION_ALIAS_REDECLARED, $2->_value._stringValue);
+      if (!QLAstQueryAddCollection(template_->_query, $1->_value._stringValue, $2->_value._stringValue)) {
+        TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_COLLECTION_ALIAS_REDECLARED, $2->_value._stringValue);
         YYABORT;
       }
 
-      $$ = QLAstNodeCreate(context, QLNodeReferenceCollection);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeReferenceCollection);
       ABORT_IF_OOM($$);
       $$->_lhs = $1;
       $$->_rhs = $2;
@@ -613,33 +616,33 @@ collection_reference:
 
 collection_name:
     IDENTIFIER {
-      $$ = QLAstNodeCreate(context, QLNodeValueIdentifier);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       $$->_value._stringValue = $1;
     }
   | QUOTED_IDENTIFIER {
       size_t outLength;
-      $$ = QLAstNodeCreate(context, QLNodeValueIdentifier);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
-      $$->_value._stringValue = QLParseRegisterString(context, TRI_UnescapeUtf8String($1 + 1, strlen($1) - 2, &outLength)); 
+      $$->_value._stringValue = TRI_ParseQueryRegisterString(template_, TRI_UnescapeUtf8String($1 + 1, strlen($1) - 2, &outLength)); 
     }
   ;
 
 collection_alias:
     IDENTIFIER {
-      $$ = QLAstNodeCreate(context, QLNodeReferenceCollectionAlias);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeReferenceCollectionAlias);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       $$->_value._stringValue = $1;
     }
   | QUOTED_IDENTIFIER {
       size_t outLength;
-      $$ = QLAstNodeCreate(context, QLNodeReferenceCollectionAlias);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeReferenceCollectionAlias);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
-      $$->_value._stringValue = QLParseRegisterString(context, TRI_UnescapeUtf8String($1 + 1, strlen($1) - 2, &outLength)); 
+      $$->_value._stringValue = TRI_ParseQueryRegisterString(template_, TRI_UnescapeUtf8String($1 + 1, strlen($1) - 2, &outLength)); 
     }
   ;	
 
@@ -660,37 +663,37 @@ join_type:
 
 list_join: 
     LIST JOIN {
-      $$ = QLAstNodeCreate(context, QLNodeJoinList);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeJoinList);
       ABORT_IF_OOM($$);
     }
   ;
 
 inner_join:
     JOIN {
-      $$ = QLAstNodeCreate(context, QLNodeJoinInner);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeJoinInner);
       ABORT_IF_OOM($$);
     }
   | INNER JOIN {
-      $$ = QLAstNodeCreate(context, QLNodeJoinInner);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeJoinInner);
       ABORT_IF_OOM($$);
     }
   ;
 
 outer_join:
     LEFT OUTER JOIN {
-      $$ = QLAstNodeCreate(context, QLNodeJoinLeft);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeJoinLeft);
       ABORT_IF_OOM($$);
     }
   | LEFT JOIN {
-      $$ = QLAstNodeCreate(context, QLNodeJoinLeft);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeJoinLeft);
       ABORT_IF_OOM($$);
     } 
   | RIGHT OUTER JOIN {
-      $$ = QLAstNodeCreate(context, QLNodeJoinRight);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeJoinRight);
       ABORT_IF_OOM($$);
     }
   | RIGHT JOIN {
-      $$ = QLAstNodeCreate(context, QLNodeJoinRight);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeJoinRight);
       ABORT_IF_OOM($$);
     }
   ;
@@ -717,45 +720,45 @@ expression:
       $$ = $1;
     }
   | document { 
-      QL_ast_node_t* list = QLAstNodeCreate(context, QLNodeContainerList);
+      TRI_query_node_t* list = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerList);
       ABORT_IF_OOM(list);
-      QLParseContextPush(context, list); 
+      TRI_ParseQueryContextPush(template_, list); 
     } object_access %prec MEMBER {
-      $$ = QLAstNodeCreate(context, QLNodeContainerMemberAccess);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerMemberAccess);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       $$->_lhs = $1;
-      QLPopIntoRhs($$, context);
+      TRI_ParseQueryPopIntoRhs($$, template_);
     }
   | document {
       ABORT_IF_OOM($1);
       $$ = $1;
     }
   | array_declaration {
-      QL_ast_node_t* list = QLAstNodeCreate(context, QLNodeContainerList);
+      TRI_query_node_t* list = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerList);
       ABORT_IF_OOM(list);
-      QLParseContextPush(context, list); 
+      TRI_ParseQueryContextPush(template_, list); 
     } object_access %prec MEMBER {
-      $$ = QLAstNodeCreate(context, QLNodeContainerMemberAccess);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerMemberAccess);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       $$->_lhs = $1;
-      QLPopIntoRhs($$, context);
+      TRI_ParseQueryPopIntoRhs($$, template_);
     }
   | array_declaration {
       ABORT_IF_OOM($1);
       $$ = $1;  
     }
   | atom {
-      QL_ast_node_t* list = QLAstNodeCreate(context, QLNodeContainerList);
+      TRI_query_node_t* list = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerList);
       ABORT_IF_OOM(list);
-      QLParseContextPush(context, list); 
+      TRI_ParseQueryContextPush(template_, list); 
     } object_access %prec MEMBER {
-      $$ = QLAstNodeCreate(context, QLNodeContainerMemberAccess);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerMemberAccess);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       $$->_lhs = $1;
-      QLPopIntoRhs($$, context);
+      TRI_ParseQueryPopIntoRhs($$, template_);
     }
   | atom {
       ABORT_IF_OOM($1);
@@ -766,45 +769,45 @@ expression:
 
 object_access:
     '.' IDENTIFIER {
-      QL_ast_node_t* name = QLAstNodeCreate(context, QLNodeValueIdentifier);
+      TRI_query_node_t* name = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
       ABORT_IF_OOM(name);
       ABORT_IF_OOM($2);
       name->_value._stringValue = $2;
-      QLParseContextAddElement(context, name);
+      TRI_ParseQueryContextAddElement(template_, name);
     }
   | '.' function_call {
       ABORT_IF_OOM($2);
-      QLParseContextAddElement(context, $2);
+      TRI_ParseQueryContextAddElement(template_, $2);
     }
   | object_access '.' IDENTIFIER {
-      QL_ast_node_t* name = QLAstNodeCreate(context, QLNodeValueIdentifier);
+      TRI_query_node_t* name = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
       ABORT_IF_OOM(name);
       ABORT_IF_OOM($3);
       name->_value._stringValue = $3;
-      QLParseContextAddElement(context, name);
+      TRI_ParseQueryContextAddElement(template_, name);
     }
   | object_access '.' function_call {
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($3);
-      QLParseContextAddElement(context, $3);
+      TRI_ParseQueryContextAddElement(template_, $3);
     }
   ; 
 
 unary_operator:
     '+' expression %prec UPLUS {
-      $$ = QLAstNodeCreate(context, QLNodeUnaryOperatorPlus);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeUnaryOperatorPlus);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($2);
       $$->_lhs = $2;
     }
   | '-' expression %prec UMINUS {
-      $$ = QLAstNodeCreate(context, QLNodeUnaryOperatorMinus);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeUnaryOperatorMinus);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($2);
       $$->_lhs = $2;
     }
   | NOT expression { 
-      $$ = QLAstNodeCreate(context, QLNodeUnaryOperatorNot);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeUnaryOperatorNot);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($2);
       $$->_lhs = $2;
@@ -813,7 +816,7 @@ unary_operator:
 
 binary_operator:
     expression OR expression {
-      $$ = QLAstNodeCreate(context, QLNodeBinaryOperatorOr);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorOr);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($3);
@@ -821,7 +824,7 @@ binary_operator:
       $$->_rhs = $3;
     }
   | expression AND expression {
-      $$ = QLAstNodeCreate(context, QLNodeBinaryOperatorAnd);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorAnd);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($3);
@@ -829,7 +832,7 @@ binary_operator:
       $$->_rhs = $3; 
     }
   | expression '+' expression {
-      $$ = QLAstNodeCreate(context, QLNodeBinaryOperatorAdd);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorAdd);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($3);
@@ -837,7 +840,7 @@ binary_operator:
       $$->_rhs = $3;
     }
   | expression '-' expression {
-      $$ = QLAstNodeCreate(context, QLNodeBinaryOperatorSubtract);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorSubtract);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($3);
@@ -845,7 +848,7 @@ binary_operator:
       $$->_rhs = $3;
     }
   | expression '*' expression {
-      $$ = QLAstNodeCreate(context, QLNodeBinaryOperatorMultiply);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorMultiply);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($3);
@@ -853,7 +856,7 @@ binary_operator:
       $$->_rhs = $3;
     }
   | expression '/' expression {
-      $$ = QLAstNodeCreate(context, QLNodeBinaryOperatorDivide);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorDivide);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($3);
@@ -861,7 +864,7 @@ binary_operator:
       $$->_rhs = $3;
     }
   | expression '%' expression {
-      $$ = QLAstNodeCreate(context, QLNodeBinaryOperatorModulus);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorModulus);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($3);
@@ -869,7 +872,7 @@ binary_operator:
       $$->_rhs = $3;
     }
   | expression IDENTICAL expression {
-      $$ = QLAstNodeCreate(context, QLNodeBinaryOperatorIdentical);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorIdentical);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($3);
@@ -877,7 +880,7 @@ binary_operator:
       $$->_rhs = $3;
     }
   | expression UNIDENTICAL expression {
-      $$ = QLAstNodeCreate(context, QLNodeBinaryOperatorUnidentical);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorUnidentical);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($3);
@@ -885,7 +888,7 @@ binary_operator:
       $$->_rhs = $3;
     }
   | expression EQUAL expression {
-      $$ = QLAstNodeCreate(context, QLNodeBinaryOperatorEqual);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorEqual);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($3);
@@ -893,7 +896,7 @@ binary_operator:
       $$->_rhs = $3;
     }
   | expression UNEQUAL expression {
-      $$ = QLAstNodeCreate(context, QLNodeBinaryOperatorUnequal);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorUnequal);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($3);
@@ -901,7 +904,7 @@ binary_operator:
       $$->_rhs = $3;
     }
   | expression LESS expression {
-      $$ = QLAstNodeCreate(context, QLNodeBinaryOperatorLess);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorLess);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($3);
@@ -909,7 +912,7 @@ binary_operator:
       $$->_rhs = $3;
     }
   | expression GREATER expression {
-      $$ = QLAstNodeCreate(context, QLNodeBinaryOperatorGreater);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorGreater);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($3);
@@ -917,7 +920,7 @@ binary_operator:
       $$->_rhs = $3;
     } 
   | expression LESS_EQUAL expression {
-      $$ = QLAstNodeCreate(context, QLNodeBinaryOperatorLessEqual);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorLessEqual);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($3);
@@ -925,7 +928,7 @@ binary_operator:
       $$->_rhs = $3;
     }
   | expression GREATER_EQUAL expression {
-      $$ = QLAstNodeCreate(context, QLNodeBinaryOperatorGreaterEqual);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorGreaterEqual);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($3);
@@ -933,7 +936,7 @@ binary_operator:
       $$->_rhs = $3;
     }
   | expression IN expression {
-      $$ = QLAstNodeCreate(context, QLNodeBinaryOperatorIn);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorIn);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($3);
@@ -944,7 +947,7 @@ binary_operator:
 
 conditional_operator:
   expression TERNARY expression COLON expression {
-      QL_ast_node_t* node = QLAstNodeCreate(context, QLNodeContainerTernarySwitch);
+      TRI_query_node_t* node = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerTernarySwitch);
       ABORT_IF_OOM(node);
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($3);
@@ -952,7 +955,7 @@ conditional_operator:
       node->_lhs = $3;
       node->_rhs = $5;
 
-      $$ = QLAstNodeCreate(context, QLNodeControlTernary);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeControlTernary);
       ABORT_IF_OOM($$);
       $$->_lhs = $1;
       $$->_rhs = node;
@@ -968,104 +971,104 @@ function_call:
 
 function_invocation:
     IDENTIFIER '(' ')' %prec FCALL {
-      QL_ast_node_t* name = QLAstNodeCreate(context, QLNodeValueIdentifier);
+      TRI_query_node_t* name = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
       ABORT_IF_OOM(name);
       ABORT_IF_OOM($1);
       name->_value._stringValue = $1;
       
-      $$ = QLAstNodeCreate(context, QLNodeControlFunctionCall);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeControlFunctionCall);
       ABORT_IF_OOM($$);
       $$->_lhs = name;
-      $$->_rhs = QLAstNodeCreate(context, QLNodeContainerList);
+      $$->_rhs = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerList);
       ABORT_IF_OOM($$->_rhs);
     }
   | IDENTIFIER '(' {
-      QL_ast_node_t* list = QLAstNodeCreate(context, QLNodeContainerList);
+      TRI_query_node_t* list = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerList);
       ABORT_IF_OOM(list);
-      QLParseContextPush(context, list); 
+      TRI_ParseQueryContextPush(template_, list); 
     } function_args_list ')' {
-      QL_ast_node_t* name = QLAstNodeCreate(context, QLNodeValueIdentifier);
+      TRI_query_node_t* name = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
       ABORT_IF_OOM(name);
       ABORT_IF_OOM($1);
       name->_value._stringValue = $1;
 
-      $$ = QLAstNodeCreate(context, QLNodeControlFunctionCall);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeControlFunctionCall);
       ABORT_IF_OOM($$);
       $$->_lhs = name;
-      QLPopIntoRhs($$, context);
+      TRI_ParseQueryPopIntoRhs($$, template_);
     }
   ;
 
 function_args_list:
     expression {
-      QLParseContextAddElement(context, $1);
+      TRI_ParseQueryContextAddElement(template_, $1);
     }
   | function_args_list ',' expression {
       ABORT_IF_OOM($3);
-      QLParseContextAddElement(context, $3);
+      TRI_ParseQueryContextAddElement(template_, $3);
     }
   ;
 
 array_declaration:
     '[' ']' {
-      $$ = QLAstNodeCreate(context, QLNodeValueArray);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueArray);
       ABORT_IF_OOM($$);
     }
   | '[' {
-      QL_ast_node_t* list = QLAstNodeCreate(context, QLNodeContainerList);
+      TRI_query_node_t* list = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerList);
       ABORT_IF_OOM(list);
-      QLParseContextPush(context, list); 
+      TRI_ParseQueryContextPush(template_, list); 
     } array_list ']' { 
-      $$ = QLAstNodeCreate(context, QLNodeValueArray);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueArray);
       ABORT_IF_OOM($$);
-      QLPopIntoRhs($$, context);
+      TRI_ParseQueryPopIntoRhs($$, template_);
     } 
   ;
 
 array_list:
     expression {
-      QLParseContextAddElement(context, $1);
+      TRI_ParseQueryContextAddElement(template_, $1);
     }
   | array_list ',' expression {
       ABORT_IF_OOM($3);
-      QLParseContextAddElement(context, $3);
+      TRI_ParseQueryContextAddElement(template_, $3);
     }
   ;
 
 atom:
     STRING {
       size_t outLength;
-      $$ = QLAstNodeCreate(context, QLNodeValueString);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueString);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
-      $$->_value._stringValue = QLParseRegisterString(context, TRI_UnescapeUtf8String($1 + 1, strlen($1) - 2, &outLength)); 
+      $$->_value._stringValue = TRI_ParseQueryRegisterString(template_, TRI_UnescapeUtf8String($1 + 1, strlen($1) - 2, &outLength)); 
     }
   | REAL {
       double d = TRI_DoubleString($1);
       if (TRI_errno() != TRI_ERROR_NO_ERROR && d != 0.0) {
-        QLParseRegisterParseError(context, ERR_NUMBER_OUT_OF_RANGE, $1);
+        TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, $1);
         YYABORT;
       }
-      $$ = QLAstNodeCreate(context, QLNodeValueNumberDoubleString);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueNumberDoubleString);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       $$->_value._stringValue = $1; 
     }
   | NULLX {
-      $$ = QLAstNodeCreate(context, QLNodeValueNull);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueNull);
       ABORT_IF_OOM($$);
     }
   | UNDEFINED {
-      $$ = QLAstNodeCreate(context, QLNodeValueUndefined); 
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueUndefined); 
       ABORT_IF_OOM($$);
     }
   | TRUE { 
-      $$ = QLAstNodeCreate(context, QLNodeValueBool);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueBool);
       ABORT_IF_OOM($$);
       $$->_value._boolValue = true;
     }
   | FALSE {
-      $$ = QLAstNodeCreate(context, QLNodeValueBool);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueBool);
       ABORT_IF_OOM($$);
       $$->_value._boolValue = false;
     }
@@ -1074,17 +1077,17 @@ atom:
       int64_t d = TRI_Int64String($1);
 
       if (TRI_errno() != TRI_ERROR_NO_ERROR || d < 0 || d >= 256) {
-        QLParseRegisterParseError(context, ERR_PARAMETER_NUMBER_OUT_OF_RANGE, $1);
+        TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_BIND_PARAMETER_NUMBER_OUT_OF_RANGE, $1);
         YYABORT;
       }
 
-      $$ = QLAstNodeCreate(context, QLNodeValueParameterNumeric);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueParameterNumeric);
       ABORT_IF_OOM($$);
       $$->_value._intValue = d;
     }
   | PARAMETER_NAMED {
       // named parameter
-      $$ = QLAstNodeCreate(context, QLNodeValueParameterNamed);
+      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueParameterNamed);
       ABORT_IF_OOM($$);
       $$->_value._stringValue = $1;
     }

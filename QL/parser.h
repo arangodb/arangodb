@@ -95,9 +95,9 @@ typedef union YYSTYPE
 {
 
 /* Line 1676 of yacc.c  */
-#line 33 "QL/parser.y"
+#line 32 "QL/parser.y"
 
-  QL_ast_node_t *node;
+  TRI_query_node_t* node;
   int intval;
   double floatval;
   char *strval;

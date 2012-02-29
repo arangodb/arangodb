@@ -25,7 +25,6 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "QL/ast-node.h"
 #include "QL/optimize.h"
 
 // -----------------------------------------------------------------------------
@@ -41,12 +40,12 @@
 /// @brief check whether a node is optimizable as an arithmetic operand
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLOptimizeCanBeUsedAsArithmeticOperand (const QL_ast_node_t const* node) {
+static bool QLOptimizeCanBeUsedAsArithmeticOperand (const TRI_query_node_t* const node) {
   switch (node->_type) {
-    case QLNodeValueNumberDouble:
-    case QLNodeValueNumberDoubleString:
-    case QLNodeValueBool:
-    case QLNodeValueNull:  // NULL is equal to 0 in this case, i.e. NULL + 1 == 1, NULL -1 == -1 etc.
+    case TRI_QueryNodeValueNumberDouble:
+    case TRI_QueryNodeValueNumberDoubleString:
+    case TRI_QueryNodeValueBool:
+    case TRI_QueryNodeValueNull:  // NULL is equal to 0 in this case, i.e. NULL + 1 == 1, NULL -1 == -1 etc.
       return true;
     default:
       return false;
@@ -57,11 +56,11 @@ bool QLOptimizeCanBeUsedAsArithmeticOperand (const QL_ast_node_t const* node) {
 /// @brief check whether a node is optimizable as a relational operand
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLOptimizeCanBeUsedAsRelationalOperand (const QL_ast_node_t const* node) {
+static bool QLOptimizeCanBeUsedAsRelationalOperand (const TRI_query_node_t* const node) {
   switch (node->_type) {
-    case QLNodeValueNumberDouble:
-    case QLNodeValueNumberDoubleString:
-    case QLNodeValueBool:
+    case TRI_QueryNodeValueNumberDouble:
+    case TRI_QueryNodeValueNumberDoubleString:
+    case TRI_QueryNodeValueBool:
       return true;
     default:
       return false;
@@ -72,12 +71,12 @@ bool QLOptimizeCanBeUsedAsRelationalOperand (const QL_ast_node_t const* node) {
 /// @brief check whether a node is optimizable as a logical operand
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLOptimizeCanBeUsedAsLogicalOperand (const QL_ast_node_t const* node) {
+static bool QLOptimizeCanBeUsedAsLogicalOperand (const TRI_query_node_t* const node) {
   switch (node->_type) {
-    case QLNodeValueNumberDouble:
-    case QLNodeValueNumberDoubleString:
-    case QLNodeValueBool:
-    case QLNodeValueNull:
+    case TRI_QueryNodeValueNumberDouble:
+    case TRI_QueryNodeValueNumberDoubleString:
+    case TRI_QueryNodeValueBool:
+    case TRI_QueryNodeValueNull:
       return true;
     default:
       return false;
@@ -88,14 +87,14 @@ bool QLOptimizeCanBeUsedAsLogicalOperand (const QL_ast_node_t const* node) {
 /// @brief return a node value, converted to a bool
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLOptimizeGetBool (const QL_ast_node_t const* node) {
+static bool QLOptimizeGetBool (const TRI_query_node_t* const node) {
   double d;
 
-  if (node->_type == QLNodeValueNumberDouble) {
+  if (node->_type == TRI_QueryNodeValueNumberDouble) {
     return (node->_value._doubleValue != 0.0 ? true : false);
   }
 
-  if (node->_type == QLNodeValueNumberDoubleString) {
+  if (node->_type == TRI_QueryNodeValueNumberDoubleString) {
     d = TRI_DoubleString(node->_value._stringValue);
     if (TRI_errno() != TRI_ERROR_NO_ERROR && d != 0.0) {
       return true;
@@ -103,15 +102,15 @@ bool QLOptimizeGetBool (const QL_ast_node_t const* node) {
     return (d != 0.0);
   }
 
-  if (node->_type == QLNodeValueNumberInt) {
+  if (node->_type == TRI_QueryNodeValueNumberInt) {
     return (node->_value._intValue != 0 ? true : false);
   }
 
-  if (node->_type == QLNodeValueBool) {
+  if (node->_type == TRI_QueryNodeValueBool) {
     return (node->_value._boolValue ? true : false);
   }
   
-  if (node->_type == QLNodeValueNull) {
+  if (node->_type == TRI_QueryNodeValueNull) {
     return false;
   }
 
@@ -122,24 +121,24 @@ bool QLOptimizeGetBool (const QL_ast_node_t const* node) {
 /// @brief return a node value, converted to a double
 ////////////////////////////////////////////////////////////////////////////////
 
-double QLOptimizeGetDouble (const QL_ast_node_t const* node) { 
-  if (node->_type == QLNodeValueNumberDouble) {
+static double QLOptimizeGetDouble (const TRI_query_node_t* const node) { 
+  if (node->_type == TRI_QueryNodeValueNumberDouble) {
     return node->_value._doubleValue;
   }
 
-  if (node->_type == QLNodeValueNumberDoubleString) {
+  if (node->_type == TRI_QueryNodeValueNumberDoubleString) {
     return TRI_DoubleString(node->_value._stringValue);
   }
 
-  if (node->_type == QLNodeValueNumberInt) {
+  if (node->_type == TRI_QueryNodeValueNumberInt) {
     return (double) node->_value._intValue;
   }
 
-  if (node->_type == QLNodeValueBool) {
+  if (node->_type == TRI_QueryNodeValueBool) {
     return (node->_value._boolValue ? 1.0 : 0.0);
   }
 
-  if (node->_type == QLNodeValueNull) {
+  if (node->_type == TRI_QueryNodeValueNull) {
     return 0.0;
   }
 
@@ -150,7 +149,7 @@ double QLOptimizeGetDouble (const QL_ast_node_t const* node) {
 /// @brief check if a document declaration is static or dynamic
 ////////////////////////////////////////////////////////////////////////////////
 
-bool QLOptimizeIsStaticDocument (QL_ast_node_t* node) {
+static bool QLOptimizeIsStaticDocument (const TRI_query_node_t* node) {
   bool result;
 
   if (node->_next) {
@@ -176,10 +175,10 @@ bool QLOptimizeIsStaticDocument (QL_ast_node_t* node) {
       return false;
     }
   }
-  if (node->_type == QLNodeReferenceCollectionAlias ||
-      node->_type == QLNodeControlFunctionCall ||
-      node->_type == QLNodeControlTernary ||
-      node->_type == QLNodeContainerMemberAccess) {
+  if (node->_type == TRI_QueryNodeReferenceCollectionAlias ||
+      node->_type == TRI_QueryNodeControlFunctionCall ||
+      node->_type == TRI_QueryNodeControlTernary ||
+      node->_type == TRI_QueryNodeContainerMemberAccess) {
     return false;
   }
 
@@ -187,21 +186,12 @@ bool QLOptimizeIsStaticDocument (QL_ast_node_t* node) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a node to a null value node
-////////////////////////////////////////////////////////////////////////////////
-
-void QLOptimizeMakeValueNull (QL_ast_node_t* node) {
-  node->_type               = QLNodeValueNull;
-  node->_lhs                = 0;
-  node->_rhs                = 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a node to a bool value node
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLOptimizeMakeValueBool (QL_ast_node_t* node, bool value) {
-  node->_type               = QLNodeValueBool;
+static void QLOptimizeMakeValueBool (TRI_query_node_t* node, 
+                                     const bool value) {
+  node->_type               = TRI_QueryNodeValueBool;
   node->_value._boolValue   = value;
   node->_lhs                = 0;
   node->_rhs                = 0;
@@ -211,8 +201,9 @@ void QLOptimizeMakeValueBool (QL_ast_node_t* node, bool value) {
 /// @brief convert a node to a double value node
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLOptimizeMakeValueNumberDouble (QL_ast_node_t* node, double value) {
-  node->_type               = QLNodeValueNumberDouble;
+static void QLOptimizeMakeValueNumberDouble (TRI_query_node_t* node, 
+                                             const double value) {
+  node->_type               = TRI_QueryNodeValueNumberDouble;
   node->_value._doubleValue = value;
   node->_lhs                = 0;
   node->_rhs                = 0;
@@ -222,7 +213,8 @@ void QLOptimizeMakeValueNumberDouble (QL_ast_node_t* node, double value) {
 /// @brief make a node a copy of another node
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLOptimizeClone (QL_ast_node_t* target, QL_ast_node_t* source) {
+static void QLOptimizeClone (TRI_query_node_t* target, 
+                             const TRI_query_node_t* const source) {
   target->_type    = source->_type;
   target->_value   = source->_value;
   target->_lhs     = source->_lhs;
@@ -230,36 +222,27 @@ void QLOptimizeClone (QL_ast_node_t* target, QL_ast_node_t* source) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup QL
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief optimization function for unary operators
+///
+/// this function will optimize unary plus and unary minus operators that are
+/// used together with constant values, e.g. it will merge the two nodes "-" and
+/// "1" to a "-1".
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLOptimizeUnaryOperator (QL_ast_node_t* node) {
-  QL_ast_node_t* lhs;
-  QL_ast_node_type_e type;
+void QLOptimizeUnaryOperator (TRI_query_node_t* node) {
+  TRI_query_node_t* lhs;
+  TRI_query_node_type_e type;
 
   lhs = node->_lhs;
-  if (lhs == 0) {
+  if (!lhs) {
     // node has no child 
     return;
   }
   
   type = node->_type;
-  if (type != QLNodeUnaryOperatorMinus && 
-      type != QLNodeUnaryOperatorPlus && 
-      type != QLNodeUnaryOperatorNot) {
+  if (type != TRI_QueryNodeUnaryOperatorMinus && 
+      type != TRI_QueryNodeUnaryOperatorPlus && 
+      type != TRI_QueryNodeUnaryOperatorNot) {
     return;
   }
 
@@ -268,15 +251,15 @@ void QLOptimizeUnaryOperator (QL_ast_node_t* node) {
     return;
   }
 
-  if (type == QLNodeUnaryOperatorPlus) {
+  if (type == TRI_QueryNodeUnaryOperatorPlus) {
     // unary plus. This will make the result a numeric value 
     QLOptimizeMakeValueNumberDouble(node, QLOptimizeGetDouble(lhs));
   } 
-  else if (type == QLNodeUnaryOperatorMinus) {  
+  else if (type == TRI_QueryNodeUnaryOperatorMinus) {  
     // unary minus. This will make the result a numeric value
     QLOptimizeMakeValueNumberDouble(node, 0.0 - QLOptimizeGetDouble(lhs));
   } 
-  else if (type == QLNodeUnaryOperatorNot) {
+  else if (type == TRI_QueryNodeUnaryOperatorNot) {
     // logical !
     QLOptimizeMakeValueBool(node, !QLOptimizeGetBool(lhs));
   }
@@ -286,10 +269,10 @@ void QLOptimizeUnaryOperator (QL_ast_node_t* node) {
 /// @brief optimize an arithmetic operation
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLOptimizeArithmeticOperator (QL_ast_node_t* node) {
+void QLOptimizeArithmeticOperator (TRI_query_node_t* node) {
   double lhsValue, rhsValue;
-  QL_ast_node_t *lhs, *rhs;
-  QL_ast_node_type_e type;
+  TRI_query_node_t *lhs, *rhs;
+  TRI_query_node_type_e type;
 
   type = node->_type;
   lhs = node->_lhs;
@@ -301,24 +284,24 @@ void QLOptimizeArithmeticOperator (QL_ast_node_t* node) {
     lhsValue = QLOptimizeGetDouble(lhs);
     rhsValue = QLOptimizeGetDouble(rhs);
 
-    if (type == QLNodeBinaryOperatorAdd) {
+    if (type == TRI_QueryNodeBinaryOperatorAdd) {
       // const + const ==> merge
       QLOptimizeMakeValueNumberDouble(node, lhsValue + rhsValue);
     } 
-    else if (type == QLNodeBinaryOperatorSubtract) {
+    else if (type == TRI_QueryNodeBinaryOperatorSubtract) {
       // const - const ==> merge
       QLOptimizeMakeValueNumberDouble(node, lhsValue - rhsValue);
     } 
-    else if (type == QLNodeBinaryOperatorMultiply) {
+    else if (type == TRI_QueryNodeBinaryOperatorMultiply) {
       // const * const ==> merge
       QLOptimizeMakeValueNumberDouble(node, lhsValue * rhsValue);
     } 
-    else if (type == QLNodeBinaryOperatorDivide && rhsValue != 0.0) { 
+    else if (type == TRI_QueryNodeBinaryOperatorDivide && rhsValue != 0.0) { 
       // ignore division by zero. div0 will be handled in JS
       // const / const ==> merge
       QLOptimizeMakeValueNumberDouble(node, lhsValue / rhsValue);
     } 
-    else if (type == QLNodeBinaryOperatorModulus && rhsValue != 0.0) { 
+    else if (type == TRI_QueryNodeBinaryOperatorModulus && rhsValue != 0.0) { 
       // ignore division by zero. div0 will be handled in JS
       // const % const ==> merge
       QLOptimizeMakeValueNumberDouble(node, fmod(lhsValue, rhsValue));
@@ -328,16 +311,16 @@ void QLOptimizeArithmeticOperator (QL_ast_node_t* node) {
     // only left operand is a constant
     lhsValue = QLOptimizeGetDouble(lhs);
     
-    if (type == QLNodeBinaryOperatorAdd && lhsValue == 0.0) {
+    if (type == TRI_QueryNodeBinaryOperatorAdd && lhsValue == 0.0) {
       // 0 + x ==> x
       // TODO: by adding 0, the result would become a double. Just copying over rhs is not enough!
       // QLOptimizeClone(node, rhs);
     }
-    else if (type == QLNodeBinaryOperatorMultiply && lhsValue == 0.0) {
+    else if (type == TRI_QueryNodeBinaryOperatorMultiply && lhsValue == 0.0) {
       // 0 * x ==> 0
       QLOptimizeMakeValueNumberDouble(node, 0.0);
     } 
-    else if (type == QLNodeBinaryOperatorMultiply && lhsValue == 1.0) {
+    else if (type == TRI_QueryNodeBinaryOperatorMultiply && lhsValue == 1.0) {
       // 1 * x ==> x
       // TODO: by adding 0, the result would become a double. Just copying over rhs is not enough!
       // QLOptimizeClone(node, rhs);
@@ -347,21 +330,21 @@ void QLOptimizeArithmeticOperator (QL_ast_node_t* node) {
     // only right operand is a constant
     rhsValue = QLOptimizeGetDouble(rhs);
     
-    if (type == QLNodeBinaryOperatorAdd && rhsValue == 0.0) {
+    if (type == TRI_QueryNodeBinaryOperatorAdd && rhsValue == 0.0) {
       // x + 0 ==> x
       // TODO: by adding 0, the result would become a double. Just copying over lhs is not enough!
       QLOptimizeClone(node, lhs);
     }
-    else if (type == QLNodeBinaryOperatorSubtract && rhsValue == 0.0) {
+    else if (type == TRI_QueryNodeBinaryOperatorSubtract && rhsValue == 0.0) {
       // x - 0 ==> x
       // TODO: by adding 0, the result would become a double. Just copying over lhs is not enough!
       QLOptimizeClone(node, lhs);
     }
-    else if (type == QLNodeBinaryOperatorMultiply && rhsValue == 0.0) {
+    else if (type == TRI_QueryNodeBinaryOperatorMultiply && rhsValue == 0.0) {
       // x * 0 ==> 0
       QLOptimizeMakeValueNumberDouble(node, 0.0);
     } 
-    else if (type == QLNodeBinaryOperatorMultiply && rhsValue == 1.0) {
+    else if (type == TRI_QueryNodeBinaryOperatorMultiply && rhsValue == 1.0) {
       // x * 1 ==> x
       // TODO: by adding 0, the result would become a double. Just copying over lhs is not enough!
       QLOptimizeClone(node, lhs);
@@ -373,16 +356,16 @@ void QLOptimizeArithmeticOperator (QL_ast_node_t* node) {
 /// @brief optimize a logical operation
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLOptimizeLogicalOperator (QL_ast_node_t* node) {
+void QLOptimizeLogicalOperator (TRI_query_node_t* node) {
   bool lhsValue;
-  QL_ast_node_t *lhs, *rhs;
-  QL_ast_node_type_e type;
+  TRI_query_node_t *lhs, *rhs;
+  TRI_query_node_type_e type;
 
   type = node->_type;
   lhs  = node->_lhs;
   rhs  = node->_rhs;
 
-  if (type == QLNodeBinaryOperatorAnd) {
+  if (type == TRI_QueryNodeBinaryOperatorAnd) {
     // logical and
 
     if (QLOptimizeCanBeUsedAsLogicalOperand(lhs)) {
@@ -397,7 +380,7 @@ void QLOptimizeLogicalOperator (QL_ast_node_t* node) {
       }
     }
   }
-  else if (type == QLNodeBinaryOperatorOr) {
+  else if (type == TRI_QueryNodeBinaryOperatorOr) {
     // logical or
 
     if (QLOptimizeCanBeUsedAsLogicalOperand(lhs)) {
@@ -418,9 +401,9 @@ void QLOptimizeLogicalOperator (QL_ast_node_t* node) {
 /// @brief optimize a constant string comparison
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool QLOptimizeStringComparison (QL_ast_node_t* node) {
-  QL_ast_node_t *lhs, *rhs;
-  QL_ast_node_type_e type;
+static bool QLOptimizeStringComparison (TRI_query_node_t* node) {
+  TRI_query_node_t *lhs, *rhs;
+  TRI_query_node_type_e type;
   int compareResult;
 
   lhs = node->_lhs;
@@ -429,27 +412,27 @@ static bool QLOptimizeStringComparison (QL_ast_node_t* node) {
   compareResult = strcmp(lhs->_value._stringValue, rhs->_value._stringValue);
   type = node->_type;
 
-  if (type == QLNodeBinaryOperatorIdentical || type == QLNodeBinaryOperatorEqual) {
+  if (type == TRI_QueryNodeBinaryOperatorIdentical || type == TRI_QueryNodeBinaryOperatorEqual) {
     QLOptimizeMakeValueBool(node, compareResult == 0);
     return true;
   }
-  if (type == QLNodeBinaryOperatorUnidentical || type == QLNodeBinaryOperatorUnequal) {
+  if (type == TRI_QueryNodeBinaryOperatorUnidentical || type == TRI_QueryNodeBinaryOperatorUnequal) {
     QLOptimizeMakeValueBool(node, compareResult != 0);
     return true;
   } 
-  if (type == QLNodeBinaryOperatorGreater) {
+  if (type == TRI_QueryNodeBinaryOperatorGreater) {
     QLOptimizeMakeValueBool(node, compareResult > 0);
     return true;
   } 
-  if (type == QLNodeBinaryOperatorGreaterEqual) {
+  if (type == TRI_QueryNodeBinaryOperatorGreaterEqual) {
     QLOptimizeMakeValueBool(node, compareResult >= 0);
     return true;
   } 
-  if (type == QLNodeBinaryOperatorLess) {
+  if (type == TRI_QueryNodeBinaryOperatorLess) {
     QLOptimizeMakeValueBool(node, compareResult < 0);
     return true;
   }
-  if (type == QLNodeBinaryOperatorLessEqual) {
+  if (type == TRI_QueryNodeBinaryOperatorLessEqual) {
     QLOptimizeMakeValueBool(node, compareResult <= 0);
     return true;
   }
@@ -460,9 +443,9 @@ static bool QLOptimizeStringComparison (QL_ast_node_t* node) {
 /// @brief optimize a member comparison 
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool QLOptimizeMemberComparison (QL_ast_node_t* node) {
-  QL_ast_node_t *lhs, *rhs;
-  QL_ast_node_type_e type;
+static bool QLOptimizeMemberComparison (TRI_query_node_t* node) {
+  TRI_query_node_t *lhs, *rhs;
+  TRI_query_node_type_e type;
   bool isSameMember; 
 
   lhs = node->_lhs;
@@ -471,17 +454,17 @@ static bool QLOptimizeMemberComparison (QL_ast_node_t* node) {
 
   isSameMember = (QLAstQueryGetMemberNameHash(lhs) == QLAstQueryGetMemberNameHash(rhs));
   if (isSameMember) {
-    if (type == QLNodeBinaryOperatorIdentical || 
-        type == QLNodeBinaryOperatorEqual || 
-        type == QLNodeBinaryOperatorGreaterEqual ||
-        type == QLNodeBinaryOperatorLessEqual) {
+    if (type == TRI_QueryNodeBinaryOperatorIdentical || 
+        type == TRI_QueryNodeBinaryOperatorEqual || 
+        type == TRI_QueryNodeBinaryOperatorGreaterEqual ||
+        type == TRI_QueryNodeBinaryOperatorLessEqual) {
       QLOptimizeMakeValueBool(node, true);
       return true;
     }
-    if (type == QLNodeBinaryOperatorUnidentical || 
-        type == QLNodeBinaryOperatorUnequal || 
-        type == QLNodeBinaryOperatorGreater ||
-        type == QLNodeBinaryOperatorLess) {
+    if (type == TRI_QueryNodeBinaryOperatorUnidentical || 
+        type == TRI_QueryNodeBinaryOperatorUnequal || 
+        type == TRI_QueryNodeBinaryOperatorGreater ||
+        type == TRI_QueryNodeBinaryOperatorLess) {
       QLOptimizeMakeValueBool(node, false);
       return true;
     }
@@ -495,24 +478,24 @@ static bool QLOptimizeMemberComparison (QL_ast_node_t* node) {
 /// @brief optimize a relational operation
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLOptimizeRelationalOperator (QL_ast_node_t* node) {
+void QLOptimizeRelationalOperator (TRI_query_node_t* node) {
   double lhsValue, rhsValue;
-  QL_ast_node_t *lhs, *rhs;
-  QL_ast_node_type_e type;
+  TRI_query_node_t *lhs, *rhs;
+  TRI_query_node_type_e type;
   
   lhs = node->_lhs;
   rhs = node->_rhs;
   type = node->_type;
 
-  if (lhs->_type == QLNodeValueString && rhs->_type == QLNodeValueString) {
+  if (lhs->_type == TRI_QueryNodeValueString && rhs->_type == TRI_QueryNodeValueString) {
     // both operands are constant strings
     if (QLOptimizeStringComparison(node)) {
       return;
     }
   }
 
-  if (lhs->_type == QLNodeContainerMemberAccess && 
-      rhs->_type == QLNodeContainerMemberAccess) {
+  if (lhs->_type == TRI_QueryNodeContainerMemberAccess && 
+      rhs->_type == TRI_QueryNodeContainerMemberAccess) {
     // both operands are collections members (document properties)
     if (QLOptimizeMemberComparison(node)) {
       return;
@@ -525,28 +508,28 @@ void QLOptimizeRelationalOperator (QL_ast_node_t* node) {
     lhsValue = QLOptimizeGetDouble(lhs);
     rhsValue = QLOptimizeGetDouble(rhs);
 
-    if (type == QLNodeBinaryOperatorIdentical) { 
+    if (type == TRI_QueryNodeBinaryOperatorIdentical) { 
       QLOptimizeMakeValueBool(node, (lhsValue == rhsValue) && (lhs->_type == rhs->_type));
     } 
-    else if (type == QLNodeBinaryOperatorUnidentical) { 
+    else if (type == TRI_QueryNodeBinaryOperatorUnidentical) { 
       QLOptimizeMakeValueBool(node, (lhsValue != rhsValue) || (lhs->_type != rhs->_type));
     } 
-    else if (type == QLNodeBinaryOperatorEqual) {
+    else if (type == TRI_QueryNodeBinaryOperatorEqual) {
       QLOptimizeMakeValueBool(node, lhsValue == rhsValue);
     } 
-    else if (type == QLNodeBinaryOperatorUnequal) {
+    else if (type == TRI_QueryNodeBinaryOperatorUnequal) {
       QLOptimizeMakeValueBool(node, lhsValue != rhsValue);
     } 
-    else if (type == QLNodeBinaryOperatorLess) {
+    else if (type == TRI_QueryNodeBinaryOperatorLess) {
       QLOptimizeMakeValueBool(node, lhsValue < rhsValue);
     } 
-    else if (type == QLNodeBinaryOperatorGreater) {
+    else if (type == TRI_QueryNodeBinaryOperatorGreater) {
       QLOptimizeMakeValueBool(node, lhsValue > rhsValue);
     } 
-    else if (type == QLNodeBinaryOperatorLessEqual) {
+    else if (type == TRI_QueryNodeBinaryOperatorLessEqual) {
       QLOptimizeMakeValueBool(node, lhsValue <= rhsValue);
     } 
-    else if (type == QLNodeBinaryOperatorGreaterEqual) {
+    else if (type == TRI_QueryNodeBinaryOperatorGreaterEqual) {
       QLOptimizeMakeValueBool(node, lhsValue >= rhsValue);
     } 
   }
@@ -554,18 +537,26 @@ void QLOptimizeRelationalOperator (QL_ast_node_t* node) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimization function for binary operators
+///
+/// this function will optimize arithmetic, relational and logical operators 
+/// that are used together with constant values. It will replace the binary 
+/// operator with the result of the optimization. 
+/// The node will therefore change its type from a binary operator to a value
+/// type node. The former sub nodes (lhs and rhs) of the binary operator will 
+/// be unlinked, but not be freed here.
+/// Freeing memory is done later when the whole query structure is deallocated.
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLOptimizeBinaryOperator (QL_ast_node_t* node) {
-  if (QLAstNodeIsArithmeticOperator(node)) {
+void QLOptimizeBinaryOperator (TRI_query_node_t* node) {
+  if (TRI_QueryNodeIsArithmeticOperator(node)) {
     // optimize arithmetic operation
     QLOptimizeArithmeticOperator(node);
   } 
-  else if (QLAstNodeIsLogicalOperator(node)) {
+  else if (TRI_QueryNodeIsLogicalOperator(node)) {
     // optimize logical operation
     QLOptimizeLogicalOperator(node);
   } 
-  else if (QLAstNodeIsRelationalOperator(node)) {
+  else if (TRI_QueryNodeIsRelationalOperator(node)) {
     // optimize relational operation
     QLOptimizeRelationalOperator(node);
   }
@@ -573,10 +564,15 @@ void QLOptimizeBinaryOperator (QL_ast_node_t* node) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimization function for the ternary operator
+///
+/// this function will optimize the ternary operator if the conditional part is
+/// reducible to a constant. It will substitute the condition with the true 
+/// part if the condition is true, and with the false part if the condition is
+/// false.
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLOptimizeTernaryOperator (QL_ast_node_t* node) {
-  QL_ast_node_t *lhs, *rhs;
+void QLOptimizeTernaryOperator (TRI_query_node_t* node) {
+  TRI_query_node_t *lhs, *rhs;
   bool lhsValue;
 
   // condition part
@@ -595,19 +591,23 @@ void QLOptimizeTernaryOperator (QL_ast_node_t* node) {
   }
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimize order by by removing constant parts
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLOptimizeOrder (QL_ast_node_t* node) {
-  QL_ast_node_t* responsibleNode;
+void QLOptimizeOrder (TRI_query_node_t* node) {
+  TRI_query_node_t* responsibleNode;
 
   responsibleNode = node;
   node = node->_next;
-  while (node != 0) {
+  while (node) {
     // lhs contains the order expression, rhs contains the sort order
     QLOptimizeExpression(node->_lhs);
-    if (QLAstNodeIsBooleanizable(node->_lhs)) {
+    if (TRI_QueryNodeIsBooleanizable(node->_lhs)) {
       // skip constant parts in order by
       responsibleNode->_next = node->_next;
     }
@@ -622,19 +622,19 @@ void QLOptimizeOrder (QL_ast_node_t* node) {
 /// @brief recursively optimize nodes in an expression AST
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLOptimizeExpression (QL_ast_node_t* node) {
-  QL_ast_node_type_e type;
-  QL_ast_node_t *lhs, *rhs, *next;
+void QLOptimizeExpression (TRI_query_node_t* node) {
+  TRI_query_node_type_e type;
+  TRI_query_node_t *lhs, *rhs, *next;
 
-  if (node == 0) {
+  if (!node) {
     return;
   }
 
   type = node->_type;
-  if (type == QLNodeContainerList) {
+  if (type == TRI_QueryNodeContainerList) {
     next = node->_next;
     while (next) {
-      if (!QLAstNodeIsValueNode(node)) {
+      if (!TRI_QueryNodeIsValueNode(node)) {
         // no need to optimize value nodes
         QLOptimizeExpression(next);
       }
@@ -642,28 +642,28 @@ void QLOptimizeExpression (QL_ast_node_t* node) {
     }
   }
 
-  if (QLAstNodeIsValueNode(node)) {
+  if (TRI_QueryNodeIsValueNode(node)) {
     // exit early, no need to optimize value nodes
     return;
   }
 
   lhs = node->_lhs;
-  if (lhs != 0) {
+  if (lhs) {
     QLOptimizeExpression(lhs);
   }
 
   rhs = node->_rhs;
-  if (rhs != 0) {
+  if (rhs) {
     QLOptimizeExpression(rhs);
   }
 
-  if (QLAstNodeIsUnaryOperator(node)) {
+  if (TRI_QueryNodeIsUnaryOperator(node)) {
     QLOptimizeUnaryOperator(node);
   }
-  else if (QLAstNodeIsBinaryOperator(node)) {
+  else if (TRI_QueryNodeIsBinaryOperator(node)) {
     QLOptimizeBinaryOperator(node);
   }
-  else if (QLAstNodeIsTernaryOperator(node)) {
+  else if (TRI_QueryNodeIsTernaryOperator(node)) {
     QLOptimizeTernaryOperator(node);
   }
 }
@@ -678,34 +678,35 @@ void QLOptimizeExpression (QL_ast_node_t* node) {
 /// collections that are left or list join'd can be removed.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void QLOptimizeRefCountCollections (const QL_parser_context_t* context, 
-                                           const QL_ast_node_t* node) {
-  QL_ast_node_t *lhs, *rhs, *next;
+//static void QLOptimizeRefCountCollections (const QL_parser_context_t* context, 
+static void QLOptimizeRefCountCollections (TRI_query_template_t* const template_,
+                                           const TRI_query_node_t* node) {
+  TRI_query_node_t *lhs, *rhs, *next;
 
-  if (node == 0) {
+  if (!node) {
     return; 
   }
 
-  if (node->_type == QLNodeContainerList) {
+  if (node->_type == TRI_QueryNodeContainerList) {
     next = node->_next;
     while (next) {
-      QLOptimizeRefCountCollections(context, next);
+      QLOptimizeRefCountCollections(template_, next);
       next = next->_next;
     }
   }
 
-  if (node->_type == QLNodeReferenceCollectionAlias) {
-    QLAstQueryAddRefCount(context->_query, node->_value._stringValue);
+  if (node->_type == TRI_QueryNodeReferenceCollectionAlias) {
+    QLAstQueryAddRefCount(template_->_query, node->_value._stringValue);
   }
 
   lhs = node->_lhs;
-  if (lhs != 0) {
-    QLOptimizeRefCountCollections(context, lhs);
+  if (lhs) {
+    QLOptimizeRefCountCollections(template_, lhs);
   }
 
   rhs = node->_rhs;
-  if (rhs != 0) {
-    QLOptimizeRefCountCollections(context, rhs);
+  if (rhs) {
+    QLOptimizeRefCountCollections(template_, rhs);
   }
 }
 
@@ -715,33 +716,34 @@ static void QLOptimizeRefCountCollections (const QL_parser_context_t* context,
 /// Reference counting is later used to remove unnecessary joins
 ////////////////////////////////////////////////////////////////////////////////
 
-static void QLOptimizeCountRefs (const QL_parser_context_t* context) {
-  QL_ast_node_t* next = 0;
-  QL_ast_node_t* node = (QL_ast_node_t*) context->_query->_from._base;
-  QL_ast_node_t* alias;
+//static void QLOptimizeCountRefs (const QL_parser_context_t* context) {
+static void QLOptimizeCountRefs (TRI_query_template_t* const template_) {
+  TRI_query_node_t* next = NULL;
+  TRI_query_node_t* node = (TRI_query_node_t*) template_->_query->_from._base;
+  TRI_query_node_t* alias;
 
-  if (context->_query->_from._collections._nrUsed < 2) {
+  if (template_->_query->_from._collections._nrUsed < 2) {
     // we don't have a join, no need to refcount anything
     return;
   }
 
   // mark collections used in select, where and order
-  QLOptimizeRefCountCollections(context, context->_query->_select._base);
-  QLOptimizeRefCountCollections(context, context->_query->_where._base);
-  QLOptimizeRefCountCollections(context, context->_query->_order._base);
+  QLOptimizeRefCountCollections(template_, template_->_query->_select._base);
+  QLOptimizeRefCountCollections(template_, template_->_query->_where._base);
+  QLOptimizeRefCountCollections(template_, template_->_query->_order._base);
 
   // mark collections used in on clauses
   node = node->_next;
-  while (node != 0) {
+  while (node) {
     next = node->_next;
-    if (next == 0) {
+    if (next) {
       break;
     }
 
-    alias = (QL_ast_node_t*) ((QL_ast_node_t*) next->_lhs)->_rhs;
-    if ((QLAstQueryGetRefCount(context->_query, alias->_value._stringValue) > 0) ||
-        (next->_type == QLNodeJoinInner)) {
-      QLOptimizeRefCountCollections(context, next->_rhs);
+    alias = (TRI_query_node_t*) ((TRI_query_node_t*) next->_lhs)->_rhs;
+    if ((QLAstQueryGetRefCount(template_->_query, alias->_value._stringValue) > 0) ||
+        (next->_type == TRI_QueryNodeJoinInner)) {
+      QLOptimizeRefCountCollections(template_, next->_rhs);
     }
     node = node->_next;
   }
@@ -751,42 +753,42 @@ static void QLOptimizeCountRefs (const QL_parser_context_t* context) {
 /// @brief optimize from/joins
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLOptimizeFrom (const QL_parser_context_t* context) {
-  QL_ast_node_t* temp;
-  QL_ast_node_t* alias;
-  QL_ast_node_t* responsibleNode;
-  QL_ast_node_t* next = 0;
-  QL_ast_node_t* node = (QL_ast_node_t*) context->_query->_from._base;
+void QLOptimizeFrom (TRI_query_template_t* const template_) {
+  TRI_query_node_t* temp;
+  TRI_query_node_t* alias;
+  TRI_query_node_t* responsibleNode;
+  TRI_query_node_t* next = NULL;
+  TRI_query_node_t* node = (TRI_query_node_t*) template_->_query->_from._base;
 
   // count usages of collections in select, where and order clause
-  QLOptimizeCountRefs(context);
+  QLOptimizeCountRefs(template_);
 
   responsibleNode = node;
   node = node->_next;
 
   // iterate over all joins
-  while (node != 0) {
+  while (node) {
     if (node->_rhs) {
       // optimize on clause
       QLOptimizeExpression(node->_rhs);
-      if (node->_type == QLNodeJoinInner &&
+      if (node->_type == TRI_QueryNodeJoinInner &&
           QLOptimizeGetWhereType(node->_rhs) == QLQueryWhereTypeAlwaysFalse) {
         // inner join condition is always false, query will have no results
         // TODO: set marker that query is empty
       }
     }
     next = node->_next;
-    if (next == 0) {
+    if (!next) {
       break;
     }
 
     assert(next->_lhs);
 
-    alias = (QL_ast_node_t*) ((QL_ast_node_t*) next->_lhs)->_rhs;
-    if ((QLAstQueryGetRefCount(context->_query, alias->_value._stringValue) < 1) &&
-        (next->_type == QLNodeJoinLeft || 
-         next->_type == QLNodeJoinRight || 
-         next->_type == QLNodeJoinList)) {
+    alias = (TRI_query_node_t*) ((TRI_query_node_t*) next->_lhs)->_rhs;
+    if ((QLAstQueryGetRefCount(template_->_query, alias->_value._stringValue) < 1) &&
+        (next->_type == TRI_QueryNodeJoinLeft || 
+         next->_type == TRI_QueryNodeJoinRight || 
+         next->_type == TRI_QueryNodeJoinList)) {
       // collection is joined but unused in select, where, order clause
       // remove unused list or outer joined collections
       // move joined collection one up
@@ -796,11 +798,11 @@ void QLOptimizeFrom (const QL_parser_context_t* context) {
       continue;
     }
 
-    if (next->_type == QLNodeJoinRight) {
+    if (next->_type == TRI_QueryNodeJoinRight) {
       // convert a right join into a left join
-      next->_type = QLNodeJoinLeft;
+      next->_type = TRI_QueryNodeJoinLeft;
       temp = next->_lhs;
-      node->_next = 0;
+      node->_next = NULL;
       next->_lhs = node;
       temp->_next = next;
       responsibleNode->_next = temp;
@@ -897,8 +899,8 @@ void QLOptimizeFreeRangeVector (TRI_vector_pointer_t* vector) {
 /// optimization.
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_vector_pointer_t* QLOptimizeCombineRanges (const QL_ast_node_type_e type, 
-                                                      QL_ast_node_t* node, 
+static TRI_vector_pointer_t* QLOptimizeCombineRanges (const TRI_query_node_type_e type, 
+                                                      TRI_query_node_t* node, 
                                                       TRI_vector_pointer_t* ranges) {
   TRI_vector_pointer_t* vector;
   QL_optimize_range_t* range;
@@ -917,7 +919,7 @@ static TRI_vector_pointer_t* QLOptimizeCombineRanges (const QL_ast_node_type_e t
     range = (QL_optimize_range_t*) ranges->_buffer[i];
 
     if (!range) {
-      if (type == QLNodeBinaryOperatorAnd) {
+      if (type == TRI_QueryNodeBinaryOperatorAnd) {
         goto INVALIDATE_NODE;
       }
 
@@ -926,7 +928,7 @@ static TRI_vector_pointer_t* QLOptimizeCombineRanges (const QL_ast_node_type_e t
 
     assert(range);
 
-    if (type == QLNodeBinaryOperatorAnd) {
+    if (type == TRI_QueryNodeBinaryOperatorAnd) {
       if (range->_minStatus == RANGE_VALUE_INFINITE && 
           range->_maxStatus == RANGE_VALUE_INFINITE) {
         // ignore !== and != operators in logical &&
@@ -936,7 +938,7 @@ static TRI_vector_pointer_t* QLOptimizeCombineRanges (const QL_ast_node_type_e t
 
 
     previous = QLOptimizeGetRangeByHash(range->_hash, vector);
-    if (type == QLNodeBinaryOperatorOr) {
+    if (type == TRI_QueryNodeBinaryOperatorOr) {
       // only use logical || operator for same field. if field name differs, an ||
       // effectively kills all ranges
       if (vector->_length >0 && !previous) { 
@@ -955,7 +957,7 @@ static TRI_vector_pointer_t* QLOptimizeCombineRanges (const QL_ast_node_type_e t
       continue;
     }
 
-    if (type == QLNodeBinaryOperatorOr) {
+    if (type == TRI_QueryNodeBinaryOperatorOr) {
       // logical || operator
       if (range->_minStatus == RANGE_VALUE_INFINITE && 
           range->_maxStatus == RANGE_VALUE_INFINITE) {
@@ -1315,13 +1317,13 @@ static TRI_vector_pointer_t* QLOptimizeCreateRangeVector (QL_optimize_range_t* r
 /// operations and reduced to simpler or impossible ranges if possible.
 ////////////////////////////////////////////////////////////////////////////////
 
-static QL_optimize_range_t* QLOptimizeCreateRange (QL_ast_node_t* memberNode,
-                                                   QL_ast_node_t* valueNode,
-                                                   const QL_ast_node_type_e type) {
+static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
+                                                   TRI_query_node_t* valueNode,
+                                                   const TRI_query_node_type_e type) {
   QL_optimize_range_t* range;
   TRI_string_buffer_t* name;
-  QL_ast_node_t* lhs;
-  QL_javascript_conversion_t* documentJs;
+  TRI_query_node_t* lhs;
+  TRI_query_javascript_converter_t* documentJs;
 
   // get the field name 
   name = QLAstQueryGetMemberNameString(memberNode, false);
@@ -1343,20 +1345,20 @@ static QL_optimize_range_t* QLOptimizeCreateRange (QL_ast_node_t* memberNode,
   range->_refValue._collection = NULL;
 
   // get value
-  if (valueNode->_type == QLNodeValueNumberDouble || 
-      valueNode->_type == QLNodeValueNumberDoubleString) {
+  if (valueNode->_type == TRI_QueryNodeValueNumberDouble || 
+      valueNode->_type == TRI_QueryNodeValueNumberDoubleString) {
     // range is of type double
     range->_valueType = RANGE_TYPE_DOUBLE;
   }
-  else if (valueNode->_type == QLNodeValueString) {
+  else if (valueNode->_type == TRI_QueryNodeValueString) {
     // range is of type string
     range->_valueType = RANGE_TYPE_STRING;
   }
-  else if (valueNode->_type == QLNodeValueDocument || 
-           valueNode->_type == QLNodeValueArray) {
+  else if (valueNode->_type == TRI_QueryNodeValueDocument || 
+           valueNode->_type == TRI_QueryNodeValueArray) {
     range->_valueType = RANGE_TYPE_JSON;
   }
-  else if (valueNode->_type == QLNodeContainerMemberAccess) {
+  else if (valueNode->_type == TRI_QueryNodeContainerMemberAccess) {
     range->_valueType = RANGE_TYPE_FIELD;
   }
   else {
@@ -1373,12 +1375,12 @@ static QL_optimize_range_t* QLOptimizeCreateRange (QL_ast_node_t* memberNode,
   TRI_FreeStringBuffer(name);
   TRI_Free(name);
 
-  if (type == QLNodeBinaryOperatorIdentical || 
-      type == QLNodeBinaryOperatorEqual) {
+  if (type == TRI_QueryNodeBinaryOperatorIdentical || 
+      type == TRI_QueryNodeBinaryOperatorEqual) {
     // === and == ,  range is [ value (inc) ... value (inc) ]
     if (range->_valueType == RANGE_TYPE_FIELD) {
       range->_refValue._collection = TRI_DuplicateString(
-        ((QL_ast_node_t*) valueNode->_lhs)->_value._stringValue);
+        ((TRI_query_node_t*) valueNode->_lhs)->_value._stringValue);
       name = QLAstQueryGetMemberNameString(valueNode, false);
       if (name) {
         range->_refValue._field = TRI_DuplicateString(name->_buffer);
@@ -1395,17 +1397,17 @@ static QL_optimize_range_t* QLOptimizeCreateRange (QL_ast_node_t* memberNode,
       range->_maxValue._stringValue = range->_minValue._stringValue;
     }
     else if (range->_valueType == RANGE_TYPE_JSON) {
-      documentJs = QLJavascripterInit();
+      documentJs = TRI_InitQueryJavascript();
       if (!documentJs) {
         TRI_FreeStringBuffer(name);
         TRI_Free(name);
         TRI_Free(range);
         return NULL;
       }
-      QLJavascripterConvert(documentJs, valueNode);
+      TRI_ConvertQueryJavascript(documentJs, valueNode);
       range->_minValue._stringValue = TRI_DuplicateString(documentJs->_buffer->_buffer);
       range->_maxValue._stringValue = range->_minValue._stringValue;
-      QLJavascripterFree(documentJs);
+      TRI_FreeQueryJavascript(documentJs);
       if (!range->_minValue._stringValue) {
         TRI_FreeStringBuffer(name);
         TRI_Free(name);
@@ -1416,14 +1418,14 @@ static QL_optimize_range_t* QLOptimizeCreateRange (QL_ast_node_t* memberNode,
     range->_minStatus = RANGE_VALUE_INCLUDED;
     range->_maxStatus = RANGE_VALUE_INCLUDED;
   }
-  else if (type == QLNodeBinaryOperatorUnidentical || 
-           type == QLNodeBinaryOperatorUnequal) {
+  else if (type == TRI_QueryNodeBinaryOperatorUnidentical || 
+           type == TRI_QueryNodeBinaryOperatorUnequal) {
     // !== and != ,  range is [ -inf ... +inf ]
     range->_minStatus = RANGE_VALUE_INFINITE;
     range->_maxStatus = RANGE_VALUE_INFINITE;
   }
-  else if (type == QLNodeBinaryOperatorGreaterEqual || 
-           type == QLNodeBinaryOperatorGreater) {
+  else if (type == TRI_QueryNodeBinaryOperatorGreaterEqual || 
+           type == TRI_QueryNodeBinaryOperatorGreater) {
     // >= and > ,  range is [ value ... +inf ]
     if (range->_valueType == RANGE_TYPE_DOUBLE) {
       range->_minValue._doubleValue = QLOptimizeGetDouble(valueNode);
@@ -1432,7 +1434,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (QL_ast_node_t* memberNode,
       range->_minValue._stringValue = TRI_DuplicateString(valueNode->_value._stringValue);
     }
 
-    if (type == QLNodeBinaryOperatorGreaterEqual) {
+    if (type == TRI_QueryNodeBinaryOperatorGreaterEqual) {
       // value is included (>=),  range is [ value (inc) ... +inf ]
       range->_minStatus = RANGE_VALUE_INCLUDED;
     }
@@ -1442,8 +1444,8 @@ static QL_optimize_range_t* QLOptimizeCreateRange (QL_ast_node_t* memberNode,
     }
     range->_maxStatus = RANGE_VALUE_INFINITE;
   }
-  else if (type == QLNodeBinaryOperatorLessEqual || 
-           type == QLNodeBinaryOperatorLess) {
+  else if (type == TRI_QueryNodeBinaryOperatorLessEqual || 
+           type == TRI_QueryNodeBinaryOperatorLess) {
     // <= and < ,  range is [ -inf ... value ]
     if (range->_valueType == RANGE_TYPE_DOUBLE) {
       range->_maxValue._doubleValue = QLOptimizeGetDouble(valueNode);
@@ -1453,7 +1455,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (QL_ast_node_t* memberNode,
     }
 
     range->_minStatus = RANGE_VALUE_INFINITE;
-    if (type == QLNodeBinaryOperatorLessEqual) {
+    if (type == TRI_QueryNodeBinaryOperatorLessEqual) {
       // value is included (<=) ,  range is [ -inf ... value (inc) ]
       range->_maxStatus = RANGE_VALUE_INCLUDED;
     } 
@@ -1470,17 +1472,17 @@ static QL_optimize_range_t* QLOptimizeCreateRange (QL_ast_node_t* memberNode,
 /// @brief recursively optimize nodes in an expression AST
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* QLOptimizeCondition (QL_ast_node_t* node) {
-  QL_ast_node_t *lhs, *rhs;
+TRI_vector_pointer_t* QLOptimizeCondition (TRI_query_node_t* node) {
+  TRI_query_node_t *lhs, *rhs;
   TRI_vector_pointer_t* ranges;
   TRI_vector_pointer_t* combinedRanges;
-  QL_ast_node_type_e type;
+  TRI_query_node_type_e type;
 
   if (node == 0) {
     return 0;
   }
 
-  if (QLAstNodeIsValueNode(node)) {
+  if (TRI_QueryNodeIsValueNode(node)) {
     return 0;
   }
 
@@ -1488,7 +1490,7 @@ TRI_vector_pointer_t* QLOptimizeCondition (QL_ast_node_t* node) {
   lhs  = node->_lhs;
   rhs  = node->_rhs;
 
-  if (type == QLNodeBinaryOperatorAnd || type == QLNodeBinaryOperatorOr) {
+  if (type == TRI_QueryNodeBinaryOperatorAnd || type == TRI_QueryNodeBinaryOperatorOr) {
     // logical && or logical ||
 
     // get the range vectors from both operands
@@ -1505,54 +1507,54 @@ TRI_vector_pointer_t* QLOptimizeCondition (QL_ast_node_t* node) {
       return combinedRanges;
     }
   }
-  else if (type == QLNodeBinaryOperatorIdentical || 
-           type == QLNodeBinaryOperatorUnidentical ||
-           type == QLNodeBinaryOperatorEqual ||
-           type == QLNodeBinaryOperatorUnequal ||
-           type == QLNodeBinaryOperatorLess ||
-           type == QLNodeBinaryOperatorGreater ||
-           type == QLNodeBinaryOperatorLessEqual ||
-           type == QLNodeBinaryOperatorGreaterEqual) {
+  else if (type == TRI_QueryNodeBinaryOperatorIdentical || 
+           type == TRI_QueryNodeBinaryOperatorUnidentical ||
+           type == TRI_QueryNodeBinaryOperatorEqual ||
+           type == TRI_QueryNodeBinaryOperatorUnequal ||
+           type == TRI_QueryNodeBinaryOperatorLess ||
+           type == TRI_QueryNodeBinaryOperatorGreater ||
+           type == TRI_QueryNodeBinaryOperatorLessEqual ||
+           type == TRI_QueryNodeBinaryOperatorGreaterEqual) {
     // comparison operator 
-    if (lhs->_type == QLNodeContainerMemberAccess && 
-        rhs->_type == QLNodeContainerMemberAccess &&
-        (type == QLNodeBinaryOperatorIdentical ||
-         type == QLNodeBinaryOperatorEqual)) {
+    if (lhs->_type == TRI_QueryNodeContainerMemberAccess && 
+        rhs->_type == TRI_QueryNodeContainerMemberAccess &&
+        (type == TRI_QueryNodeBinaryOperatorIdentical ||
+         type == TRI_QueryNodeBinaryOperatorEqual)) {
       // collection.attribute relop collection.attribute
       return QLOptimizeMergeRangeVectors(
         QLOptimizeCreateRangeVector(QLOptimizeCreateRange(lhs, rhs, type)),
         QLOptimizeCreateRangeVector(QLOptimizeCreateRange(rhs, lhs, type))
       );
     }
-    else if (lhs->_type == QLNodeContainerMemberAccess &&
-        (type == QLNodeBinaryOperatorIdentical || 
-         type == QLNodeBinaryOperatorEqual) &&
-        (rhs->_type == QLNodeValueDocument || rhs->_type == QLNodeValueArray) && 
+    else if (lhs->_type == TRI_QueryNodeContainerMemberAccess &&
+        (type == TRI_QueryNodeBinaryOperatorIdentical || 
+         type == TRI_QueryNodeBinaryOperatorEqual) &&
+        (rhs->_type == TRI_QueryNodeValueDocument || rhs->_type == TRI_QueryNodeValueArray) && 
         QLOptimizeIsStaticDocument(rhs)) {
       // collection.attribute == document
       return QLOptimizeCreateRangeVector(QLOptimizeCreateRange(lhs, rhs, type));
     }
-    else if (lhs->_type == QLNodeContainerMemberAccess && 
-        (rhs->_type == QLNodeValueNumberDouble || 
-         rhs->_type == QLNodeValueNumberDoubleString || 
-         rhs->_type == QLNodeValueString)) {
+    else if (lhs->_type == TRI_QueryNodeContainerMemberAccess && 
+        (rhs->_type == TRI_QueryNodeValueNumberDouble || 
+         rhs->_type == TRI_QueryNodeValueNumberDoubleString || 
+         rhs->_type == TRI_QueryNodeValueString)) {
       // collection.attribute relop value
       return QLOptimizeCreateRangeVector(QLOptimizeCreateRange(lhs, rhs, type));
     }
-    else if (rhs->_type == QLNodeContainerMemberAccess &&
-             (type == QLNodeBinaryOperatorIdentical ||
-              type == QLNodeBinaryOperatorEqual) &&
-             lhs->_type == QLNodeValueDocument &&
+    else if (rhs->_type == TRI_QueryNodeContainerMemberAccess &&
+             (type == TRI_QueryNodeBinaryOperatorIdentical ||
+              type == TRI_QueryNodeBinaryOperatorEqual) &&
+             lhs->_type == TRI_QueryNodeValueDocument &&
              QLOptimizeIsStaticDocument(lhs)) {
       // document == collection.attribute
       return QLOptimizeCreateRangeVector(QLOptimizeCreateRange(rhs, lhs, type));
-    } else if (rhs->_type == QLNodeContainerMemberAccess && 
-               (lhs->_type == QLNodeValueNumberDouble || 
-                lhs->_type == QLNodeValueNumberDoubleString || 
-                lhs->_type == QLNodeValueString)) { 
+    } else if (rhs->_type == TRI_QueryNodeContainerMemberAccess && 
+               (lhs->_type == TRI_QueryNodeValueNumberDouble || 
+                lhs->_type == TRI_QueryNodeValueNumberDoubleString || 
+                lhs->_type == TRI_QueryNodeValueString)) { 
       // value relop collection.attrbiute 
       return QLOptimizeCreateRangeVector(
-        QLOptimizeCreateRange(rhs, lhs, QLAstNodeGetReversedRelationalOperator(type)));
+        QLOptimizeCreateRange(rhs, lhs, TRI_QueryNodeGetReversedRelationalOperator(type)));
     }
   }
 
@@ -1563,18 +1565,18 @@ TRI_vector_pointer_t* QLOptimizeCondition (QL_ast_node_t* node) {
 /// @brief get the type of a query's SELECT part
 ////////////////////////////////////////////////////////////////////////////////
 
-QL_ast_query_select_type_e QLOptimizeGetSelectType (const QL_ast_query_t* query) {
+QL_ast_query_select_type_e QLOptimizeGetSelectType (const QL_ast_query_t* const query) {
   char* alias;
-  QL_ast_node_t* selectNode = query->_select._base;
+  TRI_query_node_t* selectNode = query->_select._base;
 
-  if (selectNode == 0) {
+  if (!selectNode) {
     return QLQuerySelectTypeUndefined; 
   }
 
-  if (selectNode->_type == QLNodeValueIdentifier && selectNode->_value._stringValue != 0) {
+  if (selectNode->_type == TRI_QueryNodeValueIdentifier && selectNode->_value._stringValue != 0) {
     alias = QLAstQueryGetPrimaryAlias(query);
 
-    if (alias != 0 && strcmp(alias, selectNode->_value._stringValue) == 0) {
+    if (alias && strcmp(alias, selectNode->_value._stringValue) == 0) {
       // primary document alias specified as (only) SELECT part
       return QLQuerySelectTypeSimple;
     }
@@ -1588,13 +1590,13 @@ QL_ast_query_select_type_e QLOptimizeGetSelectType (const QL_ast_query_t* query)
 /// @brief get the type of a query's WHERE/ON condition
 ////////////////////////////////////////////////////////////////////////////////
 
-QL_ast_query_where_type_e QLOptimizeGetWhereType (const QL_ast_node_t* node) {
-  if (node == 0) {
+QL_ast_query_where_type_e QLOptimizeGetWhereType (const TRI_query_node_t* const node) {
+  if (!node) {
     // query does not have a WHERE part 
     return QLQueryWhereTypeAlwaysTrue;
   }
 
-  if (QLAstNodeIsBooleanizable(node)) {
+  if (TRI_QueryNodeIsBooleanizable(node)) {
     // WHERE part is constant
     if (QLOptimizeGetBool(node)) {
       // WHERE is always true
@@ -1612,23 +1614,22 @@ QL_ast_query_where_type_e QLOptimizeGetWhereType (const QL_ast_node_t* node) {
 /// @brief get the type of a query's ORDER BY condition
 ////////////////////////////////////////////////////////////////////////////////
 
-QL_ast_query_order_type_e QLOptimizeGetOrderType (const QL_ast_node_t* node) {
-  QL_ast_node_t* condition;
+QL_ast_query_order_type_e QLOptimizeGetOrderType (const TRI_query_node_t* const node) {
+  TRI_query_node_t* nodePtr;
 
-  if (node == 0) {
+  if (!node) {
     // query does not have an ORDER BY part 
     return QLQueryOrderTypeNone;
   }
 
-  node = node->_next;
-  while (node) {
-    condition = (QL_ast_node_t*) node->_lhs;
-    if (!QLAstNodeIsBooleanizable(condition)) {
+  nodePtr = node->_next;
+  while (nodePtr) {
+    if (!TRI_QueryNodeIsBooleanizable(nodePtr->_lhs)) {
       // ORDER BY must be evaluated for all records
       return QLQueryOrderTypeMustEvaluate;
     }
 
-    node = node->_next;
+    nodePtr = nodePtr->_next;
   }
 
   // ORDER BY is constant (same for all records) and can be ignored

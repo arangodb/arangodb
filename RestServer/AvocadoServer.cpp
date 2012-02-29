@@ -74,7 +74,6 @@ using namespace triagens::avocado;
 #include "js/server/js-json.h"
 #include "js/server/js-modules.h"
 #include "js/server/js-shell.h"
-#include "js/server/js-simple-query.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -381,7 +380,6 @@ void AvocadoServer::buildApplicationServer () {
     StartupLoader.defineScript("server/aql.js", JS_server_aql);
     StartupLoader.defineScript("server/json.js", JS_server_json);
     StartupLoader.defineScript("server/shell.js", JS_server_shell);
-    StartupLoader.defineScript("server/simple-query.js", JS_server_simple_query);
   }
   else {
     LOGGER_INFO << "using JavaScript startup files at '" << _startupPath << "'";
@@ -617,7 +615,6 @@ void AvocadoServer::executeShell () {
                           "bootstrap/print.js",
                           "server/modules.js",
                           "server/json.js",
-                          "server/simple-query.js",
                           "server/aql.js",
                           "server/shell.js"
   };
