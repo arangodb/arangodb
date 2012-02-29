@@ -31,11 +31,12 @@
 #ifndef TRIAGENS_FYN_REST_TASK_H
 #define TRIAGENS_FYN_REST_TASK_H 1
 
-#include "Scheduler/Scheduler.h"
+#include "Basics/Common.h"
+
+#include "Scheduler/events.h"
 
 namespace triagens {
   namespace rest {
-    class Task;
     class Scheduler;
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -45,10 +46,8 @@ namespace triagens {
 
     class  Task {
       friend class TaskManager;
-
-      private:
-        Task (Task const&);
-        Task& operator= (Task const&);
+      Task (Task const&);
+      Task& operator= (Task const&);
 
       public:
 

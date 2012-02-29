@@ -46,9 +46,8 @@ namespace triagens {
     ////////////////////////////////////////////////////////////////////////////////
 
     class ApplicationServer {
-      private:
-        ApplicationServer (const ApplicationServer&);
-        ApplicationServer& operator= (const ApplicationServer&);
+      ApplicationServer (const ApplicationServer&);
+      ApplicationServer& operator= (const ApplicationServer&);
 
       public:
         static string const OPTIONS_CMDLINE;
