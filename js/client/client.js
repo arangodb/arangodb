@@ -29,8 +29,8 @@ function throwIfError (requestResult) {
 function help () {
   print("--------------- HELP -----------------------------------------------");
   print("predefined objects:");
-  print("  advocado:                              AdvocadoConnection");
-  print("  db:                                    AdvocadoDatabase");
+  print("  avocado:                               AvocadoConnection");
+  print("  db:                                    AvocadoDatabase");
   print("examples:");
   print(" > db._collections();                    list all collections");
   print(" > db.<coll_name>.all();                 list all documents");
