@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,61 +23,33 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Task.h"
 
 #include "Scheduler/Scheduler.h"
 
-namespace triagens {
-  namespace rest {
+using namespace triagens::rest;
 
-    // -----------------------------------------------------------------------------
-    // TaskManager
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// constructors and destructors
+// -----------------------------------------------------------------------------
 
-    void TaskManager::deactivateTask (Task* task) {
-      task->active = 0;
-    }
-
-
-
-    void TaskManager::deleteTask (Task* task) {
-      delete task;
-    }
-
-
-
-    void TaskManager::setupTask (Task* task, Scheduler* scheduler, EventLoop loop) {
-      task->setup(scheduler, loop);
-    }
-
-
-
-    void TaskManager::cleanupTask (Task* task) {
-      task->cleanup();
-    }
-
-    // -----------------------------------------------------------------------------
-    // constructors and destructors
-    // -----------------------------------------------------------------------------
-
-    Task::Task (string const& name)
-      : scheduler(0), loop(0), name(name), active(1) {
-    }
-
-
-
-    Task::~Task () {
-    }
-
-    // -----------------------------------------------------------------------------
-    // protected methods
-    // -----------------------------------------------------------------------------
-
-    bool Task::needsMainEventLoop () const {
-      return false;
-    }
-  }
+Task::Task (string const& name)
+  : scheduler(0), loop(0), name(name), active(1) {
 }
+
+
+
+Task::~Task () {
+}
+
+// -----------------------------------------------------------------------------
+// protected methods
+// -----------------------------------------------------------------------------
+
+bool Task::needsMainEventLoop () const {
+  return false;
+}
+

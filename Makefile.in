@@ -213,8 +213,8 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Scheduler/SchedulerLibev.$(OBJEXT) \
 	Scheduler/SchedulerThread.$(OBJEXT) \
 	Scheduler/SignalTask.$(OBJEXT) Scheduler/SocketTask.$(OBJEXT) \
-	Scheduler/Task.$(OBJEXT) Scheduler/TimerTask.$(OBJEXT) \
-	ShapedJson/json-shaper.$(OBJEXT) \
+	Scheduler/Task.$(OBJEXT) Scheduler/TaskManager.$(OBJEXT) \
+	Scheduler/TimerTask.$(OBJEXT) ShapedJson/json-shaper.$(OBJEXT) \
 	ShapedJson/shape-accessor.$(OBJEXT) \
 	ShapedJson/shaped-json.$(OBJEXT) SkipLists/skiplist.$(OBJEXT) \
 	SkipLists/skiplistIndex.$(OBJEXT) V8/v8-actions.$(OBJEXT) \
@@ -634,6 +634,7 @@ avocado_SOURCES = \
 	Scheduler/SignalTask.cpp \
 	Scheduler/SocketTask.cpp \
 	Scheduler/Task.cpp \
+	Scheduler/TaskManager.cpp \
 	Scheduler/TimerTask.cpp \
 	ShapedJson/json-shaper.c \
 	ShapedJson/shape-accessor.c \
@@ -1283,6 +1284,8 @@ Scheduler/SocketTask.$(OBJEXT): Scheduler/$(am__dirstamp) \
 	Scheduler/$(DEPDIR)/$(am__dirstamp)
 Scheduler/Task.$(OBJEXT): Scheduler/$(am__dirstamp) \
 	Scheduler/$(DEPDIR)/$(am__dirstamp)
+Scheduler/TaskManager.$(OBJEXT): Scheduler/$(am__dirstamp) \
+	Scheduler/$(DEPDIR)/$(am__dirstamp)
 Scheduler/TimerTask.$(OBJEXT): Scheduler/$(am__dirstamp) \
 	Scheduler/$(DEPDIR)/$(am__dirstamp)
 ShapedJson/$(am__dirstamp):
@@ -1553,6 +1556,7 @@ mostlyclean-compile:
 	-rm -f Scheduler/SignalTask.$(OBJEXT)
 	-rm -f Scheduler/SocketTask.$(OBJEXT)
 	-rm -f Scheduler/Task.$(OBJEXT)
+	-rm -f Scheduler/TaskManager.$(OBJEXT)
 	-rm -f Scheduler/TimerTask.$(OBJEXT)
 	-rm -f ShapedJson/json-shaper.$(OBJEXT)
 	-rm -f ShapedJson/shape-accessor.$(OBJEXT)
@@ -1738,6 +1742,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Scheduler/$(DEPDIR)/SignalTask.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Scheduler/$(DEPDIR)/SocketTask.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Scheduler/$(DEPDIR)/Task.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Scheduler/$(DEPDIR)/TaskManager.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Scheduler/$(DEPDIR)/TimerTask.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ShapedJson/$(DEPDIR)/json-shaper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ShapedJson/$(DEPDIR)/shape-accessor.Po@am__quote@

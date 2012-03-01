@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,15 +23,15 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2008-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2008-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Scheduler.h"
 
-#include <Logger/Logger.h>
-#include <Basics/MutexLocker.h>
-#include <Basics/StringUtils.h>
-#include <Basics/Thread.h>
+#include "Logger/Logger.h"
+#include "Basics/MutexLocker.h"
+#include "Basics/StringUtils.h"
+#include "Basics/Thread.h"
 
 #include "Scheduler/Task.h"
 #include "Scheduler/SchedulerThread.h"
@@ -59,14 +59,18 @@ Scheduler::Scheduler (size_t nrThreads)
 
   // check for multi-threading scheduler
   multiThreading = (nrThreads > 1);
-  
+
   if (! multiThreading) {
     nrThreads = 1;
   }
 
   // report status
-  LOGGER_TRACE << "scheduler is " << (multiThreading ? "multi" : "single") << "-threaded, "
-               << "number of threads = " << nrThreads;
+  if (multiThreading) {
+    LOGGER_TRACE << "scheduler is multi-threaded, number of threads = " << nrThreads;
+  }
+  else {
+    LOGGER_TRACE << "scheduler is single-threaded";
+  }
 
   // setup signal handlers
   initialiseSignalHandlers();
@@ -77,11 +81,6 @@ Scheduler::Scheduler (size_t nrThreads)
 ////////////////////////////////////////////////////////////////////////////////
 
 Scheduler::~Scheduler () {
-
-  // delete the open tasks
-  for (set<Task*>::iterator i = taskRegistered.begin();  i != taskRegistered.end();  ++i) {
-    deleteTask(*i);
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -129,7 +128,7 @@ bool Scheduler::start (ConditionVariable* cv) {
       }
     }
   }
-  
+
   LOGGER_TRACE << "all scheduler threads are up and running";
   return true;
 }
@@ -142,18 +141,17 @@ void Scheduler::beginShutdown () {
   if (stopping != 0) {
     return;
   }
-  
+
   MUTEX_LOCKER(schedulerLock);
-  
-  if (stopping == 0) {
-    LOGGER_DEBUG << "beginning shutdown sequence of scheduler";
-    
-    stopping = 1;
-    
-    for (size_t i = 0;  i < nrThreads;  ++i) {
-      threads[i]->beginShutdown();
-    }
+
+  LOGGER_DEBUG << "beginning shutdown sequence of scheduler";
+
+  for (size_t i = 0;  i < nrThreads;  ++i) {
+    threads[i]->beginShutdown();
   }
+  
+  // set the flag AFTER stopping the threads
+  stopping = 1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -185,10 +183,6 @@ bool Scheduler::isRunning () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Scheduler::registerTask (Task* task) {
-  if (stopping != 0) {
-    return;
-  }
-
   SchedulerThread* thread = 0;
 
   {
@@ -217,10 +211,6 @@ void Scheduler::registerTask (Task* task) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Scheduler::unregisterTask (Task* task) {
-  if (stopping != 0) {
-    return;
-  }
-
   SchedulerThread* thread = 0;
 
   {
@@ -253,10 +243,6 @@ void Scheduler::unregisterTask (Task* task) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Scheduler::destroyTask (Task* task) {
-  if (stopping != 0) {
-    return;
-  }
-
   SchedulerThread* thread = 0;
 
   {
@@ -271,18 +257,18 @@ void Scheduler::destroyTask (Task* task) {
     }
     else {
       LOGGER_TRACE << "destroyTask for task " << task;
-      
+
       thread = i->second;
-      
+
       if (taskRegistered.count(task) > 0) {
         taskRegistered.erase(task);
         --current[task->getName()];
       }
-      
+
       task2thread.erase(i);
     }
   }
-  
+
   thread->destroyTask(task);
 }
 
@@ -295,23 +281,23 @@ void Scheduler::reportStatus () {
     MUTEX_LOCKER(schedulerLock);
 
     string status = "scheduler: ";
-    
+
     LoggerInfo info;
     info << LoggerData::Task("scheduler status");
-    
+
     for (map<string, int>::const_iterator i = current.begin();  i != current.end();  ++i) {
       string val = StringUtils::itoa(i->second);
-      
+
       status += i->first + " = " + val + " ";
-      
+
       info
       << LoggerData::Extra(i->first)
       << LoggerData::Extra(val);
     }
-    
+
     LOGGER_DEBUG_I(info)
     << status;
-    
+
     LOGGER_HEARTBEAT_I(info);
   }
 }
@@ -337,12 +323,12 @@ void Scheduler::initialiseSignalHandlers () {
   struct sigaction action;
   memset(&action, 0, sizeof(action));
   sigfillset(&action.sa_mask);
-  
+
   // ignore broken pipes
   action.sa_handler = SIG_IGN;
-  
+
   int res = sigaction(SIGPIPE, &action, 0);
-  
+
   if (res < 0) {
     LOGGER_ERROR << "cannot initialise signal handlers for pipe";
   }

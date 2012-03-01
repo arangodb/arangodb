@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tasks used to handle asynchronous events
+/// @brief task manager
 ///
 /// @file
 ///
@@ -23,63 +23,38 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2008-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AsyncTask.h"
+#include "Task.h"
 
 #include "Scheduler/Scheduler.h"
 
 using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
-// constructors and destructors
+// TaskManager
 // -----------------------------------------------------------------------------
 
-AsyncTask::AsyncTask ()
-  : Task("AsyncTask"),
-    watcher(0) {
+void TaskManager::deactivateTask (Task* task) {
+  task->active = 0;
 }
 
 
 
-AsyncTask::~AsyncTask () {
-}
-
-// -----------------------------------------------------------------------------
-// public methods
-// -----------------------------------------------------------------------------
-
-void AsyncTask::signal () {
-  scheduler->sendAsync(watcher);
-}
-
-// -----------------------------------------------------------------------------
-// Task methods
-// -----------------------------------------------------------------------------
-
-void AsyncTask::setup (Scheduler* scheduler, EventLoop loop) {
-  this->scheduler = scheduler;
-  this->loop = loop;
-  
-  watcher = scheduler->installAsyncEvent(loop, this);
+void TaskManager::deleteTask (Task* task) {
+  delete task;
 }
 
 
 
-void AsyncTask::cleanup () {
-  scheduler->uninstallEvent(watcher);
-  watcher = 0;
+void TaskManager::setupTask (Task* task, Scheduler* scheduler, EventLoop loop) {
+  task->setup(scheduler, loop);
 }
 
 
 
-bool AsyncTask::handleEvent (EventToken token, EventType revents) {
-  bool result = true;
-  
-  if (watcher == token && (revents & EVENT_ASYNC)) {
-    result = handleAsync();
-  }
-  
-  return result;
+void TaskManager::cleanupTask (Task* task) {
+  task->cleanup();
 }
+
