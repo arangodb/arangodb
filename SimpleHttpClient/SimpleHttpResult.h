@@ -1,0 +1,229 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief http request result
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright by triAGENS GmbH - All rights reserved.
+///
+/// The Programs (which include both the software and documentation)
+/// contain proprietary information of triAGENS GmbH; they are
+/// provided under a license agreement containing restrictions on use and
+/// disclosure and are also protected by copyright, patent and other
+/// intellectual and industrial property laws. Reverse engineering,
+/// disassembly or decompilation of the Programs, except to the extent
+/// required to obtain interoperability with other independently created
+/// software or as specified by law, is prohibited.
+///
+/// The Programs are not intended for use in any nuclear, aviation, mass
+/// transit, medical, or other inherently dangerous applications. It shall
+/// be the licensee's responsibility to take all appropriate fail-safe,
+/// backup, redundancy, and other measures to ensure the safe use of such
+/// applications if the Programs are used for such purposes, and triAGENS
+/// GmbH disclaims liability for any damages caused by such use of
+/// the Programs.
+///
+/// This software is the confidential and proprietary information of
+/// triAGENS GmbH. You shall not disclose such confidential and
+/// proprietary information and shall use it only in accordance with the
+/// terms of the license agreement you entered into with triAGENS GmbH.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Achim Brandt
+/// @author Copyright 2008-2011, triagens GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef TRIAGENS_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_RESULT_H
+#define TRIAGENS_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_RESULT_H 1
+
+#include <Basics/Common.h>
+
+#include <map>
+#include <string>
+#include <sstream>
+
+#include "Variant/VariantArray.h"
+#include "Variant/VariantObject.h"
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class for storing a request result
+////////////////////////////////////////////////////////////////////////////////
+
+namespace triagens {
+  namespace httpclient {
+
+    class SimpleHttpResult {
+    private:
+      SimpleHttpResult (SimpleHttpResult const&);
+      SimpleHttpResult& operator= (SimpleHttpResult const&);
+      
+    public:
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief result types
+      ////////////////////////////////////////////////////////////////////////////////
+
+      enum resultTypes {
+        COMPLETE = 0,
+        COULD_NOT_CONNECT,
+        WRITE_ERROR,
+        READ_ERROR,
+        UNKNOWN
+      };
+
+
+    public:
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief constructor
+      ////////////////////////////////////////////////////////////////////////////////
+
+      SimpleHttpResult ();
+
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief destructor
+      ////////////////////////////////////////////////////////////////////////////////
+
+      ~SimpleHttpResult ();
+
+    public:
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief clear result values
+      ////////////////////////////////////////////////////////////////////////////////
+
+      void clear ();
+
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief returns the http return code
+      ////////////////////////////////////////////////////////////////////////////////
+
+      int getHttpReturnCode () {
+        return _returnCode;
+      }
+
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief sets the http return code
+      ////////////////////////////////////////////////////////////////////////////////
+
+      void setHttpReturnCode (int returnCode) {
+        this->_returnCode = returnCode;
+      }
+
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief returns the content length
+      ////////////////////////////////////////////////////////////////////////////////
+
+      int getContenLength () {
+        return _contentLength;
+      }
+
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief sets the content length
+      ////////////////////////////////////////////////////////////////////////////////
+
+      void setContenLength (int len) {
+        _contentLength = len;
+      }
+
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief returns the http body
+      ////////////////////////////////////////////////////////////////////////////////
+
+      std::stringstream& getBody ();
+
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief returns the http body as a "new" variant object
+      /// the caller has to delete the returned object
+      ////////////////////////////////////////////////////////////////////////////////
+
+      triagens::basics::VariantObject* getBodyAsVariant ();
+
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief returns the http body as a "new" variant array object
+      /// the caller has to delete the returned object
+      ////////////////////////////////////////////////////////////////////////////////
+
+      triagens::basics::VariantArray* getBodyAsVariantArray ();
+      
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief returns the request result type
+      ////////////////////////////////////////////////////////////////////////////////
+
+      enum resultTypes getResultType () const {
+        return _requestResultType;
+      }
+
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief returns true if result type == OK
+      ////////////////////////////////////////////////////////////////////////////////
+
+      bool isComplete () const {
+        return _requestResultType == COMPLETE;
+      }
+
+
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief returns true if "transfer-encoding: chunked"
+      ////////////////////////////////////////////////////////////////////////////////
+
+      bool isChunked () const {
+        return _chunked;
+      }
+
+
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief sets the request result type
+      ////////////////////////////////////////////////////////////////////////////////
+
+      void setResultType (enum resultTypes requestResultType) {
+        this->_requestResultType = requestResultType;
+      }
+
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief returns a message for the result type
+      ////////////////////////////////////////////////////////////////////////////////
+
+      std::string getResultTypeMessage ();
+
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief add header field
+      ////////////////////////////////////////////////////////////////////////////////
+
+      void addHeaderField (std::string const& line);
+
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief add header field
+      ////////////////////////////////////////////////////////////////////////////////
+
+      void addHeaderField (std::string const& key, std::string const& value);
+
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief get X-VOC-* header fields
+      ////////////////////////////////////////////////////////////////////////////////
+
+      const std::map<std::string, std::string>& getHeaderFields () {
+        return _headerFields;
+      }
+
+
+    private:
+
+      // header informtion
+      int _returnCode;
+      int _contentLength;
+      bool _chunked;
+
+      // body content
+      std::stringstream _resultBody;
+
+      // request result type
+      enum resultTypes _requestResultType;
+
+      // header fields
+      std::map<std::string, std::string> _headerFields;
+    };
+  }
+}
+#endif
+
