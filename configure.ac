@@ -57,8 +57,8 @@ AM_CONDITIONAL(ENABLE_RELATIVE, test "x$tr_RELATIVE" = xyes)
 
 AC_ARG_ENABLE(install-dbdir,
   AS_HELP_STRING([--enable-install-dbdir], [install an empty database directory]),
-  [tr_RELATIVE="${enableval:-yes}"],
-  [tr_RELATIVE=yes]
+  [tr_DBDIR="${enableval:-yes}"],
+  [tr_DBDIR=yes]
 )
 
 AM_CONDITIONAL(ENABLE_INSTALL_DBDIR, test "x$tr_DBDIR" = xyes)
