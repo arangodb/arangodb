@@ -49,7 +49,8 @@ nobase_pkgdata_DATA = \
 
 if ENABLE_INSTALL_DBDIR
 install-data-local:
-	test -d @localstatedir@/${PACKAGE_TARNAME} || mkdir -p @localstatedir@/${PACKAGE_TARNAME}
+	test -d @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS || mkdir -p @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS
+	cp ${srcdir}/js/actions/*.js @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS
 endif
 
 ################################################################################
