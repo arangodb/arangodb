@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,75 +23,70 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2008-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2008-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TimerTask.h"
 
-#include <Logger/Logger.h>
+#include "Logger/Logger.h"
 
 #include "Scheduler/Scheduler.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
 
-namespace triagens {
-  namespace rest {
+// -----------------------------------------------------------------------------
+// constructors and destructors
+// -----------------------------------------------------------------------------
 
-    // -----------------------------------------------------------------------------
-    // constructors and destructors
-    // -----------------------------------------------------------------------------
-
-    TimerTask::TimerTask (double seconds)
-      : Task("TimerTask"),
-        watcher(0),
-        seconds(seconds) {
-    }
+TimerTask::TimerTask (double seconds)
+  : Task("TimerTask"),
+    watcher(0),
+    seconds(seconds) {
+}
 
 
 
-    TimerTask::~TimerTask () {
-    }
+TimerTask::~TimerTask () {
+}
 
-    // -----------------------------------------------------------------------------
-    // Task methods
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// Task methods
+// -----------------------------------------------------------------------------
 
-    void TimerTask::setup (Scheduler* scheduler, EventLoop loop) {
-      this->scheduler = scheduler;
-      this->loop = loop;
+void TimerTask::setup (Scheduler* scheduler, EventLoop loop) {
+  this->scheduler = scheduler;
+  this->loop = loop;
 
-      if (0.0 < seconds) {
-        watcher = scheduler->installTimerEvent(loop, this, seconds);
-        LOGGER_TRACE << "armed TimerTask with " << seconds << " seconds";
-      }
-      else {
-        watcher = 0;
-      }
-    }
+  if (0.0 < seconds) {
+    watcher = scheduler->installTimerEvent(loop, this, seconds);
+    LOGGER_TRACE << "armed TimerTask with " << seconds << " seconds";
+  }
+  else {
+    watcher = 0;
+  }
+}
 
 
 
-    void TimerTask::cleanup () {
+void TimerTask::cleanup () {
+  scheduler->uninstallEvent(watcher);
+  watcher = 0;
+}
+
+
+
+bool TimerTask::handleEvent (EventToken token, EventType revents) {
+  bool result = true;
+
+  if (token == watcher) {
+    if (revents & EVENT_TIMER) {
       scheduler->uninstallEvent(watcher);
       watcher = 0;
-    }
 
-
-
-    bool TimerTask::handleEvent (EventToken token, EventType revents) {
-      bool result = true;
-
-      if (token == watcher) {
-        if (revents & EVENT_TIMER) {
-          scheduler->uninstallEvent(watcher);
-          watcher = 0;
-
-          result = handleTimeout();
-        }
-      }
-
-      return result;
+      result = handleTimeout();
     }
   }
+
+  return result;
 }

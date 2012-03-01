@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,11 +23,11 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2008-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2008-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_FYN_REST_SCHEDULER_H
-#define TRIAGENS_FYN_REST_SCHEDULER_H 1
+#ifndef TRIAGENS_SCHEDULER_SCHEDULER_H
+#define TRIAGENS_SCHEDULER_SCHEDULER_H 1
 
 #include "Scheduler/TaskManager.h"
 
@@ -109,7 +109,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Threading
+/// @addtogroup Scheduler
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -298,6 +298,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         SchedulerThread** threads;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            static private methods

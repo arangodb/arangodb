@@ -129,6 +129,7 @@ avocado_SOURCES = \
 	Scheduler/SignalTask.cpp \
 	Scheduler/SocketTask.cpp \
 	Scheduler/Task.cpp \
+	Scheduler/TaskManager.cpp \
 	Scheduler/TimerTask.cpp \
 	ShapedJson/json-shaper.c \
 	ShapedJson/shape-accessor.c \

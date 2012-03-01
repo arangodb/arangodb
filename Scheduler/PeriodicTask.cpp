@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,68 +23,65 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2008-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2008-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PeriodicTask.h"
 
 #include "Scheduler/Scheduler.h"
 
-namespace triagens {
-  namespace rest {
+using namespace triagens::rest;
 
-    // -----------------------------------------------------------------------------
-    // constructors and destructors
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// constructors and destructors
+// -----------------------------------------------------------------------------
 
-    PeriodicTask::PeriodicTask (double offset, double intervall)
-      : Task("PeriodicTask"),
-        watcher(0),
-        offset(offset),
-        intervall(intervall) {
-    }
-
-
-
-    PeriodicTask::~PeriodicTask () {
-    }
-
-    // -----------------------------------------------------------------------------
-    // Task methods
-    // -----------------------------------------------------------------------------
-
-    void PeriodicTask::resetTimer (double offset, double intervall) {
-      scheduler->rearmPeriodic(watcher, offset, intervall);
-    }
-
-    // -----------------------------------------------------------------------------
-    // Task methods
-    // -----------------------------------------------------------------------------
-
-    void PeriodicTask::setup (Scheduler* scheduler, EventLoop loop) {
-      this->scheduler = scheduler;
-      this->loop = loop;
-
-      watcher = scheduler->installPeriodicEvent(loop, this, offset, intervall);
-    }
+PeriodicTask::PeriodicTask (double offset, double intervall)
+  : Task("PeriodicTask"),
+    watcher(0),
+    offset(offset),
+    intervall(intervall) {
+}
 
 
 
-    void PeriodicTask::cleanup () {
-      scheduler->uninstallEvent(watcher);
-      watcher = 0;
-    }
+PeriodicTask::~PeriodicTask () {
+}
+
+// -----------------------------------------------------------------------------
+// Task methods
+// -----------------------------------------------------------------------------
+
+void PeriodicTask::resetTimer (double offset, double intervall) {
+  scheduler->rearmPeriodic(watcher, offset, intervall);
+}
+
+// -----------------------------------------------------------------------------
+// Task methods
+// -----------------------------------------------------------------------------
+
+void PeriodicTask::setup (Scheduler* scheduler, EventLoop loop) {
+  this->scheduler = scheduler;
+  this->loop = loop;
+  
+  watcher = scheduler->installPeriodicEvent(loop, this, offset, intervall);
+}
 
 
 
-    bool PeriodicTask::handleEvent (EventToken token, EventType revents) {
-      bool result = true;
+void PeriodicTask::cleanup () {
+  scheduler->uninstallEvent(watcher);
+  watcher = 0;
+}
 
-      if (token == watcher && (revents & EVENT_PERIODIC)) {
-        result = handlePeriod();
-      }
 
-      return result;
-    }
+
+bool PeriodicTask::handleEvent (EventToken token, EventType revents) {
+  bool result = true;
+  
+  if (token == watcher && (revents & EVENT_PERIODIC)) {
+    result = handlePeriod();
   }
+  
+  return result;
 }
