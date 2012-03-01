@@ -30,6 +30,7 @@
 
 #include "VocBase/query-base.h"
 #include "VocBase/query-error.h"
+#include "VocBase/query-memory.h"
 #include "QL/optimize.h"
 
 #ifdef __cplusplus
@@ -75,22 +76,6 @@ bool TRI_ParseQueryTemplate (TRI_query_template_t* const);
 // -----------------------------------------------------------------------------
 // --SECTION--                                           parser helper functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief keep track of an allocated ast node
-///
-/// Register a created node's memory location for later garbage collection
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ParseQueryRegisterNode (TRI_query_template_t* const, TRI_query_node_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free an ast node
-///
-/// Free one node
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ParseQueryFreeNode (TRI_query_node_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies a string and keeps track of its memory location in a vector

@@ -725,7 +725,7 @@ static TRI_rc_cursor_t* ExecuteQueryInstance (v8::Handle<v8::Object> queryObject
     return 0;
   }
   
-  TRI_query_t* query = instance->_query;
+  TRI_query_t* query = instance->_query2;
 
   LOG_TRACE("executing query");
 
@@ -1377,7 +1377,7 @@ static TRI_json_t* ConvertHelper(v8::Handle<v8::Value> parameter) {
         v8::Handle<v8::Value> key = names->Get(j);
         v8::Handle<v8::Value> item = arrayParameter->Get(key);    
         TRI_json_t* result = ConvertHelper(item);
-        TRI_InsertArrayJson(arrayJson, TRI_ObjectToString(key).c_str(), result);
+        TRI_Insert2ArrayJson(arrayJson, TRI_ObjectToString(key).c_str(), result);
       }
     }
     return arrayJson;
@@ -1423,8 +1423,11 @@ static v8::Handle<v8::Value> JS_PrepareAql (v8::Arguments const& argv) {
     bool ok = TRI_ParseQueryTemplate(template_);
     if (ok) {
       TRI_query_instance_t* instance = TRI_CreateQueryInstance(template_, parameters);
+      if (parameters) {
+        TRI_FreeJson(parameters);
+      }
       if (instance) {
-        if (instance->_query) {
+        if (instance->_query2) {
           return scope.Close(WrapQueryInstance(instance));
         }
         v8::Handle<v8::Object> errorObject = CreateQueryErrorObject(&instance->_error);
@@ -1437,11 +1440,18 @@ static v8::Handle<v8::Value> JS_PrepareAql (v8::Arguments const& argv) {
       }
     }
     else {
+      if (parameters) {
+        TRI_FreeJson(parameters);
+      }
       v8::Handle<v8::Object> errorObject = CreateQueryErrorObject(&template_->_error);
       TRI_FreeQueryTemplate(template_);
       return scope.Close(errorObject);
     }
   }
+  if (parameters) {
+    TRI_FreeJson(parameters);
+  }
+      
   return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
 }
 

@@ -33,6 +33,7 @@
 #include <BasicsC/vector.h>
 #include <BasicsC/strings.h>
 #include <BasicsC/string-buffer.h>
+#include <BasicsC/associative.h>
 
 #include "VocBase/query-node.h"
 #include "QL/ast-query.h"
@@ -182,6 +183,12 @@ typedef struct QL_optimize_range_s {
 QL_optimize_range_t;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether a query part uses bind parameters
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLOptimizeUsesBindParameters (const TRI_query_node_t*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief optimize order by by removing constant parts
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -202,7 +209,7 @@ void QLOptimizeExpression (TRI_query_node_t*);
 /// @brief optimize from/joins
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLOptimizeFrom (TRI_query_template_t* const);
+void QLOptimizeFrom (QL_ast_query_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Free all existing ranges in a range vector
@@ -218,7 +225,8 @@ void QLOptimizeFreeRangeVector (TRI_vector_pointer_t*);
 /// tries to find suitable ranges for index accesses etc.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* QLOptimizeCondition (TRI_query_node_t*);
+TRI_vector_pointer_t* QLOptimizeCondition (TRI_query_node_t*, 
+                                           TRI_associative_pointer_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the type of a query's SELECT part

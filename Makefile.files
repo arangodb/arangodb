@@ -1,19 +1,10 @@
 # -*- mode: Makefile; -*-
 
 ################################################################################
-## avocadodb
+## common files
 ################################################################################
 
-avocado_SOURCES = \
-	Admin/ApplicationAdminServer.cpp \
-	Admin/RestAdminBaseHandler.cpp \
-	Admin/RestAdminFeConfigurationHandler.cpp \
-	Admin/RestAdminLogHandler.cpp \
-	Admin/RestBaseHandler.cpp \
-	Admin/RestVersionHandler.cpp \
-	ApplicationServer/ApplicationServer.cpp \
-	ApplicationServer/ApplicationServerImpl.cpp \
-	ApplicationServer/ApplicationServerSchedulerImpl.cpp \
+libavocado_a_SOURCES = \
 	Basics/ConditionLocker.cpp \
 	Basics/ConditionVariable.cpp \
 	Basics/FileUtils.cpp \
@@ -56,6 +47,68 @@ avocado_SOURCES = \
 	BasicsC/terminal-utils.c \
 	BasicsC/threads-posix.c \
 	BasicsC/vector.c \
+	JsonParser/json-parser.c \
+	JsonParserX/InputParser.cpp \
+	JsonParserX/JsonParserX.cpp \
+	JsonParserX/JsonParserXDriver.cpp \
+	JsonParserX/JsonScannerX.cpp \
+	Logger/Logger.cpp \
+	Logger/LoggerData.cpp \
+	Logger/LoggerInfo.cpp \
+	Logger/LoggerStream.cpp \
+	Logger/LoggerTiming.cpp \
+	Rest/AddressPort.cpp \
+	Rest/AnyServer.cpp \
+	Rest/HttpRequest.cpp \
+	Rest/HttpResponse.cpp \
+	Rest/Initialise.cpp \
+	Rest/SslInterface.cpp \
+	Rest/Url.cpp \
+	ShapedJson/json-shaper.c \
+	ShapedJson/shape-accessor.c \
+	ShapedJson/shaped-json.c \
+	V8/v8-conv.cpp \
+	V8/v8-json.cpp \
+	V8/v8-line-editor.cpp \
+	V8/v8-shell.cpp \
+	V8/v8-utils.cpp \
+	Variant/VariantArray.cpp \
+	Variant/VariantBlob.cpp \
+	Variant/VariantBoolean.cpp \
+	Variant/VariantDate.cpp \
+	Variant/VariantDatetime.cpp \
+	Variant/VariantDouble.cpp \
+	Variant/VariantFloat.cpp \
+	Variant/VariantInt16.cpp \
+	Variant/VariantInt32.cpp \
+	Variant/VariantInt64.cpp \
+	Variant/VariantInt8.cpp \
+	Variant/VariantMatrix2.cpp \
+	Variant/VariantNull.cpp \
+	Variant/VariantObject.cpp \
+	Variant/VariantString.cpp \
+	Variant/VariantUInt16.cpp \
+	Variant/VariantUInt32.cpp \
+	Variant/VariantUInt64.cpp \
+	Variant/VariantUInt8.cpp \
+	Variant/VariantVector.cpp
+
+################################################################################
+## avocado server
+################################################################################
+
+avocado_LDADD = libavocado.a $(LIBS)
+
+avocado_SOURCES = \
+	Admin/ApplicationAdminServer.cpp \
+	Admin/RestAdminBaseHandler.cpp \
+	Admin/RestAdminFeConfigurationHandler.cpp \
+	Admin/RestAdminLogHandler.cpp \
+	Admin/RestBaseHandler.cpp \
+	Admin/RestVersionHandler.cpp \
+	ApplicationServer/ApplicationServer.cpp \
+	ApplicationServer/ApplicationServerImpl.cpp \
+	ApplicationServer/ApplicationServerSchedulerImpl.cpp \
 	Dispatcher/ApplicationServerDispatcher.cpp \
 	Dispatcher/ApplicationServerDispatcherImpl.cpp \
 	Dispatcher/DispatcherImpl.cpp \
@@ -78,29 +131,12 @@ avocado_SOURCES = \
 	HttpsServer/HttpsAsyncCommTask.cpp \
 	HttpsServer/HttpsServer.cpp \
 	HttpsServer/HttpsServerImpl.cpp \
-	JsonParser/json-parser.c \
-	JsonParserX/InputParser.cpp \
-	JsonParserX/JsonParserX.cpp \
-	JsonParserX/JsonParserXDriver.cpp \
-	JsonParserX/JsonScannerX.cpp \
-	Logger/Logger.cpp \
-	Logger/LoggerData.cpp \
-	Logger/LoggerInfo.cpp \
-	Logger/LoggerStream.cpp \
-	Logger/LoggerTiming.cpp \
 	ProgramOptions/program-options.c \
 	QL/ast-query.c \
 	QL/formatter.c \
 	QL/optimize.c \
 	QL/parser.c \
 	QL/tokens.c \
-	Rest/AddressPort.cpp \
-	Rest/AnyServer.cpp \
-	Rest/HttpRequest.cpp \
-	Rest/HttpResponse.cpp \
-	Rest/Initialise.cpp \
-	Rest/SslInterface.cpp \
-	Rest/Url.cpp \
 	RestHandler/RestActionHandler.cpp \
 	RestHandler/RestCollectionHandler.cpp \
 	RestHandler/RestSystemActionHandler.cpp \
@@ -131,38 +167,10 @@ avocado_SOURCES = \
 	Scheduler/Task.cpp \
 	Scheduler/TaskManager.cpp \
 	Scheduler/TimerTask.cpp \
-	ShapedJson/json-shaper.c \
-	ShapedJson/shape-accessor.c \
-	ShapedJson/shaped-json.c \
 	SkipLists/skiplist.c \
 	SkipLists/skiplistIndex.c \
 	V8/v8-actions.cpp \
-	V8/v8-conv.cpp \
-	V8/v8-json.cpp \
-	V8/v8-line-editor.cpp \
-	V8/v8-shell.cpp \
-	V8/v8-utils.cpp \
 	V8/v8-vocbase.cpp \
-	Variant/VariantArray.cpp \
-	Variant/VariantBlob.cpp \
-	Variant/VariantBoolean.cpp \
-	Variant/VariantDate.cpp \
-	Variant/VariantDatetime.cpp \
-	Variant/VariantDouble.cpp \
-	Variant/VariantFloat.cpp \
-	Variant/VariantInt16.cpp \
-	Variant/VariantInt32.cpp \
-	Variant/VariantInt64.cpp \
-	Variant/VariantInt8.cpp \
-	Variant/VariantMatrix2.cpp \
-	Variant/VariantNull.cpp \
-	Variant/VariantObject.cpp \
-	Variant/VariantString.cpp \
-	Variant/VariantUInt16.cpp \
-	Variant/VariantUInt32.cpp \
-	Variant/VariantUInt64.cpp \
-	Variant/VariantUInt8.cpp \
-	Variant/VariantVector.cpp \
 	VocBase/barrier.c \
 	VocBase/blob-collection.c \
 	VocBase/collection.c \
@@ -178,6 +186,7 @@ avocado_SOURCES = \
 	VocBase/query-base.c \
 	VocBase/query-error.c \
 	VocBase/query-javascript.c \
+	VocBase/query-memory.c \
 	VocBase/query-node.c \
 	VocBase/query-parse.c \
 	VocBase/query.c \
@@ -187,6 +196,19 @@ avocado_SOURCES = \
 	VocBase/synchroniser.c \
 	VocBase/voc-shaper.c \
 	VocBase/vocbase.c
+
+################################################################################
+## avocado shell
+################################################################################
+
+avocsh_LDADD = libavocado.a $(LIBS)
+
+avocsh_SOURCES = \
+	SimpleHttpClient/SimpleHttpClient.cpp \
+	SimpleHttpClient/SimpleHttpConnection.cpp \
+	SimpleHttpClient/SimpleHttpResult.cpp \
+	V8Client/V8ClientConnection.cpp \
+	V8Client/shell.cpp
 
 ################################################################################
 ## JavaScript source code as header

@@ -151,6 +151,13 @@ typedef struct TRI_query_template_s {
 TRI_query_template_t;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Initialize the structs contained in a query template and perform
+/// some basic optimizations and type detections
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_InitQueryTemplate (TRI_query_template_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Add a bind parameter to a query template
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -173,7 +180,7 @@ void TRI_FreeQueryTemplate (TRI_query_template_t* const);
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    query instance
 // -----------------------------------------------------------------------------
-
+  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query instance structure
 ///
@@ -189,8 +196,13 @@ typedef struct TRI_query_instance_s {
   bool                       _doAbort;
   TRI_query_error_t          _error;
   TRI_associative_pointer_t  _bindParameters;
+  QL_ast_query_t             _query;
 
-  TRI_query_t*               _query;
+  TRI_query_t*               _query2;
+  struct {
+    TRI_vector_pointer_t     _nodes;     // memory locations of allocated AST nodes
+    TRI_vector_pointer_t     _strings;   // memory locations of allocated strings
+  }                          _memory;
 }
 TRI_query_instance_t;
 
@@ -208,11 +220,20 @@ bool TRI_AddBindParameterQueryInstance (TRI_query_instance_t* const,
 void TRI_FreeQueryInstance (TRI_query_instance_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Create a query instance
+/// @brief Create a query instance with bind parameters (may be empty)
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_query_instance_t* TRI_CreateQueryInstance (const TRI_query_template_t* const,
                                                const TRI_json_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Kill a query instance
+///
+/// This will set a killed flag and register an error. It will not free the
+/// query instance. This will be done by the query executor
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_KillQueryInstance (TRI_query_instance_t* const instance);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Register an error during query execution
@@ -221,6 +242,14 @@ TRI_query_instance_t* TRI_CreateQueryInstance (const TRI_query_template_t* const
 bool TRI_RegisterErrorQueryInstance (TRI_query_instance_t* const,
                                      const int,
                                      const char*);  
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Copy a part of the query's AST and insert bind parameter values on
+/// the fly
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_query_node_t* TRI_CopyQueryPartQueryInstance (TRI_query_instance_t* const,
+                                                  const TRI_query_node_t* const);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            errors

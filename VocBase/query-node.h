@@ -69,7 +69,6 @@ typedef enum {
   TRI_QueryNodeValueNumberDoubleString,
   TRI_QueryNodeValueArray,
   TRI_QueryNodeValueDocument,
-  TRI_QueryNodeValueParameterNumeric,
   TRI_QueryNodeValueParameterNamed,
   TRI_QueryNodeValueIdentifier,
   TRI_QueryNodeValueNamedValue,

@@ -153,8 +153,6 @@ void QLFormatterDump (TRI_query_node_t* node, QL_formatter_t* formatter) {
     QLFormatterPrintStr(formatter,"value", node->_value._boolValue ? "true" : "false");
   } else if (type == TRI_QueryNodeValueOrderDirection) {
     QLFormatterPrintStr(formatter,"value", node->_value._boolValue ? "asc" : "desc");
-  } else if (type == TRI_QueryNodeValueParameterNumeric) {
-    QLFormatterPrintInt(formatter,"value", node->_value._intValue);
   }
 
   lhs    = node->_lhs;

@@ -103,8 +103,10 @@ QL_ast_query_order_type_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct QL_ast_query_select_s {
-  TRI_query_node_t* _base;
+  TRI_query_node_t*          _base;
   QL_ast_query_select_type_e _type;
+  bool                       _usesBindParameters;
+  char*                      _functionCode;
 } 
 QL_ast_query_select_t;
 
@@ -113,7 +115,7 @@ QL_ast_query_select_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct QL_ast_query_from_s {
-  TRI_query_node_t* _base;
+  TRI_query_node_t*         _base;
   TRI_associative_pointer_t _collections;
 } 
 QL_ast_query_from_t;
@@ -123,8 +125,10 @@ QL_ast_query_from_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct QL_ast_query_where_s {
-  TRI_query_node_t* _base;
-  QL_ast_query_where_type_e _type;
+  TRI_query_node_t*          _base;
+  QL_ast_query_where_type_e  _type;
+  bool                       _usesBindParameters;
+  char*                      _functionCode;
 } 
 QL_ast_query_where_t;
 
@@ -133,8 +137,10 @@ QL_ast_query_where_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct QL_ast_query_order_s {
-  TRI_query_node_t* _base;
-  QL_ast_query_order_type_e _type;
+  TRI_query_node_t*          _base;
+  QL_ast_query_order_type_e  _type;
+  bool                       _usesBindParameters;
+  char*                      _functionCode;
 } 
 QL_ast_query_order_t;
 
@@ -144,9 +150,9 @@ QL_ast_query_order_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct QL_ast_query_limit_s {
-  int64_t _offset;
-  int64_t _count;
-  bool    _isUsed;
+  int64_t  _offset;
+  int64_t  _count;
+  bool     _isUsed;
 } 
 QL_ast_query_limit_t;
 
@@ -206,12 +212,15 @@ QL_ast_query_geo_t;
 
 typedef struct QL_ast_query_s {
   QL_ast_query_type_e    _type;
+
   QL_ast_query_select_t  _select;
   QL_ast_query_from_t    _from;
   QL_ast_query_where_t   _where;
   QL_ast_query_order_t   _order;
   QL_ast_query_limit_t   _limit;
   QL_ast_query_geo_t     _geo;
+
+  bool                   _isEmpty;
 } 
 QL_ast_query_t;
 
@@ -226,6 +235,8 @@ typedef struct QL_ast_query_collection_s {
   size_t                          _refCount;
   size_t                          _declarationOrder;
   QL_ast_query_geo_restriction_t* _geoRestriction;
+  bool                            _usesBindParameters;
+  char*                           _functionCode;
 } 
 QL_ast_query_collection_t;
 
@@ -233,13 +244,13 @@ QL_ast_query_collection_t;
 /// @brief Initialize data structures for a query
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLAstQueryInit (QL_ast_query_t*);
+void QLAstQueryInit (QL_ast_query_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief De-allocate data structures for a query
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLAstQueryFree (QL_ast_query_t*);
+void QLAstQueryFree (QL_ast_query_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the ref count for a collection

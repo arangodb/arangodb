@@ -565,6 +565,7 @@ static char DEF_WHITE[6]       = { 0x1B, '[',           '3', '7', 'm', 0 };
 static char DEF_BOLD_WHITE[8]  = { 0x1B, '[', '1', ';', '3', '7', 'm', 0 };
 static char DEF_BLACK[6]       = { 0x1B, '[',           '3', '0', 'm', 0 };
 static char DEF_BOLD_BLACK[8]  = { 0x1B, '[', '1', ';', '3', '0', 'm', 0 };  
+static char DEF_BRIGHT[5]      = { 0x1B, '[',                '1', 'm', 0 };
 static char DEF_RESET[5]       = { 0x1B, '[',                '0', 'm', 0 };
 
 static void addColors (v8::Handle<v8::Context> context) {  
@@ -579,7 +580,8 @@ static void addColors (v8::Handle<v8::Context> context) {
   context->Global()->Set(v8::String::New("COLOR_BOLD_WHITE"), v8::String::New(DEF_BOLD_WHITE, 7));
   context->Global()->Set(v8::String::New("COLOR_BLACK"), v8::String::New(DEF_BLACK, 5));
   context->Global()->Set(v8::String::New("COLOR_BOLD_BLACK"), v8::String::New(DEF_BOLD_BLACK, 8));
-  context->Global()->Set(v8::String::New("COLOR_OUTPUT"), v8::String::New(DEF_BOLD_WHITE, 7));
+  context->Global()->Set(v8::String::New("COLOR_BRIGHT"), v8::String::New(DEF_BOLD_BLACK, 8));
+  context->Global()->Set(v8::String::New("COLOR_OUTPUT"), v8::String::New(DEF_BRIGHT, 4));
   context->Global()->Set(v8::String::New("COLOR_OUTPUT_RESET"), v8::String::New(DEF_RESET, 4));    
 }
 

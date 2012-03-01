@@ -79,37 +79,6 @@ static bool ValidateQueryTemplate (TRI_query_template_t* const template_) {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Optimize the structs contained in a query template
-////////////////////////////////////////////////////////////////////////////////
-
-static bool OptimizeQueryTemplate (TRI_query_template_t* const template_) {
-  char *primaryAlias = QLAstQueryGetPrimaryAlias(template_->_query);
-
-  // optimize select clause
-  QLOptimizeExpression(template_->_query->_select._base);
-  template_->_query->_select._type = QLOptimizeGetSelectType(template_->_query->_select._base,
-                                                             primaryAlias);
-
-  // optimize where clause
-  QLOptimizeExpression(template_->_query->_where._base);
-  template_->_query->_where._type = QLOptimizeGetWhereType(template_->_query->_where._base);
-
-  // optimize order clause
-  if (template_->_query->_order._base) {
-    QLOptimizeOrder(template_->_query->_order._base);
-    template_->_query->_order._type = QLOptimizeGetOrderType(template_->_query->_order._base);
-  }
-  else {
-    template_->_query->_order._type = QLQueryOrderTypeNone;
-  }
-
-  // optimize joins/on clauses
-  QLOptimizeFrom(template_);
-
-  return true;
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            parser
 // -----------------------------------------------------------------------------
@@ -121,8 +90,12 @@ static bool OptimizeQueryTemplate (TRI_query_template_t* const template_) {
 static TRI_query_parser_t* InitParserQueryTemplate (TRI_query_template_t* const template_) {
   TRI_query_parser_t* parser;
 
+  assert(template_);
+  assert(template_->_queryString);
+
   parser = (TRI_query_parser_t*) TRI_Allocate(sizeof(TRI_query_parser_t));
   if (!parser) {
+    TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_OOM, NULL);
     return NULL;
   }
   
@@ -162,6 +135,7 @@ bool TRI_ParseQueryTemplate (TRI_query_template_t* const template_) {
  
   template_->_parser = InitParserQueryTemplate(template_);
   if (!template_->_parser) {
+    TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_OOM, NULL);
     return false;
   }
   
@@ -182,33 +156,13 @@ bool TRI_ParseQueryTemplate (TRI_query_template_t* const template_) {
   if (!ValidateQueryTemplate(template_)) {
     return false;
   }
-
-  return OptimizeQueryTemplate(template_);
+  
+  return TRI_InitQueryTemplate(template_);
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           parser helper functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief keep track of an allocated ast node
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ParseQueryRegisterNode (TRI_query_template_t* const template_, 
-                                 TRI_query_node_t* element) {
-  TRI_PushBackVectorPointer(&template_->_memory._nodes, element);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free an ast node
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ParseQueryFreeNode (TRI_query_node_t* element) {
-  if (element) {
-    TRI_Free(element);
-    element = NULL;
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies a string and keeps track of its memory location in a vector
@@ -265,29 +219,8 @@ void TRI_ParseQueryFreeString (char* string) {
 
 TRI_query_node_t* TRI_ParseQueryCreateNode (TRI_query_template_t* const template_, 
                                             const TRI_query_node_type_e type) { 
-  // allocate memory
-  TRI_query_node_t* node = (TRI_query_node_t *) TRI_Allocate(sizeof(TRI_query_node_t));
-  if (!node) {
-    return NULL; 
-  }
-
-  // keep track of memory location
-  TRI_ParseQueryRegisterNode(template_, node);
-
-  // set node type
-  node->_type               = type;
-
-  // set initial pointers to 0
-  node->_value._stringValue = 0;
-  node->_lhs                = 0;
-  node->_rhs                = 0;
-  node->_next               = 0;
-
-  // set position information
-//  node->_line               = QLget_lineno(template_->_parser->_scanner);
-//  node->_column             = QLget_column(template_->_parser->_scanner);
   
-  return node;
+  return TRI_CreateNodeQuery(&template_->_memory._nodes, type);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

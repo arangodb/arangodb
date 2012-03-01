@@ -576,7 +576,7 @@ char* TRI_SlurpFile (char const* filename) {
 /// @brief creates a lock file based on the PID
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateLockFile (char const* filename) {
+bool TRI_CreateLockFile (char const* filename) {
   TRI_pid_t pid;
   char* buf;
   char* fn;
@@ -586,14 +586,14 @@ int TRI_CreateLockFile (char const* filename) {
   InitialiseLockFiles();
 
   if (LookupElementVectorString(&FileNames, filename) >= 0) {
-    return 0;
+    return true;
   }
 
   fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
 
   if (fd == -1) {
     TRI_set_errno(TRI_ERROR_OPEN_ERROR);
-    return TRI_ERROR_OPEN_ERROR;
+    return false;
   }
 
   pid = TRI_CurrentProcessId();
@@ -607,7 +607,7 @@ int TRI_CreateLockFile (char const* filename) {
   if (rv == -1) {
     TRI_UNLINK(filename);
     TRI_set_errno(TRI_ERROR_WRITE_ERROR);
-    return TRI_ERROR_WRITE_ERROR;
+    return false;
   }
 
   fd = TRI_OPEN(filename, O_RDONLY);
@@ -617,7 +617,7 @@ int TRI_CreateLockFile (char const* filename) {
     TRI_CLOSE(fd);
     TRI_UNLINK(filename);
     TRI_set_errno(TRI_ERROR_LOCK_ERROR);
-    return TRI_ERROR_LOCK_ERROR;
+    return false;
   }
 
   //  close(fd); file descriptor has to be valid for file locking
@@ -628,24 +628,25 @@ int TRI_CreateLockFile (char const* filename) {
   TRI_PushBackVectorString(&FileNames, fn);
   TRI_WriteUnlockReadWriteLock(&LockFileNames);
 
-  return rv;
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief verifies a lock file based on the PID
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_VerifyLockFile (char const* filename) {
+bool TRI_VerifyLockFile (char const* filename) {
   int fd;
   TRI_pid_t pid;
   ssize_t n;
   uint32_t fc;
   char buffer[128];
   int can_lock;
-  int rv;
+
+  TRI_set_errno(TRI_ERROR_NO_ERROR);
 
   if (! TRI_ExistsFile(filename)) {
-    return TRI_ERROR_NO_ERROR;
+    return false;
   }
 
   fd = TRI_OPEN(filename, O_RDONLY);
@@ -654,43 +655,42 @@ int TRI_VerifyLockFile (char const* filename) {
 
   if (n == 0) { // file empty
     TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
-    return TRI_ERROR_ILLEGAL_NUMBER;
+    return false;
   }
 
   fc = TRI_UInt32String(buffer);
 
   if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-    TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
-    return TRI_ERROR_ILLEGAL_NUMBER;
+    return false;
   }
 
   pid = fc;
 
   if (kill(pid, 0) == -1) {
     TRI_set_errno(TRI_ERROR_DEAD_PID);
-    return TRI_ERROR_DEAD_PID;
+    return false;
   }
 
   fd = TRI_OPEN(filename, O_RDONLY);
   can_lock = flock(fd, LOCK_EX | LOCK_NB);
-  rv = 0;
 
   if (can_lock == 0) { // file was not yet be locked
     TRI_set_errno(TRI_ERROR_UNLOCKED_FILE);
     flock(fd, LOCK_UN);
-    rv = TRI_ERROR_UNLOCKED_FILE;
+    TRI_CLOSE(fd);
+
+    return false;
   }
 
   TRI_CLOSE(fd);
-  return rv;
-
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a lock file based on the PID
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DestroyLockFile (char const* filename) {
+bool TRI_DestroyLockFile (char const* filename) {
   int fd;
   int n;
   int res;
@@ -699,7 +699,7 @@ int TRI_DestroyLockFile (char const* filename) {
   n = LookupElementVectorString(&FileNames, filename);
 
   if (n < 0) {
-    return -1;
+    return false;
   }
 
   fd = TRI_OPEN(filename, O_RDWR);
@@ -714,7 +714,7 @@ int TRI_DestroyLockFile (char const* filename) {
     TRI_WriteUnlockReadWriteLock(&LockFileNames);
   }
 
-  return res;
+  return res == 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

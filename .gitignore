@@ -57,3 +57,5 @@ out
 Doxygen/js
 ARCH.*
 *.old
+avocsh
+libavocado.a

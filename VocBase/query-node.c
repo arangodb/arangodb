@@ -75,8 +75,6 @@ const char* TRI_QueryNodeGetName (const TRI_query_node_type_e type) {
       return "value: array";
     case TRI_QueryNodeValueDocument:
       return "value: document";
-    case TRI_QueryNodeValueParameterNumeric:
-      return "value: numeric parameter";
     case TRI_QueryNodeValueParameterNamed:
       return "value: named parameter";
     case TRI_QueryNodeValueIdentifier:
@@ -176,7 +174,6 @@ TRI_query_node_type_group_e TRI_QueryNodeGetTypeGroup (const TRI_query_node_type
     case TRI_QueryNodeValueNumberDoubleString:
     case TRI_QueryNodeValueArray:
     case TRI_QueryNodeValueDocument:
-    case TRI_QueryNodeValueParameterNumeric:
     case TRI_QueryNodeValueParameterNamed:
     case TRI_QueryNodeValueIdentifier:
     case TRI_QueryNodeValueNamedValue:
@@ -325,7 +322,6 @@ bool TRI_QueryNodeIsValueNode (const TRI_query_node_t* const node) {
     case TRI_QueryNodeValueNumberDoubleString:
     case TRI_QueryNodeValueArray:
     case TRI_QueryNodeValueDocument:
-    case TRI_QueryNodeValueParameterNumeric:
     case TRI_QueryNodeValueParameterNamed:
     case TRI_QueryNodeValueIdentifier:
     case TRI_QueryNodeValueNamedValue:

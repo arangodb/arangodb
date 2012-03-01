@@ -596,6 +596,44 @@ void QLOptimizeTernaryOperator (TRI_query_node_t* node) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether a query part uses bind parameters
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLOptimizeUsesBindParameters (const TRI_query_node_t* const node) {
+  TRI_query_node_t* next;
+
+  if (!node) {
+    return false;
+  }
+
+  next = node->_next;
+  while (next) {
+    if (QLOptimizeUsesBindParameters(next)) {
+      return true;
+    }
+    next = next->_next;
+  }
+
+  if (node->_lhs) {
+    if (QLOptimizeUsesBindParameters(node->_lhs)) {
+      return true;
+    }
+  }
+
+  if (node->_rhs) {
+    if (QLOptimizeUsesBindParameters(node->_rhs)) {
+      return true;
+    }
+  }
+
+  if (node->_type == TRI_QueryNodeValueParameterNamed) {
+    return true;
+  }
+  
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief optimize order by by removing constant parts
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -678,10 +716,11 @@ void QLOptimizeExpression (TRI_query_node_t* node) {
 /// collections that are left or list join'd can be removed.
 ////////////////////////////////////////////////////////////////////////////////
 
-//static void QLOptimizeRefCountCollections (const QL_parser_context_t* context, 
-static void QLOptimizeRefCountCollections (TRI_query_template_t* const template_,
+static void QLOptimizeRefCountCollections (QL_ast_query_t* const query,
                                            const TRI_query_node_t* node) {
-  TRI_query_node_t *lhs, *rhs, *next;
+  TRI_query_node_t* lhs;
+  TRI_query_node_t* rhs;
+  TRI_query_node_t* next;
 
   if (!node) {
     return; 
@@ -690,23 +729,23 @@ static void QLOptimizeRefCountCollections (TRI_query_template_t* const template_
   if (node->_type == TRI_QueryNodeContainerList) {
     next = node->_next;
     while (next) {
-      QLOptimizeRefCountCollections(template_, next);
+      QLOptimizeRefCountCollections(query, next);
       next = next->_next;
     }
   }
 
   if (node->_type == TRI_QueryNodeReferenceCollectionAlias) {
-    QLAstQueryAddRefCount(template_->_query, node->_value._stringValue);
+    QLAstQueryAddRefCount(query, node->_value._stringValue);
   }
 
   lhs = node->_lhs;
   if (lhs) {
-    QLOptimizeRefCountCollections(template_, lhs);
+    QLOptimizeRefCountCollections(query, lhs);
   }
 
   rhs = node->_rhs;
   if (rhs) {
-    QLOptimizeRefCountCollections(template_, rhs);
+    QLOptimizeRefCountCollections(query, rhs);
   }
 }
 
@@ -716,21 +755,20 @@ static void QLOptimizeRefCountCollections (TRI_query_template_t* const template_
 /// Reference counting is later used to remove unnecessary joins
 ////////////////////////////////////////////////////////////////////////////////
 
-//static void QLOptimizeCountRefs (const QL_parser_context_t* context) {
-static void QLOptimizeCountRefs (TRI_query_template_t* const template_) {
+static void QLOptimizeCountRefs (QL_ast_query_t* const query) {
   TRI_query_node_t* next = NULL;
-  TRI_query_node_t* node = (TRI_query_node_t*) template_->_query->_from._base;
+  TRI_query_node_t* node = query->_from._base;
   TRI_query_node_t* alias;
 
-  if (template_->_query->_from._collections._nrUsed < 2) {
+  if (query->_from._collections._nrUsed < 2) {
     // we don't have a join, no need to refcount anything
     return;
   }
 
   // mark collections used in select, where and order
-  QLOptimizeRefCountCollections(template_, template_->_query->_select._base);
-  QLOptimizeRefCountCollections(template_, template_->_query->_where._base);
-  QLOptimizeRefCountCollections(template_, template_->_query->_order._base);
+  QLOptimizeRefCountCollections(query, query->_select._base);
+  QLOptimizeRefCountCollections(query, query->_where._base);
+  QLOptimizeRefCountCollections(query, query->_order._base);
 
   // mark collections used in on clauses
   node = node->_next;
@@ -740,10 +778,10 @@ static void QLOptimizeCountRefs (TRI_query_template_t* const template_) {
       break;
     }
 
-    alias = (TRI_query_node_t*) ((TRI_query_node_t*) next->_lhs)->_rhs;
-    if ((QLAstQueryGetRefCount(template_->_query, alias->_value._stringValue) > 0) ||
+    alias = next->_lhs->_rhs;
+    if ((QLAstQueryGetRefCount(query, alias->_value._stringValue) > 0) ||
         (next->_type == TRI_QueryNodeJoinInner)) {
-      QLOptimizeRefCountCollections(template_, next->_rhs);
+      QLOptimizeRefCountCollections(query, next->_rhs);
     }
     node = node->_next;
   }
@@ -753,15 +791,15 @@ static void QLOptimizeCountRefs (TRI_query_template_t* const template_) {
 /// @brief optimize from/joins
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLOptimizeFrom (TRI_query_template_t* const template_) {
+void QLOptimizeFrom (QL_ast_query_t* const query) {
   TRI_query_node_t* temp;
   TRI_query_node_t* alias;
   TRI_query_node_t* responsibleNode;
   TRI_query_node_t* next = NULL;
-  TRI_query_node_t* node = (TRI_query_node_t*) template_->_query->_from._base;
+  TRI_query_node_t* node = query->_from._base;
 
   // count usages of collections in select, where and order clause
-  QLOptimizeCountRefs(template_);
+  QLOptimizeCountRefs(query);
 
   responsibleNode = node;
   node = node->_next;
@@ -774,7 +812,8 @@ void QLOptimizeFrom (TRI_query_template_t* const template_) {
       if (node->_type == TRI_QueryNodeJoinInner &&
           QLOptimizeGetWhereType(node->_rhs) == QLQueryWhereTypeAlwaysFalse) {
         // inner join condition is always false, query will have no results
-        // TODO: set marker that query is empty
+        // set marker that query is empty
+        query->_isEmpty = true;
       }
     }
     next = node->_next;
@@ -784,8 +823,8 @@ void QLOptimizeFrom (TRI_query_template_t* const template_) {
 
     assert(next->_lhs);
 
-    alias = (TRI_query_node_t*) ((TRI_query_node_t*) next->_lhs)->_rhs;
-    if ((QLAstQueryGetRefCount(template_->_query, alias->_value._stringValue) < 1) &&
+    alias = next->_lhs->_rhs;
+    if ((QLAstQueryGetRefCount(query, alias->_value._stringValue) < 1) &&
         (next->_type == TRI_QueryNodeJoinLeft || 
          next->_type == TRI_QueryNodeJoinRight || 
          next->_type == TRI_QueryNodeJoinList)) {
@@ -1319,7 +1358,8 @@ static TRI_vector_pointer_t* QLOptimizeCreateRangeVector (QL_optimize_range_t* r
 
 static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
                                                    TRI_query_node_t* valueNode,
-                                                   const TRI_query_node_type_e type) {
+                                                   const TRI_query_node_type_e type,
+                                                   TRI_associative_pointer_t* bindParameters) {
   QL_optimize_range_t* range;
   TRI_string_buffer_t* name;
   TRI_query_node_t* lhs;
@@ -1404,7 +1444,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
         TRI_Free(range);
         return NULL;
       }
-      TRI_ConvertQueryJavascript(documentJs, valueNode);
+      TRI_ConvertQueryJavascript(documentJs, valueNode, bindParameters);
       range->_minValue._stringValue = TRI_DuplicateString(documentJs->_buffer->_buffer);
       range->_maxValue._stringValue = range->_minValue._stringValue;
       TRI_FreeQueryJavascript(documentJs);
@@ -1472,7 +1512,8 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
 /// @brief recursively optimize nodes in an expression AST
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* QLOptimizeCondition (TRI_query_node_t* node) {
+TRI_vector_pointer_t* QLOptimizeCondition (TRI_query_node_t* node, 
+                                           TRI_associative_pointer_t* bindParameters) {
   TRI_query_node_t *lhs, *rhs;
   TRI_vector_pointer_t* ranges;
   TRI_vector_pointer_t* combinedRanges;
@@ -1494,8 +1535,8 @@ TRI_vector_pointer_t* QLOptimizeCondition (TRI_query_node_t* node) {
     // logical && or logical ||
 
     // get the range vectors from both operands
-    ranges = QLOptimizeMergeRangeVectors(QLOptimizeCondition(lhs), 
-                                         QLOptimizeCondition(rhs));
+    ranges = QLOptimizeMergeRangeVectors(QLOptimizeCondition(lhs, bindParameters), 
+                                         QLOptimizeCondition(rhs, bindParameters));
     if (ranges) {
       if (ranges->_length > 0) {
         // try to merge the ranges
@@ -1522,8 +1563,8 @@ TRI_vector_pointer_t* QLOptimizeCondition (TRI_query_node_t* node) {
          type == TRI_QueryNodeBinaryOperatorEqual)) {
       // collection.attribute relop collection.attribute
       return QLOptimizeMergeRangeVectors(
-        QLOptimizeCreateRangeVector(QLOptimizeCreateRange(lhs, rhs, type)),
-        QLOptimizeCreateRangeVector(QLOptimizeCreateRange(rhs, lhs, type))
+        QLOptimizeCreateRangeVector(QLOptimizeCreateRange(lhs, rhs, type, bindParameters)),
+        QLOptimizeCreateRangeVector(QLOptimizeCreateRange(rhs, lhs, type, bindParameters))
       );
     }
     else if (lhs->_type == TRI_QueryNodeContainerMemberAccess &&
@@ -1532,14 +1573,14 @@ TRI_vector_pointer_t* QLOptimizeCondition (TRI_query_node_t* node) {
         (rhs->_type == TRI_QueryNodeValueDocument || rhs->_type == TRI_QueryNodeValueArray) && 
         QLOptimizeIsStaticDocument(rhs)) {
       // collection.attribute == document
-      return QLOptimizeCreateRangeVector(QLOptimizeCreateRange(lhs, rhs, type));
+      return QLOptimizeCreateRangeVector(QLOptimizeCreateRange(lhs, rhs, type, bindParameters));
     }
     else if (lhs->_type == TRI_QueryNodeContainerMemberAccess && 
         (rhs->_type == TRI_QueryNodeValueNumberDouble || 
          rhs->_type == TRI_QueryNodeValueNumberDoubleString || 
          rhs->_type == TRI_QueryNodeValueString)) {
       // collection.attribute relop value
-      return QLOptimizeCreateRangeVector(QLOptimizeCreateRange(lhs, rhs, type));
+      return QLOptimizeCreateRangeVector(QLOptimizeCreateRange(lhs, rhs, type, bindParameters));
     }
     else if (rhs->_type == TRI_QueryNodeContainerMemberAccess &&
              (type == TRI_QueryNodeBinaryOperatorIdentical ||
@@ -1547,14 +1588,14 @@ TRI_vector_pointer_t* QLOptimizeCondition (TRI_query_node_t* node) {
              lhs->_type == TRI_QueryNodeValueDocument &&
              QLOptimizeIsStaticDocument(lhs)) {
       // document == collection.attribute
-      return QLOptimizeCreateRangeVector(QLOptimizeCreateRange(rhs, lhs, type));
+      return QLOptimizeCreateRangeVector(QLOptimizeCreateRange(rhs, lhs, type, bindParameters));
     } else if (rhs->_type == TRI_QueryNodeContainerMemberAccess && 
                (lhs->_type == TRI_QueryNodeValueNumberDouble || 
                 lhs->_type == TRI_QueryNodeValueNumberDoubleString || 
                 lhs->_type == TRI_QueryNodeValueString)) { 
       // value relop collection.attrbiute 
       return QLOptimizeCreateRangeVector(
-        QLOptimizeCreateRange(rhs, lhs, TRI_QueryNodeGetReversedRelationalOperator(type)));
+        QLOptimizeCreateRange(rhs, lhs, TRI_QueryNodeGetReversedRelationalOperator(type), bindParameters));
     }
   }
 
