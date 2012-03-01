@@ -1084,12 +1084,14 @@ atom:
       $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueParameterNumeric);
       ABORT_IF_OOM($$);
       $$->_value._intValue = d;
+      TRI_AddBindParameterQueryTemplate(template_, TRI_CreateBindParameter($1, NULL));   
     }
   | PARAMETER_NAMED {
       // named parameter
       $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueParameterNamed);
       ABORT_IF_OOM($$);
       $$->_value._stringValue = $1;
+      TRI_AddBindParameterQueryTemplate(template_, TRI_CreateBindParameter($1, NULL));   
     }
  ;
 

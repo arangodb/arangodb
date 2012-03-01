@@ -59,7 +59,7 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 /// @page JSModuleGraphTOC
 ///
 /// <ol>
-///   <li>Graph</li>
+///   <li>@ref JSModuleGraphGraph
 ///     <ol>
 ///       <li>@ref JSModuleGraphGraphAddEdge "Graph.addEdge"</li>
 ///       <li>@ref JSModuleGraphGraphAddVertex "Graph.addVertex"</li>
@@ -70,7 +70,8 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 ///       <li>@ref JSModuleGraphGraphRemoveEdge "Graph.removeEdge"</li>
 ///       <li>@ref JSModuleGraphGraphRemoveVertex "Graph.removeVertex"</li>
 ///     </ol>
-///   <li>Vertex</li>
+///   </li>
+///   <li>@ref JSModuleGraphVertex
 ///     <ol>
 ///       <li>@ref JSModuleGraphVertexAddInEdge "Vertex.addInEdge"</li>
 ///       <li>@ref JSModuleGraphVertexAddOutEdge "Vertex.addOutEdge"</li>
@@ -83,7 +84,8 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 ///       <li>@ref JSModuleGraphVertexProperties "Vertex.properties"</li>
 ///       <li>@ref JSModuleGraphVertexSetProperty "Vertex.setProperty"</li>
 ///     </ol>
-///   <li>Edge</li>
+///   </li>
+///   <li>@ref JSModuleGraphEdge
 ///     <ol>
 ///       <li>@ref JSModuleGraphEdgeGetId "Edge.getId"</li>
 ///       <li>@ref JSModuleGraphEdgeGetInVertex "Edge.getInVertex"</li>
@@ -108,88 +110,115 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 /// @copydoc JSModuleGraphTOC
 /// <hr>
 ///
+/// @section JSModuleGraphGraph Graph Constructors and Methods
+//////////////////////////////////////////////////////////////
+///
 /// @anchor JSModuleGraphGraphConstructor
 /// @copydetails JSF_Graph
+/// <hr>
 ///
 /// @anchor JSModuleGraphGraphAddEdge
 /// @copydetails JSF_Graph_prototype_addEdge
+/// <hr>
 ///
 /// @anchor JSModuleGraphGraphAddVertex
 /// @copydetails JSF_Graph_prototype_addVertex
+/// <hr>
 ///
 /// @anchor JSModuleGraphGraphGetEdges
 /// @copydetails JSF_Graph_prototype_getEdges
+/// <hr>
 ///
 /// @anchor JSModuleGraphGraphGetVertex
 /// @copydetails JSF_Graph_prototype_getVertex
+/// <hr>
 ///
 /// @anchor JSModuleGraphGraphGetVertices
 /// @copydetails JSF_Graph_prototype_getVertices
+/// <hr>
 ///
 /// @anchor JSModuleGraphGraphRemoveVertex
 /// @copydetails JSF_Graph_prototype_removeVertex
+/// <hr>
 ///
 /// @anchor JSModuleGraphGraphRemoveEdge
 /// @copydetails JSF_Graph_prototype_removeEdge
 ///
-/// <hr>
+/// @section JSModuleGraphVertex Vertex Methods
+///////////////////////////////////////////////
 ///
 /// @anchor JSModuleGraphVertexAddInEdge
 /// @copydetails JSF_Vertex_prototype_addInEdge
+/// <hr>
 ///
 /// @anchor JSModuleGraphVertexAddOutEdge
 /// @copydetails JSF_Vertex_prototype_addOutEdge
+/// <hr>
 ///
 /// @anchor JSModuleGraphVertexEdges
 /// @copydetails JSF_Vertex_prototype_edges
+/// <hr>
 ///
 /// @anchor JSModuleGraphVertexGetId
 /// @copydetails JSF_Vertex_prototype_getId
+/// <hr>
 ///
 /// @anchor JSModuleGraphVertexGetInEdges
 /// @copydetails JSF_Vertex_prototype_getInEdges
+/// <hr>
 ///
 /// @anchor JSModuleGraphVertexGetOutEdges
 /// @copydetails JSF_Vertex_prototype_getOutEdges
+/// <hr>
 ///
 /// @anchor JSModuleGraphVertexGetProperty
 /// @copydetails JSF_Vertex_prototype_getProperty
+/// <hr>
 ///
 /// @anchor JSModuleGraphVertexGetPropertyKeys
 /// @copydetails JSF_Vertex_prototype_getPropertyKeys
+/// <hr>
 ///
 /// @anchor JSModuleGraphVertexProperties
 /// @copydetails JSF_Vertex_prototype_properties
+/// <hr>
 ///
 /// @anchor JSModuleGraphVertexSetProperty
 /// @copydetails JSF_Vertex_prototype_setProperty
 ///
-/// <hr>
+/// @section JSModuleGraphEdge Edge Methods
+///////////////////////////////////////////
 ///
 /// @anchor JSModuleGraphEdgeGetId
 /// @copydetails JSF_Edge_prototype_getId
+/// <hr>
 ///
 /// @anchor JSModuleGraphEdgeGetInVertex
 /// @copydetails JSF_Edge_prototype_getInVertex
+/// <hr>
 ///
 /// @anchor JSModuleGraphEdgeGetLabel
 /// @copydetails JSF_Edge_prototype_getLabel
+/// <hr>
 ///
 /// @anchor JSModuleGraphEdgeGetOutVertex
 /// @copydetails JSF_Edge_prototype_getOutVertex
+/// <hr>
 ///
 /// @anchor JSModuleGraphEdgeGetProperty
 /// @copydetails JSF_Edge_prototype_getProperty
+/// <hr>
 ///
 /// @anchor JSModuleGraphEdgeGetPropertyKeys
 /// @copydetails JSF_Edge_prototype_getPropertyKeys
+/// <hr>
 ///
 /// @anchor JSModuleGraphEdgeProperties
 /// @copydetails JSF_Edge_prototype_properties
+/// <hr>
 ///
 /// @anchor JSModuleGraphEdgeSetProperty
 /// @copydetails JSF_Edge_prototype_setProperty
-///
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
@@ -215,7 +244,7 @@ function Edge (graph, id) {
   this._graph = graph;
   this._id = id;
 
-  props = this._graph._edges.document(this._id).next();
+  props = this._graph._edges.document(this._id);
 
   if (props) {
     this._label = props._label;
@@ -368,21 +397,18 @@ Edge.prototype.getPropertyKeys = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.setProperty = function (name, value) {
-  var query;
-  var props;
+  var document;
 
   if (! this._id) {
     throw "accessing a deleted edge";
   }
 
-  query = this._graph._edges.document(this._id); // TODO use "update"
+  document = this._graph._edges.document(this._id); // TODO use "update"
 
-  if (query.hasNext()) {
-    props = query.next();
+  if (query !== undefined) {
+    document[name] = value;
 
-    props[name] = value;
-
-    this._graph._edges.replace(this._id, props);
+    this._graph._edges.replace(this._id, document);
 
     return value;
   }
@@ -408,7 +434,7 @@ Edge.prototype.properties = function () {
     throw "accessing a deleted edge";
   }
 
-  props = this._graph._edges.document(this._id).next();
+  props = this._graph._edges.document(this._id);
 
   if (! props) {
     this._id = undefined;
@@ -478,7 +504,7 @@ function Vertex (graph, id) {
 
   props = this._graph._vertices.document(this._id);
 
-  if (! props.hasNext()) {
+  if (props === undefined) {
     this._id = undefined;
   }
 }
@@ -819,7 +845,7 @@ Vertex.prototype.properties = function () {
     throw "accessing a deleted vertex";
   }
 
-  props = this._graph._vertices.document(this._id).next();
+  props = this._graph._vertices.document(this._id);
 
   if (! props) {
     this._id = undefined;
@@ -842,7 +868,6 @@ Vertex.prototype.properties = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.setProperty = function (name, value) {
-  var query;
   var props;
 
   if (! this._id) {
@@ -851,11 +876,9 @@ Vertex.prototype.setProperty = function (name, value) {
 
   delete this._properties;
 
-  query = this._graph._vertices.document(this._id); // TODO use "update"
+  props = this._graph._vertices.document(this._id); // TODO use "update"
 
-  if (query.hasNext()) {
-    props = query.next();
-
+  if (props !== undefined) {
     props[name] = value;
 
     this._graph._vertices.replace(this._id, props);

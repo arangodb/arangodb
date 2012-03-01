@@ -870,7 +870,7 @@ TRI_qry_where_t* TRI_CreateQueryWhereHashConstant (TRI_idx_iid_t iid, TRI_json_t
   result->base.clone  = CloneQueryWhereHashConstant;
   result->base.free   =  FreeQueryWhereHashConstant;
   result->_iid        = iid;
-  result->_parameters = parameters;
+  result->_parameters = TRI_CopyJson(parameters);
   return &result->base;
 }
 
@@ -885,7 +885,7 @@ TRI_qry_where_t* TRI_CreateQueryWhereSkiplistConstant (TRI_idx_iid_t iid, TRI_js
   result->base.clone  = CloneQueryWhereSkiplistConstant;
   result->base.free   = FreeQueryWhereSkiplistConstant;
   result->_iid        = iid;
-  result->_parameters = parameters;
+  result->_parameters = TRI_CopyJson(parameters);
   return &result->base;
 }
 
