@@ -899,8 +899,6 @@ TRI_data_feeder_t* TRI_CreateDataFeederSkiplistLookup (const TRI_doc_collection_
                                                        size_t level) {
   TRI_data_feeder_t* feeder;
 
-  printf("SKIPLISTS ARE YET UNSUPPORTED. TERMINATING\n");
-  exit(1);  
   feeder = CreateDataFeeder(FEEDER_SKIPLIST_LOOKUP, collection, join, level);
   if (!feeder) {
     return NULL;

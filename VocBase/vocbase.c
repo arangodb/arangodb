@@ -411,20 +411,47 @@ bool TRI_msync (int fd, char const* begin, char const* end) {
 
 TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   TRI_vocbase_t* vocbase;
+  char* lockFile;
+  int lockCheck;
 
   if (! TRI_IsDirectory(path)) {
     LOG_ERROR("database path '%s' is not a directory", path);
     return NULL;
   }
 
+  // check if the database is locked
+  lockFile = TRI_Concatenate2File(path, "lock");
+  lockCheck = TRI_VerifyLockFile(lockFile);
+
+  if (lockCheck) {
+    LOG_FATAL("database is locked, please check the lock file '%s'", lockFile);
+    TRI_FreeString(lockFile);
+    return NULL;
+  }
+
+  if (TRI_ExistsFile(lockFile)) {
+    TRI_UnlinkFile(lockFile);
+  }
+
+  lockCheck = TRI_CreateLockFile(lockFile);
+
+  if (! lockCheck) {
+    LOG_FATAL("cannot lock the database, please check the lock file '%s': %s", lockFile, TRI_last_error());
+    TRI_FreeString(lockFile);
+    return NULL;
+  }
+
   // setup vocbase structure
   vocbase = TRI_Allocate(sizeof(TRI_vocbase_t));
+
   if (!vocbase) {
     LOG_ERROR("out of memory when opening vocbase");
     return NULL;
   }
 
   vocbase->_path = TRI_DuplicateString(path);
+  vocbase->_lockFile = lockFile;
+
   if (!vocbase->_path) {
     TRI_Free(vocbase);
     LOG_ERROR("out of memory when opening vocbase");
@@ -476,6 +503,9 @@ void TRI_CloseVocBase (TRI_vocbase_t* vocbase) {
 
   TRI_JoinThread(&vocbase->_synchroniser);
   TRI_JoinThread(&vocbase->_compactor);
+
+  TRI_DestroyLockFile(vocbase->_lockFile);
+  TRI_FreeString(vocbase->_lockFile);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

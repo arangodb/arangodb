@@ -30,10 +30,13 @@
 #define TRIAGENS_FYN_REST_LINE_REQUEST_H 1
 
 #include <Basics/Common.h>
+#include <Basics/StringBuffer.h>
 
 #include <Rest/ConnectionInfo.h>
 #include <Basics/StringBuffer.h>
 #include <Basics/StringUtils.h>
+
+using namespace triagens::basics;
 
 namespace triagens {
   namespace rest {

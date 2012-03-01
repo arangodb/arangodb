@@ -42,8 +42,11 @@
 
 void TRI_InitialiseQueryErrors (void) {
   REG_ERROR(OOM,                                "out of memory");
+  REG_ERROR(KILLED,                             "query killed");
+
   REG_ERROR(PARSE,                              "parse error: %s");
   REG_ERROR(EMPTY,                              "query is empty");
+
   REG_ERROR(NUMBER_OUT_OF_RANGE,                "number '%s' is out of range");
   REG_ERROR(LIMIT_VALUE_OUT_OF_RANGE,           "limit value '%s' is out of range");
   

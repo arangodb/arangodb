@@ -144,7 +144,7 @@ char* TRI_SlurpFile (char const* filename);
 /// file is filled with the process identifier as decimal number and a
 /// lock on the file is obtained using @FN{flock}.
 ///
-/// On success 0 is returned. An error number is returned on failure. See
+/// On success true is returned. False is returned on failure. See
 /// @FN{TRI_errno} for details.
 ///
 /// Internally, the functions keeps a list of open pid files. Calling the
@@ -153,7 +153,7 @@ char* TRI_SlurpFile (char const* filename);
 /// all open locks upon exit.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateLockFile (char const* filename);
+bool TRI_CreateLockFile (char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief verifies a lock file based on the PID
@@ -176,13 +176,13 @@ int TRI_CreateLockFile (char const* filename);
 /// used to remove the lock file.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_VerifyLockFile (char const* filename);
+bool TRI_VerifyLockFile (char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a lock file based on the PID
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DestroyLockFile (char const* filename);
+bool TRI_DestroyLockFile (char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

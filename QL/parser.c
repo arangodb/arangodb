@@ -3245,9 +3245,9 @@ yyreduce:
         YYABORT;
       }
 
-      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueParameterNumeric);
+      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueParameterNamed);
       ABORT_IF_OOM((yyval.node));
-      (yyval.node)->_value._intValue = d;
+      (yyval.node)->_value._stringValue = (yyvsp[(1) - (1)].strval);
       TRI_AddBindParameterQueryTemplate(template_, TRI_CreateBindParameter((yyvsp[(1) - (1)].strval), NULL));   
     ;}
     break;

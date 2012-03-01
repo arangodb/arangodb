@@ -94,10 +94,10 @@ HttpHandler::status_e RestActionHandler::execute () {
   LoggerData::Task const * task = &logIllegal;
 
   switch (type) {
-    case HttpRequest::HTTP_REQUEST_DELETE: task = &logIllegal; break;
+    case HttpRequest::HTTP_REQUEST_DELETE: task = &logExecute; break;
     case HttpRequest::HTTP_REQUEST_GET: task = &logExecute; break;
-    case HttpRequest::HTTP_REQUEST_POST: task = &logIllegal; break;
-    case HttpRequest::HTTP_REQUEST_PUT: task = &logIllegal; break;
+    case HttpRequest::HTTP_REQUEST_POST: task = &logExecute; break;
+    case HttpRequest::HTTP_REQUEST_PUT: task = &logExecute; break;
     case HttpRequest::HTTP_REQUEST_HEAD: task = &logHead; break;
     case HttpRequest::HTTP_REQUEST_ILLEGAL: task = &logIllegal; break;
   }
@@ -110,6 +110,10 @@ HttpHandler::status_e RestActionHandler::execute () {
 
   switch (type) {
     case HttpRequest::HTTP_REQUEST_GET: res = executeAction(); break;
+    case HttpRequest::HTTP_REQUEST_POST: res = executeAction(); break;
+    case HttpRequest::HTTP_REQUEST_PUT: res = executeAction(); break;
+    case HttpRequest::HTTP_REQUEST_DELETE: res = executeAction(); break;
+    case HttpRequest::HTTP_REQUEST_HEAD: res = executeAction(); break;
 
     default:
       res = false;

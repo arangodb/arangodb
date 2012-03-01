@@ -46,6 +46,7 @@
 ################################################################################
 
 
+
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
 pkgincludedir = $(includedir)/@PACKAGE@
@@ -67,6 +68,7 @@ build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
 sbin_PROGRAMS = avocado$(EXEEXT)
+bin_PROGRAMS = avocsh$(EXEEXT)
 DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.all-in-one \
 	$(srcdir)/Makefile.am $(srcdir)/Makefile.bison \
 	$(srcdir)/Makefile.doxygen $(srcdir)/Makefile.files \
@@ -118,19 +120,19 @@ CONFIG_HEADER = $(top_builddir)/config/config.h \
 	$(top_builddir)/BasicsC/local-configuration.h
 CONFIG_CLEAN_FILES = Doxygen/avocado.doxy
 CONFIG_CLEAN_VPATH_FILES =
-am__installdirs = "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(pkgdatadir)"
-PROGRAMS = $(sbin_PROGRAMS)
+LIBRARIES = $(noinst_LIBRARIES)
+AR = ar
+ARFLAGS = cru
+AM_V_AR = $(am__v_AR_$(V))
+am__v_AR_ = $(am__v_AR_$(AM_DEFAULT_VERBOSITY))
+am__v_AR_0 = @echo "  AR    " $@;
+AM_V_at = $(am__v_at_$(V))
+am__v_at_ = $(am__v_at_$(AM_DEFAULT_VERBOSITY))
+am__v_at_0 = @
+libavocado_a_AR = $(AR) $(ARFLAGS)
+libavocado_a_LIBADD =
 am__dirstamp = $(am__leading_dot)dirstamp
-am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
-	Admin/RestAdminBaseHandler.$(OBJEXT) \
-	Admin/RestAdminFeConfigurationHandler.$(OBJEXT) \
-	Admin/RestAdminLogHandler.$(OBJEXT) \
-	Admin/RestBaseHandler.$(OBJEXT) \
-	Admin/RestVersionHandler.$(OBJEXT) \
-	ApplicationServer/ApplicationServer.$(OBJEXT) \
-	ApplicationServer/ApplicationServerImpl.$(OBJEXT) \
-	ApplicationServer/ApplicationServerSchedulerImpl.$(OBJEXT) \
-	Basics/ConditionLocker.$(OBJEXT) \
+am_libavocado_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 	Basics/ConditionVariable.$(OBJEXT) Basics/FileUtils.$(OBJEXT) \
 	Basics/Initialise.$(OBJEXT) Basics/LibraryLoader.$(OBJEXT) \
 	Basics/Mutex.$(OBJEXT) Basics/MutexLocker.$(OBJEXT) \
@@ -155,6 +157,47 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	BasicsC/terminal-utils-ncurses.$(OBJEXT) \
 	BasicsC/terminal-utils.$(OBJEXT) \
 	BasicsC/threads-posix.$(OBJEXT) BasicsC/vector.$(OBJEXT) \
+	JsonParser/json-parser.$(OBJEXT) \
+	JsonParserX/InputParser.$(OBJEXT) \
+	JsonParserX/JsonParserX.$(OBJEXT) \
+	JsonParserX/JsonParserXDriver.$(OBJEXT) \
+	JsonParserX/JsonScannerX.$(OBJEXT) Logger/Logger.$(OBJEXT) \
+	Logger/LoggerData.$(OBJEXT) Logger/LoggerInfo.$(OBJEXT) \
+	Logger/LoggerStream.$(OBJEXT) Logger/LoggerTiming.$(OBJEXT) \
+	Rest/AddressPort.$(OBJEXT) Rest/AnyServer.$(OBJEXT) \
+	Rest/HttpRequest.$(OBJEXT) Rest/HttpResponse.$(OBJEXT) \
+	Rest/Initialise.$(OBJEXT) Rest/SslInterface.$(OBJEXT) \
+	Rest/Url.$(OBJEXT) ShapedJson/json-shaper.$(OBJEXT) \
+	ShapedJson/shape-accessor.$(OBJEXT) \
+	ShapedJson/shaped-json.$(OBJEXT) V8/v8-conv.$(OBJEXT) \
+	V8/v8-json.$(OBJEXT) V8/v8-line-editor.$(OBJEXT) \
+	V8/v8-shell.$(OBJEXT) V8/v8-utils.$(OBJEXT) \
+	Variant/VariantArray.$(OBJEXT) Variant/VariantBlob.$(OBJEXT) \
+	Variant/VariantBoolean.$(OBJEXT) Variant/VariantDate.$(OBJEXT) \
+	Variant/VariantDatetime.$(OBJEXT) \
+	Variant/VariantDouble.$(OBJEXT) Variant/VariantFloat.$(OBJEXT) \
+	Variant/VariantInt16.$(OBJEXT) Variant/VariantInt32.$(OBJEXT) \
+	Variant/VariantInt64.$(OBJEXT) Variant/VariantInt8.$(OBJEXT) \
+	Variant/VariantMatrix2.$(OBJEXT) Variant/VariantNull.$(OBJEXT) \
+	Variant/VariantObject.$(OBJEXT) \
+	Variant/VariantString.$(OBJEXT) \
+	Variant/VariantUInt16.$(OBJEXT) \
+	Variant/VariantUInt32.$(OBJEXT) \
+	Variant/VariantUInt64.$(OBJEXT) Variant/VariantUInt8.$(OBJEXT) \
+	Variant/VariantVector.$(OBJEXT)
+libavocado_a_OBJECTS = $(am_libavocado_a_OBJECTS)
+am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
+	"$(DESTDIR)$(pkgdatadir)"
+PROGRAMS = $(bin_PROGRAMS) $(sbin_PROGRAMS)
+am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
+	Admin/RestAdminBaseHandler.$(OBJEXT) \
+	Admin/RestAdminFeConfigurationHandler.$(OBJEXT) \
+	Admin/RestAdminLogHandler.$(OBJEXT) \
+	Admin/RestBaseHandler.$(OBJEXT) \
+	Admin/RestVersionHandler.$(OBJEXT) \
+	ApplicationServer/ApplicationServer.$(OBJEXT) \
+	ApplicationServer/ApplicationServerImpl.$(OBJEXT) \
+	ApplicationServer/ApplicationServerSchedulerImpl.$(OBJEXT) \
 	Dispatcher/ApplicationServerDispatcher.$(OBJEXT) \
 	Dispatcher/ApplicationServerDispatcherImpl.$(OBJEXT) \
 	Dispatcher/DispatcherImpl.$(OBJEXT) \
@@ -175,20 +218,10 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	HttpsServer/HttpsAsyncCommTask.$(OBJEXT) \
 	HttpsServer/HttpsServer.$(OBJEXT) \
 	HttpsServer/HttpsServerImpl.$(OBJEXT) \
-	JsonParser/json-parser.$(OBJEXT) \
-	JsonParserX/InputParser.$(OBJEXT) \
-	JsonParserX/JsonParserX.$(OBJEXT) \
-	JsonParserX/JsonParserXDriver.$(OBJEXT) \
-	JsonParserX/JsonScannerX.$(OBJEXT) Logger/Logger.$(OBJEXT) \
-	Logger/LoggerData.$(OBJEXT) Logger/LoggerInfo.$(OBJEXT) \
-	Logger/LoggerStream.$(OBJEXT) Logger/LoggerTiming.$(OBJEXT) \
 	ProgramOptions/program-options.$(OBJEXT) \
 	QL/ast-query.$(OBJEXT) QL/formatter.$(OBJEXT) \
 	QL/optimize.$(OBJEXT) QL/parser.$(OBJEXT) QL/tokens.$(OBJEXT) \
-	Rest/AddressPort.$(OBJEXT) Rest/AnyServer.$(OBJEXT) \
-	Rest/HttpRequest.$(OBJEXT) Rest/HttpResponse.$(OBJEXT) \
-	Rest/Initialise.$(OBJEXT) Rest/SslInterface.$(OBJEXT) \
-	Rest/Url.$(OBJEXT) RestHandler/RestActionHandler.$(OBJEXT) \
+	RestHandler/RestActionHandler.$(OBJEXT) \
 	RestHandler/RestCollectionHandler.$(OBJEXT) \
 	RestHandler/RestSystemActionHandler.$(OBJEXT) \
 	RestHandler/RestVocbaseBaseHandler.$(OBJEXT) \
@@ -214,26 +247,9 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Scheduler/SchedulerThread.$(OBJEXT) \
 	Scheduler/SignalTask.$(OBJEXT) Scheduler/SocketTask.$(OBJEXT) \
 	Scheduler/Task.$(OBJEXT) Scheduler/TaskManager.$(OBJEXT) \
-	Scheduler/TimerTask.$(OBJEXT) ShapedJson/json-shaper.$(OBJEXT) \
-	ShapedJson/shape-accessor.$(OBJEXT) \
-	ShapedJson/shaped-json.$(OBJEXT) SkipLists/skiplist.$(OBJEXT) \
+	Scheduler/TimerTask.$(OBJEXT) SkipLists/skiplist.$(OBJEXT) \
 	SkipLists/skiplistIndex.$(OBJEXT) V8/v8-actions.$(OBJEXT) \
-	V8/v8-conv.$(OBJEXT) V8/v8-json.$(OBJEXT) \
-	V8/v8-line-editor.$(OBJEXT) V8/v8-shell.$(OBJEXT) \
-	V8/v8-utils.$(OBJEXT) V8/v8-vocbase.$(OBJEXT) \
-	Variant/VariantArray.$(OBJEXT) Variant/VariantBlob.$(OBJEXT) \
-	Variant/VariantBoolean.$(OBJEXT) Variant/VariantDate.$(OBJEXT) \
-	Variant/VariantDatetime.$(OBJEXT) \
-	Variant/VariantDouble.$(OBJEXT) Variant/VariantFloat.$(OBJEXT) \
-	Variant/VariantInt16.$(OBJEXT) Variant/VariantInt32.$(OBJEXT) \
-	Variant/VariantInt64.$(OBJEXT) Variant/VariantInt8.$(OBJEXT) \
-	Variant/VariantMatrix2.$(OBJEXT) Variant/VariantNull.$(OBJEXT) \
-	Variant/VariantObject.$(OBJEXT) \
-	Variant/VariantString.$(OBJEXT) \
-	Variant/VariantUInt16.$(OBJEXT) \
-	Variant/VariantUInt32.$(OBJEXT) \
-	Variant/VariantUInt64.$(OBJEXT) Variant/VariantUInt8.$(OBJEXT) \
-	Variant/VariantVector.$(OBJEXT) VocBase/barrier.$(OBJEXT) \
+	V8/v8-vocbase.$(OBJEXT) VocBase/barrier.$(OBJEXT) \
 	VocBase/blob-collection.$(OBJEXT) VocBase/collection.$(OBJEXT) \
 	VocBase/compactor.$(OBJEXT) VocBase/data-feeder.$(OBJEXT) \
 	VocBase/datafile.$(OBJEXT) \
@@ -243,14 +259,21 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	VocBase/order.$(OBJEXT) VocBase/query-base.$(OBJEXT) \
 	VocBase/query-error.$(OBJEXT) \
 	VocBase/query-javascript.$(OBJEXT) \
-	VocBase/query-node.$(OBJEXT) VocBase/query-parse.$(OBJEXT) \
-	VocBase/query.$(OBJEXT) VocBase/select-result.$(OBJEXT) \
-	VocBase/shadow-data.$(OBJEXT) \
+	VocBase/query-memory.$(OBJEXT) VocBase/query-node.$(OBJEXT) \
+	VocBase/query-parse.$(OBJEXT) VocBase/query.$(OBJEXT) \
+	VocBase/select-result.$(OBJEXT) VocBase/shadow-data.$(OBJEXT) \
 	VocBase/simple-collection.$(OBJEXT) \
 	VocBase/synchroniser.$(OBJEXT) VocBase/voc-shaper.$(OBJEXT) \
 	VocBase/vocbase.$(OBJEXT)
 avocado_OBJECTS = $(am_avocado_OBJECTS)
-avocado_LDADD = $(LDADD)
+am__DEPENDENCIES_1 =
+avocado_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_1)
+am_avocsh_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
+	SimpleHttpClient/SimpleHttpConnection.$(OBJEXT) \
+	SimpleHttpClient/SimpleHttpResult.$(OBJEXT) \
+	V8Client/V8ClientConnection.$(OBJEXT) V8Client/shell.$(OBJEXT)
+avocsh_OBJECTS = $(am_avocsh_OBJECTS)
+avocsh_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_1)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/config -I$(top_builddir)/BasicsC
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
 am__depfiles_maybe = depfiles
@@ -260,9 +283,6 @@ COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 AM_V_CC = $(am__v_CC_$(V))
 am__v_CC_ = $(am__v_CC_$(AM_DEFAULT_VERBOSITY))
 am__v_CC_0 = @echo "  CC    " $@;
-AM_V_at = $(am__v_at_$(V))
-am__v_at_ = $(am__v_at_$(AM_DEFAULT_VERBOSITY))
-am__v_at_0 = @
 CCLD = $(CC)
 LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
 AM_V_CCLD = $(am__v_CCLD_$(V))
@@ -282,8 +302,9 @@ am__v_CXXLD_0 = @echo "  CXXLD " $@;
 AM_V_GEN = $(am__v_GEN_$(V))
 am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
 am__v_GEN_0 = @echo "  GEN   " $@;
-SOURCES = $(avocado_SOURCES)
-DIST_SOURCES = $(avocado_SOURCES)
+SOURCES = $(libavocado_a_SOURCES) $(avocado_SOURCES) $(avocsh_SOURCES)
+DIST_SOURCES = $(libavocado_a_SOURCES) $(avocado_SOURCES) \
+	$(avocsh_SOURCES)
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
@@ -499,6 +520,7 @@ BUILT_SOURCES = $(JAVASCRIPT_HEADER) $(FLEX_FILES) $(FLEXXX_FILES) \
 ################################################################################
 CLEANUP = $(DOXYGEN) $(WIKI) $(subst Doxygen/xml,Doxygen/wiki,$(WIKI)) \
 	$(JAVASCRIPT_HEADER) $(am__append_1) $(am__append_2)
+noinst_LIBRARIES = libavocado.a
 nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/js/system -name "*.js" -print) \
 	$(shell find @srcdir@/js/modules -name "*.js" -print) \
@@ -509,16 +531,7 @@ nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/html -name "*.js" -print) \
 	$(shell find @srcdir@/html -name "*.png" -print)
 
-avocado_SOURCES = \
-	Admin/ApplicationAdminServer.cpp \
-	Admin/RestAdminBaseHandler.cpp \
-	Admin/RestAdminFeConfigurationHandler.cpp \
-	Admin/RestAdminLogHandler.cpp \
-	Admin/RestBaseHandler.cpp \
-	Admin/RestVersionHandler.cpp \
-	ApplicationServer/ApplicationServer.cpp \
-	ApplicationServer/ApplicationServerImpl.cpp \
-	ApplicationServer/ApplicationServerSchedulerImpl.cpp \
+libavocado_a_SOURCES = \
 	Basics/ConditionLocker.cpp \
 	Basics/ConditionVariable.cpp \
 	Basics/FileUtils.cpp \
@@ -561,6 +574,66 @@ avocado_SOURCES = \
 	BasicsC/terminal-utils.c \
 	BasicsC/threads-posix.c \
 	BasicsC/vector.c \
+	JsonParser/json-parser.c \
+	JsonParserX/InputParser.cpp \
+	JsonParserX/JsonParserX.cpp \
+	JsonParserX/JsonParserXDriver.cpp \
+	JsonParserX/JsonScannerX.cpp \
+	Logger/Logger.cpp \
+	Logger/LoggerData.cpp \
+	Logger/LoggerInfo.cpp \
+	Logger/LoggerStream.cpp \
+	Logger/LoggerTiming.cpp \
+	Rest/AddressPort.cpp \
+	Rest/AnyServer.cpp \
+	Rest/HttpRequest.cpp \
+	Rest/HttpResponse.cpp \
+	Rest/Initialise.cpp \
+	Rest/SslInterface.cpp \
+	Rest/Url.cpp \
+	ShapedJson/json-shaper.c \
+	ShapedJson/shape-accessor.c \
+	ShapedJson/shaped-json.c \
+	V8/v8-conv.cpp \
+	V8/v8-json.cpp \
+	V8/v8-line-editor.cpp \
+	V8/v8-shell.cpp \
+	V8/v8-utils.cpp \
+	Variant/VariantArray.cpp \
+	Variant/VariantBlob.cpp \
+	Variant/VariantBoolean.cpp \
+	Variant/VariantDate.cpp \
+	Variant/VariantDatetime.cpp \
+	Variant/VariantDouble.cpp \
+	Variant/VariantFloat.cpp \
+	Variant/VariantInt16.cpp \
+	Variant/VariantInt32.cpp \
+	Variant/VariantInt64.cpp \
+	Variant/VariantInt8.cpp \
+	Variant/VariantMatrix2.cpp \
+	Variant/VariantNull.cpp \
+	Variant/VariantObject.cpp \
+	Variant/VariantString.cpp \
+	Variant/VariantUInt16.cpp \
+	Variant/VariantUInt32.cpp \
+	Variant/VariantUInt64.cpp \
+	Variant/VariantUInt8.cpp \
+	Variant/VariantVector.cpp
+
+
+################################################################################
+################################################################################
+avocado_LDADD = libavocado.a $(LIBS)
+avocado_SOURCES = \
+	Admin/ApplicationAdminServer.cpp \
+	Admin/RestAdminBaseHandler.cpp \
+	Admin/RestAdminFeConfigurationHandler.cpp \
+	Admin/RestAdminLogHandler.cpp \
+	Admin/RestBaseHandler.cpp \
+	Admin/RestVersionHandler.cpp \
+	ApplicationServer/ApplicationServer.cpp \
+	ApplicationServer/ApplicationServerImpl.cpp \
+	ApplicationServer/ApplicationServerSchedulerImpl.cpp \
 	Dispatcher/ApplicationServerDispatcher.cpp \
 	Dispatcher/ApplicationServerDispatcherImpl.cpp \
 	Dispatcher/DispatcherImpl.cpp \
@@ -583,29 +656,12 @@ avocado_SOURCES = \
 	HttpsServer/HttpsAsyncCommTask.cpp \
 	HttpsServer/HttpsServer.cpp \
 	HttpsServer/HttpsServerImpl.cpp \
-	JsonParser/json-parser.c \
-	JsonParserX/InputParser.cpp \
-	JsonParserX/JsonParserX.cpp \
-	JsonParserX/JsonParserXDriver.cpp \
-	JsonParserX/JsonScannerX.cpp \
-	Logger/Logger.cpp \
-	Logger/LoggerData.cpp \
-	Logger/LoggerInfo.cpp \
-	Logger/LoggerStream.cpp \
-	Logger/LoggerTiming.cpp \
 	ProgramOptions/program-options.c \
 	QL/ast-query.c \
 	QL/formatter.c \
 	QL/optimize.c \
 	QL/parser.c \
 	QL/tokens.c \
-	Rest/AddressPort.cpp \
-	Rest/AnyServer.cpp \
-	Rest/HttpRequest.cpp \
-	Rest/HttpResponse.cpp \
-	Rest/Initialise.cpp \
-	Rest/SslInterface.cpp \
-	Rest/Url.cpp \
 	RestHandler/RestActionHandler.cpp \
 	RestHandler/RestCollectionHandler.cpp \
 	RestHandler/RestSystemActionHandler.cpp \
@@ -636,38 +692,10 @@ avocado_SOURCES = \
 	Scheduler/Task.cpp \
 	Scheduler/TaskManager.cpp \
 	Scheduler/TimerTask.cpp \
-	ShapedJson/json-shaper.c \
-	ShapedJson/shape-accessor.c \
-	ShapedJson/shaped-json.c \
 	SkipLists/skiplist.c \
 	SkipLists/skiplistIndex.c \
 	V8/v8-actions.cpp \
-	V8/v8-conv.cpp \
-	V8/v8-json.cpp \
-	V8/v8-line-editor.cpp \
-	V8/v8-shell.cpp \
-	V8/v8-utils.cpp \
 	V8/v8-vocbase.cpp \
-	Variant/VariantArray.cpp \
-	Variant/VariantBlob.cpp \
-	Variant/VariantBoolean.cpp \
-	Variant/VariantDate.cpp \
-	Variant/VariantDatetime.cpp \
-	Variant/VariantDouble.cpp \
-	Variant/VariantFloat.cpp \
-	Variant/VariantInt16.cpp \
-	Variant/VariantInt32.cpp \
-	Variant/VariantInt64.cpp \
-	Variant/VariantInt8.cpp \
-	Variant/VariantMatrix2.cpp \
-	Variant/VariantNull.cpp \
-	Variant/VariantObject.cpp \
-	Variant/VariantString.cpp \
-	Variant/VariantUInt16.cpp \
-	Variant/VariantUInt32.cpp \
-	Variant/VariantUInt64.cpp \
-	Variant/VariantUInt8.cpp \
-	Variant/VariantVector.cpp \
 	VocBase/barrier.c \
 	VocBase/blob-collection.c \
 	VocBase/collection.c \
@@ -683,6 +711,7 @@ avocado_SOURCES = \
 	VocBase/query-base.c \
 	VocBase/query-error.c \
 	VocBase/query-javascript.c \
+	VocBase/query-memory.c \
 	VocBase/query-node.c \
 	VocBase/query-parse.c \
 	VocBase/query.c \
@@ -692,6 +721,17 @@ avocado_SOURCES = \
 	VocBase/synchroniser.c \
 	VocBase/voc-shaper.c \
 	VocBase/vocbase.c
+
+
+################################################################################
+################################################################################
+avocsh_LDADD = libavocado.a $(LIBS)
+avocsh_SOURCES = \
+	SimpleHttpClient/SimpleHttpClient.cpp \
+	SimpleHttpClient/SimpleHttpConnection.cpp \
+	SimpleHttpClient/SimpleHttpResult.cpp \
+	V8Client/V8ClientConnection.cpp \
+	V8Client/shell.cpp
 
 
 ################################################################################
@@ -859,76 +899,9 @@ distclean-hdr:
 	-rm -f config/config.h config/stamp-h1 BasicsC/local-configuration.h BasicsC/stamp-h2
 Doxygen/avocado.doxy: $(top_builddir)/config.status $(top_srcdir)/Doxygen/avocado.doxy.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
-install-sbinPROGRAMS: $(sbin_PROGRAMS)
-	@$(NORMAL_INSTALL)
-	test -z "$(sbindir)" || $(MKDIR_P) "$(DESTDIR)$(sbindir)"
-	@list='$(sbin_PROGRAMS)'; test -n "$(sbindir)" || list=; \
-	for p in $$list; do echo "$$p $$p"; done | \
-	sed 's/$(EXEEXT)$$//' | \
-	while read p p1; do if test -f $$p; \
-	  then echo "$$p"; echo "$$p"; else :; fi; \
-	done | \
-	sed -e 'p;s,.*/,,;n;h' -e 's|.*|.|' \
-	    -e 'p;x;s,.*/,,;s/$(EXEEXT)$$//;$(transform);s/$$/$(EXEEXT)/' | \
-	sed 'N;N;N;s,\n, ,g' | \
-	$(AWK) 'BEGIN { files["."] = ""; dirs["."] = 1 } \
-	  { d=$$3; if (dirs[d] != 1) { print "d", d; dirs[d] = 1 } \
-	    if ($$2 == $$4) files[d] = files[d] " " $$1; \
-	    else { print "f", $$3 "/" $$4, $$1; } } \
-	  END { for (d in files) print "f", d, files[d] }' | \
-	while read type dir files; do \
-	    if test "$$dir" = .; then dir=; else dir=/$$dir; fi; \
-	    test -z "$$files" || { \
-	      echo " $(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) $$files '$(DESTDIR)$(sbindir)$$dir'"; \
-	      $(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) $$files "$(DESTDIR)$(sbindir)$$dir" || exit $$?; \
-	    } \
-	; done
 
-uninstall-sbinPROGRAMS:
-	@$(NORMAL_UNINSTALL)
-	@list='$(sbin_PROGRAMS)'; test -n "$(sbindir)" || list=; \
-	files=`for p in $$list; do echo "$$p"; done | \
-	  sed -e 'h;s,^.*/,,;s/$(EXEEXT)$$//;$(transform)' \
-	      -e 's/$$/$(EXEEXT)/' `; \
-	test -n "$$list" || exit 0; \
-	echo " ( cd '$(DESTDIR)$(sbindir)' && rm -f" $$files ")"; \
-	cd "$(DESTDIR)$(sbindir)" && rm -f $$files
-
-clean-sbinPROGRAMS:
-	-test -z "$(sbin_PROGRAMS)" || rm -f $(sbin_PROGRAMS)
-Admin/$(am__dirstamp):
-	@$(MKDIR_P) Admin
-	@: > Admin/$(am__dirstamp)
-Admin/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) Admin/$(DEPDIR)
-	@: > Admin/$(DEPDIR)/$(am__dirstamp)
-Admin/ApplicationAdminServer.$(OBJEXT): Admin/$(am__dirstamp) \
-	Admin/$(DEPDIR)/$(am__dirstamp)
-Admin/RestAdminBaseHandler.$(OBJEXT): Admin/$(am__dirstamp) \
-	Admin/$(DEPDIR)/$(am__dirstamp)
-Admin/RestAdminFeConfigurationHandler.$(OBJEXT):  \
-	Admin/$(am__dirstamp) Admin/$(DEPDIR)/$(am__dirstamp)
-Admin/RestAdminLogHandler.$(OBJEXT): Admin/$(am__dirstamp) \
-	Admin/$(DEPDIR)/$(am__dirstamp)
-Admin/RestBaseHandler.$(OBJEXT): Admin/$(am__dirstamp) \
-	Admin/$(DEPDIR)/$(am__dirstamp)
-Admin/RestVersionHandler.$(OBJEXT): Admin/$(am__dirstamp) \
-	Admin/$(DEPDIR)/$(am__dirstamp)
-ApplicationServer/$(am__dirstamp):
-	@$(MKDIR_P) ApplicationServer
-	@: > ApplicationServer/$(am__dirstamp)
-ApplicationServer/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) ApplicationServer/$(DEPDIR)
-	@: > ApplicationServer/$(DEPDIR)/$(am__dirstamp)
-ApplicationServer/ApplicationServer.$(OBJEXT):  \
-	ApplicationServer/$(am__dirstamp) \
-	ApplicationServer/$(DEPDIR)/$(am__dirstamp)
-ApplicationServer/ApplicationServerImpl.$(OBJEXT):  \
-	ApplicationServer/$(am__dirstamp) \
-	ApplicationServer/$(DEPDIR)/$(am__dirstamp)
-ApplicationServer/ApplicationServerSchedulerImpl.$(OBJEXT):  \
-	ApplicationServer/$(am__dirstamp) \
-	ApplicationServer/$(DEPDIR)/$(am__dirstamp)
+clean-noinstLIBRARIES:
+	-test -z "$(noinst_LIBRARIES)" || rm -f $(noinst_LIBRARIES)
 Basics/$(am__dirstamp):
 	@$(MKDIR_P) Basics
 	@: > Basics/$(am__dirstamp)
@@ -1025,6 +998,245 @@ BasicsC/threads-posix.$(OBJEXT): BasicsC/$(am__dirstamp) \
 	BasicsC/$(DEPDIR)/$(am__dirstamp)
 BasicsC/vector.$(OBJEXT): BasicsC/$(am__dirstamp) \
 	BasicsC/$(DEPDIR)/$(am__dirstamp)
+JsonParser/$(am__dirstamp):
+	@$(MKDIR_P) JsonParser
+	@: > JsonParser/$(am__dirstamp)
+JsonParser/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) JsonParser/$(DEPDIR)
+	@: > JsonParser/$(DEPDIR)/$(am__dirstamp)
+JsonParser/json-parser.$(OBJEXT): JsonParser/$(am__dirstamp) \
+	JsonParser/$(DEPDIR)/$(am__dirstamp)
+JsonParserX/$(am__dirstamp):
+	@$(MKDIR_P) JsonParserX
+	@: > JsonParserX/$(am__dirstamp)
+JsonParserX/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) JsonParserX/$(DEPDIR)
+	@: > JsonParserX/$(DEPDIR)/$(am__dirstamp)
+JsonParserX/InputParser.$(OBJEXT): JsonParserX/$(am__dirstamp) \
+	JsonParserX/$(DEPDIR)/$(am__dirstamp)
+JsonParserX/JsonParserX.$(OBJEXT): JsonParserX/$(am__dirstamp) \
+	JsonParserX/$(DEPDIR)/$(am__dirstamp)
+JsonParserX/JsonParserXDriver.$(OBJEXT): JsonParserX/$(am__dirstamp) \
+	JsonParserX/$(DEPDIR)/$(am__dirstamp)
+JsonParserX/JsonScannerX.$(OBJEXT): JsonParserX/$(am__dirstamp) \
+	JsonParserX/$(DEPDIR)/$(am__dirstamp)
+Logger/$(am__dirstamp):
+	@$(MKDIR_P) Logger
+	@: > Logger/$(am__dirstamp)
+Logger/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) Logger/$(DEPDIR)
+	@: > Logger/$(DEPDIR)/$(am__dirstamp)
+Logger/Logger.$(OBJEXT): Logger/$(am__dirstamp) \
+	Logger/$(DEPDIR)/$(am__dirstamp)
+Logger/LoggerData.$(OBJEXT): Logger/$(am__dirstamp) \
+	Logger/$(DEPDIR)/$(am__dirstamp)
+Logger/LoggerInfo.$(OBJEXT): Logger/$(am__dirstamp) \
+	Logger/$(DEPDIR)/$(am__dirstamp)
+Logger/LoggerStream.$(OBJEXT): Logger/$(am__dirstamp) \
+	Logger/$(DEPDIR)/$(am__dirstamp)
+Logger/LoggerTiming.$(OBJEXT): Logger/$(am__dirstamp) \
+	Logger/$(DEPDIR)/$(am__dirstamp)
+Rest/$(am__dirstamp):
+	@$(MKDIR_P) Rest
+	@: > Rest/$(am__dirstamp)
+Rest/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) Rest/$(DEPDIR)
+	@: > Rest/$(DEPDIR)/$(am__dirstamp)
+Rest/AddressPort.$(OBJEXT): Rest/$(am__dirstamp) \
+	Rest/$(DEPDIR)/$(am__dirstamp)
+Rest/AnyServer.$(OBJEXT): Rest/$(am__dirstamp) \
+	Rest/$(DEPDIR)/$(am__dirstamp)
+Rest/HttpRequest.$(OBJEXT): Rest/$(am__dirstamp) \
+	Rest/$(DEPDIR)/$(am__dirstamp)
+Rest/HttpResponse.$(OBJEXT): Rest/$(am__dirstamp) \
+	Rest/$(DEPDIR)/$(am__dirstamp)
+Rest/Initialise.$(OBJEXT): Rest/$(am__dirstamp) \
+	Rest/$(DEPDIR)/$(am__dirstamp)
+Rest/SslInterface.$(OBJEXT): Rest/$(am__dirstamp) \
+	Rest/$(DEPDIR)/$(am__dirstamp)
+Rest/Url.$(OBJEXT): Rest/$(am__dirstamp) \
+	Rest/$(DEPDIR)/$(am__dirstamp)
+ShapedJson/$(am__dirstamp):
+	@$(MKDIR_P) ShapedJson
+	@: > ShapedJson/$(am__dirstamp)
+ShapedJson/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) ShapedJson/$(DEPDIR)
+	@: > ShapedJson/$(DEPDIR)/$(am__dirstamp)
+ShapedJson/json-shaper.$(OBJEXT): ShapedJson/$(am__dirstamp) \
+	ShapedJson/$(DEPDIR)/$(am__dirstamp)
+ShapedJson/shape-accessor.$(OBJEXT): ShapedJson/$(am__dirstamp) \
+	ShapedJson/$(DEPDIR)/$(am__dirstamp)
+ShapedJson/shaped-json.$(OBJEXT): ShapedJson/$(am__dirstamp) \
+	ShapedJson/$(DEPDIR)/$(am__dirstamp)
+V8/$(am__dirstamp):
+	@$(MKDIR_P) V8
+	@: > V8/$(am__dirstamp)
+V8/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) V8/$(DEPDIR)
+	@: > V8/$(DEPDIR)/$(am__dirstamp)
+V8/v8-conv.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
+V8/v8-json.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
+V8/v8-line-editor.$(OBJEXT): V8/$(am__dirstamp) \
+	V8/$(DEPDIR)/$(am__dirstamp)
+V8/v8-shell.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
+V8/v8-utils.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
+Variant/$(am__dirstamp):
+	@$(MKDIR_P) Variant
+	@: > Variant/$(am__dirstamp)
+Variant/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) Variant/$(DEPDIR)
+	@: > Variant/$(DEPDIR)/$(am__dirstamp)
+Variant/VariantArray.$(OBJEXT): Variant/$(am__dirstamp) \
+	Variant/$(DEPDIR)/$(am__dirstamp)
+Variant/VariantBlob.$(OBJEXT): Variant/$(am__dirstamp) \
+	Variant/$(DEPDIR)/$(am__dirstamp)
+Variant/VariantBoolean.$(OBJEXT): Variant/$(am__dirstamp) \
+	Variant/$(DEPDIR)/$(am__dirstamp)
+Variant/VariantDate.$(OBJEXT): Variant/$(am__dirstamp) \
+	Variant/$(DEPDIR)/$(am__dirstamp)
+Variant/VariantDatetime.$(OBJEXT): Variant/$(am__dirstamp) \
+	Variant/$(DEPDIR)/$(am__dirstamp)
+Variant/VariantDouble.$(OBJEXT): Variant/$(am__dirstamp) \
+	Variant/$(DEPDIR)/$(am__dirstamp)
+Variant/VariantFloat.$(OBJEXT): Variant/$(am__dirstamp) \
+	Variant/$(DEPDIR)/$(am__dirstamp)
+Variant/VariantInt16.$(OBJEXT): Variant/$(am__dirstamp) \
+	Variant/$(DEPDIR)/$(am__dirstamp)
+Variant/VariantInt32.$(OBJEXT): Variant/$(am__dirstamp) \
+	Variant/$(DEPDIR)/$(am__dirstamp)
+Variant/VariantInt64.$(OBJEXT): Variant/$(am__dirstamp) \
+	Variant/$(DEPDIR)/$(am__dirstamp)
+Variant/VariantInt8.$(OBJEXT): Variant/$(am__dirstamp) \
+	Variant/$(DEPDIR)/$(am__dirstamp)
+Variant/VariantMatrix2.$(OBJEXT): Variant/$(am__dirstamp) \
+	Variant/$(DEPDIR)/$(am__dirstamp)
+Variant/VariantNull.$(OBJEXT): Variant/$(am__dirstamp) \
+	Variant/$(DEPDIR)/$(am__dirstamp)
+Variant/VariantObject.$(OBJEXT): Variant/$(am__dirstamp) \
+	Variant/$(DEPDIR)/$(am__dirstamp)
+Variant/VariantString.$(OBJEXT): Variant/$(am__dirstamp) \
+	Variant/$(DEPDIR)/$(am__dirstamp)
+Variant/VariantUInt16.$(OBJEXT): Variant/$(am__dirstamp) \
+	Variant/$(DEPDIR)/$(am__dirstamp)
+Variant/VariantUInt32.$(OBJEXT): Variant/$(am__dirstamp) \
+	Variant/$(DEPDIR)/$(am__dirstamp)
+Variant/VariantUInt64.$(OBJEXT): Variant/$(am__dirstamp) \
+	Variant/$(DEPDIR)/$(am__dirstamp)
+Variant/VariantUInt8.$(OBJEXT): Variant/$(am__dirstamp) \
+	Variant/$(DEPDIR)/$(am__dirstamp)
+Variant/VariantVector.$(OBJEXT): Variant/$(am__dirstamp) \
+	Variant/$(DEPDIR)/$(am__dirstamp)
+libavocado.a: $(libavocado_a_OBJECTS) $(libavocado_a_DEPENDENCIES) 
+	$(AM_V_at)-rm -f libavocado.a
+	$(AM_V_AR)$(libavocado_a_AR) libavocado.a $(libavocado_a_OBJECTS) $(libavocado_a_LIBADD)
+	$(AM_V_at)$(RANLIB) libavocado.a
+install-binPROGRAMS: $(bin_PROGRAMS)
+	@$(NORMAL_INSTALL)
+	test -z "$(bindir)" || $(MKDIR_P) "$(DESTDIR)$(bindir)"
+	@list='$(bin_PROGRAMS)'; test -n "$(bindir)" || list=; \
+	for p in $$list; do echo "$$p $$p"; done | \
+	sed 's/$(EXEEXT)$$//' | \
+	while read p p1; do if test -f $$p; \
+	  then echo "$$p"; echo "$$p"; else :; fi; \
+	done | \
+	sed -e 'p;s,.*/,,;n;h' -e 's|.*|.|' \
+	    -e 'p;x;s,.*/,,;s/$(EXEEXT)$$//;$(transform);s/$$/$(EXEEXT)/' | \
+	sed 'N;N;N;s,\n, ,g' | \
+	$(AWK) 'BEGIN { files["."] = ""; dirs["."] = 1 } \
+	  { d=$$3; if (dirs[d] != 1) { print "d", d; dirs[d] = 1 } \
+	    if ($$2 == $$4) files[d] = files[d] " " $$1; \
+	    else { print "f", $$3 "/" $$4, $$1; } } \
+	  END { for (d in files) print "f", d, files[d] }' | \
+	while read type dir files; do \
+	    if test "$$dir" = .; then dir=; else dir=/$$dir; fi; \
+	    test -z "$$files" || { \
+	      echo " $(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) $$files '$(DESTDIR)$(bindir)$$dir'"; \
+	      $(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) $$files "$(DESTDIR)$(bindir)$$dir" || exit $$?; \
+	    } \
+	; done
+
+uninstall-binPROGRAMS:
+	@$(NORMAL_UNINSTALL)
+	@list='$(bin_PROGRAMS)'; test -n "$(bindir)" || list=; \
+	files=`for p in $$list; do echo "$$p"; done | \
+	  sed -e 'h;s,^.*/,,;s/$(EXEEXT)$$//;$(transform)' \
+	      -e 's/$$/$(EXEEXT)/' `; \
+	test -n "$$list" || exit 0; \
+	echo " ( cd '$(DESTDIR)$(bindir)' && rm -f" $$files ")"; \
+	cd "$(DESTDIR)$(bindir)" && rm -f $$files
+
+clean-binPROGRAMS:
+	-test -z "$(bin_PROGRAMS)" || rm -f $(bin_PROGRAMS)
+install-sbinPROGRAMS: $(sbin_PROGRAMS)
+	@$(NORMAL_INSTALL)
+	test -z "$(sbindir)" || $(MKDIR_P) "$(DESTDIR)$(sbindir)"
+	@list='$(sbin_PROGRAMS)'; test -n "$(sbindir)" || list=; \
+	for p in $$list; do echo "$$p $$p"; done | \
+	sed 's/$(EXEEXT)$$//' | \
+	while read p p1; do if test -f $$p; \
+	  then echo "$$p"; echo "$$p"; else :; fi; \
+	done | \
+	sed -e 'p;s,.*/,,;n;h' -e 's|.*|.|' \
+	    -e 'p;x;s,.*/,,;s/$(EXEEXT)$$//;$(transform);s/$$/$(EXEEXT)/' | \
+	sed 'N;N;N;s,\n, ,g' | \
+	$(AWK) 'BEGIN { files["."] = ""; dirs["."] = 1 } \
+	  { d=$$3; if (dirs[d] != 1) { print "d", d; dirs[d] = 1 } \
+	    if ($$2 == $$4) files[d] = files[d] " " $$1; \
+	    else { print "f", $$3 "/" $$4, $$1; } } \
+	  END { for (d in files) print "f", d, files[d] }' | \
+	while read type dir files; do \
+	    if test "$$dir" = .; then dir=; else dir=/$$dir; fi; \
+	    test -z "$$files" || { \
+	      echo " $(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) $$files '$(DESTDIR)$(sbindir)$$dir'"; \
+	      $(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) $$files "$(DESTDIR)$(sbindir)$$dir" || exit $$?; \
+	    } \
+	; done
+
+uninstall-sbinPROGRAMS:
+	@$(NORMAL_UNINSTALL)
+	@list='$(sbin_PROGRAMS)'; test -n "$(sbindir)" || list=; \
+	files=`for p in $$list; do echo "$$p"; done | \
+	  sed -e 'h;s,^.*/,,;s/$(EXEEXT)$$//;$(transform)' \
+	      -e 's/$$/$(EXEEXT)/' `; \
+	test -n "$$list" || exit 0; \
+	echo " ( cd '$(DESTDIR)$(sbindir)' && rm -f" $$files ")"; \
+	cd "$(DESTDIR)$(sbindir)" && rm -f $$files
+
+clean-sbinPROGRAMS:
+	-test -z "$(sbin_PROGRAMS)" || rm -f $(sbin_PROGRAMS)
+Admin/$(am__dirstamp):
+	@$(MKDIR_P) Admin
+	@: > Admin/$(am__dirstamp)
+Admin/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) Admin/$(DEPDIR)
+	@: > Admin/$(DEPDIR)/$(am__dirstamp)
+Admin/ApplicationAdminServer.$(OBJEXT): Admin/$(am__dirstamp) \
+	Admin/$(DEPDIR)/$(am__dirstamp)
+Admin/RestAdminBaseHandler.$(OBJEXT): Admin/$(am__dirstamp) \
+	Admin/$(DEPDIR)/$(am__dirstamp)
+Admin/RestAdminFeConfigurationHandler.$(OBJEXT):  \
+	Admin/$(am__dirstamp) Admin/$(DEPDIR)/$(am__dirstamp)
+Admin/RestAdminLogHandler.$(OBJEXT): Admin/$(am__dirstamp) \
+	Admin/$(DEPDIR)/$(am__dirstamp)
+Admin/RestBaseHandler.$(OBJEXT): Admin/$(am__dirstamp) \
+	Admin/$(DEPDIR)/$(am__dirstamp)
+Admin/RestVersionHandler.$(OBJEXT): Admin/$(am__dirstamp) \
+	Admin/$(DEPDIR)/$(am__dirstamp)
+ApplicationServer/$(am__dirstamp):
+	@$(MKDIR_P) ApplicationServer
+	@: > ApplicationServer/$(am__dirstamp)
+ApplicationServer/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) ApplicationServer/$(DEPDIR)
+	@: > ApplicationServer/$(DEPDIR)/$(am__dirstamp)
+ApplicationServer/ApplicationServer.$(OBJEXT):  \
+	ApplicationServer/$(am__dirstamp) \
+	ApplicationServer/$(DEPDIR)/$(am__dirstamp)
+ApplicationServer/ApplicationServerImpl.$(OBJEXT):  \
+	ApplicationServer/$(am__dirstamp) \
+	ApplicationServer/$(DEPDIR)/$(am__dirstamp)
+ApplicationServer/ApplicationServerSchedulerImpl.$(OBJEXT):  \
+	ApplicationServer/$(am__dirstamp) \
+	ApplicationServer/$(DEPDIR)/$(am__dirstamp)
 Dispatcher/$(am__dirstamp):
 	@$(MKDIR_P) Dispatcher
 	@: > Dispatcher/$(am__dirstamp)
@@ -1112,44 +1324,6 @@ HttpsServer/HttpsServer.$(OBJEXT): HttpsServer/$(am__dirstamp) \
 	HttpsServer/$(DEPDIR)/$(am__dirstamp)
 HttpsServer/HttpsServerImpl.$(OBJEXT): HttpsServer/$(am__dirstamp) \
 	HttpsServer/$(DEPDIR)/$(am__dirstamp)
-JsonParser/$(am__dirstamp):
-	@$(MKDIR_P) JsonParser
-	@: > JsonParser/$(am__dirstamp)
-JsonParser/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) JsonParser/$(DEPDIR)
-	@: > JsonParser/$(DEPDIR)/$(am__dirstamp)
-JsonParser/json-parser.$(OBJEXT): JsonParser/$(am__dirstamp) \
-	JsonParser/$(DEPDIR)/$(am__dirstamp)
-JsonParserX/$(am__dirstamp):
-	@$(MKDIR_P) JsonParserX
-	@: > JsonParserX/$(am__dirstamp)
-JsonParserX/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) JsonParserX/$(DEPDIR)
-	@: > JsonParserX/$(DEPDIR)/$(am__dirstamp)
-JsonParserX/InputParser.$(OBJEXT): JsonParserX/$(am__dirstamp) \
-	JsonParserX/$(DEPDIR)/$(am__dirstamp)
-JsonParserX/JsonParserX.$(OBJEXT): JsonParserX/$(am__dirstamp) \
-	JsonParserX/$(DEPDIR)/$(am__dirstamp)
-JsonParserX/JsonParserXDriver.$(OBJEXT): JsonParserX/$(am__dirstamp) \
-	JsonParserX/$(DEPDIR)/$(am__dirstamp)
-JsonParserX/JsonScannerX.$(OBJEXT): JsonParserX/$(am__dirstamp) \
-	JsonParserX/$(DEPDIR)/$(am__dirstamp)
-Logger/$(am__dirstamp):
-	@$(MKDIR_P) Logger
-	@: > Logger/$(am__dirstamp)
-Logger/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) Logger/$(DEPDIR)
-	@: > Logger/$(DEPDIR)/$(am__dirstamp)
-Logger/Logger.$(OBJEXT): Logger/$(am__dirstamp) \
-	Logger/$(DEPDIR)/$(am__dirstamp)
-Logger/LoggerData.$(OBJEXT): Logger/$(am__dirstamp) \
-	Logger/$(DEPDIR)/$(am__dirstamp)
-Logger/LoggerInfo.$(OBJEXT): Logger/$(am__dirstamp) \
-	Logger/$(DEPDIR)/$(am__dirstamp)
-Logger/LoggerStream.$(OBJEXT): Logger/$(am__dirstamp) \
-	Logger/$(DEPDIR)/$(am__dirstamp)
-Logger/LoggerTiming.$(OBJEXT): Logger/$(am__dirstamp) \
-	Logger/$(DEPDIR)/$(am__dirstamp)
 ProgramOptions/$(am__dirstamp):
 	@$(MKDIR_P) ProgramOptions
 	@: > ProgramOptions/$(am__dirstamp)
@@ -1172,26 +1346,6 @@ QL/formatter.$(OBJEXT): QL/$(am__dirstamp) \
 QL/optimize.$(OBJEXT): QL/$(am__dirstamp) QL/$(DEPDIR)/$(am__dirstamp)
 QL/parser.$(OBJEXT): QL/$(am__dirstamp) QL/$(DEPDIR)/$(am__dirstamp)
 QL/tokens.$(OBJEXT): QL/$(am__dirstamp) QL/$(DEPDIR)/$(am__dirstamp)
-Rest/$(am__dirstamp):
-	@$(MKDIR_P) Rest
-	@: > Rest/$(am__dirstamp)
-Rest/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) Rest/$(DEPDIR)
-	@: > Rest/$(DEPDIR)/$(am__dirstamp)
-Rest/AddressPort.$(OBJEXT): Rest/$(am__dirstamp) \
-	Rest/$(DEPDIR)/$(am__dirstamp)
-Rest/AnyServer.$(OBJEXT): Rest/$(am__dirstamp) \
-	Rest/$(DEPDIR)/$(am__dirstamp)
-Rest/HttpRequest.$(OBJEXT): Rest/$(am__dirstamp) \
-	Rest/$(DEPDIR)/$(am__dirstamp)
-Rest/HttpResponse.$(OBJEXT): Rest/$(am__dirstamp) \
-	Rest/$(DEPDIR)/$(am__dirstamp)
-Rest/Initialise.$(OBJEXT): Rest/$(am__dirstamp) \
-	Rest/$(DEPDIR)/$(am__dirstamp)
-Rest/SslInterface.$(OBJEXT): Rest/$(am__dirstamp) \
-	Rest/$(DEPDIR)/$(am__dirstamp)
-Rest/Url.$(OBJEXT): Rest/$(am__dirstamp) \
-	Rest/$(DEPDIR)/$(am__dirstamp)
 RestHandler/$(am__dirstamp):
 	@$(MKDIR_P) RestHandler
 	@: > RestHandler/$(am__dirstamp)
@@ -1288,18 +1442,6 @@ Scheduler/TaskManager.$(OBJEXT): Scheduler/$(am__dirstamp) \
 	Scheduler/$(DEPDIR)/$(am__dirstamp)
 Scheduler/TimerTask.$(OBJEXT): Scheduler/$(am__dirstamp) \
 	Scheduler/$(DEPDIR)/$(am__dirstamp)
-ShapedJson/$(am__dirstamp):
-	@$(MKDIR_P) ShapedJson
-	@: > ShapedJson/$(am__dirstamp)
-ShapedJson/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) ShapedJson/$(DEPDIR)
-	@: > ShapedJson/$(DEPDIR)/$(am__dirstamp)
-ShapedJson/json-shaper.$(OBJEXT): ShapedJson/$(am__dirstamp) \
-	ShapedJson/$(DEPDIR)/$(am__dirstamp)
-ShapedJson/shape-accessor.$(OBJEXT): ShapedJson/$(am__dirstamp) \
-	ShapedJson/$(DEPDIR)/$(am__dirstamp)
-ShapedJson/shaped-json.$(OBJEXT): ShapedJson/$(am__dirstamp) \
-	ShapedJson/$(DEPDIR)/$(am__dirstamp)
 SkipLists/$(am__dirstamp):
 	@$(MKDIR_P) SkipLists
 	@: > SkipLists/$(am__dirstamp)
@@ -1310,68 +1452,10 @@ SkipLists/skiplist.$(OBJEXT): SkipLists/$(am__dirstamp) \
 	SkipLists/$(DEPDIR)/$(am__dirstamp)
 SkipLists/skiplistIndex.$(OBJEXT): SkipLists/$(am__dirstamp) \
 	SkipLists/$(DEPDIR)/$(am__dirstamp)
-V8/$(am__dirstamp):
-	@$(MKDIR_P) V8
-	@: > V8/$(am__dirstamp)
-V8/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) V8/$(DEPDIR)
-	@: > V8/$(DEPDIR)/$(am__dirstamp)
 V8/v8-actions.$(OBJEXT): V8/$(am__dirstamp) \
 	V8/$(DEPDIR)/$(am__dirstamp)
-V8/v8-conv.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
-V8/v8-json.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
-V8/v8-line-editor.$(OBJEXT): V8/$(am__dirstamp) \
-	V8/$(DEPDIR)/$(am__dirstamp)
-V8/v8-shell.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
-V8/v8-utils.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
 V8/v8-vocbase.$(OBJEXT): V8/$(am__dirstamp) \
 	V8/$(DEPDIR)/$(am__dirstamp)
-Variant/$(am__dirstamp):
-	@$(MKDIR_P) Variant
-	@: > Variant/$(am__dirstamp)
-Variant/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) Variant/$(DEPDIR)
-	@: > Variant/$(DEPDIR)/$(am__dirstamp)
-Variant/VariantArray.$(OBJEXT): Variant/$(am__dirstamp) \
-	Variant/$(DEPDIR)/$(am__dirstamp)
-Variant/VariantBlob.$(OBJEXT): Variant/$(am__dirstamp) \
-	Variant/$(DEPDIR)/$(am__dirstamp)
-Variant/VariantBoolean.$(OBJEXT): Variant/$(am__dirstamp) \
-	Variant/$(DEPDIR)/$(am__dirstamp)
-Variant/VariantDate.$(OBJEXT): Variant/$(am__dirstamp) \
-	Variant/$(DEPDIR)/$(am__dirstamp)
-Variant/VariantDatetime.$(OBJEXT): Variant/$(am__dirstamp) \
-	Variant/$(DEPDIR)/$(am__dirstamp)
-Variant/VariantDouble.$(OBJEXT): Variant/$(am__dirstamp) \
-	Variant/$(DEPDIR)/$(am__dirstamp)
-Variant/VariantFloat.$(OBJEXT): Variant/$(am__dirstamp) \
-	Variant/$(DEPDIR)/$(am__dirstamp)
-Variant/VariantInt16.$(OBJEXT): Variant/$(am__dirstamp) \
-	Variant/$(DEPDIR)/$(am__dirstamp)
-Variant/VariantInt32.$(OBJEXT): Variant/$(am__dirstamp) \
-	Variant/$(DEPDIR)/$(am__dirstamp)
-Variant/VariantInt64.$(OBJEXT): Variant/$(am__dirstamp) \
-	Variant/$(DEPDIR)/$(am__dirstamp)
-Variant/VariantInt8.$(OBJEXT): Variant/$(am__dirstamp) \
-	Variant/$(DEPDIR)/$(am__dirstamp)
-Variant/VariantMatrix2.$(OBJEXT): Variant/$(am__dirstamp) \
-	Variant/$(DEPDIR)/$(am__dirstamp)
-Variant/VariantNull.$(OBJEXT): Variant/$(am__dirstamp) \
-	Variant/$(DEPDIR)/$(am__dirstamp)
-Variant/VariantObject.$(OBJEXT): Variant/$(am__dirstamp) \
-	Variant/$(DEPDIR)/$(am__dirstamp)
-Variant/VariantString.$(OBJEXT): Variant/$(am__dirstamp) \
-	Variant/$(DEPDIR)/$(am__dirstamp)
-Variant/VariantUInt16.$(OBJEXT): Variant/$(am__dirstamp) \
-	Variant/$(DEPDIR)/$(am__dirstamp)
-Variant/VariantUInt32.$(OBJEXT): Variant/$(am__dirstamp) \
-	Variant/$(DEPDIR)/$(am__dirstamp)
-Variant/VariantUInt64.$(OBJEXT): Variant/$(am__dirstamp) \
-	Variant/$(DEPDIR)/$(am__dirstamp)
-Variant/VariantUInt8.$(OBJEXT): Variant/$(am__dirstamp) \
-	Variant/$(DEPDIR)/$(am__dirstamp)
-Variant/VariantVector.$(OBJEXT): Variant/$(am__dirstamp) \
-	Variant/$(DEPDIR)/$(am__dirstamp)
 VocBase/$(am__dirstamp):
 	@$(MKDIR_P) VocBase
 	@: > VocBase/$(am__dirstamp)
@@ -1408,6 +1492,8 @@ VocBase/query-error.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/query-javascript.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
+VocBase/query-memory.$(OBJEXT): VocBase/$(am__dirstamp) \
+	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/query-node.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/query-parse.$(OBJEXT): VocBase/$(am__dirstamp) \
@@ -1429,6 +1515,34 @@ VocBase/vocbase.$(OBJEXT): VocBase/$(am__dirstamp) \
 avocado$(EXEEXT): $(avocado_OBJECTS) $(avocado_DEPENDENCIES) 
 	@rm -f avocado$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(avocado_OBJECTS) $(avocado_LDADD) $(LIBS)
+SimpleHttpClient/$(am__dirstamp):
+	@$(MKDIR_P) SimpleHttpClient
+	@: > SimpleHttpClient/$(am__dirstamp)
+SimpleHttpClient/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) SimpleHttpClient/$(DEPDIR)
+	@: > SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
+SimpleHttpClient/SimpleHttpClient.$(OBJEXT):  \
+	SimpleHttpClient/$(am__dirstamp) \
+	SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
+SimpleHttpClient/SimpleHttpConnection.$(OBJEXT):  \
+	SimpleHttpClient/$(am__dirstamp) \
+	SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
+SimpleHttpClient/SimpleHttpResult.$(OBJEXT):  \
+	SimpleHttpClient/$(am__dirstamp) \
+	SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
+V8Client/$(am__dirstamp):
+	@$(MKDIR_P) V8Client
+	@: > V8Client/$(am__dirstamp)
+V8Client/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) V8Client/$(DEPDIR)
+	@: > V8Client/$(DEPDIR)/$(am__dirstamp)
+V8Client/V8ClientConnection.$(OBJEXT): V8Client/$(am__dirstamp) \
+	V8Client/$(DEPDIR)/$(am__dirstamp)
+V8Client/shell.$(OBJEXT): V8Client/$(am__dirstamp) \
+	V8Client/$(DEPDIR)/$(am__dirstamp)
+avocsh$(EXEEXT): $(avocsh_OBJECTS) $(avocsh_DEPENDENCIES) 
+	@rm -f avocsh$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(avocsh_OBJECTS) $(avocsh_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -1561,6 +1675,9 @@ mostlyclean-compile:
 	-rm -f ShapedJson/json-shaper.$(OBJEXT)
 	-rm -f ShapedJson/shape-accessor.$(OBJEXT)
 	-rm -f ShapedJson/shaped-json.$(OBJEXT)
+	-rm -f SimpleHttpClient/SimpleHttpClient.$(OBJEXT)
+	-rm -f SimpleHttpClient/SimpleHttpConnection.$(OBJEXT)
+	-rm -f SimpleHttpClient/SimpleHttpResult.$(OBJEXT)
 	-rm -f SkipLists/skiplist.$(OBJEXT)
 	-rm -f SkipLists/skiplistIndex.$(OBJEXT)
 	-rm -f V8/v8-actions.$(OBJEXT)
@@ -1570,6 +1687,8 @@ mostlyclean-compile:
 	-rm -f V8/v8-shell.$(OBJEXT)
 	-rm -f V8/v8-utils.$(OBJEXT)
 	-rm -f V8/v8-vocbase.$(OBJEXT)
+	-rm -f V8Client/V8ClientConnection.$(OBJEXT)
+	-rm -f V8Client/shell.$(OBJEXT)
 	-rm -f Variant/VariantArray.$(OBJEXT)
 	-rm -f Variant/VariantBlob.$(OBJEXT)
 	-rm -f Variant/VariantBoolean.$(OBJEXT)
@@ -1605,6 +1724,7 @@ mostlyclean-compile:
 	-rm -f VocBase/query-base.$(OBJEXT)
 	-rm -f VocBase/query-error.$(OBJEXT)
 	-rm -f VocBase/query-javascript.$(OBJEXT)
+	-rm -f VocBase/query-memory.$(OBJEXT)
 	-rm -f VocBase/query-node.$(OBJEXT)
 	-rm -f VocBase/query-parse.$(OBJEXT)
 	-rm -f VocBase/query.$(OBJEXT)
@@ -1747,6 +1867,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@ShapedJson/$(DEPDIR)/json-shaper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ShapedJson/$(DEPDIR)/shape-accessor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ShapedJson/$(DEPDIR)/shaped-json.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@SimpleHttpClient/$(DEPDIR)/SimpleHttpClient.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@SimpleHttpClient/$(DEPDIR)/SimpleHttpConnection.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@SimpleHttpClient/$(DEPDIR)/SimpleHttpResult.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@SkipLists/$(DEPDIR)/skiplist.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@SkipLists/$(DEPDIR)/skiplistIndex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-actions.Po@am__quote@
@@ -1756,6 +1879,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-shell.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-vocbase.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@V8Client/$(DEPDIR)/V8ClientConnection.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@V8Client/$(DEPDIR)/shell.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Variant/$(DEPDIR)/VariantArray.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Variant/$(DEPDIR)/VariantBlob.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Variant/$(DEPDIR)/VariantBoolean.Po@am__quote@
@@ -1791,6 +1916,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-base.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-error.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-javascript.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-memory.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-node.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-parse.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query.Po@am__quote@
@@ -2062,9 +2188,9 @@ distcleancheck: distclean
 check-am: all-am
 check: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) check-am
-all-am: Makefile $(PROGRAMS) $(DATA)
+all-am: Makefile $(LIBRARIES) $(PROGRAMS) $(DATA)
 installdirs:
-	for dir in "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(pkgdatadir)"; do \
+	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(pkgdatadir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: $(BUILT_SOURCES)
@@ -2131,10 +2257,14 @@ distclean-generic:
 	-rm -f Scheduler/$(am__dirstamp)
 	-rm -f ShapedJson/$(DEPDIR)/$(am__dirstamp)
 	-rm -f ShapedJson/$(am__dirstamp)
+	-rm -f SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
+	-rm -f SimpleHttpClient/$(am__dirstamp)
 	-rm -f SkipLists/$(DEPDIR)/$(am__dirstamp)
 	-rm -f SkipLists/$(am__dirstamp)
 	-rm -f V8/$(DEPDIR)/$(am__dirstamp)
 	-rm -f V8/$(am__dirstamp)
+	-rm -f V8Client/$(DEPDIR)/$(am__dirstamp)
+	-rm -f V8Client/$(am__dirstamp)
 	-rm -f Variant/$(DEPDIR)/$(am__dirstamp)
 	-rm -f Variant/$(am__dirstamp)
 	-rm -f VocBase/$(DEPDIR)/$(am__dirstamp)
@@ -2147,11 +2277,12 @@ maintainer-clean-generic:
 @ENABLE_INSTALL_DBDIR_FALSE@install-data-local:
 clean: clean-am
 
-clean-am: clean-generic clean-local clean-sbinPROGRAMS mostlyclean-am
+clean-am: clean-binPROGRAMS clean-generic clean-local \
+	clean-noinstLIBRARIES clean-sbinPROGRAMS mostlyclean-am
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SkipLists/$(DEPDIR) V8/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -2174,7 +2305,7 @@ install-dvi: install-dvi-am
 
 install-dvi-am:
 
-install-exec-am: install-sbinPROGRAMS
+install-exec-am: install-binPROGRAMS install-sbinPROGRAMS
 
 install-html: install-html-am
 
@@ -2199,7 +2330,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SkipLists/$(DEPDIR) V8/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -2215,27 +2346,29 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am: uninstall-nobase_pkgdataDATA uninstall-sbinPROGRAMS
+uninstall-am: uninstall-binPROGRAMS uninstall-nobase_pkgdataDATA \
+	uninstall-sbinPROGRAMS
 
 .MAKE: all check install install-am install-strip
 
 .PHONY: CTAGS GTAGS all all-am am--refresh check check-am clean \
-	clean-generic clean-local clean-sbinPROGRAMS ctags dist \
-	dist-all dist-bzip2 dist-gzip dist-lzma dist-shar dist-tarZ \
-	dist-xz dist-zip distcheck distclean distclean-compile \
+	clean-binPROGRAMS clean-generic clean-local \
+	clean-noinstLIBRARIES clean-sbinPROGRAMS ctags dist dist-all \
+	dist-bzip2 dist-gzip dist-lzma dist-shar dist-tarZ dist-xz \
+	dist-zip distcheck distclean distclean-compile \
 	distclean-generic distclean-hdr distclean-tags distcleancheck \
 	distdir distuninstallcheck dvi dvi-am html html-am info \
-	info-am install install-am install-data install-data-am \
-	install-data-local install-dvi install-dvi-am install-exec \
-	install-exec-am install-html install-html-am install-info \
-	install-info-am install-man install-nobase_pkgdataDATA \
-	install-pdf install-pdf-am install-ps install-ps-am \
-	install-sbinPROGRAMS install-strip installcheck \
-	installcheck-am installdirs maintainer-clean \
+	info-am install install-am install-binPROGRAMS install-data \
+	install-data-am install-data-local install-dvi install-dvi-am \
+	install-exec install-exec-am install-html install-html-am \
+	install-info install-info-am install-man \
+	install-nobase_pkgdataDATA install-pdf install-pdf-am \
+	install-ps install-ps-am install-sbinPROGRAMS install-strip \
+	installcheck installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic pdf pdf-am ps ps-am tags uninstall \
-	uninstall-am uninstall-nobase_pkgdataDATA \
-	uninstall-sbinPROGRAMS
+	uninstall-am uninstall-binPROGRAMS \
+	uninstall-nobase_pkgdataDATA uninstall-sbinPROGRAMS
 
 
 @ENABLE_INSTALL_DBDIR_TRUE@install-data-local:

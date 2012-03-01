@@ -81,6 +81,9 @@ static void StringifyJson (TRI_string_buffer_t* buffer, TRI_json_t const* object
       TRI_AppendStringStringBuffer(buffer, "\"");
       ptr = TRI_EscapeUtf8String(object->_value._string.data, object->_value._string.length - 1, false, &outLength);
       TRI_AppendString2StringBuffer(buffer, ptr, outLength);
+      if (ptr) {
+        TRI_Free((char*) ptr);
+      }
       TRI_AppendStringStringBuffer(buffer, "\"");
       break;
 

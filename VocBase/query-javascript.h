@@ -30,6 +30,7 @@
 
 #include <BasicsC/string-buffer.h>
 #include <BasicsC/strings.h>
+#include <BasicsC/associative.h>
 
 #include "VocBase/query-node.h"
 
@@ -69,14 +70,30 @@ void TRI_FreeQueryJavascript (TRI_query_javascript_converter_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ConvertQueryJavascript (TRI_query_javascript_converter_t*, 
-                                 const TRI_query_node_t* const);
+                                 const TRI_query_node_t* const,
+                                 TRI_associative_pointer_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a javascript string by recursively walking an order by AST
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ConvertOrderQueryJavascript (TRI_query_javascript_converter_t*, 
-                                      const TRI_query_node_t* const);
+                                      const TRI_query_node_t* const,
+                                      TRI_associative_pointer_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Create javascript function code for a query part
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_GetFunctionCodeQueryJavascript (const TRI_query_node_t* const,
+                                          TRI_associative_pointer_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Create javascript function code for the order part of a query
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_GetOrderFunctionCodeQueryJavascript (const TRI_query_node_t* const,
+                                               TRI_associative_pointer_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

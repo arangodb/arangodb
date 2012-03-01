@@ -51,10 +51,13 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_OOM                                             (8000)
-#define TRI_ERROR_QUERY_PARSE                                           (8001)
-#define TRI_ERROR_QUERY_EMPTY                                           (8002)
-#define TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE                             (8010)
-#define TRI_ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE                        (8011)
+#define TRI_ERROR_QUERY_KILLED                                          (8001)
+
+#define TRI_ERROR_QUERY_PARSE                                           (8010)
+#define TRI_ERROR_QUERY_EMPTY                                           (8011)
+
+#define TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE                             (8020)
+#define TRI_ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE                        (8021)
 
 #define TRI_ERROR_QUERY_COLLECTION_NAME_INVALID                         (8050)
 #define TRI_ERROR_QUERY_COLLECTION_ALIAS_INVALID                        (8051)
