@@ -2603,9 +2603,9 @@ fi
 
 # Check whether --enable-install-dbdir was given.
 if test "${enable_install_dbdir+set}" = set; then :
-  enableval=$enable_install_dbdir; tr_RELATIVE="${enableval:-yes}"
+  enableval=$enable_install_dbdir; tr_DBDIR="${enableval:-yes}"
 else
-  tr_RELATIVE=yes
+  tr_DBDIR=yes
 
 fi
 
