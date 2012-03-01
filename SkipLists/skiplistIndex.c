@@ -109,6 +109,10 @@ static int CompareElementElement (struct TRI_skiplist_s* skiplist,
     return 1; // should never happen
   }
 
+  if (leftElement == rightElement) {
+    return 0;
+  }    
+  
   for (size_t j = 0; j < hLeftElement->numFields; j++) {
   /*
     printf("%s:%u:%f:%f\n",__FILE__,__LINE__,
@@ -138,12 +142,24 @@ static int CompareKeyElement (struct TRI_skiplist_s* skiplist,
   SkiplistIndexElement* hLeftElement  = (SkiplistIndexElement*)(leftElement);
   SkiplistIndexElement* hRightElement = (SkiplistIndexElement*)(rightElement);
   
-  if (leftElement == NULL || rightElement == NULL) {
-    return false;
+  if (leftElement == NULL && rightElement == NULL) {
+    return 0;
   }    
   
-  if (hLeftElement->numFields != hRightElement->numFields) {
-    return false; // should never happen
+  if (leftElement == NULL && rightElement != NULL) {
+    return -1;
+  }    
+  
+  if (leftElement != NULL && rightElement == NULL) {
+    return 1;
+  }    
+  
+  if (hLeftElement->numFields < hRightElement->numFields) {
+    return -1; // should never happen
+  }
+  
+  if (hLeftElement->numFields > hRightElement->numFields) {
+    return 1; // should never happen
   }
 
   for (size_t j = 0; j < hLeftElement->numFields; j++) {
@@ -278,7 +294,7 @@ bool SkiplistIndex_update(SkiplistIndex* skiplistIndex, const SkiplistIndexEleme
 
 
 // .............................................................................
-// Returns true if document pointers are the same, otherwise returns false
+// This is used to determine the equality of elements - not the order.
 // .............................................................................
 static int CompareMultiElementElement (TRI_skiplist_multi_t* multiSkiplist, 
                                        void* leftElement, void* rightElement) {
@@ -286,36 +302,38 @@ static int CompareMultiElementElement (TRI_skiplist_multi_t* multiSkiplist,
   SkiplistIndexElement* hRightElement = (SkiplistIndexElement*)(rightElement);
   int compareResult;                                    
   
-  if (leftElement == NULL || rightElement == NULL) {
+  if (leftElement == NULL && rightElement == NULL) {
     return 0;
   }    
   
-  if (leftElement == NULL || rightElement != NULL) {
+  if (leftElement == NULL && rightElement != NULL) {
     return -1;
   }    
   
-  if (leftElement != NULL || rightElement == NULL) {
+  if (leftElement != NULL && rightElement == NULL) {
     return 1;
   }    
+
+  if (hLeftElement->numFields < hRightElement->numFields) {
+    return -1; // should never happen
+  }
   
-  if (leftElement == rightElement) {
+  if (hLeftElement->numFields > hRightElement->numFields) {
+    return 1; // should never happen
+  }
+  
+  if (hLeftElement->data == hRightElement->data) {
     return 0;
   }    
-  
-  for (size_t j = 0; j < hLeftElement->numFields; j++) {
+
   /*
     printf("%s:%u:%f:%f\n",__FILE__,__LINE__,
       *((double*)((j + hLeftElement->fields)->_data.data)),
       *((double*)((j + hRightElement->fields)->_data.data))
     );
     */
-    compareResult = CompareShapedJsonShapedJson((j + hLeftElement->fields), (j + hRightElement->fields));
-    if (compareResult != 0) {
-      return compareResult;
-    }
-  }
   
-  return 0;
+  return -1;  
 }
 
 
@@ -327,36 +345,38 @@ static int  CompareMultiKeyElement (TRI_skiplist_multi_t* multiSkiplist,
   SkiplistIndexElement* hLeftElement  = (SkiplistIndexElement*)(leftElement);
   SkiplistIndexElement* hRightElement = (SkiplistIndexElement*)(rightElement);
   int compareResult;                                    
-  
-  if (leftElement == NULL || rightElement == NULL) {
-  printf("%s:%u\n",__FILE__,__LINE__);
+
+  if (leftElement == NULL && rightElement == NULL) {
     return 0;
   }    
   
-  if (leftElement == NULL || rightElement != NULL) {
-  printf("%s:%u\n",__FILE__,__LINE__);
+  if (leftElement == NULL && rightElement != NULL) {
     return -1;
   }    
   
-  if (leftElement != NULL || rightElement == NULL) {
-  printf("%s:%u\n",__FILE__,__LINE__);
+  if (leftElement != NULL && rightElement == NULL) {
     return 1;
   }    
+
+  if (hLeftElement->numFields < hRightElement->numFields) {
+    return -1; // should never happen
+  }
   
-  if (leftElement == rightElement) {
-  printf("%s:%u\n",__FILE__,__LINE__);
+  if (hLeftElement->numFields > hRightElement->numFields) {
+    return 1; // should never happen
+  }
+  
+  if (hLeftElement->data == hRightElement->data) {
     return 0;
   }    
   
-  printf("%s:%u",__FILE__,__LINE__);
-  
   for (size_t j = 0; j < hLeftElement->numFields; j++) {
-  
+  /*
     printf("%s:%u:%f:%f\n",__FILE__,__LINE__,
       *((double*)((j + hLeftElement->fields)->_data.data)),
       *((double*)((j + hRightElement->fields)->_data.data))
     );
-    
+    */
     compareResult = CompareShapedJsonShapedJson((j + hLeftElement->fields), (j + hRightElement->fields));
     if (compareResult != 0) {
       return compareResult;

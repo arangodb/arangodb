@@ -117,7 +117,6 @@ TRI_bind_parameter_t* TRI_CreateBindParameter (const char* name,
   TRI_bind_parameter_t* parameter;
 
   assert(name);
-  assert(data);
 
   parameter = (TRI_bind_parameter_t*) TRI_Allocate(sizeof(TRI_bind_parameter_t));
   if (!parameter) {
@@ -130,11 +129,14 @@ TRI_bind_parameter_t* TRI_CreateBindParameter (const char* name,
     return NULL;
   }
 
-  parameter->_data = TRI_CopyJson((TRI_json_t*) data);
-  if (!parameter->_data) {
-    TRI_Free(parameter->_name);
-    TRI_Free(parameter);
-    return NULL;
+  parameter->_data = NULL;
+  if (data) {
+    parameter->_data = TRI_CopyJson((TRI_json_t*) data);
+    if (!parameter->_data) {
+      TRI_Free(parameter->_name);
+      TRI_Free(parameter);
+      return NULL;
+    }
   }
 
   return parameter;
@@ -151,6 +153,10 @@ TRI_bind_parameter_t* TRI_CreateBindParameter (const char* name,
 bool TRI_AddBindParameterQueryTemplate (TRI_query_template_t* const template_,
                                         const TRI_bind_parameter_t* const parameter) {
   assert(template_);
+
+  if (!parameter) {
+    TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_OOM, NULL);
+  }
   
   if (TRI_LookupByKeyAssociativePointer(&template_->_bindParameters, 
                                         parameter->_name)) {
@@ -581,6 +587,98 @@ TRI_select_join_t* GetJoins (TRI_query_instance_t* instance) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Add bind parameter values
+////////////////////////////////////////////////////////////////////////////////
+
+static bool AddBindParameterValues (TRI_query_instance_t* const instance, 
+                                    const TRI_json_t* parameters) {
+  TRI_bind_parameter_t* parameter;
+  void* nameParameter;
+  void* valueParameter;
+  size_t i;
+
+  assert(parameters);
+
+  if (parameters->_type != TRI_JSON_ARRAY) {
+    TRI_RegisterErrorQueryInstance(instance, 
+                                   TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, 
+                                   "global");
+    return false;
+  }
+    
+  for (i = 0; i < parameters->_value._objects._length; i += 2) {
+    nameParameter = TRI_AtVector(&parameters->_value._objects, i);
+    valueParameter = TRI_AtVector(&parameters->_value._objects, i + 1);
+
+    parameter = 
+      TRI_CreateBindParameter(((TRI_json_t*) nameParameter)->_value._string.data, 
+      (TRI_json_t*) valueParameter);
+
+    if (!parameter) {
+      TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+      return false;
+    }
+    
+    if (TRI_LookupByKeyAssociativePointer(&instance->_bindParameters, 
+                                          parameter->_name)) {
+      // redeclaration of bind parameter
+      TRI_RegisterErrorQueryInstance(instance, 
+                                     TRI_ERROR_QUERY_BIND_PARAMETER_REDECLARED, 
+                                     parameter->_name);
+      return false;
+    }
+
+    TRI_AddBindParameterQueryInstance(instance, parameter);
+  
+    // check if template has such bind parameter
+    if (!TRI_LookupByKeyAssociativePointer(&instance->_template->_bindParameters, 
+                                           parameter->_name)) {
+      // invalid bind parameter
+      TRI_RegisterErrorQueryInstance(instance, 
+                                     TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED, 
+                                     parameter->_name);
+      return false;
+    }
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Validate bind parameter values
+////////////////////////////////////////////////////////////////////////////////
+
+static bool ValidateBindParameters (TRI_query_instance_t* const instance) {
+  TRI_associative_pointer_t* templateParameters;
+  TRI_associative_pointer_t* instanceParameters;
+  TRI_bind_parameter_t* parameter;
+  size_t i;
+
+  templateParameters = &instance->_template->_bindParameters;
+  instanceParameters = &instance->_bindParameters;
+
+  // enumerate all template bind parameters....
+  for (i = 0; i < templateParameters->_nrAlloc; i++) {
+    parameter = (TRI_bind_parameter_t*) templateParameters->_table[i];
+    if (!parameter) {
+      continue;
+    }
+
+    // ... and check if the parameter is also defined for the instance
+    if (!TRI_LookupByKeyAssociativePointer(instanceParameters,
+                                           parameter->_name)) {
+      // invalid bind parameter
+      TRI_RegisterErrorQueryInstance(instance, 
+                                     TRI_ERROR_QUERY_BIND_PARAMETER_MISSING,
+                                     parameter->_name);
+      return false;
+    }
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Set the value of a bind parameter
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -602,8 +700,8 @@ bool TRI_AddBindParameterQueryInstance (TRI_query_instance_t* const instance,
   }
   
   // check if bind parameter is already defined for instance
-  if (!TRI_LookupByKeyAssociativePointer(&instance->_bindParameters, 
-                                         parameter->_name)) {
+  if (TRI_LookupByKeyAssociativePointer(&instance->_bindParameters, 
+                                        parameter->_name)) {
     // bind parameter defined => duplicate definition
     TRI_RegisterErrorQueryInstance(instance, 
                                    TRI_ERROR_QUERY_BIND_PARAMETER_REDECLARED, 
@@ -639,7 +737,8 @@ void TRI_FreeQueryInstance (TRI_query_instance_t* const instance) {
 /// @brief Create a query instance
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_query_instance_t* TRI_CreateQueryInstance (const TRI_query_template_t* const template_) {
+TRI_query_instance_t* TRI_CreateQueryInstance (const TRI_query_template_t* const template_,
+                                               const TRI_json_t* parameters) {
   TRI_query_instance_t* instance;
 
   assert(template_);
@@ -649,11 +748,12 @@ TRI_query_instance_t* TRI_CreateQueryInstance (const TRI_query_template_t* const
     return NULL;
   }
 
-  instance->_template      = (TRI_query_template_t*) template_;
+  instance->_template  = (TRI_query_template_t*) template_;
 
   // init values
-  instance->_wasKilled     = false;
-  instance->_doAbort       = false;
+  instance->_wasKilled = false;
+  instance->_doAbort   = false;
+  instance->_query     = NULL;
   
   TRI_InitQueryError(&instance->_error);
 
@@ -662,7 +762,19 @@ TRI_query_instance_t* TRI_CreateQueryInstance (const TRI_query_template_t* const
                              HashBindParameter,
                              EqualBindParameter,
                              0);
-  
+ 
+  // set up bind parameters
+  if (parameters) {
+    if (!AddBindParameterValues(instance, parameters)) {
+      return instance;
+    }
+  }
+
+  // validate bind parameters
+  if (!ValidateBindParameters(instance)) {
+    return instance;
+  }
+
   instance->_query = TRI_CreateQuery(instance->_template->_vocbase,
                                      GetSelectPart(instance),
                                      GetWherePart(instance),
@@ -670,11 +782,6 @@ TRI_query_instance_t* TRI_CreateQueryInstance (const TRI_query_template_t* const
                                      GetJoins(instance),
                                      GetSkip(instance),
                                      GetLimit(instance));
-
-  if (!instance->_query) {
-    TRI_FreeQueryInstance(instance);
-    return NULL;
-  }
 
   return instance;
 }

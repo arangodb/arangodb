@@ -211,7 +211,8 @@ void TRI_FreeQueryInstance (TRI_query_instance_t* const);
 /// @brief Create a query instance
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_query_instance_t* TRI_CreateQueryInstance (const TRI_query_template_t* const);
+TRI_query_instance_t* TRI_CreateQueryInstance (const TRI_query_template_t* const,
+                                               const TRI_json_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Register an error during query execution

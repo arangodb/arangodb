@@ -1298,7 +1298,7 @@ bool TRI_ObjectDocumentPointer (TRI_doc_collection_t* collection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts an V8 object to a TRI_shaped_json_t
+/// @brief converts a V8 object to a TRI_shaped_json_t
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> object, TRI_shaper_t* shaper) {
@@ -1312,6 +1312,9 @@ TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> object, TRI_sha
   }
 
   TRI_shaped_json_t* shaped = (TRI_shaped_json_t*) TRI_Allocate(sizeof(TRI_shaped_json_t));
+  if (!shaped) {
+    return NULL;
+  }
 
   shaped->_sid = dst._sid;
   shaped->_data.length = dst._size;

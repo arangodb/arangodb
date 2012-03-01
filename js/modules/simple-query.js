@@ -33,34 +33,34 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 /// @page SimpleQueriesTOC
 ///
 /// <ol>
-///  <li>@ref Queries
+///  <li>@ref SimpleQueriesQueries
 ///   <ol>
 ///    <li>@ref SimpleQueryDocument "db.@FA{collection}.document(@FA{document-reference})"</li>
 ///    <li>@ref SimpleQueryAll "db.@FA{collection}.all()"</li>
 ///    <li>@ref SimpleQueryCount "@FA{query}.count()"</li>
 ///   </ol>
 ///  </li>
-///  <li>@ref GeoQueries
+///  <li>@ref SimpleQueriesGeoQueries
 ///   <ol>
 ///    <li>@ref SimpleQueryNear "db.@FA{collection}.near()"</li>
 ///    <li>@ref SimpleQueryWithin "db.@FA{collection}.within()"</li>
 ///    <li>@ref SimpleQueryGeo "db.@FA{collection}.geo()"</li>
 ///   </ol>
 ///  </li>
-///  <li>@ref EdgesQueries
+///  <li>@ref SimpleQueriesEdgesQueries
 ///   <ol>
 ///    <li>@ref SimpleQueryEdges "edges.@FA{collection}.edges()"</li>
 ///    <li>@ref SimpleQueryInEdges "edges.@FA{collection}.inEdges()"</li>
 ///    <li>@ref SimpleQueryOutEdges "edges.@FA{collection}.outEdges()"</li>
 ///   </ol>
 ///  </li>
-///  <li>@ref Pagination
+///  <li>@ref SimpleQueriesPagination
 ///   <ol>
 ///    <li>@ref SimpleQueryLimit "@FA{query}.limit(@FA{limit})"</li>
 ///    <li>@ref SimpleQuerySkip "@FA{query}.skip(@FA{skip})"</li>
 ///   </ol>
 ///  </li>
-///  <li>@ref SequentialAccess
+///  <li>@ref SimpleQueriesSequentialAccess
 ///   <ol>
 ///    <li>@ref SimpleQueryHasNext "@FA{query}.hasNext()"</li>
 ///    <li>@ref SimpleQueryNext "@FA{query}.next()"</li>
@@ -82,8 +82,8 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 /// @copydoc SimpleQueriesTOC
 /// <hr>
 ///
-/// @section Queries Queries
-////////////////////////////
+/// @section SimpleQueriesQueries Queries
+/////////////////////////////////////////
 ///
 /// @anchor SimpleQueryDocument
 /// @copydetails JS_DocumentQuery
@@ -96,8 +96,8 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 /// @anchor SimpleQueryCount
 /// @copydetails JSF_SimpleQuery_prototype_count
 ///
-/// @section GeoQueries Geo Queries
-///////////////////////////////////
+/// @section SimpleQueriesGeoQueries Geo Queries
+////////////////////////////////////////////////
 ///
 /// The AvocadoDB allows to selects documents based on geographic
 /// coordinates. In order for this to work, a geo-spatial index must be defined.
@@ -128,8 +128,8 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 /// @anchor SimpleQueryGeo
 /// @copydetails JSF_AvocadoCollection_prototype_geo
 ///
-/// @section EdgesQueries Edges Queries
-///////////////////////////////////////
+/// @section SimpleQueriesEdgesQueries Edges Queries
+////////////////////////////////////////////////////
 ///
 /// @anchor SimpleQueryEdges
 /// @copydetails JS_EdgesQuery
@@ -142,8 +142,8 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 /// @anchor SimpleQueryOutEdges
 /// @copydetails JS_OutEdgesQuery
 ///
-/// @section Pagination Pagination
-//////////////////////////////////
+/// @section SimpleQueriesPagination Pagination
+///////////////////////////////////////////////
 ///
 /// If, for example, you display the result of a user search, then you are in
 /// general not interested in the completed result set, but only the first 10 or
@@ -165,7 +165,8 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 /// @anchor SimpleQuerySkip
 /// @copydetails JSF_SimpleQuery_prototype_skip
 ///
-/// @section SequentialAccess Sequential Access
+/// @section SimpleQueriesSequentialAccess Sequential Access
+////////////////////////////////////////////////////////////
 ///
 /// @anchor SimpleQueryHasNext
 /// @copydetails JSF_SimpleQuery_prototype_hasNext

@@ -579,7 +579,7 @@ static const yytype_uint16 yyrline[] =
      842,   850,   858,   866,   874,   882,   890,   898,   906,   914,
      922,   930,   938,   949,   966,   973,   985,   985,  1003,  1006,
     1013,  1017,  1017,  1029,  1032,  1039,  1046,  1057,  1061,  1065,
-    1070,  1075,  1088
+    1070,  1075,  1089
 };
 #endif
 
@@ -3248,25 +3248,27 @@ yyreduce:
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueParameterNumeric);
       ABORT_IF_OOM((yyval.node));
       (yyval.node)->_value._intValue = d;
+      TRI_AddBindParameterQueryTemplate(template_, TRI_CreateBindParameter((yyvsp[(1) - (1)].strval), NULL));   
     ;}
     break;
 
   case 122:
 
 /* Line 1455 of yacc.c  */
-#line 1088 "QL/parser.y"
+#line 1089 "QL/parser.y"
     {
       // named parameter
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueParameterNamed);
       ABORT_IF_OOM((yyval.node));
       (yyval.node)->_value._stringValue = (yyvsp[(1) - (1)].strval);
+      TRI_AddBindParameterQueryTemplate(template_, TRI_CreateBindParameter((yyvsp[(1) - (1)].strval), NULL));   
     ;}
     break;
 
 
 
 /* Line 1455 of yacc.c  */
-#line 3270 "QL/parser.c"
+#line 3272 "QL/parser.c"
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
@@ -3485,7 +3487,7 @@ yyreturn:
 
 
 /* Line 1675 of yacc.c  */
-#line 1096 "QL/parser.y"
+#line 1098 "QL/parser.y"
 
 
 

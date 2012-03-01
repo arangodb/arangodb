@@ -31,7 +31,7 @@ void dummy_34 ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @page Graphs First Steps with Graphs
 ///
-/// Graphs consists of vertices and edges. The vertex collection contains the
+/// A Graph consists of vertices and edges. The vertex collection contains the
 /// documents forming the vertices. The edge collection contains the documents
 /// forming the edges. Together both collections form a graph. Assume that
 /// the vertex collection is called @LIT{vertices} and the edges collection
@@ -46,15 +46,19 @@ void dummy_34 ();
 ///
 /// It is, however, impossible to use different vertices with the same
 /// edges. Edges are tied to the vertices.
+///
+/// Next steps: learn more about
+///
+/// - @ref JSModuleGraph
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_54 ();
+void dummy_58 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page JSModuleGraphTOC
 ///
 /// <ol>
-///   <li>Graph</li>
+///   <li>@ref JSModuleGraphGraph
 ///     <ol>
 ///       <li>@ref JSModuleGraphGraphAddEdge "Graph.addEdge"</li>
 ///       <li>@ref JSModuleGraphGraphAddVertex "Graph.addVertex"</li>
@@ -65,7 +69,8 @@ void dummy_54 ();
 ///       <li>@ref JSModuleGraphGraphRemoveEdge "Graph.removeEdge"</li>
 ///       <li>@ref JSModuleGraphGraphRemoveVertex "Graph.removeVertex"</li>
 ///     </ol>
-///   <li>Vertex</li>
+///   </li>
+///   <li>@ref JSModuleGraphVertex
 ///     <ol>
 ///       <li>@ref JSModuleGraphVertexAddInEdge "Vertex.addInEdge"</li>
 ///       <li>@ref JSModuleGraphVertexAddOutEdge "Vertex.addOutEdge"</li>
@@ -78,7 +83,8 @@ void dummy_54 ();
 ///       <li>@ref JSModuleGraphVertexProperties "Vertex.properties"</li>
 ///       <li>@ref JSModuleGraphVertexSetProperty "Vertex.setProperty"</li>
 ///     </ol>
-///   <li>Edge</li>
+///   </li>
+///   <li>@ref JSModuleGraphEdge
 ///     <ol>
 ///       <li>@ref JSModuleGraphEdgeGetId "Edge.getId"</li>
 ///       <li>@ref JSModuleGraphEdgeGetInVertex "Edge.getInVertex"</li>
@@ -93,7 +99,7 @@ void dummy_54 ();
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_97 ();
+void dummy_103 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page JSModuleGraph Module "graph"
@@ -105,110 +111,137 @@ void dummy_97 ();
 /// @copydoc JSModuleGraphTOC
 /// <hr>
 ///
+/// @section JSModuleGraphGraph Graph Constructors and Methods
+//////////////////////////////////////////////////////////////
+///
 /// @anchor JSModuleGraphGraphConstructor
 /// @copydetails JSF_Graph
+/// <hr>
 ///
 /// @anchor JSModuleGraphGraphAddEdge
 /// @copydetails JSF_Graph_prototype_addEdge
+/// <hr>
 ///
 /// @anchor JSModuleGraphGraphAddVertex
 /// @copydetails JSF_Graph_prototype_addVertex
+/// <hr>
 ///
 /// @anchor JSModuleGraphGraphGetEdges
 /// @copydetails JSF_Graph_prototype_getEdges
+/// <hr>
 ///
 /// @anchor JSModuleGraphGraphGetVertex
 /// @copydetails JSF_Graph_prototype_getVertex
+/// <hr>
 ///
 /// @anchor JSModuleGraphGraphGetVertices
 /// @copydetails JSF_Graph_prototype_getVertices
+/// <hr>
 ///
 /// @anchor JSModuleGraphGraphRemoveVertex
 /// @copydetails JSF_Graph_prototype_removeVertex
+/// <hr>
 ///
 /// @anchor JSModuleGraphGraphRemoveEdge
 /// @copydetails JSF_Graph_prototype_removeEdge
 ///
-/// <hr>
+/// @section JSModuleGraphVertex Vertex Methods
+///////////////////////////////////////////////
 ///
 /// @anchor JSModuleGraphVertexAddInEdge
 /// @copydetails JSF_Vertex_prototype_addInEdge
+/// <hr>
 ///
 /// @anchor JSModuleGraphVertexAddOutEdge
 /// @copydetails JSF_Vertex_prototype_addOutEdge
+/// <hr>
 ///
 /// @anchor JSModuleGraphVertexEdges
 /// @copydetails JSF_Vertex_prototype_edges
+/// <hr>
 ///
 /// @anchor JSModuleGraphVertexGetId
 /// @copydetails JSF_Vertex_prototype_getId
+/// <hr>
 ///
 /// @anchor JSModuleGraphVertexGetInEdges
 /// @copydetails JSF_Vertex_prototype_getInEdges
+/// <hr>
 ///
 /// @anchor JSModuleGraphVertexGetOutEdges
 /// @copydetails JSF_Vertex_prototype_getOutEdges
+/// <hr>
 ///
 /// @anchor JSModuleGraphVertexGetProperty
 /// @copydetails JSF_Vertex_prototype_getProperty
+/// <hr>
 ///
 /// @anchor JSModuleGraphVertexGetPropertyKeys
 /// @copydetails JSF_Vertex_prototype_getPropertyKeys
+/// <hr>
 ///
 /// @anchor JSModuleGraphVertexProperties
 /// @copydetails JSF_Vertex_prototype_properties
+/// <hr>
 ///
 /// @anchor JSModuleGraphVertexSetProperty
 /// @copydetails JSF_Vertex_prototype_setProperty
 ///
-/// <hr>
+/// @section JSModuleGraphEdge Edge Methods
+///////////////////////////////////////////
 ///
 /// @anchor JSModuleGraphEdgeGetId
 /// @copydetails JSF_Edge_prototype_getId
+/// <hr>
 ///
 /// @anchor JSModuleGraphEdgeGetInVertex
 /// @copydetails JSF_Edge_prototype_getInVertex
+/// <hr>
 ///
 /// @anchor JSModuleGraphEdgeGetLabel
 /// @copydetails JSF_Edge_prototype_getLabel
+/// <hr>
 ///
 /// @anchor JSModuleGraphEdgeGetOutVertex
 /// @copydetails JSF_Edge_prototype_getOutVertex
+/// <hr>
 ///
 /// @anchor JSModuleGraphEdgeGetProperty
 /// @copydetails JSF_Edge_prototype_getProperty
+/// <hr>
 ///
 /// @anchor JSModuleGraphEdgeGetPropertyKeys
 /// @copydetails JSF_Edge_prototype_getPropertyKeys
+/// <hr>
 ///
 /// @anchor JSModuleGraphEdgeProperties
 /// @copydetails JSF_Edge_prototype_properties
+/// <hr>
 ///
 /// @anchor JSModuleGraphEdgeSetProperty
 /// @copydetails JSF_Edge_prototype_setProperty
-///
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_191 ();
+void dummy_224 ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              EDGE
 // -----------------------------------------------------------------------------
 
-void dummy_195 ();
+void dummy_228 ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-void dummy_199 ();
+void dummy_232 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup AvocadoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_204 ();
+void dummy_237 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new edge object
@@ -223,20 +256,20 @@ void JSF_Edge (int graph, int id) {}
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_230 ();
+void dummy_263 ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
-void dummy_234 ();
+void dummy_267 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup AvocadoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_239 ();
+void dummy_272 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the identifier of an edge
@@ -357,52 +390,52 @@ void JSF_Edge_prototype_properties (int ) {}
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_426 ();
+void dummy_459 ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-void dummy_430 ();
+void dummy_463 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup AvocadoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_435 ();
+void dummy_468 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief edge printing
 ////////////////////////////////////////////////////////////////////////////////
 
 
-void dummy_448 ();
+void dummy_481 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_452 ();
+void dummy_485 ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            VERTEX
 // -----------------------------------------------------------------------------
 
-void dummy_456 ();
+void dummy_489 ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-void dummy_460 ();
+void dummy_493 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup AvocadoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_465 ();
+void dummy_498 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new vertex object
@@ -417,20 +450,20 @@ void JSF_Vertex (int graph, int id) {}
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_486 ();
+void dummy_519 ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
-void dummy_490 ();
+void dummy_523 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup AvocadoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_495 ();
+void dummy_528 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an inbound edge
@@ -654,52 +687,52 @@ void JSF_Vertex_prototype_setProperty (int name, int value) {}
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_870 ();
+void dummy_903 ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-void dummy_874 ();
+void dummy_907 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup AvocadoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_879 ();
+void dummy_912 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief vertex representation
 ////////////////////////////////////////////////////////////////////////////////
 
 
-void dummy_892 ();
+void dummy_925 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_896 ();
+void dummy_929 ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             GRAPH
 // -----------------------------------------------------------------------------
 
-void dummy_900 ();
+void dummy_933 ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-void dummy_904 ();
+void dummy_937 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup AvocadoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_909 ();
+void dummy_942 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new graph object
@@ -724,20 +757,20 @@ void JSF_Graph (int vertices, int edg) {}
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_947 ();
+void dummy_980 ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
-void dummy_951 ();
+void dummy_984 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup AvocadoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_956 ();
+void dummy_989 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an edge to the graph
@@ -896,20 +929,20 @@ void JSF_Graph_prototype_removeEdge (int edge) {}
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_1223 ();
+void dummy_1256 ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-void dummy_1227 ();
+void dummy_1260 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup AvocadoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_1232 ();
+void dummy_1265 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief private function to construct a vertex
@@ -928,19 +961,19 @@ void JSF_Graph_prototype_constructEdge (int id) {}
 ////////////////////////////////////////////////////////////////////////////////
 
 
-void dummy_1256 ();
+void dummy_1289 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_1260 ();
+void dummy_1293 ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
 
-void dummy_1264 ();
+void dummy_1297 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup AvocadoGraph
@@ -948,13 +981,13 @@ void dummy_1264 ();
 ////////////////////////////////////////////////////////////////////////////////
 
 
-void dummy_1275 ();
+void dummy_1308 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_1279 ();
+void dummy_1312 ();
 
 // Local Variables:
 // mode: outline-minor

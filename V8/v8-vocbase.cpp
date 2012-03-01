@@ -1336,14 +1336,65 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new constant where clause for a hash index
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* ConvertHelper(v8::Handle<v8::Value> parameter) {
+  if (parameter->IsBoolean()) {
+    v8::Handle<v8::Boolean> booleanParameter = parameter->ToBoolean();
+    return TRI_CreateBooleanJson(booleanParameter->Value());
+  }
+  
+  if (parameter->IsNumber()) {
+    v8::Handle<v8::Number> numberParameter = parameter->ToNumber();
+    return TRI_CreateNumberJson(numberParameter->Value());
+  }
+
+  if (parameter->IsString()) {
+    v8::Handle<v8::String> stringParameter= parameter->ToString();
+    v8::String::Utf8Value str(stringParameter);
+    return TRI_CreateStringCopyJson(*str);
+  }
+
+  if (parameter->IsArray()) {
+    v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
+    TRI_json_t* listJson = TRI_CreateListJson();
+    if (listJson) {
+      for (size_t j = 0; j < arrayParameter->Length(); ++j) {
+        v8::Handle<v8::Value> item = arrayParameter->Get(j);    
+        TRI_json_t* result = ConvertHelper(item);
+        TRI_PushBack2ListJson(listJson, result);
+      }
+    }
+    return listJson;
+  }
+  if (parameter->IsObject()) {
+    v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
+    TRI_json_t* arrayJson = TRI_CreateArrayJson();
+    if (arrayJson) {
+      v8::Handle<v8::Array> names = arrayParameter->GetOwnPropertyNames();
+      for (size_t j = 0; j < names->Length(); ++j) {
+        v8::Handle<v8::Value> key = names->Get(j);
+        v8::Handle<v8::Value> item = arrayParameter->Get(key);    
+        TRI_json_t* result = ConvertHelper(item);
+        TRI_InsertArrayJson(arrayJson, TRI_ObjectToString(key).c_str(), result);
+      }
+    }
+    return arrayJson;
+  }
+  
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new query from a string
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_PrepareAql (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() != 2) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_PREPARE(<db>, <querystring>)")));
+  if (argv.Length() < 2) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_PREPARE(<db>, <querystring>, <args>)")));
   }
 
   v8::Handle<v8::Object> dbArg = argv[0]->ToObject();
@@ -1361,14 +1412,25 @@ static v8::Handle<v8::Value> JS_PrepareAql (v8::Arguments const& argv) {
 
   string queryString = TRI_ObjectToString(queryArg);
 
+  TRI_json_t* parameters = NULL;
+  if (argv.Length() > 2) {
+    parameters = ConvertHelper(argv[2]);
+  }
+
   // create a parser object
   TRI_query_template_t* template_ = TRI_CreateQueryTemplate(queryString.c_str(), vocbase);
   if (template_) {
     bool ok = TRI_ParseQueryTemplate(template_);
     if (ok) {
-      TRI_query_instance_t* instance = TRI_CreateQueryInstance(template_);
+      TRI_query_instance_t* instance = TRI_CreateQueryInstance(template_, parameters);
       if (instance) {
-        return scope.Close(WrapQueryInstance(instance));
+        if (instance->_query) {
+          return scope.Close(WrapQueryInstance(instance));
+        }
+        v8::Handle<v8::Object> errorObject = CreateQueryErrorObject(&instance->_error);
+        TRI_FreeQueryInstance(instance);
+        TRI_FreeQueryTemplate(template_);
+        return scope.Close(errorObject);
       }
       else {
         TRI_FreeQueryTemplate(template_);
@@ -1382,7 +1444,6 @@ static v8::Handle<v8::Value> JS_PrepareAql (v8::Arguments const& argv) {
   }
   return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new constant where clause using a boolean - DEPRECATED
@@ -1459,40 +1520,6 @@ static v8::Handle<v8::Value> JS_WherePrimaryConstAql (v8::Arguments const& argv)
   return scope.Close(WrapWhere(where));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new constant where clause for a hash index
-////////////////////////////////////////////////////////////////////////////////
-static TRI_json_t* ConvertHelper(v8::Handle<v8::Value> parameter) {
-
-  if (parameter->IsBoolean()) {
-    v8::Handle<v8::Boolean> booleanParameter = parameter->ToBoolean();
-    return TRI_CreateBooleanJson(booleanParameter->Value());
-  }
-  
-  if (parameter->IsNumber()) {
-    v8::Handle<v8::Number> numberParameter = parameter->ToNumber();
-    return TRI_CreateNumberJson(numberParameter->Value());
-  }
-
-  if (parameter->IsString()) {
-    v8::Handle<v8::String>  stringParameter= parameter->ToString();
-    v8::String::Utf8Value str(stringParameter);
-    return TRI_CreateStringCopyJson(*str);
-  }
-
-  if (parameter->IsArray()) {
-    v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
-    TRI_json_t* listJson = TRI_CreateListJson();
-    for (size_t j = 0; j < arrayParameter->Length(); ++j) {
-      v8::Handle<v8::Value> item = arrayParameter->Get(j);    
-      TRI_json_t* result = ConvertHelper(item);
-      TRI_PushBack2ListJson (listJson, result);
-    }
-    return listJson;
-  }
-  
-  return NULL;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief DEPRECATED
