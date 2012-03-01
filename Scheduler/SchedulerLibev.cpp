@@ -196,7 +196,7 @@ namespace triagens {
 
 
     SchedulerLibev::SchedulerLibev (size_t concurrency, int backend)
-      : SchedulerImpl(concurrency),
+      : Scheduler(concurrency),
         _backend(backend) {
 
       // report status
