@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
+var console = require("console");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -102,7 +103,20 @@ function defineHttp (options) {
     domain = [ domain ];
   }
 
-  console.debug("defining action '" + url + "' in domain(s) " + domain);
+  if (typeof callback !== "function") {
+    console.error("callback for '" + url + "' must be a function, got '" + (typeof callback) + "'");
+    return;
+  }
+
+  console.debug("callback ", callback, "\n");
+
+  try {
+    internal.defineAction(url, "CLIENT", callback, parameter);
+    console.debug("defining action '" + url + "' in domain(s) " + domain);
+  }
+  catch (err) {
+    console.error("action '" + url + "' encountered error: " + err);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

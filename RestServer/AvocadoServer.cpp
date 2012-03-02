@@ -509,8 +509,8 @@ int AvocadoServer::startupServer () {
     _actionThreads = 1;
   }
 
-  safe_cast<DispatcherImpl*>(dispatcher)->addQueue("ACTION", ActionDisptacherThreadCreator, _actionThreads);
-  safe_cast<DispatcherImpl*>(dispatcher)->addQueue("SYSTEM ACTION", SystemActionDisptacherThreadCreator, 2);
+  safe_cast<DispatcherImpl*>(dispatcher)->addQueue("CLIENT", ActionDisptacherThreadCreator, _actionThreads);
+  safe_cast<DispatcherImpl*>(dispatcher)->addQueue("SYSTEM", SystemActionDisptacherThreadCreator, 2);
 
   // .............................................................................
   // create a http server and http handler factory

@@ -191,7 +191,7 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   if (argv.Length() != 4) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: defineAction(<name>, <queue>, <callback>, <parameter>)")));
+    return scope.Close(v8::ThrowException(v8::String::New("usage: SYS_DEFINE_ACTION(<name>, <queue>, <callback>, <parameter>)")));
   }
 
   // extract the action name
@@ -225,13 +225,13 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("<callback> must be a function")));
   }
 
-  v8::Handle<v8::Function> callback = v8::Handle<v8::Function>::Cast(argv[1]);
+  v8::Handle<v8::Function> callback = v8::Handle<v8::Function>::Cast(argv[2]);
 
   // extract the options
   v8::Handle<v8::Object> options;
 
   if (argv[3]->IsObject()) {
-    options = argv[2]->ToObject();
+    options = argv[3]->ToObject();
   }
   else {
     options = v8::Object::New();
@@ -274,6 +274,18 @@ void TRI_CreateActionVocBase (string const& name,
   WRITE_LOCKER(ActionsLock);
   WRITE_LOCKER(v8g->ActionsLock);
 
+  // create a new action and store the callback function
+  if (Actions.find(name) == Actions.end()) {
+    TRI_action_t* action = new TRI_action_t;
+
+    action->_url = name;
+    action->_urlParts = StringUtils::split(name, "/").size();
+    action->_queue = queue;
+    action->_options = ao;
+
+    Actions[name] = action;
+  }
+
   // check if we already know an callback
   map< string, v8::Persistent<v8::Function> >::iterator i = v8g->Actions.find(name);
 
@@ -283,17 +295,9 @@ void TRI_CreateActionVocBase (string const& name,
     cb.Dispose();
   }
 
-  // create a new action and store the callback function
-  TRI_action_t* action = new TRI_action_t;
-
-  action->_url = name;
-  action->_urlParts = StringUtils::split(name, "/").size();
-  action->_queue = queue;
-  action->_options = ao;
-
-  Actions[name] = action;
   v8g->Actions[name] = v8::Persistent<v8::Function>::New(callback);
 
+  // some debug output
   LOG_DEBUG("created action '%s' for queue %s", name.c_str(), queue.c_str());
 }
 
