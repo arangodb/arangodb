@@ -512,8 +512,13 @@ int AvocadoServer::startupServer () {
     _actionThreads = 1;
   }
 
+<<<<<<< HEAD
   safe_cast<DispatcherImpl*>(dispatcher)->addQueue("CLIENT", ClientActionDispatcherThreadCreator, _actionThreads);
   safe_cast<DispatcherImpl*>(dispatcher)->addQueue("SYSTEM", SystemActionDispatcherThreadCreator, 2);
+=======
+  safe_cast<DispatcherImpl*>(dispatcher)->addQueue("CLIENT", ActionDisptacherThreadCreator, _actionThreads);
+  safe_cast<DispatcherImpl*>(dispatcher)->addQueue("SYSTEM", SystemActionDisptacherThreadCreator, 2);
+>>>>>>> actions are now working again
 
   // .............................................................................
   // create a http server and http handler factory

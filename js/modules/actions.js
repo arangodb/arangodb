@@ -27,6 +27,7 @@
 
 var internal = require("internal");
 <<<<<<< HEAD
+<<<<<<< HEAD
 var console = require("console");
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -103,6 +104,9 @@ exports.cursorNotModified = 40304;
 ////////////////////////////////////////////////////////////////////////////////
 =======
 >>>>>>> unfinished actions cleanup
+=======
+var console = require("console");
+>>>>>>> actions are now working again
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -330,7 +334,20 @@ function actionError (req, res, err) {
     domain = [ domain ];
   }
 
-  console.debug("defining action '" + url + "' in domain(s) " + domain);
+  if (typeof callback !== "function") {
+    console.error("callback for '" + url + "' must be a function, got '" + (typeof callback) + "'");
+    return;
+  }
+
+  console.debug("callback ", callback, "\n");
+
+  try {
+    internal.defineAction(url, "CLIENT", callback, parameter);
+    console.debug("defining action '" + url + "' in domain(s) " + domain);
+  }
+  catch (err) {
+    console.error("action '" + url + "' encountered error: " + err);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
