@@ -32,7 +32,7 @@
 
 #include <v8.h>
 
-#include "RestServer/JSLoader.h"
+#include "V8/JSLoader.h"
 #include "VocBase/vocbase.h"
 
 // -----------------------------------------------------------------------------

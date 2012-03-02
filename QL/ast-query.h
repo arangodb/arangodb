@@ -235,10 +235,15 @@ typedef struct QL_ast_query_collection_s {
   size_t                          _refCount;
   size_t                          _declarationOrder;
   QL_ast_query_geo_restriction_t* _geoRestriction;
-  bool                            _usesBindParameters;
-  char*                           _functionCode;
+  QL_ast_query_where_t            _where;
 } 
 QL_ast_query_collection_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free collections previously registered
+////////////////////////////////////////////////////////////////////////////////
+
+void QLAstQueryFreeCollections (TRI_associative_pointer_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Initialize data structures for a query

@@ -57,6 +57,7 @@ libavocado_a_SOURCES = \
 	Logger/LoggerInfo.cpp \
 	Logger/LoggerStream.cpp \
 	Logger/LoggerTiming.cpp \
+	ProgramOptions/program-options.c \
 	Rest/AddressPort.cpp \
 	Rest/AnyServer.cpp \
 	Rest/HttpRequest.cpp \
@@ -67,6 +68,7 @@ libavocado_a_SOURCES = \
 	ShapedJson/json-shaper.c \
 	ShapedJson/shape-accessor.c \
 	ShapedJson/shaped-json.c \
+	V8/JSLoader.cpp \
 	V8/v8-conv.cpp \
 	V8/v8-json.cpp \
 	V8/v8-line-editor.cpp \
@@ -131,7 +133,6 @@ avocado_SOURCES = \
 	HttpsServer/HttpsAsyncCommTask.cpp \
 	HttpsServer/HttpsServer.cpp \
 	HttpsServer/HttpsServerImpl.cpp \
-	ProgramOptions/program-options.c \
 	QL/ast-query.c \
 	QL/formatter.c \
 	QL/optimize.c \
@@ -139,12 +140,10 @@ avocado_SOURCES = \
 	QL/tokens.c \
 	RestHandler/RestActionHandler.cpp \
 	RestHandler/RestCollectionHandler.cpp \
-	RestHandler/RestSystemActionHandler.cpp \
 	RestHandler/RestVocbaseBaseHandler.cpp \
 	RestServer/ActionDispatcherThread.cpp \
 	RestServer/AvocadoHttpServer.cpp \
 	RestServer/AvocadoServer.cpp \
-	RestServer/JSLoader.cpp \
 	RestServer/SystemActionDispatcherThread.cpp \
 	RestServer/avocado.cpp \
 	ResultGenerator/HtmlResultGenerator.cpp \
@@ -217,8 +216,8 @@ avocsh_SOURCES = \
 JAVASCRIPT_HEADER = \
 	js/bootstrap/js-modules.h \
 	js/bootstrap/js-print.h \
+	js/client/js-client.h \
 	js/server/js-modules.h \
-	js/server/js-actions.h \
 	js/server/js-aql.h \
 	js/server/js-json.h \
 	js/server/js-shell.h

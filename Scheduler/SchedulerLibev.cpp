@@ -285,15 +285,6 @@ SchedulerLibev::SchedulerLibev (size_t concurrency, int backend)
 
 SchedulerLibev::~SchedulerLibev () {
 
-  // shutdown loops
-  for (size_t i = 1;  i < nrThreads;  ++i) {
-    ev_async_stop(((struct ev_loop**) _loops)[i], ((ev_async**) _wakers)[i]);
-    ev_loop_destroy(((struct ev_loop**) _loops)[i]);
-  }
-  
-  // delete loops buffer
-  delete[] ((struct ev_loop**) _loops);
-  
   // begin shutdown sequence within threads
   for (size_t i = 0;  i < nrThreads;  ++i) {
     threads[i]->beginShutdown();
@@ -304,13 +295,24 @@ SchedulerLibev::~SchedulerLibev () {
     threads[i]->stop();
   }
   
-  usleep(10000);
+  for (size_t i = 0;  i < 100 && isRunning();  ++i) {
+    usleep(100);
+  }
   
   // and delete threads
   for (size_t i = 0;  i < nrThreads;  ++i) {
     delete threads[i];
     delete ((ev_async**) _wakers)[i];
   }
+  
+  // shutdown loops
+  for (size_t i = 1;  i < nrThreads;  ++i) {
+    ev_async_stop(((struct ev_loop**) _loops)[i], ((ev_async**) _wakers)[i]);
+    ev_loop_destroy(((struct ev_loop**) _loops)[i]);
+  }
+  
+  // delete loops buffer
+  delete[] ((struct ev_loop**) _loops);
   
   // delete threads buffer and wakers
   delete[] threads;
