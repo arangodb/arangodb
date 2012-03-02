@@ -139,11 +139,11 @@ namespace triagens {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                           GENERAL
+// --SECTION--                                                           ACTIONS
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
+// --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,14 +152,56 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new action
+/// @brief parameter type
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_ACT_CATEGORY_USER,
-  TRI_ACT_CATEGORY_SYSTEM
+  TRI_ACT_STRING,
+  TRI_ACT_NUMBER,
+  TRI_ACT_COLLECTION,
+  TRI_ACT_COLLECTION_ID
 }
-TRI_action_category_e;
+TRI_action_parameter_type_e;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parameter definition
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_action_parameter_s {
+  TRI_action_parameter_s ()
+    : _name(),
+      _type(TRI_ACT_NUMBER) {
+  }
+
+  std::string _name;
+  TRI_action_parameter_type_e _type;
+}
+TRI_action_parameter_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief action options definition
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_action_options_s {
+  TRI_action_options_s ()
+    : _parameters() {
+  }
+
+  std::map<std::string, TRI_action_parameter_t> _parameters;
+}
+TRI_action_options_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief action path
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_action_s {
+  std::string _url;
+  size_t _urlParts;
+  std::string _queue;
+  TRI_action_options_t _options;
+}
+TRI_action_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -178,18 +220,23 @@ TRI_action_category_e;
 /// @brief creates a new action
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateActionVocBase (TRI_action_category_e,
-                              std::string const& name,
+void TRI_CreateActionVocBase (std::string const& name,
+                              std::string const& queue,
                               v8::Handle<v8::Function> callback,
                               v8::Handle<v8::Object> options);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up an action
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_action_t const* TRI_LookupActionVocBase (triagens::rest::HttpRequest* request);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an action
 ////////////////////////////////////////////////////////////////////////////////
 
 triagens::rest::HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
-                                                        TRI_action_category_e category,
-                                                        std::string const& name,
+                                                        TRI_action_t const* action,
                                                         triagens::rest::HttpRequest* request);
 
 ////////////////////////////////////////////////////////////////////////////////
