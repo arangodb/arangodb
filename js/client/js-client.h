@@ -1416,17 +1416,26 @@ static string JS_client_client =
   "// End:\n"
 =======
   "\n"
-  "//\n"
-  "// default database\n"
-  "// \n"
-  "db = new AvocadoDatabase(avocado);\n"
+  "try {\n"
   "\n"
-  "//\n"
-  "// load collection data\n"
-  "// \n"
+  "  //\n"
+  "  // default database\n"
+  "  // \n"
+  "  db = new AvocadoDatabase(avocado);\n"
   "\n"
-  "db._collections();\n"
+  "  //\n"
+  "  // load collection data\n"
+  "  // \n"
+  "  db._collections();\n"
   "\n"
+<<<<<<< HEAD
   "help();\n"
 >>>>>>> JS loader for avocsh
+=======
+  "  help();\n"
+  "}\n"
+  "catch (err) {\n"
+  "  print(COLOR_RED + \"connection failure: \" + err + COLOR_BLACK);\n"
+  "}\n"
+>>>>>>> better error handling
 ;

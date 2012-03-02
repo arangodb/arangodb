@@ -904,10 +904,14 @@ int main (int argc, char* argv[]) {
     }
     else {
 <<<<<<< HEAD
+<<<<<<< HEAD
       LOGGER_DEBUG << "using JavaScript startup files at '" << StartupPath << "'";
 =======
       LOGGER_INFO << "using JavaScript startup files at '" << StartupPath << "'";
 >>>>>>> JS loader for avocsh
+=======
+      LOGGER_DEBUG << "using JavaScript startup files at '" << StartupPath << "'";
+>>>>>>> better error handling
       StartupLoader.setDirectory(StartupPath);
     }
 
@@ -934,11 +938,7 @@ int main (int argc, char* argv[]) {
     RunShell(context);
 =======
 
-    RunMain(context, argc, argv);
-
-    if (RunShellFlag) {
-      RunShell(context);
-    }
+    RunShell(context);
 
 >>>>>>> JS loader for avocsh
   }
