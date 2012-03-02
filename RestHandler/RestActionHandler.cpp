@@ -74,12 +74,27 @@ RestActionHandler::RestActionHandler (HttpRequest* request, TRI_vocbase_t* vocba
 ////////////////////////////////////////////////////////////////////////////////
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 bool RestActionHandler::isDirect () {
   return _action == 0;
 =======
 string const& RestActionHandler::queue () {
   return _action->_queue;
 >>>>>>> unfinished actions cleanup
+=======
+bool RestActionHandler::isDirect () {
+  return _action == 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+string const& RestActionHandler::queue () {
+  static string const standard = "STANDARD";
+
+  return _action == 0 ? standard : _action->_queue;
+>>>>>>> more action cleanup
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,6 +167,7 @@ HttpHandler::status_e RestActionHandler::execute () {
   }
   else {
 <<<<<<< HEAD
+<<<<<<< HEAD
     string n = request->requestPath();
     n += StringUtils::join(request->suffix(), "/");
 
@@ -159,6 +175,9 @@ HttpHandler::status_e RestActionHandler::execute () {
 =======
     generateNotImplemented("ILLEGAL PATH" + _action->_url);
 >>>>>>> unfinished actions cleanup
+=======
+    generateNotImplemented("ILLEGAL PATH");
+>>>>>>> more action cleanup
   }
 
   _timingResult = res ? RES_ERR : RES_OK;
