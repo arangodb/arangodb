@@ -926,6 +926,7 @@ AvocadoDatabase.prototype._help = function () {
   print(helpAvocadoDatabase);
 }
 
+<<<<<<< HEAD
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a string representation of the database object
 ////////////////////////////////////////////////////////////////////////////////
@@ -1127,3 +1128,22 @@ catch (err) {
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
+=======
+try {
+
+  //
+  // default database
+  // 
+  db = new AvocadoDatabase(avocado);
+
+  //
+  // load collection data
+  // 
+  db._collections();
+
+  help();
+}
+catch (err) {
+  print(COLOR_RED + "connection failure: " + err + COLOR_BLACK);
+}
+>>>>>>> better error handling
