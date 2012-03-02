@@ -222,8 +222,8 @@ TRI_action_t;
 
 void TRI_CreateActionVocBase (std::string const& name,
                               std::string const& queue,
-                              v8::Handle<v8::Function> callback,
-                              v8::Handle<v8::Object> options);
+                              TRI_action_options_t ao,
+                              v8::Handle<v8::Function> callback);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an action

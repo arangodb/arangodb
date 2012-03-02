@@ -82,7 +82,7 @@ static ReadWriteLock ActionsLock;
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ParseActionOptionsParameter (TRI_v8_global_t* v8g,
-                                         TRI_action_options_t* ao,
+                                         TRI_action_options_t ao,
                                          string const& key,
                                          string const& parameter) {
   TRI_action_parameter_t p;
@@ -106,7 +106,7 @@ static void ParseActionOptionsParameter (TRI_v8_global_t* v8g,
     p._type = TRI_ACT_STRING;
   }
 
-  ao->_parameters[key] = p;
+  ao._parameters[key] = p;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -114,7 +114,7 @@ static void ParseActionOptionsParameter (TRI_v8_global_t* v8g,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ParseActionOptionsParameter (TRI_v8_global_t* v8g,
-                                         TRI_action_options_t* ao,
+                                         TRI_action_options_t ao,
                                          string const& key,
                                          v8::Handle<v8::Value> parameter) {
   if (parameter->IsString() || parameter->IsStringObject()) {
@@ -127,7 +127,7 @@ static void ParseActionOptionsParameter (TRI_v8_global_t* v8g,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ParseActionOptionsParameters (TRI_v8_global_t* v8g,
-                                          action_options_t* ao,
+                                          TRI_action_options_t ao,
                                           v8::Handle<v8::Object> parameters) {
   v8::Handle<v8::Array> keys = parameters->GetOwnPropertyNames();
   uint32_t len = keys->Length();
@@ -143,11 +143,9 @@ static void ParseActionOptionsParameters (TRI_v8_global_t* v8g,
 /// @brief parses the action options
 ////////////////////////////////////////////////////////////////////////////////
 
-static action_options_t* ParseActionOptions (TRI_v8_global_t* v8g,
-                                             v8::Handle<v8::Object> options) {
-  action_options_t* ao;
-
-  ao = new action_options_t;
+static TRI_action_options_t ParseActionOptions (TRI_v8_global_t* v8g,
+                                                v8::Handle<v8::Object> options) {
+  TRI_action_options_t ao;
 
   // check "parameter" field
   if (options->Has(v8g->ParametersKey)) {
@@ -280,7 +278,7 @@ void TRI_CreateActionVocBase (string const& name,
   map< string, v8::Persistent<v8::Function> >::iterator i = v8g->Actions.find(name);
 
   if (i != v8g->Actions.end()) {
-    v8::Persistent<v8::Function> cb = (action_t*) i->second;
+    v8::Persistent<v8::Function> cb = i->second;
 
     cb.Dispose();
   }
@@ -289,12 +287,12 @@ void TRI_CreateActionVocBase (string const& name,
   TRI_action_t* action = new TRI_action_t;
 
   action->_url = name;
-  action->_urlParts = StringUtils::split(name, "/").length();
+  action->_urlParts = StringUtils::split(name, "/").size();
   action->_queue = queue;
   action->_options = ao;
 
   Actions[name] = action;
-  v8g->Actions[name] = callback;
+  v8g->Actions[name] = v8::Persistent<v8::Function>::New(callback);
 
   LOG_DEBUG("created action '%s' for queue %s", name.c_str(), queue.c_str());
 }
@@ -305,8 +303,6 @@ void TRI_CreateActionVocBase (string const& name,
 
 TRI_action_t const* TRI_LookupActionVocBase (triagens::rest::HttpRequest* request) {
   READ_LOCKER(ActionsLock);
-
-  result._found = false;
 
   // check if we know a callback
   vector<string> suffix = request->suffix();
@@ -347,7 +343,7 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
   v8::HandleScope scope;
   v8::TryCatch tryCatch;
 
-  map< string, v8::Persistent<v8::Function> >::iterator i = v8g->Actions.find(action._url);
+  map< string, v8::Persistent<v8::Function> >::iterator i = v8g->Actions.find(action->_url);
 
   if (i == v8g->Actions.end()) {
     LOG_DEBUG("no callback for action '%s'", action->_url.c_str());
@@ -382,7 +378,7 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
 
   uint32_t index = 0;
 
-  for (size_t s = action._offset;  s < suffix.size();  ++s) {
+  for (size_t s = action->_urlParts;  s < suffix.size();  ++s) {
     v8SuffixArray->Set(index++, v8::String::New(suffix[s].c_str()));
   }
 
@@ -431,15 +427,15 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
     string const& k = i->first;
     string const& v = i->second;
 
-    map<string, action_parameter_t*>::iterator p = cb->_options->_parameters.find(k);
+    map<string, TRI_action_parameter_t>::const_iterator p = action->_options._parameters.find(k);
 
-    if (p == cb->_options->_parameters.end()) {
+    if (p == action->_options._parameters.end()) {
       req->Set(v8::String::New(k.c_str()), v8::String::New(v.c_str()));
     }
     else {
-      action_parameter_t* ap = p->second;
+      TRI_action_parameter_t const& ap = p->second;
 
-      switch (ap->_type) {
+      switch (ap._type) {
         case TRI_ACT_COLLECTION: {
           TRI_vocbase_col_t const* collection = TRI_FindCollectionByNameVocBase(vocbase, v.c_str(), false);
 
@@ -486,7 +482,7 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
   v8::Handle<v8::Object> res = v8::Object::New();
   v8::Handle<v8::Value> args[2] = { req, res };
 
-  cb->_callback->Call(cb->_callback, 2, args);
+  cb->Call(cb, 2, args);
 
   // convert the result
   if (tryCatch.HasCaught()) {
