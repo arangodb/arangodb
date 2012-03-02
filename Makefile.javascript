@@ -19,6 +19,9 @@ js/js-%.h: @srcdir@/js/%.js .setup-directories
 js/bootstrap/js-%.h: @srcdir@/js/bootstrap/%.js .setup-directories
 	@top_srcdir@/config/js2c.sh $< > $@
 
+js/client/js-%.h: @srcdir@/js/client/%.js .setup-directories
+	@top_srcdir@/config/js2c.sh $< > $@
+
 js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
 	@top_srcdir@/config/js2c.sh $< > $@
 

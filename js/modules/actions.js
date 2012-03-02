@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief JavaScript actions functions
+/// @brief JavaScript actions modules
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,10 +22,10 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var time = SYS_TIME;
+var internal = require("internal");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -35,6 +35,75 @@ var time = SYS_TIME;
 /// @addtogroup V8Json V8 JSON
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a result of a query as documents
+///
+/// @FUN{defineHttp(@FA{options})
+///
+/// Defines a new action. The @FA{options} are as follows:
+///
+/// @FA{options.url}
+///
+/// The URL, which can be used to access the action. This path might contain
+/// slashes. Note that this action will also be call, if a url is given such that
+/// @FA{options.url} is a prefix of the given url and no longer definition
+/// matches.
+///
+/// @FA{options.domain}
+///
+/// The domain to which this actions belongs. Possible values are "admin",
+/// "monitoring", "api", and "user". All domains apart from "user" and "api" are
+/// reserved for system actions. These system actions are database independent
+/// and are executed in a different worker queue than the normal queue for
+/// clients. The "api" actions are also database independent and are used by the
+/// client api to communicate with the AvocadoDB server.  Both the "api" and
+/// "user" actions are using the same worker queue.
+///
+/// It is possible to specify a list of domains, in case an actions belongs to
+/// more than one domain.
+///
+/// @FA{options.callback}(@FA{request}, @FA{response})
+///
+/// The request arguments contains a description of the request. A request
+/// parameter @LIT{foo} is accessible as @LIT{request.foo}.
+///
+/// The callback must define fill the @FA{response}.
+///
+/// - @LIT{@FA{response}.responseCode}: the response code
+/// - @LIT{@FA{response}.contentType}: the content type of the response
+/// - @LIT{@FA{response}.body}: the body of the response
+///
+/// You can use the functions @FN{actionResult} and @FN{actionError} to
+/// easily generate a response.
+///
+/// @FA{options.parameters}
+///
+/// Normally the paramaters are passed to the callback as strings. You can
+/// use the @FA{options}, to force a converstion of the parameter to
+///
+/// - @c "collection"
+/// - @c "collection-identifier"
+/// - @c "number"
+/// - @c "string"
+////////////////////////////////////////////////////////////////////////////////
+
+function defineHttp (options) {
+  var url = options.url;
+  var domain = options.domain;
+  var callback = options.callback;
+  var parameter = options.parameter;
+
+  if (! domain) {
+    domain = "user";
+  }
+
+  if (typeof domain == "string") {
+    domain = [ domain ];
+  }
+
+  console.debug("defining action '" + url + "' in domain(s) " + domain);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a result of a query as documents
@@ -82,7 +151,7 @@ function queryResult (req, res, query) {
     offset : offset,
     blocksize : blocksize,
     page : page,
-    runtime : time() - t,
+    runtime : internal.time() - t,
     documents : result
   };
 
@@ -108,7 +177,7 @@ function queryReferences (req, res, query) {
   var t;
   var result;
 
-  t = time();
+  t = internal.time();
 
   if (req.blocksize) {
     blocksize = req.blocksize;
@@ -135,7 +204,7 @@ function queryReferences (req, res, query) {
     offset : offset,
     blocksize : blocksize,
     page : page,
-    runtime : time() - t,
+    runtime : internal.time() - t,
     references : result
   };
 
@@ -179,6 +248,21 @@ function actionError (req, res, err) {
   res.contentType = "application/json";
   res.body = JSON.stringify({ 'error' : "" + err });
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    MODULE EXPORTS
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoGraph
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+exports.defineHttp = defineHttp;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

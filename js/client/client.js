@@ -512,15 +512,20 @@ AvocadoDatabase.prototype.getQueryTemplate = function (id) {
 }
 
 
-//
-// default database
-// 
-db = new AvocadoDatabase(avocado);
+try {
 
-//
-// load collection data
-// 
+  //
+  // default database
+  // 
+  db = new AvocadoDatabase(avocado);
 
-db._collections();
+  //
+  // load collection data
+  // 
+  db._collections();
 
-help();
+  help();
+}
+catch (err) {
+  print(COLOR_RED + "connection failure: " + err + COLOR_BLACK);
+}
