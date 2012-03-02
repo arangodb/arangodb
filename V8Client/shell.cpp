@@ -101,7 +101,11 @@ static JSLoader StartupLoader;
 /// @brief server address
 ////////////////////////////////////////////////////////////////////////////////
 
+<<<<<<< HEAD
 static string ServerAddress = "127.0.0.1:8529";
+=======
+static string ServerAddress = "";
+>>>>>>> JS loader for avocsh
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the initial default connection
@@ -262,6 +266,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("log.level,l", &level,  "log level")
     ("server", &ServerAddress, "server address and port")
     ("startup", &StartupPath, "startup path containing the JavaScript files")
+<<<<<<< HEAD
     ("use_pager", &usePager, "use pager")
     ("pager", &OutputPager, "output pager (default: 'more')")
     ("no_colors", &noColors, "deaktivate color support")
@@ -270,6 +275,12 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   ProgramOptions options;
 
+=======
+  ;
+
+  ProgramOptions options;
+
+>>>>>>> JS loader for avocsh
   if (! options.parse(description, argc, argv)) {
     cerr << options.lastError() << "\n";
     exit(EXIT_FAILURE);
@@ -680,6 +691,7 @@ static void RunShell (v8::Handle<v8::Context> context) {
 /// @brief adding colors for output
 ////////////////////////////////////////////////////////////////////////////////
 
+<<<<<<< HEAD
 static char DEF_RED[6]         = "\x1b[31m";
 static char DEF_BOLD_RED[8]    = "\x1b[1;31m";
 static char DEF_GREEN[6]       = "\x1b[32m";
@@ -694,6 +706,22 @@ static char DEF_BOLD_BLACK[8]  = "\x1b[1;39m";
 static char DEF_BLINK[5]       = "\x1b[5m";
 static char DEF_BRIGHT[5]      = "\x1b[1m";
 static char DEF_RESET[5]       = "\x1b[0m";
+=======
+static char DEF_RED[6]         = { 0x1B, '[',           '3', '1', 'm', 0 };
+static char DEF_BOLD_RED[8]    = { 0x1B, '[', '1', ';', '3', '1', 'm', 0 };
+static char DEF_GREEN[6]       = { 0x1B, '[',           '3', '2', 'm', 0 };
+static char DEF_BOLD_GREEN[8]  = { 0x1B, '[', '1', ';', '3', '2', 'm', 0 };
+static char DEF_BLUE[6]        = { 0x1B, '[',           '3', '4', 'm', 0 };
+static char DEF_BOLD_BLUE[8]   = { 0x1B, '[', '1', ';', '3', '4', 'm', 0 };
+static char DEF_YELLOW[8]      = { 0x1B, '[', '1', ';', '3', '3', 'm', 0 };
+static char DEF_WHITE[6]       = { 0x1B, '[',           '3', '7', 'm', 0 };
+static char DEF_BOLD_WHITE[8]  = { 0x1B, '[', '1', ';', '3', '7', 'm', 0 };
+static char DEF_BLACK[6]       = { 0x1B, '[',           '3', '0', 'm', 0 };
+static char DEF_BOLD_BLACK[8]  = { 0x1B, '[', '1', ';', '3', '0', 'm', 0 };  
+static char DEF_BLINK[5]       = { 0x1B, '[',                '5', 'm', 0 };
+static char DEF_BRIGHT[5]      = { 0x1B, '[',                '1', 'm', 0 };
+static char DEF_RESET[5]       = { 0x1B, '[',                '0', 'm', 0 };
+>>>>>>> JS loader for avocsh
 
 static void addColors (v8::Handle<v8::Context> context) {  
   context->Global()->Set(v8::String::New("COLOR_RED"), v8::String::New(DEF_RED, 5));
@@ -766,11 +794,18 @@ int main (int argc, char* argv[]) {
 
   // processComandLineArguments(argc, argv);
   if (! splitServerAdress(ServerAddress, DEFAULT_SERVER_NAME, DEFAULT_SERVER_PORT)) {
+<<<<<<< HEAD
     if (ServerAddress.length()) {
       printf("Could not split %s.\n", ServerAddress.c_str());                  
     }
   }
         
+=======
+    printf("Could not spilt %s.\n", ServerAddress.c_str());                  
+  }
+        
+
+>>>>>>> JS loader for avocsh
   
   clientConnection = new V8ClientConnection(
           DEFAULT_SERVER_NAME, 
@@ -868,7 +903,11 @@ int main (int argc, char* argv[]) {
       StartupLoader.defineScript("client/client.js", JS_client_client);
     }
     else {
+<<<<<<< HEAD
       LOGGER_DEBUG << "using JavaScript startup files at '" << StartupPath << "'";
+=======
+      LOGGER_INFO << "using JavaScript startup files at '" << StartupPath << "'";
+>>>>>>> JS loader for avocsh
       StartupLoader.setDirectory(StartupPath);
     }
 
@@ -890,8 +929,18 @@ int main (int argc, char* argv[]) {
         exit(EXIT_FAILURE);
       }
     }
+<<<<<<< HEAD
     
     RunShell(context);
+=======
+
+    RunMain(context, argc, argv);
+
+    if (RunShellFlag) {
+      RunShell(context);
+    }
+
+>>>>>>> JS loader for avocsh
   }
   else {
     printf("Could not connect to server %s:%d\n", DEFAULT_SERVER_NAME.c_str(), DEFAULT_SERVER_PORT);

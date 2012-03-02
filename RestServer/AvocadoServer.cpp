@@ -50,6 +50,10 @@
 #include "RestHandler/RestCollectionHandler.h"
 #include "RestServer/ActionDispatcherThread.h"
 #include "RestServer/AvocadoHttpServer.h"
+<<<<<<< HEAD
+=======
+#include "RestServer/SystemActionDispatcherThread.h"
+>>>>>>> JS loader for avocsh
 #include "V8/JSLoader.h"
 #include "V8/v8-actions.h"
 #include "V8/v8-conv.h"
