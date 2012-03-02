@@ -64,6 +64,15 @@ ModuleCache["/internal"].exports.edges = edges;
 ModuleCache["/internal"].exports.AvocadoCollection = AvocadoCollection;
 ModuleCache["/internal"].exports.AvocadoEdgesCollection = AvocadoEdgesCollection;
 
+if (typeof SYS_DEFINE_ACTION === "undefined") {
+  ModuleCache["/internal"].exports.defineAction = function() {
+    console.error("SYS_DEFINE_ACTION not available");
+  }
+}
+else {
+  ModuleCache["/internal"].exports.defineAction = SYS_DEFINE_ACTION;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
