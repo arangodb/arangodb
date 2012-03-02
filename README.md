@@ -12,9 +12,9 @@ for installation and compilation instructions:
 
 ### Mac OS X Hints
 
-On Mac OS X you can install AvocadoDB using the packagemanager [Homebrew](http://mxcl.github.com/homebrew/). We are currently waiting for approval of our package, therefore you need to use this:
+On Mac OS X you can install AvocadoDB using the packagemanager [Homebrew](http://mxcl.github.com/homebrew/):
 
-* `brew install https://raw.github.com/tisba/homebrew/master/Library/Formula/avocadodb.rb`
+* `brew install avocadodb` (use `--HEAD` in order to build AvocadoDB from current master)
 
 This will install AvocadoDB and all dependencies. 
 
