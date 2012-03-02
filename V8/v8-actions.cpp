@@ -83,10 +83,14 @@ static ReadWriteLock ActionsLock;
 
 static void ParseActionOptionsParameter (TRI_v8_global_t* v8g,
 <<<<<<< HEAD
+<<<<<<< HEAD
                                          TRI_action_options_t ao,
 =======
                                          TRI_action_options_t* ao,
 >>>>>>> unfinished actions cleanup
+=======
+                                         TRI_action_options_t ao,
+>>>>>>> more action cleanup
                                          string const& key,
                                          string const& parameter) {
   TRI_action_parameter_t p;
@@ -119,10 +123,14 @@ static void ParseActionOptionsParameter (TRI_v8_global_t* v8g,
 
 static void ParseActionOptionsParameter (TRI_v8_global_t* v8g,
 <<<<<<< HEAD
+<<<<<<< HEAD
                                          TRI_action_options_t ao,
 =======
                                          TRI_action_options_t* ao,
 >>>>>>> unfinished actions cleanup
+=======
+                                         TRI_action_options_t ao,
+>>>>>>> more action cleanup
                                          string const& key,
                                          v8::Handle<v8::Value> parameter) {
   if (parameter->IsString() || parameter->IsStringObject()) {
@@ -355,7 +363,7 @@ TRI_action_t const* TRI_LookupActionVocBase (triagens::rest::HttpRequest* reques
   map< string, v8::Persistent<v8::Function> >::iterator i = v8g->Actions.find(name);
 
   if (i != v8g->Actions.end()) {
-    v8::Persistent<v8::Function> cb = (action_t*) i->second;
+    v8::Persistent<v8::Function> cb = i->second;
 
     cb.Dispose();
   }
@@ -364,12 +372,12 @@ TRI_action_t const* TRI_LookupActionVocBase (triagens::rest::HttpRequest* reques
   TRI_action_t* action = new TRI_action_t;
 
   action->_url = name;
-  action->_urlParts = StringUtils::split(name, "/").length();
+  action->_urlParts = StringUtils::split(name, "/").size();
   action->_queue = queue;
   action->_options = ao;
 
   Actions[name] = action;
-  v8g->Actions[name] = callback;
+  v8g->Actions[name] = v8::Persistent<v8::Function>::New(callback);
 
   LOG_DEBUG("created action '%s' for queue %s", name.c_str(), queue.c_str());
 }
@@ -380,8 +388,6 @@ TRI_action_t const* TRI_LookupActionVocBase (triagens::rest::HttpRequest* reques
 
 TRI_action_t const* TRI_LookupActionVocBase (triagens::rest::HttpRequest* request) {
   READ_LOCKER(ActionsLock);
-
-  result._found = false;
 
   // check if we know a callback
   vector<string> suffix = request->suffix();
@@ -424,10 +430,14 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
   v8::TryCatch tryCatch;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   map< string, v8::Persistent<v8::Function> >::iterator i = v8g->Actions.find(action->_url);
 =======
   map< string, v8::Persistent<v8::Function> >::iterator i = v8g->Actions.find(action._url);
 >>>>>>> unfinished actions cleanup
+=======
+  map< string, v8::Persistent<v8::Function> >::iterator i = v8g->Actions.find(action->_url);
+>>>>>>> more action cleanup
 
   if (i == v8g->Actions.end()) {
     LOG_DEBUG("no callback for action '%s'", action->_url.c_str());
@@ -484,6 +494,7 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
   uint32_t index = 0;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   for (size_t s = action->_urlParts;  s < suffix.size();  ++s) {
     suffixArray->Set(index++, v8::String::New(suffix[s].c_str()));
   }
@@ -491,6 +502,9 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
   req->Set(v8g->SuffixKey, suffixArray);
 =======
   for (size_t s = action._offset;  s < suffix.size();  ++s) {
+=======
+  for (size_t s = action->_urlParts;  s < suffix.size();  ++s) {
+>>>>>>> more action cleanup
     v8SuffixArray->Set(index++, v8::String::New(suffix[s].c_str()));
   }
 
@@ -551,10 +565,14 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
     map<string, TRI_action_parameter_t>::const_iterator p = action->_options._parameters.find(k);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     if (p == action->_options._parameters.end()) {
       parametersArray->Set(v8::String::New(k.c_str()), v8::String::New(v.c_str()));
 =======
     if (p == cb->_options->_parameters.end()) {
+=======
+    if (p == action->_options._parameters.end()) {
+>>>>>>> more action cleanup
       req->Set(v8::String::New(k.c_str()), v8::String::New(v.c_str()));
 >>>>>>> unfinished actions cleanup
     }
