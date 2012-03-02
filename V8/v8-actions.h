@@ -222,8 +222,19 @@ TRI_action_t;
 
 void TRI_CreateActionVocBase (std::string const& name,
                               std::string const& queue,
+<<<<<<< HEAD
                               TRI_action_options_t ao,
                               v8::Handle<v8::Function> callback);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up an action
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_action_t const* TRI_LookupActionVocBase (triagens::rest::HttpRequest* request);
+=======
+                              v8::Handle<v8::Function> callback,
+                              v8::Handle<v8::Object> options);
+>>>>>>> unfinished actions cleanup
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an action
