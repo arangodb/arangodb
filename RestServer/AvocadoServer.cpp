@@ -550,6 +550,11 @@ int AvocadoServer::startupServer () {
 
     adminFactory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestCollectionHandler>::createData<TRI_vocbase_t*>, _vocbase);
     adminFactory->addPrefixHandler("/", RestHandlerCreator<RestActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
+<<<<<<< HEAD
+=======
+
+    adminFactory->addHandler("/", RedirectHandler::create, (void*) "/admin/index.html");
+>>>>>>> unfinished actions cleanup
 
     _adminHttpServer = _applicationHttpServer->buildServer(adminFactory, adminPorts);
   }
