@@ -144,7 +144,7 @@ typedef struct TRI_v8_global_s {
 /// @brief map of callbacks for actions
 ////////////////////////////////////////////////////////////////////////////////
 
-  std::map<std::string, void*> Actions;
+  std::map< std::string, v8::Persistent<v8::Function> > Actions;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief map of callbacks for system actions
