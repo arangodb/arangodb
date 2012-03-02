@@ -536,66 +536,6 @@ static void RunShell (v8::Handle<v8::Context> context) {
   printf("\n");
 }
 
-static void processComandLineArguments (int argc, char* argv[]) {
-  for (int i = 1; i < argc; ++i) {
-    const char* str = argv[i];
-
-    if (strcmp(str, "--shell") == 0) {
-      RunShellFlag = true;
-    }
-    else if (strncmp(str, "--", 2) == 0) {      
-      string param(str);      
-      if (param.find("--server=") != string::npos) {
-        string definition = param.substr(9);
-        
-        if (!splitServerAdress(definition, DEFAULT_SERVER_NAME, DEFAULT_SERVER_PORT)) {
-          printf("Could not spilt %s.\n", definition.c_str());                  
-        }
-        
-        if (argc == 2) {
-          RunShellFlag = true;
-        }        
-      }
-      else {
-        printf("Warning: unknown flag %s.\n", str);        
-      }            
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief proceses the command line arguments
-////////////////////////////////////////////////////////////////////////////////
-
-static int RunMain (v8::Handle<v8::Context> context, int argc, char* argv[]) {
-  HandleScope scope;
-
-  for (int i = 1; i < argc; ++i) {
-    const char* str = argv[i];
-
-    if (strncmp(str, "--", 2) != 0) {
-      v8::Handle<v8::String> filename = v8::String::New(str);
-      char* content = TRI_SlurpFile(str);
-
-      if (content == 0) {
-        printf("Error reading '%s'\n", str);
-        continue;
-      }
-
-      v8::Handle<v8::String> source = v8::String::New(content);
-      TRI_FreeString(content);
-
-      bool ok = TRI_ExecuteStringVocBase(context, source, filename, false, true);
-
-      if (!ok) {
-        return 1;
-      }
-    }
-  }
-
-  return 0;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adding colors for output
 ////////////////////////////////////////////////////////////////////////////////
@@ -746,7 +686,7 @@ int main (int argc, char* argv[]) {
       StartupLoader.defineScript("client/client.js", JS_client_client);
     }
     else {
-      LOGGER_INFO << "using JavaScript startup files at '" << StartupPath << "'";
+      LOGGER_DEBUG << "using JavaScript startup files at '" << StartupPath << "'";
       StartupLoader.setDirectory(StartupPath);
     }
 
@@ -769,11 +709,7 @@ int main (int argc, char* argv[]) {
       }
     }
 
-    RunMain(context, argc, argv);
-
-    if (RunShellFlag) {
-      RunShell(context);
-    }
+    RunShell(context);
 
   }
   else {
