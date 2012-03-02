@@ -758,7 +758,6 @@ static void QLOptimizeRefCountCollections (QL_ast_query_t* const query,
 static void QLOptimizeCountRefs (QL_ast_query_t* const query) {
   TRI_query_node_t* next = NULL;
   TRI_query_node_t* node = query->_from._base;
-  TRI_query_node_t* alias;
 
   if (query->_from._collections._nrUsed < 2) {
     // we don't have a join, no need to refcount anything
@@ -773,6 +772,7 @@ static void QLOptimizeCountRefs (QL_ast_query_t* const query) {
   // mark collections used in on clauses
   node = node->_next;
   while (node) {
+    TRI_query_node_t* alias;
     next = node->_next;
     if (next) {
       break;
@@ -792,8 +792,6 @@ static void QLOptimizeCountRefs (QL_ast_query_t* const query) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void QLOptimizeFrom (QL_ast_query_t* const query) {
-  TRI_query_node_t* temp;
-  TRI_query_node_t* alias;
   TRI_query_node_t* responsibleNode;
   TRI_query_node_t* next = NULL;
   TRI_query_node_t* node = query->_from._base;
@@ -806,9 +804,8 @@ void QLOptimizeFrom (QL_ast_query_t* const query) {
 
   // iterate over all joins
   while (node) {
+    TRI_query_node_t* alias;
     if (node->_rhs) {
-      // optimize on clause
-      QLOptimizeExpression(node->_rhs);
       if (node->_type == TRI_QueryNodeJoinInner &&
           QLOptimizeGetWhereType(node->_rhs) == QLQueryWhereTypeAlwaysFalse) {
         // inner join condition is always false, query will have no results
@@ -838,6 +835,7 @@ void QLOptimizeFrom (QL_ast_query_t* const query) {
     }
 
     if (next->_type == TRI_QueryNodeJoinRight) {
+      TRI_query_node_t* temp;
       // convert a right join into a left join
       next->_type = TRI_QueryNodeJoinLeft;
       temp = next->_lhs;

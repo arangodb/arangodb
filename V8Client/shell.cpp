@@ -31,29 +31,34 @@
 
 #include "build.h"
 
+#include "Basics/ProgramOptions.h"
+#include "Basics/ProgramOptionsDescription.h"
+#include "Basics/StringUtils.h"
 #include "BasicsC/files.h"
 #include "BasicsC/init.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
-
+#include "Logger/Logger.h"
+#include "SimpleHttpClient/SimpleHttpClient.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
+#include "V8/JSLoader.h"
+#include "V8/v8-conv.h"
 #include "V8/v8-line-editor.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
-
-#include "SimpleHttpClient/SimpleHttpClient.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
-#include "Basics/StringUtils.h"
-
-#include "V8ClientConnection.h"
+#include "V8Client/V8ClientConnection.h"
 
 using namespace v8;
 
 using namespace std;
+using namespace triagens::basics;
 using namespace triagens::httpclient;
 using namespace triagens::v8client;
+using namespace triagens::avocado;
 
 #include "js/bootstrap/js-print.h"
 #include "js/bootstrap/js-modules.h"
+#include "js/client/js-client.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -79,6 +84,24 @@ static int    DEFAULT_SERVER_PORT = 8529;
 static double DEFAULT_REQUEST_TIMEOUT = 10.0;
 static size_t DEFAULT_RETRIES = 5;
 static double DEFAULT_CONNECTION_TIMEOUT = 1.0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief path for JavaScript bootstrap files
+////////////////////////////////////////////////////////////////////////////////
+
+static string StartupPath = "";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief startup JavaScript files
+////////////////////////////////////////////////////////////////////////////////
+
+static JSLoader StartupLoader;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief server address
+////////////////////////////////////////////////////////////////////////////////
+
+static string ServerAddress = "";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the initial default connection
@@ -134,22 +157,45 @@ bool splitServerAdress (string const& definition, string& address, int& port) {
   }
 }
 
-    
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief copy v8::Value to std::string
+/// @brief parses the program options
 ////////////////////////////////////////////////////////////////////////////////
 
-string valueToString (v8::Handle<v8::Value> value) {
-  v8::String::Utf8Value utf8Value(value);
+static void ParseProgramOptions (int argc, char* argv[]) {
+  string level = "info";
 
-  if (*utf8Value == 0) {
-    return "";
+  ProgramOptionsDescription description("STANDARD options");
+
+  description
+    ("help,h", "help message")
+    ("log.level,l", &level,  "log level")
+    ("server", &ServerAddress, "server address and port")
+    ("startup", &StartupPath, "startup path containing the JavaScript files")
+  ;
+
+  ProgramOptions options;
+
+  if (! options.parse(description, argc, argv)) {
+    cerr << options.lastError() << "\n";
+    exit(EXIT_FAILURE);
   }
-  else {
-    return string(*utf8Value, utf8Value.length());
+
+  // check for help
+  set<string> help = options.needHelp("help");
+
+  if (! help.empty()) {
+    cout << description.usage(help) << endl;
+    exit(EXIT_SUCCESS);
   }
+
+  // set the logging
+  TRI_SetLogLevelLogging(level.c_str());
+  TRI_CreateLogAppenderFile("-");
+
+  // set V8 options
+  v8::V8::SetFlagsFromCommandLine(&argc, argv, true);
 }
-
+    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copy v8::Object to std::map<string, string>
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,7 +206,7 @@ static void objectToMap (map<string, string>& myMap, v8::Handle<v8::Value> val) 
     v8::Handle<v8::Array> props = v8Headers->GetPropertyNames();
     for (uint32_t i = 0; i < props->Length(); i++) {
       v8::Handle<v8::Value> key = props->Get(v8::Integer::New(i));
-      myMap[valueToString(key)] = valueToString(v8Headers->Get(key));
+      myMap[TRI_ObjectToString(key)] = TRI_ObjectToString(v8Headers->Get(key));
     }
   }
 }
@@ -227,7 +273,7 @@ static Handle<Value> ClientConnection_ConstructorCallback(v8::Arguments const& a
   double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT;
 
   if (argv.Length() > 0 && argv[0]->IsString()) {
-    string definition = valueToString(argv[0]);
+    string definition = TRI_ObjectToString(argv[0]);
     
     if (!splitServerAdress(definition, server, port)) {
       string errorMessage = "error in '" + definition + "'";
@@ -565,6 +611,7 @@ static char DEF_WHITE[6]       = { 0x1B, '[',           '3', '7', 'm', 0 };
 static char DEF_BOLD_WHITE[8]  = { 0x1B, '[', '1', ';', '3', '7', 'm', 0 };
 static char DEF_BLACK[6]       = { 0x1B, '[',           '3', '0', 'm', 0 };
 static char DEF_BOLD_BLACK[8]  = { 0x1B, '[', '1', ';', '3', '0', 'm', 0 };  
+static char DEF_BLINK[5]       = { 0x1B, '[',                '5', 'm', 0 };
 static char DEF_BRIGHT[5]      = { 0x1B, '[',                '1', 'm', 0 };
 static char DEF_RESET[5]       = { 0x1B, '[',                '0', 'm', 0 };
 
@@ -580,7 +627,8 @@ static void addColors (v8::Handle<v8::Context> context) {
   context->Global()->Set(v8::String::New("COLOR_BOLD_WHITE"), v8::String::New(DEF_BOLD_WHITE, 7));
   context->Global()->Set(v8::String::New("COLOR_BLACK"), v8::String::New(DEF_BLACK, 5));
   context->Global()->Set(v8::String::New("COLOR_BOLD_BLACK"), v8::String::New(DEF_BOLD_BLACK, 8));
-  context->Global()->Set(v8::String::New("COLOR_BRIGHT"), v8::String::New(DEF_BOLD_BLACK, 8));
+  context->Global()->Set(v8::String::New("COLOR_BLINK"), v8::String::New(DEF_BLINK, 4));
+  context->Global()->Set(v8::String::New("COLOR_BRIGHT"), v8::String::New(DEF_BRIGHT, 4));
   context->Global()->Set(v8::String::New("COLOR_OUTPUT"), v8::String::New(DEF_BRIGHT, 4));
   context->Global()->Set(v8::String::New("COLOR_OUTPUT_RESET"), v8::String::New(DEF_RESET, 4));    
 }
@@ -604,17 +652,12 @@ static void addColors (v8::Handle<v8::Context> context) {
 
 int main (int argc, char* argv[]) {
   TRIAGENS_C_INITIALISE;
-
   TRI_InitialiseLogging(false);
 
-  v8::V8::SetFlagsFromCommandLine(&argc, argv, true);
+  // parse the program options
+  ParseProgramOptions(argc, argv);
 
   RunShellFlag = (argc == 1);
-
-  TRI_InitialiseLogging(false);
-
-  TRI_SetLogLevelLogging("info");
-  TRI_CreateLogAppenderFile("-");
 
   v8::HandleScope handle_scope;
 
@@ -634,7 +677,12 @@ int main (int argc, char* argv[]) {
   TRI_InitV8Utils(context, ".");
   TRI_InitV8Shell(context);
 
-  processComandLineArguments(argc, argv);
+  // processComandLineArguments(argc, argv);
+  if (! splitServerAdress(ServerAddress, DEFAULT_SERVER_NAME, DEFAULT_SERVER_PORT)) {
+    printf("Could not spilt %s.\n", ServerAddress.c_str());                  
+  }
+        
+
   
   clientConnection = new V8ClientConnection(
           DEFAULT_SERVER_NAME, 
@@ -692,38 +740,34 @@ int main (int argc, char* argv[]) {
     addColors(context);
     
     // load java script from js/bootstrap/*.h files
-    vector< pair<string, string> > staticJavaScript;
-    staticJavaScript.push_back(make_pair("bootstrap/modules.js", JS_bootstrap_modules));
-    staticJavaScript.push_back(make_pair("bootstrap/print.js", JS_bootstrap_print));
-
-    vector< pair<string, string> >::iterator iter = staticJavaScript.begin();
-    for (; iter != staticJavaScript.end(); ++iter) {
-      bool ok = TRI_ExecuteStringVocBase(context,
-              v8::String::New(iter->second.c_str()),
-              v8::String::New(iter->first.c_str()),
-              false,
-              true);
-
-      if (!ok) {
-        LOG_ERROR("cannot load file '%s'", iter->first.c_str());
-      }
+    if (StartupPath.empty()) {
+      StartupLoader.defineScript("bootstrap/modules.js", JS_bootstrap_modules);
+      StartupLoader.defineScript("bootstrap/print.js", JS_bootstrap_print);
+      StartupLoader.defineScript("client/client.js", JS_client_client);
+    }
+    else {
+      LOGGER_INFO << "using JavaScript startup files at '" << StartupPath << "'";
+      StartupLoader.setDirectory(StartupPath);
     }
 
-    // load java script from js/bootstrap/*.js files
+    // load all init files
     char const* files[] = {
-      "js/client/client.js"
+      "bootstrap/modules.js",
+      "bootstrap/print.js",
+      "client/client.js"
     };
 
-    for (size_t i = 0; i < sizeof (files) / sizeof (files[0]); ++i) {
-      bool ok;
-
-      ok = TRI_LoadJavaScriptFile(context, files[i]);
-
-      if (!ok) {
-        LOG_ERROR("cannot load file '%s'", files[i]);
+    for (size_t i = 0;  i < sizeof(files) / sizeof(files[0]);  ++i) {
+      bool ok = StartupLoader.loadScript(context, files[i]);
+      
+      if (ok) {
+        LOGGER_TRACE << "loaded json file '" << files[i] << "'";
+      }
+      else {
+        LOGGER_ERROR << "cannot load json file '" << files[i] << "'";
+        exit(EXIT_FAILURE);
       }
     }
-
 
     RunMain(context, argc, argv);
 
