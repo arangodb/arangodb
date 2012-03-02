@@ -33,6 +33,7 @@ var actions = require("actions");
 
 actions.defineHttp({
   url : "hallo-world",
+<<<<<<< HEAD
   context : "user",
 
   callback : 
@@ -87,6 +88,14 @@ actions.defineHttp({
 
         res.body = text;
       }
+=======
+  domain : "user",
+
+  callback : 
+    function (req, res) {
+      res.responseCode = 200;
+      res.body = "Hallo World\n";
+>>>>>>> unfinished actions cleanup
     }
 });
 
