@@ -97,25 +97,6 @@ static bool EqualRestrictionKeyElement (TRI_associative_pointer_t* array,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free collections previously registered
-////////////////////////////////////////////////////////////////////////////////
-
-static void QLAstQueryFreeCollections (TRI_associative_pointer_t* const array) {
-  QL_ast_query_collection_t* collection;
-  size_t i; 
-
-  // destroy all elements in collection array
-  for (i = 0; i < array->_nrAlloc; i++) {
-    collection = (QL_ast_query_collection_t*) array->_table[i];
-    if (collection) {
-      TRI_Free(collection);
-    }
-  }
-  // destroy collection array itself
-  TRI_DestroyAssociativePointer(array);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief free geo restrictions previously registered
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -148,6 +129,26 @@ static void QLAstQueryFreeGeoRestrictions (TRI_associative_pointer_t* const arra
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief free collections previously registered
+////////////////////////////////////////////////////////////////////////////////
+
+void QLAstQueryFreeCollections (TRI_associative_pointer_t* const array) {
+  QL_ast_query_collection_t* collection;
+  size_t i; 
+
+  // destroy all elements in collection array
+  for (i = 0; i < array->_nrAlloc; i++) {
+    collection = (QL_ast_query_collection_t*) array->_table[i];
+    if (collection) {
+      TRI_Free(collection);
+    }
+  }
+  // destroy collection array itself
+  TRI_DestroyAssociativePointer(array);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Initialize data structures for a query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -169,6 +170,7 @@ void QLAstQueryInit (QL_ast_query_t* const query) {
   query->_order._usesBindParameters  = false;
 
   query->_limit._isUsed              = false;
+
   query->_isEmpty                    = false;
 
   TRI_InitAssociativePointer(&query->_from._collections,
@@ -189,19 +191,6 @@ void QLAstQueryInit (QL_ast_query_t* const query) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void QLAstQueryFree (QL_ast_query_t* const query) {
-  // free Javascript function codes
-  if (query->_select._functionCode) {
-    TRI_Free(query->_select._functionCode);
-  }
-
-  if (query->_where._functionCode) {
-    TRI_Free(query->_where._functionCode);
-  }
-
-  if (query->_order._functionCode) {
-    TRI_Free(query->_order._functionCode);
-  }
-
   // free collections data
   QLAstQueryFreeCollections(&query->_from._collections);
 
@@ -296,25 +285,19 @@ bool QLAstQueryAddCollection (QL_ast_query_t* query,
                               const char* name, 
                               const char* alias) { 
   QL_ast_query_collection_t* collection;
-  void* previous;
   size_t num;
 
-  previous = (void*) TRI_LookupByKeyAssociativePointer(&query->_from._collections, 
-                                                       alias);
-  if (previous) {
+  if (TRI_LookupByKeyAssociativePointer(&query->_from._collections, alias)) {
     // alias has already been declared for another collection - return an error
     return false;
   }
 
-  previous = (void*) TRI_LookupByKeyAssociativePointer(&query->_geo._restrictions, 
-                                                       alias);
-  if (previous) {
+  if (TRI_LookupByKeyAssociativePointer(&query->_geo._restrictions, alias)) {
     // alias has already been declared for a geo restriction - return an error
     return false;
   }
 
-
-  collection = (QL_ast_query_collection_t *) 
+  collection = (QL_ast_query_collection_t*) 
     TRI_Allocate(sizeof(QL_ast_query_collection_t));
   if (!collection) { 
     return false;
@@ -322,15 +305,18 @@ bool QLAstQueryAddCollection (QL_ast_query_t* query,
 
   num = query->_from._collections._nrUsed;
 
-  collection->_name               = (char*) name;
-  collection->_alias              = (char*) alias;
+  collection->_name                      = (char*) name;
+  collection->_alias                     = (char*) alias;
   // first collection added is always the primary collection
-  collection->_isPrimary          = (num == 0);
-  collection->_refCount           = 0; // will be used later when optimizing joins
-  collection->_declarationOrder   = num + 1;
-  collection->_geoRestriction     = NULL;
-  collection->_functionCode       = NULL;
-  collection->_usesBindParameters = false;
+  collection->_isPrimary                 = (num == 0);
+  collection->_refCount                  = 0; // will be used later when optimizing joins
+  collection->_declarationOrder          = num + 1;
+  collection->_geoRestriction            = NULL;
+
+  collection->_where._base               = NULL;
+  collection->_where._type               = QLQueryWhereTypeUndefined;
+  collection->_where._usesBindParameters = false;
+  collection->_where._functionCode       = NULL;
 
   TRI_InsertKeyAssociativePointer(&query->_from._collections, 
                                   collection->_alias, 
