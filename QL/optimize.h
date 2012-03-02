@@ -218,15 +218,15 @@ void QLOptimizeFrom (QL_ast_query_t* const);
 void QLOptimizeFreeRangeVector (TRI_vector_pointer_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief recursively optimize condition expressions
+/// @brief recursively optimize range condition expressions
 ///
 /// this function will walk the AST recursively and will start optimization from
 /// the bottom-up. this function is suited for conditional expressions as it
 /// tries to find suitable ranges for index accesses etc.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* QLOptimizeCondition (TRI_query_node_t*, 
-                                           TRI_associative_pointer_t*);
+TRI_vector_pointer_t* QLOptimizeRanges (TRI_query_node_t*, 
+                                        TRI_associative_pointer_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the type of a query's SELECT part

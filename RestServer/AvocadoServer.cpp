@@ -48,7 +48,6 @@
 #include "Rest/Initialise.h"
 #include "RestHandler/RestActionHandler.h"
 #include "RestHandler/RestCollectionHandler.h"
-#include "RestHandler/RestSystemActionHandler.h"
 #include "RestServer/ActionDispatcherThread.h"
 #include "RestServer/AvocadoHttpServer.h"
 #include "RestServer/SystemActionDispatcherThread.h"
@@ -69,7 +68,6 @@ using namespace triagens::avocado;
 
 #include "js/bootstrap/js-modules.h"
 #include "js/bootstrap/js-print.h"
-#include "js/server/js-actions.h"
 #include "js/server/js-aql.h"
 #include "js/server/js-json.h"
 #include "js/server/js-modules.h"
@@ -376,7 +374,6 @@ void AvocadoServer::buildApplicationServer () {
     StartupLoader.defineScript("bootstrap/modules.js", JS_bootstrap_modules);
     StartupLoader.defineScript("bootstrap/print.js", JS_bootstrap_print);
     StartupLoader.defineScript("server/modules.js", JS_server_modules);
-    StartupLoader.defineScript("server/actions.js", JS_server_actions);
     StartupLoader.defineScript("server/aql.js", JS_server_aql);
     StartupLoader.defineScript("server/json.js", JS_server_json);
     StartupLoader.defineScript("server/shell.js", JS_server_shell);
@@ -530,7 +527,7 @@ int AvocadoServer::startupServer () {
     _applicationAdminServer->addBasicHandlers(factory);
 
     factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestCollectionHandler>::createData<TRI_vocbase_t*>, _vocbase);
-    factory->addPrefixHandler(RestVocbaseBaseHandler::ACTION_PATH, RestHandlerCreator<RestActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
+    factory->addPrefixHandler("/", RestHandlerCreator<RestActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
 
     _httpServer = _applicationHttpServer->buildServer(new AvocadoHttpServer(scheduler, dispatcher), factory, ports);
   }
@@ -549,8 +546,7 @@ int AvocadoServer::startupServer () {
     _applicationAdminServer->addHandlers(adminFactory, "/admin");
 
     adminFactory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestCollectionHandler>::createData<TRI_vocbase_t*>, _vocbase);
-    adminFactory->addPrefixHandler(RestVocbaseBaseHandler::ACTION_PATH, RestHandlerCreator<RestActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
-    adminFactory->addPrefixHandler(RestVocbaseBaseHandler::SYSTEM_ACTION_PATH, RestHandlerCreator<RestSystemActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
+    adminFactory->addPrefixHandler("/", RestHandlerCreator<RestActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
 
     adminFactory->addHandler("/", RedirectHandler::create, (void*) "/admin/index.html");
 

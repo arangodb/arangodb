@@ -633,6 +633,8 @@ static bool InitFromQueryInstance (TRI_query_instance_t* const instance) {
   QL_ast_query_from_t* queryTemplate = &instance->_template->_query->_from;
   size_t i;
 
+  instance->_query._from._base = queryTemplate->_base;
+
   // clone original values
   for (i = 0; i < queryTemplate->_collections._nrAlloc; i++) {
     QL_ast_query_collection_t* source;
@@ -676,7 +678,7 @@ static bool InitFromQueryInstance (TRI_query_instance_t* const instance) {
 
       if (collection->_where._type == QLQueryWhereTypeMustEvaluate) {
         char* functionCode;
-        
+
         // re-create function code
         functionCode = TRI_GetFunctionCodeQueryJavascript(
             collection->_where._base,
@@ -742,7 +744,7 @@ static bool InitPartsQueryInstance (TRI_query_instance_t* const instance) {
   if (!InitFromQueryInstance(instance)) {
     return false;
   }
-  
+ 
   if (queryInstance->_where._type == QLQueryWhereTypeAlwaysFalse) {
     // query will never have any results due to where clause
     queryInstance->_isEmpty = true;
@@ -891,51 +893,56 @@ TRI_voc_ssize_t GetLimit (TRI_query_instance_t* instance) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Get the join part of the query
+/// @brief Get join type from a join node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_select_join_t* GetJoins (TRI_query_instance_t* instance) {
-  TRI_select_join_t* join = NULL;
+static TRI_join_type_e GetJoinTypeFromNode (const TRI_query_node_t* const node) {
+  switch (node->_type) {
+    case TRI_QueryNodeJoinList:
+      return JOIN_TYPE_LIST;
+    case TRI_QueryNodeJoinInner:
+      return JOIN_TYPE_INNER;
+    case TRI_QueryNodeJoinLeft:
+      return JOIN_TYPE_OUTER;
+    default:
+      assert(false);
+  }
+
+  assert(false);
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Add primary collection to join 
+////////////////////////////////////////////////////////////////////////////////
+
+static bool AddJoinPrimaryCollection (TRI_query_instance_t* const instance,  
+                                      TRI_select_join_t* const join, 
+                                      const TRI_query_node_t* const node) {
   TRI_vector_pointer_t* ranges;
-  TRI_join_type_e joinType;
-  TRI_query_node_t* node;
-  TRI_query_node_t* lhs;
-  TRI_query_node_t* rhs;
-  TRI_query_node_t* ref;
-  TRI_query_node_t* condition;
   QL_ast_query_collection_t* collection;
-  QL_ast_query_where_type_e conditionType;
-  TRI_qry_where_t* joinWhere;
-  char* functionCode;
   char* collectionName;
   char* collectionAlias;
 
   assert(instance);
-
-  join = TRI_CreateSelectJoin();
-  if (!join) {
-    return NULL;
-  }
-
-  node = instance->_template->_query->_from._base;
-  node = node->_next;
-
+  assert(join);
   assert(node);
-
-  // primary table
-  lhs = node->_lhs;
-  rhs = node->_rhs;
-  collectionName = lhs->_value._stringValue;
-  collectionAlias = rhs->_value._stringValue;
+  assert(node->_lhs);
+  assert(node->_rhs);
+  
+  collectionName = node->_lhs->_value._stringValue;
+  collectionAlias = node->_rhs->_value._stringValue;
 
   collection = (QL_ast_query_collection_t*) 
-    TRI_LookupByKeyAssociativePointer(&instance->_template->_query->_from._collections, collectionAlias);
+    TRI_LookupByKeyAssociativePointer(&instance->_query._from._collections, 
+                                      collectionAlias);
 
-  if (collection->_geoRestriction) {
-    ranges = NULL;
-  }
-  else {
-    ranges = QLOptimizeCondition(instance->_template->_query->_where._base, &instance->_bindParameters);
+  assert(collection);
+
+  ranges = NULL;
+  if (!collection->_geoRestriction) {
+    ranges = QLOptimizeRanges(instance->_query._where._base, 
+                              &instance->_bindParameters);
   }
 
   TRI_AddPartSelectJoin(join, 
@@ -946,79 +953,105 @@ TRI_select_join_t* GetJoins (TRI_query_instance_t* instance) {
                         collectionAlias,
                         QLAstQueryCloneRestriction(collection->_geoRestriction));
 
-  while (node->_next) {
-    node = node->_next;
-    ref = node->_lhs;
-    condition = node->_rhs;
+  return true;
+}
 
-    conditionType = QLOptimizeGetWhereType(condition);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Add another (non-primary) collection to join 
+////////////////////////////////////////////////////////////////////////////////
 
-    joinWhere = NULL;
-    ranges = NULL;
+static bool AddJoinJoinedCollection (TRI_query_instance_t* const instance,  
+                                     TRI_select_join_t* const join, 
+                                     const TRI_query_node_t* const node) {
+  TRI_vector_pointer_t* ranges;
+  QL_ast_query_collection_t* collection;
+  QL_ast_query_where_type_e conditionType;
+  TRI_qry_where_t* joinWhere;
+  char* collectionName;
+  char* collectionAlias;
 
-    collectionName = ref->_lhs->_value._stringValue;
-    collectionAlias = ref->_rhs->_value._stringValue;
+  assert(instance);
+  assert(join);
+  assert(node);
+    
+  collectionName = node->_lhs->_lhs->_value._stringValue;
+  collectionAlias = node->_lhs->_rhs->_value._stringValue;
 
-    collection = (QL_ast_query_collection_t*) 
-      TRI_LookupByKeyAssociativePointer(&instance->_template->_query->_from._collections, collectionAlias);
+  collection = (QL_ast_query_collection_t*) 
+    TRI_LookupByKeyAssociativePointer(&instance->_query._from._collections, 
+                                      collectionAlias);
 
-    if (conditionType == QLQueryWhereTypeAlwaysTrue) {
-      // join condition is always true 
-      joinWhere = TRI_CreateQueryWhereBoolean(true);
-      if (!joinWhere) {
-        join->free(join);
-        return NULL;
-      }
-    } 
-    else if (conditionType == QLQueryWhereTypeAlwaysFalse) {
-      // join condition is always false
-      joinWhere = TRI_CreateQueryWhereBoolean(false);
-      if (!joinWhere) {
-        join->free(join);
-        TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
-        return NULL;
-      }
-    }
-    else {
-      // join condition must be evaluated for each result
-      functionCode = TRI_GetFunctionCodeQueryJavascript(
-        condition, 
-        &instance->_bindParameters
-      );
-      if (functionCode) {
-        joinWhere = TRI_CreateQueryWhereGeneral(functionCode);
-        TRI_Free(functionCode);
-      }
-      if (!joinWhere) {
-        join->free(join);
-        TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
-        return NULL;
-      }
-      if (!collection->_geoRestriction) {
-        ranges = QLOptimizeCondition(condition, &instance->_bindParameters);
-      }
-    }
+  assert(collection);
+    
+  joinWhere = NULL;
+  ranges = NULL;
 
-    if (node->_type == TRI_QueryNodeJoinList) {
-      joinType = JOIN_TYPE_LIST;
+  conditionType = collection->_where._type;
+  if (conditionType == QLQueryWhereTypeAlwaysTrue) {
+    // join condition is always true 
+    joinWhere = TRI_CreateQueryWhereBoolean(true);
+  } 
+  else if (conditionType == QLQueryWhereTypeAlwaysFalse) {
+    // join condition is always false
+    joinWhere = TRI_CreateQueryWhereBoolean(false);
+  }
+  else {
+    // join condition must be evaluated for each result
+    joinWhere = TRI_CreateQueryWhereGeneral(collection->_where._functionCode);
+    if (!collection->_geoRestriction) {
+      ranges = QLOptimizeRanges(node->_rhs, &instance->_bindParameters);
     }
-    else if (node->_type == TRI_QueryNodeJoinInner) {
-      joinType = JOIN_TYPE_INNER;
-    }
-    else if (node->_type == TRI_QueryNodeJoinLeft) {
-      joinType = JOIN_TYPE_OUTER;
-    }
-    else {
-      assert(false);
-    }
+  }
+
+  if (!joinWhere) {
+    join->free(join);
+    return false;
+  }
   
-    TRI_AddPartSelectJoin(join, 
-                          joinType, 
-                          joinWhere, 
-                          ranges, 
-                          collectionName, 
-                          collectionAlias,
-                          QLAstQueryCloneRestriction(collection->_geoRestriction));
+  TRI_AddPartSelectJoin(join, 
+                        GetJoinTypeFromNode(node), 
+                        joinWhere, 
+                        ranges, 
+                        collectionName, 
+                        collectionAlias,
+                        QLAstQueryCloneRestriction(collection->_geoRestriction));
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get the join part of the query
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_select_join_t* GetJoins (TRI_query_instance_t* instance) {
+  TRI_select_join_t* join;
+  TRI_query_node_t* node;
+
+  assert(instance);
+  assert(instance->_query._from._base);
+  assert(instance->_query._from._base->_next);
+
+  join = TRI_CreateSelectJoin();
+  if (!join) {
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+    return NULL;
+  }
+
+  node = instance->_query._from._base->_next;
+  assert(node);
+
+  AddJoinPrimaryCollection(instance, join, node);
+
+  node = node->_next;
+
+  while (node) {
+    if (!AddJoinJoinedCollection(instance, join, node)) {
+      TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+      join->free(join);
+      return NULL;
+    }
+
+    node = node->_next;
   }
 
   return join;

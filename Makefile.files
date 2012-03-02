@@ -140,7 +140,6 @@ avocado_SOURCES = \
 	QL/tokens.c \
 	RestHandler/RestActionHandler.cpp \
 	RestHandler/RestCollectionHandler.cpp \
-	RestHandler/RestSystemActionHandler.cpp \
 	RestHandler/RestVocbaseBaseHandler.cpp \
 	RestServer/ActionDispatcherThread.cpp \
 	RestServer/AvocadoHttpServer.cpp \
@@ -219,7 +218,6 @@ JAVASCRIPT_HEADER = \
 	js/bootstrap/js-print.h \
 	js/client/js-client.h \
 	js/server/js-modules.h \
-	js/server/js-actions.h \
 	js/server/js-aql.h \
 	js/server/js-json.h \
 	js/server/js-shell.h
