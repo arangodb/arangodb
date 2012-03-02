@@ -208,10 +208,14 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
 
   if (argv.Length() != 4) {
 <<<<<<< HEAD
+<<<<<<< HEAD
     return scope.Close(v8::ThrowException(v8::String::New("usage: SYS_DEFINE_ACTION(<name>, <queue>, <callback>, <parameter>)")));
 =======
     return scope.Close(v8::ThrowException(v8::String::New("usage: defineAction(<name>, <queue>, <callback>, <parameter>)")));
 >>>>>>> unfinished actions cleanup
+=======
+    return scope.Close(v8::ThrowException(v8::String::New("usage: SYS_DEFINE_ACTION(<name>, <queue>, <callback>, <parameter>)")));
+>>>>>>> actions are now working again
   }
 
   // extract the action name
@@ -252,10 +256,14 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
 
   if (argv[3]->IsObject()) {
 <<<<<<< HEAD
+<<<<<<< HEAD
     options = argv[3]->ToObject();
 =======
     options = argv[2]->ToObject();
 >>>>>>> unfinished actions cleanup
+=======
+    options = argv[3]->ToObject();
+>>>>>>> actions are now working again
   }
   else {
     options = v8::Object::New();
@@ -298,6 +306,7 @@ void TRI_CreateActionVocBase (string const& name,
   WRITE_LOCKER(ActionsLock);
   WRITE_LOCKER(v8g->ActionsLock);
 
+<<<<<<< HEAD
 <<<<<<< HEAD
   string url = name;
 
@@ -359,6 +368,20 @@ TRI_action_t const* TRI_LookupActionVocBase (triagens::rest::HttpRequest* reques
   }
 
 =======
+=======
+  // create a new action and store the callback function
+  if (Actions.find(name) == Actions.end()) {
+    TRI_action_t* action = new TRI_action_t;
+
+    action->_url = name;
+    action->_urlParts = StringUtils::split(name, "/").size();
+    action->_queue = queue;
+    action->_options = ao;
+
+    Actions[name] = action;
+  }
+
+>>>>>>> actions are now working again
   // check if we already know an callback
   map< string, v8::Persistent<v8::Function> >::iterator i = v8g->Actions.find(name);
 
@@ -368,17 +391,9 @@ TRI_action_t const* TRI_LookupActionVocBase (triagens::rest::HttpRequest* reques
     cb.Dispose();
   }
 
-  // create a new action and store the callback function
-  TRI_action_t* action = new TRI_action_t;
-
-  action->_url = name;
-  action->_urlParts = StringUtils::split(name, "/").size();
-  action->_queue = queue;
-  action->_options = ao;
-
-  Actions[name] = action;
   v8g->Actions[name] = v8::Persistent<v8::Function>::New(callback);
 
+  // some debug output
   LOG_DEBUG("created action '%s' for queue %s", name.c_str(), queue.c_str());
 }
 
