@@ -126,7 +126,7 @@ namespace triagens {
         _multiSchedulerAllowed(false),
         _nrSchedulerThreads(1),
         _backend(0),
-        reuseAddress(false),
+        reuseAddress(true),
         descriptorMinimum(0),
 
         _scheduler(0),
@@ -293,6 +293,7 @@ namespace triagens {
       options[OPTIONS_SERVER + ":help-extended"]
         ("scheduler.backend", &_backend, "1: select, 2: poll, 4: epoll")
         ("server.reuse-address", "try to reuse address")
+        ("server.no-reuse-address", "do not try to reuse address")
         ("server.report", &_reportIntervall, "report intervall")
 #ifdef TRI_HAVE_GETRLIMIT
         ("server.descriptors-minimum", &descriptorMinimum, "minimum number of file descriptors needed to start")
@@ -336,6 +337,10 @@ namespace triagens {
       // check if want to reuse the address
       if (options.has("server.reuse-address")) {
         reuseAddress = true;
+      }
+
+      if (options.has("server.no-reuse-address")) {
+        reuseAddress = false;
       }
 
       // adjust file descriptors

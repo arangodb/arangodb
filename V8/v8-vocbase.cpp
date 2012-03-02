@@ -611,6 +611,7 @@ static void WeakQueryInstanceCallback (v8::Persistent<v8::Value> object, void* p
   persistent.Clear();
 
   // and free the instance
+  TRI_FreeQueryTemplate(instance->_template);
   TRI_FreeQueryInstance(instance);
 }
 

@@ -155,12 +155,12 @@ void QLFormatterDump (TRI_query_node_t* node, QL_formatter_t* formatter) {
     QLFormatterPrintStr(formatter,"value", node->_value._boolValue ? "asc" : "desc");
   }
 
-  lhs    = node->_lhs;
+  lhs = node->_lhs;
   if (lhs) {
     QLFormatterDump(lhs, formatter);
   }
 
-  rhs    = node->_rhs;
+  rhs = node->_rhs;
   if (rhs) { 
     QLFormatterDump(rhs, formatter);
   }
