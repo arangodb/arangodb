@@ -232,7 +232,6 @@ void ActionDisptacherThread::initialise () {
                           "bootstrap/print.js",
                           "server/modules.js",
                           "server/json.js",
-                          "server/actions.js",
                           "server/aql.js"
   };
   size_t i;

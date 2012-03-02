@@ -1510,8 +1510,8 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
 /// @brief recursively optimize nodes in an expression AST
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* QLOptimizeCondition (TRI_query_node_t* node, 
-                                           TRI_associative_pointer_t* bindParameters) {
+TRI_vector_pointer_t* QLOptimizeRanges (TRI_query_node_t* node, 
+                                        TRI_associative_pointer_t* bindParameters) {
   TRI_query_node_t *lhs, *rhs;
   TRI_vector_pointer_t* ranges;
   TRI_vector_pointer_t* combinedRanges;
@@ -1533,8 +1533,8 @@ TRI_vector_pointer_t* QLOptimizeCondition (TRI_query_node_t* node,
     // logical && or logical ||
 
     // get the range vectors from both operands
-    ranges = QLOptimizeMergeRangeVectors(QLOptimizeCondition(lhs, bindParameters), 
-                                         QLOptimizeCondition(rhs, bindParameters));
+    ranges = QLOptimizeMergeRangeVectors(QLOptimizeRanges(lhs, bindParameters), 
+                                         QLOptimizeRanges(rhs, bindParameters));
     if (ranges) {
       if (ranges->_length > 0) {
         // try to merge the ranges

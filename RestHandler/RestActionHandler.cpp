@@ -52,7 +52,8 @@ using namespace triagens::avocado;
 
 RestActionHandler::RestActionHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
   : RestVocbaseBaseHandler(request, vocbase),
-    _category(TRI_ACT_CATEGORY_USER) {
+    _action(0) {
+  _action = TRI_LookupActionVocBase(request);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,8 +74,7 @@ RestActionHandler::RestActionHandler (HttpRequest* request, TRI_vocbase_t* vocba
 ////////////////////////////////////////////////////////////////////////////////
 
 string const& RestActionHandler::queue () {
-  static string action = "ACTION";
-  return action;
+  return _action->_queue;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,43 +82,47 @@ string const& RestActionHandler::queue () {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_e RestActionHandler::execute () {
-
-  // extract the sub-request type
-  HttpRequest::HttpRequestType type = request->requestType();
-
-  // prepare logging
-  static LoggerData::Task const logExecute(ACTION_PATH + " [execute]");
-  static LoggerData::Task const logHead(ACTION_PATH + " [head]");
-  static LoggerData::Task const logIllegal(ACTION_PATH + " [illegal]");
+  static LoggerData::Task const logExecute("ACTION [execute]");
+  static LoggerData::Task const logHead("ACTION [head]");
+  static LoggerData::Task const logIllegal("ACTION [illegal]");
 
   LoggerData::Task const * task = &logIllegal;
 
-  switch (type) {
-    case HttpRequest::HTTP_REQUEST_DELETE: task = &logExecute; break;
-    case HttpRequest::HTTP_REQUEST_GET: task = &logExecute; break;
-    case HttpRequest::HTTP_REQUEST_POST: task = &logExecute; break;
-    case HttpRequest::HTTP_REQUEST_PUT: task = &logExecute; break;
-    case HttpRequest::HTTP_REQUEST_HEAD: task = &logHead; break;
-    case HttpRequest::HTTP_REQUEST_ILLEGAL: task = &logIllegal; break;
-  }
-
-  _timing << *task;
-  LOGGER_REQUEST_IN_START_I(_timing);
-
-  // execute one of the CRUD methods
   bool res = false;
 
-  switch (type) {
-    case HttpRequest::HTTP_REQUEST_GET: res = executeAction(); break;
-    case HttpRequest::HTTP_REQUEST_POST: res = executeAction(); break;
-    case HttpRequest::HTTP_REQUEST_PUT: res = executeAction(); break;
-    case HttpRequest::HTTP_REQUEST_DELETE: res = executeAction(); break;
-    case HttpRequest::HTTP_REQUEST_HEAD: res = executeAction(); break;
+  // extract the sub-request type
+  if (_action != 0) {
+    HttpRequest::HttpRequestType type = request->requestType();
 
-    default:
-      res = false;
-      generateNotImplemented("ILLEGAL " + ACTION_PATH);
-      break;
+    // prepare logging
+    switch (type) {
+      case HttpRequest::HTTP_REQUEST_DELETE: task = &logExecute; break;
+      case HttpRequest::HTTP_REQUEST_GET: task = &logExecute; break;
+      case HttpRequest::HTTP_REQUEST_POST: task = &logExecute; break;
+      case HttpRequest::HTTP_REQUEST_PUT: task = &logExecute; break;
+      case HttpRequest::HTTP_REQUEST_HEAD: task = &logHead; break;
+      case HttpRequest::HTTP_REQUEST_ILLEGAL: task = &logIllegal; break;
+    }
+
+    _timing << *task;
+    LOGGER_REQUEST_IN_START_I(_timing);
+
+    // execute one of the CRUD methods
+    switch (type) {
+      case HttpRequest::HTTP_REQUEST_GET: res = executeAction(); break;
+      case HttpRequest::HTTP_REQUEST_POST: res = executeAction(); break;
+      case HttpRequest::HTTP_REQUEST_PUT: res = executeAction(); break;
+      case HttpRequest::HTTP_REQUEST_DELETE: res = executeAction(); break;
+      case HttpRequest::HTTP_REQUEST_HEAD: res = executeAction(); break;
+
+      default:
+        res = false;
+        generateNotImplemented("ILLEGAL METHODS");
+        break;
+    }
+  }
+  else {
+    generateNotImplemented("ILLEGAL PATH" + _action->_url);
   }
 
   _timingResult = res ? RES_ERR : RES_OK;
@@ -145,13 +149,10 @@ HttpHandler::status_e RestActionHandler::execute () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestActionHandler::executeAction () {
-  vector<string> const& suffix = request->suffix();
-  string name = StringUtils::join(suffix, '/');
-
-  response = TRI_ExecuteActionVocBase(_vocbase, _category, name, request);
+  response = TRI_ExecuteActionVocBase(_vocbase, _action, request);
 
   if (response == 0) {
-    generateNotImplemented(ACTION_PATH + "/" + name);
+    generateNotImplemented(_action->_url);
     return false;
   }
 
