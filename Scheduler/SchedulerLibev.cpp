@@ -298,12 +298,15 @@ SchedulerLibev::~SchedulerLibev () {
   for (size_t i = 0;  i < 100 && isRunning();  ++i) {
     usleep(100);
   }
+<<<<<<< HEAD
   
   // shutdown loops
   for (size_t i = 1;  i < nrThreads;  ++i) {
     ev_async_stop(((struct ev_loop**) _loops)[i], ((ev_async**) _wakers)[i]);
     ev_loop_destroy(((struct ev_loop**) _loops)[i]);
   }
+=======
+>>>>>>> JS loader for avocsh
   
   // and delete threads
   for (size_t i = 0;  i < nrThreads;  ++i) {
@@ -311,6 +314,15 @@ SchedulerLibev::~SchedulerLibev () {
     delete ((ev_async**) _wakers)[i];
   }
   
+<<<<<<< HEAD
+=======
+  // shutdown loops
+  for (size_t i = 1;  i < nrThreads;  ++i) {
+    ev_async_stop(((struct ev_loop**) _loops)[i], ((ev_async**) _wakers)[i]);
+    ev_loop_destroy(((struct ev_loop**) _loops)[i]);
+  }
+  
+>>>>>>> JS loader for avocsh
   // delete loops buffer
   delete[] ((struct ev_loop**) _loops);
   

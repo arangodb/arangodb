@@ -41,6 +41,40 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Hash function used to hash collection aliases
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashKey (TRI_associative_pointer_t* array, void const* key) {
+  char const* k = (char const*) key;
+
+  return TRI_FnvHashString(k);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Hash function used to hash elements in the collection
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashCollectionElement (TRI_associative_pointer_t* array, 
+                                       void const* element) {
+  QL_ast_query_collection_t* collection = (QL_ast_query_collection_t*) element;
+
+  return TRI_FnvHashString(collection->_alias);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Comparison function used to determine hash key equality
+////////////////////////////////////////////////////////////////////////////////
+
+static bool EqualCollectionKeyElement (TRI_associative_pointer_t* array, 
+                                       void const* key, 
+                                       void const* element) {
+  char const* k = (char const*) key;
+  QL_ast_query_collection_t* collection = (QL_ast_query_collection_t*) element;
+
+  return TRI_EqualString(k, collection->_alias);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Hash function used to hash bind parameter names
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -101,7 +135,10 @@ static bool InitSelectQueryTemplate (TRI_query_template_t* const template_) {
   primaryAlias = QLAstQueryGetPrimaryAlias(template_->_query);
   select_->_type = QLOptimizeGetSelectType(select_->_base, primaryAlias);
   select_->_usesBindParameters = QLOptimizeUsesBindParameters(select_->_base);
+<<<<<<< HEAD
   select_->_functionCode = NULL;
+=======
+>>>>>>> JS loader for avocsh
 
   if (select_->_type == QLQuerySelectTypeEvaluated && 
       !select_->_usesBindParameters) {
@@ -174,8 +211,11 @@ static bool InitOrderQueryTemplate (TRI_query_template_t* const template_) {
   // optimize order clause
   order = &template_->_query->_order;
   order->_type = QLQueryOrderTypeNone;
+<<<<<<< HEAD
   order->_usesBindParameters = false;
   order->_functionCode = NULL;
+=======
+>>>>>>> JS loader for avocsh
 
   if (order->_base) {
     QLOptimizeOrder(order->_base);
@@ -196,12 +236,15 @@ static bool InitOrderQueryTemplate (TRI_query_template_t* const template_) {
       TRI_RegisterStringQuery(&template_->_memory._strings, order->_functionCode);
     }
   }
+<<<<<<< HEAD
   
   LOG_DEBUG("created order part of query template. type: %i, "
             "usesBindParameters: %i, functionCode: %s",
             (int) order->_type,
             (int) order->_usesBindParameters,
             (order->_functionCode ? order->_functionCode : ""));
+=======
+>>>>>>> JS loader for avocsh
 
   return true;
 }
@@ -254,6 +297,7 @@ static bool InitFromQueryTemplate (TRI_query_template_t* const template_) {
         }
         TRI_RegisterStringQuery(&template_->_memory._strings, collection->_where._functionCode);
       }
+<<<<<<< HEAD
   
       LOG_DEBUG("created from part of query template. alias: %s, name: %s, "
                 "type: %i, usesBindParameters: %i, functionCode: %s",
@@ -262,6 +306,8 @@ static bool InitFromQueryTemplate (TRI_query_template_t* const template_) {
                 (int) collection->_where._type,
                 (int) collection->_where._usesBindParameters,
                 (collection->_where._functionCode ? collection->_where._functionCode : ""));
+=======
+>>>>>>> JS loader for avocsh
     }
     node = node->_next;
   }
@@ -468,6 +514,7 @@ void TRI_FreeQueryTemplate (TRI_query_template_t* const template_) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+<<<<<<< HEAD
 /// @brief get size of extra data in geo join parts 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -603,6 +650,11 @@ static bool AddJoinPartQueryInstance (TRI_query_instance_t* instance,
 /// @brief Init the select part of a query instance
 ////////////////////////////////////////////////////////////////////////////////
 
+=======
+/// @brief Init the select part of a query instance
+////////////////////////////////////////////////////////////////////////////////
+
+>>>>>>> JS loader for avocsh
 static bool InitSelectQueryInstance (TRI_query_instance_t* const instance) {
   QL_ast_query_select_t* queryTemplate = &instance->_template->_query->_select;
   QL_ast_query_select_t* queryInstance = &instance->_query._select;
@@ -640,10 +692,13 @@ static bool InitSelectQueryInstance (TRI_query_instance_t* const instance) {
       return false;
     }
   }
+<<<<<<< HEAD
   
   LOG_DEBUG("added select part to query instance. type: %i, functionCode: %s",
             (int) queryInstance->_type,
             (queryInstance->_functionCode ? queryInstance->_functionCode : ""));
+=======
+>>>>>>> JS loader for avocsh
 
   return true;
 }
@@ -661,7 +716,10 @@ static bool InitWhereQueryInstance (TRI_query_instance_t* const instance) {
   queryInstance->_type               = queryTemplate->_type;
   queryInstance->_usesBindParameters = queryTemplate->_usesBindParameters;
   queryInstance->_functionCode       = queryTemplate->_functionCode;
+<<<<<<< HEAD
   queryInstance->_context            = NULL;
+=======
+>>>>>>> JS loader for avocsh
 
   if (queryInstance->_usesBindParameters) {
     TRI_query_node_t* copy;
@@ -696,6 +754,7 @@ static bool InitWhereQueryInstance (TRI_query_instance_t* const instance) {
     }
   }
 
+<<<<<<< HEAD
   if (queryInstance->_functionCode) {
     queryInstance->_context = TRI_CreateExecutionContext(queryInstance->_functionCode);
     if (!queryInstance->_context) {
@@ -708,6 +767,8 @@ static bool InitWhereQueryInstance (TRI_query_instance_t* const instance) {
             (int) queryInstance->_type,
             (queryInstance->_functionCode ? queryInstance->_functionCode : ""));
 
+=======
+>>>>>>> JS loader for avocsh
   return true;
 }
 
@@ -756,11 +817,167 @@ static bool InitOrderQueryInstance (TRI_query_instance_t* const instance) {
       }
     }
   }
+<<<<<<< HEAD
   
   LOG_DEBUG("added order part to query instance. type: %i, functionCode: %s",
             (int) queryInstance->_type,
             (queryInstance->_functionCode ? queryInstance->_functionCode : ""));
 
+=======
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Init the limit part of a query instance
+////////////////////////////////////////////////////////////////////////////////
+
+static bool InitLimitQueryInstance (TRI_query_instance_t* const instance) {
+  QL_ast_query_limit_t* queryTemplate = &instance->_template->_query->_limit;
+  QL_ast_query_limit_t* queryInstance = &instance->_query._limit;
+
+  // clone original values
+  queryInstance->_offset = queryTemplate->_offset;
+  queryInstance->_count  = queryTemplate->_count;
+  queryInstance->_isUsed = queryTemplate->_isUsed;
+
+  if (!queryInstance->_isUsed) {
+    queryInstance->_offset = TRI_QRY_NO_SKIP;
+    queryInstance->_count  = TRI_QRY_NO_LIMIT;
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Init the from part of a query instance
+////////////////////////////////////////////////////////////////////////////////
+
+static bool InitFromQueryInstance (TRI_query_instance_t* const instance) {
+  QL_ast_query_from_t* queryTemplate = &instance->_template->_query->_from;
+  size_t i;
+
+  // clone original values
+  for (i = 0; i < queryTemplate->_collections._nrAlloc; i++) {
+    QL_ast_query_collection_t* source;
+    QL_ast_query_collection_t* collection;
+
+    source = (QL_ast_query_collection_t*) queryTemplate->_collections._table[i];
+    if (!source) {
+      continue;
+    }
+
+    collection = (QL_ast_query_collection_t*) TRI_Allocate(sizeof(QL_ast_query_collection_t));
+    if (!collection) { 
+      return false;
+    }
+
+    collection->_name                       = source->_name;
+    collection->_alias                      = source->_alias;
+    collection->_isPrimary                  = source->_isPrimary;
+    collection->_refCount                   = 0;
+    collection->_declarationOrder           = source->_declarationOrder;
+    collection->_geoRestriction             = source->_geoRestriction;
+    collection->_where._base                = source->_where._base;
+    collection->_where._type                = source->_where._type;
+    collection->_where._usesBindParameters  = source->_where._usesBindParameters;
+    collection->_where._functionCode        = source->_where._functionCode;
+
+    if (source->_where._usesBindParameters) {
+      TRI_query_node_t* copy;
+      
+      assert(source->_where._base);
+      copy = TRI_CopyQueryPartQueryInstance(instance, source->_where._base);
+      if (!copy) {
+        TRI_Free(collection);
+        TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+        return false;
+      }
+
+      collection->_where._base = copy;
+      QLOptimizeExpression(collection->_where._base);
+      collection->_where._type = QLOptimizeGetWhereType(collection->_where._base);
+
+      if (collection->_where._type == QLQueryWhereTypeMustEvaluate) {
+        char* functionCode;
+        
+        // re-create function code
+        functionCode = TRI_GetFunctionCodeQueryJavascript(
+            collection->_where._base,
+            &instance->_bindParameters
+            );
+        if (functionCode) {
+          TRI_RegisterStringQuery(&instance->_memory._strings, functionCode);
+          collection->_where._functionCode = functionCode;
+        }
+        else {
+          TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+          return false;
+        }
+      }
+    }
+
+    TRI_InsertKeyAssociativePointer(&instance->_query._from._collections,
+                                    collection->_alias,
+                                    (void*) collection, 
+                                    true);
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Init query parts of the instance
+///
+/// If the query uses bind parameters, the query parts with bind parameters are
+/// copied, re-optimized, and the Javascript functions for these parts are
+/// re-created.
+////////////////////////////////////////////////////////////////////////////////
+  
+static bool InitPartsQueryInstance (TRI_query_instance_t* const instance) {
+  QL_ast_query_t* queryTemplate;
+  QL_ast_query_t* queryInstance;
+
+  assert(instance);
+  assert(instance->_template);
+  assert(instance->_template->_query);
+
+  queryTemplate = instance->_template->_query;
+  queryInstance = &instance->_query;
+
+  queryInstance->_isEmpty = queryTemplate->_isEmpty;
+
+  if (!InitSelectQueryInstance(instance)) {
+    return false;
+  }
+
+  if (!InitWhereQueryInstance(instance)) {
+    return false;
+  }
+  
+  if (!InitOrderQueryInstance(instance)) {
+    return false;
+  }
+  
+  if (!InitLimitQueryInstance(instance)) {
+    return false;
+  }
+  
+  if (!InitFromQueryInstance(instance)) {
+    return false;
+  }
+  
+  if (queryInstance->_where._type == QLQueryWhereTypeAlwaysFalse) {
+    // query will never have any results due to where clause
+    queryInstance->_isEmpty = true;
+  }
+
+  if (queryInstance->_limit._count == 0) {
+    // query will never have any results due to limit clause
+    queryInstance->_isEmpty = true;
+  }
+    
+>>>>>>> JS loader for avocsh
   return true;
 }
 
@@ -1336,6 +1553,7 @@ void TRI_FreeQueryInstance (TRI_query_instance_t* const instance) {
   TRI_FreeNodeVectorQuery(&instance->_memory._nodes);
   TRI_FreeStringVectorQuery(&instance->_memory._strings);
   QLAstQueryFreeCollections(&instance->_query._from._collections);
+<<<<<<< HEAD
 
   if (instance->_query._where._context) {
     TRI_FreeExecutionContext(instance->_query._where._context);
@@ -1343,6 +1561,8 @@ void TRI_FreeQueryInstance (TRI_query_instance_t* const instance) {
 
   FreeJoinsQueryInstance(instance);
   FreeLocksQueryInstance(instance);
+=======
+>>>>>>> JS loader for avocsh
 
   TRI_Free(instance);
 }
@@ -1383,9 +1603,15 @@ TRI_query_instance_t* TRI_CreateQueryInstance (const TRI_query_template_t* const
                              0);
   
   TRI_InitAssociativePointer(&instance->_query._from._collections,
+<<<<<<< HEAD
                              QLHashKey,
                              QLHashCollectionElement,
                              QLEqualCollectionKeyElement,
+=======
+                             HashKey,
+                             HashCollectionElement,
+                             EqualCollectionKeyElement,
+>>>>>>> JS loader for avocsh
                              0);
  
   // set up bind parameters

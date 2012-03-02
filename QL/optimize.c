@@ -762,6 +762,14 @@ static void QLOptimizeRefCountCollections (QL_ast_query_t* const query,
 static void QLOptimizeCountRefs (QL_ast_query_t* const query) {
   TRI_query_node_t* next;
   TRI_query_node_t* node = query->_from._base;
+<<<<<<< HEAD
+=======
+
+  if (query->_from._collections._nrUsed < 2) {
+    // we don't have a join, no need to refcount anything
+    return;
+  }
+>>>>>>> JS loader for avocsh
 
   // mark collections used in select, where and order
   QLOptimizeRefCountCollections(query, query->_select._base, REF_TYPE_SELECT);
