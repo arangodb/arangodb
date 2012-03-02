@@ -164,16 +164,18 @@ am_libavocado_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 	JsonParserX/JsonScannerX.$(OBJEXT) Logger/Logger.$(OBJEXT) \
 	Logger/LoggerData.$(OBJEXT) Logger/LoggerInfo.$(OBJEXT) \
 	Logger/LoggerStream.$(OBJEXT) Logger/LoggerTiming.$(OBJEXT) \
+	ProgramOptions/program-options.$(OBJEXT) \
 	Rest/AddressPort.$(OBJEXT) Rest/AnyServer.$(OBJEXT) \
 	Rest/HttpRequest.$(OBJEXT) Rest/HttpResponse.$(OBJEXT) \
 	Rest/Initialise.$(OBJEXT) Rest/SslInterface.$(OBJEXT) \
 	Rest/Url.$(OBJEXT) ShapedJson/json-shaper.$(OBJEXT) \
 	ShapedJson/shape-accessor.$(OBJEXT) \
-	ShapedJson/shaped-json.$(OBJEXT) V8/v8-conv.$(OBJEXT) \
-	V8/v8-json.$(OBJEXT) V8/v8-line-editor.$(OBJEXT) \
-	V8/v8-shell.$(OBJEXT) V8/v8-utils.$(OBJEXT) \
-	Variant/VariantArray.$(OBJEXT) Variant/VariantBlob.$(OBJEXT) \
-	Variant/VariantBoolean.$(OBJEXT) Variant/VariantDate.$(OBJEXT) \
+	ShapedJson/shaped-json.$(OBJEXT) V8/JSLoader.$(OBJEXT) \
+	V8/v8-conv.$(OBJEXT) V8/v8-json.$(OBJEXT) \
+	V8/v8-line-editor.$(OBJEXT) V8/v8-shell.$(OBJEXT) \
+	V8/v8-utils.$(OBJEXT) Variant/VariantArray.$(OBJEXT) \
+	Variant/VariantBlob.$(OBJEXT) Variant/VariantBoolean.$(OBJEXT) \
+	Variant/VariantDate.$(OBJEXT) \
 	Variant/VariantDatetime.$(OBJEXT) \
 	Variant/VariantDouble.$(OBJEXT) Variant/VariantFloat.$(OBJEXT) \
 	Variant/VariantInt16.$(OBJEXT) Variant/VariantInt32.$(OBJEXT) \
@@ -217,10 +219,9 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	HttpsServer/ApplicationHttpsServerImpl.$(OBJEXT) \
 	HttpsServer/HttpsAsyncCommTask.$(OBJEXT) \
 	HttpsServer/HttpsServer.$(OBJEXT) \
-	HttpsServer/HttpsServerImpl.$(OBJEXT) \
-	ProgramOptions/program-options.$(OBJEXT) \
-	QL/ast-query.$(OBJEXT) QL/formatter.$(OBJEXT) \
-	QL/optimize.$(OBJEXT) QL/parser.$(OBJEXT) QL/tokens.$(OBJEXT) \
+	HttpsServer/HttpsServerImpl.$(OBJEXT) QL/ast-query.$(OBJEXT) \
+	QL/formatter.$(OBJEXT) QL/optimize.$(OBJEXT) \
+	QL/parser.$(OBJEXT) QL/tokens.$(OBJEXT) \
 	RestHandler/RestActionHandler.$(OBJEXT) \
 	RestHandler/RestCollectionHandler.$(OBJEXT) \
 	RestHandler/RestSystemActionHandler.$(OBJEXT) \
@@ -228,7 +229,6 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	RestServer/ActionDispatcherThread.$(OBJEXT) \
 	RestServer/AvocadoHttpServer.$(OBJEXT) \
 	RestServer/AvocadoServer.$(OBJEXT) \
-	RestServer/JSLoader.$(OBJEXT) \
 	RestServer/SystemActionDispatcherThread.$(OBJEXT) \
 	RestServer/avocado.$(OBJEXT) \
 	ResultGenerator/HtmlResultGenerator.$(OBJEXT) \
@@ -584,6 +584,7 @@ libavocado_a_SOURCES = \
 	Logger/LoggerInfo.cpp \
 	Logger/LoggerStream.cpp \
 	Logger/LoggerTiming.cpp \
+	ProgramOptions/program-options.c \
 	Rest/AddressPort.cpp \
 	Rest/AnyServer.cpp \
 	Rest/HttpRequest.cpp \
@@ -594,6 +595,7 @@ libavocado_a_SOURCES = \
 	ShapedJson/json-shaper.c \
 	ShapedJson/shape-accessor.c \
 	ShapedJson/shaped-json.c \
+	V8/JSLoader.cpp \
 	V8/v8-conv.cpp \
 	V8/v8-json.cpp \
 	V8/v8-line-editor.cpp \
@@ -656,7 +658,6 @@ avocado_SOURCES = \
 	HttpsServer/HttpsAsyncCommTask.cpp \
 	HttpsServer/HttpsServer.cpp \
 	HttpsServer/HttpsServerImpl.cpp \
-	ProgramOptions/program-options.c \
 	QL/ast-query.c \
 	QL/formatter.c \
 	QL/optimize.c \
@@ -669,7 +670,6 @@ avocado_SOURCES = \
 	RestServer/ActionDispatcherThread.cpp \
 	RestServer/AvocadoHttpServer.cpp \
 	RestServer/AvocadoServer.cpp \
-	RestServer/JSLoader.cpp \
 	RestServer/SystemActionDispatcherThread.cpp \
 	RestServer/avocado.cpp \
 	ResultGenerator/HtmlResultGenerator.cpp \
@@ -739,6 +739,7 @@ avocsh_SOURCES = \
 JAVASCRIPT_HEADER = \
 	js/bootstrap/js-modules.h \
 	js/bootstrap/js-print.h \
+	js/client/js-client.h \
 	js/server/js-modules.h \
 	js/server/js-actions.h \
 	js/server/js-aql.h \
@@ -1036,6 +1037,15 @@ Logger/LoggerStream.$(OBJEXT): Logger/$(am__dirstamp) \
 	Logger/$(DEPDIR)/$(am__dirstamp)
 Logger/LoggerTiming.$(OBJEXT): Logger/$(am__dirstamp) \
 	Logger/$(DEPDIR)/$(am__dirstamp)
+ProgramOptions/$(am__dirstamp):
+	@$(MKDIR_P) ProgramOptions
+	@: > ProgramOptions/$(am__dirstamp)
+ProgramOptions/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) ProgramOptions/$(DEPDIR)
+	@: > ProgramOptions/$(DEPDIR)/$(am__dirstamp)
+ProgramOptions/program-options.$(OBJEXT):  \
+	ProgramOptions/$(am__dirstamp) \
+	ProgramOptions/$(DEPDIR)/$(am__dirstamp)
 Rest/$(am__dirstamp):
 	@$(MKDIR_P) Rest
 	@: > Rest/$(am__dirstamp)
@@ -1074,6 +1084,7 @@ V8/$(am__dirstamp):
 V8/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) V8/$(DEPDIR)
 	@: > V8/$(DEPDIR)/$(am__dirstamp)
+V8/JSLoader.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
 V8/v8-conv.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
 V8/v8-json.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
 V8/v8-line-editor.$(OBJEXT): V8/$(am__dirstamp) \
@@ -1324,15 +1335,6 @@ HttpsServer/HttpsServer.$(OBJEXT): HttpsServer/$(am__dirstamp) \
 	HttpsServer/$(DEPDIR)/$(am__dirstamp)
 HttpsServer/HttpsServerImpl.$(OBJEXT): HttpsServer/$(am__dirstamp) \
 	HttpsServer/$(DEPDIR)/$(am__dirstamp)
-ProgramOptions/$(am__dirstamp):
-	@$(MKDIR_P) ProgramOptions
-	@: > ProgramOptions/$(am__dirstamp)
-ProgramOptions/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) ProgramOptions/$(DEPDIR)
-	@: > ProgramOptions/$(DEPDIR)/$(am__dirstamp)
-ProgramOptions/program-options.$(OBJEXT):  \
-	ProgramOptions/$(am__dirstamp) \
-	ProgramOptions/$(DEPDIR)/$(am__dirstamp)
 QL/$(am__dirstamp):
 	@$(MKDIR_P) QL
 	@: > QL/$(am__dirstamp)
@@ -1375,8 +1377,6 @@ RestServer/ActionDispatcherThread.$(OBJEXT):  \
 RestServer/AvocadoHttpServer.$(OBJEXT): RestServer/$(am__dirstamp) \
 	RestServer/$(DEPDIR)/$(am__dirstamp)
 RestServer/AvocadoServer.$(OBJEXT): RestServer/$(am__dirstamp) \
-	RestServer/$(DEPDIR)/$(am__dirstamp)
-RestServer/JSLoader.$(OBJEXT): RestServer/$(am__dirstamp) \
 	RestServer/$(DEPDIR)/$(am__dirstamp)
 RestServer/SystemActionDispatcherThread.$(OBJEXT):  \
 	RestServer/$(am__dirstamp) \
@@ -1649,7 +1649,6 @@ mostlyclean-compile:
 	-rm -f RestServer/ActionDispatcherThread.$(OBJEXT)
 	-rm -f RestServer/AvocadoHttpServer.$(OBJEXT)
 	-rm -f RestServer/AvocadoServer.$(OBJEXT)
-	-rm -f RestServer/JSLoader.$(OBJEXT)
 	-rm -f RestServer/SystemActionDispatcherThread.$(OBJEXT)
 	-rm -f RestServer/avocado.$(OBJEXT)
 	-rm -f ResultGenerator/HtmlResultGenerator.$(OBJEXT)
@@ -1680,6 +1679,7 @@ mostlyclean-compile:
 	-rm -f SimpleHttpClient/SimpleHttpResult.$(OBJEXT)
 	-rm -f SkipLists/skiplist.$(OBJEXT)
 	-rm -f SkipLists/skiplistIndex.$(OBJEXT)
+	-rm -f V8/JSLoader.$(OBJEXT)
 	-rm -f V8/v8-actions.$(OBJEXT)
 	-rm -f V8/v8-conv.$(OBJEXT)
 	-rm -f V8/v8-json.$(OBJEXT)
@@ -1841,7 +1841,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/ActionDispatcherThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/AvocadoHttpServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/AvocadoServer.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/JSLoader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/SystemActionDispatcherThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/avocado.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ResultGenerator/$(DEPDIR)/HtmlResultGenerator.Po@am__quote@
@@ -1872,6 +1871,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@SimpleHttpClient/$(DEPDIR)/SimpleHttpResult.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@SkipLists/$(DEPDIR)/skiplist.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@SkipLists/$(DEPDIR)/skiplistIndex.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/JSLoader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-actions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-conv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-json.Po@am__quote@
@@ -2428,6 +2428,9 @@ js/js-%.h: @srcdir@/js/%.js .setup-directories
 	@top_srcdir@/config/js2c.sh $< > $@
 
 js/bootstrap/js-%.h: @srcdir@/js/bootstrap/%.js .setup-directories
+	@top_srcdir@/config/js2c.sh $< > $@
+
+js/client/js-%.h: @srcdir@/js/client/%.js .setup-directories
 	@top_srcdir@/config/js2c.sh $< > $@
 
 js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories

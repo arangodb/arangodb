@@ -599,7 +599,7 @@ bool TRI_CreateLockFile (char const* filename) {
   pid = TRI_CurrentProcessId();
   buf = TRI_StringUInt32(pid);
 
-  rv = TRI_WRITE(fd, buf, sizeof(buf));
+  rv = TRI_WRITE(fd, buf, strlen(buf));
 
   TRI_CLOSE(fd);
   TRI_FreeString(buf);
@@ -657,6 +657,9 @@ bool TRI_VerifyLockFile (char const* filename) {
     TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
     return false;
   }
+
+  // not really necessary, but this shuts up valgrind
+  memset(buffer, 0, sizeof(buffer));
 
   fc = TRI_UInt32String(buffer);
 
