@@ -41,7 +41,7 @@ actions.defineHttp({
     lon : "number"
   },
 
-  function : function (req, res) {
+  callback : function (req, res) {
     var result = req.collection.near(req.lat, req.lon).distance();
 
     actions.queryResult(req, res, result);
@@ -63,7 +63,7 @@ actions.defineHttp({
      radius : "number"
   },
 
-  function : function (req, res) {
+  callback : function (req, res) {
     var result = req.collection.within(req.lat, req.lon, req.radius).distance();
 
     actions.queryResult(req, res, result);
