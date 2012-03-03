@@ -112,11 +112,49 @@ function defineHttp (options) {
 
   try {
     internal.defineAction(url, "CLIENT", callback, parameter);
-    console.debug("defining action '" + url + "' in domain(s) " + domain);
+    console.trace("defining action '" + url + "' in domain(s) " + domain);
   }
   catch (err) {
     console.error("action '" + url + "' encountered error: " + err);
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a result
+///
+/// @FUN{actionResult(@FA{req}, @FA{res}, @FA{code}, @FA{result}, @FA{headers})}
+///
+/// The functions returns a result object. @FA{code} is the status code
+/// to return.
+////////////////////////////////////////////////////////////////////////////////
+
+function actionResult (req, res, code, result, headers) {
+  res.responseCode = code;
+
+  if (result) {
+    res.contentType = "application/json";
+    res.body = JSON.stringify(result);
+  }
+
+  if (headers != undefined) {
+    res.headers = headers;    
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns an error
+///
+/// @FUN{actionError(@FA{req}, @FA{res}, @FA{errorMessage})}
+///
+/// The functions returns an error message. The status code is 500 and the
+/// returned object is an array with an attribute @LIT{error} containing
+/// the error message @FA{errorMessage}.
+////////////////////////////////////////////////////////////////////////////////
+
+function actionError (req, res, err) {
+  res.responseCode = 500;
+  res.contentType = "application/json";
+  res.body = JSON.stringify({ 'error' : "" + err });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -225,42 +263,6 @@ function queryReferences (req, res, query) {
   res.responseCode = 200;
   res.contentType = "application/json";
   res.body = JSON.stringify(result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a result
-///
-/// @FUN{actionResult(@FA{req}, @FA{res}, @FA{code}, @FA{result})}
-///
-/// The functions returns a result object. @FA{code} is the status code
-/// to return.
-////////////////////////////////////////////////////////////////////////////////
-
-function actionResult (req, res, code, result) {
-  if (code == 204) {
-    res.responseCode = code;
-  }
-  else {
-    res.responseCode = code;
-    res.contentType = "application/json";
-    res.body = JSON.stringify(result);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns an error
-///
-/// @FUN{actionError(@FA{req}, @FA{res}, @FA{errorMessage})}
-///
-/// The functions returns an error message. The status code is 500 and the
-/// returned object is an array with an attribute @LIT{error} containing
-/// the error message @FA{errorMessage}.
-////////////////////////////////////////////////////////////////////////////////
-
-function actionError (req, res, err) {
-  res.responseCode = 500;
-  res.contentType = "application/json";
-  res.body = JSON.stringify({ 'error' : "" + err });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
