@@ -170,12 +170,15 @@ var console = require("console");
 /// @FA{options.domain}
 ///
 /// The domain to which this actions belongs. Possible values are "admin",
-/// "monitoring", "api", and "user". All domains apart from "user" and "api" are
-/// reserved for system actions. These system actions are database independent
-/// and are executed in a different worker queue than the normal queue for
-/// clients. The "api" actions are also database independent and are used by the
-/// client api to communicate with the AvocadoDB server.  Both the "api" and
-/// "user" actions are using the same worker queue.
+/// "monitoring", "api", and "user". All domains apart from "user" are reserved
+/// for system actions and are database independent. All actions except "user"
+/// and "api" are executed in a different worker queue than the normal queue for
+/// clients. The "api" actions are used by the client api to communicate with
+/// the AvocadoDB server.  Both the "api" and "user" actions are using the same
+/// worker queue.
+///
+/// Note that the url for "user" actions is automatically prefixed
+/// with @LIT{action}.
 ///
 /// It is possible to specify a list of domains, in case an actions belongs to
 /// more than one domain.
@@ -208,6 +211,7 @@ var console = require("console");
 
 function defineHttp (options) {
   var url = options.url;
+<<<<<<< HEAD
 <<<<<<< HEAD
   var contexts = options.context;
   var callback = options.callback;
@@ -323,15 +327,18 @@ function actionError (req, res, err) {
   res.body = JSON.stringify({ 'error' : "" + err });
 =======
   var domain = options.domain;
+=======
+  var domains = options.domain;
+>>>>>>> added action prefix
   var callback = options.callback;
   var parameter = options.parameter;
 
-  if (! domain) {
-    domain = "user";
+  if (! domains) {
+    domains = "user";
   }
 
-  if (typeof domain == "string") {
-    domain = [ domain ];
+  if (typeof domains == "string") {
+    domains = [ domains ];
   }
 
   if (typeof callback !== "function") {
@@ -341,12 +348,21 @@ function actionError (req, res, err) {
 
   console.debug("callback ", callback, "\n");
 
-  try {
-    internal.defineAction(url, "CLIENT", callback, parameter);
-    console.debug("defining action '" + url + "' in domain(s) " + domain);
-  }
-  catch (err) {
-    console.error("action '" + url + "' encountered error: " + err);
+  for (var i = 0;  i < domains.length;  ++i) {
+    var domain = domains[i];
+    var path = url;
+
+    if (domain == "user") {
+      path = "action/" + url;
+    }
+    
+    try {
+      internal.defineAction(path, "CLIENT", callback, parameter);
+      console.debug("defining action '" + path + "' in domain(s) " + domain);
+    }
+    catch (err) {
+      console.error("action '" + url + "' encountered error: " + err);
+    }
   }
 }
 
