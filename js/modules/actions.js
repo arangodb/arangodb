@@ -188,9 +188,9 @@ var console = require("console");
 ///
 /// The callback must define fill the @FA{response}.
 ///
-/// - @LIT{@FA{response}.responseCode}: the response code
-/// - @LIT{@FA{response}.contentType}: the content type of the response
-/// - @LIT{@FA{response}.body}: the body of the response
+/// - @LIT{@FA{response}._responseCode}: the response code
+/// - @LIT{@FA{response}._contentType}: the content type of the response
+/// - @LIT{@FA{response}._body}: the body of the response
 ///
 /// You can use the functions @FN{actionResult} and @FN{actionError} to
 /// easily generate a response.
@@ -343,7 +343,7 @@ function actionError (req, res, err) {
 
   try {
     internal.defineAction(url, "CLIENT", callback, parameter);
-    console.trace("defining action '" + url + "' in domain(s) " + domain);
+    console.debug("defining action '" + url + "' in domain(s) " + domain);
   }
   catch (err) {
     console.error("action '" + url + "' encountered error: " + err);
