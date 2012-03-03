@@ -537,10 +537,14 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
   }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   req->Set(v8g->HeadersKey, headerFields);  
 =======
   req->Set(v8g->HeaderKey, headerFields);  
 >>>>>>> unfinished actions cleanup
+=======
+  req->Set(v8g->HeadersKey, headerFields);  
+>>>>>>> better hallo-world examples
   
   // copy request type
   switch (request->requestType()) {
@@ -748,6 +752,7 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionQueue
   // keys
   // .............................................................................
 
+<<<<<<< HEAD
   v8g->BodyKey = v8::Persistent<v8::String>::New(v8::String::New("body"));
   v8g->ContentTypeKey = v8::Persistent<v8::String>::New(v8::String::New("contentType"));
 <<<<<<< HEAD
@@ -760,10 +765,15 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionQueue
 =======
   v8g->HeaderKey = v8::Persistent<v8::String>::New(v8::String::New("_header"));
   v8g->HeadersKey = v8::Persistent<v8::String>::New(v8::String::New("headers"));
+=======
+  v8g->BodyKey = v8::Persistent<v8::String>::New(v8::String::New("_body"));
+  v8g->ContentTypeKey = v8::Persistent<v8::String>::New(v8::String::New("_contentType"));
+  v8g->HeadersKey = v8::Persistent<v8::String>::New(v8::String::New("_headers"));
+>>>>>>> better hallo-world examples
   v8g->ParametersKey = v8::Persistent<v8::String>::New(v8::String::New("parameters"));
   v8g->RequestBodyKey = v8::Persistent<v8::String>::New(v8::String::New("_requestBody"));
   v8g->RequestTypeKey = v8::Persistent<v8::String>::New(v8::String::New("_requestType"));
-  v8g->ResponseCodeKey = v8::Persistent<v8::String>::New(v8::String::New("responseCode"));
+  v8g->ResponseCodeKey = v8::Persistent<v8::String>::New(v8::String::New("_responseCode"));
   v8g->SuffixKey = v8::Persistent<v8::String>::New(v8::String::New("_suffix"));
 >>>>>>> unfinished actions cleanup
 
