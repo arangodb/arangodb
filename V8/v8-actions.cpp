@@ -398,7 +398,7 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
     headerFields->Set(v8::String::New(iter->first.c_str()), v8::String::New(iter->second.c_str()));
   }
 
-  req->Set(v8g->HeaderKey, headerFields);  
+  req->Set(v8g->HeadersKey, headerFields);  
   
   // copy request type
   switch (request->requestType()) {
@@ -560,14 +560,13 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context) {
   // keys
   // .............................................................................
 
-  v8g->BodyKey = v8::Persistent<v8::String>::New(v8::String::New("body"));
-  v8g->ContentTypeKey = v8::Persistent<v8::String>::New(v8::String::New("contentType"));
-  v8g->HeaderKey = v8::Persistent<v8::String>::New(v8::String::New("_header"));
-  v8g->HeadersKey = v8::Persistent<v8::String>::New(v8::String::New("headers"));
+  v8g->BodyKey = v8::Persistent<v8::String>::New(v8::String::New("_body"));
+  v8g->ContentTypeKey = v8::Persistent<v8::String>::New(v8::String::New("_contentType"));
+  v8g->HeadersKey = v8::Persistent<v8::String>::New(v8::String::New("_headers"));
   v8g->ParametersKey = v8::Persistent<v8::String>::New(v8::String::New("parameters"));
   v8g->RequestBodyKey = v8::Persistent<v8::String>::New(v8::String::New("_requestBody"));
   v8g->RequestTypeKey = v8::Persistent<v8::String>::New(v8::String::New("_requestType"));
-  v8g->ResponseCodeKey = v8::Persistent<v8::String>::New(v8::String::New("responseCode"));
+  v8g->ResponseCodeKey = v8::Persistent<v8::String>::New(v8::String::New("_responseCode"));
   v8g->SuffixKey = v8::Persistent<v8::String>::New(v8::String::New("_suffix"));
 
   v8g->DeleteConstant = v8::Persistent<v8::String>::New(v8::String::New("DELETE"));
