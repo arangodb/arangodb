@@ -218,6 +218,8 @@ using namespace triagens::avocado;
 /// <ol>
 ///  <li>@ref JSModules
 ///   <ol>
+///    <li>@ref JSModuleActions
+///    </li>
 ///    <li>@ref JSModuleConsole
 ///    </li>
 ///    <li>@ref JSModuleFs

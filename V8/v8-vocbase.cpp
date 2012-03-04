@@ -4280,12 +4280,12 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
     v8g->DidKey = v8::Persistent<v8::String>::New(v8::String::New("_id"));
   }
 
-  if (v8g->RevKey.IsEmpty()) {
-    v8g->RevKey = v8::Persistent<v8::String>::New(v8::String::New("_rev"));
-  }
-
   if (v8g->FromKey.IsEmpty()) {
     v8g->FromKey = v8::Persistent<v8::String>::New(v8::String::New("_from"));
+  }
+
+  if (v8g->RevKey.IsEmpty()) {
+    v8g->RevKey = v8::Persistent<v8::String>::New(v8::String::New("_rev"));
   }
 
   if (v8g->ToKey.IsEmpty()) {
