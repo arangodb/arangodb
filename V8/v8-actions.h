@@ -259,7 +259,11 @@ triagens::rest::HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
 /// @brief stores the V8 actions function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
+<<<<<<< HEAD
 void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionQueue);
+=======
+void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionContext);
+>>>>>>> added module doc
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -51,9 +51,12 @@
 #include "RestServer/ActionDispatcherThread.h"
 #include "RestServer/AvocadoHttpServer.h"
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 #include "RestServer/SystemActionDispatcherThread.h"
 >>>>>>> JS loader for avocsh
+=======
+>>>>>>> added module doc
 #include "V8/JSLoader.h"
 #include "V8/v8-actions.h"
 #include "V8/v8-conv.h"
@@ -120,16 +123,26 @@ static JSLoader SystemActionLoader;
 /// @brief action dispatcher thread creator
 ////////////////////////////////////////////////////////////////////////////////
 
+<<<<<<< HEAD
 static DispatcherThread* ClientActionDispatcherThreadCreator (DispatcherQueue* queue) {
   return new ActionDispatcherThread(queue, "CLIENT", &ActionLoader);
+=======
+static DispatcherThread* ActionDisptacherThreadCreator (DispatcherQueue* queue) {
+  return new ActionDisptacherThread(queue, "user");
+>>>>>>> added module doc
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief system action dispatcher thread creator
 ////////////////////////////////////////////////////////////////////////////////
 
+<<<<<<< HEAD
 static DispatcherThread* SystemActionDispatcherThreadCreator (DispatcherQueue* queue) {
   return new ActionDispatcherThread(queue, "SYSTEM", &SystemActionLoader);
+=======
+static DispatcherThread* SystemActionDisptacherThreadCreator (DispatcherQueue* queue) {
+  return new ActionDisptacherThread(queue, "admin");
+>>>>>>> added module doc
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -490,9 +503,18 @@ int AvocadoServer::startupServer () {
 
   LOGGER_INFO << "using JavaScript modules path '" << _startupModules << "'";
 
+<<<<<<< HEAD
   ActionDispatcherThread::_startupLoader = &StartupLoader;
   ActionDispatcherThread::_vocbase = _vocbase;
   ActionDispatcherThread::_startupModules = _startupModules;
+=======
+  ActionDisptacherThread::_actionLoader = &ActionLoader;
+  ActionDisptacherThread::_startupLoader = &StartupLoader;
+  ActionDisptacherThread::_vocbase = _vocbase;
+  ActionDisptacherThread::_startupModules = _startupModules;
+
+  // TODO SystemActionDisptacherThread::_actionLoader = &SystemActionLoader;
+>>>>>>> added module doc
 
   // .............................................................................
   // create the various parts of the Avocado server
