@@ -97,12 +97,12 @@ string ActionDisptacherThread::_startupModules;
 /// @brief constructs a new dispatcher thread
 ////////////////////////////////////////////////////////////////////////////////
 
-ActionDisptacherThread::ActionDisptacherThread (DispatcherQueue* queue, string const& userContext)
+ActionDisptacherThread::ActionDisptacherThread (DispatcherQueue* queue, string const& actionContext)
   : DispatcherThread(queue),
     _report(false),
     _isolate(0),
     _context(),
-    _userContext(userContext) {
+    _actionContext(actionContext) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -254,7 +254,7 @@ void ActionDisptacherThread::initialise () {
   _context->Enter();
 
   TRI_InitV8VocBridge(_context, _vocbase);
-  TRI_InitV8Actions(_context, _userContext.c_str());
+  TRI_InitV8Actions(_context, _actionContext.c_str());
   TRI_InitV8Conversions(_context);
   TRI_InitV8Utils(_context, _startupModules);
   TRI_InitV8Shell(_context);
