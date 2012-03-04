@@ -47,6 +47,14 @@ var console = require("console");
 ///
 /// @anchor JSModuleActionsDefineHttp
 /// @copydetails JSF_defineHttp
+/// <hr>
+///
+/// @anchor JSModuleActionsActionResult
+/// @copydetails JSF_actionResult
+/// <hr>
+///
+/// @anchor JSModuleActionsActionError
+/// @copydetails JSF_actionError
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
@@ -158,10 +166,18 @@ function defineHttp (options) {
 
   for (var i = 0;  i < contexts.length;  ++i) {
     var context = contexts[i];
+    var queue = "CLIENT";
+
+    if (context == "admin") {
+      queue = "SYSTEM";
+    }
+    else if (context == "monitoring") {
+      queue = "MONITORING";
+    }
 
     try {
-      internal.defineAction(url, "CLIENT", callback, parameter);
-      console.debug("defining action '" + url + "' in context " + context);
+      internal.defineAction(url, queue, callback, parameter);
+      console.debug("defining action '" + url + "' in context " + context " using queue " + queue);
     }
     catch (err) {
       console.error("action '" + url + "' encountered error: " + err);
@@ -170,12 +186,13 @@ function defineHttp (options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a result
+/// @brief generates a response
 ///
 /// @FUN{actionResult(@FA{req}, @FA{res}, @FA{code}, @FA{result}, @FA{headers})}
 ///
-/// The functions returns a result object. @FA{code} is the status code
-/// to return.
+/// The functions defines a response. @FA{code} is the status code to
+/// return. @FA{result} is the result object, which will be returned as JSON
+/// object in the body. @{headers} is an array of headers to returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 function actionResult (req, res, code, result, headers) {
@@ -192,11 +209,11 @@ function actionResult (req, res, code, result, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns an error
+/// @brief generates an error response
 ///
 /// @FUN{actionError(@FA{req}, @FA{res}, @FA{errorMessage})}
 ///
-/// The functions returns an error message. The status code is 500 and the
+/// The functions generates an error response. The status code is 500 and the
 /// returned object is an array with an attribute @LIT{error} containing
 /// the error message @FA{errorMessage}.
 ////////////////////////////////////////////////////////////////////////////////
@@ -205,114 +222,6 @@ function actionError (req, res, err) {
   res.responseCode = 500;
   res.contentType = "application/json";
   res.body = JSON.stringify({ 'error' : "" + err });
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a result of a query as documents
-///
-/// @FUN{queryResult(@FA{req}, @FA{res}, @FA{query})}
-///
-/// The functions returns the result of a query using pagination. It assumes
-/// that the request has the numerical parameters @LIT{blocksize} and @LIT{page}
-/// or @LIT{offset}. @LIT{blocksize} determines the maximal number of result
-/// documents to return. You can either specify @LIT{page} or @LIT{offset}.
-/// @LIT{page} is the number of pages to skip, i. e. @LIT{page} *
-/// @LIT{blocksize} documents. @LIT{offset} is the number of documents to skip.
-///
-/// If you are using pagination, than the query must be a sorted query.
-////////////////////////////////////////////////////////////////////////////////
-
-function queryResult (req, res, query) {
-  var result;
-  var offset = 0;
-  var page = 0;
-  var blocksize = 0;
-  var t;
-  var result;
-
-  t = time();
-
-  if (req.blocksize) {
-    blocksize = req.blocksize;
-
-    if (req.page) {
-      page = req.page;
-      offset = page * blocksize;
-      query = query.skip(offset).limit(blocksize);
-    }
-    else {
-      query = query.limit(blocksize);
-    }
-  }
-
-  result = query.toArray();
-
-  result = {
-    total : query.count(),
-    count : query.count(true),
-    offset : offset,
-    blocksize : blocksize,
-    page : page,
-    runtime : internal.time() - t,
-    documents : result
-  };
-
-  res.responseCode = 200;
-  res.contentType = "application/json";
-  res.body = JSON.stringify(result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a result of a query as references
-///
-/// @FUN{queryReferences(@FA{req}, @FA{res}, @FA{query})}
-///
-/// The methods works like @FN{queryResult} but instead of the documents only
-/// document identifiers are returned.
-////////////////////////////////////////////////////////////////////////////////
-
-function queryReferences (req, res, query) {
-  var result;
-  var offset = 0;
-  var page = 0;
-  var blocksize = 0;
-  var t;
-  var result;
-
-  t = internal.time();
-
-  if (req.blocksize) {
-    blocksize = req.blocksize;
-
-    if (req.page) {
-      page = req.page;
-      offset = page * blocksize;
-      query = query.skip(offset).limit(blocksize);
-    }
-    else {
-      query = query.limit(blocksize);
-    }
-  }
-
-  result = [];
-
-  while (query.hasNext()) {
-    result.push(query.nextRef());
-  }
-
-  result = {
-    total : query.count(),
-    count : query.count(true),
-    offset : offset,
-    blocksize : blocksize,
-    page : page,
-    runtime : internal.time() - t,
-    references : result
-  };
-
-  res.responseCode = 200;
-  res.contentType = "application/json";
-  res.body = JSON.stringify(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
