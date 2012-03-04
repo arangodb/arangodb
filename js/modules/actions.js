@@ -82,13 +82,13 @@ var console = require("console");
 /// the AvocadoDB server.  Both the "api" and "user" actions are using the same
 /// worker queue.
 ///
+/// It is possible to specify a list of contexts, in case an actions belongs to
+/// more than one context.
+///
 /// Note that the url for "user" actions is automatically prefixed
 /// with @LIT{_action}. This applies to all specified contexts. For example, if
 /// the context contains "admin" and "user" and the url is @LIT{hallo}, then the
 /// action is accessible under @{/_action/hallo} - even for the admin context.
-///
-/// It is possible to specify a list of contexts, in case an actions belongs to
-/// more than one context.
 ///
 /// @FA{options.callback}(@FA{request}, @FA{response})
 ///

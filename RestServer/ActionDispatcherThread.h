@@ -113,7 +113,7 @@ namespace triagens {
 /// @brief constructs a new dispatcher thread
 ////////////////////////////////////////////////////////////////////////////////
 
-        ActionDisptacherThread (rest::DispatcherQueue* queue, string const& userContext);
+        ActionDisptacherThread (rest::DispatcherQueue* queue, string const& actionContext);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a dispatcher thread
@@ -248,7 +248,7 @@ namespace triagens {
 /// @brief action context
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string _userContext;
+        std::string _actionContext;
     };
   }
 }
