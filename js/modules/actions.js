@@ -28,6 +28,27 @@
 var internal = require("internal");
 var console = require("console");
 
+////////////////////////////////////////////////////////////////////////////////
+/// @page JSModuleActionsTOC
+///
+/// <ol>
+///  <li>@ref JSModuleActionsDefineHttp "defineHttp"</li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page JSModuleActions Module "actions"
+///
+/// The action module provides the infrastructure for defining HTTP actions.
+///
+/// <hr>
+/// @copydoc JSModuleActionsTOC
+/// <hr>
+///
+/// @anchor JSModuleActionsDefineHttp
+/// @copydetails JSF_defineHttp
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -40,7 +61,7 @@ var console = require("console");
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a result of a query as documents
 ///
-/// @FUN{defineHttp(@FA{options})
+/// @FUN{defineHttp(@FA{options})}
 ///
 /// Defines a new action. The @FA{options} are as follows:
 ///
@@ -51,10 +72,10 @@ var console = require("console");
 /// @FA{options.url} is a prefix of the given url and no longer definition
 /// matches.
 ///
-/// @FA{options.domain}
+/// @FA{options.context}
 ///
-/// The domain to which this actions belongs. Possible values are "admin",
-/// "monitoring", "api", and "user". All domains apart from "user" are reserved
+/// The context to which this actions belongs. Possible values are "admin",
+/// "monitoring", "api", and "user". All contexts apart from "user" are reserved
 /// for system actions and are database independent. All actions except "user"
 /// and "api" are executed in a different worker queue than the normal queue for
 /// clients. The "api" actions are used by the client api to communicate with
@@ -64,19 +85,23 @@ var console = require("console");
 /// Note that the url for "user" actions is automatically prefixed
 /// with @LIT{action}.
 ///
-/// It is possible to specify a list of domains, in case an actions belongs to
-/// more than one domain.
+/// It is possible to specify a list of contexts, in case an actions belongs to
+/// more than one context.
 ///
 /// @FA{options.callback}(@FA{request}, @FA{response})
 ///
-/// The request arguments contains a description of the request. A request
-/// parameter @LIT{foo} is accessible as @LIT{request.foo}.
+/// The request argument contains a description of the request. A request
+/// parameter @LIT{foo} is accessible as @LIT{request.parametrs.foo}. A request
+/// header @LIT{bar} is accessible as @LIT{request.headers.bar}. Assume that
+/// the action is defined for the url "/foo/bar" and the request url is
+/// "/foo/bar/hugo/egon". Then the suffix parts @LIT{[ "hugon", "egon" ]}
+/// are availible in @LIT{request.suffix}.
 ///
 /// The callback must define fill the @FA{response}.
 ///
-/// - @LIT{@FA{response}._responseCode}: the response code
-/// - @LIT{@FA{response}._contentType}: the content type of the response
-/// - @LIT{@FA{response}._body}: the body of the response
+/// - @LIT{@FA{response}.responseCode}: the response code
+/// - @LIT{@FA{response}.contentType}: the content type of the response
+/// - @LIT{@FA{response}.body}: the body of the response
 ///
 /// You can use the functions @FN{actionResult} and @FN{actionError} to
 /// easily generate a response.
@@ -94,16 +119,32 @@ var console = require("console");
 
 function defineHttp (options) {
   var url = options.url;
-  var domains = options.domain;
+  var contexts = options.context;
   var callback = options.callback;
   var parameter = options.parameter;
+  var userContext = false;
 
-  if (! domains) {
-    domains = "user";
+  if (! contexts) {
+    contexts = "user";
   }
 
-  if (typeof domains == "string") {
-    domains = [ domains ];
+  if (typeof contexts == "string") {
+    if (contexts == "user") {
+      userContext = true;
+    }
+
+    contexts = [ contexts ];
+  }
+  else {
+    for (var i = 0;  i < contexts.length && ! userContext;  ++i) {
+      if (context == "user") {
+        userContext = true;
+      }
+    }
+  }
+
+  if (userContext) {
+    url = "action/" + url;
   }
 
   if (typeof callback !== "function") {
@@ -113,17 +154,12 @@ function defineHttp (options) {
 
   console.debug("callback ", callback, "\n");
 
-  for (var i = 0;  i < domains.length;  ++i) {
-    var domain = domains[i];
-    var path = url;
+  for (var i = 0;  i < contexts.length;  ++i) {
+    var context = contexts[i];
 
-    if (domain == "user") {
-      path = "action/" + url;
-    }
-    
     try {
-      internal.defineAction(path, "CLIENT", callback, parameter);
-      console.debug("defining action '" + path + "' in domain(s) " + domain);
+      internal.defineAction(url, "CLIENT", callback, parameter);
+      console.debug("defining action '" + url + "' in context " + context);
     }
     catch (err) {
       console.error("action '" + url + "' encountered error: " + err);

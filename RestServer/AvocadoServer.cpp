@@ -50,7 +50,6 @@
 #include "RestHandler/RestCollectionHandler.h"
 #include "RestServer/ActionDispatcherThread.h"
 #include "RestServer/AvocadoHttpServer.h"
-#include "RestServer/SystemActionDispatcherThread.h"
 #include "V8/JSLoader.h"
 #include "V8/v8-actions.h"
 #include "V8/v8-conv.h"
@@ -118,7 +117,7 @@ static JSLoader SystemActionLoader;
 ////////////////////////////////////////////////////////////////////////////////
 
 static DispatcherThread* ActionDisptacherThreadCreator (DispatcherQueue* queue) {
-  return new ActionDisptacherThread(queue);
+  return new ActionDisptacherThread(queue, "user");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,7 +125,7 @@ static DispatcherThread* ActionDisptacherThreadCreator (DispatcherQueue* queue) 
 ////////////////////////////////////////////////////////////////////////////////
 
 static DispatcherThread* SystemActionDisptacherThreadCreator (DispatcherQueue* queue) {
-  return new SystemActionDisptacherThread(queue);
+  return new ActionDisptacherThread(queue, "admin");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -489,7 +488,7 @@ int AvocadoServer::startupServer () {
   ActionDisptacherThread::_vocbase = _vocbase;
   ActionDisptacherThread::_startupModules = _startupModules;
 
-  SystemActionDisptacherThread::_actionLoader = &SystemActionLoader;
+  // TODO SystemActionDisptacherThread::_actionLoader = &SystemActionLoader;
 
   // .............................................................................
   // create the various parts of the Avocado server
