@@ -109,10 +109,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 <<<<<<< HEAD
+<<<<<<< HEAD
         ActionDispatcherThread (rest::DispatcherQueue*, string const& actionQueue, JSLoader*);
 =======
         ActionDisptacherThread (rest::DispatcherQueue* queue, string const& userContext);
 >>>>>>> added module doc
+=======
+        ActionDisptacherThread (rest::DispatcherQueue* queue, string const& actionContext);
+>>>>>>> renamed userContext to actionContext
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a dispatcher thread
@@ -242,6 +246,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 <<<<<<< HEAD
+<<<<<<< HEAD
         std::string _actionQueue;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -258,6 +263,9 @@ namespace triagens {
 =======
         std::string _userContext;
 >>>>>>> added module doc
+=======
+        std::string _actionContext;
+>>>>>>> renamed userContext to actionContext
     };
   }
 }
