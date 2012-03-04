@@ -765,10 +765,14 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionQueue) {
 =======
 void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* userContext) {
 >>>>>>> added module doc
+=======
+void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionContext) {
+>>>>>>> renamed userContext to actionContext
   v8::HandleScope scope;
 
   // check the isolate
@@ -790,8 +794,12 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* userContext
                          v8::String::New(actionQueue),
 =======
   context->Global()->Set(v8::String::New("SYS_ACTION_CONTEXT"),
+<<<<<<< HEAD
                          v8::String::New(userContext),
 >>>>>>> added module doc
+=======
+                         v8::String::New(actionContext),
+>>>>>>> renamed userContext to actionContext
                          v8::ReadOnly);
 
   // .............................................................................

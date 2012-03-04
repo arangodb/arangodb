@@ -92,15 +92,20 @@ string ActionDispatcherThread::_startupModules;
 ////////////////////////////////////////////////////////////////////////////////
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 ActionDispatcherThread::ActionDispatcherThread (DispatcherQueue* queue,
                                                 string const& actionQueue,
                                                 JSLoader* actionLoader)
 =======
 ActionDisptacherThread::ActionDisptacherThread (DispatcherQueue* queue, string const& userContext)
 >>>>>>> added module doc
+=======
+ActionDisptacherThread::ActionDisptacherThread (DispatcherQueue* queue, string const& actionContext)
+>>>>>>> renamed userContext to actionContext
   : DispatcherThread(queue),
     _isolate(0),
     _context(),
+<<<<<<< HEAD
 <<<<<<< HEAD
     _actionQueue(actionQueue),
     _actionLoader(actionLoader),
@@ -108,6 +113,9 @@ ActionDisptacherThread::ActionDisptacherThread (DispatcherQueue* queue, string c
 =======
     _userContext(userContext) {
 >>>>>>> added module doc
+=======
+    _actionContext(actionContext) {
+>>>>>>> renamed userContext to actionContext
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -252,10 +260,14 @@ void ActionDispatcherThread::initialise () {
 
   TRI_InitV8VocBridge(_context, _vocbase);
 <<<<<<< HEAD
+<<<<<<< HEAD
   TRI_InitV8Actions(_context, _actionQueue.c_str());
 =======
   TRI_InitV8Actions(_context, _userContext.c_str());
 >>>>>>> added module doc
+=======
+  TRI_InitV8Actions(_context, _actionContext.c_str());
+>>>>>>> renamed userContext to actionContext
   TRI_InitV8Conversions(_context);
   TRI_InitV8Utils(_context, _startupModules);
   TRI_InitV8Shell(_context);
