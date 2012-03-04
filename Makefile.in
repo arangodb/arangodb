@@ -229,9 +229,12 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	RestServer/AvocadoHttpServer.$(OBJEXT) \
 	RestServer/AvocadoServer.$(OBJEXT) \
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 	RestServer/SystemActionDispatcherThread.$(OBJEXT) \
 >>>>>>> JS loader for avocsh
+=======
+>>>>>>> added module doc
 	RestServer/avocado.$(OBJEXT) \
 	ResultGenerator/HtmlResultGenerator.$(OBJEXT) \
 	ResultGenerator/Initialise.$(OBJEXT) \
@@ -674,9 +677,12 @@ avocado_SOURCES = \
 	RestServer/AvocadoHttpServer.cpp \
 	RestServer/AvocadoServer.cpp \
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 	RestServer/SystemActionDispatcherThread.cpp \
 >>>>>>> JS loader for avocsh
+=======
+>>>>>>> added module doc
 	RestServer/avocado.cpp \
 	ResultGenerator/HtmlResultGenerator.cpp \
 	ResultGenerator/Initialise.cpp \
@@ -1656,9 +1662,12 @@ mostlyclean-compile:
 	-rm -f RestServer/AvocadoHttpServer.$(OBJEXT)
 	-rm -f RestServer/AvocadoServer.$(OBJEXT)
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 	-rm -f RestServer/SystemActionDispatcherThread.$(OBJEXT)
 >>>>>>> JS loader for avocsh
+=======
+>>>>>>> added module doc
 	-rm -f RestServer/avocado.$(OBJEXT)
 	-rm -f ResultGenerator/HtmlResultGenerator.$(OBJEXT)
 	-rm -f ResultGenerator/Initialise.$(OBJEXT)
@@ -1852,9 +1861,12 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/AvocadoHttpServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/AvocadoServer.Po@am__quote@
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/SystemActionDispatcherThread.Po@am__quote@
 >>>>>>> JS loader for avocsh
+=======
+>>>>>>> added module doc
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/avocado.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ResultGenerator/$(DEPDIR)/HtmlResultGenerator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ResultGenerator/$(DEPDIR)/Initialise.Po@am__quote@

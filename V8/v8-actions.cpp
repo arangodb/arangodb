@@ -467,6 +467,7 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
   // Example:  
   //      {
 <<<<<<< HEAD
+<<<<<<< HEAD
   //        "suffix" : [
   //          "suffix1",
   //          "suffix2"
@@ -500,6 +501,26 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
   //        "_requestType":"GET",
   //        "_requestBody":"... only for PUT and POST ...",
 >>>>>>> unfinished actions cleanup
+=======
+  //        "suffix" : [
+  //          "suffix1",
+  //          "suffix2"
+  //        ],
+  //
+  //        "parameters" : {
+  //          "init" : "true"
+  //        },
+  //
+  //        "headers" : {
+  //          "accept" : "text/html",
+  //          "accept-encoding" : "gzip, deflate",
+  //          "accept-language" : "de-de,en-us;q=0.7,en;q=0.3",
+  //          "user-agent" : "Mozilla/5.0"
+  //        },
+  //
+  //        "requestType" : "GET",
+  //        "requestBody" : "... only for PUT and POST ..."
+>>>>>>> added module doc
   //      } 
   
   // copy suffix 
@@ -512,6 +533,7 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
 <<<<<<< HEAD
   for (size_t s = action->_urlParts;  s < suffix.size();  ++s) {
     suffixArray->Set(index++, v8::String::New(suffix[s].c_str()));
+<<<<<<< HEAD
   }
 
   req->Set(v8g->SuffixKey, suffixArray);
@@ -525,6 +547,11 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
 
   req->Set(v8g->SuffixKey, v8SuffixArray);
 >>>>>>> unfinished actions cleanup
+=======
+  }
+
+  req->Set(v8g->SuffixKey, suffixArray);
+>>>>>>> added module doc
   
   // copy header fields
   v8::Handle<v8::Object> headerFields = v8::Object::New();
@@ -572,9 +599,13 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
   
   // copy request parameter
 <<<<<<< HEAD
+<<<<<<< HEAD
   v8::Handle<v8::Array> parametersArray = v8::Array::New();
 =======
 >>>>>>> unfinished actions cleanup
+=======
+  v8::Handle<v8::Array> parametersArray = v8::Array::New();
+>>>>>>> added module doc
   map<string, string> values = request->values();
 
   for (map<string, string>::iterator i = values.begin();  i != values.end();  ++i) {
@@ -591,9 +622,13 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
     if (p == cb->_options->_parameters.end()) {
 =======
     if (p == action->_options._parameters.end()) {
+<<<<<<< HEAD
 >>>>>>> more action cleanup
       req->Set(v8::String::New(k.c_str()), v8::String::New(v.c_str()));
 >>>>>>> unfinished actions cleanup
+=======
+      parametersArray->Set(v8::String::New(k.c_str()), v8::String::New(v.c_str()));
+>>>>>>> added module doc
     }
     else {
       TRI_action_parameter_t const& ap = p->second;
@@ -607,10 +642,14 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
           }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
           parametersArray->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
 =======
           req->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
 >>>>>>> unfinished actions cleanup
+=======
+          parametersArray->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
+>>>>>>> added module doc
 
           break;
         }
@@ -629,15 +668,20 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
           }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
           parametersArray->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
 =======
           req->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
 >>>>>>> unfinished actions cleanup
+=======
+          parametersArray->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
+>>>>>>> added module doc
 
           break;
         }
 
         case TRI_ACT_NUMBER:
+<<<<<<< HEAD
 <<<<<<< HEAD
           parametersArray->Set(v8::String::New(k.c_str()), v8::Number::New(TRI_DoubleString(v.c_str())));
           break;
@@ -651,6 +695,13 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
         case TRI_ACT_STRING: {
           req->Set(v8::String::New(k.c_str()), v8::String::New(v.c_str()));
 >>>>>>> unfinished actions cleanup
+=======
+          parametersArray->Set(v8::String::New(k.c_str()), v8::Number::New(TRI_DoubleString(v.c_str())));
+          break;
+
+        case TRI_ACT_STRING: {
+          parametersArray->Set(v8::String::New(k.c_str()), v8::String::New(v.c_str()));
+>>>>>>> added module doc
           break;
         }
       }
@@ -713,7 +764,11 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
 /// @brief stores the V8 actions function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
+<<<<<<< HEAD
 void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionQueue) {
+=======
+void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* userContext) {
+>>>>>>> added module doc
   v8::HandleScope scope;
 
   // check the isolate
@@ -730,8 +785,13 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionQueue
   // .............................................................................
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   context->Global()->Set(v8::String::New("SYS_ACTION_QUEUE"),
                          v8::String::New(actionQueue),
+=======
+  context->Global()->Set(v8::String::New("SYS_ACTION_CONTEXT"),
+                         v8::String::New(userContext),
+>>>>>>> added module doc
                          v8::ReadOnly);
 
   // .............................................................................
@@ -752,6 +812,7 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionQueue
   // keys
   // .............................................................................
 
+<<<<<<< HEAD
 <<<<<<< HEAD
   v8g->BodyKey = v8::Persistent<v8::String>::New(v8::String::New("body"));
   v8g->ContentTypeKey = v8::Persistent<v8::String>::New(v8::String::New("contentType"));
@@ -776,6 +837,16 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionQueue
   v8g->ResponseCodeKey = v8::Persistent<v8::String>::New(v8::String::New("_responseCode"));
   v8g->SuffixKey = v8::Persistent<v8::String>::New(v8::String::New("_suffix"));
 >>>>>>> unfinished actions cleanup
+=======
+  v8g->BodyKey = v8::Persistent<v8::String>::New(v8::String::New("body"));
+  v8g->ContentTypeKey = v8::Persistent<v8::String>::New(v8::String::New("contentType"));
+  v8g->HeadersKey = v8::Persistent<v8::String>::New(v8::String::New("headers"));
+  v8g->ParametersKey = v8::Persistent<v8::String>::New(v8::String::New("parameters"));
+  v8g->RequestBodyKey = v8::Persistent<v8::String>::New(v8::String::New("requestBody"));
+  v8g->RequestTypeKey = v8::Persistent<v8::String>::New(v8::String::New("requestType"));
+  v8g->ResponseCodeKey = v8::Persistent<v8::String>::New(v8::String::New("responseCode"));
+  v8g->SuffixKey = v8::Persistent<v8::String>::New(v8::String::New("suffix"));
+>>>>>>> added module doc
 
   v8g->DeleteConstant = v8::Persistent<v8::String>::New(v8::String::New("DELETE"));
   v8g->GetConstant = v8::Persistent<v8::String>::New(v8::String::New("GET"));
