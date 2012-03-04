@@ -83,7 +83,9 @@ var console = require("console");
 /// worker queue.
 ///
 /// Note that the url for "user" actions is automatically prefixed
-/// with @LIT{action}.
+/// with @LIT{_action}. This applies to all specified contexts. For example, if
+/// the context contains "admin" and "user" and the url is @LIT{hallo}, then the
+/// action is accessible under @{/_action/hallo} - even for the admin context.
 ///
 /// It is possible to specify a list of contexts, in case an actions belongs to
 /// more than one context.
@@ -144,7 +146,7 @@ function defineHttp (options) {
   }
 
   if (userContext) {
-    url = "action/" + url;
+    url = "_action/" + url;
   }
 
   if (typeof callback !== "function") {
