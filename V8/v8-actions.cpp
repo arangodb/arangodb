@@ -361,32 +361,37 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
 
   // Example:  
   //      {
-  //        "_suffix":[
+  //        "suffix" : [
   //          "suffix1",
   //          "suffix2"
   //        ],
-  //        "_headers":
-  //            {
-  //              "accept":"text/html",
-  //              "accept-encoding":"gzip, deflate",
-  //              "accept-language":"de-de,en-us;q=0.7,en;q=0.3",
-  //              "user-agent":"Mozilla/5.0"
-  //            },
-  //        "_requestType":"GET",
-  //        "_requestBody":"... only for PUT and POST ...",
+  //
+  //        "parameters" : {
+  //          "init" : "true"
+  //        },
+  //
+  //        "headers" : {
+  //          "accept" : "text/html",
+  //          "accept-encoding" : "gzip, deflate",
+  //          "accept-language" : "de-de,en-us;q=0.7,en;q=0.3",
+  //          "user-agent" : "Mozilla/5.0"
+  //        },
+  //
+  //        "requestType" : "GET",
+  //        "requestBody" : "... only for PUT and POST ..."
   //      } 
   
   // copy suffix 
-  v8::Handle<v8::Array> v8SuffixArray = v8::Array::New();
+  v8::Handle<v8::Array> suffixArray = v8::Array::New();
   vector<string> const& suffix = request->suffix();
 
   uint32_t index = 0;
 
   for (size_t s = action->_urlParts;  s < suffix.size();  ++s) {
-    v8SuffixArray->Set(index++, v8::String::New(suffix[s].c_str()));
+    suffixArray->Set(index++, v8::String::New(suffix[s].c_str()));
   }
 
-  req->Set(v8g->SuffixKey, v8SuffixArray);
+  req->Set(v8g->SuffixKey, suffixArray);
   
   // copy header fields
   v8::Handle<v8::Object> headerFields = v8::Object::New();
@@ -425,6 +430,7 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
   }
   
   // copy request parameter
+  v8::Handle<v8::Array> parametersArray = v8::Array::New();
   map<string, string> values = request->values();
 
   for (map<string, string>::iterator i = values.begin();  i != values.end();  ++i) {
@@ -434,7 +440,7 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
     map<string, TRI_action_parameter_t>::const_iterator p = action->_options._parameters.find(k);
 
     if (p == action->_options._parameters.end()) {
-      req->Set(v8::String::New(k.c_str()), v8::String::New(v.c_str()));
+      parametersArray->Set(v8::String::New(k.c_str()), v8::String::New(v.c_str()));
     }
     else {
       TRI_action_parameter_t const& ap = p->second;
@@ -447,7 +453,7 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
             return new HttpResponse(HttpResponse::NOT_FOUND);
           }
 
-          req->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
+          parametersArray->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
 
           break;
         }
@@ -465,22 +471,24 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
             return new HttpResponse(HttpResponse::NOT_FOUND);
           }
 
-          req->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
+          parametersArray->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
 
           break;
         }
 
         case TRI_ACT_NUMBER:
-          req->Set(v8::String::New(k.c_str()), v8::Number::New(TRI_DoubleString(v.c_str())));
+          parametersArray->Set(v8::String::New(k.c_str()), v8::Number::New(TRI_DoubleString(v.c_str())));
           break;
 
         case TRI_ACT_STRING: {
-          req->Set(v8::String::New(k.c_str()), v8::String::New(v.c_str()));
+          parametersArray->Set(v8::String::New(k.c_str()), v8::String::New(v.c_str()));
           break;
         }
       }
     }
   }
+
+  req->Set(v8g->ParametersKey, parametersArray);  
 
   // execute the callback
   v8::Handle<v8::Object> res = v8::Object::New();
@@ -536,7 +544,7 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
 /// @brief stores the V8 actions function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Actions (v8::Handle<v8::Context> context) {
+void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* userContext) {
   v8::HandleScope scope;
 
   // check the isolate
@@ -547,6 +555,14 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context) {
     v8g = new TRI_v8_global_t;
     isolate->SetData(v8g);
   }
+
+  // .............................................................................
+  // create the global constants
+  // .............................................................................
+
+  context->Global()->Set(v8::String::New("SYS_ACTION_CONTEXT"),
+                         v8::String::New(userContext),
+                         v8::ReadOnly);
 
   // .............................................................................
   // create the global functions
@@ -560,14 +576,14 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context) {
   // keys
   // .............................................................................
 
-  v8g->BodyKey = v8::Persistent<v8::String>::New(v8::String::New("_body"));
-  v8g->ContentTypeKey = v8::Persistent<v8::String>::New(v8::String::New("_contentType"));
-  v8g->HeadersKey = v8::Persistent<v8::String>::New(v8::String::New("_headers"));
+  v8g->BodyKey = v8::Persistent<v8::String>::New(v8::String::New("body"));
+  v8g->ContentTypeKey = v8::Persistent<v8::String>::New(v8::String::New("contentType"));
+  v8g->HeadersKey = v8::Persistent<v8::String>::New(v8::String::New("headers"));
   v8g->ParametersKey = v8::Persistent<v8::String>::New(v8::String::New("parameters"));
-  v8g->RequestBodyKey = v8::Persistent<v8::String>::New(v8::String::New("_requestBody"));
-  v8g->RequestTypeKey = v8::Persistent<v8::String>::New(v8::String::New("_requestType"));
-  v8g->ResponseCodeKey = v8::Persistent<v8::String>::New(v8::String::New("_responseCode"));
-  v8g->SuffixKey = v8::Persistent<v8::String>::New(v8::String::New("_suffix"));
+  v8g->RequestBodyKey = v8::Persistent<v8::String>::New(v8::String::New("requestBody"));
+  v8g->RequestTypeKey = v8::Persistent<v8::String>::New(v8::String::New("requestType"));
+  v8g->ResponseCodeKey = v8::Persistent<v8::String>::New(v8::String::New("responseCode"));
+  v8g->SuffixKey = v8::Persistent<v8::String>::New(v8::String::New("suffix"));
 
   v8g->DeleteConstant = v8::Persistent<v8::String>::New(v8::String::New("DELETE"));
   v8g->GetConstant = v8::Persistent<v8::String>::New(v8::String::New("GET"));

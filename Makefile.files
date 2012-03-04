@@ -144,7 +144,6 @@ avocado_SOURCES = \
 	RestServer/ActionDispatcherThread.cpp \
 	RestServer/AvocadoHttpServer.cpp \
 	RestServer/AvocadoServer.cpp \
-	RestServer/SystemActionDispatcherThread.cpp \
 	RestServer/avocado.cpp \
 	ResultGenerator/HtmlResultGenerator.cpp \
 	ResultGenerator/Initialise.cpp \
@@ -269,6 +268,7 @@ BUILT_SOURCES += $(BISONXX_FILES)
 DOXYGEN = \
 	Doxygen/js/bootstrap/modules.c \
 	Doxygen/js/bootstrap/print.c \
+	Doxygen/js/modules/actions.c \
 	Doxygen/js/modules/graph.c \
 	Doxygen/js/modules/jsunity.c \
 	Doxygen/js/modules/simple-query.c \
@@ -298,6 +298,7 @@ WIKI = \
         Doxygen/xml/Graphs.md \
         Doxygen/xml/HttpInterface.md \
         Doxygen/xml/InstallManual.md \
+        Doxygen/xml/JSModuleActions.md \
         Doxygen/xml/JSModuleConsole.md \
         Doxygen/xml/JSModuleFs.md \
         Doxygen/xml/JSModuleGraph.md \

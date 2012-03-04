@@ -39,49 +39,51 @@ actions.defineHttp({
     function (req, res) {
       var text;
 
-      res._responseCode = 200;
-      res._contentType = "text/html";
+      res.responseCode = 200;
+      res.contentType = "text/html";
 
       text = "<h1>Hallo World</h1>\n"
            + "\n";
 
       text += "<ul>\n"
-           +  "<li>request type: " + req._requestType + "</li>\n"
+           +  "<li>request type: " + req.requestType + "</li>\n"
            +  "</ul>\n";
 
       text += "<h2>Parameters</h1>\n"
            +  "<ul>\n";
 
-      for (var i in req) {
-        if (req.hasOwnProperty(i) && i[0] != "_") {
-          text += "<li>" + i + " : " + req[i] + "</li>\n";
+      for (var i in req.parameters) {
+        if (req.parameters.hasOwnProperty(i)) {
+          text += "<li>" + i + " : " + req.parameters[i] + "</li>\n";
         }
       }
 
       text += "</ul>\n";
 
-      if (req._suffix && 0 < req._suffix.length) {
+      if (req.suffix && 0 < req.suffix.length) {
         text += "<h2>Suffices</h2>\n"
              + "<ol>\n";
 
-        for (var i = 0;  i < req._suffix.length;  ++i) {
-          text += "<li>" + req._suffix[i] + "</li>\n";
+        for (var i = 0;  i < req.suffix.length;  ++i) {
+          text += "<li>" + req.suffix[i] + "</li>\n";
         }
 
         text += "</ol>\n\n";
       }
 
-      if (req._headers) {
+      if (req.headers) {
         text += "<h2>Headers</h2>\n"
              +  "<ul>\n";
 
-        for (var i in req._headers) {
-          text += "<li>" + i + " : " + req._headers[i] + "</li>\n";
+        for (var i in req.headers) {
+          if (req.headers.hasOwnProperty(i)) {
+            text += "<li>" + i + " : " + req.headers[i] + "</li>\n";
+          }
         }
 
         text += "</ul>\n\n";
 
-        res._body = text;
+        res.body = text;
       }
     }
 });

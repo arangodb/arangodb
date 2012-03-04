@@ -228,7 +228,6 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	RestServer/ActionDispatcherThread.$(OBJEXT) \
 	RestServer/AvocadoHttpServer.$(OBJEXT) \
 	RestServer/AvocadoServer.$(OBJEXT) \
-	RestServer/SystemActionDispatcherThread.$(OBJEXT) \
 	RestServer/avocado.$(OBJEXT) \
 	ResultGenerator/HtmlResultGenerator.$(OBJEXT) \
 	ResultGenerator/Initialise.$(OBJEXT) \
@@ -668,7 +667,6 @@ avocado_SOURCES = \
 	RestServer/ActionDispatcherThread.cpp \
 	RestServer/AvocadoHttpServer.cpp \
 	RestServer/AvocadoServer.cpp \
-	RestServer/SystemActionDispatcherThread.cpp \
 	RestServer/avocado.cpp \
 	ResultGenerator/HtmlResultGenerator.cpp \
 	ResultGenerator/Initialise.cpp \
@@ -775,6 +773,7 @@ BISONXX_FILES = \
 DOXYGEN = \
 	Doxygen/js/bootstrap/modules.c \
 	Doxygen/js/bootstrap/print.c \
+	Doxygen/js/modules/actions.c \
 	Doxygen/js/modules/graph.c \
 	Doxygen/js/modules/jsunity.c \
 	Doxygen/js/modules/simple-query.c \
@@ -803,6 +802,7 @@ WIKI = \
         Doxygen/xml/Graphs.md \
         Doxygen/xml/HttpInterface.md \
         Doxygen/xml/InstallManual.md \
+        Doxygen/xml/JSModuleActions.md \
         Doxygen/xml/JSModuleConsole.md \
         Doxygen/xml/JSModuleFs.md \
         Doxygen/xml/JSModuleGraph.md \
@@ -1372,9 +1372,6 @@ RestServer/AvocadoHttpServer.$(OBJEXT): RestServer/$(am__dirstamp) \
 	RestServer/$(DEPDIR)/$(am__dirstamp)
 RestServer/AvocadoServer.$(OBJEXT): RestServer/$(am__dirstamp) \
 	RestServer/$(DEPDIR)/$(am__dirstamp)
-RestServer/SystemActionDispatcherThread.$(OBJEXT):  \
-	RestServer/$(am__dirstamp) \
-	RestServer/$(DEPDIR)/$(am__dirstamp)
 RestServer/avocado.$(OBJEXT): RestServer/$(am__dirstamp) \
 	RestServer/$(DEPDIR)/$(am__dirstamp)
 ResultGenerator/$(am__dirstamp):
@@ -1642,7 +1639,6 @@ mostlyclean-compile:
 	-rm -f RestServer/ActionDispatcherThread.$(OBJEXT)
 	-rm -f RestServer/AvocadoHttpServer.$(OBJEXT)
 	-rm -f RestServer/AvocadoServer.$(OBJEXT)
-	-rm -f RestServer/SystemActionDispatcherThread.$(OBJEXT)
 	-rm -f RestServer/avocado.$(OBJEXT)
 	-rm -f ResultGenerator/HtmlResultGenerator.$(OBJEXT)
 	-rm -f ResultGenerator/Initialise.$(OBJEXT)
@@ -1833,7 +1829,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/ActionDispatcherThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/AvocadoHttpServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/AvocadoServer.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/SystemActionDispatcherThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/avocado.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ResultGenerator/$(DEPDIR)/HtmlResultGenerator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ResultGenerator/$(DEPDIR)/Initialise.Po@am__quote@
