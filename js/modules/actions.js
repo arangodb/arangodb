@@ -58,12 +58,16 @@ var console = require("console");
 /// @anchor JSModuleActionsDefineHttp
 /// @copydetails JSF_defineHttp
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> doc module actions
 /// <hr>
 ///
 /// @anchor JSModuleActionsActionResult
 /// @copydetails JSF_actionResult
 /// <hr>
 ///
+<<<<<<< HEAD
 /// @anchor JSModuleActionsActionResultOK
 /// @copydetails JSF_actionResultOK
 /// <hr>
@@ -76,6 +80,8 @@ var console = require("console");
 /// @copydetails JSF_actionResultUnsupported
 /// <hr>
 ///
+=======
+>>>>>>> doc module actions
 /// @anchor JSModuleActionsActionError
 /// @copydetails JSF_actionError
 ////////////////////////////////////////////////////////////////////////////////
@@ -396,10 +402,18 @@ function actionError (req, res, err) {
 
   for (var i = 0;  i < contexts.length;  ++i) {
     var context = contexts[i];
+    var queue = "CLIENT";
+
+    if (context == "admin") {
+      queue = "SYSTEM";
+    }
+    else if (context == "monitoring") {
+      queue = "MONITORING";
+    }
 
     try {
-      internal.defineAction(url, "CLIENT", callback, parameter);
-      console.debug("defining action '" + url + "' in context " + context);
+      internal.defineAction(url, queue, callback, parameter);
+      console.debug("defining action '" + url + "' in context " + context " using queue " + queue);
     }
     catch (err) {
       console.error("action '" + url + "' encountered error: " + err);
@@ -408,12 +422,13 @@ function actionError (req, res, err) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a result
+/// @brief generates a response
 ///
 /// @FUN{actionResult(@FA{req}, @FA{res}, @FA{code}, @FA{result}, @FA{headers})}
 ///
-/// The functions returns a result object. @FA{code} is the status code
-/// to return.
+/// The functions defines a response. @FA{code} is the status code to
+/// return. @FA{result} is the result object, which will be returned as JSON
+/// object in the body. @{headers} is an array of headers to returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 function actionResult (req, res, code, result, headers) {
@@ -430,11 +445,11 @@ function actionResult (req, res, code, result, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns an error
+/// @brief generates an error response
 ///
 /// @FUN{actionError(@FA{req}, @FA{res}, @FA{errorMessage})}
 ///
-/// The functions returns an error message. The status code is 500 and the
+/// The functions generates an error response. The status code is 500 and the
 /// returned object is an array with an attribute @LIT{error} containing
 /// the error message @FA{errorMessage}.
 ////////////////////////////////////////////////////////////////////////////////
@@ -446,6 +461,7 @@ function actionError (req, res, err) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+<<<<<<< HEAD
 /// @brief returns a result of a query as documents
 ///
 /// @FUN{queryResult(@FA{req}, @FA{res}, @FA{query})}
@@ -659,6 +675,8 @@ function actionError (req, res, err) {
 ////////////////////////////////////////////////////////////////////////////////
 =======
 >>>>>>> action cleanup
+=======
+>>>>>>> doc module actions
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
