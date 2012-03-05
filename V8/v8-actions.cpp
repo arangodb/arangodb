@@ -544,7 +544,7 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
 /// @brief stores the V8 actions function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionQeue) {
+void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionQueue) {
   v8::HandleScope scope;
 
   // check the isolate
@@ -561,7 +561,7 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionQeue)
   // .............................................................................
 
   context->Global()->Set(v8::String::New("SYS_ACTION_QUEUE"),
-                         v8::String::New(actionQeue),
+                         v8::String::New(actionQueue),
                          v8::ReadOnly);
 
   // .............................................................................

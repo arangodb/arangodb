@@ -80,6 +80,7 @@ function Module (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Module.prototype.require = function (path) {
+  var raw;
   var content;
   var sandbox;
   var paths;
@@ -95,12 +96,12 @@ Module.prototype.require = function (path) {
   }
 
   // locate file and read content
-  content = internal.readFile(path);
+  raw = internal.readFile(path);
 
   // create a new sandbox and execute
   ModuleCache[path] = module = new Module(path);
 
-  content = "(function (module, exports, require, print) {" + content + "\n});";
+  content = "(function (module, exports, require, print) {" + raw.content + "\n/* end-of-file '" + raw.path + "' */ });";
 
   try {
     f = SYS_EXECUTE(content, undefined, path);
@@ -347,7 +348,7 @@ internal.readFile = function (path) {
     }
 
     if (FS_EXISTS(n)) {
-      return SYS_READ(n);
+      return { path : n, content : SYS_READ(n) };
     }
   }
 

@@ -297,7 +297,7 @@ function runTest (path) {
     content = SYS_READ(path);
   }
   catch (err) {
-    console.error("cannot load test file '" + path + "'");
+    console.error("cannot load test file '%s'", path);
     return;
   }
 

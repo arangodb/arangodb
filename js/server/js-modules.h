@@ -116,7 +116,7 @@ static string JS_server_modules =
   "  require(\"simple-query\");\n"
   "}\n"
   "catch (err) {\n"
-  "  console.error(\"while loading 'simple-query' module: \" + err);\n"
+  "  console.error(\"while loading 'simple-query' module: %s\", err);\n"
   "}\n"
   "\n"
   "////////////////////////////////////////////////////////////////////////////////\n"
