@@ -166,6 +166,42 @@ bool JSLoader::loadAllScripts (v8::Persistent<v8::Context> context) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief loads a named script
+////////////////////////////////////////////////////////////////////////////////
+
+bool JSLoader::executeScript (v8::Persistent<v8::Context> context, string const& name) {
+  v8::HandleScope scope;
+
+  findScript(name);
+
+  map<string, string>::iterator i = _scripts.find(name);
+
+  if (i == _scripts.end()) {
+    return false;
+  }
+
+  string content = "(function() { " + i->second + "/* end-of-file '" + name + "' */ })()";
+
+  return TRI_ExecuteStringVocBase(context,
+                                  v8::String::New(content.c_str()),
+                                  v8::String::New(name.c_str()),
+                                  false,
+                                  true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes all scripts
+////////////////////////////////////////////////////////////////////////////////
+
+bool JSLoader::executeAllScripts (v8::Persistent<v8::Context> context) {
+  if (_directory.empty()) {
+    return true;
+  }
+
+  return TRI_ExecuteJavaScriptDirectory(context, _directory.c_str());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -116,16 +116,16 @@ static JSLoader SystemActionLoader;
 /// @brief action dispatcher thread creator
 ////////////////////////////////////////////////////////////////////////////////
 
-static DispatcherThread* ActionDisptacherThreadCreator (DispatcherQueue* queue) {
-  return new ActionDisptacherThread(queue, "user");
+static DispatcherThread* ClientActionDispatcherThreadCreator (DispatcherQueue* queue) {
+  return new ActionDispatcherThread(queue, "CLIENT", &ActionLoader);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief system action dispatcher thread creator
 ////////////////////////////////////////////////////////////////////////////////
 
-static DispatcherThread* SystemActionDisptacherThreadCreator (DispatcherQueue* queue) {
-  return new ActionDisptacherThread(queue, "admin");
+static DispatcherThread* SystemActionDispatcherThreadCreator (DispatcherQueue* queue) {
+  return new ActionDispatcherThread(queue, "SYSTEM", &SystemActionLoader);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -384,11 +384,14 @@ void AvocadoServer::buildApplicationServer () {
 
   if (_actionPath.empty()) {
     char* path = TRI_Concatenate2File(_databasePath.c_str(), "_ACTIONS");
-    string pathString(path);
-    if (path) {
-      // memleak otherwise
-      TRI_Free(path);
+
+    if (path == 0) {
+      LOGGER_FATAL << "out-of-memory";
+      exit(EXIT_FAILURE);
     }
+
+    string pathString(path);
+    TRI_FreeString(path);
 
     if (! TRI_IsDirectory(pathString.c_str())) {
       bool ok = TRI_ExistsFile(pathString.c_str());
@@ -483,12 +486,9 @@ int AvocadoServer::startupServer () {
 
   LOGGER_INFO << "using JavaScript modules path '" << _startupModules << "'";
 
-  ActionDisptacherThread::_actionLoader = &ActionLoader;
-  ActionDisptacherThread::_startupLoader = &StartupLoader;
-  ActionDisptacherThread::_vocbase = _vocbase;
-  ActionDisptacherThread::_startupModules = _startupModules;
-
-  // TODO SystemActionDisptacherThread::_actionLoader = &SystemActionLoader;
+  ActionDispatcherThread::_startupLoader = &StartupLoader;
+  ActionDispatcherThread::_vocbase = _vocbase;
+  ActionDispatcherThread::_startupModules = _startupModules;
 
   // .............................................................................
   // create the various parts of the Avocado server
@@ -508,8 +508,8 @@ int AvocadoServer::startupServer () {
     _actionThreads = 1;
   }
 
-  safe_cast<DispatcherImpl*>(dispatcher)->addQueue("CLIENT", ActionDisptacherThreadCreator, _actionThreads);
-  safe_cast<DispatcherImpl*>(dispatcher)->addQueue("SYSTEM", SystemActionDisptacherThreadCreator, 2);
+  safe_cast<DispatcherImpl*>(dispatcher)->addQueue("CLIENT", ClientActionDispatcherThreadCreator, _actionThreads);
+  safe_cast<DispatcherImpl*>(dispatcher)->addQueue("SYSTEM", SystemActionDispatcherThreadCreator, 2);
 
   // .............................................................................
   // create a http server and http handler factory
@@ -546,8 +546,6 @@ int AvocadoServer::startupServer () {
 
     adminFactory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestCollectionHandler>::createData<TRI_vocbase_t*>, _vocbase);
     adminFactory->addPrefixHandler("/", RestHandlerCreator<RestActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
-
-    adminFactory->addHandler("/", RedirectHandler::create, (void*) "/admin/index.html");
 
     _adminHttpServer = _applicationHttpServer->buildServer(adminFactory, adminPorts);
   }
