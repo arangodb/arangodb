@@ -33,7 +33,7 @@ var actions = require("actions");
 
 actions.defineHttp({
   url : "hallo-world",
-  domain : "user",
+  context : "user",
 
   callback : 
     function (req, res) {

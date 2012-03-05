@@ -202,29 +202,48 @@ function defineHttp (options) {
   }
 
   if (typeof callback !== "function") {
-    console.error("callback for '" + url + "' must be a function, got '" + (typeof callback) + "'");
+    console.error("callback for '%s' must be a function, got '%s'", url + (typeof callback));
     return;
   }
 
-  console.debug("callback ", callback, "\n");
+  // console.debug("callback: %s", callback);
 
   for (var i = 0;  i < contexts.length;  ++i) {
     var context = contexts[i];
-    var queue = "CLIENT";
+    var use = false;
 
     if (context == "admin") {
-      queue = "SYSTEM";
+      if (SYS_ACTION_QUEUE == "SYSTEM") {
+        use = true;
+      }
+    }
+    else if (context == "api") {
+      if (SYS_ACTION_QUEUE == "SYSTEM" || SYS_ACTION_QUEUE == "CLIENT") {
+        use = true;
+      }
+    }
+    else if (context == "user") {
+      if (SYS_ACTION_QUEUE == "SYSTEM" || SYS_ACTION_QUEUE == "CLIENT") {
+        use = true;
+      }
     }
     else if (context == "monitoring") {
-      queue = "MONITORING";
+      if (SYS_ACTION_QUEUE == "MONITORING") {
+        use = true;
+      }
     }
 
-    try {
-      internal.defineAction(url, queue, callback, parameter);
-      console.debug("defining action '" + url + "' in context " + context + " using queue " + queue);
+    if (use) {
+      try {
+        internal.defineAction(url, SYS_ACTION_QUEUE, callback, parameter);
+        console.debug("defining action '%s' in context '%s' using queue '%s'", url, context, SYS_ACTION_QUEUE);
+      }
+      catch (err) {
+        console.error("action '%s' encountered error: %s", url, err);
+      }
     }
-    catch (err) {
-      console.error("action '" + url + "' encountered error: " + err);
+    else {
+      console.debug("ignoring '%s' for context '%s' in queue '%s'", url, context, SYS_ACTION_QUEUE);
     }
   }
 }

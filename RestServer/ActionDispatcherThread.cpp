@@ -44,7 +44,7 @@ using namespace triagens::rest;
 using namespace triagens::avocado;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      class ActionDisptacherThread
+// --SECTION--                                      class ActionDispatcherThread
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -57,28 +57,22 @@ using namespace triagens::avocado;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief action path
-////////////////////////////////////////////////////////////////////////////////
-
-JSLoader* ActionDisptacherThread::_actionLoader = 0;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief startup path
 ////////////////////////////////////////////////////////////////////////////////
 
-JSLoader* ActionDisptacherThread::_startupLoader = 0;
+JSLoader* ActionDispatcherThread::_startupLoader = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief vocbase
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* ActionDisptacherThread::_vocbase = 0;
+TRI_vocbase_t* ActionDispatcherThread::_vocbase = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief modules path
 ////////////////////////////////////////////////////////////////////////////////
 
-string ActionDisptacherThread::_startupModules;
+string ActionDispatcherThread::_startupModules;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -97,19 +91,22 @@ string ActionDisptacherThread::_startupModules;
 /// @brief constructs a new dispatcher thread
 ////////////////////////////////////////////////////////////////////////////////
 
-ActionDisptacherThread::ActionDisptacherThread (DispatcherQueue* queue, string const& actionQeue)
+ActionDispatcherThread::ActionDispatcherThread (DispatcherQueue* queue,
+                                                string const& actionQueue,
+                                                JSLoader* actionLoader)
   : DispatcherThread(queue),
     _report(false),
     _isolate(0),
     _context(),
-    _actionQeue(actionQeue) {
+    _actionQueue(actionQueue),
+    _actionLoader(actionLoader) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a dispatcher thread
 ////////////////////////////////////////////////////////////////////////////////
 
-ActionDisptacherThread::~ActionDisptacherThread () {
+ActionDispatcherThread::~ActionDispatcherThread () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -129,7 +126,7 @@ ActionDisptacherThread::~ActionDisptacherThread () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ActionDisptacherThread::reportStatus () {
+void ActionDispatcherThread::reportStatus () {
   _report = true;
 }
 
@@ -137,7 +134,7 @@ void ActionDisptacherThread::reportStatus () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ActionDisptacherThread::tick () {
+void ActionDispatcherThread::tick () {
   while(!v8::V8::IdleNotification()) {
   }
 
@@ -174,7 +171,7 @@ void ActionDisptacherThread::tick () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ActionDisptacherThread::run () {
+void ActionDispatcherThread::run () {
   initialise();
 
   _isolate->Enter();
@@ -206,7 +203,7 @@ void ActionDisptacherThread::run () {
 /// returns the action loader
 ////////////////////////////////////////////////////////////////////////////////
 
-JSLoader* ActionDisptacherThread::actionLoader () {
+JSLoader* ActionDispatcherThread::actionLoader () {
   return _actionLoader;
 }
 
@@ -227,7 +224,7 @@ JSLoader* ActionDisptacherThread::actionLoader () {
 /// @brief initialises the isolate and context
 ////////////////////////////////////////////////////////////////////////////////
 
-void ActionDisptacherThread::initialise () {
+void ActionDispatcherThread::initialise () {
   bool ok;
   char const* files[] = { "bootstrap/modules.js",
                           "bootstrap/print.js",
@@ -254,7 +251,7 @@ void ActionDisptacherThread::initialise () {
   _context->Enter();
 
   TRI_InitV8VocBridge(_context, _vocbase);
-  TRI_InitV8Actions(_context, _actionQeue.c_str());
+  TRI_InitV8Actions(_context, _actionQueue.c_str());
   TRI_InitV8Conversions(_context);
   TRI_InitV8Utils(_context, _startupModules);
   TRI_InitV8Shell(_context);
@@ -279,7 +276,7 @@ void ActionDisptacherThread::initialise () {
     LOGGER_WARNING << "no action loader has been defined";
   }
   else {
-    ok = actionLoader()->loadAllScripts(_context);
+    ok = actionLoader()->executeAllScripts(_context);
 
     if (! ok) {
       LOGGER_FATAL << "cannot load actions from directory '" << loader->getDirectory() << "'";
