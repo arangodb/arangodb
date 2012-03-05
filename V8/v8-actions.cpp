@@ -766,6 +766,7 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionQueue) {
 =======
 void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* userContext) {
@@ -773,6 +774,9 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* userContext
 =======
 void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionContext) {
 >>>>>>> renamed userContext to actionContext
+=======
+void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionQeue) {
+>>>>>>> better error handling
   v8::HandleScope scope;
 
   // check the isolate
@@ -790,6 +794,7 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionConte
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   context->Global()->Set(v8::String::New("SYS_ACTION_QUEUE"),
                          v8::String::New(actionQueue),
 =======
@@ -800,6 +805,10 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionConte
 =======
                          v8::String::New(actionContext),
 >>>>>>> renamed userContext to actionContext
+=======
+  context->Global()->Set(v8::String::New("SYS_ACTION_QUEUE"),
+                         v8::String::New(actionQeue),
+>>>>>>> better error handling
                          v8::ReadOnly);
 
   // .............................................................................

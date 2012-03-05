@@ -1535,7 +1535,50 @@ void TRI_PrintV8Exception (v8::TryCatch* tryCatch) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_LoadJavaScriptFile (v8::Handle<v8::Context> context, char const* filename) {
+<<<<<<< HEAD
   return LoadJavaScriptFile(context, filename, false);
+=======
+  v8::HandleScope handleScope;
+  v8::TryCatch tryCatch;
+
+  char* content = TRI_SlurpFile(filename);
+
+  if (content == 0) {
+    LOG_TRACE("cannot loaded java script file '%s': %s", filename, TRI_last_error());
+    return false;
+  }
+
+  v8::Handle<v8::String> name = v8::String::New(filename);
+  v8::Handle<v8::String> source = v8::String::New(content);
+
+  TRI_FreeString(content);
+
+  v8::Handle<v8::Script> script = v8::Script::Compile(source, name);
+
+  // compilation failed, print errors that happened during compilation
+  if (script.IsEmpty()) {
+    LOG_ERROR("cannot compile java script file '%s'", filename);
+    TRI_ReportV8Exception(&tryCatch);
+    return false;
+  }
+
+  // execute script
+  v8::Handle<v8::Value> result = script->Run();
+
+  if (result.IsEmpty()) {
+    assert(tryCatch.HasCaught());
+
+    // print errors that happened during execution
+    LOG_ERROR("cannot execute java script file '%s'", filename);
+    TRI_ReportV8Exception(&tryCatch);
+
+    return false;
+  }
+
+  LOG_TRACE("loaded java script file: '%s'", filename);
+
+  return true;
+>>>>>>> better error handling
 }
 
 ////////////////////////////////////////////////////////////////////////////////
