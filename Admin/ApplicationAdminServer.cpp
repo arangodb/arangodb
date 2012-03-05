@@ -196,7 +196,7 @@ void ApplicationAdminServer::addHandlers (HttpHandlerFactory* factory, string co
   // .............................................................................
 
   if (_allowLogViewer) {
-    factory->addHandler("/admin/log", RestHandlerCreator<RestAdminLogHandler>::createNoData, 0);
+    factory->addHandler(prefix + "/log", RestHandlerCreator<RestAdminLogHandler>::createNoData, 0);
   }
 
   // .............................................................................
@@ -212,7 +212,7 @@ void ApplicationAdminServer::addHandlers (HttpHandlerFactory* factory, string co
       reinterpret_cast<PathHandler::Options*>(_pathOptions)->allowSymbolicLink = false;
       reinterpret_cast<PathHandler::Options*>(_pathOptions)->defaultFile = "index.html";
       
-      factory->addPrefixHandler(prefix, RestHandlerCreator<PathHandler>::createData<PathHandler::Options*>, _pathOptions);
+      factory->addPrefixHandler(prefix + "/html", RestHandlerCreator<PathHandler>::createData<PathHandler::Options*>, _pathOptions);
     }
   }
   
@@ -221,7 +221,9 @@ void ApplicationAdminServer::addHandlers (HttpHandlerFactory* factory, string co
   // .............................................................................
   
   if (_allowFeConfiguration) {
-    factory->addHandler(prefix + "/fe-configuration", RestHandlerCreator<RestAdminFeConfigurationHandler>::createData<char const*>, (void*) _feConfiguration.c_str());
+    factory->addHandler(prefix + "/fe-configuration", 
+                        RestHandlerCreator<RestAdminFeConfigurationHandler>::createData<char const*>,
+                        (void*) _feConfiguration.c_str());
   }
 }
 
