@@ -83,6 +83,8 @@ actions.defineHttp({
 
         text += "</ul>\n\n";
 
+        text += "<code>" + JSON.stringify(req) + "</code>\n\n";
+
         res.body = text;
       }
     }
