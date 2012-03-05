@@ -1,3 +1,5 @@
+var actions = require("actions");
+
 function getCollections(req, res) {
   var colls;
   var coll;
@@ -9,16 +11,16 @@ function getCollections(req, res) {
   var skip = 0;
   var end = colls.length;
 
-  if (req._parameters != undefined) {
-    if (req._parameters["skip"] != undefined) {
-      skip = parseInt(req._parameters["skip"]);
+  if (req.parameters != undefined) {
+    if (req.parameters["skip"] != undefined) {
+      skip = parseInt(req.parameters["skip"]);
       if (skip < 0) {
         skip = 0;
       }
     }
 
-    if (req._parameters["limit"] != undefined) {      
-      var limit = parseInt(req._parameters["limit"]);
+    if (req.parameters["limit"] != undefined) {      
+      var limit = parseInt(req.parameters["limit"]);
       if (limit < 0) {
         end = colls.length;
       }
@@ -50,23 +52,21 @@ function getCollections(req, res) {
     };
   }
 
-  actionResultOK(req, res, 200, result);  
+  actions.actionResultOK(req, res, 200, result);  
 }
 
-defineAction("_api/collections",
-  function (req, res) {
-    
-    switch (req._requestType) {
+actions.defineHttp({
+  url : "_api/collections",
+  context : "api",
+
+  callback : function (req, res) {
+    switch (req.requestType) {
       case ("GET") : 
         getCollections(req, res); 
         break;
+
       default:
-        actionResultError (req, res, 405, 405, "Unsupported method");
-    }
-    
-  },
-  {
-    parameters : {
+        actions.actionResultError (req, res, 405, 405, "Unsupported method");
     }
   }
-);
+});
