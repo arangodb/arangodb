@@ -274,20 +274,26 @@ void TRI_CreateActionVocBase (string const& name,
   WRITE_LOCKER(ActionsLock);
   WRITE_LOCKER(v8g->ActionsLock);
 
+  string url = name;
+
+  while (! url.empty() && url[0] == '/') {
+    url = url.substr(1);
+  }
+
   // create a new action and store the callback function
-  if (Actions.find(name) == Actions.end()) {
+  if (Actions.find(url) == Actions.end()) {
     TRI_action_t* action = new TRI_action_t;
 
-    action->_url = name;
-    action->_urlParts = StringUtils::split(name, "/").size();
+    action->_url = url;
+    action->_urlParts = StringUtils::split(url, "/").size();
     action->_queue = queue;
     action->_options = ao;
 
-    Actions[name] = action;
+    Actions[url] = action;
   }
 
   // check if we already know an callback
-  map< string, v8::Persistent<v8::Function> >::iterator i = v8g->Actions.find(name);
+  map< string, v8::Persistent<v8::Function> >::iterator i = v8g->Actions.find(url);
 
   if (i != v8g->Actions.end()) {
     v8::Persistent<v8::Function> cb = i->second;
@@ -295,10 +301,10 @@ void TRI_CreateActionVocBase (string const& name,
     cb.Dispose();
   }
 
-  v8g->Actions[name] = v8::Persistent<v8::Function>::New(callback);
+  v8g->Actions[url] = v8::Persistent<v8::Function>::New(callback);
 
   // some debug output
-  LOG_DEBUG("created action '%s' for queue %s", name.c_str(), queue.c_str());
+  LOG_DEBUG("created action '%s' for queue %s", url.c_str(), queue.c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

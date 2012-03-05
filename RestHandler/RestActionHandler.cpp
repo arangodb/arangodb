@@ -127,12 +127,15 @@ HttpHandler::status_e RestActionHandler::execute () {
 
       default:
         res = false;
-        generateNotImplemented("ILLEGAL METHODS");
+        generateNotImplemented("METHOD");
         break;
     }
   }
   else {
-    generateNotImplemented("ILLEGAL PATH");
+    string n = request->requestPath();
+    n += StringUtils::join(request->suffix(), "/");
+
+    generateNotImplemented(n);
   }
 
   _timingResult = res ? RES_ERR : RES_OK;
