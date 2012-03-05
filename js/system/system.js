@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief system actions for monitoring
+/// @brief administration actions
 ///
 /// @file
 ///
@@ -25,7 +25,7 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var httpSystemAction = require("avocado").defineHttpSystemAction;
+var actions = require("actions");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            administration actions
@@ -36,19 +36,22 @@ var httpSystemAction = require("avocado").defineHttpSystemAction;
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-httpSystemAction("status",
-  function (req, res) {
+actions.defineHttp({
+  url : "admin/status",
+  context : "admin",
+
+  callback : function (req, res) {
     try {
       result = {};
       result.system = SYS_PROCESS_STAT();
 
-      actionResult(req, res, 200, result);
+      actions.actionResult(req, res, 200, result);
     }
     catch (err) {
-      actionError(req, res, err);
+      actions.actionError(req, res, err);
     }
   }
-);
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
