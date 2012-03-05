@@ -101,7 +101,14 @@ Module.prototype.require = function (path) {
   ModuleCache[path] = module = new Module(path);
 
   content = "(function (module, exports, require, print) {" + content + "\n});";
-  f = SYS_EXECUTE(content, undefined, path);
+
+  try {
+    f = SYS_EXECUTE(content, undefined, path);
+  }
+  catch (err) {
+    CONSOLE_ERROR("in file %s: %o", path, err.stack);
+    throw err;
+  }
 
   if (f == undefined) {
     throw "cannot create context function";

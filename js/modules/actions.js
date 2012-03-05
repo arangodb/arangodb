@@ -33,6 +33,11 @@ var console = require("console");
 ///
 /// <ol>
 ///  <li>@ref JSModuleActionsDefineHttp "defineHttp"</li>
+///  <li>@ref JSModuleActionsActionResult "actionResult"</li>
+///  <li>@ref JSModuleActionsActionResultOK "actionResultOK"</li>
+///  <li>@ref JSModuleActionsActionResultError "actionResultError"</li>
+///  <li>@ref JSModuleActionsActionResultUnsupported "actionResultUnsupported"</li>
+///  <li>@ref JSModuleActionsActionError "actionError"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -53,8 +58,47 @@ var console = require("console");
 /// @copydetails JSF_actionResult
 /// <hr>
 ///
+/// @anchor JSModuleActionsActionResultOK
+/// @copydetails JSF_actionResultOK
+/// <hr>
+///
+/// @anchor JSModuleActionsActionResultError
+/// @copydetails JSF_actionResultError
+/// <hr>
+///
+/// @anchor JSModuleActionsActionResultUnsupported
+/// @copydetails JSF_actionResultUnsupported
+/// <hr>
+///
 /// @anchor JSModuleActionsActionError
 /// @copydetails JSF_actionError
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public constants
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoActions
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief error codes 
+////////////////////////////////////////////////////////////////////////////////
+
+exports.queryNotFound = 10404;
+exports.queryNotModified = 10304;
+
+exports.collectionNotFound = 20404;
+exports.documentNotFound = 30404;
+exports.documentNotModified = 30304;
+
+exports.cursorNotFound = 40404;
+exports.cursorNotModified = 40304;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
@@ -62,7 +106,7 @@ var console = require("console");
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Json V8 JSON
+/// @addtogroup AvocadoActions
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -177,7 +221,7 @@ function defineHttp (options) {
 
     try {
       internal.defineAction(url, queue, callback, parameter);
-      console.debug("defining action '" + url + "' in context " + context " using queue " + queue);
+      console.debug("defining action '" + url + "' in context " + context + " using queue " + queue);
     }
     catch (err) {
       console.error("action '" + url + "' encountered error: " + err);
@@ -225,6 +269,76 @@ function actionError (req, res, err) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a result
+///
+/// @FUN{actionResultOK(@FA{req}, @FA{res}, @FA{code}, @FA{result}, @FA{headers}})}
+///
+/// Works like @FN{actionResult} but adds the attribute @LIT{error} with
+/// value @LIT{false} and @LIT{code} with value @FA{code} to the @FA{result}.
+////////////////////////////////////////////////////////////////////////////////
+
+function actionResultOK (req, res, httpReturnCode, result, headers) {  
+  res.responseCode = httpReturnCode;
+  res.contentType = "application/json";
+  
+  // add some default attributes to result
+  if (result == undefined) {
+    result = {};
+  }
+
+  result.error = false;  
+  result.code = httpReturnCode;
+  
+  res.body = JSON.stringify(result);
+  
+  if (headers != undefined) {
+    res.headers = headers;    
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns an error
+///
+/// @FUN{actionResultError(@FA{req}, @FA{res}, @FA{code}, @FA{errorNum}, @FA{errorMessage}, @FA{headers})}
+///
+/// The functions generates an error response. The response body is an array
+/// with an attribute @LIT{errorMessage} containing the error message
+/// @FA{errorMessage}, @LIT{error} containing @LIT{true}, @LIT{code}
+/// containing @FA{code}, @LIT{errorNum} containing @FA{errorNum}, and
+/// $LIT{errorMessage} containing the error message @FA{errorMessage}.
+////////////////////////////////////////////////////////////////////////////////
+
+function actionResultError (req, res, httpReturnCode, errorNum, errorMessage, headers) {  
+  res.responseCode = httpReturnCode;
+  res.contentType = "application/json";
+  
+  var result = {
+    "error"        : true,
+    "code"         : httpReturnCode,
+    "errorNum"     : errorNum,
+    "errorMessage" : errorMessage
+  }
+  
+  res.body = JSON.stringify(result);
+
+  if (headers != undefined) {
+    res.headers = headers;    
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns an error for unsupported methods
+///
+/// @FUN{actionResultUnsupported(@FA{req}, @FA{res}, @FA{headers})}
+///
+/// The functions generates an error response.
+////////////////////////////////////////////////////////////////////////////////
+
+function actionResultUnsupported (req, res, headers) {
+  actionResultError(req, res, 405, 405, "Unsupported method", headers);  
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -233,11 +347,16 @@ function actionError (req, res, err) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoGraph
+/// @addtogroup AvocadoActions
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.defineHttp = defineHttp;
+exports.actionResult = actionResult;
+exports.actionResultOK = actionResultOK;
+exports.actionResultError = actionResultError;
+exports.actionResultUnsupported = actionResultUnsupported;
+exports.actionError = actionError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

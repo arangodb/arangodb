@@ -97,12 +97,12 @@ string ActionDisptacherThread::_startupModules;
 /// @brief constructs a new dispatcher thread
 ////////////////////////////////////////////////////////////////////////////////
 
-ActionDisptacherThread::ActionDisptacherThread (DispatcherQueue* queue, string const& actionContext)
+ActionDisptacherThread::ActionDisptacherThread (DispatcherQueue* queue, string const& actionQeue)
   : DispatcherThread(queue),
     _report(false),
     _isolate(0),
     _context(),
-    _actionContext(actionContext) {
+    _actionQeue(actionQeue) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -254,7 +254,7 @@ void ActionDisptacherThread::initialise () {
   _context->Enter();
 
   TRI_InitV8VocBridge(_context, _vocbase);
-  TRI_InitV8Actions(_context, _actionContext.c_str());
+  TRI_InitV8Actions(_context, _actionQeue.c_str());
   TRI_InitV8Conversions(_context);
   TRI_InitV8Utils(_context, _startupModules);
   TRI_InitV8Shell(_context);
@@ -283,10 +283,6 @@ void ActionDisptacherThread::initialise () {
 
     if (! ok) {
       LOGGER_FATAL << "cannot load actions from directory '" << loader->getDirectory() << "'";
-      cerr  << "cannot load actions from directory '" << loader->getDirectory() << "'\n";
-      _context->Exit();
-      _isolate->Exit();
-      exit(EXIT_FAILURE);
     }
   }
 

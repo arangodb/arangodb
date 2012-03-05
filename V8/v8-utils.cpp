@@ -638,6 +638,8 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
   if (script.IsEmpty()) {
     assert(tryCatch.HasCaught());
 
+    TRI_PrintV8Exception(&tryCatch);
+
     if (useSandbox) {
       context->DetachGlobal();
       context->Exit();
@@ -651,6 +653,8 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
 
   if (result.IsEmpty()) {
     assert(tryCatch.HasCaught());
+
+    TRI_PrintV8Exception(&tryCatch);
 
     if (useSandbox) {
       context->DetachGlobal();
@@ -1312,6 +1316,7 @@ bool TRI_LoadJavaScriptFile (v8::Handle<v8::Context> context, char const* filena
 
   // compilation failed, print errors that happened during compilation
   if (script.IsEmpty()) {
+    LOG_ERROR("cannot compile java script file '%s'", filename);
     TRI_ReportV8Exception(&tryCatch);
     return false;
   }
@@ -1323,6 +1328,7 @@ bool TRI_LoadJavaScriptFile (v8::Handle<v8::Context> context, char const* filena
     assert(tryCatch.HasCaught());
 
     // print errors that happened during execution
+    LOG_ERROR("cannot execute java script file '%s'", filename);
     TRI_ReportV8Exception(&tryCatch);
 
     return false;
