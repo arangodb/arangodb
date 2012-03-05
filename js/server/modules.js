@@ -115,7 +115,7 @@ try {
   require("simple-query");
 }
 catch (err) {
-  console.error("while loading 'simple-query' module: " + err);
+  console.error("while loading 'simple-query' module: %s", err);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

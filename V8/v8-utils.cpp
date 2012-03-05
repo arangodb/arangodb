@@ -567,6 +567,122 @@ bool TRI_ExecuteOrderExecutionContext (TRI_js_exec_context_t context, int* r) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief reads/execute a file into/in the current context
+////////////////////////////////////////////////////////////////////////////////
+
+static bool LoadJavaScriptFile (v8::Handle<v8::Context> context, char const* filename, bool execute) {
+  v8::HandleScope handleScope;
+  v8::TryCatch tryCatch;
+
+  char* content = TRI_SlurpFile(filename);
+
+  if (content == 0) {
+    LOG_TRACE("cannot loaded java script file '%s': %s", filename, TRI_last_error());
+    return false;
+  }
+
+  if (execute) {
+    char* contentWrapper = TRI_Concatenate5String("(function() { ",
+                                                  content,
+                                                  "/* end-of-file '",
+                                                  filename,
+                                                  "' */ })()");
+
+    TRI_FreeString(content);
+
+    content = contentWrapper;
+  }
+
+  v8::Handle<v8::String> name = v8::String::New(filename);
+  v8::Handle<v8::String> source = v8::String::New(content);
+
+  TRI_FreeString(content);
+
+  v8::Handle<v8::Script> script = v8::Script::Compile(source, name);
+
+  // compilation failed, print errors that happened during compilation
+  if (script.IsEmpty()) {
+    LOG_ERROR("cannot compile java script file '%s'", filename);
+    TRI_ReportV8Exception(&tryCatch);
+    return false;
+  }
+
+  // execute script
+  v8::Handle<v8::Value> result = script->Run();
+
+  if (result.IsEmpty()) {
+    assert(tryCatch.HasCaught());
+
+    // print errors that happened during execution
+    LOG_ERROR("cannot execute java script file '%s'", filename);
+    TRI_ReportV8Exception(&tryCatch);
+
+    return false;
+  }
+
+  LOG_TRACE("loaded java script file: '%s'", filename);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads all files from a directory into the current context
+////////////////////////////////////////////////////////////////////////////////
+
+static bool LoadJavaScriptDirectory (v8::Handle<v8::Context> context, char const* path, bool execute) {
+  TRI_vector_string_t files;
+  bool result;
+  regex_t re;
+  size_t i;
+
+  LOG_TRACE("loading java script directory: '%s'", path);
+
+  files = TRI_FilesDirectory(path);
+
+  regcomp(&re, "^(.*)\\.js$", REG_ICASE | REG_EXTENDED);
+
+  result = true;
+
+  for (i = 0;  i < files._length;  ++i) {
+    bool ok;
+    char const* filename;
+    char* full;
+
+    filename = files._buffer[i];
+
+    if (! regexec(&re, filename, 0, 0, 0) == 0) {
+      continue;
+    }
+
+    full = TRI_Concatenate2File(path, filename);
+
+    ok = LoadJavaScriptFile(context, full, execute);
+
+    TRI_FreeString(full);
+
+    result = result && ok;
+  }
+
+  TRI_DestroyVectorString(&files);
+  regfree(&re);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      JS functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Utils
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a script
 ///
 /// @FUN{internal.execute(@FA{script}, @FA{sandbox}, @FA{filename})}
@@ -1241,10 +1357,10 @@ void TRI_PrintV8Exception (v8::TryCatch* tryCatch) {
   // V8 didn't provide any extra information about this error; just print the exception.
   if (message.IsEmpty()) {
     if (exceptionString == 0) {
-      printf("JavaScript exception\n");
+      LOG_ERROR("JavaScript exception");
     }
     else {
-      printf("JavaScript exception: %s\n", exceptionString);
+      LOG_ERROR("JavaScript exception: %s", exceptionString);
     }
   }
   else {
@@ -1256,38 +1372,41 @@ void TRI_PrintV8Exception (v8::TryCatch* tryCatch) {
 
     if (filenameString == 0) {
       if (exceptionString == 0) {
-        printf("exception\n");
+        LOG_ERROR("exception");
       }
       else {
-        printf("exception: %s\n", exceptionString);
+        LOG_ERROR("exception: %s", exceptionString);
       }
     }
     else {
       if (exceptionString == 0) {
-        printf("exception in file '%s' at %d,%d\n", filenameString, linenum, start);
+        LOG_ERROR("exception in file '%s' at %d,%d", filenameString, linenum, start);
       }
       else {
-        printf("exception in file '%s' at %d,%d: %s\n", filenameString, linenum, start, exceptionString);
+        LOG_ERROR("exception in file '%s' at %d,%d: %s", filenameString, linenum, start, exceptionString);
       }
     }
 
     v8::String::Utf8Value sourceline(message->GetSourceLine());
 
     if (*sourceline) {
-      printf("%s\n", *sourceline);
+      string l = *sourceline;
 
       if (1 < start) {
-        printf("%*s", start - 1, "");
+        l += string(start - 1, ' ');
       }
 
-      string e((size_t)(end - start + 1), '^');
-      printf("%s\n", e.c_str());
+      LOG_ERROR("%s", l.c_str());
+      
+      l = string((size_t)(end - start + 1), '^');
+
+      LOG_ERROR("%s", l.c_str());
     }
 
     v8::String::Utf8Value stacktrace(tryCatch->StackTrace());
 
     if (*stacktrace && stacktrace.length() > 0) {
-      printf("stacktrace:\n%s\n", *stacktrace);
+      LOG_ERROR("stacktrace: %s", *stacktrace);
     }
   }
 }
@@ -1297,46 +1416,7 @@ void TRI_PrintV8Exception (v8::TryCatch* tryCatch) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_LoadJavaScriptFile (v8::Handle<v8::Context> context, char const* filename) {
-  v8::HandleScope handleScope;
-  v8::TryCatch tryCatch;
-
-  char* content = TRI_SlurpFile(filename);
-
-  if (content == 0) {
-    LOG_TRACE("cannot loaded java script file '%s': %s", filename, TRI_last_error());
-    return false;
-  }
-
-  v8::Handle<v8::String> name = v8::String::New(filename);
-  v8::Handle<v8::String> source = v8::String::New(content);
-
-  TRI_FreeString(content);
-
-  v8::Handle<v8::Script> script = v8::Script::Compile(source, name);
-
-  // compilation failed, print errors that happened during compilation
-  if (script.IsEmpty()) {
-    LOG_ERROR("cannot compile java script file '%s'", filename);
-    TRI_ReportV8Exception(&tryCatch);
-    return false;
-  }
-
-  // execute script
-  v8::Handle<v8::Value> result = script->Run();
-
-  if (result.IsEmpty()) {
-    assert(tryCatch.HasCaught());
-
-    // print errors that happened during execution
-    LOG_ERROR("cannot execute java script file '%s'", filename);
-    TRI_ReportV8Exception(&tryCatch);
-
-    return false;
-  }
-
-  LOG_TRACE("loaded java script file: '%s'", filename);
-
-  return true;
+  return LoadJavaScriptFile(context, filename, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1344,43 +1424,23 @@ bool TRI_LoadJavaScriptFile (v8::Handle<v8::Context> context, char const* filena
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_LoadJavaScriptDirectory (v8::Handle<v8::Context> context, char const* path) {
-  TRI_vector_string_t files;
-  bool result;
-  regex_t re;
-  size_t i;
+  return LoadJavaScriptDirectory(context, path, false);
+}
 
-  LOG_TRACE("loading java script directory: '%s'", path);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a file in the current context
+////////////////////////////////////////////////////////////////////////////////
 
-  files = TRI_FilesDirectory(path);
+bool TRI_ExecuteJavaScriptFile (v8::Handle<v8::Context> context, char const* filename) {
+  return LoadJavaScriptFile(context, filename, true);
+}
 
-  regcomp(&re, "^(.*)\\.js$", REG_ICASE | REG_EXTENDED);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes all files from a directory in the current context
+////////////////////////////////////////////////////////////////////////////////
 
-  result = true;
-
-  for (i = 0;  i < files._length;  ++i) {
-    bool ok;
-    char const* filename;
-    char* full;
-
-    filename = files._buffer[i];
-
-    if (! regexec(&re, filename, 0, 0, 0) == 0) {
-      continue;
-    }
-
-    full = TRI_Concatenate2File(path, filename);
-
-    ok = TRI_LoadJavaScriptFile(context, full);
-
-    TRI_FreeString(full);
-
-    result = result && ok;
-  }
-
-  TRI_DestroyVectorString(&files);
-  regfree(&re);
-
-  return result;
+bool TRI_ExecuteJavaScriptDirectory (v8::Handle<v8::Context> context, char const* path) {
+  return LoadJavaScriptDirectory(context, path, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

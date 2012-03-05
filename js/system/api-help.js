@@ -36,33 +36,29 @@ var actions = require("actions");
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-var API = "_api";
+var API = "_api/";
 var ApiRequests = {};
 
-ApiRequests.cursor = {
-        "POST /" + API + "/cursor" : "create and execute query. (creates a cursor)",
-        "PUT /" + API + "/cursor/<cursor-id>" : "get next results",
-        "DELETE /" + API + "/cursor/<cursor-id>" : "delete cursor"  
-}      
+ApiRequests.cursor = {};
+ApiRequests.cursor["POST /"   + API + "cursor"]             = "create and execute query. (creates a cursor)";
+ApiRequests.cursor["PUT /"    + API + "cursor/<cursor-id>"] = "get next results";
+ApiRequests.cursor["DELETE /" + API + "cursor/<cursor-id>"] = "delete cursor";
 
-ApiRequests.collection = {
-        "GET /" + API + "/collections" : "get list of collections",
-        "GET /" + API + "/collection/<collection-id>" : "get all elements of collection"  
-}      
+ApiRequests.collection = {};
+ApiRequests.collection["GET /" + API + "collections"]                = "get list of collections";
+ApiRequests.collection["GET /" + API + "collection/<collection-id>"] = "get all elements of collection";
 
-ApiRequests.document = {
-        "POST /" + API + "/document/<collection-id>" : "create new document",
-        "PUT /" + API + "/document/<collection-id>/<document-id>" : "update document",
-        "GET /" + API + "/document/<collection-id>/<document-id>" : "get a document",        
-        "DELETE /" + API + "/document/<collection-id>/<document-id>" : "delete a document"
-}      
+ApiRequests.document = {};
+ApiRequests.document["POST /"   + API + "document/<collection-id>"]               = "create new document";
+ApiRequests.document["PUT /"    + API + "document/<collection-id>/<document-id>"] = "update document";
+ApiRequests.document["GET /"    + API + "document/<collection-id>/<document-id>"] = "get a document";       
+ApiRequests.document["DELETE /" + API + "document/<collection-id>/<document-id>"] = "delete a document";
 
-ApiRequests.query = {
-        "POST /" + API + "/query" : "create a query",
-        "GET /" + API + "/query/<query-id>" : "get query",
-        "PUT /" + API + "/query/<query-id>" : "change query",
-        "DELETE /" + API + "/query/<query-id>" : "delete query"  
-}      
+ApiRequests.query = {};
+ApiRequests.query["POST /" + API + "query"] = "create a query";
+ApiRequests.query["GET /" + API + "query/<query-id>"] = "get query";
+ApiRequests.query["PUT /" + API + "query/<query-id>"] = "change query";
+ApiRequests.query["DELETE /" + API + "query/<query-id>"] = "delete query";
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -86,25 +82,10 @@ actions.defineHttp({
       requests : ApiRequests
     }
     
-    actionResultOK(req, res, 200, result);    
+    actions.actionResultOK(req, res, 200, result);    
   }
 });
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    MODULE EXPORTS
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-exports.apiPrefix = API;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
