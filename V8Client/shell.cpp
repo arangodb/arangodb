@@ -101,7 +101,7 @@ static JSLoader StartupLoader;
 /// @brief server address
 ////////////////////////////////////////////////////////////////////////////////
 
-static string ServerAddress = "";
+static string ServerAddress = "127.0.0.1:8529";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the initial default connection
@@ -619,7 +619,7 @@ int main (int argc, char* argv[]) {
 
   // processComandLineArguments(argc, argv);
   if (! splitServerAdress(ServerAddress, DEFAULT_SERVER_NAME, DEFAULT_SERVER_PORT)) {
-    printf("Could not spilt %s.\n", ServerAddress.c_str());                  
+    printf("Could not split address '%s'.\n", ServerAddress.c_str());                  
   }
         
 
