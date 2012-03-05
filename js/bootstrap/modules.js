@@ -101,7 +101,11 @@ Module.prototype.require = function (path) {
   // create a new sandbox and execute
   ModuleCache[path] = module = new Module(path);
 
+<<<<<<< HEAD
   content = "(function (module, exports, require, print) {" + raw.content + "\n/* end-of-file '" + raw.path + "' */ });";
+=======
+  content = "(function (module, exports, require, print) {" + content + "\n});";
+>>>>>>> better error handling
 
   try {
     f = SYS_EXECUTE(content, undefined, path);

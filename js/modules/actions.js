@@ -36,13 +36,19 @@ var console = require("console");
 /// <ol>
 ///  <li>@ref JSModuleActionsDefineHttp "defineHttp"</li>
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> better error handling
 ///  <li>@ref JSModuleActionsActionResult "actionResult"</li>
 ///  <li>@ref JSModuleActionsActionResultOK "actionResultOK"</li>
 ///  <li>@ref JSModuleActionsActionResultError "actionResultError"</li>
 ///  <li>@ref JSModuleActionsActionResultUnsupported "actionResultUnsupported"</li>
 ///  <li>@ref JSModuleActionsActionError "actionError"</li>
+<<<<<<< HEAD
 =======
 >>>>>>> added module doc
+=======
+>>>>>>> better error handling
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -68,6 +74,9 @@ var console = require("console");
 /// <hr>
 ///
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> better error handling
 /// @anchor JSModuleActionsActionResultOK
 /// @copydetails JSF_actionResultOK
 /// <hr>
@@ -80,8 +89,11 @@ var console = require("console");
 /// @copydetails JSF_actionResultUnsupported
 /// <hr>
 ///
+<<<<<<< HEAD
 =======
 >>>>>>> doc module actions
+=======
+>>>>>>> better error handling
 /// @anchor JSModuleActionsActionError
 /// @copydetails JSF_actionError
 ////////////////////////////////////////////////////////////////////////////////
@@ -112,6 +124,7 @@ exports.cursorNotModified = 40304;
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+<<<<<<< HEAD
 =======
 >>>>>>> unfinished actions cleanup
 =======
@@ -120,6 +133,8 @@ var console = require("console");
 =======
 ////////////////////////////////////////////////////////////////////////////////
 >>>>>>> added module doc
+=======
+>>>>>>> better error handling
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -127,10 +142,14 @@ var console = require("console");
 
 ////////////////////////////////////////////////////////////////////////////////
 <<<<<<< HEAD
+<<<<<<< HEAD
 /// @addtogroup AvocadoActions
 =======
 /// @addtogroup V8Json V8 JSON
 >>>>>>> unfinished actions cleanup
+=======
+/// @addtogroup AvocadoActions
+>>>>>>> better error handling
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -413,7 +432,7 @@ function actionError (req, res, err) {
 
     try {
       internal.defineAction(url, queue, callback, parameter);
-      console.debug("defining action '" + url + "' in context " + context " using queue " + queue);
+      console.debug("defining action '" + url + "' in context " + context + " using queue " + queue);
     }
     catch (err) {
       console.error("action '" + url + "' encountered error: " + err);
@@ -461,6 +480,7 @@ function actionError (req, res, err) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+<<<<<<< HEAD
 <<<<<<< HEAD
 /// @brief returns a result of a query as documents
 ///
@@ -575,6 +595,10 @@ function queryReferences (req, res, query) {
 /// @brief returns a result
 ///
 <<<<<<< HEAD
+=======
+/// @brief returns a result
+///
+>>>>>>> better error handling
 /// @FUN{actionResultOK(@FA{req}, @FA{res}, @FA{code}, @FA{result}, @FA{headers}})}
 ///
 /// Works like @FN{actionResult} but adds the attribute @LIT{error} with
@@ -597,6 +621,7 @@ function actionResultOK (req, res, httpReturnCode, result, headers) {
   
   if (headers != undefined) {
     res.headers = headers;    
+<<<<<<< HEAD
 =======
 /// @FUN{actionResult(@FA{req}, @FA{res}, @FA{code}, @FA{result})}
 ///
@@ -613,6 +638,8 @@ function actionResult (req, res, code, result) {
     res.contentType = "application/json";
     res.body = JSON.stringify(result);
 >>>>>>> unfinished actions cleanup
+=======
+>>>>>>> better error handling
   }
 }
 
@@ -620,6 +647,9 @@ function actionResult (req, res, code, result) {
 /// @brief returns an error
 ///
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> better error handling
 /// @FUN{actionResultError(@FA{req}, @FA{res}, @FA{code}, @FA{errorNum}, @FA{errorMessage}, @FA{headers})}
 ///
 /// The functions generates an error response. The response body is an array
@@ -657,6 +687,7 @@ function actionResultError (req, res, httpReturnCode, errorNum, errorMessage, he
 
 function actionResultUnsupported (req, res, headers) {
   actionResultError(req, res, 405, 405, "Unsupported method", headers);  
+<<<<<<< HEAD
 =======
 /// @FUN{actionError(@FA{req}, @FA{res}, @FA{errorMessage})}
 ///
@@ -677,6 +708,11 @@ function actionError (req, res, err) {
 >>>>>>> action cleanup
 =======
 >>>>>>> doc module actions
+=======
+}
+
+////////////////////////////////////////////////////////////////////////////////
+>>>>>>> better error handling
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -686,22 +722,32 @@ function actionError (req, res, err) {
 
 ////////////////////////////////////////////////////////////////////////////////
 <<<<<<< HEAD
+<<<<<<< HEAD
 /// @addtogroup AvocadoActions
 =======
 /// @addtogroup AvocadoGraph
 >>>>>>> unfinished actions cleanup
+=======
+/// @addtogroup AvocadoActions
+>>>>>>> better error handling
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.defineHttp = defineHttp;
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> better error handling
 exports.actionResult = actionResult;
 exports.actionResultOK = actionResultOK;
 exports.actionResultError = actionResultError;
 exports.actionResultUnsupported = actionResultUnsupported;
 exports.actionError = actionError;
+<<<<<<< HEAD
 =======
 >>>>>>> unfinished actions cleanup
+=======
+>>>>>>> better error handling
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

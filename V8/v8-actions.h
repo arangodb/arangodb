@@ -260,10 +260,14 @@ triagens::rest::HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionQueue);
 =======
 void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionContext);
 >>>>>>> added module doc
+=======
+void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionQeue);
+>>>>>>> better error handling
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

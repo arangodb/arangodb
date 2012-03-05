@@ -21,7 +21,11 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
+<<<<<<< HEAD
 /// @author Achim Brandt
+=======
+/// @author Dr. Frank Celler
+>>>>>>> better error handling
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -36,6 +40,7 @@ var actions = require("actions");
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+<<<<<<< HEAD
 var API = "_api/";
 var ApiRequests = {};
 
@@ -59,6 +64,35 @@ ApiRequests.query["POST /" + API + "query"] = "create a query";
 ApiRequests.query["GET /" + API + "query/<query-id>"] = "get query";
 ApiRequests.query["PUT /" + API + "query/<query-id>"] = "change query";
 ApiRequests.query["DELETE /" + API + "query/<query-id>"] = "delete query";
+=======
+var API = "_api";
+var ApiRequests = {};
+
+ApiRequests.cursor = {
+        "POST /" + API + "/cursor" : "create and execute query. (creates a cursor)",
+        "PUT /" + API + "/cursor/<cursor-id>" : "get next results",
+        "DELETE /" + API + "/cursor/<cursor-id>" : "delete cursor"  
+}      
+
+ApiRequests.collection = {
+        "GET /" + API + "/collections" : "get list of collections",
+        "GET /" + API + "/collection/<collection-id>" : "get all elements of collection"  
+}      
+
+ApiRequests.document = {
+        "POST /" + API + "/document/<collection-id>" : "create new document",
+        "PUT /" + API + "/document/<collection-id>/<document-id>" : "update document",
+        "GET /" + API + "/document/<collection-id>/<document-id>" : "get a document",        
+        "DELETE /" + API + "/document/<collection-id>/<document-id>" : "delete a document"
+}      
+
+ApiRequests.query = {
+        "POST /" + API + "/query" : "create a query",
+        "GET /" + API + "/query/<query-id>" : "get query",
+        "PUT /" + API + "/query/<query-id>" : "change query",
+        "DELETE /" + API + "/query/<query-id>" : "delete query"  
+}      
+>>>>>>> better error handling
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -82,7 +116,11 @@ actions.defineHttp({
       requests : ApiRequests
     }
     
+<<<<<<< HEAD
     actions.actionResultOK(req, res, 200, result);    
+=======
+    actionResultOK(req, res, 200, result);    
+>>>>>>> better error handling
   }
 });
 
@@ -91,6 +129,24 @@ actions.defineHttp({
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+<<<<<<< HEAD
+=======
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    MODULE EXPORTS
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoAPI
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+exports.apiPrefix = API;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+>>>>>>> better error handling
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
