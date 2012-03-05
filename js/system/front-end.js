@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief system actions for collections
+/// @brief administration actions
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,10 +22,10 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var defineHttpSystemAction = require("avocado").defineHttpSystemAction;
+var actions = require("actions");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            administration actions
@@ -57,8 +57,11 @@ var defineHttpSystemAction = require("avocado").defineHttpSystemAction;
 /// @verbinclude rest15
 ////////////////////////////////////////////////////////////////////////////////
 
-defineHttpSystemAction("collections",
-  function (req, res) {
+actions.defineHttp({
+  url : "_system/collections",
+  context : "admin",
+
+  callback : function (req, res) {
     var colls;
     var coll;
     var result;
@@ -80,9 +83,9 @@ defineHttpSystemAction("collections",
       };
     }
 
-    actionResult(req, res, 200, result);
+    actions.actionResult(req, res, 200, result);
   }
-);
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads a collection
@@ -94,23 +97,25 @@ defineHttpSystemAction("collections",
 /// @verbinclude restX
 ////////////////////////////////////////////////////////////////////////////////
 
-defineHttpSystemAction("collection/load",
-  function (req, res) {
+actions.defineHttp({
+  url : "_system/collection/load",
+  context : "admin",
+
+  callback : function (req, res) {
     try {
       req.collection.load();
 
-      actionResult(req, res, 204);
+      actions.actionResult(req, res, 204);
     }
     catch (err) {
-      actionError(req, res, err);
+      actions.actionError(req, res, err);
     }
   },
-  {
-    parameters : {
-      collection : "collection-identifier"
-    }
+
+  parameters : {
+    collection : "collection-identifier"
   }
-);
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief information about a collection
@@ -122,8 +127,11 @@ defineHttpSystemAction("collection/load",
 /// @verbinclude rest16
 ////////////////////////////////////////////////////////////////////////////////
 
-defineHttpSystemAction("collection/info",
-  function (req, res) {
+actions.defineHttp({
+  url : "_system/collection/info",
+  context : "admin",
+
+  callback : function (req, res) {
     try {
       result = {};
       result.id = req.collection._id;
@@ -131,18 +139,17 @@ defineHttpSystemAction("collection/info",
       result.status = req.collection.status();
       result.figures = req.collection.figures();
 
-      actionResult(req, res, 200, result);
+      actions.actionResult(req, res, 200, result);
     }
     catch (err) {
-      actionError(req, res, err);
+      actions.actionError(req, res, err);
     }
   },
-  {
-    parameters : {
-      collection : "collection-identifier"
-    }
+
+  parameters : {
+    collection : "collection-identifier"
   }
-);
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about all documents
@@ -150,18 +157,74 @@ defineHttpSystemAction("collection/info",
 /// @REST{GET /_system/documents}
 ////////////////////////////////////////////////////////////////////////////////
 
-defineHttpSystemAction("documents",
-  function (req, res) {
+actions.defineHttp({
+  url : "_system/documents",
+  context : "admin",
+
+  callback : function (req, res) {
     queryReferences(req, res, req.collection.all());
   },
-  {
-    parameters : {
-      collection : "collection-identifier",
-      blocksize : "number",
-      page : "number"
+
+  parameters : {
+    collection : "collection-identifier",
+    blocksize : "number",
+    page : "number"
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns information about all indexes of a collection
+///
+/// @REST{GET /_system/collection/indexes?collection=@FA{identifier}}
+///
+/// Returns information about all indexes of a collection of the database.
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_system/collection/indexes",
+  context : "admin",
+
+  callback : function (req, res) {
+    try {
+      result = {};
+      result.name = req.collection._name;
+      result.id = req.collection._id;
+      result.indexes = req.collection.getIndexes();
+
+      actions.actionResult(req, res, 200, result);
+    }
+    catch (err) {
+      actions.actionError(req, res, err);
+    }
+  },
+
+  parameters : {
+    collection : "collection-identifier"
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns information the server
+///
+/// @REST{GET /_system/status}
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_system/status",
+  context : "admin",
+
+  callback : function (req, res) {
+    try {
+      result = {};
+      result.system = SYS_PROCESS_STAT();
+
+      actions.actionResult(req, res, 200, result);
+    }
+    catch (err) {
+      actions.actionError(req, res, err);
     }
   }
-);
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

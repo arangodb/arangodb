@@ -1,12 +1,13 @@
+var actions = require("actions");
 
 function postCursor(req, res) {
-  if (req._suffix.length != 0) {
-    actionResultError (req, res, 404, cursorNotModified, "Cursor not created"); 
+  if (req.suffix.length != 0) {
+    actions.actionResultError (req, res, 404, cursorNotModified, "Cursor not created"); 
     return;
   }
 
   try {
-    var json = JSON.parse(req._requestBody);
+    var json = JSON.parse(req.requestBody);
     var queryString;
 
     if (json.qid != undefined) {
@@ -18,13 +19,13 @@ function postCursor(req, res) {
     }
 
     if (queryString == undefined) {
-      actionResultError (req, res, 404, cursorNotModified, "Missing query identifier");
+      actions.actionResultError (req, res, 404, cursorNotModified, "Missing query identifier");
       return;
     }
    
     var result = AQL_PREPARE(db, queryString);
     if (result instanceof AvocadoQueryError) {
-      actionResultError (req, res, 404, result.code, result.message);
+      actions.actionResultError (req, res, 404, result.code, result.message);
       return;
     }
 
@@ -59,21 +60,21 @@ function postCursor(req, res) {
       "hasMore" : hasMore
     };
     
-    actionResultOK(req, res, 201, result);        
+    actions.actionResultOK(req, res, 201, result);        
   }
   catch (e) {
-    actionResultError (req, res, 404, cursorNotModified, "Cursor not created");
+    actions.actionResultError (req, res, 404, cursorNotModified, "Cursor not created");
   }
 }
 
 function putCursor(req, res) {
-  if (req._suffix.length != 1) {
-    actionResultError (req, res, 404, cursorNotFound, "Cursor not found");
+  if (req.suffix.length != 1) {
+    actions.actionResultError (req, res, 404, cursorNotFound, "Cursor not found");
     return;
   }
 
   try {
-    var cursorId = decodeURIComponent(req._suffix[0]);           
+    var cursorId = decodeURIComponent(req.suffix[0]);           
     
     // TODO
 
@@ -84,37 +85,39 @@ function putCursor(req, res) {
       "hasMore" : false
     };
     
-    actionResultOK(req, res, 200, result);
+    actions.actionResultOK(req, res, 200, result);
   }
   catch (e) {
-    actionResultError (req, res, 404, cursorNotFound, "Cursor not found");
+    actions.actionResultError (req, res, 404, cursorNotFound, "Cursor not found");
   }
 }
 
 function deleteCursor(req, res) {
-  if (req._suffix.length != 1) {
-    actionResultError (req, res, 404, cursorNotFound, "Cursor not found");
+  if (req.suffix.length != 1) {
+    actions.actionResultError (req, res, 404, cursorNotFound, "Cursor not found");
     return;
   }
 
   try {
-    var cid = decodeURIComponent(req._suffix[0]);
+    var cid = decodeURIComponent(req.suffix[0]);
     if(db.cursor.delete(qid)) {
-      actionResultOK(req, res, 202, {"cid" : cid});                
+      actions.actionResultOK(req, res, 202, {"cid" : cid});                
     }
     else {
-      actionResultError (req, res, 404, cursorNotFound, "Cursor not found");       
+      actions.actionResultError (req, res, 404, cursorNotFound, "Cursor not found");       
     }
   }
   catch (e) {
-    actionResultError (req, res, 404, cursorNotFound, "Cursor not found");
+    actions.actionResultError (req, res, 404, cursorNotFound, "Cursor not found");
   }
 }
 
-defineAction("_api/cursor",
-  function (req, res) {
-    
-    switch (req._requestType) {
+actions.defineHttp({
+  url : "_api/cursor",
+  context : "api",
+
+  callback : function (req, res) {
+    switch (req.requestType) {
       case ("POST") : 
         postCursor(req, res); 
         break;
@@ -125,12 +128,7 @@ defineAction("_api/cursor",
         deleteCursor(req, res); 
         break;
       default:
-        actionResultUnsupported(req, res);
-    }
-    
-  },
-  {
-    parameters : {
+        actions.actionResultUnsupported(req, res);
     }
   }
-);
+});
