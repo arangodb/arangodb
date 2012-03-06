@@ -12,57 +12,77 @@ var DEFAULT_QUERY_COLLECTION = "query";
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-function throwIfError (requestResult) {
-  
+function isErrorResult (requestResult) {
+
   if (requestResult == undefined) {    
-    throw "Result is empty";
+    requestResult = {
+      "error" : true,
+      "code"  : 0,
+      "errorNum" : 0,
+      "errorMessage" : "Unknown error. Request result is empty"
+    }    
   }
   
-  if (requestResult["error"] != undefined && requestResult["error"]) {
-    if (requestResult["errorMessage"] == undefined) {
-        throw "Unknown error";      
-    }
-    throw requestResult["errorMessage"];
+  if (requestResult["error"] != undefined && requestResult["error"]) {    
+    var code     = requestResult["code"];
+    var errorNum     = requestResult["errorNum"];
+    var errorMessage = requestResult["errorMessage"];
+    
+    internal.output(COLOR_OUTPUT);
+    internal.output("Error: ");
+    internal.output(COLOR_OUTPUT_RESET);
+    internal.output("["); 
+    internal.output(code); 
+    internal.output(":"); 
+    internal.output(errorNum); 
+    internal.output("] "); 
+    print(errorMessage);
+    
+    return true;
   }  
+  return false;
 }
+
+var HELP = 
+'-------------------------------- HELP ------------------------------' + "\n" +
+'predefined objects:                                                 ' + "\n" +
+'  avocado:                               AvocadoConnection          ' + "\n" +
+'  db:                                    AvocadoDatabase            ' + "\n" +
+'examples:                                                           ' + "\n" +
+' > db._collections();                    list all collections       ' + "\n" +
+' > db.<coll_name>.all();                 list all documents         ' + "\n" +
+' > id = db.<coll_name>.save({ ... });    save a document            ' + "\n" +
+' > db.<coll_name>.delete(<_id>);         delete a document          ' + "\n" +
+' > db.<coll_name>.document(<_id>);       get a document             ' + "\n" +
+' > help                                  this help                  ' + "\n" +
+' > helpQueries                           query help                 ' + "\n" +
+' > exit                                                             ' + "\n" +
+'--------------------------------------------------------------------';
+
+var helpQueries = 
+'-------------------------------- HELP ------------------------------' + "\n" +
+'create query template:                                              ' + "\n" +
+' > qt1 = db.createQueryTemplate("select ...");     simple query     ' + "\n" +
+' > qt2 = db.createQueryTemplate(                   complex query    ' + "\n" +
+'             {query:"select...",                                    ' + "\n" +
+'              name:"qname",                                         ' + "\n" +
+'              collection:"q"                                        ' + "\n" +
+'              ... }                                                 ' + "\n" +
+' > qt3 = db.getQueryTemplate("4334:2334");         query by id      ' + "\n" +
+' > qt1.update("select ...");                       update           ' + "\n" +
+' > qt1.delete("4334:2334");                        delete           ' + "\n" +
+'create query instance:                                              ' + "\n" +
+' > qi1 = qt1.getInstance();                        from tmplate     ' + "\n" +
+' > qi2 = db.createQueryInstance("select...");      without template ' + "\n" +
+' > qi2.bind("key", "value");                                        ' + "\n" +
+'execute query:                                                      ' + "\n" +
+' > cu1 = qi1.execute();                            returns cursor   ' + "\n" +
+'loop over all results:                                              ' + "\n" +
+' > while (cu1.hasNext()) { print( cu1.next() ); }                   ' + "\n" +
+'--------------------------------------------------------------------';
 
 function help () {
-  print("--------------- HELP -----------------------------------------------");
-  print("predefined objects:");
-  print("  avocado:                               AvocadoConnection");
-  print("  db:                                    AvocadoDatabase");
-  print("examples:");
-  print(" > db._collections();                    list all collections");
-  print(" > db.<coll_name>.all();                 list all documents");
-  print(" > id = db.<coll_name>.save({ ... });    save a document");
-  print(" > db.<coll_name>.delete(<_id>);         delete a document");
-  print(" > db.<coll_name>.document(<_id>);       get a document");
-  print(" > helpQueries();                        query help");
-  print(" > exit");  
-  print("--------------------------------------------------------------------");
-}
-
-function helpQueries () {
-  print("--------------- HELP -----------------------------------------------");
-  print("create query template:");
-  print(" > qt1 = db.createQueryTemplate(\"select ...\");     simple query");
-  print(" > qt2 = db.createQueryTemplate(                   complex query");
-  print("             {query:\"select...\",");
-  print("              name:\"qname\",");
-  print("              collection:\"q\"");
-  print("              ... });");
-  print(" > qt3 = db.getQueryTemplate(\"4334:2334\");         query by id");
-  print(" > qt1.update(\"select ...\");                       update");                   
-  print(" > qt1.delete(\"4334:2334\");                        delete");
-  print("create query instance:");
-  print(" > qi1 = qt1.getInstance();                        from tmplate");
-  print(" > qi2 = db.createQueryInstance(\"select...\");      without template");
-  print(" > qi2.bind(\"a\":\"b\")");
-  print("execute query:");
-  print(" > cu1 = qi1.execute();                            returns cursor");
-  print("loop over all results:");
-  print(" > while (cu1.hasNext()) { print( cu1.next() ); }");
-  print("--------------------------------------------------------------------");
+  print(HELP);    
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -92,12 +112,11 @@ AvocadoCollection.prototype.all = function () {
     requestResult = JSON.parse(str);
   }
     
-  throwIfError(requestResult);
-
-  if (requestResult["documents"] != undefined )  {
-    return requestResult["documents"];    
+  if (isErrorResult(requestResult)) {
+    return undefined;
   }
-  return undefined;
+
+  return requestResult["documents"];    
 }
 
 AvocadoCollection.prototype.document = function (id) {
@@ -108,12 +127,11 @@ AvocadoCollection.prototype.document = function (id) {
     requestResult = JSON.parse(str);
   }
 
-  throwIfError(requestResult);
-  
-  if (requestResult["document"] != undefined)  {
-    return requestResult["document"];
+  if (isErrorResult(requestResult)) {
+    return undefined;
   }
-  return requestResult;
+
+  return requestResult["document"];
 }
 
 AvocadoCollection.prototype.save = function (data) {    
@@ -124,12 +142,11 @@ AvocadoCollection.prototype.save = function (data) {
     requestResult = JSON.parse(str);
   }
   
-  throwIfError(requestResult);
-  
-  if (requestResult["_id"] != undefined)  {
-    return requestResult["_id"];
+  if (isErrorResult(requestResult)) {
+    return undefined;
   }
-  return requestResult;
+
+  return requestResult["_id"];
 }
 
 AvocadoCollection.prototype.delete = function (id) {    
@@ -140,9 +157,7 @@ AvocadoCollection.prototype.delete = function (id) {
     requestResult = JSON.parse(str);
   }
 
-  throwIfError(requestResult);
-  
-  return true;
+  return !isErrorResult(requestResult);
 }
 
 AvocadoCollection.prototype.update = function (id, data) {    
@@ -153,9 +168,7 @@ AvocadoCollection.prototype.update = function (id, data) {
     requestResult = JSON.parse(str);
   }
 
-  throwIfError(requestResult);
-
-  return true;
+  return !isErrorResult(requestResult);
 }
 
 
@@ -216,7 +229,9 @@ QueryCursor.prototype.next = function () {
         requestResult = JSON.parse(str);
       }
     
-      throwIfError(requestResult);
+      if (isErrorResult(requestResult)) {
+        return undefined;
+      }
       
       this.data = requestResult;
       this._count = requestResult.result.length;
@@ -244,6 +259,7 @@ QueryCursor.prototype.next = function () {
 function QueryInstance (database, data) {
   this._database = database;
   this.doCount = false;
+  this.maxResults = null;
   this.bindVars = {};
   
   if (typeof data === "string") {
@@ -274,22 +290,34 @@ QueryInstance.prototype.setCount = function (bool) {
   }
 }
 
+QueryInstance.prototype.setMax = function (value) {
+  if (parseInt(value) > 0) {
+    this.maxResults = parseInt(value);
+  }
+}
+
 QueryInstance.prototype.execute = function () {
   var body = {
     query : this.query,
     count : this.doCount,
     bindVars : this.bindVars
   }
+
+  if (this.maxResults) {
+    body["maxResults"] = this.maxResults;
+  }
   
-  var str = this._database._connection.post("/_api/cursor",  JSON.stringify(body));
+  var str = this._database._connection.post("/_api/cursor", JSON.stringify(body));
 
   var requestResult = undefined;
   if (str != undefined) {
     requestResult = JSON.parse(str);
   }
     
-  throwIfError(requestResult);
-  
+  if (isErrorResult(requestResult)) {
+    return undefined;
+  }
+
   return new QueryCursor(this._database, requestResult);
 }
 
@@ -454,8 +482,10 @@ AvocadoDatabase.prototype._collections = function () {
     requestResult = JSON.parse(str);
   }
   
-  throwIfError(requestResult);
-    
+  if (isErrorResult(requestResult)) {
+    return undefined;
+  }
+
   if (requestResult["collections"] != undefined) {
     
     // add all collentions to object
@@ -477,8 +507,10 @@ AvocadoDatabase.prototype._collection = function (id) {
     requestResult = JSON.parse(str);
   }
   
-  throwIfError(requestResult);
-    
+  if (isErrorResult(requestResult)) {
+    return undefined;
+  }
+
   if (requestResult["name"] != undefined) {
     
     this[requestResult["name"]] = new AvocadoCollection(this, requestResult);
@@ -510,7 +542,6 @@ AvocadoDatabase.prototype.getQueryTemplate = function (id) {
   
   return undefined;
 }
-
 
 try {
 

@@ -607,7 +607,7 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief select clause type
+/// @brief select clause type - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
@@ -617,7 +617,7 @@ typedef enum {
 TRI_qry_select_type_e;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract select clause
+/// @brief abstract select clause - DEPRECATED
 ///
 /// A description of the @CODE{select} statement of the Avocado query language.
 /// This class is respsonible for taking an element of type
@@ -646,7 +646,7 @@ typedef struct TRI_qry_select_s {
 TRI_qry_select_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief built-in select clause for a single, unaltered document
+/// @brief built-in select clause for a single, unaltered document - DEPRECATED
 ///
 /// If a query returns a document unaltered, then @CODE{TRI_qry_select_direct_t}
 /// can be used. It extracts a given document from the result set and returns
@@ -667,7 +667,7 @@ typedef struct TRI_qry_select_direct_s {
 TRI_qry_select_direct_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief JavaScript select clause
+/// @brief JavaScript select clause - DEPRECATED
 ///
 /// If a query returns a newly created document, then
 /// @CODE{TRI_qry_select_general_t} can be used. It uses the V8 engine to
@@ -691,7 +691,7 @@ typedef struct TRI_qry_select_general_s {
 TRI_qry_select_general_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief general query
+/// @brief general query - DEPRECATED
 ///
 /// A query is built using the fluent-interface or the Avocado Query
 /// Language. It is of type @CODE{TRI_query_t}. After the query is built, it can
@@ -749,7 +749,7 @@ typedef struct TRI_query_s {
 TRI_query_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the result cursor
+/// @brief the result cursor - DEPRECATED
 ///
 /// The result of a query execution. The metod @FN{next} returns the next
 /// result documents. There is one document for the primary collection and a
@@ -762,6 +762,7 @@ typedef struct TRI_rc_cursor_s {
     TRI_rc_context_t* _context;
     TRI_qry_select_t* _select;
     TRI_select_result_t* _selectResult;
+    TRI_js_exec_context_t* _selectContext;
 
     TRI_vector_pointer_t _containers;
 
@@ -774,6 +775,37 @@ typedef struct TRI_rc_cursor_s {
     bool (*hasNext)(struct TRI_rc_cursor_s*);
 }
 TRI_rc_cursor_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the result cursor - DEPRECATED
+///
+/// The result of a query execution. The metod @FN{next} returns the next
+/// result documents. There is one document for the primary collection and a
+/// list of documents for a list join. The next result documents are delivered
+/// as instance of @CODE{TRI_rc_result_t}. You must call the @FN{free} method
+/// for these instances.
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_query_cursor_s {
+//  TRI_select_result_t* _selectResult;
+  TRI_js_exec_context_t* _selectContext;
+
+  TRI_vector_pointer_t _containers;
+
+  TRI_rc_result_t _result;
+  TRI_select_size_t _length;
+  TRI_select_size_t _currentRow;
+
+  void (*free) (struct TRI_query_cursor_s*);
+  TRI_rc_result_t* (*next)(struct TRI_query_cursor_s* const);
+  bool (*hasNext)(const struct TRI_query_cursor_s* const);
+
+//  TRI_doc_mptr_t* _documents;
+//  TRI_doc_mptr_t* _current;
+//  TRI_doc_mptr_t* _end;
+
+}
+TRI_query_cursor_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -814,7 +846,7 @@ TRI_rc_cursor_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a query
+/// @brief creates a query - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_query_t* TRI_CreateHashQuery (const TRI_qry_where_t*, TRI_doc_collection_t*);
@@ -830,68 +862,68 @@ TRI_query_t* TRI_CreateQuery (TRI_vocbase_t*,
                               TRI_voc_ssize_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief frees a query
+/// @brief frees a query - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeQuery (TRI_query_t* query);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a context
+/// @brief creates a context - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_rc_context_t* TRI_CreateContextQuery (TRI_query_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief frees a context
+/// @brief frees a context - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeContextQuery (TRI_rc_context_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a query selection for unaltered documents
+/// @brief creates a query selection for unaltered documents - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_qry_select_t* TRI_CreateQuerySelectDocument (void);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a query selection for general, generated documents
+/// @brief creates a query selection for general, generated documents - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_qry_select_t* TRI_CreateQuerySelectGeneral (char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a query condition for constant conditions
+/// @brief creates a query condition for constant conditions - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_qry_where_t* TRI_CreateQueryWhereBoolean (bool where);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a query condition for general, JavaScript conditions
+/// @brief creates a query condition for general, JavaScript conditions - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_qry_where_t* TRI_CreateQueryWhereGeneral (char const*);
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a query condition for a hash with constant parameters
+/// @brief creates a query condition for a hash with constant parameters - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_qry_where_t* TRI_CreateQueryWhereHashConstant (TRI_idx_iid_t, TRI_json_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a query condition for a hash with constant parameters
+/// @brief creates a query condition for a hash with constant parameters - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_qry_where_t* TRI_CreateQueryWhereSkiplistConstant (TRI_idx_iid_t, TRI_json_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a query condition using the primary index and a constant
+/// @brief creates a query condition using the primary index and a constant - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_qry_where_t* TRI_CreateQueryWherePrimaryConstant (TRI_voc_did_t did);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a query condition using an geo index and a constants
+/// @brief creates a query condition using an geo index and a constants - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_qry_where_t* TRI_CreateQueryWhereWithinConstant (TRI_idx_iid_t iid,
@@ -914,13 +946,13 @@ TRI_qry_where_t* TRI_CreateQueryWhereWithinConstant (TRI_idx_iid_t iid,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read locks all collections of a query
+/// @brief read locks all collections of a query - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ReadLockCollectionsQuery (TRI_query_t* query);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read unlocks all collections of a query
+/// @brief read unlocks all collections of a query - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ReadUnlockCollectionsQuery (TRI_query_t* query);
@@ -938,10 +970,16 @@ void TRI_AddCollectionsCursor (TRI_rc_cursor_t* cursor, TRI_query_t* query);
 void TRI_RemoveCollectionsCursor (TRI_rc_cursor_t* cursor);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a query
+/// @brief executes a query - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_rc_cursor_t* TRI_ExecuteQueryAql (TRI_query_t*, TRI_rc_context_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a query
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_query_cursor_t* TRI_ExecuteQueryInstance (void* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

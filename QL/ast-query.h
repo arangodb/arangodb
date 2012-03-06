@@ -39,6 +39,7 @@
 #include <BasicsC/string-buffer.h>
 
 #include "VocBase/query-node.h"
+#include "VocBase/context.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -129,6 +130,7 @@ typedef struct QL_ast_query_where_s {
   QL_ast_query_where_type_e  _type;
   bool                       _usesBindParameters;
   char*                      _functionCode;
+  TRI_js_exec_context_t*     _context;
 } 
 QL_ast_query_where_t;
 
@@ -238,6 +240,26 @@ typedef struct QL_ast_query_collection_s {
   QL_ast_query_where_t            _where;
 } 
 QL_ast_query_collection_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Hash function used to hash collection aliases
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t QLHashKey (TRI_associative_pointer_t*, void const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Hash function used to hash elements in the collection
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t QLHashCollectionElement (TRI_associative_pointer_t*, void const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Comparison function used to determine hash key equality
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLEqualCollectionKeyElement (TRI_associative_pointer_t*,  
+                                  void const*, 
+                                  void const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free collections previously registered

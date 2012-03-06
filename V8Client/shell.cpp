@@ -486,6 +486,38 @@ static Handle<Value> ClientConnection_isConnected(v8::Arguments const& argv) {
   return scope.Close(v8::Boolean::New(connection->isConnected()));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "isConnected"
+////////////////////////////////////////////////////////////////////////////////
+
+static Handle<Value> ClientConnection_toString(v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // get the connection
+  V8ClientConnection* connection = UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
+
+  if (connection == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
+  }
+  
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: toString()")));
+  }
+  
+  string result = "[object AvocadoConnection/" 
+          + connection->getHostname()
+          + ":"
+          + triagens::basics::StringUtils::itoa(connection->getPort());
+          
+  if (connection->isConnected()) {
+    result += "/connected]";
+  }
+  else {
+    result += "]";    
+  }
+  
+  return scope.Close(v8::String::New(result.c_str()));
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup V8Shell
@@ -522,6 +554,11 @@ static void RunShell (v8::Handle<v8::Context> context) {
     if (i == "exit" || i == "quit") {
       break;
     }
+
+    if (i == "help") {
+      TRI_FreeString(input);
+      input = TRI_DuplicateString("help()");
+    }
     
     console->addHistory(input);
     
@@ -540,20 +577,20 @@ static void RunShell (v8::Handle<v8::Context> context) {
 /// @brief adding colors for output
 ////////////////////////////////////////////////////////////////////////////////
 
-static char DEF_RED[6]         = { 0x1B, '[',           '3', '1', 'm', 0 };
-static char DEF_BOLD_RED[8]    = { 0x1B, '[', '1', ';', '3', '1', 'm', 0 };
-static char DEF_GREEN[6]       = { 0x1B, '[',           '3', '2', 'm', 0 };
-static char DEF_BOLD_GREEN[8]  = { 0x1B, '[', '1', ';', '3', '2', 'm', 0 };
-static char DEF_BLUE[6]        = { 0x1B, '[',           '3', '4', 'm', 0 };
-static char DEF_BOLD_BLUE[8]   = { 0x1B, '[', '1', ';', '3', '4', 'm', 0 };
-static char DEF_YELLOW[8]      = { 0x1B, '[', '1', ';', '3', '3', 'm', 0 };
-static char DEF_WHITE[6]       = { 0x1B, '[',           '3', '7', 'm', 0 };
-static char DEF_BOLD_WHITE[8]  = { 0x1B, '[', '1', ';', '3', '7', 'm', 0 };
-static char DEF_BLACK[6]       = { 0x1B, '[',           '3', '0', 'm', 0 };
-static char DEF_BOLD_BLACK[8]  = { 0x1B, '[', '1', ';', '3', '0', 'm', 0 };  
-static char DEF_BLINK[5]       = { 0x1B, '[',                '5', 'm', 0 };
-static char DEF_BRIGHT[5]      = { 0x1B, '[',                '1', 'm', 0 };
-static char DEF_RESET[5]       = { 0x1B, '[',                '0', 'm', 0 };
+static char DEF_RED[6]         = "\x1b[31m";
+static char DEF_BOLD_RED[8]    = "\x1b[1;31m";
+static char DEF_GREEN[6]       = "\x1b[32m";
+static char DEF_BOLD_GREEN[8]  = "\x1b[1;32m";
+static char DEF_BLUE[6]        = "\x1b[34m";
+static char DEF_BOLD_BLUE[8]   = "\x1b[1;34m";
+static char DEF_YELLOW[8]      = "\x1b[1;33m";
+static char DEF_WHITE[6]       = "\x1b[37m";
+static char DEF_BOLD_WHITE[8]  = "\x1b[1;37m";
+static char DEF_BLACK[6]       = "\x1b[30m";
+static char DEF_BOLD_BLACK[8]  = "\x1b[1;39m";
+static char DEF_BLINK[5]       = "\x1b[5m";
+static char DEF_BRIGHT[5]      = "\x1b[1m";
+static char DEF_RESET[5]       = "\x1b[0m";
 
 static void addColors (v8::Handle<v8::Context> context) {  
   context->Global()->Set(v8::String::New("COLOR_RED"), v8::String::New(DEF_RED, 5));
@@ -619,7 +656,9 @@ int main (int argc, char* argv[]) {
 
   // processComandLineArguments(argc, argv);
   if (! splitServerAdress(ServerAddress, DEFAULT_SERVER_NAME, DEFAULT_SERVER_PORT)) {
-    printf("Could not split address '%s'.\n", ServerAddress.c_str());                  
+    if (ServerAddress.length()) {
+      printf("Could not split %s.\n", ServerAddress.c_str());                  
+    }
   }
         
 
@@ -644,18 +683,20 @@ int main (int argc, char* argv[]) {
   connection_proto->Set("lastHttpReturnCode", FunctionTemplate::New(ClientConnection_lastHttpReturnCode));
   connection_proto->Set("lastErrorMessage", FunctionTemplate::New(ClientConnection_lastErrorMessage));
   connection_proto->Set("isConnected", FunctionTemplate::New(ClientConnection_isConnected));
+  connection_proto->Set("toString", FunctionTemplate::New(ClientConnection_toString));
   connection_proto->SetCallAsFunctionHandler(ClientConnection_ConstructorCallback);    
   Handle<ObjectTemplate> connection_inst = connection_templ->InstanceTemplate();
   connection_inst->SetInternalFieldCount(2);    
   context->Global()->Set(v8::String::New("AvocadoConnection"), connection_proto->NewInstance());    
   ConnectionTempl = v8::Persistent<v8::ObjectTemplate>::New(connection_inst);
-    
+  
+  
   // http://www.network-science.de/ascii/   Font: ogre
-  printf("%c[%dm                           _     %c[%dm\n", 0x1B, 31, 0x1B, 0);
-  printf("%c[%dm  __ ___   _____   ___ %c[%dm___| |__  %c[%dm\n", 0x1B, 32, 0x1B, 31, 0x1B, 0);
-  printf("%c[%dm / _` \\ \\ / / _ \\ / __%c[%dm/ __| '_ \\ %c[%dm\n", 0x1B, 32, 0x1B, 31, 0x1B, 0);
-  printf("%c[%dm| (_| |\\ V / (_) | (__%c[%dm\\__ \\ | | |%c[%dm\n", 0x1B, 32, 0x1B, 31, 0x1B, 0);
-  printf("%c[%dm \\__,_| \\_/ \\___/ \\___|%c[%dm___/_| |_|%c[%dm\n\n", 0x1B, 32, 0x1B, 31, 0x1B, 0);
+  printf(        "                       "      "\x1b[31m    _         \x1b[0m\n");
+  printf("\x1b[32m  __ ___   _____   ___ "      "\x1b[31m___| |__      \x1b[0m\n");
+  printf("\x1b[32m / _` \\ \\ / / _ \\ / __"    "\x1b[31m/ __| '_ \\   \x1b[0m\n");
+  printf("\x1b[32m| (_| |\\ V / (_) | (__"      "\x1b[31m\\__ \\ | | | \x1b[0m\n");
+  printf("\x1b[32m \\__,_| \\_/ \\___/ \\___"   "\x1b[31m|___/_| |_|   \x1b[0m\n\n");
   printf("Welcome to avocsh %s. Copyright (c) 2012 triAGENS GmbH.\n", TRIAGENS_VERSION);
 
 #ifdef TRI_V8_VERSION
@@ -710,7 +751,6 @@ int main (int argc, char* argv[]) {
     }
 
     RunShell(context);
-
   }
   else {
     printf("Could not connect to server %s:%d\n", DEFAULT_SERVER_NAME.c_str(), DEFAULT_SERVER_PORT);

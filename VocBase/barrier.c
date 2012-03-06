@@ -82,6 +82,9 @@ TRI_barrier_t* TRI_CreateBarrierElement (TRI_barrier_list_t* container) {
   TRI_barrier_t* element;
 
   element = TRI_Allocate(sizeof(TRI_barrier_t));
+  if (!element) {
+    return NULL;
+  }
 
   element->_type = TRI_BARRIER_ELEMENT;
   element->_container = container;
@@ -124,6 +127,9 @@ TRI_barrier_t* TRI_CreateBarrierDatafile (TRI_barrier_list_t* container,
   TRI_barrier_t* element;
 
   element = TRI_Allocate(sizeof(TRI_barrier_t));
+  if (!element) {
+    return NULL;
+  }
 
   element->_type = TRI_BARRIER_DATAFILE;
   element->_container = container;

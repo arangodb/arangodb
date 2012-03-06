@@ -179,6 +179,19 @@ namespace triagens {
       
       bool isConnected ();
 
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief sets username and password 
+      ///
+      /// @param string prefix              prefix for sending username and password
+      /// @param string username            username
+      /// @param string password            password
+      ///
+      /// @return void
+      ////////////////////////////////////////////////////////////////////////////////
+      
+      void setUserNamePassword (const string& prefix, 
+                                const string& username, 
+                                const string& password);
       
     private:
 
@@ -231,7 +244,9 @@ namespace triagens {
       int _lastError;
       std::string _lastErrorMessage;
       
-      SimpleHttpConnection* _connection;      
+      SimpleHttpConnection* _connection;
+      
+      std::vector< std::pair<std::string, std::string> >_pathToBasicAuth;
     };
   }
 }

@@ -71,12 +71,24 @@ void TRI_MarkerMasterPointer (void const*, TRI_doc_mptr_t*);
 bool TRI_DefineJsonArrayExecutionContext (TRI_js_exec_context_t,
                                           TRI_json_t*);
 
+
+typedef void xquery_instance_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief defines documents in a join/where - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_DefineWhereExecutionContextX (TRI_js_exec_context_t,
+                                      const TRI_select_join_t*,
+                                      const size_t,
+                                      const bool); 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines documents in a join/where
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_DefineWhereExecutionContext (TRI_js_exec_context_t,
-                                      const TRI_select_join_t*,
+bool TRI_DefineWhereExecutionContext (xquery_instance_t* const,
+                                      TRI_js_exec_context_t,
                                       const size_t,
                                       const bool); 
 
@@ -105,6 +117,12 @@ bool TRI_DefineCompareExecutionContext (TRI_js_exec_context_t,
                                         TRI_sr_documents_t*, 
                                         TRI_sr_documents_t*); 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes an execution context - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ExecuteExecutionContextX (TRI_js_exec_context_t, void* storage);
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an execution context
@@ -113,10 +131,18 @@ bool TRI_DefineCompareExecutionContext (TRI_js_exec_context_t,
 bool TRI_ExecuteExecutionContext (TRI_js_exec_context_t, void* storage);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief executes an execution context for a condition - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ExecuteConditionExecutionContextX (TRI_js_exec_context_t, bool* result);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an execution context for a condition
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteConditionExecutionContext (TRI_js_exec_context_t, bool* result);
+bool TRI_ExecuteConditionExecutionContext (xquery_instance_t* const, 
+                                           TRI_js_exec_context_t, 
+                                           bool* result);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an execution context for a ref access

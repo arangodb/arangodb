@@ -64,6 +64,8 @@ extern "C" {
 #define TRI_ERROR_QUERY_COLLECTION_ALIAS_REDECLARED                     (8052)
 #define TRI_ERROR_QUERY_COLLECTION_ALIAS_UNDECLARED                     (8053)
 
+#define TRI_ERROR_QUERY_COLLECTION_NOT_FOUND                            (8060)
+
 #define TRI_ERROR_QUERY_GEO_RESTRICTION_INVALID                         (8070)
 #define TRI_ERROR_QUERY_GEO_INDEX_MISSING                               (8071)
 
