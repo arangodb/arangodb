@@ -27,6 +27,7 @@
 
 #include "VocBase/select-result.h"
 #include "VocBase/query.h"
+#include "VocBase/query-base.h"
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -290,7 +291,7 @@ static bool IncreaseDocumentsStorageSelectResult (TRI_select_result_t* result,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Get the required storage size for a row result of a join
+/// @brief Get the required storage size for a row result of a join - DEPRECATED
 ///
 /// A result row of a join might contain data from multiple collections. Results
 /// might also be single documents or multiple documents, depending on the join
@@ -299,7 +300,7 @@ static bool IncreaseDocumentsStorageSelectResult (TRI_select_result_t* result,
 /// of all collections of the row result.
 ////////////////////////////////////////////////////////////////////////////////
 
-static size_t GetJoinDocumentSize (const TRI_select_join_t* join) {
+static size_t GetJoinDocumentSizeX (const TRI_select_join_t* join) {
   TRI_join_part_t* part;
   size_t i, n, total;
 
@@ -333,10 +334,56 @@ static size_t GetJoinDocumentSize (const TRI_select_join_t* join) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Add documents from a join to the result set
+/// @brief Get the required storage size for a row result of a join
+///
+/// A result row of a join might contain data from multiple collections. Results
+/// might also be single documents or multiple documents, depending on the join
+/// type. 
+/// This function will calculate the total required size to store all documents 
+/// of all collections of the row result.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddJoinSelectResult (TRI_select_result_t* result, TRI_select_join_t* join) {
+static size_t GetJoinDocumentSize (const query_instance_t* inst) {
+  size_t i, total;
+  TRI_query_instance_t* instance = (TRI_query_instance_t*) inst;
+
+  total = 0;
+
+  for (i = 0; i < instance->_join._length; i++) {
+    TRI_join_part_t* part;
+    size_t n;
+
+    part = (TRI_join_part_t*) instance->_join._buffer[i];
+    if (part->_type == JOIN_TYPE_LIST) {
+      n = part->_listDocuments._length;
+
+      // adjust for extra data
+      total += part->_extraData._size * n;
+    }
+    else {
+      n = 1;
+    }
+
+    // number of documents
+    total += sizeof(TRI_select_size_t);
+    // document pointers
+    total += (size_t) (sizeof(TRI_sr_documents_t) * n);
+
+    // adjust for extra data
+    if (part->_extraData._size) {
+      total += sizeof(TRI_select_size_t);
+      total += part->_extraData._size;
+    }
+  }
+
+  return total;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Add documents from a join to the result set - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_AddJoinSelectResultX (TRI_select_result_t* result, TRI_select_join_t* join) {
   TRI_sr_index_t* indexPtr;
   TRI_sr_documents_t* docPtr;
   TRI_select_size_t* numPtr;
@@ -355,7 +402,7 @@ bool TRI_AddJoinSelectResult (TRI_select_result_t* result, TRI_select_join_t* jo
     } 
   }
 
-  bytesNeeded = GetJoinDocumentSize(join);
+  bytesNeeded = GetJoinDocumentSizeX(join);
   if (result->_documents._bytesUsed + bytesNeeded > result->_documents._bytesAllocated) {
     if (!IncreaseDocumentsStorageSelectResult(result, bytesNeeded)) {
       return false;
@@ -374,6 +421,107 @@ bool TRI_AddJoinSelectResult (TRI_select_result_t* result, TRI_select_join_t* jo
   numPtr = (TRI_select_size_t*) docPtr;
   for (i = 0; i < join->_parts._length; i++) {
     part = (TRI_join_part_t*) join->_parts._buffer[i];
+    if (part->_type == JOIN_TYPE_LIST) {
+      // multiple documents
+      *numPtr++ = part->_listDocuments._length;
+      docPtr = (TRI_sr_documents_t*) numPtr;
+      for (j = 0; j < part->_listDocuments._length; j++) {
+        document = (TRI_doc_mptr_t*) part->_listDocuments._buffer[j];
+
+        *docPtr++ = (TRI_sr_documents_t) document->_data;
+      }
+
+      if (part->_extraData._size) {
+        // copy extra data
+        assert(part->_listDocuments._length == part->_extraData._listValues._length);
+        numPtr = (TRI_select_size_t*) docPtr;
+        *numPtr++ = part->_listDocuments._length;
+        docPtr = (TRI_sr_documents_t*) numPtr;
+
+        for (j = 0; j < part->_extraData._listValues._length; j++) {
+          memcpy(docPtr, part->_extraData._listValues._buffer[j], part->_extraData._size);
+          docPtr = (TRI_sr_documents_t*) ((uint8_t*) docPtr + part->_extraData._size);
+        }
+      }
+    } 
+    else {
+      // single document
+      *numPtr++ = 1;
+      docPtr = (TRI_sr_documents_t*) numPtr;
+      document = (TRI_doc_mptr_t*) part->_singleDocument;
+      if (document) {
+        *docPtr++ = (TRI_sr_documents_t) document->_data;
+      } 
+      else {
+        // document is null
+        *docPtr++ = 0;
+      }
+
+      if (part->_extraData._size) {
+        // copy extra data
+        numPtr = (TRI_select_size_t*) docPtr;
+        *numPtr++ = 1;
+        docPtr = (TRI_sr_documents_t*) numPtr;
+        memcpy(docPtr, part->_extraData._singleValue, part->_extraData._size);
+        docPtr = (TRI_sr_documents_t*) ((uint8_t*) docPtr + part->_extraData._size);
+      }
+    }
+    numPtr = (TRI_select_size_t*) docPtr;
+  }
+
+  result->_documents._bytesUsed += bytesNeeded;
+  result->_documents._current = (TRI_sr_documents_t*) numPtr;
+
+  result->_numRows++;
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Add documents from a join to the result set
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_AddJoinSelectResult (query_instance_t* const inst, 
+                              TRI_select_result_t* result) {
+  TRI_sr_index_t* indexPtr;
+  TRI_sr_documents_t* docPtr;
+  TRI_select_size_t* numPtr;
+  TRI_join_part_t* part;
+  TRI_doc_mptr_t* document;
+  size_t numNeeded; 
+  size_t bytesNeeded;
+  size_t i, j;
+
+  TRI_query_instance_t* instance = (TRI_query_instance_t*) inst;
+
+  // need space for one pointer 
+  numNeeded = 1;
+
+  if (result->_index._numUsed + numNeeded > result->_index._numAllocated) {
+    if (!IncreaseIndexStorageSelectResult(result, numNeeded)) {
+      return false;
+    } 
+  }
+
+  bytesNeeded = GetJoinDocumentSize(instance);
+  if (result->_documents._bytesUsed + bytesNeeded > result->_documents._bytesAllocated) {
+    if (!IncreaseDocumentsStorageSelectResult(result, bytesNeeded)) {
+      return false;
+    } 
+  }
+
+  // store pointer to document in index
+  docPtr = result->_documents._current;
+  indexPtr = (TRI_sr_index_t*) result->_index._current;
+  *indexPtr++ = (TRI_sr_index_t) docPtr;
+
+  result->_index._current = (TRI_sr_index_t*) indexPtr;
+  result->_index._numUsed++;
+
+  // store document data
+  numPtr = (TRI_select_size_t*) docPtr;
+  for (i = 0; i < instance->_join._length; i++) {
+    part = (TRI_join_part_t*) instance->_join._buffer[i];
     if (part->_type == JOIN_TYPE_LIST) {
       // multiple documents
       *numPtr++ = part->_listDocuments._length;

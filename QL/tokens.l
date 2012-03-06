@@ -268,7 +268,7 @@
   return PARAMETER;
 }
 
-@[a-zA-Z][a-zA-Z0-9_]+@ {
+@[a-zA-Z][a-zA-Z0-9_]*@ {
   yylval->strval = TRI_ParseQueryAllocString2(yyextra, yytext + 1 , strlen(yytext) - 2);
   return PARAMETER_NAMED;
 }

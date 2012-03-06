@@ -2,7 +2,7 @@ var actions = require("actions");
 
 function postCursor(req, res) {
   if (req.suffix.length != 0) {
-    actions.actionResultError (req, res, 404, cursorNotModified, "Cursor not created"); 
+    actions.actionResultError (req, res, 404, actions.cursorNotModified, "Cursor not created"); 
     return;
   }
 
@@ -23,42 +23,50 @@ function postCursor(req, res) {
       return;
     }
    
-    var result = AQL_PREPARE(db, queryString);
+    var result;
+    if (json.bindVars) {
+      result = AQL_PREPARE(db, queryString, json.bindVars);
+    }
+    else {
+      result = AQL_PREPARE(db, queryString);
+    }
+
     if (result instanceof AvocadoQueryError) {
       actions.actionResultError (req, res, 404, result.code, result.message);
       return;
     }
 
-    queryLimit = 0;
     var cursor = result.execute();
-    
+    if (cursor instanceof AvocadoQueryError) {
+      actionResultError (req, res, 404, result.code, result.message);
+      return;
+    }
+
+    var maxResults = 1000;
+    if (json.maxResults && parseInt(json.maxResults) > 0) {
+      maxResults = parseInt(json.maxResults);
+    }
+
     var lines = [];    
     var i = 0;
     
-    while (cursor.hasNext()) {
-      lines[i] = cursor.next();
-      ++i;
+    while (i < maxResults && cursor.hasNext()) {
+      lines[i++] = cursor.next();
     }
     
-    // req.bindParameter
-    // req.skip
-    // req.count    
-    // query.execute(...)
-    
-    var hasMore = false;
-    var cursorId = null;
-    
-    if (queryString == "select a from achim a") {
-      hasMore = true;
-      cursorId = "egal:egal";
-    }
+    var cursorId;
+    var count = cursor.count();
+    var hasMore = i < count;
     
     var result = { 
       "result" : lines,
       "_id" : cursorId,
-      "count" : i,
       "hasMore" : hasMore
     };
+    
+    if (json.count) {
+      result["count"] = count;
+    } 
     
     actions.actionResultOK(req, res, 201, result);        
   }
@@ -121,12 +129,15 @@ actions.defineHttp({
       case ("POST") : 
         postCursor(req, res); 
         break;
+
       case ("PUT") :  
         putCursor(req, res); 
         break;
+
       case ("DELETE") :  
         deleteCursor(req, res); 
         break;
+
       default:
         actions.actionResultUnsupported(req, res);
     }

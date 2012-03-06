@@ -383,7 +383,7 @@ void TRI_ResizeVectorPointer (TRI_vector_pointer_t* vector, size_t n) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds and element at the end
+/// @brief adds an element at the end
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_PushBackVectorPointer (TRI_vector_pointer_t* vector, void* element) {
@@ -402,6 +402,37 @@ void TRI_PushBackVectorPointer (TRI_vector_pointer_t* vector, void* element) {
   }
 
   vector->_buffer[vector->_length++] = element;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inserts an element at position n
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InsertVectorPointer (TRI_vector_pointer_t* vector, void* element, size_t n) {
+  if (n >= vector->_capacity) {
+    void* newBuffer;
+
+    vector->_capacity = (size_t)(1 + GROW_FACTOR * vector->_capacity);
+    if (n >= vector->_capacity) {
+      vector->_capacity = n + 1;
+    }
+    newBuffer = (char**) TRI_Allocate(vector->_capacity * sizeof(void*));
+
+    if (vector->_buffer != NULL) {
+      memcpy(newBuffer, vector->_buffer, vector->_length * sizeof(void*));
+      TRI_Free(vector->_buffer);
+    }
+
+    vector->_buffer = newBuffer;
+  }
+
+  if (n != vector->_length) {
+    memmove(vector->_buffer + n + 1, 
+            vector->_buffer + n, 
+            sizeof(void*) * (vector->_length - n));
+  }
+  vector->_length++;
+  vector->_buffer[n] = element;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -572,7 +603,7 @@ void TRI_ResizeVectorString (TRI_vector_string_t* vector, size_t n) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds and element at the end
+/// @brief adds an element at the end
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_PushBackVectorString (TRI_vector_string_t* vector, char* element) {
@@ -591,6 +622,37 @@ void TRI_PushBackVectorString (TRI_vector_string_t* vector, char* element) {
   }
 
   vector->_buffer[vector->_length++] = element;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inserts an element at position n
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InsertVectorString (TRI_vector_string_t* vector, char* element, size_t n) {
+  if (n >= vector->_capacity) {
+    char** newBuffer;
+
+    vector->_capacity = (size_t)(1 + GROW_FACTOR * vector->_capacity);
+    if (n >= vector->_capacity) {
+      vector->_capacity = n + 1;
+    }
+    newBuffer = (char**) TRI_Allocate(vector->_capacity * sizeof(char*));
+
+    if (vector->_buffer != NULL) {
+      memcpy(newBuffer, vector->_buffer, vector->_length * sizeof(char*));
+      TRI_Free(vector->_buffer);
+    }
+
+    vector->_buffer = newBuffer;
+  }
+
+  if (n != vector->_length) {
+    memmove(vector->_buffer + n + 1, 
+            vector->_buffer + n, 
+            sizeof(char**) * (vector->_length - n));
+  }
+  vector->_length++;
+  vector->_buffer[n] = element;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

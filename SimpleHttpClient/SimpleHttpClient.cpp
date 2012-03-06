@@ -88,7 +88,7 @@ namespace triagens {
       SimpleHttpResult::resultTypes type = SimpleHttpResult::UNKNOWN;
 
       size_t retries = 0;
-      
+
       // build request
       stringstream requestBuffer;
       fillRequestBuffer(requestBuffer, method, location, body, bodyLength, headerFields);
@@ -169,6 +169,20 @@ namespace triagens {
       return _connection->isConnected();
     }
 
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief sets username and password 
+    ////////////////////////////////////////////////////////////////////////////////
+      
+    void SimpleHttpClient::setUserNamePassword (
+            const string& prefix, 
+            const string& username, 
+            const string& password) {
+      
+      string value = triagens::basics::StringUtils::encodeBase64(username + ":" + password);
+      
+      _pathToBasicAuth.push_back(make_pair(prefix, value));      
+    }
+    
     ////////////////////////////////////////////////////////////////////////////////
     /// private methods
     ////////////////////////////////////////////////////////////////////////////////
@@ -325,11 +339,12 @@ namespace triagens {
           break;
       }
 
+      string l = location;
       if (location.length() == 0 || location[0] != '/') {
-        requestBuffer << "/";
+        l = "/" + location;
       }
 
-      requestBuffer << location << " HTTP/1.1\r\n";      
+      requestBuffer << l << " HTTP/1.1\r\n";      
       
       requestBuffer << "Host: ";
       if (_connection->getHostname().find(':') != string::npos) {
@@ -341,17 +356,37 @@ namespace triagens {
       requestBuffer << ':' << _connection->getPort() << "\r\n";
       requestBuffer << "Connection: Keep-Alive\r\n";
       requestBuffer << "User-Agent: VOC-Client/1.0\r\n";
+      requestBuffer << "Accept: application/json\r\n";
       
       if (bodyLength > 0) {
         requestBuffer << "Content-Type: application/json; charset=utf-8\r\n";
       }
 
+      // do basic authorization
+      if (_pathToBasicAuth.size() > 0) {        
+        string foundPrefix;
+        string foundValue;
+        std::vector< std::pair<std::string, std::string> >::iterator i = _pathToBasicAuth.begin();
+        for (; i != _pathToBasicAuth.end(); ++i) {
+          string f = i->first;
+          if (l.find(f) == 0) {
+            // f is prefix of l
+            if ( f.length() > foundPrefix.length() ) {
+              foundPrefix = f;
+              foundValue = i->second;
+            }
+          }           
+        }
+        if (foundValue.length() > 0) {
+          requestBuffer << "Authorization: Basic " << foundValue << "\r\n";          
+        }
+      }
+      
       for (map<string, string>::const_iterator i = headerFields.begin(); i != headerFields.end(); ++i) {
         requestBuffer << i->first << ": " << i->second << "\r\n";
       }
 
       requestBuffer << "Content-Length: " << bodyLength << "\r\n\r\n";
-
       requestBuffer.write(body, bodyLength);
     }
 

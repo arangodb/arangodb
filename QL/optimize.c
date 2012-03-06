@@ -822,11 +822,9 @@ void QLOptimizeFrom (QL_ast_query_t* const query) {
 
     alias = next->_lhs->_rhs;
     if ((QLAstQueryGetRefCount(query, alias->_value._stringValue) < 1) &&
-        (next->_type == TRI_QueryNodeJoinLeft || 
-         next->_type == TRI_QueryNodeJoinRight || 
-         next->_type == TRI_QueryNodeJoinList)) {
+        (next->_type == TRI_QueryNodeJoinList)) {
       // collection is joined but unused in select, where, order clause
-      // remove unused list or outer joined collections
+      // remove unused list joined collections
       // move joined collection one up
       node->_next = next->_next;
       // continue at the same position as the new collection at the current

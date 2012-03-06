@@ -47,7 +47,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clones a query selection for unaltered documents
+/// @brief clones a query selection for unaltered documents - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_qry_select_t* CloneQuerySelectDocument (TRI_qry_select_t const* s) {
@@ -55,7 +55,7 @@ static TRI_qry_select_t* CloneQuerySelectDocument (TRI_qry_select_t const* s) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief frees a query selection for unaltered documents
+/// @brief frees a query selection for unaltered documents - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeQuerySelectDocument (TRI_qry_select_t* s) {
@@ -67,7 +67,7 @@ static void FreeQuerySelectDocument (TRI_qry_select_t* s) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts result to JavaScript
+/// @brief converts result to JavaScript - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool ToJavaScriptSelectDocument (TRI_qry_select_t* s,
@@ -104,7 +104,7 @@ static bool ToJavaScriptSelectDocument (TRI_qry_select_t* s,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a query selection for unaltered documents
+/// @brief creates a query selection for unaltered documents - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_qry_select_t* TRI_CreateQuerySelectDocument () {
@@ -139,7 +139,7 @@ TRI_qry_select_t* TRI_CreateQuerySelectDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clones a query selection for general documents
+/// @brief clones a query selection for general documents - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_qry_select_t* CloneQuerySelectGeneral (TRI_qry_select_t const* s) {
@@ -151,7 +151,7 @@ static TRI_qry_select_t* CloneQuerySelectGeneral (TRI_qry_select_t const* s) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief frees a query selection for general documents
+/// @brief frees a query selection for general documents - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeQuerySelectGeneral (TRI_qry_select_t* s) {
@@ -164,7 +164,7 @@ static void FreeQuerySelectGeneral (TRI_qry_select_t* s) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts result to JavaScript
+/// @brief converts result to JavaScript - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool ToJavaScriptSelectGeneral (TRI_qry_select_t* s,
@@ -207,7 +207,7 @@ static bool ToJavaScriptSelectGeneral (TRI_qry_select_t* s,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a query selection for general, generated documents
+/// @brief creates a query selection for general, generated documents - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_qry_select_t* TRI_CreateQuerySelectGeneral (char const* clause) {
@@ -244,7 +244,7 @@ TRI_qry_select_t* TRI_CreateQuerySelectGeneral (char const* clause) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief list of all documents
+/// @brief list of all documents - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct collection_cursor_s {
@@ -265,7 +265,7 @@ typedef struct collection_cursor_s {
 collection_cursor_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fill function
+/// @brief fill function - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef void (*cond_fptr) (collection_cursor_t*,
@@ -288,15 +288,68 @@ typedef void (*cond_fptr) (collection_cursor_t*,
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes the gc markers for all collections of a query
+////////////////////////////////////////////////////////////////////////////////
 
+static void RemoveCollectionsQueryCursor (TRI_query_cursor_t* cursor) {
+  size_t i;
+
+  for (i = 0;  i < cursor->_containers._length;  ++i) {
+    TRI_barrier_t* ce = cursor->_containers._buffer[i];
+    assert(ce);    
+    TRI_FreeBarrier(ce);
+  }
+
+  cursor->_containers._length = 0;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the next element
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the next element 
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_rc_result_t* NextQueryCursor (TRI_query_cursor_t* const cursor) {
+  if (cursor->_currentRow < cursor->_length) {
+    cursor->_result._dataPtr = 
+      cursor->_result._selectResult->getAt(cursor->_result._selectResult, cursor->_currentRow++);
+
+    return &cursor->_result;
+  }
+
+  return NULL;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the next element
+/// @brief checks if the cursor is exhausted 
+////////////////////////////////////////////////////////////////////////////////
+
+static bool HasNextQueryCursor (const TRI_query_cursor_t* const cursor) {
+  return cursor->_currentRow < cursor->_length;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees a cursor 
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeQueryCursor (TRI_query_cursor_t* cursor) {
+  // free result set
+  if (cursor->_result._selectResult != NULL) {
+    cursor->_result._selectResult->free(cursor->_result._selectResult);
+  }
+  
+  // free select
+  RemoveCollectionsQueryCursor(cursor);
+  TRI_DestroyVectorPointer(&cursor->_containers);
+
+  TRI_Free(cursor);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the next element - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_rc_result_t* NextCollectionCursor (TRI_rc_cursor_t* c) {
@@ -317,6 +370,9 @@ static TRI_rc_result_t* NextCollectionCursor (TRI_rc_cursor_t* c) {
   return NULL;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
 
 static bool ToJavaScriptHashDocument (TRI_qry_select_t* s,
                                       TRI_rc_result_t* result,
@@ -350,6 +406,10 @@ static bool ToJavaScriptHashDocument (TRI_qry_select_t* s,
   return TRI_ObjectDocumentPointer(collection, document, storage);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
 static TRI_rc_result_t* NextHashCollectionCursor (TRI_rc_cursor_t* c) {
   collection_cursor_t* cursor;
   TRI_doc_collection_t* collection;
@@ -368,6 +428,10 @@ static TRI_rc_result_t* NextHashCollectionCursor (TRI_rc_cursor_t* c) {
   return &cursor->_result;
   
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
 
 static TRI_rc_result_t* NextSkiplistCollectionCursor (TRI_rc_cursor_t* c) {
   collection_cursor_t* cursor;
@@ -389,7 +453,7 @@ static TRI_rc_result_t* NextSkiplistCollectionCursor (TRI_rc_cursor_t* c) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if the cursor is exhausted
+/// @brief checks if the cursor is exhausted - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool HasNextCollectionCursor (TRI_rc_cursor_t* c) {
@@ -401,7 +465,7 @@ static bool HasNextCollectionCursor (TRI_rc_cursor_t* c) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief frees a cursor
+/// @brief frees a cursor - DEPRECATED 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeCollectionCursor (TRI_rc_cursor_t* c) {
@@ -440,7 +504,7 @@ static void FreeCollectionCursor (TRI_rc_cursor_t* c) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief applys a skip and limit on the result set
+/// @brief apply a skip and limit on the result set
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool TransformDataSkipLimit (TRI_rc_result_t* result,
@@ -489,7 +553,7 @@ static bool TransformDataSkipLimit (TRI_rc_result_t* result,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clones a query condition for constant conditions
+/// @brief clones a query condition for constant conditions - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_qry_where_t* CloneQueryWhereBoolean (TRI_qry_where_t const* w) {
@@ -501,7 +565,7 @@ static TRI_qry_where_t* CloneQueryWhereBoolean (TRI_qry_where_t const* w) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief frees a query condition for constant conditions
+/// @brief frees a query condition for constant conditions - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeQueryWhereBoolean (TRI_qry_where_t* w) {
@@ -526,7 +590,7 @@ static void FreeQueryWhereBoolean (TRI_qry_where_t* w) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a query condition for constant conditions
+/// @brief creates a query condition for constant conditions - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_qry_where_t* TRI_CreateQueryWhereBoolean (bool where) {
@@ -562,7 +626,7 @@ TRI_qry_where_t* TRI_CreateQueryWhereBoolean (bool where) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clones a query condition using the primary index and a constant
+/// @brief clones a query condition using the primary index and a constant - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_qry_where_t* CloneQueryWherePrimaryConstant (TRI_qry_where_t const* w) {
@@ -574,7 +638,7 @@ static TRI_qry_where_t* CloneQueryWherePrimaryConstant (TRI_qry_where_t const* w
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief frees a query condition using the primary index and a constant
+/// @brief frees a query condition using the primary index and a constant - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeQueryWherePrimaryConstant (TRI_qry_where_t* w) {
@@ -586,7 +650,7 @@ static void FreeQueryWherePrimaryConstant (TRI_qry_where_t* w) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns document identifier for a constant
+/// @brief returns document identifier for a constant - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_voc_did_t DidQueryWherePrimaryConstant (TRI_qry_where_primary_t* w,
@@ -612,7 +676,7 @@ static TRI_voc_did_t DidQueryWherePrimaryConstant (TRI_qry_where_primary_t* w,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a query condition using the primary index and a constant
+/// @brief creates a query condition using the primary index and a constant - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_qry_where_t* TRI_CreateQueryWherePrimaryConstant (TRI_voc_did_t did) {
@@ -650,7 +714,7 @@ TRI_qry_where_t* TRI_CreateQueryWherePrimaryConstant (TRI_voc_did_t did) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clones a query condition for general, JavaScript conditions
+/// @brief clones a query condition for general, JavaScript conditions - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_qry_where_t* CloneQueryWhereGeneral (TRI_qry_where_t const* w) {
@@ -662,7 +726,7 @@ static TRI_qry_where_t* CloneQueryWhereGeneral (TRI_qry_where_t const* w) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief frees a query condition for general, JavaScript conditions
+/// @brief frees a query condition for general, JavaScript conditions - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeQueryWhereGeneral (TRI_qry_where_t* w) {
@@ -688,7 +752,7 @@ static void FreeQueryWhereGeneral (TRI_qry_where_t* w) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a query condition for general, JavaScript conditions
+/// @brief creates a query condition for general, JavaScript conditions - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_qry_where_t* TRI_CreateQueryWhereGeneral (char const* clause) {
@@ -726,7 +790,7 @@ TRI_qry_where_t* TRI_CreateQueryWhereGeneral (char const* clause) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clones a query condition using the geo index and constants
+/// @brief clones a query condition using the geo index and constants - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_qry_where_t* CloneQueryWhereHashConstant (const TRI_qry_where_t* w) {
@@ -737,6 +801,9 @@ static TRI_qry_where_t* CloneQueryWhereHashConstant (const TRI_qry_where_t* w) {
   return TRI_CreateQueryWhereHashConstant(whereClause->_iid, whereClause->_parameters);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
 
 static TRI_qry_where_t* CloneQueryWhereSkiplistConstant (const TRI_qry_where_t* w) {
   TRI_qry_where_skiplist_const_t* whereClause;
@@ -745,6 +812,10 @@ static TRI_qry_where_t* CloneQueryWhereSkiplistConstant (const TRI_qry_where_t* 
 
   return TRI_CreateQueryWhereSkiplistConstant(whereClause->_iid, whereClause->_parameters);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
 
 static TRI_qry_where_t* CloneQueryWhereWithinConstant (TRI_qry_where_t const* w) {
   TRI_qry_where_within_const_t* whereClause;
@@ -759,7 +830,7 @@ static TRI_qry_where_t* CloneQueryWhereWithinConstant (TRI_qry_where_t const* w)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief frees a query condition using the geo index and constants
+/// @brief frees a query condition using the geo index and constants - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeQueryWhereHashConstant (TRI_qry_where_t* w) {
@@ -768,6 +839,10 @@ static void FreeQueryWhereHashConstant (TRI_qry_where_t* w) {
   TRI_FreeJson(whereClause->_parameters);
   TRI_Free(whereClause);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
 
 static void FreeQueryWhereSkiplistConstant (TRI_qry_where_t* w) {
   TRI_qry_where_skiplist_const_t* whereClause;
@@ -789,7 +864,7 @@ static void FreeQueryWhereWithinConstant (TRI_qry_where_t* w) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the lattitude and longitude for constants
+/// @brief returns the latitude and longitude for constants - probably DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static double* CoordinatesQueryWhereWithinConstant (TRI_qry_where_within_t* w,
@@ -802,7 +877,7 @@ static double* CoordinatesQueryWhereWithinConstant (TRI_qry_where_within_t* w,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the radius for constants
+/// @brief returns the radius for constants - probably DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static double RadiusQueryWhereWithinConstant (TRI_qry_where_within_t* w,
@@ -828,7 +903,7 @@ static double RadiusQueryWhereWithinConstant (TRI_qry_where_within_t* w,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a query condition using the geo index and a constant
+/// @brief creates a query condition using the geo index and a constant - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_qry_where_t* TRI_CreateQueryWhereWithinConstant (TRI_idx_iid_t iid,
@@ -860,7 +935,7 @@ TRI_qry_where_t* TRI_CreateQueryWhereWithinConstant (TRI_idx_iid_t iid,
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a query condition for hash index
+/// @brief creates a query condition for hash index - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_qry_where_t* TRI_CreateQueryWhereHashConstant (TRI_idx_iid_t iid, TRI_json_t* parameters) {
@@ -875,7 +950,7 @@ TRI_qry_where_t* TRI_CreateQueryWhereHashConstant (TRI_idx_iid_t iid, TRI_json_t
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a query condition for skiplist index
+/// @brief creates a query condition for skiplist index - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_qry_where_t* TRI_CreateQueryWhereSkiplistConstant (TRI_idx_iid_t iid, TRI_json_t* parameters) {
@@ -906,6 +981,10 @@ TRI_qry_where_t* TRI_CreateQueryWhereSkiplistConstant (TRI_idx_iid_t iid, TRI_js
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
 static bool InitCollectionsQuery (TRI_query_t* query) {
   TRI_join_part_t* part;
   TRI_vocbase_col_t const* collection;
@@ -931,7 +1010,7 @@ static bool InitCollectionsQuery (TRI_query_t* query) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a hash query
+/// @brief creates a hash query - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_query_t* TRI_CreateHashQuery(const TRI_qry_where_t* whereStmt,
@@ -954,7 +1033,7 @@ TRI_query_t* TRI_CreateHashQuery(const TRI_qry_where_t* whereStmt,
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a skiplist query
+/// @brief creates a skiplist query - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_query_t* TRI_CreateSkiplistQuery(const TRI_qry_where_t* whereStmt,
@@ -976,7 +1055,7 @@ TRI_query_t* TRI_CreateSkiplistQuery(const TRI_qry_where_t* whereStmt,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a query
+/// @brief creates a query - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
                                  
 TRI_query_t* TRI_CreateQuery (TRI_vocbase_t* vocbase,
@@ -1010,7 +1089,7 @@ TRI_query_t* TRI_CreateQuery (TRI_vocbase_t* vocbase,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief frees a query
+/// @brief frees a query - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeQuery (TRI_query_t* query) {
@@ -1030,7 +1109,7 @@ void TRI_FreeQuery (TRI_query_t* query) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a context
+/// @brief creates a context - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_rc_context_t* TRI_CreateContextQuery (TRI_query_t* query) {
@@ -1081,7 +1160,7 @@ TRI_rc_context_t* TRI_CreateContextQuery (TRI_query_t* query) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief frees a context
+/// @brief frees a context - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeContextQuery (TRI_rc_context_t* context) {
@@ -1114,7 +1193,7 @@ void TRI_FreeContextQuery (TRI_rc_context_t* context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read locks all collections of a query
+/// @brief read locks all collections of a query - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ReadLockCollectionsQuery (TRI_query_t* query) {
@@ -1136,7 +1215,7 @@ void TRI_ReadLockCollectionsQuery (TRI_query_t* query) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read unlocks all collections of a query
+/// @brief read unlocks all collections of a query - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ReadUnlockCollectionsQuery (TRI_query_t* query) {
@@ -1159,7 +1238,7 @@ void TRI_ReadUnlockCollectionsQuery (TRI_query_t* query) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a gc marker for all collections
+/// @brief adds a gc marker for all collections - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddCollectionsCursor (TRI_rc_cursor_t* cursor, TRI_query_t* query) {
@@ -1183,18 +1262,82 @@ void TRI_AddCollectionsCursor (TRI_rc_cursor_t* cursor, TRI_query_t* query) {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read locks all collections of a query
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ReadLockCollectionsQueryInstance (TRI_query_instance_t* const instance) {
+  size_t i;
+
+  for (i = 0; i < instance->_locks._length; i++) {
+    TRI_query_instance_lock_t* lock = instance->_locks._buffer[i];
+
+    assert(lock);
+    assert(lock->_collection);
+
+    LOG_DEBUG("locking collection '%s'", lock->_collectionName);
+    lock->_collection->beginRead(lock->_collection);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes the gc markers for all collections of a query
+/// @brief read unlocks all collections of a query
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ReadUnlockCollectionsQueryInstance (TRI_query_instance_t* const instance) {
+  size_t i;
+  
+  i = instance->_locks._length;
+  while (i > 0) {
+    TRI_query_instance_lock_t* lock;
+    
+    i--;
+
+    lock = instance->_locks._buffer[i];
+    assert(lock);
+    assert(lock->_collection);
+
+    LOG_DEBUG("unlocking collection '%s'", lock->_collectionName);
+    lock->_collection->endRead(lock->_collection);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a gc marker for all collections
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_AddCollectionsBarrierQueryInstance (TRI_query_instance_t* const instance,
+                                             TRI_query_cursor_t* const cursor) {
+  size_t i;
+
+  // note: the same collection might be added multiple times here
+  for (i = 0; i < instance->_locks._length; i++) {
+    TRI_query_instance_lock_t* lock = instance->_locks._buffer[i];
+    TRI_barrier_t* ce;
+
+    assert(lock);
+    assert(lock->_collection);
+    ce = TRI_CreateBarrierElement(&lock->_collection->_barrierList);
+    if (!ce) {
+      TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+      return false;
+    }
+    TRI_PushBackVectorPointer(&cursor->_containers, ce);
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes the gc markers for all collections of a query - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_RemoveCollectionsCursor (TRI_rc_cursor_t* cursor) {
-  TRI_barrier_t* ce;
   size_t i;
 
   for (i = 0;  i < cursor->_containers._length;  ++i) {
-    ce = cursor->_containers._buffer[i];
-
+    TRI_barrier_t* ce = cursor->_containers._buffer[i];
+    assert(ce);
     TRI_FreeBarrier(ce);
   }
 
@@ -1202,7 +1345,7 @@ void TRI_RemoveCollectionsCursor (TRI_rc_cursor_t* cursor) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a query
+/// @brief executes a query - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FilterDataHashQuery(collection_cursor_t* cursor,TRI_query_t* query, 
@@ -1294,6 +1437,9 @@ static void FilterDataHashQuery(collection_cursor_t* cursor,TRI_query_t* query,
     
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
 
 static void FilterDataSLQuery(collection_cursor_t* cursor,TRI_query_t* query, 
                               TRI_rc_context_t* context) {
@@ -1381,8 +1527,11 @@ static void FilterDataSLQuery(collection_cursor_t* cursor,TRI_query_t* query,
     cursor->_length = 0; 
     cursor->_currentRow = 0;
   }
-    
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a query - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
 
 TRI_rc_cursor_t* TRI_ExecuteQueryAql (TRI_query_t* query, TRI_rc_context_t* context) {
   TRI_qry_where_t* where;
@@ -1460,7 +1609,7 @@ TRI_rc_cursor_t* TRI_ExecuteQueryAql (TRI_query_t* query, TRI_rc_context_t* cont
   }
 
   // create a select result container for the joins
-  selectResult = TRI_JoinSelectResult(query->_vocbase, query->_joins);
+  selectResult = TRI_JoinSelectResultX(query->_vocbase, query->_joins);
   if (!selectResult) {
     return NULL;
   }
@@ -1495,7 +1644,7 @@ TRI_rc_cursor_t* TRI_ExecuteQueryAql (TRI_query_t* query, TRI_rc_context_t* cont
  
   // Execute joins
   if (!emptyQuery) {
-    TRI_ExecuteJoins(selectResult, query->_joins, where, context, skip, limit);
+    TRI_ExecuteJoinsX(selectResult, query->_joins, where, context, skip, limit);
   }
 
   TRI_ReadUnlockCollectionsQuery(query);
@@ -1506,7 +1655,7 @@ TRI_rc_cursor_t* TRI_ExecuteQueryAql (TRI_query_t* query, TRI_rc_context_t* cont
 
   // order by
   if (order) {
-    order(&cursor->_result, query->_order);
+    order(&cursor->_result);
   }
 
   // apply a negative limit or a limit after ordering
@@ -1519,6 +1668,105 @@ TRI_rc_cursor_t* TRI_ExecuteQueryAql (TRI_query_t* query, TRI_rc_context_t* cont
   cursor->_currentRow = 0;
 
   return &cursor->base;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a query
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_query_cursor_t* TRI_ExecuteQueryInstance (void* const _instance) {
+  TRI_select_result_t* selectResult;
+  TRI_query_cursor_t* cursor;
+  TRI_query_instance_t* instance = (TRI_query_instance_t*) _instance;
+  
+  // create a select result container for the joins
+  selectResult = TRI_JoinSelectResult(instance);
+  if (!selectResult) {
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+    return NULL;
+  }
+
+  cursor = TRI_Allocate(sizeof(TRI_query_cursor_t));
+  if (!cursor) {
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+    selectResult->free(selectResult);
+    return NULL;
+  }
+
+  cursor->_result._selectResult = selectResult;
+  cursor->_result._dataPtr = NULL;
+  cursor->_selectContext = TRI_CreateExecutionContext(instance->_query._select._functionCode);
+  if (!cursor->_selectContext) {
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+    selectResult->free(selectResult);
+    TRI_Free(cursor);
+    return NULL;
+  }
+  
+  cursor->next = NextQueryCursor;
+  cursor->hasNext = HasNextQueryCursor;
+  cursor->free = FreeQueryCursor;
+
+  TRI_InitVectorPointer(&cursor->_containers);
+
+  if (!instance->_query._isEmpty) {
+    TRI_voc_size_t skip;
+    TRI_voc_ssize_t limit;
+    bool applyPostSkipLimit;
+
+    skip = instance->_query._limit._offset;
+    limit = instance->_query._limit._count;
+    applyPostSkipLimit = false;
+
+    if (limit < 0) {
+      limit = TRI_QRY_NO_LIMIT;
+      skip = 0;
+      applyPostSkipLimit = true;
+    }
+
+    if (instance->_query._order._type == QLQueryOrderTypeMustEvaluate && 
+        (instance->_query._limit._offset > 0 || 
+         instance->_query._limit._count != TRI_QRY_NO_LIMIT)) {
+      // query has an order by. we must postpone limit to after sorting
+      limit = TRI_QRY_NO_LIMIT;
+      skip = 0;
+      applyPostSkipLimit = true;
+    }
+
+    TRI_ReadLockCollectionsQueryInstance(instance);
+    if (!TRI_AddCollectionsBarrierQueryInstance(instance, cursor)) {
+      selectResult->free(selectResult);
+      cursor->free(cursor);
+      return NULL;
+    }
+
+    // Execute joins
+    TRI_ExecuteJoins(instance, selectResult, skip, limit);
+
+    TRI_ReadUnlockCollectionsQueryInstance(instance);
+
+    // order by
+    if (instance->_query._order._type == QLQueryOrderTypeMustEvaluate) {
+      cursor->_result._orderContext = TRI_CreateExecutionContext(instance->_query._order._functionCode);
+      if (cursor->_result._orderContext) {
+        TRI_OrderDataGeneralQuery(&cursor->_result);
+      }
+      TRI_FreeExecutionContext(cursor->_result._orderContext);
+    }
+
+    // apply a negative limit or a limit after ordering
+    if (applyPostSkipLimit) {
+      TransformDataSkipLimit(&cursor->_result, 
+                             instance->_query._limit._offset, 
+                             instance->_query._limit._count);
+    }
+  }
+  
+  // adjust cursor length
+  cursor->_length = selectResult->_numRows; 
+  cursor->_currentRow = 0;
+
+  return cursor;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
