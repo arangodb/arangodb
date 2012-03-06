@@ -87,15 +87,13 @@ TRI_qry_order_general_t;
 /// @brief Order by function typedef
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef void (*TRI_order_fptr_t) (TRI_rc_result_t*,
-                                  TRI_qry_order_t*);
+typedef void (*TRI_order_fptr_t) (TRI_rc_result_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief General order by function (uses JavaScript code)
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_OrderDataGeneralQuery (TRI_rc_result_t*,
-                                TRI_qry_order_t*);
+void TRI_OrderDataGeneralQuery (TRI_rc_result_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an order by clause for general JavaScript code

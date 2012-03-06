@@ -37,40 +37,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Hash function used to hash collection aliases
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashKey (TRI_associative_pointer_t* array, void const* key) {
-  char const* k = (char const*) key;
-
-  return TRI_FnvHashString(k);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Hash function used to hash elements in the collection
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashCollectionElement (TRI_associative_pointer_t* array, 
-                                       void const* element) {
-  QL_ast_query_collection_t* collection = (QL_ast_query_collection_t*) element;
-
-  return TRI_FnvHashString(collection->_alias);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Comparison function used to determine hash key equality
-////////////////////////////////////////////////////////////////////////////////
-
-static bool EqualCollectionKeyElement (TRI_associative_pointer_t* array, 
-                                       void const* key, 
-                                       void const* element) {
-  char const* k = (char const*) key;
-  QL_ast_query_collection_t* collection = (QL_ast_query_collection_t*) element;
-
-  return TRI_EqualString(k, collection->_alias);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Hash function used to hash geo restrictions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -129,6 +95,41 @@ static void QLAstQueryFreeGeoRestrictions (TRI_associative_pointer_t* const arra
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Hash function used to hash collection aliases
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t QLHashKey (TRI_associative_pointer_t* array, void const* key) {
+  char const* k = (char const*) key;
+
+  return TRI_FnvHashString(k);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Hash function used to hash elements in the collection
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t QLHashCollectionElement (TRI_associative_pointer_t* array, 
+                                  void const* element) {
+  QL_ast_query_collection_t* collection = (QL_ast_query_collection_t*) element;
+
+  return TRI_FnvHashString(collection->_alias);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Comparison function used to determine hash key equality
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLEqualCollectionKeyElement (TRI_associative_pointer_t* array, 
+                                  void const* key, 
+                                  void const* element) {
+  char const* k = (char const*) key;
+  QL_ast_query_collection_t* collection = (QL_ast_query_collection_t*) element;
+
+  return TRI_EqualString(k, collection->_alias);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief free collections previously registered
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -174,13 +175,13 @@ void QLAstQueryInit (QL_ast_query_t* const query) {
   query->_isEmpty                    = false;
 
   TRI_InitAssociativePointer(&query->_from._collections,
-                             HashKey,
-                             HashCollectionElement,
-                             EqualCollectionKeyElement,
+                             QLHashKey,
+                             QLHashCollectionElement,
+                             QLEqualCollectionKeyElement,
                              0);
   
   TRI_InitAssociativePointer(&query->_geo._restrictions,
-                             HashKey,
+                             QLHashKey,
                              HashRestrictionElement,
                              EqualRestrictionKeyElement,
                              0);

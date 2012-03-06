@@ -144,10 +144,16 @@ typedef struct TRI_select_result_s {
 TRI_select_result_t;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Add documents from a join to the result set - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_AddJoinSelectResultX (TRI_select_result_t*, TRI_select_join_t*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Add documents from a join to the result set
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddJoinSelectResult (TRI_select_result_t*, TRI_select_join_t*);
+bool TRI_AddJoinSelectResult (query_instance_t* const, TRI_select_result_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Slice a select result (apply skip/limit)
@@ -182,8 +188,9 @@ TRI_select_result_t* TRI_CreateSelectResult (TRI_vector_pointer_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_rc_result_s {
-  TRI_rc_context_t* _context;
+  TRI_rc_context_t* _context; // TODO: REMOVE
 
+  TRI_js_exec_context_t* _orderContext;
   TRI_doc_mptr_t* _primary;
   TRI_select_result_t* _selectResult;
   TRI_sr_documents_t* _dataPtr;

@@ -71,6 +71,20 @@ typedef struct TRI_query_error_s {
 TRI_query_error_t;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                             locks
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Collection lock
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_query_instance_lock_s {
+  char*                 _collectionName;
+  TRI_doc_collection_t* _collection;
+}
+TRI_query_instance_lock_t;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                   bind parameters
 // -----------------------------------------------------------------------------
 
@@ -197,8 +211,8 @@ typedef struct TRI_query_instance_s {
   TRI_query_error_t          _error;
   TRI_associative_pointer_t  _bindParameters;
   QL_ast_query_t             _query;
-
-  TRI_query_t*               _query2;
+  TRI_vector_pointer_t       _join;
+  TRI_vector_pointer_t       _locks;
   struct {
     TRI_vector_pointer_t     _nodes;     // memory locations of allocated AST nodes
     TRI_vector_pointer_t     _strings;   // memory locations of allocated strings

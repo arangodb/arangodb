@@ -41,6 +41,9 @@
 extern "C" {
 #endif
 
+// TODO: Fix this
+typedef void query_instance_t;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     documentation
 // -----------------------------------------------------------------------------
@@ -244,6 +247,7 @@ typedef struct TRI_data_feeder_s {
   TRI_vector_pointer_t* _ranges;
   TRI_join_t* _join;
   TRI_part_t* _part;
+  query_instance_t* _instance;
   size_t _level;
   void* _state;
   const TRI_doc_collection_t* _collection;
@@ -282,12 +286,20 @@ typedef struct TRI_data_feeder_table_scan_s {
 TRI_data_feeder_table_scan_t;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Create a new data feeder (table scan) - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_data_feeder_t* TRI_CreateDataFeederTableScanX (const TRI_doc_collection_t*,
+                                                  TRI_join_t*,
+                                                  size_t);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Create a new data feeder (table scan)
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_data_feeder_t* TRI_CreateDataFeederTableScan (const TRI_doc_collection_t*,
-                                                  TRI_join_t*,
-                                                  size_t);
+TRI_data_feeder_t* TRI_CreateDataFeederTableScan (query_instance_t* const,
+                                                  const TRI_doc_collection_t*,
+                                                  const size_t);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     primary index
@@ -311,12 +323,20 @@ TRI_data_feeder_primary_lookup_t;
 
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Create a new data feeder (primary index lookup) - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_data_feeder_t* TRI_CreateDataFeederPrimaryLookupX (const TRI_doc_collection_t*,
+                                                      TRI_join_t*,
+                                                      size_t);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Create a new data feeder (primary index lookup)
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_data_feeder_t* TRI_CreateDataFeederPrimaryLookup (const TRI_doc_collection_t*,
-                                                      TRI_join_t*,
-                                                      size_t);
+TRI_data_feeder_t* TRI_CreateDataFeederPrimaryLookup (query_instance_t* const,
+                                                      const TRI_doc_collection_t*,
+                                                      const size_t);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        hash index
@@ -340,12 +360,22 @@ typedef struct TRI_data_feeder_hash_lookup_s {
 TRI_data_feeder_hash_lookup_t;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Create a new data feeder (hash index lookup) - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_data_feeder_t* TRI_CreateDataFeederHashLookupX (const TRI_doc_collection_t*,
+                                                   TRI_join_t*,
+                                                   size_t);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Create a new data feeder (hash index lookup)
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_data_feeder_t* TRI_CreateDataFeederHashLookup (const TRI_doc_collection_t*,
-                                                   TRI_join_t*,
-                                                   size_t);
+TRI_data_feeder_t* TRI_CreateDataFeederHashLookup (query_instance_t* const,
+                                                   const TRI_doc_collection_t*,
+                                                   const size_t,
+                                                   const TRI_idx_iid_t,
+                                                   const TRI_vector_pointer_t*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         skiplists
@@ -369,12 +399,22 @@ typedef struct TRI_data_feeder_skiplist_lookup_s {
 TRI_data_feeder_skiplist_lookup_t;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Create a new data feeder (skiplist lookup) - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_data_feeder_t* TRI_CreateDataFeederSkiplistLookupX (const TRI_doc_collection_t*,
+                                                       TRI_join_t*,
+                                                       size_t);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Create a new data feeder (skiplist lookup)
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_data_feeder_t* TRI_CreateDataFeederSkiplistLookup (const TRI_doc_collection_t*,
-                                                       TRI_join_t*,
-                                                       size_t);
+TRI_data_feeder_t* TRI_CreateDataFeederSkiplistLookup (query_instance_t* const,
+                                                       const TRI_doc_collection_t*,
+                                                       const size_t,
+                                                       const TRI_idx_iid_t,
+                                                       const TRI_vector_pointer_t*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         geo index
@@ -394,13 +434,23 @@ typedef struct TRI_data_feeder_geo_lookup_s {
 TRI_data_feeder_geo_lookup_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Create a new data feeder (geo index lookup)
+/// @brief Create a new data feeder (geo index lookup) - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_data_feeder_t* TRI_CreateDataFeederGeoLookup (const TRI_doc_collection_t*,
+TRI_data_feeder_t* TRI_CreateDataFeederGeoLookupX (const TRI_doc_collection_t*,
                                                   TRI_join_t*,
                                                   size_t,
                                                   QL_ast_query_geo_restriction_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Create a new data feeder (geo index lookup)
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_data_feeder_t* TRI_CreateDataFeederGeoLookup (query_instance_t* const,
+                                                  const TRI_doc_collection_t*,
+                                                  const size_t,
+                                                  const TRI_idx_iid_t,
+                                                  const QL_ast_query_geo_restriction_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -45,19 +45,18 @@
 static int OrderDataCompareFunc (const TRI_sr_index_t* left,
                                  const TRI_sr_index_t* right,
                                  size_t size,
-                                 void *data) {
+                                 void* data) {
 
   TRI_rc_result_t* resultState = (TRI_rc_result_t*) data;
-  TRI_rc_context_t* context = resultState->_context;
   int result;
 
-  assert(context);
+  assert(resultState->_orderContext);
 
-  TRI_DefineCompareExecutionContext(context->_orderClause, 
+  TRI_DefineCompareExecutionContext(resultState->_orderContext,
                                     resultState->_selectResult, 
                                     (TRI_sr_documents_t*) *left, 
                                     (TRI_sr_documents_t*) *right);
-  TRI_ExecuteOrderExecutionContext(context->_orderClause, &result);
+  TRI_ExecuteOrderExecutionContext(resultState->_orderContext, &result);
 
   return result;
 }
@@ -91,11 +90,8 @@ static uint32_t QuerySortRandomGenerator (void) {
 /// @brief executes sorting
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_OrderDataGeneralQuery (TRI_rc_result_t* result,
-                                TRI_qry_order_t* order) {
-
-  assert(result != NULL);
-  assert(order != NULL);
+void TRI_OrderDataGeneralQuery (TRI_rc_result_t* result) {
+  assert(result);
 
   if (result->_selectResult->_numRows == 0) {
     // result set is empty, no need to sort it

@@ -45,20 +45,35 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Create a new select result from a join definition - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_select_result_t* TRI_JoinSelectResultX (const TRI_vocbase_t*, 
+                                            TRI_select_join_t*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Create a new select result from a join definition
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_select_result_t* TRI_JoinSelectResult (const TRI_vocbase_t*, 
-                                           TRI_select_join_t*);
+TRI_select_result_t* TRI_JoinSelectResult (TRI_query_instance_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Execute joins - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ExecuteJoinsX (TRI_select_result_t*,
+                        TRI_select_join_t*, 
+                        TRI_qry_where_t*,
+                        TRI_rc_context_t*,
+                        const TRI_voc_size_t,
+                        const TRI_voc_ssize_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Execute joins
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ExecuteJoins (TRI_select_result_t*,
-                       TRI_select_join_t*, 
-                       TRI_qry_where_t*,
-                       TRI_rc_context_t*,
+void TRI_ExecuteJoins (TRI_query_instance_t* const, 
+                       TRI_select_result_t*,
                        const TRI_voc_size_t,
                        const TRI_voc_ssize_t);
 

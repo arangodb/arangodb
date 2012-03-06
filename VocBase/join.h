@@ -65,7 +65,8 @@ TRI_join_type_e;
 typedef struct TRI_join_part_s {
   TRI_data_feeder_t *_feeder; // data source
   TRI_join_type_e _type;
-  TRI_qry_where_t* _condition;
+  TRI_qry_where_t* _condition; // DEPRECATED
+  QL_ast_query_where_t* _where;
   TRI_vector_pointer_t* _ranges;
   TRI_doc_collection_t* _collection;
   char* _collectionName;
@@ -86,7 +87,7 @@ typedef struct TRI_join_part_s {
 TRI_join_part_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief join container data structure for select queries
+/// @brief join container data structure for select queries - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_select_join_s {
@@ -98,10 +99,10 @@ typedef struct TRI_select_join_s {
 TRI_select_join_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Add a part to a select join
+/// @brief Add a part to a select join - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
       
-bool TRI_AddPartSelectJoin (TRI_select_join_t*, 
+bool TRI_AddPartSelectJoinX (TRI_select_join_t*, 
                             const TRI_join_type_e, 
                             TRI_qry_where_t*, 
                             TRI_vector_pointer_t*,
@@ -109,8 +110,9 @@ bool TRI_AddPartSelectJoin (TRI_select_join_t*,
                             char*,
                             QL_ast_query_geo_restriction_t*); 
 
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Create a new join 
+/// @brief Create a new join - DEPRECATED 
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_select_join_t* TRI_CreateSelectJoin (void);

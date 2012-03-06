@@ -198,6 +198,7 @@ void TRI_ConvertQueryJavascript (TRI_query_javascript_converter_t* converter,
     case TRI_QueryNodeReferenceCollectionAlias:
       if (!converter->_prefix) {
         TRI_AppendStringStringBuffer(converter->_buffer, "$['");
+        assert(node->_value._stringValue);
         TRI_AppendStringStringBuffer(converter->_buffer, 
                                      node->_value._stringValue);
         TRI_AppendStringStringBuffer(converter->_buffer, "']");
