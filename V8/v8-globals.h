@@ -63,9 +63,10 @@ typedef struct TRI_v8_global_s {
 
   TRI_v8_global_s ()
     : JSFluentQueries(),
-      JSQueries(),
+      JSQueries(), // DEPRECATED
       JSQueryInstances(),
-      JSCursors(),
+      JSCursors(), // DEPRECATED
+      JSQueryCursors(),
       JSWheres(),
       JSResultSets(),
       JSBarriers(),
@@ -74,10 +75,11 @@ typedef struct TRI_v8_global_s {
       EdgesTempl(),
       EdgesColTempl(),
       FluentQueryTempl(),
-      QueryTempl(),
+      QueryTempl(), // DEPRECATED
       QueryInstanceTempl(),
       QueryErrorTempl(),
-      CursorTempl(),
+      CursorTempl(), // DEPRECATED
+      QueryCursorTempl(),
       WhereTempl(),
       VocbaseColTempl(),
       VocbaseTempl(),
@@ -105,7 +107,7 @@ typedef struct TRI_v8_global_s {
   std::map< void*, v8::Persistent<v8::Value> > JSFluentQueries;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief query mapping for weak pointers
+/// @brief query mapping for weak pointers - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
   std::map< void*, v8::Persistent<v8::Value> > JSQueries;
@@ -121,6 +123,12 @@ typedef struct TRI_v8_global_s {
 ////////////////////////////////////////////////////////////////////////////////
 
   std::map< void*, v8::Persistent<v8::Value> > JSCursors;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cursor mapping for weak pointers
+////////////////////////////////////////////////////////////////////////////////
+
+  std::map< void*, v8::Persistent<v8::Value> > JSQueryCursors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief where clause mapping for weak pointers
@@ -208,10 +216,16 @@ typedef struct TRI_v8_global_s {
   v8::Persistent<v8::ObjectTemplate> QueryErrorTempl;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief cursor template
+/// @brief cursor template - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
   v8::Persistent<v8::ObjectTemplate> CursorTempl;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cursor template
+////////////////////////////////////////////////////////////////////////////////
+
+  v8::Persistent<v8::ObjectTemplate> QueryCursorTempl;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief where clause template

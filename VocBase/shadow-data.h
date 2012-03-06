@@ -28,15 +28,19 @@
 #ifndef TRIAGENS_DURHAM_VOC_BASE_SHADOW_DATA_H
 #define TRIAGENS_DURHAM_VOC_BASE_SHADOW_DATA_H 1
 
-#include "BasicsC/common.h"
+#include <BasicsC/common.h>
+#include <BasicsC/locks.h>
+#include <BasicsC/associative.h>
 
-#include "BasicsC/locks.h"
-#include "BasicsC/associative.h"
 #include "VocBase/document-collection.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       SHADOW DATA
+// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -48,17 +52,20 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shadow data
+/// @brief typedef for shadow ids
+////////////////////////////////////////////////////////////////////////////////
+
+typedef TRI_voc_tick_t TRI_shadow_id; 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shadow data (base struct)
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_shadow_s {
-  int64_t _rc;
-
-  TRI_voc_cid_t _cid;
-  TRI_voc_did_t _did;
-  TRI_voc_rid_t _rid;
-
-  void* _data;
+  TRI_shadow_id _id;
+  int64_t       _rc; // refcount
+  double        _timestamp; // creation timestamp
+  void*         _data;
 }
 TRI_shadow_t;
 
@@ -67,12 +74,9 @@ TRI_shadow_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_shadow_store_s {
-  TRI_mutex_t _lock;
-
+  TRI_mutex_t               _lock;
   TRI_associative_pointer_t _index;
 
-  void* (*createShadow) (struct TRI_shadow_store_s*, struct TRI_doc_collection_s*, struct TRI_doc_mptr_s const*);
-  bool (*verifyShadow) (struct TRI_shadow_store_s*, struct TRI_doc_collection_s*, struct TRI_doc_mptr_s const*, void*);
   void (*destroyShadow) (struct TRI_shadow_store_s*, TRI_shadow_t*);
 }
 TRI_shadow_store_t;
@@ -91,19 +95,22 @@ TRI_shadow_store_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialisases a shadow data storage
+/// @brief creates a shadow data storage
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitShadowDataStore (TRI_shadow_store_t* store,
-                              void* (*create) (TRI_shadow_store_t*, TRI_doc_collection_t*, TRI_doc_mptr_t const*),
-                              bool (*verify) (TRI_shadow_store_t*, TRI_doc_collection_t*, TRI_doc_mptr_t const*, void*),
-                              void (*destory) (TRI_shadow_store_t*, TRI_shadow_t*));
+TRI_shadow_store_t* TRI_CreateShadowStore (void (*destroy) (TRI_shadow_store_t*, TRI_shadow_t*));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a shadow data storage, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyShadowDataStore (TRI_shadow_store_t* store);
+void TRI_DestroyShadowStore (TRI_shadow_store_t* const store);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys a shadow data storage
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeShadowStore (TRI_shadow_store_t* const store);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -119,16 +126,109 @@ void TRI_DestroyShadowDataStore (TRI_shadow_store_t* store);
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up or create shadow data
+/// @brief looks up shadow data
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shadow_t* TRI_FindShadowData (TRI_shadow_store_t* store, TRI_vocbase_t* vocbase, TRI_voc_cid_t cid, TRI_voc_did_t did);
+TRI_shadow_t* TRI_FindShadowData (TRI_shadow_store_t*, const TRI_shadow_id);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases shadow data
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ReleaseShadowData (TRI_shadow_store_t* store, TRI_shadow_t* shadow);
+void TRI_ReleaseShadowData (TRI_shadow_store_t*, TRI_shadow_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  SHADOW DOCUMENTS
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shadow document
+////////////////////////////////////////////////////////////////////////////////
+  
+typedef struct TRI_shadow_document_s {
+  TRI_shadow_t* _base;
+
+  TRI_voc_cid_t _cid;
+  TRI_voc_did_t _did;
+  TRI_voc_rid_t _rid;
+}
+TRI_shadow_document_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shadow document storage
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_shadow_document_store_s {
+  TRI_shadow_store_t* _base;
+
+  void* (*createShadow) (struct TRI_shadow_document_store_s*, struct TRI_doc_collection_s*, struct TRI_doc_mptr_s const*);
+  bool (*verifyShadow) (struct TRI_shadow_document_store_s*, struct TRI_doc_collection_s*, struct TRI_doc_mptr_s const*, void*);
+  void (*destroyShadow) (struct TRI_shadow_document_store_s*, TRI_shadow_document_t*);
+}
+TRI_shadow_document_store_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialises a shadow document storage
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_shadow_document_store_t* TRI_CreateShadowDocumentStore (
+  void* (*create) (TRI_shadow_document_store_t*, TRI_doc_collection_t*, TRI_doc_mptr_t const*),
+  bool (*verify) (TRI_shadow_document_store_t*, TRI_doc_collection_t*, TRI_doc_mptr_t const*, void*),
+  void (*destroy) (TRI_shadow_document_store_t*, TRI_shadow_document_t*));
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys a shadow document storage, but does not free the pointers
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyShadowDocumentStore (TRI_shadow_document_store_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys a shadow document storage
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeShadowDocumentStore (TRI_shadow_document_store_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up or creates a shadow document
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_shadow_document_t* TRI_FindShadowDocument (TRI_shadow_document_store_t* const, 
+                                               TRI_vocbase_t*, 
+                                               TRI_voc_cid_t,
+                                               TRI_voc_did_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief releases a shadow document
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ReleaseShadowDocument (TRI_shadow_document_store_t* const, 
+                                TRI_shadow_document_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

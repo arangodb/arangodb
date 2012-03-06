@@ -54,6 +54,8 @@ void TRI_InitialiseQueryErrors (void) {
   REG_ERROR(COLLECTION_ALIAS_INVALID,           "collection alias '%s' is invalid");
   REG_ERROR(COLLECTION_ALIAS_REDECLARED,        "collection alias '%s' is declared multiple times in the same query");
   REG_ERROR(COLLECTION_ALIAS_UNDECLARED,        "collection alias '%s' is used but was not declared in the from clause");
+
+  REG_ERROR(COLLECTION_NOT_FOUND,               "unable to open collection '%s'");
   
   REG_ERROR(GEO_RESTRICTION_INVALID,            "geo restriction for alias '%s' is invalid");
   REG_ERROR(GEO_INDEX_MISSING,                  "no suitable geo index found for geo restriction on '%s'");

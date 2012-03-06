@@ -109,22 +109,16 @@ static int32_t const WRP_VOCBASE_COL_TYPE = 2;
 static int32_t const WRP_QRY_WHERE_TYPE = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapped class for TRI_rc_cursor_t
+/// @brief wrapped class for TRI_query_cursor_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static int32_t const WRP_RC_CURSOR_TYPE = 4;
+static int32_t const WRP_RC_QUERY_CURSOR_TYPE = 4;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapped class for TRI_query_instance_t
 ////////////////////////////////////////////////////////////////////////////////
 
 static int32_t const WRP_QUERY_INSTANCE_TYPE = 5;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapped class for TRI_query_t
-////////////////////////////////////////////////////////////////////////////////
-
-static int32_t const WRP_QUERY_TYPE = 6;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapped class for TRI_shaped_json_t
@@ -135,7 +129,20 @@ static int32_t const WRP_QUERY_TYPE = 6;
 /// - SLOT_BARRIER
 ////////////////////////////////////////////////////////////////////////////////
 
-static int32_t const WRP_SHAPED_JSON_TYPE = 7;
+static int32_t const WRP_SHAPED_JSON_TYPE = 6;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wrapped class for TRI_rc_cursor_t - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+static int32_t const WRP_RC_CURSOR_TYPE = 7;
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wrapped class for TRI_query_t - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+static int32_t const WRP_QUERY_TYPE = 8;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -535,7 +542,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief weak reference callback for query
+/// @brief weak reference callback for query - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static void WeakQueryCallback (v8::Persistent<v8::Value> object, void* parameter) {
@@ -560,7 +567,7 @@ static void WeakQueryCallback (v8::Persistent<v8::Value> object, void* parameter
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stores a query in a javascript object
+/// @brief stores a query in a javascript object - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Object> WrapQuery (TRI_query_t* query) {
@@ -715,8 +722,8 @@ static TRI_rc_cursor_t* ExecuteQuery (v8::Handle<v8::Object> queryObject,
 /// @brief executes a query instance or uses existing result set
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_rc_cursor_t* ExecuteQueryInstance (v8::Handle<v8::Object> queryObject,
-                                              v8::Handle<v8::Value>* err) {
+static TRI_query_cursor_t* ExecuteQueryInstance (v8::Handle<v8::Object> queryObject,
+                                                 v8::Handle<v8::Value>* err) {
   v8::TryCatch tryCatch;
 
   TRI_query_instance_t* instance = UnwrapClass<TRI_query_instance_t>(queryObject, WRP_QUERY_INSTANCE_TYPE);
@@ -726,35 +733,18 @@ static TRI_rc_cursor_t* ExecuteQueryInstance (v8::Handle<v8::Object> queryObject
     return 0;
   }
   
-  TRI_query_t* query = instance->_query2;
-
   LOG_TRACE("executing query");
 
-  TRI_rc_context_t* context = TRI_CreateContextQuery(query);
-
-  if (!context) {
-    if (tryCatch.HasCaught()) {
-      *err = tryCatch.Exception();
-    }
-    else {
-      *err = v8::String::New("cannot create query context");
-    }
-
-    return 0;
-  }
-
-  TRI_rc_cursor_t* cursor = TRI_ExecuteQueryAql(query, context);
+  TRI_query_cursor_t* cursor = TRI_ExecuteQueryInstance(instance);
   if (!cursor) {
-    TRI_FreeContextQuery(context);
-
     if (tryCatch.HasCaught()) {
       *err = tryCatch.Exception();
     }
     else {
-      *err = v8::String::New("cannot execute query");
+      *err = CreateQueryErrorObject(&instance->_error);
     }
 
-    return 0;
+    return NULL;
   }
 
   return cursor;
@@ -762,6 +752,72 @@ static TRI_rc_cursor_t* ExecuteQueryInstance (v8::Handle<v8::Object> queryObject
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief weak reference callback for cursors
+////////////////////////////////////////////////////////////////////////////////
+
+static void WeakQueryCursorCallback (v8::Persistent<v8::Value> object, void* parameter) {
+  TRI_query_cursor_t* cursor;
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  cursor = (TRI_query_cursor_t*) parameter;
+
+  LOG_TRACE("weak-callback for cursor called");
+
+  assert(cursor->_selectContext);
+  TRI_FreeExecutionContext(cursor->_selectContext);
+
+  // find the persistent handle
+  v8::Persistent<v8::Value> persistent = v8g->JSQueryCursors[cursor];
+  v8g->JSQueryCursors.erase(cursor);
+
+  // dispose and clear the persistent handle
+  persistent.Dispose();
+  persistent.Clear();
+
+  // and free the result set
+  cursor->free(cursor);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stores a cursor in a javascript object
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Object> WrapQueryCursor (TRI_query_cursor_t* cursor) {
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  v8::Handle<v8::Object> cursorObject = v8g->QueryCursorTempl->NewInstance();
+  map< void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSQueryCursors.find(cursor);
+
+  if (i == v8g->JSQueryCursors.end()) {
+    v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(cursor));
+
+    cursorObject->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_RC_QUERY_CURSOR_TYPE));
+    cursorObject->SetInternalField(SLOT_CLASS, persistent);
+
+    v8g->JSQueryCursors[cursor] = persistent;
+
+    persistent.MakeWeak(cursor, WeakQueryCursorCallback);
+  }
+  else {
+    cursorObject->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_RC_QUERY_CURSOR_TYPE));
+    cursorObject->SetInternalField(SLOT_CLASS, i->second);
+  }
+
+  return cursorObject;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts a cursor from a javascript object
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_query_cursor_t* UnwrapQueryCursor (v8::Handle<v8::Object> cursorObject) {
+  return UnwrapClass<TRI_query_cursor_t>(cursorObject, WRP_RC_QUERY_CURSOR_TYPE);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief weak reference callback for cursors - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static void WeakCursorCallback (v8::Persistent<v8::Value> object, void* parameter) {
@@ -782,11 +838,11 @@ static void WeakCursorCallback (v8::Persistent<v8::Value> object, void* paramete
   persistent.Clear();
 
   // and free the result set
-  cursor->free(cursor);
+//  cursor->free(cursor);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stores a cursor in a javascript object
+/// @brief stores a cursor in a javascript object - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Object> WrapCursor (TRI_rc_cursor_t* cursor) {
@@ -816,7 +872,7 @@ static v8::Handle<v8::Object> WrapCursor (TRI_rc_cursor_t* cursor) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts a cursor from a javascript object
+/// @brief extracts a cursor from a javascript object - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_rc_cursor_t* UnwrapCursor (v8::Handle<v8::Object> cursorObject) {
@@ -1395,7 +1451,7 @@ static v8::Handle<v8::Value> JS_PrepareAql (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() < 2) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_PREPARE(<db>, <querystring>, <args>)")));
+    return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_PREPARE(<db>, <querystring>, <bindvalues>)")));
   }
 
   v8::Handle<v8::Object> dbArg = argv[0]->ToObject();
@@ -1428,7 +1484,7 @@ static v8::Handle<v8::Value> JS_PrepareAql (v8::Arguments const& argv) {
         TRI_FreeJson(parameters);
       }
       if (instance) {
-        if (instance->_query2) {
+        if (!instance->_doAbort) {
           return scope.Close(WrapQueryInstance(instance));
         }
         v8::Handle<v8::Object> errorObject = CreateQueryErrorObject(&instance->_error);
@@ -1885,7 +1941,7 @@ static v8::Handle<v8::Value> JS_SelectAql (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("could not create join struct")));
   }
   
-  TRI_AddPartSelectJoin(join, 
+  TRI_AddPartSelectJoinX(join, 
                         JOIN_TYPE_PRIMARY, 
                         NULL, 
                         NULL,
@@ -1936,13 +1992,13 @@ static v8::Handle<v8::Value> JS_ExecuteQueryInstance (v8::Arguments const& argv)
   v8::HandleScope scope;
 
   v8::Handle<v8::Value> err;
-  TRI_rc_cursor_t* cursor = ExecuteQueryInstance(argv.Holder(), &err);
+  TRI_query_cursor_t* cursor = ExecuteQueryInstance(argv.Holder(), &err);
 
-  if (cursor == 0) {
+  if (!cursor) {
     return v8::ThrowException(err);
   }
 
-  return scope.Close(WrapCursor(cursor));
+  return scope.Close(WrapQueryCursor(cursor));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1963,7 +2019,117 @@ static v8::Handle<v8::Value> JS_ExecuteQueryInstance (v8::Arguments const& argv)
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the next document
+/// @brief returns the id of the cursor
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_IdQueryCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: id()")));
+  }
+
+  v8::Handle<v8::Object> self = argv.Holder();
+  TRI_query_cursor_t* cursor = UnwrapQueryCursor(self);
+
+  if (!cursor) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
+  }
+  
+  return scope.Close(v8::Number::New(cursor->_length));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the number of documents
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_CountQueryCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: count()")));
+  }
+
+  v8::Handle<v8::Object> self = argv.Holder();
+  TRI_query_cursor_t* cursor = UnwrapQueryCursor(self);
+
+  if (!cursor) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
+  }
+  
+  return scope.Close(v8::Number::New(cursor->_length));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the next document 
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_NextQueryCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: next()")));
+  }
+
+  v8::Handle<v8::Object> self = argv.Holder();
+  TRI_query_cursor_t* cursor = UnwrapQueryCursor(self);
+
+  if (!cursor) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
+  }
+
+  TRI_rc_result_t* next = cursor->next(cursor);
+
+  if (!next) {
+    return scope.Close(v8::Undefined());
+  }
+
+  v8::Handle<v8::Value> value;
+  TRI_DefineSelectExecutionContext(cursor->_selectContext, next);
+  bool ok = TRI_ExecuteExecutionContext(cursor->_selectContext, (void*) &value);
+  if (!ok) {
+    if (tryCatch.HasCaught()) {
+      return scope.Close(v8::ThrowException(tryCatch.Exception()));
+    }
+    else {
+      return scope.Close(v8::ThrowException(v8::String::New("cannot convert to JavaScript")));
+    }
+  }
+
+  return scope.Close(value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if the cursor is exhausted 
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_HasNextQueryCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: hasNext()")));
+  }
+
+  v8::Handle<v8::Object> self = argv.Holder();
+  TRI_query_cursor_t* cursor = UnwrapQueryCursor(self);
+
+  if (!cursor) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
+  }
+
+  if (cursor->hasNext(cursor)) {
+    return scope.Close(v8::True());
+  }
+  else {
+    return scope.Close(v8::False());
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the next document - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CountCursor (v8::Arguments const& argv) {
@@ -1983,8 +2149,11 @@ static v8::Handle<v8::Value> JS_CountCursor (v8::Arguments const& argv) {
 
   
   return scope.Close(v8::Number::New(cursor->_matchedDocuments));
-  
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the next document - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_NextCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -2007,10 +2176,17 @@ static v8::Handle<v8::Value> JS_NextCursor (v8::Arguments const& argv) {
     return scope.Close(v8::Undefined());
   }
 
-  TRI_qry_select_t* select = cursor->_select;
-
   v8::Handle<v8::Value> value;
-  bool ok = select->toJavaScript(select, next, (void*) &value);
+  bool ok;
+
+  TRI_qry_select_t* select = cursor->_select;
+  if (select) {
+    ok = select->toJavaScript(select, next, (void*) &value);
+  }
+  else {
+    TRI_DefineSelectExecutionContext(cursor->_selectContext, next);
+    ok = TRI_ExecuteExecutionContext(cursor->_selectContext, (void*) &value);
+  }
 
   if (! ok) {
     if (tryCatch.HasCaught()) {
@@ -2025,7 +2201,7 @@ static v8::Handle<v8::Value> JS_NextCursor (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the next document reference
+/// @brief returns the next document reference - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_NextRefCursor (v8::Arguments const& argv) {
@@ -2058,7 +2234,7 @@ static v8::Handle<v8::Value> JS_NextRefCursor (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief uses the next document
+/// @brief uses the next document - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_UseNextCursor (v8::Arguments const& argv) {
@@ -2086,7 +2262,7 @@ static v8::Handle<v8::Value> JS_UseNextCursor (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if the cursor is exhausted
+/// @brief checks if the cursor is exhausted - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_HasNextCursor (v8::Arguments const& argv) {
@@ -4243,6 +4419,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> GeoFuncName = v8::Persistent<v8::String>::New(v8::String::New("geo"));
   v8::Handle<v8::String> GetIndexesFuncName = v8::Persistent<v8::String>::New(v8::String::New("getIndexes"));
   v8::Handle<v8::String> HasNextFuncName = v8::Persistent<v8::String>::New(v8::String::New("hasNext"));
+  v8::Handle<v8::String> IdFuncName = v8::Persistent<v8::String>::New(v8::String::New("id"));
   v8::Handle<v8::String> IndexToUse = v8::Persistent<v8::String>::New(v8::String::New("index"));
   v8::Handle<v8::String> InEdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("inEdges"));
   v8::Handle<v8::String> LimitFuncName = v8::Persistent<v8::String>::New(v8::String::New("limit"));
@@ -4506,9 +4683,27 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   // must come after SetInternalFieldCount
   context->Global()->Set(v8::String::New("AvocadoQueryError"),
                          ft->GetFunction());
+  
+
+  ft = v8::FunctionTemplate::New();
+  ft->SetClassName(v8::String::New("AvocadoQueryCursor"));
+
+  rt = ft->InstanceTemplate();
+  rt->SetInternalFieldCount(2);
+
+  rt->Set(HasNextFuncName, v8::FunctionTemplate::New(JS_HasNextQueryCursor));
+  rt->Set(NextFuncName, v8::FunctionTemplate::New(JS_NextQueryCursor));
+  rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountQueryCursor));
+  rt->Set(IdFuncName, v8::FunctionTemplate::New(JS_IdQueryCursor));
+
+  v8g->QueryCursorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+
+  // must come after SetInternalFieldCount
+  context->Global()->Set(v8::String::New("AvocadoQueryCursor"),
+                         ft->GetFunction());
 
   // .............................................................................
-  // generate the cursor template
+  // generate the cursor template - DEPRECATED
   // .............................................................................
 
   ft = v8::FunctionTemplate::New();
