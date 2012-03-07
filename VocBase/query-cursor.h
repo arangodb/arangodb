@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief join executor
+/// @brief query cursors
 ///
 /// @file
 ///
@@ -25,15 +25,13 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_JOIN_EXECUTE_H
-#define TRIAGENS_DURHAM_VOC_BASE_JOIN_EXECUTE_H 1
+#ifndef TRIAGENS_DURHAM_VOC_BASE_QUERY_CURSOR_H
+#define TRIAGENS_DURHAM_VOC_BASE_QUERY_CURSOR_H 1
 
-#include "VocBase/select-result.h"
-#include "VocBase/join.h"
-#include "VocBase/data-feeder.h"
-#include "QL/optimize.h"
-#include "QL/ast-query.h"
-#include "V8/v8-c-utils.h"
+#include "VocBase/vocbase.h"
+#include "VocBase/shadow-data.h"
+#include "VocBase/query-base.h"
+#include "VocBase/query-result.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,37 +43,58 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Create a new select result from a join definition - DEPRECATED
+/// @brief result cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_select_result_t* TRI_JoinSelectResultX (const TRI_vocbase_t*, 
-                                            TRI_select_join_t*);
+typedef struct TRI_query_cursor_s {
+  TRI_vocbase_t* _vocbase;
+  TRI_shadow_t* _shadow;
+  char* _functionCode;
+  TRI_vector_pointer_t _containers;
+  TRI_mutex_t _lock;
+  bool _deleted;
+
+  TRI_rc_result_t _result;
+  TRI_select_size_t _length;
+  TRI_select_size_t _currentRow;
+
+  void (*free) (struct TRI_query_cursor_s*);
+  TRI_rc_result_t* (*next)(struct TRI_query_cursor_s* const);
+  bool (*hasNext)(const struct TRI_query_cursor_s* const);
+}
+TRI_query_cursor_t;
+
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Create a new select result from a join definition
+/// @brief create a cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_select_result_t* TRI_JoinSelectResult (TRI_query_instance_t* const);
+TRI_query_cursor_t* TRI_CreateQueryCursor (TRI_query_instance_t* const, 
+                                           const TRI_select_result_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Execute joins - DEPRECATED
+/// @brief Free a cursor based on its shadow
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ExecuteJoinsX (TRI_select_result_t*,
-                        TRI_select_join_t*, 
-                        TRI_qry_where_t*,
-                        TRI_rc_context_t*,
-                        const TRI_voc_size_t,
-                        const TRI_voc_ssize_t);
+void TRI_FreeQueryCursor (TRI_shadow_store_t*, TRI_shadow_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Execute joins
+/// @brief exclusively lock a query cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ExecuteJoins (TRI_query_instance_t* const, 
-                       TRI_select_result_t*,
-                       const TRI_voc_size_t,
-                       const TRI_voc_ssize_t);
+void TRI_LockQueryCursor (TRI_query_cursor_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unlock a query cursor
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_UnlockQueryCursor (TRI_query_cursor_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create shadow data store for cursors 
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_shadow_store_t* TRI_CreateShadowsQueryCursor (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -91,4 +110,3 @@ void TRI_ExecuteJoins (TRI_query_instance_t* const,
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-

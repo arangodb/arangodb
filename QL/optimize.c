@@ -25,6 +25,8 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <BasicsC/logging.h>
+
 #include "QL/optimize.h"
 
 // -----------------------------------------------------------------------------
@@ -717,7 +719,8 @@ void QLOptimizeExpression (TRI_query_node_t* node) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void QLOptimizeRefCountCollections (QL_ast_query_t* const query,
-                                           const TRI_query_node_t* node) {
+                                           const TRI_query_node_t* node,
+                                           const QL_ast_query_ref_type_e type) {
   TRI_query_node_t* lhs;
   TRI_query_node_t* rhs;
   TRI_query_node_t* next;
@@ -729,59 +732,57 @@ static void QLOptimizeRefCountCollections (QL_ast_query_t* const query,
   if (node->_type == TRI_QueryNodeContainerList) {
     next = node->_next;
     while (next) {
-      QLOptimizeRefCountCollections(query, next);
+      QLOptimizeRefCountCollections(query, next, type);
       next = next->_next;
     }
   }
 
   if (node->_type == TRI_QueryNodeReferenceCollectionAlias) {
-    QLAstQueryAddRefCount(query, node->_value._stringValue);
+    QLAstQueryAddRefCount(query, node->_value._stringValue, type);
   }
 
   lhs = node->_lhs;
   if (lhs) {
-    QLOptimizeRefCountCollections(query, lhs);
+    QLOptimizeRefCountCollections(query, lhs, type);
   }
 
   rhs = node->_rhs;
   if (rhs) {
-    QLOptimizeRefCountCollections(query, rhs);
+    QLOptimizeRefCountCollections(query, rhs, type);
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Reference count all used collections in a query
 ///
-/// Reference counting is later used to remove unnecessary joins
+/// Reference counting is later used to remove unnecessary joins and when 
+/// performing materialization of collection data
 ////////////////////////////////////////////////////////////////////////////////
 
 static void QLOptimizeCountRefs (QL_ast_query_t* const query) {
-  TRI_query_node_t* next = NULL;
+  TRI_query_node_t* next;
   TRI_query_node_t* node = query->_from._base;
 
-  if (query->_from._collections._nrUsed < 2) {
-    // we don't have a join, no need to refcount anything
-    return;
-  }
-
   // mark collections used in select, where and order
-  QLOptimizeRefCountCollections(query, query->_select._base);
-  QLOptimizeRefCountCollections(query, query->_where._base);
-  QLOptimizeRefCountCollections(query, query->_order._base);
+  QLOptimizeRefCountCollections(query, query->_select._base, REF_TYPE_SELECT);
+  QLOptimizeRefCountCollections(query, query->_where._base,  REF_TYPE_WHERE);
+  QLOptimizeRefCountCollections(query, query->_order._base,  REF_TYPE_ORDER);
 
   // mark collections used in on clauses
   node = node->_next;
   while (node) {
     TRI_query_node_t* alias;
     next = node->_next;
-    if (next) {
+    if (!next) {
       break;
     }
 
     alias = next->_lhs->_rhs;
-    if ((QLAstQueryGetRefCount(query, alias->_value._stringValue) > 0) ||
-        (next->_type == TRI_QueryNodeJoinInner)) {
-      QLOptimizeRefCountCollections(query, next->_rhs);
+    assert(alias);
+
+    if ((QLAstQueryGetTotalRefCount(query, alias->_value._stringValue) > 0) ||
+        (next->_type != TRI_QueryNodeJoinList)) {
+      QLOptimizeRefCountCollections(query, next->_rhs, REF_TYPE_JOIN);
     }
     node = node->_next;
   }
@@ -821,7 +822,7 @@ void QLOptimizeFrom (QL_ast_query_t* const query) {
     assert(next->_lhs);
 
     alias = next->_lhs->_rhs;
-    if ((QLAstQueryGetRefCount(query, alias->_value._stringValue) < 1) &&
+    if ((QLAstQueryGetTotalRefCount(query, alias->_value._stringValue) < 1) &&
         (next->_type == TRI_QueryNodeJoinList)) {
       // collection is joined but unused in select, where, order clause
       // remove unused list joined collections
@@ -829,6 +830,7 @@ void QLOptimizeFrom (QL_ast_query_t* const query) {
       node->_next = next->_next;
       // continue at the same position as the new collection at the current
       //  position might also be removed if it is useless
+      LOG_DEBUG("joined collection %s optimized away", alias->_value._stringValue);
       continue;
     }
 
@@ -945,6 +947,8 @@ static TRI_vector_pointer_t* QLOptimizeCombineRanges (const TRI_query_node_type_
 
   vector = (TRI_vector_pointer_t*) TRI_Allocate(sizeof(TRI_vector_pointer_t));
   if (!vector) {
+    QLOptimizeFreeRangeVector(ranges);
+    TRI_Free(ranges);
     return NULL;
   }
 

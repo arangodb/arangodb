@@ -1728,7 +1728,7 @@ yyreduce:
 /* Line 1455 of yacc.c  */
 #line 140 "QL/parser.y"
     { 
-      template_->_query->_type        = QLQueryTypeEmpty;
+      template_->_query->_type = QUERY_TYPE_EMPTY;
     ;}
     break;
 
@@ -1738,7 +1738,7 @@ yyreduce:
 #line 146 "QL/parser.y"
     {
       // full blown SELECT query
-      template_->_query->_type         = QLQueryTypeSelect;
+      template_->_query->_type         = QUERY_TYPE_SELECT;
       template_->_query->_select._base = (yyvsp[(2) - (6)].node);
       template_->_query->_from._base   = (yyvsp[(3) - (6)].node);
       template_->_query->_where._base  = (yyvsp[(4) - (6)].node);

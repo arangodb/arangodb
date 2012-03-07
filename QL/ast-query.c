@@ -154,7 +154,7 @@ void QLAstQueryFreeCollections (TRI_associative_pointer_t* const array) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void QLAstQueryInit (QL_ast_query_t* const query) {
-  query->_type                       = QLQueryTypeUndefined;
+  query->_type                       = QUERY_TYPE_UNDEFINED;
 
   query->_select._base               = NULL;
   query->_select._functionCode       = NULL;
@@ -200,31 +200,84 @@ void QLAstQueryFree (QL_ast_query_t* const query) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the total ref count for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+size_t QLAstQueryGetTotalRefCount (QL_ast_query_t* query, 
+                                   const char* alias) {
+  QL_ast_query_collection_t* collection;
+  assert(query);
+  assert(alias);
+
+  collection = (QL_ast_query_collection_t*) 
+    TRI_LookupByKeyAssociativePointer(&query->_from._collections, alias);
+
+  assert(collection);
+
+  return (collection->_refCount._select + 
+          collection->_refCount._where +
+          collection->_refCount._order +
+          collection->_refCount._join);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the ref count for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t QLAstQueryGetRefCount (QL_ast_query_t* query, const char* alias) {
-  QL_ast_query_collection_t* collection = (QL_ast_query_collection_t*) 
+size_t QLAstQueryGetRefCount (QL_ast_query_t* query, 
+                              const char* alias,
+                              const QL_ast_query_ref_type_e type) {
+  QL_ast_query_collection_t* collection;
+  assert(query);
+  assert(alias);
+
+  collection = (QL_ast_query_collection_t*) 
     TRI_LookupByKeyAssociativePointer(&query->_from._collections, alias);
 
-  if (collection != 0) {
-    return collection->_refCount;
+  assert(collection);
+  switch (type) {
+    case REF_TYPE_SELECT:
+      return collection->_refCount._select;
+    case REF_TYPE_WHERE:
+      return collection->_refCount._where;
+    case REF_TYPE_ORDER:
+      return collection->_refCount._order;
+    case REF_TYPE_JOIN:
+      return collection->_refCount._join;
   }
 
-  // return a number > 0 if collection not found so nothing happens with it
-  return 1;
+  assert(false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Increment ref count for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLAstQueryAddRefCount (QL_ast_query_t* query, const char* alias) {
-  QL_ast_query_collection_t* collection = (QL_ast_query_collection_t*) 
+void QLAstQueryAddRefCount (QL_ast_query_t* query, 
+                            const char* alias,
+                            const QL_ast_query_ref_type_e type) {
+  QL_ast_query_collection_t* collection; 
+  
+  assert(query);
+  assert(alias);
+
+  collection = (QL_ast_query_collection_t*) 
     TRI_LookupByKeyAssociativePointer(&query->_from._collections, alias);
 
-  if (collection != 0) {
-    ++collection->_refCount;
+  assert(collection);
+  switch (type) {
+    case REF_TYPE_SELECT:
+      ++collection->_refCount._select;
+      break;
+    case REF_TYPE_WHERE:
+      ++collection->_refCount._where;
+      break;
+    case REF_TYPE_ORDER:
+      ++collection->_refCount._order;
+      break;
+    case REF_TYPE_JOIN:
+      ++collection->_refCount._join;
+      break;
   }
 }
 
@@ -310,7 +363,10 @@ bool QLAstQueryAddCollection (QL_ast_query_t* query,
   collection->_alias                     = (char*) alias;
   // first collection added is always the primary collection
   collection->_isPrimary                 = (num == 0);
-  collection->_refCount                  = 0; // will be used later when optimizing joins
+  collection->_refCount._select          = 0;
+  collection->_refCount._where           = 0;
+  collection->_refCount._order           = 0;
+  collection->_refCount._join            = 0;
   collection->_declarationOrder          = num + 1;
   collection->_geoRestriction            = NULL;
 

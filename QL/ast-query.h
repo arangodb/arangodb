@@ -28,8 +28,6 @@
 #ifndef TRIAGENS_DURHAM_QL_ASTQUERY
 #define TRIAGENS_DURHAM_QL_ASTQUERY
 
-#include <inttypes.h>
-
 #include <BasicsC/common.h>
 #include <BasicsC/conversions.h>
 #include <BasicsC/vector.h>
@@ -39,7 +37,7 @@
 #include <BasicsC/string-buffer.h>
 
 #include "VocBase/query-node.h"
-#include "VocBase/context.h"
+#include "VocBase/query-context.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,14 +49,25 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Query parts (used for ref counting)
+////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+  REF_TYPE_SELECT,
+  REF_TYPE_WHERE,
+  REF_TYPE_ORDER,
+  REF_TYPE_JOIN
+}
+QL_ast_query_ref_type_e;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Query types
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  QLQueryTypeUndefined = 0,
-
-  QLQueryTypeEmpty,
-  QLQueryTypeSelect
+  QUERY_TYPE_UNDEFINED = 0,
+  QUERY_TYPE_EMPTY,
+  QUERY_TYPE_SELECT
 } 
 QL_ast_query_type_e;
 
@@ -234,7 +243,12 @@ typedef struct QL_ast_query_collection_s {
   char*                           _name;
   char*                           _alias;
   bool                            _isPrimary;
-  size_t                          _refCount;
+  struct {
+    size_t                        _select;
+    size_t                        _where;
+    size_t                        _order;
+    size_t                        _join;
+  }                               _refCount;
   size_t                          _declarationOrder;
   QL_ast_query_geo_restriction_t* _geoRestriction;
   QL_ast_query_where_t            _where;
@@ -280,16 +294,27 @@ void QLAstQueryInit (QL_ast_query_t* const);
 void QLAstQueryFree (QL_ast_query_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the total ref count for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+size_t QLAstQueryGetTotalRefCount (QL_ast_query_t*, 
+                                   const char*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the ref count for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t QLAstQueryGetRefCount (QL_ast_query_t*, const char*);
+size_t QLAstQueryGetRefCount (QL_ast_query_t*, 
+                              const char*,
+                              const QL_ast_query_ref_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Increment ref count for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLAstQueryAddRefCount (QL_ast_query_t*, const char*);
+void QLAstQueryAddRefCount (QL_ast_query_t*, 
+                            const char*, 
+                            const QL_ast_query_ref_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Check if a collection was defined in a query

@@ -38,6 +38,7 @@
 #include "hashindex.h"
 
 static bool isEqualJsonJson (const TRI_json_t* left, const TRI_json_t* right) {
+  size_t j;
 
   if (left == NULL && right == NULL) {
     return true;
@@ -89,7 +90,7 @@ static bool isEqualJsonJson (const TRI_json_t* left, const TRI_json_t* right) {
         return false;
       }  
       
-      for (size_t j = 0; j < left->_value._objects._length; ++j) {
+      for (j = 0; j < left->_value._objects._length; ++j) {
         if (!isEqualJsonJson( (TRI_json_t*)(TRI_AtVector(&(left->_value._objects),j)), 
                                (TRI_json_t*)(TRI_AtVector(&(right->_value._objects),j)) 
                              )
@@ -106,7 +107,7 @@ static bool isEqualJsonJson (const TRI_json_t* left, const TRI_json_t* right) {
         return false;
       }  
       
-      for (size_t j = 0; j < left->_value._objects._length; ++j) {
+      for (j = 0; j < left->_value._objects._length; ++j) {
         if (!isEqualJsonJson( (TRI_json_t*)(TRI_AtVector(&(left->_value._objects),j)), 
                                (TRI_json_t*)(TRI_AtVector(&(right->_value._objects),j)) 
                              )
@@ -147,7 +148,7 @@ static bool isEqualShapedJsonShapedJson (const TRI_shaped_json_t* left, const TR
 
 
 static uint64_t hashJson (const size_t hash, const TRI_json_t* data) {
-
+  size_t j;
   size_t newHash;
   
   if (data == NULL) {
@@ -187,7 +188,7 @@ static uint64_t hashJson (const size_t hash, const TRI_json_t* data) {
       // order not defined here -- need special case here
       if (data->_value._objects._length > 0) {
         newHash = hash;
-        for (size_t j = 0; j < data->_value._objects._length; ++j) {
+        for (j = 0; j < data->_value._objects._length; ++j) {
           newHash = hashJson(newHash, (TRI_json_t*)(TRI_AtVector(&(data->_value._objects),j)) );
         }
         return newHash;
@@ -200,7 +201,7 @@ static uint64_t hashJson (const size_t hash, const TRI_json_t* data) {
     case TRI_JSON_LIST: {
       if (data->_value._objects._length > 0) {
         newHash = hash;
-        for (size_t j = 0; j < data->_value._objects._length; ++j) {
+        for (j = 0; j < data->_value._objects._length; ++j) {
           newHash = hashJson(newHash, (TRI_json_t*)(TRI_AtVector(&(data->_value._objects),j)) );
         }
         return newHash;
@@ -253,6 +254,7 @@ static bool isEqualElementElement (struct TRI_associative_array_s* associativeAr
                                    void* leftElement, void* rightElement) {
   HashIndexElement* hLeftElement  = (HashIndexElement*)(leftElement);
   HashIndexElement* hRightElement = (HashIndexElement*)(rightElement);
+  size_t j;
   
   if (leftElement == NULL || rightElement == NULL) {
     return false;
@@ -262,7 +264,7 @@ static bool isEqualElementElement (struct TRI_associative_array_s* associativeAr
     return false; // should never happen
   }
 
-  for (size_t j = 0; j < hLeftElement->numFields; j++) {
+  for (j = 0; j < hLeftElement->numFields; j++) {
     if (!isEqualShapedJsonShapedJson((j + hLeftElement->fields), (j + hRightElement->fields))) {
       return false;
     }
@@ -280,6 +282,7 @@ static bool isEqualKeyElement (struct TRI_associative_array_s* associativeArray,
                                void* leftElement, void* rightElement) {
   HashIndexElement* hLeftElement  = (HashIndexElement*)(leftElement);
   HashIndexElement* hRightElement = (HashIndexElement*)(rightElement);
+  size_t j;
   
   if (leftElement == NULL || rightElement == NULL) {
     return false;
@@ -289,7 +292,7 @@ static bool isEqualKeyElement (struct TRI_associative_array_s* associativeArray,
     return false; // should never happen
   }
 
-  for (size_t j = 0; j < hLeftElement->numFields; j++) {
+  for (j = 0; j < hLeftElement->numFields; j++) {
     if (!isEqualShapedJsonShapedJson((j + hLeftElement->fields), (j + hRightElement->fields))) {
       return false;
     }
@@ -305,7 +308,9 @@ static bool isEqualKeyElement (struct TRI_associative_array_s* associativeArray,
 static uint64_t hashElement (struct TRI_associative_array_s* associativeArray, void* element) {
   HashIndexElement* hElement = (HashIndexElement*)(element);
   uint64_t hash = TRI_FnvHashBlockInitial();
-  for (size_t j = 0; j < hElement->numFields; j++) {
+  size_t j;
+
+  for (j = 0; j < hElement->numFields; j++) {
     hash = hashShapedJson(hash, (j + hElement->fields) );
   }
   return  hash;
@@ -315,7 +320,9 @@ static uint64_t hashElement (struct TRI_associative_array_s* associativeArray, v
 static uint64_t hashKey (struct TRI_associative_array_s* associativeArray, void* element) {
   HashIndexElement* hElement = (HashIndexElement*)(element);
   uint64_t hash = TRI_FnvHashBlockInitial();
-  for (size_t j = 0; j < hElement->numFields; j++) {
+  size_t j;
+
+  for (j = 0; j < hElement->numFields; j++) {
     hash = hashShapedJson(hash, (j + hElement->fields) );
   }
   return  hash;
@@ -489,6 +496,7 @@ static bool isMultiEqualKeyElement (struct TRI_multi_array_s* multiArray,
   HashIndexElement* hLeftElement  = (HashIndexElement*)(leftElement);
   HashIndexElement* hRightElement = (HashIndexElement*)(rightElement);
   int result;
+  size_t j;
   
   if (leftElement == NULL || rightElement == NULL) {
     return false;
@@ -498,7 +506,7 @@ static bool isMultiEqualKeyElement (struct TRI_multi_array_s* multiArray,
     return false; // should never happen
   }
 
-  for (size_t j = 0; j < hLeftElement->numFields; j++) {
+  for (j = 0; j < hLeftElement->numFields; j++) {
     TRI_shaped_json_t* left   = (j + hLeftElement->fields);
     TRI_shaped_json_t* right  = (j + hRightElement->fields);
     if (!isEqualShapedJsonShapedJson(left, right)) {
@@ -516,7 +524,9 @@ static bool isMultiEqualKeyElement (struct TRI_multi_array_s* multiArray,
 static uint64_t multiHashElement (struct TRI_multi_array_s* multiArray, void* element) {
   HashIndexElement* hElement = (HashIndexElement*)(element);
   uint64_t hash = TRI_FnvHashBlockInitial();
-  for (size_t j = 0; j < hElement->numFields; j++) {
+  size_t j;
+
+  for (j = 0; j < hElement->numFields; j++) {
     hash = hashShapedJson(hash, (j + hElement->fields) );
     //printf("%s:%u:%u:%f\n",__FILE__,__LINE__,hash, *((double*)((j + hElement->fields)->_data.data)));
   }
@@ -527,7 +537,9 @@ static uint64_t multiHashElement (struct TRI_multi_array_s* multiArray, void* el
 static uint64_t multiHashKey (struct TRI_multi_array_s* multiArray, void* element) {
   HashIndexElement* hElement = (HashIndexElement*)(element);
   uint64_t hash = TRI_FnvHashBlockInitial();
-  for (size_t j = 0; j < hElement->numFields; j++) {
+  size_t j;
+
+  for (j = 0; j < hElement->numFields; j++) {
     hash = hashShapedJson(hash, (j + hElement->fields) );
     //printf("%s:%u:%u:%f\n",__FILE__,__LINE__,hash, *((double*)((j + hElement->fields)->_data.data)));
   }

@@ -34,9 +34,8 @@
 #include <BasicsC/strings.h>
 
 #include "VocBase/document-collection.h"
-#include "VocBase/context.h"
-#include "VocBase/join.h"
-#include "VocBase/result.h"
+#include "VocBase/query-context.h"
+#include "VocBase/query-join.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -71,6 +70,10 @@ typedef struct TRI_select_datapart_s {
   char* _alias;
   TRI_doc_collection_t* _collection;
   TRI_select_part_e _type;
+  struct {
+    bool _select;
+    bool _order;
+  } _mustMaterialize;
   size_t _extraDataSize;
 
   void (*free) (struct TRI_select_datapart_s*);
@@ -84,7 +87,9 @@ TRI_select_datapart_t;
 TRI_select_datapart_t* TRI_CreateDataPart (const char*, 
                                            const TRI_doc_collection_t*,
                                            const TRI_select_part_e,
-                                           const size_t);
+                                           const size_t,
+                                           const bool,
+                                           const bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document index within a select result
@@ -153,7 +158,7 @@ bool TRI_AddJoinSelectResultX (TRI_select_result_t*, TRI_select_join_t*);
 /// @brief Add documents from a join to the result set
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddJoinSelectResult (query_instance_t* const, TRI_select_result_t*);
+bool TRI_AddJoinSelectResult (TRI_query_instance_t* const, TRI_select_result_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Slice a select result (apply skip/limit)
@@ -191,10 +196,11 @@ typedef struct TRI_rc_result_s {
   TRI_rc_context_t* _context; // TODO: REMOVE
 
   TRI_js_exec_context_t* _orderContext;
-  TRI_doc_mptr_t* _primary;
+
+  TRI_doc_mptr_t* _primary; // TODO: REMOVE
   TRI_select_result_t* _selectResult;
   TRI_sr_documents_t* _dataPtr;
-  TRI_json_t _augmention;
+  TRI_json_t _augmention; // TODO: REMOVE
 }
 TRI_rc_result_t;
 

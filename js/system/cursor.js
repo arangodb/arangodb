@@ -19,7 +19,7 @@ function postCursor(req, res) {
     }
 
     if (queryString == undefined) {
-      actions.actionResultError (req, res, 404, cursorNotModified, "Missing query identifier");
+      actions.actionResultError (req, res, 404, actions.cursorNotModified, "Missing query identifier");
       return;
     }
    
@@ -71,13 +71,13 @@ function postCursor(req, res) {
     actions.actionResultOK(req, res, 201, result);        
   }
   catch (e) {
-    actions.actionResultError (req, res, 404, cursorNotModified, "Cursor not created");
+    actions.actionResultError (req, res, 404, actions.cursorNotModified, "Cursor not created");
   }
 }
 
 function putCursor(req, res) {
   if (req.suffix.length != 1) {
-    actions.actionResultError (req, res, 404, cursorNotFound, "Cursor not found");
+    actions.actionResultError (req, res, 404, actions.cursorNotFound, "Cursor not found");
     return;
   }
 
@@ -96,13 +96,13 @@ function putCursor(req, res) {
     actions.actionResultOK(req, res, 200, result);
   }
   catch (e) {
-    actions.actionResultError (req, res, 404, cursorNotFound, "Cursor not found");
+    actions.actionResultError (req, res, 404, actions.cursorNotFound, "Cursor not found");
   }
 }
 
 function deleteCursor(req, res) {
   if (req.suffix.length != 1) {
-    actions.actionResultError (req, res, 404, cursorNotFound, "Cursor not found");
+    actions.actionResultError (req, res, 404, actions.cursorNotFound, "Cursor not found");
     return;
   }
 
@@ -112,11 +112,11 @@ function deleteCursor(req, res) {
       actions.actionResultOK(req, res, 202, {"cid" : cid});                
     }
     else {
-      actions.actionResultError (req, res, 404, cursorNotFound, "Cursor not found");       
+      actions.actionResultError (req, res, 404, actions.cursorNotFound, "Cursor not found");       
     }
   }
   catch (e) {
-    actions.actionResultError (req, res, 404, cursorNotFound, "Cursor not found");
+    actions.actionResultError (req, res, 404, actions.cursorNotFound, "Cursor not found");
   }
 }
 

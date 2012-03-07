@@ -252,18 +252,25 @@ bool TRI_DefineWhereExecutionContextX (TRI_js_exec_context_t context,
 /// @brief defines documents in a join/where
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_DefineWhereExecutionContext (xquery_instance_t* const inst,
+bool TRI_DefineWhereExecutionContext (TRI_query_instance_t* const instance,
                                       TRI_js_exec_context_t context,
                                       const size_t level,
                                       const bool isJoin) {
   js_exec_context_t* ctx;
   TRI_doc_mptr_t* document;
-  TRI_query_instance_t* instance = (TRI_query_instance_t*) inst;
   
   ctx = (js_exec_context_t*) context;
 
   for (size_t i = 0; i <= level; i++) {
     TRI_join_part_t* part = (TRI_join_part_t*) instance->_join._buffer[i];
+
+    assert(part);
+
+    if ((isJoin && !part->_mustMaterialize._join) ||
+        (!isJoin && !part->_mustMaterialize._where)) {
+      // no need to materialize query part
+      continue;
+    }
 
     if (part->_type != JOIN_TYPE_LIST || (isJoin && (level == i))) {
       // part is a single-document container
@@ -333,7 +340,8 @@ bool TRI_DefineSelectExecutionContext (TRI_js_exec_context_t context,
   TRI_select_size_t* numPtr;
   TRI_select_size_t num;
   TRI_select_result_t* result;
- 
+
+  assert(resultState); 
   numPtr = (TRI_select_size_t*) resultState->_dataPtr;
   if (!numPtr) {
     return false;
@@ -421,6 +429,13 @@ static bool MakeObject (TRI_select_result_t* result, TRI_sr_documents_t* docPtr,
   for (size_t i = 0; i < result->_dataParts->_length; i++) {
     TRI_select_datapart_t* part = 
       (TRI_select_datapart_t*) result->_dataParts->_buffer[i];
+
+    assert(part);
+
+    if (!part->_mustMaterialize._order) {
+      // no need to materialize
+      continue;
+    }
 
     num = *numPtr++;
     docPtr = (TRI_sr_documents_t*) numPtr;
@@ -559,10 +574,9 @@ bool TRI_ExecuteConditionExecutionContextX (TRI_js_exec_context_t context, bool*
 /// @brief executes an execution context for a condition
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteConditionExecutionContext (xquery_instance_t* const inst, 
+bool TRI_ExecuteConditionExecutionContext (TRI_query_instance_t* const instance, 
                                            TRI_js_exec_context_t context, 
                                            bool* r) {
-//  TRI_query_instance_t* instance = (TRI_query_instance_t*) inst;
   js_exec_context_t* ctx;
 
   ctx = (js_exec_context_t*) context;
@@ -1494,15 +1508,18 @@ void TRI_PrintV8Exception (v8::TryCatch* tryCatch) {
     if (*sourceline) {
       string l = *sourceline;
 
+      LOG_ERROR("[%s]", l.c_str());
+      
       if (1 < start) {
-        l += string(start - 1, ' ');
+        l = string(start - 1, '_');
+      }
+      else {
+	l = "";
       }
 
-      LOG_ERROR("%s", l.c_str());
-      
-      l = string((size_t)(end - start + 1), '^');
+      l += string((size_t)(end - start + 1), '^');
 
-      LOG_ERROR("%s", l.c_str());
+      LOG_ERROR("_%s", l.c_str());
     }
 
     v8::String::Utf8Value stacktrace(tryCatch->StackTrace());

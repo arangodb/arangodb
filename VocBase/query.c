@@ -30,8 +30,10 @@
 #include <BasicsC/logging.h>
 #include "BasicsC/string-buffer.h"
 #include <BasicsC/strings.h>
+
 #include "VocBase/simple-collection.h"
-#include "VocBase/join-execute.h"
+#include "VocBase/query-join-execute.h"
+#include "VocBase/query-cursor.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   SELECT DOCUMENT
@@ -289,66 +291,6 @@ typedef void (*cond_fptr) (collection_cursor_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes the gc markers for all collections of a query
-////////////////////////////////////////////////////////////////////////////////
-
-static void RemoveCollectionsQueryCursor (TRI_query_cursor_t* cursor) {
-  size_t i;
-
-  for (i = 0;  i < cursor->_containers._length;  ++i) {
-    TRI_barrier_t* ce = cursor->_containers._buffer[i];
-    assert(ce);    
-    TRI_FreeBarrier(ce);
-  }
-
-  cursor->_containers._length = 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the next element
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the next element 
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_rc_result_t* NextQueryCursor (TRI_query_cursor_t* const cursor) {
-  if (cursor->_currentRow < cursor->_length) {
-    cursor->_result._dataPtr = 
-      cursor->_result._selectResult->getAt(cursor->_result._selectResult, cursor->_currentRow++);
-
-    return &cursor->_result;
-  }
-
-  return NULL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if the cursor is exhausted 
-////////////////////////////////////////////////////////////////////////////////
-
-static bool HasNextQueryCursor (const TRI_query_cursor_t* const cursor) {
-  return cursor->_currentRow < cursor->_length;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees a cursor 
-////////////////////////////////////////////////////////////////////////////////
-
-static void FreeQueryCursor (TRI_query_cursor_t* cursor) {
-  // free result set
-  if (cursor->_result._selectResult != NULL) {
-    cursor->_result._selectResult->free(cursor->_result._selectResult);
-  }
-  
-  // free select
-  RemoveCollectionsQueryCursor(cursor);
-  TRI_DestroyVectorPointer(&cursor->_containers);
-
-  TRI_Free(cursor);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the next element - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -412,10 +354,8 @@ static bool ToJavaScriptHashDocument (TRI_qry_select_t* s,
 
 static TRI_rc_result_t* NextHashCollectionCursor (TRI_rc_cursor_t* c) {
   collection_cursor_t* cursor;
-  TRI_doc_collection_t* collection;
 
   cursor = (collection_cursor_t*) c;
-  collection = cursor->base._context->_primary;
  
   if (cursor->_currentRow == cursor->_length) {
     return NULL;
@@ -426,7 +366,6 @@ static TRI_rc_result_t* NextHashCollectionCursor (TRI_rc_cursor_t* c) {
   ++(cursor->_currentRow);
  
   return &cursor->_result;
-  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -435,10 +374,8 @@ static TRI_rc_result_t* NextHashCollectionCursor (TRI_rc_cursor_t* c) {
 
 static TRI_rc_result_t* NextSkiplistCollectionCursor (TRI_rc_cursor_t* c) {
   collection_cursor_t* cursor;
-  TRI_doc_collection_t* collection;
 
   cursor = (collection_cursor_t*) c;
-  collection = cursor->base._context->_primary;
  
   if (cursor->_currentRow == cursor->_length) {
     return NULL;
@@ -1061,7 +998,6 @@ TRI_query_t* TRI_CreateSkiplistQuery(const TRI_qry_where_t* whereStmt,
 TRI_query_t* TRI_CreateQuery (TRI_vocbase_t* vocbase,
                               TRI_qry_select_t* selectStmt,
                               TRI_qry_where_t* whereStmt,
-                              TRI_qry_order_t* orderStmt,
                               TRI_select_join_t* joins,
                               TRI_voc_size_t skip,
                               TRI_voc_ssize_t limit) {
@@ -1075,7 +1011,6 @@ TRI_query_t* TRI_CreateQuery (TRI_vocbase_t* vocbase,
   query->_vocbase = vocbase;
   query->_select = selectStmt;
   query->_where = whereStmt;
-  query->_order = orderStmt;
   query->_joins = joins;
   query->_skip = skip;
   query->_limit = limit;
@@ -1098,9 +1033,6 @@ void TRI_FreeQuery (TRI_query_t* query) {
   if (query->_where != NULL) {
     query->_where->free(query->_where);
   }
-  if (query->_order != NULL) {
-    query->_order->free(query->_order);
-  }
   if (query->_joins != NULL) {
     query->_joins->free(query->_joins);
   }
@@ -1116,7 +1048,6 @@ TRI_rc_context_t* TRI_CreateContextQuery (TRI_query_t* query) {
   TRI_rc_context_t* context;
   TRI_qry_select_general_t* selectGeneral;
   TRI_qry_where_general_t* whereGeneral;
-  TRI_qry_order_general_t* orderGeneral;
 
   context = TRI_Allocate(sizeof(TRI_rc_context_t));
 
@@ -1145,17 +1076,6 @@ TRI_rc_context_t* TRI_CreateContextQuery (TRI_query_t* query) {
     }
   }
     
-  if (query->_order != NULL && query->_order->_type == TRI_QRY_ORDER_GENERAL) {
-    orderGeneral = (TRI_qry_order_general_t*) query->_order;
-
-    context->_orderClause = TRI_CreateExecutionContext(orderGeneral->_code);
-
-    if (context->_orderClause == NULL) {
-      TRI_FreeContextQuery(context);
-      return NULL;
-    }
-  }
-
   return context;
 }
 
@@ -1260,72 +1180,6 @@ void TRI_AddCollectionsCursor (TRI_rc_cursor_t* cursor, TRI_query_t* query) {
     ce = TRI_CreateBarrierElement(&part->_collection->_barrierList);
     TRI_PushBackVectorPointer(&cursor->_containers, ce);
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read locks all collections of a query
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ReadLockCollectionsQueryInstance (TRI_query_instance_t* const instance) {
-  size_t i;
-
-  for (i = 0; i < instance->_locks._length; i++) {
-    TRI_query_instance_lock_t* lock = instance->_locks._buffer[i];
-
-    assert(lock);
-    assert(lock->_collection);
-
-    LOG_DEBUG("locking collection '%s'", lock->_collectionName);
-    lock->_collection->beginRead(lock->_collection);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read unlocks all collections of a query
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ReadUnlockCollectionsQueryInstance (TRI_query_instance_t* const instance) {
-  size_t i;
-  
-  i = instance->_locks._length;
-  while (i > 0) {
-    TRI_query_instance_lock_t* lock;
-    
-    i--;
-
-    lock = instance->_locks._buffer[i];
-    assert(lock);
-    assert(lock->_collection);
-
-    LOG_DEBUG("unlocking collection '%s'", lock->_collectionName);
-    lock->_collection->endRead(lock->_collection);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a gc marker for all collections
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_AddCollectionsBarrierQueryInstance (TRI_query_instance_t* const instance,
-                                             TRI_query_cursor_t* const cursor) {
-  size_t i;
-
-  // note: the same collection might be added multiple times here
-  for (i = 0; i < instance->_locks._length; i++) {
-    TRI_query_instance_lock_t* lock = instance->_locks._buffer[i];
-    TRI_barrier_t* ce;
-
-    assert(lock);
-    assert(lock->_collection);
-    ce = TRI_CreateBarrierElement(&lock->_collection->_barrierList);
-    if (!ce) {
-      TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
-      return false;
-    }
-    TRI_PushBackVectorPointer(&cursor->_containers, ce);
-  }
-
-  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1539,7 +1393,6 @@ TRI_rc_cursor_t* TRI_ExecuteQueryAql (TRI_query_t* query, TRI_rc_context_t* cont
   TRI_voc_ssize_t limit;
   TRI_select_result_t* selectResult;
   collection_cursor_t* cursor;
-  TRI_order_fptr_t order;
   bool applyPostSkipLimit;
   bool emptyQuery;
 
@@ -1554,21 +1407,6 @@ TRI_rc_cursor_t* TRI_ExecuteQueryAql (TRI_query_t* query, TRI_rc_context_t* cont
     applyPostSkipLimit = true;
   }
 
-  if (query->_order && (query->_skip > 0 || query->_limit != TRI_QRY_NO_LIMIT)) {
-    // query has an order by. we must postpone limit to after sorting
-    limit = TRI_QRY_NO_LIMIT;
-    skip = 0;
-    applyPostSkipLimit = true;
-  }
- 
-  if (query->_order == NULL) {
-    order = NULL;
-  } 
-  else {
-    order = TRI_OrderDataGeneralQuery;
-  }
-
-  
   // set up where condition
   emptyQuery = false;
   where = 0;
@@ -1653,11 +1491,6 @@ TRI_rc_cursor_t* TRI_ExecuteQueryAql (TRI_query_t* query, TRI_rc_context_t* cont
   // outside a read transaction
   // .............................................................................
 
-  // order by
-  if (order) {
-    order(&cursor->_result);
-  }
-
   // apply a negative limit or a limit after ordering
   if (applyPostSkipLimit) {
     TransformDataSkipLimit(&cursor->_result, query->_skip, query->_limit);
@@ -1668,105 +1501,6 @@ TRI_rc_cursor_t* TRI_ExecuteQueryAql (TRI_query_t* query, TRI_rc_context_t* cont
   cursor->_currentRow = 0;
 
   return &cursor->base;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a query
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_query_cursor_t* TRI_ExecuteQueryInstance (void* const _instance) {
-  TRI_select_result_t* selectResult;
-  TRI_query_cursor_t* cursor;
-  TRI_query_instance_t* instance = (TRI_query_instance_t*) _instance;
-  
-  // create a select result container for the joins
-  selectResult = TRI_JoinSelectResult(instance);
-  if (!selectResult) {
-    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
-    return NULL;
-  }
-
-  cursor = TRI_Allocate(sizeof(TRI_query_cursor_t));
-  if (!cursor) {
-    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
-    selectResult->free(selectResult);
-    return NULL;
-  }
-
-  cursor->_result._selectResult = selectResult;
-  cursor->_result._dataPtr = NULL;
-  cursor->_selectContext = TRI_CreateExecutionContext(instance->_query._select._functionCode);
-  if (!cursor->_selectContext) {
-    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
-    selectResult->free(selectResult);
-    TRI_Free(cursor);
-    return NULL;
-  }
-  
-  cursor->next = NextQueryCursor;
-  cursor->hasNext = HasNextQueryCursor;
-  cursor->free = FreeQueryCursor;
-
-  TRI_InitVectorPointer(&cursor->_containers);
-
-  if (!instance->_query._isEmpty) {
-    TRI_voc_size_t skip;
-    TRI_voc_ssize_t limit;
-    bool applyPostSkipLimit;
-
-    skip = instance->_query._limit._offset;
-    limit = instance->_query._limit._count;
-    applyPostSkipLimit = false;
-
-    if (limit < 0) {
-      limit = TRI_QRY_NO_LIMIT;
-      skip = 0;
-      applyPostSkipLimit = true;
-    }
-
-    if (instance->_query._order._type == QLQueryOrderTypeMustEvaluate && 
-        (instance->_query._limit._offset > 0 || 
-         instance->_query._limit._count != TRI_QRY_NO_LIMIT)) {
-      // query has an order by. we must postpone limit to after sorting
-      limit = TRI_QRY_NO_LIMIT;
-      skip = 0;
-      applyPostSkipLimit = true;
-    }
-
-    TRI_ReadLockCollectionsQueryInstance(instance);
-    if (!TRI_AddCollectionsBarrierQueryInstance(instance, cursor)) {
-      selectResult->free(selectResult);
-      cursor->free(cursor);
-      return NULL;
-    }
-
-    // Execute joins
-    TRI_ExecuteJoins(instance, selectResult, skip, limit);
-
-    TRI_ReadUnlockCollectionsQueryInstance(instance);
-
-    // order by
-    if (instance->_query._order._type == QLQueryOrderTypeMustEvaluate) {
-      cursor->_result._orderContext = TRI_CreateExecutionContext(instance->_query._order._functionCode);
-      if (cursor->_result._orderContext) {
-        TRI_OrderDataGeneralQuery(&cursor->_result);
-      }
-      TRI_FreeExecutionContext(cursor->_result._orderContext);
-    }
-
-    // apply a negative limit or a limit after ordering
-    if (applyPostSkipLimit) {
-      TransformDataSkipLimit(&cursor->_result, 
-                             instance->_query._limit._offset, 
-                             instance->_query._limit._count);
-    }
-  }
-  
-  // adjust cursor length
-  cursor->_length = selectResult->_numRows; 
-  cursor->_currentRow = 0;
-
-  return cursor;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

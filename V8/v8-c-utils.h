@@ -28,10 +28,10 @@
 #ifndef TRIAGENS_V8_V8_C_UTILS_H
 #define TRIAGENS_V8_V8_C_UTILS_H 1
 
-#include "VocBase/context.h"
+#include "VocBase/query-context.h"
+#include "VocBase/query-result.h"
+#include "VocBase/query-base.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/join.h"
-#include "VocBase/select-result.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -72,8 +72,6 @@ bool TRI_DefineJsonArrayExecutionContext (TRI_js_exec_context_t,
                                           TRI_json_t*);
 
 
-typedef void xquery_instance_t;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines documents in a join/where - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
@@ -87,7 +85,7 @@ bool TRI_DefineWhereExecutionContextX (TRI_js_exec_context_t,
 /// @brief defines documents in a join/where
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_DefineWhereExecutionContext (xquery_instance_t* const,
+bool TRI_DefineWhereExecutionContext (TRI_query_instance_t* const,
                                       TRI_js_exec_context_t,
                                       const size_t,
                                       const bool); 
@@ -140,7 +138,7 @@ bool TRI_ExecuteConditionExecutionContextX (TRI_js_exec_context_t, bool* result)
 /// @brief executes an execution context for a condition
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteConditionExecutionContext (xquery_instance_t* const, 
+bool TRI_ExecuteConditionExecutionContext (TRI_query_instance_t* const, 
                                            TRI_js_exec_context_t, 
                                            bool* result);
 

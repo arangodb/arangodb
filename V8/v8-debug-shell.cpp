@@ -204,7 +204,7 @@ int main (int argc, char* argv[]) {
   context->Enter();
 
   TRI_InitV8VocBridge(context, VocBase);
-  TRI_InitV8Actions(context);
+//  TRI_InitV8Actions(context);
   TRI_InitV8Conversions(context);
   TRI_InitV8Utils(context, ".");
   TRI_InitV8Shell(context);

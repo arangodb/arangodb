@@ -25,10 +25,8 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VocBase/select-result.h"
-#include "VocBase/query.h"
+#include "VocBase/query-result.h"
 #include "VocBase/query-base.h"
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocBase
@@ -94,7 +92,9 @@ static void FreeDataPart (TRI_select_datapart_t* datapart) {
 TRI_select_datapart_t* TRI_CreateDataPart(const char* alias, 
                                           const TRI_doc_collection_t* collection,
                                           const TRI_select_part_e type,
-                                          const size_t extraDataSize) {
+                                          const size_t extraDataSize,
+                                          const bool mustMaterializeSelect,
+                                          const bool mustMaterializeOrder) {
   TRI_select_datapart_t* datapart;
   
   if (extraDataSize) {
@@ -113,6 +113,8 @@ TRI_select_datapart_t* TRI_CreateDataPart(const char* alias,
   datapart->_collection    = (TRI_doc_collection_t*) collection;
   datapart->_type          = type;
   datapart->_extraDataSize = extraDataSize;
+  datapart->_mustMaterialize._select = mustMaterializeSelect;
+  datapart->_mustMaterialize._order = mustMaterializeOrder;
 
   datapart->free           = FreeDataPart;
 
@@ -343,17 +345,20 @@ static size_t GetJoinDocumentSizeX (const TRI_select_join_t* join) {
 /// of all collections of the row result.
 ////////////////////////////////////////////////////////////////////////////////
 
-static size_t GetJoinDocumentSize (const query_instance_t* inst) {
+static size_t GetJoinDocumentSize (const TRI_query_instance_t* const instance) {
   size_t i, total;
-  TRI_query_instance_t* instance = (TRI_query_instance_t*) inst;
 
   total = 0;
 
   for (i = 0; i < instance->_join._length; i++) {
-    TRI_join_part_t* part;
+    TRI_join_part_t* part = (TRI_join_part_t*) instance->_join._buffer[i];
     size_t n;
 
-    part = (TRI_join_part_t*) instance->_join._buffer[i];
+    if (!part->_mustMaterialize._select && !part->_mustMaterialize._order) {
+      // no need to materialize this part
+      continue;
+    }
+
     if (part->_type == JOIN_TYPE_LIST) {
       n = part->_listDocuments._length;
 
@@ -481,18 +486,15 @@ bool TRI_AddJoinSelectResultX (TRI_select_result_t* result, TRI_select_join_t* j
 /// @brief Add documents from a join to the result set
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddJoinSelectResult (query_instance_t* const inst, 
+bool TRI_AddJoinSelectResult (TRI_query_instance_t* const instance, 
                               TRI_select_result_t* result) {
   TRI_sr_index_t* indexPtr;
   TRI_sr_documents_t* docPtr;
   TRI_select_size_t* numPtr;
-  TRI_join_part_t* part;
   TRI_doc_mptr_t* document;
   size_t numNeeded; 
   size_t bytesNeeded;
   size_t i, j;
-
-  TRI_query_instance_t* instance = (TRI_query_instance_t*) inst;
 
   // need space for one pointer 
   numNeeded = 1;
@@ -521,7 +523,13 @@ bool TRI_AddJoinSelectResult (query_instance_t* const inst,
   // store document data
   numPtr = (TRI_select_size_t*) docPtr;
   for (i = 0; i < instance->_join._length; i++) {
-    part = (TRI_join_part_t*) instance->_join._buffer[i];
+    TRI_join_part_t* part = (TRI_join_part_t*) instance->_join._buffer[i];
+
+    if (!part->_mustMaterialize._select && !part->_mustMaterialize._order) {
+      // no need to materialize this part
+      continue;
+    }
+
     if (part->_type == JOIN_TYPE_LIST) {
       // multiple documents
       *numPtr++ = part->_listDocuments._length;
