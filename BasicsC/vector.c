@@ -307,7 +307,11 @@ void TRI_FreeVectorPointer (TRI_vector_pointer_t* vector) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vector_pointer_t* TRI_CopyVectorPointer (TRI_vector_pointer_t* vector) {
-  TRI_vector_pointer_t* copy = TRI_Allocate(sizeof(TRI_vector_t));
+  TRI_vector_pointer_t* copy = TRI_Allocate(sizeof(TRI_vector_pointer_t));
+
+  if (!copy) {
+    return NULL;
+  }
 
   if (vector->_capacity == 0) {
     copy->_buffer = NULL;
@@ -316,6 +320,10 @@ TRI_vector_pointer_t* TRI_CopyVectorPointer (TRI_vector_pointer_t* vector) {
   }
   else {
     copy->_buffer = TRI_Allocate(vector->_length * sizeof(void*));
+    if (!copy->_buffer) {
+      TRI_Free(copy);
+      return NULL;
+    }
     copy->_capacity = vector->_length;
     copy->_length = vector->_length;
 

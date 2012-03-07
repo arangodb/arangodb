@@ -27,7 +27,7 @@
 
 #include "V8/v8-c-utils.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/order.h"
+#include "VocBase/query-order.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocBase
@@ -90,10 +90,10 @@ static uint32_t QuerySortRandomGenerator (void) {
 /// @brief executes sorting
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_OrderDataGeneralQuery (TRI_rc_result_t* result) {
+void TRI_OrderDataQuery (TRI_rc_result_t* result) {
   assert(result);
 
-  if (result->_selectResult->_numRows == 0) {
+  if (result->_selectResult->_numRows < 1) {
     // result set is empty, no need to sort it
     return;
   }
@@ -103,62 +103,11 @@ void TRI_OrderDataGeneralQuery (TRI_rc_result_t* result) {
                 result);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clones an order by clause for general JavaScript conditions
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_qry_order_t* CloneQueryOrderGeneral (TRI_qry_order_t const* o) {
-  TRI_qry_order_general_t* orderClause;
-
-  orderClause = (TRI_qry_order_general_t*) o;
-
-  return TRI_CreateQueryOrderGeneral(orderClause->_code);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees an order by clause for general JavaScript conditions
-////////////////////////////////////////////////////////////////////////////////
-
-static void FreeQueryOrderGeneral (TRI_qry_order_t* o) {
-  TRI_qry_order_general_t* orderClause;
-
-  orderClause = (TRI_qry_order_general_t*) o;
-
-  TRI_FreeString(orderClause->_code);
-  TRI_Free(orderClause);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an order by clause for general JavaScript code
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_qry_order_t* TRI_CreateQueryOrderGeneral (char const* clause) {
-  TRI_qry_order_general_t* result;
-
-  result = TRI_Allocate(sizeof(TRI_qry_order_general_t));
-
-  result->base.base._type = TRI_QRY_ORDER_GENERAL;
-
-  result->base.base.clone = CloneQueryOrderGeneral;
-  result->base.base.free = FreeQueryOrderGeneral;
-
-  result->_code = TRI_DuplicateString(clause);
-
-  return &result->base.base;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
 
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-
-

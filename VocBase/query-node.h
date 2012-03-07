@@ -132,7 +132,7 @@ TRI_query_node_type_group_e;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AST node structure
 ///
-/// Each node in the AST has a certain type (@ref QL_ast_node_type_e), but as 
+/// Each node in the AST has a certain type (@ref TRI_query_node_type_e), but as 
 /// we are in C land we use the same container struct for all node types. 
 /// We represent the different values a node can have (string, bool, double 
 /// etc.) with a union of these primitive types.

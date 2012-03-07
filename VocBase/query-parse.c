@@ -146,7 +146,7 @@ bool TRI_ParseQueryTemplate (TRI_query_template_t* const template_) {
 
   FreeParserQueryTemplate(template_);
 
-  if (template_->_query->_type == QLQueryTypeEmpty) {
+  if (template_->_query->_type == QUERY_TYPE_EMPTY) {
     TRI_SetQueryError(&template_->_error, 
                       TRI_ERROR_QUERY_EMPTY,
                       NULL);

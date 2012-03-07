@@ -25,8 +25,10 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "join-execute.h"
-#include "join.h"
+#include <BasicsC/logging.h>
+
+#include "VocBase/query-join-execute.h"
+#include "VocBase/query-join.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocBase
@@ -213,13 +215,12 @@ static TRI_data_feeder_t* DetermineIndexUsageX (const TRI_vocbase_t* vocbase,
           }
 
           feeder = 
-            TRI_CreateDataFeederPrimaryLookup((TRI_doc_collection_t*) part->_collection, 
+            TRI_CreateDataFeederPrimaryLookupX((const TRI_doc_collection_t*) part->_collection, 
                                               (TRI_join_t*) join, 
-                                              level);
+                                              level); 
           if (feeder) {
             // we always exit if we can use the primary index
             // the primary index guarantees uniqueness
-            feeder->_ranges = TRI_CopyVectorPointer(&matches);
             goto EXIT;
           }
         } 
@@ -331,6 +332,8 @@ static TRI_data_feeder_t* DetermineGeoIndexUsage (TRI_query_instance_t* const in
                                     level,
                                     indexDefinition->_iid,
                                     part->_geoRestriction);
+
+    LOG_DEBUG("using geo index for '%s'", part->_alias);
     break;
   }
 
@@ -380,7 +383,6 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
       size_t j;
 
       indexDefinition = (TRI_index_definition_t*) indexDefinitions->_buffer[i];
-
       if (indexDefinition->_type == TRI_IDX_TYPE_GEO_INDEX) {
         // ignore all geo indexes here
         continue;
@@ -400,13 +402,10 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
 
         // enumerate all fields from the index definition and 
         // check all ranges we found for the collection
-
         for (k = 0; k < part->_ranges->_length; k++) {
           QL_optimize_range_t* range;
 
           range = (QL_optimize_range_t*) part->_ranges->_buffer[k];
-          // check if collection name matches
-
           if (!range) {
             continue;
           }
@@ -415,6 +414,7 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
           assert(range->_collection);
           assert(part->_alias);
 
+          // check if collection name matches
           if (strcmp(range->_collection, part->_alias) != 0) {
             continue;
           }
@@ -483,11 +483,12 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
           feeder = 
             TRI_CreateDataFeederPrimaryLookup(instance, 
                                               (TRI_doc_collection_t*) part->_collection, 
-                                              level);
+                                              level,
+                                              TRI_CopyVectorPointer(&matches));
           if (feeder) {
             // we always exit if we can use the primary index
             // the primary index guarantees uniqueness
-            feeder->_ranges = TRI_CopyVectorPointer(&matches);
+            LOG_DEBUG("using primary index for '%s'", part->_alias);
             goto EXIT;
           }
         } 
@@ -511,6 +512,8 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
                                                    level,
                                                    indexDefinition->_iid,
                                                    TRI_CopyVectorPointer(&matches));
+            
+              LOG_DEBUG("using skiplist index for '%s'", part->_alias);
             }
             else {
               feeder = 
@@ -519,6 +522,8 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
                                                level,
                                                indexDefinition->_iid,
                                                TRI_CopyVectorPointer(&matches));
+              
+              LOG_DEBUG("using hash index for '%s'", part->_alias);
             }
 
             if (!feeder) {
@@ -546,6 +551,8 @@ EXIT2:
     feeder = TRI_CreateDataFeederTableScan(instance,
                                            (TRI_doc_collection_t*) part->_collection, 
                                            level);
+    
+    LOG_DEBUG("using table scan for '%s'", part->_alias);
   }
 
   return feeder;
@@ -598,7 +605,9 @@ TRI_select_result_t* TRI_JoinSelectResultX (const TRI_vocbase_t* vocbase,
       datapart = TRI_CreateDataPart(part->_alias, 
                                     part->_collection, 
                                     GetDocumentDataPartType(part->_type),
-                                    0);
+                                    0,
+                                    part->_mustMaterialize._select,
+                                    part->_mustMaterialize._order);
       if (datapart) {
         TRI_PushBackVectorPointer(dataparts, datapart);
 
@@ -608,7 +617,9 @@ TRI_select_result_t* TRI_JoinSelectResultX (const TRI_vocbase_t* vocbase,
           datapart = TRI_CreateDataPart(part->_extraData._alias,
                                         NULL,
                                         GetValueDataPartType(part->_type),
-                                        part->_extraData._size);
+                                        part->_extraData._size,
+                                        part->_mustMaterialize._select,
+                                        part->_mustMaterialize._order);
 
           if (datapart) {
             TRI_PushBackVectorPointer(dataparts, datapart);
@@ -671,6 +682,84 @@ TRI_select_result_t* TRI_JoinSelectResultX (const TRI_vocbase_t* vocbase,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Free join data parts
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeDataParts (TRI_query_instance_t* const instance,
+                           TRI_vector_pointer_t* const dataparts) {
+  size_t i;
+
+  assert(instance);
+  assert(dataparts);
+    
+  for (i = 0; i < dataparts->_length; i++) {
+    TRI_select_datapart_t* datapart = (TRI_select_datapart_t*) dataparts->_buffer[i];
+    if (datapart) {
+      datapart->free(datapart);
+    }
+  }
+
+  TRI_DestroyVectorPointer(dataparts);
+  TRI_Free(dataparts);
+  
+  for (i = 0; i < instance->_join._length; i++) {
+    TRI_join_part_t* part = (TRI_join_part_t*) instance->_join._buffer[i];
+    if (part->_feeder) {
+      part->_feeder->free(part->_feeder);
+      part->_feeder = NULL;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Create a datapart for a definition
+////////////////////////////////////////////////////////////////////////////////
+
+static bool CreateCollectionDataPart (TRI_query_instance_t* const instance,
+                                      TRI_vector_pointer_t* const dataparts,
+                                      const TRI_join_part_t* const part) {
+  TRI_select_datapart_t* datapart =
+    TRI_CreateDataPart(part->_alias, 
+                       part->_collection, 
+                       GetDocumentDataPartType(part->_type),
+                       0,
+                       part->_mustMaterialize._select,
+                       part->_mustMaterialize._order);
+  if (!datapart) {
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+    return false;
+  }
+
+  TRI_PushBackVectorPointer(dataparts, datapart);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Create a geo data part
+////////////////////////////////////////////////////////////////////////////////
+
+static bool CreateGeoDataPart (TRI_query_instance_t* const instance,
+                               TRI_vector_pointer_t* const dataparts,
+                               const TRI_join_part_t* const part) {
+  TRI_select_datapart_t* datapart =
+    TRI_CreateDataPart(part->_extraData._alias,
+                       NULL,
+                       GetValueDataPartType(part->_type),
+                       part->_extraData._size,
+                       part->_mustMaterialize._select,
+                       part->_mustMaterialize._order);
+
+  if (!datapart) {
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+    return false;
+  }
+
+  TRI_PushBackVectorPointer(dataparts, datapart);
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Create dataparts for a join definition
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -679,54 +768,39 @@ static bool CreateDataParts (TRI_query_instance_t* const instance,
   size_t i;
 
   for (i = 0; i < instance->_join._length; i++) {
-    TRI_join_part_t* part;
+    TRI_join_part_t* part = (TRI_join_part_t*) instance->_join._buffer[i];
 
-    part = (TRI_join_part_t*) instance->_join._buffer[i];
-    if (part) {
-      TRI_select_datapart_t* datapart;
+    assert(part);
 
-      datapart = TRI_CreateDataPart(part->_alias, 
-                                    part->_collection, 
-                                    GetDocumentDataPartType(part->_type),
-                                    0);
-      if (!datapart) {
-        TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+    if (part->_mustMaterialize._select || part->_mustMaterialize._order) {
+      if (!CreateCollectionDataPart(instance, dataparts, part)) {
         return false;
       }
-      TRI_PushBackVectorPointer(dataparts, datapart);
+    }
 
-      // if result contains some artificial extra data, create an additional
-      // result part for it
-      if (part->_extraData._size) {
-        datapart = TRI_CreateDataPart(part->_extraData._alias,
-                                      NULL,
-                                      GetValueDataPartType(part->_type),
-                                      part->_extraData._size);
-
-        if (!datapart) {
-          TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
-          return false;
-        }
-        TRI_PushBackVectorPointer(dataparts, datapart);
-      }
-
-      // determine the access type (index usage/full table scan) for collection
-      if (part->_geoRestriction) {
-        part->_feeder = DetermineGeoIndexUsage(instance, i, part);
-      }
-      else {
-        part->_feeder = DetermineIndexUsage(instance, i, part);
-      }
-  
-      if (!part->_feeder) {
+    // if result contains some artificial extra data, create an additional
+    // result part for it
+    if (part->_extraData._size) {
+      if (!CreateGeoDataPart(instance, dataparts, part)) {
         return false;
       }
-    } 
+    }
+
+    // determine the access type (index usage/full table scan) for collection
+    if (part->_geoRestriction) {
+      part->_feeder = DetermineGeoIndexUsage(instance, i, part);
+    }
+    else {
+      part->_feeder = DetermineIndexUsage(instance, i, part);
+    }
+
+    if (!part->_feeder) {
+      return false;
+    }
   }
 
   return true;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Create a new select result from a join definition
@@ -743,39 +817,21 @@ TRI_select_result_t* TRI_JoinSelectResult (TRI_query_instance_t* const instance)
   }
 
   TRI_InitVectorPointer(dataparts);
-  CreateDataParts(instance, dataparts);
+  if (!CreateDataParts(instance, dataparts)) {
+    // clean up
+    FreeDataParts(instance, dataparts);
+    return NULL;
+  }
 
   // set up the data structures to retrieve the result documents
   result = TRI_CreateSelectResult(dataparts);
   if (!result) {
-    TRI_select_datapart_t* datapart;
-    size_t i;
-    
     TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
-
     // clean up
-    for (i = 0; i < dataparts->_length; i++) {
-      datapart = (TRI_select_datapart_t*) dataparts->_buffer[i];
-      if (datapart) {
-        datapart->free(datapart);
-      }
-    }
-
-    for (i = 0; i < instance->_join._length; i++) {
-      TRI_join_part_t* part;
-
-      part = (TRI_join_part_t*) instance->_join._buffer[i];
-      if (part->_feeder) {
-        part->_feeder->free(part->_feeder);
-        part->_feeder = NULL;
-      }
-    }
-
-    TRI_DestroyVectorPointer(dataparts);
-    TRI_Free(dataparts);
+    FreeDataParts(instance, dataparts);
     return NULL;
   }
-
+  
   return result;
 }
 
@@ -885,7 +941,7 @@ static void RecursiveJoinX (TRI_select_result_t* results,
         break;
       }
 
-      if (part->_condition && part->_context) {
+      if (part->_context) {
         // check ON clause
         if (!CheckJoinClauseX(join, level)) {
           continue;
@@ -942,7 +998,7 @@ static void RecursiveJoinX (TRI_select_result_t* results,
       break;
     }
 
-    if (level > 0 && part->_condition && part->_context) {
+    if (level > 0 && part->_context) {
       // check ON clause
       if (!CheckJoinClauseX(join, level)) {
         if (part->_type == JOIN_TYPE_OUTER) {
@@ -955,7 +1011,7 @@ static void RecursiveJoinX (TRI_select_result_t* results,
           // if we are at the last document and there hasn't been a 
           // match, we must still include the left document if the where
           // condition matches
-          if (joinMatch || !feeder->eof(feeder)) {
+          if (joinMatch) { 
             continue;
           }
         }
@@ -1000,36 +1056,34 @@ static void RecursiveJoinX (TRI_select_result_t* results,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Forward declaration
+////////////////////////////////////////////////////////////////////////////////
+
+static bool ProcessRow (TRI_query_instance_t* const,
+                        TRI_select_result_t*,
+                        const size_t,
+                        TRI_voc_size_t*,
+                        TRI_voc_ssize_t*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Execute join part recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-static void RecursiveJoin (TRI_query_instance_t* const instance,
+static bool RecursiveJoin (TRI_query_instance_t* const instance,
                            TRI_select_result_t* results,
                            const size_t level,
-                           TRI_voc_size_t *skip,
-                           TRI_voc_ssize_t *limit) {
+                           TRI_voc_size_t* skip,
+                           TRI_voc_ssize_t* limit) {
   TRI_join_part_t* part;
   TRI_data_feeder_t* feeder;
-  size_t numJoins;
-  bool joinMatch = false;
-  bool hasWhere;
 
   if (*limit == 0) {
-    return;
+    return false;
   }
-
-  hasWhere = (instance->_query._where._type == QLQueryWhereTypeMustEvaluate);
-
-  numJoins = instance->_join._length - 1;
-  assert(level <= numJoins);
 
   part = (TRI_join_part_t*) instance->_join._buffer[level];
   feeder = part->_feeder;
   feeder->rewind(feeder);
-
-
-  // distinction between aggregates (list joins) and 
-  // non-aggregates (inner join, left join)
 
   if (part->_type == JOIN_TYPE_LIST) {
     // join type is aggregate (list join)
@@ -1045,7 +1099,7 @@ static void RecursiveJoin (TRI_query_instance_t* const instance,
         break;
       }
 
-      if (part->_condition && part->_context) {
+      if (part->_context) {
         // check ON clause
         if (!CheckJoinClause(instance, level)) {
           continue;
@@ -1056,105 +1110,136 @@ static void RecursiveJoin (TRI_query_instance_t* const instance,
       TRI_PushBackVectorPointer(&part->_listDocuments, part->_singleDocument);
       TRI_PushBackVectorPointer(&part->_extraData._listValues, part->_extraData._singleValue);
     }
-    
-    // all documents collected in vector
-    if (level == numJoins) {
-      // last join was executed
 
-      if (hasWhere) {
-        // check WHERE clause for full row
-        if (!CheckWhereClause(instance, level)) {
-          return;
-        }
-      }
-
-      // apply SKIP limits
-      if (*skip > 0) {
-        (*skip)--;
-        return;
-      }
-      
-      // full match, now add documents to result sets
-      TRI_AddJoinSelectResult(instance, results); 
-
-      (*limit)--;
-      // apply LIMIT
-      if (*limit == 0) {
-        return;
-      }
-    }
-    else {
-      // recurse into next join
-      RecursiveJoin(instance, results, level + 1, skip, limit);
-    }
-
-    return;
+    return ProcessRow(instance, results, level, skip, limit);
     // end of list join
   }
+  else {
+    // join type is non-aggregate
+    bool joinMatch = false;
 
-  // join type is non-aggregate
+    while (true) {
+      // get next document
+      if (!feeder->current(feeder)) {
+        // end of documents in collection
+        // exit this join
 
-  while (true) {
-    // get next document
-    if (!feeder->current(feeder)) {
-      // end of documents in collection
-      // exit this join
-      break;
-    }
-
-    if (level > 0 && part->_condition && part->_context) {
-      // check ON clause
-      if (!CheckJoinClause(instance, level)) {
-        if (part->_type == JOIN_TYPE_OUTER) {
-          // set document to null in outer join
-          part->_singleDocument = NULL;
-          part->_extraData._singleValue = NULL;
-
+        if (part->_type == JOIN_TYPE_OUTER && !joinMatch) {
           // left join: if we are not at the last document of the left
           // joined collection, we continue
           // if we are at the last document and there hasn't been a 
           // match, we must still include the left document if the where
           // condition matches
-          if (joinMatch || !feeder->eof(feeder)) {
-            continue;
+          if (!ProcessRow(instance, results, level, skip, limit)) {
+            return false;
           }
         }
-        else {
-          // inner join: always go to next record
+        break;
+      }
+
+      if (level > 0 && part->_context) {
+        // check ON clause
+        if (!CheckJoinClause(instance, level)) {
+          if (part->_type == JOIN_TYPE_OUTER) {
+            // set document to null in outer join
+            part->_singleDocument = NULL;
+            part->_extraData._singleValue = NULL;
+          }
           continue;
         }
-      }
-      joinMatch = true;
-    } 
-
-    if (level == numJoins) {
-      // last join was executed
-
-      if (hasWhere) {
-        // check WHERE clause for full row
-        if (!CheckWhereClause(instance, level)) {
-          continue;
-        }
+        joinMatch = true;
       }
 
-      // apply SKIP limits
-      if (*skip > 0) {
-        (*skip)--;
-        continue;
-      }
-      
-      // full match, now add documents to result sets
-      TRI_AddJoinSelectResult(instance, results); 
-
-      (*limit)--;
-      // apply LIMIT
-      if (*limit == 0) {
-        return;
+      if (!ProcessRow(instance, results, level, skip, limit)) {
+        return false;
       }
     }
-    else {
-      // recurse into next join
-      RecursiveJoin(instance, results, level + 1, skip, limit);
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Process a single result row in a join
+////////////////////////////////////////////////////////////////////////////////
+
+static bool ProcessRow (TRI_query_instance_t* const instance,
+                        TRI_select_result_t* results,
+                        const size_t level,
+                        TRI_voc_size_t* skip,
+                        TRI_voc_ssize_t* limit) {
+  
+  size_t numJoins = instance->_join._length - 1;
+
+  if (level == numJoins) {
+    // last join was executed
+    if (instance->_query._where._type == QLQueryWhereTypeMustEvaluate) {
+      // check WHERE clause for full row
+      if (!CheckWhereClause(instance, level)) {
+        return true;
+      }
+    }
+
+    // apply SKIP limits
+    if (*skip > 0) {
+      (*skip)--;
+      return true;
+    }
+      
+    // full match, now add documents to result sets
+    TRI_AddJoinSelectResult(instance, results); 
+
+    (*limit)--;
+    // apply LIMIT
+    if (*limit == 0) {
+      return false;
+    }
+
+    return true; 
+  }
+
+  // recurse into next join
+  return RecursiveJoin(instance, results, level + 1, skip, limit);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Init join data structures
+////////////////////////////////////////////////////////////////////////////////
+
+static void InitJoin (TRI_query_instance_t* const instance) {
+  size_t i;
+
+  for (i = 0; i < instance->_join._length; i++) {
+    TRI_join_part_t* part = (TRI_join_part_t*) instance->_join._buffer[i];
+    assert(part->_feeder);
+
+    part->_feeder->init(part->_feeder);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief De-init join data structures
+////////////////////////////////////////////////////////////////////////////////
+
+static void DeinitJoin (TRI_query_instance_t* const instance) {
+  // deallocate vectors for list joins (would be done later anyway, but we can
+  // free the memory here already)
+  size_t i;
+
+  for (i = 0; i < instance->_join._length; i++) {
+    TRI_join_part_t* part = (TRI_join_part_t*) instance->_join._buffer[i];
+    if (part->_type == JOIN_TYPE_LIST) {
+      TRI_DestroyVectorPointer(&part->_listDocuments);
+      part->_listDocuments._buffer = NULL;
+
+      TRI_DestroyVectorPointer(&part->_extraData._listValues);
+      part->_extraData._listValues._buffer = NULL;
+    }
+
+    if (part->_feeder) {
+      // free data feeder early, we don't need it any longer
+      part->_feeder->free(part->_feeder);
+      part->_feeder = NULL;
     }
   }
 }
@@ -1216,52 +1301,36 @@ void TRI_ExecuteJoins (TRI_query_instance_t* const instance,
                        TRI_select_result_t* results,
                        const TRI_voc_size_t skip,
                        const TRI_voc_ssize_t limit) {
-  TRI_join_part_t* part;
-  TRI_voc_size_t _skip;
-  TRI_voc_ssize_t _limit;
-  size_t i;
-
   // set skip and limit to initial values
   // (values will be decreased during join execution)
-  _skip = skip;
-  _limit = limit;
+  TRI_voc_size_t _skip = skip;
+  TRI_voc_ssize_t _limit = limit;
+  bool result;
 
-  for (i = 0; i < instance->_join._length; i++) {
-    part = (TRI_join_part_t*) instance->_join._buffer[i];
-    assert(part->_feeder);
+  assert(instance);
+  LOG_DEBUG("executing %i-way join", (int) instance->_join._length);
+  LOG_DEBUG("skip: %li, limit: %li", (long int) skip, (long int) limit);
 
-    part->_feeder->init(part->_feeder);
-  }
-  // execute the join
-  RecursiveJoin(instance, results, 0, &_skip, &_limit);
+  // init data parts
+  InitJoin(instance);
   
-  // deallocate vectors for list joins (would be done later anyway, but we can
-  // free the memory here already)
-  for (i = 0; i < instance->_join._length; i++) {
-    part = (TRI_join_part_t*) instance->_join._buffer[i];
-    if (part->_type == JOIN_TYPE_LIST) {
-      TRI_DestroyVectorPointer(&part->_listDocuments);
-      part->_listDocuments._buffer = NULL;
-
-      TRI_DestroyVectorPointer(&part->_extraData._listValues);
-      part->_extraData._listValues._buffer = NULL;
-    }
-
-    if (part->_feeder) {
-      // free data feeder early, we don't need it any longer
-      part->_feeder->free(part->_feeder);
-      part->_feeder = NULL;
-    }
+  // execute the join
+  result = RecursiveJoin(instance, results, 0, &_skip, &_limit);
+  if (!result) {
+    LOG_DEBUG("limit reached");
   }
+
+  // de-init data parts
+  DeinitJoin(instance);
+  
+  LOG_DEBUG("join finished");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-

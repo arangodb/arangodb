@@ -57,7 +57,8 @@ extern "C" {
 /// transformations to optimize them. The goal of all optimization is to do
 /// less work when executing the query and produce the results faster.
 ///
-/// @section Optimizer transformations
+/// @section OptimizerTransformations Optimizer transformations
+///
 /// 
 /// Currently, the AQL query optimizer applies the following transformations:
 /// - constant folding: numeric literals, boolean values and null are folded 
@@ -85,7 +86,7 @@ extern "C" {
 ///   will be detected as being impossible and removed: 
 ///   @LIT{users.id > 3 && users.id < 3}
 ///
-/// @section Optimizer issues
+/// @section OptimizerIssues Optimizer issues
 ///
 /// The optimizer currently cannot optimize subconditions combined with a 
 /// logical @LIT{||}. Furthermore, it will not optimize negated conditions or

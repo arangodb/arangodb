@@ -362,7 +362,6 @@ TRI_vector_pointer_t* TRI_GetCollectionIndexes(const TRI_vocbase_t* vocbase,
 
   // get all index filenames
   indexFiles = TRI_GetCollectionIndexFiles(vocbase, collectionName);
-  
   for (i = 0;  i < indexFiles._length;  ++i) {
     // read JSON data from index file
     json = TRI_JsonFile(indexFiles._buffer[i], &error);
@@ -404,10 +403,11 @@ TRI_vector_pointer_t* TRI_GetCollectionIndexes(const TRI_vocbase_t* vocbase,
     if (!strVal || strVal->_type != TRI_JSON_STRING) {
       goto NEXT_INDEX;
     }
+
     if (strcmp(strVal->_value._string.data, "hash") == 0) {
       indexType = TRI_IDX_TYPE_HASH_INDEX;
     }
-    if (strcmp(strVal->_value._string.data, "skiplist") == 0) {
+    else if (strcmp(strVal->_value._string.data, "skiplist") == 0) {
       indexType = TRI_IDX_TYPE_SKIPLIST_INDEX;
     }
     else if (strcmp(strVal->_value._string.data, "geo") == 0) {
@@ -415,6 +415,7 @@ TRI_vector_pointer_t* TRI_GetCollectionIndexes(const TRI_vocbase_t* vocbase,
     }
     else {
       // unknown index type
+      LOG_ERROR("found unknown index type '%s'", strVal->_value._string.data);
       goto NEXT_INDEX;
     }
 
@@ -549,10 +550,11 @@ static bool ExtractDoubleArray (TRI_shaper_t* shaper,
   }
 
   ok = TRI_ExecuteShapeAccessor(acc, document, &json);
-  *result = * (double*) json._data.data;
-  TRI_FreeShapeAccessor(acc);
-
-  return true;
+  if (ok) {
+    *result = * (double*) json._data.data;
+    TRI_FreeShapeAccessor(acc);
+  }
+  return ok;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1130,7 +1132,7 @@ HashIndexElements* TRI_LookupHashIndex(TRI_index_t* idx, TRI_json_t* parameterLi
   HashIndexElements* result;
   HashIndexElement  element;
   TRI_shaper_t*     shaper;
-  
+  size_t j;
   
   element.numFields = parameterList->_value._objects._length;
   element.fields    = TRI_Allocate( sizeof(TRI_json_t) * element.numFields);
@@ -1142,7 +1144,7 @@ HashIndexElements* TRI_LookupHashIndex(TRI_index_t* idx, TRI_json_t* parameterLi
   hashIndex = (TRI_hash_index_t*) idx;
   shaper = hashIndex->base._collection->_shaper;
     
-  for (size_t j = 0; j < element.numFields; ++j) {
+  for (j = 0; j < element.numFields; ++j) {
     TRI_json_t*        jsonObject   = (TRI_json_t*) (TRI_AtVector(&(parameterList->_value._objects),j));
     TRI_shaped_json_t* shapedObject = TRI_ShapedJsonJson(shaper, jsonObject);
     element.fields[j] = *shapedObject;
@@ -1156,7 +1158,7 @@ HashIndexElements* TRI_LookupHashIndex(TRI_index_t* idx, TRI_json_t* parameterLi
     result = MultiHashIndex_find(hashIndex->_hashIndex, &element);
   }
 
-  for (size_t j = 0; j < element.numFields; ++j) {
+  for (j = 0; j < element.numFields; ++j) {
     TRI_DestroyShapedJson(element.fields + j);
   }
   TRI_Free(element.fields);
@@ -1176,7 +1178,7 @@ static bool HashIndexHelper(const TRI_hash_index_t* hashIndex,
   union { void* p; void const* c; } cnv;
   TRI_shaped_json_t shapedObject;
   TRI_shape_access_t* acc;
-
+  size_t j;
   
   if (shapedDoc != NULL) {
   
@@ -1189,7 +1191,7 @@ static bool HashIndexHelper(const TRI_hash_index_t* hashIndex,
     hashElement->data = NULL;
     
  
-    for (size_t j = 0; j < hashIndex->_shapeList->_length; ++j) {
+    for (j = 0; j < hashIndex->_shapeList->_length; ++j) {
       
       TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(hashIndex->_shapeList,j)));
       
@@ -1237,7 +1239,7 @@ static bool HashIndexHelper(const TRI_hash_index_t* hashIndex,
     hashElement->data = cnv.p;
  
     
-    for (size_t j = 0; j < hashIndex->_shapeList->_length; ++j) {
+    for (j = 0; j < hashIndex->_shapeList->_length; ++j) {
       
       TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(hashIndex->_shapeList,j)));
       
@@ -1377,7 +1379,8 @@ static TRI_json_t* JsonHashIndex (TRI_index_t* idx, TRI_doc_collection_t* collec
   TRI_hash_index_t* hashIndex;
   char const** fieldList;
   char* fieldCounter;
-  
+  size_t j;
+   
   // ..........................................................................  
   // Recast as a hash index
   // ..........................................................................  
@@ -1399,7 +1402,7 @@ static TRI_json_t* JsonHashIndex (TRI_index_t* idx, TRI_doc_collection_t* collec
   // ..........................................................................  
   // Convert the attributes (field list of the hash index) into strings
   // ..........................................................................  
-  for (size_t j = 0; j < hashIndex->_shapeList->_length; ++j) {
+  for (j = 0; j < hashIndex->_shapeList->_length; ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(hashIndex->_shapeList,j)));
     path = collection->_shaper->lookupAttributePathByPid(collection->_shaper, shape);
     if (path == NULL) {
@@ -1430,7 +1433,7 @@ static TRI_json_t* JsonHashIndex (TRI_index_t* idx, TRI_doc_collection_t* collec
   TRI_Insert2ArrayJson(json, "unique", TRI_CreateBooleanJson(hashIndex->_unique));
   TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("hash"));
   TRI_Insert2ArrayJson(json, "field_count", TRI_CreateNumberJson(hashIndex->_shapeList->_length));
-  for (size_t j = 0; j < hashIndex->_shapeList->_length; ++j) {
+  for (j = 0; j < hashIndex->_shapeList->_length; ++j) {
     sprintf(fieldCounter,"field_%lu",j);
     TRI_Insert2ArrayJson(json, fieldCounter, TRI_CreateStringCopyJson(fieldList[j]));
   }
@@ -1659,6 +1662,8 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_doc_collection_s* collection,
                                   TRI_vector_t* shapeList,
                                   bool unique) {
   TRI_hash_index_t* hashIndex;
+  size_t j;
+
   hashIndex = TRI_Allocate(sizeof(TRI_hash_index_t));
   if (!hashIndex) {
     return NULL;
@@ -1684,11 +1689,10 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_doc_collection_s* collection,
   }
 
   TRI_InitVector(hashIndex->_shapeList, sizeof(TRI_shape_pid_t));
-  for (size_t j = 0; j < shapeList->_length; ++j) {
+  for (j = 0; j < shapeList->_length; ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(shapeList,j)));
     TRI_PushBackVector(hashIndex->_shapeList,&shape);
   }
-
   
   if (unique) {
     hashIndex->_hashIndex = HashIndex_new();
@@ -1736,6 +1740,7 @@ SkiplistIndexElements* TRI_LookupSkiplistIndex(TRI_index_t* idx, TRI_json_t* par
   SkiplistIndexElements* result;
   SkiplistIndexElement  element;
   TRI_shaper_t*     shaper;
+  size_t j;
   
   element.numFields = parameterList->_value._objects._length;
   element.fields    = TRI_Allocate( sizeof(TRI_json_t) * element.numFields);
@@ -1748,7 +1753,7 @@ SkiplistIndexElements* TRI_LookupSkiplistIndex(TRI_index_t* idx, TRI_json_t* par
   skiplistIndex = (TRI_skiplist_index_t*) idx;
   shaper = skiplistIndex->base._collection->_shaper;
     
-  for (size_t j = 0; j < element.numFields; ++j) {
+  for (j = 0; j < element.numFields; ++j) {
     TRI_json_t*        jsonObject   = (TRI_json_t*) (TRI_AtVector(&(parameterList->_value._objects),j));
     TRI_shaped_json_t* shapedObject = TRI_ShapedJsonJson(shaper, jsonObject);
     element.fields[j] = *shapedObject;
@@ -1764,7 +1769,7 @@ SkiplistIndexElements* TRI_LookupSkiplistIndex(TRI_index_t* idx, TRI_json_t* par
     result = MultiSkiplistIndex_find(skiplistIndex->_skiplistIndex, &element);
   }
 
-  for (size_t j = 0; j < element.numFields; ++j) {
+  for (j = 0; j < element.numFields; ++j) {
     TRI_DestroyShapedJson(element.fields + j);
   }
   TRI_Free(element.fields);
@@ -1784,7 +1789,7 @@ static bool SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
   union { void* p; void const* c; } cnv;
   TRI_shaped_json_t shapedObject;
   TRI_shape_access_t* acc;
-
+  size_t j;
   
   if (shapedDoc != NULL) {
   
@@ -1797,7 +1802,7 @@ static bool SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
     skiplistElement->data = NULL;
     
  
-    for (size_t j = 0; j < skiplistIndex->_shapeList->_length; ++j) {
+    for (j = 0; j < skiplistIndex->_shapeList->_length; ++j) {
       
       TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(skiplistIndex->_shapeList,j)));
       
@@ -1845,7 +1850,7 @@ static bool SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
     skiplistElement->data = cnv.p;
  
     
-    for (size_t j = 0; j < skiplistIndex->_shapeList->_length; ++j) {
+    for (j = 0; j < skiplistIndex->_shapeList->_length; ++j) {
       
       TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(skiplistIndex->_shapeList,j)));
       
@@ -1974,7 +1979,8 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, TRI_doc_collection_t* co
   TRI_skiplist_index_t* skiplistIndex;
   char const** fieldList;
   char* fieldCounter;
-  
+  size_t j;
+   
   // ..........................................................................  
   // Recast as a skiplist index
   // ..........................................................................  
@@ -1996,7 +2002,7 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, TRI_doc_collection_t* co
   // ..........................................................................  
   // Convert the attributes (field list of the skiplist index) into strings
   // ..........................................................................  
-  for (size_t j = 0; j < skiplistIndex->_shapeList->_length; ++j) {
+  for (j = 0; j < skiplistIndex->_shapeList->_length; ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(skiplistIndex->_shapeList,j)));
     path = collection->_shaper->lookupAttributePathByPid(collection->_shaper, shape);
     if (path == NULL) {
@@ -2027,7 +2033,7 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, TRI_doc_collection_t* co
   TRI_Insert2ArrayJson(json, "unique", TRI_CreateBooleanJson(skiplistIndex->_unique));
   TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("skiplist"));
   TRI_Insert2ArrayJson(json, "field_count", TRI_CreateNumberJson(skiplistIndex->_shapeList->_length));
-  for (size_t j = 0; j < skiplistIndex->_shapeList->_length; ++j) {
+  for (j = 0; j < skiplistIndex->_shapeList->_length; ++j) {
     sprintf(fieldCounter,"field_%lu",j);
     TRI_Insert2ArrayJson(json, fieldCounter, TRI_CreateStringCopyJson(fieldList[j]));
   }
@@ -2261,6 +2267,8 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_doc_collection_s* collection,
                                   TRI_vector_t* shapeList,
                                   bool unique) {
   TRI_skiplist_index_t* skiplistIndex;
+  size_t j;
+
   skiplistIndex = TRI_Allocate(sizeof(TRI_skiplist_index_t));
   if (!skiplistIndex) {
     return NULL;
@@ -2286,7 +2294,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_doc_collection_s* collection,
   }
 
   TRI_InitVector(skiplistIndex->_shapeList, sizeof(TRI_shape_pid_t));
-  for (size_t j = 0; j < shapeList->_length; ++j) {
+  for (j = 0; j < shapeList->_length; ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(shapeList,j)));
     TRI_PushBackVector(skiplistIndex->_shapeList,&shape);
   }
@@ -2305,18 +2313,6 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_doc_collection_s* collection,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-
-
-
-
-
-
-
-
-
-
-
 
 // Local Variables:
 // mode: outline-minor

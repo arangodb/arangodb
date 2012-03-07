@@ -128,7 +128,7 @@ TRI_doc_collection_info_t;
 ///
 /// If a document is deleted, it's master pointer becomes invalid. However, the
 /// document itself exists. Executing a query and constructing its result set,
-/// see @ref TRI_result_set_t, must be done inside a "beginRead" and
+/// must be done inside a "beginRead" and
 /// "endRead". However, the result set itself does not contain any master
 /// pointers. Therefore, it stays valid after the "endRead" call.
 ///

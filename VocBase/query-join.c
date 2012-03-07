@@ -25,7 +25,7 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VocBase/join.h"
+#include "VocBase/query-join.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocBase
@@ -65,10 +65,6 @@ static void FreePart (TRI_join_part_t* part) {
     TRI_Free(part->_collectionName);
   }
   
-  if (part->_condition) {
-    part->_condition->free(part->_condition);
-  }
-
   if (part->_feeder) {
     part->_feeder->free(part->_feeder);
   }
@@ -107,14 +103,12 @@ static void FreeSelectJoin (TRI_select_join_t* join) {
 
 bool TRI_AddPartSelectJoinX (TRI_select_join_t* join, 
                             const TRI_join_type_e type, 
-                            TRI_qry_where_t* condition,
                             TRI_vector_pointer_t* ranges, 
                             char* collectionName, 
                             char* alias,
                             QL_ast_query_geo_restriction_t* geoRestriction) {
   
   TRI_join_part_t* part;
-  TRI_qry_where_general_t* conditionGeneral;
   
   assert(join != NULL);
   part = (TRI_join_part_t*) TRI_Allocate(sizeof(TRI_join_part_t));
@@ -129,18 +123,12 @@ bool TRI_AddPartSelectJoinX (TRI_select_join_t* join,
   part->_singleDocument = NULL;
   part->_feeder = NULL; 
   part->_type = type;
-  part->_condition = condition;
   part->_ranges = ranges;
   part->_collection = NULL;
   part->_collectionName = TRI_DuplicateString(collectionName);
   part->_alias = TRI_DuplicateString(alias);
   part->_geoRestriction = geoRestriction;
   
-  if (part->_condition != NULL && part->_condition->_type == TRI_QRY_WHERE_GENERAL) {
-    conditionGeneral = (TRI_qry_where_general_t*) part->_condition;
-    part->_context = TRI_CreateExecutionContext(conditionGeneral->_code);
-  }
-
   // determine size of extra data to store  
   if (part->_geoRestriction) {
     part->_extraData._size = GetExtraDataSizeGeo(part);

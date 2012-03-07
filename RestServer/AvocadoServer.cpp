@@ -714,7 +714,7 @@ void AvocadoServer::executeShell () {
 void AvocadoServer::openDatabase () {
   _vocbase = TRI_OpenVocBase(_databasePath.c_str());
 
-  if (_vocbase == 0) {
+  if (! _vocbase) {
     LOGGER_FATAL << "cannot open database '" << _databasePath << "'";
     cerr << "cannot open database '" << _databasePath << "'\n";
     LOGGER_INFO << "please use the '--database.directory' option";

@@ -2,7 +2,7 @@ var actions = require("actions");
 
 function getDocument(req, res) {
   if (req.suffix.length != 2) {
-    actions.actionResultError (req, res, 404, documentNotFound, "Document not found");
+    actions.actionResultError (req, res, 404, actions.documentNotFound, "Document not found");
     return;
   }
 
@@ -17,13 +17,13 @@ function getDocument(req, res) {
     actions.actionResultOK(req, res, 200, result);    
   }
   catch (e) {
-    actions.actionResultError (req, res, 404, documentNotFound, "Document not found: " + e);
+    actions.actionResultError (req, res, 404, actions.documentNotFound, "Document not found: " + e);
   }
 }
 
 function deleteDocument(req, res) {
   if (req.suffix.length != 2) {
-    actions.actionResultError (req, res, 404, documentNotFound, "Document not found");
+    actions.actionResultError (req, res, 404, actions.documentNotFound, "Document not found");
     return;
   }
 
@@ -43,17 +43,17 @@ function deleteDocument(req, res) {
       actions.actionResultOK(req, res, 200, result);          
     }
     else {
-      actions.actionResultError (req, res, 304, documentNotModified, "Document not deleted");      
+      actions.actionResultError (req, res, 304, actions.documentNotModified, "Document not deleted");      
     }
   }
   catch (e) {
-    actions.actionResultError(req, res, 304, documentNotModified, "Document not deleted: " + e);
+    actions.actionResultError(req, res, 304, actions.documentNotModified, "Document not deleted: " + e);
   }
 }
 
 function postDocument(req, res) {
   if (req.suffix.length != 1) {
-    actions.actionResultError (req, res, 404, collectionNotFound, "Collection not found");
+    actions.actionResultError (req, res, 404, actions.collectionNotFound, "Collection not found");
     return;
   }
 
@@ -70,13 +70,13 @@ function postDocument(req, res) {
     actions.actionResultOK(req, res, 201, result);    
   }
   catch (e) {
-    actions.actionResultError (req, res, 404, documentNotModified, "Document not saved: " + e);
+    actions.actionResultError (req, res, 404, actions.documentNotModified, "Document not saved: " + e);
   }
 }
 
 function putDocument(req, res) {
   if (req.suffix.length != 2) {
-    actions.actionResultError (req, res, 404, documentNotFound, "Document not found");
+    actions.actionResultError (req, res, 404, actions.documentNotFound, "Document not found");
     return;
   }
 
@@ -94,7 +94,7 @@ function putDocument(req, res) {
     actions.actionResultOK(req, res, 202, result);    
   }
   catch (e) {
-    actions.actionResultError (req, res, 404, documentNotModified, "Document not changed: " + e);
+    actions.actionResultError (req, res, 404, actions.documentNotModified, "Document not changed: " + e);
   }
 }
 

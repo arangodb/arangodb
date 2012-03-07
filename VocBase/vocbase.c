@@ -25,8 +25,6 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "vocbase.h"
-
 #include <sys/mman.h>
 
 #include <BasicsC/files.h>
@@ -37,10 +35,13 @@
 #include <BasicsC/strings.h>
 #include <BasicsC/threads.h>
 
-#include <VocBase/compactor.h>
-#include <VocBase/document-collection.h>
-#include <VocBase/simple-collection.h>
-#include <VocBase/synchroniser.h>
+#include "VocBase/vocbase.h"
+#include "VocBase/compactor.h"
+#include "VocBase/document-collection.h"
+#include "VocBase/simple-collection.h"
+#include "VocBase/synchroniser.h"
+#include "VocBase/shadow-data.h"
+#include "VocBase/query-cursor.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -449,8 +450,15 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
     return NULL;
   }
 
-  vocbase->_path = TRI_DuplicateString(path);
+  vocbase->_cursors = TRI_CreateShadowsQueryCursor();
+  if (!vocbase->_cursors) {
+    TRI_Free(vocbase);
+    LOG_ERROR("out of memory when opening vocbase");
+    return NULL;
+  }
+  
   vocbase->_lockFile = lockFile;
+  vocbase->_path = TRI_DuplicateString(path);
 
   if (!vocbase->_path) {
     TRI_Free(vocbase);
@@ -476,7 +484,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
 
   // scan directory for collections
   ScanPath(vocbase, vocbase->_path);
-
+  
   // vocbase is now active
   vocbase->_active = 1;
 
@@ -503,6 +511,10 @@ void TRI_CloseVocBase (TRI_vocbase_t* vocbase) {
 
   TRI_JoinThread(&vocbase->_synchroniser);
   TRI_JoinThread(&vocbase->_compactor);
+  
+  if (vocbase->_cursors) {
+    TRI_FreeShadowStore(vocbase->_cursors);
+  }
 
   TRI_DestroyLockFile(vocbase->_lockFile);
   TRI_FreeString(vocbase->_lockFile);

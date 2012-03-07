@@ -41,6 +41,7 @@ extern "C" {
 
 struct TRI_doc_collection_s;
 struct TRI_col_parameter_s;
+struct TRI_shadow_store_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
@@ -228,6 +229,8 @@ typedef struct TRI_vocbase_s {
   sig_atomic_t _active;
   TRI_thread_t _synchroniser;
   TRI_thread_t _compactor;
+
+  struct TRI_shadow_store_s* _cursors;
 }
 TRI_vocbase_t;
 

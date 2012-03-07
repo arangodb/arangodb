@@ -116,8 +116,99 @@ V8ClientConnection* clientConnection = 0;
 v8::Persistent<v8::ObjectTemplate> ConnectionTempl;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief the output pager
+////////////////////////////////////////////////////////////////////////////////
+
+static string OutputPager = "more";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the pager FILE 
+////////////////////////////////////////////////////////////////////////////////
+
+static FILE *PAGER = stdout;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief use pager
+////////////////////////////////////////////////////////////////////////////////
+
+static bool usePager = false;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deactivate colors
+////////////////////////////////////////////////////////////////////////////////
+
+static bool noColors = false;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief use pretty print
+////////////////////////////////////////////////////////////////////////////////
+
+static bool prettyPrint = false;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief outputs the arguments
+///
+/// @FUN{internal.output(@FA{string1}, @FA{string2}, @FA{string3}, ...)}
+///
+/// Outputs the arguments to standard output.
+///
+/// @verbinclude fluent39
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> Tri_Output (v8::Arguments const& argv) {
+  for (int i = 0; i < argv.Length(); i++) {
+    v8::HandleScope scope;
+
+    // extract the next argument
+    v8::Handle<v8::Value> val = argv[i];
+
+    string str = TRI_ObjectToString(val);
+
+    fprintf(PAGER, "%s", str.c_str());
+  }
+
+  return v8::Undefined();
+}
+
+static v8::Handle<v8::Value> Start_Output_Pager (v8::Arguments const& argv) {
+  usePager = true;
+  printf("Using pager '%s' for output buffering.\n", OutputPager.c_str());
+  return v8::Undefined();
+}
+
+static v8::Handle<v8::Value> Stop_Output_Pager (v8::Arguments const& argv) {
+  usePager = false;
+  return v8::Undefined();
+}
+
+static void init_pager()
+{
+  if (!usePager || OutputPager == "" || OutputPager == "stdout") {
+    PAGER= stdout;
+    return;
+  }
+  
+  if (!(PAGER = popen(OutputPager.c_str(), "w")))
+  {
+    printf("popen() failed! defaulting PAGER to stdout!\n");
+    PAGER= stdout;
+    usePager = false;
+  }
+}
+
+static void end_pager()
+{
+  if (PAGER != stdout) {
+    pclose(PAGER);
+  }
+}
+
+
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -171,6 +262,10 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("log.level,l", &level,  "log level")
     ("server", &ServerAddress, "server address and port")
     ("startup", &StartupPath, "startup path containing the JavaScript files")
+    ("use_pager", &usePager, "use pager")
+    ("pager", &OutputPager, "output pager (default: 'more')")
+    ("no_colors", &noColors, "deaktivate color support")
+    ("pretty_print", &prettyPrint, "pretty print values")          
   ;
 
   ProgramOptions options;
@@ -519,6 +614,12 @@ static Handle<Value> ClientConnection_toString(v8::Arguments const& argv) {
   return scope.Close(v8::String::New(result.c_str()));
 }
 
+
+
+
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup V8Shell
 /// @{
@@ -564,7 +665,9 @@ static void RunShell (v8::Handle<v8::Context> context) {
     
     HandleScope scope;
 
+    init_pager();
     TRI_ExecuteStringVocBase(context, String::New(input), name, true, true);
+    end_pager();
     TRI_FreeString(input);
   }
 
@@ -651,7 +754,14 @@ int main (int argc, char* argv[]) {
 
   context->Enter();
 
+  // add function SYS_OUTPUT to use pager
+  context->Global()->Set(v8::String::New("SYS_OUTPUT"),
+                         v8::FunctionTemplate::New(Tri_Output)->GetFunction(),
+                         v8::ReadOnly);
+  
+  
   TRI_InitV8Utils(context, ".");
+  
   TRI_InitV8Shell(context);
 
   // processComandLineArguments(argc, argv);
@@ -661,7 +771,6 @@ int main (int argc, char* argv[]) {
     }
   }
         
-
   
   clientConnection = new V8ClientConnection(
           DEFAULT_SERVER_NAME, 
@@ -689,14 +798,31 @@ int main (int argc, char* argv[]) {
   connection_inst->SetInternalFieldCount(2);    
   context->Global()->Set(v8::String::New("AvocadoConnection"), connection_proto->NewInstance());    
   ConnectionTempl = v8::Persistent<v8::ObjectTemplate>::New(connection_inst);
+    
+  context->Global()->Set(v8::String::New("start_pager"),
+                         v8::FunctionTemplate::New(Start_Output_Pager)->GetFunction(),
+                         v8::ReadOnly);
+  context->Global()->Set(v8::String::New("stop_pager"),
+                         v8::FunctionTemplate::New(Stop_Output_Pager)->GetFunction(),
+                         v8::ReadOnly);
   
+
   
   // http://www.network-science.de/ascii/   Font: ogre
-  printf(        "                       "      "\x1b[31m    _         \x1b[0m\n");
-  printf("\x1b[32m  __ ___   _____   ___ "      "\x1b[31m___| |__      \x1b[0m\n");
-  printf("\x1b[32m / _` \\ \\ / / _ \\ / __"    "\x1b[31m/ __| '_ \\   \x1b[0m\n");
-  printf("\x1b[32m| (_| |\\ V / (_) | (__"      "\x1b[31m\\__ \\ | | | \x1b[0m\n");
-  printf("\x1b[32m \\__,_| \\_/ \\___/ \\___"   "\x1b[31m|___/_| |_|   \x1b[0m\n\n");
+  if (noColors) {
+    printf("                       "      "    _         \n");
+    printf("  __ ___   _____   ___ "      "___| |__      \n");
+    printf(" / _` \\ \\ / / _ \\ / __"    "/ __| '_ \\   \n");
+    printf("| (_| |\\ V / (_) | (__"      "\\__ \\ | | | \n");
+    printf(" \\__,_| \\_/ \\___/ \\___"   "|___/_| |_|   \n\n");        
+  }
+  else {
+    printf(        "                       "      "\x1b[31m    _         \x1b[0m\n");
+    printf("\x1b[32m  __ ___   _____   ___ "      "\x1b[31m___| |__      \x1b[0m\n");
+    printf("\x1b[32m / _` \\ \\ / / _ \\ / __"    "\x1b[31m/ __| '_ \\   \x1b[0m\n");
+    printf("\x1b[32m| (_| |\\ V / (_) | (__"      "\x1b[31m\\__ \\ | | | \x1b[0m\n");
+    printf("\x1b[32m \\__,_| \\_/ \\___/ \\___"   "\x1b[31m|___/_| |_|   \x1b[0m\n\n");    
+  }
   printf("Welcome to avocsh %s. Copyright (c) 2012 triAGENS GmbH.\n", TRIAGENS_VERSION);
 
 #ifdef TRI_V8_VERSION
@@ -713,12 +839,27 @@ int main (int argc, char* argv[]) {
     printf("Connected to Avocado DB %s:%d Version %s\n", 
             clientConnection->getHostname().c_str(), 
             clientConnection->getPort(), 
-            clientConnection->getVersion().c_str());    
+            clientConnection->getVersion().c_str());
+    
+    if (usePager) {
+      printf("Using pager '%s' for output buffering.\n", OutputPager.c_str());    
+    }
  
     // add the client connection to the context:
     context->Global()->Set(v8::String::New("avocado"), wrapV8ClientConnection(clientConnection));
+    
+    if (prettyPrint) {
+      printf("Pretty print values.\n");    
+    }
 
-    addColors(context);
+    // set pretty print default: (used in print.js)
+    context->Global()->Set(v8::String::New("PRETTY_PRINT"), v8::Boolean::New(prettyPrint));
+
+    // add colors for print.js
+    if (!noColors) {
+      addColors(context);      
+    }
+
     
     // load java script from js/bootstrap/*.h files
     if (StartupPath.empty()) {
@@ -749,7 +890,7 @@ int main (int argc, char* argv[]) {
         exit(EXIT_FAILURE);
       }
     }
-
+    
     RunShell(context);
   }
   else {

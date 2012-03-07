@@ -33,16 +33,14 @@
 #include <BasicsC/json.h>
 
 #include "VocBase/simple-collection.h"
-#include "VocBase/result.h"
-#include "VocBase/context.h"
+#include "VocBase/query-result-types.h"
+#include "VocBase/query-context.h"
+#include "VocBase/query-base.h"
 #include "QL/ast-query.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-// TODO: Fix this
-typedef void query_instance_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     documentation
@@ -234,8 +232,6 @@ TRI_data_feeder_type_e;
 /// The current() function is expected to move the position pointer forward by
 /// one document.
 ///
-/// The eof() function is used to check if there are more documents available.
-///
 /// The free() function is finally called after join processing is done and is
 /// expected to free all internal structures.
 ////////////////////////////////////////////////////////////////////////////////
@@ -247,7 +243,7 @@ typedef struct TRI_data_feeder_s {
   TRI_vector_pointer_t* _ranges;
   TRI_join_t* _join;
   TRI_part_t* _part;
-  query_instance_t* _instance;
+  TRI_query_instance_t* _instance;
   size_t _level;
   void* _state;
   const TRI_doc_collection_t* _collection;
@@ -255,7 +251,6 @@ typedef struct TRI_data_feeder_s {
   void (*init) (struct TRI_data_feeder_s*);
   void (*rewind) (struct TRI_data_feeder_s*);
   bool (*current) (struct TRI_data_feeder_s*);
-  bool (*eof) (struct TRI_data_feeder_s*);
   void (*free) (struct TRI_data_feeder_s*);
 }
 TRI_data_feeder_t;
@@ -297,7 +292,7 @@ TRI_data_feeder_t* TRI_CreateDataFeederTableScanX (const TRI_doc_collection_t*,
 /// @brief Create a new data feeder (table scan)
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_data_feeder_t* TRI_CreateDataFeederTableScan (query_instance_t* const,
+TRI_data_feeder_t* TRI_CreateDataFeederTableScan (TRI_query_instance_t* const,
                                                   const TRI_doc_collection_t*,
                                                   const size_t);
 
@@ -334,9 +329,10 @@ TRI_data_feeder_t* TRI_CreateDataFeederPrimaryLookupX (const TRI_doc_collection_
 /// @brief Create a new data feeder (primary index lookup)
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_data_feeder_t* TRI_CreateDataFeederPrimaryLookup (query_instance_t* const,
+TRI_data_feeder_t* TRI_CreateDataFeederPrimaryLookup (TRI_query_instance_t* const,
                                                       const TRI_doc_collection_t*,
-                                                      const size_t);
+                                                      const size_t,
+                                                      const TRI_vector_pointer_t*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        hash index
@@ -371,7 +367,7 @@ TRI_data_feeder_t* TRI_CreateDataFeederHashLookupX (const TRI_doc_collection_t*,
 /// @brief Create a new data feeder (hash index lookup)
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_data_feeder_t* TRI_CreateDataFeederHashLookup (query_instance_t* const,
+TRI_data_feeder_t* TRI_CreateDataFeederHashLookup (TRI_query_instance_t* const,
                                                    const TRI_doc_collection_t*,
                                                    const size_t,
                                                    const TRI_idx_iid_t,
@@ -410,7 +406,7 @@ TRI_data_feeder_t* TRI_CreateDataFeederSkiplistLookupX (const TRI_doc_collection
 /// @brief Create a new data feeder (skiplist lookup)
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_data_feeder_t* TRI_CreateDataFeederSkiplistLookup (query_instance_t* const,
+TRI_data_feeder_t* TRI_CreateDataFeederSkiplistLookup (TRI_query_instance_t* const,
                                                        const TRI_doc_collection_t*,
                                                        const size_t,
                                                        const TRI_idx_iid_t,
@@ -446,7 +442,7 @@ TRI_data_feeder_t* TRI_CreateDataFeederGeoLookupX (const TRI_doc_collection_t*,
 /// @brief Create a new data feeder (geo index lookup)
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_data_feeder_t* TRI_CreateDataFeederGeoLookup (query_instance_t* const,
+TRI_data_feeder_t* TRI_CreateDataFeederGeoLookup (TRI_query_instance_t* const,
                                                   const TRI_doc_collection_t*,
                                                   const size_t,
                                                   const TRI_idx_iid_t,
