@@ -25,6 +25,8 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <BasicsC/logging.h>
+
 #include "VocBase/shadow-data.h"
 
 // -----------------------------------------------------------------------------
@@ -34,6 +36,19 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the timestamp of a shadow to the current date & time
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void UpdateTimestampShadow (TRI_shadow_t* const shadow) {
+  shadow->_timestamp = TRI_microtime();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief init a shadow data structure
@@ -49,15 +64,11 @@ static TRI_shadow_t* CreateShadow (const void* const element) {
   shadow->_rc        = 1;
   shadow->_data      = (void*) element;
   shadow->_id        = TRI_NewTickVocBase();
-  shadow->_timestamp = TRI_microtime();
+
+  UpdateTimestampShadow(shadow);
 
   return shadow;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes an element
@@ -109,19 +120,11 @@ TRI_shadow_store_t* TRI_CreateShadowStore (void (*destroy) (TRI_shadow_store_t*,
                                EqualShadowElement);
 
     store->destroyShadow = destroy;
+    
+    TRI_InitMutex(&store->_lock);
   }
 
   return store;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a shadow data storage, but does not free the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyShadowStore (TRI_shadow_store_t* const store) {
-  assert(store);
-
-  TRI_DestroyAssociativePointer(&store->_index);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,6 +134,7 @@ void TRI_DestroyShadowStore (TRI_shadow_store_t* const store) {
 void TRI_FreeShadowStore (TRI_shadow_store_t* const store) {
   assert(store);
 
+  TRI_DestroyMutex(&store->_lock);
   TRI_DestroyAssociativePointer(&store->_index);
   TRI_Free(store);
 }
@@ -149,10 +153,59 @@ void TRI_FreeShadowStore (TRI_shadow_store_t* const store) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief enumerate all shadows and remove them if expired 
+////////////////////////////////////////////////////////////////////////////////
+  
+void TRI_CleanupShadowData (TRI_shadow_store_t* const store, const double maxAge) {
+  double compareStamp = TRI_microtime() - maxAge; // age must be specified in secs
+  size_t deleteCount = 0;
+  size_t i;
+
+  // we need an exclusive lock on the index
+  TRI_LockMutex(&store->_lock);
+
+  // loop until there's nothing to delete or 
+  // we have deleted SHADOW_MAX_DELETE elements 
+  while (deleteCount++ < SHADOW_MAX_DELETE) {
+    bool deleted = false;
+
+    for (i = 0; i < store->_index._nrAlloc; i++) {
+      // enum all shadows
+      TRI_shadow_t* shadow = (TRI_shadow_t*) store->_index._table[i];
+      if (!shadow) {
+        continue;
+      }
+
+      // check if shadow is unused and expired
+      if (shadow->_rc <= 1 && shadow->_timestamp < compareStamp) {
+        LOG_DEBUG("cleaning expired shadow %p", shadow);
+        TRI_RemoveElementAssociativePointer(&store->_index, shadow);
+        store->destroyShadow(store, shadow);
+        TRI_Free(shadow);
+
+        deleted = true;
+        // the remove might reposition elements in the container.
+        // therefore break here and start iteration anew
+        break;
+      }
+    }
+
+    if (!deleted) {
+      // we did not find anything to delete, so give up
+      break;
+    }
+  }
+
+  // release lock
+  TRI_UnlockMutex(&store->_lock);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a shadow by id
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shadow_t* TRI_FindShadowData (TRI_shadow_store_t* store, const TRI_shadow_id id) {
+TRI_shadow_t* TRI_FindShadowData (TRI_shadow_store_t* const store, 
+                                  const TRI_shadow_id id) {
   TRI_shadow_t* shadow;
   TRI_shadow_t search;
   union { TRI_shadow_t* s; TRI_shadow_t const* c; } cnv;
@@ -168,11 +221,12 @@ TRI_shadow_t* TRI_FindShadowData (TRI_shadow_store_t* store, const TRI_shadow_id
 
   if (shadow) {
     ++shadow->_rc;
-  }
+    UpdateTimestampShadow(shadow);
+  } 
 
   TRI_UnlockMutex(&store->_lock);
 
-  // might be NULL
+  // might be NULL if shadow not found
   return shadow;
 }
 
@@ -180,7 +234,8 @@ TRI_shadow_t* TRI_FindShadowData (TRI_shadow_store_t* store, const TRI_shadow_id
 /// @brief store a new shadow in the store
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shadow_t* TRI_StoreShadowData (TRI_shadow_store_t* store, const void* const element) {
+TRI_shadow_t* TRI_StoreShadowData (TRI_shadow_store_t* const store, 
+                                   const void* const element) {
   TRI_shadow_t* shadow;
   
   assert(store);
@@ -192,7 +247,7 @@ TRI_shadow_t* TRI_StoreShadowData (TRI_shadow_store_t* store, const void* const 
     TRI_UnlockMutex(&store->_lock);
   }
 
-  // might be NULL
+  // might be NULL in case of OOM
   return shadow; 
 }
 
@@ -200,7 +255,9 @@ TRI_shadow_t* TRI_StoreShadowData (TRI_shadow_store_t* store, const void* const 
 /// @brief releases shadow data
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ReleaseShadowData (TRI_shadow_store_t* store, TRI_shadow_t* shadow) {
+bool TRI_ReleaseShadowData (TRI_shadow_store_t* const store, TRI_shadow_t* shadow) {
+  bool result;
+
   assert(shadow);
 
   TRI_LockMutex(&store->_lock);
@@ -213,10 +270,20 @@ void TRI_ReleaseShadowData (TRI_shadow_store_t* store, TRI_shadow_t* shadow) {
     TRI_RemoveElementAssociativePointer(&store->_index, shadow);
     store->destroyShadow(store, shadow);
     TRI_Free(shadow);
+    result = true; // object was destroyed
+  }
+  else {
+    result = false; // object was not destroyed
   }
 
   TRI_UnlockMutex(&store->_lock);
+
+  return result;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  SHADOW DOCUMENTS
@@ -260,10 +327,10 @@ static bool EqualShadowDocumentElement (TRI_associative_pointer_t* array,
 /// @brief creates a shadow document data structure
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_shadow_document_t* CreateShadowDocument(void* const element, 
-                                                   TRI_voc_cid_t cid, 
-                                                   TRI_voc_did_t did,
-                                                   TRI_voc_rid_t rid) {
+static TRI_shadow_document_t* CreateShadowDocument (void* const element, 
+                                                    TRI_voc_cid_t cid, 
+                                                    TRI_voc_did_t did,
+                                                    TRI_voc_rid_t rid) {
   TRI_shadow_document_t* shadow;
   TRI_shadow_t* base = CreateShadow(element);
 
@@ -287,13 +354,15 @@ static TRI_shadow_document_t* CreateShadowDocument(void* const element,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a shadow document or creates it
+///
+/// Note: this function is called under an exclusive lock on the index
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_shadow_document_t* LookupShadowDocument(TRI_shadow_document_store_t* const store,
-                                                   TRI_doc_collection_t* collection,
-                                                   TRI_doc_mptr_t const* mptr,
-                                                   TRI_voc_cid_t cid, 
-                                                   TRI_voc_did_t did) {
+static TRI_shadow_document_t* LookupShadowDocument (TRI_shadow_document_store_t* const store,
+                                                    TRI_doc_collection_t* collection,
+                                                    TRI_doc_mptr_t const* mptr,
+                                                    TRI_voc_cid_t cid, 
+                                                    TRI_voc_did_t did) {
   union { TRI_shadow_document_t* s; TRI_shadow_document_t const* c; } cnv;
   TRI_shadow_document_t* shadow;
   TRI_shadow_document_t search;
@@ -309,6 +378,7 @@ static TRI_shadow_document_t* LookupShadowDocument(TRI_shadow_document_store_t* 
     bool ok = store->verifyShadow(store, collection, mptr, shadow->_base->_data);
     if (ok) {
       ++shadow->_base->_rc;
+      UpdateTimestampShadow(shadow->_base);
       return shadow;
     }
     else {
@@ -374,21 +444,13 @@ TRI_shadow_document_store_t* TRI_CreateShadowDocumentStore (
     return NULL;
   }
 
+  TRI_InitMutex(&base->_lock);
+
   store->createShadow  = create;
   store->verifyShadow  = verify;
   store->destroyShadow = destroy;
 
   return store;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a shadow document storage, but does not free the pointers
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyShadowDocumentStore (TRI_shadow_document_store_t* const store) {
-  assert(store);
-
-  TRI_DestroyAssociativePointer(&store->_base->_index);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -458,13 +520,14 @@ TRI_shadow_document_t* TRI_FindShadowDocument (TRI_shadow_document_store_t* cons
   return shadow;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a shadow document
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ReleaseShadowDocument (TRI_shadow_document_store_t* const store, 
+bool TRI_ReleaseShadowDocument (TRI_shadow_document_store_t* const store, 
                                 TRI_shadow_document_t* shadow) {
+  bool result;
+
   assert(store);
 
   TRI_LockMutex(&store->_base->_lock);
@@ -478,11 +541,17 @@ void TRI_ReleaseShadowDocument (TRI_shadow_document_store_t* const store,
     store->destroyShadow(store, shadow);
     TRI_Free(shadow->_base);
     TRI_Free(shadow);
+    result = true; // object was destroyed
+  }
+  else {
+    result = false; // object was not destroyed
   }
 
   TRI_UnlockMutex(&store->_base->_lock);
+
+  return result;
 }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////

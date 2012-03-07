@@ -1757,6 +1757,24 @@ static bool StringifyJsonShapeData (TRI_shaper_t* shaper,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief performs a deep copy of a shaped json object
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_shaped_json_t* TRI_CopyShapedJson(TRI_shaped_json_t* oldShapedJson) {
+  TRI_shaped_json_t* newShapedJson;  
+  if (oldShapedJson == NULL) {
+    return NULL;
+  }  
+  newShapedJson = TRI_Allocate(sizeof(TRI_shaped_json_t));
+  if (newShapedJson == NULL) {
+    return NULL;
+  }  
+  newShapedJson->_sid  = oldShapedJson->_sid;
+  TRI_CopyToBlob(&(newShapedJson->_data), &(oldShapedJson->_data)); 
+  return newShapedJson;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a json object, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 

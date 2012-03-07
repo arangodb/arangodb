@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compactor
+/// @brief order by
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,54 +21,32 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Jan Steemann
+/// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_COMPACTOR_H
-#define TRIAGENS_DURHAM_VOC_BASE_COMPACTOR_H 1
+#ifndef TRIAGENS_DURHAM_VOC_BASE_ORDER_H
+#define TRIAGENS_DURHAM_VOC_BASE_ORDER_H 1
 
-#include <BasicsC/common.h>
-
-#include <VocBase/vocbase.h>
+#include "VocBase/vocbase.h"
+#include "VocBase/query-result.h"
+#include "VocBase/query-context.h"
+#include "V8/v8-c-utils.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           defines
-// -----------------------------------------------------------------------------
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief maximum age for cursor shadows (in seconds)
+/// @brief General order by function (uses JavaScript code)
 ////////////////////////////////////////////////////////////////////////////////
 
-#define SHADOW_CURSOR_MAX_AGE 120
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compactor event loop
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_CompactorVocBase (void*);
+void TRI_OrderDataQuery (TRI_rc_result_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -84,3 +62,4 @@ void TRI_CompactorVocBase (void*);
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
+

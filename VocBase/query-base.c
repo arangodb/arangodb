@@ -27,7 +27,7 @@
 
 #include <BasicsC/logging.h>
 
-#include "VocBase/query.h"
+#include "VocBase/query-join.h"
 #include "VocBase/query-base.h"
 #include "VocBase/query-parse.h"
 
@@ -485,17 +485,14 @@ static void FreeJoinPart (TRI_join_part_t* part) {
   }
 
   if (part->_ranges) {
-    // TODO: free ranges
+    QLOptimizeFreeRangeVector(part->_ranges);
+    TRI_Free(part->_ranges);
   }
 
   if (part->_collectionName) {
     TRI_Free(part->_collectionName);
   }
   
-  if (part->_condition) {
-    part->_condition->free(part->_condition);
-  }
-
   if (part->_feeder) {
     part->_feeder->free(part->_feeder);
   }
@@ -522,8 +519,8 @@ static bool AddJoinPartQueryInstance (TRI_query_instance_t* instance,
                                       char* collectionName, 
                                       char* alias,
                                       QL_ast_query_geo_restriction_t* geoRestriction) {
-  
   TRI_join_part_t* part;
+  QL_ast_query_collection_t* collection;
   
   part = (TRI_join_part_t*) TRI_Allocate(sizeof(TRI_join_part_t));
 
@@ -531,6 +528,12 @@ static bool AddJoinPartQueryInstance (TRI_query_instance_t* instance,
     TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
     return false;
   }
+  
+  collection = (QL_ast_query_collection_t*) 
+    TRI_LookupByKeyAssociativePointer(&instance->_query._from._collections, 
+                                      alias);
+
+  assert(collection);
 
   // initialize vector for list joins
   TRI_InitVectorPointer(&part->_listDocuments);
@@ -538,13 +541,16 @@ static bool AddJoinPartQueryInstance (TRI_query_instance_t* instance,
   part->_singleDocument = NULL;
   part->_feeder = NULL; 
   part->_type = type;
-  part->_condition = NULL;
   part->_where = where;
   part->_ranges = ranges;
   part->_collection = NULL;
   part->_collectionName = TRI_DuplicateString(collectionName);
   part->_alias = TRI_DuplicateString(alias);
   part->_geoRestriction = geoRestriction;
+  part->_mustMaterialize._select = (collection->_refCount._select > 0);
+  part->_mustMaterialize._where = (collection->_refCount._where > 0);
+  part->_mustMaterialize._order = (collection->_refCount._order > 0);
+  part->_mustMaterialize._join = (collection->_refCount._join > 0); 
 
   if (!part->_collectionName || !part->_alias) {
     TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
@@ -589,6 +595,7 @@ static bool AddJoinPartQueryInstance (TRI_query_instance_t* instance,
   }
 
   TRI_PushBackVectorPointer(&instance->_join, part);
+
   return true;
 }
 
@@ -771,8 +778,8 @@ static bool InitLimitQueryInstance (TRI_query_instance_t* const instance) {
   queryInstance->_isUsed = queryTemplate->_isUsed;
 
   if (!queryInstance->_isUsed) {
-    queryInstance->_offset = TRI_QRY_NO_SKIP;
-    queryInstance->_count  = TRI_QRY_NO_LIMIT;
+    queryInstance->_offset = 0;
+    queryInstance->_count  = (TRI_voc_ssize_t) INT32_MAX;
   }
   
   LOG_DEBUG("added limit part to query instance. offset: %lu, count: %li",
@@ -811,13 +818,13 @@ static bool InitFromQueryInstance (TRI_query_instance_t* const instance) {
     collection->_name                       = source->_name;
     collection->_alias                      = source->_alias;
     collection->_isPrimary                  = source->_isPrimary;
-    collection->_refCount                   = 0;
     collection->_declarationOrder           = source->_declarationOrder;
     collection->_geoRestriction             = source->_geoRestriction;
     collection->_where._base                = source->_where._base;
     collection->_where._type                = source->_where._type;
     collection->_where._usesBindParameters  = source->_where._usesBindParameters;
     collection->_where._functionCode        = source->_where._functionCode;
+    collection->_refCount                   = source->_refCount;
 
     if (source->_where._usesBindParameters) {
       TRI_query_node_t* copy;
@@ -1057,6 +1064,24 @@ static bool InitJoinsQueryInstance (TRI_query_instance_t* const instance) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief free join parts used in a query
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeJoinsQueryInstance (TRI_query_instance_t* const instance) {
+  size_t i;
+
+  for (i = 0; i < instance->_join._length; i++) {
+    TRI_join_part_t* part;
+
+    part = (TRI_join_part_t*) instance->_join._buffer[i];
+    assert(part);
+    part->free(part);
+  }
+
+  TRI_DestroyVectorPointer(&instance->_join);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Set up the join part of the query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1133,6 +1158,7 @@ static bool InitLocksQueryInstance (TRI_query_instance_t* const instance) {
       lock->_collection = part->_collection;
       lock->_collectionName = TRI_DuplicateString(part->_collectionName);
       if (!lock->_collectionName) {
+        TRI_Free(lock);
         TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
         return false;
       }
@@ -1141,6 +1167,27 @@ static bool InitLocksQueryInstance (TRI_query_instance_t* const instance) {
   }
 
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free the locks for the query
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeLocksQueryInstance (TRI_query_instance_t* const instance) {
+  size_t i;
+  
+  for (i = 0; i < instance->_locks._length; i++) {
+    TRI_query_instance_lock_t* lock = 
+      (TRI_query_instance_lock_t*) instance->_locks._buffer[i];
+
+    assert(lock);
+    assert(lock->_collectionName);
+
+    TRI_Free(lock->_collectionName);
+    TRI_Free(lock);
+  }
+
+  TRI_DestroyVectorPointer(&instance->_locks);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1279,8 +1326,6 @@ bool TRI_AddBindParameterQueryInstance (TRI_query_instance_t* const instance,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeQueryInstance (TRI_query_instance_t* const instance) {
-  size_t i;
-
   assert(instance);
   assert(instance->_template);
   
@@ -1296,16 +1341,8 @@ void TRI_FreeQueryInstance (TRI_query_instance_t* const instance) {
     TRI_FreeExecutionContext(instance->_query._where._context);
   }
 
-  for (i = 0; i < instance->_join._length; i++) {
-    TRI_join_part_t* part;
-
-    part = (TRI_join_part_t*) instance->_join._buffer[i];
-    assert(part);
-    part->free(part);
-  }
-
-  TRI_DestroyVectorPointer(&instance->_join);
-  TRI_DestroyVectorPointer(&instance->_locks);
+  FreeJoinsQueryInstance(instance);
+  FreeLocksQueryInstance(instance);
 
   TRI_Free(instance);
 }

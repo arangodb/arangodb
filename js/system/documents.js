@@ -2,7 +2,7 @@ var actions = require("actions");
 
 function getDocuments(req, res) {
   if (req.suffix.length != 1) {
-    actions.actionResultError (req, res, 404, collectionNotFound, "Collection not found");
+    actions.actionResultError (req, res, 404, actions.collectionNotFound, "Collection not found");
     return;
   }
   
@@ -29,7 +29,7 @@ function getDocuments(req, res) {
     actions.actionResultOK(req, res, 200, result);    
   }
   catch (e) {
-    actions.actionResultError (req, res, 404, collectionNotFound, "Collection not found") 
+    actions.actionResultError (req, res, 404, actions.collectionNotFound, "Collection not found") 
   }
 }
 

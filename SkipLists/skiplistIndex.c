@@ -85,7 +85,8 @@ static int CompareShapedJsonShapedJson (const TRI_shaped_json_t* left, const TRI
 static int CompareElementElement (struct TRI_skiplist_s* skiplist, 
                                   void* leftElement, void* rightElement) {
                                   
-  int compareResult;                                    
+  int compareResult;                                   
+  size_t j; 
   SkiplistIndexElement* hLeftElement  = (SkiplistIndexElement*)(leftElement);
   SkiplistIndexElement* hRightElement = (SkiplistIndexElement*)(rightElement);
   
@@ -113,7 +114,7 @@ static int CompareElementElement (struct TRI_skiplist_s* skiplist,
     return 0;
   }    
   
-  for (size_t j = 0; j < hLeftElement->numFields; j++) {
+  for (j = 0; j < hLeftElement->numFields; j++) {
   /*
     printf("%s:%u:%f:%f\n",__FILE__,__LINE__,
       *((double*)((j + hLeftElement->fields)->_data.data)),
@@ -138,7 +139,9 @@ static int CompareElementElement (struct TRI_skiplist_s* skiplist,
 // .............................................................................
 static int CompareKeyElement (struct TRI_skiplist_s* skiplist, 
                                void* leftElement, void* rightElement) {
-  int compareResult;                               
+  int compareResult;                              
+  size_t j;
+   
   SkiplistIndexElement* hLeftElement  = (SkiplistIndexElement*)(leftElement);
   SkiplistIndexElement* hRightElement = (SkiplistIndexElement*)(rightElement);
   
@@ -162,7 +165,7 @@ static int CompareKeyElement (struct TRI_skiplist_s* skiplist,
     return 1; // should never happen
   }
 
-  for (size_t j = 0; j < hLeftElement->numFields; j++) {
+  for (j = 0; j < hLeftElement->numFields; j++) {
   /*
     printf("%s:%u:%f:%f\n",__FILE__,__LINE__,
       *((double*)((j + hLeftElement->fields)->_data.data)),
@@ -345,6 +348,7 @@ static int  CompareMultiKeyElement (TRI_skiplist_multi_t* multiSkiplist,
   SkiplistIndexElement* hLeftElement  = (SkiplistIndexElement*)(leftElement);
   SkiplistIndexElement* hRightElement = (SkiplistIndexElement*)(rightElement);
   int compareResult;                                    
+  size_t j;
 
   if (leftElement == NULL && rightElement == NULL) {
     return 0;
@@ -370,7 +374,7 @@ static int  CompareMultiKeyElement (TRI_skiplist_multi_t* multiSkiplist,
     return 0;
   }    
   
-  for (size_t j = 0; j < hLeftElement->numFields; j++) {
+  for (j = 0; j < hLeftElement->numFields; j++) {
   /*
     printf("%s:%u:%f:%f\n",__FILE__,__LINE__,
       *((double*)((j + hLeftElement->fields)->_data.data)),

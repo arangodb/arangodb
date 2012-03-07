@@ -138,14 +138,14 @@ query:
 
 empty_query:
     { 
-      template_->_query->_type        = QLQueryTypeEmpty;
+      template_->_query->_type = QUERY_TYPE_EMPTY;
     }
   ;
 
 select_query:
     SELECT select_clause from_clause where_clause order_clause limit_clause {
       // full blown SELECT query
-      template_->_query->_type         = QLQueryTypeSelect;
+      template_->_query->_type         = QUERY_TYPE_SELECT;
       template_->_query->_select._base = $2;
       template_->_query->_from._base   = $3;
       template_->_query->_where._base  = $4;

@@ -175,7 +175,7 @@ static bool CheckJournalSimCollection (TRI_sim_collection_t* collection) {
 static bool CheckSyncCompactorSimCollection (TRI_sim_collection_t* collection) {
   TRI_collection_t* base;
   TRI_datafile_t* journal;
-  TRI_voc_size_t nWritten;
+  // TRI_voc_size_t nWritten;
   bool ok;
   bool worked;
   char const* synced;
@@ -202,7 +202,8 @@ static bool CheckSyncCompactorSimCollection (TRI_sim_collection_t* collection) {
     synced = journal->_synced;
 
     written = journal->_written;
-    nWritten = journal->_nWritten;
+    // TODO: remove if not used
+    // nWritten = journal->_nWritten;
 
     TRI_UnlockCondition(&collection->_journalsCondition);
 

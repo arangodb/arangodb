@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief order by
+/// @brief join executor
 ///
 /// @file
 ///
@@ -25,12 +25,14 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_ORDER_H
-#define TRIAGENS_DURHAM_VOC_BASE_ORDER_H 1
+#ifndef TRIAGENS_DURHAM_VOC_BASE_JOIN_EXECUTE_H
+#define TRIAGENS_DURHAM_VOC_BASE_JOIN_EXECUTE_H 1
 
-#include "VocBase/vocbase.h"
-#include "VocBase/select-result.h"
-#include "VocBase/context.h"
+#include "VocBase/query-result.h"
+#include "VocBase/query-join.h"
+#include "VocBase/query-data-feeder.h"
+#include "QL/optimize.h"
+#include "QL/ast-query.h"
 #include "V8/v8-c-utils.h"
 
 #ifdef __cplusplus
@@ -43,63 +45,37 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief order by types
+/// @brief Create a new select result from a join definition - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum {
-  TRI_QRY_ORDER_GENERAL
-}
-TRI_qry_order_type_e;
+TRI_select_result_t* TRI_JoinSelectResultX (const TRI_vocbase_t*, 
+                                            TRI_select_join_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract order by clause
+/// @brief Create a new select result from a join definition
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_qry_order_s {
-  TRI_qry_order_type_e _type;
-
-  struct TRI_qry_order_s* (*clone) (struct TRI_qry_order_s const*);
-  void (*free) (struct TRI_qry_order_s*);
-}
-TRI_qry_order_t;
+TRI_select_result_t* TRI_JoinSelectResult (TRI_query_instance_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract order by clause for conditions
+/// @brief Execute joins - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_qry_order_cond_s {
-  TRI_qry_order_t base;
-}
-TRI_qry_order_cond_t;
+void TRI_ExecuteJoinsX (TRI_select_result_t*,
+                        TRI_select_join_t*, 
+                        TRI_qry_where_t*,
+                        TRI_rc_context_t*,
+                        const TRI_voc_size_t,
+                        const TRI_voc_ssize_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief JavaScript order by clause
+/// @brief Execute joins
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_qry_order_general_s {
-  TRI_qry_order_cond_t base;
-
-  char* _code;
-}
-TRI_qry_order_general_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Order by function typedef
-////////////////////////////////////////////////////////////////////////////////
-
-typedef void (*TRI_order_fptr_t) (TRI_rc_result_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief General order by function (uses JavaScript code)
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_OrderDataGeneralQuery (TRI_rc_result_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an order by clause for general JavaScript code
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_qry_order_t* TRI_CreateQueryOrderGeneral (char const*);
+void TRI_ExecuteJoins (TRI_query_instance_t* const, 
+                       TRI_select_result_t*,
+                       const TRI_voc_size_t,
+                       const TRI_voc_ssize_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
