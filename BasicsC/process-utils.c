@@ -137,14 +137,12 @@ TRI_process_info_t TRI_ProcessInfoSelf () {
 TRI_process_info_t TRI_ProcessInfo (TRI_pid_t pid) {
   char fn[1024];
   int fd;
-  unsigned int vsize;
   TRI_process_info_t result;
 
   memset(&result, 0, sizeof(result));
 
   snprintf(fn, sizeof(fn), "/proc/%d/stat", pid);
   fd = open(fn, O_RDONLY);
-  vsize = 0;
 
   if (fd > 0) {
     char str[1024];

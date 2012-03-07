@@ -33,6 +33,7 @@
 #include <BasicsC/strings.h>
 
 #include <VocBase/simple-collection.h>
+#include <VocBase/shadow-data.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private constants
@@ -44,10 +45,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compatify intervall in microseconds
+/// @brief compactify interval in microseconds
 ////////////////////////////////////////////////////////////////////////////////
 
-static int const COMPACTOR_INTERVALL = 5 * 1000 * 1000;
+static int const COMPACTOR_INTERVAL = 5 * 1000 * 1000;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -263,9 +264,8 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
   // deletion
   else if (marker->_type == TRI_DOC_MARKER_DELETION) {
-    TRI_doc_deletion_marker_t const* d;
-
-    d = (TRI_doc_deletion_marker_t const*) marker;
+    // TRI_doc_deletion_marker_t const* d;
+    // d = (TRI_doc_deletion_marker_t const*) marker;
 
     // TODO: remove TRI_doc_deletion_marker_t from file
 
@@ -465,6 +465,15 @@ static void CleanupSimCollection (TRI_sim_collection_t* collection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief clean up shadows
+////////////////////////////////////////////////////////////////////////////////
+
+static void CleanupShadows (TRI_vocbase_t* const vocbase) {
+  // clean unused cursors
+  TRI_CleanupShadowData(vocbase->_cursors, SHADOW_CURSOR_MAX_AGE);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -484,13 +493,13 @@ static void CleanupSimCollection (TRI_sim_collection_t* collection) {
 void TRI_CompactorVocBase (void* data) {
   TRI_vocbase_t* vocbase = data;
   TRI_vector_pointer_t collections;
-  TRI_col_type_e type;
 
   TRI_InitVectorPointer(&collections);
 
   while (vocbase->_active) {
     size_t n;
     size_t i;
+    TRI_col_type_e type;
 
     // copy all collections
     TRI_ReadLockReadWriteLock(&vocbase->_lock);
@@ -511,7 +520,7 @@ void TRI_CompactorVocBase (void* data) {
 
       collection = col->_collection;
 
-      // for simple document collection, compatify datafiles
+      // for simple document collection, compactify datafiles
       type = collection->base._type;
 
       if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
@@ -520,7 +529,10 @@ void TRI_CompactorVocBase (void* data) {
       }
     }
 
-    usleep(COMPACTOR_INTERVALL);
+    // clean up unused shadows
+    CleanupShadows(vocbase);
+
+    usleep(COMPACTOR_INTERVAL);
   }
 
   TRI_DestroyVectorPointer(&collections);

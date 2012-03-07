@@ -32,7 +32,7 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/index.h"
-#include "VocBase/context.h"
+#include "VocBase/query-context.h"
 
 #ifdef __cplusplus
 extern "C" {

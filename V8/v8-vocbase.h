@@ -170,7 +170,7 @@
 /// - @ref JS_Load "load"
 /// - @ref JS_LogLevel "logLevel"
 /// - @ref JS_Output "output"
-/// - @ref JSF_print "print"
+/// - @ref JS_print "print"
 /// - @ref JS_ProcessCsvFile "processCsvFile"
 /// - @ref JS_ProcessJsonFile "processJsonFile"
 /// - @ref JS_Read "read"

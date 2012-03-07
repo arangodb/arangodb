@@ -59,12 +59,13 @@ static int32_t RandLevel (TRI_skiplist_base_t* skiplist) {
   uint32_t level = 0;
   int counter    = 0;
   uint32_t* ptr  = skiplist->_random;
+  int j;
 
 
   // ...........................................................................
   // Obtain the random numbers and store them in the pre allocated storage
   // ...........................................................................
-  for (int j = 0; j < skiplist->_numRandom; ++j) {
+  for (j = 0; j < skiplist->_numRandom; ++j) {
     *ptr = TRI_UInt32Random();  
     ++ptr;
   }
@@ -148,6 +149,7 @@ static int32_t RandLevel (TRI_skiplist_base_t* skiplist) {
 static void GrowNodeHeight(TRI_skiplist_node_t* node, uint32_t newHeight) {
                            
   TRI_skiplist_nb_t* oldColumn = node->_column;
+  uint32_t j;
 
   if (node->_colLength >= newHeight) {
     return;
@@ -160,7 +162,7 @@ static void GrowNodeHeight(TRI_skiplist_node_t* node, uint32_t newHeight) {
   // Initialise the storage
   // ...........................................................................
   
-  for (uint32_t j = node->_colLength; j < newHeight; ++j) {
+  for (j = node->_colLength; j < newHeight; ++j) {
     (node->_column)[j]._prev = NULL; 
     (node->_column)[j]._next = NULL; 
   }
@@ -176,7 +178,7 @@ static void GrowNodeHeight(TRI_skiplist_node_t* node, uint32_t newHeight) {
 
 static void JoinNodes(TRI_skiplist_node_t* leftNode, TRI_skiplist_node_t* rightNode, 
                       uint32_t startLevel, uint32_t endLevel) {
-  
+  uint32_t j;
   
   if (startLevel > endLevel) { // something wrong
     assert(false);
@@ -196,7 +198,7 @@ static void JoinNodes(TRI_skiplist_node_t* leftNode, TRI_skiplist_node_t* rightN
     return;
   }
   
-  for (uint32_t j = startLevel; j < endLevel; ++j) {
+  for (j = startLevel; j < endLevel; ++j) {
     (leftNode->_column)[j]._next = rightNode;  
     (rightNode->_column)[j]._prev = leftNode;  
   }  
@@ -856,6 +858,7 @@ bool TRI_InsertElementSkipList (TRI_skiplist_t* skiplist, void* element, bool ov
   TRI_skiplist_node_t* tempLeftNode;
   TRI_skiplist_node_t* tempRightNode;
   int compareResult;
+  int j;
   
   // ...........................................................................  
   // Just in case
@@ -1063,7 +1066,7 @@ bool TRI_InsertElementSkipList (TRI_skiplist_t* skiplist, void* element, bool ov
   // ..........................................................................
   
   
-  for (int j = 0; j < newHeight; ++j) {
+  for (j = 0; j < newHeight; ++j) {
     tempLeftNode  = newNode->_column[j]._prev;
     tempRightNode = tempLeftNode->_column[j]._next;
     JoinNodes(tempLeftNode, newNode, j, j);
@@ -1086,6 +1089,7 @@ bool TRI_InsertElementSkipListMulti (TRI_skiplist_multi_t* skiplist, void* eleme
   TRI_skiplist_node_t* tempLeftNode;
   TRI_skiplist_node_t* tempRightNode;
   int compareResult;
+  int j;
   
   // ...........................................................................  
   // Just in case
@@ -1268,7 +1272,7 @@ bool TRI_InsertElementSkipListMulti (TRI_skiplist_multi_t* skiplist, void* eleme
     
   END:
 
-  for (int j = 0; j < newHeight; ++j) {
+  for (j = 0; j < newHeight; ++j) {
     tempLeftNode  = newNode->_column[j]._prev;
     tempRightNode = tempLeftNode->_column[j]._next;
     JoinNodes(tempLeftNode, newNode, j, j);
@@ -1296,6 +1300,7 @@ bool TRI_InsertKeySkipListMulti (TRI_skiplist_multi_t* skiplist, void* key, void
   TRI_skiplist_node_t* tempLeftNode;
   TRI_skiplist_node_t* tempRightNode;
   int compareResult;
+  int j;
   
   // ...........................................................................  
   // Just in case
@@ -1472,7 +1477,7 @@ bool TRI_InsertKeySkipListMulti (TRI_skiplist_multi_t* skiplist, void* key, void
   END:
 
   
-  for (int j = 0; j < newHeight; ++j) {
+  for (j = 0; j < newHeight; ++j) {
     tempLeftNode  = newNode->_column[j]._prev;
     tempRightNode = tempLeftNode->_column[j]._next;
     JoinNodes(tempLeftNode, newNode, j, j);
@@ -1496,6 +1501,7 @@ bool TRI_RemoveElementSkipList (TRI_skiplist_t* skiplist, void* element, void* o
   TRI_skiplist_node_t* tempLeftNode;
   TRI_skiplist_node_t* tempRightNode;
   int compareResult;
+  unsigned int j;
   
   // ...........................................................................  
   // Just in case
@@ -1623,7 +1629,7 @@ bool TRI_RemoveElementSkipList (TRI_skiplist_t* skiplist, void* element, void* o
   // ..........................................................................
     
   
-  for (unsigned int j = 0; j < currentNode->_colLength; ++j) {
+  for (j = 0; j < currentNode->_colLength; ++j) {
     tempLeftNode  = currentNode->_column[j]._prev;
     tempRightNode = currentNode->_column[j]._next;
     JoinNodes(tempLeftNode, tempRightNode, j, j);
@@ -1644,6 +1650,7 @@ bool TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist, void* eleme
   TRI_skiplist_node_t* tempLeftNode;
   TRI_skiplist_node_t* tempRightNode;
   int compareResult;
+  unsigned int j;
   
   // ...........................................................................  
   // Just in case
@@ -1788,7 +1795,7 @@ bool TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist, void* eleme
   // remove element 
   // ..........................................................................
       
-  for (unsigned int j = 0; j < currentNode->_colLength; ++j) {
+  for (j = 0; j < currentNode->_colLength; ++j) {
     tempLeftNode  = currentNode->_column[j]._prev;
     tempRightNode = currentNode->_column[j]._next;
     JoinNodes(tempLeftNode, tempRightNode, j, j);

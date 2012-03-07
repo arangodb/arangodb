@@ -60,8 +60,12 @@ function print () {
       internal.output(arguments[i]);      
     } 
     else {
-      PRINT(arguments[i], [], "~", []);
+      PRINT(arguments[i], [], "~", [], 0);
     }
+  }
+
+  if ( typeof(COLOR_OUTPUT_RESET) != "undefined") {
+    internal.output(COLOR_OUTPUT_RESET);
   }
 
   internal.output("\n");
@@ -102,7 +106,8 @@ function QuoteJSONString(str) {
 /// @brief prints objects to standard output without a new-line
 ////////////////////////////////////////////////////////////////////////////////
 
-function PRINT (value, seen, path, names) {
+function PRINT (value, seen, path, names, level) {
+  
   var p;
 
   if (seen === undefined) {
@@ -123,16 +128,16 @@ function PRINT (value, seen, path, names) {
 
     if (value instanceof Object) {
       if ('_PRINT' in value) {
-        value._PRINT(seen, path, names);
+        value._PRINT(seen, path, names, level);
       }
       else if (value.__proto__ === Object.prototype) {
-        PRINT_OBJECT(value, seen, path, names);
+        PRINT_OBJECT(value, seen, path, names, level);
       }
       else if ('toString' in value) {
         internal.output(value.toString());
       }
       else {
-        PRINT_OBJECT(value, seen, path, names);
+        PRINT_OBJECT(value, seen, path, names, level);
       }
     }
     else if (value === undefined) {
@@ -166,22 +171,29 @@ function PRINT (value, seen, path, names) {
 /// @brief JSON representation of an array
 ////////////////////////////////////////////////////////////////////////////////
 
-Array.prototype._PRINT = function(seen, path, names) {
+Array.prototype._PRINT = function(seen, path, names, level) {
   if (this.length == 0) {
     internal.output("[ ]");
   }
   else {
-    var sep = " ";
+    var sep = "";
 
     internal.output("[");
-
+    
+    var newLevel = level + 1;
+    
     for (var i = 0;  i < this.length;  i++) {
       internal.output(sep);
-      PRINT(this[i], seen, path + "[" + i + "]", names);
+      
+      printIdent(newLevel);
+      
+      PRINT(this[i], seen, path + "[" + i + "]", names, newLevel);
       sep = ", ";
     }
 
-    internal.output(" ]");
+    printIdent(level);
+
+    internal.output("]");
   }
 }
 
@@ -223,22 +235,62 @@ Function.prototype._PRINT = function() {
 /// @brief string representation of an object
 ////////////////////////////////////////////////////////////////////////////////
 
-function PRINT_OBJECT (object, seen, path, names) {
+function PRINT_OBJECT (object, seen, path, names, level) {
   var sep = " ";
 
   internal.output("{");
+
+  var newLevel = level + 1;
 
   for (var k in object) {
     if (object.hasOwnProperty(k)) {
       var val = object[k];
 
-      internal.output(sep, QuoteJSONString(k), " : ");
-      PRINT(val, seen, path + "[" + k + "]", names);
+      internal.output(sep);
+      
+      printIdent(newLevel);
+      
+      if ( typeof(COLOR_OUTPUT) != "undefined") {
+        internal.output(COLOR_OUTPUT, k, COLOR_OUTPUT_RESET, " : ");
+      }
+      else {
+        internal.output(QuoteJSONString(k), " : ");        
+      }
+      PRINT(val, seen, path + "[" + k + "]", names, newLevel);
       sep = ", ";
     }
   }
 
-  internal.output(" }");
+  printIdent(level);
+  
+  internal.output("}");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints the ident for pretty printing
+///
+/// @FUN{printIdent(@FA{level})}
+///
+/// Only available in shell mode.
+////////////////////////////////////////////////////////////////////////////////
+
+function printIdent(level) {
+  if (typeof(PRETTY_PRINT) != "undefined" && PRETTY_PRINT) {
+      internal.output("\n");    
+      for (var j = 0; j < level; ++j) {
+        internal.output("  ");    
+      }    
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

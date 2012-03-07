@@ -173,22 +173,24 @@ avocado_SOURCES = \
 	VocBase/blob-collection.c \
 	VocBase/collection.c \
 	VocBase/compactor.c \
-	VocBase/data-feeder.c \
 	VocBase/datafile.c \
 	VocBase/document-collection.c \
 	VocBase/headers.c \
 	VocBase/index.c \
-	VocBase/join-execute.c \
-	VocBase/join.c \
-	VocBase/order.c \
 	VocBase/query-base.c \
+	VocBase/query-cursor.c \
+	VocBase/query-data-feeder.c \
 	VocBase/query-error.c \
+	VocBase/query-execute.c \
 	VocBase/query-javascript.c \
+	VocBase/query-join.c \
+	VocBase/query-join-execute.c \
 	VocBase/query-memory.c \
 	VocBase/query-node.c \
+	VocBase/query-order.c \
 	VocBase/query-parse.c \
+	VocBase/query-result.c \
 	VocBase/query.c \
-	VocBase/select-result.c \
 	VocBase/shadow-data.c \
 	VocBase/simple-collection.c \
 	VocBase/synchroniser.c \

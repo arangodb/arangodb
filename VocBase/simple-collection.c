@@ -1826,7 +1826,7 @@ static bool CreateImmediateIndexes (TRI_sim_collection_t* collection,
     }
   }
 
-  return true;
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1874,7 +1874,7 @@ static bool UpdateImmediateIndexes (TRI_sim_collection_t* collection,
     }
   }
 
-  return true;
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1980,7 +1980,7 @@ static bool DeleteImmediateIndexes (TRI_sim_collection_t* collection,
   collection->_headers->release(collection->_headers, change.v);
 
   // that's it
-  return true;
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1993,7 +1993,7 @@ static void FillIndex (TRI_sim_collection_t* collection,
   size_t scanned;
   void** end;
   void** ptr;
-  bool ok;
+
   // update index
   n = collection->_primaryIndex._nrUsed;
   ptr = collection->_primaryIndex._table;
@@ -2005,7 +2005,9 @@ static void FillIndex (TRI_sim_collection_t* collection,
     if (*ptr) {
       ++scanned;
 
-      ok = idx->insert(idx, *ptr);
+      if (!idx->insert(idx, *ptr)) {
+        // TODO: handle errors
+      }
 
       if (scanned % 10000 == 0) {
         LOG_INFO("indexed %ld of %ld documents", scanned, n);

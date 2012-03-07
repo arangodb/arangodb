@@ -35,10 +35,9 @@
 #include <BasicsC/hashes.h>
 #include <BasicsC/json.h>
 
-#include "VocBase/query.h"
+#include "VocBase/vocbase.h"
 #include "VocBase/query-node.h"
 #include "VocBase/query-error.h"
-#include "VocBase/vocbase.h"
 
 #include "QL/parser.h"
 #include "QL/ast-query.h"

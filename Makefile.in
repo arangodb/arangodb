@@ -249,17 +249,19 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	SkipLists/skiplistIndex.$(OBJEXT) V8/v8-actions.$(OBJEXT) \
 	V8/v8-vocbase.$(OBJEXT) VocBase/barrier.$(OBJEXT) \
 	VocBase/blob-collection.$(OBJEXT) VocBase/collection.$(OBJEXT) \
-	VocBase/compactor.$(OBJEXT) VocBase/data-feeder.$(OBJEXT) \
-	VocBase/datafile.$(OBJEXT) \
+	VocBase/compactor.$(OBJEXT) VocBase/datafile.$(OBJEXT) \
 	VocBase/document-collection.$(OBJEXT) \
 	VocBase/headers.$(OBJEXT) VocBase/index.$(OBJEXT) \
-	VocBase/join-execute.$(OBJEXT) VocBase/join.$(OBJEXT) \
-	VocBase/order.$(OBJEXT) VocBase/query-base.$(OBJEXT) \
-	VocBase/query-error.$(OBJEXT) \
+	VocBase/query-base.$(OBJEXT) VocBase/query-cursor.$(OBJEXT) \
+	VocBase/query-data-feeder.$(OBJEXT) \
+	VocBase/query-error.$(OBJEXT) VocBase/query-execute.$(OBJEXT) \
 	VocBase/query-javascript.$(OBJEXT) \
+	VocBase/query-join.$(OBJEXT) \
+	VocBase/query-join-execute.$(OBJEXT) \
 	VocBase/query-memory.$(OBJEXT) VocBase/query-node.$(OBJEXT) \
-	VocBase/query-parse.$(OBJEXT) VocBase/query.$(OBJEXT) \
-	VocBase/select-result.$(OBJEXT) VocBase/shadow-data.$(OBJEXT) \
+	VocBase/query-order.$(OBJEXT) VocBase/query-parse.$(OBJEXT) \
+	VocBase/query-result.$(OBJEXT) VocBase/query.$(OBJEXT) \
+	VocBase/shadow-data.$(OBJEXT) \
 	VocBase/simple-collection.$(OBJEXT) \
 	VocBase/synchroniser.$(OBJEXT) VocBase/voc-shaper.$(OBJEXT) \
 	VocBase/vocbase.$(OBJEXT)
@@ -696,22 +698,24 @@ avocado_SOURCES = \
 	VocBase/blob-collection.c \
 	VocBase/collection.c \
 	VocBase/compactor.c \
-	VocBase/data-feeder.c \
 	VocBase/datafile.c \
 	VocBase/document-collection.c \
 	VocBase/headers.c \
 	VocBase/index.c \
-	VocBase/join-execute.c \
-	VocBase/join.c \
-	VocBase/order.c \
 	VocBase/query-base.c \
+	VocBase/query-cursor.c \
+	VocBase/query-data-feeder.c \
 	VocBase/query-error.c \
+	VocBase/query-execute.c \
 	VocBase/query-javascript.c \
+	VocBase/query-join.c \
+	VocBase/query-join-execute.c \
 	VocBase/query-memory.c \
 	VocBase/query-node.c \
+	VocBase/query-order.c \
 	VocBase/query-parse.c \
+	VocBase/query-result.c \
 	VocBase/query.c \
-	VocBase/select-result.c \
 	VocBase/shadow-data.c \
 	VocBase/simple-collection.c \
 	VocBase/synchroniser.c \
@@ -1461,8 +1465,6 @@ VocBase/collection.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/compactor.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
-VocBase/data-feeder.$(OBJEXT): VocBase/$(am__dirstamp) \
-	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/datafile.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/document-collection.$(OBJEXT): VocBase/$(am__dirstamp) \
@@ -1471,27 +1473,33 @@ VocBase/headers.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/index.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
-VocBase/join-execute.$(OBJEXT): VocBase/$(am__dirstamp) \
-	VocBase/$(DEPDIR)/$(am__dirstamp)
-VocBase/join.$(OBJEXT): VocBase/$(am__dirstamp) \
-	VocBase/$(DEPDIR)/$(am__dirstamp)
-VocBase/order.$(OBJEXT): VocBase/$(am__dirstamp) \
-	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/query-base.$(OBJEXT): VocBase/$(am__dirstamp) \
+	VocBase/$(DEPDIR)/$(am__dirstamp)
+VocBase/query-cursor.$(OBJEXT): VocBase/$(am__dirstamp) \
+	VocBase/$(DEPDIR)/$(am__dirstamp)
+VocBase/query-data-feeder.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/query-error.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
+VocBase/query-execute.$(OBJEXT): VocBase/$(am__dirstamp) \
+	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/query-javascript.$(OBJEXT): VocBase/$(am__dirstamp) \
+	VocBase/$(DEPDIR)/$(am__dirstamp)
+VocBase/query-join.$(OBJEXT): VocBase/$(am__dirstamp) \
+	VocBase/$(DEPDIR)/$(am__dirstamp)
+VocBase/query-join-execute.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/query-memory.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/query-node.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
+VocBase/query-order.$(OBJEXT): VocBase/$(am__dirstamp) \
+	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/query-parse.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
-VocBase/query.$(OBJEXT): VocBase/$(am__dirstamp) \
+VocBase/query-result.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
-VocBase/select-result.$(OBJEXT): VocBase/$(am__dirstamp) \
+VocBase/query.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/shadow-data.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
@@ -1702,22 +1710,24 @@ mostlyclean-compile:
 	-rm -f VocBase/blob-collection.$(OBJEXT)
 	-rm -f VocBase/collection.$(OBJEXT)
 	-rm -f VocBase/compactor.$(OBJEXT)
-	-rm -f VocBase/data-feeder.$(OBJEXT)
 	-rm -f VocBase/datafile.$(OBJEXT)
 	-rm -f VocBase/document-collection.$(OBJEXT)
 	-rm -f VocBase/headers.$(OBJEXT)
 	-rm -f VocBase/index.$(OBJEXT)
-	-rm -f VocBase/join-execute.$(OBJEXT)
-	-rm -f VocBase/join.$(OBJEXT)
-	-rm -f VocBase/order.$(OBJEXT)
 	-rm -f VocBase/query-base.$(OBJEXT)
+	-rm -f VocBase/query-cursor.$(OBJEXT)
+	-rm -f VocBase/query-data-feeder.$(OBJEXT)
 	-rm -f VocBase/query-error.$(OBJEXT)
+	-rm -f VocBase/query-execute.$(OBJEXT)
 	-rm -f VocBase/query-javascript.$(OBJEXT)
+	-rm -f VocBase/query-join-execute.$(OBJEXT)
+	-rm -f VocBase/query-join.$(OBJEXT)
 	-rm -f VocBase/query-memory.$(OBJEXT)
 	-rm -f VocBase/query-node.$(OBJEXT)
+	-rm -f VocBase/query-order.$(OBJEXT)
 	-rm -f VocBase/query-parse.$(OBJEXT)
+	-rm -f VocBase/query-result.$(OBJEXT)
 	-rm -f VocBase/query.$(OBJEXT)
-	-rm -f VocBase/select-result.$(OBJEXT)
 	-rm -f VocBase/shadow-data.$(OBJEXT)
 	-rm -f VocBase/simple-collection.$(OBJEXT)
 	-rm -f VocBase/synchroniser.$(OBJEXT)
@@ -1892,22 +1902,24 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/blob-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/compactor.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/data-feeder.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/datafile.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/document-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/headers.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/index.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/join-execute.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/join.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/order.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-base.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-cursor.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-data-feeder.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-error.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-execute.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-javascript.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-join-execute.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-join.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-memory.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-node.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-order.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-parse.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-result.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/select-result.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/shadow-data.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/simple-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/synchroniser.Po@am__quote@
