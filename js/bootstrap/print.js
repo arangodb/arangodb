@@ -107,7 +107,6 @@ function QuoteJSONString(str) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function PRINT (value, seen, path, names, level) {
-  
   var p;
 
   if (seen === undefined) {
