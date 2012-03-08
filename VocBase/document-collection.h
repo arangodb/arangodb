@@ -164,18 +164,21 @@ TRI_doc_collection_info_t;
 ///
 /// Updates an existing header.
 ///
-/// <b><tt>TRI_doc_mptr_t const* create (TRI_doc_collection_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*)</tt></b>
+/// <b><tt>TRI_doc_mptr_t const* create (TRI_doc_collection_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*, bool release)</tt></b>
 ///
 /// Adds a new document to the collection and returns the master pointer of the
 /// newly created entry. In case of an error, NULL is returned and "TRI_errno()" is
 /// set accordingly. The function DOES NOT acquire or release a write lock. This
-/// must be done by the caller.
+/// must be done by the caller. If release is true, it will release the write lock as
+/// soon as possible.
 ///
 /// <b><tt>TRI_doc_mptr_t const* createJson (TRI_doc_collection_t*, TRI_df_marker_type_e, TRI_json_t const*)</tt></b>
 ///
 /// Adds a new document to the collection and returns the master pointer of the
 /// newly created entry. In case of an error, NULL is returned and "TRI_errno()"
-/// is set accordingly. The function will acquire and release a write lock.
+/// is set accordingly. The function DOES NOT acquire or release a write lock. This
+/// must be done by the caller. If release is true, it will release the write lock as
+/// soon as possible.
 ///
 /// <b><tt>TRI_voc_did_t createLock (TRI_doc_collection_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*)</tt></b>
 ///
@@ -189,24 +192,25 @@ TRI_doc_collection_info_t;
 /// document does not exists or is deleted, then @c NULL is returned. The function
 /// DOES NOT acquire or release a read lock. This must be done by the caller.
 ///
-/// <b><tt>TRI_doc_mptr_t const* update (TRI_doc_collection_t*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e)</tt></b>
+/// <b><tt>TRI_doc_mptr_t const* update (TRI_doc_collection_t*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e, bool release)</tt></b>
 ///
 /// Updates an existing document of the collection and returns the master
 /// pointer in case of success. Otherwise, @c false is returned and the
 /// "TRI_errno()" is accordingly. The function DOES NOT acquire or release a
-/// write lock. This must be done by the caller.
+/// write lock. This must be done by the caller. However, if release is true, it
+/// will release the write lock as soon as possible.
 ///
 /// If the policy is @c TRI_DOC_UPDATE_LAST_WRITE, than the revision is ignored
 /// and the update is always performed. If the policy is @c TRI_DOC_UPDATE_ERROR
 /// and the revision is given (i. e. not equal 0), then the update is only
 /// performed if the current revision matches the given.
 ///
-/// <b><tt>TRI_doc_mptr_t const* updateJson (TRI_doc_collection_t*, TRI_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e)</tt></b>
+/// <b><tt>TRI_doc_mptr_t const* updateJson (TRI_doc_collection_t*, TRI_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e, bool release)</tt></b>
 ///
 /// Updates an existing document of the collection and returns the master
 /// pointer in case of success. Otherwise, @c false is returned and the
-/// "TRI_errno()" is accordingly. The function will acquire and release a write
-/// lock.
+/// "TRI_errno()" is accordingly.  If release is true, it will release the write
+/// lock as soon as possible.
 ///
 /// <b><tt>bool updateLock (TRI_doc_collection_t*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e)</tt></b>
 ///
@@ -214,11 +218,13 @@ TRI_doc_collection_info_t;
 /// of success. Otherwise, @c false is returned and the "TRI_errno()" is
 /// accordingly. The function will acquire and release a write lock.
 ///
-/// <b><tt>bool destroy (TRI_doc_collection_t*, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e)</tt></b>
+/// <b><tt>bool destroy (TRI_doc_collection_t*, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e, bool release)</tt></b>
 ///
 /// Deletes an existing document of the collection and returns @c true in case
 /// of success. Otherwise, @c false is returned and the "TRI_errno()" is
 /// accordingly. The function DOES NOT acquire or release a write lock.
+/// However, if release is true, it will release the write lock as soon as
+/// possible.
 ///
 /// If the policy is @c TRI_DOC_UPDATE_ERROR and the reivision is given, than
 /// it must match the current revision of the document.
@@ -251,17 +257,17 @@ typedef struct TRI_doc_collection_s {
   void (*createHeader) (struct TRI_doc_collection_s*, TRI_datafile_t*, TRI_df_marker_t const*, size_t, TRI_doc_mptr_t*, void const* data);
   void (*updateHeader) (struct TRI_doc_collection_s*, TRI_datafile_t*, TRI_df_marker_t const*, size_t, TRI_doc_mptr_t const*, TRI_doc_mptr_t*);
 
-  TRI_doc_mptr_t const* (*create) (struct TRI_doc_collection_s*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*);
-  TRI_doc_mptr_t const* (*createJson) (struct TRI_doc_collection_s*, TRI_df_marker_type_e, TRI_json_t const*, void const*);
+  TRI_doc_mptr_t const* (*create) (struct TRI_doc_collection_s*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*, bool release);
+  TRI_doc_mptr_t const* (*createJson) (struct TRI_doc_collection_s*, TRI_df_marker_type_e, TRI_json_t const*, void const*, bool release);
   TRI_voc_did_t (*createLock) (struct TRI_doc_collection_s*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*);
 
   TRI_doc_mptr_t const* (*read) (struct TRI_doc_collection_s*, TRI_voc_did_t);
 
-  TRI_doc_mptr_t const* (*update) (struct TRI_doc_collection_s*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e);
-  TRI_doc_mptr_t const* (*updateJson) (struct TRI_doc_collection_s*, TRI_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e);
+  TRI_doc_mptr_t const* (*update) (struct TRI_doc_collection_s*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e, bool release);
+  TRI_doc_mptr_t const* (*updateJson) (struct TRI_doc_collection_s*, TRI_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e, bool release);
   bool (*updateLock) (struct TRI_doc_collection_s*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e);
 
-  bool (*destroy) (struct TRI_doc_collection_s* collection, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e);
+  bool (*destroy) (struct TRI_doc_collection_s* collection, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e, bool release);
   bool (*destroyLock) (struct TRI_doc_collection_s* collection, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e);
 
   TRI_doc_collection_info_t* (*figures) (struct TRI_doc_collection_s* collection);
