@@ -95,11 +95,11 @@ ActionDispatcherThread::ActionDispatcherThread (DispatcherQueue* queue,
                                                 string const& actionQueue,
                                                 JSLoader* actionLoader)
   : DispatcherThread(queue),
-    _report(false),
     _isolate(0),
     _context(),
     _actionQueue(actionQueue),
-    _actionLoader(actionLoader) {
+    _actionLoader(actionLoader),
+    _gc(0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -127,31 +127,23 @@ ActionDispatcherThread::~ActionDispatcherThread () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ActionDispatcherThread::reportStatus () {
-  _report = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ActionDispatcherThread::tick () {
-  while(!v8::V8::IdleNotification()) {
+void ActionDispatcherThread::tick (bool idle) {
+  static uint64_t const INTERVALL = 1000;
+
+  _gc += (idle ? 10 : 1);
+
+  if (_gc > INTERVALL) {
+    while(!v8::V8::IdleNotification()) {
+    }
+
+    _gc = 0;
   }
-
-  if (! _report || _isolate == 0) {
-    return;
-  }
-
-  _report = false;
-
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) _isolate->GetData();
-
-  if (v8g == 0) {
-    return;
-  }
-
-  LOGGER_DEBUG << "active queries: " << v8g->JSQueries.size();
-  LOGGER_DEBUG << "active result-sets: " << v8g->JSResultSets.size();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
