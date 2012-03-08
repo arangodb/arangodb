@@ -108,7 +108,6 @@ static string JS_bootstrap_print =
   "////////////////////////////////////////////////////////////////////////////////\n"
   "\n"
   "function PRINT (value, seen, path, names, level) {\n"
-  "  \n"
   "  var p;\n"
   "\n"
   "  if (seen === undefined) {\n"
