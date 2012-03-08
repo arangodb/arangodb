@@ -72,7 +72,7 @@ namespace triagens {
         /// @brief called after job finished
         /////////////////////////////////////////////////////////////////////////
 
-        virtual void tick ();
+        virtual void tick (bool idle);
 
       protected:
 
