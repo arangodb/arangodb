@@ -284,7 +284,8 @@ static TRI_doc_mptr_t* CreateDocument (TRI_sim_collection_t* collection,
                                        void const* body,
                                        TRI_voc_size_t bodySize,
                                        TRI_df_marker_t** result,
-                                       void const* additional) {
+                                       void const* additional,
+                                       bool release) {
 
   TRI_datafile_t* journal;
   TRI_doc_mptr_t* header;
@@ -331,6 +332,11 @@ static TRI_doc_mptr_t* CreateDocument (TRI_sim_collection_t* collection,
     // update immediate indexes
     CreateImmediateIndexes(collection, header);
 
+    // release lock
+    if (release) {
+      collection->base.endWrite(&collection->base);
+    }
+
     // wait for sync
     WaitSync(collection, journal, ((char const*) *result) + markerSize + bodySize);
 
@@ -338,6 +344,10 @@ static TRI_doc_mptr_t* CreateDocument (TRI_sim_collection_t* collection,
     return header;
   }
   else {
+    if (release) {
+      collection->base.endWrite(&collection->base);
+    }
+
     LOG_ERROR("cannot write element: %s", TRI_last_error());
     return NULL;
   }
@@ -378,7 +388,8 @@ static TRI_doc_mptr_t const* UpdateDocument (TRI_sim_collection_t* collection,
                                              TRI_voc_size_t bodySize,
                                              TRI_voc_rid_t rid,
                                              TRI_doc_update_policy_e policy,
-                                             TRI_df_marker_t** result) {
+                                             TRI_df_marker_t** result,
+                                             bool release) {
   TRI_datafile_t* journal;
   TRI_voc_size_t total;
   bool ok;
@@ -450,6 +461,11 @@ static TRI_doc_mptr_t const* UpdateDocument (TRI_sim_collection_t* collection,
     // update immediate indexes
     UpdateImmediateIndexes(collection, header, &update);
 
+    // release lock
+    if (release) {
+      collection->base.endWrite(&collection->base);
+    }
+
     // wait for sync
     WaitSync(collection, journal, ((char const*) *result) + markerSize + bodySize);
 
@@ -457,6 +473,10 @@ static TRI_doc_mptr_t const* UpdateDocument (TRI_sim_collection_t* collection,
     return header;
   }
   else {
+    if (release) {
+      collection->base.endWrite(&collection->base);
+    }
+
     LOG_ERROR("cannot write element");
     return NULL;
   }
@@ -469,7 +489,8 @@ static TRI_doc_mptr_t const* UpdateDocument (TRI_sim_collection_t* collection,
 static bool DeleteDocument (TRI_sim_collection_t* collection,
                             TRI_doc_deletion_marker_t* marker,
                             TRI_voc_rid_t rid,
-                            TRI_doc_update_policy_e policy) {
+                            TRI_doc_update_policy_e policy,
+                            bool release) {
   TRI_datafile_t* journal;
   TRI_df_marker_t* result;
   TRI_doc_mptr_t const* header;
@@ -546,10 +567,19 @@ static bool DeleteDocument (TRI_sim_collection_t* collection,
     // update immediate indexes
     DeleteImmediateIndexes(collection, header, marker->base._tick);
 
+    // release lock
+    if (release) {
+      collection->base.endWrite(&collection->base);
+    }
+
     // wait for sync
     WaitSync(collection, journal, ((char const*) result) + sizeof(TRI_doc_deletion_marker_t));
   }
   else {
+    if (release) {
+      collection->base.endWrite(&collection->base);
+    }
+
     LOG_ERROR("cannot delete element");
   }
 
@@ -666,7 +696,8 @@ static void DebugHeaderSimCollection (TRI_sim_collection_t* collection) {
 static TRI_doc_mptr_t const* CreateShapedJson (TRI_doc_collection_t* document,
                                                TRI_df_marker_type_e type,
                                                TRI_shaped_json_t const* json,
-                                               void const* data) {
+                                               void const* data,
+                                               bool release) {
   TRI_df_marker_t* result;
   TRI_sim_collection_t* collection;
 
@@ -687,7 +718,8 @@ static TRI_doc_mptr_t const* CreateShapedJson (TRI_doc_collection_t* document,
                           &marker, sizeof(marker),
                           json->_data.data, json->_data.length,
                           &result,
-                          data);
+                          data,
+                          release);
   }
   else if (type == TRI_DOC_MARKER_EDGE) {
     TRI_doc_edge_marker_t marker;
@@ -712,7 +744,8 @@ static TRI_doc_mptr_t const* CreateShapedJson (TRI_doc_collection_t* document,
                           &marker.base, sizeof(marker),
                           json->_data.data, json->_data.length,
                           &result,
-                          data);
+                          data,
+                          release);
   }
   else {
     LOG_FATAL("unknown marker type %lu", (unsigned long) type);
@@ -749,7 +782,8 @@ static TRI_doc_mptr_t const* UpdateShapedJson (TRI_doc_collection_t* document,
                                                TRI_shaped_json_t const* json,
                                                TRI_voc_did_t did,
                                                TRI_voc_rid_t rid,
-                                               TRI_doc_update_policy_e policy) {
+                                               TRI_doc_update_policy_e policy,
+                                               bool release) {
   TRI_df_marker_t const* original;
   TRI_df_marker_t* result;
   TRI_doc_mptr_t const* header;
@@ -787,7 +821,8 @@ static TRI_doc_mptr_t const* UpdateShapedJson (TRI_doc_collection_t* document,
                           json->_data.data, json->_data.length,
                           rid,
                           policy,
-                          &result);
+                          &result,
+                          release);
   }
 
   // the original is an edge
@@ -818,7 +853,8 @@ static TRI_doc_mptr_t const* UpdateShapedJson (TRI_doc_collection_t* document,
                           json->_data.data, json->_data.length,
                           rid,
                           policy,
-                          &result);
+                          &result,
+                          release);
   }
 
   // do not know
@@ -835,7 +871,8 @@ static TRI_doc_mptr_t const* UpdateShapedJson (TRI_doc_collection_t* document,
 static bool DeleteShapedJson (TRI_doc_collection_t* document,
                               TRI_voc_did_t did,
                               TRI_voc_rid_t rid,
-                              TRI_doc_update_policy_e policy) {
+                              TRI_doc_update_policy_e policy,
+                              bool release) {
   TRI_sim_collection_t* collection;
   TRI_doc_deletion_marker_t marker;
 
@@ -849,7 +886,7 @@ static bool DeleteShapedJson (TRI_doc_collection_t* document,
   marker._did = did;
   marker._sid = 0;
 
-  return DeleteDocument(collection, &marker, rid, policy);
+  return DeleteDocument(collection, &marker, rid, policy, release);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

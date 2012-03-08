@@ -33,6 +33,7 @@
 #include "VocBase/simple-collection.h"
 #include "VocBase/vocbase.h"
 
+using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::avocado;
@@ -66,6 +67,24 @@ RestCollectionHandler::RestCollectionHandler (HttpRequest* request, TRI_vocbase_
 /// @addtogroup AvocadoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestCollectionHandler::isDirect () {
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+string const& RestCollectionHandler::queue () {
+  static string const client = "CLIENT";
+
+  return client;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -208,7 +227,7 @@ bool RestCollectionHandler::createDocument () {
 
   _documentCollection->beginWrite(_documentCollection);
 
-  TRI_doc_mptr_t const* mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_DOCUMENT, json, 0);
+  TRI_doc_mptr_t const* mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_DOCUMENT, json, 0, true);
   TRI_voc_did_t did = 0;
   TRI_voc_rid_t rid = 0;
 
@@ -216,8 +235,6 @@ bool RestCollectionHandler::createDocument () {
     did = mptr->_did;
     rid = mptr->_rid;
   }
-
-  _documentCollection->endWrite(_documentCollection);
 
   // .............................................................................
   // outside write transaction
@@ -539,14 +556,12 @@ bool RestCollectionHandler::updateDocument () {
 
   _documentCollection->beginWrite(_documentCollection);
 
-  TRI_doc_mptr_t const* mptr = _documentCollection->updateJson(_documentCollection, json, did, revision, policy);
+  TRI_doc_mptr_t const* mptr = _documentCollection->updateJson(_documentCollection, json, did, revision, policy, true);
   TRI_voc_rid_t rid = 0;
 
   if (mptr != 0) {
     rid = mptr->_rid;
   }
-
-  _documentCollection->endWrite(_documentCollection);
 
   // .............................................................................
   // outside write transaction
@@ -653,9 +668,7 @@ bool RestCollectionHandler::deleteDocument () {
 
   _documentCollection->beginWrite(_documentCollection);
 
-  ok = _documentCollection->destroy(_documentCollection, did, revision, policy);
-
-  _documentCollection->endWrite(_documentCollection);
+  ok = _documentCollection->destroy(_documentCollection, did, revision, policy, true);
 
   // .............................................................................
   // outside write transaction
