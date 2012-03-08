@@ -299,16 +299,16 @@ SchedulerLibev::~SchedulerLibev () {
     usleep(100);
   }
   
-  // and delete threads
-  for (size_t i = 0;  i < nrThreads;  ++i) {
-    delete threads[i];
-    delete ((ev_async**) _wakers)[i];
-  }
-  
   // shutdown loops
   for (size_t i = 1;  i < nrThreads;  ++i) {
     ev_async_stop(((struct ev_loop**) _loops)[i], ((ev_async**) _wakers)[i]);
     ev_loop_destroy(((struct ev_loop**) _loops)[i]);
+  }
+  
+  // and delete threads
+  for (size_t i = 0;  i < nrThreads;  ++i) {
+    delete threads[i];
+    delete ((ev_async**) _wakers)[i];
   }
   
   // delete loops buffer
