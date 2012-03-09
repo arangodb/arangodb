@@ -33,6 +33,7 @@
 #include <v8.h>
 
 #include "V8/JSLoader.h"
+#include "V8/v8-globals.h"
 #include "VocBase/vocbase.h"
 
 // -----------------------------------------------------------------------------

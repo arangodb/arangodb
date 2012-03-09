@@ -1,0 +1,2 @@
+avocado> db.five.ensureHashIndex("a")
+2170279

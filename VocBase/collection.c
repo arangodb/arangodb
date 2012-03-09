@@ -693,7 +693,7 @@ bool TRI_IterateCollection (TRI_collection_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_IterateIndexCollection (TRI_collection_t* collection,
-                                 void (*iterator)(char const* filename, void*),
+                                 bool (*iterator)(char const* filename, void*),
                                  void* data) {
   size_t n;
   size_t i;
@@ -703,9 +703,16 @@ void TRI_IterateIndexCollection (TRI_collection_t* collection,
 
   for (i = 0;  i < n;  ++i) {
     char const* filename;
+    bool ok;
 
     filename = collection->_indexFiles._buffer[i];
-    iterator(filename, data);
+    ok = iterator(filename, data);
+
+    if (! ok) {
+      LOG_ERROR("cannot load index '%s' for collection '%s'",
+                filename,
+                collection->_name);
+    }
   }
 }
 

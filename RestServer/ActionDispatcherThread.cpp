@@ -194,10 +194,13 @@ void ActionDispatcherThread::run () {
   _context->Enter();
 
   DispatcherThread::run();
+  
+  // free memory 
+  TRI_FreeActionsVocBase();
 
   _context->Exit();
   _context.Dispose();
-
+ 
   _isolate->Exit();
   _isolate->Dispose();
 }
@@ -310,7 +313,7 @@ void ActionDispatcherThread::initialise () {
       LOGGER_FATAL << "cannot load actions from directory '" << loader->getDirectory() << "'";
     }
   }
-
+  
   // and return from the context
   _context->Exit();
   _isolate->Exit();

@@ -194,7 +194,7 @@ var console = require("console");
 /// Note that the url for "user" actions is automatically prefixed
 /// with @LIT{_action}. This applies to all specified contexts. For example, if
 /// the context contains "admin" and "user" and the url is @LIT{hallo}, then the
-/// action is accessible under @{/_action/hallo} - even for the admin context.
+/// action is accessible under @LIT{/_action/hallo} - even for the admin context.
 ///
 /// @FA{options.callback}(@FA{request}, @FA{response})
 ///
@@ -347,7 +347,7 @@ function defineHttp (options) {
 ///
 /// The functions defines a response. @FA{code} is the status code to
 /// return. @FA{result} is the result object, which will be returned as JSON
-/// object in the body. @{headers} is an array of headers to returned.
+/// object in the body. @LIT{headers} is an array of headers to returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 function actionResult (req, res, code, result, headers) {
