@@ -3430,13 +3430,23 @@ static v8::Handle<v8::Value> JS_LoadVocbaseCol (v8::Arguments const& argv) {
 ///
 /// Returns the collection parameter.
 ///
-/// @verbinclude fluent19
+/// - @LIT{waitForSync}: If @LIT{true} creating a document will only return
+///   after the data was synced to disk.
+/// - @LIT{journalSize} : The size of the journal in bytes.
 ///
 /// @FUN{parameter(@FA{parameter-array})}
 ///
 /// Changes the collection parameter.
 ///
-/// @verbinclude fluent20
+/// @EXAMPLES
+///
+/// Read the parameter
+///
+/// @verbinclude admin1
+///
+/// Write the parameter
+///
+/// @verbinclude admin2
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ParameterVocbaseCol (v8::Arguments const& argv) {
