@@ -2572,8 +2572,6 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 /// In case that the index was successfully created, the index indetifier
 /// is returned.
 ///
-/// @verbinclude fluent10
-///
 /// @FUN{ensureGeoIndex(@FA{location}, @LIT{true})}
 ///
 /// As above which the exception, that the order within the list is longitude
@@ -2592,7 +2590,15 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 /// In case that the index was successfully created, the index indetifier
 /// is returned.
 ///
-/// @verbinclude fluent14
+/// @EXAMPLES
+///
+/// Create an geo index for a list attribute:
+///
+/// @verbinclude admin3
+///
+/// Create an geo index for a hash array attribute:
+///
+/// @verbinclude admin4
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& argv) {
@@ -2675,20 +2681,22 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a hash index exists
 ///
-/// @FUN{ensureHashIndex(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
+/// @FUN{ensureUniqueConstrain(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
 ///
 /// Creates a hash index on all documents using attributes as paths to the
 /// fields. At least one attribute must be given. The value of this attribute
-/// must be a list. All documents, which do not have the attribute path or with
-/// ore or more values that are not suitable, are ignored.
+/// must be a list. All documents, which do not have the attribute path or where
+/// one or more values that are not suitable, are ignored.
 ///
 /// In case that the index was successfully created, the index indetifier
 /// is returned.
 ///
-/// @verbinclude fluent14
+/// @EXAMPLES
+///
+/// @verbinclude admin5
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_EnsureHashIndexVocbaseCol (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_EnsureUniqueConstraintVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;  
   v8::Handle<v8::String> err;
   
@@ -2749,7 +2757,7 @@ static v8::Handle<v8::Value> JS_EnsureHashIndexVocbaseCol (v8::Arguments const& 
     v8::Handle<v8::Value> argument = argv[j];
 
     if (! argument->IsString() ) {
-      errorString = "invalid parameter passed to ensureHashIndex(...) command";
+      errorString = "invalid parameter passed to ensureUniqueConstraint(...) command";
       ok = false;
       break;
     }
@@ -2762,12 +2770,12 @@ static v8::Handle<v8::Value> JS_EnsureHashIndexVocbaseCol (v8::Arguments const& 
     char* cArgument = *argumentString == 0 ? 0 : TRI_DuplicateString(*argumentString);
 
     if (cArgument == NULL) {
-      errorString = "insuffient memory to complete ensureHashIndex(...) command";
+      errorString = "insuffient memory to complete ensureUniqueConstraint(...) command";
       ok = false;
       break;
     }  
 
-    TRI_PushBackVector(&attributes,&cArgument);
+    TRI_PushBackVector(&attributes, &cArgument);
   }
   
   // .............................................................................
@@ -2781,7 +2789,7 @@ static v8::Handle<v8::Value> JS_EnsureHashIndexVocbaseCol (v8::Arguments const& 
       char* right = *((char**) (TRI_AtVector(&attributes, k)));
 
       if (TRI_EqualString(left, right)) {
-        errorString = "duplicate parameters sent to ensureHashIndex(...) command";
+        errorString = "duplicate parameters sent to ensureUniqueConstraint(...) command";
         ok = false;
         break;
       }   
@@ -2880,7 +2888,7 @@ static v8::Handle<v8::Value> JS_EnsureMultiHashIndexVocbaseCol (v8::Arguments co
   // .............................................................................  
 
   if (argv.Length() == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("one or more string parameters required for the ensureHashIndex(...) command")));
+    return scope.Close(v8::ThrowException(v8::String::New("one or more string parameters required for the ensureUniqueConstraint(...) command")));
   }
   
   // .............................................................................
@@ -3428,7 +3436,7 @@ static v8::Handle<v8::Value> JS_LoadVocbaseCol (v8::Arguments const& argv) {
 ///
 /// @FUN{parameter()}
 ///
-/// Returns the collection parameter.
+/// Returns an object containing all collection parameters.
 ///
 /// - @LIT{waitForSync}: If @LIT{true} creating a document will only return
 ///   after the data was synced to disk.
@@ -3436,15 +3444,15 @@ static v8::Handle<v8::Value> JS_LoadVocbaseCol (v8::Arguments const& argv) {
 ///
 /// @FUN{parameter(@FA{parameter-array})}
 ///
-/// Changes the collection parameter.
+/// Changes the collection parameters.
 ///
 /// @EXAMPLES
 ///
-/// Read the parameter
+/// Read all parameters
 ///
 /// @verbinclude admin1
 ///
-/// Write the parameter
+/// Change a parameter
 ///
 /// @verbinclude admin2
 ////////////////////////////////////////////////////////////////////////////////
@@ -4540,10 +4548,10 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> DropIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("dropIndex"));
   v8::Handle<v8::String> EdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("edges"));
   v8::Handle<v8::String> EnsureGeoIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureGeoIndex"));
-  v8::Handle<v8::String> EnsureHashIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureHashIndex"));
   v8::Handle<v8::String> EnsureMultiHashIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureMultiHashIndex"));
-  v8::Handle<v8::String> EnsureSkiplistIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureSLIndex"));
   v8::Handle<v8::String> EnsureMultiSkiplistIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureMultiSLIndex"));
+  v8::Handle<v8::String> EnsureSkiplistIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureSLIndex"));
+  v8::Handle<v8::String> EnsureUniqueConstraintFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureUniqueConstraint"));
   v8::Handle<v8::String> ExecuteFuncName = v8::Persistent<v8::String>::New(v8::String::New("execute"));
   v8::Handle<v8::String> FiguresFuncName = v8::Persistent<v8::String>::New(v8::String::New("figures"));
   v8::Handle<v8::String> GetIndexesFuncName = v8::Persistent<v8::String>::New(v8::String::New("getIndexes"));
@@ -4676,10 +4684,10 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentQuery));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
-  rt->Set(EnsureHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureHashIndexVocbaseCol));
   rt->Set(EnsureMultiHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureMultiHashIndexVocbaseCol));
   rt->Set(EnsureMultiSkiplistIndexFuncName, v8::FunctionTemplate::New(JS_EnsureMultiSkiplistIndexVocbaseCol));
   rt->Set(EnsureSkiplistIndexFuncName, v8::FunctionTemplate::New(JS_EnsureSkiplistIndexVocbaseCol));
+  rt->Set(EnsureUniqueConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueConstraintVocbaseCol));
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
   rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));
@@ -4711,10 +4719,10 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentQuery));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
-  rt->Set(EnsureHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureHashIndexVocbaseCol));
   rt->Set(EnsureMultiHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureMultiHashIndexVocbaseCol));
   rt->Set(EnsureMultiSkiplistIndexFuncName, v8::FunctionTemplate::New(JS_EnsureMultiSkiplistIndexVocbaseCol));
   rt->Set(EnsureSkiplistIndexFuncName, v8::FunctionTemplate::New(JS_EnsureSkiplistIndexVocbaseCol));
+  rt->Set(EnsureUniqueConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueConstraintVocbaseCol));
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
   rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));

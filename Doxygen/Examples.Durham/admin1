@@ -1,0 +1,5 @@
+avocado> db.examples.parameter();
+{
+ "waitForSync" : false,
+ "journalSize" : 134217728 
+}

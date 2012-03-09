@@ -173,7 +173,7 @@ char* TRI_EscapeCString (char const* in, size_t inLength, size_t* outLength);
 /// @brief escapes special characters using unicode escapes
 ///
 /// This method escapes an UTF-8 character string by replacing the unprintable
-/// characters by a \uXXXX sequence. Set escapeSlash to true in order to also
+/// characters by a \\uXXXX sequence. Set escapeSlash to true in order to also
 /// escape the character '/'.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -182,7 +182,7 @@ char* TRI_EscapeUtf8String (char const* in, size_t inLength, bool escapeSlash, s
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unescapes unicode escape sequences
 ///
-/// This method decodes a UTF-8 character string by replacing the \uXXXX
+/// This method decodes a UTF-8 character string by replacing the \\uXXXX
 /// sequence by unicode characters and representing them as UTF-8 sequences.
 ////////////////////////////////////////////////////////////////////////////////
 

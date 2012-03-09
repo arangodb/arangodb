@@ -158,12 +158,19 @@ bool TRI_StartThread (TRI_thread_t* thread, void (*starter)(void*), void* data) 
   int rc;
 
   d = TRI_Allocate(sizeof(thread_data_t));
+  if (!d) {
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    LOG_ERROR("could not start thread: %s ", strerror(errno));
+    return false;
+  }
+
   d->starter = starter;
   d->_data = data;
 
   rc = pthread_create(thread, 0, &ThreadStarter, d);
 
   if (rc != 0) {
+    TRI_Free(d);
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     LOG_ERROR("could not start thread: %s ", strerror(errno));
     return false;
@@ -184,7 +191,7 @@ void TRI_StopThread (TRI_thread_t* thread) {
 /// @brief detachs a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DeatchThread (TRI_thread_t* thread) {
+void TRI_DetachThread (TRI_thread_t* thread) {
   pthread_detach(*thread);
 }
 
