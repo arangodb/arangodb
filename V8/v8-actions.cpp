@@ -504,7 +504,7 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
 
   // convert the result
   if (tryCatch.HasCaught()) {
-    string msg = TRI_ReportV8Exception(&tryCatch);
+    string msg = TRI_StringifyV8Exception(&tryCatch);
 
     HttpResponse* response = new HttpResponse(HttpResponse::SERVER_ERROR);
     response->body().appendText(msg);

@@ -62,9 +62,7 @@ static void InitCollection (TRI_collection_t* collection,
   collection->_cid = info->_cid;
   TRI_CopyString(collection->_name, info->_name, sizeof(collection->_name));
   collection->_maximalSize = info->_maximalSize;
-  collection->_syncAfterObjects = info->_syncAfterObjects;
-  collection->_syncAfterBytes = info->_syncAfterBytes;
-  collection->_syncAfterTime = info->_syncAfterTime;
+  collection->_waitForSync = info->_waitForSync;
 
   collection->_directory = directory;
 
@@ -318,9 +316,7 @@ void TRI_InitParameterCollection (TRI_col_parameter_t* parameter,
 
   parameter->_type = TRI_COL_TYPE_SIMPLE_DOCUMENT;
 
-  parameter->_syncAfterObjects = 1;
-  parameter->_syncAfterBytes = 0;
-  parameter->_syncAfterTime = 0.0;
+  parameter->_waitForSync = true;
 
   parameter->_maximalSize = (maximalSize / PageSize) * PageSize;
 
@@ -511,14 +507,8 @@ bool TRI_LoadParameterInfo (char const* path,
       else if (TRI_EqualString(key->_value._string.data, "maximalSize")) {
         parameter->_maximalSize = value->_value._number;
       }
-      else if (TRI_EqualString(key->_value._string.data, "syncAfterObjects")) {
-        parameter->_syncAfterObjects = value->_value._number;
-      }
-      else if (TRI_EqualString(key->_value._string.data, "syncAfterBytes")) {
-        parameter->_syncAfterBytes = value->_value._number;
-      }
-      else if (TRI_EqualString(key->_value._string.data, "syncAfterTime")) {
-        parameter->_syncAfterTime = value->_value._number;
+      else if (TRI_EqualString(key->_value._string.data, "waitForSync")) {
+        parameter->_waitForSync = value->_value._boolean;
       }
     }
     else if (key->_type == TRI_JSON_STRING && value->_type == TRI_JSON_STRING) {
@@ -551,9 +541,7 @@ bool TRI_SaveParameterInfo (char const* path,
   TRI_Insert2ArrayJson(json, "cid", TRI_CreateNumberJson(info->_cid));
   TRI_Insert2ArrayJson(json, "name", TRI_CreateStringCopyJson(info->_name));
   TRI_Insert2ArrayJson(json, "maximalSize", TRI_CreateNumberJson(info->_maximalSize));
-  TRI_Insert2ArrayJson(json, "syncAfterObjects", TRI_CreateNumberJson(info->_syncAfterObjects));
-  TRI_Insert2ArrayJson(json, "syncAfterBytes", TRI_CreateNumberJson(info->_syncAfterBytes));
-  TRI_Insert2ArrayJson(json, "syncAfterTime", TRI_CreateNumberJson(info->_syncAfterTime));
+  TRI_Insert2ArrayJson(json, "waitForSync", TRI_CreateBooleanJson(info->_waitForSync));
 
   // save json info to file
   filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
@@ -583,9 +571,7 @@ bool TRI_UpdateParameterInfoCollection (TRI_collection_t* collection) {
   parameter._cid = collection->_cid;
   TRI_CopyString(parameter._name, collection->_name, sizeof(parameter._name));
   parameter._maximalSize = collection->_maximalSize;
-  parameter._syncAfterObjects = collection->_syncAfterObjects;
-  parameter._syncAfterBytes = collection->_syncAfterBytes;
-  parameter._syncAfterTime = collection->_syncAfterTime;
+  parameter._waitForSync = collection->_waitForSync;
   parameter._size = sizeof(TRI_col_info_t);
 
   return TRI_SaveParameterInfo(collection->_directory, &parameter);

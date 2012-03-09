@@ -48,8 +48,6 @@
 #include "V8/v8-utils.h"
 #include "V8Client/V8ClientConnection.h"
 
-using namespace v8;
-
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::httpclient;
@@ -146,6 +144,12 @@ static bool noColors = false;
 static bool prettyPrint = false;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief disable auto completion
+////////////////////////////////////////////////////////////////////////////////
+
+static bool noAutoComplete = false;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -159,7 +163,7 @@ static bool prettyPrint = false;
 /// @verbinclude fluent39
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> Tri_Output (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> Js_Pager_Output (v8::Arguments const& argv) {
   for (int i = 0; i < argv.Length(); i++) {
     v8::HandleScope scope;
 
@@ -264,7 +268,8 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("startup", &StartupPath, "startup path containing the JavaScript files")
     ("use_pager", &usePager, "use pager")
     ("pager", &OutputPager, "output pager (default: 'more')")
-    ("no_colors", &noColors, "deaktivate color support")
+    ("no_colors", &noColors, "deactivate color support")
+    ("no_autocomplete", &noAutoComplete, "disable auto completion")
     ("pretty_print", &prettyPrint, "pretty print values")          
   ;
 
@@ -358,7 +363,7 @@ static T* UnwrapClass (v8::Handle<v8::Object> obj, int32_t type) {
 /// @brief ClientConnection constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-static Handle<Value> ClientConnection_ConstructorCallback(v8::Arguments const& argv) {
+static v8::Handle<v8::Value> ClientConnection_ConstructorCallback(v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   string server = DEFAULT_SERVER_NAME;
@@ -398,7 +403,7 @@ static Handle<Value> ClientConnection_ConstructorCallback(v8::Arguments const& a
 /// @brief ClientConnection method "httpGet"
 ////////////////////////////////////////////////////////////////////////////////
 
-static Handle<Value> ClientConnection_httpGet(v8::Arguments const& argv) {
+static v8::Handle<v8::Value> ClientConnection_httpGet(v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // get the connection
@@ -428,7 +433,7 @@ static Handle<Value> ClientConnection_httpGet(v8::Arguments const& argv) {
 /// @brief ClientConnection method "httpDelete"
 ////////////////////////////////////////////////////////////////////////////////
 
-static Handle<Value> ClientConnection_httpDelete(v8::Arguments const& argv) {
+static v8::Handle<v8::Value> ClientConnection_httpDelete(v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // get the connection
@@ -458,7 +463,7 @@ static Handle<Value> ClientConnection_httpDelete(v8::Arguments const& argv) {
 /// @brief ClientConnection method "httpPost"
 ////////////////////////////////////////////////////////////////////////////////
 
-static Handle<Value> ClientConnection_httpPost(v8::Arguments const& argv) {
+static v8::Handle<v8::Value> ClientConnection_httpPost(v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // get the connection
@@ -489,7 +494,7 @@ static Handle<Value> ClientConnection_httpPost(v8::Arguments const& argv) {
 /// @brief ClientConnection method "httpPut"
 ////////////////////////////////////////////////////////////////////////////////
 
-static Handle<Value> ClientConnection_httpPut(v8::Arguments const& argv) {
+static v8::Handle<v8::Value> ClientConnection_httpPut(v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // get the connection
@@ -520,7 +525,7 @@ static Handle<Value> ClientConnection_httpPut(v8::Arguments const& argv) {
 /// @brief ClientConnection method "lastError"
 ////////////////////////////////////////////////////////////////////////////////
 
-static Handle<Value> ClientConnection_lastHttpReturnCode(v8::Arguments const& argv) {
+static v8::Handle<v8::Value> ClientConnection_lastHttpReturnCode(v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // get the connection
@@ -542,7 +547,7 @@ static Handle<Value> ClientConnection_lastHttpReturnCode(v8::Arguments const& ar
 /// @brief ClientConnection method "lastErrorMessage"
 ////////////////////////////////////////////////////////////////////////////////
 
-static Handle<Value> ClientConnection_lastErrorMessage(v8::Arguments const& argv) {
+static v8::Handle<v8::Value> ClientConnection_lastErrorMessage(v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // get the connection
@@ -564,7 +569,7 @@ static Handle<Value> ClientConnection_lastErrorMessage(v8::Arguments const& argv
 /// @brief ClientConnection method "isConnected"
 ////////////////////////////////////////////////////////////////////////////////
 
-static Handle<Value> ClientConnection_isConnected(v8::Arguments const& argv) {
+static v8::Handle<v8::Value> ClientConnection_isConnected(v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // get the connection
@@ -585,7 +590,7 @@ static Handle<Value> ClientConnection_isConnected(v8::Arguments const& argv) {
 /// @brief ClientConnection method "isConnected"
 ////////////////////////////////////////////////////////////////////////////////
 
-static Handle<Value> ClientConnection_toString(v8::Arguments const& argv) {
+static v8::Handle<v8::Value> ClientConnection_toString(v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // get the connection
@@ -599,13 +604,15 @@ static Handle<Value> ClientConnection_toString(v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: toString()")));
   }
   
-  string result = "[object AvocadoConnection/" 
+  string result = "[object AvocadoConnection:" 
           + connection->getHostname()
           + ":"
-          + triagens::basics::StringUtils::itoa(connection->getPort());
+          + triagens::basics::StringUtils::itoa(connection->getPort())
+          + ","
+          + connection->getVersion();
           
   if (connection->isConnected()) {
-    result += "/connected]";
+    result += ",connected]";
   }
   else {
     result += "]";    
@@ -614,7 +621,26 @@ static Handle<Value> ClientConnection_toString(v8::Arguments const& argv) {
   return scope.Close(v8::String::New(result.c_str()));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "isConnected"
+////////////////////////////////////////////////////////////////////////////////
 
+static v8::Handle<v8::Value> ClientConnection_getVersion(v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // get the connection
+  V8ClientConnection* connection = UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
+
+  if (connection == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
+  }
+  
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: getVersion()")));
+  }
+
+  return scope.Close(v8::String::New(connection->getVersion().c_str()));
+}
 
 
 
@@ -635,10 +661,10 @@ static void RunShell (v8::Handle<v8::Context> context) {
 
   V8LineEditor* console = new V8LineEditor(context, ".avocsh");
 
-  console->open();
+  console->open(!noAutoComplete);
 
   while (true) {
-    while (!V8::IdleNotification()) {
+    while (! v8::V8::IdleNotification()) {
     }
 
     char* input = console->prompt("avocsh> ");
@@ -663,12 +689,19 @@ static void RunShell (v8::Handle<v8::Context> context) {
     
     console->addHistory(input);
     
-    HandleScope scope;
-
+    v8::HandleScope scope;
+    v8::TryCatch tryCatch;
+    
     init_pager();
-    TRI_ExecuteStringVocBase(context, String::New(input), name, true, true);
-    end_pager();
+
+    TRI_ExecuteStringVocBase(context, v8::String::New(input), name, true);
     TRI_FreeString(input);
+
+    if (tryCatch.HasCaught()) {
+      cout << TRI_StringifyV8Exception(&tryCatch);
+    }
+
+    end_pager();
   }
 
   console->close();
@@ -696,21 +729,37 @@ static char DEF_BRIGHT[5]      = "\x1b[1m";
 static char DEF_RESET[5]       = "\x1b[0m";
 
 static void addColors (v8::Handle<v8::Context> context) {  
-  context->Global()->Set(v8::String::New("COLOR_RED"), v8::String::New(DEF_RED, 5));
-  context->Global()->Set(v8::String::New("COLOR_BOLD_RED"), v8::String::New(DEF_BOLD_RED, 8));
-  context->Global()->Set(v8::String::New("COLOR_GREEN"), v8::String::New(DEF_GREEN, 5));
-  context->Global()->Set(v8::String::New("COLOR_BOLD_GREEN"), v8::String::New(DEF_BOLD_GREEN, 8));
-  context->Global()->Set(v8::String::New("COLOR_BLUE"), v8::String::New(DEF_BLUE, 5));
-  context->Global()->Set(v8::String::New("COLOR_BOLD_BLUE"), v8::String::New(DEF_BOLD_BLUE, 8));
-  context->Global()->Set(v8::String::New("COLOR_WHITE"), v8::String::New(DEF_WHITE, 5));
-  context->Global()->Set(v8::String::New("COLOR_YELLOW"), v8::String::New(DEF_YELLOW, 5));
-  context->Global()->Set(v8::String::New("COLOR_BOLD_WHITE"), v8::String::New(DEF_BOLD_WHITE, 7));
-  context->Global()->Set(v8::String::New("COLOR_BLACK"), v8::String::New(DEF_BLACK, 5));
-  context->Global()->Set(v8::String::New("COLOR_BOLD_BLACK"), v8::String::New(DEF_BOLD_BLACK, 8));
-  context->Global()->Set(v8::String::New("COLOR_BLINK"), v8::String::New(DEF_BLINK, 4));
-  context->Global()->Set(v8::String::New("COLOR_BRIGHT"), v8::String::New(DEF_BRIGHT, 4));
-  context->Global()->Set(v8::String::New("COLOR_OUTPUT"), v8::String::New(DEF_BRIGHT, 4));
-  context->Global()->Set(v8::String::New("COLOR_OUTPUT_RESET"), v8::String::New(DEF_RESET, 4));    
+  context->Global()->Set(v8::String::New("COLOR_RED"), v8::String::New(DEF_RED, 5),
+                         v8::ReadOnly);
+  context->Global()->Set(v8::String::New("COLOR_BOLD_RED"), v8::String::New(DEF_BOLD_RED, 8),
+                         v8::ReadOnly);
+  context->Global()->Set(v8::String::New("COLOR_GREEN"), v8::String::New(DEF_GREEN, 5),
+                         v8::ReadOnly);
+  context->Global()->Set(v8::String::New("COLOR_BOLD_GREEN"), v8::String::New(DEF_BOLD_GREEN, 8),
+                         v8::ReadOnly);
+  context->Global()->Set(v8::String::New("COLOR_BLUE"), v8::String::New(DEF_BLUE, 5),
+                         v8::ReadOnly);
+  context->Global()->Set(v8::String::New("COLOR_BOLD_BLUE"), v8::String::New(DEF_BOLD_BLUE, 8),
+                         v8::ReadOnly);
+  context->Global()->Set(v8::String::New("COLOR_WHITE"), v8::String::New(DEF_WHITE, 5),
+                         v8::ReadOnly);
+  context->Global()->Set(v8::String::New("COLOR_YELLOW"), v8::String::New(DEF_YELLOW, 5),
+                         v8::ReadOnly);
+  context->Global()->Set(v8::String::New("COLOR_BOLD_WHITE"), v8::String::New(DEF_BOLD_WHITE, 7),
+                         v8::ReadOnly);
+  context->Global()->Set(v8::String::New("COLOR_BLACK"), v8::String::New(DEF_BLACK, 5),
+                         v8::ReadOnly);
+  context->Global()->Set(v8::String::New("COLOR_BOLD_BLACK"), v8::String::New(DEF_BOLD_BLACK, 8),
+                         v8::ReadOnly);
+  context->Global()->Set(v8::String::New("COLOR_BLINK"), v8::String::New(DEF_BLINK, 4),
+                         v8::ReadOnly);
+  context->Global()->Set(v8::String::New("COLOR_BRIGHT"), v8::String::New(DEF_BRIGHT, 4),
+                         v8::ReadOnly);
+  if (!noColors) {
+    context->Global()->Set(v8::String::New("COLOR_OUTPUT"), v8::String::New(DEF_BRIGHT, 4));
+  }
+  context->Global()->Set(v8::String::New("COLOR_OUTPUT_RESET"), v8::String::New(DEF_RESET, 4),
+                         v8::ReadOnly);    
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -755,8 +804,8 @@ int main (int argc, char* argv[]) {
   context->Enter();
 
   // add function SYS_OUTPUT to use pager
-  context->Global()->Set(v8::String::New("SYS_OUTPUT"),
-                         v8::FunctionTemplate::New(Tri_Output)->GetFunction(),
+  context->Global()->Set(v8::String::New("TRI_SYS_OUTPUT"),
+                         v8::FunctionTemplate::New(Js_Pager_Output)->GetFunction(),
                          v8::ReadOnly);
   
   
@@ -782,19 +831,20 @@ int main (int argc, char* argv[]) {
   // .............................................................................
   // define AvocadoConnection class
   // .............................................................................  
-  v8::Handle<v8::FunctionTemplate> connection_templ = FunctionTemplate::New();
-  connection_templ->SetClassName(String::New("AvocadoConnection"));
+  v8::Handle<v8::FunctionTemplate> connection_templ = v8::FunctionTemplate::New();
+  connection_templ->SetClassName(v8::String::New("AvocadoConnection"));
   v8::Handle<v8::ObjectTemplate> connection_proto = connection_templ->PrototypeTemplate();
-  connection_proto->Set("get", FunctionTemplate::New(ClientConnection_httpGet));
-  connection_proto->Set("post", FunctionTemplate::New(ClientConnection_httpPost));
-  connection_proto->Set("delete", FunctionTemplate::New(ClientConnection_httpDelete));
-  connection_proto->Set("put", FunctionTemplate::New(ClientConnection_httpPut));
-  connection_proto->Set("lastHttpReturnCode", FunctionTemplate::New(ClientConnection_lastHttpReturnCode));
-  connection_proto->Set("lastErrorMessage", FunctionTemplate::New(ClientConnection_lastErrorMessage));
-  connection_proto->Set("isConnected", FunctionTemplate::New(ClientConnection_isConnected));
-  connection_proto->Set("toString", FunctionTemplate::New(ClientConnection_toString));
+  connection_proto->Set("get", v8::FunctionTemplate::New(ClientConnection_httpGet));
+  connection_proto->Set("post", v8::FunctionTemplate::New(ClientConnection_httpPost));
+  connection_proto->Set("delete", v8::FunctionTemplate::New(ClientConnection_httpDelete));
+  connection_proto->Set("put", v8::FunctionTemplate::New(ClientConnection_httpPut));
+  connection_proto->Set("lastHttpReturnCode", v8::FunctionTemplate::New(ClientConnection_lastHttpReturnCode));
+  connection_proto->Set("lastErrorMessage", v8::FunctionTemplate::New(ClientConnection_lastErrorMessage));
+  connection_proto->Set("isConnected", v8::FunctionTemplate::New(ClientConnection_isConnected));
+  connection_proto->Set("toString", v8::FunctionTemplate::New(ClientConnection_toString));
+  connection_proto->Set("getVersion", v8::FunctionTemplate::New(ClientConnection_getVersion));
   connection_proto->SetCallAsFunctionHandler(ClientConnection_ConstructorCallback);    
-  Handle<ObjectTemplate> connection_inst = connection_templ->InstanceTemplate();
+  v8::Handle<v8::ObjectTemplate> connection_inst = connection_templ->InstanceTemplate();
   connection_inst->SetInternalFieldCount(2);    
   context->Global()->Set(v8::String::New("AvocadoConnection"), connection_proto->NewInstance());    
   ConnectionTempl = v8::Persistent<v8::ObjectTemplate>::New(connection_inst);
@@ -810,18 +860,18 @@ int main (int argc, char* argv[]) {
   
   // http://www.network-science.de/ascii/   Font: ogre
   if (noColors) {
-    printf("                       "      "    _         \n");
-    printf("  __ ___   _____   ___ "      "___| |__      \n");
-    printf(" / _` \\ \\ / / _ \\ / __"    "/ __| '_ \\   \n");
-    printf("| (_| |\\ V / (_) | (__"      "\\__ \\ | | | \n");
-    printf(" \\__,_| \\_/ \\___/ \\___"   "|___/_| |_|   \n\n");        
+    printf("                        "      "    _         \n");
+    printf("   __ ___   _____   ___ "      "___| |__      \n");
+    printf("  / _` \\ \\ / / _ \\ / __"    "/ __| '_ \\   \n");
+    printf(" | (_| |\\ V / (_) | (__"      "\\__ \\ | | | \n");
+    printf("  \\__,_| \\_/ \\___/ \\___"   "|___/_| |_|   \n\n");        
   }
   else {
-    printf(        "                       "      "\x1b[31m    _         \x1b[0m\n");
-    printf("\x1b[32m  __ ___   _____   ___ "      "\x1b[31m___| |__      \x1b[0m\n");
-    printf("\x1b[32m / _` \\ \\ / / _ \\ / __"    "\x1b[31m/ __| '_ \\   \x1b[0m\n");
-    printf("\x1b[32m| (_| |\\ V / (_) | (__"      "\x1b[31m\\__ \\ | | | \x1b[0m\n");
-    printf("\x1b[32m \\__,_| \\_/ \\___/ \\___"   "\x1b[31m|___/_| |_|   \x1b[0m\n\n");    
+    printf(        "                        "      "\x1b[31m    _         \x1b[0m\n");
+    printf("\x1b[32m   __ ___   _____   ___ "      "\x1b[31m___| |__      \x1b[0m\n");
+    printf("\x1b[32m  / _` \\ \\ / / _ \\ / __"    "\x1b[31m/ __| '_ \\   \x1b[0m\n");
+    printf("\x1b[32m | (_| |\\ V / (_) | (__"      "\x1b[31m\\__ \\ | | | \x1b[0m\n");
+    printf("\x1b[32m  \\__,_| \\_/ \\___/ \\___"   "\x1b[31m|___/_| |_|   \x1b[0m\n\n");    
   }
   printf("Welcome to avocsh %s. Copyright (c) 2012 triAGENS GmbH.\n", TRIAGENS_VERSION);
 
@@ -846,7 +896,9 @@ int main (int argc, char* argv[]) {
     }
  
     // add the client connection to the context:
-    context->Global()->Set(v8::String::New("avocado"), wrapV8ClientConnection(clientConnection));
+    context->Global()->Set(v8::String::New("avocado"), 
+                         wrapV8ClientConnection(clientConnection),
+                         v8::ReadOnly);
     
     if (prettyPrint) {
       printf("Pretty print values.\n");    
@@ -856,10 +908,7 @@ int main (int argc, char* argv[]) {
     context->Global()->Set(v8::String::New("PRETTY_PRINT"), v8::Boolean::New(prettyPrint));
 
     // add colors for print.js
-    if (!noColors) {
-      addColors(context);      
-    }
-
+    addColors(context);
     
     // load java script from js/bootstrap/*.h files
     if (StartupPath.empty()) {

@@ -37,6 +37,7 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 ///   <ol>
 ///    <li>@ref SimpleQueryDocument "db.@FA{collection}.document(@FA{document-reference})"</li>
 ///    <li>@ref SimpleQueryAll "db.@FA{collection}.all()"</li>
+///    <li>@ref SimpleQuerySelect "db.@FA{collection}.select()"</li>
 ///    <li>@ref SimpleQueryCount "@FA{query}.count()"</li>
 ///   </ol>
 ///  </li>
@@ -91,6 +92,10 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 ///
 /// @anchor SimpleQueryAll
 /// @copydetails JSF_AvocadoCollection_prototype_all
+/// <hr>
+///
+/// @anchor SimpleQuerySelect
+/// @copydetails JSF_AvocadoCollection_prototype_select
 /// <hr>
 ///
 /// @anchor SimpleQueryCount
@@ -808,6 +813,184 @@ SimpleQueryAll.prototype._PRINT = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                      SELECT QUERY
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup SimpleQuery
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief select query
+////////////////////////////////////////////////////////////////////////////////
+
+function SimpleQuerySelect (collection, example) {
+  this._collection = collection;
+  this._example = example;
+}
+
+SimpleQuerySelect.prototype = new SimpleQuery();
+SimpleQuerySelect.prototype.constructor = SimpleQuerySelect;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a select query for a collection
+///
+/// @FUN{select()}
+///
+/// Selects all documents of a collection that match the specified example. 
+/// The example must be specified as an object, with the object attributes being
+/// the search values. Allowed attribute types for searching are numbers,
+/// strings, and boolean values.
+///
+/// You can use @FN{toArray}, @FN{next},
+/// @FN{nextRef}, or @FN{hasNext} to access the result. The result can be
+/// limited using the @FN{skip} and @FN{limit} operator.
+///
+/// @EXAMPLES
+///
+/// Use @FN{toArray} to get all documents at once:
+///
+/// @verbinclude simple18
+///
+/// Use @FN{next} to loop over all documents:
+///
+/// @verbinclude simple19
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.select = function (example) {
+  return new SimpleQuerySelect(this, example);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup SimpleQuery
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clones a select query
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQuerySelect.prototype.clone = function () {
+  var query;
+
+  query = new SimpleQuerySelect(this._collection, this._example);
+  query._skip = this._skip;
+  query._limit = this._limit;
+
+  return query;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a select query
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQuerySelect.prototype.execute = function () {
+  var documents;
+
+  if (this._execution == null) {
+    if (this._skip == null || this._skip <= 0) {
+      this._skip = 0;
+    }
+
+    var queryString = "SELECT c FROM `" + this._collection._name + "` c";
+
+    if (!(this._example instanceof Object)) {
+      throw "invalid example specification";
+    }
+   
+    var found = false; 
+    for (var i in this._example) {
+      if (!this._example.hasOwnProperty(i)) {
+        continue;
+      }
+
+      var typeString = typeof(this._example[i]);
+      if (typeString !== "number" && typeString !== "string" && typeString !== "boolean") {
+        throw "invalid example specification for key " + i;
+      }
+
+      if (found) {
+        queryString += "&& "; 
+      }
+      else {
+        queryString += " WHERE ";
+        found = true;
+      }
+
+      queryString += "c.`" + i + "` == ";
+      if (typeString == "number") {
+        queryString += this._example[i];
+      }
+      else if (typeString == "string") {
+        queryString += QuoteJSONString(this._example[i]);
+      }
+      else if (typeString == "boolean") {
+        queryString += this._example[i];
+      }
+    }
+
+    var result = AQL_PREPARE(db, queryString);  
+    if (result instanceof AvocadoQueryError) {
+      throw result.message;
+    }
+
+    var cursor = result.execute();
+    if (cursor instanceof AvocadoQueryError) {
+      throw cursor.message;
+    }
+
+    var documents = { "count" : cursor.count(), "total" : cursor.count(), "documents": [] };
+    while (cursor.hasNext()) {
+      documents.documents.push(cursor.next());
+    }
+    cursor.dispose();
+
+    this._execution = new SimpleQueryArray(documents.documents);
+    this._execution._skip = this._skip;
+    this._execution._limit = this._limit;
+    this._countQuery = documents.count;
+    this._countTotal = documents.total;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print a select query
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQuerySelect.prototype._PRINT = function () {
+  var text;
+
+  text = "SimpleQuerySelect(" + this._collection._name + ")";
+
+  if (this._skip != null && this._skip != 0) {
+    text += ".skip(" + this._skip + ")";
+  }
+
+  if (this._limit != null) {
+    text += ".limit(" + this._limit + ")";
+  }
+
+  internal.output(text);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                SIMPLE QUERY ARRAY
 // -----------------------------------------------------------------------------
 
@@ -1142,7 +1325,7 @@ function SimpleQueryNear (collection, latitiude, longitude, iid) {
   }
     
   if (this._index == null) {
-    throw "an geo-index must be known";
+    throw "a geo-index must be known";
   }
 }
 
@@ -1325,7 +1508,7 @@ function SimpleQueryWithin (collection, latitiude, longitude, radius, iid) {
   }
     
   if (this._index == null) {
-    throw "an geo-index must be known";
+    throw "a geo-index must be known";
   }
 }
 
@@ -1468,6 +1651,7 @@ exports.AvocadoCollection = AvocadoCollection;
 exports.AvocadoEdgesCollection = AvocadoEdgesCollection;
 exports.SimpleQuery = SimpleQuery;
 exports.SimpleQueryAll = SimpleQueryAll;
+exports.SimpleQuerySelect = SimpleQuerySelect;
 exports.SimpleQueryArray = SimpleQueryArray;
 exports.SimpleQueryGeo = SimpleQueryGeo;
 exports.SimpleQueryNear = SimpleQueryNear;

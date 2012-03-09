@@ -34,7 +34,21 @@
 // --SECTION--                                                  global variables
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief change internal.output to shell output
+////////////////////////////////////////////////////////////////////////////////
+
+ModuleCache["/internal"].exports.output = TRI_SYS_OUTPUT;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default collection for saving queries
+////////////////////////////////////////////////////////////////////////////////
+
 var DEFAULT_QUERY_COLLECTION = "query";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief help texts
+////////////////////////////////////////////////////////////////////////////////
 
 var HELP = "";
 var helpQueries = "";
@@ -191,18 +205,14 @@ function start_color_print (color) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function getHeadline (text) {
-  var x = parseInt((78 - text.length) / 2);
+  var x = parseInt(Math.abs(78 - text.length) / 2);
   
   var p = "";
   for (var i = 0; i < x; ++i) {
     p += "-";
   }
   
-  if ( typeof(COLOR_BRIGHT) != "undefined" ) {
-    return COLOR_BRIGHT + p + " " + text + " " + p + COLOR_OUTPUT_RESET + "\n";
-  }
-
-  return p + " " + text + " " + p + "\n";
+  return "\n" + p + " " + text + " " + p + "\n";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -229,7 +239,7 @@ function help () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ModuleCache["/internal"].exports.log = function(level, msg) {
-  internal.output(msg, "\n");
+  internal.output(level, ": ", msg, "\n");
 }
 
 // -----------------------------------------------------------------------------
@@ -892,7 +902,7 @@ AvocadoDatabase.prototype._collection = function (id) {
 /// @brief factory method to create a new query template
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoDatabase.prototype.createQueryTemplate = function (queryData) {  
+AvocadoDatabase.prototype._createQueryTemplate = function (queryData) {  
   var qt = new AvocadoQueryTemplate(this, queryData);
   if (qt.save()) {
     return qt;
@@ -901,7 +911,7 @@ AvocadoDatabase.prototype.createQueryTemplate = function (queryData) {
   return undefined;
 }
 
-AvocadoDatabase.prototype.getQueryTemplate = function (id) {  
+AvocadoDatabase.prototype._getQueryTemplate = function (id) {  
   var qt = new AvocadoQueryTemplate(this, {"_id" : id});
   if (qt.load()) {
     return qt;
@@ -914,7 +924,7 @@ AvocadoDatabase.prototype.getQueryTemplate = function (id) {
 /// @brief factory method to create a new query instance
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoDatabase.prototype.createQueryInstance = function (queryData) {  
+AvocadoDatabase.prototype._createQueryInstance = function (queryData) {  
   return new AvocadoQueryInstance(this, queryData);
 }
 
@@ -960,13 +970,13 @@ getHeadline("Help") +
 helpQueries = 
 getHeadline("Simple queries help") +
 'Create query template:                                              ' + "\n" +
-' > qt1 = db.createQueryTemplate("select ...");     simple query     ' + "\n" +
-' > qt2 = db.createQueryTemplate(                   complex query    ' + "\n" +
+' > qt1 = db._createQueryTemplate("select ...");    simple query     ' + "\n" +
+' > qt2 = db._createQueryTemplate(                  complex query    ' + "\n" +
 '             {query:"select...",                                    ' + "\n" +
 '              name:"qname",                                         ' + "\n" +
 '              collection:"q"                                        ' + "\n" +
 '              ... }                                                 ' + "\n" +
-' > qt3 = db.getQueryTemplate("4334:2334");         query by id      ' + "\n" +
+' > qt3 = db._getQueryTemplate("4334:2334");        query by id      ' + "\n" +
 ' > qt1.update("select ...");                       update           ' + "\n" +
 ' > qt1.delete("4334:2334");                        delete           ' + "\n" +
 'Create query instance:                                              ' + "\n" +
@@ -1039,7 +1049,7 @@ helpAvocadoQueryInstance =
 getHeadline("AvocadoQueryInstance help") +
 'AvocadoQueryInstance constructor:                                   ' + "\n" +
 ' > qi1 = qt1.getInstance();                                         ' + "\n" +
-' > qi2 = db.createQueryInstance("select ....");                     ' + "\n" +
+' > qi2 = db._createQueryInstance("select ....");                    ' + "\n" +
 'Functions:                                                          ' + "\n" +
 '  bind(<key>, <value>);                 bind vars                   ' + "\n" +
 '  setCount(true);                                                   ' + "\n" +
@@ -1054,7 +1064,7 @@ getHeadline("AvocadoQueryInstance help") +
 '  maxResults                            maximum number of results   ' + "\n" +
 '  query                                 the query string            ' + "\n" +
 'Example:                                                            ' + "\n" +
-' > qi2 = db.createQueryInstance("select a from colA a               ' + "\n" +
+' > qi2 = db._createQueryInstance("select a from colA a              ' + "\n" +
 '                             where a.x = @a@ and a.y = @b@");       ' + "\n" +
 ' > qi2.bind("a", "hello");                                          ' + "\n" +
 ' > qi2.bind("b", "world");                                          ' + "\n" +
@@ -1063,8 +1073,8 @@ getHeadline("AvocadoQueryInstance help") +
 helpAvocadoQueryTemplate = 
 getHeadline("AvocadoQueryTemplate help") +
 'AvocadoQueryTemplate constructor:                                   ' + "\n" +
-' > qt1 = db.createQueryTemplate("select ...");     simple query     ' + "\n" +
-' > qt2 = db.createQueryTemplate(                   complex query    ' + "\n" +
+' > qt1 = db._createQueryTemplate("select ...");    simple query     ' + "\n" +
+' > qt2 = db._createQueryTemplate(                  complex query    ' + "\n" +
 '             {query:"select...",                                    ' + "\n" +
 '              name:"qname",                                         ' + "\n" +
 '              collection:"q"                                        ' + "\n" +
@@ -1080,7 +1090,7 @@ getHeadline("AvocadoQueryTemplate help") +
 '  _id                                  template id                  ' + "\n" +
 '  name                                 collection name              ' + "\n" +
 'Example:                                                            ' + "\n" +
-' > qt1 = db.getQueryTemplate("4334:2334");                          ' + "\n" +
+' > qt1 = db._getQueryTemplate("4334:2334");                         ' + "\n" +
 ' > qt1.update("select a from collA a");                             ' + "\n" +
 ' > qi1 = qt1.getInstance();                                         ' + "\n" +
 ' > qt1.delete("4334:2334");                                         ';

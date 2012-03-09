@@ -56,13 +56,13 @@ void TRI_AugmentObject (v8::Handle<v8::Value> value, TRI_json_t const* json);
 /// @brief reports an exception
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string TRI_ReportV8Exception (v8::TryCatch* tryCatch);
+std::string TRI_StringifyV8Exception (v8::TryCatch* tryCatch);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints an exception and stacktrace
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PrintV8Exception (v8::TryCatch* tryCatch);
+void TRI_LogV8Exception (v8::TryCatch* tryCatch);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a file into the current context
@@ -95,8 +95,7 @@ bool TRI_ExecuteJavaScriptDirectory (v8::Handle<v8::Context> context, char const
 bool TRI_ExecuteStringVocBase (v8::Handle<v8::Context> context,
                                v8::Handle<v8::String> source,
                                v8::Handle<v8::Value> name,
-                               bool printResult,
-                               bool reportExceptions);
+                               bool printResult);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 utils function inside the global variable
