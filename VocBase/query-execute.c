@@ -149,7 +149,9 @@ static bool AddCollectionsBarrierQueryInstance (TRI_query_instance_t* const inst
 /// @brief executes a query
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_query_cursor_t* TRI_ExecuteQueryInstance (TRI_query_instance_t* const instance) {
+TRI_query_cursor_t* TRI_ExecuteQueryInstance (TRI_query_instance_t* const instance,
+                                              const bool doCount,
+                                              const uint32_t max) {
   TRI_select_result_t* selectResult;
   TRI_query_cursor_t* cursor;
   TRI_voc_ssize_t noLimit = (TRI_voc_ssize_t) INT32_MAX;
@@ -161,7 +163,7 @@ TRI_query_cursor_t* TRI_ExecuteQueryInstance (TRI_query_instance_t* const instan
     return NULL;
   }
 
-  cursor = TRI_CreateQueryCursor(instance, selectResult);
+  cursor = TRI_CreateQueryCursor(instance, selectResult, doCount, max);
   if (!cursor) {
     selectResult->free(selectResult);
     return NULL;

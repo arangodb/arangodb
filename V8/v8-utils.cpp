@@ -686,9 +686,10 @@ bool TRI_ExecuteOrderExecutionContext (TRI_js_exec_context_t context, int* r) {
 /// @brief reads/execute a file into/in the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool LoadJavaScriptFile (v8::Handle<v8::Context> context, char const* filename, bool execute) {
+static bool LoadJavaScriptFile (v8::Handle<v8::Context> context,
+                                char const* filename,
+                                bool execute) {
   v8::HandleScope handleScope;
-  v8::TryCatch tryCatch;
 
   char* content = TRI_SlurpFile(filename);
 
@@ -718,8 +719,6 @@ static bool LoadJavaScriptFile (v8::Handle<v8::Context> context, char const* fil
 
   // compilation failed, print errors that happened during compilation
   if (script.IsEmpty()) {
-    LOG_ERROR("cannot compile java script file '%s'", filename);
-    TRI_ReportV8Exception(&tryCatch);
     return false;
   }
 
@@ -727,17 +726,10 @@ static bool LoadJavaScriptFile (v8::Handle<v8::Context> context, char const* fil
   v8::Handle<v8::Value> result = script->Run();
 
   if (result.IsEmpty()) {
-    assert(tryCatch.HasCaught());
-
-    // print errors that happened during execution
-    LOG_ERROR("cannot execute java script file '%s'", filename);
-    TRI_ReportV8Exception(&tryCatch);
-
     return false;
   }
 
   LOG_TRACE("loaded java script file: '%s'", filename);
-
   return true;
 }
 
@@ -746,6 +738,7 @@ static bool LoadJavaScriptFile (v8::Handle<v8::Context> context, char const* fil
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool LoadJavaScriptDirectory (v8::Handle<v8::Context> context, char const* path, bool execute) {
+  v8::HandleScope scope;
   TRI_vector_string_t files;
   bool result;
   regex_t re;
@@ -760,6 +753,7 @@ static bool LoadJavaScriptDirectory (v8::Handle<v8::Context> context, char const
   result = true;
 
   for (i = 0;  i < files._length;  ++i) {
+    v8::TryCatch tryCatch;
     bool ok;
     char const* filename;
     char* full;
@@ -771,12 +765,14 @@ static bool LoadJavaScriptDirectory (v8::Handle<v8::Context> context, char const
     }
 
     full = TRI_Concatenate2File(path, filename);
-
     ok = LoadJavaScriptFile(context, full, execute);
-
     TRI_FreeString(full);
 
     result = result && ok;
+
+    if (! ok) {
+      TRI_LogV8Exception(&tryCatch);
+    }
   }
 
   TRI_DestroyVectorString(&files);
@@ -813,7 +809,6 @@ static bool LoadJavaScriptDirectory (v8::Handle<v8::Context> context, char const
 
 static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  v8::TryCatch tryCatch;
   size_t i;
 
   // extract arguments
@@ -868,32 +863,24 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
 
   // compilation failed, print errors that happened during compilation
   if (script.IsEmpty()) {
-    assert(tryCatch.HasCaught());
-
-    TRI_PrintV8Exception(&tryCatch);
-
     if (useSandbox) {
       context->DetachGlobal();
       context->Exit();
     }
 
-    return scope.Close(tryCatch.ReThrow());
+    return scope.Close(v8::Undefined());
   }
 
   // compilation succeeded, run the script
   v8::Handle<v8::Value> result = script->Run();
 
   if (result.IsEmpty()) {
-    assert(tryCatch.HasCaught());
-
-    TRI_PrintV8Exception(&tryCatch);
-
     if (useSandbox) {
       context->DetachGlobal();
       context->Exit();
     }
 
-    return scope.Close(tryCatch.ReThrow());
+    return scope.Close(v8::Undefined());
   }
 
   // copy result back into the sandbox
@@ -941,7 +928,6 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_Load (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  v8::TryCatch tryCatch;
 
   // extract arguments
   if (argv.Length() != 1) {
@@ -960,11 +946,10 @@ static v8::Handle<v8::Value> JS_Load (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New(TRI_last_error())));
   }
 
-  bool ok = TRI_ExecuteStringVocBase(v8::Context::GetCurrent(), v8::String::New(content), argv[0], false, true);
-
+  TRI_ExecuteStringVocBase(v8::Context::GetCurrent(), v8::String::New(content), argv[0], false);
   TRI_FreeString(content);
 
-  return scope.Close(ok ? v8::True() : v8::False());
+  return scope.Close(v8::Undefined());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1400,7 +1385,7 @@ void TRI_AugmentObject (v8::Handle<v8::Value> value, TRI_json_t const* json) {
 /// @brief reports an exception
 ////////////////////////////////////////////////////////////////////////////////
 
-string TRI_ReportV8Exception (v8::TryCatch* tryCatch) {
+string TRI_StringifyV8Exception (v8::TryCatch* tryCatch) {
   v8::HandleScope handle_scope;
 
   v8::String::Utf8Value exception(tryCatch->Exception());
@@ -1411,12 +1396,10 @@ string TRI_ReportV8Exception (v8::TryCatch* tryCatch) {
   // V8 didn't provide any extra information about this error; just print the exception.
   if (message.IsEmpty()) {
     if (exceptionString == 0) {
-      LOG_ERROR("JavaScript exception");
-      result = "JavaScript exception";
+      result = "JavaScript exception\n";
     }
     else {
-      LOG_ERROR("JavaScript exception: %s", exceptionString);
-      result = "JavaScript exception: " + string(exceptionString);
+      result = "JavaScript exception: " + string(exceptionString) + "\n";
     }
   }
   else {
@@ -1424,35 +1407,51 @@ string TRI_ReportV8Exception (v8::TryCatch* tryCatch) {
     const char* filenameString = *filename;
     int linenum = message->GetLineNumber();
     int start = message->GetStartColumn() + 1;
+    int end = message->GetEndColumn();
 
     if (filenameString == 0) {
       if (exceptionString == 0) {
-        LOG_ERROR("JavaScript exception");
-        result = "JavaScript exception";
+        result = "JavaScript exception\n";
       }
       else {
-        LOG_ERROR("JavaScript exception: %s", exceptionString);
-        result = "JavaScript exception: " + string(exceptionString);
+        result = "JavaScript exception: " + string(exceptionString) + "\n";
       }
     }
     else {
       if (exceptionString == 0) {
-        LOG_ERROR("JavaScript exception in file '%s' at %d,%d", filenameString, linenum, start);
         result = "JavaScript exception in file '" + string(filenameString) + "' at "
-               + StringUtils::itoa(linenum) + "," + StringUtils::itoa(start);
+               + StringUtils::itoa(linenum) + "," + StringUtils::itoa(start) + "\n";
       }
       else {
-        LOG_ERROR("JavaScript exception in file '%s' at %d,%d: %s", filenameString, linenum, start, exceptionString);
         result = "JavaScript exception in file '" + string(filenameString) + "' at "
                + StringUtils::itoa(linenum) + "," + StringUtils::itoa(start)
-               + ": " + exceptionString;
+               + ": " + exceptionString + "\n";
       }
+    }
+
+    v8::String::Utf8Value sourceline(message->GetSourceLine());
+
+    if (*sourceline) {
+      string l = *sourceline;
+
+      result += "!" + l + "\n";
+      
+      if (1 < start) {
+        l = string(start - 1, ' ');
+      }
+      else {
+        l = "";
+      }
+
+      l += string((size_t)(end - start + 1), '^');
+
+      result += "!" + l + "\n";
     }
 
     v8::String::Utf8Value stacktrace(tryCatch->StackTrace());
 
     if (*stacktrace && stacktrace.length() > 0) {
-      LOG_DEBUG("stacktrace: %s", *stacktrace);
+      result += "stacktrace: " + string(*stacktrace) + "\n";
     }
   }
 
@@ -1463,7 +1462,7 @@ string TRI_ReportV8Exception (v8::TryCatch* tryCatch) {
 /// @brief prints an exception and stacktrace
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PrintV8Exception (v8::TryCatch* tryCatch) {
+void TRI_LogV8Exception (v8::TryCatch* tryCatch) {
   v8::HandleScope handle_scope;
 
   v8::String::Utf8Value exception(tryCatch->Exception());
@@ -1488,18 +1487,18 @@ void TRI_PrintV8Exception (v8::TryCatch* tryCatch) {
 
     if (filenameString == 0) {
       if (exceptionString == 0) {
-        LOG_ERROR("exception");
+        LOG_ERROR("JavaScript exception");
       }
       else {
-        LOG_ERROR("exception: %s", exceptionString);
+        LOG_ERROR("JavaScript exception: %s", exceptionString);
       }
     }
     else {
       if (exceptionString == 0) {
-        LOG_ERROR("exception in file '%s' at %d,%d", filenameString, linenum, start);
+        LOG_ERROR("JavaScript exception in file '%s' at %d,%d", filenameString, linenum, start);
       }
       else {
-        LOG_ERROR("exception in file '%s' at %d,%d: %s", filenameString, linenum, start, exceptionString);
+        LOG_ERROR("JavaScript exception in file '%s' at %d,%d: %s", filenameString, linenum, start, exceptionString);
       }
     }
 
@@ -1508,18 +1507,18 @@ void TRI_PrintV8Exception (v8::TryCatch* tryCatch) {
     if (*sourceline) {
       string l = *sourceline;
 
-      LOG_ERROR("[%s]", l.c_str());
+      LOG_ERROR("!%s", l.c_str());
       
       if (1 < start) {
-        l = string(start - 1, '_');
+        l = string(start - 1, ' ');
       }
       else {
-	l = "";
+        l = "";
       }
 
       l += string((size_t)(end - start + 1), '^');
 
-      LOG_ERROR("_%s", l.c_str());
+      LOG_ERROR("!%s", l.c_str());
     }
 
     v8::String::Utf8Value stacktrace(tryCatch->StackTrace());
@@ -1569,19 +1568,13 @@ bool TRI_ExecuteJavaScriptDirectory (v8::Handle<v8::Context> context, char const
 bool TRI_ExecuteStringVocBase (v8::Handle<v8::Context> context,
                                v8::Handle<v8::String> source,
                                v8::Handle<v8::Value> name,
-                               bool printResult,
-                               bool reportExceptions) {
-  v8::HandleScope handleScope;
-  v8::TryCatch tryCatch;
+                               bool printResult) {
+  v8::HandleScope scope;
 
   v8::Handle<v8::Script> script = v8::Script::Compile(source, name);
 
   // compilation failed, print errors that happened during compilation
   if (script.IsEmpty()) {
-    if (reportExceptions) {
-      TRI_PrintV8Exception(&tryCatch);
-    }
-
     return false;
   }
 
@@ -1590,25 +1583,23 @@ bool TRI_ExecuteStringVocBase (v8::Handle<v8::Context> context,
     v8::Handle<v8::Value> result = script->Run();
 
     if (result.IsEmpty()) {
-      assert(tryCatch.HasCaught());
-
-      // print errors that happened during execution
-      if (reportExceptions) {
-        TRI_PrintV8Exception(&tryCatch);
-      }
-
       return false;
     }
     else {
-      assert(! tryCatch.HasCaught());
 
       // if all went well and the result wasn't undefined then print the returned value
       if (printResult && ! result->IsUndefined()) {
+        v8::TryCatch tryCatch;
+
         v8::Handle<v8::String> printFuncName = v8::String::New("print");
         v8::Handle<v8::Function> print = v8::Handle<v8::Function>::Cast(context->Global()->Get(printFuncName));
 
         v8::Handle<v8::Value> args[] = { result };
         print->Call(print, 1, args);
+
+        if (tryCatch.HasCaught()) {
+          TRI_LogV8Exception(&tryCatch);
+        }
       }
 
       return true;

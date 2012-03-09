@@ -668,7 +668,7 @@ void AvocadoServer::executeShell () {
 
   V8LineEditor* console = new V8LineEditor(context, ".avocado");
 
-  console->open();
+  console->open(true);
 
   while (true) {
     while(! v8::V8::IdleNotification()) {
@@ -690,11 +690,16 @@ void AvocadoServer::executeShell () {
     console->addHistory(input);
 
     v8::HandleScope scope;
+    v8::TryCatch tryCatch;
 
-    TRI_ExecuteStringVocBase(context, v8::String::New(input), name, true, true);
-
+    TRI_ExecuteStringVocBase(context, v8::String::New(input), name, true);
     TRI_FreeString(input);
+
+    if (tryCatch.HasCaught()) {
+      cout << TRI_StringifyV8Exception(&tryCatch);
+    }
   }
+
   console->close();
 
   delete console;

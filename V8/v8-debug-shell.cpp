@@ -83,7 +83,7 @@ static void RunShell (v8::Handle<v8::Context> context) {
 
   V8LineEditor* console = new V8LineEditor(context, ".avoc");
 
-  console->open();
+  console->open(true);
 
   while (true) {
     while(! V8::IdleNotification()) {
@@ -103,7 +103,7 @@ static void RunShell (v8::Handle<v8::Context> context) {
 
     HandleScope scope;
 
-    TRI_ExecuteStringVocBase(context, String::New(input), name, true, true);
+    TRI_ExecuteStringVocBase(context, String::New(input), name, true);
     TRI_FreeString(input);
   }
 
@@ -138,7 +138,7 @@ static int RunMain (v8::Handle<v8::Context> context, int argc, char* argv[]) {
       v8::Handle<v8::String> source = v8::String::New(content);
       TRI_FreeString(content);
 
-      bool ok = TRI_ExecuteStringVocBase(context, source, filename, false, true);
+      bool ok = TRI_ExecuteStringVocBase(context, source, filename, false);
 
       if (! ok) {
         return 1;

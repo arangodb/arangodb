@@ -66,9 +66,8 @@ static int const COMPACTOR_INTERVAL = 5 * 1000 * 1000;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects a journal, possibly waits until a journal appears
 ///
-/// Note that the function is garbs a lock. We have to release this
-/// lock, in order to allow the gc to start when waiting for a journal
-/// to appear.
+/// Note that the function grabs a lock. We have to release this lock, in order
+/// to allow the gc to start when waiting for a journal to appear.
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_datafile_t* SelectCompactor (TRI_sim_collection_t* collection,

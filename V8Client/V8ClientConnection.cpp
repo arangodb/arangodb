@@ -94,10 +94,12 @@ namespace triagens {
                 _version = vs->getValue();
               }
             }
+            delete json;
           }
         }        
       }
-        
+    
+      delete result; 
     }
 
     V8ClientConnection::~V8ClientConnection () {

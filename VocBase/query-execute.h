@@ -556,7 +556,9 @@ extern "C" {
 /// @brief executes a query
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_query_cursor_t* TRI_ExecuteQueryInstance (TRI_query_instance_t* const);
+TRI_query_cursor_t* TRI_ExecuteQueryInstance (TRI_query_instance_t* const,
+                                              const bool,
+                                              const uint32_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

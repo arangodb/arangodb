@@ -74,6 +74,22 @@ static bool HasNextQueryCursor (const TRI_query_cursor_t* const cursor) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns if the count flag is set for the cursor
+////////////////////////////////////////////////////////////////////////////////
+
+static bool HasCountQueryCursor (const TRI_query_cursor_t* const cursor) {
+  return cursor->_hasCount;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the maximum number of results per transfer
+////////////////////////////////////////////////////////////////////////////////
+
+static uint32_t GetMaxQueryCursor (const TRI_query_cursor_t* const cursor) {
+  return cursor->_maxResults;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief frees a cursor 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -99,7 +115,9 @@ static void FreeQueryCursor (TRI_query_cursor_t* cursor) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_query_cursor_t* TRI_CreateQueryCursor (TRI_query_instance_t* const instance,
-                                           const TRI_select_result_t* const selectResult) {
+                                           const TRI_select_result_t* const selectResult,
+                                           const bool doCount,
+                                           const uint32_t maxResults) {
   TRI_query_cursor_t* cursor;
   
   cursor = TRI_Allocate(sizeof(TRI_query_cursor_t));
@@ -116,6 +134,8 @@ TRI_query_cursor_t* TRI_CreateQueryCursor (TRI_query_instance_t* const instance,
     return NULL;
   }
 
+  cursor->_hasCount = doCount;
+  cursor->_maxResults = maxResults;
   cursor->_deleted = false;
   cursor->_vocbase = instance->_template->_vocbase;
    
@@ -133,6 +153,8 @@ TRI_query_cursor_t* TRI_CreateQueryCursor (TRI_query_instance_t* const instance,
   }
   cursor->next = NextQueryCursor;
   cursor->hasNext = HasNextQueryCursor;
+  cursor->hasCount = HasCountQueryCursor;
+  cursor->getMax = GetMaxQueryCursor;
   cursor->free = FreeQueryCursor;
   
   TRI_InitMutex(&cursor->_lock);

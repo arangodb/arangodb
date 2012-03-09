@@ -61,6 +61,10 @@ function aqlSimpleTestSuite () {
 
   function executeQuery (query) {
     var aQuery = AQL_PREPARE(db, query);
+    if (aQuery instanceof AvocadoQueryError) {
+      print(query, aQuery.message);
+    }
+    assertFalse(aQuery instanceof AvocadoQueryError);
     if (aQuery) {
       return aQuery.execute();
     }
@@ -84,27 +88,52 @@ function aqlSimpleTestSuite () {
   }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief assemble a query string from the parameters given and run the query
+////////////////////////////////////////////////////////////////////////////////
+
+  function runQuery (select, wheres, limit, order) {
+    var query = this.assembleQuery(select, wheres, limit, order);
+    var result = this.getQueryResults(query);
+    assertFalse(result instanceof AvocadoQueryError);
+
+    return result;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief assemble a query string from the parameters given
 ////////////////////////////////////////////////////////////////////////////////
 
-  function assembleQuery (value1, value2, limit) {
-    var query = 'SELECT { } FROM ' + this.collection._name + ' c WHERE ';
-    var cond = '';
-
-    if (value1 !== undefined) {
-      cond += value1;
-    }
-    if (value2 !== undefined) {
-      if (cond != '') {
-        cond += ' && ';
+  function assembleQuery (select, wheres, limit, order) {
+    var selectClause = select;
+    
+    var whereClause = "";
+    if (wheres instanceof Array) {
+      whereClause = "WHERE ";
+      var found = false;
+      for (var i in wheres) {
+        if (wheres[i] == "" || wheres[i] === undefined || wheres[i] === null || !wheres.hasOwnProperty(i)) {
+          continue;
+        }
+        if (found) {
+          whereClause += "&& ";
+        }
+        found = true;
+        whereClause += wheres[i] + " ";
       }
-      cond += value2;
     }
-    query += cond;
 
-    if (limit !== undefined) {
-      query += ' LIMIT ' + limit;
+    var orderClause = "";
+    if (order != "" && order !== undefined && order !== null) {
+      orderClause = "ORDER BY " + order + " ";
     }
+
+    var limitClause = "";
+    if (limit !== undefined && limit !== null) {
+      limitClause = "LIMIT " + limit;
+    }
+
+    var query = "SELECT " + selectClause + " FROM " + this.collection._name + " c " + 
+                whereClause + orderClause + limitClause;
 
     return query;
   }
@@ -114,8 +143,7 @@ function aqlSimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function checkLength (expected, value1, value2, limit) {
-    var query = this.assembleQuery(value1, value2, limit);
-    var result = this.getQueryResults(query);
+    var result = this.runQuery("{ }", new Array(value1, value2), limit);
     assertTrue(result instanceof Array);
     var actual = result.length;
     assertEqual(expected, actual);
@@ -503,6 +531,233 @@ function aqlSimpleTestSuite () {
     this.checkLength(48,'c.value1 >= 9', 'c.value2 <= 3');
     this.checkLength(12,'c.value1 >= 9', 'c.value2 == 5');
     this.checkLength(2,'c.value1 <= 9', 'c.value2 == 8');
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check query result values
+////////////////////////////////////////////////////////////////////////////////
+
+  function testIdemValues1 () {
+    for (var i = 0; i <= 20; i++) {
+      var results = this.runQuery("{ value: c.value1 }", new Array("c.value1 == " + i));
+      for (var j = 0; j < results.length; j++) {
+        assertEqual(i, results[j]["value"]);
+      }
+    }
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check query result values
+////////////////////////////////////////////////////////////////////////////////
+
+  function testIdemValues2 () {
+    for (var i = 0; i <= 20; i++) {
+      var results = this.runQuery("{ value: c.value2 }", new Array("c.value2 == " + i));
+      for (var j = 0; j < results.length; j++) {
+        assertEqual(i, results[j]["value"]);
+      }
+    }
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check query result values
+////////////////////////////////////////////////////////////////////////////////
+
+  function testIdemValues3 () {
+    for (var i = 0; i <= 20; i++) {
+      var results = this.runQuery("{ value1: c.value1, value2: c.value2 }", new Array("c.value1 == " + i, "c.value2 == " + i));
+      for (var j = 0; j < results.length; j++) {
+        assertEqual(i, results[j]["value1"]);
+        assertEqual(i, results[j]["value2"]);
+      }
+    }
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check query result values
+////////////////////////////////////////////////////////////////////////////////
+
+  function testIdemValues3 () {
+    for (var i = 0; i <= 20; i++) {
+      var results = this.runQuery("{ value1: c.value1, value2: c.value2 }", new Array("c.value1 == " + i, "c.value2 == " + i));
+      for (var j = 0; j < results.length; j++) {
+        assertEqual(i, results[j]["value1"]);
+        assertEqual(i, results[j]["value2"]);
+      }
+    }
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check computed query result values
+////////////////////////////////////////////////////////////////////////////////
+
+  function testValueTypes1 () {
+    for (var i = 0; i <= 20; i++) {
+      var results = this.runQuery("{ value1: c.value1, value2: c.value1 - 1, value3: c.value1 + 1, value4: null, value5: 'der fux' + 'xx' }", new Array("c.value1 == " + i));
+      for (var j = 0; j < results.length; j++) {
+        assertEqual(i, results[j]["value1"]);
+        assertEqual(i - 1, results[j]["value2"]);
+        assertEqual(i + 1, results[j]["value3"]);
+        assertEqual(null, results[j]["value4"]);
+        assertEqual("der fuxxx", results[j]["value5"]);
+      }
+    }
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check computed const result values
+////////////////////////////////////////////////////////////////////////////////
+
+  function testValueTypes2 () {
+    for (var i = 0; i <= 20; i++) {
+      var results = this.runQuery("{ value1: null, value2: null + null, value3: undefined, value4: [], value5: { }, value6: 0, value7: 0.0 }", new Array("c.value1 == " + i));
+      for (var j = 0; j < results.length; j++) {
+        assertEqual(null, results[j]["value1"]);
+        assertEqual(0, results[j]["value2"]);
+        assertEqual(undefined, results[j]["value3"]);
+        assertEqual([], results[j]["value4"]);
+        assertEqual({}, results[j]["value5"]);
+        assertEqual(0, results[j]["value6"]);
+        assertEqual(0.0, results[j]["value7"]);
+      }
+    }
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check numeric result values
+////////////////////////////////////////////////////////////////////////////////
+
+  function testNumericValues1 () {
+    for (var i = 0; i <= 20; i++) {
+      var results = this.runQuery("{ value1: 0, value2: -0, value3: +0, value4: 0 + 0, value5: 0 - 0, value6: 0 * 0 }", new Array("c.value1 == " + i));
+      for (var j = 0; j < results.length; j++) {
+        assertEqual(0, results[j]["value1"]);
+        assertEqual(0, results[j]["value2"]);
+        assertEqual(0, results[j]["value3"]);
+        assertEqual(0, results[j]["value4"]);
+        assertEqual(0, results[j]["value5"]);
+        assertEqual(0, results[j]["value6"]);
+      }
+    }
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check numeric result values
+////////////////////////////////////////////////////////////////////////////////
+
+  function testNumericValues2 () {
+    for (var i = 0; i <= 20; i++) {
+      var results = this.runQuery("{ value1: 1, value2: -1, value3: +1, value4: -1 + 2, value5: 2 - 1, value6: 1 * 1 }", new Array("c.value1 == " + i));
+      for (var j = 0; j < results.length; j++) {
+        assertEqual(1, results[j]["value1"]);
+        assertEqual(-1, results[j]["value2"]);
+        assertEqual(1, results[j]["value3"]);
+        assertEqual(1, results[j]["value4"]);
+        assertEqual(1, results[j]["value5"]);
+        assertEqual(1, results[j]["value6"]);
+      }
+    }
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check numeric result values
+////////////////////////////////////////////////////////////////////////////////
+
+  function testNumericValues3 () {
+    for (var i = 0; i <= 20; i++) {
+      var results = this.runQuery("{ value1: 1.0, value2: -1.0, value3: +1.0, value4: -1.0 + 2.0, value5: 2.0 - 1.0, value6: 1.0 * 1.0 }", new Array("c.value1 == " + i));
+      for (var j = 0; j < results.length; j++) {
+        assertEqual(1, results[j]["value1"]);
+        assertEqual(-1, results[j]["value2"]);
+        assertEqual(1, results[j]["value3"]);
+        assertEqual(1, results[j]["value4"]);
+        assertEqual(1, results[j]["value5"]);
+        assertEqual(1, results[j]["value6"]);
+      }
+    }
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check numeric result values
+////////////////////////////////////////////////////////////////////////////////
+
+  function testNumericValues4 () {
+    for (var i = 0; i <= 20; i++) {
+      var results = this.runQuery("{ value1: 42.0 - 10, value2: -15 + 37.5, value3: +11.4 - 18.3, value4: -15.3 - 16.5, value5: 14.0 - 18.5, value6: 14.2 * -13.5, value7: -14.05 * -14.15 }", new Array("c.value1 == " + i));
+      for (var j = 0; j < results.length; j++) {
+        assertEqual(32, results[j]["value1"]);
+        assertEqual(22.5, results[j]["value2"]);
+        assertEqual(-6.9, results[j]["value3"]);
+        assertEqual(-31.8, results[j]["value4"]);
+        assertEqual(-4.5, results[j]["value5"]);
+        assertEqual(-191.7, results[j]["value6"]);
+        assertEqual(198.8075, results[j]["value7"]);
+      }
+    }
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check string result values
+////////////////////////////////////////////////////////////////////////////////
+
+  function testStringValues1 () {
+    for (var i = 0; i <= 20; i++) {
+      var results = this.runQuery("{ value1: '', value2: ' ', value3: '   ', value4: '\\'', value5: '\n', value6: '\\\\ \n\\'\\n\\\\\\'' }", new Array("c.value1 == " + i));
+      for (var j = 0; j < results.length; j++) {
+        assertEqual("", results[j]["value1"]);
+        assertEqual(" ", results[j]["value2"]);
+        assertEqual("   ", results[j]["value3"]);
+        assertEqual("\'", results[j]["value4"]);
+        assertEqual("\n", results[j]["value5"]);
+        assertEqual("\\ \n\'\n\\\'", results[j]["value6"]);
+      }
+    }
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check string result values
+////////////////////////////////////////////////////////////////////////////////
+
+  function testStringValues2 () {
+    for (var i = 0; i <= 20; i++) {
+      var results = this.runQuery('{ value1: "", value2: " ", value3: "   ", value4: "\\"", value5: "\n", value6: "\\\\ \n\\"\\n\\\\\\"" }', new Array("c.value1 == " + i));
+      for (var j = 0; j < results.length; j++) {
+        assertEqual("", results[j]["value1"]);
+        assertEqual(" ", results[j]["value2"]);
+        assertEqual("   ", results[j]["value3"]);
+        assertEqual("\"", results[j]["value4"]);
+        assertEqual("\n", results[j]["value5"]);
+        assertEqual("\\ \n\"\n\\\"", results[j]["value6"]);
+      }
+    }
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check document result values
+////////////////////////////////////////////////////////////////////////////////
+
+  function testDocumentValues () {
+    var expected = { "value1" : { "value11" : { "value111" : "", "value112" : 4 }, "value12" : "bang" }, "value2" : -5, "value3": { } };
+    for (var i = 0; i <= 20; i++) {
+      var results = this.runQuery(JSON.stringify(expected), new Array("c.value1 == " + i));
+      for (var j = 0; j < results.length; j++) {
+        assertEqual(expected, results[j]); 
+      }
+    }
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check array result values
+////////////////////////////////////////////////////////////////////////////////
+
+  function testArrayValues () {
+    var expected = { "v" : [ 1, 2, 5, 99, { }, [ "value1", "value99", [ { "value5" : 5, "null" : null }, [ 1, -99, 0 ], "peng" ], { "x": 9 } ], { "aha" : 55 }, [ 0 ], [ ] ] };
+    for (var i = 0; i <= 20; i++) {
+      var results = this.runQuery(JSON.stringify(expected), new Array("c.value1 == " + i));
+      for (var j = 0; j < results.length; j++) {
+        assertEqual(expected, results[j]); 
+      }
+    }
   }
 
 }

@@ -140,12 +140,11 @@ static void WaitSync (TRI_sim_collection_t* collection,
                       TRI_datafile_t* journal,
                       char const* position) {
   TRI_collection_t* base;
-  bool done;
 
   base = &collection->base.base;
 
   // no condition at all
-  if (0 == base->_syncAfterObjects && 0 == base->_syncAfterBytes && 0 == base->_syncAfterTime) {
+  if (! base->_waitForSync) {
     return;
   }
 
@@ -153,7 +152,6 @@ static void WaitSync (TRI_sim_collection_t* collection,
 
   // wait until the sync condition is fullfilled
   while (true) {
-    done = true;
 
     // check for error
     if (journal->_state == TRI_DF_STATE_WRITE_ERROR) {
@@ -161,37 +159,7 @@ static void WaitSync (TRI_sim_collection_t* collection,
     }
 
     // always sync
-    if (1 == base->_syncAfterObjects) {
-      if (journal->_synced < position) {
-        done = false;
-      }
-    }
-
-    // at most that many outstanding objects
-    else if (1 < base->_syncAfterObjects) {
-      if (journal->_nWritten - journal->_nSynced < base->_syncAfterObjects) {
-        done = false;
-      }
-    }
-
-    // at most that many outstanding bytes
-    if (0 < base->_syncAfterBytes) {
-      if (journal->_written - journal->_synced < base->_syncAfterBytes) {
-        done = false;
-      }
-    }
-
-    // at most that many seconds
-    if (0 < base->_syncAfterTime && journal->_synced < journal->_written) {
-      double t = TRI_microtime();
-
-      if (journal->_lastSynced < t - base->_syncAfterTime) {
-        done = false;
-      }
-    }
-
-    // stop waiting of we reached our limits
-    if (done) {
+    if (position <= journal->_synced) {
       break;
     }
 

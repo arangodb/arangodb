@@ -137,6 +137,7 @@ string const& JSLoader::findScript (string const& name) {
 
 bool JSLoader::loadScript (v8::Persistent<v8::Context> context, string const& name) {
   v8::HandleScope scope;
+  v8::TryCatch tryCatch;
 
   findScript(name);
 
@@ -146,11 +147,17 @@ bool JSLoader::loadScript (v8::Persistent<v8::Context> context, string const& na
     return false;
   }
 
-  return TRI_ExecuteStringVocBase(context,
-                                  v8::String::New(i->second.c_str()),
-                                  v8::String::New(name.c_str()),
-                                  false,
-                                  true);
+  TRI_ExecuteStringVocBase(context,
+                           v8::String::New(i->second.c_str()),
+                           v8::String::New(name.c_str()),
+                           false);
+
+  if (tryCatch.HasCaught()) {
+    TRI_LogV8Exception(&tryCatch);
+    return false;
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -158,6 +165,9 @@ bool JSLoader::loadScript (v8::Persistent<v8::Context> context, string const& na
 ////////////////////////////////////////////////////////////////////////////////
 
 bool JSLoader::loadAllScripts (v8::Persistent<v8::Context> context) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
   if (_directory.empty()) {
     return true;
   }
@@ -171,6 +181,7 @@ bool JSLoader::loadAllScripts (v8::Persistent<v8::Context> context) {
 
 bool JSLoader::executeScript (v8::Persistent<v8::Context> context, string const& name) {
   v8::HandleScope scope;
+  v8::TryCatch tryCatch;
 
   findScript(name);
 
@@ -182,11 +193,17 @@ bool JSLoader::executeScript (v8::Persistent<v8::Context> context, string const&
 
   string content = "(function() { " + i->second + "/* end-of-file '" + name + "' */ })()";
 
-  return TRI_ExecuteStringVocBase(context,
-                                  v8::String::New(content.c_str()),
-                                  v8::String::New(name.c_str()),
-                                  false,
-                                  true);
+  TRI_ExecuteStringVocBase(context,
+                           v8::String::New(content.c_str()),
+                           v8::String::New(name.c_str()),
+                           false);
+
+  if (! tryCatch.HasCaught()) {
+    TRI_LogV8Exception(&tryCatch);
+    return false;
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -194,6 +211,9 @@ bool JSLoader::executeScript (v8::Persistent<v8::Context> context, string const&
 ////////////////////////////////////////////////////////////////////////////////
 
 bool JSLoader::executeAllScripts (v8::Persistent<v8::Context> context) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
   if (_directory.empty()) {
     return true;
   }
