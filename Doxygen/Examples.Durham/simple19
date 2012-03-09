@@ -1,0 +1,4 @@
+avocado> var a = db.users.select( {"name" : "Peter" } );
+avocado> while (a.hasNext()) print(a.next());
+{ "id" : 323, "name" : "Peter", "_id" : "553063885:554702285" } 
+{ "id" : 535, "name" : "Peter", "_id" : "553063885:554636749" }

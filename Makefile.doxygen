@@ -17,19 +17,19 @@ Doxygen/.setup-directories:
 	@touch $@
 
 Doxygen/js/%.c: @srcdir@/js/%.js Doxygen/.setup-directories
-	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
 Doxygen/js/system/%.c: @srcdir@/js/system/%.js Doxygen/.setup-directories
-	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
 Doxygen/js/modules/%.c: @srcdir@/js/system/%.js Doxygen/.setup-directories
-	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
 Doxygen/js/bootstrap/%.c: @srcdir@/js/bootstrap/%.js Doxygen/.setup-directories
-	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
 Doxygen/xml/%.md: Doxygen/xml/%.xml
-	python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
+	@python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
 
 ################################################################################
 ## Doxygen
@@ -48,8 +48,8 @@ doxygen: Doxygen/avocado.doxy $(DOXYGEN)
 
 wiki: $(WIKI)
 	@test -d Doxygen/wiki || mkdir Doxygen/wiki
-	for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/pandoc.sh $$w; done
-	for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/md2html.sh `echo $$w | sed -e 's:/xml/:/wiki/:g'`; done
+	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/pandoc.sh $$w; done
+	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/md2html.sh `echo $$w | sed -e 's:/xml/:/wiki/:g'`; done
 
 ################################################################################
 ## CLEANUP

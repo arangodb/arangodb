@@ -308,6 +308,26 @@ void TRI_CreateActionVocBase (string const& name,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief free all existing actions
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeActionsVocBase (void) {
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  WRITE_LOCKER(ActionsLock);
+  WRITE_LOCKER(v8g->ActionsLock);
+
+  map<string, TRI_action_t* >::iterator it;
+
+  for (it = Actions.begin(); it != Actions.end(); it++) {
+    delete (*it).second;
+  }
+  Actions.clear();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an action
 ////////////////////////////////////////////////////////////////////////////////
 

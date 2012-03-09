@@ -65,8 +65,6 @@ using namespace triagens::avocado;
 ///     <ol>
 ///      <li>@ref GeoCoordinates
 ///      </li>
-///      <li>@ref Pagination
-///      </li>
 ///     </ol>
 ///    </li>
 ///    <li>Vertices, Edges, and Graphs
@@ -85,6 +83,17 @@ using namespace triagens::avocado;
 ///     <ol>
 ///      <li>@ref RestDocument
 ///      </li>
+///     </ol>
+///    </li>
+///   </ol>
+///  </li>
+///  <li>@ref DBAdmin
+///   <ol>
+///    <li>@ref DBAdminDurability
+///    </li>
+///    <li>@ref DBAdminIndex
+///     <ol>
+///      <li>@ref DBAdminIndexGeo
 ///     </ol>
 ///    </li>
 ///   </ol>
@@ -191,6 +200,65 @@ using namespace triagens::avocado;
 /// @CMDOPT{--shell}
 ///
 /// Opens a debug shell instead of starting the HTTP server.
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page DBAdminTOC
+///
+/// <ol>
+///  <li>@ref DBAdminDurability
+///  </li>
+///  <li>@ref DBAdminIndex
+///   <ol>
+///    <li>@ref DBAdminIndexGeo
+///   </ol>
+///  </li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page DBAdmin Database Administration
+///
+/// <hr>
+/// @copydetails DBAdminTOC
+/// <hr>
+///
+/// @section DBAdminDurability Durability
+///
+/// @subsection DBAdminDurability1 Mostly Memory/Durability
+///
+/// Database documents are stored in the memory-memory-mapped files are used to
+/// store them. The operating system has the advantageous option to decide
+/// swapping sparsely used areas out of the main memory. Per default, these
+/// memory-mapped files are synced frequently - advantageously storing all
+/// documents securely at once (durability).
+///
+/// @subsection DBAdminDurability2 AppendOnly/MVCC
+/// 
+/// Instead of overwriting existing documents, a completely new version of the
+/// document is generated. The two benefits are:
+///
+/// - Objects can be stored coherently and compactly in the main memory.
+/// - Objects are preserved-isolated writing and reading transactions allow
+///   accessing these objects for parallel operations.
+///
+/// The system collects obsolete versions as garbage, recognizing them as
+/// forsaken. Garbage collection is asynchronous and runs parallel to other
+/// processes.
+///
+/// @subsection DBAdminDurability3 Configuration
+///
+/// @copydetails JS_ParameterVocbaseCol
+///
+/// @section DBAdminIndex Index Management
+///
+/// @subsection DBAdminIndexHash Hash Indexes
+///
+/// @copydetails JS_EnsureHashIndexVocbaseCol
+///
+/// @subsection DBAdminIndexGeo Geo Indexes
+///
+/// @copydetails JS_EnsureGeoIndexVocbaseCol
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
@@ -373,5 +441,5 @@ int main (int argc, char* argv[]) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
 // End:
