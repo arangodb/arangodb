@@ -273,6 +273,11 @@ static TRI_doc_mptr_t* CreateDocument (TRI_sim_collection_t* collection,
 
   if (journal == NULL) {
     collection->base.base._lastError = TRI_set_errno(TRI_VOC_ERROR_NO_JOURNAL);
+
+    if (release) {
+      collection->base.endWrite(&collection->base);
+    }
+
     return NULL;
   }
 
@@ -368,6 +373,11 @@ static TRI_doc_mptr_t const* UpdateDocument (TRI_sim_collection_t* collection,
       if (rid != 0) {
         if (rid != header->_rid) {
           TRI_set_errno(TRI_VOC_ERROR_CONFLICT);
+
+          if (release) {
+            collection->base.endWrite(&collection->base);
+          }
+
           return NULL;
         }
       }
@@ -379,10 +389,20 @@ static TRI_doc_mptr_t const* UpdateDocument (TRI_sim_collection_t* collection,
 
     case TRI_DOC_UPDATE_CONFLICT:
       TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_PARAMETER);
+
+      if (release) {
+        collection->base.endWrite(&collection->base);
+      }
+
       return NULL;
 
     case TRI_DOC_UPDATE_ILLEGAL:
       TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_PARAMETER);
+
+      if (release) {
+        collection->base.endWrite(&collection->base);
+      }
+
       return NULL;
   }
 
@@ -395,6 +415,11 @@ static TRI_doc_mptr_t const* UpdateDocument (TRI_sim_collection_t* collection,
 
   if (journal == NULL) {
     collection->base.base._lastError = TRI_set_errno(TRI_VOC_ERROR_NO_JOURNAL);
+
+    if (release) {
+      collection->base.endWrite(&collection->base);
+    }
+
     return NULL;
   }
 
@@ -470,6 +495,11 @@ static bool DeleteDocument (TRI_sim_collection_t* collection,
 
   if (header == NULL || header->_deletion != 0) {
     TRI_set_errno(TRI_VOC_ERROR_DOCUMENT_NOT_FOUND);
+
+    if (release) {
+      collection->base.endWrite(&collection->base);
+    }
+
     return false;
   }
 
@@ -479,6 +509,11 @@ static bool DeleteDocument (TRI_sim_collection_t* collection,
       if (rid != 0) {
         if (rid != header->_rid) {
           TRI_set_errno(TRI_VOC_ERROR_CONFLICT);
+
+          if (release) {
+            collection->base.endWrite(&collection->base);
+          }
+
           return NULL;
         }
       }
@@ -490,10 +525,20 @@ static bool DeleteDocument (TRI_sim_collection_t* collection,
 
     case TRI_DOC_UPDATE_CONFLICT:
       TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_PARAMETER);
+
+      if (release) {
+        collection->base.endWrite(&collection->base);
+      }
+
       return NULL;
 
     case TRI_DOC_UPDATE_ILLEGAL:
       TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_PARAMETER);
+
+      if (release) {
+        collection->base.endWrite(&collection->base);
+      }
+
       return NULL;
   }
 
@@ -506,6 +551,11 @@ static bool DeleteDocument (TRI_sim_collection_t* collection,
 
   if (journal == NULL) {
     collection->base.base._lastError = TRI_set_errno(TRI_VOC_ERROR_NO_JOURNAL);
+
+    if (release) {
+      collection->base.endWrite(&collection->base);
+    }
+
     return false;
   }
 
@@ -1120,7 +1170,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 /// @brief iterator for index open
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool OpenIndex (char const* filename, void* data) {
+static bool OpenIndexIterator (char const* filename, void* data) {
   TRI_idx_iid_t iid;
   TRI_index_t* idx;
   TRI_json_t* fieldCount;
@@ -1219,10 +1269,10 @@ static bool OpenIndex (char const* filename, void* data) {
   }
   
   // ...........................................................................
-  // HASH INDEX
+  // HASH INDEX OR SKIPLIST INDEX
   // ...........................................................................
 
-  else if (TRI_EqualString(typeStr, "hash")) {
+  else if (TRI_EqualString(typeStr, "hash") || TRI_EqualString(typeStr, "skiplist")) {
   
     // Determine if the hash index is unique or non-unique
     gjs = TRI_LookupArrayJson(json, "unique");
@@ -1232,7 +1282,8 @@ static bool OpenIndex (char const* filename, void* data) {
       uniqueIndex = gjs->_value._boolean;
     }
     else {
-      LOG_ERROR("ignore hash-index %lu, could not determine if unique or non-unique",
+      LOG_ERROR("ignore %s-index %lu, could not determine if unique or non-unique",
+                typeStr,
                 (unsigned long) iid);
 
       TRI_FreeJson(json);
@@ -1249,7 +1300,7 @@ static bool OpenIndex (char const* filename, void* data) {
     }
 
     if (intCount < 1) {
-      LOG_ERROR("ignore hash-index %lu, field count missing", (unsigned long) iid);
+      LOG_ERROR("ignore %s-index %lu, field count missing", typeStr, (unsigned long) iid);
 
       TRI_FreeJson(json);
       return false;
@@ -1266,7 +1317,7 @@ static bool OpenIndex (char const* filename, void* data) {
       fieldStr = TRI_LookupArrayJson(json, fieldChar);
 
       if (fieldStr->_type != TRI_JSON_STRING) {
-        LOG_ERROR("ignore hash-index %lu, invalid field name for hash index",
+        LOG_ERROR("ignore %s-index %lu, invalid field name for hash index",
                   (unsigned long) iid);
 
         TRI_DestroyVector(&attributes);
@@ -1278,80 +1329,16 @@ static bool OpenIndex (char const* filename, void* data) {
     }  
 
     // create the index
-    idx = CreateHashIndexSimCollection (doc, &attributes, iid, uniqueIndex); 
-
-    TRI_DestroyVector(&attributes);
-    TRI_FreeJson(json);
-
-    if (idx == NULL) {
-      LOG_ERROR("cannot create hash index %lu", (unsigned long) iid);
-      return false;
+    if (TRI_EqualString(typeStr, "hash")) {
+      idx = CreateHashIndexSimCollection (doc, &attributes, iid, uniqueIndex); 
     }
-
-    return true;
-  }
-
-  // ...........................................................................
-  // SKIPLIST INDEX
-  // ...........................................................................
-
-  else if (TRI_EqualString(typeStr, "skiplist")) {
-    
-    // Determine if the skiplist index is unique or non-unique
-    gjs = TRI_LookupArrayJson(json, "unique");
-    uniqueIndex = false;
-
-    if (gjs != NULL && gjs->_type == TRI_JSON_BOOLEAN) {
-      uniqueIndex = gjs->_value._boolean;
+    else if (TRI_EqualString(typeStr, "skiplist")) {
+      idx = CreateSkiplistIndexSimCollection (doc, &attributes, iid, uniqueIndex); 
     }
     else {
-      LOG_ERROR("ignore skiplist-index %lu, could not determine if unique or non-unique",
-                (unsigned long) iid);
-
-      TRI_FreeJson(json);
-      return false;
-    }  
-    
-    // Extract the list of fields
-    fieldCount = 0;
-    fieldCount = TRI_LookupArrayJson(json, "fieldCount");
-    intCount = 0;
-
-    if ( (fieldCount != NULL) && (fieldCount->_type == TRI_JSON_NUMBER) ) {
-      intCount = fieldCount->_value._number;
+      LOG_ERROR("internal error for hash type '%s'", typeStr);
+      idx = NULL;
     }
-
-    if (intCount < 1) {
-      LOG_ERROR("ignore skiplist-index %lu, field count missing", (unsigned long) iid);
-
-      TRI_FreeJson(json);
-      return false;
-    }
-    
-    // Initialise the vector in which we store the fields on which the hashing
-    // will be based.
-    TRI_InitVector(&attributes, sizeof(char*));
-
-    // find fields
-    for (int j = 0; j < intCount; ++j) {
-      sprintf(fieldChar, "field_%i", j);
-
-      fieldStr = TRI_LookupArrayJson(json, fieldChar);
-
-      if (fieldStr->_type != TRI_JSON_STRING) {
-        LOG_ERROR("ignore skiplist-index %lu, invalid field name for hash index",
-                  (unsigned long) iid);
-
-        TRI_DestroyVector(&attributes);
-        TRI_FreeJson(json);
-        return false;
-      }  
-
-      TRI_PushBackVector(&attributes, &(fieldStr->_value._string.data));
-    }  
-    
-    // create the index
-    idx = CreateSkiplistIndexSimCollection (doc, &attributes, iid, uniqueIndex); 
 
     TRI_DestroyVector(&attributes);
     TRI_FreeJson(json);
@@ -1363,7 +1350,7 @@ static bool OpenIndex (char const* filename, void* data) {
 
     return true;
   }
-  
+
   // .........................................................................
   // ups, unknown index type
   // .........................................................................
@@ -1647,7 +1634,7 @@ TRI_sim_collection_t* TRI_OpenSimCollection (char const* path) {
 
   // read all documents and fill indexes
   TRI_IterateCollection(collection, OpenIterator, collection);
-  TRI_IterateIndexCollection(collection, OpenIndex, collection);
+  TRI_IterateIndexCollection(collection, OpenIndexIterator, collection);
 
   // output infomations about datafiles and journals
   if (TRI_IsTraceLogging(__FILE__)) {
@@ -1970,6 +1957,7 @@ static bool DeleteImmediateIndexes (TRI_sim_collection_t* collection,
 
 static bool FillIndex (TRI_sim_collection_t* collection,
                        TRI_index_t* idx) {
+  TRI_doc_mptr_t const* mptr;
   size_t n;
   size_t scanned;
   void** end;
@@ -1983,15 +1971,19 @@ static bool FillIndex (TRI_sim_collection_t* collection,
   scanned = 0;
 
   for (;  ptr < end;  ++ptr) {
-    if (*ptr) {
+    if (*ptr != NULL) {
+      mptr = *ptr;
+
       ++scanned;
 
-      if (! idx->insert(idx, *ptr)) {
-        LOG_TRACE("failed to insert document '%lu:%lu'",
-                  (unsigned long) collection->base.base._cid,
-                  (unsigned long) ((TRI_doc_mptr_t const*) ptr)->_did);
+      if (mptr->_deletion == 0) {
+        if (! idx->insert(idx, *ptr)) {
+          LOG_WARNING("failed to insert document '%lu:%lu'",
+                      (unsigned long) collection->base.base._cid,
+                      (unsigned long) mptr->_did);
 
-        return false;
+          return false;
+        }
       }
 
       if (scanned % 10000 == 0) {
