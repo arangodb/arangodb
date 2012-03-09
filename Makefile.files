@@ -286,7 +286,10 @@ DOXYGEN = \
 ################################################################################
 
 WIKI = \
+	Doxygen/xml/AQL.md \
 	Doxygen/xml/Basics.md \
+	Doxygen/xml/DBAdmin.md \
+	Doxygen/xml/SimpleQueries.md \
         Doxygen/xml/Actions.md \
         Doxygen/xml/AvocadoScript.md \
         Doxygen/xml/CommandLine.md \
@@ -296,9 +299,9 @@ WIKI = \
         Doxygen/xml/CommandLineScheduler.md \
         Doxygen/xml/Compiling.md \
         Doxygen/xml/DefineAction.md \
-        Doxygen/xml/GeoCoordinates.md \
         Doxygen/xml/Graphs.md \
         Doxygen/xml/HttpInterface.md \
+        Doxygen/xml/IndexUsage.md \
         Doxygen/xml/InstallManual.md \
         Doxygen/xml/JSModuleActions.md \
         Doxygen/xml/JSModuleConsole.md \
@@ -311,7 +314,6 @@ WIKI = \
         Doxygen/xml/RefManual.md \
         Doxygen/xml/RestDocument.md \
         Doxygen/xml/RestSystem.md \
-	Doxygen/xml/SimpleQueries.md \
         Doxygen/xml/StartStop.md \
         Doxygen/xml/UserManual.md \
         Doxygen/xml/jsUnity.md

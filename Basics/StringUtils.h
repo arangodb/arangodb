@@ -195,7 +195,7 @@ namespace triagens {
 /// @brief escape unicode
 ///
 /// This method escapes a unicode character string by replacing the unicode
-/// characters by a \uXXXX sequence.
+/// characters by a \\uXXXX sequence.
 ////////////////////////////////////////////////////////////////////////////////
 
       string escapeUnicode (string const& name, bool escapeSlash = true);

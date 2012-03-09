@@ -310,7 +310,7 @@ bool TRI_IterateCollection (TRI_collection_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_IterateIndexCollection (TRI_collection_t* collection,
-                                 void (*iterator)(char const* filename, void*),
+                                 bool (*iterator)(char const* filename, void*),
                                  void* data);
 
 ////////////////////////////////////////////////////////////////////////////////

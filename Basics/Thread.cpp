@@ -130,7 +130,7 @@ Thread::~Thread () {
     TRI_StopThread(&_thread);
   }
 
-  TRI_DeatchThread(&_thread);
+  TRI_DetachThread(&_thread);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

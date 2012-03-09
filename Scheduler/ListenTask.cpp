@@ -95,7 +95,9 @@ ListenTask::ListenTask (struct addrinfo *aip, bool reuseAddress)
 
 
 ListenTask::~ListenTask () {
-  close(listenSocket);
+  if (listenSocket != -1) {
+    close(listenSocket);
+  }
 }
 
 // -----------------------------------------------------------------------------

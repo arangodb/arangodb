@@ -792,7 +792,10 @@ DOXYGEN = \
 ################################################################################
 ################################################################################
 WIKI = \
+	Doxygen/xml/AQL.md \
 	Doxygen/xml/Basics.md \
+	Doxygen/xml/DBAdmin.md \
+	Doxygen/xml/SimpleQueries.md \
         Doxygen/xml/Actions.md \
         Doxygen/xml/AvocadoScript.md \
         Doxygen/xml/CommandLine.md \
@@ -802,9 +805,9 @@ WIKI = \
         Doxygen/xml/CommandLineScheduler.md \
         Doxygen/xml/Compiling.md \
         Doxygen/xml/DefineAction.md \
-        Doxygen/xml/GeoCoordinates.md \
         Doxygen/xml/Graphs.md \
         Doxygen/xml/HttpInterface.md \
+        Doxygen/xml/IndexUsage.md \
         Doxygen/xml/InstallManual.md \
         Doxygen/xml/JSModuleActions.md \
         Doxygen/xml/JSModuleConsole.md \
@@ -817,7 +820,6 @@ WIKI = \
         Doxygen/xml/RefManual.md \
         Doxygen/xml/RestDocument.md \
         Doxygen/xml/RestSystem.md \
-	Doxygen/xml/SimpleQueries.md \
         Doxygen/xml/StartStop.md \
         Doxygen/xml/UserManual.md \
         Doxygen/xml/jsUnity.md
@@ -2385,19 +2387,19 @@ Doxygen/.setup-directories:
 	@touch $@
 
 Doxygen/js/%.c: @srcdir@/js/%.js Doxygen/.setup-directories
-	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
 Doxygen/js/system/%.c: @srcdir@/js/system/%.js Doxygen/.setup-directories
-	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
 Doxygen/js/modules/%.c: @srcdir@/js/system/%.js Doxygen/.setup-directories
-	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
 Doxygen/js/bootstrap/%.c: @srcdir@/js/bootstrap/%.js Doxygen/.setup-directories
-	python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
 Doxygen/xml/%.md: Doxygen/xml/%.xml
-	python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
+	@python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
 
 ################################################################################
 ################################################################################
@@ -2414,8 +2416,8 @@ doxygen: Doxygen/avocado.doxy $(DOXYGEN)
 
 wiki: $(WIKI)
 	@test -d Doxygen/wiki || mkdir Doxygen/wiki
-	for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/pandoc.sh $$w; done
-	for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/md2html.sh `echo $$w | sed -e 's:/xml/:/wiki/:g'`; done
+	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/pandoc.sh $$w; done
+	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/md2html.sh `echo $$w | sed -e 's:/xml/:/wiki/:g'`; done
 
 .setup-directories:
 	@test -d js || mkdir js
