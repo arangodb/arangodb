@@ -236,7 +236,7 @@ var console = require("console");
 /// parameter @LIT{foo} is accessible as @LIT{request.parametrs.foo}. A request
 /// header @LIT{bar} is accessible as @LIT{request.headers.bar}. Assume that
 /// the action is defined for the url "/foo/bar" and the request url is
-/// "/foo/bar/hugo/egon". Then the suffix parts @LIT{[ "hugon", "egon" ]}
+/// "/foo/bar/hugo/egon". Then the suffix parts @LIT{[ "hugon"\, "egon" ]}
 /// are availible in @LIT{request.suffix}.
 >>>>>>> added module doc
 ///
