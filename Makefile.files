@@ -275,7 +275,6 @@ DOXYGEN = \
 	Doxygen/js/modules/jsunity.c \
 	Doxygen/js/modules/simple-query.c \
 	Doxygen/js/server/modules.c \
-	Doxygen/js/server/actions.c \
 	Doxygen/js/server/json.c \
 	Doxygen/js/server/shell.c \
 	Doxygen/js/system/collections.c \
