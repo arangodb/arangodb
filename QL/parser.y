@@ -561,6 +561,7 @@ named_attribute:
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($3);
       str->_value._stringValue = TRI_ParseQueryRegisterString(template_, TRI_UnescapeUtf8String($1, strlen($1), &outLength)); 
+      ABORT_IF_OOM(str->_value._stringValue);
 
       $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueNamedValue);
       ABORT_IF_OOM($$);
@@ -574,6 +575,7 @@ named_attribute:
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($3);
       str->_value._stringValue = TRI_ParseQueryRegisterString(template_, TRI_UnescapeUtf8String($1 + 1, strlen($1) - 2, &outLength)); 
+      ABORT_IF_OOM(str->_value._stringValue);
 
       $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueNamedValue);
       ABORT_IF_OOM($$);
@@ -613,7 +615,6 @@ collection_reference:
     }
   ;
 
-
 collection_name:
     IDENTIFIER {
       $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
@@ -627,6 +628,7 @@ collection_name:
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       $$->_value._stringValue = TRI_ParseQueryRegisterString(template_, TRI_UnescapeUtf8String($1 + 1, strlen($1) - 2, &outLength)); 
+      ABORT_IF_OOM($$->_value._stringValue);
     }
   ;
 
@@ -643,6 +645,7 @@ collection_alias:
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       $$->_value._stringValue = TRI_ParseQueryRegisterString(template_, TRI_UnescapeUtf8String($1 + 1, strlen($1) - 2, &outLength)); 
+      ABORT_IF_OOM($$->_value._stringValue);
     }
   ;	
 
@@ -775,6 +778,15 @@ object_access:
       name->_value._stringValue = $2;
       TRI_ParseQueryContextAddElement(template_, name);
     }
+  | '.' QUOTED_IDENTIFIER {
+      TRI_query_node_t* name = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
+      size_t outLength;
+      ABORT_IF_OOM(name);
+      ABORT_IF_OOM($2);
+      name->_value._stringValue = TRI_ParseQueryRegisterString(template_, TRI_UnescapeUtf8String($2 + 1, strlen($2) - 2, &outLength));
+      ABORT_IF_OOM(name->_value._stringValue);
+      TRI_ParseQueryContextAddElement(template_, name);
+    }
   | '.' function_call {
       ABORT_IF_OOM($2);
       TRI_ParseQueryContextAddElement(template_, $2);
@@ -784,6 +796,15 @@ object_access:
       ABORT_IF_OOM(name);
       ABORT_IF_OOM($3);
       name->_value._stringValue = $3;
+      TRI_ParseQueryContextAddElement(template_, name);
+    }
+  | object_access '.' QUOTED_IDENTIFIER {
+      TRI_query_node_t* name = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
+      size_t outLength;
+      ABORT_IF_OOM(name);
+      ABORT_IF_OOM($3);
+      name->_value._stringValue = TRI_ParseQueryRegisterString(template_, TRI_UnescapeUtf8String($3 + 1, strlen($3) - 2, &outLength));
+      ABORT_IF_OOM(name->_value._stringValue);
       TRI_ParseQueryContextAddElement(template_, name);
     }
   | object_access '.' function_call {
@@ -1042,6 +1063,7 @@ atom:
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       $$->_value._stringValue = TRI_ParseQueryRegisterString(template_, TRI_UnescapeUtf8String($1 + 1, strlen($1) - 2, &outLength)); 
+      ABORT_IF_OOM($$->_value._stringValue);
     }
   | REAL {
       double d = TRI_DoubleString($1);

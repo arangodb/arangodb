@@ -33,7 +33,6 @@ var actions = require("actions");
 
 actions.defineHttp({
   url : "hallo-world",
-<<<<<<< HEAD
   context : "user",
 
   callback : 
@@ -88,65 +87,6 @@ actions.defineHttp({
 
         res.body = text;
       }
-=======
-  domain : "user",
-
-  callback : 
-    function (req, res) {
-<<<<<<< HEAD
-      res.responseCode = 200;
-      res.body = "Hallo World\n";
->>>>>>> unfinished actions cleanup
-=======
-      var text;
-
-      res.responseCode = 200;
-      res.contentType = "text/html";
-
-      text = "<h1>Hallo World</h1>\n"
-           + "\n";
-
-      text += "<ul>\n"
-           +  "<li>request type: " + req.requestType + "</li>\n"
-           +  "</ul>\n";
-
-      text += "<h2>Parameters</h1>\n"
-           +  "<ul>\n";
-
-      for (var i in req.parameters) {
-        if (req.parameters.hasOwnProperty(i)) {
-          text += "<li>" + i + " : " + req.parameters[i] + "</li>\n";
-        }
-      }
-
-      text += "</ul>\n";
-
-      if (req.suffix && 0 < req.suffix.length) {
-        text += "<h2>Suffices</h2>\n"
-             + "<ol>\n";
-
-        for (var i = 0;  i < req.suffix.length;  ++i) {
-          text += "<li>" + req.suffix[i] + "</li>\n";
-        }
-
-        text += "</ol>\n\n";
-      }
-
-      if (req.headers) {
-        text += "<h2>Headers</h2>\n"
-             +  "<ul>\n";
-
-        for (var i in req.headers) {
-          if (req.headers.hasOwnProperty(i)) {
-            text += "<li>" + i + " : " + req.headers[i] + "</li>\n";
-          }
-        }
-
-        text += "</ul>\n\n";
-
-        res.body = text;
-      }
->>>>>>> better hallo-world examples
     }
 });
 

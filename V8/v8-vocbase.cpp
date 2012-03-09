@@ -731,6 +731,8 @@ static TRI_rc_cursor_t* ExecuteQuery (v8::Handle<v8::Object> queryObject,
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_query_cursor_t* ExecuteQueryInstance (v8::Handle<v8::Object> queryObject,
+                                                 bool doCount,
+                                                 uint32_t max,
                                                  v8::Handle<v8::Value>* err) {
   v8::TryCatch tryCatch;
 
@@ -743,7 +745,7 @@ static TRI_query_cursor_t* ExecuteQueryInstance (v8::Handle<v8::Object> queryObj
   
   LOG_TRACE("executing query");
 
-  TRI_query_cursor_t* cursor = TRI_ExecuteQueryInstance(instance);
+  TRI_query_cursor_t* cursor = TRI_ExecuteQueryInstance(instance, doCount, max);
   if (!cursor) {
     if (tryCatch.HasCaught()) {
       *err = tryCatch.Exception();
@@ -2037,14 +2039,29 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a query instance
+/// @brief executes a query, returns a cursor
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ExecuteQueryInstance (v8::Arguments const& argv) {
   v8::HandleScope scope;
   
+  // return number of total records in cursor?
+  bool doCount = false;
+  if (argv.Length() > 0) {
+    doCount = TRI_ObjectToBoolean(argv[0]);
+  }
+
+  // maximum number of results to return at once
+  uint32_t max = 1000;
+  if (argv.Length() > 1) {
+    double maxValue = TRI_ObjectToDouble(argv[1]);
+    if (maxValue >= 1.0) {
+      max = (uint32_t) maxValue;
+    }
+  }
+  
   v8::Handle<v8::Value> err;
-  TRI_query_cursor_t* cursor = ExecuteQueryInstance(argv.Holder(), &err);
+  TRI_query_cursor_t* cursor = ExecuteQueryInstance(argv.Holder(), doCount, max, &err);
 
   if (!cursor) {
     return v8::ThrowException(err);
@@ -2063,10 +2080,6 @@ static v8::Handle<v8::Value> JS_ExecuteQueryInstance (v8::Arguments const& argv)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        AQL CURSOR
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              javascript functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2092,6 +2105,7 @@ static v8::Handle<v8::Value> JS_DisposeQueryCursor (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
   }
 
+  // set the deleted flag so the gc can catch this instance
   TRI_LockQueryCursor(cursor);
   cursor->_deleted = true;
   TRI_UnlockQueryCursor(cursor);
@@ -2179,32 +2193,39 @@ static v8::Handle<v8::Value> JS_NextQueryCursor (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
   }
 
+  v8::Handle<v8::Value> value;
+
   TRI_LockQueryCursor(cursor);
   if (cursor->_deleted) {
     TRI_UnlockQueryCursor(cursor);
     return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
   }
 
-  v8::Handle<v8::Value> value;
   bool ok = true;
-
+  TRI_js_exec_context_t context = NULL;
+  
+  // exceptions must be caught in the following part because we hold an exclusive
+  // lock that might otherwise not be freed
   try {
     TRI_rc_result_t* next = cursor->next(cursor);
     if (!next) {
       value = v8::Undefined();
     }
     else {
-      TRI_js_exec_context_t context = TRI_CreateExecutionContext(cursor->_functionCode);
+      context = TRI_CreateExecutionContext(cursor->_functionCode);
       if (context) {
         TRI_DefineSelectExecutionContext(context, next);
         ok = TRI_ExecuteExecutionContext(context, (void*) &value);
-        TRI_FreeExecutionContext(context);
       }
     }
   }
   catch (...) {
   }
 
+  if (context) {
+    TRI_FreeExecutionContext(context);
+  }
+  // always free lock
   TRI_UnlockQueryCursor(cursor);
 
   if (!ok) {
@@ -2217,6 +2238,142 @@ static v8::Handle<v8::Value> JS_NextQueryCursor (v8::Arguments const& argv) {
   }
 
   return scope.Close(value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the next x rows from the cursor in one go
+///
+/// This function constructs multiple rows at once and should be preferred over
+/// hasNext()...next() when iterating over bigger result sets
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetRowsQueryCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: getRows()")));
+  }
+
+  v8::Handle<v8::Object> self = argv.Holder();
+  TRI_query_cursor_t* cursor = UnwrapQueryCursor(self);
+
+  if (!cursor) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
+  }
+  
+  v8::Handle<v8::Array> result = v8::Array::New();
+
+  TRI_LockQueryCursor(cursor);
+  if (cursor->_deleted) {
+    TRI_UnlockQueryCursor(cursor);
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
+  }
+    
+  TRI_js_exec_context_t context = NULL;
+  bool ok = true;
+  
+  // exceptions must be caught in the following part because we hold an exclusive
+  // lock that might otherwise not be freed
+  try {
+    uint32_t max = cursor->getMax(cursor);
+    context = TRI_CreateExecutionContext(cursor->_functionCode);
+
+    if (context) {
+      for (uint32_t i = 0; i < max; i++) {
+        TRI_rc_result_t* next = cursor->next(cursor);
+        if (!next) {
+          break;
+        }
+      
+        TRI_DefineSelectExecutionContext(context, next);
+        v8::Handle<v8::Value> value;
+        ok = TRI_ExecuteExecutionContext(context, (void*) &value);
+        if (ok) {
+          result->Set(i, value);
+        }
+      }
+    }
+  }
+  catch (...) {
+  }
+      
+  if (context) {
+    TRI_FreeExecutionContext(context);
+  }
+  // always free lock
+  TRI_UnlockQueryCursor(cursor);
+
+  if (!ok) {
+    if (tryCatch.HasCaught()) {
+      return scope.Close(v8::ThrowException(tryCatch.Exception()));
+    }
+    else {
+      return scope.Close(v8::ThrowException(v8::String::New("cannot convert to JavaScript")));
+    }
+  }
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return max number of results per transfer for cursor
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetMaxQueryCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: getMax()")));
+  }
+
+  v8::Handle<v8::Object> self = argv.Holder();
+  TRI_query_cursor_t* cursor = UnwrapQueryCursor(self);
+
+  if (!cursor) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
+  }
+
+  TRI_LockQueryCursor(cursor);
+  if (cursor->_deleted) {
+    TRI_UnlockQueryCursor(cursor);
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
+  }
+
+  uint32_t max = cursor->getMax(cursor);
+  TRI_UnlockQueryCursor(cursor);
+  
+  return scope.Close(v8::Number::New(max));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return if count flag was set for cursor
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_HasCountQueryCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: hasCount()")));
+  }
+
+  v8::Handle<v8::Object> self = argv.Holder();
+  TRI_query_cursor_t* cursor = UnwrapQueryCursor(self);
+
+  if (!cursor) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
+  }
+
+  TRI_LockQueryCursor(cursor);
+  if (cursor->_deleted) {
+    TRI_UnlockQueryCursor(cursor);
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
+  }
+
+  bool hasCount = cursor->hasCount(cursor);
+  TRI_UnlockQueryCursor(cursor);
+  
+  return scope.Close(hasCount ? v8::True() : v8::False());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2727,7 +2884,7 @@ static v8::Handle<v8::Value> JS_EnsureUniqueConstraintVocbaseCol (v8::Arguments 
   // .............................................................................  
 
   if (argv.Length() == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("one or more string parameters required for the ensureHashIndex(...) command")));
+    return scope.Close(v8::ThrowException(v8::String::New("one or more string parameters required for the ensureUniqueConstraint(...) command")));
   }
   
   // .............................................................................
@@ -2888,7 +3045,7 @@ static v8::Handle<v8::Value> JS_EnsureMultiHashIndexVocbaseCol (v8::Arguments co
   // .............................................................................  
 
   if (argv.Length() == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("one or more string parameters required for the ensureUniqueConstraint(...) command")));
+    return scope.Close(v8::ThrowException(v8::String::New("one or more string parameters required for the ensureHashIndex(...) command")));
   }
   
   // .............................................................................
@@ -3486,49 +3643,18 @@ static v8::Handle<v8::Value> JS_ParameterVocbaseCol (v8::Arguments const& argv) 
       v8::Handle<v8::Object> po = par->ToObject();
 
       TRI_LockCondition(&sim->_journalsCondition);
-
-      TRI_voc_size_t syncAfterObjects = sim->base.base._syncAfterObjects;
-      TRI_voc_size_t syncAfterBytes = sim->base.base._syncAfterBytes;
-      double syncAfterTime = sim->base.base._syncAfterTime;
-
+      bool waitForSync = sim->base.base._waitForSync;
       TRI_UnlockCondition(&sim->_journalsCondition);
 
-      bool error;
-
       // extract sync after objects
-      if (po->Has(v8g->SyncAfterObjectsKey)) {
-        syncAfterObjects = TRI_ObjectToDouble(po->Get(v8g->SyncAfterObjectsKey), error);
-
-        if (error || syncAfterObjects < 0.0) {
-          return scope.Close(v8::ThrowException(v8::String::New("<parameter>.syncAfterObjects must be a number")));
-        }
-      }
-
-      // extract sync after bytes
-      if (po->Has(v8g->SyncAfterBytesKey)) {
-        syncAfterBytes = TRI_ObjectToDouble(po->Get(v8g->SyncAfterBytesKey), error);
-
-        if (error || syncAfterBytes < 0.0) {
-          return scope.Close(v8::ThrowException(v8::String::New("<parameter>.syncAfterBytes must be a number")));
-        }
-      }
-
-      // extract sync after times
-      if (po->Has(v8g->SyncAfterTimeKey)) {
-        syncAfterTime = TRI_ObjectToDouble(po->Get(v8g->SyncAfterTimeKey), error);
-
-        if (error || syncAfterTime < 0.0) {
-          return scope.Close(v8::ThrowException(v8::String::New("<parameter>.syncAfterTime must be a non-negative number")));
-        }
+      if (po->Has(v8g->WaitForSyncKey)) {
+        waitForSync = TRI_ObjectToBoolean(po->Get(v8g->WaitForSyncKey));
       }
 
       // try to write new parameter to file
       TRI_LockCondition(&sim->_journalsCondition);
 
-      sim->base.base._syncAfterObjects = syncAfterObjects;
-      sim->base.base._syncAfterBytes = syncAfterBytes;
-      sim->base.base._syncAfterTime = syncAfterTime;
-
+      sim->base.base._waitForSync = waitForSync;
       bool ok = TRI_UpdateParameterInfoCollection(&sim->base.base);
 
       TRI_UnlockCondition(&sim->_journalsCondition);
@@ -3546,15 +3672,11 @@ static v8::Handle<v8::Value> JS_ParameterVocbaseCol (v8::Arguments const& argv) 
     TRI_LockCondition(&sim->_journalsCondition);
 
     TRI_voc_size_t maximalSize = sim->base.base._maximalSize;
-    TRI_voc_size_t syncAfterObjects = sim->base.base._syncAfterObjects;
-    TRI_voc_size_t syncAfterBytes = sim->base.base._syncAfterBytes;
-    double syncAfterTime = sim->base.base._syncAfterTime;
+    bool waitForSync = sim->base.base._waitForSync;
 
     TRI_UnlockCondition(&sim->_journalsCondition);
 
-    result->Set(v8g->SyncAfterObjectsKey, v8::Number::New(syncAfterObjects));
-    result->Set(v8g->SyncAfterBytesKey, v8::Number::New(syncAfterBytes));
-    result->Set(v8g->SyncAfterTimeKey, v8::Number::New(syncAfterTime));
+    result->Set(v8g->WaitForSyncKey, waitForSync ? v8::True() : v8::False());
     result->Set(v8g->JournalSizeKey, v8::Number::New(maximalSize));
   }
 
@@ -4555,6 +4677,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> ExecuteFuncName = v8::Persistent<v8::String>::New(v8::String::New("execute"));
   v8::Handle<v8::String> FiguresFuncName = v8::Persistent<v8::String>::New(v8::String::New("figures"));
   v8::Handle<v8::String> GetIndexesFuncName = v8::Persistent<v8::String>::New(v8::String::New("getIndexes"));
+  v8::Handle<v8::String> GetMaxFuncName = v8::Persistent<v8::String>::New(v8::String::New("getMax"));
+  v8::Handle<v8::String> GetRowsFuncName = v8::Persistent<v8::String>::New(v8::String::New("getRows"));
+  v8::Handle<v8::String> HasCountFuncName = v8::Persistent<v8::String>::New(v8::String::New("hasCount"));
   v8::Handle<v8::String> HasNextFuncName = v8::Persistent<v8::String>::New(v8::String::New("hasNext"));
   v8::Handle<v8::String> IdFuncName = v8::Persistent<v8::String>::New(v8::String::New("id"));
   v8::Handle<v8::String> InEdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("inEdges"));
@@ -4579,9 +4704,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   // .............................................................................
 
   v8g->JournalSizeKey = v8::Persistent<v8::String>::New(v8::String::New("journalSize"));
-  v8g->SyncAfterBytesKey = v8::Persistent<v8::String>::New(v8::String::New("syncAfterBytes"));
-  v8g->SyncAfterObjectsKey = v8::Persistent<v8::String>::New(v8::String::New("syncAfterObjects"));
-  v8g->SyncAfterTimeKey = v8::Persistent<v8::String>::New(v8::String::New("syncAfterTime"));
+  v8g->WaitForSyncKey = v8::Persistent<v8::String>::New(v8::String::New("waitForSync"));
 
   if (v8g->DidKey.IsEmpty()) {
     v8g->DidKey = v8::Persistent<v8::String>::New(v8::String::New("_id"));
@@ -4821,11 +4944,14 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(2);
 
-  rt->Set(HasNextFuncName, v8::FunctionTemplate::New(JS_HasNextQueryCursor));
-  rt->Set(NextFuncName, v8::FunctionTemplate::New(JS_NextQueryCursor));
   rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountQueryCursor));
-  rt->Set(IdFuncName, v8::FunctionTemplate::New(JS_IdQueryCursor));
   rt->Set(DisposeFuncName, v8::FunctionTemplate::New(JS_DisposeQueryCursor));
+  rt->Set(GetMaxFuncName, v8::FunctionTemplate::New(JS_GetMaxQueryCursor));
+  rt->Set(GetRowsFuncName, v8::FunctionTemplate::New(JS_GetRowsQueryCursor));
+  rt->Set(HasCountFuncName, v8::FunctionTemplate::New(JS_HasCountQueryCursor));
+  rt->Set(HasNextFuncName, v8::FunctionTemplate::New(JS_HasNextQueryCursor));
+  rt->Set(IdFuncName, v8::FunctionTemplate::New(JS_IdQueryCursor));
+  rt->Set(NextFuncName, v8::FunctionTemplate::New(JS_NextQueryCursor));
 
   v8g->QueryCursorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 

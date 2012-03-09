@@ -762,14 +762,6 @@ static void QLOptimizeRefCountCollections (QL_ast_query_t* const query,
 static void QLOptimizeCountRefs (QL_ast_query_t* const query) {
   TRI_query_node_t* next;
   TRI_query_node_t* node = query->_from._base;
-<<<<<<< HEAD
-=======
-
-  if (query->_from._collections._nrUsed < 2) {
-    // we don't have a join, no need to refcount anything
-    return;
-  }
->>>>>>> JS loader for avocsh
 
   // mark collections used in select, where and order
   QLOptimizeRefCountCollections(query, query->_select._base, REF_TYPE_SELECT);
@@ -923,9 +915,11 @@ void QLOptimizeFreeRangeVector (TRI_vector_pointer_t* vector) {
     if (range->_valueType == RANGE_TYPE_STRING) {
       if (range->_minValue._stringValue) {
         TRI_FreeString(range->_minValue._stringValue);
+        range->_minValue._stringValue = 0;
       }
       if (range->_maxValue._stringValue) {
         TRI_FreeString(range->_maxValue._stringValue);
+        range->_maxValue._stringValue = 0;
       }
     }
 
@@ -1442,7 +1436,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
     }
     else if (range->_valueType == RANGE_TYPE_STRING) { 
       range->_minValue._stringValue = TRI_DuplicateString(valueNode->_value._stringValue);
-      range->_maxValue._stringValue = range->_minValue._stringValue;
+      range->_maxValue._stringValue = TRI_DuplicateString(valueNode->_value._stringValue);
     }
     else if (range->_valueType == RANGE_TYPE_JSON) {
       documentJs = TRI_InitQueryJavascript();
@@ -1454,7 +1448,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
       }
       TRI_ConvertQueryJavascript(documentJs, valueNode, bindParameters);
       range->_minValue._stringValue = TRI_DuplicateString(documentJs->_buffer->_buffer);
-      range->_maxValue._stringValue = range->_minValue._stringValue;
+      range->_maxValue._stringValue = TRI_DuplicateString(documentJs->_buffer->_buffer);
       TRI_FreeQueryJavascript(documentJs);
       if (!range->_minValue._stringValue) {
         TRI_FreeStringBuffer(name);

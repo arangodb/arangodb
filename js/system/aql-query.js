@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief demo actions
+/// @brief query actions
 ///
 /// @file
 ///
@@ -21,54 +21,24 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoAPI
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  global variables
+// -----------------------------------------------------------------------------
 
 var actions = require("actions");
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief geo "near" query
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url : "geo/near",
-  domain : "user",
-
-  parameters : {
-    collection : "collection",
-    lat : "number",
-    lon : "number"
-  },
-
-  callback : function (req, res) {
-    var result = req.collection.near(req.lat, req.lon).distance();
-
-    actions.queryResult(req, res, result);
-  }
-});
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief geo "within" query
-////////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url : "within",
-  domain : "user",
-
-   parameters : {
-     collection : "collection",
-     lat : "number",
-     lon : "number",
-     radius : "number"
-  },
-
-  callback : function (req, res) {
-    var result = req.collection.within(req.lat, req.lon, req.radius).distance();
-
-    actions.queryResult(req, res, result);
-  }
-});
 
 // Local Variables:
 // mode: outline-minor

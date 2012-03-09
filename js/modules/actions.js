@@ -26,8 +26,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
-<<<<<<< HEAD
-<<<<<<< HEAD
 var console = require("console");
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -35,20 +33,11 @@ var console = require("console");
 ///
 /// <ol>
 ///  <li>@ref JSModuleActionsDefineHttp "defineHttp"</li>
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> better error handling
 ///  <li>@ref JSModuleActionsActionResult "actionResult"</li>
 ///  <li>@ref JSModuleActionsActionResultOK "actionResultOK"</li>
 ///  <li>@ref JSModuleActionsActionResultError "actionResultError"</li>
 ///  <li>@ref JSModuleActionsActionResultUnsupported "actionResultUnsupported"</li>
 ///  <li>@ref JSModuleActionsActionError "actionError"</li>
-<<<<<<< HEAD
-=======
->>>>>>> added module doc
-=======
->>>>>>> better error handling
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -63,20 +52,12 @@ var console = require("console");
 ///
 /// @anchor JSModuleActionsDefineHttp
 /// @copydetails JSF_defineHttp
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> doc module actions
 /// <hr>
 ///
 /// @anchor JSModuleActionsActionResult
 /// @copydetails JSF_actionResult
 /// <hr>
 ///
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> better error handling
 /// @anchor JSModuleActionsActionResultOK
 /// @copydetails JSF_actionResultOK
 /// <hr>
@@ -89,11 +70,6 @@ var console = require("console");
 /// @copydetails JSF_actionResultUnsupported
 /// <hr>
 ///
-<<<<<<< HEAD
-=======
->>>>>>> doc module actions
-=======
->>>>>>> better error handling
 /// @anchor JSModuleActionsActionError
 /// @copydetails JSF_actionError
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,47 +100,20 @@ exports.cursorNotModified = 40304;
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-<<<<<<< HEAD
-=======
->>>>>>> unfinished actions cleanup
-=======
-var console = require("console");
->>>>>>> actions are now working again
-=======
-////////////////////////////////////////////////////////////////////////////////
->>>>>>> added module doc
-=======
->>>>>>> better error handling
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-<<<<<<< HEAD
-<<<<<<< HEAD
 /// @addtogroup AvocadoActions
-=======
-/// @addtogroup V8Json V8 JSON
->>>>>>> unfinished actions cleanup
-=======
-/// @addtogroup AvocadoActions
->>>>>>> better error handling
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a result of a query as documents
 ///
-<<<<<<< HEAD
-<<<<<<< HEAD
 /// @FUN{defineHttp(@FA{options})}
-=======
-/// @FUN{defineHttp(@FA{options})
->>>>>>> unfinished actions cleanup
-=======
-/// @FUN{defineHttp(@FA{options})}
->>>>>>> added module doc
 ///
 /// Defines a new action. The @FA{options} are as follows:
 ///
@@ -175,8 +124,6 @@ var console = require("console");
 /// @FA{options.url} is a prefix of the given url and no longer definition
 /// matches.
 ///
-<<<<<<< HEAD
-<<<<<<< HEAD
 /// @FA{options.context}
 ///
 /// The context to which this actions belongs. Possible values are "admin",
@@ -190,7 +137,6 @@ var console = require("console");
 /// It is possible to specify a list of contexts, in case an actions belongs to
 /// more than one context.
 ///
-<<<<<<< HEAD
 /// Note that the url for "user" actions is automatically prefixed
 /// with @LIT{_action}. This applies to all specified contexts. For example, if
 /// the context contains "admin" and "user" and the url is @LIT{hallo}, then the
@@ -202,43 +148,8 @@ var console = require("console");
 /// parameter @LIT{foo} is accessible as @LIT{request.parametrs.foo}. A request
 /// header @LIT{bar} is accessible as @LIT{request.headers.bar}. Assume that
 /// the action is defined for the url "/foo/bar" and the request url is
-/// "/foo/bar/hugo/egon". Then the suffix parts @LIT{[ "hugon", "egon" ]}
-/// are availible in @LIT{request.suffix}.
-=======
-/// @FA{options.domain}
-=======
-/// @FA{options.context}
->>>>>>> added module doc
-///
-/// The context to which this actions belongs. Possible values are "admin",
-/// "monitoring", "api", and "user". All contexts apart from "user" are reserved
-/// for system actions and are database independent. All actions except "user"
-/// and "api" are executed in a different worker queue than the normal queue for
-/// clients. The "api" actions are used by the client api to communicate with
-/// the AvocadoDB server.  Both the "api" and "user" actions are using the same
-/// worker queue.
-///
-=======
->>>>>>> renamed userContext to actionContext
-/// Note that the url for "user" actions is automatically prefixed
-/// with @LIT{_action}. This applies to all specified contexts. For example, if
-/// the context contains "admin" and "user" and the url is @LIT{hallo}, then the
-/// action is accessible under @{/_action/hallo} - even for the admin context.
-///
-/// @FA{options.callback}(@FA{request}, @FA{response})
-///
-<<<<<<< HEAD
-/// The request arguments contains a description of the request. A request
-/// parameter @LIT{foo} is accessible as @LIT{request.foo}.
->>>>>>> unfinished actions cleanup
-=======
-/// The request argument contains a description of the request. A request
-/// parameter @LIT{foo} is accessible as @LIT{request.parametrs.foo}. A request
-/// header @LIT{bar} is accessible as @LIT{request.headers.bar}. Assume that
-/// the action is defined for the url "/foo/bar" and the request url is
 /// "/foo/bar/hugo/egon". Then the suffix parts @LIT{[ "hugon"\, "egon" ]}
 /// are availible in @LIT{request.suffix}.
->>>>>>> added module doc
 ///
 /// The callback must define fill the @FA{response}.
 ///
@@ -262,9 +173,6 @@ var console = require("console");
 
 function defineHttp (options) {
   var url = options.url;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
   var contexts = options.context;
   var callback = options.callback;
   var parameter = options.parameter;
@@ -377,228 +285,11 @@ function actionError (req, res, err) {
   res.responseCode = 500;
   res.contentType = "application/json";
   res.body = JSON.stringify({ 'error' : "" + err });
-=======
-  var domain = options.domain;
-=======
-  var domains = options.domain;
->>>>>>> added action prefix
-=======
-  var contexts = options.context;
->>>>>>> added module doc
-  var callback = options.callback;
-  var parameter = options.parameter;
-  var userContext = false;
-
-  if (! contexts) {
-    contexts = "user";
-  }
-
-  if (typeof contexts == "string") {
-    if (contexts == "user") {
-      userContext = true;
-    }
-
-    contexts = [ contexts ];
-  }
-  else {
-    for (var i = 0;  i < contexts.length && ! userContext;  ++i) {
-      if (context == "user") {
-        userContext = true;
-      }
-    }
-  }
-
-  if (userContext) {
-    url = "_action/" + url;
-  }
-
-  if (typeof callback !== "function") {
-    console.error("callback for '" + url + "' must be a function, got '" + (typeof callback) + "'");
-    return;
-  }
-
-  console.debug("callback ", callback, "\n");
-
-  for (var i = 0;  i < contexts.length;  ++i) {
-    var context = contexts[i];
-    var queue = "CLIENT";
-
-    if (context == "admin") {
-      queue = "SYSTEM";
-    }
-    else if (context == "monitoring") {
-      queue = "MONITORING";
-    }
-
-    try {
-      internal.defineAction(url, queue, callback, parameter);
-      console.debug("defining action '" + url + "' in context " + context + " using queue " + queue);
-    }
-    catch (err) {
-      console.error("action '" + url + "' encountered error: " + err);
-    }
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a response
-///
-/// @FUN{actionResult(@FA{req}, @FA{res}, @FA{code}, @FA{result}, @FA{headers})}
-///
-/// The functions defines a response. @FA{code} is the status code to
-/// return. @FA{result} is the result object, which will be returned as JSON
-/// object in the body. @{headers} is an array of headers to returned.
-////////////////////////////////////////////////////////////////////////////////
-
-function actionResult (req, res, code, result, headers) {
-  res.responseCode = code;
-
-  if (result) {
-    res.contentType = "application/json";
-    res.body = JSON.stringify(result);
-  }
-
-  if (headers != undefined) {
-    res.headers = headers;    
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates an error response
-///
-/// @FUN{actionError(@FA{req}, @FA{res}, @FA{errorMessage})}
-///
-/// The functions generates an error response. The status code is 500 and the
-/// returned object is an array with an attribute @LIT{error} containing
-/// the error message @FA{errorMessage}.
-////////////////////////////////////////////////////////////////////////////////
-
-function actionError (req, res, err) {
-  res.responseCode = 500;
-  res.contentType = "application/json";
-  res.body = JSON.stringify({ 'error' : "" + err });
-}
-
-////////////////////////////////////////////////////////////////////////////////
-<<<<<<< HEAD
-<<<<<<< HEAD
-/// @brief returns a result of a query as documents
-///
-/// @FUN{queryResult(@FA{req}, @FA{res}, @FA{query})}
-///
-/// The functions returns the result of a query using pagination. It assumes
-/// that the request has the numerical parameters @LIT{blocksize} and @LIT{page}
-/// or @LIT{offset}. @LIT{blocksize} determines the maximal number of result
-/// documents to return. You can either specify @LIT{page} or @LIT{offset}.
-/// @LIT{page} is the number of pages to skip, i. e. @LIT{page} *
-/// @LIT{blocksize} documents. @LIT{offset} is the number of documents to skip.
-///
-/// If you are using pagination, than the query must be a sorted query.
-////////////////////////////////////////////////////////////////////////////////
-
-function queryResult (req, res, query) {
-  var result;
-  var offset = 0;
-  var page = 0;
-  var blocksize = 0;
-  var t;
-  var result;
-
-  t = time();
-
-  if (req.blocksize) {
-    blocksize = req.blocksize;
-
-    if (req.page) {
-      page = req.page;
-      offset = page * blocksize;
-      query = query.skip(offset).limit(blocksize);
-    }
-    else {
-      query = query.limit(blocksize);
-    }
-  }
-
-  result = query.toArray();
-
-  result = {
-    total : query.count(),
-    count : query.count(true),
-    offset : offset,
-    blocksize : blocksize,
-    page : page,
-    runtime : internal.time() - t,
-    documents : result
-  };
-
-  res.responseCode = 200;
-  res.contentType = "application/json";
-  res.body = JSON.stringify(result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a result of a query as references
-///
-/// @FUN{queryReferences(@FA{req}, @FA{res}, @FA{query})}
-///
-/// The methods works like @FN{queryResult} but instead of the documents only
-/// document identifiers are returned.
-////////////////////////////////////////////////////////////////////////////////
-
-function queryReferences (req, res, query) {
-  var result;
-  var offset = 0;
-  var page = 0;
-  var blocksize = 0;
-  var t;
-  var result;
-
-  t = internal.time();
-
-  if (req.blocksize) {
-    blocksize = req.blocksize;
-
-    if (req.page) {
-      page = req.page;
-      offset = page * blocksize;
-      query = query.skip(offset).limit(blocksize);
-    }
-    else {
-      query = query.limit(blocksize);
-    }
-  }
-
-  result = [];
-
-  while (query.hasNext()) {
-    result.push(query.nextRef());
-  }
-
-  result = {
-    total : query.count(),
-    count : query.count(true),
-    offset : offset,
-    blocksize : blocksize,
-    page : page,
-    runtime : internal.time() - t,
-    references : result
-  };
-
-  res.responseCode = 200;
-  res.contentType = "application/json";
-  res.body = JSON.stringify(result);
->>>>>>> unfinished actions cleanup
-}
-
-////////////////////////////////////////////////////////////////////////////////
-<<<<<<< HEAD
 /// @brief returns a result
 ///
-<<<<<<< HEAD
-=======
-/// @brief returns a result
-///
->>>>>>> better error handling
 /// @FUN{actionResultOK(@FA{req}, @FA{res}, @FA{code}, @FA{result}, @FA{headers}})}
 ///
 /// Works like @FN{actionResult} but adds the attribute @LIT{error} with
@@ -621,35 +312,12 @@ function actionResultOK (req, res, httpReturnCode, result, headers) {
   
   if (headers != undefined) {
     res.headers = headers;    
-<<<<<<< HEAD
-=======
-/// @FUN{actionResult(@FA{req}, @FA{res}, @FA{code}, @FA{result})}
-///
-/// The functions returns a result object. @FA{code} is the status code
-/// to return.
-////////////////////////////////////////////////////////////////////////////////
-
-function actionResult (req, res, code, result) {
-  if (code == 204) {
-    res.responseCode = code;
-  }
-  else {
-    res.responseCode = code;
-    res.contentType = "application/json";
-    res.body = JSON.stringify(result);
->>>>>>> unfinished actions cleanup
-=======
->>>>>>> better error handling
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns an error
 ///
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> better error handling
 /// @FUN{actionResultError(@FA{req}, @FA{res}, @FA{code}, @FA{errorNum}, @FA{errorMessage}, @FA{headers})}
 ///
 /// The functions generates an error response. The response body is an array
@@ -687,32 +355,9 @@ function actionResultError (req, res, httpReturnCode, errorNum, errorMessage, he
 
 function actionResultUnsupported (req, res, headers) {
   actionResultError(req, res, 405, 405, "Unsupported method", headers);  
-<<<<<<< HEAD
-=======
-/// @FUN{actionError(@FA{req}, @FA{res}, @FA{errorMessage})}
-///
-/// The functions returns an error message. The status code is 500 and the
-/// returned object is an array with an attribute @LIT{error} containing
-/// the error message @FA{errorMessage}.
-////////////////////////////////////////////////////////////////////////////////
-
-function actionError (req, res, err) {
-  res.responseCode = 500;
-  res.contentType = "application/json";
-  res.body = JSON.stringify({ 'error' : "" + err });
->>>>>>> unfinished actions cleanup
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-=======
->>>>>>> action cleanup
-=======
->>>>>>> doc module actions
-=======
-}
-
-////////////////////////////////////////////////////////////////////////////////
->>>>>>> better error handling
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -721,33 +366,16 @@ function actionError (req, res, err) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-<<<<<<< HEAD
-<<<<<<< HEAD
 /// @addtogroup AvocadoActions
-=======
-/// @addtogroup AvocadoGraph
->>>>>>> unfinished actions cleanup
-=======
-/// @addtogroup AvocadoActions
->>>>>>> better error handling
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.defineHttp = defineHttp;
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> better error handling
 exports.actionResult = actionResult;
 exports.actionResultOK = actionResultOK;
 exports.actionResultError = actionResultError;
 exports.actionResultUnsupported = actionResultUnsupported;
 exports.actionError = actionError;
-<<<<<<< HEAD
-=======
->>>>>>> unfinished actions cleanup
-=======
->>>>>>> better error handling
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

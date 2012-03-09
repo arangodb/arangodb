@@ -161,9 +161,7 @@ typedef struct TRI_col_parameter_s {
   char _name[TRI_COL_PATH_LENGTH];   // name of the collection
   TRI_voc_size_t _maximalSize;       // maximal size of memory mapped file
 
-  TRI_voc_size_t _syncAfterObjects;  // 0 = ignore, 1 = always, n = at most n non-synced
-  TRI_voc_size_t _syncAfterBytes;    // 0 = ignore, n = at most n bytes
-  TRI_voc_ms_t _syncAfterTime;       // 0 = ignore, n = at most n milli-seconds
+  bool _waitForSync;                 // if true, wait for msync
 }
 TRI_col_parameter_t;
 
@@ -178,9 +176,7 @@ typedef struct TRI_col_info_s {
 
   char _name[TRI_COL_PATH_LENGTH];   // name of the collection
   TRI_voc_size_t _maximalSize;       // maximal size of memory mapped file
-  TRI_voc_size_t _syncAfterObjects;  // 0 = ignore, 1 = always, n = at most n non-synced
-  TRI_voc_size_t _syncAfterBytes;    // 0 = ignore, n = at most n bytes
-  double _syncAfterTime;             // 0 = ignore, n = at most n seconds
+  TRI_voc_size_t _waitForSync;       // if true, wait for msync
 
   TRI_voc_size_t _size;              // total size of the parameter info block
 }
@@ -201,9 +197,7 @@ typedef struct TRI_collection_s {
   char _name[TRI_COL_PATH_LENGTH];   // name of the collection
 
   TRI_voc_size_t _maximalSize;       // maximal size of memory mapped file
-  TRI_voc_size_t _syncAfterObjects;  // 0 = ignore, 1 = always, n = at most n non-synced
-  TRI_voc_size_t _syncAfterBytes;    // 0 = ignore, n = at most n bytes
-  double _syncAfterTime;             // 0 = ignore, n = at most n seconds
+  TRI_voc_size_t _waitForSync;       // if true, wait for msync
 
   char* _directory;                  // directory of the collection
 

@@ -171,6 +171,10 @@ HttpHandler::status_e RestCollectionHandler::execute () {
 /// document. The "ETag" header field contains the revision of the newly created
 /// document.
 ///
+/// If the collection parameter @LIT{waitForSync} is @LIT{false}, then a
+/// @LIT{HTTP 202} is returned in order to indicate that the document has been
+/// accepted but not yet stored.
+///
 /// If the @FA{collection-identifier} is unknown, then a @LIT{HTTP 404} is
 /// returned.
 ///
@@ -227,6 +231,7 @@ bool RestCollectionHandler::createDocument () {
 
   _documentCollection->beginWrite(_documentCollection);
 
+  bool waitForSync = _documentCollection->base._waitForSync;
   TRI_doc_mptr_t const* mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_DOCUMENT, json, 0, true);
   TRI_voc_did_t did = 0;
   TRI_voc_rid_t rid = 0;
@@ -241,7 +246,13 @@ bool RestCollectionHandler::createDocument () {
   // .............................................................................
 
   if (mptr != 0) {
-    generateCreated(_documentCollection->base._cid, did, rid);
+    if (waitForSync) {
+      generateCreated(_documentCollection->base._cid, did, rid);
+    }
+    else {
+      generateAccepted(_documentCollection->base._cid, did, rid);
+    }
+
     return true;
   }
   else {

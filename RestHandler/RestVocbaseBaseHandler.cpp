@@ -163,6 +163,17 @@ void RestVocbaseBaseHandler::generateCreated (TRI_voc_cid_t cid, TRI_voc_did_t d
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generates accepted message without content but a location header
+////////////////////////////////////////////////////////////////////////////////
+
+void RestVocbaseBaseHandler::generateAccepted (TRI_voc_cid_t cid, TRI_voc_did_t did, TRI_voc_rid_t rid) {
+  response = new HttpResponse(HttpResponse::ACCEPTED);
+
+  response->setHeader("ETag", "\"" + StringUtils::itoa(rid) + "\"");
+  response->setHeader("location", DOCUMENT_PATH + "/" + StringUtils::itoa(cid) + "/" + StringUtils::itoa(did));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generates collection not found error message
 ////////////////////////////////////////////////////////////////////////////////
 

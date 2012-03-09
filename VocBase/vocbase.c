@@ -796,7 +796,7 @@ bool TRI_ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t co
     TRI_InitParameterCollection(&parameter, vc->_name, DEFAULT_MAXIMAL_SIZE);
 
     parameter._type = type;
-    parameter._syncAfterTime = 1;
+    parameter._waitForSync = false;
 
     sim = TRI_CreateSimCollection(vocbase->_path, &parameter);
 

@@ -50,13 +50,6 @@
 #include "RestHandler/RestCollectionHandler.h"
 #include "RestServer/ActionDispatcherThread.h"
 #include "RestServer/AvocadoHttpServer.h"
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-#include "RestServer/SystemActionDispatcherThread.h"
->>>>>>> JS loader for avocsh
-=======
->>>>>>> added module doc
 #include "V8/JSLoader.h"
 #include "V8/v8-actions.h"
 #include "V8/v8-conv.h"
@@ -123,26 +116,16 @@ static JSLoader SystemActionLoader;
 /// @brief action dispatcher thread creator
 ////////////////////////////////////////////////////////////////////////////////
 
-<<<<<<< HEAD
 static DispatcherThread* ClientActionDispatcherThreadCreator (DispatcherQueue* queue) {
   return new ActionDispatcherThread(queue, "CLIENT", &ActionLoader);
-=======
-static DispatcherThread* ActionDisptacherThreadCreator (DispatcherQueue* queue) {
-  return new ActionDisptacherThread(queue, "user");
->>>>>>> added module doc
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief system action dispatcher thread creator
 ////////////////////////////////////////////////////////////////////////////////
 
-<<<<<<< HEAD
 static DispatcherThread* SystemActionDispatcherThreadCreator (DispatcherQueue* queue) {
   return new ActionDispatcherThread(queue, "SYSTEM", &SystemActionLoader);
-=======
-static DispatcherThread* SystemActionDisptacherThreadCreator (DispatcherQueue* queue) {
-  return new ActionDisptacherThread(queue, "admin");
->>>>>>> added module doc
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -503,18 +486,9 @@ int AvocadoServer::startupServer () {
 
   LOGGER_INFO << "using JavaScript modules path '" << _startupModules << "'";
 
-<<<<<<< HEAD
   ActionDispatcherThread::_startupLoader = &StartupLoader;
   ActionDispatcherThread::_vocbase = _vocbase;
   ActionDispatcherThread::_startupModules = _startupModules;
-=======
-  ActionDisptacherThread::_actionLoader = &ActionLoader;
-  ActionDisptacherThread::_startupLoader = &StartupLoader;
-  ActionDisptacherThread::_vocbase = _vocbase;
-  ActionDisptacherThread::_startupModules = _startupModules;
-
-  // TODO SystemActionDisptacherThread::_actionLoader = &SystemActionLoader;
->>>>>>> added module doc
 
   // .............................................................................
   // create the various parts of the Avocado server
@@ -534,13 +508,8 @@ int AvocadoServer::startupServer () {
     _actionThreads = 1;
   }
 
-<<<<<<< HEAD
   safe_cast<DispatcherImpl*>(dispatcher)->addQueue("CLIENT", ClientActionDispatcherThreadCreator, _actionThreads);
   safe_cast<DispatcherImpl*>(dispatcher)->addQueue("SYSTEM", SystemActionDispatcherThreadCreator, 2);
-=======
-  safe_cast<DispatcherImpl*>(dispatcher)->addQueue("CLIENT", ActionDisptacherThreadCreator, _actionThreads);
-  safe_cast<DispatcherImpl*>(dispatcher)->addQueue("SYSTEM", SystemActionDisptacherThreadCreator, 2);
->>>>>>> actions are now working again
 
   // .............................................................................
   // create a http server and http handler factory
@@ -577,11 +546,6 @@ int AvocadoServer::startupServer () {
 
     adminFactory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestCollectionHandler>::createData<TRI_vocbase_t*>, _vocbase);
     adminFactory->addPrefixHandler("/", RestHandlerCreator<RestActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
-<<<<<<< HEAD
-=======
-
-    adminFactory->addHandler("/", RedirectHandler::create, (void*) "/admin/index.html");
->>>>>>> unfinished actions cleanup
 
     _adminHttpServer = _applicationHttpServer->buildServer(adminFactory, adminPorts);
   }
@@ -704,7 +668,7 @@ void AvocadoServer::executeShell () {
 
   V8LineEditor* console = new V8LineEditor(context, ".avocado");
 
-  console->open();
+  console->open(true);
 
   while (true) {
     while(! v8::V8::IdleNotification()) {
@@ -726,11 +690,16 @@ void AvocadoServer::executeShell () {
     console->addHistory(input);
 
     v8::HandleScope scope;
+    v8::TryCatch tryCatch;
 
-    TRI_ExecuteStringVocBase(context, v8::String::New(input), name, true, true);
-
+    TRI_ExecuteStringVocBase(context, v8::String::New(input), name, true);
     TRI_FreeString(input);
+
+    if (tryCatch.HasCaught()) {
+      cout << TRI_StringifyV8Exception(&tryCatch);
+    }
   }
+
   console->close();
 
   delete console;
