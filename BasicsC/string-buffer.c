@@ -55,19 +55,27 @@ static void Reserve (TRI_string_buffer_t * self, size_t size) {
     self->_bufferEnd = self->_buffer + size;
   }
   else if ((size_t)(self->_bufferEnd - self->_bufferPtr) < size) {
-    size_t newlen;
-    char * b;
+    size_t newlen, offset;
+    //char * b;
+    
+    //printf(">b: %zx , bp: %zx , be:%zx \n", self->_buffer, self->_bufferPtr, self->_bufferEnd);
 
     newlen = (size_t)(1.2 * ((self->_bufferEnd - self->_buffer) + size));
-    b = TRI_Allocate(newlen + 1);
+//    b = TRI_Allocate(newlen + 1);
+    offset = (self->_bufferPtr - self->_buffer);
+    self->_buffer=TRI_Reallocate(self->_buffer,newlen +1);
+    self->_bufferPtr = self->_buffer+offset;
+    self->_bufferEnd = self->_buffer+newlen;
 
-    memcpy(b, self->_buffer, self->_bufferEnd - self->_buffer + 1);
-
-    TRI_Free(self->_buffer);
-
-    self->_bufferPtr = b + (self->_bufferPtr - self->_buffer);
-    self->_bufferEnd = b + newlen;
-    self->_buffer    = b;
+    //printf("<b: %zx , bp: %zx , be:%zx nl:%d \n", self->_buffer, self->_bufferPtr, self->_bufferEnd, newlen);
+//
+//    memcpy(b, self->_buffer, self->_bufferEnd - self->_buffer + 1);
+//
+//    TRI_Free(self->_buffer);
+//
+//    self->_bufferPtr = b + (self->_bufferPtr - self->_buffer);
+//    self->_bufferEnd = b + newlen;
+//    self->_buffer    = b;
   }
 }
 
