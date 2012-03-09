@@ -380,12 +380,14 @@ V8LineEditor::V8LineEditor (v8::Handle<v8::Context> context, string const& histo
 /// @brief line editor open
 ////////////////////////////////////////////////////////////////////////////////
 
-bool V8LineEditor::open () {
+bool V8LineEditor::open (const bool autoComplete) {
   rl_initialize();
-  rl_attempted_completion_function = AttemptedCompletion;
-  rl_completer_word_break_characters = WordBreakCharacters;
+  if (autoComplete) {
+    rl_attempted_completion_function = AttemptedCompletion;
+    rl_completer_word_break_characters = WordBreakCharacters;
 
-  rl_bind_key('\t', rl_complete);
+    rl_bind_key('\t', rl_complete);
+  }
 
   using_history();
   stifle_history(MAX_HISTORY_ENTRIES);

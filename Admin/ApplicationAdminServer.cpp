@@ -87,7 +87,8 @@ ApplicationAdminServer::ApplicationAdminServer ()
     _pathOptions(0),
     _feConfiguration(),
     _name(),
-    _version() {
+    _version(),
+    _versionData(0) {
   _pathOptions = new PathHandler::Options();
 
 #ifndef TRI_ENABLE_RELATIVE
@@ -103,6 +104,10 @@ ApplicationAdminServer::ApplicationAdminServer ()
 
 ApplicationAdminServer::~ApplicationAdminServer () {
   delete reinterpret_cast<PathHandler::Options*>(_pathOptions);
+
+  if (_versionData) {
+    delete _versionData;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -178,8 +183,10 @@ void ApplicationAdminServer::allowVersion (string name, string version) {
 
 void ApplicationAdminServer::addBasicHandlers (HttpHandlerFactory* factory) {
   if (_allowVersion) {
-    pair<string, string>* data = new pair<string,string>(_name, _version);
-    factory->addHandler("/version", RestHandlerCreator<RestVersionHandler>::createData<pair<string,string> const*>, (void*) data);
+    if (!_versionData) {
+      _versionData = new pair<string, string>(_name, _version);
+    }
+    factory->addHandler("/version", RestHandlerCreator<RestVersionHandler>::createData<pair<string, string> const*>, (void*) _versionData);
   }
 }
 

@@ -95,7 +95,6 @@ static void QLAstQueryFreeGeoRestrictions (TRI_associative_pointer_t* const arra
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-<<<<<<< HEAD
 /// @brief Hash function used to hash collection aliases
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -131,8 +130,6 @@ bool QLEqualCollectionKeyElement (TRI_associative_pointer_t* array,
 
 
 ////////////////////////////////////////////////////////////////////////////////
-=======
->>>>>>> JS loader for avocsh
 /// @brief free collections previously registered
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -366,14 +363,10 @@ bool QLAstQueryAddCollection (QL_ast_query_t* query,
   collection->_alias                     = (char*) alias;
   // first collection added is always the primary collection
   collection->_isPrimary                 = (num == 0);
-<<<<<<< HEAD
   collection->_refCount._select          = 0;
   collection->_refCount._where           = 0;
   collection->_refCount._order           = 0;
   collection->_refCount._join            = 0;
-=======
-  collection->_refCount                  = 0; // will be used later when optimizing joins
->>>>>>> JS loader for avocsh
   collection->_declarationOrder          = num + 1;
   collection->_geoRestriction            = NULL;
 

@@ -73,15 +73,6 @@ RestActionHandler::RestActionHandler (HttpRequest* request, TRI_vocbase_t* vocba
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-bool RestActionHandler::isDirect () {
-  return _action == 0;
-=======
-string const& RestActionHandler::queue () {
-  return _action->_queue;
->>>>>>> unfinished actions cleanup
-=======
 bool RestActionHandler::isDirect () {
   return _action == 0;
 }
@@ -94,31 +85,12 @@ string const& RestActionHandler::queue () {
   static string const standard = "STANDARD";
 
   return _action == 0 ? standard : _action->_queue;
->>>>>>> more action cleanup
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-<<<<<<< HEAD
-string const& RestActionHandler::queue () {
-  static string const standard = "STANDARD";
-
-  return _action == 0 ? standard : _action->_queue;
-}
-=======
-HttpHandler::status_e RestActionHandler::execute () {
-  static LoggerData::Task const logExecute("ACTION [execute]");
-  static LoggerData::Task const logHead("ACTION [head]");
-  static LoggerData::Task const logIllegal("ACTION [illegal]");
->>>>>>> unfinished actions cleanup
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-<<<<<<< HEAD
 HttpHandler::status_e RestActionHandler::execute () {
   static LoggerData::Task const logExecute("ACTION [execute]");
   static LoggerData::Task const logHead("ACTION [head]");
@@ -126,8 +98,6 @@ HttpHandler::status_e RestActionHandler::execute () {
 
   LoggerData::Task const * task = &logIllegal;
 
-=======
->>>>>>> unfinished actions cleanup
   bool res = false;
 
   // extract the sub-request type
@@ -157,27 +127,15 @@ HttpHandler::status_e RestActionHandler::execute () {
 
       default:
         res = false;
-<<<<<<< HEAD
         generateNotImplemented("METHOD");
-=======
-        generateNotImplemented("ILLEGAL METHODS");
->>>>>>> unfinished actions cleanup
         break;
     }
   }
   else {
-<<<<<<< HEAD
-<<<<<<< HEAD
     string n = request->requestPath();
     n += StringUtils::join(request->suffix(), "/");
 
     generateNotImplemented(n);
-=======
-    generateNotImplemented("ILLEGAL PATH" + _action->_url);
->>>>>>> unfinished actions cleanup
-=======
-    generateNotImplemented("ILLEGAL PATH");
->>>>>>> more action cleanup
   }
 
   _timingResult = res ? RES_ERR : RES_OK;

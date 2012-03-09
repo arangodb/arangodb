@@ -222,8 +222,6 @@ TRI_action_t;
 
 void TRI_CreateActionVocBase (std::string const& name,
                               std::string const& queue,
-<<<<<<< HEAD
-<<<<<<< HEAD
                               TRI_action_options_t ao,
                               v8::Handle<v8::Function> callback);
 
@@ -232,20 +230,6 @@ void TRI_CreateActionVocBase (std::string const& name,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeActionsVocBase (void);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up an action
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_action_t const* TRI_LookupActionVocBase (triagens::rest::HttpRequest* request);
-=======
-                              v8::Handle<v8::Function> callback,
-                              v8::Handle<v8::Object> options);
->>>>>>> unfinished actions cleanup
-=======
-                              TRI_action_options_t ao,
-                              v8::Handle<v8::Function> callback);
->>>>>>> more action cleanup
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an action
@@ -265,15 +249,7 @@ triagens::rest::HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
 /// @brief stores the V8 actions function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionQueue);
-=======
-void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionContext);
->>>>>>> added module doc
-=======
-void TRI_InitV8Actions (v8::Handle<v8::Context> context, char const* actionQeue);
->>>>>>> better error handling
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
