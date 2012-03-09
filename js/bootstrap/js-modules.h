@@ -102,11 +102,7 @@ static string JS_bootstrap_modules =
   "  // create a new sandbox and execute\n"
   "  ModuleCache[path] = module = new Module(path);\n"
   "\n"
-<<<<<<< HEAD
   "  content = \"(function (module, exports, require, print) {\" + raw.content + \"\\n/* end-of-file '\" + raw.path + \"' */ });\";\n"
-=======
-  "  content = \"(function (module, exports, require, print) {\" + content + \"\\n});\";\n"
->>>>>>> better error handling
   "\n"
   "  try {\n"
   "    f = SYS_EXECUTE(content, undefined, path);\n"
