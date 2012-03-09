@@ -446,16 +446,16 @@ union yyalloc
 /* YYFINAL -- State number of the termination state.  */
 #define YYFINAL  11
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   295
+#define YYLAST   290
 
 /* YYNTOKENS -- Number of terminals.  */
 #define YYNTOKENS  63
 /* YYNNTS -- Number of nonterminals.  */
 #define YYNNTS  51
 /* YYNRULES -- Number of rules.  */
-#define YYNRULES  122
+#define YYNRULES  124
 /* YYNRULES -- Number of states.  */
-#define YYNSTATES  217
+#define YYNSTATES  219
 
 /* YYTRANSLATE(YYLEX) -- Bison symbol number corresponding to YYLEX.  */
 #define YYUNDEFTOK  2
@@ -513,11 +513,11 @@ static const yytype_uint16 yyprhs[] =
      162,   166,   169,   171,   173,   175,   177,   179,   181,   183,
      186,   188,   191,   195,   198,   202,   205,   209,   211,   213,
      215,   217,   218,   222,   224,   225,   229,   231,   232,   236,
-     238,   241,   244,   248,   252,   255,   258,   261,   265,   269,
-     273,   277,   281,   285,   289,   293,   297,   301,   305,   309,
-     313,   317,   321,   325,   331,   333,   337,   338,   344,   346,
-     350,   353,   354,   359,   361,   365,   367,   369,   371,   373,
-     375,   377,   379
+     238,   241,   244,   247,   251,   255,   259,   262,   265,   268,
+     272,   276,   280,   284,   288,   292,   296,   300,   304,   308,
+     312,   316,   320,   324,   328,   332,   338,   340,   344,   345,
+     351,   353,   357,   360,   361,   366,   368,   372,   374,   376,
+     378,   380,   382,   384,   386
 };
 
 /* YYRHS -- A `-1'-separated list of the rules' RHS.  */
@@ -547,21 +547,21 @@ static const yytype_int8 yyrhs[] =
       -1,   104,    -1,   105,    -1,   106,    -1,    -1,    86,    99,
      102,    -1,    86,    -1,    -1,   110,   100,   102,    -1,   110,
       -1,    -1,   113,   101,   102,    -1,   113,    -1,    62,    37,
-      -1,    62,   106,    -1,   102,    62,    37,    -1,   102,    62,
-     106,    -1,    45,    98,    -1,    46,    98,    -1,    22,    98,
-      -1,    98,    21,    98,    -1,    98,    20,    98,    -1,    98,
-      45,    98,    -1,    98,    46,    98,    -1,    98,    47,    98,
-      -1,    98,    48,    98,    -1,    98,    49,    98,    -1,    98,
-      31,    98,    -1,    98,    32,    98,    -1,    98,    29,    98,
-      -1,    98,    30,    98,    -1,    98,    26,    98,    -1,    98,
-      25,    98,    -1,    98,    28,    98,    -1,    98,    27,    98,
-      -1,    98,    23,    98,    -1,    98,    44,    98,    43,    98,
-      -1,   107,    -1,    37,    58,    59,    -1,    -1,    37,    58,
-     108,   109,    59,    -1,    98,    -1,   109,    56,    98,    -1,
-      55,    57,    -1,    -1,    55,   111,   112,    57,    -1,    98,
-      -1,   112,    56,    98,    -1,    41,    -1,    42,    -1,    33,
-      -1,    36,    -1,    34,    -1,    35,    -1,    39,    -1,    40,
-      -1
+      -1,    62,    38,    -1,    62,   106,    -1,   102,    62,    37,
+      -1,   102,    62,    38,    -1,   102,    62,   106,    -1,    45,
+      98,    -1,    46,    98,    -1,    22,    98,    -1,    98,    21,
+      98,    -1,    98,    20,    98,    -1,    98,    45,    98,    -1,
+      98,    46,    98,    -1,    98,    47,    98,    -1,    98,    48,
+      98,    -1,    98,    49,    98,    -1,    98,    31,    98,    -1,
+      98,    32,    98,    -1,    98,    29,    98,    -1,    98,    30,
+      98,    -1,    98,    26,    98,    -1,    98,    25,    98,    -1,
+      98,    28,    98,    -1,    98,    27,    98,    -1,    98,    23,
+      98,    -1,    98,    44,    98,    43,    98,    -1,   107,    -1,
+      37,    58,    59,    -1,    -1,    37,    58,   108,   109,    59,
+      -1,    98,    -1,   109,    56,    98,    -1,    55,    57,    -1,
+      -1,    55,   111,   112,    57,    -1,    98,    -1,   112,    56,
+      98,    -1,    41,    -1,    42,    -1,    33,    -1,    36,    -1,
+      34,    -1,    35,    -1,    39,    -1,    40,    -1
 };
 
 /* YYRLINE[YYN] -- source line where rule number YYN was defined.  */
@@ -572,14 +572,14 @@ static const yytype_uint16 yyrline[] =
      285,   299,   303,   315,   318,   345,   379,   382,   390,   393,
      393,   405,   409,   416,   427,   432,   437,   445,   447,   460,
      473,   493,   516,   521,   526,   526,   539,   543,   550,   557,
-     570,   586,   618,   624,   634,   640,   650,   654,   658,   665,
-     672,   676,   683,   687,   691,   695,   702,   706,   710,   714,
-     718,   722,   722,   733,   737,   737,   748,   752,   752,   763,
-     771,   778,   782,   789,   797,   803,   809,   818,   826,   834,
-     842,   850,   858,   866,   874,   882,   890,   898,   906,   914,
-     922,   930,   938,   949,   966,   973,   985,   985,  1003,  1006,
-    1013,  1017,  1017,  1029,  1032,  1039,  1046,  1057,  1061,  1065,
-    1070,  1075,  1089
+     571,   588,   619,   625,   636,   642,   653,   657,   661,   668,
+     675,   679,   686,   690,   694,   698,   705,   709,   713,   717,
+     721,   725,   725,   736,   740,   740,   751,   755,   755,   766,
+     774,   781,   790,   794,   801,   810,   818,   824,   830,   839,
+     847,   855,   863,   871,   879,   887,   895,   903,   911,   919,
+     927,   935,   943,   951,   959,   970,   987,   994,  1006,  1006,
+    1024,  1027,  1034,  1038,  1038,  1050,  1053,  1060,  1068,  1079,
+    1083,  1087,  1092,  1097,  1111
 };
 #endif
 
@@ -637,11 +637,11 @@ static const yytype_uint8 yyr1[] =
       90,    91,    92,    92,    93,    93,    94,    94,    94,    95,
       96,    96,    97,    97,    97,    97,    98,    98,    98,    98,
       98,    99,    98,    98,   100,    98,    98,   101,    98,    98,
-     102,   102,   102,   102,   103,   103,   103,   104,   104,   104,
+     102,   102,   102,   102,   102,   102,   103,   103,   103,   104,
      104,   104,   104,   104,   104,   104,   104,   104,   104,   104,
-     104,   104,   104,   105,   106,   107,   108,   107,   109,   109,
-     110,   111,   110,   112,   112,   113,   113,   113,   113,   113,
-     113,   113,   113
+     104,   104,   104,   104,   104,   105,   106,   107,   108,   107,
+     109,   109,   110,   111,   110,   112,   112,   113,   113,   113,
+     113,   113,   113,   113,   113
 };
 
 /* YYR2[YYN] -- Number of symbols composing right hand side of rule YYN.  */
@@ -655,11 +655,11 @@ static const yytype_uint8 yyr2[] =
        3,     2,     1,     1,     1,     1,     1,     1,     1,     2,
        1,     2,     3,     2,     3,     2,     3,     1,     1,     1,
        1,     0,     3,     1,     0,     3,     1,     0,     3,     1,
-       2,     2,     3,     3,     2,     2,     2,     3,     3,     3,
+       2,     2,     2,     3,     3,     3,     2,     2,     2,     3,
        3,     3,     3,     3,     3,     3,     3,     3,     3,     3,
-       3,     3,     3,     5,     1,     3,     0,     5,     1,     3,
-       2,     0,     4,     1,     3,     1,     1,     1,     1,     1,
-       1,     1,     1
+       3,     3,     3,     3,     3,     5,     1,     3,     0,     5,
+       1,     3,     2,     0,     4,     1,     3,     1,     1,     1,
+       1,     1,     1,     1,     1
 };
 
 /* YYDEFACT[STATE-NAME] -- Default rule to reduce with in state
@@ -670,76 +670,76 @@ static const yytype_uint8 yydefact[] =
        6,     0,     0,     4,     2,    54,    55,    44,     0,     8,
       42,     1,     5,     3,    43,     0,     9,    26,     0,     0,
        0,    46,    48,     0,     0,    28,     0,     0,     0,    45,
-      52,    53,    10,    23,     0,     0,   117,   119,   120,   118,
-      54,   121,   122,   115,   116,     0,     0,   111,     0,    73,
-      27,    67,    68,    69,    70,   104,    76,    79,     0,    37,
+      52,    53,    10,    23,     0,     0,   119,   121,   122,   120,
+      54,   123,   124,   117,   118,     0,     0,   113,     0,    73,
+      27,    67,    68,    69,    70,   106,    76,    79,     0,    37,
       49,    50,    47,    60,     0,     0,     0,     0,     0,    56,
-      57,    58,     0,     0,    11,    51,    86,   106,    84,    85,
-     110,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+      57,    58,     0,     0,    11,    51,    88,   108,    86,    87,
+     112,     0,     0,     0,     0,     0,     0,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
        0,     0,     0,    29,     0,     7,    59,    61,    63,     0,
-      65,     0,    23,     0,     0,   105,     0,   113,     0,    66,
-       0,    72,    88,    87,   102,    99,    98,   101,   100,    96,
-      97,    94,    95,     0,    89,    90,    91,    92,    93,    75,
-      78,     0,    38,     0,    62,    64,     0,     0,     0,   108,
-       0,     0,   112,    80,    81,     0,     0,    30,    31,    34,
-       0,    39,     0,     0,     0,     0,   107,   114,    82,    83,
-     103,     0,    35,    36,    33,    40,     0,    12,     0,    21,
-       0,     0,    19,     0,   109,    32,    41,     0,     0,     0,
-       0,     0,     0,    22,    14,     0,     0,    16,     0,     0,
-      20,     0,     0,    15,     0,     0,     0,     0,    18,     0,
-      17,     0,     0,     0,    24,    25,    13
+      65,     0,    23,     0,     0,   107,     0,   115,     0,    66,
+       0,    72,    90,    89,   104,   101,   100,   103,   102,    98,
+      99,    96,    97,     0,    91,    92,    93,    94,    95,    75,
+      78,     0,    38,     0,    62,    64,     0,     0,     0,   110,
+       0,     0,   114,    80,    81,    82,     0,     0,    30,    31,
+      34,     0,    39,     0,     0,     0,     0,   109,   116,    83,
+      84,    85,   105,     0,    35,    36,    33,    40,     0,    12,
+       0,    21,     0,     0,    19,     0,   111,    32,    41,     0,
+       0,     0,     0,     0,     0,    22,    14,     0,     0,    16,
+       0,     0,    20,     0,     0,    15,     0,     0,     0,     0,
+      18,     0,    17,     0,     0,     0,    24,    25,    13
 };
 
 /* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_int16 yydefgoto[] =
 {
-      -1,     2,     3,     4,     8,    17,    23,    32,   197,   198,
-     199,   179,   180,   190,   181,    74,    25,    59,   141,   157,
-     158,   174,   105,    49,    15,    20,    21,    22,    33,    34,
-      10,    68,    69,    70,    71,   159,    83,   101,   102,   121,
+      -1,     2,     3,     4,     8,    17,    23,    32,   199,   200,
+     201,   181,   182,   192,   183,    74,    25,    59,   141,   158,
+     159,   176,   105,    49,    15,    20,    21,    22,    33,    34,
+      10,    68,    69,    70,    71,   160,    83,   101,   102,   121,
       51,    52,    53,    54,    55,   116,   150,    56,    81,   118,
       57
 };
 
 /* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
    STATE-NUM.  */
-#define YYPACT_NINF -136
+#define YYPACT_NINF -120
 static const yytype_int16 yypact[] =
 {
-       7,    18,     2,   -27,    -8,  -136,  -136,    76,   157,  -136,
-    -136,  -136,  -136,  -136,  -136,    77,  -136,   167,   131,   143,
-      60,  -136,  -136,    22,    62,   174,    62,    62,    77,  -136,
-    -136,  -136,    75,   114,    42,    62,  -136,  -136,  -136,  -136,
-     130,  -136,  -136,  -136,  -136,    62,    62,   132,    62,   128,
-     180,  -136,  -136,  -136,  -136,  -136,   129,   140,   178,   185,
-     180,   180,  -136,  -136,   207,   208,    15,   153,    22,  -136,
-    -136,  -136,    42,    42,  -136,  -136,  -136,   156,  -136,  -136,
-    -136,    62,   -12,   154,    62,    62,    62,    62,    62,    62,
-      62,    62,    62,    62,    62,    62,    62,    62,    62,    62,
-      62,   154,   154,  -136,    -2,  -136,  -136,  -136,  -136,   211,
-    -136,   212,   114,   195,   196,  -136,    62,   180,    99,  -136,
-     184,   160,   220,   210,    64,    78,    78,    78,    78,     3,
-       3,     3,     3,   150,   136,   136,  -136,  -136,  -136,   160,
-     160,    62,   175,   181,  -136,  -136,   222,   186,   202,   180,
-     104,    62,  -136,   130,  -136,   216,    62,   176,  -136,   120,
-      92,  -136,    62,    50,    50,    62,  -136,   180,   130,  -136,
-     180,    62,  -136,  -136,  -136,  -136,   219,   180,    42,  -136,
-     198,   206,  -136,   214,   180,  -136,  -136,   215,    42,    -1,
-     154,    -1,    42,  -136,  -136,   221,   111,  -136,   217,   218,
-     160,   223,   224,  -136,   226,   111,   230,   233,  -136,   111,
-    -136,   205,   225,   228,  -136,  -136,  -136
+      -1,    18,    10,   -27,     6,  -120,  -120,    28,   121,  -120,
+    -120,  -120,  -120,  -120,  -120,    44,  -120,   122,    86,   101,
+      26,  -120,  -120,     8,    64,   132,    64,    64,    44,  -120,
+    -120,  -120,   141,    96,    46,    64,  -120,  -120,  -120,  -120,
+      92,  -120,  -120,  -120,  -120,    64,    64,    98,    64,    95,
+     198,  -120,  -120,  -120,  -120,  -120,   100,   117,   166,   162,
+     198,   198,  -120,  -120,   184,   186,    15,    48,     8,  -120,
+    -120,  -120,    46,    46,  -120,  -120,  -120,   142,  -120,  -120,
+    -120,    64,   -12,   140,    64,    64,    64,    64,    64,    64,
+      64,    64,    64,    64,    64,    64,    64,    64,    64,    64,
+      64,   140,   140,  -120,    49,  -120,  -120,  -120,  -120,   197,
+    -120,   199,    96,   180,   182,  -120,    64,   198,    76,  -120,
+      83,   145,   238,   228,    90,   126,   126,   126,   126,     3,
+       3,     3,     3,   168,   129,   129,  -120,  -120,  -120,   145,
+     145,    64,   152,   167,  -120,  -120,   208,   164,   173,   198,
+      67,    64,  -120,    92,  -120,  -120,   104,    64,   154,  -120,
+     138,    65,  -120,    64,     4,     4,    64,  -120,   198,    92,
+    -120,  -120,   198,    64,  -120,  -120,  -120,  -120,   190,   198,
+      46,  -120,   177,   178,  -120,   179,   198,  -120,  -120,   181,
+      46,    -2,   140,    -2,    46,  -120,  -120,   194,    66,  -120,
+     183,   185,   145,   193,   195,  -120,   206,    66,   196,   229,
+    -120,    66,  -120,   191,   213,   221,  -120,  -120,  -120
 };
 
 /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int16 yypgoto[] =
 {
-    -136,  -136,  -136,  -136,  -136,  -136,  -136,  -136,  -136,   -90,
-      85,  -136,  -135,  -136,   113,   166,  -136,  -136,  -136,  -136,
-     109,  -136,  -136,   282,  -136,  -136,   258,  -136,   227,  -136,
-     -34,  -136,  -136,  -136,  -136,   -23,  -136,  -136,  -136,   -96,
-    -136,  -136,  -136,  -113,  -136,  -136,  -136,  -136,  -136,  -136,
-    -136
+    -120,  -120,  -120,  -120,  -120,  -120,  -120,  -120,  -120,  -119,
+      47,  -120,  -100,  -120,   114,   169,  -120,  -120,  -120,  -120,
+     107,  -120,  -120,   281,  -120,  -120,   260,  -120,   222,  -120,
+     -34,  -120,  -120,  -120,  -120,   -23,  -120,  -120,  -120,   -96,
+    -120,  -120,  -120,  -113,  -120,  -120,  -120,  -120,  -120,  -120,
+    -120
 };
 
 /* YYTABLE[YYPACT[STATE-NUM]].  What to do in state STATE-NUM.  If
@@ -749,70 +749,70 @@ static const yytype_int16 yypgoto[] =
 #define YYTABLE_NINF -78
 static const yytype_int16 yytable[] =
 {
-      75,    50,    11,    60,    61,   139,   140,   154,    84,    85,
-       1,    86,    76,    87,    88,    89,    90,    91,    92,    93,
+      75,    50,     1,    60,    61,   139,   140,   155,    84,    85,
+      11,    86,    76,    87,    88,    89,    90,    91,    92,    93,
       94,   108,    78,    79,   109,    82,    86,    12,    87,    88,
       89,    90,    95,    96,    97,    98,    99,   100,   113,   114,
-     142,   194,   169,   187,   143,   195,    13,   119,    96,    97,
-      98,    99,   100,   193,   196,     5,     6,   202,   117,    30,
-      31,   122,   123,   124,   125,   126,   127,   128,   129,   130,
-     131,   132,   133,   134,   135,   136,   137,   138,     7,     5,
-       6,    63,    64,    65,    35,    66,    67,     5,     6,    87,
-      88,    89,    90,   149,   200,    36,    37,    38,    39,    40,
-       6,    41,    42,    43,    44,   178,   204,    45,    46,    96,
-      97,    98,    99,   100,    18,   210,    28,    47,    19,   213,
-      48,    29,     7,    96,    97,    98,    99,   100,   167,   182,
-     182,    72,    73,   170,   175,   172,   173,    14,   176,   177,
-      84,    85,   184,    86,   182,    87,    88,    89,    90,    91,
-      92,    93,    94,   194,   182,   151,   152,   195,   182,   110,
-     165,    16,   111,   166,    95,    96,    97,    98,    99,   100,
-      84,    85,    24,    86,    26,    87,    88,    89,    90,    91,
-      92,    93,    94,    98,    99,   100,    27,    58,    77,    80,
-     -71,   -74,   103,   156,    95,    96,    97,    98,    99,   100,
-      84,    85,   -77,    86,   104,    87,    88,    89,    90,    91,
-      92,    93,    94,   106,   107,   115,   120,   144,   145,   147,
-     148,   153,   155,   161,    95,    96,    97,    98,    99,   100,
-      84,   160,   171,    86,   162,    87,    88,    89,    90,    91,
-      92,    93,    94,    86,   163,    87,    88,    89,    90,    91,
-      92,    93,    94,   168,   188,    96,    97,    98,    99,   100,
-     164,   186,   189,   203,   214,    96,    97,    98,    99,   100,
-     191,   192,   211,   205,   206,   212,   201,   183,   146,   207,
-     185,   208,   209,     9,   215,   216,    62,     0,     0,     0,
-       0,     0,     0,     0,     0,   112
+     196,     5,     6,   171,   197,    30,    31,   119,    96,    97,
+      98,    99,   100,   198,   110,     5,     6,   111,   117,   180,
+      13,   122,   123,   124,   125,   126,   127,   128,   129,   130,
+     131,   132,   133,   134,   135,   136,   137,   138,     7,   206,
+     189,    18,    28,     5,     6,    19,    35,    29,   212,    14,
+     195,   142,   215,   149,   204,   143,   202,    36,    37,    38,
+      39,    40,     6,    41,    42,    43,    44,   177,   196,    45,
+      46,   178,   197,    72,    73,    87,    88,    89,    90,    47,
+     153,   154,    48,   166,     7,    16,   167,    24,   168,    26,
+     184,   184,   151,   152,   172,    96,    97,    98,    99,   100,
+     179,   169,   170,   186,    27,    58,   184,    63,    64,    65,
+      77,    66,    67,   174,   175,    80,   184,   -71,    84,    85,
+     184,    86,   -74,    87,    88,    89,    90,    91,    92,    93,
+      94,    96,    97,    98,    99,   100,    98,    99,   100,   -77,
+     103,   104,    95,    96,    97,    98,    99,   100,    84,    85,
+     106,    86,   107,    87,    88,    89,    90,    91,    92,    93,
+      94,   115,   120,   144,   147,   145,   148,   156,   161,   162,
+     173,   157,    95,    96,    97,    98,    99,   100,    84,    85,
+     163,    86,   164,    87,    88,    89,    90,    91,    92,    93,
+      94,   165,   188,   190,   191,   193,   205,   194,   213,   207,
+     203,   208,    95,    96,    97,    98,    99,   100,    84,   209,
+     216,    86,   210,    87,    88,    89,    90,    91,    92,    93,
+      94,    86,   211,    87,    88,    89,    90,    91,    92,    93,
+      94,   214,   217,    96,    97,    98,    99,   100,   218,   185,
+     187,   146,     9,    96,    97,    98,    99,   100,    62,     0,
+     112
 };
 
 static const yytype_int16 yycheck[] =
 {
-      34,    24,     0,    26,    27,   101,   102,   120,    20,    21,
-       3,    23,    35,    25,    26,    27,    28,    29,    30,    31,
+      34,    24,     3,    26,    27,   101,   102,   120,    20,    21,
+       0,    23,    35,    25,    26,    27,    28,    29,    30,    31,
       32,     6,    45,    46,     9,    48,    23,    54,    25,    26,
       27,    28,    44,    45,    46,    47,    48,    49,    72,    73,
-      42,    42,   155,   178,    46,    46,    54,    59,    45,    46,
-      47,    48,    49,   188,    55,    37,    38,   192,    81,    37,
-      38,    84,    85,    86,    87,    88,    89,    90,    91,    92,
-      93,    94,    95,    96,    97,    98,    99,   100,    60,    37,
-      38,     6,     7,     8,    22,    10,    11,    37,    38,    25,
-      26,    27,    28,   116,   190,    33,    34,    35,    36,    37,
-      38,    39,    40,    41,    42,    55,   196,    45,    46,    45,
-      46,    47,    48,    49,    37,   205,    56,    55,    41,   209,
-      58,    61,    60,    45,    46,    47,    48,    49,   151,   163,
-     164,    17,    18,   156,    42,    15,    16,    61,    46,   162,
-      20,    21,   165,    23,   178,    25,    26,    27,    28,    29,
-      30,    31,    32,    42,   188,    56,    57,    46,   192,     6,
-      56,     4,     9,    59,    44,    45,    46,    47,    48,    49,
-      20,    21,     5,    23,    43,    25,    26,    27,    28,    29,
-      30,    31,    32,    47,    48,    49,    43,    13,    58,    57,
-      62,    62,    14,    43,    44,    45,    46,    47,    48,    49,
-      20,    21,    62,    23,    19,    25,    26,    27,    28,    29,
-      30,    31,    32,     6,     6,    59,    62,     6,     6,    24,
-      24,    37,    62,    42,    44,    45,    46,    47,    48,    49,
-      20,    56,    56,    23,    12,    25,    26,    27,    28,    29,
-      30,    31,    32,    23,    58,    25,    26,    27,    28,    29,
-      30,    31,    32,    37,    56,    45,    46,    47,    48,    49,
-      58,    42,    56,    42,    59,    45,    46,    47,    48,    49,
-      56,    56,    42,    56,    56,    42,   191,   164,   112,    56,
-     171,    57,    56,     1,    59,    57,    28,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    68
+      42,    37,    38,   156,    46,    37,    38,    59,    45,    46,
+      47,    48,    49,    55,     6,    37,    38,     9,    81,    55,
+      54,    84,    85,    86,    87,    88,    89,    90,    91,    92,
+      93,    94,    95,    96,    97,    98,    99,   100,    60,   198,
+     180,    37,    56,    37,    38,    41,    22,    61,   207,    61,
+     190,    42,   211,   116,   194,    46,   192,    33,    34,    35,
+      36,    37,    38,    39,    40,    41,    42,    42,    42,    45,
+      46,    46,    46,    17,    18,    25,    26,    27,    28,    55,
+      37,    38,    58,    56,    60,     4,    59,     5,   151,    43,
+     164,   165,    56,    57,   157,    45,    46,    47,    48,    49,
+     163,    37,    38,   166,    43,    13,   180,     6,     7,     8,
+      58,    10,    11,    15,    16,    57,   190,    62,    20,    21,
+     194,    23,    62,    25,    26,    27,    28,    29,    30,    31,
+      32,    45,    46,    47,    48,    49,    47,    48,    49,    62,
+      14,    19,    44,    45,    46,    47,    48,    49,    20,    21,
+       6,    23,     6,    25,    26,    27,    28,    29,    30,    31,
+      32,    59,    62,     6,    24,     6,    24,    62,    56,    42,
+      56,    43,    44,    45,    46,    47,    48,    49,    20,    21,
+      12,    23,    58,    25,    26,    27,    28,    29,    30,    31,
+      32,    58,    42,    56,    56,    56,    42,    56,    42,    56,
+     193,    56,    44,    45,    46,    47,    48,    49,    20,    56,
+      59,    23,    57,    25,    26,    27,    28,    29,    30,    31,
+      32,    23,    56,    25,    26,    27,    28,    29,    30,    31,
+      32,    42,    59,    45,    46,    47,    48,    49,    57,   165,
+     173,   112,     1,    45,    46,    47,    48,    49,    28,    -1,
+      68
 };
 
 /* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
@@ -834,13 +834,13 @@ static const yytype_uint8 yystos[] =
       62,   102,    98,    98,    98,    98,    98,    98,    98,    98,
       98,    98,    98,    98,    98,    98,    98,    98,    98,   102,
      102,    81,    42,    46,     6,     6,    78,    24,    24,    98,
-     109,    56,    57,    37,   106,    62,    43,    82,    83,    98,
-      56,    42,    12,    58,    58,    56,    59,    98,    37,   106,
-      98,    56,    15,    16,    84,    42,    46,    98,    55,    74,
-      75,    77,    93,    77,    98,    83,    42,    75,    56,    56,
-      76,    56,    56,    75,    42,    46,    55,    71,    72,    73,
-     102,    73,    75,    42,    72,    56,    56,    56,    57,    56,
-      72,    42,    42,    72,    59,    59,    57
+     109,    56,    57,    37,    38,   106,    62,    43,    82,    83,
+      98,    56,    42,    12,    58,    58,    56,    59,    98,    37,
+      38,   106,    98,    56,    15,    16,    84,    42,    46,    98,
+      55,    74,    75,    77,    93,    77,    98,    83,    42,    75,
+      56,    56,    76,    56,    56,    75,    42,    46,    55,    71,
+      72,    73,   102,    73,    75,    42,    72,    56,    56,    56,
+      57,    56,    72,    42,    42,    72,    59,    59,    57
 };
 
 #define yyerrok		(yyerrstatus = 0)
@@ -2344,6 +2344,7 @@ yyreduce:
       ABORT_IF_OOM((yyvsp[(1) - (3)].strval));
       ABORT_IF_OOM((yyvsp[(3) - (3)].node));
       str->_value._stringValue = TRI_ParseQueryRegisterString(template_, TRI_UnescapeUtf8String((yyvsp[(1) - (3)].strval), strlen((yyvsp[(1) - (3)].strval)), &outLength)); 
+      ABORT_IF_OOM(str->_value._stringValue);
 
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueNamedValue);
       ABORT_IF_OOM((yyval.node));
@@ -2355,7 +2356,7 @@ yyreduce:
   case 50:
 
 /* Line 1455 of yacc.c  */
-#line 570 "QL/parser.y"
+#line 571 "QL/parser.y"
     {
       size_t outLength;
       TRI_query_node_t* str = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueString);
@@ -2363,6 +2364,7 @@ yyreduce:
       ABORT_IF_OOM((yyvsp[(1) - (3)].strval));
       ABORT_IF_OOM((yyvsp[(3) - (3)].node));
       str->_value._stringValue = TRI_ParseQueryRegisterString(template_, TRI_UnescapeUtf8String((yyvsp[(1) - (3)].strval) + 1, strlen((yyvsp[(1) - (3)].strval)) - 2, &outLength)); 
+      ABORT_IF_OOM(str->_value._stringValue);
 
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueNamedValue);
       ABORT_IF_OOM((yyval.node));
@@ -2374,7 +2376,7 @@ yyreduce:
   case 51:
 
 /* Line 1455 of yacc.c  */
-#line 586 "QL/parser.y"
+#line 588 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (2)].node));
       ABORT_IF_OOM((yyvsp[(1) - (2)].node)->_value._stringValue);
@@ -2408,7 +2410,7 @@ yyreduce:
   case 52:
 
 /* Line 1455 of yacc.c  */
-#line 618 "QL/parser.y"
+#line 619 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
       ABORT_IF_OOM((yyval.node));
@@ -2420,20 +2422,21 @@ yyreduce:
   case 53:
 
 /* Line 1455 of yacc.c  */
-#line 624 "QL/parser.y"
+#line 625 "QL/parser.y"
     {
       size_t outLength;
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
       ABORT_IF_OOM((yyval.node));
       ABORT_IF_OOM((yyvsp[(1) - (1)].strval));
       (yyval.node)->_value._stringValue = TRI_ParseQueryRegisterString(template_, TRI_UnescapeUtf8String((yyvsp[(1) - (1)].strval) + 1, strlen((yyvsp[(1) - (1)].strval)) - 2, &outLength)); 
+      ABORT_IF_OOM((yyval.node)->_value._stringValue);
     ;}
     break;
 
   case 54:
 
 /* Line 1455 of yacc.c  */
-#line 634 "QL/parser.y"
+#line 636 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeReferenceCollectionAlias);
       ABORT_IF_OOM((yyval.node));
@@ -2445,20 +2448,21 @@ yyreduce:
   case 55:
 
 /* Line 1455 of yacc.c  */
-#line 640 "QL/parser.y"
+#line 642 "QL/parser.y"
     {
       size_t outLength;
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeReferenceCollectionAlias);
       ABORT_IF_OOM((yyval.node));
       ABORT_IF_OOM((yyvsp[(1) - (1)].strval));
       (yyval.node)->_value._stringValue = TRI_ParseQueryRegisterString(template_, TRI_UnescapeUtf8String((yyvsp[(1) - (1)].strval) + 1, strlen((yyvsp[(1) - (1)].strval)) - 2, &outLength)); 
+      ABORT_IF_OOM((yyval.node)->_value._stringValue);
     ;}
     break;
 
   case 56:
 
 /* Line 1455 of yacc.c  */
-#line 650 "QL/parser.y"
+#line 653 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       (yyval.node) = (yyvsp[(1) - (1)].node);
@@ -2468,7 +2472,7 @@ yyreduce:
   case 57:
 
 /* Line 1455 of yacc.c  */
-#line 654 "QL/parser.y"
+#line 657 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       (yyval.node) = (yyvsp[(1) - (1)].node);
@@ -2478,7 +2482,7 @@ yyreduce:
   case 58:
 
 /* Line 1455 of yacc.c  */
-#line 658 "QL/parser.y"
+#line 661 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       (yyval.node) = (yyvsp[(1) - (1)].node);
@@ -2488,7 +2492,7 @@ yyreduce:
   case 59:
 
 /* Line 1455 of yacc.c  */
-#line 665 "QL/parser.y"
+#line 668 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeJoinList);
       ABORT_IF_OOM((yyval.node));
@@ -2498,7 +2502,7 @@ yyreduce:
   case 60:
 
 /* Line 1455 of yacc.c  */
-#line 672 "QL/parser.y"
+#line 675 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeJoinInner);
       ABORT_IF_OOM((yyval.node));
@@ -2508,7 +2512,7 @@ yyreduce:
   case 61:
 
 /* Line 1455 of yacc.c  */
-#line 676 "QL/parser.y"
+#line 679 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeJoinInner);
       ABORT_IF_OOM((yyval.node));
@@ -2518,7 +2522,7 @@ yyreduce:
   case 62:
 
 /* Line 1455 of yacc.c  */
-#line 683 "QL/parser.y"
+#line 686 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeJoinLeft);
       ABORT_IF_OOM((yyval.node));
@@ -2528,7 +2532,7 @@ yyreduce:
   case 63:
 
 /* Line 1455 of yacc.c  */
-#line 687 "QL/parser.y"
+#line 690 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeJoinLeft);
       ABORT_IF_OOM((yyval.node));
@@ -2538,7 +2542,7 @@ yyreduce:
   case 64:
 
 /* Line 1455 of yacc.c  */
-#line 691 "QL/parser.y"
+#line 694 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeJoinRight);
       ABORT_IF_OOM((yyval.node));
@@ -2548,7 +2552,7 @@ yyreduce:
   case 65:
 
 /* Line 1455 of yacc.c  */
-#line 695 "QL/parser.y"
+#line 698 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeJoinRight);
       ABORT_IF_OOM((yyval.node));
@@ -2558,7 +2562,7 @@ yyreduce:
   case 66:
 
 /* Line 1455 of yacc.c  */
-#line 702 "QL/parser.y"
+#line 705 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(2) - (3)].node));
       (yyval.node) = (yyvsp[(2) - (3)].node);
@@ -2568,7 +2572,7 @@ yyreduce:
   case 67:
 
 /* Line 1455 of yacc.c  */
-#line 706 "QL/parser.y"
+#line 709 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       (yyval.node) = (yyvsp[(1) - (1)].node);
@@ -2578,7 +2582,7 @@ yyreduce:
   case 68:
 
 /* Line 1455 of yacc.c  */
-#line 710 "QL/parser.y"
+#line 713 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       (yyval.node) = (yyvsp[(1) - (1)].node);
@@ -2588,7 +2592,7 @@ yyreduce:
   case 69:
 
 /* Line 1455 of yacc.c  */
-#line 714 "QL/parser.y"
+#line 717 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       (yyval.node) = (yyvsp[(1) - (1)].node);
@@ -2598,7 +2602,7 @@ yyreduce:
   case 70:
 
 /* Line 1455 of yacc.c  */
-#line 718 "QL/parser.y"
+#line 721 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       (yyval.node) = (yyvsp[(1) - (1)].node);
@@ -2608,7 +2612,7 @@ yyreduce:
   case 71:
 
 /* Line 1455 of yacc.c  */
-#line 722 "QL/parser.y"
+#line 725 "QL/parser.y"
     { 
       TRI_query_node_t* list = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerList);
       ABORT_IF_OOM(list);
@@ -2619,7 +2623,7 @@ yyreduce:
   case 72:
 
 /* Line 1455 of yacc.c  */
-#line 726 "QL/parser.y"
+#line 729 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerMemberAccess);
       ABORT_IF_OOM((yyval.node));
@@ -2632,7 +2636,7 @@ yyreduce:
   case 73:
 
 /* Line 1455 of yacc.c  */
-#line 733 "QL/parser.y"
+#line 736 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       (yyval.node) = (yyvsp[(1) - (1)].node);
@@ -2642,7 +2646,7 @@ yyreduce:
   case 74:
 
 /* Line 1455 of yacc.c  */
-#line 737 "QL/parser.y"
+#line 740 "QL/parser.y"
     {
       TRI_query_node_t* list = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerList);
       ABORT_IF_OOM(list);
@@ -2653,7 +2657,7 @@ yyreduce:
   case 75:
 
 /* Line 1455 of yacc.c  */
-#line 741 "QL/parser.y"
+#line 744 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerMemberAccess);
       ABORT_IF_OOM((yyval.node));
@@ -2666,7 +2670,7 @@ yyreduce:
   case 76:
 
 /* Line 1455 of yacc.c  */
-#line 748 "QL/parser.y"
+#line 751 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       (yyval.node) = (yyvsp[(1) - (1)].node);  
@@ -2676,7 +2680,7 @@ yyreduce:
   case 77:
 
 /* Line 1455 of yacc.c  */
-#line 752 "QL/parser.y"
+#line 755 "QL/parser.y"
     {
       TRI_query_node_t* list = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerList);
       ABORT_IF_OOM(list);
@@ -2687,7 +2691,7 @@ yyreduce:
   case 78:
 
 /* Line 1455 of yacc.c  */
-#line 756 "QL/parser.y"
+#line 759 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerMemberAccess);
       ABORT_IF_OOM((yyval.node));
@@ -2700,7 +2704,7 @@ yyreduce:
   case 79:
 
 /* Line 1455 of yacc.c  */
-#line 763 "QL/parser.y"
+#line 766 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       (yyval.node) = (yyvsp[(1) - (1)].node);
@@ -2710,7 +2714,7 @@ yyreduce:
   case 80:
 
 /* Line 1455 of yacc.c  */
-#line 771 "QL/parser.y"
+#line 774 "QL/parser.y"
     {
       TRI_query_node_t* name = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
       ABORT_IF_OOM(name);
@@ -2723,17 +2727,32 @@ yyreduce:
   case 81:
 
 /* Line 1455 of yacc.c  */
-#line 778 "QL/parser.y"
+#line 781 "QL/parser.y"
     {
-      ABORT_IF_OOM((yyvsp[(2) - (2)].node));
-      TRI_ParseQueryContextAddElement(template_, (yyvsp[(2) - (2)].node));
+      TRI_query_node_t* name = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
+      size_t outLength;
+      ABORT_IF_OOM(name);
+      ABORT_IF_OOM((yyvsp[(2) - (2)].strval));
+      name->_value._stringValue = TRI_ParseQueryRegisterString(template_, TRI_UnescapeUtf8String((yyvsp[(2) - (2)].strval) + 1, strlen((yyvsp[(2) - (2)].strval)) - 2, &outLength));
+      ABORT_IF_OOM(name->_value._stringValue);
+      TRI_ParseQueryContextAddElement(template_, name);
     ;}
     break;
 
   case 82:
 
 /* Line 1455 of yacc.c  */
-#line 782 "QL/parser.y"
+#line 790 "QL/parser.y"
+    {
+      ABORT_IF_OOM((yyvsp[(2) - (2)].node));
+      TRI_ParseQueryContextAddElement(template_, (yyvsp[(2) - (2)].node));
+    ;}
+    break;
+
+  case 83:
+
+/* Line 1455 of yacc.c  */
+#line 794 "QL/parser.y"
     {
       TRI_query_node_t* name = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
       ABORT_IF_OOM(name);
@@ -2743,10 +2762,25 @@ yyreduce:
     ;}
     break;
 
-  case 83:
+  case 84:
 
 /* Line 1455 of yacc.c  */
-#line 789 "QL/parser.y"
+#line 801 "QL/parser.y"
+    {
+      TRI_query_node_t* name = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
+      size_t outLength;
+      ABORT_IF_OOM(name);
+      ABORT_IF_OOM((yyvsp[(3) - (3)].strval));
+      name->_value._stringValue = TRI_ParseQueryRegisterString(template_, TRI_UnescapeUtf8String((yyvsp[(3) - (3)].strval) + 1, strlen((yyvsp[(3) - (3)].strval)) - 2, &outLength));
+      ABORT_IF_OOM(name->_value._stringValue);
+      TRI_ParseQueryContextAddElement(template_, name);
+    ;}
+    break;
+
+  case 85:
+
+/* Line 1455 of yacc.c  */
+#line 810 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (3)].node));
       ABORT_IF_OOM((yyvsp[(3) - (3)].node));
@@ -2754,36 +2788,12 @@ yyreduce:
     ;}
     break;
 
-  case 84:
-
-/* Line 1455 of yacc.c  */
-#line 797 "QL/parser.y"
-    {
-      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeUnaryOperatorPlus);
-      ABORT_IF_OOM((yyval.node));
-      ABORT_IF_OOM((yyvsp[(2) - (2)].node));
-      (yyval.node)->_lhs = (yyvsp[(2) - (2)].node);
-    ;}
-    break;
-
-  case 85:
-
-/* Line 1455 of yacc.c  */
-#line 803 "QL/parser.y"
-    {
-      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeUnaryOperatorMinus);
-      ABORT_IF_OOM((yyval.node));
-      ABORT_IF_OOM((yyvsp[(2) - (2)].node));
-      (yyval.node)->_lhs = (yyvsp[(2) - (2)].node);
-    ;}
-    break;
-
   case 86:
 
 /* Line 1455 of yacc.c  */
-#line 809 "QL/parser.y"
-    { 
-      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeUnaryOperatorNot);
+#line 818 "QL/parser.y"
+    {
+      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeUnaryOperatorPlus);
       ABORT_IF_OOM((yyval.node));
       ABORT_IF_OOM((yyvsp[(2) - (2)].node));
       (yyval.node)->_lhs = (yyvsp[(2) - (2)].node);
@@ -2793,37 +2803,33 @@ yyreduce:
   case 87:
 
 /* Line 1455 of yacc.c  */
-#line 818 "QL/parser.y"
+#line 824 "QL/parser.y"
     {
-      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorOr);
+      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeUnaryOperatorMinus);
       ABORT_IF_OOM((yyval.node));
-      ABORT_IF_OOM((yyvsp[(1) - (3)].node));
-      ABORT_IF_OOM((yyvsp[(3) - (3)].node));
-      (yyval.node)->_lhs = (yyvsp[(1) - (3)].node);
-      (yyval.node)->_rhs = (yyvsp[(3) - (3)].node);
+      ABORT_IF_OOM((yyvsp[(2) - (2)].node));
+      (yyval.node)->_lhs = (yyvsp[(2) - (2)].node);
     ;}
     break;
 
   case 88:
 
 /* Line 1455 of yacc.c  */
-#line 826 "QL/parser.y"
-    {
-      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorAnd);
+#line 830 "QL/parser.y"
+    { 
+      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeUnaryOperatorNot);
       ABORT_IF_OOM((yyval.node));
-      ABORT_IF_OOM((yyvsp[(1) - (3)].node));
-      ABORT_IF_OOM((yyvsp[(3) - (3)].node));
-      (yyval.node)->_lhs = (yyvsp[(1) - (3)].node);
-      (yyval.node)->_rhs = (yyvsp[(3) - (3)].node); 
+      ABORT_IF_OOM((yyvsp[(2) - (2)].node));
+      (yyval.node)->_lhs = (yyvsp[(2) - (2)].node);
     ;}
     break;
 
   case 89:
 
 /* Line 1455 of yacc.c  */
-#line 834 "QL/parser.y"
+#line 839 "QL/parser.y"
     {
-      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorAdd);
+      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorOr);
       ABORT_IF_OOM((yyval.node));
       ABORT_IF_OOM((yyvsp[(1) - (3)].node));
       ABORT_IF_OOM((yyvsp[(3) - (3)].node));
@@ -2835,23 +2841,23 @@ yyreduce:
   case 90:
 
 /* Line 1455 of yacc.c  */
-#line 842 "QL/parser.y"
+#line 847 "QL/parser.y"
     {
-      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorSubtract);
+      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorAnd);
       ABORT_IF_OOM((yyval.node));
       ABORT_IF_OOM((yyvsp[(1) - (3)].node));
       ABORT_IF_OOM((yyvsp[(3) - (3)].node));
       (yyval.node)->_lhs = (yyvsp[(1) - (3)].node);
-      (yyval.node)->_rhs = (yyvsp[(3) - (3)].node);
+      (yyval.node)->_rhs = (yyvsp[(3) - (3)].node); 
     ;}
     break;
 
   case 91:
 
 /* Line 1455 of yacc.c  */
-#line 850 "QL/parser.y"
+#line 855 "QL/parser.y"
     {
-      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorMultiply);
+      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorAdd);
       ABORT_IF_OOM((yyval.node));
       ABORT_IF_OOM((yyvsp[(1) - (3)].node));
       ABORT_IF_OOM((yyvsp[(3) - (3)].node));
@@ -2863,9 +2869,9 @@ yyreduce:
   case 92:
 
 /* Line 1455 of yacc.c  */
-#line 858 "QL/parser.y"
+#line 863 "QL/parser.y"
     {
-      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorDivide);
+      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorSubtract);
       ABORT_IF_OOM((yyval.node));
       ABORT_IF_OOM((yyvsp[(1) - (3)].node));
       ABORT_IF_OOM((yyvsp[(3) - (3)].node));
@@ -2877,9 +2883,9 @@ yyreduce:
   case 93:
 
 /* Line 1455 of yacc.c  */
-#line 866 "QL/parser.y"
+#line 871 "QL/parser.y"
     {
-      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorModulus);
+      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorMultiply);
       ABORT_IF_OOM((yyval.node));
       ABORT_IF_OOM((yyvsp[(1) - (3)].node));
       ABORT_IF_OOM((yyvsp[(3) - (3)].node));
@@ -2891,9 +2897,9 @@ yyreduce:
   case 94:
 
 /* Line 1455 of yacc.c  */
-#line 874 "QL/parser.y"
+#line 879 "QL/parser.y"
     {
-      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorIdentical);
+      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorDivide);
       ABORT_IF_OOM((yyval.node));
       ABORT_IF_OOM((yyvsp[(1) - (3)].node));
       ABORT_IF_OOM((yyvsp[(3) - (3)].node));
@@ -2905,9 +2911,9 @@ yyreduce:
   case 95:
 
 /* Line 1455 of yacc.c  */
-#line 882 "QL/parser.y"
+#line 887 "QL/parser.y"
     {
-      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorUnidentical);
+      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorModulus);
       ABORT_IF_OOM((yyval.node));
       ABORT_IF_OOM((yyvsp[(1) - (3)].node));
       ABORT_IF_OOM((yyvsp[(3) - (3)].node));
@@ -2919,9 +2925,9 @@ yyreduce:
   case 96:
 
 /* Line 1455 of yacc.c  */
-#line 890 "QL/parser.y"
+#line 895 "QL/parser.y"
     {
-      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorEqual);
+      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorIdentical);
       ABORT_IF_OOM((yyval.node));
       ABORT_IF_OOM((yyvsp[(1) - (3)].node));
       ABORT_IF_OOM((yyvsp[(3) - (3)].node));
@@ -2933,9 +2939,9 @@ yyreduce:
   case 97:
 
 /* Line 1455 of yacc.c  */
-#line 898 "QL/parser.y"
+#line 903 "QL/parser.y"
     {
-      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorUnequal);
+      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorUnidentical);
       ABORT_IF_OOM((yyval.node));
       ABORT_IF_OOM((yyvsp[(1) - (3)].node));
       ABORT_IF_OOM((yyvsp[(3) - (3)].node));
@@ -2947,9 +2953,9 @@ yyreduce:
   case 98:
 
 /* Line 1455 of yacc.c  */
-#line 906 "QL/parser.y"
+#line 911 "QL/parser.y"
     {
-      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorLess);
+      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorEqual);
       ABORT_IF_OOM((yyval.node));
       ABORT_IF_OOM((yyvsp[(1) - (3)].node));
       ABORT_IF_OOM((yyvsp[(3) - (3)].node));
@@ -2961,9 +2967,9 @@ yyreduce:
   case 99:
 
 /* Line 1455 of yacc.c  */
-#line 914 "QL/parser.y"
+#line 919 "QL/parser.y"
     {
-      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorGreater);
+      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorUnequal);
       ABORT_IF_OOM((yyval.node));
       ABORT_IF_OOM((yyvsp[(1) - (3)].node));
       ABORT_IF_OOM((yyvsp[(3) - (3)].node));
@@ -2975,9 +2981,9 @@ yyreduce:
   case 100:
 
 /* Line 1455 of yacc.c  */
-#line 922 "QL/parser.y"
+#line 927 "QL/parser.y"
     {
-      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorLessEqual);
+      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorLess);
       ABORT_IF_OOM((yyval.node));
       ABORT_IF_OOM((yyvsp[(1) - (3)].node));
       ABORT_IF_OOM((yyvsp[(3) - (3)].node));
@@ -2989,9 +2995,9 @@ yyreduce:
   case 101:
 
 /* Line 1455 of yacc.c  */
-#line 930 "QL/parser.y"
+#line 935 "QL/parser.y"
     {
-      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorGreaterEqual);
+      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorGreater);
       ABORT_IF_OOM((yyval.node));
       ABORT_IF_OOM((yyvsp[(1) - (3)].node));
       ABORT_IF_OOM((yyvsp[(3) - (3)].node));
@@ -3003,9 +3009,9 @@ yyreduce:
   case 102:
 
 /* Line 1455 of yacc.c  */
-#line 938 "QL/parser.y"
+#line 943 "QL/parser.y"
     {
-      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorIn);
+      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorLessEqual);
       ABORT_IF_OOM((yyval.node));
       ABORT_IF_OOM((yyvsp[(1) - (3)].node));
       ABORT_IF_OOM((yyvsp[(3) - (3)].node));
@@ -3017,7 +3023,35 @@ yyreduce:
   case 103:
 
 /* Line 1455 of yacc.c  */
-#line 949 "QL/parser.y"
+#line 951 "QL/parser.y"
+    {
+      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorGreaterEqual);
+      ABORT_IF_OOM((yyval.node));
+      ABORT_IF_OOM((yyvsp[(1) - (3)].node));
+      ABORT_IF_OOM((yyvsp[(3) - (3)].node));
+      (yyval.node)->_lhs = (yyvsp[(1) - (3)].node);
+      (yyval.node)->_rhs = (yyvsp[(3) - (3)].node);
+    ;}
+    break;
+
+  case 104:
+
+/* Line 1455 of yacc.c  */
+#line 959 "QL/parser.y"
+    {
+      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorIn);
+      ABORT_IF_OOM((yyval.node));
+      ABORT_IF_OOM((yyvsp[(1) - (3)].node));
+      ABORT_IF_OOM((yyvsp[(3) - (3)].node));
+      (yyval.node)->_lhs = (yyvsp[(1) - (3)].node);
+      (yyval.node)->_rhs = (yyvsp[(3) - (3)].node);
+    ;}
+    break;
+
+  case 105:
+
+/* Line 1455 of yacc.c  */
+#line 970 "QL/parser.y"
     {
       TRI_query_node_t* node = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerTernarySwitch);
       ABORT_IF_OOM(node);
@@ -3034,20 +3068,20 @@ yyreduce:
     ;}
     break;
 
-  case 104:
+  case 106:
 
 /* Line 1455 of yacc.c  */
-#line 966 "QL/parser.y"
+#line 987 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       (yyval.node) = (yyvsp[(1) - (1)].node);
     ;}
     break;
 
-  case 105:
+  case 107:
 
 /* Line 1455 of yacc.c  */
-#line 973 "QL/parser.y"
+#line 994 "QL/parser.y"
     {
       TRI_query_node_t* name = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
       ABORT_IF_OOM(name);
@@ -3062,10 +3096,10 @@ yyreduce:
     ;}
     break;
 
-  case 106:
+  case 108:
 
 /* Line 1455 of yacc.c  */
-#line 985 "QL/parser.y"
+#line 1006 "QL/parser.y"
     {
       TRI_query_node_t* list = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerList);
       ABORT_IF_OOM(list);
@@ -3073,10 +3107,10 @@ yyreduce:
     ;}
     break;
 
-  case 107:
+  case 109:
 
 /* Line 1455 of yacc.c  */
-#line 989 "QL/parser.y"
+#line 1010 "QL/parser.y"
     {
       TRI_query_node_t* name = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
       ABORT_IF_OOM(name);
@@ -3090,39 +3124,39 @@ yyreduce:
     ;}
     break;
 
-  case 108:
-
-/* Line 1455 of yacc.c  */
-#line 1003 "QL/parser.y"
-    {
-      TRI_ParseQueryContextAddElement(template_, (yyvsp[(1) - (1)].node));
-    ;}
-    break;
-
-  case 109:
-
-/* Line 1455 of yacc.c  */
-#line 1006 "QL/parser.y"
-    {
-      ABORT_IF_OOM((yyvsp[(3) - (3)].node));
-      TRI_ParseQueryContextAddElement(template_, (yyvsp[(3) - (3)].node));
-    ;}
-    break;
-
   case 110:
 
 /* Line 1455 of yacc.c  */
-#line 1013 "QL/parser.y"
+#line 1024 "QL/parser.y"
     {
-      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueArray);
-      ABORT_IF_OOM((yyval.node));
+      TRI_ParseQueryContextAddElement(template_, (yyvsp[(1) - (1)].node));
     ;}
     break;
 
   case 111:
 
 /* Line 1455 of yacc.c  */
-#line 1017 "QL/parser.y"
+#line 1027 "QL/parser.y"
+    {
+      ABORT_IF_OOM((yyvsp[(3) - (3)].node));
+      TRI_ParseQueryContextAddElement(template_, (yyvsp[(3) - (3)].node));
+    ;}
+    break;
+
+  case 112:
+
+/* Line 1455 of yacc.c  */
+#line 1034 "QL/parser.y"
+    {
+      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueArray);
+      ABORT_IF_OOM((yyval.node));
+    ;}
+    break;
+
+  case 113:
+
+/* Line 1455 of yacc.c  */
+#line 1038 "QL/parser.y"
     {
       TRI_query_node_t* list = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerList);
       ABORT_IF_OOM(list);
@@ -3130,10 +3164,10 @@ yyreduce:
     ;}
     break;
 
-  case 112:
+  case 114:
 
 /* Line 1455 of yacc.c  */
-#line 1021 "QL/parser.y"
+#line 1042 "QL/parser.y"
     { 
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueArray);
       ABORT_IF_OOM((yyval.node));
@@ -3141,42 +3175,43 @@ yyreduce:
     ;}
     break;
 
-  case 113:
-
-/* Line 1455 of yacc.c  */
-#line 1029 "QL/parser.y"
-    {
-      TRI_ParseQueryContextAddElement(template_, (yyvsp[(1) - (1)].node));
-    ;}
-    break;
-
-  case 114:
-
-/* Line 1455 of yacc.c  */
-#line 1032 "QL/parser.y"
-    {
-      ABORT_IF_OOM((yyvsp[(3) - (3)].node));
-      TRI_ParseQueryContextAddElement(template_, (yyvsp[(3) - (3)].node));
-    ;}
-    break;
-
   case 115:
 
 /* Line 1455 of yacc.c  */
-#line 1039 "QL/parser.y"
+#line 1050 "QL/parser.y"
     {
-      size_t outLength;
-      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueString);
-      ABORT_IF_OOM((yyval.node));
-      ABORT_IF_OOM((yyvsp[(1) - (1)].strval));
-      (yyval.node)->_value._stringValue = TRI_ParseQueryRegisterString(template_, TRI_UnescapeUtf8String((yyvsp[(1) - (1)].strval) + 1, strlen((yyvsp[(1) - (1)].strval)) - 2, &outLength)); 
+      TRI_ParseQueryContextAddElement(template_, (yyvsp[(1) - (1)].node));
     ;}
     break;
 
   case 116:
 
 /* Line 1455 of yacc.c  */
-#line 1046 "QL/parser.y"
+#line 1053 "QL/parser.y"
+    {
+      ABORT_IF_OOM((yyvsp[(3) - (3)].node));
+      TRI_ParseQueryContextAddElement(template_, (yyvsp[(3) - (3)].node));
+    ;}
+    break;
+
+  case 117:
+
+/* Line 1455 of yacc.c  */
+#line 1060 "QL/parser.y"
+    {
+      size_t outLength;
+      (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueString);
+      ABORT_IF_OOM((yyval.node));
+      ABORT_IF_OOM((yyvsp[(1) - (1)].strval));
+      (yyval.node)->_value._stringValue = TRI_ParseQueryRegisterString(template_, TRI_UnescapeUtf8String((yyvsp[(1) - (1)].strval) + 1, strlen((yyvsp[(1) - (1)].strval)) - 2, &outLength)); 
+      ABORT_IF_OOM((yyval.node)->_value._stringValue);
+    ;}
+    break;
+
+  case 118:
+
+/* Line 1455 of yacc.c  */
+#line 1068 "QL/parser.y"
     {
       double d = TRI_DoubleString((yyvsp[(1) - (1)].strval));
       if (TRI_errno() != TRI_ERROR_NO_ERROR && d != 0.0) {
@@ -3190,30 +3225,30 @@ yyreduce:
     ;}
     break;
 
-  case 117:
+  case 119:
 
 /* Line 1455 of yacc.c  */
-#line 1057 "QL/parser.y"
+#line 1079 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueNull);
       ABORT_IF_OOM((yyval.node));
     ;}
     break;
 
-  case 118:
+  case 120:
 
 /* Line 1455 of yacc.c  */
-#line 1061 "QL/parser.y"
+#line 1083 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueUndefined); 
       ABORT_IF_OOM((yyval.node));
     ;}
     break;
 
-  case 119:
+  case 121:
 
 /* Line 1455 of yacc.c  */
-#line 1065 "QL/parser.y"
+#line 1087 "QL/parser.y"
     { 
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueBool);
       ABORT_IF_OOM((yyval.node));
@@ -3221,10 +3256,10 @@ yyreduce:
     ;}
     break;
 
-  case 120:
+  case 122:
 
 /* Line 1455 of yacc.c  */
-#line 1070 "QL/parser.y"
+#line 1092 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueBool);
       ABORT_IF_OOM((yyval.node));
@@ -3232,10 +3267,10 @@ yyreduce:
     ;}
     break;
 
-  case 121:
+  case 123:
 
 /* Line 1455 of yacc.c  */
-#line 1075 "QL/parser.y"
+#line 1097 "QL/parser.y"
     {
       // numbered parameter
       int64_t d = TRI_Int64String((yyvsp[(1) - (1)].strval));
@@ -3252,10 +3287,10 @@ yyreduce:
     ;}
     break;
 
-  case 122:
+  case 124:
 
 /* Line 1455 of yacc.c  */
-#line 1089 "QL/parser.y"
+#line 1111 "QL/parser.y"
     {
       // named parameter
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueParameterNamed);
@@ -3268,7 +3303,7 @@ yyreduce:
 
 
 /* Line 1455 of yacc.c  */
-#line 3272 "QL/parser.c"
+#line 3307 "QL/parser.c"
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
@@ -3487,7 +3522,7 @@ yyreturn:
 
 
 /* Line 1675 of yacc.c  */
-#line 1098 "QL/parser.y"
+#line 1120 "QL/parser.y"
 
 
 
