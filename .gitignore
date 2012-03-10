@@ -60,7 +60,4 @@ ARCH.*
 avocsh
 libavocado.a
 *.swp
-<<<<<<< Updated upstream
 tags
-=======
->>>>>>> Stashed changes
