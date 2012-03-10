@@ -41,10 +41,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 static void AppendChar (TRI_string_buffer_t * self, char chr) {
-  //*self->_bufferPtr++ = chr;
   *(self->_buffer + self->_off++) = chr;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief how much space is presently left in buffer?
+////////////////////////////////////////////////////////////////////////////////
 static size_t Remaining (TRI_string_buffer_t * self) {
   return self->_len - self->_off;
 }
@@ -54,39 +56,19 @@ static size_t Remaining (TRI_string_buffer_t * self) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void Reserve (TRI_string_buffer_t * self, size_t size) {
+  if (size < 1) {
+    return;
+  }
   if (size > Remaining(self)) {
-    //size_t newlen = (size_t)(1.2 * (self->_len + size));
     self->_len = (size_t)(1.2 * (self->_len + size));
     self->_buffer = TRI_Reallocate(self->_buffer, self->_len+1);
+    memset(self->_buffer+self->_off, 0, Remaining(self)+1);
+#if I_CARE_ABOUT_MALLOC_FAILURES
+    if (NULL == self->_buffer) {
+      abort();
+    }
+#endif
   }
-//  if (self->_buffer == NULL) {
-//    self->_buffer = (char*) TRI_Allocate(size + 1);
-//    self->_off = 0;
-//    self->_len = size; 
-//    //self->_bufferEnd = self->_buffer + size;
-//  }
-//  //else if ((size_t)(self->_bufferEnd - self->_bufferPtr) < size) {
-//  else if ((size_t)(self->_len - self->_off) < size) {
-//    size_t newlen; //, offset;
-//    //char * b;
-//    
-//    //printf(">b: %zx , bp: %zx , be:%zx \n", self->_buffer, self->_bufferPtr, self->_bufferEnd);
-//
-//    newlen = (size_t)(1.2 * ( self->_len + size));
-////    b = TRI_Allocate(newlen + 1);
-//    self->_buffer=TRI_Reallocate(self->_buffer,newlen+1+1);
-//    self->_len = self->_len+newlen;
-
-    //printf("<b: %zx , bp: %zx , be:%zx nl:%d \n", self->_buffer, self->_bufferPtr, self->_bufferEnd, newlen);
-//
-//    memcpy(b, self->_buffer, self->_bufferEnd - self->_buffer + 1);
-//
-//    TRI_Free(self->_buffer);
-//
-//    self->_bufferPtr = b + (self->_bufferPtr - self->_buffer);
-//    self->_bufferEnd = b + newlen;
-//    self->_buffer    = b;
-//  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,12 +91,6 @@ static void Reserve (TRI_string_buffer_t * self, size_t size) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitStringBuffer (TRI_string_buffer_t * self) {
-//  self->_buffer = NULL;
-//  self->_bufferPtr = NULL;
-//  self->_bufferEnd = NULL;
-//
-//  Reserve(self, 1);
-//  *self->_bufferPtr = 0;
   memset (self, 0, sizeof(TRI_string_buffer_t));
   Reserve(self, 1);
 }
@@ -128,10 +104,6 @@ void TRI_InitStringBuffer (TRI_string_buffer_t * self) {
 void  TRI_FreeStringBuffer (TRI_string_buffer_t * self) {
   if (self->_buffer != NULL) {
     TRI_Free(self->_buffer);
-
-//    self->_buffer = NULL;
-//    self->_bufferPtr = NULL;
-//    self->_bufferEnd = NULL;
     
     memset (self, 0, sizeof(TRI_string_buffer_t));
   }
@@ -145,14 +117,11 @@ void  TRI_FreeStringBuffer (TRI_string_buffer_t * self) {
 
 void TRI_DestroyStringBuffer (TRI_string_buffer_t * self) {
   if (self->_buffer != NULL) {
+    // somewhat paranoid?
     memset(self->_buffer, 0, self->_bufferEnd - self->_buffer);
-
     TRI_Free(self->_buffer);
 
     memset (self, 0, sizeof(TRI_string_buffer_t));
-//    self->_buffer = NULL;
-//    self->_bufferPtr = NULL;
-//    self->_bufferEnd = NULL;
   }
 }
 
@@ -174,17 +143,17 @@ void TRI_DestroyStringBuffer (TRI_string_buffer_t * self) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SwapStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t * other) {
-  char * otherBuffer    = other->_buffer;
-  ptrdiff_t otherOff    = other->_off;
-  size_t otherLen       = other->_len;
+  char * otherBuffer= other->_buffer;
+  ptrdiff_t otherOff= other->_off;
+  size_t otherLen   = other->_len;
 
   other->_buffer    = self->_buffer;
   other->_off       = self->_off;
   other->_len       = self->_len;
 
-  self->_buffer    = otherBuffer;
-  self->_off       = otherOff;
-  self->_len       = otherLen;
+  self->_buffer     = otherBuffer;
+  self->_off        = otherOff;
+  self->_len        = otherLen;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -200,7 +169,7 @@ char const * TRI_BeginStringBuffer (TRI_string_buffer_t const * self) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char const * TRI_EndStringBuffer (TRI_string_buffer_t const * self) {
-  return self->_buffer + self->_len;
+  return self->_buffer + self->_off;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -225,48 +194,45 @@ bool TRI_EmptyStringBuffer (TRI_string_buffer_t const * self) {
 
 void TRI_ClearStringBuffer (TRI_string_buffer_t * self) {
   self->_off = 0; 
+  memset(self->_buffer, 0, self->_len+1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies the string buffer
 ////////////////////////////////////////////////////////////////////////////////
-//TODO
 void TRI_CopyStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t const * source) {
-  TRI_ReplaceStringStringBuffer(self, source->_buffer, source->_bufferPtr - source->_buffer);
+  TRI_ReplaceStringStringBuffer(self, source->_buffer, source->_off);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes the first characters
 ////////////////////////////////////////////////////////////////////////////////
-//TODO
 void TRI_EraseFrontStringBuffer (TRI_string_buffer_t * self, size_t len) {
-  if ((size_t)(self->_bufferPtr - self->_buffer) <= len) {
-    self->_bufferPtr = self->_buffer;
+  if (self->_off <= len) {
+    TRI_ClearStringBuffer(self); 
   }
   else if (0 < len) {
-    memmove(self->_buffer, self->_buffer + len, self->_bufferPtr - self->_buffer - len);
-    self->_bufferPtr -= len;
+    memmove(self->_buffer, self->_buffer+len, self->_off - len);
+    self->_off -= len;
+    memset (self->_buffer + self->_off, 0, self->_len); 
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces characters
 ////////////////////////////////////////////////////////////////////////////////
-//TODO
 void TRI_ReplaceStringStringBuffer (TRI_string_buffer_t * self, char const * str, size_t len) {
-  self->_bufferPtr = self->_buffer;
-
+  self->_off = 0;
   TRI_AppendString2StringBuffer(self, str, len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces characters
 ////////////////////////////////////////////////////////////////////////////////
-//TODO
 void TRI_ReplaceStringBufferStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t const * text) {
-  self->_bufferPtr = self->_buffer;
+  self->_off = 0; 
 
-  TRI_AppendString2StringBuffer(self, text->_buffer, text->_bufferPtr - text->_buffer);
+  TRI_AppendString2StringBuffer(self, text->_buffer, text->_off);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -316,32 +282,27 @@ void TRI_AppendStringStringBuffer (TRI_string_buffer_t * self, char const * str)
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends characters
 ////////////////////////////////////////////////////////////////////////////////
-// TODO
 void TRI_AppendString2StringBuffer (TRI_string_buffer_t * self, char const * str, size_t len) {
   if (len == 0) {
-    Reserve(self, 1);
-    *self->_bufferPtr = '\0';
+    return;
   }
   else {
-    Reserve(self, len + 1);
-    memcpy(self->_bufferPtr, str, len);
-    self->_bufferPtr += len;
-    *self->_bufferPtr = '\0';
+    Reserve(self, len);
+    memcpy(self->_buffer+self->_off, str, len);
+    self->_off += len;
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends a string buffer
 ////////////////////////////////////////////////////////////////////////////////
-//TODO
 void TRI_AppendStringBufferStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t const * text) {
-  TRI_AppendString2StringBuffer(self, text->_buffer, text->_bufferPtr - text->_buffer);
+  TRI_AppendString2StringBuffer(self, text->_buffer, text->_off);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends a blob
 ////////////////////////////////////////////////////////////////////////////////
-//TODO
 void TRI_AppendBlobStringBuffer (TRI_string_buffer_t * self, TRI_blob_t const * text) {
   TRI_AppendString2StringBuffer(self, text->data, text->length);
 }
@@ -349,7 +310,6 @@ void TRI_AppendBlobStringBuffer (TRI_string_buffer_t * self, TRI_blob_t const * 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends eol character
 ////////////////////////////////////////////////////////////////////////////////
-//TODO
 void TRI_AppendEolStringBuffer (TRI_string_buffer_t * self) {
   TRI_AppendCharStringBuffer(self, '\n');
 }
@@ -374,56 +334,48 @@ void TRI_AppendEolStringBuffer (TRI_string_buffer_t * self) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends integer with two digits
 ////////////////////////////////////////////////////////////////////////////////
-//TODO
 void TRI_AppendInteger2StringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
-  Reserve(self, 3);
+  Reserve(self, 2);
 
   AppendChar(self, (attr / 10U) % 10 + '0');
   AppendChar(self,  attr % 10        + '0');
 
-  *self->_bufferPtr = '\0';
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends integer with three digits
 ////////////////////////////////////////////////////////////////////////////////
-// TODO
 void TRI_AppendInteger3StringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
-  Reserve(self, 4);
+  Reserve(self, 3);
 
   AppendChar(self, (attr / 100U) % 10 + '0');
   AppendChar(self, (attr /  10U) % 10 + '0');
   AppendChar(self,  attr         % 10 + '0');
-
-  *self->_bufferPtr = '\0';
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends integer with four digits
 ////////////////////////////////////////////////////////////////////////////////
-// TODO
 void TRI_AppendInteger4StringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
-  Reserve(self, 5);
+  Reserve(self, 4);
 
   AppendChar(self, (attr / 1000U) % 10 + '0');
   AppendChar(self, (attr /  100U) % 10 + '0');
   AppendChar(self, (attr /   10U) % 10 + '0');
   AppendChar(self,  attr          % 10 + '0');
 
-  *self->_bufferPtr = '\0';
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends integer with 8 bits
 ////////////////////////////////////////////////////////////////////////////////
-//TODO
 void TRI_AppendInt8StringBuffer (TRI_string_buffer_t * self, int8_t attr) {
   if (attr == INT8_MIN) {
     TRI_AppendString2StringBuffer(self, "-128", 4);
     return;
   }
 
-  Reserve(self, 5);
+  Reserve(self, 4);
 
   if (attr < 0) {
     AppendChar(self, '-');
@@ -436,35 +388,31 @@ void TRI_AppendInt8StringBuffer (TRI_string_buffer_t * self, int8_t attr) {
 
   AppendChar(self, attr % 10 + '0');
 
-  *self->_bufferPtr = '\0';
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends unsigned integer with 8 bits
 ////////////////////////////////////////////////////////////////////////////////
-//TODO
 void TRI_AppendUInt8StringBuffer (TRI_string_buffer_t * self, uint8_t attr) {
-  Reserve(self, 4);
+  Reserve(self, 3);
 
   if (100U <= attr) { AppendChar(self, (attr / 100U) % 10 + '0'); }
   if ( 10U <= attr) { AppendChar(self, (attr /  10U) % 10 + '0'); }
 
   AppendChar(self, attr % 10 + '0');
 
-  *self->_bufferPtr = '\0';
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends integer with 16 bits
 ////////////////////////////////////////////////////////////////////////////////
-//TODO
 void TRI_AppendInt16StringBuffer (TRI_string_buffer_t * self, int16_t attr) {
   if (attr == INT16_MIN) {
     TRI_AppendString2StringBuffer(self, "-32768", 6);
     return;
   }
 
-  Reserve(self, 7);
+  Reserve(self, 6);
 
   if (attr < 0) {
     AppendChar(self, '-');
@@ -478,15 +426,13 @@ void TRI_AppendInt16StringBuffer (TRI_string_buffer_t * self, int16_t attr) {
 
   AppendChar(self, attr % 10 + '0');
 
-  *self->_bufferPtr = '\0';
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends unsigned integer with 32 bits
 ////////////////////////////////////////////////////////////////////////////////
-// TODO
 void TRI_AppendUInt16StringBuffer (TRI_string_buffer_t * self, uint16_t attr) {
-  Reserve(self, 6);
+  Reserve(self, 5);
 
   if (10000U <= attr) { AppendChar(self, (attr / 10000U) % 10 + '0'); }
   if ( 1000U <= attr) { AppendChar(self, (attr /  1000U) % 10 + '0'); }
@@ -494,21 +440,18 @@ void TRI_AppendUInt16StringBuffer (TRI_string_buffer_t * self, uint16_t attr) {
   if (   10U <= attr) { AppendChar(self, (attr /    10U) % 10 + '0'); }
 
   AppendChar(self, attr % 10 + '0');
-
-  *self->_bufferPtr = '\0';
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends integer with 32 bits
 ////////////////////////////////////////////////////////////////////////////////
-// TODO
 void TRI_AppendInt32StringBuffer (TRI_string_buffer_t * self, int32_t attr) {
   if (attr == INT32_MIN) {
     TRI_AppendString2StringBuffer(self, "-2147483648", 11);
     return;
   }
 
-  Reserve(self, 12);
+  Reserve(self, 11);
 
   if (attr < 0) {
     AppendChar(self, '-');
@@ -527,15 +470,13 @@ void TRI_AppendInt32StringBuffer (TRI_string_buffer_t * self, int32_t attr) {
 
   AppendChar(self, attr % 10 + '0');
 
-  *self->_bufferPtr = '\0';
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends unsigned integer with 32 bits
 ////////////////////////////////////////////////////////////////////////////////
-// TODO
 void TRI_AppendUInt32StringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
-  Reserve(self, 11);
+  Reserve(self, 10);
 
   if (1000000000U <= attr) { AppendChar(self, (attr / 1000000000U) % 10 + '0'); }
   if ( 100000000U <= attr) { AppendChar(self, (attr /  100000000U) % 10 + '0'); }
@@ -549,13 +490,11 @@ void TRI_AppendUInt32StringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
 
   AppendChar(self, attr % 10 + '0');
 
-  *self->_bufferPtr = '\0';
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends integer with 64 bits
 ////////////////////////////////////////////////////////////////////////////////
-// TODO
 void TRI_AppendInt64StringBuffer (TRI_string_buffer_t * self, int64_t attr) {
   if (attr == INT64_MIN) {
     TRI_AppendString2StringBuffer(self, "-9223372036854775808", 20);
@@ -596,13 +535,11 @@ void TRI_AppendInt64StringBuffer (TRI_string_buffer_t * self, int64_t attr) {
 
   AppendChar(self, attr % 10 + '0');
 
-  *self->_bufferPtr = '\0';
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends unsigned integer with 64 bits
 ////////////////////////////////////////////////////////////////////////////////
-//TODO
 void TRI_AppendUInt64StringBuffer (TRI_string_buffer_t * self, uint64_t attr) {
   if ((attr >> 32) == 0) {
     TRI_AppendUInt32StringBuffer(self, (uint32_t) attr);
@@ -634,13 +571,11 @@ void TRI_AppendUInt64StringBuffer (TRI_string_buffer_t * self, uint64_t attr) {
 
   AppendChar(self, attr % 10 + '0');
 
-  *self->_bufferPtr = '\0';
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends size_t
 ////////////////////////////////////////////////////////////////////////////////
-// TODO
 void TRI_AppendSizeStringBuffer (TRI_string_buffer_t * self, size_t attr) {
 #if TRI_SIZEOF_SIZE_T == 8
   TRI_AppendUInt64StringBuffer(self, (uint64_t) attr);
@@ -671,7 +606,7 @@ void TRI_AppendSizeStringBuffer (TRI_string_buffer_t * self, size_t attr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AppendUInt32OctalStringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
-  Reserve(self, 9);
+  Reserve(self, 8);
 
   if (010000000U <= attr) { AppendChar(self, (attr / 010000000U) % 010 + '0'); }
   if ( 01000000U <= attr) { AppendChar(self, (attr /  01000000U) % 010 + '0'); }
@@ -683,7 +618,6 @@ void TRI_AppendUInt32OctalStringBuffer (TRI_string_buffer_t * self, uint32_t att
 
   AppendChar(self, attr % 010 + '0');
 
-  *self->_bufferPtr = '\0';
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -691,7 +625,7 @@ void TRI_AppendUInt32OctalStringBuffer (TRI_string_buffer_t * self, uint32_t att
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AppendUInt64OctalStringBuffer (TRI_string_buffer_t * self, uint64_t attr) {
-  Reserve(self, 17);
+  Reserve(self, 16);
 
   if (01000000000000000ULL <= attr) { AppendChar(self, (attr / 01000000000000000ULL) % 010 + '0'); }
   if ( 0100000000000000ULL <= attr) { AppendChar(self, (attr /  0100000000000000ULL) % 010 + '0'); }
@@ -711,7 +645,6 @@ void TRI_AppendUInt64OctalStringBuffer (TRI_string_buffer_t * self, uint64_t att
 
   AppendChar(self, attr % 010 + '0');
 
-  *self->_bufferPtr = '\0';
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -747,10 +680,10 @@ void TRI_AppendSizeOctalStringBuffer (TRI_string_buffer_t * self, size_t attr) {
 /// @brief appends unsigned integer with 32 bits in hex
 ////////////////////////////////////////////////////////////////////////////////
 
+static char const * const HEX = "0123456789ABCDEF";
 void TRI_AppendUInt32HexStringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
-  static char const * const HEX = "0123456789ABCDEF";
 
-  Reserve(self, 5);
+  Reserve(self, 4);
 
   if (0x1000U <= attr) { AppendChar(self, HEX[(attr / 0x1000U) % 0x10]); }
   if ( 0x100U <= attr) { AppendChar(self, HEX[(attr /  0x100U) % 0x10]); }
@@ -758,7 +691,6 @@ void TRI_AppendUInt32HexStringBuffer (TRI_string_buffer_t * self, uint32_t attr)
 
   AppendChar(self, HEX[attr % 0x10]);
 
-  *self->_bufferPtr = '\0';
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -766,9 +698,8 @@ void TRI_AppendUInt32HexStringBuffer (TRI_string_buffer_t * self, uint32_t attr)
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AppendUInt64HexStringBuffer (TRI_string_buffer_t * self, uint64_t attr) {
-  static char const * const HEX = "0123456789ABCDEF";
 
-  Reserve(self, 9);
+  Reserve(self, 8);
 
   if (0x10000000U <= attr) { AppendChar(self, HEX[(attr / 0x10000000U) % 0x10]); }
   if ( 0x1000000U <= attr) { AppendChar(self, HEX[(attr /  0x1000000U) % 0x10]); }
@@ -780,7 +711,6 @@ void TRI_AppendUInt64HexStringBuffer (TRI_string_buffer_t * self, uint64_t attr)
 
   AppendChar(self, HEX[attr % 0x10]);
 
-  *self->_bufferPtr = '\0';
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1018,7 +948,6 @@ void TRI_AppendTimeStringBuffer (TRI_string_buffer_t * self, int32_t attr) {
   AppendChar(self, ':');
   TRI_AppendInteger2StringBuffer(self, second);
 
-  *self->_bufferPtr = '\0';
 }
 
 ////////////////////////////////////////////////////////////////////////////////
