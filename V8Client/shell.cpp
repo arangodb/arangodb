@@ -261,16 +261,25 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   ProgramOptionsDescription description("STANDARD options");
 
+  ProgramOptionsDescription hidden("HIDDEN options");
+
+  hidden
+    ("colors", "activate color support")
+    ("no-pretty-print", "disable pretty printting")          
+    ("auto-complete", "enable auto completion, use no-auto-complete to disable")
+  ;
+
   description
     ("help,h", "help message")
     ("log.level,l", &level,  "log level")
     ("server", &ServerAddress, "server address and port")
     ("startup", &StartupPath, "startup path containing the JavaScript files")
-    ("use_pager", &usePager, "use pager")
     ("pager", &OutputPager, "output pager (default: 'more')")
-    ("no_colors", &noColors, "deactivate color support")
-    ("no_autocomplete", &noAutoComplete, "disable auto completion")
-    ("pretty_print", &prettyPrint, "pretty print values")          
+    ("use-pager", "use pager")
+    ("pretty-print", "pretty print values")          
+    ("no-colors", "deactivate color support")
+    ("no-auto-complete", "disable auto completion")
+    (hidden, true)
   ;
 
   ProgramOptions options;
@@ -291,6 +300,35 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   // set the logging
   TRI_SetLogLevelLogging(level.c_str());
   TRI_CreateLogAppenderFile("-");
+
+  // set colors
+  if (options.has("colors")) {
+    noColors = false;
+  }
+
+  if (options.has("no-colors")) {
+    noColors = true;
+  }
+
+  if (options.has("auto-complete")) {
+    noAutoComplete = false;
+  }
+
+  if (options.has("no-auto-complete")) {
+    noAutoComplete = true;
+  }
+
+  if (options.has("pretty-print")) {
+    prettyPrint = true;
+  }
+
+  if (options.has("no-pretty-print")) {
+    prettyPrint = false;
+  }
+
+  if (options.has("use-pager")) {
+    usePager = true;
+  }
 
   // set V8 options
   v8::V8::SetFlagsFromCommandLine(&argc, argv, true);

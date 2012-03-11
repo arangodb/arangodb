@@ -1,13 +1,8 @@
-avocado> var Graph = require("graph").Graph;
+avocado> v = g.addVertex(1);
+Vertex(1)
 
-avocado> g = new Graph("vertices", "edges");
-Graph("vertices", "edges")
-
-avocado> v = g.addVertex();
-Vertex(<graph>, "153246:2310672")
-
-avocado> e = g.addEdge(v, v, "self", { weight: 10 })
-Edge(<graph>, "2141724:6339989")
+avocado> e = g.addEdge(2, v, v, "self", { weight: 10 })
+Edge(2)
 
 avocado> e.getPropertyKeys()
 [ "weight" ]
