@@ -316,4 +316,5 @@ WIKI = \
         Doxygen/xml/StartStop.md \
         Doxygen/xml/UserManualServer.md \
         Doxygen/xml/UserManualShell.md \
+        Doxygen/xml/UserManualShellStartStop.md \
         Doxygen/xml/jsUnity.md
