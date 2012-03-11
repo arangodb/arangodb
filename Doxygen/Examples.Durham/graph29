@@ -3,8 +3,8 @@ avocado> var Graph = require("graph").Graph;
 avocado> g = new Graph("vertices", "edges");
 Graph("vertices", "edges")
 
-avocado> v = g.addVertex();
-Vertex(<graph>, "153246:1824463")
+avocado> g.addVertex(1);
+Vertex(1)
 
-avocado> g.getVertex("153246:1824463")
-Vertex(<graph>, "153246:1824463")
+avocado> g.getVertex(1)
+Vertex(1)
