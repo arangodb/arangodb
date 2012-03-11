@@ -1,0 +1,199 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief installation guide
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page UserManualShell User Manual for the AvocadoDB Shell
+///
+/// <ol>
+///  <li>@ref UserManualShellBasics
+///   <ol>
+///    <li>@ref StartStop
+///    </li>
+///    <li>AvocadoScript
+///     <ol>
+///      <li>@ref SimpleQueries
+///      </li>
+///     </ol>
+///    </li>
+///    <li>Vertices, Edges, and Graphs
+///     <ol>
+///      <li>@ref Graphs
+///      </li>
+///      <li>@ref JSModuleGraph
+///      </li>
+///     </ol>
+///    </li>
+///   </ol>
+///  </li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page UserManualShellBasics Basics
+///
+/// The AvocadoDB groups documents into collections. Each collection can be
+/// accessed using queries. For simple queries involving just one collection,
+/// you can use a fluent interface from within JavaScript code, see @ref
+/// AvocadoScript. This interface allows you to select documents from one
+/// collection based on simple search criteria. The @ref HttpInterface
+/// lets you create, modify, or delete a single document via HTTP. For 
+/// more complex queries, you can use the Avocado Query Language, which is 
+/// an extension of SQL resp. UNQL.
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page StartStopTOC
+///
+/// <ol>
+///  <li>@ref StartStopHttp "Starting the HTTP Server"</li>
+///  <li>@ref StartStopDebug "Starting the Debug Shell"</li>
+///  <li>@ref StartStopOptions "Frequently Used Options"</li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page StartStop Starting the AvocadoDB
+///
+/// The AvocadoDB has two mode of operation: as server, where it will answer to
+/// HTTP requests, see @ref HttpInterface, and a debug shell, where you can
+/// access the database directly. Using the debug shell allows you to issue all
+/// commands normally available in actions and transactions, see @ref
+/// AvocadoScript.
+///
+/// You should never start more than one server for the same database,
+/// independent from the mode of operation.
+///
+/// <hr>
+/// @copydoc StartStopTOC
+/// <hr>
+///
+/// @section StartStopHttp Starting the HTTP Server
+///
+/// The following command starts the AvocadoDB in server mode. You will be able
+/// to access the server using HTTP request on port 8529. See below for a list
+/// of frequently used options, see @ref CommandLine "here" for a complete list.
+///
+/// @verbinclude start2
+///
+/// @section StartStopDebug Starting the Debug Shell
+///
+/// The following command starts a debug shell. See below for a list of
+/// frequently used options, see @ref CommandLine "here" for a complete list.
+///
+/// @verbinclude start1
+///
+/// @section StartStopOptions Frequently Used Options
+///
+/// The following command-line options are frequently used. For a full
+/// list of options see @ref CommandLine "here".
+///
+/// @CMDOPT{@CA{database-directory}}
+///
+/// Uses the @CA{database-directory} as base directory. There is an alternative
+/// version available for use in configuration files, see @ref
+/// CommandLineAvocado "here".
+///
+/// @copydetails triagens::rest::ApplicationServerImpl::options
+///
+/// @CMDOPT{--log @CA{level}}
+///
+/// Allows the user to choose the level of information which is logged by the
+/// server. The @CA{level} is specified as a string and can be one of the
+/// following values: fatal, error, warning, info, debug, trace.  For more
+/// information see @ref CommandLineLogging "here".
+///
+/// @copydetails triagens::avocado::AvocadoServer::_httpPort
+///
+/// @CMDOPT{--shell}
+///
+/// Opens a debug shell instead of starting the HTTP server.
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page DBAdminTOC
+///
+/// <ol>
+///  <li>@ref DBAdminDurability
+///  </li>
+///  <li>@ref DBAdminIndex
+///   <ol>
+///    <li>@ref DBAdminIndexGeo
+///   </ol>
+///  </li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page DBAdmin Database Administration
+///
+/// <hr>
+/// @copydetails DBAdminTOC
+/// <hr>
+///
+/// @section DBAdminDurability Durability
+///
+/// @subsection DBAdminDurability1 Mostly Memory/Durability
+///
+/// Database documents are stored in the memory-memory-mapped files are used to
+/// store them. The operating system has the advantageous option to decide
+/// swapping sparsely used areas out of the main memory. Per default, these
+/// memory-mapped files are synced frequently - advantageously storing all
+/// documents securely at once (durability).
+///
+/// @subsection DBAdminDurability2 AppendOnly/MVCC
+/// 
+/// Instead of overwriting existing documents, a completely new version of the
+/// document is generated. The two benefits are:
+///
+/// - Objects can be stored coherently and compactly in the main memory.
+/// - Objects are preserved-isolated writing and reading transactions allow
+///   accessing these objects for parallel operations.
+///
+/// The system collects obsolete versions as garbage, recognizing them as
+/// forsaken. Garbage collection is asynchronous and runs parallel to other
+/// processes.
+///
+/// @subsection DBAdminDurability3 Configuration
+///
+/// @copydetails JS_ParameterVocbaseCol
+///
+/// @section DBAdminIndex Index Management
+///
+/// @subsection DBAdminIndexHash Hash Indexes
+///
+/// @copydetails JS_EnsureHashIndexVocbaseCol
+///
+/// @subsection DBAdminIndexGeo Geo Indexes
+///
+/// @copydetails JS_EnsureGeoIndexVocbaseCol
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: c++
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// End:
