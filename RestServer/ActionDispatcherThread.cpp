@@ -75,6 +75,12 @@ TRI_vocbase_t* ActionDispatcherThread::_vocbase = 0;
 string ActionDispatcherThread::_startupModules;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Javascript garbage collection interval (each x requests)
+////////////////////////////////////////////////////////////////////////////////
+        
+uint64_t ActionDispatcherThread::_gcInterval = 1000;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -134,12 +140,10 @@ void ActionDispatcherThread::reportStatus () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ActionDispatcherThread::tick (bool idle) {
-  static uint64_t const INTERVALL = 1000;
-
   _gc += (idle ? 10 : 1);
 
-  if (_gc > INTERVALL) {
-    while(!v8::V8::IdleNotification()) {
+  if (_gc > _gcInterval) {
+    while (!v8::V8::IdleNotification()) {
     }
 
     _gc = 0;

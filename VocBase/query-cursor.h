@@ -82,7 +82,7 @@ TRI_query_cursor_t* TRI_CreateQueryCursor (TRI_query_instance_t* const,
 /// @brief Free a cursor based on its shadow
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeQueryCursor (TRI_shadow_store_t*, TRI_shadow_t*);
+void TRI_FreeShadowQueryCursor (TRI_shadow_store_t*, TRI_shadow_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief exclusively lock a query cursor

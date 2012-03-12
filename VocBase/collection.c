@@ -51,6 +51,8 @@
 static void InitCollection (TRI_collection_t* collection,
                             char* directory,
                             TRI_col_info_t* info) {
+  assert(collection);
+
   memset(collection, 0, sizeof(TRI_collection_t));
 
   collection->_version = info->_version;
@@ -312,6 +314,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
 void TRI_InitParameterCollection (TRI_col_parameter_t* parameter,
                                   char const* name,
                                   TRI_voc_size_t maximalSize) {
+  assert(parameter);
   memset(parameter, 0, sizeof(TRI_col_parameter_t));
 
   parameter->_type = TRI_COL_TYPE_SIMPLE_DOCUMENT;
@@ -413,6 +416,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_collection_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyCollection (TRI_collection_t* collection) {
+  assert(collection);
   TRI_DestroyVectorPointer(&collection->_datafiles);
   TRI_DestroyVectorPointer(&collection->_journals);
   TRI_DestroyVectorPointer(&collection->_compactors);
@@ -425,6 +429,7 @@ void TRI_DestroyCollection (TRI_collection_t* collection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeCollection (TRI_collection_t* collection) {
+  assert(collection);
   TRI_DestroyCollection(collection);
   TRI_Free(collection);
 }
@@ -455,6 +460,9 @@ bool TRI_LoadParameterInfo (char const* path,
   size_t n;
 
   filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
+  if (!filename) {
+    return false;
+  }
 
   if (! TRI_ExistsFile(filename)) {
     TRI_set_errno(TRI_VOC_ERROR_FILE_NOT_FOUND);
@@ -535,6 +543,9 @@ bool TRI_SaveParameterInfo (char const* path,
 
   // create a json info object
   json = TRI_CreateArrayJson();
+  if (!json) {
+    return false;
+  }
 
   TRI_Insert2ArrayJson(json, "version", TRI_CreateNumberJson(info->_version));
   TRI_Insert2ArrayJson(json, "type", TRI_CreateNumberJson(info->_type));
@@ -547,6 +558,7 @@ bool TRI_SaveParameterInfo (char const* path,
   filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
   ok = TRI_SaveJson(filename, json);
   TRI_DestroyJson(json);
+  // TODO: who is going to free json itself?
 
   if (! ok) {
     LOG_ERROR("cannot save info block '%s': '%s'", filename, TRI_last_error());
