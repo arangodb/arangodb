@@ -46,7 +46,7 @@ extern "C" {
 /// @brief Maximum length of an identifier in a query
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_QUERY_NAME_MAX_LENGTH 64
+#define TRI_QUERY_ALIAS_MAX_LENGTH 64
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          forwards

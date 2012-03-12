@@ -360,8 +360,7 @@ char* TRI_DuplicateString (char const* value) {
 
   n = strlen(value) + 1;
   result = TRI_Allocate(n);
-
-  if (result == 0) {
+  if (!result) {
     return 0;
   }
 
@@ -381,7 +380,7 @@ char* TRI_DuplicateString2 (char const* value, size_t length) {
   n = length + 1;
   result = TRI_Allocate(n);
 
-  if (result == 0) {
+  if (!result) {
     return 0;
   }
 
@@ -426,11 +425,12 @@ char* TRI_Concatenate2String (char const* a, char const* b) {
   nb = strlen(b);
 
   result = TRI_Allocate(na + nb + 1);
+  if (result) {
+    memcpy(result, a, na);
+    memcpy(result + na, b, nb);
 
-  memcpy(result, a, na);
-  memcpy(result + na, b, nb);
-
-  result[na + nb] = '\0';
+    result[na + nb] = '\0';
+  }
 
   return result;
 }
@@ -445,18 +445,18 @@ char* TRI_Concatenate3String (char const* a, char const* b, char const* c) {
   size_t nb;
   size_t nc;
 
-
   na = strlen(a);
   nb = strlen(b);
   nc = strlen(c);
 
   result = TRI_Allocate(na + nb + nc + 1);
+  if (result) {
+    memcpy(result, a, na);
+    memcpy(result + na, b, nb);
+    memcpy(result + na + nb, c, nc);
 
-  memcpy(result, a, na);
-  memcpy(result + na, b, nb);
-  memcpy(result + na + nb, c, nc);
-
-  result[na + nb + nc] = '\0';
+    result[na + nb + nc] = '\0';
+  }
 
   return result;
 }
@@ -478,13 +478,14 @@ char* TRI_Concatenate4String (char const* a, char const* b, char const* c, char 
   nd = strlen(d);
 
   result = TRI_Allocate(na + nb + nc + nd + 1);
+  if (result) {
+    memcpy(result, a, na);
+    memcpy(result + na, b, nb);
+    memcpy(result + na + nb, c, nc);
+    memcpy(result + na + nb + nc, d, nd);
 
-  memcpy(result, a, na);
-  memcpy(result + na, b, nb);
-  memcpy(result + na + nb, c, nc);
-  memcpy(result + na + nb + nc, d, nd);
-
-  result[na + nb + nc + nd] = '\0';
+    result[na + nb + nc + nd] = '\0';
+  }
 
   return result;
 }
@@ -508,14 +509,15 @@ char* TRI_Concatenate5String (char const* a, char const* b, char const* c, char 
   ne = strlen(e);
 
   result = TRI_Allocate(na + nb + nc + nd + ne + 1);
+  if (result) {
+    memcpy(result, a, na);
+    memcpy(result + na, b, nb);
+    memcpy(result + na + nb, c, nc);
+    memcpy(result + na + nb + nc, d, nd);
+    memcpy(result + na + nb + nc + nd, e, ne);
 
-  memcpy(result, a, na);
-  memcpy(result + na, b, nb);
-  memcpy(result + na + nb, c, nc);
-  memcpy(result + na + nb + nc, d, nd);
-  memcpy(result + na + nb + nc + nd, e, ne);
-
-  result[na + nb + nc + nd + ne] = '\0';
+    result[na + nb + nc + nd + ne] = '\0';
+  }
 
   return result;
 }
@@ -541,16 +543,16 @@ char* TRI_Concatenate6String (char const* a, char const* b, char const* c, char 
   nf = strlen(f);
 
   result = TRI_Allocate(na + nb + nc + nd + ne + nf + 1);
+  if (result) {
+    memcpy(result, a, na);
+    memcpy(result + na, b, nb);
+    memcpy(result + na + nb, c, nc);
+    memcpy(result + na + nb + nc, d, nd);
+    memcpy(result + na + nb + nc + nd, e, ne);
+    memcpy(result + na + nb + nc + nd + ne, f, nf);
 
-  memcpy(result, a, na);
-  memcpy(result + na, b, nb);
-  memcpy(result + na + nb, c, nc);
-  memcpy(result + na + nb + nc, d, nd);
-  memcpy(result + na + nb + nc + nd, e, ne);
-  memcpy(result + na + nb + nc + nd + ne, f, nf);
-
-  result[na + nb + nc + nd + ne + nf] = '\0';
-
+    result[na + nb + nc + nd + ne + nf] = '\0';
+  }
   return result;
 }
 
@@ -574,29 +576,31 @@ TRI_vector_string_t TRI_SplitString (char const* source, char delim) {
 
   size = strlen(source);
   buffer = TRI_Allocate(size + 1);
-  p = buffer;
+  if (buffer) {
+    p = buffer;
 
-  q = source;
-  e = source + size;
+    q = source;
+    e = source + size;
 
-  for (;  q < e;  ++q) {
-    if (*q == delim) {
-      *p = '\0';
+    for (;  q < e;  ++q) {
+      if (*q == delim) {
+        *p = '\0';
 
-      TRI_PushBackVectorString(&result, TRI_DuplicateString2(buffer, p - buffer));
+        TRI_PushBackVectorString(&result, TRI_DuplicateString2(buffer, p - buffer));
 
-      p = buffer;
+        p = buffer;
+      }
+      else {
+        *p++ = *q;
+      }
     }
-    else {
-      *p++ = *q;
-    }
+
+    *p = '\0';
+
+    TRI_PushBackVectorString(&result, TRI_DuplicateString2(buffer, p - buffer));
+
+    TRI_FreeString(buffer);
   }
-
-  *p = '\0';
-
-  TRI_PushBackVectorString(&result, TRI_DuplicateString2(buffer, p - buffer));
-
-  TRI_FreeString(buffer);
 
   return result;
 }
@@ -651,6 +655,10 @@ char* TRI_EscapeCString (char const* in, size_t inLength, size_t* outLength) {
   char const * end;
 
   buffer = TRI_Allocate(4 * inLength + 1);
+  if (!buffer) {
+    return NULL;
+  }
+
   qtr = buffer;
 
   for (ptr = in, end = ptr + inLength;  ptr < end;  ptr++, qtr++) {
@@ -720,6 +728,10 @@ char* TRI_EscapeUtf8String (char const* in, size_t inLength, bool escapeSlash, s
   char const * end;
 
   buffer = (char*) TRI_Allocate(6 * inLength + 1);
+  if (!buffer) {
+    return NULL;
+  }
+
   qtr = buffer;
 
   for (ptr = in, end = ptr + inLength;  ptr < end;  ++ptr, ++qtr) {
@@ -849,7 +861,9 @@ char* TRI_EscapeUtf8String (char const* in, size_t inLength, bool escapeSlash, s
   *outLength = qtr - buffer;
 
   qtr = TRI_Allocate(*outLength + 1);
-  memcpy(qtr, buffer, *outLength + 1);
+  if (qtr) {
+    memcpy(qtr, buffer, *outLength + 1);
+  }
 
   TRI_Free(buffer);
 
@@ -871,6 +885,10 @@ char* TRI_UnescapeUtf8String (char const* in, size_t inLength, size_t* outLength
   char c4;
 
   buffer = TRI_Allocate(inLength + 1);
+  if (!buffer) {
+    return NULL;
+  }
+
   qtr = buffer;
 
   for (ptr = in, end = ptr + inLength;  ptr < end;  ++ptr, ++qtr) {
@@ -966,8 +984,9 @@ char* TRI_UnescapeUtf8String (char const* in, size_t inLength, size_t* outLength
   *outLength = qtr - buffer;
 
   qtr = TRI_Allocate(*outLength + 1);
-  memcpy(qtr, buffer, *outLength + 1);
-
+  if (qtr) {
+    memcpy(qtr, buffer, *outLength + 1);
+  }
   TRI_Free(buffer);
 
   return qtr;

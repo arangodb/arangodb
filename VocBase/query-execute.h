@@ -40,7 +40,7 @@ extern "C" {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page AQL Avocado Query Language (AQL)
+/// @page AQLBasics Query language basics
 /// 
 /// Queries can be used to extract arbitrary data from one or multiple
 /// collections. A query needs to be composed in the Avocado Query Language
