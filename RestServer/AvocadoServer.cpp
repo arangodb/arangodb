@@ -165,6 +165,7 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
     _actionPath(),
     _systemActionPath(),
     _actionThreads(1),
+    _gcInterval(1000),
     _databasePath("/var/lib/avocado"),
     _vocbase(0) {
   char* p;
@@ -330,6 +331,7 @@ void AvocadoServer::buildApplicationServer () {
     ("startup.directory", &_startupPath, "path to the directory containing alternate startup scripts")
     ("startup.modules-path", &_startupModules, "one or more directories separated by semicolon")
     ("action.directory", &_actionPath, "path to the action directory, defaults to <database.directory>/_ACTIONS")
+    ("gc.interval", &_gcInterval, "garbage collection interval (each x requests)")
   ;
 
   additional["JAVASCRIPT Options:help-admin"]
@@ -489,6 +491,7 @@ int AvocadoServer::startupServer () {
   ActionDispatcherThread::_startupLoader = &StartupLoader;
   ActionDispatcherThread::_vocbase = _vocbase;
   ActionDispatcherThread::_startupModules = _startupModules;
+  ActionDispatcherThread::_gcInterval = _gcInterval; 
 
   // .............................................................................
   // create the various parts of the Avocado server

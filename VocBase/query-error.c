@@ -28,7 +28,7 @@
 #include "VocBase/query-error.h"
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
+/// @addtogroup AvocadoErrors
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -49,6 +49,8 @@ void TRI_InitialiseQueryErrors (void) {
 
   REG_ERROR(NUMBER_OUT_OF_RANGE,                "number '%s' is out of range");
   REG_ERROR(LIMIT_VALUE_OUT_OF_RANGE,           "limit value '%s' is out of range");
+  
+  REG_ERROR(TOO_MANY_JOINS,                     "too many joins");
   
   REG_ERROR(COLLECTION_NAME_INVALID,            "collection name '%s' is invalid");
   REG_ERROR(COLLECTION_ALIAS_INVALID,           "collection alias '%s' is invalid");

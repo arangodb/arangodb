@@ -630,6 +630,7 @@ static void WeakQueryInstanceCallback (v8::Persistent<v8::Value> object, void* p
 
 static v8::Handle<v8::Object> WrapQueryInstance (TRI_query_instance_t* instance) {
   TRI_v8_global_t* v8g;
+  v8::HandleScope scope;
   
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
@@ -644,6 +645,7 @@ static v8::Handle<v8::Object> WrapQueryInstance (TRI_query_instance_t* instance)
 
     v8g->JSQueryInstances[instance] = persistent;
 
+    LOG_TRACE("creating new query instance");
     persistent.MakeWeak(instance, WeakQueryInstanceCallback);
   }
   else {
@@ -651,7 +653,7 @@ static v8::Handle<v8::Object> WrapQueryInstance (TRI_query_instance_t* instance)
     queryInstance->SetInternalField(SLOT_CLASS, i->second);
   }
 
-  return queryInstance;
+  return scope.Close(queryInstance);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -660,6 +662,7 @@ static v8::Handle<v8::Object> WrapQueryInstance (TRI_query_instance_t* instance)
 
 static v8::Handle<v8::Object> CreateQueryErrorObject (TRI_query_error_t* error) {
   TRI_v8_global_t* v8g;
+  v8::HandleScope scope;
 
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
@@ -677,7 +680,7 @@ static v8::Handle<v8::Object> CreateQueryErrorObject (TRI_query_error_t* error) 
     TRI_Free(errorMessage);
   }
 
-  return errorObject;
+  return scope.Close(errorObject);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -800,6 +803,7 @@ static void WeakQueryCursorCallback (v8::Persistent<v8::Value> object, void* par
 
 static v8::Handle<v8::Object> WrapQueryCursor (TRI_query_cursor_t* cursor) {
   TRI_v8_global_t* v8g;
+  v8::HandleScope scope;
 
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
@@ -820,8 +824,8 @@ static v8::Handle<v8::Object> WrapQueryCursor (TRI_query_cursor_t* cursor) {
     cursorObject->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_RC_QUERY_CURSOR_TYPE));
     cursorObject->SetInternalField(SLOT_CLASS, i->second);
   }
-
-  return cursorObject;
+  
+  return scope.Close(cursorObject);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1519,7 +1523,7 @@ static v8::Handle<v8::Value> JS_PrepareAql (v8::Arguments const& argv) {
   v8::Handle<v8::Object> dbArg = argv[0]->ToObject();
   TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(dbArg, WRP_VOCBASE_TYPE);
 
-  if (vocbase == 0) {
+  if (!vocbase) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
   }
 
@@ -1536,7 +1540,7 @@ static v8::Handle<v8::Value> JS_PrepareAql (v8::Arguments const& argv) {
     parameters = ConvertHelper(argv[2]);
   }
 
-  // create a parser object
+  // create a template object
   TRI_query_template_t* template_ = TRI_CreateQueryTemplate(queryString.c_str(), vocbase);
   if (template_) {
     bool ok = TRI_ParseQueryTemplate(template_);
@@ -4319,6 +4323,9 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
   TRI_shape_access_t* acc = TRI_ShapeAccessor(shaper, sid, pid);
 
   if (acc == NULL || acc->_shape == NULL) {
+    if (acc) {
+      TRI_FreeShapeAccessor(acc);
+    }
     return scope.Close(v8::Handle<v8::Value>());
   }
 
@@ -4327,8 +4334,10 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
   TRI_shaped_json_t json;
 
   if (TRI_ExecuteShapeAccessor(acc, document, &json)) {    
+    TRI_FreeShapeAccessor(acc);
     return scope.Close(TRI_JsonShapeData(shaper, shape, json._data.data, json._data.length));
   }
+  TRI_FreeShapeAccessor(acc);
 
   return scope.Close(v8::ThrowException(v8::String::New("cannot extract attribute")));  
 }
@@ -4450,8 +4459,12 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
 
   // key not found
   if (acc == NULL || acc->_shape == NULL) {
+    if (acc) {
+      TRI_FreeShapeAccessor(acc);
+    }
     return scope.Close(v8::Handle<v8::Integer>());
   }
+  TRI_FreeShapeAccessor(acc);
 
   return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::ReadOnly)));
 }

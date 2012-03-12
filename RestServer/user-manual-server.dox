@@ -39,8 +39,10 @@
 ///      </li>
 ///     </ol>
 ///    </li>
-///    <li>@ref AQL
+///    <li>Avocado Query Language
 ///     <ol>
+///      <li>@ref AQLBasics
+///      </li>
 ///      <li>@ref Optimizer
 ///      </li>
 ///      <li>@ref IndexUsage
@@ -60,6 +62,8 @@
 ///      <li>@ref JSModuleGraph
 ///      </li>
 ///     </ol>
+///    </li>
+///    <li>@ref AvocadoErrors
 ///    </li>
 ///   </ol>
 ///  </li>
