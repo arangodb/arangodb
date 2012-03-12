@@ -820,7 +820,9 @@ WIKI = \
         Doxygen/xml/RestDocument.md \
         Doxygen/xml/RestSystem.md \
         Doxygen/xml/StartStop.md \
-        Doxygen/xml/UserManual.md \
+        Doxygen/xml/UserManualServer.md \
+        Doxygen/xml/UserManualShell.md \
+        Doxygen/xml/UserManualShellStartStop.md \
         Doxygen/xml/jsUnity.md
 
 @ENABLE_32BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.ia32

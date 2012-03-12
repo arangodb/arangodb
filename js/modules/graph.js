@@ -31,196 +31,6 @@ var edges = internal.edges;
 var AvocadoCollection = internal.AvocadoCollection;
 var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @page Graphs First Steps with Graphs
-///
-/// A Graph consists of vertices and edges. The vertex collection contains the
-/// documents forming the vertices. The edge collection contains the documents
-/// forming the edges. Together both collections form a graph. Assume that
-/// the vertex collection is called @LIT{vertices} and the edges collection
-/// @LIT{edges}, then you can build a graph using the @FN{Graph} constructor.
-///
-/// @verbinclude graph25
-///
-/// It is possible to use different edges with the same vertices. For
-/// instance, to build a new graph with a different edge collection use
-///
-/// @verbinclude graph26
-///
-/// It is, however, impossible to use different vertices with the same
-/// edges. Edges are tied to the vertices.
-///
-/// Next steps: learn more about
-///
-/// - @ref JSModuleGraph
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page JSModuleGraphTOC
-///
-/// <ol>
-///   <li>@ref JSModuleGraphGraph
-///     <ol>
-///       <li>@ref JSModuleGraphGraphAddEdge "Graph.addEdge"</li>
-///       <li>@ref JSModuleGraphGraphAddVertex "Graph.addVertex"</li>
-///       <li>@ref JSModuleGraphGraphConstructor "Graph constructor"</li>
-///       <li>@ref JSModuleGraphGraphGetVertex "Graph.getEdges"</li>
-///       <li>@ref JSModuleGraphGraphGetVertex "Graph.getVertex"</li>
-///       <li>@ref JSModuleGraphGraphGetVertices "Graph.getVertices"</li>
-///       <li>@ref JSModuleGraphGraphRemoveEdge "Graph.removeEdge"</li>
-///       <li>@ref JSModuleGraphGraphRemoveVertex "Graph.removeVertex"</li>
-///     </ol>
-///   </li>
-///   <li>@ref JSModuleGraphVertex
-///     <ol>
-///       <li>@ref JSModuleGraphVertexAddInEdge "Vertex.addInEdge"</li>
-///       <li>@ref JSModuleGraphVertexAddOutEdge "Vertex.addOutEdge"</li>
-///       <li>@ref JSModuleGraphVertexEdges "Vertex.edges"</li>
-///       <li>@ref JSModuleGraphVertexGetId "Vertex.getId"</li>
-///       <li>@ref JSModuleGraphVertexGetInEdges "Vertex.getInEdges"</li>
-///       <li>@ref JSModuleGraphVertexGetOutEdges "Vertex.getOutEdges"</li>
-///       <li>@ref JSModuleGraphVertexGetProperty "Vertex.getProperty"</li>
-///       <li>@ref JSModuleGraphVertexGetPropertyKeys "Vertex.getPropertyKeys"</li>
-///       <li>@ref JSModuleGraphVertexProperties "Vertex.properties"</li>
-///       <li>@ref JSModuleGraphVertexSetProperty "Vertex.setProperty"</li>
-///     </ol>
-///   </li>
-///   <li>@ref JSModuleGraphEdge
-///     <ol>
-///       <li>@ref JSModuleGraphEdgeGetId "Edge.getId"</li>
-///       <li>@ref JSModuleGraphEdgeGetInVertex "Edge.getInVertex"</li>
-///       <li>@ref JSModuleGraphEdgeGetLabel "Edge.getLabel"</li>
-///       <li>@ref JSModuleGraphEdgeGetOutVertex "Edge.getOutVertex"</li>
-///       <li>@ref JSModuleGraphEdgeGetProperty "Edge.getProperty"</li>
-///       <li>@ref JSModuleGraphEdgeGetPropertyKeys "Edge.getPropertyKeys"</li>
-///       <li>@ref JSModuleGraphEdgeProperties "Edge.properties"</li>
-///       <li>@ref JSModuleGraphEdgeSetProperty "Edge.setProperty"</li>
-///     </ol>
-///   </li>
-/// </ol>
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page JSModuleGraph Module "graph"
-///
-/// The graph module provides basic functions dealing with graph structures.
-/// It exports the constructors for Graph, Vertex, and Edge.
-///
-/// <hr>
-/// @copydoc JSModuleGraphTOC
-/// <hr>
-///
-/// @section JSModuleGraphGraph Graph Constructors and Methods
-//////////////////////////////////////////////////////////////
-///
-/// @anchor JSModuleGraphGraphConstructor
-/// @copydetails JSF_Graph
-/// <hr>
-///
-/// @anchor JSModuleGraphGraphAddEdge
-/// @copydetails JSF_Graph_prototype_addEdge
-/// <hr>
-///
-/// @anchor JSModuleGraphGraphAddVertex
-/// @copydetails JSF_Graph_prototype_addVertex
-/// <hr>
-///
-/// @anchor JSModuleGraphGraphGetEdges
-/// @copydetails JSF_Graph_prototype_getEdges
-/// <hr>
-///
-/// @anchor JSModuleGraphGraphGetVertex
-/// @copydetails JSF_Graph_prototype_getVertex
-/// <hr>
-///
-/// @anchor JSModuleGraphGraphGetVertices
-/// @copydetails JSF_Graph_prototype_getVertices
-/// <hr>
-///
-/// @anchor JSModuleGraphGraphRemoveVertex
-/// @copydetails JSF_Graph_prototype_removeVertex
-/// <hr>
-///
-/// @anchor JSModuleGraphGraphRemoveEdge
-/// @copydetails JSF_Graph_prototype_removeEdge
-///
-/// @section JSModuleGraphVertex Vertex Methods
-///////////////////////////////////////////////
-///
-/// @anchor JSModuleGraphVertexAddInEdge
-/// @copydetails JSF_Vertex_prototype_addInEdge
-/// <hr>
-///
-/// @anchor JSModuleGraphVertexAddOutEdge
-/// @copydetails JSF_Vertex_prototype_addOutEdge
-/// <hr>
-///
-/// @anchor JSModuleGraphVertexEdges
-/// @copydetails JSF_Vertex_prototype_edges
-/// <hr>
-///
-/// @anchor JSModuleGraphVertexGetId
-/// @copydetails JSF_Vertex_prototype_getId
-/// <hr>
-///
-/// @anchor JSModuleGraphVertexGetInEdges
-/// @copydetails JSF_Vertex_prototype_getInEdges
-/// <hr>
-///
-/// @anchor JSModuleGraphVertexGetOutEdges
-/// @copydetails JSF_Vertex_prototype_getOutEdges
-/// <hr>
-///
-/// @anchor JSModuleGraphVertexGetProperty
-/// @copydetails JSF_Vertex_prototype_getProperty
-/// <hr>
-///
-/// @anchor JSModuleGraphVertexGetPropertyKeys
-/// @copydetails JSF_Vertex_prototype_getPropertyKeys
-/// <hr>
-///
-/// @anchor JSModuleGraphVertexProperties
-/// @copydetails JSF_Vertex_prototype_properties
-/// <hr>
-///
-/// @anchor JSModuleGraphVertexSetProperty
-/// @copydetails JSF_Vertex_prototype_setProperty
-///
-/// @section JSModuleGraphEdge Edge Methods
-///////////////////////////////////////////
-///
-/// @anchor JSModuleGraphEdgeGetId
-/// @copydetails JSF_Edge_prototype_getId
-/// <hr>
-///
-/// @anchor JSModuleGraphEdgeGetInVertex
-/// @copydetails JSF_Edge_prototype_getInVertex
-/// <hr>
-///
-/// @anchor JSModuleGraphEdgeGetLabel
-/// @copydetails JSF_Edge_prototype_getLabel
-/// <hr>
-///
-/// @anchor JSModuleGraphEdgeGetOutVertex
-/// @copydetails JSF_Edge_prototype_getOutVertex
-/// <hr>
-///
-/// @anchor JSModuleGraphEdgeGetProperty
-/// @copydetails JSF_Edge_prototype_getProperty
-/// <hr>
-///
-/// @anchor JSModuleGraphEdgeGetPropertyKeys
-/// @copydetails JSF_Edge_prototype_getPropertyKeys
-/// <hr>
-///
-/// @anchor JSModuleGraphEdgeProperties
-/// @copydetails JSF_Edge_prototype_properties
-/// <hr>
-///
-/// @anchor JSModuleGraphEdgeSetProperty
-/// @copydetails JSF_Edge_prototype_setProperty
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              EDGE
 // -----------------------------------------------------------------------------
@@ -246,11 +56,15 @@ function Edge (graph, id) {
 
   props = this._graph._edges.document(this._id);
 
+  // extract the custom identifier, label, edges
   if (props) {
-    this._label = props._label;
+    this._eid = props.$eid;
+    this._label = props.$label;
     this._from = props._from;
     this._to = props._to;
   }
+
+  // deleted
   else {
     this._id = undefined;
   }
@@ -276,11 +90,13 @@ function Edge (graph, id) {
 ///
 /// Returns the identifier of the @FA{edge}.
 ///
+/// @EXAMPLES
+///
 /// @verbinclude graph13
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getId = function (name) {
-  return this._id;
+  return this._eid;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -290,6 +106,8 @@ Edge.prototype.getId = function (name) {
 ///
 /// Returns the vertex at the head of the @FA{edge}.
 ///
+/// @EXAMPLES
+///
 /// @verbinclude graph21
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -298,7 +116,7 @@ Edge.prototype.getInVertex = function () {
     throw "accessing a deleted edge";
   }
 
-  return this.graph.constructVertex(this._to);
+  return this._graph.constructVertex(this._to);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -307,6 +125,8 @@ Edge.prototype.getInVertex = function () {
 /// @FUN{@FA{edge}.getLabel()}
 ///
 /// Returns the label of the @FA{edge}.
+///
+/// @EXAMPLES
 ///
 /// @verbinclude graph20
 ////////////////////////////////////////////////////////////////////////////////
@@ -326,6 +146,8 @@ Edge.prototype.getLabel = function () {
 ///
 /// Returns the vertex at the tail of the @FA{edge}.
 ///
+/// @EXAMPLES
+///
 /// @verbinclude graph22
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -343,6 +165,8 @@ Edge.prototype.getOutVertex = function () {
 /// @FUN{@FA{edge}.getProperty(@FA{name})}
 ///
 /// Returns the property @FA{name} an @FA{edge}.
+///
+/// @EXAMPLES
 ///
 /// @verbinclude graph12
 ////////////////////////////////////////////////////////////////////////////////
@@ -362,28 +186,17 @@ Edge.prototype.getProperty = function (name) {
 ///
 /// Returns all propety names an @FA{edge}.
 ///
+/// @EXAMPLES
+///
 /// @verbinclude graph32
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getPropertyKeys = function () {
-  var keys;
-  var key;
-  var props;
-
   if (! this._id) {
     throw "accessing a deleted edge";
   }
 
-  props = this.properties();
-  keys = [];
-
-  for (key in props) {
-    if (props.hasOwnProperty(key)) {
-      keys.push(key);
-    }
-  }
-
-  return keys;
+  return propertyKeys(this.properties());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -393,22 +206,27 @@ Edge.prototype.getPropertyKeys = function () {
 ///
 /// Changes or sets the property @FA{name} an @FA{edges} to @FA{value}.
 ///
+/// @EXAMPLES
+///
 /// @verbinclude graph14
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.setProperty = function (name, value) {
-  var document;
+  var props;
+  var shallow;
 
   if (! this._id) {
     throw "accessing a deleted edge";
   }
 
-  document = this._graph._edges.document(this._id); // TODO use "update"
+  props = this._graph._edges.document(this._id); // TODO use "update"
 
-  if (query !== undefined) {
-    document[name] = value;
+  if (props !== undefined) {
+    shallow = shallowCopy(props);
 
-    this._graph._edges.replace(this._id, document);
+    shallow[name] = value;
+
+    this._graph._edges.replace(this._id, shallow);
 
     return value;
   }
@@ -424,11 +242,13 @@ Edge.prototype.setProperty = function (name, value) {
 ///
 /// Returns all properties and their values of an @FA{edge}
 ///
+/// @EXAMPLES
+///
 /// @verbinclude graph11
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.properties = function () {
-  var props;
+  var result;
 
   if (! this._id) {
     throw "accessing a deleted edge";
@@ -441,12 +261,7 @@ Edge.prototype.properties = function () {
     throw "accessing a deleted edge";
   }
 
-  delete props._id;
-  delete props._label;
-  delete props._from;
-  delete props._to;
-
-  return props;
+  return shallowCopy(props);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -470,8 +285,16 @@ Edge.prototype._PRINT = function (seen, path, names) {
   if (! this._id) {
     internal.output("[deleted Edge]");
   }
+  else if (this._eid !== undefined) {
+    if (typeof this._eid === "string") {
+      internal.output("Edge(\"", this._eid, "\")");
+    }
+    else {
+      internal.output("Edge(", this._eid, ")");
+    }
+  }
   else {
-    internal.output("Edge(<graph>, \"", this._id, "\")");
+    internal.output("Edge(\"", this._id, "\")");
   }
 }
 
@@ -504,7 +327,13 @@ function Vertex (graph, id) {
 
   props = this._graph._vertices.document(this._id);
 
-  if (props === undefined) {
+  // extract the custom identifier
+  if (props) {
+    this._vid = props.$vid;
+  }
+
+  // deleted
+  else {
     this._id = undefined;
   }
 }
@@ -525,34 +354,36 @@ function Vertex (graph, id) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an inbound edge
 ///
-/// @FUN{@FA{vertex}.addInEdge(@FA{peer})}
+/// @FUN{@FA{vertex}.addInEdge(@FA{id}, @FA{peer})}
 ///
 /// Creates a new edge from @FA{peer} to @FA{vertex} and returns the edge
-/// object.
+/// object. The identifier @FA{id} must be a unique identifier or null.
 ///
-/// @verbinclude graph33
-///
-/// @FUN{@FA{vertex}.addInEdge(@FA{peer}, @FA{label})}
+/// @FUN{@FA{vertex}.addInEdge(@FA{id}, @FA{peer}, @FA{label})}
 ///
 /// Creates a new edge from @FA{peer} to @FA{vertex} with given label and
 /// returns the edge object.
 ///
-/// @verbinclude graph23
-///
-/// @FUN{@FA{vertex}.addInEdge(@FA{peer}, @FA{label}, @FA{data})}
+/// @FUN{@FA{vertex}.addInEdge(@FA{id}, @FA{peer}, @FA{label}, @FA{data})}
 ///
 /// Creates a new edge from @FA{peer} to @FA{vertex} with given label and
 /// properties defined in @FA{data}. Returns the edge object.
 ///
+/// @EXAMPLES
+///
+/// @verbinclude graph33
+///
+/// @verbinclude graph23
+///
 /// @verbinclude graph24
 ////////////////////////////////////////////////////////////////////////////////
 
-Vertex.prototype.addInEdge = function (out, label, data) {
+Vertex.prototype.addInEdge = function (id, out, label, data) {
   if (! this._id) {
     throw "accessing a deleted vertex";
   }
 
-  return this._graph.addEdge(out, this, label, data);
+  return this._graph.addEdge(id, out, this, label, data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -563,29 +394,31 @@ Vertex.prototype.addInEdge = function (out, label, data) {
 /// Creates a new edge from @FA{vertex} to @FA{peer} and returns the edge
 /// object.
 ///
-/// @verbinclude graph34
-///
 /// @FUN{@FA{vertex}.addOutEdge(@FA{peer}, @FA{label})}
 ///
 /// Creates a new edge from @FA{vertex} to @FA{peer} with given @FA{label} and
 /// returns the edge object.
-///
-/// @verbinclude graph27
 ///
 /// @FUN{@FA{vertex}.addOutEdge(@FA{peer}, @FA{label}, @FA{data})}
 ///
 /// Creates a new edge from @FA{vertex} to @FA{peer} with given @FA{label} and
 /// properties defined in @FA{data}. Returns the edge object.
 ///
+/// @EXAMPLES
+///
+/// @verbinclude graph34
+///
+/// @verbinclude graph27
+///
 /// @verbinclude graph28
 ////////////////////////////////////////////////////////////////////////////////
 
-Vertex.prototype.addOutEdge = function (ine, label, data) {
+Vertex.prototype.addOutEdge = function (id, ine, label, data) {
   if (! this._id) {
     throw "accessing a deleted vertex";
   }
 
-  return this._graph.addEdge(this, ine, label, data);
+  return this._graph.addEdge(id, this, ine, label, data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -594,6 +427,8 @@ Vertex.prototype.addOutEdge = function (ine, label, data) {
 /// @FUN{@FA{vertex}.edges()}
 ///
 /// Returns a list of in- or outbound edges of the @FA{vertex}.
+///
+/// @EXAMPLES
 ///
 /// @verbinclude graph15
 ////////////////////////////////////////////////////////////////////////////////
@@ -608,11 +443,12 @@ Vertex.prototype.edges = function () {
   }
 
   graph = this._graph;
-  query = graph._vertices.document(this._id).edges(graph._edges);
+  query = graph._edges.edges(this._id);
+
   result = [];
 
-  while (query.hasNext()) {
-    result.push(graph.constructEdge(query.nextRef()));
+  for (var i = 0;  i < query.length;  ++i) {
+    result.push(graph.constructEdge(query[i]._id));
   }
 
   return result;
@@ -626,11 +462,13 @@ Vertex.prototype.edges = function () {
 /// Returns the identifier of the @FA{vertex}. If the vertex was deleted, then
 /// @CODE{undefined} is returned.
 ///
+/// @EXAMPLES
+///
 /// @verbinclude graph8
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getId = function (name) {
-  return this._id;
+  return this._vid;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -639,6 +477,8 @@ Vertex.prototype.getId = function (name) {
 /// @FUN{@FA{vertex}.getInEdges(@FA{label}, ...)}
 ///
 /// Returns a list of inbound edges of the @FA{vertex} with given label(s).
+///
+/// @EXAMPLES
 ///
 /// @verbinclude graph18
 ////////////////////////////////////////////////////////////////////////////////
@@ -683,6 +523,8 @@ Vertex.prototype.getInEdges = function () {
 ///
 /// Returns a list of outbound edges of the @FA{vertex} with given label(s).
 ///
+/// @EXAMPLES
+///
 /// @verbinclude graph19
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -726,6 +568,8 @@ Vertex.prototype.getOutEdges = function () {
 ///
 /// Returns the property @FA{name} a @FA{vertex}.
 ///
+/// @EXAMPLES
+///
 /// @verbinclude graph5
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -744,28 +588,17 @@ Vertex.prototype.getProperty = function (name) {
 ///
 /// Returns all propety names a @FA{vertex}.
 ///
+/// @EXAMPLES
+///
 /// @verbinclude graph7
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getPropertyKeys = function () {
-  var keys;
-  var key;
-  var props;
-
   if (! this._id) {
     throw "accessing a deleted vertex";
   }
 
-  props = this.properties();
-  keys = [];
-
-  for (key in props) {
-    if (props.hasOwnProperty(key)) {
-      keys.push(key);
-    }
-  }
-
-  return keys;
+  return propertyKeys(this.properties());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -774,6 +607,8 @@ Vertex.prototype.getPropertyKeys = function () {
 /// @FUN{@FA{vertex}.inbound()}
 ///
 /// Returns a list of inbound edges of the @FA{vertex}.
+///
+/// @EXAMPLES
 ///
 /// @verbinclude graph16
 ////////////////////////////////////////////////////////////////////////////////
@@ -788,11 +623,12 @@ Vertex.prototype.inbound = function () {
   }
 
   graph = this._graph;
-  query = graph._vertices.document(this._id).inEdges(graph._edges);
+  query = graph._edges.inEdges(this._id);
+
   result = [];
 
-  while (query.hasNext()) {
-    result.push(graph.constructEdge(query.nextRef()));
+  for (var i = 0;  i < query.length;  ++i) {
+    result.push(graph.constructEdge(query[i]._id));
   }
 
   return result;
@@ -804,6 +640,8 @@ Vertex.prototype.inbound = function () {
 /// @FUN{@FA{vertex}.outbound()}
 ///
 /// Returns a list of outbound edges of the @FA{vertex}.
+///
+/// @EXAMPLES
 ///
 /// @verbinclude graph17
 ////////////////////////////////////////////////////////////////////////////////
@@ -818,11 +656,12 @@ Vertex.prototype.outbound = function () {
   }
 
   graph = this._graph;
-  query = graph._vertices.document(this._id).outEdges(graph._edges);
+  query = graph._edges.outEdges(this._id);
+
   result = [];
 
-  while (query.hasNext()) {
-    result.push(graph.constructEdge(query.nextRef()));
+  for (var i = 0;  i < query.length;  ++i) {
+    result.push(graph.constructEdge(query[i]._id));
   }
 
   return result;
@@ -835,11 +674,14 @@ Vertex.prototype.outbound = function () {
 ///
 /// Returns all properties and their values of a @FA{vertex}
 ///
+/// @EXAMPLES
+///
 /// @verbinclude graph4
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.properties = function () {
   var props;
+  var result;
 
   if (! this._id) {
     throw "accessing a deleted vertex";
@@ -852,9 +694,7 @@ Vertex.prototype.properties = function () {
     throw "accessing a deleted vertex";
   }
 
-  delete props._id;
-
-  return props;
+  return shallowCopy(props);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -864,11 +704,14 @@ Vertex.prototype.properties = function () {
 ///
 /// Changes or sets the property @FA{name} a @FA{vertex} to @FA{value}.
 ///
+/// @EXAMPLES
+///
 /// @verbinclude graph6
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.setProperty = function (name, value) {
   var props;
+  var shallow;
 
   if (! this._id) {
     throw "accessing a deleted vertex";
@@ -879,9 +722,11 @@ Vertex.prototype.setProperty = function (name, value) {
   props = this._graph._vertices.document(this._id); // TODO use "update"
 
   if (props !== undefined) {
-    props[name] = value;
+    shallow = shallowCopy(props);
 
-    this._graph._vertices.replace(this._id, props);
+    shallow[name] = value;
+
+    this._graph._vertices.replace(this._id, shallow);
 
     return value;
   }
@@ -911,8 +756,16 @@ Vertex.prototype._PRINT = function (seen, path, names) {
   if (! this._id) {
     internal.output("[deleted Vertex]");
   }
+  else if (this._vid !== undefined) {
+    if (typeof this._vid === "string") {
+      internal.output("Vertex(\"", this._vid, "\")");
+    }
+    else {
+      internal.output("Vertex(", this._vid, ")");
+    }
+  }
   else {
-    internal.output("Vertex(<graph>, \"", this._id, "\")");
+    internal.output("Vertex(\"", this._id, "\")");
   }
 }
 
@@ -943,12 +796,15 @@ Vertex.prototype._PRINT = function (seen, path, names) {
 /// possible to construct two graphs with the same vertex set, but different
 /// edge sets.
 ///
+/// @EXAMPLES
+///
 /// @verbinclude graph1
 ////////////////////////////////////////////////////////////////////////////////
 
 function Graph (vertices, edg) {
   if (typeof vertices === "string") {
     vertices = db[vertices];
+    vertices.ensureUniqueConstraint("$vid");
   }
 
   if (! vertices instanceof AvocadoCollection) {
@@ -957,6 +813,7 @@ function Graph (vertices, edg) {
 
   if (typeof edg === "string") {
     edg = edges[edg];
+    edg.ensureUniqueConstraint("$eid");
   }
 
   if (! edg instanceof AvocadoEdgesCollection) {
@@ -983,36 +840,38 @@ function Graph (vertices, edg) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an edge to the graph
 ///
-/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in})}
+/// @FUN{@FA{graph}.addEdge(@FA{id}, @FA{out}, @FA{in})}
 ///
-/// Creates a new edge from @FA{out} to @FA{in} and returns the edge
-/// object.
+/// Creates a new edge from @FA{out} to @FA{in} and returns the edge object. The
+/// identifier @FA{id} must be a unique identifier or null.
 ///
-/// @verbinclude graph30
-///
-/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{label})}
+/// @FUN{@FA{graph}.addEdge(@FA{id}, @FA{out}, @FA{in}, @FA{label})}
 ///
 /// Creates a new edge from @FA{out} to @FA{in} with @FA{label} and returns the
 /// edge object.
 ///
-/// @verbinclude graph9
-///
-/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{data})}
+/// @FUN{@FA{graph}.addEdge(@FA{id}, @FA{out}, @FA{in}, @FA{data})}
 ///
 /// Creates a new edge and returns the edge object. The edge contains the
 /// properties defined in @FA{data}.
 ///
-/// @verbinclude graph31
-///
-/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{label}, @FA{data})}
+/// @FUN{@FA{graph}.addEdge(@FA{id}, @FA{out}, @FA{in}, @FA{label}, @FA{data})}
 ///
 /// Creates a new edge and returns the edge object. The edge has the
 /// label @FA{label} and contains the properties defined in @FA{data}.
 ///
+/// @EXAMPLES
+///
+/// @verbinclude graph30
+///
+/// @verbinclude graph9
+///
+/// @verbinclude graph31
+///
 /// @verbinclude graph10
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype.addEdge = function (out, ine, label, data) {
+Graph.prototype.addEdge = function (id, out, ine, label, data) {
   var ref;
   var shallow;
   var key;
@@ -1027,22 +886,16 @@ Graph.prototype.addEdge = function (out, ine, label, data) {
     label = null;
   }
 
-  if (data === undefined) {
-    ref = this._edges.save(out._id, ine._id, {"_label" : label});
+  if (data == null || typeof data !== "object") {
+    data = {};
   }
-  else {
-    shallow = {};
 
-    for (key in data) {
-      if (data.hasOwnProperty(key)) {
-        shallow[key] = data[key];
-      }
-    }
+  shallow = shallowCopy(data);
 
-    shallow["_label"] = label;
+  shallow.$eid = id || null;
+  shallow.$label = label || null;
 
-    ref = this._edges.save(out._id, ine._id, shallow);
-  }
+  ref = this._edges.save(out._id, ine._id, shallow);
 
   return this.constructEdge(ref);
 }
@@ -1050,29 +903,40 @@ Graph.prototype.addEdge = function (out, ine, label, data) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a vertex to the graph
 ///
-/// @FUN{@FA{graph}.addVertex()}
+/// @FUN{@FA{graph}.addVertex(@FA{id})}
 ///
-/// Creates a new vertex and returns the vertex object.
+/// Creates a new vertex and returns the vertex object. The identifier
+/// @FA{id} must be a unique identifier or null.
 ///
-/// @verbinclude graph2
-///
-/// @FUN{@FA{graph}.addVertex(@FA{data})}
+/// @FUN{@FA{graph}.addVertex(@FA{id}, @FA{data})}
 ///
 /// Creates a new vertex and returns the vertex object. The vertex contains
 /// the properties defined in @FA{data}.
 ///
+/// @EXAMPLES
+///
+/// Without any properties:
+///
+/// @verbinclude graph2
+///
+/// With given properties:
+///
 /// @verbinclude graph3
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype.addVertex = function (data) {
+Graph.prototype.addVertex = function (id, data) {
   var ref;
+  var shallow;
 
-  if (data === undefined) {
-    ref = this._vertices.save({});
+  if (data == null || typeof data !== "object") {
+    data = {};
   }
-  else {
-    ref = this._vertices.save(data);
-  }
+
+  shallow = shallowCopy(data);
+
+  shallow.$vid = id || null;
+
+  ref = this._vertices.save(shallow);
 
   return this.constructVertex(ref);
 }
@@ -1084,16 +948,18 @@ Graph.prototype.addVertex = function (data) {
 ///
 /// Returns the vertex identified by @FA{id} or undefined.
 ///
+/// @EXAMPLES
+///
 /// @verbinclude graph29
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getVertex = function (id) {
   var ref;
 
-  ref = this._vertices.document(id);
+  ref = this._vertices.select({ $vid : id });
 
   if (ref.count() == 1) {
-    return this.constructVertex(id);
+    return this.constructVertex(ref.next()._id);
   }
   else {
     return undefined;
@@ -1107,6 +973,8 @@ Graph.prototype.getVertex = function (id) {
 ///
 /// Returns an iterator for all vertices of the graph. The iterator supports the
 /// methods @FN{hasNext} and @FN{next}.
+///
+/// @EXAMPLES
 ///
 /// @verbinclude graph35
 ////////////////////////////////////////////////////////////////////////////////
@@ -1151,6 +1019,8 @@ Graph.prototype.getVertices = function () {
 /// Returns an iterator for all edges of the graph. The iterator supports the
 /// methods @FN{hasNext} and @FN{next}.
 ///
+/// @EXAMPLES
+///
 /// @verbinclude graph36
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1193,6 +1063,8 @@ Graph.prototype.getEdges = function () {
 ///
 /// Deletes the @FA{vertex} and all its edges.
 ///
+/// @EXAMPLES
+///
 /// @verbinclude graph37
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1223,6 +1095,8 @@ Graph.prototype.removeVertex = function (vertex) {
 /// @FUN{@FA{graph}.removeEdge(@FA{vertex})}
 ///
 /// Deletes the @FA{edge}. Note that the in and out vertices are left untouched.
+///
+/// @EXAMPLES
 ///
 /// @verbinclude graph38
 ////////////////////////////////////////////////////////////////////////////////
@@ -1278,6 +1152,55 @@ Graph.prototype.constructEdge = function(id) {
 
 Graph.prototype._PRINT = function (seen, path, names) {
   internal.output("Graph(\"", this._vertices._name, "\", \"" + this._edges._name, "\")");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoGraph
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shallow copy properties
+////////////////////////////////////////////////////////////////////////////////
+
+function shallowCopy (props) {
+  var shallow;
+
+  shallow = {};
+
+  for (var key in props) {
+    if (props.hasOwnProperty(key) && key[0] != '_' && key[0] != '$') {
+      shallow[key] = props[key];
+    }
+  }
+
+  return shallow;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief property keys
+////////////////////////////////////////////////////////////////////////////////
+
+function propertyKeys (props) {
+  var keys;
+
+  keys = [];
+
+  for (var key in props) {
+    if (props.hasOwnProperty(key) && key[0] != '_' && key[0] != '$') {
+      keys.push(key);
+    }
+  }
+
+  return keys;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
