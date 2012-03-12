@@ -108,7 +108,9 @@ function postCursor(req, res) {
       return;
     }
 
-    actions.actionResultOK(req, res, 201, getCursorResult(cursor));        
+    actions.actionResultOK(req, res, 201, getCursorResult(cursor));
+    cursor = null; 
+    result = null;
   }
   catch (e) {
     actions.actionResultError (req, res, 404, actions.cursorNotModified, "Cursor not created");
@@ -133,6 +135,7 @@ function putCursor(req, res) {
     } 
 
     actions.actionResultOK(req, res, 200, getCursorResult(cursor));
+    cursor = null; 
   }
   catch (e) {
     actions.actionResultError (req, res, 404, actions.cursorNotFound, "Cursor not found");
@@ -158,6 +161,7 @@ function deleteCursor(req, res) {
 
     cursor.dispose();
     actions.actionResultOK(req, res, 202, { "_id" : cursorId });                
+    cursor = null; 
   }
   catch (e) {
     actions.actionResultError (req, res, 404, actions.cursorNotFound, "Cursor not found");

@@ -295,26 +295,11 @@ void TRI_ParseQueryPopIntoRhs (TRI_query_node_t* node,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ParseQueryValidateCollectionName (const char* name) {
-  const char* p = name;
-  char c;
-  size_t length = 0;
-   
-  while ('\0' != (c = *p++)) {
-    if (length == 0) {
-      if (!(c >= 'A' && c <= 'Z') && 
-          !(c >= 'a' && c <= 'z')) {
-        return false;
-      } 
-    }
-    if (!(c >= 'A' && c <= 'Z') && 
-        !(c >= 'a' && c <= 'z') && 
-        !(c >= '0' && c <= '9')) {
-      return false;
-    } 
-    length++;
+  if (TRI_IsAllowedCollectionName(name) != 0) {
+    return false;
   }
-  
-  return ((length > 0) && (length <= TRI_QUERY_NAME_MAX_LENGTH));
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -355,7 +340,7 @@ bool TRI_ParseQueryValidateCollectionAlias (const char* name) {
     return false;
   }
   
-  return ((totalLength > 0) && (totalLength <= TRI_QUERY_NAME_MAX_LENGTH));
+  return ((totalLength > 0) && (totalLength <= TRI_QUERY_ALIAS_MAX_LENGTH));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

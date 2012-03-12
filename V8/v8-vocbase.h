@@ -204,11 +204,10 @@
 ///
 /// @subsection JSFQueryBuilding Query Building Functions
 ///
+/// A complete list of the available query building functions can be found @ref
+/// SimpleQueries "here".
+///
 /// @copydetails JS_DocumentQuery
-///
-/// @copydetails JS_NearQuery
-///
-/// @copydetails JS_SelectQuery
 ///
 /// @subsection JSFQueryExecuting Query Execution Functions
 ///

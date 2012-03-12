@@ -58,7 +58,6 @@ extern "C" {
 /// less work when executing the query and produce the results faster.
 ///
 /// @section OptimizerTransformations Optimizer transformations
-///
 /// 
 /// Currently, the AQL query optimizer applies the following transformations:
 /// - constant folding: numeric literals, boolean values and null are folded 

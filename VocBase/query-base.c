@@ -266,6 +266,11 @@ static bool InitFromQueryTemplate (TRI_query_template_t* const template_) {
     node = node->_next;
   }
 
+  if (template_->_query->_from._collections._nrUsed > QUERY_MAX_JOINS) {
+    TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_TOO_MANY_JOINS, NULL);
+    return false;
+  }
+
   QLOptimizeFrom(template_->_query);
 
   return true;
@@ -332,6 +337,28 @@ TRI_bind_parameter_t* TRI_CreateBindParameter (const char* name,
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    query template
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Free a template based on its shadow
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeShadowQueryTemplate (TRI_shadow_store_t* store, TRI_shadow_t* shadow) {
+  TRI_query_template_t* template_ = (TRI_query_template_t*) shadow->_data;
+
+  if (!template_) {
+    return;
+  }
+
+  TRI_FreeQueryTemplate(template_);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create shadow data store for templates 
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_shadow_store_t* TRI_CreateShadowsQueryTemplate (void) {
+  return TRI_CreateShadowStore(&TRI_FreeShadowQueryTemplate);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Initialize the structs contained in a query template and perform
@@ -434,7 +461,7 @@ TRI_query_template_t* TRI_CreateQueryTemplate (const char* queryString,
 /// @brief Free a query template
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeQueryTemplate (TRI_query_template_t* const template_) {
+void TRI_FreeQueryTemplate (TRI_query_template_t* template_) {
   assert(template_);
   assert(template_->_queryString);
   assert(template_->_query);

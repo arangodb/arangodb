@@ -90,7 +90,8 @@ extern size_t PageSize;
 /// @ref TRI_InitialiseVocBase.
 ///
 /// Please note that the error numbers defined here must not conflict with error
-/// numbers defined for other parts of the program (e.g. in VocBase/vocbase.h)
+/// numbers defined for other parts of the program (e.g. in 
+/// VocBase/query-error.h)
 ////////////////////////////////////////////////////////////////////////////////
 
 enum {
@@ -230,6 +231,7 @@ typedef struct TRI_vocbase_s {
   TRI_thread_t _synchroniser;
   TRI_thread_t _compactor;
 
+  struct TRI_shadow_store_s* _templates;
   struct TRI_shadow_store_s* _cursors;
 }
 TRI_vocbase_t;
@@ -266,6 +268,12 @@ TRI_vocbase_col_t;
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a collection is allowed
+////////////////////////////////////////////////////////////////////////////////
+
+char TRI_IsAllowedCollectionName (char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new tick

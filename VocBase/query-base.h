@@ -36,6 +36,7 @@
 #include <BasicsC/json.h>
 
 #include "VocBase/vocbase.h"
+#include "VocBase/shadow-data.h"
 #include "VocBase/query-node.h"
 #include "VocBase/query-error.h"
 
@@ -164,6 +165,18 @@ typedef struct TRI_query_template_s {
 TRI_query_template_t;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Free a template based on its shadow
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeShadowQueryTemplate (TRI_shadow_store_t*, TRI_shadow_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create shadow data store for templates 
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_shadow_store_t* TRI_CreateShadowsQueryTemplate (void);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Initialize the structs contained in a query template and perform
 /// some basic optimizations and type detections
 ////////////////////////////////////////////////////////////////////////////////
@@ -188,7 +201,7 @@ TRI_query_template_t* TRI_CreateQueryTemplate (const char*,
 /// @brief Free a query template
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeQueryTemplate (TRI_query_template_t* const);
+void TRI_FreeQueryTemplate (TRI_query_template_t*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    query instance

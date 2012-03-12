@@ -168,30 +168,6 @@ static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a collection is allowed
-////////////////////////////////////////////////////////////////////////////////
-
-static char IsAllowedCollectionName (char const* name) {
-  bool ok;
-  char const* ptr;
-
-  for (ptr = name;  *ptr;  ++ptr) {
-    if (name < ptr) {
-      ok = (*ptr == '_') || ('0' <= *ptr && *ptr <= '9') || ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
-    }
-    else {
-      ok = ('0' <= *ptr && *ptr <= '9') || ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
-    }
-
-    if (! ok) {
-      return *ptr;
-    }
-  }
-
-  return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -331,6 +307,30 @@ size_t PageSize;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a collection is allowed
+////////////////////////////////////////////////////////////////////////////////
+
+char TRI_IsAllowedCollectionName (char const* name) {
+  bool ok;
+  char const* ptr;
+
+  for (ptr = name;  *ptr;  ++ptr) {
+    if (name < ptr) {
+      ok = (*ptr == '_') || ('0' <= *ptr && *ptr <= '9') || ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
+    }
+    else {
+      ok = ('0' <= *ptr && *ptr <= '9') || ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
+    }
+
+    if (! ok) {
+      return *ptr;
+    }
+  }
+
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new tick
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -449,9 +449,18 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
     LOG_ERROR("out of memory when opening vocbase");
     return NULL;
   }
+  
+  // set up shadow data stores for queries
+  vocbase->_templates = TRI_CreateShadowsQueryTemplate();
+  if (!vocbase->_templates) {
+    TRI_Free(vocbase);
+    LOG_ERROR("out of memory when opening vocbase");
+    return NULL;
+  }
 
   vocbase->_cursors = TRI_CreateShadowsQueryCursor();
   if (!vocbase->_cursors) {
+    TRI_FreeShadowStore(vocbase->_cursors);
     TRI_Free(vocbase);
     LOG_ERROR("out of memory when opening vocbase");
     return NULL;
@@ -461,6 +470,8 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   vocbase->_path = TRI_DuplicateString(path);
 
   if (!vocbase->_path) {
+    TRI_FreeShadowStore(vocbase->_templates);
+    TRI_FreeShadowStore(vocbase->_cursors);
     TRI_Free(vocbase);
     LOG_ERROR("out of memory when opening vocbase");
     return NULL;
@@ -512,8 +523,12 @@ void TRI_CloseVocBase (TRI_vocbase_t* vocbase) {
   TRI_JoinThread(&vocbase->_synchroniser);
   TRI_JoinThread(&vocbase->_compactor);
   
+  // Free shadows
   if (vocbase->_cursors) {
     TRI_FreeShadowStore(vocbase->_cursors);
+  }
+  if (vocbase->_templates) {
+    TRI_FreeShadowStore(vocbase->_templates);
   }
 
   TRI_DestroyLockFile(vocbase->_lockFile);
@@ -609,7 +624,7 @@ TRI_vocbase_col_t const* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase, TR
   }
 
   // check that the name does not contain any strange characters
-  wrong = IsAllowedCollectionName(name);
+  wrong = TRI_IsAllowedCollectionName(name);
 
   if (wrong != 0) {
     LOG_ERROR("found illegal character in name: %c", wrong);
@@ -735,7 +750,7 @@ TRI_vocbase_col_t const* TRI_BearCollectionVocBase (TRI_vocbase_t* vocbase, char
   }
 
   // check that the name does not contain any strange characters
-  wrong = IsAllowedCollectionName(name);
+  wrong = TRI_IsAllowedCollectionName(name);
 
   if (wrong != 0) {
     LOG_ERROR("found illegal character in name: %c", wrong);

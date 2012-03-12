@@ -76,14 +76,15 @@ static void* ThreadStarter (void* data) {
 
   sigset_t all;
   sigfillset(&all);
-
   pthread_sigmask(SIG_SETMASK, &all, 0);
 
   d = data;
   d->starter(d->_data);
 
-  TRI_Free(data);
-
+  if (d) {
+    TRI_Free(d);
+    d = NULL;
+  }
   return 0;
 }
 
@@ -168,11 +169,12 @@ bool TRI_StartThread (TRI_thread_t* thread, void (*starter)(void*), void* data) 
   d->_data = data;
 
   rc = pthread_create(thread, 0, &ThreadStarter, d);
-
   if (rc != 0) {
-    TRI_Free(d);
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     LOG_ERROR("could not start thread: %s ", strerror(errno));
+    if (d) {
+      TRI_Free(d);
+    }
     return false;
   }
 

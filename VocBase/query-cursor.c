@@ -167,7 +167,7 @@ TRI_query_cursor_t* TRI_CreateQueryCursor (TRI_query_instance_t* const instance,
 /// @brief Free a cursor based on its shadow
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeQueryCursor (TRI_shadow_store_t* store, TRI_shadow_t* shadow) {
+void TRI_FreeShadowQueryCursor (TRI_shadow_store_t* store, TRI_shadow_t* shadow) {
   TRI_query_cursor_t* cursor = (TRI_query_cursor_t*) shadow->_data;
 
   if (!cursor) {
@@ -202,7 +202,7 @@ void TRI_UnlockQueryCursor (TRI_query_cursor_t* const cursor) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_shadow_store_t* TRI_CreateShadowsQueryCursor (void) {
-  return TRI_CreateShadowStore(&TRI_FreeQueryCursor);
+  return TRI_CreateShadowStore(&TRI_FreeShadowQueryCursor);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
