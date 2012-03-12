@@ -160,14 +160,11 @@ static char* CompletionGenerator (char const* text, int state) {
         char const* s = *str;
         
         if (s != 0) {
-          
-          string x = (current->Get(v)->IsFunction()) ? "()" : "";
+          string suffix = (current->Get(v)->IsFunction()) ? "()" : "";
+          string name = path + s + suffix;
                   
-          if (*prefix == '\0') {
-            result.push_back(path + s + x);
-          }
-          else if (TRI_IsPrefixString(s, prefix)) {
-            result.push_back(path + s + x);
+          if (*prefix == '\0' || TRI_IsPrefixString(s, prefix)) {
+            result.push_back(name);
           }
         }
       }
@@ -192,8 +189,20 @@ static char* CompletionGenerator (char const* text, int state) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static char** AttemptedCompletion (char const* text, int start, int end) {
-  char** result = completion_matches(text, CompletionGenerator);
+  char** result;
+
+  result = completion_matches(text, CompletionGenerator);
   rl_attempted_completion_over = true;
+
+  if (result != 0 && result[0] != 0 && result[1] == 0) {
+    size_t n = strlen(result[0]);
+
+    if (result[0][n-1] == ')') {
+      result[0][n-1] = '\0';
+      rl_completion_suppress_append = 1;
+    }
+  }
+
   return result;
 }
 
@@ -382,6 +391,7 @@ V8LineEditor::V8LineEditor (v8::Handle<v8::Context> context, string const& histo
 
 bool V8LineEditor::open (const bool autoComplete) {
   rl_initialize();
+
   if (autoComplete) {
     rl_attempted_completion_function = AttemptedCompletion;
     rl_completer_word_break_characters = WordBreakCharacters;
