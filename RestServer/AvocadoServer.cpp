@@ -67,11 +67,7 @@ using namespace triagens::avocado;
 
 #include "js/common/bootstrap/js-modules.h"
 #include "js/common/bootstrap/js-print.h"
-<<<<<<< HEAD
-#include "js/server/server.h"
-=======
 #include "js/server/js-server.h"
->>>>>>> 56a9d9ec07e8ce9f0c261ecf14b95b2133172b9b
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
