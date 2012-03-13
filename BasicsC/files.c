@@ -721,6 +721,66 @@ bool TRI_DestroyLockFile (char const* filename) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief locates the directory containing the program
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_LocateBinaryPath (char const* argv0) {
+  char const* p;
+  char* dir;
+  char* binaryPath = NULL;
+  size_t i;
+
+  // check if name contains a '/'
+  p = argv0;
+
+  for (;  *p && *p != '/';  ++p) {
+  }
+
+  // contains a path
+  if (*p) {
+    dir = TRI_Dirname(argv0);
+
+    if (dir == 0) {
+      binaryPath = TRI_DuplicateString("");
+    }
+    else {
+      binaryPath = TRI_DuplicateString(dir);
+      TRI_FreeString(dir);
+    }
+  }
+
+  // check PATH variable
+  else {
+    p = getenv("PATH");
+
+    if (p == 0) {
+      binaryPath = TRI_DuplicateString("");
+    }
+    else {
+      TRI_vector_string_t files;
+
+      files = TRI_SplitString(p, ':');
+
+      for (i = 0;  i < files._length;  ++i) {
+        char* full = TRI_Concatenate2File(files._buffer[i], argv0);
+
+        if (TRI_ExistsFile(full)) {
+          TRI_FreeString(full);
+          binaryPath = TRI_DuplicateString(files._buffer[i]);
+          break;
+        }
+
+        TRI_FreeString(full);
+      }
+
+      TRI_DestroyVectorString(&files);
+    }
+  }
+
+  return binaryPath;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

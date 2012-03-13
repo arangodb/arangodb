@@ -167,39 +167,7 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
     _vocbase(0) {
   char* p;
 
-  // check if name contains a '/'
-  p = argv[0];
-
-  for (;  *p && *p != '/';  ++p) {
-  }
-
-  // contains a path
-  if (*p) {
-    p = TRI_Dirname(argv[0]);
-    _binaryPath = (p == 0 || *p == '\0') ? "" : p;
-    TRI_FreeString(p);
-  }
-
-  // check PATH variable
-  else {
-    p = getenv("PATH");
-
-    if (p == 0) {
-      _binaryPath = "";
-    }
-    else {
-      vector<string> files = StringUtils::split(p, ":");
-
-      for (vector<string>::iterator i = files.begin();  i != files.end();  ++i) {
-        string full = *i + "/" + argv[0];
-
-        if (FileUtils::exists(full)) {
-          _binaryPath = *i;
-          break;
-        }
-      }
-    }
-  }
+  _binaryPath = TRI_LocateBinaryPath(argv[0]);
 
   // .............................................................................
   // use relative system paths
@@ -368,7 +336,7 @@ void AvocadoServer::buildApplicationServer () {
 
   additional["JAVASCRIPT Options:help-admin"]
     ("startup.directory", &_startupPath, "path to the directory containing alternate startup scripts")
-    ("startup.modules-path", &_startupModules, "one or more directories separated by semicolon")
+    ("startup.modules-path", &_startupModules, "one or more directories separated by semicola")
     ("action.directory", &_actionPath, "path to the action directory, defaults to <database.directory>/_ACTIONS")
     ("gc.interval", &_gcInterval, "garbage collection interval (each x requests)")
   ;

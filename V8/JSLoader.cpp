@@ -30,6 +30,7 @@
 #include "Basics/MutexLocker.h"
 #include "BasicsC/files.h"
 #include "BasicsC/strings.h"
+#include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "V8/v8-utils.h"
 
@@ -245,17 +246,16 @@ vector<string> JSLoader::getDirectoryParts () {
   vector<string> directories;
   
   if (! _directory.empty()) {
-    TRI_vector_string_t parts = TRI_SplitString(_directory.c_str(), ';');
+    TRI_vector_string_t parts = TRI_Split2String(_directory.c_str(), ":;");
+
     for (size_t i = 0; i < parts._length; i++) {
-      string part(parts._buffer[i]);
-      string::size_type pos1 = part.find_first_not_of(' ');
-      string::size_type pos2 = part.find_last_not_of(' ');
-      part = part.substr(pos1 == string::npos ? 0 : pos1, 
-                         pos2 == string::npos ? part.length() - 1 : pos2 - pos1 + 1);
-      if (part.length() > 0) {
+      string part = StringUtils::trim(parts._buffer[i]);
+
+      if (! part.empty()) {
         directories.push_back(part);
       }
     }
+
     TRI_DestroyVectorString(&parts);
   }
   

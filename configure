@@ -2614,6 +2614,8 @@ cat >>confdefs.h <<_ACEOF
 #define TRI_ENABLE_RELATIVE_DEVEL 1
 _ACEOF
 
+else
+  tr_RELATIVE=no
 fi
 fi
 

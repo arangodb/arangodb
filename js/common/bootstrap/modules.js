@@ -334,7 +334,7 @@ internal = ModuleCache["/internal"].exports;
 internal.readFile = function (path) {
 
   // try to load the file
-  paths = MODULES_PATH.split(";");
+  var paths = MODULES_PATH;
 
   for (var i = 0;  i < paths.length;  ++i) {
     var p = paths[i];
@@ -362,7 +362,7 @@ internal.readFile = function (path) {
 internal.loadFile = function (path) {
 
   // try to load the file
-  paths = MODULES_PATH.split(";");
+  var paths = MODULES_PATH;
 
   for (var i = 0;  i < paths.length;  ++i) {
     var p = paths[i];

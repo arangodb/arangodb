@@ -62,6 +62,8 @@ if test "x$tr_RELATIVE" = xyes;  then
 else
 if test "x$tr_RELATIVE" = xdevel;  then
   AC_DEFINE_UNQUOTED(TRI_ENABLE_RELATIVE_DEVEL, 1, [true if relative development paths should be used])
+else
+  tr_RELATIVE=no
 fi
 fi
 
