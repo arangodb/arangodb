@@ -54,8 +54,8 @@ using namespace triagens::httpclient;
 using namespace triagens::v8client;
 using namespace triagens::avocado;
 
-#include "js/bootstrap/js-print.h"
-#include "js/bootstrap/js-modules.h"
+#include "js/common/bootstrap/js-print.h"
+#include "js/common/bootstrap/js-modules.h"
 #include "js/client/js-client.h"
 
 // -----------------------------------------------------------------------------
@@ -950,8 +950,8 @@ int main (int argc, char* argv[]) {
     
     // load java script from js/bootstrap/*.h files
     if (StartupPath.empty()) {
-      StartupLoader.defineScript("bootstrap/modules.js", JS_bootstrap_modules);
-      StartupLoader.defineScript("bootstrap/print.js", JS_bootstrap_print);
+      StartupLoader.defineScript("common/bootstrap/modules.js", JS_common_bootstrap_modules);
+      StartupLoader.defineScript("common/bootstrap/print.js", JS_common_bootstrap_print);
       StartupLoader.defineScript("client/client.js", JS_client_client);
     }
     else {
