@@ -25,8 +25,6 @@
 /// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_28 ();
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @page JSModulesTOC
 ///
@@ -34,8 +32,6 @@ void dummy_28 ();
 ///   <li>@ref JSModulesRequire "require"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
-
-void dummy_36 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page JSModules JavaScript Modules
@@ -55,70 +51,132 @@ void dummy_36 ();
 /// @copydetails JSF_require
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_54 ();
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            Module
 // -----------------------------------------------------------------------------
-
-void dummy_58 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup V8Module
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_63 ();
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module cache
 ////////////////////////////////////////////////////////////////////////////////
 
-
-void dummy_69 ();
+ModuleCache = {};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-void JSF_Module (int id) {}
+function Module (id) {
+  this.id = id;
+  this.exports = {};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads a file and creates a new module descriptor
 ////////////////////////////////////////////////////////////////////////////////
 
-void JSF_Module_prototype_require (int path) {}
+Module.prototype.require = function (path) {
+  var raw;
+  var content;
+  var sandbox;
+  var paths;
+  var module;
+  var f;
 
+  // first get rid of any ".." and "."
+  path = this.normalise(path);
 
+  // check if you already know the module, return the exports
+  if (path in ModuleCache) {
+    return ModuleCache[path].exports;
+  }
 
+  // locate file and read content
+  raw = internal.readFile(path);
 
+  // create a new sandbox and execute
+  ModuleCache[path] = module = new Module(path);
 
+  content = "(function (module, exports, require, print) {" + raw.content + "\n/* end-of-file '" + raw.path + "' */ });";
 
+  try {
+    f = SYS_EXECUTE(content, undefined, path);
+  }
+  catch (err) {
+    CONSOLE_ERROR("in file %s: %o", path, err.stack);
+    throw err;
+  }
 
+  if (f == undefined) {
+    throw "cannot create context function";
+  }
 
+  f(module, module.exports, function(path) { return module.require(path); }, print);
 
+  return module.exports;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalises a path
 ////////////////////////////////////////////////////////////////////////////////
 
-void JSF_Module_prototype_normalise (int path) {}
+Module.prototype.normalise = function (path) {
+  var p;
+  var q;
+  var x;
 
+  if (path == "") {
+    return this.id;
+  }
 
+  p = path.split('/');
 
+  // relative path
+  if (p[0] == "." || p[0] == "..") {
+    q = this.id.split('/');
+    q.pop();
+    q = q.concat(p);
+  }
 
+  // absolute path
+  else {
+    q = p;
+  }
 
+  // normalize path
+  n = [];
 
+  for (var i = 0;  i < q.length;  ++i) {
+    x = q[i];
 
+    if (x == "") {
+    }
+    else if (x == ".") {
+    }
+    else if (x == "..") {
+      if (n.length == 0) {
+        throw "cannot cross module top";
+      }
 
+      n.pop();
+    }
+    else {
+      n.push(x);
+    }
+  }
 
+  return "/" + n.join('/');
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief top-level module
 ////////////////////////////////////////////////////////////////////////////////
 
-
-void dummy_181 ();
+ModuleCache["/"] = module = new Module("/");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global require function
@@ -143,19 +201,17 @@ void dummy_181 ();
 /// <a href="http://wiki.commonjs.org/wiki/Modules/1.1.1">Modules/1.1.1</a>.
 ////////////////////////////////////////////////////////////////////////////////
 
-void JSF_require (int path) {}
+function require (path) {
+  return module.require(path);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_212 ();
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       Module "fs"
 // -----------------------------------------------------------------------------
-
-void dummy_216 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page JSModuleFsTOC
@@ -164,8 +220,6 @@ void dummy_216 ();
 ///   <li>@ref JSModuleFsExists "fs.exists"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
-
-void dummy_224 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page JSModuleFs Module "fs"
@@ -181,33 +235,26 @@ void dummy_224 ();
 /// @copydetails JS_Exists
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_238 ();
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup V8ModuleFS
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_243 ();
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fs module
 ////////////////////////////////////////////////////////////////////////////////
 
-
-void dummy_251 ();
+ModuleCache["/fs"] = new Module("/fs");
+ModuleCache["/fs"].exports.exists = FS_EXISTS;
+fs = ModuleCache["/fs"].exports;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_255 ();
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 Module "internal"
 // -----------------------------------------------------------------------------
-
-void dummy_259 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page JSModuleInternalTOC
@@ -224,8 +271,6 @@ void dummy_259 ();
 ///   <li>@ref JSModuleInternalTime "internal.time"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
-
-void dummy_275 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page JSModuleInternal Module "internal"
@@ -261,55 +306,90 @@ void dummy_275 ();
 /// @copydetails JS_Time
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_309 ();
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup V8ModuleInternal
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_314 ();
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief internal module
 ////////////////////////////////////////////////////////////////////////////////
 
-
-void dummy_330 ();
+ModuleCache["/internal"] = new Module("/internal");
+ModuleCache["/internal"].exports.execute = SYS_EXECUTE;
+ModuleCache["/internal"].exports.load = SYS_LOAD;
+ModuleCache["/internal"].exports.log = SYS_LOG;
+ModuleCache["/internal"].exports.logLevel = SYS_LOG_LEVEL;
+ModuleCache["/internal"].exports.output = SYS_OUTPUT;
+ModuleCache["/internal"].exports.processStat = SYS_PROCESS_STAT;
+ModuleCache["/internal"].exports.read = SYS_READ;
+ModuleCache["/internal"].exports.sprintf = SYS_SPRINTF;
+ModuleCache["/internal"].exports.time = SYS_TIME;
+internal = ModuleCache["/internal"].exports;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a file
 ////////////////////////////////////////////////////////////////////////////////
 
-void JSF_internal_readFile (int path) {}
+internal.readFile = function (path) {
 
+  // try to load the file
+  var paths = MODULES_PATH;
 
+  for (var i = 0;  i < paths.length;  ++i) {
+    var p = paths[i];
+    var n;
 
+    if (p == "") {
+      n = "." + path + ".js"
+    }
+    else {
+      n = p + "/" + path + ".js";
+    }
 
+    if (FS_EXISTS(n)) {
+      return { path : n, content : SYS_READ(n) };
+    }
+  }
 
+  throw "cannot find a file named '" + path + "' using the module path(s) '" + MODULES_PATH + "'";
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads a file
 ////////////////////////////////////////////////////////////////////////////////
 
-void JSF_internal_loadFile (int path) {}
+internal.loadFile = function (path) {
 
+  // try to load the file
+  var paths = MODULES_PATH;
 
+  for (var i = 0;  i < paths.length;  ++i) {
+    var p = paths[i];
+    var n;
 
+    if (p == "") {
+      n = "." + path + ".js"
+    }
+    else {
+      n = p + "/" + path + ".js";
+    }
 
+    if (FS_EXISTS(n)) {
+      return SYS_LOAD(n);
+    }
+  }
 
+  throw "cannot find a file named '" + path + "' using the module path(s) '" + MODULES_PATH + "'";
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_390 ();
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  Module "console"
 // -----------------------------------------------------------------------------
-
-void dummy_394 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page JSModuleConsoleTOC
@@ -322,8 +402,6 @@ void dummy_394 ();
 ///   <li>@ref JSModuleConsoleWarn "console.warn"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
-
-void dummy_406 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page JSModuleConsole Module "console"
@@ -351,14 +429,10 @@ void dummy_406 ();
 /// @copydetails JSF_CONSOLE_WARN
 ////////////////////////////////////////////////////////////////////////////////
 
-void dummy_432 ();
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup V8ModuleConsole
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-void dummy_437 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs debug message
@@ -376,8 +450,12 @@ void dummy_437 ();
 /// - @LIT{\%o} object hyperlink
 ////////////////////////////////////////////////////////////////////////////////
 
-void JSF_CONSOLE_DEBUG () {}
+function CONSOLE_DEBUG () {
+  var msg;
 
+  msg = internal.sprintf.apply(internal.sprintf, arguments);
+  internal.log("debug", msg);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs error message
@@ -388,8 +466,12 @@ void JSF_CONSOLE_DEBUG () {}
 /// error message.
 ////////////////////////////////////////////////////////////////////////////////
 
-void JSF_CONSOLE_ERROR () {}
+function CONSOLE_ERROR () {
+  var msg;
 
+  msg = internal.sprintf.apply(internal.sprintf, arguments);
+  internal.log("error", msg);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs info message
@@ -400,8 +482,12 @@ void JSF_CONSOLE_ERROR () {}
 /// info message.
 ////////////////////////////////////////////////////////////////////////////////
 
-void JSF_CONSOLE_INFO () {}
+function CONSOLE_INFO () {
+  var msg;
 
+  msg = internal.sprintf.apply(internal.sprintf, arguments);
+  internal.log("info", msg);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs log message
@@ -412,8 +498,12 @@ void JSF_CONSOLE_INFO () {}
 /// log message.
 ////////////////////////////////////////////////////////////////////////////////
 
-void JSF_CONSOLE_LOG () {}
+function CONSOLE_LOG () {
+  var msg;
 
+  msg = internal.sprintf.apply(internal.sprintf, arguments);
+  internal.log("info", msg);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs warn message
@@ -424,21 +514,28 @@ void JSF_CONSOLE_LOG () {}
 /// warn message.
 ////////////////////////////////////////////////////////////////////////////////
 
-void JSF_CONSOLE_WARN () {}
+function CONSOLE_WARN () {
+  var msg;
 
+  msg = internal.sprintf.apply(internal.sprintf, arguments);
+  internal.log("warn", msg);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief console module
 ////////////////////////////////////////////////////////////////////////////////
 
-
-void dummy_536 ();
+ModuleCache["/console"] = new Module("/console");
+ModuleCache["/console"].exports.debug = CONSOLE_DEBUG;
+ModuleCache["/console"].exports.error = CONSOLE_ERROR;
+ModuleCache["/console"].exports.info = CONSOLE_INFO;
+ModuleCache["/console"].exports.log = CONSOLE_LOG;
+ModuleCache["/console"].exports.warn = CONSOLE_WARN;
+console = ModuleCache["/console"].exports;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-void dummy_540 ();
 
 // Local Variables:
 // mode: outline-minor

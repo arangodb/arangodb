@@ -63,7 +63,7 @@ namespace triagens {
             int port,
             double requestTimeout,
             size_t retries,
-            double connectionTimeout) {
+            double connectionTimeout) : _client(0) {
       
       _connected = false;
       _lastHttpReturnCode = 0;

@@ -606,6 +606,67 @@ TRI_vector_string_t TRI_SplitString (char const* source, char delim) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief splits a string, using more than one delimiter
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vector_string_t TRI_Split2String (char const* source, char const* delim) {
+  TRI_vector_string_t result;
+  char* buffer;
+  char* p;
+  char const* q;
+  char const* e;
+  size_t size;
+  size_t delimiterSize;
+
+  TRI_InitVectorString(&result);
+
+  if (delim == NULL || *delim == '\0') {
+    return result;
+  }
+
+  if (source == NULL || *source == '\0') {
+    return result;
+  }
+  
+  delimiterSize = strlen(delim);
+  size = strlen(source);
+  buffer = TRI_Allocate(size + 1);
+  if (buffer) {
+    p = buffer;
+
+    q = source;
+    e = source + size;
+
+    for (;  q < e;  ++q) {
+      size_t i;
+      bool found = false;
+      for (i = 0; i < delimiterSize; ++i) {
+        if (*q == delim[i]) {
+          *p = '\0';
+
+          TRI_PushBackVectorString(&result, TRI_DuplicateString2(buffer, p - buffer));
+          p = buffer;
+          found = true;
+          break;
+        }
+      }
+
+      if (!found) {
+        *p++ = *q;
+      }
+    }
+
+    *p = '\0';
+
+    TRI_PushBackVectorString(&result, TRI_DuplicateString2(buffer, p - buffer));
+
+    TRI_FreeString(buffer);
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief frees a string
 ////////////////////////////////////////////////////////////////////////////////
 

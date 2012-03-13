@@ -54,8 +54,8 @@ using namespace triagens::httpclient;
 using namespace triagens::v8client;
 using namespace triagens::avocado;
 
-#include "js/bootstrap/js-print.h"
-#include "js/bootstrap/js-modules.h"
+#include "js/common/bootstrap/js-print.h"
+#include "js/common/bootstrap/js-modules.h"
 #include "js/client/js-client.h"
 
 // -----------------------------------------------------------------------------
@@ -66,12 +66,6 @@ using namespace triagens::avocado;
 /// @addtogroup V8Shell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief need to run the shell
-////////////////////////////////////////////////////////////////////////////////
-
-static bool RunShellFlag = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connection default values
@@ -88,6 +82,12 @@ static double DEFAULT_CONNECTION_TIMEOUT = 1.0;
 ////////////////////////////////////////////////////////////////////////////////
 
 static string StartupPath = "";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief path for JavaScript modules files
+////////////////////////////////////////////////////////////////////////////////
+
+static string StartupModules = "";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startup JavaScript files
@@ -153,6 +153,15 @@ static bool noAutoComplete = false;
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                              JavaScript functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief outputs the arguments
 ///
@@ -163,7 +172,7 @@ static bool noAutoComplete = false;
 /// @verbinclude fluent39
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> Js_Pager_Output (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_PagerOutput (v8::Arguments const& argv) {
   for (int i = 0; i < argv.Length(); i++) {
     v8::HandleScope scope;
 
@@ -178,47 +187,71 @@ static v8::Handle<v8::Value> Js_Pager_Output (v8::Arguments const& argv) {
   return v8::Undefined();
 }
 
-static v8::Handle<v8::Value> Start_Output_Pager (v8::Arguments const& argv) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief starts the output pager
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_StartOutputPager (v8::Arguments const& argv) {
   usePager = true;
   printf("Using pager '%s' for output buffering.\n", OutputPager.c_str());
   return v8::Undefined();
 }
 
-static v8::Handle<v8::Value> Stop_Output_Pager (v8::Arguments const& argv) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stops the output pager
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_StopOutputPager (v8::Arguments const& argv) {
   usePager = false;
   return v8::Undefined();
 }
 
-static void init_pager()
-{
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief starts pager
+////////////////////////////////////////////////////////////////////////////////
+
+static void StartPager () {
   if (!usePager || OutputPager == "" || OutputPager == "stdout") {
     PAGER= stdout;
     return;
   }
   
-  if (!(PAGER = popen(OutputPager.c_str(), "w")))
-  {
+  if (!(PAGER = popen(OutputPager.c_str(), "w"))) {
     printf("popen() failed! defaulting PAGER to stdout!\n");
     PAGER= stdout;
     usePager = false;
   }
 }
 
-static void end_pager()
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stops pager
+////////////////////////////////////////////////////////////////////////////////
+
+static void StopPager ()
 {
   if (PAGER != stdout) {
     pclose(PAGER);
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief splits the address
+////////////////////////////////////////////////////////////////////////////////
 
-
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-bool splitServerAdress (string const& definition, string& address, int& port) {
+static bool splitServerAdress (string const& definition, string& address, int& port) {
   if (definition.empty()) {
     return false;
   }
@@ -273,8 +306,9 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("help,h", "help message")
     ("log.level,l", &level,  "log level")
     ("server", &ServerAddress, "server address and port")
-    ("startup", &StartupPath, "startup path containing the JavaScript files")
-    ("pager", &OutputPager, "output pager (default: 'more')")
+    ("startup.directory", &StartupPath, "startup paths containing the JavaScript files; multiple directories can be separated by cola")
+    ("startup.modules-path", &StartupModules, "one or more directories separated by cola")
+    ("pager", &OutputPager, "output pager")
     ("use-pager", "use pager")
     ("pretty-print", "pretty print values")          
     ("no-colors", "deactivate color support")
@@ -730,7 +764,7 @@ static void RunShell (v8::Handle<v8::Context> context) {
     v8::HandleScope scope;
     v8::TryCatch tryCatch;
     
-    init_pager();
+    StartPager();
 
     TRI_ExecuteStringVocBase(context, v8::String::New(input), name, true);
     TRI_FreeString(input);
@@ -739,7 +773,7 @@ static void RunShell (v8::Handle<v8::Context> context) {
       cout << TRI_StringifyV8Exception(&tryCatch);
     }
 
-    end_pager();
+    StopPager();
   }
 
   console->close();
@@ -821,10 +855,50 @@ int main (int argc, char* argv[]) {
   TRIAGENS_C_INITIALISE;
   TRI_InitialiseLogging(false);
 
+  // .............................................................................
+  // use relative system paths
+  // .............................................................................
+
+  {
+    char* binaryPath = TRI_LocateBinaryPath(argv[0]);
+
+#ifdef TRI_ENABLE_RELATIVE_SYSTEM
+  
+    StartupModules = string(binaryPath) + "/../share/avocado/js/client/modules"
+             + ";" + string(binaryPath) + "/../share/avocado/js/common/modules";
+
+#else
+
+  // .............................................................................
+  // use relative development paths
+  // .............................................................................
+
+#ifdef TRI_ENABLE_RELATIVE_DEVEL
+
+    StartupModules = string(binaryPath) + "/js/client/modules"
+             + ";" + string(binaryPath) + "/js/common/modules";
+
+#else
+
+  // .............................................................................
+  // use absolute paths
+  // .............................................................................
+
+#ifdef _PKGDATADIR_
+
+    StartupModules = string(_PKGDATADIR_) + "/js/client/modules"
+             + ";" + string(_PKGDATADIR_) + "/js/common/modules";
+
+#endif
+
+#endif
+#endif
+
+    TRI_FreeString(binaryPath);
+  }
+
   // parse the program options
   ParseProgramOptions(argc, argv);
-
-  RunShellFlag = (argc == 1);
 
   v8::HandleScope handle_scope;
 
@@ -843,11 +917,11 @@ int main (int argc, char* argv[]) {
 
   // add function SYS_OUTPUT to use pager
   context->Global()->Set(v8::String::New("TRI_SYS_OUTPUT"),
-                         v8::FunctionTemplate::New(Js_Pager_Output)->GetFunction(),
+                         v8::FunctionTemplate::New(JS_PagerOutput)->GetFunction(),
                          v8::ReadOnly);
   
   
-  TRI_InitV8Utils(context, ".");
+  TRI_InitV8Utils(context, StartupModules);
   
   TRI_InitV8Shell(context);
 
@@ -887,11 +961,11 @@ int main (int argc, char* argv[]) {
   context->Global()->Set(v8::String::New("AvocadoConnection"), connection_proto->NewInstance());    
   ConnectionTempl = v8::Persistent<v8::ObjectTemplate>::New(connection_inst);
     
-  context->Global()->Set(v8::String::New("start_pager"),
-                         v8::FunctionTemplate::New(Start_Output_Pager)->GetFunction(),
+  context->Global()->Set(v8::String::New("SYS_START_PAGER"),
+                         v8::FunctionTemplate::New(JS_StartOutputPager)->GetFunction(),
                          v8::ReadOnly);
-  context->Global()->Set(v8::String::New("stop_pager"),
-                         v8::FunctionTemplate::New(Stop_Output_Pager)->GetFunction(),
+  context->Global()->Set(v8::String::New("SYS_STOP_PAGER"),
+                         v8::FunctionTemplate::New(JS_StopOutputPager)->GetFunction(),
                          v8::ReadOnly);
   
 
@@ -950,8 +1024,8 @@ int main (int argc, char* argv[]) {
     
     // load java script from js/bootstrap/*.h files
     if (StartupPath.empty()) {
-      StartupLoader.defineScript("bootstrap/modules.js", JS_bootstrap_modules);
-      StartupLoader.defineScript("bootstrap/print.js", JS_bootstrap_print);
+      StartupLoader.defineScript("common/bootstrap/modules.js", JS_common_bootstrap_modules);
+      StartupLoader.defineScript("common/bootstrap/print.js", JS_common_bootstrap_print);
       StartupLoader.defineScript("client/client.js", JS_client_client);
     }
     else {
@@ -961,8 +1035,8 @@ int main (int argc, char* argv[]) {
 
     // load all init files
     char const* files[] = {
-      "bootstrap/modules.js",
-      "bootstrap/print.js",
+      "common/bootstrap/modules.js",
+      "common/bootstrap/print.js",
       "client/client.js"
     };
 

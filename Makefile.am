@@ -38,8 +38,10 @@ sbin_PROGRAMS = avocado
 bin_PROGRAMS = avocsh
 
 nobase_pkgdata_DATA = \
-	$(shell find @srcdir@/js/system -name "*.js" -print) \
-	$(shell find @srcdir@/js/modules -name "*.js" -print) \
+	$(shell find @srcdir@/js/actions/system -name "*.js" -print) \
+	$(shell find @srcdir@/js/common/modules -name "*.js" -print) \
+	$(shell find @srcdir@/js/server/modules -name "*.js" -print) \
+	$(shell find @srcdir@/js/client/modules -name "*.js" -print) \
 	$(shell find @srcdir@/html -name "*.css" -print) \
 	$(shell find @srcdir@/html -name "*.gif" -print) \
 	$(shell find @srcdir@/html -name "*.html" -print) \
@@ -50,7 +52,7 @@ nobase_pkgdata_DATA = \
 if ENABLE_INSTALL_DBDIR
 install-data-local:
 	test -d @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS || mkdir -p @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS
-	cp ${srcdir}/js/actions/*.js @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS
+	cp ${srcdir}/js/actions/demo/*.js @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS
 endif
 
 ################################################################################

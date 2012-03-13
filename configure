@@ -729,8 +729,6 @@ build_cpu
 build
 ENABLE_INSTALL_DBDIR_FALSE
 ENABLE_INSTALL_DBDIR_TRUE
-ENABLE_RELATIVE_FALSE
-ENABLE_RELATIVE_TRUE
 ENABLE_ALL_IN_ONE_FALSE
 ENABLE_ALL_IN_ONE_TRUE
 ENABLE_FLEX_FALSE
@@ -781,8 +779,8 @@ enable_option_checking
 enable_bison
 enable_flex
 enable_all_in_one
-enable_relative
 enable_install_dbdir
+enable_relative
 enable_silent_rules
 enable_dependency_tracking
 enable_error_on_warning
@@ -1452,8 +1450,9 @@ Optional Features:
   --enable-bison          enable BISON
   --enable-flex           enable FLEX
   --enable-all-in-one     enable supplied V8, BOOST, LIBEV
-  --enable-relative       all path are relative to the binary
   --enable-install-dbdir  install an empty database directory
+  --enable-relative       all path are relative to the binary (yes/no/devel
+                          [default])
   --enable-silent-rules          less verbose build output (undo: `make V=1')
   --disable-silent-rules         verbose build output (undo: `make V=0')
   --disable-dependency-tracking  speeds up one-time build
@@ -2575,32 +2574,6 @@ else
 fi
 
 
-# Check whether --enable-relative was given.
-if test "${enable_relative+set}" = set; then :
-  enableval=$enable_relative; tr_RELATIVE="${enableval:-yes}"
-else
-  tr_RELATIVE=no
-
-fi
-
-
-if test "x$tr_RELATIVE" = xyes;  then
-
-cat >>confdefs.h <<_ACEOF
-#define TRI_ENABLE_RELATIVE 1
-_ACEOF
-
-fi
-
- if test "x$tr_RELATIVE" = xyes; then
-  ENABLE_RELATIVE_TRUE=
-  ENABLE_RELATIVE_FALSE='#'
-else
-  ENABLE_RELATIVE_TRUE='#'
-  ENABLE_RELATIVE_FALSE=
-fi
-
-
 # Check whether --enable-install-dbdir was given.
 if test "${enable_install_dbdir+set}" = set; then :
   enableval=$enable_install_dbdir; tr_DBDIR="${enableval:-yes}"
@@ -2618,6 +2591,33 @@ else
   ENABLE_INSTALL_DBDIR_FALSE=
 fi
 
+
+# Check whether --enable-relative was given.
+if test "${enable_relative+set}" = set; then :
+  enableval=$enable_relative; tr_RELATIVE="${enableval:-devel}"
+else
+  tr_RELATIVE=devel
+
+fi
+
+
+if test "x$tr_RELATIVE" = xyes;  then
+
+cat >>confdefs.h <<_ACEOF
+#define TRI_ENABLE_RELATIVE_SYSTEM 1
+_ACEOF
+
+else
+if test "x$tr_RELATIVE" = xdevel;  then
+
+cat >>confdefs.h <<_ACEOF
+#define TRI_ENABLE_RELATIVE_DEVEL 1
+_ACEOF
+
+else
+  tr_RELATIVE=no
+fi
+fi
 
 
 
@@ -5293,7 +5293,7 @@ fi
 
 
 if test x$GCC == xyes;  then
-  WALL="-pedantic -Wall -Winit-self -Wno-long-long"
+  WALL="-Wall -Winit-self -Wno-long-long -Wno-variadic-macros"
 
   if test x$tr_WERROR == xyes;  then
     WALL="${WALL} -Werror"
@@ -5304,7 +5304,7 @@ if test x$GCC == xyes;  then
   fi
 
   WALLC="${WALL} -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement"
-  WALLCXX="${WALL} -Woverloaded-virtual -Wno-variadic-macros"
+  WALLCXX="${WALL} -Woverloaded-virtual"
 
   case $CXX in
     *clang++*)
@@ -5319,7 +5319,7 @@ if test x$GCC == xyes;  then
     WALLCXX="${WALLCXX} -Weffc++"
   fi
 
-  CFLAGS="${CFLAGS} -std=gnu99 ${WALLC}"
+  CFLAGS="${CFLAGS} -std=gnu90 ${WALLC}"
   CXXFLAGS="${CXXFLAGS} ${WALLCXX}"
 fi
 
@@ -6752,8 +6752,8 @@ else
   BASIC_INFO="$BASIC_INFO|BISON: disabled"
 fi
 
-if test "x$tr_RELATIVE" = xyes;  then
-  BASIC_INFO="$BASIC_INFO|RELATIVE PATHS: enabled"
+if test "x$tr_RELATIVE" != xno;  then
+  BASIC_INFO="$BASIC_INFO|RELATIVE PATHS: $tr_RELATIVE"
 else
   BASIC_INFO="$BASIC_INFO|RELATIVE PATHS: disabled"
 fi
@@ -9304,10 +9304,6 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_ALL_IN_ONE_TRUE}" && test -z "${ENABLE_ALL_IN_ONE_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_ALL_IN_ONE\" was never defined.
-Usually this means the macro was only invoked conditionally." "$LINENO" 5
-fi
-if test -z "${ENABLE_RELATIVE_TRUE}" && test -z "${ENABLE_RELATIVE_FALSE}"; then
-  as_fn_error $? "conditional \"ENABLE_RELATIVE\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_INSTALL_DBDIR_TRUE}" && test -z "${ENABLE_INSTALL_DBDIR_FALSE}"; then

@@ -522,8 +522,10 @@ CLEANUP = $(DOXYGEN) $(WIKI) $(subst Doxygen/xml,Doxygen/wiki,$(WIKI)) \
 	$(JAVASCRIPT_HEADER) $(am__append_1) $(am__append_2)
 noinst_LIBRARIES = libavocado.a
 nobase_pkgdata_DATA = \
-	$(shell find @srcdir@/js/system -name "*.js" -print) \
-	$(shell find @srcdir@/js/modules -name "*.js" -print) \
+	$(shell find @srcdir@/js/actions/system -name "*.js" -print) \
+	$(shell find @srcdir@/js/common/modules -name "*.js" -print) \
+	$(shell find @srcdir@/js/server/modules -name "*.js" -print) \
+	$(shell find @srcdir@/js/client/modules -name "*.js" -print) \
 	$(shell find @srcdir@/html -name "*.css" -print) \
 	$(shell find @srcdir@/html -name "*.gif" -print) \
 	$(shell find @srcdir@/html -name "*.html" -print) \
@@ -737,13 +739,10 @@ avocsh_SOURCES = \
 ################################################################################
 ################################################################################
 JAVASCRIPT_HEADER = \
-	js/bootstrap/js-modules.h \
-	js/bootstrap/js-print.h \
+	js/common/bootstrap/js-modules.h \
+	js/common/bootstrap/js-print.h \
 	js/client/js-client.h \
-	js/server/js-modules.h \
-	js/server/js-aql.h \
-	js/server/js-json.h \
-	js/server/js-shell.h
+	js/server/js-server.h
 
 
 ################################################################################
@@ -775,8 +774,8 @@ BISONXX_FILES = \
 ################################################################################
 ################################################################################
 DOXYGEN = \
-	Doxygen/js/bootstrap/modules.c \
-	Doxygen/js/bootstrap/print.c \
+	Doxygen/js/common/bootstrap/modules.c \
+	Doxygen/js/common/bootstrap/print.c \
 	Doxygen/js/modules/actions.c \
 	Doxygen/js/modules/graph.c \
 	Doxygen/js/modules/jsunity.c \
@@ -784,8 +783,8 @@ DOXYGEN = \
 	Doxygen/js/server/modules.c \
 	Doxygen/js/server/json.c \
 	Doxygen/js/server/shell.c \
-	Doxygen/js/system/collections.c \
-	Doxygen/js/system/indexes.c
+	Doxygen/js/actions/system/collections.c \
+	Doxygen/js/actions/system/indexes.c
 
 
 ################################################################################
@@ -2375,7 +2374,7 @@ uninstall-am: uninstall-binPROGRAMS uninstall-nobase_pkgdataDATA \
 
 @ENABLE_INSTALL_DBDIR_TRUE@install-data-local:
 @ENABLE_INSTALL_DBDIR_TRUE@	test -d @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS || mkdir -p @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS
-@ENABLE_INSTALL_DBDIR_TRUE@	cp ${srcdir}/js/actions/*.js @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS
+@ENABLE_INSTALL_DBDIR_TRUE@	cp ${srcdir}/js/actions/demo/*.js @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS
 
 .PHONY: Doxygen/js Doxygen/js/system Doxygen/js/modules
 
@@ -2430,7 +2429,7 @@ wiki: $(WIKI)
 js/js-%.h: @srcdir@/js/%.js .setup-directories
 	@top_srcdir@/config/js2c.sh $< > $@
 
-js/bootstrap/js-%.h: @srcdir@/js/bootstrap/%.js .setup-directories
+js/common/bootstrap/js-%.h: @srcdir@/js/common/bootstrap/%.js .setup-directories
 	@top_srcdir@/config/js2c.sh $< > $@
 
 js/client/js-%.h: @srcdir@/js/client/%.js .setup-directories

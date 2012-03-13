@@ -81,7 +81,7 @@ AC_ARG_ENABLE(eff-cpp,
 )
 
 if test x$GCC == xyes;  then
-  WALL="-pedantic -Wall -Winit-self -Wno-long-long"
+  WALL="-Wall -Winit-self -Wno-long-long -Wno-variadic-macros"
 
   if test x$tr_WERROR == xyes;  then
     WALL="${WALL} -Werror"
@@ -92,7 +92,7 @@ if test x$GCC == xyes;  then
   fi
 
   WALLC="${WALL} -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement"
-  WALLCXX="${WALL} -Woverloaded-virtual -Wno-variadic-macros"
+  WALLCXX="${WALL} -Woverloaded-virtual"
 
   case $CXX in
     *clang++*)
@@ -107,7 +107,7 @@ if test x$GCC == xyes;  then
     WALLCXX="${WALLCXX} -Weffc++"
   fi
 
-  CFLAGS="${CFLAGS} -std=gnu99 ${WALLC}"
+  CFLAGS="${CFLAGS} -std=gnu90 ${WALLC}"
   CXXFLAGS="${CXXFLAGS} ${WALLCXX}"
 fi
 
