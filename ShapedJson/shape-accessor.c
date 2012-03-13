@@ -321,9 +321,12 @@ TRI_shape_access_t* TRI_ShapeAccessor (TRI_shaper_t* shaper,
   bool ok;
 
   accessor = TRI_Allocate(sizeof(TRI_shape_access_t));
+
   if (!accessor) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return NULL;
   }
+
   accessor->_sid = sid;
   accessor->_pid = pid;
   accessor->_code = NULL;

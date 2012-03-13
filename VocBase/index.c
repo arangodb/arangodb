@@ -577,6 +577,9 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
   acc = TRI_ShapeAccessor(shaper, sid, pid);
 
   if (acc == NULL || acc->_shape == NULL) {
+    if (acc) {
+      TRI_FreeShapeAccessor(acc);
+    }
     return false;
   }
 
@@ -586,6 +589,7 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
     len = TRI_LengthListShapedJson((const TRI_list_shape_t*) acc->_shape, &list);
 
     if (len < 2) {
+      TRI_FreeShapeAccessor(acc);
       return false;
     }
 
@@ -593,6 +597,7 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
     ok = TRI_AtListShapedJson((const TRI_list_shape_t*) acc->_shape, &list, 0, &entry);
 
     if (! ok || entry._sid != shaper->_sidNumber) {
+      TRI_FreeShapeAccessor(acc);
       return false;
     }
 
@@ -602,6 +607,7 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
     ok = TRI_AtListShapedJson((const TRI_list_shape_t*) acc->_shape, &list, 1, &entry);
 
     if (!ok || entry._sid != shaper->_sidNumber) {
+      TRI_FreeShapeAccessor(acc);
       return false;
     }
 
@@ -617,18 +623,21 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
     hom = (const TRI_homogeneous_list_shape_t*) acc->_shape;
 
     if (hom->_sidEntry != shaper->_sidNumber) {
+      TRI_FreeShapeAccessor(acc);
       return false;
     }
 
     ok = TRI_ExecuteShapeAccessor(acc, document, &list);
 
     if (! ok) {
+      TRI_FreeShapeAccessor(acc);
       return false;
     }
 
     len = TRI_LengthHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*) acc->_shape, &list);
 
     if (len < 2) {
+      TRI_FreeShapeAccessor(acc);
       return false;
     }
 
@@ -636,6 +645,7 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
     ok = TRI_AtHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*) acc->_shape, &list, 0, &entry);
 
     if (! ok) {
+      TRI_FreeShapeAccessor(acc);
       return false;
     }
 
@@ -645,11 +655,13 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
     ok = TRI_AtHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*) acc->_shape, &list, 1, &entry);
 
     if (! ok) {
+      TRI_FreeShapeAccessor(acc);
       return false;
     }
 
     *longitude = * (double*) entry._data.data;
 
+    TRI_FreeShapeAccessor(acc);
     return true;
   }
 
@@ -660,18 +672,21 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
     hom = (const TRI_homogeneous_sized_list_shape_t*) acc->_shape;
 
     if (hom->_sidEntry != shaper->_sidNumber) {
+      TRI_FreeShapeAccessor(acc);
       return false;
     }
 
     ok = TRI_ExecuteShapeAccessor(acc, document, &list);
 
     if (! ok) {
+      TRI_FreeShapeAccessor(acc);
       return false;
     }
 
     len = TRI_LengthHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*) acc->_shape, &list);
 
     if (len < 2) {
+      TRI_FreeShapeAccessor(acc);
       return false;
     }
 
@@ -679,6 +694,7 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
     ok = TRI_AtHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*) acc->_shape, &list, 0, &entry);
 
     if (! ok) {
+      TRI_FreeShapeAccessor(acc);
       return false;
     }
 
@@ -688,15 +704,18 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
     ok = TRI_AtHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*) acc->_shape, &list, 1, &entry);
 
     if (! ok) {
+      TRI_FreeShapeAccessor(acc);
       return false;
     }
 
     *longitude = * (double*) entry._data.data;
 
+    TRI_FreeShapeAccessor(acc);
     return true;
   }
 
   // ups
+  TRI_FreeShapeAccessor(acc);
   return false;
 }
 
