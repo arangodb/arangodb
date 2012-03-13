@@ -100,7 +100,21 @@ if test x$GCC == xyes;  then
 
     *)
       WALLCXX="${WALLCXX} -Wstrict-null-sentinel"
-      WALLC="-std=gnu90 ${WALLC}"
+
+      if test x$tr_DARWIN != xyes;  then
+        WALLC="-std=gnu90 ${WALLC}"
+      fi
+      ;;
+  esac
+
+  case $CC in
+    *clang*)
+      ;;
+
+    *)
+      if test x$tr_DARWIN != xyes;  then
+        WALLC="-std=gnu90 ${WALLC}"
+      fi
       ;;
   esac
 
