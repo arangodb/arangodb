@@ -192,9 +192,18 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
 
 #ifdef TRI_ENABLE_RELATIVE_DEVEL
 
+#ifdef TRI_SYSTEM_ACTION_PATH
+    _systemActionPath = TRI_SYSTEM_ACTION_PATH;
+#else
     _systemActionPath = _binaryPath + "/js/actions/system";
+#endif
+
+#ifdef TRI_STARTUP_MODULES_PATH
+    _startupModules = TRI_STARTUP_MODULES_PATH;
+#else
     _startupModules = _binaryPath + "/js/server/modules"
               + ";" + _binaryPath + "/js/common/modules";
+#endif
 
 #else
 
@@ -273,7 +282,11 @@ void AvocadoServer::buildApplicationServer () {
 
 #ifdef TRI_ENABLE_RELATIVE_DEVEL
 
+#ifdef TRI_HTML_ADMIN_PATH
+  _applicationAdminServer->allowAdminDirectory(TRI_HTML_ADMIN_PATH);
+#else
   _applicationAdminServer->allowAdminDirectory(_binaryPath + "/html/admin");
+#endif
 
 #else
 
@@ -339,7 +352,7 @@ void AvocadoServer::buildApplicationServer () {
 
   additional["JAVASCRIPT Options:help-admin"]
     ("startup.directory", &_startupPath, "path to the directory containing alternate startup scripts")
-    ("startup.modules-path", &_startupModules, "one or more directories separated by semicola")
+    ("startup.modules-path", &_startupModules, "one or more directories separated by cola")
     ("action.directory", &_actionPath, "path to the action directory, defaults to <database.directory>/_ACTIONS")
     ("gc.interval", &_gcInterval, "garbage collection interval (each x requests)")
   ;
