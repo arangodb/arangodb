@@ -100,6 +100,7 @@ if test x$GCC == xyes;  then
 
     *)
       WALLCXX="${WALLCXX} -Wstrict-null-sentinel"
+      WALLC="-std=gnu90 ${WALLC}"
       ;;
   esac
 
@@ -107,7 +108,7 @@ if test x$GCC == xyes;  then
     WALLCXX="${WALLCXX} -Weffc++"
   fi
 
-  CFLAGS="${CFLAGS} -std=gnu90 ${WALLC}"
+  CFLAGS="${CFLAGS} ${WALLC}"
   CXXFLAGS="${CXXFLAGS} ${WALLCXX}"
 fi
 
