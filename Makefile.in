@@ -509,9 +509,9 @@ AM_LDFLAGS = \
 	@READLINE_LDFLAGS@ \
 	@V8_LDFLAGS@
 
-BUILT_SOURCES = $(JAVASCRIPT_HEADER) $(FLEX_FILES) $(FLEXXX_FILES) \
-	$(BISON_FILES) $(BISONXX_FILES) Doxygen/.setup-directories \
-	.setup-directories $(am__append_3)
+BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(FLEX_FILES) \
+	$(FLEXXX_FILES) $(BISON_FILES) $(BISONXX_FILES) \
+	Doxygen/.setup-directories .setup-directories $(am__append_3)
 
 ################################################################################
 ################################################################################
@@ -2376,6 +2376,12 @@ uninstall-am: uninstall-binPROGRAMS uninstall-nobase_pkgdataDATA \
 @ENABLE_INSTALL_DBDIR_TRUE@	test -d @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS || mkdir -p @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS
 @ENABLE_INSTALL_DBDIR_TRUE@	cp ${srcdir}/js/actions/demo/*.js @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS
 
+################################################################################
+################################################################################
+
+build.h: configure.ac
+	@echo '#define TRIAGENS_VERSION "@PACKAGE_VERSION@"' > build.h
+
 .PHONY: Doxygen/js Doxygen/js/system Doxygen/js/modules
 
 Doxygen/.setup-directories:
@@ -2503,9 +2509,6 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "BUILD V8 FINISHED"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
-
-################################################################################
-################################################################################
 
 ################################################################################
 ################################################################################

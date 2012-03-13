@@ -30,7 +30,7 @@ LIBS = \
 	@READLINE_LIBS@ \
 	@V8_LIBS@
 
-BUILT_SOURCES = 
+BUILT_SOURCES = build.h
 CLEANUP =
 
 noinst_LIBRARIES = libavocado.a
@@ -58,6 +58,9 @@ endif
 ################################################################################
 ## avocadodb
 ################################################################################
+
+build.h: configure.ac
+	@echo '#define TRIAGENS_VERSION "@PACKAGE_VERSION@"' > build.h
 
 include Makefile.files
 include Makefile.doxygen
