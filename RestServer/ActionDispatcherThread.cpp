@@ -143,6 +143,8 @@ void ActionDispatcherThread::tick (bool idle) {
   _gc += (idle ? 10 : 1);
 
   if (_gc > _gcInterval) {
+    LOG_DEBUG("collecting garbage...");
+
     while (!v8::V8::IdleNotification()) {
     }
 
@@ -225,11 +227,9 @@ JSLoader* ActionDispatcherThread::actionLoader () {
 
 void ActionDispatcherThread::initialise () {
   bool ok;
-  char const* files[] = { "bootstrap/modules.js",
-                          "bootstrap/print.js",
-                          "server/modules.js",
-                          "server/json.js",
-                          "server/aql.js"
+  char const* files[] = { "common/bootstrap/modules.js",
+                          "common/bootstrap/print.js",
+                          "server/server.js"
   };
   size_t i;
 
