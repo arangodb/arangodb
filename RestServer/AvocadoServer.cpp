@@ -167,7 +167,10 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
     _vocbase(0) {
   char* p;
 
-  _binaryPath = TRI_LocateBinaryPath(argv[0]);
+  p = TRI_LocateBinaryPath(argv[0]);
+  _binaryPath = p;
+
+  TRI_FreeString(p);
 
   // .............................................................................
   // use relative system paths
