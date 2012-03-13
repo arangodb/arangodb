@@ -206,7 +206,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
 
     if (found != NULL) {
       TRI_Free(col);
-      LOG_ERROR("duplicate entry for identifier '%s'", cid);
+      LOG_ERROR("duplicate collection identifier '%lu' for name '%s'", (unsigned long) cid, name);
       return NULL;
     }
   }
