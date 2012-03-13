@@ -1,4 +1,4 @@
-static string JS_bootstrap_modules = 
+static string JS_common_bootstrap_modules = 
   "////////////////////////////////////////////////////////////////////////////////\n"
   "/// @brief JavaScript server functions\n"
   "///\n"

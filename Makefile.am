@@ -38,8 +38,10 @@ sbin_PROGRAMS = avocado
 bin_PROGRAMS = avocsh
 
 nobase_pkgdata_DATA = \
-	$(shell find @srcdir@/js/system -name "*.js" -print) \
-	$(shell find @srcdir@/js/modules -name "*.js" -print) \
+	$(shell find @srcdir@/js/actions/system -name "*.js" -print) \
+	$(shell find @srcdir@/js/common/modules -name "*.js" -print) \
+	$(shell find @srcdir@/js/server/modules -name "*.js" -print) \
+	$(shell find @srcdir@/js/client/modules -name "*.js" -print) \
 	$(shell find @srcdir@/html -name "*.css" -print) \
 	$(shell find @srcdir@/html -name "*.gif" -print) \
 	$(shell find @srcdir@/html -name "*.html" -print) \
