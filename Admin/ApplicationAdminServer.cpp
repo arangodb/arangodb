@@ -90,12 +90,6 @@ ApplicationAdminServer::ApplicationAdminServer ()
     _version(),
     _versionData(0) {
   _pathOptions = new PathHandler::Options();
-
-#ifndef TRI_ENABLE_RELATIVE
-#ifdef _PKGDATADIR_
-  _adminDirectory = string(_PKGDATADIR_) + "/html/admin";
-#endif
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

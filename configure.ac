@@ -43,18 +43,6 @@ AC_ARG_ENABLE(all-in-one,
 
 AM_CONDITIONAL(ENABLE_ALL_IN_ONE, test "x$tr_ALL_IN_ONE" = xyes)
 
-AC_ARG_ENABLE(relative,
-  AS_HELP_STRING([--enable-relative], [all path are relative to the binary]),
-  [tr_RELATIVE="${enableval:-yes}"],
-  [tr_RELATIVE=no]
-)
-
-if test "x$tr_RELATIVE" = xyes;  then
-  AC_DEFINE_UNQUOTED(TRI_ENABLE_RELATIVE, 1, [true if relative paths should be used])
-fi
-
-AM_CONDITIONAL(ENABLE_RELATIVE, test "x$tr_RELATIVE" = xyes)
-
 AC_ARG_ENABLE(install-dbdir,
   AS_HELP_STRING([--enable-install-dbdir], [install an empty database directory]),
   [tr_DBDIR="${enableval:-yes}"],
@@ -62,6 +50,20 @@ AC_ARG_ENABLE(install-dbdir,
 )
 
 AM_CONDITIONAL(ENABLE_INSTALL_DBDIR, test "x$tr_DBDIR" = xyes)
+
+AC_ARG_ENABLE(relative,
+  AS_HELP_STRING([--enable-relative], [all path are relative to the binary (yes/no/devel [default])]),
+  [tr_RELATIVE="${enableval:-devel}"],
+  [tr_RELATIVE=devel]
+)
+
+if test "x$tr_RELATIVE" = xyes;  then
+  AC_DEFINE_UNQUOTED(TRI_ENABLE_RELATIVE_SYSTEM, 1, [true if relative system paths should be used])
+else
+if test "x$tr_RELATIVE" = xdevel;  then
+  AC_DEFINE_UNQUOTED(TRI_ENABLE_RELATIVE_DEVEL, 1, [true if relative development paths should be used])
+fi
+fi
 
 dnl ============================================================================
 dnl CHECKS                                 HOST, PROGRAMS, COMPILER, LIB, SYSTEM
@@ -91,8 +93,8 @@ else
   BASIC_INFO="$BASIC_INFO|BISON: disabled"
 fi
 
-if test "x$tr_RELATIVE" = xyes;  then
-  BASIC_INFO="$BASIC_INFO|RELATIVE PATHS: enabled"
+if test "x$tr_RELATIVE" != xno;  then
+  BASIC_INFO="$BASIC_INFO|RELATIVE PATHS: $tr_RELATIVE"
 else
   BASIC_INFO="$BASIC_INFO|RELATIVE PATHS: disabled"
 fi

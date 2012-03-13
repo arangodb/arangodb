@@ -201,14 +201,35 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
     }
   }
 
-#ifdef TRI_ENABLE_RELATIVE
+  // .............................................................................
+  // use relative system paths
+  // .............................................................................
 
+#ifdef TRI_ENABLE_RELATIVE_SYSTEM
+  
     _workingDirectory = _binaryPath + "/../tmp";
-    _systemActionPath = _binaryPath + "/../share/avocado/js/system";
-    _startupModules = _binaryPath + "/../share/avocado/js/modules";
+    _systemActionPath = _binaryPath + "/../share/avocado/js/actions/system";
+    _startupModules = _binaryPath + "/../share/avocado/js/server/modules"
+              + ";" + _binaryPath + "/../share/avocado/js/common/modules";
     _databasePath = _binaryPath + "/../var/avocado";
 
 #else
+
+  // .............................................................................
+  // use relative development paths
+  // .............................................................................
+
+#ifdef TRI_ENABLE_RELATIVE_DEVEL
+
+    _systemActionPath = _binaryPath + "/js/actions/system";
+    _startupModules = _binaryPath + "/js/server/modules"
+              + ";" + _binaryPath + "/js/common/modules";
+
+#else
+
+  // .............................................................................
+  // use absolute paths
+  // .............................................................................
 
     _workingDirectory = "/var/tmp";
 
@@ -221,6 +242,7 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
     _databasePath = _DATABASEDIR_;
 #endif
 
+#endif
 #endif
 }
 
@@ -244,12 +266,6 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
 void AvocadoServer::buildApplicationServer () {
   _applicationServer = ApplicationServerDispatcher::create("[<options>] <database-directory>", TRIAGENS_VERSION);
 
-#ifdef TRI_ENABLE_RELATIVE
-  _applicationServer->setSystemConfigFile("avocado.conf", _binaryPath + "/../etc/");
-#else
-  _applicationServer->setSystemConfigFile("avocado.conf");
-#endif
-
   _applicationServer->setUserConfigFile(".avocado/avocado.conf");
 
   // .............................................................................
@@ -265,14 +281,39 @@ void AvocadoServer::buildApplicationServer () {
   _applicationAdminServer = ApplicationAdminServer::create(_applicationServer);
   _applicationServer->addFeature(_applicationAdminServer);
 
-#ifdef TRI_ENABLE_RELATIVE
-  _applicationAdminServer->allowAdminDirectory(_binaryPath + "/../share/avocado/html/admin");
-#else
-  _applicationAdminServer->allowAdminDirectory();
-#endif
-
   _applicationAdminServer->allowLogViewer();
   _applicationAdminServer->allowVersion("avocado", TRIAGENS_VERSION);
+
+  // .............................................................................
+  // use relative system paths
+  // .............................................................................
+
+#ifdef TRI_ENABLE_RELATIVE_SYSTEM
+  
+  _applicationServer->setSystemConfigFile("avocado.conf", _binaryPath + "/../etc/");
+  _applicationAdminServer->allowAdminDirectory(_binaryPath + "/../share/avocado/html/admin");
+
+#else
+
+  // .............................................................................
+  // use relative development paths
+  // .............................................................................
+
+#ifdef TRI_ENABLE_RELATIVE_DEVEL
+
+  _applicationAdminServer->allowAdminDirectory(_binaryPath + "/html/admin");
+
+#else
+
+  // .............................................................................
+  // use absolute paths
+  // .............................................................................
+
+  _applicationServer->setSystemConfigFile("avocado.conf");
+  _applicationAdminServer->allowAdminDirectory(string(_PKGDATADIR_) + "/html/admin");
+
+#endif
+#endif
 
   // .............................................................................
   // a http server

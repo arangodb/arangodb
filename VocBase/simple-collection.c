@@ -1186,6 +1186,7 @@ static bool OpenIndexIterator (char const* filename, void* data) {
   char fieldChar[30];
   char* error;
   int intCount;
+  int j;
 
   // load json description of the index
   json = TRI_JsonFile(filename, &error);
@@ -1311,7 +1312,7 @@ static bool OpenIndexIterator (char const* filename, void* data) {
     TRI_InitVector(&attributes, sizeof(char*));
     
     // find fields
-    for (int j = 0;  j < intCount;  ++j) {
+    for (j = 0;  j < intCount;  ++j) {
       sprintf(fieldChar, "field_%i", j);
 
       fieldStr = TRI_LookupArrayJson(json, fieldChar);
@@ -2352,6 +2353,7 @@ static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collecti
   TRI_shaper_t* shaper;
   TRI_vector_t shapes;
   bool ok;
+  size_t j;
 
   idx     = NULL;
   shaper = collection->base._shaper;
@@ -2362,7 +2364,7 @@ static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collecti
   // Determine the shape ids for the attributes
   // ...........................................................................
 
-  for (size_t j = 0; j < attributes->_length; ++j) {
+  for (j = 0; j < attributes->_length; ++j) {
     char* shapeString;
     TRI_shape_pid_t shape;
 
@@ -2438,6 +2440,7 @@ static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* coll
   TRI_index_t* idx     = NULL;
   TRI_shaper_t* shaper = collection->base._shaper;
   TRI_vector_t shapes;
+  size_t j;
   
   TRI_InitVector(&shapes, sizeof(TRI_shape_pid_t));
 
@@ -2445,7 +2448,7 @@ static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* coll
   // ...........................................................................
   // Determine the shape ids for the attributes
   // ...........................................................................
-  for (size_t j = 0; j < attributes->_length; ++j) {
+  for (j = 0; j < attributes->_length; ++j) {
     char* shapeString     = *((char**)(TRI_AtVector(attributes,j)));    
     TRI_shape_pid_t shape = shaper->findAttributePathByName(shaper, shapeString);   
     TRI_PushBackVector(&shapes,&shape);
@@ -2580,6 +2583,7 @@ TRI_index_t* TRI_LookupGeoIndex2SimCollection (TRI_sim_collection_t* collection,
 TRI_index_t* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t* collection,
                                                const TRI_vector_t* shapes) {
   TRI_index_t* matchedIndex = NULL;                                                                                        
+  size_t j, k;
   
   // ...........................................................................
   // Note: This function does NOT differentiate between non-unique and unique
@@ -2592,7 +2596,7 @@ TRI_index_t* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t* collection,
   // go through every index and see if we have a match 
   // ........................................................................... 
   
-  for (size_t j = 0;  j < collection->_indexes._length;  ++j) {
+  for (j = 0;  j < collection->_indexes._length;  ++j) {
     TRI_index_t* idx            = collection->_indexes._buffer[j];
     TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
     bool found                  = true;
@@ -2621,7 +2625,7 @@ TRI_index_t* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t* collection,
     // Go through all the attributes and see if they match
     // .........................................................................
 
-    for (size_t k = 0; k < shapes->_length; ++k) {
+    for (k = 0; k < shapes->_length; ++k) {
       TRI_shape_pid_t field = *((TRI_shape_pid_t*)(TRI_AtVector(hashIndex->_shapeList,k)));   
       TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(shapes,k)));
       if (field != shape) {
@@ -2648,6 +2652,7 @@ TRI_index_t* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t* collection,
 TRI_index_t* TRI_LookupSkiplistIndexSimCollection (TRI_sim_collection_t* collection,
                                                    const TRI_vector_t* shapes) {
   TRI_index_t* matchedIndex = NULL;                                                                                        
+  size_t j, k;
   
   // ...........................................................................
   // Note: This function does NOT differentiate between non-unique and unique
@@ -2660,7 +2665,7 @@ TRI_index_t* TRI_LookupSkiplistIndexSimCollection (TRI_sim_collection_t* collect
   // go through every index and see if we have a match 
   // ........................................................................... 
   
-  for (size_t j = 0;  j < collection->_indexes._length;  ++j) {
+  for (j = 0;  j < collection->_indexes._length;  ++j) {
     TRI_index_t* idx                    = collection->_indexes._buffer[j];
     TRI_skiplist_index_t* skiplistIndex = (TRI_skiplist_index_t*) idx;
     bool found                          = true;
@@ -2689,7 +2694,7 @@ TRI_index_t* TRI_LookupSkiplistIndexSimCollection (TRI_sim_collection_t* collect
     // Go through all the attributes and see if they match
     // .........................................................................
 
-    for (size_t k = 0; k < shapes->_length; ++k) {
+    for (k = 0; k < shapes->_length; ++k) {
       TRI_shape_pid_t field = *((TRI_shape_pid_t*)(TRI_AtVector(skiplistIndex->_shapeList,k)));   
       TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(shapes,k)));
       if (field != shape) {
