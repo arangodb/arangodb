@@ -2374,7 +2374,7 @@ uninstall-am: uninstall-binPROGRAMS uninstall-nobase_pkgdataDATA \
 
 @ENABLE_INSTALL_DBDIR_TRUE@install-data-local:
 @ENABLE_INSTALL_DBDIR_TRUE@	test -d @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS || mkdir -p @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS
-@ENABLE_INSTALL_DBDIR_TRUE@	cp ${srcdir}/js/actions/*.js @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS
+@ENABLE_INSTALL_DBDIR_TRUE@	cp ${srcdir}/js/actions/demo/*.js @localstatedir@/${PACKAGE_TARNAME}/_ACTIONS
 
 .PHONY: Doxygen/js Doxygen/js/system Doxygen/js/modules
 

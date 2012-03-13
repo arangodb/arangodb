@@ -234,8 +234,9 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
     _workingDirectory = "/var/tmp";
 
 #ifdef _PKGDATADIR_
-    _systemActionPath = string(_PKGDATADIR_) + "/js/system";
-    _startupModules = string(_PKGDATADIR_) + "/js/modules";
+    _systemActionPath = string(_PKGDATADIR_) + "/js/actions/system";
+    _startupModules = string(_PKGDATADIR_) + "/js/server/modules"
+              + ";" + string(_PKGDATADIR_) + "/js/common/modules";
 #endif
 
 #ifdef _DATABASEDIR_
@@ -290,7 +291,7 @@ void AvocadoServer::buildApplicationServer () {
 
 #ifdef TRI_ENABLE_RELATIVE_SYSTEM
   
-  _applicationServer->setSystemConfigFile("avocado.conf", _binaryPath + "/../etc/");
+  _applicationServer->setSystemConfigFile("avocado.conf", _binaryPath + "/../etc");
   _applicationAdminServer->allowAdminDirectory(_binaryPath + "/../share/avocado/html/admin");
 
 #else
