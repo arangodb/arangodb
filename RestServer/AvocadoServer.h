@@ -239,11 +239,14 @@ namespace triagens {
         int _dispatcherThreads;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief path to the directory containing the startup scripts
+/// @brief path to the directory containing alternate startup scripts
 ///
 /// @CMDOPT{--startup.directory @CA{directory}}
 ///
 /// Specifies the @CA{directory} path to alternate startup Javascript files.
+/// Normally, the server will start using built-in Javascript core 
+/// functionality. To override the core functionality with a different 
+/// implementation, this option can be used.
 ////////////////////////////////////////////////////////////////////////////////
 
         string _startupPath;
