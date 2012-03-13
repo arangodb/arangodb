@@ -601,12 +601,9 @@ void AvocadoServer::executeShell () {
   v8::Isolate* isolate;
   v8::Persistent<v8::Context> context;
   bool ok;
-  char const* files[] = { "bootstrap/modules.js",
-                          "bootstrap/print.js",
-                          "server/modules.js",
-                          "server/json.js",
-                          "server/aql.js",
-                          "server/shell.js"
+  char const* files[] = { "common/bootstrap/modules.js",
+                          "common/bootstrap/print.js",
+                          "server/server.js"
   };
   size_t i;
 
