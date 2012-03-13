@@ -215,13 +215,10 @@ avocsh_SOURCES = \
 ################################################################################
 
 JAVASCRIPT_HEADER = \
-	js/bootstrap/js-modules.h \
-	js/bootstrap/js-print.h \
+	js/common/bootstrap/js-modules.h \
+	js/common/bootstrap/js-print.h \
 	js/client/js-client.h \
-	js/server/js-modules.h \
-	js/server/js-aql.h \
-	js/server/js-json.h \
-	js/server/js-shell.h
+	js/server/js-server.h
 
 BUILT_SOURCES += $(JAVASCRIPT_HEADER)
 
@@ -268,8 +265,8 @@ BUILT_SOURCES += $(BISONXX_FILES)
 ################################################################################
 
 DOXYGEN = \
-	Doxygen/js/bootstrap/modules.c \
-	Doxygen/js/bootstrap/print.c \
+	Doxygen/js/common/bootstrap/modules.c \
+	Doxygen/js/common/bootstrap/print.c \
 	Doxygen/js/modules/actions.c \
 	Doxygen/js/modules/graph.c \
 	Doxygen/js/modules/jsunity.c \
@@ -277,8 +274,8 @@ DOXYGEN = \
 	Doxygen/js/server/modules.c \
 	Doxygen/js/server/json.c \
 	Doxygen/js/server/shell.c \
-	Doxygen/js/system/collections.c \
-	Doxygen/js/system/indexes.c
+	Doxygen/js/actions/system/collections.c \
+	Doxygen/js/actions/system/indexes.c
 
 ################################################################################
 ## wiki

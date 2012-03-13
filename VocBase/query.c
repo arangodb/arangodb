@@ -1212,6 +1212,7 @@ static void FilterDataHashQuery(collection_cursor_t* cursor,TRI_query_t* query,
   HashIndexElements* hashElements;
   TRI_doc_mptr_t* wtr; 
   TRI_doc_mptr_t* doc;
+  size_t j;
   
   cursor->base._context = context;
   cursor->base._select  = query->_select->clone(query->_select);
@@ -1260,7 +1261,7 @@ static void FilterDataHashQuery(collection_cursor_t* cursor,TRI_query_t* query,
     cursor->_current               = 0;
     cursor->_currentRow            = 0;
     
-    for (size_t j = 0; j < hashElements->_numElements; ++j) {
+    for (j = 0; j < hashElements->_numElements; ++j) {
       // should not be necessary to check that documents have not been deleted    
       doc = (TRI_doc_mptr_t*)((hashElements->_elements[j]).data);
       if (doc->_deletion) {
@@ -1305,6 +1306,7 @@ static void FilterDataSLQuery(collection_cursor_t* cursor,TRI_query_t* query,
   SkiplistIndexElements* skiplistElements;
   TRI_doc_mptr_t* wtr; 
   TRI_doc_mptr_t* doc;
+  size_t j;
   
   cursor->base._context = context;
   cursor->base._select  = query->_select->clone(query->_select);
@@ -1353,7 +1355,7 @@ static void FilterDataSLQuery(collection_cursor_t* cursor,TRI_query_t* query,
     cursor->_current               = 0;
     cursor->_currentRow            = 0;
     
-    for (size_t j = 0; j < skiplistElements->_numElements; ++j) {
+    for (j = 0; j < skiplistElements->_numElements; ++j) {
       // should not be necessary to check that documents have not been deleted    
       doc = (TRI_doc_mptr_t*)((skiplistElements->_elements[j]).data);
       if (doc->_deletion) {

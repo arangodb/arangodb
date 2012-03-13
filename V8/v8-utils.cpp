@@ -765,6 +765,9 @@ static bool LoadJavaScriptDirectory (v8::Handle<v8::Context> context, char const
     }
 
     full = TRI_Concatenate2File(path, filename);
+    if (!full) {
+      continue;
+    }
     ok = LoadJavaScriptFile(context, full, execute);
     TRI_FreeString(full);
 
@@ -1662,8 +1665,15 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
   // create the global variables
   // .............................................................................
 
-  context->Global()->Set(v8::String::New("MODULES_PATH"),
-                         v8::String::New(path.c_str()));
+  vector<string> paths = StringUtils::split(path, ";:");
+
+  v8::Handle<v8::Array> modulesPaths = v8::Array::New();
+
+  for (uint32_t i = 0;  i < (uint32_t) paths.size();  ++i) {
+    modulesPaths->Set(i, v8::String::New(paths[i].c_str()));
+  }
+
+  context->Global()->Set(v8::String::New("MODULES_PATH"), modulesPaths);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

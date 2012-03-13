@@ -60,10 +60,10 @@ namespace triagens {
                         size_t retries,
                         double connectionTimeout) :
                         _requestTimeout(requestTimeout),
-                        _retries(retries) {
+                        _retries(retries),
+                        _connection(0) {
       
       _connection = new SimpleHttpConnection(hostname, port, connectionTimeout);
-
     }
 
     SimpleHttpClient::~SimpleHttpClient () {
@@ -98,7 +98,7 @@ namespace triagens {
       double runtime = 0.0;
       
       // TODO requestTimeout
-      while (++retries < _retries && runtime < _requestTimeout) {
+      while (retries++ <= _retries && runtime < _requestTimeout) {
 
         // check connection
         if (!checkConnection()) {

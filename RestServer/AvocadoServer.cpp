@@ -67,7 +67,11 @@ using namespace triagens::avocado;
 
 #include "js/common/bootstrap/js-modules.h"
 #include "js/common/bootstrap/js-print.h"
+<<<<<<< HEAD
 #include "js/server/server.h"
+=======
+#include "js/server/js-server.h"
+>>>>>>> 56a9d9ec07e8ce9f0c261ecf14b95b2133172b9b
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -167,60 +171,51 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
     _vocbase(0) {
   char* p;
 
-  // check if name contains a '/'
-  p = argv[0];
+  _binaryPath = TRI_LocateBinaryPath(argv[0]);
 
-  for (;  *p && *p != '/';  ++p) {
-  }
+  // .............................................................................
+  // use relative system paths
+  // .............................................................................
 
-  // contains a path
-  if (*p) {
-    p = TRI_Dirname(argv[0]);
-    _binaryPath = (p == 0 || *p == '\0') ? "" : p;
-    TRI_FreeString(p);
-  }
-
-  // check PATH variable
-  else {
-    p = getenv("PATH");
-
-    if (p == 0) {
-      _binaryPath = "";
-    }
-    else {
-      vector<string> files = StringUtils::split(p, ":");
-
-      for (vector<string>::iterator i = files.begin();  i != files.end();  ++i) {
-        string full = *i + "/" + argv[0];
-
-        if (FileUtils::exists(full)) {
-          _binaryPath = *i;
-          break;
-        }
-      }
-    }
-  }
-
-#ifdef TRI_ENABLE_RELATIVE
-
+#ifdef TRI_ENABLE_RELATIVE_SYSTEM
+  
     _workingDirectory = _binaryPath + "/../tmp";
-    _systemActionPath = _binaryPath + "/../share/avocado/js/system";
-    _startupModules = _binaryPath + "/../share/avocado/js/modules";
+    _systemActionPath = _binaryPath + "/../share/avocado/js/actions/system";
+    _startupModules = _binaryPath + "/../share/avocado/js/server/modules"
+              + ";" + _binaryPath + "/../share/avocado/js/common/modules";
     _databasePath = _binaryPath + "/../var/avocado";
 
 #else
 
+  // .............................................................................
+  // use relative development paths
+  // .............................................................................
+
+#ifdef TRI_ENABLE_RELATIVE_DEVEL
+
+    _systemActionPath = _binaryPath + "/js/actions/system";
+    _startupModules = _binaryPath + "/js/server/modules"
+              + ";" + _binaryPath + "/js/common/modules";
+
+#else
+
+  // .............................................................................
+  // use absolute paths
+  // .............................................................................
+
     _workingDirectory = "/var/tmp";
 
 #ifdef _PKGDATADIR_
-    _systemActionPath = string(_PKGDATADIR_) + "/js/system";
-    _startupModules = string(_PKGDATADIR_) + "/js/modules";
+    _systemActionPath = string(_PKGDATADIR_) + "/js/actions/system";
+    _startupModules = string(_PKGDATADIR_) + "/js/server/modules"
+              + ";" + string(_PKGDATADIR_) + "/js/common/modules";
 #endif
 
 #ifdef _DATABASEDIR_
     _databasePath = _DATABASEDIR_;
 #endif
 
+#endif
 #endif
 }
 
@@ -244,12 +239,6 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
 void AvocadoServer::buildApplicationServer () {
   _applicationServer = ApplicationServerDispatcher::create("[<options>] <database-directory>", TRIAGENS_VERSION);
 
-#ifdef TRI_ENABLE_RELATIVE
-  _applicationServer->setSystemConfigFile("avocado.conf", _binaryPath + "/../etc/");
-#else
-  _applicationServer->setSystemConfigFile("avocado.conf");
-#endif
-
   _applicationServer->setUserConfigFile(".avocado/avocado.conf");
 
   // .............................................................................
@@ -265,14 +254,39 @@ void AvocadoServer::buildApplicationServer () {
   _applicationAdminServer = ApplicationAdminServer::create(_applicationServer);
   _applicationServer->addFeature(_applicationAdminServer);
 
-#ifdef TRI_ENABLE_RELATIVE
-  _applicationAdminServer->allowAdminDirectory(_binaryPath + "/../share/avocado/html/admin");
-#else
-  _applicationAdminServer->allowAdminDirectory();
-#endif
-
   _applicationAdminServer->allowLogViewer();
   _applicationAdminServer->allowVersion("avocado", TRIAGENS_VERSION);
+
+  // .............................................................................
+  // use relative system paths
+  // .............................................................................
+
+#ifdef TRI_ENABLE_RELATIVE_SYSTEM
+  
+  _applicationServer->setSystemConfigFile("avocado.conf", _binaryPath + "/../etc");
+  _applicationAdminServer->allowAdminDirectory(_binaryPath + "/../share/avocado/html/admin");
+
+#else
+
+  // .............................................................................
+  // use relative development paths
+  // .............................................................................
+
+#ifdef TRI_ENABLE_RELATIVE_DEVEL
+
+  _applicationAdminServer->allowAdminDirectory(_binaryPath + "/html/admin");
+
+#else
+
+  // .............................................................................
+  // use absolute paths
+  // .............................................................................
+
+  _applicationServer->setSystemConfigFile("avocado.conf");
+  _applicationAdminServer->allowAdminDirectory(string(_PKGDATADIR_) + "/html/admin");
+
+#endif
+#endif
 
   // .............................................................................
   // a http server
@@ -326,7 +340,7 @@ void AvocadoServer::buildApplicationServer () {
 
   additional["JAVASCRIPT Options:help-admin"]
     ("startup.directory", &_startupPath, "path to the directory containing alternate startup scripts")
-    ("startup.modules-path", &_startupModules, "one or more directories separated by semicolon")
+    ("startup.modules-path", &_startupModules, "one or more directories separated by semicola")
     ("action.directory", &_actionPath, "path to the action directory, defaults to <database.directory>/_ACTIONS")
     ("gc.interval", &_gcInterval, "garbage collection interval (each x requests)")
   ;
@@ -369,12 +383,9 @@ void AvocadoServer::buildApplicationServer () {
 
   if (_startupPath.empty()) {
     LOGGER_INFO << "using built-in JavaScript startup files";
-    StartupLoader.defineScript("bootstrap/modules.js", JS_bootstrap_modules);
-    StartupLoader.defineScript("bootstrap/print.js", JS_bootstrap_print);
-    StartupLoader.defineScript("server/modules.js", JS_server_modules);
-    StartupLoader.defineScript("server/aql.js", JS_server_aql);
-    StartupLoader.defineScript("server/json.js", JS_server_json);
-    StartupLoader.defineScript("server/shell.js", JS_server_shell);
+    StartupLoader.defineScript("common/bootstrap/modules.js", JS_common_bootstrap_modules);
+    StartupLoader.defineScript("common/bootstrap/print.js", JS_common_bootstrap_print);
+    StartupLoader.defineScript("server/server.js", JS_server_server);
   }
   else {
     LOGGER_INFO << "using JavaScript startup files at '" << _startupPath << "'";
@@ -604,12 +615,9 @@ void AvocadoServer::executeShell () {
   v8::Isolate* isolate;
   v8::Persistent<v8::Context> context;
   bool ok;
-  char const* files[] = { "bootstrap/modules.js",
-                          "bootstrap/print.js",
-                          "server/modules.js",
-                          "server/json.js",
-                          "server/aql.js",
-                          "server/shell.js"
+  char const* files[] = { "common/bootstrap/modules.js",
+                          "common/bootstrap/print.js",
+                          "server/server.js"
   };
   size_t i;
 
