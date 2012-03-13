@@ -358,7 +358,6 @@ static void StoreGeoResult (TRI_vocbase_col_t const* collection,
                             v8::Handle<v8::Array>& distances) {
   GeoCoordinate* end;
   GeoCoordinate* ptr;
-  TRI_doc_mptr_t const** wtr;
   double* dtr;
   geo_coordinate_distance_t* gnd;
   geo_coordinate_distance_t* gtr;
@@ -394,7 +393,7 @@ static void StoreGeoResult (TRI_vocbase_col_t const* collection,
   barrier = TRI_CreateBarrierElement(&((TRI_doc_collection_t*) collection->_collection)->_barrierList);
 
   // copy the documents
-  for (gtr = tmp, i = 0;  gtr < gnd;  ++gtr, ++wtr, ++i) {
+  for (gtr = tmp, i = 0;  gtr < gnd;  ++gtr, ++i) {
     documents->Set(i, TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) gtr->_data, barrier));
     distances->Set(i, v8::Number::New(gtr->_distance));
   }
