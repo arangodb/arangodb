@@ -234,9 +234,11 @@ char const* TRI_last_error () {
 
   entry = (TRI_error_t*) 
     TRI_LookupByKeyAssociativePointer(&ErrorMessages, (void const*) &err); 
+
   if (!entry) {
     return "general error";
   }
+
   return entry->_message;
 }
 
@@ -292,6 +294,7 @@ void TRI_set_errno_string (int error, char const* msg) {
   TRI_error_t* entry;
   
   if (TRI_LookupByKeyAssociativePointer(&ErrorMessages, (void const*) &error)) {
+
     // logic error, error number is redeclared
     printf("Error: duplicate declaration of error code %i in %s:%i\n", 
            error, 
