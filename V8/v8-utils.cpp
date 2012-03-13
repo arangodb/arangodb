@@ -765,6 +765,9 @@ static bool LoadJavaScriptDirectory (v8::Handle<v8::Context> context, char const
     }
 
     full = TRI_Concatenate2File(path, filename);
+    if (!full) {
+      continue;
+    }
     ok = LoadJavaScriptFile(context, full, execute);
     TRI_FreeString(full);
 

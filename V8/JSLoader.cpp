@@ -112,19 +112,28 @@ string const& JSLoader::findScript (string const& name) {
   }
 
   if (! _directory.empty()) {
-    char* filename = TRI_Concatenate2File(_directory.c_str(), name.c_str());
-    char* result = TRI_SlurpFile(filename);
+    vector<string> parts = getDirectoryParts();
 
-    if (result == 0) {
-      LOGGER_ERROR << "cannot load file '" << filename << "': " << TRI_last_error();
-    }
+    for (size_t i = 0; i < parts.size(); i++) {
+      char* filename = TRI_Concatenate2File(parts.at(i).c_str(), name.c_str());
+      if (!filename) {
+        LOGGER_ERROR << "out-of-memory";
+        return empty;
+      }
 
-    TRI_FreeString(filename);
+      char* result = TRI_SlurpFile(filename);
 
-    if (result != 0) {
-      _scripts[name] = result;
-      TRI_FreeString(result);
-      return _scripts[name];
+      if (result == 0 && (i == parts.size() - 1)) {
+        LOGGER_ERROR << "cannot locate file '" << name.c_str() << "': " << TRI_last_error();
+      }
+
+      TRI_FreeString(filename);
+
+      if (result != 0) {
+        _scripts[name] = result;
+        TRI_FreeString(result);
+        return _scripts[name];
+      }
     }
   }
 
@@ -171,8 +180,15 @@ bool JSLoader::loadAllScripts (v8::Persistent<v8::Context> context) {
   if (_directory.empty()) {
     return true;
   }
+    
+  vector<string> parts = getDirectoryParts();
 
-  return TRI_LoadJavaScriptDirectory(context, _directory.c_str());
+  bool result = true;
+  for (size_t i = 0; i < parts.size(); i++) {
+    result &= TRI_LoadJavaScriptDirectory(context, parts.at(i).c_str());
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -219,6 +235,31 @@ bool JSLoader::executeAllScripts (v8::Persistent<v8::Context> context) {
   }
 
   return TRI_ExecuteJavaScriptDirectory(context, _directory.c_str());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets a list of all specified directory parts
+////////////////////////////////////////////////////////////////////////////////
+
+vector<string> JSLoader::getDirectoryParts () {
+  vector<string> directories;
+  
+  if (! _directory.empty()) {
+    TRI_vector_string_t parts = TRI_SplitString(_directory.c_str(), ';');
+    for (size_t i = 0; i < parts._length; i++) {
+      string part(parts._buffer[i]);
+      string::size_type pos1 = part.find_first_not_of(' ');
+      string::size_type pos2 = part.find_last_not_of(' ');
+      part = part.substr(pos1 == string::npos ? 0 : pos1, 
+                         pos2 == string::npos ? part.length() - 1 : pos2 - pos1 + 1);
+      if (part.length() > 0) {
+        directories.push_back(part);
+      }
+    }
+    TRI_DestroyVectorString(&parts);
+  }
+  
+  return directories;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
