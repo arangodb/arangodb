@@ -65,12 +65,9 @@ using namespace triagens::rest;
 using namespace triagens::admin;
 using namespace triagens::avocado;
 
-#include "js/bootstrap/js-modules.h"
-#include "js/bootstrap/js-print.h"
-#include "js/server/js-aql.h"
-#include "js/server/js-json.h"
-#include "js/server/js-modules.h"
-#include "js/server/js-shell.h"
+#include "js/common/bootstrap/js-modules.h"
+#include "js/common/bootstrap/js-print.h"
+#include "js/server/server.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
