@@ -65,12 +65,9 @@ using namespace triagens::rest;
 using namespace triagens::admin;
 using namespace triagens::avocado;
 
-#include "js/bootstrap/js-modules.h"
-#include "js/bootstrap/js-print.h"
-#include "js/server/js-aql.h"
-#include "js/server/js-json.h"
-#include "js/server/js-modules.h"
-#include "js/server/js-shell.h"
+#include "js/common/bootstrap/js-modules.h"
+#include "js/common/bootstrap/js-print.h"
+#include "js/server/js-server.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -372,12 +369,9 @@ void AvocadoServer::buildApplicationServer () {
 
   if (_startupPath.empty()) {
     LOGGER_INFO << "using built-in JavaScript startup files";
-    StartupLoader.defineScript("bootstrap/modules.js", JS_bootstrap_modules);
-    StartupLoader.defineScript("bootstrap/print.js", JS_bootstrap_print);
-    StartupLoader.defineScript("server/modules.js", JS_server_modules);
-    StartupLoader.defineScript("server/aql.js", JS_server_aql);
-    StartupLoader.defineScript("server/json.js", JS_server_json);
-    StartupLoader.defineScript("server/shell.js", JS_server_shell);
+    StartupLoader.defineScript("common/bootstrap/modules.js", JS_common_bootstrap_modules);
+    StartupLoader.defineScript("common/bootstrap/print.js", JS_common_bootstrap_print);
+    StartupLoader.defineScript("server/server.js", JS_server_server);
   }
   else {
     LOGGER_INFO << "using JavaScript startup files at '" << _startupPath << "'";

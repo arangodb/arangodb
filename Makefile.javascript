@@ -16,7 +16,7 @@ BUILT_SOURCES += .setup-directories
 js/js-%.h: @srcdir@/js/%.js .setup-directories
 	@top_srcdir@/config/js2c.sh $< > $@
 
-js/bootstrap/js-%.h: @srcdir@/js/bootstrap/%.js .setup-directories
+js/common/bootstrap/js-%.h: @srcdir@/js/common/bootstrap/%.js .setup-directories
 	@top_srcdir@/config/js2c.sh $< > $@
 
 js/client/js-%.h: @srcdir@/js/client/%.js .setup-directories

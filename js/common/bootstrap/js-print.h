@@ -1,4 +1,4 @@
-static string JS_bootstrap_print = 
+static string JS_common_bootstrap_print = 
   "////////////////////////////////////////////////////////////////////////////////\n"
   "/// @brief printing\n"
   "///\n"
