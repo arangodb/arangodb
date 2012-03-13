@@ -273,7 +273,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("help,h", "help message")
     ("log.level,l", &level,  "log level")
     ("server", &ServerAddress, "server address and port")
-    ("startup", &StartupPath, "startup path containing the JavaScript files")
+    ("startup", &StartupPath, "startup paths containing the JavaScript files (multiple directories can be separated with semicola)")
     ("pager", &OutputPager, "output pager (default: 'more')")
     ("use-pager", "use pager")
     ("pretty-print", "pretty print values")          
@@ -961,8 +961,8 @@ int main (int argc, char* argv[]) {
 
     // load all init files
     char const* files[] = {
-      "bootstrap/modules.js",
-      "bootstrap/print.js",
+      "common/bootstrap/modules.js",
+      "common/bootstrap/print.js",
       "client/client.js"
     };
 
