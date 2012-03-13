@@ -200,7 +200,7 @@ static char** AttemptedCompletion (char const* text, int start, int end) {
     if (result[0][n-1] == ')') {
       result[0][n-1] = '\0';
 
-#if RL_READLINE_VERSION < 0x0500
+#if RL_READLINE_VERSION >= 0x0500
       rl_completion_suppress_append = 1;
 #endif
     }
