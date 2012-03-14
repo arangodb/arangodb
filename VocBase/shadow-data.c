@@ -140,6 +140,40 @@ void TRI_FreeShadowStore (TRI_shadow_store_t* const store) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Update the refcount of a shadow data element (increase or decrease)
+////////////////////////////////////////////////////////////////////////////////
+
+static bool UpdateRefCountShadowData (TRI_shadow_store_t* const store, 
+                                      const TRI_shadow_id id,
+                                      const bool increase) {
+  TRI_shadow_t* shadow;
+  TRI_shadow_t search;
+  union { TRI_shadow_t* s; TRI_shadow_t const* c; } cnv;
+  
+  assert(store);
+
+  TRI_LockMutex(&store->_lock);
+
+  search._id = id;
+  cnv.c = (TRI_shadow_t*) TRI_LookupByElementAssociativePointer(&store->_index, 
+                                                                &search);
+  shadow = cnv.s;
+
+  if (shadow) {
+    if (increase) {
+      ++shadow->_rc;
+    } 
+    else {
+      --shadow->_rc;
+    }
+  } 
+
+  TRI_UnlockMutex(&store->_lock);
+
+  return (shadow != NULL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -159,7 +193,6 @@ void TRI_FreeShadowStore (TRI_shadow_store_t* const store) {
 void TRI_CleanupShadowData (TRI_shadow_store_t* const store, const double maxAge) {
   double compareStamp = TRI_microtime() - maxAge; // age must be specified in secs
   size_t deleteCount = 0;
-  size_t i;
 
   // we need an exclusive lock on the index
   TRI_LockMutex(&store->_lock);
@@ -168,6 +201,7 @@ void TRI_CleanupShadowData (TRI_shadow_store_t* const store, const double maxAge
   // we have deleted SHADOW_MAX_DELETE elements 
   while (deleteCount++ < SHADOW_MAX_DELETE) {
     bool deleted = false;
+    size_t i;
 
     for (i = 0; i < store->_index._nrAlloc; i++) {
       // enum all shadows
@@ -201,6 +235,24 @@ void TRI_CleanupShadowData (TRI_shadow_store_t* const store, const double maxAge
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a shadow by id and decreases its refcount if it exists
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_DecreaseRefCountShadowData (TRI_shadow_store_t* const store, 
+                                     const TRI_shadow_id id) {
+  return UpdateRefCountShadowData(store, id, false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a shadow by id and increases its refcount if it exists
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IncreaseRefCountShadowData (TRI_shadow_store_t* const store, 
+                                     const TRI_shadow_id id) {
+  return UpdateRefCountShadowData(store, id, true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a shadow by id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -210,6 +262,7 @@ TRI_shadow_t* TRI_FindShadowData (TRI_shadow_store_t* const store,
   TRI_shadow_t search;
   union { TRI_shadow_t* s; TRI_shadow_t const* c; } cnv;
   
+  LOG_INFO("trying to find shadow %lu", (unsigned long) id);
   assert(store);
 
   TRI_LockMutex(&store->_lock);
@@ -241,6 +294,7 @@ TRI_shadow_t* TRI_StoreShadowData (TRI_shadow_store_t* const store,
   assert(store);
 
   shadow = CreateShadow(element);
+  LOG_INFO("inserting shadow %lu", (unsigned long) shadow->_id);
   if (shadow) {
     TRI_LockMutex(&store->_lock);
     TRI_InsertElementAssociativePointer(&store->_index, shadow, true);
@@ -249,6 +303,26 @@ TRI_shadow_t* TRI_StoreShadowData (TRI_shadow_store_t* const store,
 
   // might be NULL in case of OOM
   return shadow; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief decrease the refcount of a shadow without deleting it
+////////////////////////////////////////////////////////////////////////////////
+
+int64_t TRI_DecreaseRefcountShadowData (TRI_shadow_store_t* const store, 
+                                        TRI_shadow_t* const shadow) {
+  int64_t result;
+
+  assert(shadow);
+
+  TRI_LockMutex(&store->_lock);
+
+  // release the element
+  result = --shadow->_rc;
+
+  TRI_UnlockMutex(&store->_lock);
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -267,6 +341,7 @@ bool TRI_ReleaseShadowData (TRI_shadow_store_t* const store, TRI_shadow_t* shado
 
   // need to destroy the element
   if (shadow->_rc < 1) {
+    LOG_INFO("releasing shadow %lu", (unsigned long) shadow->_id);
     TRI_RemoveElementAssociativePointer(&store->_index, shadow);
     store->destroyShadow(store, shadow);
     TRI_Free(shadow);
@@ -443,8 +518,9 @@ TRI_shadow_document_store_t* TRI_CreateShadowDocumentStore (
     TRI_FreeShadowStore(base);
     return NULL;
   }
+  store->_base = base;
 
-  TRI_InitMutex(&base->_lock);
+  TRI_InitMutex(&store->_base->_lock);
 
   store->createShadow  = create;
   store->verifyShadow  = verify;
@@ -550,6 +626,54 @@ bool TRI_ReleaseShadowDocument (TRI_shadow_document_store_t* const store,
   TRI_UnlockMutex(&store->_base->_lock);
 
   return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enumerate all shadows and remove them if expired 
+////////////////////////////////////////////////////////////////////////////////
+  
+void TRI_CleanupShadowDocuments (TRI_shadow_document_store_t* const store, const double maxAge) {
+  double compareStamp = TRI_microtime() - maxAge; // age must be specified in secs
+  size_t deleteCount = 0;
+
+  // we need an exclusive lock on the index
+  TRI_LockMutex(&store->_base->_lock);
+
+  // loop until there's nothing to delete or 
+  // we have deleted SHADOW_MAX_DELETE elements 
+  while (deleteCount++ < SHADOW_MAX_DELETE) {
+    bool deleted = false;
+    size_t i;
+
+    for (i = 0; i < store->_base->_index._nrAlloc; i++) {
+      // enum all shadows
+      TRI_shadow_t* shadow = (TRI_shadow_t*) store->_base->_index._table[i];
+      if (!shadow) {
+        continue;
+      }
+
+      // check if shadow is unused and expired
+      if (shadow->_rc <= 1 && shadow->_timestamp < compareStamp) {
+        LOG_DEBUG("cleaning expired shadow %p", shadow);
+        TRI_RemoveElementAssociativePointer(&store->_base->_index, shadow);
+//        store->destroyShadow(store, shadow);
+//        TRI_Free(shadow);
+
+        deleted = true;
+        // the remove might reposition elements in the container.
+        // therefore break here and start iteration anew
+        break;
+      }
+    }
+
+    if (!deleted) {
+      // we did not find anything to delete, so give up
+      break;
+    }
+  }
+
+  // release lock
+  TRI_UnlockMutex(&store->_base->_lock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

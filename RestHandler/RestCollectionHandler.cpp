@@ -232,6 +232,8 @@ bool RestCollectionHandler::createDocument () {
   _documentCollection->beginWrite(_documentCollection);
 
   bool waitForSync = _documentCollection->base._waitForSync;
+
+  // note: unlocked is performed by createJson()
   TRI_doc_mptr_t const* mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_DOCUMENT, json, 0, true);
   TRI_voc_did_t did = 0;
   TRI_voc_rid_t rid = 0;
@@ -244,6 +246,8 @@ bool RestCollectionHandler::createDocument () {
   // .............................................................................
   // outside write transaction
   // .............................................................................
+
+  TRI_FreeJson(json);
 
   if (mptr != 0) {
     if (waitForSync) {
@@ -403,21 +407,26 @@ bool RestCollectionHandler::readAllDocuments () {
 
   _documentCollection->beginRead(_documentCollection);
 
-  TRI_sim_collection_t* collection = (TRI_sim_collection_t*) _documentCollection;
+  try {
+    TRI_sim_collection_t* collection = (TRI_sim_collection_t*) _documentCollection;
 
-  if (0 < collection->_primaryIndex._nrUsed) {
-    void** ptr = collection->_primaryIndex._table;
-    void** end = collection->_primaryIndex._table + collection->_primaryIndex._nrAlloc;
+    if (0 < collection->_primaryIndex._nrUsed) {
+      void** ptr = collection->_primaryIndex._table;
+      void** end = collection->_primaryIndex._table + collection->_primaryIndex._nrAlloc;
 
-    for (;  ptr < end;  ++ptr) {
-      if (*ptr) {
-        TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
+      for (;  ptr < end;  ++ptr) {
+        if (*ptr) {
+          TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
 
-        if (d->_deletion == 0) {
-          ids.push_back(d->_did);
+          if (d->_deletion == 0) {
+            ids.push_back(d->_did);
+          }
         }
       }
     }
+  }
+  catch (...) {
+    // necessary so we will always remove the read lock
   }
   
   _documentCollection->endRead(_documentCollection);
@@ -567,6 +576,7 @@ bool RestCollectionHandler::updateDocument () {
 
   _documentCollection->beginWrite(_documentCollection);
 
+  // unlocking is performed in updateJson()
   TRI_doc_mptr_t const* mptr = _documentCollection->updateJson(_documentCollection, json, did, revision, policy, true);
   TRI_voc_rid_t rid = 0;
 
@@ -679,6 +689,7 @@ bool RestCollectionHandler::deleteDocument () {
 
   _documentCollection->beginWrite(_documentCollection);
 
+  // unlocking is performed in destroy()
   ok = _documentCollection->destroy(_documentCollection, did, revision, policy, true);
 
   // .............................................................................

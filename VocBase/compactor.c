@@ -468,8 +468,13 @@ static void CleanupSimCollection (TRI_sim_collection_t* collection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void CleanupShadows (TRI_vocbase_t* const vocbase) {
+  LOG_TRACE("cleaning shadows");
+  
   // clean unused cursors
   TRI_CleanupShadowData(vocbase->_cursors, SHADOW_CURSOR_MAX_AGE);
+
+  // clean unused statements
+//  TRI_CleanupShadowDocuments(vocbase->_statements, SHADOW_STATEMENT_MAX_AGE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

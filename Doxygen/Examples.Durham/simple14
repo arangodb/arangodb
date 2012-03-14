@@ -1,10 +1,10 @@
 avocado> db.geo.ensureGeoIndex("loc");
 162534834
 
-avocado> for (i = -90;  i <= 90;  i += 10) 
-.......>   for (j = -180; j <= 180; j += 10)
+avocado> for (i = -90;  i <= 90;  i += 10) {
+.......>   for (j = -180; j <= 180; j += 10) {
 .......>     db.geo.save({ name : "Name/" + i + "/" + j,
-.......>                   loc: [ i, j ] });
+.......>                   loc: [ i, j ] }); } }
 
 avocado> db.geo.count();
 703

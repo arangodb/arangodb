@@ -60,15 +60,12 @@ function aqlSimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function executeQuery (query) {
-    var aQuery = AQL_PREPARE(db, query);
-    if (aQuery instanceof AvocadoQueryError) {
-      print(query, aQuery.message);
+    var cursor = AQL_STATEMENT(db, query, undefined);
+    if (cursor instanceof AvocadoQueryError) {
+      print(query, cursor.message);
     }
-    assertFalse(aQuery instanceof AvocadoQueryError);
-    if (aQuery) {
-      return aQuery.execute();
-    }
-    return aQuery;
+    assertFalse(cursor instanceof AvocadoQueryError);
+    return cursor;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -76,15 +73,15 @@ function aqlSimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function getQueryResults (query) {
-    var aCursor = this.executeQuery(query);
-    if (aCursor) {
+    var cursor = this.executeQuery(query);
+    if (cursor) {
       var results = [ ];
-      while (aCursor.hasNext()) {
-        results.push(aCursor.next());
+      while (cursor.hasNext()) {
+        results.push(cursor.next());
       }
       return results;
     }
-    return aCursor;
+    return cursor;
   }
 
 ////////////////////////////////////////////////////////////////////////////////

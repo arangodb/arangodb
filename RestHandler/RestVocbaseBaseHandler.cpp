@@ -226,8 +226,14 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
 
     TRI_InitArrayJson(&augmented);
 
-    TRI_Insert2ArrayJson(&augmented, "_id", TRI_CreateStringCopyJson(id.c_str()));
-    TRI_Insert2ArrayJson(&augmented, "_rev", TRI_CreateNumberJson(document->_rid));
+    TRI_json_t* _id = TRI_CreateStringCopyJson(id.c_str());
+    TRI_json_t* _rev = TRI_CreateNumberJson(document->_rid);
+    if (_id) {
+      TRI_Insert2ArrayJson(&augmented, "_id", _id);
+    }
+    if (_rev) {
+      TRI_Insert2ArrayJson(&augmented, "_rev", _rev);
+    }
 
     // convert object to string
     TRI_InitStringBuffer(&buffer);
@@ -235,6 +241,12 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
     TRI_StringifyAugmentedShapedJson(_documentCollection->_shaper, &buffer, &document->_document, &augmented);
 
     TRI_DestroyJson(&augmented);
+    if (_id) {
+      TRI_Free(_id);
+    }
+    if (_rev) {
+      TRI_Free(_rev);
+    }
   }
 
   // and generate a response

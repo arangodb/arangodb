@@ -37,6 +37,63 @@
 var actions = require("actions");
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief parse a query and return information about it
+////////////////////////////////////////////////////////////////////////////////
+
+function postQuery(req, res) {
+  if (req.suffix.length != 0) {
+    actions.actionResultError (req, res, 400, actions.queryNotModified, "Invalid query data"); 
+    return;
+  }
+
+  try {
+    var json = JSON.parse(req.requestBody);
+      
+    if (!json || !(json instanceof Object) || json.query == undefined) {
+      actions.actionResultError (req, res, 400, actions.queryNotModified, "Invalid query data");
+      return;
+    }
+
+    var result = AQL_PARSE(db, json.query);
+    if (result instanceof AvocadoQueryError) {
+      actions.actionResultError (req, res, 404, result.code, result.message);
+      return;
+    }
+
+    result = { "bindVars" : result };
+
+    actions.actionResultOK(req, res, 200, result);
+  }
+  catch (e) {
+    actions.actionResultError (req, res, 500, actions.queryNotModified, "Internal server error");
+  }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       initialiser
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief query actions gateway 
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_api/query",
+  context : "api",
+
+  callback : function (req, res) {
+    switch (req.requestType) {
+      case ("POST") : 
+        postQuery(req, res); 
+        break;
+
+      default:
+        actions.actionResultUnsupported(req, res);
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

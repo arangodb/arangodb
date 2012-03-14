@@ -1,0 +1,11 @@
+> curl --data @- -X PUT --dump - http://localhost:8530/_api/simple/near
+{ "collection" : "geo", "latitude" : 0, "longitude" : 0, "limit" : 3 }
+
+HTTP/1.1 200 OK
+content-type: application/json
+
+[
+ {"_id":"154092:24861164","_rev":24861164,"name":"Name/0/0","loc":[0,0]},
+ {"_id":"154092:24926700","_rev":24926700,"name":"Name/0/10","loc":[0,10]},
+ {"_id":"154092:22436332","_rev":22436332,"name":"Name/-10/0","loc":[-10,0]}
+]

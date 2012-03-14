@@ -47,18 +47,34 @@ var actions = require("actions");
 
 function getCursorResult(cursor) {
   var hasCount = cursor.hasCount();
-  var lines = cursor.getRows();
+  var count = cursor.count();
+  var rows = cursor.getRows();
+
+  // must come after getRows()
+  var hasNext = cursor.hasNext();
+  var cursorId = null;
    
+  if (hasNext) {
+    cursor.persist();
+    cursorId = cursor.id(); 
+  }
+  else {
+    cursor.dispose();
+  }
+
   var result = { 
-    "result" : lines,
-    "_id" : cursor.id(),
-    "hasMore" : cursor.hasNext()
+    "result" : rows,
+    "hasMore" : hasNext
   };
+
+  if (cursorId) {
+    result["_id"] = cursorId;
+  }
     
   if (hasCount) {
-    result["count"] = cursor.count();
+    result["count"] = count;
   }
-  
+
   return result; 
 }
 
@@ -68,49 +84,49 @@ function getCursorResult(cursor) {
 
 function postCursor(req, res) {
   if (req.suffix.length != 0) {
-    actions.actionResultError (req, res, 404, actions.cursorNotModified, "Cursor not created"); 
+    actions.actionResultError (req, res, 400, actions.cursorNotModified, "Invalid query data"); 
     return;
   }
 
   try {
+    var cursor;
     var json = JSON.parse(req.requestBody);
-    var queryString;
-
-    if (json.qid != undefined) {
-      var q = db.query.document_wrapped(json.qid);
-      queryString = q.query;
-    }    
-    else if (json.query != undefined) {
-      queryString = json.query;
+      
+    if (!json || !(json instanceof Object)) {
+      actions.actionResultError (req, res, 400, actions.cursorNotModified, "Invalid query data");
+      return;
     }
 
-    if (queryString == undefined) {
-      actions.actionResultError (req, res, 404, actions.cursorNotModified, "Missing query identifier");
+    if (json._id != undefined) {
+      /*
+      cursor = AQL_STORED_STATEMENT(db, 
+                                    json._id, 
+                                    json.bindVars, 
+                                    (json.count != undefined ? json.count : false), 
+                                    (json.maxResults != undefined ? json.maxResults : 1000));  
+      */
+    }    
+    else if (json.query != undefined) {
+      cursor = AQL_STATEMENT(db, 
+                             json.query, 
+                             json.bindVars, 
+                             (json.count != undefined ? json.count : false), 
+                             (json.maxResults != undefined ? json.maxResults : 1000));  
+    }
+    else {
+      actions.actionResultError (req, res, 400, actions.cursorNotModified, "Invalid query data");
       return;
     }
    
-    var result;
-    if (json.bindVars) {
-      result = AQL_PREPARE(db, queryString, json.bindVars);
-    }
-    else {
-      result = AQL_PREPARE(db, queryString);
-    }
-
-    if (result instanceof AvocadoQueryError) {
-      actions.actionResultError (req, res, 404, result.code, result.message);
-      return;
-    }
-
-    var cursor = result.execute((json.count != undefined ? json.count : false), (json.maxResults != undefined ? json.maxResults : 1000));
     if (cursor instanceof AvocadoQueryError) {
-      actionResultError (req, res, 404, result.code, result.message);
+      actions.actionResultError (req, res, 404, cursor.code, cursor.message);
       return;
     }
 
-    actions.actionResultOK(req, res, 201, getCursorResult(cursor));
-    cursor = null; 
-    result = null;
+    // this might dispose or persist the cursor
+    var result = getCursorResult(cursor);
+
+    actions.actionResultOK(req, res, 201, result);
   }
   catch (e) {
     actions.actionResultError (req, res, 404, actions.cursorNotModified, "Cursor not created");
@@ -134,8 +150,8 @@ function putCursor(req, res) {
       throw "cursor not found";
     } 
 
+    // note: this might dispose or persist the cursor
     actions.actionResultOK(req, res, 200, getCursorResult(cursor));
-    cursor = null; 
   }
   catch (e) {
     actions.actionResultError (req, res, 404, actions.cursorNotFound, "Cursor not found");
@@ -161,7 +177,6 @@ function deleteCursor(req, res) {
 
     cursor.dispose();
     actions.actionResultOK(req, res, 202, { "_id" : cursorId });                
-    cursor = null; 
   }
   catch (e) {
     actions.actionResultError (req, res, 404, actions.cursorNotFound, "Cursor not found");
