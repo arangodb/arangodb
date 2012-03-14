@@ -779,7 +779,6 @@ void TRI_AppendDoubleStringBuffer (TRI_string_buffer_t * self, double attr) {
   }
   else if (attr == 0.0) {
     AppendChar(self, '0');
-    *self->_bufferPtr = '\0';
     return;
   }
 
@@ -829,7 +828,6 @@ void TRI_AppendDoubleStringBuffer (TRI_string_buffer_t * self, double attr) {
         if (pos > 2) { AppendChar(self, a3); }
         if (pos > 3) { AppendChar(self, a4); }
 
-        *self->_bufferPtr = '\0';
       }
 
       return;
@@ -857,7 +855,6 @@ void TRI_AppendDoubleStringBuffer (TRI_string_buffer_t * self, double attr) {
       AppendChar(self, '0');
     }
 
-    *self->_bufferPtr = '\0';
     return;
   }
 
