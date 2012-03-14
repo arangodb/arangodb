@@ -159,6 +159,7 @@ typedef enum {
   TRI_ACT_STRING,
   TRI_ACT_NUMBER,
   TRI_ACT_COLLECTION,
+  TRI_ACT_COLLECTION_NAME,
   TRI_ACT_COLLECTION_ID
 }
 TRI_action_parameter_type_e;

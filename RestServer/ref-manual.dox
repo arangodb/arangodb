@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief installation guide
+/// @brief reference manual
 ///
 /// @file
 ///
@@ -51,6 +51,13 @@
 ///    <li>@ref CommandLineLogging
 ///    </li>
 ///    <li>@ref CommandLineRandom
+///    </li>
+///   </ol>
+///  </li>
+///  <li>@ref OTWP
+///   <ol>
+///    <li>@ref 
+///    </li>
 ///    </li>
 ///   </ol>
 ///  </li>

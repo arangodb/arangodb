@@ -4088,6 +4088,46 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a single collections or null
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_CollectionVocBase (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+  
+  if (vocbase == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+
+  // expecting one argument
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: _collection(<name>|<identifier>)")));
+  }
+
+  v8::Handle<v8::Value> val = argv[0];
+  TRI_vocbase_col_t const* collection = 0;
+
+  // number
+  if (val->IsNumber() || val->IsNumberObject()) {
+    uint64_t id = (uint64_t) TRI_ObjectToDouble(val);
+
+    collection = TRI_LookupCollectionByIdVocBase(vocbase, id);
+  }
+  else {
+    string name = TRI_ObjectToString(val);
+
+    collection = TRI_FindCollectionByNameVocBase(vocbase, name.c_str(), false);
+  }
+
+  if (collection == 0) {
+    return scope.Close(v8::Null());
+  }
+
+  return scope.Close(TRI_WrapCollection(collection));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all collections
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4115,7 +4155,7 @@ static v8::Handle<v8::Value> JS_CollectionsVocBase (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns all collections
+/// @brief returns all collection names
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CompletionsVocBase (v8::Arguments const& argv) {
@@ -4674,6 +4714,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> NearFuncName = v8::Persistent<v8::String>::New(v8::String::New("NEAR"));
   v8::Handle<v8::String> WithinFuncName = v8::Persistent<v8::String>::New(v8::String::New("WITHIN"));
 
+  v8::Handle<v8::String> CollectionFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collection"));
   v8::Handle<v8::String> CollectionsFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collections"));
   v8::Handle<v8::String> CountFuncName = v8::Persistent<v8::String>::New(v8::String::New("count"));
   v8::Handle<v8::String> DeleteFuncName = v8::Persistent<v8::String>::New(v8::String::New("delete"));
@@ -4746,6 +4787,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
 
   rt->SetNamedPropertyHandler(MapGetVocBase);
 
+  rt->Set(CollectionFuncName, v8::FunctionTemplate::New(JS_CollectionVocBase));
   rt->Set(CollectionsFuncName, v8::FunctionTemplate::New(JS_CollectionsVocBase));
   rt->Set(CompletionsFuncName, v8::FunctionTemplate::New(JS_CompletionsVocBase));
 

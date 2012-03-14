@@ -66,7 +66,7 @@ actions.defineHttp({
         break;
 
       default:
-        actions.actionResultError (req, res, 405, 405, "Unsupported method");
+        actions.actionResultUnsupported(req, res);
     }
   }
 });

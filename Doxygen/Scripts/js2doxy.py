@@ -49,7 +49,7 @@ r1 = re.compile(r'//')
 r2 = re.compile(r'function\s*([a-zA-Z0-9_]*)\s*\((.*)\)\s*{')
 r3 = re.compile(r'^\s*$')
 r4 = re.compile(r'\s*([a-zA-Z0-9\.]*)\s*=\s*function\s*\((.*)\)\s*{')
-r5 = re.compile(r'^(defineAction|defineSystemAction)\("(.*)",')
+r5 = re.compile(r'^actions\.defineHttp\("(.*)",')
 
 f = open(file_name, "r")
 
@@ -121,17 +121,6 @@ for line in f:
             sep = ", "
 
         func = func + ")"
-
-        print "%s {}" % func
-        other = True
-        continue
-
-    # check for action definition
-    m = r5.match(line)
-
-    if m:
-        name = m.group(2)
-        func = "void JSA_" + string.replace(name, '/', '_') + " ()"
 
         print "%s {}" % func
         other = True
