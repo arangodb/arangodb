@@ -244,6 +244,12 @@ void tst_smpl_utils () {
   TRI_AppendInteger3StringBuffer(&sb, 1234);
   cmp_str("234", sb._buffer, 1024, "append int3");
 
+  
+  TRI_AppendDoubleStringBuffer(&sb, 12.0);
+  cmp_str("23412", sb._buffer, 1024, "append int3");
+
+  TRI_AppendDoubleStringBuffer(&sb, -12.125);
+  cmp_str("23412-12.125", sb._buffer, 1024, "append int3");
 }
 
 void tst_report () {
