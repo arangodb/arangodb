@@ -49,7 +49,6 @@ extern "C" {
 
 typedef struct TRI_string_buffer_s {
   char * _buffer;
-  char * _bufferPtr;
   ptrdiff_t _off;
   size_t _len;
 }
