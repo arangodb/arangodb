@@ -25,32 +25,6 @@
 /// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @page JSModulesTOC
-///
-/// <ol>
-///   <li>@ref JSModulesRequire "require"</li>
-/// </ol>
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page JSModules JavaScript Modules
-///
-/// The AvocadoDB uses a <a
-/// href="http://wiki.commonjs.org/wiki/Modules">CommonJS</a> compatible module
-/// concept. You can use the function @FN{require} in order to load a
-/// module. @FN{require} returns the exported variables and functions of the
-/// module. You can use the option @CO{startup.modules-path} to specify the
-/// location of the JavaScript files.
-///
-/// <hr>
-/// @copydoc JSModulesTOC
-/// <hr>
-///
-/// @anchor JSModulesRequire
-/// @copydetails JSF_require
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            Module
 // -----------------------------------------------------------------------------

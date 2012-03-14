@@ -30,56 +30,6 @@
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-////////////////////////////////////////////////////////////////////////////////
-/// @page RestDocumentTOC
-///
-/// <ol>
-///   <li>@ref RestCollectionCreate "POST /collection/@FA{<collection-identifier>}"</li>
-///   <li>@ref RestCollectionRead "GET /collection/@FA{<collection-identifier>}/@FA{<document-identifier>}"</li>
-///   <li>@ref RestCollectionReadAll "GET /collection/@FA{<collection-identifier>}"</li>
-///   <li>@ref RestCollectionUpdate "PUT /collection/@FA{<collection-identifier>}/@FA{<document-identifier>}"</li>
-///   <li>@ref RestCollectionDelete "DELETE /collection/@FA{<collection-identifier>}/@FA{<document-identifier>}"</li>
-///   <li>@ref RestCollectionHead "HEAD /collection/@FA{<collection-identifier>}/@FA{<document-identifier>}"</li>
-/// </ol>
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page RestDocument REST Interface for Documents
-///
-/// The basic operations (create, read, update, delete) for documents are mapped
-/// to the standard HTTP methods (POST, GET, PUT, DELETE). An identifier for the
-/// revision is returned in the "ETag" field. If you modify a document, you can
-/// use the "ETag" field to detect conflicts. The revision of a document can be
-/// checking using the HTTP method HEAD.
-///
-/// <hr>
-/// @copydoc RestDocumentTOC
-/// <hr>
-///
-/// @anchor RestCollectionCreate
-/// @copydetails triagens::avocado::RestCollectionHandler::createDocument
-/// <hr>
-///
-/// @anchor RestCollectionRead
-/// @copydetails triagens::avocado::RestCollectionHandler::readSingleDocument
-/// <hr>
-///
-/// @anchor RestCollectionReadAll
-/// @copydetails triagens::avocado::RestCollectionHandler::readAllDocuments
-/// <hr>
-///
-/// @anchor RestCollectionUpdate
-/// @copydetails triagens::avocado::RestCollectionHandler::updateDocument
-/// <hr>
-///
-/// @anchor RestCollectionDelete
-/// @copydetails triagens::avocado::RestCollectionHandler::deleteDocument
-/// <hr>
-///
-/// @anchor RestCollectionHead
-/// @copydetails triagens::avocado::RestCollectionHandler::checkDocument
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                             RestCollectionHandler
 // -----------------------------------------------------------------------------

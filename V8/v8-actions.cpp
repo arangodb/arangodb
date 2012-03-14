@@ -92,6 +92,9 @@ static void ParseActionOptionsParameter (TRI_v8_global_t* v8g,
   if (parameter == "collection") {
     p._type = TRI_ACT_COLLECTION;
   }
+  if (parameter == "collection-name") {
+    p._type = TRI_ACT_COLLECTION_NAME;
+  }
   else if (parameter == "collection-identifier") {
     p._type = TRI_ACT_COLLECTION_ID;
   }
@@ -473,13 +476,31 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
 
       switch (ap._type) {
         case TRI_ACT_COLLECTION: {
-          TRI_vocbase_col_t const* collection = TRI_FindCollectionByNameVocBase(vocbase, v.c_str(), false);
+          if (! v.empty()) {
+            char ch = v[0];
+            TRI_vocbase_col_t const* collection = 0;
 
-          if (collection == 0) {
-            return new HttpResponse(HttpResponse::NOT_FOUND);
+            if ('0' < ch && ch <= '9') {
+              collection = TRI_LookupCollectionByIdVocBase(vocbase, TRI_UInt64String(v.c_str()));
+            }
+            else {
+              collection = TRI_FindCollectionByNameVocBase(vocbase, v.c_str(), false);
+            }
+
+            if (collection != 0) {
+              parametersArray->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
+            }
           }
 
-          parametersArray->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
+          break;
+        }
+
+        case TRI_ACT_COLLECTION_NAME: {
+          TRI_vocbase_col_t const* collection = TRI_FindCollectionByNameVocBase(vocbase, v.c_str(), false);
+
+          if (collection != 0) {
+            parametersArray->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
+          }
 
           break;
         }
@@ -493,11 +514,9 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
 
           TRI_ReadUnlockReadWriteLock(&vocbase->_lock);
 
-          if (collection == 0) {
-            return new HttpResponse(HttpResponse::NOT_FOUND);
+          if (collection != 0) {
+            parametersArray->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
           }
-
-          parametersArray->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
 
           break;
         }

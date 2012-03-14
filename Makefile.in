@@ -774,24 +774,19 @@ BISONXX_FILES = \
 ################################################################################
 ################################################################################
 DOXYGEN = \
+	Doxygen/js/actions/system/api_simple.c \
+	Doxygen/js/actions/system/collections.c \
 	Doxygen/js/common/bootstrap/modules.c \
 	Doxygen/js/common/bootstrap/print.c \
-	Doxygen/js/modules/actions.c \
-	Doxygen/js/modules/graph.c \
-	Doxygen/js/modules/jsunity.c \
-	Doxygen/js/modules/simple-query.c \
-	Doxygen/js/server/modules.c \
-	Doxygen/js/server/json.c \
-	Doxygen/js/server/shell.c \
-	Doxygen/js/actions/system/collections.c \
-	Doxygen/js/actions/system/indexes.c
+	Doxygen/js/common/modules/graph.c \
+	Doxygen/js/common/modules/jsunity.c \
+	Doxygen/js/server/modules/actions.c \
+	Doxygen/js/server/server.c
 
 
 ################################################################################
 ################################################################################
 WIKI = \
-	Doxygen/xml/AQL.md \
-	Doxygen/xml/Basics.md \
 	Doxygen/xml/DBAdmin.md \
 	Doxygen/xml/SimpleQueries.md \
         Doxygen/xml/Actions.md \
@@ -803,7 +798,6 @@ WIKI = \
         Doxygen/xml/CommandLineScheduler.md \
         Doxygen/xml/Compiling.md \
         Doxygen/xml/DefineAction.md \
-        Doxygen/xml/Graphs.md \
         Doxygen/xml/HttpInterface.md \
         Doxygen/xml/IndexUsage.md \
         Doxygen/xml/InstallManual.md \
@@ -815,10 +809,10 @@ WIKI = \
         Doxygen/xml/JSModules.md \
         Doxygen/xml/JavaScriptFunc.md \
         Doxygen/xml/JavaScriptFuncIndex.md \
+        Doxygen/xml/OTWP.md \
         Doxygen/xml/RefManual.md \
         Doxygen/xml/RestDocument.md \
         Doxygen/xml/RestSystem.md \
-        Doxygen/xml/StartStop.md \
         Doxygen/xml/UserManualServer.md \
         Doxygen/xml/UserManualShell.md \
         Doxygen/xml/UserManualShellStartStop.md \
@@ -2386,22 +2380,29 @@ build.h: configure.ac
 
 Doxygen/.setup-directories:
 	@test -d Doxygen/js || mkdir Doxygen/js
-	@test -d Doxygen/js/bootstrap || mkdir Doxygen/js/bootstrap
-	@test -d Doxygen/js/modules || mkdir Doxygen/js/modules
+	@test -d Doxygen/js/actions || mkdir Doxygen/js/actions
+	@test -d Doxygen/js/actions/system || mkdir Doxygen/js/actions/system
+	@test -d Doxygen/js/common || mkdir Doxygen/js/common
+	@test -d Doxygen/js/common/bootstrap || mkdir Doxygen/js/common/bootstrap
+	@test -d Doxygen/js/common/modules || mkdir Doxygen/js/common/modules
 	@test -d Doxygen/js/server || mkdir Doxygen/js/server
-	@test -d Doxygen/js/system || mkdir Doxygen/js/system
+	@test -d Doxygen/js/server/modules || mkdir Doxygen/js/server/modules
+	@test -d Doxygen/js/client || mkdir Doxygen/js/client
 	@touch $@
 
-Doxygen/js/%.c: @srcdir@/js/%.js Doxygen/.setup-directories
+Doxygen/js/actions/system/%.c: @srcdir@/js/actions/system/%.js Doxygen/.setup-directories
 	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
-Doxygen/js/system/%.c: @srcdir@/js/system/%.js Doxygen/.setup-directories
+Doxygen/js/common/bootstrap/%.c: @srcdir@/js/common/bootstrap/%.js Doxygen/.setup-directories
 	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
-Doxygen/js/modules/%.c: @srcdir@/js/system/%.js Doxygen/.setup-directories
+Doxygen/js/common/modules/%.c: @srcdir@/js/common/modules/%.js Doxygen/.setup-directories
 	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
-Doxygen/js/bootstrap/%.c: @srcdir@/js/bootstrap/%.js Doxygen/.setup-directories
+Doxygen/js/server/%.c: @srcdir@/js/server/%.js Doxygen/.setup-directories
+	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+
+Doxygen/js/server/modules/%.c: @srcdir@/js/server/modules/%.js Doxygen/.setup-directories
 	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
 Doxygen/xml/%.md: Doxygen/xml/%.xml

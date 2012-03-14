@@ -10,22 +10,29 @@ BUILT_SOURCES += Doxygen/.setup-directories
 
 Doxygen/.setup-directories:
 	@test -d Doxygen/js || mkdir Doxygen/js
-	@test -d Doxygen/js/bootstrap || mkdir Doxygen/js/bootstrap
-	@test -d Doxygen/js/modules || mkdir Doxygen/js/modules
+	@test -d Doxygen/js/actions || mkdir Doxygen/js/actions
+	@test -d Doxygen/js/actions/system || mkdir Doxygen/js/actions/system
+	@test -d Doxygen/js/common || mkdir Doxygen/js/common
+	@test -d Doxygen/js/common/bootstrap || mkdir Doxygen/js/common/bootstrap
+	@test -d Doxygen/js/common/modules || mkdir Doxygen/js/common/modules
 	@test -d Doxygen/js/server || mkdir Doxygen/js/server
-	@test -d Doxygen/js/system || mkdir Doxygen/js/system
+	@test -d Doxygen/js/server/modules || mkdir Doxygen/js/server/modules
+	@test -d Doxygen/js/client || mkdir Doxygen/js/client
 	@touch $@
 
-Doxygen/js/%.c: @srcdir@/js/%.js Doxygen/.setup-directories
+Doxygen/js/actions/system/%.c: @srcdir@/js/actions/system/%.js Doxygen/.setup-directories
 	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
-Doxygen/js/system/%.c: @srcdir@/js/system/%.js Doxygen/.setup-directories
+Doxygen/js/common/bootstrap/%.c: @srcdir@/js/common/bootstrap/%.js Doxygen/.setup-directories
 	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
-Doxygen/js/modules/%.c: @srcdir@/js/system/%.js Doxygen/.setup-directories
+Doxygen/js/common/modules/%.c: @srcdir@/js/common/modules/%.js Doxygen/.setup-directories
 	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
-Doxygen/js/bootstrap/%.c: @srcdir@/js/bootstrap/%.js Doxygen/.setup-directories
+Doxygen/js/server/%.c: @srcdir@/js/server/%.js Doxygen/.setup-directories
+	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
+
+Doxygen/js/server/modules/%.c: @srcdir@/js/server/modules/%.js Doxygen/.setup-directories
 	@python @top_srcdir@/Doxygen/Scripts/js2doxy.py $< > $@
 
 Doxygen/xml/%.md: Doxygen/xml/%.xml

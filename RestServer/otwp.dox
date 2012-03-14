@@ -1,0 +1,88 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief over the wire protocol
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page OTWPTOC
+///
+/// <ol>
+///  <li>Querying and Managing Documents
+///   <ol>
+///    <li>@RestDocument
+///     <ol>
+///      <li>@ref RestCollectionCreate "POST /collection/@FA{<collection-identifier>}"</li>
+///      <li>@ref RestCollectionRead "GET /collection/@FA{<collection-identifier>}/@FA{<document-identifier>}"</li>
+///      <li>@ref RestCollectionReadAll "GET /collection/@FA{<collection-identifier>}"</li>
+///      <li>@ref RestCollectionUpdate "PUT /collection/@FA{<collection-identifier>}/@FA{<document-identifier>}"</li>
+///      <li>@ref RestCollectionDelete "DELETE /collection/@FA{<collection-identifier>}/@FA{<document-identifier>}"</li>
+///      <li>@ref RestCollectionHead "HEAD /collection/@FA{<collection-identifier>}/@FA{<document-identifier>}"</li>
+///     </ol>
+///    </li>
+///    <li>Simple Queries
+///     <ol>
+///      <li>PUT /_api/simple/all</li>
+///      <li>PUT /_api/simple/near</li>
+///      <li>PUT /_api/simple/within</li>
+///      <li>PUT /_api/simple/geo</li>
+///      <li>PUT /_api/simple/by-example</li>
+///     </ol>
+///    </li>
+///    <li>Queries and Cursors
+///    </li>
+///   </ol>
+///  </li>
+///  <li>Querying and Managing Collections
+///   <ol>
+///    <li>GET /_api/vocbase/collections</li>
+///    <li>GET /_api/vocbase/collection/@FA{collection-identifier}</li>
+///    <li>POST /_api/vocbase/collection</li>
+///   </ol>
+///  </li>
+///  <li>Administration
+///   <ol>
+///    <li>GET /_admin/collection/@FA{collection-identifier}</li>
+///    <li>POST /_admin/vocbase/collection/index</li>
+///    <li>GET /_admin/vocbase/collection/indexes</li>
+///    <li>GET /_admin/vocbase/collection/index/@FA{index-identifier}</li>
+///    <li>DELETE /_admin/vocbase/collection/index/@FA{index-identifier}</li>
+///   </ol>
+///  </li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page OTWP Over the Wire Protocol
+///
+/// <hr>
+/// @copydoc OTWPTOC
+/// <hr>
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: c++
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// End:

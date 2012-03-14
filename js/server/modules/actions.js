@@ -28,52 +28,6 @@
 var internal = require("internal");
 var console = require("console");
 
-////////////////////////////////////////////////////////////////////////////////
-/// @page JSModuleActionsTOC
-///
-/// <ol>
-///  <li>@ref JSModuleActionsDefineHttp "defineHttp"</li>
-///  <li>@ref JSModuleActionsActionResult "actionResult"</li>
-///  <li>@ref JSModuleActionsActionResultOK "actionResultOK"</li>
-///  <li>@ref JSModuleActionsActionResultError "actionResultError"</li>
-///  <li>@ref JSModuleActionsActionResultUnsupported "actionResultUnsupported"</li>
-///  <li>@ref JSModuleActionsActionError "actionError"</li>
-/// </ol>
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page JSModuleActions Module "actions"
-///
-/// The action module provides the infrastructure for defining HTTP actions.
-///
-/// <hr>
-/// @copydoc JSModuleActionsTOC
-/// <hr>
-///
-/// @anchor JSModuleActionsDefineHttp
-/// @copydetails JSF_defineHttp
-/// <hr>
-///
-/// @anchor JSModuleActionsActionResult
-/// @copydetails JSF_actionResult
-/// <hr>
-///
-/// @anchor JSModuleActionsActionResultOK
-/// @copydetails JSF_actionResultOK
-/// <hr>
-///
-/// @anchor JSModuleActionsActionResultError
-/// @copydetails JSF_actionResultError
-/// <hr>
-///
-/// @anchor JSModuleActionsActionResultUnsupported
-/// @copydetails JSF_actionResultUnsupported
-/// <hr>
-///
-/// @anchor JSModuleActionsActionError
-/// @copydetails JSF_actionError
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
 // -----------------------------------------------------------------------------
@@ -120,7 +74,7 @@ exports.cursorNotModified = 40304;
 /// @FA{options.url}
 ///
 /// The URL, which can be used to access the action. This path might contain
-/// slashes. Note that this action will also be call, if a url is given such that
+/// slashes. Note that this action will also be called, if a url is given such that
 /// @FA{options.url} is a prefix of the given url and no longer definition
 /// matches.
 ///
@@ -147,8 +101,8 @@ exports.cursorNotModified = 40304;
 /// The request argument contains a description of the request. A request
 /// parameter @LIT{foo} is accessible as @LIT{request.parametrs.foo}. A request
 /// header @LIT{bar} is accessible as @LIT{request.headers.bar}. Assume that
-/// the action is defined for the url "/foo/bar" and the request url is
-/// "/foo/bar/hugo/egon". Then the suffix parts @LIT{[ "hugon"\, "egon" ]}
+/// the action is defined for the url @LIT{/foo/bar} and the request url is
+/// @LIT{/foo/bar/hugo/egon}. Then the suffix parts @LIT{[ "hugon"\, "egon" ]}
 /// are availible in @LIT{request.suffix}.
 ///
 /// The callback must define fill the @FA{response}.
@@ -167,6 +121,7 @@ exports.cursorNotModified = 40304;
 ///
 /// - @c "collection"
 /// - @c "collection-identifier"
+/// - @c "collection-name"
 /// - @c "number"
 /// - @c "string"
 ////////////////////////////////////////////////////////////////////////////////
@@ -358,6 +313,23 @@ function actionResultUnsupported (req, res, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns an error for unknown collection
+///
+/// @FUN{actionCollectionUnknown(@FA{req}, @FA{res}, @FA{collection}, @FA{headers})}
+///
+/// The functions generates an error response.
+////////////////////////////////////////////////////////////////////////////////
+
+function resultCollectionUnknown (req, res, collection, headers) {
+  if (collection == null) {
+    actionResultError(req, res, 400, 400, "expecting a collection name or identifier", headers);
+  }
+  else {
+    actionResultError(req, res, 405, 405, "unknown collection '" + collection + "'", headers);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -376,6 +348,29 @@ exports.actionResultOK = actionResultOK;
 exports.actionResultError = actionResultError;
 exports.actionResultUnsupported = actionResultUnsupported;
 exports.actionError = actionError;
+
+exports.result = actionResult;
+exports.resultOK = actionResultOK;
+exports.resultError = actionResultError;
+exports.resultUnsupported = actionResultUnsupported;
+
+exports.resultCollectionUnknown = resultCollectionUnknown;
+
+exports.COLLECTION            = "collection";
+exports.COLLECTION_IDENTIFIER = "collection-identifier";
+exports.COLLECTION_NAME       = "collection-name";
+exports.NUMBER                = "number";
+
+exports.DELETE = "DELETE";
+exports.GET    = "GET";
+exports.HEAD   = "HEAD";
+exports.POST   = "POST";
+exports.PUT    = "PUT";
+
+exports.HTTP_OK                 = 200;
+
+exports.HTTP_NOT_FOUND          = 404;
+exports.HTTP_METHOD_NOT_ALLOWED = 405;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
