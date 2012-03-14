@@ -41,7 +41,7 @@ var API = "_api/database/";
 /// @fn JSA_GET_api_datebase_collections
 /// @brief returns all collections
 ///
-/// @REST{GET /_api/vocbase/collections}
+/// @REST{GET /_api/database/collections}
 ///
 /// Returns all collections. The result is a list of objects with the following
 /// attributes:
@@ -85,7 +85,7 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about a collection
 ///
-/// @REST{GET /_api/vocbase/collection/@FA{collection-identifier}}
+/// @REST{GET /_api/database/collection/@FA{collection-identifier}}
 ///
 /// The result is an objects with the following attributes:
 ///
@@ -139,7 +139,7 @@ function GET_api_database_collection (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new collection
 ///
-/// @REST{POST /_api/vocbase/collection}
+/// @REST{POST /_api/database/collection}
 ///
 /// Creates a new collection. If the collection could be create, a @LIT{HTTP 200}
 /// is returned. If the collection already exists, a @LIT{HTTP 409} is
