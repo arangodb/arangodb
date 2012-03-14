@@ -430,9 +430,8 @@ void TRI_PushBackListJson (TRI_json_t* list, TRI_json_t* object) {
 void TRI_PushBack2ListJson (TRI_json_t* list, TRI_json_t* object) {
   assert(list->_type == TRI_JSON_LIST);
 
+  assert(object);
   TRI_PushBackVector(&list->_value._objects, object);
-
-  TRI_Free(object);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -463,7 +462,7 @@ void TRI_InsertArrayJson (TRI_json_t* object, char const* name, TRI_json_t* subo
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a new attribute  to an object, not copying it
+/// @brief adds a new attribute to an object, not copying it
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_Insert2ArrayJson (TRI_json_t* object, char const* name, TRI_json_t* subobject) {
@@ -471,6 +470,9 @@ void TRI_Insert2ArrayJson (TRI_json_t* object, char const* name, TRI_json_t* sub
   size_t length;
 
   assert(object->_type == TRI_JSON_ARRAY);
+  if (!subobject) {
+    return;
+  }
 
   length = strlen(name);
 
@@ -485,8 +487,6 @@ void TRI_Insert2ArrayJson (TRI_json_t* object, char const* name, TRI_json_t* sub
 
   TRI_PushBackVector(&object->_value._objects, &copy);
   TRI_PushBackVector(&object->_value._objects, subobject);
-
-  TRI_Free(subobject);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

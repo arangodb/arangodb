@@ -71,10 +71,10 @@ AvocadoEdgesCollection.prototype.all = AvocadoCollection.prototype.all;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a near query for a collection
 ///
-/// @FUN{near(@FA{latitiude}, @FA{longitude})}
+/// @FUN{near(@FA{latitude}, @FA{longitude})}
 ///
 /// The default will find at most 100 documents near the coordinate
-/// (@FA{latitiude}, @FA{longitude}). The returned list is sorted according to
+/// (@FA{latitude}, @FA{longitude}). The returned list is sorted according to
 /// the distance, with the nearest document coming first. If there are near
 /// documents of equal distance, documents are chosen randomly from this set
 /// until the limit is reached. It is possible to change the limit using the
@@ -85,17 +85,17 @@ AvocadoEdgesCollection.prototype.all = AvocadoCollection.prototype.all;
 /// for the document.  If you have more then one geo-spatial index, you can use
 /// the @FN{geo} operator to select a particular index.
 ///
-/// @FUN{near(@FA{latitiude}, @FA{longitude}).limit(@FA{limit})}
+/// @FUN{near(@FA{latitude}, @FA{longitude}).limit(@FA{limit})}
 ///
 /// Limits the result to @FA{limit} documents. Note that @FA{limit} can be more
 /// than 100, this will raise the default limit.
 ///
-/// @FUN{near(@FA{latitiude}, @FA{longitude}).distance()}
+/// @FUN{near(@FA{latitude}, @FA{longitude}).distance()}
 ///
 /// This will add an attribute @LIT{distance} to all documents returned, which
 /// contains the distance between the given point and the document in meter.
 ///
-/// @FUN{near(@FA{latitiude}, @FA{longitude}).distance(@FA{name})}
+/// @FUN{near(@FA{latitude}, @FA{longitude}).distance(@FA{name})}
 ///
 /// This will add an attribute @FA{name} to all documents returned, which
 /// contains the distance between the given point and the document in meter.
@@ -120,22 +120,22 @@ AvocadoEdgesCollection.prototype.near = AvocadoCollection.prototype.near;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a within query for a collection
 ///
-/// @FUN{within(@FA{latitiude}, @FA{longitude}, @FA{radius})}
+/// @FUN{within(@FA{latitude}, @FA{longitude}, @FA{radius})}
 ///
 /// This will find all documents with in a given radius around the coordinate
-/// (@FA{latitiude}, @FA{longitude}). The returned list is sorted by distance.
+/// (@FA{latitude}, @FA{longitude}). The returned list is sorted by distance.
 ///
 /// In order to use the @FN{within} operator, a geo index must be defined for the
 /// collection. This index also defines which attribute holds the coordinates
 /// for the document.  If you have more then one geo-spatial index, you can use
 /// the @FN{geo} operator to select a particular index.
 ///
-/// @FUN{within(@FA{latitiude}, @FA{longitude}, @FA{radius}).distance()}
+/// @FUN{within(@FA{latitude}, @FA{longitude}, @FA{radius}).distance()}
 ///
 /// This will add an attribute @LIT{_distance} to all documents returned, which
 /// contains the distance between the given point and the document in meter.
 ///
-/// @FUN{within(@FA{latitiude}, @FA{longitude}, @FA{radius}).distance(@FA{name})}
+/// @FUN{within(@FA{latitude}, @FA{longitude}, @FA{radius}).distance(@FA{name})}
 ///
 /// This will add an attribute @FA{name} to all documents returned, which
 /// contains the distance between the given point and the document in meter.
@@ -166,7 +166,7 @@ AvocadoEdgesCollection.prototype.within = AvocadoCollection.prototype.within;
 /// The next @FN{near} or @FN{within} operator will use the specific geo-spatial
 /// index.
 ///
-/// @FUN{geo(@FA{latitiude}, @FA{longitude})}
+/// @FUN{geo(@FA{latitude}, @FA{longitude})}
 ///
 /// The next @FN{near} or @FN{within} operator will use the specific geo-spatial
 /// index.
@@ -657,7 +657,7 @@ SimpleQueryAll.prototype._PRINT = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      SELECT QUERY
+// --SECTION--                                                  QUERY BY EXAMPLE
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -673,27 +673,27 @@ SimpleQueryAll.prototype._PRINT = function () {
 /// @brief select query
 ////////////////////////////////////////////////////////////////////////////////
 
-function SimpleQuerySelect (collection, example) {
+function SimpleQueryByExample (collection, example) {
   this._collection = collection;
   this._example = example;
 }
 
-SimpleQuerySelect.prototype = new SimpleQuery();
-SimpleQuerySelect.prototype.constructor = SimpleQuerySelect;
+SimpleQueryByExample.prototype = new SimpleQuery();
+SimpleQueryByExample.prototype.constructor = SimpleQueryByExample;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a select query for a collection
+/// @brief constructs a query-by-example for a collection
 ///
-/// @FUN{select()}
+/// @FUN{byExample(@FA{example})}
 ///
-/// Selects all documents of a collection that match the specified example. 
-/// The example must be specified as an object, with the object attributes being
-/// the search values. Allowed attribute types for searching are numbers,
-/// strings, and boolean values.
+/// Selects all documents of a collection that match the specified
+/// @FA{example}. The example must be specified as an object, with the object
+/// attributes being the search values. Allowed attribute types for searching
+/// are numbers, strings, and boolean values.
 ///
-/// You can use @FN{toArray}, @FN{next},
-/// @FN{nextRef}, or @FN{hasNext} to access the result. The result can be
-/// limited using the @FN{skip} and @FN{limit} operator.
+/// You can use @FN{toArray}, @FN{next}, @FN{nextRef}, or @FN{hasNext} to access
+/// the result. The result can be limited using the @FN{skip} and @FN{limit}
+/// operator.
 ///
 /// @EXAMPLES
 ///
@@ -706,8 +706,8 @@ SimpleQuerySelect.prototype.constructor = SimpleQuerySelect;
 /// @verbinclude simple19
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.select = function (example) {
-  return new SimpleQuerySelect(this, example);
+AvocadoCollection.prototype.byExample = function (example) {
+  return new SimpleQueryByExample(this, example);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -724,13 +724,13 @@ AvocadoCollection.prototype.select = function (example) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clones a select query
+/// @brief clones a query-by-example
 ////////////////////////////////////////////////////////////////////////////////
 
-SimpleQuerySelect.prototype.clone = function () {
+SimpleQueryByExample.prototype.clone = function () {
   var query;
 
-  query = new SimpleQuerySelect(this._collection, this._example);
+  query = new SimpleQueryByExample(this._collection, this._example);
   query._skip = this._skip;
   query._limit = this._limit;
 
@@ -738,10 +738,10 @@ SimpleQuerySelect.prototype.clone = function () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a select query
+/// @brief executes a query-by-example
 ////////////////////////////////////////////////////////////////////////////////
 
-SimpleQuerySelect.prototype.execute = function () {
+SimpleQueryByExample.prototype.execute = function () {
   var documents;
 
   if (this._execution == null) {
@@ -786,12 +786,7 @@ SimpleQuerySelect.prototype.execute = function () {
       }
     }
 
-    var result = AQL_PREPARE(db, queryString);  
-    if (result instanceof AvocadoQueryError) {
-      throw result.message;
-    }
-
-    var cursor = result.execute();
+    var cursor = AQL_STATEMENT(db, queryString, undefined);  
     if (cursor instanceof AvocadoQueryError) {
       throw cursor.message;
     }
@@ -811,13 +806,13 @@ SimpleQuerySelect.prototype.execute = function () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print a select query
+/// @brief print a query-by-example
 ////////////////////////////////////////////////////////////////////////////////
 
-SimpleQuerySelect.prototype._PRINT = function () {
+SimpleQueryByExample.prototype._PRINT = function () {
   var text;
 
-  text = "SimpleQuerySelect(" + this._collection._name + ")";
+  text = "SimpleQueryByExample(" + this._collection._name + ")";
 
   if (this._skip != null && this._skip != 0) {
     text += ".skip(" + this._skip + ")";
@@ -1142,11 +1137,11 @@ SimpleQueryGeo.prototype.within = function (lat, lon, radius) {
 /// @brief all query
 ////////////////////////////////////////////////////////////////////////////////
 
-function SimpleQueryNear (collection, latitiude, longitude, iid) {
+function SimpleQueryNear (collection, latitude, longitude, iid) {
   var idx;
 
   this._collection = collection;
-  this._latitude = latitiude;
+  this._latitude = latitude;
   this._longitude = longitude;
   this._index = (iid === undefined ? null : iid);
   this._distance = null;
@@ -1324,11 +1319,11 @@ SimpleQueryNear.prototype.distance = function (attribute) {
 /// @brief all query
 ////////////////////////////////////////////////////////////////////////////////
 
-function SimpleQueryWithin (collection, latitiude, longitude, radius, iid) {
+function SimpleQueryWithin (collection, latitude, longitude, radius, iid) {
   var idx;
 
   this._collection = collection;
-  this._latitude = latitiude;
+  this._latitude = latitude;
   this._longitude = longitude;
   this._index = (iid === undefined ? null : iid);
   this._radius = radius;
@@ -1495,7 +1490,7 @@ exports.AvocadoCollection = AvocadoCollection;
 exports.AvocadoEdgesCollection = AvocadoEdgesCollection;
 exports.SimpleQuery = SimpleQuery;
 exports.SimpleQueryAll = SimpleQueryAll;
-exports.SimpleQuerySelect = SimpleQuerySelect;
+exports.SimpleQueryByExample = SimpleQueryByExample;
 exports.SimpleQueryArray = SimpleQueryArray;
 exports.SimpleQueryGeo = SimpleQueryGeo;
 exports.SimpleQueryNear = SimpleQueryNear;

@@ -111,9 +111,9 @@ function aqlJoinsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function executeQuery (query) {
-    var aQuery = AQL_PREPARE(db, query);
-    assertFalse(aQuery instanceof AvocadoQueryError);
-    return aQuery.execute();
+    var cursor = AQL_STATEMENT(db, query, undefined);
+    assertFalse(cursor instanceof AvocadoQueryError);
+    return cursor;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -121,15 +121,15 @@ function aqlJoinsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function getQueryResults (query) {
-    var aCursor = this.executeQuery(query);
-    if (aCursor) {
+    var cursor = this.executeQuery(query);
+    if (cursor) {
       var results = [ ];
-      while (aCursor.hasNext()) {
-        results.push(this.sanitizeRow(aCursor.next()));
+      while (cursor.hasNext()) {
+        results.push(this.sanitizeRow(cursor.next()));
       }
       return results;
     }
-    return aCursor;
+    return cursor;
   }
 
 ////////////////////////////////////////////////////////////////////////////////

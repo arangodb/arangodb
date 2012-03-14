@@ -99,10 +99,10 @@ typedef struct TRI_bind_parameter_s {
 TRI_bind_parameter_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Create a bind parameter
+/// @brief Get the names of all bind parameters
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_bind_parameter_t* TRI_CreateBindParameter (const char*, const TRI_json_t*);
+TRI_vector_string_t TRI_GetNamesBindParameter (TRI_associative_pointer_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Free a bind parameter
@@ -110,9 +110,33 @@ TRI_bind_parameter_t* TRI_CreateBindParameter (const char*, const TRI_json_t*);
 
 void TRI_FreeBindParameter (TRI_bind_parameter_t* const);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Create a bind parameter
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_bind_parameter_t* TRI_CreateBindParameter (const char*, const TRI_json_t*);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    query template
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief query template types
+///
+/// There are two types of templates:
+/// - QUERY_TEMPLATE_TRANSIENT: these templates only exist for one query and are
+///   disposed automatically when the query execution is finished
+/// - QUERY_TEMPLATE_PERSISTENT: these templates are created on the server and
+///   can be shared for multiple executions. they are disposed automatically 
+///   if they are not referenced anymore and have not been used for a certain
+///   period of time (garbage collection) 
+////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+  QUERY_TEMPLATE_TRANSIENT,
+  QUERY_TEMPLATE_PERSISTENT
+}
+TRI_query_template_type_e;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lexer state
@@ -149,10 +173,14 @@ TRI_query_parser_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_query_template_s {
+  TRI_query_template_type_e  _type;
+  TRI_shadow_document_t*     _shadow;
+  TRI_vocbase_t*             _vocbase;
   char*                      _queryString;
   QL_ast_query_t*            _query;
-  TRI_vocbase_t*             _vocbase;
   TRI_query_parser_t*        _parser;
+  TRI_mutex_t                _lock;
+  bool                       _deleted;
   struct {
     TRI_vector_pointer_t     _nodes;     // memory locations of allocated AST nodes
     TRI_vector_pointer_t     _strings;   // memory locations of allocated strings
@@ -168,13 +196,42 @@ TRI_query_template_t;
 /// @brief Free a template based on its shadow
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeShadowQueryTemplate (TRI_shadow_store_t*, TRI_shadow_t*);
+void TRI_FreeShadowQueryTemplate (TRI_shadow_document_store_t*, 
+                                  TRI_shadow_document_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief decrease the refcount of a template
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DecreaseRefCountQueryTemplate (TRI_query_template_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief increase the refcount of a template
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_IncreaseRefCountQueryTemplate (TRI_query_template_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief exclusively lock a query template
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_LockQueryTemplate (TRI_query_template_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unlock a query template
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_UnlockQueryTemplate (TRI_query_template_t* const);
+
+// TODO: move to own file
+void* TRI_CreateShadowQueryTemplate (TRI_shadow_document_store_t*, TRI_doc_collection_t*, TRI_doc_mptr_t const*);
+bool TRI_VerifyShadowQueryTemplate (TRI_shadow_document_store_t*, TRI_doc_collection_t*, TRI_doc_mptr_t const*, void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create shadow data store for templates 
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shadow_store_t* TRI_CreateShadowsQueryTemplate (void);
+TRI_shadow_document_store_t* TRI_CreateShadowsQueryTemplate (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Initialize the structs contained in a query template and perform
@@ -195,7 +252,8 @@ bool TRI_AddBindParameterQueryTemplate (TRI_query_template_t* const,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_query_template_t* TRI_CreateQueryTemplate (const char*, 
-                                               const TRI_vocbase_t* const);
+                                               const TRI_vocbase_t* const,
+                                               const TRI_query_template_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Free a query template

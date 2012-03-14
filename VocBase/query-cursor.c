@@ -119,6 +119,8 @@ TRI_query_cursor_t* TRI_CreateQueryCursor (TRI_query_instance_t* const instance,
                                            const bool doCount,
                                            const uint32_t maxResults) {
   TRI_query_cursor_t* cursor;
+
+  assert(instance);
   
   cursor = TRI_Allocate(sizeof(TRI_query_cursor_t));
   if (!cursor) {
@@ -134,6 +136,7 @@ TRI_query_cursor_t* TRI_CreateQueryCursor (TRI_query_instance_t* const instance,
     return NULL;
   }
 
+  cursor->_shadow = NULL;
   cursor->_hasCount = doCount;
   cursor->_maxResults = maxResults;
   cursor->_deleted = false;
@@ -142,15 +145,6 @@ TRI_query_cursor_t* TRI_CreateQueryCursor (TRI_query_instance_t* const instance,
   cursor->_result._selectResult = (TRI_select_result_t*) selectResult;
   cursor->_result._dataPtr = NULL;
   
-  cursor->_shadow = TRI_StoreShadowData((TRI_shadow_store_t*) cursor->_vocbase->_cursors, 
-                                        (const void* const) cursor);
-
-  if (!cursor->_shadow) {
-    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
-    TRI_Free(cursor->_functionCode);
-    TRI_Free(cursor);
-    return NULL;
-  }
   cursor->next = NextQueryCursor;
   cursor->hasNext = HasNextQueryCursor;
   cursor->hasCount = HasCountQueryCursor;

@@ -538,27 +538,63 @@ bool TRI_LoadParameterInfo (char const* path,
 bool TRI_SaveParameterInfo (char const* path,
                             TRI_col_info_t* info) {
   TRI_json_t* json;
+  TRI_json_t* _version;
+  TRI_json_t* _type;
+  TRI_json_t* _cid;
+  TRI_json_t* _name;
+  TRI_json_t* _maximalSize;
+  TRI_json_t* _waitForSync;
   char* filename;
   bool ok;
+  
+  filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
+  if (!filename) {
+    return false;
+  }
 
   // create a json info object
   json = TRI_CreateArrayJson();
   if (!json) {
+    TRI_FreeString(filename);
     return false;
   }
+   
+  _version     = TRI_CreateNumberJson(info->_version);
+  _type        = TRI_CreateNumberJson(info->_type);
+  _cid         = TRI_CreateNumberJson(info->_cid);
+  _name        = TRI_CreateStringCopyJson(info->_name);
+  _maximalSize = TRI_CreateNumberJson(info->_maximalSize);
+  _waitForSync = TRI_CreateBooleanJson(info->_waitForSync);
 
-  TRI_Insert2ArrayJson(json, "version", TRI_CreateNumberJson(info->_version));
-  TRI_Insert2ArrayJson(json, "type", TRI_CreateNumberJson(info->_type));
-  TRI_Insert2ArrayJson(json, "cid", TRI_CreateNumberJson(info->_cid));
-  TRI_Insert2ArrayJson(json, "name", TRI_CreateStringCopyJson(info->_name));
-  TRI_Insert2ArrayJson(json, "maximalSize", TRI_CreateNumberJson(info->_maximalSize));
-  TRI_Insert2ArrayJson(json, "waitForSync", TRI_CreateBooleanJson(info->_waitForSync));
+  TRI_Insert2ArrayJson(json, "version", _version);
+  TRI_Insert2ArrayJson(json, "type", _type); 
+  TRI_Insert2ArrayJson(json, "cid", _cid);
+  TRI_Insert2ArrayJson(json, "name", _name);
+  TRI_Insert2ArrayJson(json, "maximalSize", _maximalSize);
+  TRI_Insert2ArrayJson(json, "waitForSync", _waitForSync);
 
   // save json info to file
-  filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
   ok = TRI_SaveJson(filename, json);
-  TRI_DestroyJson(json);
-  // TODO: who is going to free json itself?
+  TRI_FreeJson(json);
+
+  if (_version) {
+    TRI_Free(_version);
+  }
+  if (_type) {
+    TRI_Free(_type);
+  }
+  if (_cid) {
+    TRI_Free(_cid);
+  }
+  if (_name) {
+    TRI_Free(_name);
+  }
+  if (_maximalSize) {
+    TRI_Free(_maximalSize);
+  }
+  if (_waitForSync) {
+    TRI_Free(_waitForSync);
+  }
 
   if (! ok) {
     LOG_ERROR("cannot save info block '%s': '%s'", filename, TRI_last_error());

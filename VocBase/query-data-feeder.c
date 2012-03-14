@@ -585,6 +585,7 @@ static void InitFeederHashLookup (TRI_data_feeder_t* feeder) {
       else if (range->_valueType == RANGE_TYPE_JSON) {
         doc = TRI_JsonString(range->_minValue._stringValue);
         if (!doc) {
+          // TODO: properly free parameters
           TRI_FreeJson(parameters);
           return;
         }
@@ -592,6 +593,7 @@ static void InitFeederHashLookup (TRI_data_feeder_t* feeder) {
       }
     }
     state->_hashElements = TRI_LookupHashIndex(state->_index, parameters);
+    // TODO: properly free parameters
     TRI_FreeJson(parameters);
   }
 
@@ -853,6 +855,7 @@ static void InitFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
       }
     }
     state->_skiplistElements = TRI_LookupSkiplistIndex(state->_index, parameters);
+    // TODO: properly free parameters
     TRI_FreeJson(parameters);
   }
 

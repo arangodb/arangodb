@@ -1,0 +1,18 @@
+> curl --data @- -X PUT --dump - http://localhost:8530/_api/simple/within
+{ "collection" : "geo", "latitude" : 0, "longitude" : 0, "radius" : 2000000 }
+
+HTTP/1.1 200 OK
+content-type: application/json
+server: triagens GmbH High-Performance HTTP Server
+
+[
+  {"_id":"154092:24861164","_rev":24861164,"name":"Name/0/0","loc":[0,0]},
+  {"_id":"154092:24795628","_rev":24795628,"name":"Name/0/-10","loc":[0,-10]},
+  {"_id":"154092:27285996","_rev":27285996,"name":"Name/10/0","loc":[10,0]},
+  {"_id":"154092:22436332","_rev":22436332,"name":"Name/-10/0","loc":[-10,0]},
+  {"_id":"154092:24926700","_rev":24926700,"name":"Name/0/10","loc":[0,10]},
+  {"_id":"154092:27351532","_rev":27351532,"name":"Name/10/10","loc":[10,10]},
+  {"_id":"154092:27220460","_rev":27220460,"name":"Name/10/-10","loc":[10,-10]},
+  {"_id":"154092:22370796","_rev":22370796,"name":"Name/-10/-10","loc":[-10,-10]},
+  {"_id":"154092:22501868","_rev":22501868,"name":"Name/-10/10","loc":[-10,10]}
+]

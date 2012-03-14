@@ -55,8 +55,6 @@ var helpQueries = "";
 var helpAvocadoDatabase = "";
 var helpAvocadoCollection = "";
 var helpAvocadoQueryCursor = "";
-var helpAvocadoQueryInstance = "";
-var helpAvocadoQueryTemplate = "";
 var helpAvocadoStoredStatement = "";
 var helpAvocadoStatement = "";
 var helpExtended = "";
@@ -226,8 +224,7 @@ function help () {
   print(helpQueries);
   print(helpAvocadoDatabase);
   print(helpAvocadoCollection);
-  print(helpAvocadoQueryTemplate);
-  print(helpAvocadoQueryInstance);
+  print(helpAvocadoStatement);
   print(helpAvocadoQueryCursor);
   print(helpExtended);
 }
@@ -424,10 +421,6 @@ function AvocadoQueryCursor (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoQueryCursor.prototype.hasNext = function () {
-  if (!this.data._id) {
-    return false;
-  }
-
   return this._hasNext;
 }
 
@@ -439,10 +432,6 @@ AvocadoQueryCursor.prototype.hasNext = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoQueryCursor.prototype.next = function () {
-  if (!this.data._id) {
-    throw "cursor has been disposed";
-  }
-
   if (!this._hasNext) {
     throw "No more results";
   }
@@ -456,7 +445,7 @@ AvocadoQueryCursor.prototype.next = function () {
     this._hasNext = false;
     this._pos = 0;
     
-    if (this._hasMore) {
+    if (this._hasMore && this.data._id) {
       this._hasMore = false;
       
       // load more results      
@@ -495,10 +484,6 @@ AvocadoQueryCursor.prototype.next = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoQueryCursor.prototype.elements = function () {  
-  if (!this.data._id) {
-    throw "cursor has been disposed";
-  }
-
   var result = [];
   
   while (this.hasNext()) { 
@@ -518,7 +503,8 @@ AvocadoQueryCursor.prototype.elements = function () {
 
 AvocadoQueryCursor.prototype.dispose = function () {
   if (!this.data._id) {
-    throw "cursor has been disposed";
+    // client side only cursor
+    return;
   }
 
   var str = this._database._connection.delete("/_api/cursor/"+ encodeURIComponent(this.data._id), "");
@@ -564,294 +550,6 @@ AvocadoQueryCursor.prototype._help = function () {
 
 AvocadoQueryCursor.prototype.toString = function () {  
   return getIdString(this, "AvocadoQueryCursor");
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              AvocadoQueryInstance
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
-function AvocadoQueryInstance (database, data) {
-  this._database = database;
-  this.doCount = false;
-  this.maxResults = null;
-  this.bindVars = {};
-  
-  if (typeof data === "string") {
-    this.query = data;
-  }
-  else if (data instanceof AvocadoQueryTemplate) {
-    if (data.document.query == undefined) {
-      data.load();
-      if (data.document.query == undefined) {
-        throw "could not load query string";
-      }
-    }
-    this.query = data.document.query;
-  }   
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief bind a parameter to the query instance
-///
-/// This function can be called multiple times, once for each bind parameter.
-/// All bind parameters will be transferred to the server in one go when 
-/// execute() is called.
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoQueryInstance.prototype.bind = function (key, value) {
-  this.bindVars[key] = value;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the count flag for the query instance
-///
-/// Setting the count flag will make the query instance's cursor return the
-/// total number of result documents. The count flag is not set by default.
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoQueryInstance.prototype.setCount = function (bool) {
-  this.doCount = bool ? true : false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the maximum number of results documents the cursor will return
-/// in a single server roundtrip.
-/// The higher this number is, the less server roundtrips will be made when
-/// iterating over the result documents of a cursor.
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoQueryInstance.prototype.setMax = function (value) {
-  if (parseInt(value) > 0) {
-    this.maxResults = parseInt(value);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute the query
-///
-/// Invoking execute() will transfer the query and all bind parameters to the
-/// server. It will return a cursor with the query results in case of success.
-/// In case of an error, the error will be printed
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoQueryInstance.prototype.execute = function () {
-  var body = {
-    query : this.query,
-    count : this.doCount,
-    bindVars : this.bindVars
-  }
-
-  if (this.maxResults) {
-    body["maxResults"] = this.maxResults;
-  }
-  
-  var str = this._database._connection.post("/_api/cursor", JSON.stringify(body));
-  var requestResult = undefined;
-  if (str != undefined) {
-    requestResult = JSON.parse(str);
-  }
-    
-  if (isErrorResult(requestResult)) {
-    return undefined;
-  }
-
-  return new AvocadoQueryCursor(this._database, requestResult);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief print the help for AvocadoQueryInstance
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoQueryInstance.prototype._help = function () {
-  print(helpAvocadoQueryInstance);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a string representation of the query instance
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoQueryInstance.prototype.toString = function () {  
-  return getIdString(this, "AvocadoQueryInstance");
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              AvocadoQueryTemplate
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
-function AvocadoQueryTemplate (database, data) {
-  this._database = database;
-
-  this.document = {
-    collection : DEFAULT_QUERY_COLLECTION
-  };
-  
-  if (typeof data === "string") {
-    this.document.query = data;
-  }
-  else {    
-    if (data["query"] != undefined) {
-      this.document.query = data["query"];
-    }
-
-    if (data["_id"] != undefined) {
-      this.document._id = data["_id"];
-      this._id = this.document._id;
-    }
-
-    if (data["collection"] != undefined) {
-      this.document.collection = data["collection"];
-    }    
-
-    if (data["name"] != undefined) {
-      this.document.name = data["name"];
-    }    
-
-    // TODO additional attributes
-  }
-  
-  if (this.document.query == undefined && this.document._id == undefined) {
-    throw "AvocadoQueryTemplate needs query or _id.";
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a new instance (AvocadoQueryInstance) for the query template
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoQueryTemplate.prototype.getInstance = function () {
-  if (this.document._id == undefined) {
-    throw "no _id found";    
-  }
-  
-  return new AvocadoQueryInstance(this._database, this);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update a query template, identified by its id
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoQueryTemplate.prototype.update = function (data) {
-  if (this.document._id == undefined) {
-    throw "no _id found";    
-  }
-  
-  if (typeof data === "string") {
-    this.document.query = data;
-  }
-  else {
-    // update query or name    
-    if (data["query"] != undefined) {
-      this.document.query = data["query"];
-    }
-
-    if (data["name"] != undefined) {
-      this.document.name = data["name"];
-    }    
-
-    // TODO additional attributes
-  }
-  
-  var queryCollection = new AvocadoCollection(this._database, this.document.collection);
-  if (queryCollection.update(this.document._id, this.document)) {
-    return true;
-  }
-  
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief delete a query template, identified by its id
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoQueryTemplate.prototype.delete = function () {
-  if (this.document._id == undefined) {
-    throw "no _id found";    
-  }
-
-  var queryCollection = new AvocadoCollection(this._database, this.document.collection);
-  if (queryCollection.delete(this.document._id)) {
-    this.document = {};
-    return true;
-  }
-  
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief load a query template, identified by its id
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoQueryTemplate.prototype.load = function () {
-  if (this.document._id == undefined) {
-    throw "AvocadoQueryTemplate needs _id for loading";    
-  }
-
-  var coll = this.document.collection;
-  var queryCollection = new AvocadoCollection(this._database, coll);
-  var requestResult = queryCollection.document(this.document._id);
-    
-  if (requestResult != undefined) {
-
-    if (requestResult.query == undefined) {
-      throw "document is not a query";    
-    }
-    // loaded
-    this.document = requestResult;
-    
-    if (this.document.collection == undefined) {
-      this.document.collection = coll;
-    }
-    
-    return true;
-  }
-
-  return false;  
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief save a query template, and set its id in case of success
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoQueryTemplate.prototype.save = function () {
-  if (this.document._id != undefined) {
-    throw "use update to save changes";    
-  }
-  
-  var queryCollection = new AvocadoCollection(this._database, this.document.collection);
-  var requestResult = queryCollection.save(this.document);
-    
-  if (requestResult != undefined) {
-    // document saved
-    this.document._id = requestResult;
-    this._id = this.document._id;
-    return true;
-  }
-  
-  return false;  
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief print the help for AvocadoQueryTemplate
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoQueryTemplate.prototype._help = function () {
-  print(helpAvocadoQueryTemplate);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a string representation of the template
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoQueryTemplate.prototype.toString = function () {  
-  return getIdString(this, "AvocadoQueryTemplate");
 }
 
 // -----------------------------------------------------------------------------
@@ -922,36 +620,6 @@ AvocadoDatabase.prototype._collection = function (id) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief factory method to create a new query template
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoDatabase.prototype._createQueryTemplate = function (queryData) {  
-  var qt = new AvocadoQueryTemplate(this, queryData);
-  if (qt.save()) {
-    return qt;
-  }
-  
-  return undefined;
-}
-
-AvocadoDatabase.prototype._getQueryTemplate = function (id) {  
-  var qt = new AvocadoQueryTemplate(this, {"_id" : id});
-  if (qt.load()) {
-    return qt;
-  }
-  
-  return undefined;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief factory method to create a new query instance
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoDatabase.prototype._createQueryInstance = function (queryData) {  
-  return new AvocadoQueryInstance(this, queryData);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief print the help for AvocadoDatabase
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -966,47 +634,7 @@ AvocadoDatabase.prototype._help = function () {
 AvocadoDatabase.prototype.toString = function () {  
   return "[object AvocadoDatabase]";
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/*
 // -----------------------------------------------------------------------------
 // --SECTION--                                            AvocadoStoredStatement
 // -----------------------------------------------------------------------------
@@ -1226,6 +854,7 @@ AvocadoStoredStatement.prototype.execute = function () {
   }
   
   var body = {
+    "name" : this.document.name,
     "count" : this._doCount,
     "bindVars" : this._bindVars,
     "_id" : this._id
@@ -1264,6 +893,23 @@ AvocadoStoredStatement.prototype.toString = function () {
   return getIdString(this, "AvocadoStoredStatement");
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief factory method to create a new stored statement
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._createStoredStatement = function (data) {  
+  return new AvocadoStoredStatement(this, data);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief factory method to retrieve an existing stored statement
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._getStoredStatement = function (data) {  
+  return new AvocadoStoredStatement(this, data);
+}
+
+*/
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  AvocadoStatement
 // -----------------------------------------------------------------------------
@@ -1279,13 +925,13 @@ function AvocadoStatement (database, data) {
   this._bindVars = {};
   
   if (!(data instanceof Object)) {
-    throw "AvocadoStoredStatement needs a data attribute";
+    throw "AvocadoStatement needs initial data";
   }
     
   if (data.query == undefined || data.query == "") {
     throw "AvocadoStatement needs a valid query attribute";
   }
-  this._query = data.query;
+  this.setQuery(data.query);
 
   if (data.count != undefined) {
     this.setCount(data.count);
@@ -1304,21 +950,70 @@ function AvocadoStatement (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoStatement.prototype.bind = function (key, value) {
-  if (typeof(key) != "string") {
-    throw "bind parameter name must be a string";
+  if (key instanceof Object) {
+    if (value != undefined) {
+      throw "invalid bind parameter declaration";
+    }
+    this._bindVars = key;
   }
-
-  if (this._bindVars[key] != undefined) {
-    throw "redeclaration of bind parameter";
+  else if (typeof(key) == "string") {
+    if (this._bindVars[key] != undefined) {
+      throw "redeclaration of bind parameter";
+    }
+    this._bindVars[key] = value;
   }
+  else if (typeof(key) == "number") {
+    var strKey = String(parseInt(key));
+    if (strKey != String(key)) {
+      throw "invalid bind parameter declaration";
+    }
+    if (this._bindVars[strKey] != undefined) {
+      throw "redeclaration of bind parameter";
+    }
+    this._bindVars[strKey] = value;
+  }
+  else {
+    throw "invalid bind parameter declaration";
+  }
+}
 
-  this._bindVars[key] = value;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the bind variables already set
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoStatement.prototype.getBindVariables = function () {
+  return this._bindVars;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the count flag for the statement
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoStatement.prototype.getCount = function () {
+  return this._doCount;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the maximum number of results documents the cursor will return
+/// in a single server roundtrip.
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoStatement.prototype.getMax = function () {
+  return this._maxResults;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get query string
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoStatement.prototype.getQuery = function () {
+  return this._query;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the count flag for the statement
 ///
-/// Setting the count flag will make the query instance's cursor return the
+/// Setting the count flag will make the statement's result cursor return the
 /// total number of result documents. The count flag is not set by default.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1340,15 +1035,20 @@ AvocadoStatement.prototype.setMax = function (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parse a query - TODO: fix
+/// @brief set the query string
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoStatement.prototype.setQuery = function (query) {
+  this._query = query;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parse a query and return the results
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoStatement.prototype.parse = function () {
   var body = {
     "query" : this._query,
-  }
-  if (this._maxResults) {
-    body["maxResults"] = this._maxResults;
   }
 
   var str = this._database._connection.post("/_api/query", JSON.stringify(body));
@@ -1382,8 +1082,9 @@ AvocadoStatement.prototype.execute = function () {
   if (this._maxResults) {
     body["maxResults"] = this._maxResults;
   }
-  
+
   var str = this._database._connection.post("/_api/cursor", JSON.stringify(body));
+
   var requestResult = undefined;
   if (str != undefined) {
     requestResult = JSON.parse(str);
@@ -1413,64 +1114,12 @@ AvocadoStatement.prototype.toString = function () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief factory method to create a new stored statement
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoDatabase.prototype._createStoredStatement = function (data) {  
-  return new AvocadoStoredStatement(this, data);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief factory method to retrieve an existing stored statement
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoDatabase.prototype._getStoredStatement = function (data) {  
-  return new AvocadoStoredStatement(this, data);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief factory method to create a new statement
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoDatabase.prototype._createStatement = function (data) {  
   return new AvocadoStatement(this, data);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      initialisers
@@ -1496,27 +1145,32 @@ getHeadline("Help") +
 ' > exit                                                             ';
 
 helpQueries = 
-getHeadline("Simple queries help") +
-'Create query template:                                              ' + "\n" +
-' > qt1 = db._createQueryTemplate("select ...");    simple query     ' + "\n" +
-' > qt2 = db._createQueryTemplate(                  complex query    ' + "\n" +
-'             {query:"select...",                                    ' + "\n" +
-'              name:"qname",                                         ' + "\n" +
-'              collection:"q"                                        ' + "\n" +
-'              ... }                                                 ' + "\n" +
-' > qt3 = db._getQueryTemplate("4334:2334");        query by id      ' + "\n" +
-' > qt1.update("select ...");                       update           ' + "\n" +
-' > qt1.delete("4334:2334");                        delete           ' + "\n" +
-'Create query instance:                                              ' + "\n" +
-' > qi1 = qt1.getInstance();                        from tmplate     ' + "\n" +
-' > qi2 = db.createQueryInstance("select...");      without template ' + "\n" +
-' > qi2.bind("key", "value");                                        ' + "\n" +
+getHeadline("Select query help") +
+
+'Create a select query:                                              ' + "\n" +
+' > st = new AvocadoStatement(db, { "query" : "select..." });        ' + "\n" +
+' > st = db._createStatement({ "query" : "select..." });             ' + "\n" +
+'Set query options:                                                  ' + "\n" +
+' > st.setMax(<value>);           set the max. number of results     ' + "\n" +
+'                                 to be transferred per roundtrip    ' + "\n" +
+' > st.setCount(<value>);         set count flag (return number of   ' + "\n" +
+'                                 results in "count" attribute)      ' + "\n" +
+'Get query options:                                                  ' + "\n" +
+' > st.getMax();                  return the max. number of results  ' + "\n" +
+'                                 to be transferred per roundtrip    ' + "\n" +
+' > st.getCount();                return count flag (return number of' + "\n" +
+'                                 results in "count" attribute)      ' + "\n" +
+' > st.getQuery();                return query string                ' + "\n" +
+'                                 results in "count" attribute)      ' + "\n" +
+'Bind parameters to a query:                                         ' + "\n" +
+' > st.bind(<key>, <value>);      bind single variable               ' + "\n" +
+' > st.bind(<values>);            bind multiple variables            ' + "\n" +
 'Execute query:                                                      ' + "\n" +
-' > cu1 = qi1.execute();                            returns cursor   ' + "\n" +
-'Get all elements:                                                   ' + "\n" +
-' > el = cu1.elements();                                             ' + "\n" +
-'or loop over all results:                                           ' + "\n" +
-' > while (cu1.hasNext()) { print( cu1.next() ); }                   ';
+' > c = st.execute();             returns a cursor                   ' + "\n" +
+'Get all results in an array:                                        ' + "\n" +
+' > e = c.elements();                                                ' + "\n" +
+'Or loop over the result set:                                        ' + "\n" +
+' > while (c.hasNext()) { print( c.next() ); }                       ';
 
 helpAvocadoDatabase = 
 getHeadline("AvocadoDatabase help") +
@@ -1527,12 +1181,8 @@ getHeadline("AvocadoDatabase help") +
 '                                 returns: list of AvocadoCollection ' + "\n" +
 '  _collection(<name>);           get collection by name             ' + "\n" +
 '                                 returns: AvocadoCollection         ' + "\n" +
-'  createQueryTemplate(<data>);   create and return query template   ' + "\n" +
-'                                 returns: AvocadoQueryTemplate      ' + "\n" +
-'  getQueryTemplate(<id>);        get query template by id           ' + "\n" +
-'                                 returns: dvocadoQueryTemplate      ' + "\n" +
-'  createQueryInstance(<data>);   create and return query instance   ' + "\n" +
-'                                 returns: AvocadoQueryInstance      ' + "\n" +
+'  _createStatement(<data>);      create and return select query     ' + "\n" +
+'                                 returns: AvocadoStatement          ' + "\n" +
 '  _help();                       this help                          ' + "\n" +
 'Attributes:                                                         ' + "\n" +
 '  <collection names>                                                ';
@@ -1567,38 +1217,42 @@ getHeadline("AvocadoQueryCursor help") +
 'Attributes:                                                         ' + "\n" +
 '  _database                             database object             ' + "\n" +
 'Example:                                                            ' + "\n" +
-' > qi2 = db.createQueryInstance("select a from colA a");            ' + "\n" +
-' > cu1 = qi2.execute();                                             ' + "\n" +
-' > documents = cu1.elements();                                      ' + "\n" +
-' > cu1 = qi2.execute();                                             ' + "\n" +
-' > while (cu1.hasNext()) { print( cu1.next() ); }                   ';
+' > st = db._createStatement({ "query" : "select a from colA a" });  ' + "\n" +
+' > c = st.execute();                                                ' + "\n" +
+' > documents = c.elements();                                        ' + "\n" +
+' > c = st.execute();                                                ' + "\n" +
+' > while (c.hasNext()) { print( c.next() ); }                       ';
 
-helpAvocadoQueryInstance = 
-getHeadline("AvocadoQueryInstance help") +
-'AvocadoQueryInstance constructor:                                   ' + "\n" +
-' > qi1 = qt1.getInstance();                                         ' + "\n" +
-' > qi2 = db._createQueryInstance("select ....");                    ' + "\n" +
+helpAvocadoStatement = 
+getHeadline("AvocadoStatement help") +
+'AvocadoStatement constructor:                                       ' + "\n" +
+' > st = new AvocadoStatement({ "query" : "select..." });            ' + "\n" +
+' > st = db._createStatement({ "query" : "select ...." });           ' + "\n" +
 'Functions:                                                          ' + "\n" +
-'  bind(<key>, <value>);                 bind vars                   ' + "\n" +
-'  setCount(true);                                                   ' + "\n" +
-'  setMax(<max>);                                                    ' + "\n" +
-'  execute();                            execute query and return    ' + "\n" +
-'                                        query cursor                ' + "\n" +
-'  _help();                              this help                   ' + "\n" +
+'  bind(<key>, <value>);          bind single variable               ' + "\n" +
+'  bind(<values>);                bind multiple variables            ' + "\n" +
+'  setMax(<max>);                 set max. number of results         ' + "\n" +
+'                                 to be transferred per roundtrip    ' + "\n" +
+'  setCount(<value>);             set count flag (return number of   ' + "\n" +
+'                                 results in "count" attribute)      ' + "\n" +
+'  getMax();                      return max. number of results      ' + "\n" +
+'                                 to be transferred per roundtrip    ' + "\n" +
+'  getCount();                    return count flag (return number of' + "\n" +
+'                                 results in "count" attribute)      ' + "\n" +
+'  getQuery();                    return query string                ' + "\n" +
+'  execute();                     execute query and return cursor    ' + "\n" +
+'  _help();                       this help                          ' + "\n" +
 'Attributes:                                                         ' + "\n" +
-'  _database                             database object             ' + "\n" +
-'  bindVars                              bind vars                   ' + "\n" +
-'  doCount                               count results in server     ' + "\n" +
-'  maxResults                            maximum number of results   ' + "\n" +
-'  query                                 the query string            ' + "\n" +
+'  _database                      database object                    ' + "\n" +
 'Example:                                                            ' + "\n" +
-' > qi2 = db._createQueryInstance("select a from colA a              ' + "\n" +
-'                             where a.x = @a@ and a.y = @b@");       ' + "\n" +
-' > qi2.bind("a", "hello");                                          ' + "\n" +
-' > qi2.bind("b", "world");                                          ' + "\n" +
-' > cu1 = qi1.execute();                                             ';
-
-helpAvocadoQueryTemplate = 
+' > st = db._createStatement({ "query" : "select a from colA a       ' + "\n" +
+'                              where a.x = @a@ and a.y = @b@" });    ' + "\n" +
+' > st.bind("a", "hello");                                           ' + "\n" +
+' > st.bind("b", "world");                                           ' + "\n" +
+' > c = st.execute();                                                ' + "\n" +
+' > print(c.elements());                                             ';
+/*
+helpAvocadoStoredStatement = 
 getHeadline("AvocadoQueryTemplate help") +
 'AvocadoQueryTemplate constructor:                                   ' + "\n" +
 ' > qt1 = db._createQueryTemplate("select ...");    simple query     ' + "\n" +
@@ -1622,7 +1276,7 @@ getHeadline("AvocadoQueryTemplate help") +
 ' > qt1.update("select a from collA a");                             ' + "\n" +
 ' > qi1 = qt1.getInstance();                                         ' + "\n" +
 ' > qt1.delete("4334:2334");                                         ';
-
+*/
 helpExtended = 
 getHeadline("More help") +
 'Pager:                                                              ' + "\n" +

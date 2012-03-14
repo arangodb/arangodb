@@ -31,43 +31,48 @@
 /// <ol>
 ///  <li>Querying and Managing Documents
 ///   <ol>
-///    <li>@RestDocument
+///    <li>Documents
 ///     <ol>
-///      <li>@ref RestCollectionCreate "POST /collection/@FA{<collection-identifier>}"</li>
-///      <li>@ref RestCollectionRead "GET /collection/@FA{<collection-identifier>}/@FA{<document-identifier>}"</li>
-///      <li>@ref RestCollectionReadAll "GET /collection/@FA{<collection-identifier>}"</li>
-///      <li>@ref RestCollectionUpdate "PUT /collection/@FA{<collection-identifier>}/@FA{<document-identifier>}"</li>
-///      <li>@ref RestCollectionDelete "DELETE /collection/@FA{<collection-identifier>}/@FA{<document-identifier>}"</li>
-///      <li>@ref RestCollectionHead "HEAD /collection/@FA{<collection-identifier>}/@FA{<document-identifier>}"</li>
+///      <li>@ref RestCollectionCreate "POST /collection/@FA{collection-identifier}"</li>
+///      <li>@ref RestCollectionRead "GET /collection/@FA{collection-identifier}/@FA{document-identifier}"</li>
+///      <li>@ref RestCollectionReadAll "GET /collection/@FA{collection-identifier}"</li>
+///      <li>@ref RestCollectionUpdate "PUT /collection/@FA{collection-identifier}/@FA{document-identifier}"</li>
+///      <li>@ref RestCollectionDelete "DELETE /collection/@FA{collection-identifier}/@FA{document-identifier}"</li>
+///      <li>@ref RestCollectionHead "HEAD /collection/@FA{collection-identifier}/@FA{document-identifier}"</li>
 ///     </ol>
 ///    </li>
-///    <li>Simple Queries
+///    <li>@ref OTWPSimpleQueries
 ///     <ol>
-///      <li>PUT /_api/simple/all</li>
-///      <li>PUT /_api/simple/near</li>
-///      <li>PUT /_api/simple/within</li>
-///      <li>PUT /_api/simple/geo</li>
-///      <li>PUT /_api/simple/by-example</li>
+///      <li>@ref OTWPSimpleQueriesAll "PUT /_api/simple/all"</li>
+///      <li>@ref OTWPSimpleQueriesByExample "PUT /_api/simple/by-example"</li>
+///      <li>@ref OTWPSimpleQueriesNear "PUT /_api/simple/near"</li>
+///      <li>@ref OTWPSimpleQueriesWithin "PUT /_api/simple/within"</li>
 ///     </ol>
 ///    </li>
 ///    <li>Queries and Cursors
+///     <ol>
+///      <li>@ref RestCursorPost "POST /_api/cursor"</li>
+///      <li>@ref RestCursorPut "PUT /_api/cursor/@FA{cursor-identifier}"</li>
+///      <li>@ref RestCursorDelete "DELETE /_api/cursor/@FA{cursor-identifier}"</li>
+///      <li>@ref RestQueryPost "POST /_api/query"</li>
+///     </ol>
 ///    </li>
 ///   </ol>
 ///  </li>
-///  <li>Querying and Managing Collections
+///  <li>@ref OTWPDatabase
 ///   <ol>
-///    <li>GET /_api/vocbase/collections</li>
-///    <li>GET /_api/vocbase/collection/@FA{collection-identifier}</li>
-///    <li>POST /_api/vocbase/collection</li>
+///    <li>@ref OTWPDatabaseCollections "GET /_api/database/collections"</li>
+///    <li>@ref OTWPDatabaseCollection "GET /_api/datebase/collection/@FA{collection-identifier}"</li>
+///    <li>@ref OTWPDatabaseCollectionCreate "POST /_api/datebase/collection"</li>
 ///   </ol>
 ///  </li>
 ///  <li>Administration
 ///   <ol>
-///    <li>GET /_admin/collection/@FA{collection-identifier}</li>
-///    <li>POST /_admin/vocbase/collection/index</li>
-///    <li>GET /_admin/vocbase/collection/indexes</li>
-///    <li>GET /_admin/vocbase/collection/index/@FA{index-identifier}</li>
-///    <li>DELETE /_admin/vocbase/collection/index/@FA{index-identifier}</li>
+///    <li>GET /_admin/database/collection/@FA{collection-identifier}</li>
+///    <li>POST /_admin/database/collection/@FA{collection-identifier}/index</li>
+///    <li>GET /_admin/database/collection/@FA{collection-identifier}/indexes</li>
+///    <li>GET /_admin/vocbase/collection/@FA{collection-identifier}/index/@FA{index-identifier}</li>
+///    <li>DELETE /_admin/vocbase/collection/@FA{collection-identifier}/index/@FA{index-identifier}</li>
 ///   </ol>
 ///  </li>
 /// </ol>
@@ -79,6 +84,41 @@
 /// <hr>
 /// @copydoc OTWPTOC
 /// <hr>
+///
+/// @section OTWPSimpleQueries Simple Queries
+/////////////////////////////////////////////
+///
+/// @anchor OTWPSimpleQueriesAll
+/// @copydetails JSA_PUT_api_simple_all
+/// <hr>
+///
+/// @anchor OTWPSimpleQueriesByExample
+/// @copydetails JSA_PUT_api_simple_by_example
+/// <hr>
+///
+/// @anchor OTWPSimpleQueriesNear
+/// @copydetails JSA_PUT_api_simple_near
+/// <hr>
+///
+/// @anchor OTWPSimpleQueriesWithin
+/// @copydetails JSA_PUT_api_simple_within
+/// <hr>
+///
+/// @section OTWPDatabase Querying and Managing Collections
+///////////////////////////////////////////////////////////
+///
+/// @anchor OTWPDatabaseCollections
+/// @copydetails JSA_GET_api_datebase_collections
+/// <hr>
+///
+/// @anchor OTWPDatabaseCollection
+/// @copydetails JSF_GET_api_database_collection
+/// <hr>
+///
+/// @anchor OTWPDatabaseCollectionCreate
+/// @copydetails JSF_POST_api_database_collection
+/// <hr>
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

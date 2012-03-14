@@ -76,14 +76,14 @@ function aqlKeywordsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function executeQuery (query, expectError) {
-    var aQuery = AQL_PREPARE(db, query);
+    var cursor = AQL_STATEMENT(db, query, undefined);
     if (expectError) {
-      assertTrue(aQuery instanceof AvocadoQueryError);
+      assertTrue(cursor instanceof AvocadoQueryError);
       return null;
     }
      
-    assertFalse(aQuery instanceof AvocadoQueryError);
-    return aQuery.execute();
+    assertFalse(cursor instanceof AvocadoQueryError);
+    return cursor;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -91,15 +91,15 @@ function aqlKeywordsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function getQueryResults (query, expectError) {
-    var aCursor = this.executeQuery(query, expectError);
-    if (aCursor) {
+    var cursor = this.executeQuery(query, expectError);
+    if (cursor) {
       var results = [ ];
-      while (aCursor.hasNext()) {
-        results.push(aCursor.next());
+      while (cursor.hasNext()) {
+        results.push(cursor.next());
       }
       return results;
     }
-    return aCursor;
+    return cursor;
   }
 
 ////////////////////////////////////////////////////////////////////////////////

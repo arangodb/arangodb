@@ -49,17 +49,26 @@ r1 = re.compile(r'//')
 r2 = re.compile(r'function\s*([a-zA-Z0-9_]*)\s*\((.*)\)\s*{')
 r3 = re.compile(r'^\s*$')
 r4 = re.compile(r'\s*([a-zA-Z0-9\.]*)\s*=\s*function\s*\((.*)\)\s*{')
-r5 = re.compile(r'^actions\.defineHttp\("(.*)",')
+r5 = re.compile(r'^actions\.defineHttp\(')
+r6 = re.compile(r'^/// @fn ([a-zA-Z0-_]*)\s*')
 
 f = open(file_name, "r")
 
 comment = False
 other = True
 count = 0;
+fn = None
 
 for line in f:
     line = line.rstrip('\n')
     count = count + 1
+
+    # check for action name
+    m = r6.match(line)
+
+    if m:
+        fn = m.group(1)
+        continue
 
     # check for comments
     m = r1.match(line)
@@ -121,6 +130,17 @@ for line in f:
             sep = ", "
 
         func = func + ")"
+
+        print "%s {}" % func
+        other = True
+        continue
+
+    # check for action definition
+    m = r5.match(line)
+
+    if m and fn:
+        func = "void " + fn + " ()"
+        fn = None
 
         print "%s {}" % func
         other = True

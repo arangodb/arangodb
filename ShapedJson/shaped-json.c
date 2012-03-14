@@ -979,14 +979,17 @@ static TRI_json_t* JsonShapeDataArray (TRI_shaper_t* shaper,
   TRI_shape_size_t const* offsetsF;
   TRI_shape_size_t const* offsetsV;
 
+  array = TRI_CreateArrayJson();
+  if (!array) {
+    return NULL;
+  }
+
   s = (TRI_array_shape_t const*) shape;
   f = s->_fixedEntries;
   v = s->_variableEntries;
   n = f + v;
 
   qtr = (char const*) shape;
-  array = TRI_CreateArrayJson();
-
   qtr += sizeof(TRI_array_shape_t);
 
   sids = (TRI_shape_sid_t const*) qtr;
@@ -1084,9 +1087,13 @@ static TRI_json_t* JsonShapeDataList (TRI_shaper_t* shaper,
 
   TRI_shape_length_list_t l;
   TRI_shape_length_list_t i;
+  
+  list = TRI_CreateListJson();
+  if (!list) {
+    return NULL;
+  }
 
   ptr = data;
-  list = TRI_CreateListJson();
   l = * (TRI_shape_length_list_t const*) ptr;
 
   ptr += sizeof(TRI_shape_length_list_t);

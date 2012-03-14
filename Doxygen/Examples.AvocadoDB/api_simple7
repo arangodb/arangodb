@@ -1,0 +1,9 @@
+> curl --data @- -X PUT --dump - http://localhost:8530/_api/simple/by-example
+{ "collection" : "five", "example" : { "b" : "One" } }
+
+HTTP/1.1 200 OK
+content-type: application/json
+
+[
+ {"a":1,"b":"One","_id":"138663:1711527","_rev":1711527}
+]

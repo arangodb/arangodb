@@ -1,0 +1,9 @@
+PUT /_api/cursor/551839634 HTTP/1.1
+
+
+HTTP/1.1 404 Not Found
+connection: Keep-Alive
+content-type: application/json
+server: triagens GmbH High-Performance HTTP Server
+
+{"error":true,"code":404,"errorNum":40404,"errorMessage":"Cursor not found"}

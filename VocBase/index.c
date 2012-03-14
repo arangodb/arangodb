@@ -921,6 +921,9 @@ static TRI_json_t* JsonGeoIndex (TRI_index_t* idx, TRI_doc_collection_t* collect
 
   // create json
   json = TRI_CreateArrayJson();
+  if (!json) {
+    return NULL;
+  }
 
   TRI_Insert2ArrayJson(json, "iid", TRI_CreateNumberJson(idx->_iid));
   TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("geo"));
@@ -963,6 +966,9 @@ static TRI_json_t* JsonGeoIndex2 (TRI_index_t* idx, TRI_doc_collection_t* collec
 
   // create json
   json = TRI_CreateArrayJson();
+  if (!json) {
+    return NULL;
+  }
 
   TRI_Insert2ArrayJson(json, "iid", TRI_CreateNumberJson(idx->_iid));
   TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("geo"));

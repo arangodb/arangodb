@@ -35,6 +35,8 @@
 #include <BasicsC/threads.h>
 #include <BasicsC/vector.h>
 
+#include "VocBase/voc-error.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -82,54 +84,6 @@ extern size_t PageSize;
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief error codes
-///
-/// If you add a new error code, you must also add the description in
-/// @ref TRI_InitialiseVocBase.
-///
-/// Please note that the error numbers defined here must not conflict with error
-/// numbers defined for other parts of the program (e.g. in 
-/// VocBase/query-error.h)
-////////////////////////////////////////////////////////////////////////////////
-
-enum {
-
-  // general errors
-  TRI_VOC_ERROR_ILLEGAL_STATE        = 1000,
-  TRI_VOC_ERROR_SHAPER_FAILED        = 1001,
-  TRI_VOC_ERROR_CORRUPTED_DATAFILE   = 1002,
-  TRI_VOC_ERROR_MMAP_FAILED          = 1003,
-  TRI_VOC_ERROR_MSYNC_FAILED         = 1004,
-  TRI_VOC_ERROR_NO_JOURNAL           = 1005,
-  TRI_VOC_ERROR_DATAFILE_SEALED      = 1006,
-  TRI_VOC_ERROR_CORRUPTED_COLLECTION = 1007,
-  TRI_VOC_ERROR_UNKNOWN_TYPE         = 1008,
-  TRI_VOC_ERROR_ILLEGAL_PARAMETER    = 1009,
-  TRI_VOC_ERROR_INDEX_EXISTS         = 1010,
-  TRI_VOC_ERROR_CONFLICT             = 1011,
-
-  // open errors
-  TRI_VOC_ERROR_WRONG_PATH = 2000,
-
-  // close errors
-  TRI_VOC_ERROR_CANNOT_RENAME = 3001,
-
-  // write errors
-  TRI_VOC_ERROR_WRITE_FAILED     = 4000,
-  TRI_VOC_ERROR_READ_ONLY        = 4001,
-  TRI_VOC_ERROR_DATAFILE_FULL    = 4002,
-  TRI_VOC_ERROR_FILESYSTEM_FULL  = 4004,
-
-  // read errors
-  TRI_VOC_ERROR_READ_FAILED         = 5000,
-  TRI_VOC_ERROR_FILE_NOT_FOUND      = 5001,
-  TRI_VOC_ERROR_FILE_NOT_ACCESSIBLE = 5002,
-
-  // document errors
-  TRI_VOC_ERROR_DOCUMENT_NOT_FOUND = 6000
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tick type (48bit)
@@ -231,7 +185,7 @@ typedef struct TRI_vocbase_s {
   TRI_thread_t _synchroniser;
   TRI_thread_t _compactor;
 
-  struct TRI_shadow_store_s* _templates;
+  struct TRI_shadow_document_store_s* _statements;
   struct TRI_shadow_store_s* _cursors;
 }
 TRI_vocbase_t;
