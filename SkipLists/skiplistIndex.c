@@ -64,12 +64,8 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
   size_t listLength;
   TRI_shaped_json_t leftElement;
   TRI_shaped_json_t rightElement;
-  TRI_shape_t leftElementShape;
-  TRI_shape_t rightElementShape;
   char* leftString;
   char* rightString;
-  const TRI_array_shape_t* leftArrayShape;
-  const TRI_array_shape_t* rightArrayShape;
   
   
   leftShape  = leftShaper->lookupShapeId(leftShaper, left->_sid);
@@ -344,8 +340,6 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
 static int CompareShapedJsonShapedJson (const TRI_shaped_json_t* left, const TRI_shaped_json_t* right, TRI_shaper_t* leftShaper, TRI_shaper_t* rightShaper) {
 
   int result;
-  const TRI_shape_t* leftShape;
-  const TRI_shape_t* rightShape;
   
   // ............................................................................
   // the following order is currently defined for placing an order on documents
@@ -605,7 +599,7 @@ static void* SkiplistIteration(TRI_skiplist_iterator_t* iterator, int64_t jumpSi
       return NULL;
     }
     
-    if (currentNode = interval->_leftEndPoint) {
+    if (currentNode == interval->_leftEndPoint) {
       return NULL;
     }    
 
@@ -1042,10 +1036,8 @@ int SkiplistIndex_add(SkiplistIndex* skiplistIndex, SkiplistIndexElement* elemen
 TRI_skiplist_iterator_t* SkiplistIndex_find(SkiplistIndex* skiplistIndex, TRI_vector_t* shapeList, TRI_sl_operator_t* slOperator) {
   SkiplistIndexElement             values;
   TRI_skiplist_iterator_t*         results;
-  TRI_sl_logical_operator_t*       logicalOperator;
   TRI_sl_relation_operator_t*      relationOperator;
   TRI_skiplist_iterator_interval_t interval;
-  void*                            lookupPoint;
  
  
   results = TRI_Allocate(sizeof(TRI_skiplist_iterator_t));    
@@ -1462,7 +1454,6 @@ int MultiSkiplistIndex_add(SkiplistIndex* skiplistIndex, SkiplistIndexElement* e
 TRI_skiplist_iterator_t* MultiSkiplistIndex_find(SkiplistIndex* skiplistIndex, TRI_vector_t* shapeList, TRI_sl_operator_t* slOperator) {
   SkiplistIndexElement             values;
   TRI_skiplist_iterator_t*         results;
-  TRI_sl_logical_operator_t*       logicalOperator;
   TRI_sl_relation_operator_t*      relationOperator;
   TRI_skiplist_iterator_interval_t interval;
  
