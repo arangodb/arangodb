@@ -41,7 +41,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 static void AppendChar (TRI_string_buffer_t * self, char chr) {
-  *(self->_buffer + self->_off++) = chr;
+  *self->_current++ = chr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -49,7 +49,7 @@ static void AppendChar (TRI_string_buffer_t * self, char chr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static size_t Remaining (TRI_string_buffer_t * self) {
-  return self->_len - self->_off;
+  return self->_len - (self->_current - self->_buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -62,10 +62,15 @@ static void Reserve (TRI_string_buffer_t * self, size_t size) {
   }
 
   if (size > Remaining(self)) {
+    ptrdiff_t off;
+
+    off = self->_current - self->_buffer;
+
     self->_len = (size_t)(1.2 * (self->_len + size));
     self->_buffer = TRI_Reallocate(self->_buffer, self->_len + 1);
+    self->_current = self->_buffer + off;
 
-    memset(self->_buffer + self->_off, 0, Remaining(self) + 1);
+    memset(self->_current, 0, Remaining(self) + 1);
 
 #if I_CARE_ABOUT_MALLOC_FAILURES
     if (NULL == self->_buffer) {
@@ -123,7 +128,7 @@ void  TRI_FreeStringBuffer (TRI_string_buffer_t * self) {
 void TRI_DestroyStringBuffer (TRI_string_buffer_t * self) {
   if (self->_buffer != NULL) {
 
-    // somewhat paranoid?
+    // somewhat paranoid? don't ask me
     memset(self->_buffer, 0, self->_len);
     TRI_Free(self->_buffer);
 
@@ -149,17 +154,17 @@ void TRI_DestroyStringBuffer (TRI_string_buffer_t * self) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SwapStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t * other) {
-  char * otherBuffer = other->_buffer;
-  ptrdiff_t otherOff = other->_off;
-  size_t otherLen    = other->_len;
+  char * otherBuffer  = other->_buffer;
+  char * otherCurrent = other->_current;
+  size_t otherLen     = other->_len;
 
-  other->_buffer     = self->_buffer;
-  other->_off        = self->_off;
-  other->_len        = self->_len;
+  other->_buffer      = self->_buffer;
+  other->_current     = self->_current;
+  other->_len         = self->_len;
 
-  self->_buffer      = otherBuffer;
-  self->_off         = otherOff;
-  self->_len         = otherLen;
+  self->_buffer       = otherBuffer;
+  self->_current      = otherCurrent;
+  self->_len          = otherLen;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -175,7 +180,7 @@ char const * TRI_BeginStringBuffer (TRI_string_buffer_t const * self) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char const * TRI_EndStringBuffer (TRI_string_buffer_t const * self) {
-  return self->_buffer + self->_off;
+  return self->_current;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -183,7 +188,7 @@ char const * TRI_EndStringBuffer (TRI_string_buffer_t const * self) {
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TRI_LengthStringBuffer (TRI_string_buffer_t const * self) {
-  return self->_off;
+  return self->_current - self->_buffer;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -191,7 +196,7 @@ size_t TRI_LengthStringBuffer (TRI_string_buffer_t const * self) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_EmptyStringBuffer (TRI_string_buffer_t const * self) {
-  return self->_off == 0;
+  return self->_buffer == self->_current;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -199,8 +204,8 @@ bool TRI_EmptyStringBuffer (TRI_string_buffer_t const * self) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ClearStringBuffer (TRI_string_buffer_t * self) {
-  self->_off = 0; 
-  memset(self->_buffer, 0, self->_len+1);
+  self->_current = self->_buffer; 
+  memset(self->_buffer, 0, self->_len + 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -208,7 +213,7 @@ void TRI_ClearStringBuffer (TRI_string_buffer_t * self) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_CopyStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t const * source) {
-  TRI_ReplaceStringStringBuffer(self, source->_buffer, source->_off);
+  TRI_ReplaceStringStringBuffer(self, source->_buffer, source->_current - source->_buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -216,13 +221,15 @@ void TRI_CopyStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t const
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_EraseFrontStringBuffer (TRI_string_buffer_t * self, size_t len) {
-  if (self->_off <= len) {
+  size_t off = self->_current - self->_buffer;
+
+  if (off <= len) {
     TRI_ClearStringBuffer(self); 
   }
   else if (0 < len) {
-    memmove(self->_buffer, self->_buffer+len, self->_off - len);
-    self->_off -= len;
-    memset(self->_buffer + self->_off, 0, self->_len); 
+    memmove(self->_buffer, self->_buffer + len, off - len);
+    self->_current -= len;
+    memset(self->_current, 0, self->_len); 
   }
 }
 
@@ -231,7 +238,8 @@ void TRI_EraseFrontStringBuffer (TRI_string_buffer_t * self, size_t len) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ReplaceStringStringBuffer (TRI_string_buffer_t * self, char const * str, size_t len) {
-  self->_off = 0;
+  self->_current = self->_buffer;
+
   TRI_AppendString2StringBuffer(self, str, len);
 }
 
@@ -240,9 +248,9 @@ void TRI_ReplaceStringStringBuffer (TRI_string_buffer_t * self, char const * str
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ReplaceStringBufferStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t const * text) {
-  self->_off = 0; 
+  self->_current = self->_buffer;
 
-  TRI_AppendString2StringBuffer(self, text->_buffer, text->_off);
+  TRI_AppendString2StringBuffer(self, text->_buffer, text->_current - text->_buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -267,10 +275,9 @@ void TRI_ReplaceStringBufferStringBuffer (TRI_string_buffer_t * self, TRI_string
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AppendCharStringBuffer (TRI_string_buffer_t * self, char chr) {
-  Reserve(self, 2);
+  Reserve(self, 1);
 
-  *(self->_buffer + self->_off) = chr;
-  ++(self->_off);
+  AppendChar(self, chr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -282,8 +289,8 @@ void TRI_AppendStringStringBuffer (TRI_string_buffer_t * self, char const * str)
 
   Reserve(self, len);
 
-  memcpy((self->_buffer + self->_off), str, len);
-  self->_off += len;
+  memcpy(self->_current, str, len);
+  self->_current += len;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -296,8 +303,8 @@ void TRI_AppendString2StringBuffer (TRI_string_buffer_t * self, char const * str
   }
   else {
     Reserve(self, len);
-    memcpy(self->_buffer+self->_off, str, len);
-    self->_off += len;
+    memcpy(self->_current, str, len);
+    self->_current += len;
   }
 }
 
@@ -306,7 +313,7 @@ void TRI_AppendString2StringBuffer (TRI_string_buffer_t * self, char const * str
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AppendStringBufferStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t const * text) {
-  TRI_AppendString2StringBuffer(self, text->_buffer, text->_off);
+  TRI_AppendString2StringBuffer(self, text->_buffer, text->_current - text->_buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

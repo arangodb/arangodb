@@ -48,8 +48,8 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_string_buffer_s {
-  char * _buffer;
-  ptrdiff_t _off;
+  char* _buffer;
+  char* _current;
   size_t _len;
 }
 TRI_string_buffer_t;
