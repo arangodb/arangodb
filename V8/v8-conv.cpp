@@ -1176,7 +1176,7 @@ v8::Handle<v8::Value> TRI_ObjectReference (TRI_voc_cid_t cid, TRI_voc_did_t did)
 
   v8::Handle<v8::String> ref = v8::String::New(buffer._buffer);
 
-  TRI_DestroyStringBuffer(&buffer);
+  TRI_AnnihilateStringBuffer(&buffer);
 
   return scope.Close(ref);
 }
@@ -1281,6 +1281,7 @@ bool TRI_ObjectDocumentPointer (TRI_doc_collection_t* collection,
 
   if (result->IsObject()) {
     result->ToObject()->Set(v8g->DidKey, TRI_ObjectReference(collection->base._cid, document->_did));
+    result->ToObject()->Set(v8g->RevKey, v8::Number::New(document->_rid));
 
     type = ((TRI_df_marker_t*) document->_data)->_type;
 

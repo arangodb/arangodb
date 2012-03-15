@@ -114,7 +114,7 @@ namespace triagens {
     }
     
     void SimpleHttpResult::addHeaderField (string const& key, string const& value) {
-      string k = StringUtils::tolower(key);
+      string k = StringUtils::trim(StringUtils::tolower(key));
 
       if (k == "http/1.1") {
         if (value.length() > 2) {

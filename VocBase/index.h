@@ -35,6 +35,7 @@
 #include "GeoIndex/GeoIndex.h"
 #include "HashIndex/hashindex.h"
 #include "SkipLists/skiplistIndex.h"
+#include "SkipLists/sl-operator.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -379,7 +380,7 @@ HashIndexElements* TRI_LookupHashIndex (TRI_index_t*, TRI_json_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 
-SkiplistIndexElements* TRI_LookupSkiplistIndex (TRI_index_t*, TRI_json_t*);
+TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t*, TRI_sl_operator_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a hash-index

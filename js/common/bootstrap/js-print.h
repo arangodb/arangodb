@@ -65,7 +65,7 @@ static string JS_common_bootstrap_print =
   "    }\n"
   "  }\n"
   "\n"
-  "  if ( typeof(COLOR_OUTPUT_RESET) != \"undefined\") {\n"
+  "  if (typeof(COLOR_OUTPUT) != \"undefined\" && typeof(COLOR_OUTPUT_RESET) != \"undefined\") {\n"
   "    internal.output(COLOR_OUTPUT_RESET);\n"
   "  }\n"
   "\n"

@@ -646,7 +646,7 @@ AvocadoDatabase.prototype.toString = function () {
 function AvocadoStoredStatement (database, data) {
   this._database = database;
   this._doCount = false;
-  this._maxResults = null;
+  this._batchSize = null;
   this._bindVars = {};
   this._id = null;
   this.document = {
@@ -834,9 +834,9 @@ AvocadoStoredStatement.prototype.setCount = function (bool) {
 /// iterating over the result documents of a cursor.
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoStoredStatement.prototype.setMax = function (value) {
+AvocadoStoredStatement.prototype.setBatchSize = function (value) {
   if (parseInt(value) > 0) {
-    this._maxResults = parseInt(value);
+    this._batchSize = parseInt(value);
   }
 }
 
@@ -860,8 +860,8 @@ AvocadoStoredStatement.prototype.execute = function () {
     "_id" : this._id
   }
 
-  if (this._maxResults) {
-    body["maxResults"] = this._maxResults;
+  if (this._batchSize) {
+    body["batchSize"] = this._batchSize;
   }
   
   var str = this._database._connection.post("/_api/cursor", JSON.stringify(body));
@@ -921,7 +921,7 @@ AvocadoDatabase.prototype._getStoredStatement = function (data) {
 function AvocadoStatement (database, data) {
   this._database = database;
   this._doCount = false;
-  this._maxResults = null;
+  this._batchSize = null;
   this._bindVars = {};
   
   if (!(data instanceof Object)) {
@@ -936,8 +936,8 @@ function AvocadoStatement (database, data) {
   if (data.count != undefined) {
     this.setCount(data.count);
   }
-  if (data.max != undefined) {
-    this.setMax(data.max);
+  if (data.batchSize != undefined) {
+    this.setBatchSize(data.batchSize);
   }
 }
 
@@ -999,7 +999,7 @@ AvocadoStatement.prototype.getCount = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoStatement.prototype.getMax = function () {
-  return this._maxResults;
+  return this._batchSize;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1028,9 +1028,9 @@ AvocadoStatement.prototype.setCount = function (bool) {
 /// iterating over the result documents of a cursor.
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoStatement.prototype.setMax = function (value) {
+AvocadoStatement.prototype.setBatchSize = function (value) {
   if (parseInt(value) > 0) {
-    this._maxResults = parseInt(value);
+    this._batchSize = parseInt(value);
   }
 }
 
@@ -1079,8 +1079,8 @@ AvocadoStatement.prototype.execute = function () {
     "bindVars" : this._bindVars
   }
 
-  if (this._maxResults) {
-    body["maxResults"] = this._maxResults;
+  if (this._batchSize) {
+    body["batchSize"] = this._batchSize;
   }
 
   var str = this._database._connection.post("/_api/cursor", JSON.stringify(body));
@@ -1151,7 +1151,7 @@ getHeadline("Select query help") +
 ' > st = new AvocadoStatement(db, { "query" : "select..." });        ' + "\n" +
 ' > st = db._createStatement({ "query" : "select..." });             ' + "\n" +
 'Set query options:                                                  ' + "\n" +
-' > st.setMax(<value>);           set the max. number of results     ' + "\n" +
+' > st.setBatchSize(<value>);     set the max. number of results     ' + "\n" +
 '                                 to be transferred per roundtrip    ' + "\n" +
 ' > st.setCount(<value>);         set count flag (return number of   ' + "\n" +
 '                                 results in "count" attribute)      ' + "\n" +
@@ -1231,7 +1231,7 @@ getHeadline("AvocadoStatement help") +
 'Functions:                                                          ' + "\n" +
 '  bind(<key>, <value>);          bind single variable               ' + "\n" +
 '  bind(<values>);                bind multiple variables            ' + "\n" +
-'  setMax(<max>);                 set max. number of results         ' + "\n" +
+'  setBatchSize(<max>);           set max. number of results         ' + "\n" +
 '                                 to be transferred per roundtrip    ' + "\n" +
 '  setCount(<value>);             set count flag (return number of   ' + "\n" +
 '                                 results in "count" attribute)      ' + "\n" +

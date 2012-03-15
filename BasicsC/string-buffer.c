@@ -111,7 +111,7 @@ void TRI_InitStringBuffer (TRI_string_buffer_t * self) {
 /// @warning You must call free or destroy after using the string buffer.
 ////////////////////////////////////////////////////////////////////////////////
 
-void  TRI_FreeStringBuffer (TRI_string_buffer_t * self) {
+void  TRI_DestroyStringBuffer (TRI_string_buffer_t * self) {
   if (self->_buffer != NULL) {
     TRI_Free(self->_buffer);
     
@@ -125,7 +125,7 @@ void  TRI_FreeStringBuffer (TRI_string_buffer_t * self) {
 /// @warning You must call free after or destroy using the string buffer.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyStringBuffer (TRI_string_buffer_t * self) {
+void TRI_AnnihilateStringBuffer (TRI_string_buffer_t * self) {
   if (self->_buffer != NULL) {
 
     // somewhat paranoid? don't ask me
@@ -229,7 +229,7 @@ void TRI_EraseFrontStringBuffer (TRI_string_buffer_t * self, size_t len) {
   else if (0 < len) {
     memmove(self->_buffer, self->_buffer + len, off - len);
     self->_current -= len;
-    memset(self->_current, 0, self->_len); 
+    memset(self->_current, 0, self->_len - off); 
   }
 }
 

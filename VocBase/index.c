@@ -1244,18 +1244,6 @@ static bool HashIndexHelper (const TRI_hash_index_t* hashIndex,
         return false;
       }
       
-#ifdef DEBUG_ORESTE
-      TRI_json_t* object;
-      TRI_string_buffer_t buffer;
-      TRI_InitStringBuffer(&buffer);
-      object = TRI_JsonShapedJson(hashIndex->base._collection->_shaper, &shapedObject);
-      TRI_Stringify2Json(&buffer,object);
-      printf("%s:%u:%s\n",__FILE__,__LINE__,buffer._buffer);
-      printf("%s:%u:%f:\n",__FILE__,__LINE__,*((double*)(shapedObject._data.data)));
-      TRI_DestroyStringBuffer(&buffer);
-      TRI_Free(object);
-      object = NULL;                      
-#endif
       
       // ..........................................................................
       // Store the field
@@ -1803,50 +1791,75 @@ HashIndexElements* TRI_LookupHashIndex(TRI_index_t* idx, TRI_json_t* parameterLi
 ////////////////////////////////////////////////////////////////////////////////
 
 // .............................................................................
-// For now return vector list of matches -- later return an iterator?
 // Warning: who ever calls this function is responsible for destroying
-// SkiplistIndexElements* results
+// TRI_skiplist_iterator_t* results
 // .............................................................................
-SkiplistIndexElements* TRI_LookupSkiplistIndex(TRI_index_t* idx, TRI_json_t* parameterList) {
 
-  TRI_skiplist_index_t* skiplistIndex;
-  SkiplistIndexElements* result;
-  SkiplistIndexElement  element;
-  TRI_shaper_t*     shaper;
+static void FillLookupSLOperator(TRI_sl_operator_t* slOperator, TRI_doc_collection_t* collection) {
+  TRI_json_t*                 jsonObject;
+  TRI_shaped_json_t*          shapedObject;
+  TRI_sl_relation_operator_t* relationOperator;
+  TRI_sl_logical_operator_t*  logicalOperator;
   size_t j;
   
-  element.numFields = parameterList->_value._objects._length;
-  element.fields    = TRI_Allocate( sizeof(TRI_json_t) * element.numFields);
-  
-  if (element.fields == NULL) {
-    LOG_WARNING("out-of-memory in LookupSkiplistIndex");
-    return NULL;
-  }  
-    
-  skiplistIndex = (TRI_skiplist_index_t*) idx;
-  shaper = skiplistIndex->base._collection->_shaper;
-    
-  for (j = 0; j < element.numFields; ++j) {
-    TRI_json_t*        jsonObject   = (TRI_json_t*) (TRI_AtVector(&(parameterList->_value._objects),j));
-    TRI_shaped_json_t* shapedObject = TRI_ShapedJsonJson(shaper, jsonObject);
-    element.fields[j] = *shapedObject;
-    TRI_Free(shapedObject);
+  if (slOperator == NULL) {
+    return;
   }
   
-  element.collection = skiplistIndex->base._collection;
+  switch (slOperator->_type) {
+    case TRI_SL_AND_OPERATOR: 
+    case TRI_SL_NOT_OPERATOR:
+    case TRI_SL_OR_OPERATOR: 
+    {
+      logicalOperator = (TRI_sl_logical_operator_t*)(slOperator);
+      FillLookupSLOperator(logicalOperator->_left,collection);
+      FillLookupSLOperator(logicalOperator->_right,collection);
+      break;
+    }
+    
+    case TRI_SL_EQ_OPERATOR: 
+    case TRI_SL_GE_OPERATOR: 
+    case TRI_SL_GT_OPERATOR: 
+    case TRI_SL_NE_OPERATOR: 
+    case TRI_SL_LE_OPERATOR: 
+    case TRI_SL_LT_OPERATOR: 
+    {
+      relationOperator = (TRI_sl_relation_operator_t*)(slOperator);
+      relationOperator->_numFields  = relationOperator->_parameters->_value._objects._length;
+      relationOperator->_fields     = TRI_Allocate( sizeof(TRI_shaped_json_t) * relationOperator->_numFields);
+      relationOperator->_collection = collection;
+      
+      for (j = 0; j < relationOperator->_numFields; ++j) {
+        jsonObject   = (TRI_json_t*) (TRI_AtVector(&(relationOperator->_parameters->_value._objects),j));
+        shapedObject = TRI_ShapedJsonJson(collection->_shaper, jsonObject);
+        relationOperator->_fields[j] = *shapedObject; // shallow copy here is ok
+        TRI_Free(shapedObject); // don't require storage anymore
+      }
+      break;
+    }
+  }
+}
+
+TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex(TRI_index_t* idx, TRI_sl_operator_t* slOperator) {
+  TRI_skiplist_index_t*    skiplistIndex;
+  TRI_skiplist_iterator_t* result;
+  
+  skiplistIndex = (TRI_skiplist_index_t*)(idx);
+  // .........................................................................
+  // fill the relation operators which may be embedded in the slOperator with
+  // additional information. Recall the slOperator is what information was
+  // received from a user for query the skiplist.
+  // .........................................................................
+  
+  FillLookupSLOperator(slOperator, skiplistIndex->base._collection); 
   
   if (skiplistIndex->_unique) {
-    result = SkiplistIndex_find(skiplistIndex->_skiplistIndex, &element);
+    result = SkiplistIndex_find(skiplistIndex->_skiplistIndex, skiplistIndex->_shapeList, slOperator);
   }
   else {
-    result = MultiSkiplistIndex_find(skiplistIndex->_skiplistIndex, &element);
+    result = MultiSkiplistIndex_find(skiplistIndex->_skiplistIndex, skiplistIndex->_shapeList, slOperator);
   }
 
-  for (j = 0; j < element.numFields; ++j) {
-    TRI_DestroyShapedJson(element.fields + j);
-  }
-  TRI_Free(element.fields);
-  
   return result;  
 }
 

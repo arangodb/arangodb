@@ -559,7 +559,7 @@ char* TRI_SlurpFile (char const* filename) {
     if (n < 0) {
       TRI_CLOSE(fd);
 
-      TRI_DestroyStringBuffer(&result);
+      TRI_AnnihilateStringBuffer(&result);
 
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
       return NULL;

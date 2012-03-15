@@ -257,7 +257,7 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
   if (generateDocument) {
     response->body().appendText(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
 
-    TRI_DestroyStringBuffer(&buffer);
+    TRI_AnnihilateStringBuffer(&buffer);
   }
 }
 

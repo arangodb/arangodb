@@ -26,8 +26,7 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#define BOOST_TEST_MODULE
-#include <boost/test/included/unit_test.hpp>
+#include <boost/test/unit_test.hpp>
 
 #include "BasicsC/string-buffer.h"
 
@@ -90,6 +89,7 @@ BOOST_AUTO_TEST_CASE (tst_str_append) {
 
   TRI_string_buffer_t sb, sb2;
   TRI_InitStringBuffer(&sb);
+
   TRI_AppendStringStringBuffer(&sb, STR);
   TRI_AppendStringStringBuffer(&sb, STR);
 
@@ -111,7 +111,9 @@ BOOST_AUTO_TEST_CASE (tst_str_append) {
 
   TRI_ClearStringBuffer(&sb);
   TRI_AppendStringStringBuffer(&sb, STR);
+
   TRI_InitStringBuffer(&sb2);
+
   TRI_AppendStringStringBuffer(&sb2, STR);
   TRI_AppendStringBufferStringBuffer(&sb, &sb2);
 
@@ -123,7 +125,8 @@ BOOST_AUTO_TEST_CASE (tst_str_append) {
   BOOST_TEST_CHECKPOINT("basic append 4 (cmp)");
   BOOST_CHECK_EQUAL_COLLECTIONS(STR, STR + STRLEN(STR), sb2._buffer, sb2._buffer + STRLEN(sb2._buffer));
 
-  TRI_FreeStringBuffer(&sb);
+  TRI_DestroyStringBuffer(&sb);
+  TRI_DestroyStringBuffer(&sb2);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -149,7 +152,7 @@ BOOST_AUTO_TEST_CASE (tst_char_append) {
   BOOST_TEST_CHECKPOINT("char append (cmp)");
   BOOST_CHECK_EQUAL_COLLECTIONS(TWNTYA, TWNTYA + l1, sb._buffer, sb._buffer + l2);
 
-  TRI_FreeStringBuffer(&sb);
+  TRI_DestroyStringBuffer(&sb);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -180,8 +183,8 @@ BOOST_AUTO_TEST_CASE (tst_swp) {
   BOOST_TEST_CHECKPOINT("swp test 2");
   BOOST_CHECK_EQUAL_COLLECTIONS(STR, STR + l2, sb1._buffer, sb1._buffer + l2);
 
-  TRI_FreeStringBuffer(&sb1);
-  TRI_FreeStringBuffer(&sb2);
+  TRI_DestroyStringBuffer(&sb1);
+  TRI_DestroyStringBuffer(&sb2);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -216,7 +219,7 @@ BOOST_AUTO_TEST_CASE (tst_begin_end_empty_clear) {
   BOOST_TEST_CHECKPOINT("empty 2");
   BOOST_CHECK(TRI_EmptyStringBuffer(&sb));
 
-  TRI_FreeStringBuffer(&sb);
+  TRI_DestroyStringBuffer(&sb);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -240,7 +243,7 @@ BOOST_AUTO_TEST_CASE (tst_cpy) {
   l1 = STRLEN(STR);
 
   BOOST_TEST_CHECKPOINT("copy (len)"); 
-  BOOST_CHECK_EQUAL(l1, STRLEN(sb1._buffer));
+  BOOST_CHECK_EQUAL(l1, (int) STRLEN(sb1._buffer));
 
   BOOST_TEST_CHECKPOINT("cpy test 1");
   BOOST_CHECK_EQUAL_COLLECTIONS(STR, STR + l1, sb2._buffer, sb2._buffer + l1);
@@ -248,8 +251,8 @@ BOOST_AUTO_TEST_CASE (tst_cpy) {
   BOOST_TEST_CHECKPOINT("cpy test 2");
   BOOST_CHECK_EQUAL_COLLECTIONS(STR, STR + l1, sb1._buffer, sb1._buffer + l1);
 
-  TRI_FreeStringBuffer(&sb1);
-  TRI_FreeStringBuffer(&sb2);
+  TRI_DestroyStringBuffer(&sb1);
+  TRI_DestroyStringBuffer(&sb2);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -274,7 +277,7 @@ BOOST_AUTO_TEST_CASE (tst_erase_frnt) {
   BOOST_TEST_CHECKPOINT("erase front2");
   BOOST_CHECK(TRI_EmptyStringBuffer(&sb));
 
-  TRI_FreeStringBuffer(&sb);
+  TRI_DestroyStringBuffer(&sb);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -288,6 +291,7 @@ BOOST_AUTO_TEST_CASE (tst_replace) {
   TRI_string_buffer_t sb2;
 
   TRI_InitStringBuffer(&sb);
+
   TRI_AppendStringStringBuffer(&sb, ABC);
   TRI_ReplaceStringStringBuffer(&sb, "REP", 3);
   
@@ -313,6 +317,9 @@ BOOST_AUTO_TEST_CASE (tst_replace) {
 
   BOOST_TEST_CHECKPOINT("replace stringbuffer 1");
   BOOST_CHECK_EQUAL_COLLECTIONS(REP, REP + l, sb._buffer, sb._buffer + l);
+
+  TRI_DestroyStringBuffer(&sb);
+  TRI_DestroyStringBuffer(&sb2);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -347,6 +354,8 @@ BOOST_AUTO_TEST_CASE (tst_smpl_utils) {
 
   BOOST_TEST_CHECKPOINT("append int3");
   BOOST_CHECK_EQUAL_COLLECTIONS(a2341212125, a2341212125 + STRLEN(a2341212125), sb._buffer, sb._buffer + STRLEN(sb._buffer));
+
+  TRI_DestroyStringBuffer(&sb);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -359,7 +368,7 @@ BOOST_AUTO_TEST_CASE (tst_length) {
   TRI_InitStringBuffer(&sb);
 
   BOOST_TEST_CHECKPOINT("length empty");
-  BOOST_CHECK_EQUAL(0, TRI_LengthStringBuffer(&sb));
+  BOOST_CHECK_EQUAL(0, (int) TRI_LengthStringBuffer(&sb));
 
   TRI_AppendStringStringBuffer(&sb, ONETWOTHREE);
 
@@ -370,6 +379,8 @@ BOOST_AUTO_TEST_CASE (tst_length) {
 
   BOOST_TEST_CHECKPOINT("length integer");
   BOOST_CHECK_EQUAL(strlen(ONETWOTHREE) + 3, TRI_LengthStringBuffer(&sb));
+
+  TRI_DestroyStringBuffer(&sb);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

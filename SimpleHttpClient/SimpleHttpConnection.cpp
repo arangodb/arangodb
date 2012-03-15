@@ -51,27 +51,29 @@ namespace triagens {
     // static
     // -----------------------------------------------------------------------------
 
-    double SimpleHttpConnection::_minimalConnectionTimeout = 0.2;    
-    double SimpleHttpConnection::_minimalRequestTimeout = 0.2;    
-    
+    double SimpleHttpConnection::_minimalConnectionTimeout = 0.2;
+    double SimpleHttpConnection::_minimalRequestTimeout = 0.2;
+
     // -----------------------------------------------------------------------------
     // constructors and destructors
     // -----------------------------------------------------------------------------
 
     SimpleHttpConnection::SimpleHttpConnection (string const& hostname, int port, double connTimeout)
     : _hostname (hostname), _port (port) {
-      
+
       if (connTimeout > _minimalConnectionTimeout) {
         _connectionTimeout = connTimeout;
       }
       else {
         _connectionTimeout = _minimalConnectionTimeout;
       }
-      
+
       _isConnected = false;
       _socket = -1;
-      
+
       clearErrorMessage();
+
+      _readBufferSize = 0;
     }
 
     SimpleHttpConnection::~SimpleHttpConnection () {
@@ -80,7 +82,7 @@ namespace triagens {
       }
     }
 
-    bool SimpleHttpConnection::connect() {
+    bool SimpleHttpConnection::connect () {
       if (_isConnected) {
         return true;
       }
@@ -90,6 +92,8 @@ namespace triagens {
     }
 
     bool SimpleHttpConnection::close () {
+      _readBufferSize = 0;
+
       if (_isConnected) {
         ::close(_socket);
         _isConnected = false;
@@ -103,7 +107,7 @@ namespace triagens {
       if (!writeable(timeout)) {
         return false;
       }
-      
+
 #ifdef __APPLE__
       int status = ::send(_socket, str.c_str(), str.size(), 0);
 #else
@@ -118,54 +122,107 @@ namespace triagens {
         return true;
       }
     }
-    
-    bool SimpleHttpConnection::readLn (std::string& line, double timeout) {
-      stringstream buffer; 
-      char c = ' ';
-      
-      // TODO: timeout
-      while (c != '\n') {
-        if (!readable(timeout)) {
-          return false;
-        }
-        
-        int status = ::recv (_socket, &c, 1, 0 );
 
-        if ( status == -1 ) {
-          setErrorMessage("::recv failed with: " + string(strerror(errno)), errno);
-          return false;
+    bool SimpleHttpConnection::readLn (std::string& line, double timeout) {
+      stringstream result;
+
+      if (_readBufferSize > 0) {
+        char* pos = (char*) memchr(_readBuffer, '\n', _readBufferSize);
+        if (pos) {
+          // line end found
+
+          size_t len_line = pos - _readBuffer;
+          line = string(_readBuffer, len_line);
+
+          _readBufferSize = _readBufferSize - len_line - 1;
+          memmove(_readBuffer, pos + 1, _readBufferSize);
+
+          return true;
         }
-        if ( status == 0 ) {
+
+        result.write(_readBuffer, _readBufferSize);
+        _readBufferSize = 0;
+      }
+
+      bool ok = false;
+
+      double start = now();
+      double runtime = 0.0;
+      
+      while (runtime < timeout && readable(timeout - runtime)) {
+        int len_read = ::read(_socket, _readBuffer, READBUFFER_SIZE - 1);
+
+        if (len_read <= 0) {
+          // error: stop reading
           break;
         }
-        buffer << c;
-      }      
-      
-      line = buffer.str();
-      return true;
+
+        char* pos = (char*) memchr(_readBuffer, '\n', len_read);
+        if (pos) {
+          // line end found
+
+          size_t len_line = pos - _readBuffer;
+          result.write(_readBuffer, len_line);
+
+          _readBufferSize = len_read - len_line - 1;
+          memmove(_readBuffer, pos + 1, _readBufferSize);
+
+          ok = true;
+          break;
+        }
+        result.write(_readBuffer, len_read);
+        runtime = now() - start;
+      }
+
+      line = result.str();
+      return ok;
     }
-    
-    size_t SimpleHttpConnection::read (stringstream& stream, size_t contentLength, double timeout) {      
+
+    size_t SimpleHttpConnection::read (stringstream& stream, size_t contentLength, double timeout) {
+      size_t toRead = contentLength;
+
+      if (_readBufferSize > 0) {
+        if (_readBufferSize == toRead) {
+          stream.write(_readBuffer, _readBufferSize);
+          _readBufferSize = 0;
+          return contentLength;
+        }
+        if (_readBufferSize > toRead) {
+          stream.write(_readBuffer, toRead);
+          _readBufferSize = _readBufferSize - toRead;
+          memmove(_readBuffer, _readBuffer + toRead, _readBufferSize);
+          return contentLength;
+        }
+
+        stream.write(_readBuffer, _readBufferSize);
+        _readBufferSize = 0;
+
+        toRead -= _readBufferSize;
+      }
+
       size_t len = 0;
-      char* buffer = (char*) malloc(contentLength + 1);      
-      
-      // TODO: timeout
-      while (len < contentLength && readable(timeout)) {
-        int len_read = ::read(_socket, buffer + len, contentLength - len);
-        
+      char* buffer = (char*) malloc(toRead + 1);
+
+      double start = now();
+      double runtime = 0.0;
+
+      while (runtime < timeout && len < toRead && readable(timeout - runtime)) {
+        int len_read = ::read(_socket, buffer + len, toRead - len);
+
         if (len_read <= 0) {
           // error: stop reading
           break;
         }
         len += len_read;
+        runtime = now() - start;
       }
 
-      buffer[len] = '\0';
+      //buffer[len] = '\0';
 
       stream.write(buffer, len);
 
       free(buffer);
-      
+
       return len;
     }
 
@@ -176,7 +233,7 @@ namespace triagens {
     bool SimpleHttpConnection::isConnected () {
       return _isConnected;
     }
-    
+
     bool SimpleHttpConnection::readable (double timeout) {
       fd_set fdset;
       struct timeval tv;
@@ -186,11 +243,11 @@ namespace triagens {
 
       if (timeout > _minimalRequestTimeout) {
         tv.tv_sec = (uint64_t) timeout;
-        tv.tv_usec = ((uint64_t)(timeout * 1000000.0)) % 1000000;        
+        tv.tv_usec = ((uint64_t) (timeout * 1000000.0)) % 1000000;
       }
       else {
         tv.tv_sec = (uint64_t) _minimalRequestTimeout;
-        tv.tv_usec = ((uint64_t)(_minimalRequestTimeout * 1000000.0)) % 1000000;        
+        tv.tv_usec = ((uint64_t) (_minimalRequestTimeout * 1000000.0)) % 1000000;
       }
 
       if (select(_socket + 1, &fdset, NULL, NULL, &tv) == 1) {
@@ -201,16 +258,16 @@ namespace triagens {
         if (so_error == 0) {
           return true;
         }
-        
+
         setErrorMessage("getsockopt failed with: " + string(strerror(errno)), errno);
       }
       else {
-        setErrorMessage("select failed with: " + string(strerror(errno)), errno);        
+        setErrorMessage("select failed with: " + string(strerror(errno)), errno);
       }
-      
-      return false;      
+
+      return false;
     }
-    
+
     bool SimpleHttpConnection::writeable (double timeout) {
       fd_set fdset;
       struct timeval tv;
@@ -220,11 +277,11 @@ namespace triagens {
 
       if (timeout > _minimalRequestTimeout) {
         tv.tv_sec = (uint64_t) timeout;
-        tv.tv_usec = ((uint64_t)(timeout * 1000000.0)) % 1000000;        
+        tv.tv_usec = ((uint64_t) (timeout * 1000000.0)) % 1000000;
       }
       else {
         tv.tv_sec = (uint64_t) _minimalRequestTimeout;
-        tv.tv_usec = ((uint64_t)(_minimalRequestTimeout * 1000000.0)) % 1000000;        
+        tv.tv_usec = ((uint64_t) (_minimalRequestTimeout * 1000000.0)) % 1000000;
       }
 
       if (select(_socket + 1, NULL, &fdset, NULL, &tv) == 1) {
@@ -236,20 +293,21 @@ namespace triagens {
           return true;
         }
 
-        setErrorMessage("getsockopt failed with: " + string(strerror(errno)), errno);        
+        setErrorMessage("getsockopt failed with: " + string(strerror(errno)), errno);
       }
       else {
-        setErrorMessage("select failed with: " + string(strerror(errno)), errno);        
+        setErrorMessage("select failed with: " + string(strerror(errno)), errno);
       }
 
-      return false;      
+      return false;
     }
-    
+
     // -----------------------------------------------------------------------------
     // private methods
     // -----------------------------------------------------------------------------
 
     bool SimpleHttpConnection::connectSocket () {
+      _readBufferSize = 0;
       _isConnected = false;
       _socket = -1;
 
@@ -324,8 +382,8 @@ namespace triagens {
       FD_SET(_socket, &fdset);
 
       tv.tv_sec = (uint64_t) _connectionTimeout;
-      tv.tv_usec = ((uint64_t)(_connectionTimeout * 1000000.0)) % 1000000;        
-      
+      tv.tv_usec = ((uint64_t) (_connectionTimeout * 1000000.0)) % 1000000;
+
       if (select(_socket + 1, NULL, &fdset, NULL, &tv) == 1) {
         int so_error;
         socklen_t len = sizeof so_error;
@@ -388,6 +446,16 @@ namespace triagens {
 #endif
 
       return true;
+    }
+
+    double SimpleHttpConnection::now () {
+      struct timeval tv;
+      gettimeofday(&tv, 0);
+
+      double sec = tv.tv_sec; // seconds
+      double usc = tv.tv_usec; // microseconds
+
+      return sec + usc / 1000000.0;
     }
   }
 

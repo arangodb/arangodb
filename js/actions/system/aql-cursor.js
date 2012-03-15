@@ -103,7 +103,7 @@ function postCursor(req, res) {
                                     json._id, 
                                     json.bindVars, 
                                     (json.count != undefined ? json.count : false), 
-                                    (json.maxResults != undefined ? json.maxResults : 1000));  
+                                    (json.batchSize != undefined ? json.batchSize : 1000));  
       */
     }    
     else if (json.query != undefined) {
@@ -111,7 +111,7 @@ function postCursor(req, res) {
                              json.query, 
                              json.bindVars, 
                              (json.count != undefined ? json.count : false), 
-                             (json.maxResults != undefined ? json.maxResults : 1000));  
+                             (json.batchSize != undefined ? json.batchSize : 1000));  
     }
     else {
       actions.actionResultError (req, res, 400, actions.cursorNotModified, "Invalid query data");

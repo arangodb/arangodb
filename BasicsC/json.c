@@ -553,7 +553,7 @@ bool TRI_PrintJson (int fd, TRI_json_t const* object) {
     ssize_t m = TRI_WRITE(fd, p, n);
 
     if (m <= 0) {
-      TRI_DestroyStringBuffer(&buffer);
+      TRI_AnnihilateStringBuffer(&buffer);
       return false;
     }
 
@@ -561,7 +561,7 @@ bool TRI_PrintJson (int fd, TRI_json_t const* object) {
     p += m;
   }
 
-  TRI_DestroyStringBuffer(&buffer);
+  TRI_AnnihilateStringBuffer(&buffer);
   return true;
 }
 

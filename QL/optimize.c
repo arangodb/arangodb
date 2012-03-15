@@ -1376,7 +1376,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
   range = (QL_optimize_range_t*) TRI_Allocate(sizeof(QL_optimize_range_t));
   if (!range) {
     // clean up
-    TRI_FreeStringBuffer(name);
+    TRI_DestroyStringBuffer(name);
     TRI_Free(name);
     return NULL;
   }
@@ -1414,7 +1414,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
   range->_hash       = QLAstQueryGetMemberNameHash(memberNode);
 
   // we can now free the temporary name buffer
-  TRI_FreeStringBuffer(name);
+  TRI_DestroyStringBuffer(name);
   TRI_Free(name);
 
   if (type == TRI_QueryNodeBinaryOperatorIdentical || 
@@ -1426,7 +1426,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
       name = QLAstQueryGetMemberNameString(valueNode, false);
       if (name) {
         range->_refValue._field = TRI_DuplicateString(name->_buffer);
-        TRI_FreeStringBuffer(name);
+        TRI_DestroyStringBuffer(name);
         TRI_Free(name);
       }
     }
@@ -1441,7 +1441,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
     else if (range->_valueType == RANGE_TYPE_JSON) {
       documentJs = TRI_InitQueryJavascript();
       if (!documentJs) {
-        TRI_FreeStringBuffer(name);
+        TRI_DestroyStringBuffer(name);
         TRI_Free(name);
         TRI_Free(range);
         return NULL;
@@ -1451,7 +1451,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
       range->_maxValue._stringValue = TRI_DuplicateString(documentJs->_buffer->_buffer);
       TRI_FreeQueryJavascript(documentJs);
       if (!range->_minValue._stringValue) {
-        TRI_FreeStringBuffer(name);
+        TRI_DestroyStringBuffer(name);
         TRI_Free(name);
         TRI_Free(range);
         return NULL;

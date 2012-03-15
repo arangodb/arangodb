@@ -86,7 +86,7 @@ static bool HasCountQueryCursor (const TRI_query_cursor_t* const cursor) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint32_t GetMaxQueryCursor (const TRI_query_cursor_t* const cursor) {
-  return cursor->_maxResults;
+  return cursor->_batchSize;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,7 +117,7 @@ static void FreeQueryCursor (TRI_query_cursor_t* cursor) {
 TRI_query_cursor_t* TRI_CreateQueryCursor (TRI_query_instance_t* const instance,
                                            const TRI_select_result_t* const selectResult,
                                            const bool doCount,
-                                           const uint32_t maxResults) {
+                                           const uint32_t batchSize) {
   TRI_query_cursor_t* cursor;
 
   assert(instance);
@@ -138,7 +138,7 @@ TRI_query_cursor_t* TRI_CreateQueryCursor (TRI_query_instance_t* const instance,
 
   cursor->_shadow = NULL;
   cursor->_hasCount = doCount;
-  cursor->_maxResults = maxResults;
+  cursor->_batchSize = batchSize;
   cursor->_deleted = false;
   cursor->_vocbase = instance->_template->_vocbase;
    
