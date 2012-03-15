@@ -47,6 +47,7 @@ static void AppendChar (TRI_string_buffer_t * self, char chr) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief how much space is presently left in buffer?
 ////////////////////////////////////////////////////////////////////////////////
+
 static size_t Remaining (TRI_string_buffer_t * self) {
   return self->_len - self->_off;
 }
@@ -62,8 +63,9 @@ static void Reserve (TRI_string_buffer_t * self, size_t size) {
 
   if (size > Remaining(self)) {
     self->_len = (size_t)(1.2 * (self->_len + size));
-    self->_buffer = TRI_Reallocate(self->_buffer, self->_len+1);
-    memset(self->_buffer+self->_off, 0, Remaining(self)+1);
+    self->_buffer = TRI_Reallocate(self->_buffer, self->_len + 1);
+
+    memset(self->_buffer + self->_off, 0, Remaining(self) + 1);
 
 #if I_CARE_ABOUT_MALLOC_FAILURES
     if (NULL == self->_buffer) {
@@ -269,8 +271,6 @@ void TRI_AppendCharStringBuffer (TRI_string_buffer_t * self, char chr) {
 
   *(self->_buffer + self->_off) = chr;
   ++(self->_off);
-  // bzero at init?
-  *(self->_buffer + self->_off) = '\0';
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -284,7 +284,6 @@ void TRI_AppendStringStringBuffer (TRI_string_buffer_t * self, char const * str)
 
   memcpy((self->_buffer + self->_off), str, len);
   self->_off += len;
-  *(self->_buffer + self->_off) = '\0';
 }
 
 ////////////////////////////////////////////////////////////////////////////////
