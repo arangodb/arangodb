@@ -234,8 +234,6 @@ namespace triagens {
 
       void closeConnection ();
 
-      double now ();
-            
     private:
       double _requestTimeout;
       size_t _retries;

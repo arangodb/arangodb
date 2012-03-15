@@ -314,7 +314,7 @@ static void InitFeederPrimaryLookup (TRI_data_feeder_t* feeder) {
     TRI_AppendStringStringBuffer(buffer, "] })");
     state->_context = TRI_CreateExecutionContext(buffer->_buffer);
 
-    TRI_FreeStringBuffer(buffer);
+    TRI_DestroyStringBuffer(buffer);
     TRI_Free(buffer);
 
     if (!state->_context) {
@@ -557,7 +557,7 @@ static void InitFeederHashLookup (TRI_data_feeder_t* feeder) {
     TRI_AppendStringStringBuffer(buffer, "] })");
     state->_context = TRI_CreateExecutionContext(buffer->_buffer);
 
-    TRI_FreeStringBuffer(buffer);
+    TRI_DestroyStringBuffer(buffer);
     TRI_Free(buffer);
 
     if (!state->_context) {
@@ -820,7 +820,7 @@ static void InitFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
     TRI_AppendStringStringBuffer(buffer, "] })");
     state->_context = TRI_CreateExecutionContext(buffer->_buffer);
 
-    TRI_FreeStringBuffer(buffer);
+    TRI_DestroyStringBuffer(buffer);
     TRI_Free(buffer);
 
     if (!state->_context) {

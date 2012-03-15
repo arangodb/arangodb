@@ -169,7 +169,9 @@ TRI_qry_where_hash_const_t;
 typedef struct TRI_qry_where_skiplist_const_s {
   TRI_qry_where_t base;
   TRI_idx_iid_t _iid;
-  TRI_json_t* _parameters; // a json list object
+  //TRI_json_t* _parameters; 
+  // simple operator
+  TRI_sl_operator_t* _operator;
 }
 TRI_qry_where_skiplist_const_t;
 

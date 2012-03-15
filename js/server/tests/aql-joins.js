@@ -93,7 +93,7 @@ function aqlJoinsTestSuite () {
     }
 
     for (var i in row) {
-      if (i === "_id" || !row.hasOwnProperty(i)) {
+      if (i === "_id" || i === "_rev" || !row.hasOwnProperty(i)) {
         continue;
       }
       if (row[i] instanceof Array || row[i] instanceof Object) {

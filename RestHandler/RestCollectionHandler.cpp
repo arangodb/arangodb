@@ -462,7 +462,7 @@ bool RestCollectionHandler::readAllDocuments () {
 
   response->body().appendText(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
 
-  TRI_DestroyStringBuffer(&buffer);
+  TRI_AnnihilateStringBuffer(&buffer);
 
   return true;
 }

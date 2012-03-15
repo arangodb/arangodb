@@ -51,7 +51,7 @@ typedef struct TRI_query_cursor_s {
   TRI_shadow_t* _shadow;
   char* _functionCode;
   bool _hasCount;
-  uint32_t _maxResults;
+  uint32_t _batchSize;
   TRI_vector_pointer_t _containers;
   TRI_mutex_t _lock;
   bool _deleted;

@@ -1,7 +1,38 @@
 # -*- mode: Makefile; -*-
 
-noinst_PROGRAMS = UnitTests/string-buffer-test
+################################################################################
+## unittests target
+################################################################################
 
-UnitTests_string_buffer_test_SOURCES = UnitTests/Philadelphia/string-buffer-test.cpp
-UnitTests_string_buffer_test_LDADD = -L@top_builddir@ -lavocado
+.TARGET: unittests
+
+if ENABLE_BOOST_TEST
+
+unittests:
+	@builddir@/UnitTests/test_suite --show_progress
+
+else
+
+unittests:
+	@echo "enable unit-testing with 'configure --with-boost-test'"
+
+endif
+
+################################################################################
+## tests
+################################################################################
+
+if ENABLE_BOOST_TEST
+
+noinst_PROGRAMS = UnitTests/test_suite
+
+UnitTests_test_suite_LDADD = -L@top_builddir@ -lavocado -lboost_unit_test_framework
+UnitTests_test_suite_DEPENDENCIES = @top_builddir@/libavocado.a
+
+UnitTests_test_suite_SOURCES = \
+	UnitTests/Runner.cpp \
+	UnitTests/Philadelphia/string-buffer-test.cpp \
+	UnitTests/Jutland/StringBufferTest.cpp \
+	UnitTests/Jutland/StringUtilsTest.cpp
+endif
 

@@ -1,0 +1,1 @@
+{ "query" : "SELECT u FROM users u LIMIT 15", "count" : true, "bindVars" : {}, "batchSize" : 2 }

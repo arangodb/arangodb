@@ -165,6 +165,7 @@ avocado_SOURCES = \
 	Scheduler/Task.cpp \
 	Scheduler/TaskManager.cpp \
 	Scheduler/TimerTask.cpp \
+	SkipLists/sl-operator.c \
 	SkipLists/skiplist.c \
 	SkipLists/skiplistIndex.c \
 	V8/v8-actions.cpp \

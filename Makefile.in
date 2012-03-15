@@ -32,6 +32,9 @@
 
 # -*- mode: Makefile; -*-
 
+################################################################################
+################################################################################
+
 # -*- mode: Makefile; -*-
 
 ################################################################################
@@ -81,7 +84,9 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.all-in-one \
 	$(top_srcdir)/config/config.h.in $(top_srcdir)/configure \
 	config/compile config/config.guess config/config.sub \
 	config/depcomp config/install-sh config/missing
-noinst_PROGRAMS = UnitTests/string-buffer-test$(EXEEXT)
+@ENABLE_BOOST_TEST_TRUE@noinst_PROGRAMS =  \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/test_suite$(EXEEXT)
+@ENABLE_BOOST_TEST_FALSE@UnitTests_test_suite_DEPENDENCIES =
 
 ################################################################################
 ################################################################################
@@ -194,11 +199,16 @@ libavocado_a_OBJECTS = $(am_libavocado_a_OBJECTS)
 am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
 	"$(DESTDIR)$(pkgdatadir)"
 PROGRAMS = $(bin_PROGRAMS) $(noinst_PROGRAMS) $(sbin_PROGRAMS)
-am_UnitTests_string_buffer_test_OBJECTS =  \
-	UnitTests/Philadelphia/string-buffer-test.$(OBJEXT)
-UnitTests_string_buffer_test_OBJECTS =  \
-	$(am_UnitTests_string_buffer_test_OBJECTS)
-UnitTests_string_buffer_test_DEPENDENCIES =
+am__UnitTests_test_suite_SOURCES_DIST = UnitTests/Runner.cpp \
+	UnitTests/Philadelphia/string-buffer-test.cpp \
+	UnitTests/Jutland/StringBufferTest.cpp \
+	UnitTests/Jutland/StringUtilsTest.cpp
+@ENABLE_BOOST_TEST_TRUE@am_UnitTests_test_suite_OBJECTS =  \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Runner.$(OBJEXT) \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-buffer-test.$(OBJEXT) \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringBufferTest.$(OBJEXT) \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringUtilsTest.$(OBJEXT)
+UnitTests_test_suite_OBJECTS = $(am_UnitTests_test_suite_OBJECTS)
 am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Admin/RestAdminBaseHandler.$(OBJEXT) \
 	Admin/RestAdminFeConfigurationHandler.$(OBJEXT) \
@@ -253,11 +263,12 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Scheduler/SchedulerThread.$(OBJEXT) \
 	Scheduler/SignalTask.$(OBJEXT) Scheduler/SocketTask.$(OBJEXT) \
 	Scheduler/Task.$(OBJEXT) Scheduler/TaskManager.$(OBJEXT) \
-	Scheduler/TimerTask.$(OBJEXT) SkipLists/skiplist.$(OBJEXT) \
-	SkipLists/skiplistIndex.$(OBJEXT) V8/v8-actions.$(OBJEXT) \
-	V8/v8-vocbase.$(OBJEXT) VocBase/barrier.$(OBJEXT) \
-	VocBase/blob-collection.$(OBJEXT) VocBase/collection.$(OBJEXT) \
-	VocBase/compactor.$(OBJEXT) VocBase/datafile.$(OBJEXT) \
+	Scheduler/TimerTask.$(OBJEXT) SkipLists/sl-operator.$(OBJEXT) \
+	SkipLists/skiplist.$(OBJEXT) SkipLists/skiplistIndex.$(OBJEXT) \
+	V8/v8-actions.$(OBJEXT) V8/v8-vocbase.$(OBJEXT) \
+	VocBase/barrier.$(OBJEXT) VocBase/blob-collection.$(OBJEXT) \
+	VocBase/collection.$(OBJEXT) VocBase/compactor.$(OBJEXT) \
+	VocBase/datafile.$(OBJEXT) \
 	VocBase/document-collection.$(OBJEXT) \
 	VocBase/headers.$(OBJEXT) VocBase/index.$(OBJEXT) \
 	VocBase/query-base.$(OBJEXT) VocBase/query-cursor.$(OBJEXT) \
@@ -310,11 +321,10 @@ am__v_CXXLD_0 = @echo "  CXXLD " $@;
 AM_V_GEN = $(am__v_GEN_$(V))
 am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
 am__v_GEN_0 = @echo "  GEN   " $@;
-SOURCES = $(libavocado_a_SOURCES) \
-	$(UnitTests_string_buffer_test_SOURCES) $(avocado_SOURCES) \
-	$(avocsh_SOURCES)
+SOURCES = $(libavocado_a_SOURCES) $(UnitTests_test_suite_SOURCES) \
+	$(avocado_SOURCES) $(avocsh_SOURCES)
 DIST_SOURCES = $(libavocado_a_SOURCES) \
-	$(UnitTests_string_buffer_test_SOURCES) $(avocado_SOURCES) \
+	$(am__UnitTests_test_suite_SOURCES_DIST) $(avocado_SOURCES) \
 	$(avocsh_SOURCES)
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
@@ -703,6 +713,7 @@ avocado_SOURCES = \
 	Scheduler/Task.cpp \
 	Scheduler/TaskManager.cpp \
 	Scheduler/TimerTask.cpp \
+	SkipLists/sl-operator.c \
 	SkipLists/skiplist.c \
 	SkipLists/skiplistIndex.c \
 	V8/v8-actions.cpp \
@@ -836,8 +847,14 @@ WIKI = \
         Doxygen/xml/UserManualShellStartStop.md \
         Doxygen/xml/jsUnity.md
 
-UnitTests_string_buffer_test_SOURCES = UnitTests/Philadelphia/string-buffer-test.cpp
-UnitTests_string_buffer_test_LDADD = -L@top_builddir@ -lavocado
+@ENABLE_BOOST_TEST_TRUE@UnitTests_test_suite_LDADD = -L@top_builddir@ -lavocado -lboost_unit_test_framework
+@ENABLE_BOOST_TEST_TRUE@UnitTests_test_suite_DEPENDENCIES = @top_builddir@/libavocado.a
+@ENABLE_BOOST_TEST_TRUE@UnitTests_test_suite_SOURCES = \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Runner.cpp \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-buffer-test.cpp \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringBufferTest.cpp \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringUtilsTest.cpp
+
 @ENABLE_32BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.ia32
 @ENABLE_64BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.x64
 @ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_FALSE@LIBEV_CFLAGS_32 = -O2 -g
@@ -1235,6 +1252,14 @@ uninstall-sbinPROGRAMS:
 
 clean-sbinPROGRAMS:
 	-test -z "$(sbin_PROGRAMS)" || rm -f $(sbin_PROGRAMS)
+UnitTests/$(am__dirstamp):
+	@$(MKDIR_P) UnitTests
+	@: > UnitTests/$(am__dirstamp)
+UnitTests/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) UnitTests/$(DEPDIR)
+	@: > UnitTests/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Runner.$(OBJEXT): UnitTests/$(am__dirstamp) \
+	UnitTests/$(DEPDIR)/$(am__dirstamp)
 UnitTests/Philadelphia/$(am__dirstamp):
 	@$(MKDIR_P) UnitTests/Philadelphia
 	@: > UnitTests/Philadelphia/$(am__dirstamp)
@@ -1244,12 +1269,21 @@ UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp):
 UnitTests/Philadelphia/string-buffer-test.$(OBJEXT):  \
 	UnitTests/Philadelphia/$(am__dirstamp) \
 	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
-UnitTests/$(am__dirstamp):
-	@$(MKDIR_P) UnitTests
-	@: > UnitTests/$(am__dirstamp)
-UnitTests/string-buffer-test$(EXEEXT): $(UnitTests_string_buffer_test_OBJECTS) $(UnitTests_string_buffer_test_DEPENDENCIES) UnitTests/$(am__dirstamp)
-	@rm -f UnitTests/string-buffer-test$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(UnitTests_string_buffer_test_OBJECTS) $(UnitTests_string_buffer_test_LDADD) $(LIBS)
+UnitTests/Jutland/$(am__dirstamp):
+	@$(MKDIR_P) UnitTests/Jutland
+	@: > UnitTests/Jutland/$(am__dirstamp)
+UnitTests/Jutland/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) UnitTests/Jutland/$(DEPDIR)
+	@: > UnitTests/Jutland/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Jutland/StringBufferTest.$(OBJEXT):  \
+	UnitTests/Jutland/$(am__dirstamp) \
+	UnitTests/Jutland/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Jutland/StringUtilsTest.$(OBJEXT):  \
+	UnitTests/Jutland/$(am__dirstamp) \
+	UnitTests/Jutland/$(DEPDIR)/$(am__dirstamp)
+UnitTests/test_suite$(EXEEXT): $(UnitTests_test_suite_OBJECTS) $(UnitTests_test_suite_DEPENDENCIES) UnitTests/$(am__dirstamp)
+	@rm -f UnitTests/test_suite$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(UnitTests_test_suite_OBJECTS) $(UnitTests_test_suite_LDADD) $(LIBS)
 Admin/$(am__dirstamp):
 	@$(MKDIR_P) Admin
 	@: > Admin/$(am__dirstamp)
@@ -1477,6 +1511,8 @@ SkipLists/$(am__dirstamp):
 SkipLists/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) SkipLists/$(DEPDIR)
 	@: > SkipLists/$(DEPDIR)/$(am__dirstamp)
+SkipLists/sl-operator.$(OBJEXT): SkipLists/$(am__dirstamp) \
+	SkipLists/$(DEPDIR)/$(am__dirstamp)
 SkipLists/skiplist.$(OBJEXT): SkipLists/$(am__dirstamp) \
 	SkipLists/$(DEPDIR)/$(am__dirstamp)
 SkipLists/skiplistIndex.$(OBJEXT): SkipLists/$(am__dirstamp) \
@@ -1710,7 +1746,11 @@ mostlyclean-compile:
 	-rm -f SimpleHttpClient/SimpleHttpResult.$(OBJEXT)
 	-rm -f SkipLists/skiplist.$(OBJEXT)
 	-rm -f SkipLists/skiplistIndex.$(OBJEXT)
+	-rm -f SkipLists/sl-operator.$(OBJEXT)
+	-rm -f UnitTests/Jutland/StringBufferTest.$(OBJEXT)
+	-rm -f UnitTests/Jutland/StringUtilsTest.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/string-buffer-test.$(OBJEXT)
+	-rm -f UnitTests/Runner.$(OBJEXT)
 	-rm -f V8/JSLoader.$(OBJEXT)
 	-rm -f V8/v8-actions.$(OBJEXT)
 	-rm -f V8/v8-conv.$(OBJEXT)
@@ -1903,6 +1943,10 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@SimpleHttpClient/$(DEPDIR)/SimpleHttpResult.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@SkipLists/$(DEPDIR)/skiplist.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@SkipLists/$(DEPDIR)/skiplistIndex.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@SkipLists/$(DEPDIR)/sl-operator.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/$(DEPDIR)/Runner.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Jutland/$(DEPDIR)/StringBufferTest.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Jutland/$(DEPDIR)/StringUtilsTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/string-buffer-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/JSLoader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-actions.Po@am__quote@
@@ -2296,7 +2340,10 @@ distclean-generic:
 	-rm -f SimpleHttpClient/$(am__dirstamp)
 	-rm -f SkipLists/$(DEPDIR)/$(am__dirstamp)
 	-rm -f SkipLists/$(am__dirstamp)
+	-rm -f UnitTests/$(DEPDIR)/$(am__dirstamp)
 	-rm -f UnitTests/$(am__dirstamp)
+	-rm -f UnitTests/Jutland/$(DEPDIR)/$(am__dirstamp)
+	-rm -f UnitTests/Jutland/$(am__dirstamp)
 	-rm -f UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
 	-rm -f UnitTests/Philadelphia/$(am__dirstamp)
 	-rm -f V8/$(DEPDIR)/$(am__dirstamp)
@@ -2321,7 +2368,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-local \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -2369,7 +2416,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -2489,6 +2536,14 @@ js/client/js-%.h: @srcdir@/js/client/%.js .setup-directories
 
 js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
 	@top_srcdir@/config/js2c.sh $< > $@
+
+.TARGET: unittests
+
+@ENABLE_BOOST_TEST_TRUE@unittests:
+@ENABLE_BOOST_TEST_TRUE@	@builddir@/UnitTests/test_suite --show_progress
+
+@ENABLE_BOOST_TEST_FALSE@unittests:
+@ENABLE_BOOST_TEST_FALSE@	@echo "enable unit-testing with 'configure --with-boost-test'"
 
 @ENABLE_FLEX_TRUE@JsonParser/%.c: @srcdir@/JsonParser/%.l
 @ENABLE_FLEX_TRUE@	@top_srcdir@/config/flex-c.sh $(LEX) $@ $<

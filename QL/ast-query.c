@@ -549,7 +549,7 @@ bool QLAstQueryAddGeoRestriction (QL_ast_query_t* query,
     restriction->_compareLat._collection = 
       TRI_DuplicateString(valueNode->_lhs->_value._stringValue);
     restriction->_compareLat._field = TRI_DuplicateString(fieldName->_buffer);
-    TRI_FreeStringBuffer(fieldName);
+    TRI_DestroyStringBuffer(fieldName);
     TRI_Free(fieldName);
   }
   else {
@@ -571,7 +571,7 @@ bool QLAstQueryAddGeoRestriction (QL_ast_query_t* query,
     restriction->_compareLon._collection = 
       TRI_DuplicateString(valueNode->_lhs->_value._stringValue);
     restriction->_compareLon._field = TRI_DuplicateString(fieldName->_buffer);
-    TRI_FreeStringBuffer(fieldName);
+    TRI_DestroyStringBuffer(fieldName);
     TRI_Free(fieldName);
   } 
   else {

@@ -107,7 +107,7 @@ void TRI_FreeQueryJavascript (TRI_query_javascript_converter_t* converter) {
   assert(converter);
   assert(converter->_buffer);
   
-  TRI_FreeStringBuffer(converter->_buffer);
+  TRI_DestroyStringBuffer(converter->_buffer);
   TRI_Free(converter->_buffer);
   TRI_Free(converter);
 }

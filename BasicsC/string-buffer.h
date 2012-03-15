@@ -81,7 +81,7 @@ void TRI_InitStringBuffer (TRI_string_buffer_t * self);
 /// @warning You must call free or destroy after using the string buffer.
 ////////////////////////////////////////////////////////////////////////////////
 
-void  TRI_FreeStringBuffer (TRI_string_buffer_t * self);
+void  TRI_DestroyStringBuffer (TRI_string_buffer_t * self);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the string buffer and cleans the buffer
@@ -89,7 +89,7 @@ void  TRI_FreeStringBuffer (TRI_string_buffer_t * self);
 /// @warning You must call free after or destroy using the string buffer.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyStringBuffer (TRI_string_buffer_t * self);
+void TRI_AnnihilateStringBuffer (TRI_string_buffer_t * self);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

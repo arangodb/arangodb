@@ -43,6 +43,7 @@
 #include "VocBase/query-parse.h"
 #include "VocBase/query-execute.h"
 #include "VocBase/simple-collection.h"
+#include "SkipLists/sl-operator.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -134,6 +135,7 @@ static int32_t const WRP_QUERY_INSTANCE_TYPE = 5;
 static int32_t const WRP_SHAPED_JSON_TYPE = 6;
 
 ////////////////////////////////////////////////////////////////////////////////
+
 /// @brief wrapped class for TRI_qry_where_t - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -150,6 +152,12 @@ static int32_t const WRP_RC_CURSOR_TYPE = 8;
 ////////////////////////////////////////////////////////////////////////////////
 
 static int32_t const WRP_QUERY_TYPE = 9;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wrapped class for SL Operator
+////////////////////////////////////////////////////////////////////////////////
+
+static int32_t const WRP_SL_OPERATOR_TYPE = 10;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -391,7 +399,7 @@ static void StoreGeoResult (TRI_vocbase_col_t const* collection,
     gtr->_data = ptr->data;
   }
 
-  GeoIndex_CoordinatesFree(cors);
+  //GeoIndex_CoordinatesFree(cors);
 
   SortGeoCoordinates(tmp, gnd);
 
@@ -1600,9 +1608,15 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_json_t* ConvertHelper(v8::Handle<v8::Value> parameter) {
+
+
   if (parameter->IsBoolean()) {
     v8::Handle<v8::Boolean> booleanParameter = parameter->ToBoolean();
     return TRI_CreateBooleanJson(booleanParameter->Value());
+  }
+
+  if (parameter->IsNull()) {
+    return TRI_CreateNullJson();
   }
   
   if (parameter->IsNumber()) {
@@ -2123,7 +2137,9 @@ static v8::Handle<v8::Value> JS_WhereHashConstAql (const v8::Arguments& argv) {
 static v8::Handle<v8::Value> JS_WhereSkiplistConstAql (const v8::Arguments& argv) {
   v8::HandleScope scope;
   TRI_json_t* parameterList;
-
+  bool haveOperators;
+  TRI_qry_where_t* where;
+  
   if (argv.Length() < 2) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_WHERE_SL_CONST(<index-identifier>, <value 1>, <value 2>,..., <value n>)")));
   }
@@ -2134,36 +2150,100 @@ static v8::Handle<v8::Value> JS_WhereSkiplistConstAql (const v8::Arguments& argv
   // ..........................................................................
   bool inValidType = true;
   TRI_idx_iid_t iid = TRI_ObjectToDouble(argv[0], inValidType); 
-  
   if (inValidType || iid == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("<index-identifier> must be an positive integer")));       
   }  
 
-
   // ..........................................................................
-  // Store the index field parameters in a json object 
+  // Do we have logical/relational operators or just constants
+  // Only one or the other allowed
   // ..........................................................................
-  parameterList = TRI_CreateListJson();
-  if (!parameterList) {
-    return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
-  }
-
+  haveOperators = false;
   for (int j = 1; j < argv.Length(); ++j) {  
     v8::Handle<v8::Value> parameter = argv[j];
-    TRI_json_t* jsonParameter = ConvertHelper(parameter);
-    if (jsonParameter == NULL) { // NOT the null json value! 
-      return scope.Close(v8::ThrowException(v8::String::New("type value not currently supported for skiplist index")));       
+    v8::Handle<v8::Object> operatorObject = parameter->ToObject();
+    TRI_sl_operator_t* op  = UnwrapClass<TRI_sl_operator_t>(operatorObject, WRP_SL_OPERATOR_TYPE);
+    if (op == 0) {
+      if (!haveOperators) {
+        continue;
+      }
+      return scope.Close(v8::ThrowException(v8::String::New("either logical/relational operators or constants allowed, but not both")));
     }
-    TRI_PushBackListJson(parameterList, jsonParameter);
+    else {
+      if (!haveOperators) {
+        haveOperators = true;
+      }  
+    }
+  }  
+  
+  
+  // ..........................................................................
+  // We have a list of operators as parameters:
+  // If more than one operator, all of the operators will be anded.
+  // ..........................................................................  
+  if (haveOperators) {    
+    if (argv.Length() > 2) {  
+      TRI_sl_operator_t* leftOp = NULL;
+      v8::Handle<v8::Value> leftParameter  = argv[1];
+      v8::Handle<v8::Object> leftObject    = leftParameter->ToObject();
+      leftOp  = UnwrapClass<TRI_sl_operator_t>(leftObject, WRP_SL_OPERATOR_TYPE);
+      if (leftOp == 0) {
+        return scope.Close(v8::ThrowException(v8::String::New("either logical/relational operators or constants allowed, but not both")));
+      }
+      
+      for (int j = 2; j < argv.Length(); ++j) {  
+        v8::Handle<v8::Value> rightParameter = argv[j];
+        v8::Handle<v8::Object> rightObject   = rightParameter->ToObject();
+        TRI_sl_operator_t* rightOp = UnwrapClass<TRI_sl_operator_t>(rightObject, WRP_SL_OPERATOR_TYPE);
+        if (rightOp == 0) {
+          ClearSLOperator(leftOp); 
+          return scope.Close(v8::ThrowException(v8::String::New("either logical/relational operators or constants allowed, but not both")));
+        }
+        TRI_sl_operator_t* tempAndOperator = CreateSLOperator(TRI_SL_AND_OPERATOR,leftOp, rightOp, NULL, NULL, 2, NULL);
+        leftOp = tempAndOperator;
+      }  
+      where = TRI_CreateQueryWhereSkiplistConstant(iid, leftOp);
+    }
+    else {
+      v8::Handle<v8::Value> parameter = argv[1];
+      v8::Handle<v8::Object> operatorObject = parameter->ToObject();
+      TRI_sl_operator_t* op  = UnwrapClass<TRI_sl_operator_t>(operatorObject, WRP_SL_OPERATOR_TYPE);
+      where = TRI_CreateQueryWhereSkiplistConstant(iid, op);
+    }
   }
   
-
-  // build where
-  TRI_qry_where_t* where = TRI_CreateQueryWhereSkiplistConstant(iid, parameterList);
-
-  // wrap it up
-  return scope.Close(WrapWhere(where));
+  // ..............................................................................
+  // fallback: simple eq operator
+  // ..............................................................................
   
+  else {
+    // ..........................................................................
+    // Store the index field parameters in a json object 
+    // ..........................................................................
+    parameterList = TRI_CreateListJson();
+    if (!parameterList) {
+      return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
+    }
+
+    for (int j = 1; j < argv.Length(); ++j) {  
+      v8::Handle<v8::Value> parameter = argv[j];
+      TRI_json_t* jsonParameter = ConvertHelper(parameter);
+      if (jsonParameter == NULL) { // NOT the null json value! 
+        return scope.Close(v8::ThrowException(v8::String::New("type value not currently supported for skiplist index")));       
+      }
+      TRI_PushBackListJson(parameterList, jsonParameter);
+    }
+    TRI_sl_operator_t* eqOperator = CreateSLOperator(TRI_SL_EQ_OPERATOR,NULL, NULL, parameterList, NULL, 
+                                                     parameterList->_value._objects._length, NULL);
+    where = TRI_CreateQueryWhereSkiplistConstant(iid, eqOperator);
+  }
+
+  if (where == NULL) {
+    return scope.Close(v8::ThrowException(v8::String::New("Error detected in where statement")));
+  }  
+  
+  // wrap it up
+  return scope.Close(WrapWhere(where));  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2268,6 +2348,41 @@ static v8::Handle<v8::Value> JS_HashSelectAql (v8::Arguments const& argv) {
 /// @brief constructs a new query from given parts - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
+static bool CheckWhereSkiplistOperators(size_t fieldCount, TRI_sl_operator_t* slOperator) {
+  TRI_sl_logical_operator_t*  logicalOperator;
+  TRI_sl_relation_operator_t* relationOperator;
+  bool ok;
+  
+  logicalOperator  = (TRI_sl_logical_operator_t*)(slOperator);
+  relationOperator = (TRI_sl_relation_operator_t*)(slOperator);
+  
+  switch (slOperator->_type) {
+    case TRI_SL_EQ_OPERATOR: 
+    case TRI_SL_NE_OPERATOR: 
+    case TRI_SL_LE_OPERATOR: 
+    case TRI_SL_LT_OPERATOR: 
+    case TRI_SL_GE_OPERATOR: 
+    case TRI_SL_GT_OPERATOR: 
+    {
+      ok = (relationOperator->_numFields <= fieldCount);
+      break;
+    }
+    case TRI_SL_AND_OPERATOR: 
+    case TRI_SL_OR_OPERATOR: 
+    {
+      ok = (CheckWhereSkiplistOperators(fieldCount,logicalOperator->_left) &&
+           CheckWhereSkiplistOperators(fieldCount,logicalOperator->_right));
+      break;           
+    }
+    case TRI_SL_NOT_OPERATOR: 
+    {
+      ok = (CheckWhereSkiplistOperators(fieldCount,logicalOperator->_left));
+      break;           
+    }
+  }
+  return ok;
+}
+
 static v8::Handle<v8::Value> JS_SkiplistSelectAql (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
@@ -2280,7 +2395,7 @@ static v8::Handle<v8::Value> JS_SkiplistSelectAql (v8::Arguments const& argv) {
   // ...........................................................................
   v8::Handle<v8::Value> collectionArg = argv[0];
   if (! collectionArg->IsObject()) {
-    return scope.Close(v8::ThrowException(v8::String::New("expecting a COLLECTION as second argument")));
+    return scope.Close(v8::ThrowException(v8::String::New("expecting a COLLECTION as first argument")));
   }
   v8::Handle<v8::Object> collectionObj = collectionArg->ToObject();
   v8::Handle<v8::String> err;
@@ -2296,7 +2411,7 @@ static v8::Handle<v8::Value> JS_SkiplistSelectAql (v8::Arguments const& argv) {
   v8::Handle<v8::Value> whereArg = argv[1];
   TRI_qry_where_t* where = 0;
   if (whereArg->IsNull()) {
-    return scope.Close(v8::ThrowException(v8::String::New("expecting a WHERE object as third argument")));
+    return scope.Close(v8::ThrowException(v8::String::New("expecting a WHERE object as second argument")));
   }
   v8::Handle<v8::Object> whereObj = whereArg->ToObject();
   where = UnwrapClass<TRI_qry_where_t>(whereObj, WRP_QRY_WHERE_TYPE);
@@ -2304,6 +2419,17 @@ static v8::Handle<v8::Value> JS_SkiplistSelectAql (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted WHERE")));
   }
     
+  // ...........................................................................
+  // Check the operators
+  // ...........................................................................
+  TRI_qry_where_skiplist_const_t* slWhere = (TRI_qry_where_skiplist_const_t*)(where);
+  TRI_skiplist_index_t* idx               = (TRI_skiplist_index_t*)(TRI_LookupIndex(collection->_collection, slWhere->_iid));
+  if (idx == NULL) {
+    return scope.Close(v8::ThrowException(v8::String::New("invalid index in where statement")));
+  }
+  if (! CheckWhereSkiplistOperators(idx->_shapeList->_length, slWhere->_operator)) {
+    return scope.Close(v8::ThrowException(v8::String::New("One or more operators has invalid number of attributes")));
+  }  
   
   // ...........................................................................
   // Create the skiplist query 
@@ -2319,6 +2445,359 @@ static v8::Handle<v8::Value> JS_SkiplistSelectAql (v8::Arguments const& argv) {
   // ...........................................................................
   return scope.Close(WrapQuery(query));
   
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// SKIP LIST OPERATOR functions
+////////////////////////////////////////////////////////////////////////////////
+
+
+static void WeakSLOperatorCallback(v8::Persistent<v8::Value> object, void* parameter) {
+  TRI_sl_operator_t* slOperator;
+  TRI_v8_global_t* v8g;
+
+  v8g         = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  slOperator  = (TRI_sl_operator_t*)(parameter);
+  
+  LOG_TRACE("weak-callback for query operators called");
+
+  // find the persistent handle 
+  v8::Persistent<v8::Value> persistent = v8g->JSOperators[slOperator];
+  
+  // remove it from the associative map
+  v8g->JSOperators.erase(slOperator);
+
+  // dispose and clear the persistent handle
+  persistent.Dispose();
+  persistent.Clear();
+
+  // and free the left and right operand -- depends on the type
+  ClearSLOperator(slOperator);
+  TRI_Free(slOperator);
+}
+
+static v8::Handle<v8::Object> WrapSLOperator (TRI_sl_operator_t* slOperator) {
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  v8::Handle<v8::Object> operatorObject = v8g->SLOperatorTempl->NewInstance();
+  map< void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSOperators.find(slOperator);
+
+  if (i == v8g->JSOperators.end()) {
+    v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(slOperator));
+    operatorObject->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_SL_OPERATOR_TYPE));
+    operatorObject->SetInternalField(SLOT_CLASS, persistent);
+    v8g->JSCursors[slOperator] = persistent;
+    persistent.MakeWeak(slOperator, WeakSLOperatorCallback);
+  }
+  else {
+    operatorObject->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_SL_OPERATOR_TYPE));
+    operatorObject->SetInternalField(SLOT_CLASS, i->second);
+  }
+
+  return operatorObject;
+}
+
+static TRI_sl_operator_t* UnwrapSLOperator (v8::Handle<v8::Object> operatorObject) {
+  return UnwrapClass<TRI_sl_operator_t>(operatorObject, WRP_SL_OPERATOR_TYPE);
+}
+
+
+static TRI_json_t* parametersToJson(v8::Arguments const& argv, int startPos, int endPos) {
+  TRI_json_t* result = TRI_CreateListJson();
+  
+  if (result == NULL) {
+    v8::ThrowException(v8::String::New("out of memory"));
+    return NULL;
+  }
+
+  for (int j = startPos; j < endPos; ++j) {  
+    v8::Handle<v8::Value> parameter = argv[j];
+    TRI_json_t* jsonParameter = ConvertHelper(parameter);
+    if (jsonParameter == NULL) { // NOT the null json value! 
+      v8::ThrowException(v8::String::New("type value not currently supported for skiplist index"));       
+      return NULL;
+    }
+    TRI_PushBackListJson(result, jsonParameter);
+  }
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Extracts one or more parameters which are values for the skip list index 
+// fields previously defined in the skip list index -- in the same order
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Operator_AND (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  TRI_sl_logical_operator_t* logicalOperator;
+  
+  // ...........................................................................
+  // We expect a list of constant values in the order in which the skip list
+  // index has been defined. An unknown value can have a NULL
+  // ...........................................................................  
+  if (argv.Length() != 2) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: AND(<value 1>, <value 2>)")));
+  }
+  
+  // ...........................................................................
+  // We expect a two parameters AND(<left operator>,<right operator>)
+  // ...........................................................................
+  v8::Handle<v8::Value> leftOperatorArg  = argv[0];
+  v8::Handle<v8::Value> rightOperatorArg = argv[1];
+  
+  if (leftOperatorArg->IsNull()) {    
+    return scope.Close(v8::ThrowException(v8::String::New("expecting a relational or logical operator as first argument")));
+  }
+  if (rightOperatorArg->IsNull()) {
+    return scope.Close(v8::ThrowException(v8::String::New("expecting a relational or logical operator as second argument")));
+  }
+
+
+  // ...........................................................................
+  // Extract the left and right operands from the context
+  // ...........................................................................
+  v8::Handle<v8::Object> leftOperatorObject  = leftOperatorArg->ToObject();
+  v8::Handle<v8::Object> rightOperatorObject = rightOperatorArg->ToObject();
+  TRI_sl_operator_t* leftOperator  = UnwrapClass<TRI_sl_operator_t>(leftOperatorObject, WRP_SL_OPERATOR_TYPE);
+  TRI_sl_operator_t* rightOperator = UnwrapClass<TRI_sl_operator_t>(rightOperatorObject, WRP_SL_OPERATOR_TYPE);  
+  if (leftOperator == 0 || rightOperator == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted AND, possibly invalid parameters")));
+  }
+
+  // ...........................................................................
+  // Allocate the storage for a logial (AND) operator and assign it that type
+  // ...........................................................................  
+  logicalOperator = (TRI_sl_logical_operator_t*)(CreateSLOperator(TRI_SL_AND_OPERATOR,leftOperator,rightOperator,NULL, NULL, 2, NULL));
+  
+  // ...........................................................................
+  // Wrap it up for later use and return.
+  // ...........................................................................
+  return scope.Close(WrapSLOperator(&(logicalOperator->_base)));
+}
+
+
+static v8::Handle<v8::Value> JS_Operator_OR (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  TRI_sl_logical_operator_t* logicalOperator;
+  
+  // ...........................................................................
+  // We expect a list of constant values in the order in which the skip list
+  // index has been defined. An unknown value can have a NULL
+  // ...........................................................................  
+  if (argv.Length() != 2) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: OR(<value 1>, <value 2>)")));
+  }
+
+  
+  // ...........................................................................
+  // We expect a two parameters AND(<left operator>,<right operator>)
+  // ...........................................................................
+  v8::Handle<v8::Value> leftOperatorArg  = argv[0];
+  v8::Handle<v8::Value> rightOperatorArg = argv[1];
+  
+  if (leftOperatorArg->IsNull()) {
+    return scope.Close(v8::ThrowException(v8::String::New("expecting a relational or logical operator as first argument")));
+  }
+  if (rightOperatorArg->IsNull()) {
+    return scope.Close(v8::ThrowException(v8::String::New("expecting a relational or logical operator as second argument")));
+  }
+
+
+  
+  v8::Handle<v8::Object> leftOperatorObject  = leftOperatorArg->ToObject();
+  v8::Handle<v8::Object> rightOperatorObject = rightOperatorArg->ToObject();
+  TRI_sl_operator_t* leftOperator  = UnwrapClass<TRI_sl_operator_t>(leftOperatorObject, WRP_SL_OPERATOR_TYPE);
+  TRI_sl_operator_t* rightOperator = UnwrapClass<TRI_sl_operator_t>(rightOperatorObject, WRP_SL_OPERATOR_TYPE);
+  
+  if (leftOperator == 0 || rightOperator == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted OR, possibly invalid parameters")));
+  }
+  
+
+  // ...........................................................................
+  // Allocate the storage for a logial (AND) operator and assign it that type
+  // ...........................................................................  
+  logicalOperator = (TRI_sl_logical_operator_t*)(CreateSLOperator(TRI_SL_OR_OPERATOR,leftOperator,rightOperator,NULL, NULL, 2, NULL));
+  
+  return scope.Close(WrapSLOperator(&(logicalOperator->_base)));
+}
+
+
+static v8::Handle<v8::Value> JS_Operator_EQ (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  TRI_sl_relation_operator_t* relationOperator;
+  TRI_json_t* parameters;
+  
+  // ...........................................................................
+  // We expect a list of constant values in the order in which the skip list
+  // index has been defined. An unknown value can have a NULL
+  // ...........................................................................  
+  if (argv.Length() < 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: EQ(<value 1>, <value 2>,..., <value n>)")));
+  }
+
+  
+  // ...........................................................................
+  // We expect a two parameters EQ("a.b.c",23.32)
+  // the first parameter is the name of the field we wish to ensure equality 
+  // with the value of 23.32.
+  // ...........................................................................
+  
+  parameters = parametersToJson(argv,0,argv.Length());
+  if (parameters == NULL) {
+    return scope.Close(v8::ThrowException(v8::String::New("unsupported type in EQ(...) parameter list")));
+  }
+
+  // ...........................................................................
+  // Allocate the storage for a relation (EQ) operator and assign it that type
+  // ...........................................................................  
+  relationOperator = (TRI_sl_relation_operator_t*)(CreateSLOperator(TRI_SL_EQ_OPERATOR, NULL, NULL, parameters, NULL, 
+                                                    parameters->_value._objects._length, NULL));
+  
+  return scope.Close(WrapSLOperator(&(relationOperator->_base)));
+}
+
+static v8::Handle<v8::Value> JS_Operator_GE (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  TRI_sl_relation_operator_t* relationOperator;
+  TRI_json_t* parameters;
+  
+  // ...........................................................................
+  // We expect a list of constant values in the order in which the skip list
+  // index has been defined. An unknown value can have a NULL
+  // ...........................................................................  
+  if (argv.Length() < 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: GE(<value 1>, <value 2>,..., <value n>)")));
+  }
+
+  
+  // ...........................................................................
+  // We expect a two parameters GE("abc",23.32)
+  // the first parameter is the name of the field we wish to ensure equality 
+  // with the value of 23.32.
+  // ...........................................................................
+  
+  parameters = parametersToJson(argv,0,argv.Length());
+  if (parameters == NULL) {
+    return scope.Close(v8::ThrowException(v8::String::New("unsupported type in GE(...) parameter list")));
+  }
+  
+  // ...........................................................................
+  // Allocate the storage for a relation (GE) operator and assign it that type
+  // ...........................................................................  
+  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_GE_OPERATOR, NULL, NULL, parameters, NULL, 
+                                                     parameters->_value._objects._length, NULL) );
+  
+  return scope.Close(WrapSLOperator(&(relationOperator->_base)));
+}
+
+
+static v8::Handle<v8::Value> JS_Operator_GT (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  TRI_sl_relation_operator_t* relationOperator;
+  TRI_json_t* parameters;
+  
+  // ...........................................................................
+  // We expect a list of constant values in the order in which the skip list
+  // index has been defined. An unknown value can have a NULL
+  // ...........................................................................  
+  if (argv.Length() < 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: GT(<value 1>, <value 2>,..., <value n>)")));
+  }
+
+  
+  // ...........................................................................
+  // We expect a two parameters GT("abc",23.32)
+  // the first parameter is the name of the field we wish to ensure equality 
+  // with the value of 23.32.
+  // ...........................................................................
+  
+  parameters = parametersToJson(argv,0,argv.Length());
+  if (parameters == NULL) {
+    return scope.Close(v8::ThrowException(v8::String::New("unsupported type in GT(...) parameter list")));
+  }
+  
+  // ...........................................................................
+  // Allocate the storage for a relation (GT) operator and assign it that type
+  // ...........................................................................  
+  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_GT_OPERATOR, NULL, NULL, parameters, NULL, 
+                                                    parameters->_value._objects._length, NULL) );
+  
+  return scope.Close(WrapSLOperator(&(relationOperator->_base)));
+}
+
+
+static v8::Handle<v8::Value> JS_Operator_LE (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  TRI_sl_relation_operator_t* relationOperator;
+  TRI_json_t* parameters;
+  
+  // ...........................................................................
+  // We expect a list of constant values in the order in which the skip list
+  // index has been defined. An unknown value can have a NULL
+  // ...........................................................................  
+  if (argv.Length() < 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: LE(<value 1>, <value 2>,..., <value n>)")));
+  }
+
+  
+  // ...........................................................................
+  // We expect a two parameters LE("field value",23.32)
+  // the first parameter is the name of the field we wish to ensure equality 
+  // with the value of 23.32.
+  // ...........................................................................
+  
+  parameters = parametersToJson(argv,0,argv.Length());
+  if (parameters == NULL) {
+    return scope.Close(v8::ThrowException(v8::String::New("unsupported type in LE(...) parameter list")));
+  }
+
+  // ...........................................................................
+  // Allocate the storage for a relation (LE) operator and assign it that type
+  // ...........................................................................  
+  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_LE_OPERATOR, NULL, NULL,parameters, NULL, 
+                                                     parameters->_value._objects._length, NULL) );  
+  
+  return scope.Close(WrapSLOperator(&(relationOperator->_base)));
+}
+
+
+static v8::Handle<v8::Value> JS_Operator_LT (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  TRI_sl_relation_operator_t* relationOperator;
+  TRI_json_t* parameters;
+  
+  // ...........................................................................
+  // We expect a list of constant values in the order in which the skip list
+  // index has been defined. An unknown value can have a NULL
+  // ...........................................................................  
+  if (argv.Length() < 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: LT(<value 1>, <value 2>,..., <value n>)")));
+  }
+
+    
+  // ...........................................................................
+  // We expect a two parameters LT("field_string_value",23.32)
+  // the first parameter is the name of the field we wish to ensure equality 
+  // with the value of 23.32.
+  // ...........................................................................
+  
+  parameters = parametersToJson(argv,0,argv.Length());
+  if (parameters == NULL) {
+    return scope.Close(v8::ThrowException(v8::String::New("unsupported type in LT(...) parameter list")));
+  }
+  
+  // ...........................................................................
+  // Allocate the storage for a relation (LT) operator and assign it that type
+  // ...........................................................................  
+  relationOperator = (TRI_sl_relation_operator_t*)( CreateSLOperator(TRI_SL_LT_OPERATOR, NULL,NULL,parameters, NULL, 
+                                                    parameters->_value._objects._length, NULL) );
+  
+  return scope.Close(WrapSLOperator(&(relationOperator->_base)));
 }
 
 
@@ -3776,7 +4255,6 @@ static v8::Handle<v8::Value> JS_EnsureSkiplistIndexVocbaseCol (v8::Arguments con
       char* right = *((char**) (TRI_AtVector(&attributes, k)));
       if (strcmp(left,right) == 0) {
         errorString = "duplicate parameters sent to ensureSLIndex(...) command";
-        //printf("%s:%s:%u:%s:%s\n",__FILE__,__FUNCTION__,__LINE__,left,right);
         ok = false;
         break;
       }   
@@ -5559,6 +6037,23 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   context->Global()->Set(v8::String::New("AvocadoCursor"),
                          ft->GetFunction());
 
+                         
+                         
+                         
+  // .............................................................................
+  // generate the skip list operator template
+  // .............................................................................
+
+  ft = v8::FunctionTemplate::New();
+  ft->SetClassName(v8::String::New("SLOperator"));
+
+  rt = ft->InstanceTemplate();
+  rt->SetInternalFieldCount(2);
+  v8g->SLOperatorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+
+  // must come after SetInternalFieldCount
+  context->Global()->Set(v8::String::New("SLOperator"),ft->GetFunction());
+                         
   // .............................................................................
   // create the global functions
   // .............................................................................
@@ -5599,6 +6094,35 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   context->Global()->Set(v8::String::New("AQL_SL_SELECT"),
                          v8::FunctionTemplate::New(JS_SkiplistSelectAql)->GetFunction(),
                          v8::ReadOnly);
+                         
+  context->Global()->Set(v8::String::New("AND"),
+                         v8::FunctionTemplate::New(JS_Operator_AND)->GetFunction(),
+                         v8::ReadOnly);
+                         
+  context->Global()->Set(v8::String::New("OR"),
+                         v8::FunctionTemplate::New(JS_Operator_OR)->GetFunction(),
+                         v8::ReadOnly);
+                         
+  context->Global()->Set(v8::String::New("EQ"),
+                         v8::FunctionTemplate::New(JS_Operator_EQ)->GetFunction(),
+                         v8::ReadOnly);
+                         
+  context->Global()->Set(v8::String::New("GE"),
+                         v8::FunctionTemplate::New(JS_Operator_GE)->GetFunction(),
+                         v8::ReadOnly);
+                         
+  context->Global()->Set(v8::String::New("GT"),
+                         v8::FunctionTemplate::New(JS_Operator_GT)->GetFunction(),
+                         v8::ReadOnly);
+                         
+  context->Global()->Set(v8::String::New("LE"),
+                         v8::FunctionTemplate::New(JS_Operator_LE)->GetFunction(),
+                         v8::ReadOnly);
+                         
+  context->Global()->Set(v8::String::New("LT"),
+                         v8::FunctionTemplate::New(JS_Operator_LT)->GetFunction(),
+                         v8::ReadOnly);
+                         
 /* DEPRECATED END */
 //  context->Global()->Set(v8::String::New("AQL_STORED_STATEMENT"),
 //                         v8::FunctionTemplate::New(JS_StoredStatementAql)->GetFunction(),

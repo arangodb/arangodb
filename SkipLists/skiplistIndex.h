@@ -40,6 +40,7 @@
 
 #include <BasicsC/common.h>
 #include "SkipLists/skiplist.h"
+#include "SkipLists/sl-operator.h"
 #include "ShapedJson/shaped-json.h"
 
 #ifdef __cplusplus
@@ -72,6 +73,28 @@ typedef struct {
 } SkiplistIndexElements;  
 
 
+// ...............................................................................
+// Iterator structure for skip list. We require a start and stop node
+// ...............................................................................
+
+typedef struct TRI_skiplist_iterator_interval_s {
+  void*  _leftEndPoint;
+  void*  _rightEndPoint;  
+} TRI_skiplist_iterator_interval_t;
+
+typedef struct TRI_skiplist_iterator_s {
+  SkiplistIndex* _index;
+  TRI_vector_t _intervals;  
+  size_t _currentInterval; // starts with 0
+  void* _cursor; // initially null
+  bool  (*_hasNext) (struct TRI_skiplist_iterator_s*);
+  void* (*_next)    (struct TRI_skiplist_iterator_s*);
+  void* (*_nexts)   (struct TRI_skiplist_iterator_s*, int64_t jumpSize);
+  bool  (*_hasPrev) (struct TRI_skiplist_iterator_s*);
+  void* (*_prev)    (struct TRI_skiplist_iterator_s*);
+  void* (*_prevs)   (struct TRI_skiplist_iterator_s*, int64_t jumpSize);  
+} TRI_skiplist_iterator_t;
+
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 // Unique skiplist indexes
@@ -82,7 +105,7 @@ SkiplistIndex* SkiplistIndex_new (void);
 
 int SkiplistIndex_add (SkiplistIndex*, SkiplistIndexElement*);
 
-SkiplistIndexElements* SkiplistIndex_find (SkiplistIndex*, SkiplistIndexElement*); 
+TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*, TRI_vector_t*, TRI_sl_operator_t*); 
 
 int SkiplistIndex_insert (SkiplistIndex*, SkiplistIndexElement*);
 
@@ -102,7 +125,7 @@ SkiplistIndex* MultiSkiplistIndex_new (void);
 
 int MultiSkiplistIndex_add (SkiplistIndex*, SkiplistIndexElement*);
 
-SkiplistIndexElements* MultiSkiplistIndex_find (SkiplistIndex*, SkiplistIndexElement*); 
+TRI_skiplist_iterator_t* MultiSkiplistIndex_find (SkiplistIndex*, TRI_vector_t*, TRI_sl_operator_t*); 
 
 int MultiSkiplistIndex_insert (SkiplistIndex*, SkiplistIndexElement*);
 
