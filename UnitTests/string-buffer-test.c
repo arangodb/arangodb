@@ -269,7 +269,7 @@ static void tst_length () {
 }
 
 static void tst_timing () {
-  size_t const repeats = 10;
+  size_t const repeats = 100;
 
   size_t const loop1 =  25 * 10000;
   size_t const loop2 = 200 * 10000;
