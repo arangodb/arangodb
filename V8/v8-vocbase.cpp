@@ -2351,7 +2351,7 @@ static v8::Handle<v8::Value> JS_HashSelectAql (v8::Arguments const& argv) {
 static bool CheckWhereSkiplistOperators(size_t fieldCount, TRI_sl_operator_t* slOperator) {
   TRI_sl_logical_operator_t*  logicalOperator;
   TRI_sl_relation_operator_t* relationOperator;
-  bool ok;
+  bool ok = false;
   
   logicalOperator  = (TRI_sl_logical_operator_t*)(slOperator);
   relationOperator = (TRI_sl_relation_operator_t*)(slOperator);

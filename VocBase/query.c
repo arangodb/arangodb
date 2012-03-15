@@ -1330,9 +1330,6 @@ static void FilterDataSLQuery(collection_cursor_t* cursor,TRI_query_t* query,
   TRI_qry_where_skiplist_const_t* where;
   TRI_sim_collection_t* collection; 
   TRI_skiplist_iterator_t* skiplistIterator;
-  TRI_doc_mptr_t* wtr; 
-  TRI_doc_mptr_t* doc;
-  size_t j;
   
   cursor->base._context = context;
   cursor->base._select  = query->_select->clone(query->_select);
