@@ -162,6 +162,20 @@ static bool noAutoComplete = false;
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print to pager
+////////////////////////////////////////////////////////////////////////////////
+
+static void internalPrint (const char *format, const char *str = 0) {
+  if (str) {
+    fprintf(PAGER, format, str);    
+  }
+  else {
+    fprintf(PAGER, "%s", format);    
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief outputs the arguments
 ///
@@ -181,7 +195,7 @@ static v8::Handle<v8::Value> JS_PagerOutput (v8::Arguments const& argv) {
 
     string str = TRI_ObjectToString(val);
 
-    fprintf(PAGER, "%s", str.c_str());
+    internalPrint(str.c_str());
   }
 
   return v8::Undefined();
@@ -192,8 +206,13 @@ static v8::Handle<v8::Value> JS_PagerOutput (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_StartOutputPager (v8::Arguments const& argv) {
-  usePager = true;
-  printf("Using pager '%s' for output buffering.\n", OutputPager.c_str());
+  if (usePager) {
+    internalPrint("Using pager already.\n");        
+  }
+  else {
+    usePager = true;
+    internalPrint("Using pager '%s' for output buffering.\n", OutputPager.c_str());    
+  }
   return v8::Undefined();
 }
 
@@ -202,6 +221,12 @@ static v8::Handle<v8::Value> JS_StartOutputPager (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_StopOutputPager (v8::Arguments const& argv) {
+  if (usePager) {
+    internalPrint("Stopping pager.\n");
+  }
+  else {
+    internalPrint("Pager not running.\n");    
+  }
   usePager = false;
   return v8::Undefined();
 }
