@@ -50,172 +50,172 @@ extern "C" {
 /// numbers defined for other parts of the program (e.g. in VocBase/vocbase.h)
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_BASE                                            (8000)
+#define TRI_ERROR_QUERY_BASE                                            (1500)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 8000: Out of memory.
+/// @brief 1500: Out of memory.
 ///
 /// Will be raised during query execution when a memory allocation request can
 /// not be satisfied.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_OOM                                             (8000)
+#define TRI_ERROR_QUERY_OOM                                             (1500)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 8001: Query was killed by administrator.
+/// @brief 1501: Query was killed by administrator.
 ///
 /// Will be raised when a running query is killed by an explicit admin command.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_KILLED                                          (8001)
+#define TRI_ERROR_QUERY_KILLED                                          (1501)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 8010: Parse error.
+/// @brief 1510: Parse error.
 ///
 /// Will be raised when query is parsed and is found to be syntactially invalid.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_PARSE                                           (8010)
+#define TRI_ERROR_QUERY_PARSE                                           (1510)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 8011: Query is emtpy / no command specified.
+/// @brief 1511: Query is emtpy / no command specified.
 ///
 /// Will be raised when an empty query is specified.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_EMPTY                                           (8011)
+#define TRI_ERROR_QUERY_EMPTY                                           (1511)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 8020: Specified numeric value is out of range.
+/// @brief 1520: Specified numeric value is out of range.
 ///
 /// Will be raised when a numeric value inside a query is out of the allowed
 /// value range.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE                             (8020)
+#define TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE                             (1520)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 8021: Specified limit value is out of range.
+/// @brief 1521: Specified limit value is out of range.
 ///
 /// Will be raised when a limit value in the query is outside the allowed range
 /// (e. g. when passing a negative skip value)
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE                        (8021)
+#define TRI_ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE                        (1521)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 8040: Too many joins.
+/// @brief 1540: Too many joins.
 ///
 /// Will be raised when the number of joins in a query is beyond the allowed 
 /// value.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_TOO_MANY_JOINS                                  (8040)
+#define TRI_ERROR_QUERY_TOO_MANY_JOINS                                  (1540)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 8050: Invalid name for collection.
+/// @brief 1550: Invalid name for collection.
 ///
 /// Will be raised when an invalid collection name is used in the from clause
 /// of a query.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_COLLECTION_NAME_INVALID                         (8050)
+#define TRI_ERROR_QUERY_COLLECTION_NAME_INVALID                         (1550)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 8051: Invalid alias for collection.
+/// @brief 1551: Invalid alias for collection.
 ///
 /// Will be raised when an invalid alias name is used for a collection.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_COLLECTION_ALIAS_INVALID                        (8051)
+#define TRI_ERROR_QUERY_COLLECTION_ALIAS_INVALID                        (1551)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 8052: Redeclaration of alias within query.
+/// @brief 1552: Redeclaration of alias within query.
 ///
 /// Will be raised when the same alias name is declared multiple times in the
 /// same query's from clause.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_COLLECTION_ALIAS_REDECLARED                     (8052)
+#define TRI_ERROR_QUERY_COLLECTION_ALIAS_REDECLARED                     (1552)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 8053: Usage of undeclared alias in query.
+/// @brief 1553: Usage of undeclared alias in query.
 ///
 /// Will be raised when an alias not declared in the from clause is used in the
 /// query.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_COLLECTION_ALIAS_UNDECLARED                     (8053)
+#define TRI_ERROR_QUERY_COLLECTION_ALIAS_UNDECLARED                     (1553)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 8060: Collection not found.
+/// @brief 1560: Collection not found.
 ///
 /// Will be raised when one of the collections referenced in the query was not
 /// found.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_COLLECTION_NOT_FOUND                            (8060)
+#define TRI_ERROR_QUERY_COLLECTION_NOT_FOUND                            (1560)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 8070: Invalid geo restriction specification.
+/// @brief 1570: Invalid geo restriction specification.
 ///
 /// Will be raised when a specified geo restriction is invalid.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_GEO_RESTRICTION_INVALID                         (8070)
+#define TRI_ERROR_QUERY_GEO_RESTRICTION_INVALID                         (1570)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 8071: No suitable geo index found to resolve query.
+/// @brief 1571: No suitable geo index found to resolve query.
 ///
 /// Will be raised when a geo restriction was specified but no suitable geo
 /// index is found to resolve it.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_GEO_INDEX_MISSING                               (8071)
+#define TRI_ERROR_QUERY_GEO_INDEX_MISSING                               (1571)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 8100: No value specified for declared bind parameter.
+/// @brief 1590: No value specified for declared bind parameter.
 ///
 /// Will be raised when a bind parameter was declared in the query but the
 /// query is being executed with no value for that parameter.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_BIND_PARAMETER_MISSING                          (8100)
+#define TRI_ERROR_QUERY_BIND_PARAMETER_MISSING                          (1590)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 8101: Redeclaration of same bind parameter value.
+/// @brief 1591: Redeclaration of same bind parameter value.
 ///
 /// Will be raised when a value gets specified multiple times for the same bind 
 /// parameter.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_BIND_PARAMETER_REDECLARED                       (8101)
+#define TRI_ERROR_QUERY_BIND_PARAMETER_REDECLARED                       (1591)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 8102: Value specified for undeclared bind parameter.
+/// @brief 1592: Value specified for undeclared bind parameter.
 ///
 /// Will be raised when a value gets specified for an undeclared bind parameter.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED                       (8102)
+#define TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED                       (1592)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 8103: Invalid value for bind parameter.
+/// @brief 1593: Invalid value for bind parameter.
 ///
 /// Will be raised when an invalid value is specified for one of the bind 
 /// parameters.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_BIND_PARAMETER_VALUE_INVALID                    (8103)
+#define TRI_ERROR_QUERY_BIND_PARAMETER_VALUE_INVALID                    (1593)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 8104: Bind parameter number is out of range.
+/// @brief 1594: Bind parameter number is out of range.
 ///
 /// Will be specified when the numeric index for a bind parameter of type 
 /// @LIT{\@n} is out of the allowed range.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_BIND_PARAMETER_NUMBER_OUT_OF_RANGE              (8104)
+#define TRI_ERROR_QUERY_BIND_PARAMETER_NUMBER_OUT_OF_RANGE              (1594)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper macro to define an error string

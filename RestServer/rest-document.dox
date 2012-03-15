@@ -41,11 +41,27 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page RestDocument REST Interface for Documents
 ///
+/// Documents in AvocadoDB are JSON objects. The objects can be nested to any
+/// depth and can contains lists, for example:
+///
+/// @verbinclude document1
+///
+/// All documents contain two special fields, the document handle in @LIT{_id}
+/// and the document revision in @LIT{_rev}.
+///
+/// @copydoc GlossaryDocumentHandle
+///
+/// @copydoc GlossaryDocumentIdentifier
+///
+/// @copydoc GlossaryDocumentRevision
+///
+/// @copydoc GlossaryDocumentEtag
+///
 /// The basic operations (create, read, update, delete) for documents are mapped
 /// to the standard HTTP methods (POST, GET, PUT, DELETE). An identifier for the
-/// revision is returned in the "ETag" field. If you modify a document, you can
-/// use the "ETag" field to detect conflicts. The revision of a document can be
-/// checking using the HTTP method HEAD.
+/// document revision is returned in the "ETag" field. If you modify a document,
+/// you can use the "ETag" field to detect conflicts. The revision of a document
+/// can be checking using the HTTP method HEAD.
 ///
 /// <hr>
 /// @copydoc RestDocumentTOC

@@ -1,0 +1,71 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief over the wire protocol
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page Glossary
+///
+/// @copydoc GlossaryCollectionIdentifier
+/// @copydoc GlossaryDocumentHandle
+/// @cooydoc GlossaryDocumentIdentifier
+/// @copydoc GlossaryDocumentRevision
+///
+/// @page GlossaryCollectionIdentifier
+///
+/// @GE{Collection Identifier}: A collection identifier identifies a collection
+/// in a database. It is an integer and is unique within the database.
+///
+/// @page GlossaryDocumentHandle
+///
+/// @GE{Document Handle}: A document handle uniquely identifies a document in
+/// the database. It is a string and consists of a collection identifier and a
+/// document identifier separated by @LIT{/}.
+///
+/// @page GlossaryDocumentIdentifier 
+///
+/// @GE{Document Identifier}: A document identifier identifies a document in a
+/// database. It is an integer and is unique within the collection of the
+/// document.
+///
+/// @page GlossaryDocumentRevision
+///
+/// @GE{Document Revision}: As AvocaodDB supports MVCC, documents can exist in
+/// more than one revision.  The document revision is the MVCC token used to
+/// identify a particular revision of a document. It is an integer and unique
+/// within the list of document revision for a single document. Earlier revision
+/// of a document have smaller numbers. In order to find a particular revision
+/// of a document, you need the document handle and the document revision.
+///
+/// @page GlossaryDocumentEtag 
+///
+/// @GE{Document Etag}: The document revision enclosed in double quotes.
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: c++
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// End:
