@@ -1,0 +1,7 @@
+# -*- mode: Makefile; -*-
+
+noinst_PROGRAMS = UnitTests/string-buffer-test
+
+UnitTests_string_buffer_test_SOURCES = UnitTests/Philadelphia/string-buffer-test.cpp
+UnitTests_string_buffer_test_LDADD = -L@top_builddir@ -lavocado
+

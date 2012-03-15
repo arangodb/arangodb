@@ -62,3 +62,4 @@ libavocado.a
 *.swp
 tags
 build.h
+UnitTests/string-buffer-test

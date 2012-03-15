@@ -32,6 +32,8 @@
 
 # -*- mode: Makefile; -*-
 
+# -*- mode: Makefile; -*-
+
 ################################################################################
 ################################################################################
 
@@ -73,12 +75,13 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.all-in-one \
 	$(srcdir)/Makefile.am $(srcdir)/Makefile.bison \
 	$(srcdir)/Makefile.doxygen $(srcdir)/Makefile.files \
 	$(srcdir)/Makefile.flex $(srcdir)/Makefile.in \
-	$(srcdir)/Makefile.javascript \
+	$(srcdir)/Makefile.javascript $(srcdir)/Makefile.unittests \
 	$(top_srcdir)/BasicsC/local-configuration.h.in \
 	$(top_srcdir)/Doxygen/avocado.doxy.in \
 	$(top_srcdir)/config/config.h.in $(top_srcdir)/configure \
 	config/compile config/config.guess config/config.sub \
 	config/depcomp config/install-sh config/missing
+noinst_PROGRAMS = UnitTests/string-buffer-test$(EXEEXT)
 
 ################################################################################
 ################################################################################
@@ -190,7 +193,12 @@ am_libavocado_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 libavocado_a_OBJECTS = $(am_libavocado_a_OBJECTS)
 am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
 	"$(DESTDIR)$(pkgdatadir)"
-PROGRAMS = $(bin_PROGRAMS) $(sbin_PROGRAMS)
+PROGRAMS = $(bin_PROGRAMS) $(noinst_PROGRAMS) $(sbin_PROGRAMS)
+am_UnitTests_string_buffer_test_OBJECTS =  \
+	UnitTests/Philadelphia/string-buffer-test.$(OBJEXT)
+UnitTests_string_buffer_test_OBJECTS =  \
+	$(am_UnitTests_string_buffer_test_OBJECTS)
+UnitTests_string_buffer_test_DEPENDENCIES =
 am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Admin/RestAdminBaseHandler.$(OBJEXT) \
 	Admin/RestAdminFeConfigurationHandler.$(OBJEXT) \
@@ -302,8 +310,11 @@ am__v_CXXLD_0 = @echo "  CXXLD " $@;
 AM_V_GEN = $(am__v_GEN_$(V))
 am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
 am__v_GEN_0 = @echo "  GEN   " $@;
-SOURCES = $(libavocado_a_SOURCES) $(avocado_SOURCES) $(avocsh_SOURCES)
-DIST_SOURCES = $(libavocado_a_SOURCES) $(avocado_SOURCES) \
+SOURCES = $(libavocado_a_SOURCES) \
+	$(UnitTests_string_buffer_test_SOURCES) $(avocado_SOURCES) \
+	$(avocsh_SOURCES)
+DIST_SOURCES = $(libavocado_a_SOURCES) \
+	$(UnitTests_string_buffer_test_SOURCES) $(avocado_SOURCES) \
 	$(avocsh_SOURCES)
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
@@ -825,6 +836,8 @@ WIKI = \
         Doxygen/xml/UserManualShellStartStop.md \
         Doxygen/xml/jsUnity.md
 
+UnitTests_string_buffer_test_SOURCES = UnitTests/Philadelphia/string-buffer-test.cpp
+UnitTests_string_buffer_test_LDADD = -L@top_builddir@ -lavocado
 @ENABLE_32BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.ia32
 @ENABLE_64BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.x64
 @ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_FALSE@LIBEV_CFLAGS_32 = -O2 -g
@@ -843,7 +856,7 @@ all: $(BUILT_SOURCES)
 .SUFFIXES: .c .cpp .o .obj
 am--refresh:
 	@:
-$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/Makefile.doxygen $(srcdir)/Makefile.javascript $(srcdir)/Makefile.flex $(srcdir)/Makefile.bison $(srcdir)/Makefile.all-in-one $(am__configure_deps)
+$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/Makefile.doxygen $(srcdir)/Makefile.javascript $(srcdir)/Makefile.unittests $(srcdir)/Makefile.flex $(srcdir)/Makefile.bison $(srcdir)/Makefile.all-in-one $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -1182,6 +1195,9 @@ uninstall-binPROGRAMS:
 
 clean-binPROGRAMS:
 	-test -z "$(bin_PROGRAMS)" || rm -f $(bin_PROGRAMS)
+
+clean-noinstPROGRAMS:
+	-test -z "$(noinst_PROGRAMS)" || rm -f $(noinst_PROGRAMS)
 install-sbinPROGRAMS: $(sbin_PROGRAMS)
 	@$(NORMAL_INSTALL)
 	test -z "$(sbindir)" || $(MKDIR_P) "$(DESTDIR)$(sbindir)"
@@ -1219,6 +1235,21 @@ uninstall-sbinPROGRAMS:
 
 clean-sbinPROGRAMS:
 	-test -z "$(sbin_PROGRAMS)" || rm -f $(sbin_PROGRAMS)
+UnitTests/Philadelphia/$(am__dirstamp):
+	@$(MKDIR_P) UnitTests/Philadelphia
+	@: > UnitTests/Philadelphia/$(am__dirstamp)
+UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) UnitTests/Philadelphia/$(DEPDIR)
+	@: > UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Philadelphia/string-buffer-test.$(OBJEXT):  \
+	UnitTests/Philadelphia/$(am__dirstamp) \
+	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
+UnitTests/$(am__dirstamp):
+	@$(MKDIR_P) UnitTests
+	@: > UnitTests/$(am__dirstamp)
+UnitTests/string-buffer-test$(EXEEXT): $(UnitTests_string_buffer_test_OBJECTS) $(UnitTests_string_buffer_test_DEPENDENCIES) UnitTests/$(am__dirstamp)
+	@rm -f UnitTests/string-buffer-test$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(UnitTests_string_buffer_test_OBJECTS) $(UnitTests_string_buffer_test_LDADD) $(LIBS)
 Admin/$(am__dirstamp):
 	@$(MKDIR_P) Admin
 	@: > Admin/$(am__dirstamp)
@@ -1679,6 +1710,7 @@ mostlyclean-compile:
 	-rm -f SimpleHttpClient/SimpleHttpResult.$(OBJEXT)
 	-rm -f SkipLists/skiplist.$(OBJEXT)
 	-rm -f SkipLists/skiplistIndex.$(OBJEXT)
+	-rm -f UnitTests/Philadelphia/string-buffer-test.$(OBJEXT)
 	-rm -f V8/JSLoader.$(OBJEXT)
 	-rm -f V8/v8-actions.$(OBJEXT)
 	-rm -f V8/v8-conv.$(OBJEXT)
@@ -1871,6 +1903,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@SimpleHttpClient/$(DEPDIR)/SimpleHttpResult.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@SkipLists/$(DEPDIR)/skiplist.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@SkipLists/$(DEPDIR)/skiplistIndex.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/string-buffer-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/JSLoader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-actions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-conv.Po@am__quote@
@@ -2263,6 +2296,9 @@ distclean-generic:
 	-rm -f SimpleHttpClient/$(am__dirstamp)
 	-rm -f SkipLists/$(DEPDIR)/$(am__dirstamp)
 	-rm -f SkipLists/$(am__dirstamp)
+	-rm -f UnitTests/$(am__dirstamp)
+	-rm -f UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
+	-rm -f UnitTests/Philadelphia/$(am__dirstamp)
 	-rm -f V8/$(DEPDIR)/$(am__dirstamp)
 	-rm -f V8/$(am__dirstamp)
 	-rm -f V8Client/$(DEPDIR)/$(am__dirstamp)
@@ -2280,11 +2316,12 @@ maintainer-clean-generic:
 clean: clean-am
 
 clean-am: clean-binPROGRAMS clean-generic clean-local \
-	clean-noinstLIBRARIES clean-sbinPROGRAMS mostlyclean-am
+	clean-noinstLIBRARIES clean-noinstPROGRAMS clean-sbinPROGRAMS \
+	mostlyclean-am
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -2332,7 +2369,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -2355,18 +2392,19 @@ uninstall-am: uninstall-binPROGRAMS uninstall-nobase_pkgdataDATA \
 
 .PHONY: CTAGS GTAGS all all-am am--refresh check check-am clean \
 	clean-binPROGRAMS clean-generic clean-local \
-	clean-noinstLIBRARIES clean-sbinPROGRAMS ctags dist dist-all \
-	dist-bzip2 dist-gzip dist-lzma dist-shar dist-tarZ dist-xz \
-	dist-zip distcheck distclean distclean-compile \
-	distclean-generic distclean-hdr distclean-tags distcleancheck \
-	distdir distuninstallcheck dvi dvi-am html html-am info \
-	info-am install install-am install-binPROGRAMS install-data \
-	install-data-am install-data-local install-dvi install-dvi-am \
-	install-exec install-exec-am install-html install-html-am \
-	install-info install-info-am install-man \
-	install-nobase_pkgdataDATA install-pdf install-pdf-am \
-	install-ps install-ps-am install-sbinPROGRAMS install-strip \
-	installcheck installcheck-am installdirs maintainer-clean \
+	clean-noinstLIBRARIES clean-noinstPROGRAMS clean-sbinPROGRAMS \
+	ctags dist dist-all dist-bzip2 dist-gzip dist-lzma dist-shar \
+	dist-tarZ dist-xz dist-zip distcheck distclean \
+	distclean-compile distclean-generic distclean-hdr \
+	distclean-tags distcleancheck distdir distuninstallcheck dvi \
+	dvi-am html html-am info info-am install install-am \
+	install-binPROGRAMS install-data install-data-am \
+	install-data-local install-dvi install-dvi-am install-exec \
+	install-exec-am install-html install-html-am install-info \
+	install-info-am install-man install-nobase_pkgdataDATA \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-sbinPROGRAMS install-strip installcheck \
+	installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic pdf pdf-am ps ps-am tags uninstall \
 	uninstall-am uninstall-binPROGRAMS \
