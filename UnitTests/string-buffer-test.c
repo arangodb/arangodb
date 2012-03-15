@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 /*
- * gcc -g -I . -L . -lavocado UnitTests/string-buffer-test.c && ./a.out 
+ * gcc -g -I . -L . UnitTests/string-buffer-test.c -lavocado && ./a.out 
  * from base dir.
  */
 
@@ -35,6 +35,7 @@ static cmp_ptr (const char * should, const char * is, char * name) {
   }
   tst_tst_cnt++;
 }
+
 static cmp_str (char * should, char * is, size_t len, char * name) {
   if (strncmp(should, is, len)) {
     printf("'%s' failed! should: \n>>%s<< is: \n>>%s<<\n", name, should, is);
@@ -101,6 +102,7 @@ static void tst_char_append() {
 
   TRI_FreeStringBuffer(&sb);
 }
+
 static void tst_swp() {
   int l1, l2, i;
 
@@ -125,6 +127,7 @@ static void tst_swp() {
   TRI_FreeStringBuffer(&sb1);
   TRI_FreeStringBuffer(&sb2);
 }
+
 static void tst_begin_end_empty_clear() {
   int l1, i;
   const char * ptr;
@@ -177,6 +180,7 @@ static void tst_cpy() {
 #define Z_2_T "0123456789A"
 #define F_2_T "56789A"
 #define Z_2_F "012345"
+
 static void tst_erase_frnt() {
   int l;
 
@@ -229,11 +233,10 @@ static void tst_replace () {
 //  TRI_ReplaceStringBufferStringBuffer(&sb, &sb2, 1);
 //  l = strnlen(sb._buffer, 1024);
 //  cmp_str(AEP, sb._buffer, l, "replace stringbuffer 2");
-
-  
 }
 
 #define ONETWOTHREE "123"
+
 void tst_smpl_utils () {
   // these are built on prev. tested building blocks...
   TRI_string_buffer_t sb;
@@ -252,6 +255,59 @@ void tst_smpl_utils () {
   cmp_str("23412-12.125", sb._buffer, 1024, "append int3");
 }
 
+static void tst_length () {
+  TRI_string_buffer_t sb;
+
+  TRI_InitStringBuffer(&sb);
+  cmp_int(0, TRI_LengthStringBuffer(&sb), "length empty");
+
+  TRI_AppendStringStringBuffer(&sb, ONETWOTHREE);
+  cmp_int(strlen(ONETWOTHREE), TRI_LengthStringBuffer(&sb), "length string");
+
+  TRI_AppendInt32StringBuffer(&sb, 123);
+  cmp_int(strlen(ONETWOTHREE) + 3, TRI_LengthStringBuffer(&sb), "length integer");
+}
+
+static void tst_timing () {
+  TRI_string_buffer_t sb;
+  size_t i;
+
+  size_t const loop  =  25 * 10000;
+  size_t const loop2 = 200 * 10000;
+
+  double t1 = TRI_microtime();
+
+  // integer
+  TRI_InitStringBuffer(&sb);
+
+  for (i = 0;  i < loop;  ++i) {
+    TRI_AppendInt32StringBuffer(&sb, 12345678);
+  }
+
+  t1 = TRI_microtime() - t1;
+
+  cmp_int(loop * 8, TRI_LengthStringBuffer(&sb), "length integer");
+  printf("time for integer append: %f msec\n", t1 * 1000);
+
+  TRI_DestroyStringBuffer(&sb);
+
+  // character
+  t1 = TRI_microtime();
+
+  TRI_InitStringBuffer(&sb);
+
+  for (i = 0;  i < loop2;  ++i) {
+    TRI_AppendCharStringBuffer(&sb, 'A');
+  }
+
+  t1 = TRI_microtime() - t1;
+
+  cmp_int(loop2, TRI_LengthStringBuffer(&sb), "length character");
+  printf("time for character append: %f msec\n", t1 * 1000);
+
+  TRI_DestroyStringBuffer(&sb);
+}
+
 void tst_report () {
   printf("%d test run. %d failed.\n", tst_tst_cnt, tst_err_cnt);
 }
@@ -265,6 +321,9 @@ int main () {
   tst_erase_frnt();
   tst_replace();
   tst_smpl_utils();
+  tst_length();
+  tst_timing();
+
   tst_report();
   return 0;
 }
