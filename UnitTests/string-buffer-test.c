@@ -269,43 +269,52 @@ static void tst_length () {
 }
 
 static void tst_timing () {
+  size_t const repeats = 10;
+
+  size_t const loop1 =  25 * 10000;
+  size_t const loop2 = 200 * 10000;
+
   TRI_string_buffer_t sb;
   size_t i;
-
-  size_t const loop  =  25 * 10000;
-  size_t const loop2 = 200 * 10000;
+  size_t j;
 
   double t1 = TRI_microtime();
 
   // integer
-  TRI_InitStringBuffer(&sb);
+  for (j = 0;  j < repeats;  ++j) {
+    TRI_InitStringBuffer(&sb);
 
-  for (i = 0;  i < loop;  ++i) {
-    TRI_AppendInt32StringBuffer(&sb, 12345678);
+    for (i = 0;  i < loop1;  ++i) {
+      TRI_AppendInt32StringBuffer(&sb, 12345678);
+    }
+
+    cmp_int(loop1 * 8, TRI_LengthStringBuffer(&sb), "length integer");
+
+    TRI_DestroyStringBuffer(&sb);
   }
 
   t1 = TRI_microtime() - t1;
 
-  cmp_int(loop * 8, TRI_LengthStringBuffer(&sb), "length integer");
   printf("time for integer append: %f msec\n", t1 * 1000);
-
-  TRI_DestroyStringBuffer(&sb);
 
   // character
   t1 = TRI_microtime();
 
-  TRI_InitStringBuffer(&sb);
+  for (j = 0;  j < repeats;  ++j) {
+    TRI_InitStringBuffer(&sb);
 
-  for (i = 0;  i < loop2;  ++i) {
-    TRI_AppendCharStringBuffer(&sb, 'A');
+    for (i = 0;  i < loop2;  ++i) {
+      TRI_AppendCharStringBuffer(&sb, 'A');
+    }
+
+    cmp_int(loop2, TRI_LengthStringBuffer(&sb), "length character");
+
+    TRI_DestroyStringBuffer(&sb);
   }
 
   t1 = TRI_microtime() - t1;
 
-  cmp_int(loop2, TRI_LengthStringBuffer(&sb), "length character");
   printf("time for character append: %f msec\n", t1 * 1000);
-
-  TRI_DestroyStringBuffer(&sb);
 }
 
 void tst_report () {
