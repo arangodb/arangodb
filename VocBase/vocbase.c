@@ -450,14 +450,6 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
     return NULL;
   }
   
-  // set up shadow data stores for queries
-/*  vocbase->_statements = TRI_CreateShadowsQueryTemplate();
-  if (!vocbase->_statements) {
-    TRI_Free(vocbase);
-    LOG_ERROR("out of memory when opening vocbase");
-    return NULL;
-  }
-*/
   vocbase->_cursors = TRI_CreateShadowsQueryCursor();
   if (!vocbase->_cursors) {
     TRI_FreeShadowStore(vocbase->_cursors);
@@ -470,7 +462,6 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   vocbase->_path = TRI_DuplicateString(path);
 
   if (!vocbase->_path) {
-//    TRI_FreeShadowDocumentStore(vocbase->_statements);
     TRI_FreeShadowStore(vocbase->_cursors);
     TRI_Free(vocbase);
     LOG_ERROR("out of memory when opening vocbase");
@@ -528,12 +519,7 @@ void TRI_CloseVocBase (TRI_vocbase_t* vocbase) {
     // cursors
     TRI_FreeShadowStore(vocbase->_cursors);
   }
-/*
-  if (vocbase->_statements) {
-    // statements
-    TRI_FreeShadowDocumentStore(vocbase->_statements);
-  }
-*/
+  
   TRI_DestroyLockFile(vocbase->_lockFile);
   TRI_FreeString(vocbase->_lockFile);
 }

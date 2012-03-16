@@ -100,7 +100,7 @@ static void StringifyJson (TRI_string_buffer_t* buffer, TRI_json_t const* object
         }
 
         StringifyJson(buffer, TRI_AtVector(&object->_value._objects, i), true);
-        TRI_AppendStringStringBuffer(buffer, ":");
+        TRI_AppendCharStringBuffer(buffer, ':');
         StringifyJson(buffer, TRI_AtVector(&object->_value._objects, i + 1), true);
       }
 

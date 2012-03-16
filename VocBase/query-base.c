@@ -365,122 +365,7 @@ TRI_bind_parameter_t* TRI_CreateBindParameter (const char* name,
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    query template
 // -----------------------------------------------------------------------------
-/*
-////////////////////////////////////////////////////////////////////////////////
-/// @brief decrease the refcount of a template
-////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DecreaseRefCountQueryTemplate (TRI_query_template_t* const template_) {
-  assert(template_);
-//  assert(template_->_shadow);
-
-  TRI_LockQueryTemplate(template_);
-//  TRI_DecreaseRefCountShadowData(template_->_vocbase->_templates, 
-//                                 template_->_shadow->_id);
-
-  TRI_UnlockQueryTemplate(template_);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief increase the refcount of a template
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_IncreaseRefCountQueryTemplate (TRI_query_template_t* const template_) {
-  assert(template_);
-//  assert(template_->_shadow);
-
-  TRI_LockQueryTemplate(template_);
-//  TRI_IncreaseRefCountShadowData(template_->_vocbase->_templates, 
-//                                 template_->_shadow->_id);
-
-  TRI_UnlockQueryTemplate(template_);
-}
-*/
-////////////////////////////////////////////////////////////////////////////////
-/// @brief exclusively lock a query template
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_LockQueryTemplate (TRI_query_template_t* const template_) {
-  assert(template_);
-
-  TRI_LockMutex(&template_->_lock);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unlock a query template
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_UnlockQueryTemplate (TRI_query_template_t* const template_) {
-  assert(template_);
-
-  TRI_UnlockMutex(&template_->_lock);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Free a template based on its shadow
-////////////////////////////////////////////////////////////////////////////////
-/*
-void TRI_FreeShadowQueryTemplate (TRI_shadow_document_store_t* store, 
-                                  TRI_shadow_document_t* shadow) {
-  TRI_query_template_t* template_ = (TRI_query_template_t*) shadow->_base->_data;
-
-  if (!template_) {
-    return;
-  }
-
-  TRI_FreeQueryTemplate(template_);
-}
-*/
-/*
-// TODO: move to own file
-void* TRI_CreateShadowQueryTemplate (TRI_shadow_document_store_t* store, TRI_doc_collection_t* collection, TRI_doc_mptr_t const* document) {
-  TRI_json_t* json;
-  TRI_json_t* query;
-  char* queryString;
-
-  LOG_DEBUG("creating shadow for %lu", (unsigned long) document->_did);
-
-  json = TRI_JsonShapedJson(collection->_shaper, &document->_document);
-  if (!json) {
-    return NULL;
-  }
-  
-  query = TRI_LookupArrayJson(json, "query");
-  if (!query) {
-// TODO: fix this
-//    TRI_FreeJson(json);
-    return NULL;
-  }
-
-  if (query->_type != TRI_JSON_STRING || !query->_value._string.data) {
-// TODO: fix this
-//    TRI_FreeJson(json);
-    return NULL;
-  }
-
-  queryString = query->_value._string.data;
-  assert(queryString);
-
-
-
-// TODO: fix this
-//  TRI_FreeJson(json);
-
-  // TODO: fix
-  return NULL;
-}
-bool TRI_VerifyShadowQueryTemplate (TRI_shadow_document_store_t* store, TRI_doc_collection_t* collection, TRI_doc_mptr_t const* document, void* shadow) {
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create shadow data store for templates 
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_shadow_document_store_t* TRI_CreateShadowsQueryTemplate (void) {
-  return TRI_CreateShadowDocumentStore(&TRI_CreateShadowQueryTemplate, &TRI_VerifyShadowQueryTemplate, &TRI_FreeShadowQueryTemplate);
-}
-*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Initialize the structs contained in a query template and perform
 /// some basic optimizations and type detections
@@ -528,8 +413,7 @@ bool TRI_AddBindParameterQueryTemplate (TRI_query_template_t* const template_,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_query_template_t* TRI_CreateQueryTemplate (const char* queryString, 
-                                               const TRI_vocbase_t* const vocbase,
-                                               const TRI_query_template_type_e type) {
+                                               const TRI_vocbase_t* const vocbase) {
   TRI_query_template_t* template_;
   
   assert(queryString);
@@ -552,9 +436,6 @@ TRI_query_template_t* TRI_CreateQueryTemplate (const char* queryString,
     TRI_Free(template_);
     return NULL;
   }
-
-  template_->_type = type;;
-  template_->_shadow = NULL;
 
   template_->_vocbase = (TRI_vocbase_t*) vocbase;
   TRI_InitQueryError(&template_->_error);

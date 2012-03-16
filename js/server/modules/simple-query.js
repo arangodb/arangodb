@@ -786,7 +786,7 @@ SimpleQueryByExample.prototype.execute = function () {
       }
     }
 
-    var cursor = AQL_STATEMENT(db, queryString, undefined);  
+    var cursor = AQL_STATEMENT(queryString, undefined);  
     if (cursor instanceof AvocadoQueryError) {
       throw cursor.message;
     }

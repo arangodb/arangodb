@@ -73,7 +73,7 @@ LoggerData::Extra const RestVocbaseBaseHandler::RES_FAIL;
 /// @brief document path
 ////////////////////////////////////////////////////////////////////////////////
 
-string RestVocbaseBaseHandler::DOCUMENT_PATH = "/collection";
+string RestVocbaseBaseHandler::DOCUMENT_PATH = "/document";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection path
@@ -220,17 +220,20 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
   TRI_string_buffer_t buffer;
 
   if (generateDocument) {
-    string id = StringUtils::itoa(_documentCollection->base._cid) + ":" + StringUtils::itoa(document->_did);
+    string id = StringUtils::itoa(_documentCollection->base._cid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::itoa(document->_did);
 
     TRI_json_t augmented;
 
     TRI_InitArrayJson(&augmented);
 
     TRI_json_t* _id = TRI_CreateStringCopyJson(id.c_str());
-    TRI_json_t* _rev = TRI_CreateNumberJson(document->_rid);
+
     if (_id) {
       TRI_Insert2ArrayJson(&augmented, "_id", _id);
     }
+
+    TRI_json_t* _rev = TRI_CreateNumberJson(document->_rid);
+
     if (_rev) {
       TRI_Insert2ArrayJson(&augmented, "_rev", _rev);
     }
@@ -266,7 +269,7 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestVocbaseBaseHandler::splitDocumentReference (string const& name, string& did) {
-  vector<string> doc = StringUtils::split(name, ":");
+  vector<string> doc = StringUtils::split(name, TRI_DOCUMENT_HANDLE_SEPARATOR_STR);
 
   switch (doc.size()) {
     case 1:
