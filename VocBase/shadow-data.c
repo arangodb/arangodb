@@ -54,7 +54,7 @@ static inline void UpdateTimestampShadow (TRI_shadow_t* const shadow) {
 /// @brief init a shadow data structure
 ////////////////////////////////////////////////////////////////////////////////
   
-static TRI_shadow_t* CreateShadow (const void* const element) {
+static TRI_shadow_t* CreateShadow (const void* const data) {
   TRI_shadow_t* shadow = (TRI_shadow_t*) TRI_Allocate(sizeof(TRI_shadow_t)); 
 
   if (!shadow) {
@@ -62,33 +62,81 @@ static TRI_shadow_t* CreateShadow (const void* const element) {
   }
 
   shadow->_rc        = 1;
-  shadow->_data      = (void*) element;
+  shadow->_data      = (void*) data;
   shadow->_id        = TRI_NewTickVocBase();
+  shadow->_deleted   = false;
+  shadow->_type      = SHADOW_TRANSIENT;
 
   UpdateTimestampShadow(shadow);
+  
+  LOG_TRACE("created shadow %p with data ptr %p and id %lu", 
+            shadow, 
+            data, 
+            (unsigned long) shadow->_id);
 
   return shadow;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hashes an element
+/// @brief hashes an element in the ids index
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashShadowElement (TRI_associative_pointer_t* array, void const* e) {
+static uint64_t HashKeyId (TRI_associative_pointer_t* array, void const* k) {
+  TRI_shadow_id key = *((TRI_shadow_id*) k);
+
+  return (uint64_t) key;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hashes an element in the ids index
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashElementId (TRI_associative_pointer_t* array, void const* e) {
   TRI_shadow_t const* element = e;
 
-  return element->_id;
+  return (uint64_t) element->_id;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests if two elements are equal
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool EqualShadowElement (TRI_associative_pointer_t* array, void const* l, void const* r) {
-  TRI_shadow_t const* left = l;
-  TRI_shadow_t const* right = r;
+static bool EqualKeyId (TRI_associative_pointer_t* array, void const* k, void const* e) {
+  TRI_shadow_t const* element = e;
+  TRI_shadow_id key = *((TRI_shadow_id*) k);
 
-  return left->_id == right->_id;
+  return (key == element->_id);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hashes an element in the pointers index
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashKeyData (TRI_associative_pointer_t* array, void const* k) {
+  uint64_t key = 0;
+
+  key = (uint64_t) k;
+  return key;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hashes an element in the pointers index
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashElementData (TRI_associative_pointer_t* array, void const* e) {
+  TRI_shadow_t const* element = e;
+
+  return (uint64_t) element->_data;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tests if two elements are equal
+////////////////////////////////////////////////////////////////////////////////
+
+static bool EqualKeyData (TRI_associative_pointer_t* array, void const* k, void const* e) {
+  TRI_shadow_t const* element = e;
+
+  return ((uint64_t) k == (uint64_t) element->_data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -108,16 +156,22 @@ static bool EqualShadowElement (TRI_associative_pointer_t* array, void const* l,
 /// @brief creates a shadow data storage
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shadow_store_t* TRI_CreateShadowStore (void (*destroy) (TRI_shadow_store_t*, TRI_shadow_t*)) {
+TRI_shadow_store_t* TRI_CreateShadowStore (void (*destroy) (void*)) {
   TRI_shadow_store_t* store = 
     (TRI_shadow_store_t*) TRI_Allocate(sizeof(TRI_shadow_store_t));
 
   if (store) {
-    TRI_InitAssociativePointer(&store->_index,
-                               NULL,
-                               HashShadowElement,
-                               NULL,
-                               EqualShadowElement);
+    TRI_InitAssociativePointer(&store->_ids,
+                               HashKeyId,
+                               HashElementId,
+                               EqualKeyId,
+                               NULL); 
+    
+    TRI_InitAssociativePointer(&store->_pointers,
+                               HashKeyData,
+                               HashElementData,
+                               EqualKeyData,
+                               NULL);
 
     store->destroyShadow = destroy;
     
@@ -129,48 +183,20 @@ TRI_shadow_store_t* TRI_CreateShadowStore (void (*destroy) (TRI_shadow_store_t*,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a shadow data storage
+///
+/// Note: all remaining shadows will be destroyed
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeShadowStore (TRI_shadow_store_t* const store) {
   assert(store);
 
+  // force deletion of all remaining shadows
+  TRI_CleanupShadowData(store, 0, true); 
+
   TRI_DestroyMutex(&store->_lock);
-  TRI_DestroyAssociativePointer(&store->_index);
+  TRI_DestroyAssociativePointer(&store->_ids);
+  TRI_DestroyAssociativePointer(&store->_pointers);
   TRI_Free(store);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Update the refcount of a shadow data element (increase or decrease)
-////////////////////////////////////////////////////////////////////////////////
-
-static bool UpdateRefCountShadowData (TRI_shadow_store_t* const store, 
-                                      const TRI_shadow_id id,
-                                      const bool increase) {
-  TRI_shadow_t* shadow;
-  TRI_shadow_t search;
-  union { TRI_shadow_t* s; TRI_shadow_t const* c; } cnv;
-  
-  assert(store);
-
-  TRI_LockMutex(&store->_lock);
-
-  search._id = id;
-  cnv.c = (TRI_shadow_t*) TRI_LookupByElementAssociativePointer(&store->_index, 
-                                                                &search);
-  shadow = cnv.s;
-
-  if (shadow) {
-    if (increase) {
-      ++shadow->_rc;
-    } 
-    else {
-      --shadow->_rc;
-    }
-  } 
-
-  TRI_UnlockMutex(&store->_lock);
-
-  return (shadow != NULL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -187,10 +213,304 @@ static bool UpdateRefCountShadowData (TRI_shadow_store_t* const store,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief enumerate all shadows and remove them if expired 
+/// @brief look up a shadow in the index using its data pointer and return 
+/// its id
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_shadow_id TRI_GetIdDataShadowData (TRI_shadow_store_t* const store,
+                                       const void* const data) {
+  TRI_shadow_t* shadow;
+  TRI_shadow_id id = 0;
+
+  assert(store);
+  
+  if (data) {
+    TRI_LockMutex(&store->_lock);
+    shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_pointers, data);
+
+    if (shadow && !shadow->_deleted) {
+      id = shadow->_id;
+      UpdateTimestampShadow(shadow);
+    } 
+
+    TRI_UnlockMutex(&store->_lock);
+  }
+
+  return id;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief look up a shadow in the index using its data pointer
+///
+/// If the shadow is found, this will return the data pointer, NULL otherwise.
+/// When the shadow is found, its refcount will also be increased by one
+////////////////////////////////////////////////////////////////////////////////
+
+void* TRI_BeginUsageDataShadowData (TRI_shadow_store_t* const store,
+                                    const void* const data) {
+  TRI_shadow_t* shadow;
+
+  assert(store);
+  
+  if (!data) {
+    return NULL;
+  }
+  
+  TRI_LockMutex(&store->_lock);
+  shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_pointers, data);
+
+  if (shadow && !shadow->_deleted) {
+    LOG_TRACE("increasing refcount for shadow %p with data ptr %p and id %lu", 
+              shadow, 
+              shadow->_data, 
+              (unsigned long) shadow->_id);
+
+    ++shadow->_rc;
+    UpdateTimestampShadow(shadow);
+    TRI_UnlockMutex(&store->_lock);
+    return shadow->_data;
+  } 
+
+  TRI_UnlockMutex(&store->_lock);
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief look up a shadow in the index using its id
+///
+/// If the shadow is found, this will return the data pointer, NULL otherwise.
+/// When the shadow is found, its refcount will also be increased by one
+////////////////////////////////////////////////////////////////////////////////
+
+void* TRI_BeginUsageIdShadowData (TRI_shadow_store_t* const store,
+                                  const TRI_shadow_id id) {
+  TRI_shadow_t* shadow;
+
+  assert(store);
+
+  TRI_LockMutex(&store->_lock);
+  shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_ids, (void const*) &id);
+
+  if (shadow && !shadow->_deleted) {
+    LOG_TRACE("increasing refcount for shadow %p with data ptr %p and id %lu", 
+              shadow, 
+              shadow->_data, 
+              (unsigned long) shadow->_id);
+
+    ++shadow->_rc;
+    UpdateTimestampShadow(shadow);
+    TRI_UnlockMutex(&store->_lock);
+    return shadow->_data;
+  } 
+
+  TRI_UnlockMutex(&store->_lock);
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief look up a shadow in the index using its data pointer
+///
+/// If the shadow is found, its refcount will be decreased by one.
+/// If the refcount is 0 and the shadow is of type SHADOW_TRANSIENT, the shadow
+/// object will be destroyed.
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_EndUsageDataShadowData (TRI_shadow_store_t* const store,
+                                 const void* const data) {
+  TRI_shadow_t* shadow;
+
+  assert(store);
+  
+  TRI_LockMutex(&store->_lock);
+  shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_pointers, data);
+
+  if (shadow && !shadow->_deleted) {
+    LOG_TRACE("decreasing refcount for shadow %p with data ptr %p and id %lu", 
+              shadow, 
+              shadow->_data, 
+              (unsigned long) shadow->_id);
+
+    if (--shadow->_rc <= 0 && shadow->_type == SHADOW_TRANSIENT) {
+      LOG_TRACE("deleting shadow %p", shadow);
+
+      TRI_RemoveKeyAssociativePointer(&store->_ids, &shadow->_id);
+      TRI_RemoveKeyAssociativePointer(&store->_pointers, data);
+      store->destroyShadow(shadow->_data);
+      TRI_Free(shadow);
+    }
+  } 
+
+  TRI_UnlockMutex(&store->_lock);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief look up a shadow in the index using its id
+///
+/// If the shadow is found, its refcount will be decreased by one.
+/// If the refcount is 0 and the shadow is of type SHADOW_TRANSIENT, the shadow
+/// object will be destroyed.
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_EndUsageIdShadowData (TRI_shadow_store_t* const store,
+                             const TRI_shadow_id id) {
+  TRI_shadow_t* shadow;
+
+  assert(store);
+  
+  TRI_LockMutex(&store->_lock);
+  shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_ids, &id);
+
+  if (shadow && !shadow->_deleted) {
+    LOG_TRACE("decreasing refcount for shadow %p with data ptr %p and id %lu", 
+              shadow, 
+              shadow->_data, 
+              (unsigned long) shadow->_id);
+
+    if (--shadow->_rc <= 0 && shadow->_type == SHADOW_TRANSIENT) {
+      LOG_TRACE("deleting shadow %p", shadow);
+
+      TRI_RemoveKeyAssociativePointer(&store->_ids, &id);
+      TRI_RemoveKeyAssociativePointer(&store->_pointers, shadow->_data);
+      store->destroyShadow(shadow->_data);
+      TRI_Free(shadow);
+    }
+  } 
+
+  TRI_UnlockMutex(&store->_lock);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the persistence flag for a shadow using its data pointer
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_PersistDataShadowData (TRI_shadow_store_t* const store,
+                                const void* const data) {
+  TRI_shadow_t* shadow;
+  bool result = false;
+
+  assert(store);
+  
+  TRI_LockMutex(&store->_lock);
+  shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_pointers, data);
+
+  if (shadow && !shadow->_deleted) {
+    LOG_TRACE("persisting shadow %p with data ptr %p and id %lu", 
+              shadow, 
+              shadow->_data, 
+              (unsigned long) shadow->_id);
+
+    shadow->_type = SHADOW_PERSISTENT;
+    UpdateTimestampShadow(shadow);
+    result = true;
+  } 
+
+  TRI_UnlockMutex(&store->_lock);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the persistence flag for a shadow using its id
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_PersistIdShadowData (TRI_shadow_store_t* const store,
+                              const TRI_shadow_id id) {
+  TRI_shadow_t* shadow;
+  bool result = false;
+
+  assert(store);
+
+  TRI_LockMutex(&store->_lock);
+  shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_ids, &id);
+
+  if (shadow && !shadow->_deleted) {
+    LOG_TRACE("persisting shadow %p with data ptr %p and id %lu", 
+              shadow, 
+              shadow->_data, 
+              (unsigned long) shadow->_id);
+
+    shadow->_type = SHADOW_PERSISTENT;
+    UpdateTimestampShadow(shadow);
+    result = true;
+  } 
+
+  TRI_UnlockMutex(&store->_lock);
+  
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the deleted flag for a shadow using its data pointer
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_DeleteDataShadowData (TRI_shadow_store_t* const store,
+                               const void* const data) {
+  TRI_shadow_t* shadow;
+  bool found = false;
+
+  assert(store);
+
+  if (data) {
+    TRI_LockMutex(&store->_lock);
+    shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_pointers, data);
+
+    if (shadow && !shadow->_deleted) {
+      LOG_TRACE("setting deleted flag for shadow %p with data ptr %p and id %lu", 
+              shadow, 
+              shadow->_data, 
+              (unsigned long) shadow->_id);
+
+      shadow->_deleted = true;
+      found = true;
+    } 
+
+    TRI_UnlockMutex(&store->_lock);
+  }
+
+  return found;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the deleted flag for a shadow using its id
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_DeleteIdShadowData (TRI_shadow_store_t* const store,
+                             const TRI_shadow_id id) {
+  TRI_shadow_t* shadow;
+  bool found = false;
+
+  assert(store);
+
+  TRI_LockMutex(&store->_lock);
+  shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_ids, &id);
+
+  if (shadow && !shadow->_deleted) {
+    LOG_TRACE("setting deleted flag for shadow %p with data ptr %p and id %lu", 
+            shadow, 
+            shadow->_data, 
+            (unsigned long) shadow->_id);
+
+    shadow->_deleted = true;
+    found = true;
+  } 
+
+  TRI_UnlockMutex(&store->_lock);
+  return found;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enumerate all shadows and remove them if 
+/// - their refcount is 0 and they are transient
+/// - their refcount is 0 and they are expired
+/// - the force flag is set
+/// 
+/// The max age must be specified in seconds. The max age is ignored if the
+/// force flag is set. In this case all remaining shadows will be deleted
 ////////////////////////////////////////////////////////////////////////////////
   
-void TRI_CleanupShadowData (TRI_shadow_store_t* const store, const double maxAge) {
+void TRI_CleanupShadowData (TRI_shadow_store_t* const store, 
+                            const double maxAge, 
+                            const bool force) {
   double compareStamp = TRI_microtime() - maxAge; // age must be specified in secs
   size_t deleteCount = 0;
 
@@ -199,28 +519,34 @@ void TRI_CleanupShadowData (TRI_shadow_store_t* const store, const double maxAge
 
   // loop until there's nothing to delete or 
   // we have deleted SHADOW_MAX_DELETE elements 
-  while (deleteCount++ < SHADOW_MAX_DELETE) {
+  while (deleteCount++ < SHADOW_MAX_DELETE || force) {
     bool deleted = false;
     size_t i;
 
-    for (i = 0; i < store->_index._nrAlloc; i++) {
+    for (i = 0; i < store->_ids._nrAlloc; i++) {
       // enum all shadows
-      TRI_shadow_t* shadow = (TRI_shadow_t*) store->_index._table[i];
+      TRI_shadow_t* shadow = (TRI_shadow_t*) store->_ids._table[i];
       if (!shadow) {
         continue;
       }
 
       // check if shadow is unused and expired
-      if (shadow->_rc <= 1 && shadow->_timestamp < compareStamp) {
-        LOG_DEBUG("cleaning expired shadow %p", shadow);
-        TRI_RemoveElementAssociativePointer(&store->_index, shadow);
-        store->destroyShadow(store, shadow);
-        TRI_Free(shadow);
+      if (shadow->_rc < 1 || force) {
+        if (shadow->_type == SHADOW_TRANSIENT || 
+            shadow->_timestamp < compareStamp || 
+            force) {
+          LOG_TRACE("cleaning expired shadow %p", shadow);
 
-        deleted = true;
-        // the remove might reposition elements in the container.
-        // therefore break here and start iteration anew
-        break;
+          TRI_RemoveKeyAssociativePointer(&store->_ids, &shadow->_id);
+          TRI_RemoveKeyAssociativePointer(&store->_pointers, shadow->_data);
+          store->destroyShadow(shadow->_data);
+          TRI_Free(shadow);
+
+          deleted = true;
+          // the remove might reposition elements in the container.
+          // therefore break here and start iteration anew
+          break;
+        }
       }
     }
 
@@ -235,69 +561,32 @@ void TRI_CleanupShadowData (TRI_shadow_store_t* const store, const double maxAge
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a shadow by id and decreases its refcount if it exists
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_DecreaseRefCountShadowData (TRI_shadow_store_t* const store, 
-                                     const TRI_shadow_id id) {
-  return UpdateRefCountShadowData(store, id, false);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a shadow by id and increases its refcount if it exists
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IncreaseRefCountShadowData (TRI_shadow_store_t* const store, 
-                                     const TRI_shadow_id id) {
-  return UpdateRefCountShadowData(store, id, true);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a shadow by id
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_shadow_t* TRI_FindShadowData (TRI_shadow_store_t* const store, 
-                                  const TRI_shadow_id id) {
-  TRI_shadow_t* shadow;
-  TRI_shadow_t search;
-  union { TRI_shadow_t* s; TRI_shadow_t const* c; } cnv;
-  
-  LOG_INFO("trying to find shadow %lu", (unsigned long) id);
-  assert(store);
-
-  TRI_LockMutex(&store->_lock);
-
-  search._id = id;
-  cnv.c = (TRI_shadow_t*) TRI_LookupByElementAssociativePointer(&store->_index, 
-                                                                &search);
-  shadow = cnv.s;
-
-  if (shadow) {
-    ++shadow->_rc;
-    UpdateTimestampShadow(shadow);
-  } 
-
-  TRI_UnlockMutex(&store->_lock);
-
-  // might be NULL if shadow not found
-  return shadow;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief store a new shadow in the store
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_shadow_t* TRI_StoreShadowData (TRI_shadow_store_t* const store, 
-                                   const void* const element) {
+                                   const void* const data) {
   TRI_shadow_t* shadow;
   
   assert(store);
 
-  shadow = CreateShadow(element);
-  LOG_INFO("inserting shadow %lu", (unsigned long) shadow->_id);
+  shadow = CreateShadow(data);
   if (shadow) {
+    LOG_TRACE("storing shadow %p with data ptr %p and id %lu", 
+            shadow, 
+            shadow->_data, 
+            (unsigned long) shadow->_id);
+
     TRI_LockMutex(&store->_lock);
-    TRI_InsertElementAssociativePointer(&store->_index, shadow, true);
+    if (TRI_InsertKeyAssociativePointer(&store->_ids, &shadow->_id, shadow, false)) {
+      // duplicate entry
+      LOG_INFO("storing shadow failed");
+      TRI_UnlockMutex(&store->_lock);
+      TRI_Free(shadow);
+      return NULL;
+    }
+    TRI_InsertKeyAssociativePointer(&store->_pointers, data, shadow, false);
+
     TRI_UnlockMutex(&store->_lock);
   }
 
@@ -306,59 +595,13 @@ TRI_shadow_t* TRI_StoreShadowData (TRI_shadow_store_t* const store,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief decrease the refcount of a shadow without deleting it
-////////////////////////////////////////////////////////////////////////////////
-
-int64_t TRI_DecreaseRefcountShadowData (TRI_shadow_store_t* const store, 
-                                        TRI_shadow_t* const shadow) {
-  int64_t result;
-
-  assert(shadow);
-
-  TRI_LockMutex(&store->_lock);
-
-  // release the element
-  result = --shadow->_rc;
-
-  TRI_UnlockMutex(&store->_lock);
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief releases shadow data
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ReleaseShadowData (TRI_shadow_store_t* const store, TRI_shadow_t* shadow) {
-  bool result;
-
-  assert(shadow);
-
-  TRI_LockMutex(&store->_lock);
-
-  // release the element
-  --shadow->_rc;
-
-  // need to destroy the element
-  if (shadow->_rc < 1) {
-    LOG_INFO("releasing shadow %lu", (unsigned long) shadow->_id);
-    TRI_RemoveElementAssociativePointer(&store->_index, shadow);
-    store->destroyShadow(store, shadow);
-    TRI_Free(shadow);
-    result = true; // object was destroyed
-  }
-  else {
-    result = false; // object was not destroyed
-  }
-
-  TRI_UnlockMutex(&store->_lock);
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+/*
+// -----------------------------------------------------------------------------
+// --SECTION--                                  UNUSED AND UNTESTED CODE FOLLOWS
+// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  SHADOW DOCUMENTS
@@ -675,10 +918,10 @@ void TRI_CleanupShadowDocuments (TRI_shadow_document_store_t* const store, const
   // release lock
   TRI_UnlockMutex(&store->_base->_lock);
 }
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+*/
 
 // Local Variables:
 // mode: outline-minor

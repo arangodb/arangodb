@@ -54,7 +54,7 @@ function postQuery(req, res) {
       return;
     }
 
-    var result = AQL_PARSE(db, json.query);
+    var result = AQL_PARSE(json.query);
     if (result instanceof AvocadoQueryError) {
       actions.actionResultError (req, res, 404, result.code, result.message);
       return;

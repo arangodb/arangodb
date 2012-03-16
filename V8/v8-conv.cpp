@@ -33,6 +33,7 @@
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/strings.h"
 #include "ShapedJson/shaped-json.h"
+#include "VocBase/vocbase.h"
 
 #include "V8/v8-json.h"
 #include "V8/v8-utils.h"
@@ -1171,7 +1172,7 @@ v8::Handle<v8::Value> TRI_ObjectReference (TRI_voc_cid_t cid, TRI_voc_did_t did)
 
   TRI_InitStringBuffer(&buffer);
   TRI_AppendUInt64StringBuffer(&buffer, cid);
-  TRI_AppendStringStringBuffer(&buffer, ":");
+  TRI_AppendCharStringBuffer(&buffer, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR);
   TRI_AppendUInt64StringBuffer(&buffer, did);
 
   v8::Handle<v8::String> ref = v8::String::New(buffer._buffer);
@@ -1198,7 +1199,7 @@ bool TRI_IdentifiersObjectReference (v8::Handle<v8::Value> value, TRI_voc_cid_t&
 
   string v = TRI_ObjectToString(value);
 
-  vector<string> doc = StringUtils::split(v, ":");
+  vector<string> doc = StringUtils::split(v, TRI_DOCUMENT_HANDLE_SEPARATOR_STR);
 
   switch (doc.size()) {
     case 1:
@@ -1378,6 +1379,40 @@ char TRI_ObjectToCharacter (v8::Handle<v8::Value> value, bool& error) {
   }
 
   return (*sep)[0];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts an V8 object to an int64_t
+////////////////////////////////////////////////////////////////////////////////
+
+int64_t TRI_ObjectToInt64 (v8::Handle<v8::Value> value) {
+  if (value->IsNumber()) {
+    return (int64_t) value->ToNumber()->Value();
+  }
+
+  if (value->IsNumberObject()) {
+    v8::Handle<v8::NumberObject> no = v8::Handle<v8::NumberObject>::Cast(value);
+    return (int64_t) no->NumberValue();
+  }
+
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts an V8 object to a uint64_t
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t TRI_ObjectToUInt64 (v8::Handle<v8::Value> value) {
+  if (value->IsNumber()) {
+    return (uint64_t) value->ToNumber()->Value();
+  }
+
+  if (value->IsNumberObject()) {
+    v8::Handle<v8::NumberObject> no = v8::Handle<v8::NumberObject>::Cast(value);
+    return (uint64_t) no->NumberValue();
+  }
+
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

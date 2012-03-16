@@ -440,8 +440,6 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
     }
   }
 
-  line.appendChar('\0');
-
   TRI_RawLog(info._level, info._severity, line.c_str(), line.length() - 1);
 
   line.free();

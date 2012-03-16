@@ -63,7 +63,6 @@ typedef struct TRI_v8_global_s {
 
   TRI_v8_global_s ()
     : JSFluentQueries(),
-      JSQueryTemplates(),
       JSQueryCursors(),
       JSQueries(), // DEPRECATED
       JSCursors(), // DEPRECATED
@@ -75,7 +74,6 @@ typedef struct TRI_v8_global_s {
       EdgesTempl(),
       EdgesColTempl(),
       FluentQueryTempl(),
-      QueryTemplateTempl(),
       QueryCursorTempl(),
       QueryErrorTempl(),
       QueryTempl(), // DEPRECATED
@@ -104,12 +102,6 @@ typedef struct TRI_v8_global_s {
 ////////////////////////////////////////////////////////////////////////////////
 
   std::map< void*, v8::Persistent<v8::Value> > JSFluentQueries;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief template mapping for weak pointers
-////////////////////////////////////////////////////////////////////////////////
-
-  std::map< void*, v8::Persistent<v8::Value> > JSQueryTemplates;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cursor mapping for weak pointers
@@ -201,12 +193,6 @@ typedef struct TRI_v8_global_s {
 ////////////////////////////////////////////////////////////////////////////////
 
   v8::Persistent<v8::ObjectTemplate> FluentQueryTempl;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief query template template
-////////////////////////////////////////////////////////////////////////////////
-
-  v8::Persistent<v8::ObjectTemplate> QueryTemplateTempl;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cursor template
@@ -441,10 +427,6 @@ typedef struct TRI_v8_global_s {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               REGULAR EXPRESSIONS
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////

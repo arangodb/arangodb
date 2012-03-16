@@ -139,7 +139,7 @@ avocado_SOURCES = \
 	QL/parser.c \
 	QL/tokens.c \
 	RestHandler/RestActionHandler.cpp \
-	RestHandler/RestCollectionHandler.cpp \
+	RestHandler/RestDocumentHandler.cpp \
 	RestHandler/RestVocbaseBaseHandler.cpp \
 	RestServer/ActionDispatcherThread.cpp \
 	RestServer/AvocadoHttpServer.cpp \
@@ -294,6 +294,7 @@ WIKI = \
         Doxygen/xml/CommandLineScheduler.md \
         Doxygen/xml/Compiling.md \
         Doxygen/xml/DefineAction.md \
+	Doxygen/xml/ExamplesSetup.md \
         Doxygen/xml/Glossary.md \
         Doxygen/xml/Graphs.md \
         Doxygen/xml/HttpInterface.md \

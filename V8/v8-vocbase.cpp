@@ -233,6 +233,21 @@ static T* UnwrapClass (v8::Handle<v8::Object> obj, int32_t type) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Get the vocbase pointer from the current V8 context
+////////////////////////////////////////////////////////////////////////////////
+  
+static TRI_vocbase_t* GetContextVocBase () {
+  v8::Handle<v8::Context> currentContext = v8::Context::GetCurrent(); 
+  v8::Handle<v8::Object> db = currentContext->Global()->Get(v8::String::New("db"))->ToObject();
+  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(db, WRP_VOCBASE_TYPE);
+  if (!vocbase) {
+    return 0;
+  }
+
+  return vocbase;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if argument is a document identifier
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -611,67 +626,6 @@ static v8::Handle<v8::Object> WrapQuery (TRI_query_t* query) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief weak reference callback for query instances
-////////////////////////////////////////////////////////////////////////////////
-/*
-static void WeakQueryInstanceCallback (v8::Persistent<v8::Value> object, void* parameter) {
-  TRI_query_instance_t* instance;
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-  instance = (TRI_query_instance_t*) parameter;
-
-  LOG_TRACE("weak-callback for query instance called");
-
-  TRI_query_template_t* template_ = (TRI_query_template_t*) instance->_template;
-  assert(template_);
-
-  TRI_DecreaseRefCountQueryTemplate(template_);
-  
-  // find the persistent handle
-  v8::Persistent<v8::Value> persistent = v8g->JSQueryInstances[instance];
-  v8g->JSQueryInstances.erase(instance);
-
-  // dispose and clear the persistent handle
-  persistent.Dispose();
-  persistent.Clear();
-
-  TRI_FreeQueryInstance(instance);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stores a query instance in a javascript object
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Object> WrapQueryInstance (TRI_query_instance_t* instance) {
-  TRI_v8_global_t* v8g;
-  v8::HandleScope scope;
-  
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-  v8::Handle<v8::Object> queryInstance = v8g->QueryInstanceTempl->NewInstance();
-  map< void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSQueryInstances.find(instance);
-
-  if (i == v8g->JSQueryInstances.end()) {
-    v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(instance));
-
-    queryInstance->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_QUERY_INSTANCE_TYPE));
-    queryInstance->SetInternalField(SLOT_CLASS, persistent);
-
-    v8g->JSQueryInstances[instance] = persistent;
-
-    LOG_TRACE("creating new query instance");
-    persistent.MakeWeak(instance, WeakQueryInstanceCallback);
-  }
-  else {
-    queryInstance->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_QUERY_INSTANCE_TYPE));
-    queryInstance->SetInternalField(SLOT_CLASS, i->second);
-  }
-  
-  return scope.Close(queryInstance);
-}
-*/
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Create a query error in a javascript object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -745,153 +699,31 @@ static TRI_rc_cursor_t* ExecuteQuery (v8::Handle<v8::Object> queryObject,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a query instance or uses existing result set
-////////////////////////////////////////////////////////////////////////////////
-
-/*
-static TRI_query_cursor_t* ExecuteQueryInstance (v8::Handle<v8::Object> queryObject,
-                                                 bool doCount,
-                                                 uint32_t max,
-                                                 v8::Handle<v8::Value>* err) {
-  v8::TryCatch tryCatch;
-
-  TRI_query_instance_t* instance = UnwrapClass<TRI_query_instance_t>(queryObject, WRP_QUERY_INSTANCE_TYPE);
-  
-  if (!instance) {
-    *err = v8::String::New("corrupted query instance");
-    return 0;
-  }
-  
-  LOG_TRACE("executing query");
-
-  TRI_query_cursor_t* cursor = TRI_ExecuteQueryInstance(instance, doCount, max);
-  if (!cursor) {
-    if (tryCatch.HasCaught()) {
-      *err = tryCatch.Exception();
-    }
-    else {
-      *err = CreateQueryErrorObject(&instance->_error);
-    }
-
-    return NULL;
-  }
-
-  return cursor;
-}
-*/
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief weak reference callback for templates
-////////////////////////////////////////////////////////////////////////////////
-/*
-static void WeakQueryTemplateCallback (v8::Persistent<v8::Value> object, void* parameter) {
-  LOG_TRACE("weak-callback for query template called");
-
-  TRI_query_template_t* template_ = (TRI_query_template_t*) parameter;
-
-  // mutex lock
-  TRI_LockQueryTemplate(template_);
-
-  try {
-    // find the persistent handle
-    TRI_v8_global_t* v8g;
-    v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-    v8::Persistent<v8::Value> persistent = v8g->JSQueryTemplates[template_];
-    v8g->JSQueryTemplates.erase(template_);
-
-    // dispose and clear the persistent handle
-    persistent.Dispose();
-    persistent.Clear();
-  } 
-  catch (...) {
-  }
-
-  assert(template_->_shadow);
-  if (!TRI_ReleaseShadowData(template_->_vocbase->_templates, template_->_shadow)) {
-    // unlock mutex only if template was not disposed
-    TRI_UnlockQueryTemplate(template_);
-  }
-}
-*/
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stores a template in a javascript object
-////////////////////////////////////////////////////////////////////////////////
-/*
-static v8::Handle<v8::Object> WrapQueryTemplate (TRI_query_template_t* template_) {
-  TRI_v8_global_t* v8g;
-  v8::HandleScope scope;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-  v8::Handle<v8::Object> templateObject = v8g->QueryTemplateTempl->NewInstance();
-  map< void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSQueryTemplates.find(template_);
-  
-  if (i == v8g->JSQueryTemplates.end()) {
-    v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(template_));
-
-    templateObject->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_QUERY_TEMPLATE_TYPE));
-    templateObject->SetInternalField(SLOT_CLASS, persistent);
-
-    v8g->JSQueryTemplates[template_] = persistent;
-
-    persistent.MakeWeak(template_, WeakQueryTemplateCallback);
-  }
-  else {
-    templateObject->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_QUERY_TEMPLATE_TYPE));
-    templateObject->SetInternalField(SLOT_CLASS, i->second);
-  }
-  
-  return scope.Close(templateObject);
-}
-*/
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts a template from a javascript object
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_query_template_t* UnwrapQueryTemplate (v8::Handle<v8::Object> templateObject) {
-  return UnwrapClass<TRI_query_template_t>(templateObject, WRP_QUERY_TEMPLATE_TYPE);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief weak reference callback for cursors
 ////////////////////////////////////////////////////////////////////////////////
 
 static void WeakQueryCursorCallback (v8::Persistent<v8::Value> object, void* parameter) {
+  v8::HandleScope scope;
+
   LOG_TRACE("weak-callback for query cursor called");
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
+  if (!vocbase) {
+    return;
+  }
 
   TRI_query_cursor_t* cursor = (TRI_query_cursor_t*) parameter;
+  TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
 
-  // mutex lock
-  TRI_LockQueryCursor(cursor);
+  // find the persistent handle
+  TRI_v8_global_t* v8g;
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  v8::Persistent<v8::Value> persistent = v8g->JSQueryCursors[cursor];
+  v8g->JSQueryCursors.erase(cursor);
 
-  try {
-    // find the persistent handle
-    TRI_v8_global_t* v8g;
-    v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-    v8::Persistent<v8::Value> persistent = v8g->JSQueryCursors[cursor];
-    v8g->JSQueryCursors.erase(cursor);
-
-    // dispose and clear the persistent handle
-    persistent.Dispose();
-    persistent.Clear();
-  } 
-  catch (...) {
-  }
-
-  bool mustFree = false;
-  if (cursor->_shadow) {
-    TRI_DecreaseRefcountShadowData(cursor->_vocbase->_cursors, cursor->_shadow);
-  } else {
-    mustFree = true;
-  }
-  // unlock mutex
-  TRI_UnlockQueryCursor(cursor);
-
-  if (mustFree) {
-    cursor->free(cursor);
-  }
+  // dispose and clear the persistent handle
+  persistent.Dispose();
+  persistent.Clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1318,7 +1150,6 @@ static v8::Handle<v8::Value> JS_InEdgesQuery (v8::Arguments const& argv) {
   return EdgesQuery(TRI_EDGE_IN, argv);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds points near a given coordinate
 ////////////////////////////////////////////////////////////////////////////////
@@ -1497,52 +1328,9 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get a (persistent) template by its id
+/// @addtogroup VocBase
+/// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-/*
-static v8::Handle<v8::Value> JS_Template (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  if (argv.Length() != 2) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_TEMPLATE(<db>, <id>)")));
-  }
-
-  v8::Handle<v8::Object> dbArg = argv[0]->ToObject();
-  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(dbArg, WRP_VOCBASE_TYPE);
-
-  if (!vocbase) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
-  }
-
-  // get the id
-  v8::Handle<v8::Value> idArg = argv[1]->ToNumber();
-  if (!idArg->IsNumber()) {
-    return scope.Close(v8::ThrowException(v8::String::New("expecting number for <id>")));
-  }
-
-  double id = TRI_ObjectToDouble(idArg);
-
-  TRI_shadow_t* shadow = TRI_FindShadowData(vocbase->_templates, (TRI_shadow_id) id);
-  if (!shadow) {
-    return scope.Close(v8::ThrowException(v8::String::New("no template found for id")));
-  }
-
-  TRI_query_template_t* template_ = (TRI_query_template_t*) shadow->_data;
-  if (!template_) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed template")));
-  }
-
-  TRI_LockQueryTemplate(template_);
-  if (template_->_deleted) {
-    TRI_UnlockQueryTemplate(template_);
-    return scope.Close(v8::ThrowException(v8::String::New("template has already been deleted")));
-  }
-  TRI_UnlockQueryTemplate(template_);
-
-  return scope.Close(WrapQueryTemplate(template_));
-}
-*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a (persistent) cursor by its id
@@ -1551,41 +1339,28 @@ static v8::Handle<v8::Value> JS_Template (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() != 2) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_CURSOR(<db>, <id>)")));
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_CURSOR(<cursor-id>)")));
   }
 
-  v8::Handle<v8::Object> dbArg = argv[0]->ToObject();
-  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(dbArg, WRP_VOCBASE_TYPE);
-
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
   if (!vocbase) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
   }
 
   // get the id
-  v8::Handle<v8::Value> idArg = argv[1]->ToNumber();
-  if (!idArg->IsNumber()) {
-    return scope.Close(v8::ThrowException(v8::String::New("expecting number for <id>")));
+  v8::Handle<v8::Value> idArg = argv[0]->ToString();
+  if (!idArg->IsString()) {
+    return scope.Close(v8::ThrowException(v8::String::New("expecting string for <id>")));
   }
+  string idString = TRI_ObjectToString(idArg);
+  uint64_t id = TRI_UInt64String(idString.c_str());
 
-  double id = TRI_ObjectToDouble(idArg);
-
-  TRI_shadow_t* shadow = TRI_FindShadowData(vocbase->_cursors, (TRI_shadow_id) id);
-  if (!shadow) {
-    return scope.Close(v8::ThrowException(v8::String::New("no cursor found for id")));
-  }
-
-  TRI_query_cursor_t* cursor = (TRI_query_cursor_t*) shadow->_data;
+  TRI_query_cursor_t* cursor = (TRI_query_cursor_t*) 
+    TRI_BeginUsageIdShadowData(vocbase->_cursors, id);
   if (!cursor) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
   }
-
-  TRI_LockQueryCursor(cursor);
-  if (cursor->_deleted) {
-    TRI_UnlockQueryCursor(cursor);
-    return scope.Close(v8::ThrowException(v8::String::New("cursor has already been deleted")));
-  }
-  TRI_UnlockQueryCursor(cursor);
 
   return scope.Close(WrapQueryCursor(cursor));
 }
@@ -1608,8 +1383,6 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_json_t* ConvertHelper(v8::Handle<v8::Value> parameter) {
-
-
   if (parameter->IsBoolean()) {
     v8::Handle<v8::Boolean> booleanParameter = parameter->ToBoolean();
     return TRI_CreateBooleanJson(booleanParameter->Value());
@@ -1665,180 +1438,21 @@ static TRI_json_t* ConvertHelper(v8::Handle<v8::Value> parameter) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new query template from a string
-////////////////////////////////////////////////////////////////////////////////
-/*
-static v8::Handle<v8::Value> JS_CreateTemplateAql (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  if (argv.Length() < 3) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_CREATE_TEMPLATE(<db>, <querystring>, <persistent>)")));
-  }
-
-  v8::Handle<v8::Object> dbArg = argv[0]->ToObject();
-  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(dbArg, WRP_VOCBASE_TYPE);
-  if (!vocbase) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
-  }
-
-  // get the query string
-  v8::Handle<v8::Value> queryArg = argv[1];
-  if (!queryArg->IsString()) {
-    return scope.Close(v8::ThrowException(v8::String::New("expecting string for <querystring>")));
-  }
-  string queryString = TRI_ObjectToString(queryArg);
-  
-  // get the persistent/non-persistent flag
-  v8::Handle<v8::Value> persistentArg = argv[2];
-  if (!persistentArg->IsBoolean()) {
-    return scope.Close(v8::ThrowException(v8::String::New("expecting bool for <persistent>")));
-  }
-
-  bool persistent = TRI_ObjectToBoolean(persistentArg);
-  TRI_query_template_type_e persistMode;
-  if (persistent) {
-    persistMode = QUERY_TEMPLATE_PERSISTENT;
-  }
-  else {
-    persistMode = QUERY_TEMPLATE_TRANSIENT;
-  }
-
-  // create a template object
-  TRI_query_template_t* template_ = TRI_CreateQueryTemplate(queryString.c_str(), 
-                                                            vocbase, 
-                                                            persistMode);
-
-  if (template_) {
-    bool ok = TRI_ParseQueryTemplate(template_);
-    if (ok) {
-      return scope.Close(WrapQueryTemplate(template_));
-    }
-
-    v8::Handle<v8::Object> errorObject = CreateQueryErrorObject(&template_->_error);
-    TRI_FreeQueryTemplate(template_);
-    return scope.Close(errorObject);
-  }
-      
-  return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
-}
-*/
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a stored statement
-////////////////////////////////////////////////////////////////////////////////
-/*
-static v8::Handle<v8::Value> JS_StoredStatementAql (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  if (argv.Length() < 2 || argv.Length() > 5) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_STORED_STATEMENT(<db>, <id>, <bindvalues>, <doCount>, <max>)")));
-  }
-  
-  v8::Handle<v8::Object> dbArg = argv[0]->ToObject();
-  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(dbArg, WRP_VOCBASE_TYPE);
-  if (!vocbase) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
-  }
-  
-  // get the statement id
-  v8::Handle<v8::Value> idArg = argv[1];
-  TRI_voc_cid_t cid;
-  TRI_voc_did_t did;
-
-  if (! IsDocumentId(idArg, cid, did)) {
-    return scope.Close(v8::ThrowException(v8::String::New("<id> must be a document identifier")));
-  }
-
-  LOG_INFO("looking up shadow");
-  TRI_shadow_document_t* shadow = TRI_FindShadowDocument(vocbase->_statements, vocbase, cid, did);
-  LOG_INFO("looked up shadow %p", shadow);
-
-  //TRI_StoreShadowData((TRI_shadow_store_t*) vocbase->_templates,
-  //                                         (const void* const) template_); 
-
-  // return number of total records in cursor?
-  bool doCount = false;
-  if (argv.Length() > 0) {
-    doCount = TRI_ObjectToBoolean(argv[3]);
-  }
-
-  // maximum number of results to return at once
-  uint32_t max = 1000;
-  if (argv.Length() > 1) {
-    double maxValue = TRI_ObjectToDouble(argv[4]);
-    if (maxValue >= 1.0) {
-      max = (uint32_t) maxValue;
-    }
-  }
-
-  TRI_query_template_t* template_ = NULL;
-  TRI_query_instance_t* instance  = NULL;
-  TRI_query_cursor_t* cursor      = NULL;
-  TRI_json_t* parameters          = NULL;
-//  template_ = TRI_CreateQueryTemplate(queryString.c_str(), 
-//                                      vocbase, 
-//                                      QUERY_TEMPLATE_TRANSIENT);
-  if (!template_) {
-    return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
-  }
-
-  bool ok = TRI_ParseQueryTemplate(template_);
-  if (!ok) {
-    v8::Handle<v8::Object> errorObject = CreateQueryErrorObject(&template_->_error);
-    TRI_FreeQueryTemplate(template_);
-    return scope.Close(errorObject);
-  }
-  
-  if (argv.Length() > 2) {
-    parameters = ConvertHelper(argv[2]);
-  }
-  
-  instance = TRI_CreateQueryInstance(template_, parameters);
-  if (!instance) {
-    if (parameters) {
-      TRI_FreeJson(parameters);
-    }
-    return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
-  }
-
-  if (!instance->_doAbort) {
-    cursor = TRI_ExecuteQueryInstance(instance, doCount, max);
-  }
-
-  if (parameters) {
-    TRI_FreeJson(parameters);
-  }
-
-  if (!cursor) {
-    v8::Handle<v8::Object> errorObject = CreateQueryErrorObject(&instance->_error);
-
-    TRI_FreeQueryInstance(instance);
-    return scope.Close(errorObject);
-  }
-  
-  TRI_FreeQueryInstance(instance);
-  
-  return scope.Close(WrapQueryCursor(cursor));
-}
-*/
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a query and returns the parse result
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ParseAql (v8::Arguments const& argv) {
   v8::HandleScope scope;
-
-  if (argv.Length() < 2 || argv.Length() > 5) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_PARSE(<db>, <querystring>)")));
+  
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_PARSE(<querystring>)")));
   }
   
-  v8::Handle<v8::Object> dbArg = argv[0]->ToObject();
-  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(dbArg, WRP_VOCBASE_TYPE);
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
   if (!vocbase) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
   }
-  
+
   // get the query string
   v8::Handle<v8::Value> queryArg = argv[1];
   if (!queryArg->IsString()) {
@@ -1848,10 +1462,7 @@ static v8::Handle<v8::Value> JS_ParseAql (v8::Arguments const& argv) {
 
   TRI_query_template_t* template_ = NULL;
 
-  template_ = TRI_CreateQueryTemplate(queryString.c_str(), 
-                                      vocbase, 
-                                      QUERY_TEMPLATE_TRANSIENT);
-  
+  template_ = TRI_CreateQueryTemplate(queryString.c_str(), vocbase); 
   if (!template_) {
     return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
   }
@@ -1893,18 +1504,17 @@ static v8::Handle<v8::Value> JS_ParseAql (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_StatementAql (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() < 2 || argv.Length() > 5) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_STATEMENT(<db>, <querystring>, <bindvalues>, <doCount>, <max>)")));
+  if (argv.Length() < 1 || argv.Length() > 4) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_STATEMENT(<querystring>, <bindvalues>, <doCount>, <max>)")));
   }
-  
-  v8::Handle<v8::Object> dbArg = argv[0]->ToObject();
-  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(dbArg, WRP_VOCBASE_TYPE);
+ 
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
   if (!vocbase) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
   }
   
   // get the query string
-  v8::Handle<v8::Value> queryArg = argv[1];
+  v8::Handle<v8::Value> queryArg = argv[0];
   if (!queryArg->IsString()) {
     return scope.Close(v8::ThrowException(v8::String::New("expecting string for <querystring>")));
   }
@@ -1913,13 +1523,13 @@ static v8::Handle<v8::Value> JS_StatementAql (v8::Arguments const& argv) {
   // return number of total records in cursor?
   bool doCount = false;
   if (argv.Length() > 0) {
-    doCount = TRI_ObjectToBoolean(argv[3]);
+    doCount = TRI_ObjectToBoolean(argv[2]);
   }
 
   // maximum number of results to return at once
   uint32_t max = 1000;
   if (argv.Length() > 1) {
-    double maxValue = TRI_ObjectToDouble(argv[4]);
+    double maxValue = TRI_ObjectToDouble(argv[3]);
     if (maxValue >= 1.0) {
       max = (uint32_t) maxValue;
     }
@@ -1930,10 +1540,7 @@ static v8::Handle<v8::Value> JS_StatementAql (v8::Arguments const& argv) {
   TRI_query_cursor_t* cursor      = NULL;
   TRI_json_t* parameters          = NULL;
 
-  template_ = TRI_CreateQueryTemplate(queryString.c_str(), 
-                                      vocbase, 
-                                      QUERY_TEMPLATE_TRANSIENT);
-  
+  template_ = TRI_CreateQueryTemplate(queryString.c_str(), vocbase); 
   if (!template_) {
     return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
   }
@@ -1945,8 +1552,8 @@ static v8::Handle<v8::Value> JS_StatementAql (v8::Arguments const& argv) {
     return scope.Close(errorObject);
   }
   
-  if (argv.Length() > 2) {
-    parameters = ConvertHelper(argv[2]);
+  if (argv.Length() > 1) {
+    parameters = ConvertHelper(argv[1]);
   }
   
   // TODO: properly free parameters
@@ -1977,6 +1584,8 @@ static v8::Handle<v8::Value> JS_StatementAql (v8::Arguments const& argv) {
   
   TRI_FreeQueryInstance(instance);
   TRI_FreeQueryTemplate(template_);
+  
+  TRI_StoreShadowData(vocbase->_cursors, (const void* const) cursor);
   
   return scope.Close(WrapQueryCursor(cursor));
 }
@@ -2911,110 +2520,6 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy a template
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_DisposeQueryTemplate (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-  v8::TryCatch tryCatch;
-
-  if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: dispose()")));
-  }
-
-  v8::Handle<v8::Object> self = argv.Holder();
-  TRI_query_template_t* template_ = UnwrapQueryTemplate(self);
-  if (!template_) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted template")));
-  }
-
-  // set the deleted flag so the gc can catch this instance
-  TRI_LockQueryTemplate(template_);
-  if (template_->_deleted) {
-    TRI_UnlockQueryTemplate(template_);
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted or already disposed template")));
-  }
-  template_->_deleted = true;
-  TRI_UnlockQueryTemplate(template_);
-
-  return scope.Close(v8::BooleanObject::New(true));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the id of the template
-////////////////////////////////////////////////////////////////////////////////
-
-/*
-static v8::Handle<v8::Value> JS_IdQueryTemplate (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-  v8::TryCatch tryCatch;
-
-  if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: id()")));
-  }
-
-  v8::Handle<v8::Object> self = argv.Holder();
-  TRI_query_template_t* template_ = UnwrapQueryTemplate(self);
-  if (!template_) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted template")));
-  }
-
-  TRI_LockQueryTemplate(template_); 
-  if (template_->_deleted) {
-    TRI_UnlockQueryTemplate(template_);
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted template")));
-  }
-
-  if (template_->_type == QUERY_TEMPLATE_PERSISTENT) {
-    TRI_shadow_id id = template_->_shadow->_id;
-    TRI_UnlockQueryTemplate(template_);
-    return scope.Close(v8::Number::New(id));
-  }
-  else {
-    TRI_UnlockQueryTemplate(template_);
-    return scope.Close(v8::ThrowException(v8::String::New("template is non-persistent")));
-  }
-}
-*/
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a query, returns a cursor
-////////////////////////////////////////////////////////////////////////////////
-/*
-static v8::Handle<v8::Value> JS_ExecuteQueryInstance (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-  
-  // return number of total records in cursor?
-  bool doCount = false;
-  if (argv.Length() > 0) {
-    doCount = TRI_ObjectToBoolean(argv[3]);
-  }
-
-  // maximum number of results to return at once
-  uint32_t max = 1000;
-  if (argv.Length() > 1) {
-    double maxValue = TRI_ObjectToDouble(argv[1]);
-    if (maxValue >= 1.0) {
-      max = (uint32_t) maxValue;
-    }
-  }
-  
-  v8::Handle<v8::Value> err;
-  TRI_query_cursor_t* cursor = ExecuteQueryInstance(argv.Holder(), doCount, max, &err);
-
-  if (!cursor) {
-    return v8::ThrowException(err);
-  }
-  
-  // we must do this to increase the refcount of the shadow
-  TRI_shadow_t* shadow = TRI_FindShadowData(cursor->_vocbase->_cursors, cursor->_shadow->_id);
-  assert(shadow);
-
-  return scope.Close(WrapQueryCursor(cursor));
-}
-*/
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3033,28 +2538,21 @@ static v8::Handle<v8::Value> JS_ExecuteQueryInstance (v8::Arguments const& argv)
 
 static v8::Handle<v8::Value> JS_DisposeQueryCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  v8::TryCatch tryCatch;
 
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: dispose()")));
   }
-
-  v8::Handle<v8::Object> self = argv.Holder();
-  TRI_query_cursor_t* cursor = UnwrapQueryCursor(self);
-  if (!cursor) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
+  if (!vocbase) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
   }
 
-  // set the deleted flag so the gc can catch this instance
-  TRI_LockQueryCursor(cursor);
-  if (cursor->_deleted) {
-    TRI_UnlockQueryCursor(cursor);
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted or already disposed cursor")));
+  if (TRI_DeleteDataShadowData(vocbase->_cursors, UnwrapQueryCursor(argv.Holder()))) {
+    return scope.Close(v8::True());
   }
-  cursor->_deleted = true;
-  TRI_UnlockQueryCursor(cursor);
 
-  return scope.Close(v8::True());
+  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already disposed cursor")));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3063,34 +2561,22 @@ static v8::Handle<v8::Value> JS_DisposeQueryCursor (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_IdQueryCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  v8::TryCatch tryCatch;
 
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: id()")));
   }
-
-  v8::Handle<v8::Object> self = argv.Holder();
-  TRI_query_cursor_t* cursor = UnwrapQueryCursor(self);
-
-  if (!cursor) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
+  if (!vocbase) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
   }
-
-  TRI_LockQueryCursor(cursor);
-  if (cursor->_deleted) {
-    TRI_UnlockQueryCursor(cursor);
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
-  }
-
-  if (cursor->_shadow) {
-    TRI_shadow_id id = cursor->_shadow->_id;
-    TRI_UnlockQueryCursor(cursor);
-
+  
+  TRI_shadow_id id = TRI_GetIdDataShadowData(vocbase->_cursors, UnwrapQueryCursor(argv.Holder()));
+  if (id) {
     return scope.Close(v8::Number::New(id));
   }
   
-  TRI_UnlockQueryCursor(cursor);
-  return scope.Close(v8::ThrowException(v8::String::New("unknown cursor")));
+  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already disposed cursor")));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3099,28 +2585,27 @@ static v8::Handle<v8::Value> JS_IdQueryCursor (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_CountQueryCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  v8::TryCatch tryCatch;
 
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: count()")));
   }
-
-  v8::Handle<v8::Object> self = argv.Holder();
-  TRI_query_cursor_t* cursor = UnwrapQueryCursor(self);
-
-  if (!cursor) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
-  }
-
-  TRI_LockQueryCursor(cursor);
-  if (cursor->_deleted) {
-    TRI_UnlockQueryCursor(cursor);
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
-  }
-  TRI_select_size_t length = cursor->_length;
-  TRI_UnlockQueryCursor(cursor);
   
-  return scope.Close(v8::Number::New(length));
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
+  if (!vocbase) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+  
+  TRI_select_size_t length = 0;
+  TRI_query_cursor_t* cursor = (TRI_query_cursor_t*) 
+    TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapQueryCursor(argv.Holder()));
+
+  if (cursor) {
+    length = cursor->_length;
+    TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
+    return scope.Close(v8::Number::New(length));
+  }
+  
+  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3129,64 +2614,58 @@ static v8::Handle<v8::Value> JS_CountQueryCursor (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_NextQueryCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  v8::TryCatch tryCatch;
 
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: next()")));
   }
-
-  v8::Handle<v8::Object> self = argv.Holder();
-  TRI_query_cursor_t* cursor = UnwrapQueryCursor(self);
-
-  if (!cursor) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
-  }
-
-  v8::Handle<v8::Value> value;
-
-  TRI_LockQueryCursor(cursor);
-  if (cursor->_deleted) {
-    TRI_UnlockQueryCursor(cursor);
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
-  }
-
-  bool ok = true;
-  TRI_js_exec_context_t context = NULL;
   
-  // exceptions must be caught in the following part because we hold an exclusive
-  // lock that might otherwise not be freed
-  try {
-    TRI_rc_result_t* next = cursor->next(cursor);
-    if (!next) {
-      value = v8::Undefined();
-    }
-    else {
-      context = TRI_CreateExecutionContext(cursor->_functionCode);
-      if (context) {
-        TRI_DefineSelectExecutionContext(context, next);
-        ok = TRI_ExecuteExecutionContext(context, (void*) &value);
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
+  if (!vocbase) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+
+  bool result = false;
+  TRI_js_exec_context_t context = NULL;
+  v8::Handle<v8::Value> value;
+  TRI_query_cursor_t* cursor = (TRI_query_cursor_t*) 
+    TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapQueryCursor(argv.Holder()));
+
+  if (cursor) {
+    TRI_LockQueryCursor(cursor);
+
+    // exceptions must be caught in the following part because we hold an exclusive
+    // lock that might otherwise not be freed
+    try {
+      TRI_rc_result_t* next = cursor->next(cursor);
+      if (!next) {
+        value = v8::Undefined();
+      }
+      else {
+        context = TRI_CreateExecutionContext(cursor->_functionCode);
+        if (context) {
+          TRI_DefineSelectExecutionContext(context, next);
+          if (TRI_ExecuteExecutionContext(context, (void*) &value)) {
+            result = true;
+          }
+        }
       }
     }
-  }
-  catch (...) {
-  }
-
-  if (context) {
-    TRI_FreeExecutionContext(context);
-  }
-  // always free lock
-  TRI_UnlockQueryCursor(cursor);
-
-  if (!ok) {
-    if (tryCatch.HasCaught()) {
-      return scope.Close(v8::ThrowException(tryCatch.Exception()));
+    catch (...) {
     }
-    else {
-      return scope.Close(v8::ThrowException(v8::String::New("cannot convert to JavaScript")));
+
+    TRI_UnlockQueryCursor(cursor);
+    
+    TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
+    if (context) {
+      TRI_FreeExecutionContext(context);
+    }
+
+    if (result) {
+      return scope.Close(value);
     }
   }
 
-  return scope.Close(value);
+  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3199,27 +2678,18 @@ static v8::Handle<v8::Value> JS_PersistQueryCursor (v8::Arguments const& argv) {
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: persist()")));
   }
-
-  v8::Handle<v8::Object> self = argv.Holder();
-  TRI_query_cursor_t* cursor = UnwrapQueryCursor(self);
-
-  if (!cursor) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
-  }
   
-  TRI_LockQueryCursor(cursor);
-  if (cursor->_deleted) {
-    TRI_UnlockQueryCursor(cursor);
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
+  if (!vocbase) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
   }
 
-  if (!cursor->_shadow) {
-    cursor->_shadow = TRI_StoreShadowData((TRI_shadow_store_t*) cursor->_vocbase->_cursors, 
-                                          (const void* const) cursor);
+  bool result = TRI_PersistDataShadowData(vocbase->_cursors, UnwrapQueryCursor(argv.Holder()));
+  if (result) {
+    return scope.Close(v8::True());
   }
-  TRI_UnlockQueryCursor(cursor);
     
-  return scope.Close(v8::True());
+  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3231,101 +2701,93 @@ static v8::Handle<v8::Value> JS_PersistQueryCursor (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_GetRowsQueryCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  v8::TryCatch tryCatch;
 
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: getRows()")));
   }
-
-  v8::Handle<v8::Object> self = argv.Holder();
-  TRI_query_cursor_t* cursor = UnwrapQueryCursor(self);
-
-  if (!cursor) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
-  }
   
-  v8::Handle<v8::Array> result = v8::Array::New();
-
-  TRI_LockQueryCursor(cursor);
-  if (cursor->_deleted) {
-    TRI_UnlockQueryCursor(cursor);
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
+  if (!vocbase) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
   }
-    
+
+  bool result = false;  
   TRI_js_exec_context_t context = NULL;
-  bool ok = true;
-  
-  // exceptions must be caught in the following part because we hold an exclusive
-  // lock that might otherwise not be freed
-  try {
-    uint32_t max = cursor->getMax(cursor);
-    context = TRI_CreateExecutionContext(cursor->_functionCode);
+  v8::Handle<v8::Array> rows = v8::Array::New();
+  TRI_query_cursor_t* cursor = (TRI_query_cursor_t*) 
+    TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapQueryCursor(argv.Holder()));
 
-    if (context) {
-      for (uint32_t i = 0; i < max; i++) {
-        TRI_rc_result_t* next = cursor->next(cursor);
-        if (!next) {
-          break;
-        }
+  if (cursor) {
+    TRI_LockQueryCursor(cursor);
+
+    // exceptions must be caught in the following part because we hold an exclusive
+    // lock that might otherwise not be freed
+    try {
+      uint32_t max = cursor->getBatchSize(cursor);
+      context = TRI_CreateExecutionContext(cursor->_functionCode);
+    
+      if (context) {
+        for (uint32_t i = 0; i < max; ++i) {
+          TRI_rc_result_t* next = cursor->next(cursor);
+          if (!next) {
+            break;
+          }
       
-        TRI_DefineSelectExecutionContext(context, next);
-        v8::Handle<v8::Value> value;
-        ok = TRI_ExecuteExecutionContext(context, (void*) &value);
-        if (ok) {
-          result->Set(i, value);
+          TRI_DefineSelectExecutionContext(context, next);
+          v8::Handle<v8::Value> value;
+          if (TRI_ExecuteExecutionContext(context, (void*) &value)) {
+            rows->Set(i, value);
+          }
         }
+        result = true;
       }
     }
-  }
-  catch (...) {
-  }
-      
-  if (context) {
-    TRI_FreeExecutionContext(context);
-  }
-  // always free lock
-  TRI_UnlockQueryCursor(cursor);
+    catch (...) {
+    } 
+    
+    TRI_UnlockQueryCursor(cursor);
+    
+    TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
 
-  if (!ok) {
-    if (tryCatch.HasCaught()) {
-      return scope.Close(v8::ThrowException(tryCatch.Exception()));
+    if (context) {
+      TRI_FreeExecutionContext(context);
     }
-    else {
-      return scope.Close(v8::ThrowException(v8::String::New("cannot convert to JavaScript")));
+
+    if (result) {
+      return scope.Close(rows);
     }
   }
 
-  return scope.Close(result);
+  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return max number of results per transfer for cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_GetMaxQueryCursor (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_GetBatchSizeQueryCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: getMax()")));
+    return scope.Close(v8::ThrowException(v8::String::New("usage: getBatchSize()")));
   }
-
-  v8::Handle<v8::Object> self = argv.Holder();
-  TRI_query_cursor_t* cursor = UnwrapQueryCursor(self);
-
-  if (!cursor) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
-  }
-
-  TRI_LockQueryCursor(cursor);
-  if (cursor->_deleted) {
-    TRI_UnlockQueryCursor(cursor);
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
-  }
-
-  uint32_t max = cursor->getMax(cursor);
-  TRI_UnlockQueryCursor(cursor);
   
-  return scope.Close(v8::Number::New(max));
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
+  if (!vocbase) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+  
+  TRI_query_cursor_t* cursor = (TRI_query_cursor_t*) 
+    TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapQueryCursor(argv.Holder()));
+
+  if (cursor) {
+    uint32_t max = cursor->getBatchSize(cursor);
+    
+    TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
+    return scope.Close(v8::Number::New(max));
+  }
+
+  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3338,24 +2800,23 @@ static v8::Handle<v8::Value> JS_HasCountQueryCursor (v8::Arguments const& argv) 
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: hasCount()")));
   }
-
-  v8::Handle<v8::Object> self = argv.Holder();
-  TRI_query_cursor_t* cursor = UnwrapQueryCursor(self);
-
-  if (!cursor) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
-  }
-
-  TRI_LockQueryCursor(cursor);
-  if (cursor->_deleted) {
-    TRI_UnlockQueryCursor(cursor);
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
-  }
-
-  bool hasCount = cursor->hasCount(cursor);
-  TRI_UnlockQueryCursor(cursor);
   
-  return scope.Close(hasCount ? v8::True() : v8::False());
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
+  if (!vocbase) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+
+  TRI_query_cursor_t* cursor = (TRI_query_cursor_t*) 
+    TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapQueryCursor(argv.Holder()));
+
+  if (cursor) {
+    bool hasCount = cursor->hasCount(cursor);
+
+    TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
+    return scope.Close(hasCount ? v8::True() : v8::False());
+  }
+  
+  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3368,24 +2829,25 @@ static v8::Handle<v8::Value> JS_HasNextQueryCursor (v8::Arguments const& argv) {
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: hasNext()")));
   }
-
-  v8::Handle<v8::Object> self = argv.Holder();
-  TRI_query_cursor_t* cursor = UnwrapQueryCursor(self);
-
-  if (!cursor) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
-  }
-
-  TRI_LockQueryCursor(cursor);
-  if (cursor->_deleted) {
-    TRI_UnlockQueryCursor(cursor);
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
-  }
-
-  bool hasNext = cursor->hasNext(cursor);
-  TRI_UnlockQueryCursor(cursor);
   
-  return scope.Close(hasNext ? v8::True() : v8::False());
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
+  if (!vocbase) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+
+  TRI_query_cursor_t* cursor = (TRI_query_cursor_t*) 
+    TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapQueryCursor(argv.Holder()));
+
+  if (cursor) {
+    TRI_LockQueryCursor(cursor);
+    bool hasNext = cursor->hasNext(cursor);
+    TRI_UnlockQueryCursor(cursor);
+    
+    TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
+    return scope.Close(hasNext ? v8::True() : v8::False());
+  }
+  
+  return scope.Close(v8::ThrowException(v8::String::New("corrupted or already freed cursor")));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3488,7 +2950,7 @@ static v8::Handle<v8::Value> JS_NextRefCursor (v8::Arguments const& argv) {
   // always use the primary collection
   TRI_voc_cid_t cid = cursor->_context->_primary->base._cid;
   TRI_voc_did_t did = next->_primary->_did;
-  string ref = StringUtils::itoa(cid) + ":" + StringUtils::itoa(did);
+  string ref = StringUtils::itoa(cid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::itoa(did);
 
   return scope.Close(v8::String::New(ref.c_str()));
 }
@@ -4732,7 +4194,7 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
   char* cidStr = TRI_StringUInt64(collection->base._cid);
   char* didStr = TRI_StringUInt64(did);
 
-  string name = cidStr + string(":") + didStr;
+  string name = cidStr + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + didStr;
 
   TRI_FreeString(didStr);
   TRI_FreeString(cidStr);
@@ -4823,7 +4285,7 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   char* cidStr = TRI_StringUInt64(collection->base._cid);
   char* didStr = TRI_StringUInt64(did);
 
-  string name = cidStr + string(":") + didStr;
+  string name = cidStr + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + didStr;
 
   TRI_FreeString(didStr);
   TRI_FreeString(cidStr);
@@ -4984,7 +4446,7 @@ static v8::Handle<v8::Value> JS_SaveEdgesCol (v8::Arguments const& argv) {
   char* cidStr = TRI_StringUInt64(collection->base._cid);
   char* didStr = TRI_StringUInt64(did);
 
-  string name = cidStr + string(":") + didStr;
+  string name = cidStr + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + didStr;
 
   TRI_FreeString(didStr);
   TRI_FreeString(cidStr);
@@ -5670,7 +5132,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   }
 
   // create the regular expressions
-  if (regcomp(&v8g->DocumentIdRegex, "([0-9][0-9]*):([0-9][0-9]*)", REG_ICASE | REG_EXTENDED) != 0) {
+  string expr = "([0-9][0-9]*)" + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + "([0-9][0-9]*)";
+
+  if (regcomp(&v8g->DocumentIdRegex, expr.c_str(), REG_ICASE | REG_EXTENDED) != 0) {
     LOG_FATAL("cannot compile regular expression");
     exit(EXIT_FAILURE);
   }
@@ -5707,8 +5171,8 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> EnsureUniqueConstraintFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureUniqueConstraint"));
   v8::Handle<v8::String> ExecuteFuncName = v8::Persistent<v8::String>::New(v8::String::New("execute"));
   v8::Handle<v8::String> FiguresFuncName = v8::Persistent<v8::String>::New(v8::String::New("figures"));
+  v8::Handle<v8::String> GetBatchSizeFuncName = v8::Persistent<v8::String>::New(v8::String::New("getBatchSize"));
   v8::Handle<v8::String> GetIndexesFuncName = v8::Persistent<v8::String>::New(v8::String::New("getIndexes"));
-  v8::Handle<v8::String> GetMaxFuncName = v8::Persistent<v8::String>::New(v8::String::New("getMax"));
   v8::Handle<v8::String> GetRowsFuncName = v8::Persistent<v8::String>::New(v8::String::New("getRows"));
   v8::Handle<v8::String> HasCountFuncName = v8::Persistent<v8::String>::New(v8::String::New("hasCount"));
   v8::Handle<v8::String> HasNextFuncName = v8::Persistent<v8::String>::New(v8::String::New("hasNext"));
@@ -5937,43 +5401,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
 /* DEPRECATED END */
   
   // .............................................................................
-  // generate the query template template
-  // .............................................................................
-
-  ft = v8::FunctionTemplate::New();
-  ft->SetClassName(v8::String::New("AvocadoQueryTemplate"));
-
-  rt = ft->InstanceTemplate();
-  rt->SetInternalFieldCount(2);
-
-  rt->Set(DisposeFuncName, v8::FunctionTemplate::New(JS_DisposeQueryTemplate));
-//  rt->Set(IdFuncName, v8::FunctionTemplate::New(JS_IdQueryTemplate));
-
-  v8g->QueryTemplateTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
-
-  // must come after SetInternalFieldCount
-  context->Global()->Set(v8::String::New("AvocadoQueryTemplate"),
-                         ft->GetFunction());
-  
-  // .............................................................................
-  // generate the query instance template
-  // .............................................................................
-
-//  ft = v8::FunctionTemplate::New();
-//  ft->SetClassName(v8::String::New("AvocadoQueryInstance"));
-
-//  rt = ft->InstanceTemplate();
-//  rt->SetInternalFieldCount(2);
-
-//  rt->Set(ExecuteFuncName, v8::FunctionTemplate::New(JS_ExecuteQueryInstance));
-
-//  v8g->QueryInstanceTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
-
-  // must come after SetInternalFieldCount
-//  context->Global()->Set(v8::String::New("AvocadoQueryInstance"),
-//                         ft->GetFunction());
-
-  // .............................................................................
   // generate the query error template
   // .............................................................................
 
@@ -6001,7 +5428,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
 
   rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountQueryCursor));
   rt->Set(DisposeFuncName, v8::FunctionTemplate::New(JS_DisposeQueryCursor));
-  rt->Set(GetMaxFuncName, v8::FunctionTemplate::New(JS_GetMaxQueryCursor));
+  rt->Set(GetBatchSizeFuncName, v8::FunctionTemplate::New(JS_GetBatchSizeQueryCursor));
   rt->Set(GetRowsFuncName, v8::FunctionTemplate::New(JS_GetRowsQueryCursor));
   rt->Set(HasCountFuncName, v8::FunctionTemplate::New(JS_HasCountQueryCursor));
   rt->Set(HasNextFuncName, v8::FunctionTemplate::New(JS_HasNextQueryCursor));
@@ -6037,9 +5464,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   context->Global()->Set(v8::String::New("AvocadoCursor"),
                          ft->GetFunction());
 
-                         
-                         
-                         
   // .............................................................................
   // generate the skip list operator template
   // .............................................................................
@@ -6124,9 +5548,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
                          v8::ReadOnly);
                          
 /* DEPRECATED END */
-//  context->Global()->Set(v8::String::New("AQL_STORED_STATEMENT"),
-//                         v8::FunctionTemplate::New(JS_StoredStatementAql)->GetFunction(),
-//                         v8::ReadOnly);
   context->Global()->Set(v8::String::New("AQL_PARSE"),
                          v8::FunctionTemplate::New(JS_ParseAql)->GetFunction(),
                          v8::ReadOnly);

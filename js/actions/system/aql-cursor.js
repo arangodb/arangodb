@@ -89,7 +89,6 @@ function postCursor(req, res) {
   }
 
   try {
-    var cursor;
     var json = JSON.parse(req.requestBody);
       
     if (!json || !(json instanceof Object)) {
@@ -97,18 +96,9 @@ function postCursor(req, res) {
       return;
     }
 
-    if (json._id != undefined) {
-      /*
-      cursor = AQL_STORED_STATEMENT(db, 
-                                    json._id, 
-                                    json.bindVars, 
-                                    (json.count != undefined ? json.count : false), 
-                                    (json.batchSize != undefined ? json.batchSize : 1000));  
-      */
-    }    
-    else if (json.query != undefined) {
-      cursor = AQL_STATEMENT(db, 
-                             json.query, 
+    var cursor;
+    if (json.query != undefined) {
+      cursor = AQL_STATEMENT(json.query, 
                              json.bindVars, 
                              (json.count != undefined ? json.count : false), 
                              (json.batchSize != undefined ? json.batchSize : 1000));  
@@ -145,7 +135,7 @@ function putCursor(req, res) {
 
   try {
     var cursorId = decodeURIComponent(req.suffix[0]); 
-    var cursor = AQL_CURSOR(db, cursorId);
+    var cursor = AQL_CURSOR(cursorId);
     if (!(cursor instanceof AvocadoQueryCursor)) {
       throw "cursor not found";
     } 
@@ -170,7 +160,7 @@ function deleteCursor(req, res) {
 
   try {
     var cursorId = decodeURIComponent(req.suffix[0]);
-    var cursor = AQL_CURSOR(db, cursorId);
+    var cursor = AQL_CURSOR(cursorId);
     if (!(cursor instanceof AvocadoQueryCursor)) {
       throw "cursor not found";
     }

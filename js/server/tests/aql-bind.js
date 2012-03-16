@@ -60,7 +60,7 @@ function aqlBindParametersTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function executeQuery (query, bindParameters) {
-    var cursor = AQL_STATEMENT(db, query, bindParameters);
+    var cursor = AQL_STATEMENT(query, bindParameters);
     assertFalse(cursor instanceof AvocadoQueryError);
     return cursor;
   }

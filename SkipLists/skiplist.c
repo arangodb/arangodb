@@ -714,8 +714,6 @@ bool TRI_InsertKeySkipList (TRI_skiplist_t* skiplist, void* key, void* element, 
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_LeftLookupByKeySkipList (TRI_skiplist_t* skiplist, void* key) {
-
-  int32_t level;
   int32_t currentLevel;
   TRI_skiplist_node_t* currentNode;
   TRI_skiplist_node_t* nextNode;
@@ -839,7 +837,7 @@ void* TRI_LeftLookupByKeySkipList (TRI_skiplist_t* skiplist, void* key) {
     
 
     
-  END:
+//  END:
 
   assert(false); // there is no way we can be here  
   return NULL;
@@ -862,8 +860,6 @@ void* TRI_LookupByElementSkipList (TRI_skiplist_t* skiplist, void* element) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_LookupByKeySkipList (TRI_skiplist_t* skiplist, void* key) {
-
-  int32_t level;
   int32_t currentLevel;
   TRI_skiplist_node_t* currentNode;
   TRI_skiplist_node_t* nextNode;
@@ -979,7 +975,7 @@ void* TRI_LookupByKeySkipList (TRI_skiplist_t* skiplist, void* key) {
     
 
     
-  END:
+//  END:
 
   assert(false); // there is no way we can be here  
   return NULL;
@@ -1184,8 +1180,6 @@ bool TRI_RemoveKeySkipList (TRI_skiplist_t* skiplist, void* key, void* old) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_RightLookupByKeySkipList (TRI_skiplist_t* skiplist, void* key) {
-
-  int32_t level;
   int32_t currentLevel;
   TRI_skiplist_node_t* currentNode;
   TRI_skiplist_node_t* prevNode;
@@ -1312,7 +1306,7 @@ void* TRI_RightLookupByKeySkipList (TRI_skiplist_t* skiplist, void* key) {
     
 
     
-  END:
+//  END:
 
   assert(false); // there is no way we can be here  
   return NULL;
@@ -1526,8 +1520,6 @@ void* TRI_EndNodeSkipListMulti(TRI_skiplist_multi_t* skiplist) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_LeftLookupByKeySkipListMulti(TRI_skiplist_multi_t* skiplist, void* key) {
-
-  int32_t level;
   int32_t currentLevel;
   TRI_skiplist_node_t* currentNode;
   TRI_skiplist_node_t* nextNode;
@@ -1647,7 +1639,7 @@ void* TRI_LeftLookupByKeySkipListMulti(TRI_skiplist_multi_t* skiplist, void* key
     
 
     
-  END:
+//  END:
 
   assert(false); // there is no way we can be here  
   return NULL;
@@ -2115,8 +2107,6 @@ bool TRI_RemoveKeySkipListMulti(TRI_skiplist_multi_t* skiplist, void* key, void*
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_RightLookupByKeySkipListMulti(TRI_skiplist_multi_t* skiplist, void* key) {
-
-  int32_t level;
   int32_t currentLevel;
   TRI_skiplist_node_t* currentNode;
   TRI_skiplist_node_t* prevNode;
@@ -2234,7 +2224,7 @@ void* TRI_RightLookupByKeySkipListMulti(TRI_skiplist_multi_t* skiplist, void* ke
     
 
     
-  END:
+//  END:
 
   assert(false); // there is no way we can be here  
   return NULL;

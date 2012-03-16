@@ -194,10 +194,10 @@ namespace triagens {
           return contentLength;
         }
 
+        toRead -= _readBufferSize;
+
         stream.write(_readBuffer, _readBufferSize);
         _readBufferSize = 0;
-
-        toRead -= _readBufferSize;
       }
 
       size_t len = 0;
@@ -216,14 +216,11 @@ namespace triagens {
         len += len_read;
         runtime = now() - start;
       }
-
-      //buffer[len] = '\0';
-
       stream.write(buffer, len);
 
       free(buffer);
 
-      return len;
+      return (contentLength - toRead + len);
     }
 
     ////////////////////////////////////////////////////////////////////////////////

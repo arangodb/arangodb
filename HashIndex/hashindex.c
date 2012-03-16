@@ -124,9 +124,6 @@ static bool isEqualJsonJson (const TRI_json_t* left, const TRI_json_t* right) {
 
 
 static bool isEqualShapedJsonShapedJson (const TRI_shaped_json_t* left, const TRI_shaped_json_t* right) {
-
-  int result;
-  
   if (left == NULL && right == NULL) {
     return true;
   }
@@ -478,7 +475,6 @@ static bool isMultiEqualElementElement (struct TRI_multi_array_s* multiArray,
                                         void* leftElement, void* rightElement) {
   HashIndexElement* hLeftElement  = (HashIndexElement*)(leftElement);
   HashIndexElement* hRightElement = (HashIndexElement*)(rightElement);
-  int result;
   
   if (leftElement == NULL || rightElement == NULL) {
     return false;
@@ -495,7 +491,6 @@ static bool isMultiEqualKeyElement (struct TRI_multi_array_s* multiArray,
                                     void* leftElement, void* rightElement) {
   HashIndexElement* hLeftElement  = (HashIndexElement*)(leftElement);
   HashIndexElement* hRightElement = (HashIndexElement*)(rightElement);
-  int result;
   size_t j;
   
   if (leftElement == NULL || rightElement == NULL) {

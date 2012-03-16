@@ -36,7 +36,6 @@
 #include <BasicsC/json.h>
 
 #include "VocBase/vocbase.h"
-#include "VocBase/shadow-data.h"
 #include "VocBase/query-node.h"
 #include "VocBase/query-error.h"
 
@@ -121,24 +120,6 @@ TRI_bind_parameter_t* TRI_CreateBindParameter (const char*, const TRI_json_t*);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief query template types
-///
-/// There are two types of templates:
-/// - QUERY_TEMPLATE_TRANSIENT: these templates only exist for one query and are
-///   disposed automatically when the query execution is finished
-/// - QUERY_TEMPLATE_PERSISTENT: these templates are created on the server and
-///   can be shared for multiple executions. they are disposed automatically 
-///   if they are not referenced anymore and have not been used for a certain
-///   period of time (garbage collection) 
-////////////////////////////////////////////////////////////////////////////////
-
-typedef enum {
-  QUERY_TEMPLATE_TRANSIENT,
-  QUERY_TEMPLATE_PERSISTENT
-}
-TRI_query_template_type_e;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief lexer state
 ///
 /// This struct contains the current lexer / scanner state. It contains 
@@ -173,8 +154,6 @@ TRI_query_parser_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_query_template_s {
-  TRI_query_template_type_e  _type;
-  TRI_shadow_document_t*     _shadow;
   TRI_vocbase_t*             _vocbase;
   char*                      _queryString;
   QL_ast_query_t*            _query;
@@ -191,47 +170,6 @@ typedef struct TRI_query_template_s {
   TRI_associative_pointer_t  _bindParameters;
 }
 TRI_query_template_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Free a template based on its shadow
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeShadowQueryTemplate (TRI_shadow_document_store_t*, 
-                                  TRI_shadow_document_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief decrease the refcount of a template
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DecreaseRefCountQueryTemplate (TRI_query_template_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief increase the refcount of a template
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_IncreaseRefCountQueryTemplate (TRI_query_template_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief exclusively lock a query template
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_LockQueryTemplate (TRI_query_template_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unlock a query template
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_UnlockQueryTemplate (TRI_query_template_t* const);
-
-// TODO: move to own file
-void* TRI_CreateShadowQueryTemplate (TRI_shadow_document_store_t*, TRI_doc_collection_t*, TRI_doc_mptr_t const*);
-bool TRI_VerifyShadowQueryTemplate (TRI_shadow_document_store_t*, TRI_doc_collection_t*, TRI_doc_mptr_t const*, void*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create shadow data store for templates 
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_shadow_document_store_t* TRI_CreateShadowsQueryTemplate (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Initialize the structs contained in a query template and perform
@@ -252,8 +190,7 @@ bool TRI_AddBindParameterQueryTemplate (TRI_query_template_t* const,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_query_template_t* TRI_CreateQueryTemplate (const char*, 
-                                               const TRI_vocbase_t* const,
-                                               const TRI_query_template_type_e);
+                                               const TRI_vocbase_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Free a query template

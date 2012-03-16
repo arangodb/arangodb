@@ -111,7 +111,7 @@ function aqlJoinsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function executeQuery (query) {
-    var cursor = AQL_STATEMENT(db, query, undefined);
+    var cursor = AQL_STATEMENT(query, undefined);
     assertFalse(cursor instanceof AvocadoQueryError);
     return cursor;
   }

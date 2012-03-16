@@ -29,14 +29,24 @@
 /// @page Glossary
 ///
 /// @copydoc GlossaryCollectionIdentifier
+///
+/// @copydoc GlossaryDocument
+///
 /// @copydoc GlossaryDocumentHandle
-/// @cooydoc GlossaryDocumentIdentifier
+///
+/// @copydoc GlossaryDocumentIdentifier
+///
 /// @copydoc GlossaryDocumentRevision
 ///
 /// @page GlossaryCollectionIdentifier
 ///
 /// @GE{Collection Identifier}: A collection identifier identifies a collection
 /// in a database. It is an integer and is unique within the database.
+///
+/// @page GlossaryDocument
+///
+/// @GE{Document}: Documents in AvocadoDB are JSON objects. These objects can be
+/// nested (to any depth) and may contains lists.
 ///
 /// @page GlossaryDocumentHandle
 ///
@@ -47,7 +57,7 @@
 /// @page GlossaryDocumentIdentifier 
 ///
 /// @GE{Document Identifier}: A document identifier identifies a document in a
-/// database. It is an integer and is unique within the collection of the
+/// given collection. It is an integer and is unique within the collection of the
 /// document.
 ///
 /// @page GlossaryDocumentRevision

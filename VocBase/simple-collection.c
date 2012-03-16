@@ -1244,7 +1244,6 @@ static bool OpenIndexIterator (char const* filename, void* data) {
     lat = TRI_LookupArrayJson(json, "latitude");
     lon = TRI_LookupArrayJson(json, "longitude");
     gjs = TRI_LookupArrayJson(json, "geoJson");
-    iid = 0;
     geoJson = false;
     
     if (gjs != NULL && gjs->_type == TRI_JSON_BOOLEAN) {
