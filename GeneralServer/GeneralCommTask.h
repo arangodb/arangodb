@@ -107,8 +107,6 @@ namespace triagens {
           for (deque<basics::StringBuffer*>::iterator i = writeBuffers.begin();  i != writeBuffers.end();  i++) {
             basics::StringBuffer * buffer = *i;
 
-            buffer->free();
-
             delete buffer;
           }
 

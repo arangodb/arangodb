@@ -153,7 +153,6 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
   time_t tt = time(0);
 
   StringBuffer line;
-  line.initialise();
 
   for (;  format < end;  ++format) {
     if (*format == '%') {
@@ -441,8 +440,6 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
   }
 
   TRI_RawLog(info._level, info._severity, line.c_str(), line.length() - 1);
-
-  line.free();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

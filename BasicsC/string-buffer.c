@@ -706,13 +706,13 @@ void TRI_AppendSizeOctalStringBuffer (TRI_string_buffer_t * self, size_t attr) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+static char const * const HEX = "0123456789ABCDEF";
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends unsigned integer with 32 bits in hex
 ////////////////////////////////////////////////////////////////////////////////
 
-static char const * const HEX = "0123456789ABCDEF";
 void TRI_AppendUInt32HexStringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
-
   Reserve(self, 4);
 
   if (0x1000U <= attr) { AppendChar(self, HEX[(attr / 0x1000U) % 0x10]); }
@@ -720,7 +720,6 @@ void TRI_AppendUInt32HexStringBuffer (TRI_string_buffer_t * self, uint32_t attr)
   if (  0x10U <= attr) { AppendChar(self, HEX[(attr /   0x10U) % 0x10]); }
 
   AppendChar(self, HEX[attr % 0x10]);
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -728,7 +727,6 @@ void TRI_AppendUInt32HexStringBuffer (TRI_string_buffer_t * self, uint32_t attr)
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AppendUInt64HexStringBuffer (TRI_string_buffer_t * self, uint64_t attr) {
-
   Reserve(self, 8);
 
   if (0x10000000U <= attr) { AppendChar(self, HEX[(attr / 0x10000000U) % 0x10]); }
@@ -740,7 +738,6 @@ void TRI_AppendUInt64HexStringBuffer (TRI_string_buffer_t * self, uint64_t attr)
   if (      0x10U <= attr) { AppendChar(self, HEX[(attr /       0x10U) % 0x10]); }
 
   AppendChar(self, HEX[attr % 0x10]);
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -995,7 +992,7 @@ void TRI_AppendTimeStringBuffer (TRI_string_buffer_t * self, int32_t attr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief appends csv integer
+/// @brief appends csv 32-bit integer
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AppendCsvInt32StringBuffer (TRI_string_buffer_t * self, int32_t i) {
@@ -1005,7 +1002,7 @@ void TRI_AppendCsvInt32StringBuffer (TRI_string_buffer_t * self, int32_t i) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief appends csv integer
+/// @brief appends csv unisgned 32-bit integer
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AppendCsvUInt32StringBuffer (TRI_string_buffer_t * self, uint32_t i) {
@@ -1015,7 +1012,17 @@ void TRI_AppendCsvUInt32StringBuffer (TRI_string_buffer_t * self, uint32_t i) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief appends csv integer
+/// @brief appends csv 64-bit integer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_AppendCsvInt64StringBuffer (TRI_string_buffer_t * self, int64_t i) {
+  TRI_AppendInt64StringBuffer(self, i);
+  Reserve(self, 1);
+  AppendChar(self, ';');
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief appends csv unsigned 64-bit integer
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AppendCsvUInt64StringBuffer (TRI_string_buffer_t * self, uint64_t i) {

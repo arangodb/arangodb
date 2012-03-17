@@ -238,7 +238,7 @@ namespace triagens {
 /// @brief generates document not found error message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDocumentNotFound (string const& cid, string const& did);
+        void generateDocumentNotFound (string const& handle);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates conflict message
@@ -262,7 +262,7 @@ namespace triagens {
 /// @brief splits a document reference into to parts
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool splitDocumentReference (string const& name, string& did);
+        bool splitDocumentReference (string const& name, string& cid, string& did);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the revision

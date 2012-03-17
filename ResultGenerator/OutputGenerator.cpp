@@ -93,7 +93,6 @@ namespace triagens {
 
       string json (VariantObject* object) {
         StringBuffer buffer;
-        buffer.initialise();
 
         string contentType;
 
@@ -103,9 +102,7 @@ namespace triagens {
 
         if (ok) {
           result = buffer.c_str();
-      }
-
-        buffer.free();
+        }
 
         return result;
       }

@@ -121,7 +121,6 @@ namespace triagens {
         headerFields(5),
         bodyValue(),
         freeables() {
-      bodyValue.initialise();
     }
 
 
@@ -131,8 +130,6 @@ namespace triagens {
         headerFields(5),
         bodyValue(),
         freeables() {
-      bodyValue.initialise();
-
       setHeaders(header, true);
     }
 
@@ -143,8 +140,6 @@ namespace triagens {
         headerFields(5),
         bodyValue(),
         freeables() {
-      bodyValue.initialise();
-
       char* headerBuffer = StringUtils::duplicate("server\ntriagens GmbH High-Performance HTTP Server\n"
                                                   "connection\nKeep-Alive\n"
                                                   "content-type\ntext/plain;charset=utf-8\n");
@@ -177,8 +172,6 @@ namespace triagens {
 
 
     HttpResponse::~HttpResponse () {
-      bodyValue.free();
-
       for (vector<char const*>::iterator i = freeables.begin();  i != freeables.end();  ++i) {
         delete[] (*i);
       }

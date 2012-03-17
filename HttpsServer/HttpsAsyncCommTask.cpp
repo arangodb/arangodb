@@ -348,7 +348,6 @@ namespace triagens {
 
         if (len == 0) {
           if (ownBuffer) {
-            writeBuffer->free();
             delete writeBuffer;
           }
 

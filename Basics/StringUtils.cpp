@@ -1859,12 +1859,9 @@ namespace triagens {
       string ftoa (double i) {
         StringBuffer buffer;
 
-        buffer.initialise();
         buffer.appendDecimal(i);
 
         string result(buffer.c_str());
-
-        buffer.free();
 
         return result;
       }
@@ -2297,7 +2294,6 @@ namespace triagens {
         int second = date % 60;
 
         StringBuffer buffer;
-        buffer.initialise();
 
         buffer.appendInteger2(hour);
         buffer.appendChar(':');
@@ -2306,7 +2302,6 @@ namespace triagens {
         buffer.appendInteger2(second);
 
         string result(buffer.c_str());
-        buffer.free();
 
         return result;
       }
@@ -2408,7 +2403,6 @@ namespace triagens {
 #endif
 
         StringBuffer buffer;
-        buffer.initialise();
 
         buffer.appendInteger4(t.tm_year + 1900);
         buffer.appendChar('-');
@@ -2417,7 +2411,6 @@ namespace triagens {
         buffer.appendInteger2(t.tm_mday);
 
         string result(buffer.c_str());
-        buffer.free();
 
         return result;
       }
@@ -2604,7 +2597,6 @@ namespace triagens {
         int second = time % 60;
 
         StringBuffer buffer;
-        buffer.initialise();
 
         buffer.appendInteger4(t.tm_year + 1900);
         buffer.appendChar('-');
@@ -2619,7 +2611,6 @@ namespace triagens {
         buffer.appendInteger2(second);
 
         string result(buffer.c_str());
-        buffer.free();
 
         return result;
       }
@@ -2657,7 +2648,6 @@ namespace triagens {
         int second = time % 60;
 
         StringBuffer buffer;
-        buffer.initialise();
 
         char const* p = format.c_str();
         char const* e = p + format.size();
@@ -2970,7 +2960,6 @@ namespace triagens {
         }
 
         string result = buffer.c_str();
-        buffer.free();
 
         return result;
       }

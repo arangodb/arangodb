@@ -898,7 +898,11 @@ void TRI_InitialiseVocBase () {
   TRI_set_errno_string(TRI_VOC_ERROR_FILE_NOT_FOUND, "file not found");
   TRI_set_errno_string(TRI_VOC_ERROR_FILE_NOT_ACCESSIBLE, "file not accessible");
 
-  // document errors
+  // api errors
+  TRI_set_errno_string(TRI_VOC_ERROR_COLLECTION_NOT_FOUND, "collection not found");
+  TRI_set_errno_string(TRI_VOC_ERROR_COLLECTION_PARAMETER_MISSING, "parameter <collection> is missing");
+  TRI_set_errno_string(TRI_VOC_ERROR_CORRUPT_DOCUMENT_HANDLE, "illegal or corrupted document handle");
+  TRI_set_errno_string(TRI_VOC_ERROR_DOCUMENT_ALTERED, "document has been altered");
   TRI_set_errno_string(TRI_VOC_ERROR_DOCUMENT_NOT_FOUND, "document not found");
 
 #ifdef TRI_READLINE_VERSION

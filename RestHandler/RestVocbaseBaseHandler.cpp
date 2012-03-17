@@ -29,6 +29,7 @@
 
 #include "Basics/StringUtils.h"
 #include "BasicsC/string-buffer.h"
+#include "BasicsC/strings.h"
 #include "Rest/HttpRequest.h"
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"
@@ -156,10 +157,20 @@ void RestVocbaseBaseHandler::generateOk (TRI_voc_cid_t, TRI_voc_did_t, TRI_voc_r
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateCreated (TRI_voc_cid_t cid, TRI_voc_did_t did, TRI_voc_rid_t rid) {
+  string cidStr = StringUtils::itoa(cid);
+  string didStr = StringUtils::itoa(did);
+  string ridStr = StringUtils::itoa(rid);
+  string handle = cidStr + "/" + didStr;
+
   response = new HttpResponse(HttpResponse::CREATED);
 
-  response->setHeader("ETag", "\"" + StringUtils::itoa(rid) + "\"");
-  response->setHeader("location", DOCUMENT_PATH + "/" + StringUtils::itoa(cid) + "/" + StringUtils::itoa(did));
+  response->setHeader("ETag", "\"" + ridStr + "\"");
+  response->setHeader("location", DOCUMENT_PATH + "/" + handle);
+
+  response->body()
+    .appendText("{\"error\":false,\"_id\":\"")
+    .appendText(handle.c_str())
+    .appendText("\"}");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -178,15 +189,19 @@ void RestVocbaseBaseHandler::generateAccepted (TRI_voc_cid_t cid, TRI_voc_did_t 
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateCollectionNotFound (string const& cid) {
-  generateError(HttpResponse::NOT_FOUND, "collection " + COLLECTION_PATH + "/" + cid + " not found");
+  generateError(HttpResponse::NOT_FOUND, 
+                TRI_VOC_ERROR_COLLECTION_NOT_FOUND,
+                "collection " + COLLECTION_PATH + "/" + cid + " not found");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates document not found error message
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateDocumentNotFound (string const& cid, string const& did) {
-  generateError(HttpResponse::NOT_FOUND, "document " + DOCUMENT_PATH + "/" + cid + "/" + did + " not found");
+void RestVocbaseBaseHandler::generateDocumentNotFound (string const& handle) {
+  generateError(HttpResponse::NOT_FOUND,
+                TRI_VOC_ERROR_DOCUMENT_NOT_FOUND,
+                "document " + DOCUMENT_PATH + "/" + handle + " not found");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -194,7 +209,9 @@ void RestVocbaseBaseHandler::generateDocumentNotFound (string const& cid, string
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateConflict (string const& cid, string const& did) {
-  generateError(HttpResponse::CONFLICT, "document " + DOCUMENT_PATH + "/" + cid + "/" + did + " has been altered");
+  generateError(HttpResponse::CONFLICT, 
+                TRI_VOC_ERROR_DOCUMENT_ALTERED,
+                "document " + DOCUMENT_PATH + "/" + cid + "/" + did + " has been altered");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -202,7 +219,9 @@ void RestVocbaseBaseHandler::generateConflict (string const& cid, string const& 
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateNotImplemented (string const& path) {
-  generateError(HttpResponse::NOT_IMPLEMENTED, path + " not implemented");
+  generateError(HttpResponse::NOT_IMPLEMENTED, 
+                TRI_REST_ERROR_NOT_IMPLEMENTED,
+                "'" + path + "' not implemented");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -212,7 +231,9 @@ void RestVocbaseBaseHandler::generateNotImplemented (string const& path) {
 void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
                                                bool generateDocument) {
   if (document == 0 || _documentCollection == 0) {
-    generateError(HttpResponse::SERVER_ERROR, "document or collection is null");
+    generateError(HttpResponse::SERVER_ERROR, 
+                  TRI_ERROR_INTERNAL,
+                  "document or collection pinter is null, should not happen");
     return;
   }
 
@@ -268,28 +289,18 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
 /// @brief splits a document reference into to parts
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestVocbaseBaseHandler::splitDocumentReference (string const& name, string& did) {
+bool RestVocbaseBaseHandler::splitDocumentReference (string const& name, string& cid, string& did) {
   vector<string> doc = StringUtils::split(name, TRI_DOCUMENT_HANDLE_SEPARATOR_STR);
 
-  switch (doc.size()) {
-    case 1:
-      did = doc[0];
-      break;
-
-    case 2:
-      did = doc[1];
-
-      if (StringUtils::uint64(doc[0]) != _documentCollection->base._cid) {
-        generateError(HttpResponse::BAD, "cross-collection object reference");
-        return false;
-      }
-
-      break;
-
-    default:
-      generateError(HttpResponse::BAD, "missing or illegal document identifier");
-      return false;
+  if (doc.size() != 2) {
+    generateError(HttpResponse::BAD, 
+                  TRI_VOC_ERROR_CORRUPT_DOCUMENT_HANDLE,
+                  "missing or illegal document handle");
+    return false;
   }
+
+  cid = doc[0];
+  did = doc[1];
 
   return true;
 }
@@ -383,20 +394,26 @@ bool RestVocbaseBaseHandler::loadCollection () {
 
   // collection name must be known
   if (_collection == 0) {
-    generateError(HttpResponse::SERVER_ERROR, "cannot create or load collection");
+    generateError(HttpResponse::SERVER_ERROR,
+                  TRI_ERROR_INTERNAL,
+                  "cannot create or load collection, this should not happen");
     return false;
   }
 
   // check for corrupted collections
   if (_collection->_corrupted) {
-    generateError(HttpResponse::SERVER_ERROR, "collection is corrupted, please run collection check");
+    generateError(HttpResponse::SERVER_ERROR, 
+                  TRI_VOC_ERROR_CORRUPTED_COLLECTION,
+                  "collection is corrupted, please run collection check");
     return false;
   }
 
   // check for loaded collections
   if (_collection->_loaded) {
     if (_collection->_collection == 0) {
-      generateError(HttpResponse::SERVER_ERROR, "cannot load collection, check log");
+      generateError(HttpResponse::SERVER_ERROR, 
+                    TRI_errno(),
+                    "cannot load collection, check log");
       return false;
     }
 
@@ -411,7 +428,9 @@ bool RestVocbaseBaseHandler::loadCollection () {
     bool ok = TRI_ManifestCollectionVocBase(_collection->_vocbase, _collection);
 
     if (! ok) {
-      generateError(HttpResponse::SERVER_ERROR, "cannot create collection");
+      generateError(HttpResponse::SERVER_ERROR,
+                    TRI_errno(),
+                    "cannot create collection, check log");
       return false;
     }
 
@@ -426,12 +445,16 @@ bool RestVocbaseBaseHandler::loadCollection () {
   }
 
   if (_collection == 0 || _collection->_collection == 0) {
-    generateError(HttpResponse::SERVER_ERROR, "cannot load collection, check log");
+    generateError(HttpResponse::SERVER_ERROR,
+                  TRI_errno(),
+                  "cannot load collection, check log");
     return false;
   }
 
   if (_collection->_corrupted) {
-    generateError(HttpResponse::SERVER_ERROR, "collection is corrupted, please run collection check");
+    generateError(HttpResponse::SERVER_ERROR,
+                  TRI_VOC_ERROR_CORRUPTED_COLLECTION,
+                  "collection is corrupted, please run collection check");
     return false;
   }
 
@@ -444,15 +467,21 @@ bool RestVocbaseBaseHandler::loadCollection () {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
-  char* error = 0;
-  TRI_json_t* json = TRI_Json2String(request->body().c_str(), &error);
+  char* errmsg = 0;
+  TRI_json_t* json = TRI_Json2String(request->body().c_str(), &errmsg);
 
   if (json == 0) {
-    if (error == 0) {
-      generateError(HttpResponse::BAD, "cannot parse json object");
+    if (errmsg == 0) {
+      generateError(HttpResponse::BAD, 
+                    TRI_REST_ERROR_CORRUPTED_JSON,
+                    "cannot parse json object");
     }
     else {
-      generateError(HttpResponse::BAD, error);
+      generateError(HttpResponse::BAD, 
+                    TRI_REST_ERROR_CORRUPTED_JSON,
+                    errmsg);
+
+      TRI_FreeString(errmsg);
     }
 
     return 0;

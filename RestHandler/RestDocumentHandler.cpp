@@ -121,7 +121,9 @@ HttpHandler::status_e RestDocumentHandler::execute () {
   bool res = false;
 
   if (request->suffix().size() < 1) {
-    generateError(HttpResponse::BAD, "missing collection identifier");
+    generateError(HttpResponse::BAD,
+                  TRI_VOC_ERROR_COLLECTION_PARAMETER_MISSING,
+                  "missing collection identifier");
   }
   else {
     switch (type) {
@@ -213,12 +215,25 @@ bool RestDocumentHandler::createDocument () {
   vector<string> const& suffix = request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(HttpResponse::BAD, "superfluous identifier");
+    generateError(HttpResponse::BAD,
+                  TRI_REST_ERROR_SUPERFLUOUS_SUFFICES,
+                  "expecting " + DOCUMENT_PATH + "?collection=<identifier>");
+    return false;
+  }
+
+  // extract the cid
+  bool found;
+  string cid = request->value("collection", found);
+
+  if (! found || cid.empty()) {
+    generateError(HttpResponse::BAD,
+                  TRI_VOC_ERROR_COLLECTION_PARAMETER_MISSING,
+                  "'collection' is missing, expecting " + DOCUMENT_PATH + "?collection=<identifier>");
     return false;
   }
 
   // find and load collection given by name oder identifier
-  bool ok = findCollection(suffix[0]) && loadCollection();
+  bool ok = findCollection(cid) && loadCollection();
 
   if (! ok) {
     return false;
@@ -267,11 +282,15 @@ bool RestDocumentHandler::createDocument () {
   }
   else {
     if (TRI_errno() == TRI_VOC_ERROR_READ_ONLY) {
-      generateError(HttpResponse::FORBIDDEN, "collection is read-only");
+      generateError(HttpResponse::FORBIDDEN, 
+                    TRI_VOC_ERROR_READ_ONLY,
+                    "collection is read-only");
       return false;
     }
     else {
-      generateError(HttpResponse::SERVER_ERROR, "cannot create, failed with: " + string(TRI_last_error()));
+      generateError(HttpResponse::SERVER_ERROR,
+                    TRI_ERROR_INTERNAL,
+                    "cannot create, failed with: " + string(TRI_last_error()));
       return false;
     }
   }
@@ -284,6 +303,7 @@ bool RestDocumentHandler::createDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readDocument () {
+#ifdef FIXME
   switch (request->suffix().size()) {
     case 0:
       return readAllDocuments();
@@ -295,6 +315,7 @@ bool RestDocumentHandler::readDocument () {
       generateError(HttpResponse::BAD, "expecting URI /document/<document-handle>");
       return false;
   }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -332,6 +353,7 @@ bool RestDocumentHandler::readDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readSingleDocument (bool generateBody) {
+#ifdef FIXME
   vector<string> const& suffix = request->suffix();
 
   // split the document reference
@@ -345,7 +367,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   }
 
   // find and load collection given by name oder identifier
-  bool ok = findCollection(cid) && loadCollection();
+  ok = findCollection(cid) && loadCollection();
 
   if (! ok) {
     return false;
@@ -371,6 +393,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   }
 
   generateDocument(document, generateBody);
+#endif
   return true;
 }
 
@@ -390,10 +413,11 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readAllDocuments () {
+#ifdef FIXME
   vector<string> const& suffix = request->suffix();
 
   // find and load collection given by name oder identifier
-  bool ok = findCollection(suffix[0]) && loadCollection();
+  bool ok = findCollection(cid) && loadCollection();
 
   if (! ok) {
     return false;
@@ -463,6 +487,7 @@ bool RestDocumentHandler::readAllDocuments () {
   response->body().appendText(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
 
   TRI_AnnihilateStringBuffer(&buffer);
+#endif
 
   return true;
 }
@@ -482,12 +507,16 @@ bool RestDocumentHandler::readAllDocuments () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::checkDocument () {
+#ifdef FIXME
+  vector<string> const& suffix = request->suffix();
+
   if (suffix.size() != 1) {
     generateError(HttpResponse::BAD, "expecting URI /document/<document-handle>");
     return false;
   }
 
-  return readDocument(false);
+  return readSingleDocument(false);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -553,18 +582,21 @@ bool RestDocumentHandler::checkDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::updateDocument () {
+#ifdef FIXME
   vector<string> const& suffix = request->suffix();
 
-  // find and load collection given by name oder identifier
-  bool ok = findCollection(suffix[0]) && loadCollection();
+  // split the document reference
+  string cid;
+  string did;
+
+  ok = splitDocumentReference(suffix[1], cid, did);
 
   if (! ok) {
     return false;
   }
 
-  // split the document reference
-  string didStr;
-  ok = splitDocumentReference(suffix[1], didStr);
+  // find and load collection given by name oder identifier
+  bool ok = findCollection(cid) && loadCollection();
 
   if (! ok) {
     return false;
@@ -626,6 +658,7 @@ bool RestDocumentHandler::updateDocument () {
       return false;
     }
   }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -677,18 +710,19 @@ bool RestDocumentHandler::updateDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::deleteDocument () {
-  vector<string> suffix = request->suffix();
+#ifdef FIXME
+  vector<string> const& suffix = request->suffix();
 
-  // find and load collection given by name oder identifier
-  bool ok = findCollection(suffix[0]) && loadCollection();
+  // split the document reference
+  string didStr;
+  ok = splitDocumentReference(suffix[1], didStr);
 
   if (! ok) {
     return false;
   }
 
-  // split the document reference
-  string didStr;
-  ok = splitDocumentReference(suffix[1], didStr);
+  // find and load collection given by name oder identifier
+  bool ok = findCollection(cid[0]) && loadCollection();
 
   if (! ok) {
     return false;
@@ -738,6 +772,7 @@ bool RestDocumentHandler::deleteDocument () {
       return false;
     }
   }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
