@@ -141,7 +141,9 @@ void RestBaseHandler::handleError (TriagensError const& error) {
     delete response;
   }
 
-  generateError(HttpResponse::SERVER_ERROR, DIAGNOSTIC_INFORMATION(error));
+  generateError(HttpResponse::SERVER_ERROR, 
+                TRI_ERROR_INTERNAL,
+                DIAGNOSTIC_INFORMATION(error));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -172,7 +174,9 @@ void RestBaseHandler::generateResult (VariantObject* result) {
   }
   else {
     delete response;
-    generateError(HttpResponse::SERVER_ERROR, "cannot generate output");
+    generateError(HttpResponse::SERVER_ERROR,
+                  TRI_ERROR_INTERNAL,
+                  "cannot generate output");
   }
 
   delete result;
@@ -182,13 +186,14 @@ void RestBaseHandler::generateResult (VariantObject* result) {
 /// @brief generates an error
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, string const& message) {
+void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int errorCode, string const& message) {
   response = new HttpResponse(code);
 
   VariantArray* result = new VariantArray();
   result->add("error", new VariantBoolean(true));
-  result->add("message", new VariantString(message));
   result->add("code", new VariantInt32((int32_t) code));
+  result->add("errorNum", new VariantInt32((int32_t) errorCode));
+  result->add("errorMessage", new VariantString(message));
 
   string contentType;
   bool ok = OutputGenerator::output(SelectResultGenerator(request), response->body(), result, contentType);
@@ -197,10 +202,12 @@ void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, string
     response->setContentType(contentType);
   }
   else {
-    response->body().appendText("{ \"error\" : true, \"message\" : \"" );
+    response->body().appendText("{ \"error\" : true, \"errorMessage\" : \"" );
     response->body().appendText(StringUtils::escapeUnicode(message));
     response->body().appendText("\", \"code\" : ");
     response->body().appendInteger(code);
+    response->body().appendText("\", \"errorNum\" : ");
+    response->body().appendInteger(errorCode);
     response->body().appendText("}");
 
     response->setContentType("application/json");
@@ -218,7 +225,9 @@ bool RestBaseHandler::parseBody (InputParser::ObjectDescription& desc) {
   bool ok = desc.parse(json.get());
 
   if (! ok) {
-    generateError(HttpResponse::BAD, desc.lastError());
+    generateError(HttpResponse::BAD, 
+                  TRI_REST_ERROR_CORRUPTED_JSON,
+                  desc.lastError());
   }
 
   return ok;

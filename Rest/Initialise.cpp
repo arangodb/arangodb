@@ -27,12 +27,12 @@
 
 #include "Initialise.h"
 
-#include <build.h>
+#include "build.h"
 
-#include <Basics/Initialise.h>
-#include <Logger/Logger.h>
-
-#include <Rest/Url.h>
+#include "Basics/Initialise.h"
+#include "Logger/Logger.h"
+#include "Rest/HttpResponse.h"
+#include "Rest/Url.h"
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -137,6 +137,13 @@ namespace triagens {
 #ifdef TRI_HAVE_POSIX_THREADS
       opensslSetup();
 #endif
+
+      // rest errors
+      TRI_set_errno_string(TRI_REST_ERROR_BAD_PARAMETER, "bad parameter");
+      TRI_set_errno_string(TRI_REST_ERROR_CORRUPTED_JSON, "corrupted JSON");
+      TRI_set_errno_string(TRI_REST_ERROR_METHOD_NOT_ALLOWED, "method not allowed");
+      TRI_set_errno_string(TRI_REST_ERROR_NOT_IMPLEMENTED, "not implemented");
+      TRI_set_errno_string(TRI_REST_ERROR_SUPERFLUOUS_SUFFICES, "superfluous suffices");
     }
 
 

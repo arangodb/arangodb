@@ -33,82 +33,27 @@
 extern "C" {
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @page AvocadoErrors Error codes and meanings
-///
-/// The following errors might be raised when running AvocadoDB:
-///
-/// @section AvocadoGeneralErrors General errors
-///
-/// - @copydoc TRI_VOC_ERROR_ILLEGAL_STATE
-/// - @copydoc TRI_VOC_ERROR_SHAPER_FAILED
-/// - @copydoc TRI_VOC_ERROR_CORRUPTED_DATAFILE
-/// - @copydoc TRI_VOC_ERROR_MMAP_FAILED
-/// - @copydoc TRI_VOC_ERROR_MSYNC_FAILED
-/// - @copydoc TRI_VOC_ERROR_NO_JOURNAL
-/// - @copydoc TRI_VOC_ERROR_DATAFILE_SEALED
-/// - @copydoc TRI_VOC_ERROR_CORRUPTED_COLLECTION
-/// - @copydoc TRI_VOC_ERROR_UNKNOWN_TYPE
-/// - @copydoc TRI_VOC_ERROR_ILLEGAL_PARAMETER
-/// - @copydoc TRI_VOC_ERROR_INDEX_EXISTS
-/// - @copydoc TRI_VOC_ERROR_CONFLICT
-/// - @copydoc TRI_VOC_ERROR_WRONG_PATH
-/// - @copydoc TRI_VOC_ERROR_CANNOT_RENAME
-/// - @copydoc TRI_VOC_ERROR_WRITE_FAILED
-/// - @copydoc TRI_VOC_ERROR_READ_ONLY
-/// - @copydoc TRI_VOC_ERROR_DATAFILE_FULL
-/// - @copydoc TRI_VOC_ERROR_FILESYSTEM_FULL
-/// - @copydoc TRI_VOC_ERROR_READ_FAILED
-/// - @copydoc TRI_VOC_ERROR_FILE_NOT_FOUND
-/// - @copydoc TRI_VOC_ERROR_FILE_NOT_ACCESSIBLE
-/// - @copydoc TRI_VOC_ERROR_DOCUMENT_NOT_FOUND
-///
-/// @section AvocadoQueryErrors Query errors
-///
-/// The following errors might be raised during query execution:
-///
-/// - @copydoc TRI_ERROR_QUERY_OOM
-/// - @copydoc TRI_ERROR_QUERY_KILLED
-/// - @copydoc TRI_ERROR_QUERY_PARSE
-/// - @copydoc TRI_ERROR_QUERY_EMPTY
-/// - @copydoc TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE
-/// - @copydoc TRI_ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE
-/// - @copydoc TRI_ERROR_QUERY_TOO_MANY_JOINS
-/// - @copydoc TRI_ERROR_QUERY_COLLECTION_NAME_INVALID
-/// - @copydoc TRI_ERROR_QUERY_COLLECTION_ALIAS_INVALID
-/// - @copydoc TRI_ERROR_QUERY_COLLECTION_ALIAS_REDECLARED
-/// - @copydoc TRI_ERROR_QUERY_COLLECTION_ALIAS_UNDECLARED
-/// - @copydoc TRI_ERROR_QUERY_COLLECTION_NOT_FOUND
-/// - @copydoc TRI_ERROR_QUERY_GEO_RESTRICTION_INVALID
-/// - @copydoc TRI_ERROR_QUERY_GEO_INDEX_MISSING
-/// - @copydoc TRI_ERROR_QUERY_BIND_PARAMETER_MISSING
-/// - @copydoc TRI_ERROR_QUERY_BIND_PARAMETER_REDECLARED
-/// - @copydoc TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED
-/// - @copydoc TRI_ERROR_QUERY_BIND_PARAMETER_VALUE_INVALID
-/// - @copydoc TRI_ERROR_QUERY_BIND_PARAMETER_NUMBER_OUT_OF_RANGE
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public constants
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup AvocadoErrors
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       definitions
-// -----------------------------------------------------------------------------
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief error codes
 ///
-/// If you add a new error code, you must also add the description in
-/// @ref TRI_InitialiseVocBase.
+/// If you add a new error code, you must also add the description in @ref
+/// TRI_InitialiseVocBase.
 ///
 /// Please note that the error numbers defined here must not conflict with error
-/// numbers defined for other parts of the program (e.g. in 
+/// numbers defined for other parts of the program (e.g. in
 /// VocBase/query-error.h)
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ERROR_BEGIN                                             (1000)
+#define TRI_VOC_ERROR_BEGIN                                               (1000)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1000: Illegal state.
@@ -116,7 +61,7 @@ extern "C" {
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ERROR_ILLEGAL_STATE                                     (1000)
+#define TRI_VOC_ERROR_ILLEGAL_STATE                                       (1000)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1001: Shaper failed.
@@ -124,7 +69,7 @@ extern "C" {
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ERROR_SHAPER_FAILED                                     (1001)
+#define TRI_VOC_ERROR_SHAPER_FAILED                                       (1001)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1002: Corrupted datafile.
@@ -132,7 +77,7 @@ extern "C" {
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ERROR_CORRUPTED_DATAFILE                                (1002)
+#define TRI_VOC_ERROR_CORRUPTED_DATAFILE                                  (1002)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1003: mmap failed.
@@ -140,7 +85,7 @@ extern "C" {
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ERROR_MMAP_FAILED                                       (1003)
+#define TRI_VOC_ERROR_MMAP_FAILED                                         (1003)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1004: msync failed.
@@ -148,7 +93,7 @@ extern "C" {
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ERROR_MSYNC_FAILED                                      (1004)
+#define TRI_VOC_ERROR_MSYNC_FAILED                                        (1004)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1005: No journal.
@@ -156,7 +101,7 @@ extern "C" {
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ERROR_NO_JOURNAL                                        (1005)
+#define TRI_VOC_ERROR_NO_JOURNAL                                          (1005)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1006: Datafile sealed.
@@ -164,7 +109,7 @@ extern "C" {
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ERROR_DATAFILE_SEALED                                   (1006)
+#define TRI_VOC_ERROR_DATAFILE_SEALED                                     (1006)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1007: Corrupted collection.
@@ -172,7 +117,7 @@ extern "C" {
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ERROR_CORRUPTED_COLLECTION                              (1007)
+#define TRI_VOC_ERROR_CORRUPTED_COLLECTION                                (1007)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1008: Unknown type.
@@ -180,7 +125,7 @@ extern "C" {
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ERROR_UNKNOWN_TYPE                                      (1008)
+#define TRI_VOC_ERROR_UNKNOWN_TYPE                                        (1008)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1009: Illegal parameter.
@@ -188,7 +133,7 @@ extern "C" {
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ERROR_ILLEGAL_PARAMETER                                 (1009)
+#define TRI_VOC_ERROR_ILLEGAL_PARAMETER                                   (1009)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1010: Index exists.
@@ -196,7 +141,7 @@ extern "C" {
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ERROR_INDEX_EXISTS                                      (1010)
+#define TRI_VOC_ERROR_INDEX_EXISTS                                        (1010)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1011: Conflict.
@@ -204,7 +149,7 @@ extern "C" {
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ERROR_CONFLICT                                          (1011)
+#define TRI_VOC_ERROR_CONFLICT                                            (1011)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1100: Wrong path.
@@ -212,7 +157,7 @@ extern "C" {
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ERROR_WRONG_PATH                                        (1100)
+#define TRI_VOC_ERROR_WRONG_PATH                                          (1100)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1101: Cannot rename.
@@ -220,7 +165,7 @@ extern "C" {
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ERROR_CANNOT_RENAME                                     (1101)
+#define TRI_VOC_ERROR_CANNOT_RENAME                                       (1101)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1102: Write failed.
@@ -228,7 +173,7 @@ extern "C" {
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ERROR_WRITE_FAILED                                      (1102)
+#define TRI_VOC_ERROR_WRITE_FAILED                                        (1102)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1103: Read only.
@@ -236,7 +181,7 @@ extern "C" {
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ERROR_READ_ONLY                                         (1103)
+#define TRI_VOC_ERROR_READ_ONLY                                           (1103)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1104: Datafile full.
@@ -244,7 +189,7 @@ extern "C" {
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ERROR_DATAFILE_FULL                                     (1104)
+#define TRI_VOC_ERROR_DATAFILE_FULL                                       (1104)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1105: Filesystem full.
@@ -252,7 +197,7 @@ extern "C" {
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ERROR_FILESYSTEM_FULL                                   (1105)
+#define TRI_VOC_ERROR_FILESYSTEM_FULL                                     (1105)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1106: Read failed.
@@ -260,7 +205,7 @@ extern "C" {
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ERROR_READ_FAILED                                       (1106)
+#define TRI_VOC_ERROR_READ_FAILED                                         (1106)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1107: File not found.
@@ -268,7 +213,7 @@ extern "C" {
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ERROR_FILE_NOT_FOUND                                    (1107)
+#define TRI_VOC_ERROR_FILE_NOT_FOUND                                      (1107)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1108: File not accessible.
@@ -276,15 +221,48 @@ extern "C" {
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ERROR_FILE_NOT_ACCESSIBLE                               (1108)
+#define TRI_VOC_ERROR_FILE_NOT_ACCESSIBLE                                 (1108)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1200: Document not found.
 /// 
-/// TODO
+/// Will be raised when a document with a given identifier or handle is unknown.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ERROR_DOCUMENT_NOT_FOUND                                (1200)
+#define TRI_VOC_ERROR_DOCUMENT_NOT_FOUND                                  (1200)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1201: Collection not found.
+/// 
+/// Will be raised when a collection with a given identifier or name is unknown.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_VOC_ERROR_COLLECTION_NOT_FOUND                                (1201)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1202: Parameter collection not found.
+/// 
+/// Will be raised when the collection parameter is missing.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_VOC_ERROR_COLLECTION_PARAMETER_MISSING                        (1202)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1203: Document altered.
+/// 
+/// Will be raised when a document has been altered and a change would
+/// result in a conflict.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_VOC_ERROR_DOCUMENT_ALTERED                                    (1203)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1203: Corrupted document handle.
+/// 
+/// Will be raised when a document handle is corrupt.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_VOC_ERROR_CORRUPT_DOCUMENT_HANDLE                             (1204)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -37,6 +37,8 @@
 
 #include "Basics/Common.h"
 
+#include "BasicsC/string-buffer.h"
+
 // -----------------------------------------------------------------------------
 // string buffer with formatting routines
 // -----------------------------------------------------------------------------
@@ -52,336 +54,292 @@
 namespace triagens {
   namespace basics {
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      class Logger
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @ingroup Utilities
+/// @addtogroup Strings
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief string buffer with formatting routines
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct StringBuffer {
+    class StringBuffer {
+      private:
+        StringBuffer (StringBuffer const&);
+        StringBuffer& operator= (StringBuffer const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-        // constructors and destructors
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Strings
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises the string buffer
-///
-/// This method is implemented here in order to allow inlining.
-///
-/// @warning You must call initialise before using the string buffer.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void initialise () {
-          buffer = 0;
-          bufferPtr = 0;
-          bufferEnd = 0;
-
-          reserve(1);
-          *bufferPtr = 0;
+        StringBuffer () {
+          TRI_InitStringBuffer(&_buffer);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the string buffer
-///
-/// This method is implemented here in order to allow inlining.
-///
-/// @warning You must call free after using the string buffer.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void free () {
-          if (buffer != 0) {
-            delete[] buffer;
-
-            buffer = 0;
-            bufferPtr = 0;
-            bufferEnd = 0;
-          }
+        ~StringBuffer () {
+          TRI_DestroyStringBuffer(&_buffer);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the string buffer and cleans the buffer
-///
-/// This method is implemented here in order to allow inlining.
-///
-/// @warning You must call free after using the string buffer.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void destroy () {
-          if (buffer != 0) {
-            memset(buffer, 0, bufferEnd - buffer);
-
-            delete[] buffer;
-
-            buffer = 0;
-            bufferPtr = 0;
-            bufferEnd = 0;
-          }
+        void annihilate () {
+          TRI_AnnihilateStringBuffer(&_buffer);
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
-        // public methods
+// --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Strings
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief swaps content with another string buffer
-///
-/// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void swap (StringBuffer * other) {
-          char * otherBuffer    = other->buffer;
-          char * otherBufferPtr = other->bufferPtr;
-          char * otherBufferEnd = other->bufferEnd;
-
-          other->buffer    = buffer;
-          other->bufferPtr = bufferPtr;
-          other->bufferEnd = bufferEnd;
-
-          buffer    = otherBuffer;
-          bufferPtr = otherBufferPtr;
-          bufferEnd = otherBufferEnd;
+        StringBuffer& swap (StringBuffer * other) {
+          TRI_SwapStringBuffer(&_buffer, &other->_buffer);
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns pointer to the character buffer
-///
-/// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
         const char * c_str () const {
-          return buffer;
+          return TRI_BeginStringBuffer(&_buffer);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns pointer to the beginning of the character buffer
-///
-/// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
         const char * begin () const {
-          return buffer;
+          return TRI_BeginStringBuffer(&_buffer);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns pointer to the end of the character buffer
-///
-/// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
         const char * end () const {
-          return bufferPtr;
+          return TRI_EndStringBuffer(&_buffer);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns length of the character buffer
-///
-/// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
         size_t length () const {
-          return bufferPtr - buffer;
+          return TRI_LengthStringBuffer(&_buffer);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true if buffer is empty
-///
-/// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
         bool empty () const {
-          return bufferPtr == buffer;
+          return TRI_EmptyStringBuffer(&_buffer);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clears the buffer
-///
-/// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void clear () {
-          bufferPtr = buffer;
+        StringBuffer& clear () {
+          TRI_ClearStringBuffer(&_buffer);
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief assigns text from a string
-///
-/// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
         StringBuffer& operator= (string const& str) {
-          replaceText(str.c_str(), str.length());
-
+          TRI_ReplaceStringStringBuffer(&_buffer, str.c_str(), str.length());
           return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies the string buffer
-///
-/// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void copy (StringBuffer const& source) {
-          replaceText(source.c_str(), source.length());
+        StringBuffer& copy (StringBuffer const& source) {
+          TRI_CopyStringBuffer(&_buffer, &source._buffer);
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes the first characters
-///
-/// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void erase_front (size_t len) {
-          if (length() <= len) {
-            clear();
-          }
-          else if (0 < len) {
-            memmove(buffer, buffer + len, bufferPtr - buffer - len);
-            bufferPtr -= len;
-          }
+        StringBuffer& erase_front (size_t len) {
+          TRI_EraseFrontStringBuffer(&_buffer, len);
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces characters
-///
-/// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void replaceText (const char * str, size_t len) {
-          clear();
-          appendText(str, len);
+        StringBuffer& replaceText (const char * str, size_t len) {
+          TRI_ReplaceStringStringBuffer(&_buffer, str, len);
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces characters
-///
-/// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void replaceText (StringBuffer const& text) {
-          clear();
-          appendText(text.c_str(), text.length());
+        StringBuffer& replaceText (StringBuffer const& text) {
+          TRI_ReplaceStringStringBuffer(&_buffer, text.c_str(), text.length());
+          return *this;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
-        // appenders
+// --SECTION--                                    STRING AND CHARATCER APPENDERS
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Strings
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends eol character
-///
-/// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendEol () {
-          appendChar('\n');
+        StringBuffer& appendEol () {
+          TRI_AppendCharStringBuffer(&_buffer, '\n');
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends character
-///
-/// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendChar (char chr) {
-          reserve(2);
-          *bufferPtr++ = chr;
-          *bufferPtr   = '\0';
+        StringBuffer& appendChar (char chr) {
+          TRI_AppendCharStringBuffer(&_buffer, chr);
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends characters
-///
-/// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendText (const char * str, size_t len) {
-          if (len == 0) {
-            reserve(1);
-            *bufferPtr = '\0';
-          }
-          else {
-            reserve(len + 1);
-            memcpy(bufferPtr, str, len);
-            bufferPtr += len;
-            *bufferPtr = '\0';
-          }
+        StringBuffer& appendText (const char * str, size_t len) {
+          TRI_AppendString2StringBuffer(&_buffer, str, len);
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends characters
-///
-/// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendText (const char * str) {
-          size_t len = strlen(str);
-
-          reserve(len + 1);
-          memcpy(bufferPtr, str, len);
-          bufferPtr += len;
-          *bufferPtr = '\0';
+        StringBuffer& appendText (const char * str) {
+          TRI_AppendStringStringBuffer(&_buffer, str);
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends string
-///
-/// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendText (string const& str) {
-          appendText(str.c_str(), str.length());
+        StringBuffer& appendText (string const& str) {
+          TRI_AppendString2StringBuffer(&_buffer, str.c_str(), str.length());
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends a string buffer
-///
-/// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendText (StringBuffer const& text) {
-          appendText(text.c_str(), text.length());
+        StringBuffer& appendText (StringBuffer const& text) {
+          TRI_AppendString2StringBuffer(&_buffer, text.c_str(), text.length());
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief appends integer with two digits
-///
-/// This method is implemented here in order to allow inlining.
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendInteger2 (uint32_t attr) {
-          reserve(3);
-          appendChar0(char((attr / 10U) % 10 + '0'));
-          appendChar0(char( attr % 10        + '0'));
-          *bufferPtr = '\0';
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 INTEGER APPENDERS
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Strings
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief appends integer with two digits
+////////////////////////////////////////////////////////////////////////////////
+
+        StringBuffer& appendInteger2 (uint32_t attr) {
+          TRI_AppendInteger2StringBuffer(&_buffer, attr);
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends integer with three digits
-///
-/// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendInteger3 (uint32_t attr) {
-          reserve(4);
-          appendChar0(char((attr / 100U) % 10 + '0'));
-          appendChar0(char((attr /  10U) % 10 + '0'));
-          appendChar0(char( attr         % 10 + '0'));
-          *bufferPtr = '\0';
+        StringBuffer& appendInteger3 (uint32_t attr) {
+          TRI_AppendInteger3StringBuffer(&_buffer, attr);
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends integer with four digits
-///
-/// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendInteger4 (uint32_t attr) {
-          reserve(5);
-          appendChar0(char((attr / 1000U) % 10 + '0'));
-          appendChar0(char((attr /  100U) % 10 + '0'));
-          appendChar0(char((attr /   10U) % 10 + '0'));
-          appendChar0(char( attr          % 10 + '0'));
-          *bufferPtr = '\0';
+        StringBuffer& appendInteger4 (uint32_t attr) {
+          TRI_AppendInteger4StringBuffer(&_buffer, attr);
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -390,25 +348,9 @@ namespace triagens {
 /// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendInteger (int8_t attr) {
-          if (attr == INT8_MIN) {
-            appendText("-128", 4);
-            return;
-          }
-
-          reserve(5);
-
-          if (attr < 0) {
-            appendChar0('-');
-            attr = -attr;
-          }
-
-
-          if (100 <= attr) { appendChar0((attr / 100) % 10 + '0'); }
-          if ( 10 <= attr) { appendChar0((attr /  10) % 10 + '0'); }
-
-          appendChar0(char(attr % 10 + '0'));
-          *bufferPtr = '\0';
+        StringBuffer& appendInteger (int8_t attr) {
+          TRI_AppendInt8StringBuffer(&_buffer, attr);
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -417,14 +359,9 @@ namespace triagens {
 /// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendInteger (uint8_t attr) {
-          reserve(4);
-
-          if (100U <= attr) { appendChar0((attr / 100U) % 10 + '0'); }
-          if ( 10U <= attr) { appendChar0((attr /  10U) % 10 + '0'); }
-
-          appendChar0(char(attr % 10 + '0'));
-          *bufferPtr = '\0';
+        StringBuffer& appendInteger (uint8_t attr) {
+          TRI_AppendUInt8StringBuffer(&_buffer, attr);
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -433,26 +370,9 @@ namespace triagens {
 /// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendInteger (int16_t attr) {
-          if (attr == INT16_MIN) {
-            appendText("-32768", 6);
-            return;
-          }
-
-          reserve(7);
-
-          if (attr < 0) {
-            appendChar0('-');
-            attr = -attr;
-          }
-
-          if (10000 <= attr) { appendChar0(char((attr / 10000) % 10 + '0')); }
-          if ( 1000 <= attr) { appendChar0(char((attr /  1000) % 10 + '0')); }
-          if (  100 <= attr) { appendChar0(char((attr /   100) % 10 + '0')); }
-          if (   10 <= attr) { appendChar0(char((attr /    10) % 10 + '0')); }
-
-          appendChar0(char(attr % 10 + '0'));
-          *bufferPtr = '\0';
+        StringBuffer& appendInteger (int16_t attr) {
+          TRI_AppendInt16StringBuffer(&_buffer, attr);
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -461,16 +381,9 @@ namespace triagens {
 /// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendInteger (uint16_t attr) {
-          reserve(6);
-
-          if (10000U <= attr) { appendChar0(char((attr / 10000U) % 10 + '0')); }
-          if ( 1000U <= attr) { appendChar0(char((attr /  1000U) % 10 + '0')); }
-          if (  100U <= attr) { appendChar0(char((attr /   100U) % 10 + '0')); }
-          if (   10U <= attr) { appendChar0(char((attr /    10U) % 10 + '0')); }
-
-          appendChar0(char(attr % 10 + '0'));
-          *bufferPtr = '\0';
+        StringBuffer& appendInteger (uint16_t attr) {
+          TRI_AppendUInt16StringBuffer(&_buffer, attr);
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -479,31 +392,9 @@ namespace triagens {
 /// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendInteger (int32_t attr) {
-          if (attr == INT32_MIN) {
-            appendText("-2147483648", 11);
-            return;
-          }
-
-          reserve(12);
-
-          if (attr < 0) {
-            appendChar0('-');
-            attr = -attr;
-          }
-
-          if (1000000000 <= attr) { appendChar0(char((attr / 1000000000) % 10 + '0')); }
-          if ( 100000000 <= attr) { appendChar0(char((attr /  100000000) % 10 + '0')); }
-          if (  10000000 <= attr) { appendChar0(char((attr /   10000000) % 10 + '0')); }
-          if (   1000000 <= attr) { appendChar0(char((attr /    1000000) % 10 + '0')); }
-          if (    100000 <= attr) { appendChar0(char((attr /     100000) % 10 + '0')); }
-          if (     10000 <= attr) { appendChar0(char((attr /      10000) % 10 + '0')); }
-          if (      1000 <= attr) { appendChar0(char((attr /       1000) % 10 + '0')); }
-          if (       100 <= attr) { appendChar0(char((attr /        100) % 10 + '0')); }
-          if (        10 <= attr) { appendChar0(char((attr /         10) % 10 + '0')); }
-
-          appendChar0(char(attr % 10 + '0'));
-          *bufferPtr = '\0';
+        StringBuffer& appendInteger (int32_t attr) {
+          TRI_AppendInt32StringBuffer(&_buffer, attr);
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -512,21 +403,9 @@ namespace triagens {
 /// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendInteger (uint32_t attr) {
-          reserve(11);
-
-          if (1000000000U <= attr) { appendChar0(char((attr / 1000000000U) % 10 + '0')); }
-          if ( 100000000U <= attr) { appendChar0(char((attr /  100000000U) % 10 + '0')); }
-          if (  10000000U <= attr) { appendChar0(char((attr /   10000000U) % 10 + '0')); }
-          if (   1000000U <= attr) { appendChar0(char((attr /    1000000U) % 10 + '0')); }
-          if (    100000U <= attr) { appendChar0(char((attr /     100000U) % 10 + '0')); }
-          if (     10000U <= attr) { appendChar0(char((attr /      10000U) % 10 + '0')); }
-          if (      1000U <= attr) { appendChar0(char((attr /       1000U) % 10 + '0')); }
-          if (       100U <= attr) { appendChar0(char((attr /        100U) % 10 + '0')); }
-          if (        10U <= attr) { appendChar0(char((attr /         10U) % 10 + '0')); }
-
-          appendChar0(char(attr % 10 + '0'));
-          *bufferPtr = '\0';
+        StringBuffer& appendInteger (uint32_t attr) {
+          TRI_AppendUInt32StringBuffer(&_buffer, attr);
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -535,46 +414,9 @@ namespace triagens {
 /// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendInteger (int64_t attr) {
-          if (attr == INT64_MIN) {
-            appendText("-9223372036854775808", 20);
-            return;
-          }
-          else if (attr < 0) {
-            reserve(1);
-            appendChar0('-');
-            attr = -attr;
-          }
-
-          if ((attr >> 32) == 0) {
-            appendInteger(uint32_t(attr));
-            return;
-          }
-
-          reserve(20);
-
-          // uint64_t has one more decimal than int64_t
-          if (1000000000000000000LL <= attr) { appendChar0(char((attr / 1000000000000000000LL) % 10 + '0')); }
-          if ( 100000000000000000LL <= attr) { appendChar0(char((attr /  100000000000000000LL) % 10 + '0')); }
-          if (  10000000000000000LL <= attr) { appendChar0(char((attr /   10000000000000000LL) % 10 + '0')); }
-          if (   1000000000000000LL <= attr) { appendChar0(char((attr /    1000000000000000LL) % 10 + '0')); }
-          if (    100000000000000LL <= attr) { appendChar0(char((attr /     100000000000000LL) % 10 + '0')); }
-          if (     10000000000000LL <= attr) { appendChar0(char((attr /      10000000000000LL) % 10 + '0')); }
-          if (      1000000000000LL <= attr) { appendChar0(char((attr /       1000000000000LL) % 10 + '0')); }
-          if (       100000000000LL <= attr) { appendChar0(char((attr /        100000000000LL) % 10 + '0')); }
-          if (        10000000000LL <= attr) { appendChar0(char((attr /         10000000000LL) % 10 + '0')); }
-          if (         1000000000LL <= attr) { appendChar0(char((attr /          1000000000LL) % 10 + '0')); }
-          if (          100000000LL <= attr) { appendChar0(char((attr /           100000000LL) % 10 + '0')); }
-          if (           10000000LL <= attr) { appendChar0(char((attr /            10000000LL) % 10 + '0')); }
-          if (            1000000LL <= attr) { appendChar0(char((attr /             1000000LL) % 10 + '0')); }
-          if (             100000LL <= attr) { appendChar0(char((attr /              100000LL) % 10 + '0')); }
-          if (              10000LL <= attr) { appendChar0(char((attr /               10000LL) % 10 + '0')); }
-          if (               1000LL <= attr) { appendChar0(char((attr /                1000LL) % 10 + '0')); }
-          if (                100LL <= attr) { appendChar0(char((attr /                 100LL) % 10 + '0')); }
-          if (                 10LL <= attr) { appendChar0(char((attr /                  10LL) % 10 + '0')); }
-
-          appendChar0(char(attr % 10 + '0'));
-          *bufferPtr = '\0';
+        StringBuffer& appendInteger (int64_t attr) {
+          TRI_AppendInt64StringBuffer(&_buffer, attr);
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -583,37 +425,9 @@ namespace triagens {
 /// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendInteger (uint64_t attr) {
-          if ((attr >> 32) == 0) {
-            appendInteger(uint32_t(attr));
-            return;
-          }
-
-          reserve(21);
-
-          // uint64_t has one more decimal than int64_t
-          if (10000000000000000000ULL <= attr) { appendChar0(char((attr / 10000000000000000000ULL) % 10 + '0')); }
-          if ( 1000000000000000000ULL <= attr) { appendChar0(char((attr /  1000000000000000000ULL) % 10 + '0')); }
-          if (  100000000000000000ULL <= attr) { appendChar0(char((attr /   100000000000000000ULL) % 10 + '0')); }
-          if (   10000000000000000ULL <= attr) { appendChar0(char((attr /    10000000000000000ULL) % 10 + '0')); }
-          if (    1000000000000000ULL <= attr) { appendChar0(char((attr /     1000000000000000ULL) % 10 + '0')); }
-          if (     100000000000000ULL <= attr) { appendChar0(char((attr /      100000000000000ULL) % 10 + '0')); }
-          if (      10000000000000ULL <= attr) { appendChar0(char((attr /       10000000000000ULL) % 10 + '0')); }
-          if (       1000000000000ULL <= attr) { appendChar0(char((attr /        1000000000000ULL) % 10 + '0')); }
-          if (        100000000000ULL <= attr) { appendChar0(char((attr /         100000000000ULL) % 10 + '0')); }
-          if (         10000000000ULL <= attr) { appendChar0(char((attr /          10000000000ULL) % 10 + '0')); }
-          if (          1000000000ULL <= attr) { appendChar0(char((attr /           1000000000ULL) % 10 + '0')); }
-          if (           100000000ULL <= attr) { appendChar0(char((attr /            100000000ULL) % 10 + '0')); }
-          if (            10000000ULL <= attr) { appendChar0(char((attr /             10000000ULL) % 10 + '0')); }
-          if (             1000000ULL <= attr) { appendChar0(char((attr /              1000000ULL) % 10 + '0')); }
-          if (              100000ULL <= attr) { appendChar0(char((attr /               100000ULL) % 10 + '0')); }
-          if (               10000ULL <= attr) { appendChar0(char((attr /                10000ULL) % 10 + '0')); }
-          if (                1000ULL <= attr) { appendChar0(char((attr /                 1000ULL) % 10 + '0')); }
-          if (                 100ULL <= attr) { appendChar0(char((attr /                  100ULL) % 10 + '0')); }
-          if (                  10ULL <= attr) { appendChar0(char((attr /                   10ULL) % 10 + '0')); }
-
-          appendChar0(char(attr % 10 + '0'));
-          *bufferPtr = '\0';
+        StringBuffer& appendInteger (uint64_t attr) {
+          TRI_AppendUInt64StringBuffer(&_buffer, attr);
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -624,284 +438,148 @@ namespace triagens {
 
 #ifdef TRI_OVERLOAD_FUNCS_SIZE_T
 
-        void appendInteger (size_t attr) {
-          appendInteger(sizetint_t(attr));
+        StringBuffer& appendInteger (size_t attr) {
+          return appendInteger(sizetint_t(attr));
         }
 
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief appends unsigned integer with 32 bits in octal
-///
-/// This method is implemented here in order to allow inlining.
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendOctal (uint32_t attr) {
-          reserve(9);
+// -----------------------------------------------------------------------------
+// --SECTION--                                           INTEGER OCTAL APPENDERS
+// -----------------------------------------------------------------------------
 
-          if (010000000U <= attr) { appendChar0(char((attr / 010000000U) % 010 + '0')); }
-          if ( 01000000U <= attr) { appendChar0(char((attr /  01000000U) % 010 + '0')); }
-          if (  0100000U <= attr) { appendChar0(char((attr /   0100000U) % 010 + '0')); }
-          if (   010000U <= attr) { appendChar0(char((attr /    010000U) % 010 + '0')); }
-          if (    01000U <= attr) { appendChar0(char((attr /     01000U) % 010 + '0')); }
-          if (     0100U <= attr) { appendChar0(char((attr /      0100U) % 010 + '0')); }
-          if (      010U <= attr) { appendChar0(char((attr /       010U) % 010 + '0')); }
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
 
-          appendChar0(char(attr % 010 + '0'));
-          *bufferPtr = '\0';
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Strings
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief appends unsigned integer with 32 bits in octal
+////////////////////////////////////////////////////////////////////////////////
+
+        StringBuffer& appendOctal (uint32_t attr) {
+          TRI_AppendUInt32OctalStringBuffer(&_buffer, attr);
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends unsigned integer with 64 bits in octal
-///
-/// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendOctal (uint64_t attr) {
-          reserve(17);
-
-          if (01000000000000000ULL <= attr) { appendChar0(char((attr / 01000000000000000ULL) % 010 + '0')); }
-          if ( 0100000000000000ULL <= attr) { appendChar0(char((attr /  0100000000000000ULL) % 010 + '0')); }
-          if (  010000000000000ULL <= attr) { appendChar0(char((attr /   010000000000000ULL) % 010 + '0')); }
-          if (   01000000000000ULL <= attr) { appendChar0(char((attr /    01000000000000ULL) % 010 + '0')); }
-          if (    0100000000000ULL <= attr) { appendChar0(char((attr /     0100000000000ULL) % 010 + '0')); }
-          if (     010000000000ULL <= attr) { appendChar0(char((attr /      010000000000ULL) % 010 + '0')); }
-          if (      01000000000ULL <= attr) { appendChar0(char((attr /       01000000000ULL) % 010 + '0')); }
-          if (       0100000000ULL <= attr) { appendChar0(char((attr /        0100000000ULL) % 010 + '0')); }
-          if (        010000000ULL <= attr) { appendChar0(char((attr /         010000000ULL) % 010 + '0')); }
-          if (         01000000ULL <= attr) { appendChar0(char((attr /          01000000ULL) % 010 + '0')); }
-          if (          0100000ULL <= attr) { appendChar0(char((attr /           0100000ULL) % 010 + '0')); }
-          if (           010000ULL <= attr) { appendChar0(char((attr /            010000ULL) % 010 + '0')); }
-          if (            01000ULL <= attr) { appendChar0(char((attr /             01000ULL) % 010 + '0')); }
-          if (             0100ULL <= attr) { appendChar0(char((attr /              0100ULL) % 010 + '0')); }
-          if (              010ULL <= attr) { appendChar0(char((attr /               010ULL) % 010 + '0')); }
-
-          appendChar0(char(attr % 010 + '0'));
-          *bufferPtr = '\0';
+        StringBuffer& appendOctal (uint64_t attr) {
+          TRI_AppendUInt64OctalStringBuffer(&_buffer, attr);
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends size_t in octal
-///
-/// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_OVERLOAD_FUNCS_SIZE_T
 
-        void appendOctal (size_t attr) {
-          appendOctal(sizetint_t(attr));
+        StringBuffer& appendOctal (size_t attr) {
+          return appendOctal(sizetint_t(attr));
         }
 
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief appends unsigned integer with 32 bits in hex
-///
-/// This method is implemented here in order to allow inlining.
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendHex (uint32_t attr) {
-          static char const * const HEX = "0123456789ABCDEF";
+// -----------------------------------------------------------------------------
+// --SECTION--                                             INTEGER HEX APPENDERS
+// -----------------------------------------------------------------------------
 
-          reserve(5);
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
 
-          if (0x1000U <= attr) { appendChar0(HEX[(attr / 0x1000U) % 0x10]); }
-          if ( 0x100U <= attr) { appendChar0(HEX[(attr /  0x100U) % 0x10]); }
-          if (  0x10U <= attr) { appendChar0(HEX[(attr /   0x10U) % 0x10]); }
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Strings
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
-          appendChar0(HEX[attr % 0x10]);
-          *bufferPtr = '\0';
+////////////////////////////////////////////////////////////////////////////////
+/// @brief appends unsigned integer with 32 bits in hex
+////////////////////////////////////////////////////////////////////////////////
+
+        StringBuffer& appendHex (uint32_t attr) {
+          TRI_AppendUInt32HexStringBuffer(&_buffer, attr);
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends unsigned integer with 64 bits in hex
-///
-/// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendHex (uint64_t attr) {
-          static char const * const HEX = "0123456789ABCDEF";
-
-          reserve(9);
-
-          if (0x10000000U <= attr) { appendChar0(HEX[(attr / 0x10000000U) % 0x10]); }
-          if ( 0x1000000U <= attr) { appendChar0(HEX[(attr /  0x1000000U) % 0x10]); }
-          if (  0x100000U <= attr) { appendChar0(HEX[(attr /   0x100000U) % 0x10]); }
-          if (   0x10000U <= attr) { appendChar0(HEX[(attr /    0x10000U) % 0x10]); }
-          if (    0x1000U <= attr) { appendChar0(HEX[(attr /     0x1000U) % 0x10]); }
-          if (     0x100U <= attr) { appendChar0(HEX[(attr /      0x100U) % 0x10]); }
-          if (      0x10U <= attr) { appendChar0(HEX[(attr /       0x10U) % 0x10]); }
-
-          appendChar0(HEX[attr % 0x10]);
-          *bufferPtr = '\0';
+        StringBuffer& appendHex (uint64_t attr) {
+          TRI_AppendUInt64HexStringBuffer(&_buffer, attr);
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends size_t in hex
-///
-/// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_OVERLOAD_FUNCS_SIZE_T
 
-        void appendHex (size_t attr) {
-          appendHex(sizetint_t(attr));
+        StringBuffer& appendHex (size_t attr) {
+          return appendHex(sizetint_t(attr));
         }
 
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief appends floating point number with 8 bits
-///
-/// This method is implemented here in order to allow inlining.
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendDecimal (double attr) {
-          reserve(1);
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   FLOAT APPENDERS
+// -----------------------------------------------------------------------------
 
-          if (attr < 0.0) {
-            appendChar0('-');
-            attr = -attr;
-          }
-          else if (attr == 0.0) {
-            appendChar0('0');
-            *bufferPtr = '\0';
-            return;
-          }
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
 
-          if (double(uint32_t(attr)) == attr) {
-            appendInteger(uint32_t(attr));
-            return;
-          }
-          else if (attr < double(429496U)) {
-            uint32_t smll = uint32_t(attr * 10000.0);
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Strings
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
-            if (double(smll) == attr * 10000.0) {
-              uint32_t exp = smll % 10000;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief appends floating point number with 8 bits
+////////////////////////////////////////////////////////////////////////////////
 
-              appendInteger(smll / 10000);
-
-              if (exp != 0) {
-                reserve(6);
-
-                appendChar0('.');
-
-                size_t pos = 0;
-
-                if ((exp / 1000L) % 10 != 0)  pos = 1;
-                char a1 = char((exp / 1000L) % 10 + '0');
-
-                if ((exp / 100L) % 10 != 0)  pos = 2;
-                char a2 = char((exp / 100L) % 10 + '0');
-
-                if ((exp / 10L) % 10 != 0)  pos = 3;
-                char a3 = char((exp / 10L) % 10 + '0');
-
-                if (exp % 10 != 0)  pos = 4;
-                char a4 = char(exp % 10 + '0');
-
-                appendChar0(a1);
-                if (pos > 1) { appendChar0(a2); }
-                if (pos > 2) { appendChar0(a3); }
-                if (pos > 3) { appendChar0(a4); }
-
-                *bufferPtr = '\0';
-              }
-
-              return;
-            }
-          }
-
-          // we do not habe a small integral number nor small decimal number with only a few decimal digits
-
-          // there at most 16 significant digits, first find out if we have an integer value
-          if (10000000000000000.0 < attr) {
-            size_t n = 0;
-
-            while (10000000000000000.0 < attr) {
-              attr /= 10.0;
-              ++n;
-            }
-
-            appendInteger((uint64_t) attr);
-
-            reserve(n);
-
-            for (;  0 < n;  --n) {
-              appendChar0('0');
-            }
-
-            *bufferPtr = '\0';
-            return;
-          }
-
-
-          // very small, i. e. less than 1
-          else if (attr < 1.0) {
-            size_t n = 0;
-
-            while (attr < 1.0) {
-              attr *= 10.0;
-              ++n;
-
-              // should not happen, so it must be almost 0
-              if (n > 400) {
-                appendInteger(0);
-                return;
-              }
-            }
-
-            reserve(n + 2);
-
-            appendChar0('0');
-            appendChar0('.');
-
-            for (--n;  0 < n;  --n) {
-              appendChar0('0');
-            }
-
-            attr = 10000000000000000.0 * attr;
-
-            appendInteger((uint64_t) attr);
-
-            return;
-          }
-
-
-          // somewhere in between
-          else {
-            uint64_t m = uint64_t(attr);
-            double d = attr - m;
-
-            appendInteger(m);
-
-            size_t n = 0;
-
-            while (d < 1.0) {
-              d *= 10.0;
-              ++n;
-
-              // should not happen, so it must be almost 0
-              if (n > 400) {
-                return;
-              }
-            }
-
-            reserve(n + 1);
-
-            appendChar0('.');
-
-            for (--n;  0 < n;  --n) {
-              appendChar0('0');
-            }
-
-            d = 10000000000000000.0 * d;
-
-            appendInteger((uint64_t) d);
-
-            return;
-          }
+        StringBuffer& appendDecimal (double attr) {
+          TRI_AppendDoubleStringBuffer(&_buffer, attr);
+          return *this;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                           DATE AND TIME APPENDERS
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Strings
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends time in standard format
@@ -909,106 +587,115 @@ namespace triagens {
 /// This method is implemented here in order to allow inlining.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendTime (int32_t attr) {
-          int hour = attr / 3600;
-          int minute = (attr / 60) % 60;
-          int second = attr % 60;
-
-          reserve(9);
-
-          appendInteger2(hour);
-          appendChar(':');
-          appendInteger2(minute);
-          appendChar(':');
-          appendInteger2(second);
-
-          *bufferPtr = '\0';
+        StringBuffer& appendTime (int32_t attr) {
+          TRI_AppendTimeStringBuffer(&_buffer, attr);
+          return *this;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     CSV APPENDERS
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Strings
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends csv string
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendCsvString (string const& text) {
+        StringBuffer& appendCsvString (string const& text) {
+
           // do not escape here, because some string - i.e. lists of identifier - have no special characters
-          appendText(text);
-          appendChar(';');
+          TRI_AppendString2StringBuffer(&_buffer, text.c_str(), text.size());
+          TRI_AppendCharStringBuffer(&_buffer, ';');
+
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief appends csv integer
+/// @brief appends csv 32-bit integer
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendCsvInteger (int32_t i) {
-          appendInteger(i);
-          appendChar(';');
+        StringBuffer& appendCsvInteger (int32_t i) {
+          TRI_AppendCsvInt32StringBuffer(&_buffer, i);
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief appends csv integer
+/// @brief appends csv unisgned 32-bit integer
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendCsvInteger (uint32_t i) {
-          appendInteger(i);
-          appendChar(';');
+        StringBuffer& appendCsvInteger (uint32_t i) {
+          TRI_AppendCsvUInt32StringBuffer(&_buffer, i);
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief appends csv integer
+/// @brief appends csv 64-bit integer
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendCsvInteger (uint64_t i) {
-          appendInteger(i);
-          appendChar(';');
+        StringBuffer& appendCsvInteger (int64_t i) {
+          TRI_AppendCsvInt64StringBuffer(&_buffer, i);
+          return *this;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief appends csv unsigned 64-bit integer
+////////////////////////////////////////////////////////////////////////////////
+
+        StringBuffer& appendCsvInteger (uint64_t i) {
+          TRI_AppendCsvUInt64StringBuffer(&_buffer, i);
+          return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends csv double
 ////////////////////////////////////////////////////////////////////////////////
 
-        void appendCsvDouble (double d) {
-          appendDecimal(d);
-          appendChar(';');
+        StringBuffer& appendCsvDouble (double d) {
+          TRI_AppendCsvDoubleStringBuffer(&_buffer, d);
+          return *this;
         }
 
-// -----------------------------------------------------------------------------
-        // private methods
-// -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
-        // private
-        void appendChar0 (char chr) {
-          *bufferPtr++ = chr;
-        }
-
-        void reserve (size_t size) {
-          if (buffer == 0) {
-            buffer = new char[size + 1];
-            bufferPtr = buffer;
-            bufferEnd = buffer + size;
-          }
-          else if (size_t(bufferEnd - bufferPtr) < size) {
-            size_t newlen = size_t(1.2 * ((bufferEnd - buffer) + size));
-            char * b = new char[newlen + 1];
-
-            memcpy(b, buffer, bufferEnd - buffer + 1);
-
-            delete[] buffer;
-
-            bufferPtr = b + (bufferPtr - buffer);
-            bufferEnd = b + newlen;
-            buffer    = b;
-          }
-        }
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Strings
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-        // private data
+// --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
-        char * buffer;
-        char * bufferPtr;
-        char * bufferEnd;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief underlying C string buffer
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_string_buffer_t _buffer;
     };
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 #endif
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:
