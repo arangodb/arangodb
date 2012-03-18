@@ -529,7 +529,13 @@ void TRI_CloseVocBase (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t const* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t* vocbase, char const* name) {
-  return TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name);
+  TRI_vocbase_col_t const* found;
+
+  TRI_ReadLockReadWriteLock(&vocbase->_lock);
+  found = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name);
+  TRI_ReadUnlockReadWriteLock(&vocbase->_lock);
+
+  return found;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -537,7 +543,13 @@ TRI_vocbase_col_t const* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t* vocba
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t const* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t* vocbase, TRI_voc_cid_t id) {
-  return TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id);
+  TRI_vocbase_col_t const* found;
+
+  TRI_ReadLockReadWriteLock(&vocbase->_lock);
+  found = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id);
+  TRI_ReadUnlockReadWriteLock(&vocbase->_lock);
+
+  return found;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -548,7 +560,7 @@ TRI_vocbase_col_t const* TRI_FindCollectionByNameVocBase (TRI_vocbase_t* vocbase
   TRI_vocbase_col_t const* found;
 
   TRI_ReadLockReadWriteLock(&vocbase->_lock);
-  found = TRI_LookupCollectionByNameVocBase(vocbase, name);
+  found = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name);
   TRI_ReadUnlockReadWriteLock(&vocbase->_lock);
 
   if (found != NULL) {
@@ -764,6 +776,7 @@ bool TRI_ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t co
   union { TRI_vocbase_col_t* v; TRI_vocbase_col_t const* c; } cnv;
   TRI_col_type_e type;
   TRI_doc_collection_t* collection;
+  void* found;
 
   TRI_WriteLockReadWriteLock(&vocbase->_lock);
 
@@ -829,10 +842,20 @@ bool TRI_ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t co
     return false;
   }
 
+  // fix collection entry
   cnv.v->_collection = collection;
   cnv.v->_newBorn = 0;
   cnv.v->_loaded = 1;
+  cnv.v->_cid = collection->base._cid;
 
+  // fix lookup tables
+  found = TRI_InsertKeyAssociativePointer(&vocbase->_collectionsById, &vc->_cid, cnv.v, false);
+
+  if (found != NULL) {
+    LOG_ERROR("duplicate collection identifier '%lu' for name '%s'", (unsigned long) vc->_cid, vc->_name);
+  }
+
+  // release locks
   TRI_WriteUnlockReadWriteLock(&vocbase->_lock);
   return true;
 }
@@ -899,10 +922,11 @@ void TRI_InitialiseVocBase () {
   TRI_set_errno_string(TRI_VOC_ERROR_FILE_NOT_ACCESSIBLE, "file not accessible");
 
   // api errors
+  TRI_set_errno_string(TRI_VOC_ERROR_COLLECTION_EXISTS, "collection already exists");
   TRI_set_errno_string(TRI_VOC_ERROR_COLLECTION_NOT_FOUND, "collection not found");
   TRI_set_errno_string(TRI_VOC_ERROR_COLLECTION_PARAMETER_MISSING, "parameter <collection> is missing");
-  TRI_set_errno_string(TRI_VOC_ERROR_CORRUPT_DOCUMENT_HANDLE, "illegal or corrupted document handle");
   TRI_set_errno_string(TRI_VOC_ERROR_DOCUMENT_ALTERED, "document has been altered");
+  TRI_set_errno_string(TRI_VOC_ERROR_DOCUMENT_HANDLE_BAD, "illegal or corrupted document handle");
   TRI_set_errno_string(TRI_VOC_ERROR_DOCUMENT_NOT_FOUND, "document not found");
 
 #ifdef TRI_READLINE_VERSION

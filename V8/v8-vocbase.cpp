@@ -70,22 +70,10 @@ static int const SLOT_CLASS_TYPE = 0;
 static int const SLOT_CLASS = 1;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief slot for a "query"
-////////////////////////////////////////////////////////////////////////////////
-
-static int const SLOT_QUERY = 2;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief slot for a "barrier"
 ////////////////////////////////////////////////////////////////////////////////
 
 static int const SLOT_BARRIER = 2;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief slot for a "result set"
-////////////////////////////////////////////////////////////////////////////////
-
-static int const SLOT_RESULT_SET = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief end marker
@@ -321,6 +309,11 @@ static TRI_vocbase_col_t const* LoadCollection (v8::Handle<v8::Object> collectio
       *err = v8::String::New(msg.c_str());
       return 0;
     }
+
+    v8::Handle<v8::String> key = v8::String::New("_id");
+
+    collection->Delete(key);
+    collection->Set(key, v8::Number::New(col->_cid), v8::ReadOnly);
 
     LOG_DEBUG("collection created");
   }
@@ -5018,9 +5011,6 @@ v8::Handle<v8::Object> TRI_WrapCollection (TRI_vocbase_col_t const* collection) 
                                             WRP_VOCBASE_COL_TYPE,
                                             const_cast<TRI_vocbase_col_t*>(collection));
 
-  result->SetInternalField(SLOT_QUERY, v8g->CollectionQueryType);
-  result->SetInternalField(SLOT_RESULT_SET, v8::Null());
-
   result->Set(v8::String::New("_name"),
               v8::String::New(collection->_name),
               v8::ReadOnly);
@@ -5044,9 +5034,6 @@ v8::Handle<v8::Object> TRI_WrapEdgesCollection (TRI_vocbase_col_t const* collect
   v8::Handle<v8::Object> result = WrapClass(v8g->EdgesColTempl, 
                                             WRP_VOCBASE_COL_TYPE,
                                             const_cast<TRI_vocbase_col_t*>(collection));
-
-  result->SetInternalField(SLOT_QUERY, v8g->CollectionQueryType);
-  result->SetInternalField(SLOT_RESULT_SET, v8::Null());
 
   result->Set(v8::String::New("_name"),
               v8::String::New(collection->_name),
@@ -5294,7 +5281,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   ft->SetClassName(v8::String::New("AvocadoCollection"));
 
   rt = ft->InstanceTemplate();
-  rt->SetInternalFieldCount(SLOT_END);
+  rt->SetInternalFieldCount(SLOT_END); // FIXME
 
   v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
@@ -5331,7 +5318,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   ft->SetClassName(v8::String::New("AvocadoEdgesCollection"));
 
   rt = ft->InstanceTemplate();
-  rt->SetInternalFieldCount(SLOT_END);
+  rt->SetInternalFieldCount(SLOT_END); // FIXME
 
   rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
   rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountVocbaseCol));

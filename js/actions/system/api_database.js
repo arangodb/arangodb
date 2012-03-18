@@ -152,6 +152,11 @@ function GET_api_database_collection (req, res) {
 ///
 /// The name of the collection.
 ///
+/// @FA{waitForSync} (optional, default true)
+///
+/// If @FA{waitForSync} is false, then creation of documents will not wait
+/// for the synchronization to file.
+///
 /// In case of success, returns information about the created collection:
 ///
 /// @FA{id}
@@ -174,32 +179,53 @@ function GET_api_database_collection (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function POST_api_database_collection (req, res) {
-    var body = JSON.parse(req.requestBody || "{}");
-    var name = body.name;
+  var body = JSON.parse(req.requestBody || "{}");
+  var name = body.name;
+  var waitForSync = true;
 
-    if (name == null) {
-      badParameter(req, res, "name");
+  if (body.hasOwnProperty("waitForSync")) {
+    waitForSync = body.waitForSync;
+  }
+
+  if (name == null) {
+    badParameter(req, res, "name");
+  }
+  else {
+    var collection = db._collection(name);
+
+    if (collection != null) {
+      actions.error(req, res, 
+                    actions.HTTP_CONFLICT, 
+                    actions.VERR_COLLECTION_EXISTS,
+                    "collection already exists",
+                    undefined,
+                    { name : collection._name, id : collection._id });
     }
     else {
-      var collection = db._collection(name);
-    
-      if (collection != null) {
-        actions.error(req, res, actions.CONFLICT, "collection already exists");
+      collection = db[name];
+
+      if (collection == null) {
+        actions.badParameter(req, res, "cannot create collection named '" + name + "'");
       }
       else {
-        collection = db[name];
+        if (collection._id == 0) {
+          collection.load();
+        }
 
-        if (collection == null) {
-          actions.badParameter(req, res, name);
+        if (collection._id == 0) {
+          actions.badParameter(req, res, "cannot create collection named '" + name + "'");
         }
         else {
           var result = {};
-      
+
           result.id = collection._id;
           result.name = collection._name;
-      
+
+          collection.parameter({ waitForSync : waitForSync });
+
           actions.resultOK(req, res, actions.HTTP_OK, result);
         }
+      }
     }
   }
 }

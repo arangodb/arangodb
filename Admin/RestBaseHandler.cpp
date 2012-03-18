@@ -62,7 +62,7 @@ string SelectResultGenerator (HttpRequest* request) {
   string format = request->header("accept");
 
   if (format.empty()) {
-    return "application/json";
+    return "application/json; charset=utf-8";
   }
 
   return format;
@@ -210,7 +210,7 @@ void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int er
     response->body().appendInteger(errorCode);
     response->body().appendText("}");
 
-    response->setContentType("application/json");
+    response->setContentType("application/json; charset=utf-8");
   }
 
   delete result;

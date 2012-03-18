@@ -164,13 +164,16 @@ void RestVocbaseBaseHandler::generateCreated (TRI_voc_cid_t cid, TRI_voc_did_t d
 
   response = new HttpResponse(HttpResponse::CREATED);
 
+  response->setContentType("application/json; charset=utf-8");
   response->setHeader("ETag", "\"" + ridStr + "\"");
   response->setHeader("location", DOCUMENT_PATH + "/" + handle);
 
   response->body()
     .appendText("{\"error\":false,\"_id\":\"")
     .appendText(handle.c_str())
-    .appendText("\"}");
+    .appendText("\",\"_rev\":")
+    .appendInteger(rid)
+    .appendText("}");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -178,10 +181,23 @@ void RestVocbaseBaseHandler::generateCreated (TRI_voc_cid_t cid, TRI_voc_did_t d
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateAccepted (TRI_voc_cid_t cid, TRI_voc_did_t did, TRI_voc_rid_t rid) {
+  string cidStr = StringUtils::itoa(cid);
+  string didStr = StringUtils::itoa(did);
+  string ridStr = StringUtils::itoa(rid);
+  string handle = cidStr + "/" + didStr;
+
   response = new HttpResponse(HttpResponse::ACCEPTED);
 
-  response->setHeader("ETag", "\"" + StringUtils::itoa(rid) + "\"");
-  response->setHeader("location", DOCUMENT_PATH + "/" + StringUtils::itoa(cid) + "/" + StringUtils::itoa(did));
+  response->setContentType("application/json; charset=utf-8");
+  response->setHeader("ETag", "\"" + ridStr + "\"");
+  response->setHeader("location", DOCUMENT_PATH + "/" + handle);
+
+  response->body()
+    .appendText("{\"error\":false,\"_id\":\"")
+    .appendText(handle.c_str())
+    .appendText("\",\"_rev\":")
+    .appendInteger(rid)
+    .appendText("}");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -275,7 +291,7 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
 
   // and generate a response
   response = new HttpResponse(HttpResponse::OK);
-  response->setContentType("application/json");
+  response->setContentType("application/json; charset=utf-8");
   response->setHeader("ETag", "\"" + StringUtils::itoa(document->_rid) + "\"");
 
   if (generateDocument) {
@@ -294,7 +310,7 @@ bool RestVocbaseBaseHandler::splitDocumentReference (string const& name, string&
 
   if (doc.size() != 2) {
     generateError(HttpResponse::BAD, 
-                  TRI_VOC_ERROR_CORRUPT_DOCUMENT_HANDLE,
+                  TRI_VOC_ERROR_DOCUMENT_HANDLE_BAD,
                   "missing or illegal document handle");
     return false;
   }
@@ -360,7 +376,7 @@ TRI_doc_update_policy_e RestVocbaseBaseHandler::extractUpdatePolicy () {
 /// @brief sets the collection variable using a a name or an identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestVocbaseBaseHandler::findCollection (string const& name) {
+bool RestVocbaseBaseHandler::findCollection (string const& name, bool create) {
   _collection = 0;
 
   if (name.empty()) {
@@ -373,7 +389,7 @@ bool RestVocbaseBaseHandler::findCollection (string const& name) {
     _collection = TRI_LookupCollectionByIdVocBase(_vocbase, id);
   }
   else {
-    _collection = TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str());
+    _collection = TRI_FindCollectionByNameVocBase(_vocbase, name.c_str(), create);
   }
 
   if (_collection == 0) {
@@ -396,7 +412,7 @@ bool RestVocbaseBaseHandler::loadCollection () {
   if (_collection == 0) {
     generateError(HttpResponse::SERVER_ERROR,
                   TRI_ERROR_INTERNAL,
-                  "cannot create or load collection, this should not happen");
+                  "no collection is known, this should not happen");
     return false;
   }
 
@@ -412,7 +428,7 @@ bool RestVocbaseBaseHandler::loadCollection () {
   if (_collection->_loaded) {
     if (_collection->_collection == 0) {
       generateError(HttpResponse::SERVER_ERROR, 
-                    TRI_errno(),
+                    TRI_VOC_ERROR_CORRUPTED_COLLECTION,
                     "cannot load collection, check log");
       return false;
     }
