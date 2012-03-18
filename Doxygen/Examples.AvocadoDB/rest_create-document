@@ -1,0 +1,13 @@
+> curl --data @- -X POST --dump - http://localhost:8529/document?collection=161039
+{ "Hallo" : "World" }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+location: /document/161039/2686242
+etag: "2686242"
+
+{
+  "_rev": 2686242,
+  "_id": "161039/2686242",
+  "error": false
+}

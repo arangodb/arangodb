@@ -1,0 +1,105 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief error codes
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Jan Steemann
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page AvocadoErrors Error Codes and Meanings
+///
+/// The following errors might be raised when running AvocadoDB:
+///
+/// @section AvocadoErrorsGeneral General Errors
+///
+/// - @copydoc TRI_VOC_ERROR_ILLEGAL_STATE
+/// - @copydoc TRI_VOC_ERROR_SHAPER_FAILED
+/// - @copydoc TRI_VOC_ERROR_CORRUPTED_DATAFILE
+/// - @copydoc TRI_VOC_ERROR_MMAP_FAILED
+/// - @copydoc TRI_VOC_ERROR_MSYNC_FAILED
+/// - @copydoc TRI_VOC_ERROR_NO_JOURNAL
+/// - @copydoc TRI_VOC_ERROR_DATAFILE_SEALED
+/// - @copydoc TRI_VOC_ERROR_CORRUPTED_COLLECTION
+/// - @copydoc TRI_VOC_ERROR_UNKNOWN_TYPE
+/// - @copydoc TRI_VOC_ERROR_ILLEGAL_PARAMETER
+/// - @copydoc TRI_VOC_ERROR_INDEX_EXISTS
+/// - @copydoc TRI_VOC_ERROR_CONFLICT
+/// - @copydoc TRI_VOC_ERROR_WRONG_PATH
+/// - @copydoc TRI_VOC_ERROR_CANNOT_RENAME
+/// - @copydoc TRI_VOC_ERROR_WRITE_FAILED
+/// - @copydoc TRI_VOC_ERROR_READ_ONLY
+/// - @copydoc TRI_VOC_ERROR_DATAFILE_FULL
+/// - @copydoc TRI_VOC_ERROR_FILESYSTEM_FULL
+/// - @copydoc TRI_VOC_ERROR_READ_FAILED
+/// - @copydoc TRI_VOC_ERROR_FILE_NOT_FOUND
+/// - @copydoc TRI_VOC_ERROR_FILE_NOT_ACCESSIBLE
+///
+/// @section AvocadoErrorsQuery Query Errors
+///
+/// The following errors might be raised during query execution:
+///
+/// - @copydoc TRI_ERROR_QUERY_OOM
+/// - @copydoc TRI_ERROR_QUERY_KILLED
+/// - @copydoc TRI_ERROR_QUERY_PARSE
+/// - @copydoc TRI_ERROR_QUERY_EMPTY
+/// - @copydoc TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE
+/// - @copydoc TRI_ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE
+/// - @copydoc TRI_ERROR_QUERY_TOO_MANY_JOINS
+/// - @copydoc TRI_ERROR_QUERY_COLLECTION_NAME_INVALID
+/// - @copydoc TRI_ERROR_QUERY_COLLECTION_ALIAS_INVALID
+/// - @copydoc TRI_ERROR_QUERY_COLLECTION_ALIAS_REDECLARED
+/// - @copydoc TRI_ERROR_QUERY_COLLECTION_ALIAS_UNDECLARED
+/// - @copydoc TRI_ERROR_QUERY_COLLECTION_NOT_FOUND
+/// - @copydoc TRI_ERROR_QUERY_GEO_RESTRICTION_INVALID
+/// - @copydoc TRI_ERROR_QUERY_GEO_INDEX_MISSING
+/// - @copydoc TRI_ERROR_QUERY_BIND_PARAMETER_MISSING
+/// - @copydoc TRI_ERROR_QUERY_BIND_PARAMETER_REDECLARED
+/// - @copydoc TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED
+/// - @copydoc TRI_ERROR_QUERY_BIND_PARAMETER_VALUE_INVALID
+/// - @copydoc TRI_ERROR_QUERY_BIND_PARAMETER_NUMBER_OUT_OF_RANGE
+///
+/// @section AvocadoErrorsRest HTTP/REST Errors
+///
+/// The following errors might be raised during a HTTP/REST call:
+///
+/// - @copydoc TRI_REST_ERROR_METHOD_NOT_ALLOWED
+/// - @copydoc TRI_REST_ERROR_BAD_PARAMETER
+/// - @copydoc TRI_REST_ERROR_CORRUPTED_JSON
+///
+/// @section AvocadoErrorsApi API Errors
+///
+/// The following errors might be raised during an api call:
+///
+/// - @copydoc TRI_VOC_ERROR_COLLECTION_EXISTS
+/// - @copydoc TRI_VOC_ERROR_COLLECTION_NOT_FOUND
+/// - @copydoc TRI_VOC_ERROR_COLLECTION_PARAMETER_MISSING
+/// - @copydoc TRI_VOC_ERROR_DOCUMENT_ALTERED
+/// - @copydoc TRI_VOC_ERROR_DOCUMENT_HANDLE_BAD
+/// - @copydoc TRI_VOC_ERROR_DOCUMENT_NOT_FOUND
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: c++
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// End:
