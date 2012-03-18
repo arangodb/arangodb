@@ -97,7 +97,7 @@ uint64_t ActionDispatcherThread::_gcInterval = 1000;
 /// @brief constructs a new dispatcher thread
 ////////////////////////////////////////////////////////////////////////////////
 
-ActionDispatcherThread::ActionDispatcherThread (DispatcherQueue* queue,
+ActionDispatcherThread::ActionDispatcherThread (rest::DispatcherQueue* queue,
                                                 string const& actionQueue,
                                                 JSLoader* actionLoader)
   : DispatcherThread(queue),

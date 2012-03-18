@@ -112,7 +112,7 @@
 /// @copydetails JS_DefineAction
 ///
 /// @anchor DefineActionDefineSystemAction
-/// @copydetails JS_DefineSystemAction
+/// copydetails JS_DefineSystemAction
 ///
 /// @anchor DefineActionActionResult
 /// @copydetails JSF_actionResult
@@ -121,10 +121,10 @@
 /// @copydetails JSF_actionError
 ///
 /// @anchor DefineActionQueryResult
-/// @copydetails JSF_queryResult
+/// copydetails JSF_queryResult
 ///
 /// @anchor DefineActionQueryReferences
-/// @copydetails JSF_queryReferences
+/// copydetails JSF_queryReferences
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
