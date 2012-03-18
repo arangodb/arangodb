@@ -254,7 +254,7 @@ describe AvocadoDB do
       end
 
       it "create the collection and the document" do
-	cmd = "/document?collection=#{@cn}&create=true"
+	cmd = "/document?collection=#{@cn}&createCollection=true"
 	body = "{ \"Hallo\" : \"World\" }"
 	doc = AvocadoDB.post(cmd, :body => body)
 

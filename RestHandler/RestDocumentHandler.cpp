@@ -237,7 +237,7 @@ bool RestDocumentHandler::createDocument () {
   }
 
   // should we create the collection
-  string createStr = request->value("create", found);
+  string createStr = request->value("createCollection", found);
   bool create = found ? StringUtils::boolean(createStr) : false;
 
   // find and load collection given by name oder identifier

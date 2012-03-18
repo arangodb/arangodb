@@ -1,4 +1,4 @@
-> curl --data @- -X POST --dump - http://localhost:8529/document?collection=NewCollection&create=true
+> curl --data @- -X POST --dump - http://localhost:8529/document?collection=NewCollection&createCollection=true
 { "Hallo" : "World" }
 
 HTTP/1.1 202 Accepted
