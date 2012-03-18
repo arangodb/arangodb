@@ -257,12 +257,21 @@ extern "C" {
 #define TRI_VOC_ERROR_DOCUMENT_ALTERED                                    (1203)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1203: Corrupted document handle.
+/// @brief 1203: Illegal document handle.
 /// 
 /// Will be raised when a document handle is corrupt.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ERROR_CORRUPT_DOCUMENT_HANDLE                             (1204)
+#define TRI_VOC_ERROR_DOCUMENT_HANDLE_BAD                                 (1204)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1205: Collection already exists.
+/// 
+/// Will be raised when a collection with a given identifier or name already
+/// exists.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_VOC_ERROR_COLLECTION_EXISTS                                   (1205)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

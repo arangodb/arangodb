@@ -120,24 +120,17 @@ HttpHandler::status_e RestDocumentHandler::execute () {
   // execute one of the CRUD methods
   bool res = false;
 
-  if (request->suffix().size() < 1) {
-    generateError(HttpResponse::BAD,
-                  TRI_VOC_ERROR_COLLECTION_PARAMETER_MISSING,
-                  "missing collection identifier");
-  }
-  else {
-    switch (type) {
-      case HttpRequest::HTTP_REQUEST_DELETE: res = deleteDocument(); break;
-      case HttpRequest::HTTP_REQUEST_GET: res = readDocument(); break;
-      case HttpRequest::HTTP_REQUEST_HEAD: res = checkDocument(); break;
-      case HttpRequest::HTTP_REQUEST_POST: res = createDocument(); break;
-      case HttpRequest::HTTP_REQUEST_PUT: res = updateDocument(); break;
+  switch (type) {
+    case HttpRequest::HTTP_REQUEST_DELETE: res = deleteDocument(); break;
+    case HttpRequest::HTTP_REQUEST_GET: res = readDocument(); break;
+    case HttpRequest::HTTP_REQUEST_HEAD: res = checkDocument(); break;
+    case HttpRequest::HTTP_REQUEST_POST: res = createDocument(); break;
+    case HttpRequest::HTTP_REQUEST_PUT: res = updateDocument(); break;
 
-      case HttpRequest::HTTP_REQUEST_ILLEGAL:
-        res = false;
-        generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
-        break;
-    }
+    case HttpRequest::HTTP_REQUEST_ILLEGAL:
+      res = false;
+      generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
+      break;
   }
 
   _timingResult = res ? RES_ERR : RES_OK;
@@ -194,9 +187,24 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ///
 /// @EXAMPLES
 ///
-/// Create a document given a collection identifier:
+/// Create a document given a collection identifier @LIT{161039} for the collection
+/// named @LIT{demo}. Note that the revision identifier might or might by equal to
+/// the last part of the document handle. It generally will be equal, but there is
+/// no guaranty.
 ///
-/// @verbinclude rest3
+/// @verbinclude rest_create-document
+///
+/// Create a document in collection where @LIT{waitForSync} is @LIT{false}.
+///
+/// @verbinclude rest_create-document-accept
+///
+/// Create a document in a known, named collection
+///
+/// @verbinclude rest_create-document-named-collection
+///
+/// Create a document in a new, named collection
+///
+/// @verbinclude rest_create-document-new-named-collection
 ///
 /// Unknown collection identifier:
 ///
@@ -214,10 +222,10 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 bool RestDocumentHandler::createDocument () {
   vector<string> const& suffix = request->suffix();
 
-  if (suffix.size() != 1) {
+  if (suffix.size() != 0) {
     generateError(HttpResponse::BAD,
                   TRI_REST_ERROR_SUPERFLUOUS_SUFFICES,
-                  "expecting " + DOCUMENT_PATH + "?collection=<identifier>");
+                  "superfluous suffix, expecting " + DOCUMENT_PATH + "?collection=<identifier>");
     return false;
   }
 
@@ -232,8 +240,12 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
+  // should we create the collection
+  string createStr = request->value("create", found);
+  bool create = found ? StringUtils::boolean(createStr) : false;
+
   // find and load collection given by name oder identifier
-  bool ok = findCollection(cid) && loadCollection();
+  bool ok = findCollection(cid, create) && loadCollection();
 
   if (! ok) {
     return false;
@@ -254,7 +266,7 @@ bool RestDocumentHandler::createDocument () {
 
   bool waitForSync = _documentCollection->base._waitForSync;
 
-  // note: unlocked is performed by createJson()
+  // note: unlocked is performed by createJson() FIXME URGENT SHOULD RETURN A DOC_MPTR NOT A POINTER!!!
   TRI_doc_mptr_t const* mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_DOCUMENT, json, 0, true);
   TRI_voc_did_t did = 0;
   TRI_voc_rid_t rid = 0;
@@ -482,7 +494,7 @@ bool RestDocumentHandler::readAllDocuments () {
 
   // and generate a response
   response = new HttpResponse(HttpResponse::OK);
-  response->setContentType("application/json");
+  response->setContentType("application/json; charset=utf-8");
 
   response->body().appendText(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
 

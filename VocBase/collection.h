@@ -176,7 +176,7 @@ typedef struct TRI_col_info_s {
 
   char _name[TRI_COL_PATH_LENGTH];   // name of the collection
   TRI_voc_size_t _maximalSize;       // maximal size of memory mapped file
-  TRI_voc_size_t _waitForSync;       // if true, wait for msync
+  bool _waitForSync;                 // if true, wait for msync
 
   TRI_voc_size_t _size;              // total size of the parameter info block
 }
@@ -197,7 +197,7 @@ typedef struct TRI_collection_s {
   char _name[TRI_COL_PATH_LENGTH];   // name of the collection
 
   TRI_voc_size_t _maximalSize;       // maximal size of memory mapped file
-  TRI_voc_size_t _waitForSync;       // if true, wait for msync
+  bool _waitForSync;                 // if true, wait for msync
 
   char* _directory;                  // directory of the collection
 

@@ -45,7 +45,7 @@
 /// script works without any additional client, but will not be able to detect
 /// any errors.
 ///
-/// @section ExamplesSetupDemo Collection "Demo"
+/// @section ExamplesSetupDemo Collection "demo"
 ////////////////////////////////////////////////
 ///
 /// @verbinclude demo1

@@ -280,7 +280,7 @@ namespace triagens {
 /// @brief sets the collection variable given a name or an identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool findCollection (string const& name);
+        bool findCollection (string const& name, bool create = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates or loads a collection

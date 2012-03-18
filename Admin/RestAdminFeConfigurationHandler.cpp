@@ -154,7 +154,7 @@ HttpHandler::status_e RestAdminFeConfigurationHandler::executeRead () {
   }
   
   response = new HttpResponse(HttpResponse::OK);
-  response->setContentType("application/json");
+  response->setContentType("application/json; charset=utf-8");
   response->body().appendText(result);
   
   return HANDLER_DONE;
