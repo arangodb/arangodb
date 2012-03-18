@@ -115,6 +115,7 @@ namespace triagens {
           NOT_FOUND            = 404,
           METHOD_NOT_ALLOWED   = 405,
           CONFLICT             = 409,
+          PRECONDITION_FAILED  = 412,
           UNPROCESSABLE_ENTITY = 422,
 
           SERVER_ERROR         = 500,

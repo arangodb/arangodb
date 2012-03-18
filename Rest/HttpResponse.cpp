@@ -64,6 +64,7 @@ namespace triagens {
         case NOT_FOUND:            return "404 Not Found";
         case METHOD_NOT_ALLOWED:   return "405 Method";
         case CONFLICT:             return "409 Conflict";
+        case PRECONDITION_FAILED:  return "412 Precondition Failed";
         case UNPROCESSABLE_ENTITY: return "422 Unprocessable Entity";
 
         case SERVER_ERROR:         return "500 Internal Error";
@@ -101,6 +102,7 @@ namespace triagens {
         case 404: return NOT_FOUND;
         case 405: return METHOD_NOT_ALLOWED;
         case 409: return CONFLICT;
+        case 412: return PRECONDITION_FAILED;
         case 422: return UNPROCESSABLE_ENTITY;
 
         case 500: return SERVER_ERROR;
