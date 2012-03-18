@@ -241,6 +241,24 @@ void RestVocbaseBaseHandler::generateNotImplemented (string const& path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generates precondition failed
+////////////////////////////////////////////////////////////////////////////////
+
+void RestVocbaseBaseHandler::generatePreconditionFailed () {
+  response = new HttpResponse(HttpResponse::PRECONDITION_FAILED);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates not modified
+////////////////////////////////////////////////////////////////////////////////
+
+void RestVocbaseBaseHandler::generateNotModified (string const& etag) {
+  response = new HttpResponse(HttpResponse::NOT_MODIFIED);
+
+  response->setHeader("ETag", "\"" + etag + "\"");
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generates next entry from a result set
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -299,26 +317,6 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
 
     TRI_AnnihilateStringBuffer(&buffer);
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief splits a document reference into to parts
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestVocbaseBaseHandler::splitDocumentReference (string const& name, string& cid, string& did) {
-  vector<string> doc = StringUtils::split(name, TRI_DOCUMENT_HANDLE_SEPARATOR_STR);
-
-  if (doc.size() != 2) {
-    generateError(HttpResponse::BAD, 
-                  TRI_VOC_ERROR_DOCUMENT_HANDLE_BAD,
-                  "missing or illegal document handle");
-    return false;
-  }
-
-  cid = doc[0];
-  did = doc[1];
-
-  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -537,6 +535,21 @@ TRI_doc_mptr_t const* RestVocbaseBaseHandler::findDocument (string const& doc) {
   // .............................................................................
 
   return document;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts an etag field
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_voc_rid_t RestVocbaseBaseHandler::parseEtag (string const& etag) {
+  string trim = StringUtils::trim(etag);
+  size_t len = trim.size();
+
+  if (len < 2 || trim[0] != '"' || trim[len-1] != '"') {
+    return 0;
+  }
+
+  return StringUtils::int64(trim.substr(1, len-2));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

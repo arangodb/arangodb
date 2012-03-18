@@ -194,7 +194,7 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ///
 /// @verbinclude rest_create-document
 ///
-/// Create a document in collection where @LIT{waitForSync} is @LIT{false}.
+/// Create a document in a collection where @LIT{waitForSync} is @LIT{false}.
 ///
 /// @verbinclude rest_create-document-accept
 ///
@@ -208,15 +208,11 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ///
 /// Unknown collection identifier:
 ///
-/// @verbinclude rest4
+/// @verbinclude rest_create-document-unknown-cid
 ///
 /// Illegal document:
 ///
-/// @verbinclude rest5
-///
-/// Create a document given a collection name:
-///
-/// @verbinclude rest6
+/// @verbinclude rest_create-document-bad-json
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::createDocument () {
@@ -315,19 +311,19 @@ bool RestDocumentHandler::createDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readDocument () {
-#ifdef FIXME
   switch (request->suffix().size()) {
     case 0:
       return readAllDocuments();
 
-    case 1:
+    case 2:
       return readSingleDocument(true);
 
     default:
-      generateError(HttpResponse::BAD, "expecting URI /document/<document-handle>");
+      generateError(HttpResponse::BAD, 
+                    TRI_REST_ERROR_SUPERFLUOUS_SUFFICES,
+                    "expecting GET /document/<document-handle>");
       return false;
   }
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -345,41 +341,45 @@ bool RestDocumentHandler::readDocument () {
 /// If the @FA{document-handle} points to a non-existing document, then a
 /// @LIT{HTTP 404} is returned and the body contains an error document.
 ///
+/// If the "If-None-Match" header is given, then it must contain exactly one
+/// etag. The document is returned, if it has a different revision than the
+/// given etag. Otherwise a @LIT{HTTP 304} is returned.
+///
+/// If the "If-Match" header is given, then it must contain exactly one
+/// etag. The document is returned, if it has the same revision ad the
+/// given etag. Otherwise a @LIT{HTTP 412} is returned.
+///
 /// @EXAMPLES
 ///
-/// Use a collection and document identfier:
+/// Use a document handle:
 ///
-/// @verbinclude rest1
+/// @verbinclude rest_read-document
 ///
-/// Use a collection name and document reference:
+/// Use a document handle and an etag:
 ///
-/// @verbinclude rest18
+/// @verbinclude rest_read-document-if-none-match
 ///
-/// Unknown document identifier:
+/// Unknown document handle:
 ///
-/// @verbinclude rest2
-///
-/// Unknown collection identifier:
-///
-/// @verbinclude rest17
+/// @verbinclude rest_read-document-unknown-handle
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readSingleDocument (bool generateBody) {
-#ifdef FIXME
   vector<string> const& suffix = request->suffix();
 
+  /// check for an etag
+  string ifNoneMatch = request->header("if-none-match");
+  TRI_voc_rid_t ifNoneRid = parseEtag(ifNoneMatch);
+
+  string ifMatch = request->header("if-match");
+  TRI_voc_rid_t ifRid = parseEtag(ifMatch);
+
   // split the document reference
-  string cid;
-  string did;
-
-  bool ok = splitDocumentReference(suffix[0], cid, did);
-
-  if (! ok) {
-    return false;
-  }
+  string cid = suffix[0];
+  string did = suffix[1];
 
   // find and load collection given by name oder identifier
-  ok = findCollection(cid) && loadCollection();
+  bool ok = findCollection(cid) && loadCollection();
 
   if (! ok) {
     return false;
@@ -391,6 +391,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 
   _documentCollection->beginRead(_documentCollection);
 
+  // FIXME FIXME
   TRI_doc_mptr_t const* document = findDocument(did);
 
   _documentCollection->endRead(_documentCollection);
@@ -404,8 +405,42 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
     return false;
   }
 
-  generateDocument(document, generateBody);
-#endif
+  TRI_voc_rid_t rid = document->_rid;
+
+  if (ifNoneRid == 0) {
+    if (ifRid == 0) {
+      generateDocument(document, generateBody);
+    }
+    else if (ifRid == rid) {
+      generateDocument(document, generateBody);
+    }
+    else {
+      generatePreconditionFailed();
+    }
+  }
+  else if (ifNoneRid == rid) {
+    if (ifRid == 0) {
+      generateNotModified(StringUtils::itoa(rid));
+    }
+    else if (ifRid == rid) {
+      generateNotModified(StringUtils::itoa(rid));
+    }
+    else {
+      generatePreconditionFailed();
+    }
+  }
+  else {
+    if (ifRid == 0) {
+      generateDocument(document, generateBody);
+    }
+    else if (ifRid == rid) {
+      generateDocument(document, generateBody);
+    }
+    else {
+      generatePreconditionFailed();
+    }
+  }
+
   return true;
 }
 

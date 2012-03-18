@@ -26,7 +26,11 @@ class AvocadoDB
   end
 
   def self.log (args)
-    logfile = File.new("output.log", "a")
+    if args.key?(:output)
+      logfile = File.new("#{args[:output]}.log", "a")
+    else
+      logfile = File.new("output.log", "a")
+    end
 
     method = args[:method] || :get
     url = args[:url]
@@ -37,7 +41,8 @@ class AvocadoDB
     logfile.puts '-' * 80
 
     if method == :get
-      logfile.puts "MISSING"
+	logfile.puts "> curl -X GET --dump - http://localhost:8529#{url}"
+	logfile.puts
     elsif method == :post
       if body == nil
 	logfile.puts "> curl -X POST --dump - http://localhost:8529#{url}"
