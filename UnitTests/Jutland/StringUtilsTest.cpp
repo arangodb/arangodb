@@ -87,7 +87,7 @@ BOOST_FIXTURE_TEST_SUITE (StringUtilsTest, StringUtilsSetup)
 BOOST_AUTO_TEST_CASE (test_Split1) {
   vector<string> lines = StringUtils::split("Hallo\nWorld\\/Me", '\n');
 
-  BOOST_CHECK_EQUAL(lines.size(), 2);
+  BOOST_CHECK_EQUAL(lines.size(), (size_t) 2);
 
   if (lines.size() == 2) {
     BOOST_CHECK_EQUAL(lines[0], "Hallo");

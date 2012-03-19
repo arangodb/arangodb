@@ -63,22 +63,19 @@ BOOST_FIXTURE_TEST_SUITE (StringBufferTest, StringBufferSetup)
 
 BOOST_AUTO_TEST_CASE (test_StringBuffer1) {
   StringBuffer buffer;
-  buffer.initialise();
 
-  BOOST_CHECK_EQUAL(buffer.length(), 0);
+  BOOST_CHECK_EQUAL(buffer.length(), (size_t) 0);
   BOOST_CHECK_EQUAL(std::string(buffer.c_str()), "");
 
   buffer = "";
 
-  BOOST_CHECK_EQUAL(buffer.length(), 0);
+  BOOST_CHECK_EQUAL(buffer.length(), (size_t) 0);
   BOOST_CHECK_EQUAL(std::string(buffer.c_str()), "");
 
   buffer = "Hallo World!";
 
-  BOOST_CHECK_EQUAL(buffer.length(), 12);
+  BOOST_CHECK_EQUAL(buffer.length(), (size_t) 12);
   BOOST_CHECK_EQUAL(std::string(buffer.c_str()), "Hallo World!");
-
-  buffer.destroy();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -87,7 +84,6 @@ BOOST_AUTO_TEST_CASE (test_StringBuffer1) {
 
 BOOST_AUTO_TEST_CASE (test_StringBuffer2) {
   StringBuffer buffer;
-  buffer.initialise();
 
   BOOST_CHECK(buffer.length() == (size_t) 0);
   BOOST_CHECK(std::string(buffer.c_str()) == "");
@@ -99,8 +95,6 @@ BOOST_AUTO_TEST_CASE (test_StringBuffer2) {
   buffer.appendInteger4(1234);
   BOOST_CHECK(buffer.length() == (size_t) 15);
   BOOST_CHECK(std::string(buffer.c_str()) == "Hallo World1234");
-
-  buffer.destroy();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -112,7 +106,7 @@ BOOST_AUTO_TEST_CASE (test_StringBuffer3) {
       StringBuffer buffer;
   };
 
-  BOOST_CHECK_EQUAL(offsetof(test_t, buffer), 0);
+  BOOST_CHECK_EQUAL(offsetof(test_t, buffer), (size_t) 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
