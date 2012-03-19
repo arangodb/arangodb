@@ -102,7 +102,7 @@ BOOST_AUTO_TEST_CASE (test_Split1) {
 BOOST_AUTO_TEST_CASE (test_Split2) {
   vector<string> lines = StringUtils::split("\nHallo\nWorld\n", '\n');
 
-  BOOST_CHECK_EQUAL(lines.size(), 4);
+  BOOST_CHECK_EQUAL(lines.size(), (size_t) 4);
 
   if (lines.size() == 4) {
     BOOST_CHECK_EQUAL(lines[0], "");
@@ -119,7 +119,7 @@ BOOST_AUTO_TEST_CASE (test_Split2) {
 BOOST_AUTO_TEST_CASE (test_Split3) {
   vector<string> lines = StringUtils::split("Hallo\nWorld\\/Me", '\n', 0);
 
-  BOOST_CHECK_EQUAL(lines.size(), 2);
+  BOOST_CHECK_EQUAL(lines.size(), (size_t) 2);
 
   if (lines.size() == 2) {
     BOOST_CHECK_EQUAL(lines[0], "Hallo");
@@ -149,7 +149,7 @@ BOOST_AUTO_TEST_CASE (test_convertUTF16ToUTF8) {
   isOk = StringUtils::convertUTF16ToUTF8("D8A4\0", "dd42\0", result);
 
   BOOST_CHECK(isOk);
-  BOOST_CHECK_EQUAL(result.length(), 4);
+  BOOST_CHECK_EQUAL(result.length(), (size_t) 4);
   BOOST_CHECK_EQUAL("f0:b9:85:82", hexedump(result));
 
   result.clear();
