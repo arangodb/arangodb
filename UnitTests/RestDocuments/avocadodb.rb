@@ -35,20 +35,33 @@ class AvocadoDB
     method = args[:method] || :get
     url = args[:url]
     body = args[:body]
+    headers = args[:headers]
     result = args[:result]
     response = result.parsed_response
 
     logfile.puts '-' * 80
 
+    h_option = ""
+    h_sep = ""
+
+    if headers
+      for k in [ "if-match", "if-none-match" ] do
+	if headers.key?(k)
+	  h_option = h_option + h_sep + "'-H #{k}: #{headers[k]}'"
+	  h_sep = " "
+	end
+      end
+    end
+
     if method == :get
-	logfile.puts "> curl -X GET --dump - http://localhost:8529#{url}"
+      logfile.puts "> curl -X GET #{h_option} --dump - http://localhost:8529#{url}"
 	logfile.puts
     elsif method == :post
       if body == nil
-	logfile.puts "> curl -X POST --dump - http://localhost:8529#{url}"
+	logfile.puts "> curl -X POST #{h_option} --dump - http://localhost:8529#{url}"
 	logfile.puts
       else
-	logfile.puts "> curl --data @- -X POST --dump - http://localhost:8529#{url}"
+	logfile.puts "> curl --data @- -X POST #{h_option} --dump - http://localhost:8529#{url}"
 	logfile.puts body
 	logfile.puts
       end

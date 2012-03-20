@@ -94,6 +94,22 @@ static void Reserve (TRI_string_buffer_t * self, size_t size) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a new string buffer and initialise it
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_string_buffer_t* TRI_CreateStringBuffer (void) {
+  TRI_string_buffer_t* self = (TRI_string_buffer_t*) TRI_Allocate(sizeof(TRI_string_buffer_t));
+
+  if (!self) {
+    return NULL;
+  }
+
+  TRI_InitStringBuffer(self);
+
+  return self;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises the string buffer
 ///
 /// @warning You must call initialise before using the string buffer.
@@ -133,6 +149,18 @@ void TRI_AnnihilateStringBuffer (TRI_string_buffer_t * self) {
 
     memset(self, 0, sizeof(TRI_string_buffer_t));
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees the string buffer and the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void  TRI_FreeStringBuffer (TRI_string_buffer_t * self) {
+  if (self->_buffer != NULL) {
+    TRI_Free(self->_buffer);
+  }
+
+  TRI_Free(self);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
