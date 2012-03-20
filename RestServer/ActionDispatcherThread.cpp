@@ -229,6 +229,7 @@ void ActionDispatcherThread::initialise () {
   bool ok;
   char const* files[] = { "common/bootstrap/modules.js",
                           "common/bootstrap/print.js",
+                          "common/bootstrap/errors.js",
                           "server/server.js"
   };
   size_t i;

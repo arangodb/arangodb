@@ -218,7 +218,7 @@ TRI_doc_collection_info_t;
 /// of success. Otherwise, @c false is returned and the "TRI_errno()" is
 /// accordingly. The function will acquire and release a write lock.
 ///
-/// <b><tt>bool destroy (TRI_doc_collection_t*, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e, bool release)</tt></b>
+/// <b><tt>bool destroy (TRI_doc_collection_t*, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool release)</tt></b>
 ///
 /// Deletes an existing document of the collection and returns @c true in case
 /// of success. Otherwise, @c false is returned and the "TRI_errno()" is
@@ -263,12 +263,12 @@ typedef struct TRI_doc_collection_s {
 
   TRI_doc_mptr_t const* (*read) (struct TRI_doc_collection_s*, TRI_voc_did_t);
 
-  TRI_doc_mptr_t const* (*update) (struct TRI_doc_collection_s*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e, bool release);
-  TRI_doc_mptr_t const* (*updateJson) (struct TRI_doc_collection_s*, TRI_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e, bool release);
-  bool (*updateLock) (struct TRI_doc_collection_s*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e);
+  TRI_doc_mptr_t const* (*update) (struct TRI_doc_collection_s*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool release);
+  TRI_doc_mptr_t const* (*updateJson) (struct TRI_doc_collection_s*, TRI_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool release);
+  bool (*updateLock) (struct TRI_doc_collection_s*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e);
 
-  bool (*destroy) (struct TRI_doc_collection_s* collection, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e, bool release);
-  bool (*destroyLock) (struct TRI_doc_collection_s* collection, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e);
+  bool (*destroy) (struct TRI_doc_collection_s* collection, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool release);
+  bool (*destroyLock) (struct TRI_doc_collection_s* collection, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e);
 
   TRI_doc_collection_info_t* (*figures) (struct TRI_doc_collection_s* collection);
   TRI_voc_size_t (*size) (struct TRI_doc_collection_s* collection);

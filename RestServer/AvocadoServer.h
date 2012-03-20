@@ -33,7 +33,7 @@
 #include "Admin/ApplicationAdminServer.h"
 #include "HttpServer/ApplicationHttpServer.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/query-error.h"
+#include "VocBase/voc-errors.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class AvocadoServer

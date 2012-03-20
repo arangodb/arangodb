@@ -60,6 +60,14 @@ typedef enum {
 TRI_skiplist_prob_e;  
 
 
+typedef enum {
+  TRI_SKIPLIST_COMPARE_STRICTLY_LESS = -1,
+  TRI_SKIPLIST_COMPARE_STRICTLY_GREATER = 1,
+  TRI_SKIPLIST_COMPARE_STRICTLY_EQUAL = 0,
+  TRI_SKIPLIST_COMPARE_SLIGHTLY_LESS = -2,
+  TRI_SKIPLIST_COMPARE_SLIGHTLY_GREATER = 2
+} 
+TRI_skiplist_compare_e;  
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief storage structure for a node's nearest neighbours
@@ -340,6 +348,12 @@ typedef struct TRI_skiplist_multi_s {
   // ...........................................................................
   int (*compareElementElement) (struct TRI_skiplist_multi_s*, void*, void*, int);
   int (*compareKeyElement) (struct TRI_skiplist_multi_s*, void*, void*, int);
+  
+  // ...........................................................................
+  // Returns true if the element is an exact copy, or if the data which the
+  // element points to is an exact copy
+  // ...........................................................................
+  bool (*equalElementElement) (struct TRI_skiplist_multi_s*, void*, void*);
 } TRI_skiplist_multi_t;
 
 
@@ -381,6 +395,7 @@ void TRI_InitSkipListMulti (TRI_skiplist_multi_t*,
                        size_t elementSize,
                        int (*compareElementElement) (TRI_skiplist_multi_t*, void*, void*, int),
                        int (*compareKeyElement) (TRI_skiplist_multi_t*, void*, void*, int),
+                       bool (*equalElementElement) (TRI_skiplist_multi_t*, void*, void*),
                        TRI_skiplist_prob_e, uint32_t);
 
 

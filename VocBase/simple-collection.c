@@ -360,6 +360,7 @@ static TRI_doc_mptr_t const* UpdateDocument (TRI_sim_collection_t* collection,
                                              void const* body,
                                              TRI_voc_size_t bodySize,
                                              TRI_voc_rid_t rid,
+                                             TRI_voc_rid_t* oldRid,
                                              TRI_doc_update_policy_e policy,
                                              TRI_df_marker_t** result,
                                              bool release) {
@@ -368,6 +369,10 @@ static TRI_doc_mptr_t const* UpdateDocument (TRI_sim_collection_t* collection,
   bool ok;
 
   // check the revision
+  if (oldRid != NULL) {
+    *oldRid = header->_rid;
+  }
+
   switch (policy) {
     case TRI_DOC_UPDATE_ERROR:
       if (rid != 0) {
@@ -482,6 +487,7 @@ static TRI_doc_mptr_t const* UpdateDocument (TRI_sim_collection_t* collection,
 static bool DeleteDocument (TRI_sim_collection_t* collection,
                             TRI_doc_deletion_marker_t* marker,
                             TRI_voc_rid_t rid,
+                            TRI_voc_rid_t* oldRid,
                             TRI_doc_update_policy_e policy,
                             bool release) {
   TRI_datafile_t* journal;
@@ -504,6 +510,10 @@ static bool DeleteDocument (TRI_sim_collection_t* collection,
   }
 
   // check the revision
+  if (oldRid != NULL) {
+    *oldRid = header->_rid;
+  }
+
   switch (policy) {
     case TRI_DOC_UPDATE_ERROR:
       if (rid != 0) {
@@ -800,6 +810,7 @@ static TRI_doc_mptr_t const* UpdateShapedJson (TRI_doc_collection_t* document,
                                                TRI_shaped_json_t const* json,
                                                TRI_voc_did_t did,
                                                TRI_voc_rid_t rid,
+                                               TRI_voc_rid_t* oldRid,
                                                TRI_doc_update_policy_e policy,
                                                bool release) {
   TRI_df_marker_t const* original;
@@ -838,6 +849,7 @@ static TRI_doc_mptr_t const* UpdateShapedJson (TRI_doc_collection_t* document,
                           &marker, sizeof(marker),
                           json->_data.data, json->_data.length,
                           rid,
+                          oldRid,
                           policy,
                           &result,
                           release);
@@ -870,6 +882,7 @@ static TRI_doc_mptr_t const* UpdateShapedJson (TRI_doc_collection_t* document,
                           &marker.base, sizeof(marker),
                           json->_data.data, json->_data.length,
                           rid,
+                          oldRid,
                           policy,
                           &result,
                           release);
@@ -889,6 +902,7 @@ static TRI_doc_mptr_t const* UpdateShapedJson (TRI_doc_collection_t* document,
 static bool DeleteShapedJson (TRI_doc_collection_t* document,
                               TRI_voc_did_t did,
                               TRI_voc_rid_t rid,
+                              TRI_voc_rid_t* oldRid,
                               TRI_doc_update_policy_e policy,
                               bool release) {
   TRI_sim_collection_t* collection;
@@ -904,7 +918,7 @@ static bool DeleteShapedJson (TRI_doc_collection_t* document,
   marker._did = did;
   marker._sid = 0;
 
-  return DeleteDocument(collection, &marker, rid, policy, release);
+  return DeleteDocument(collection, &marker, rid, oldRid, policy, release);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

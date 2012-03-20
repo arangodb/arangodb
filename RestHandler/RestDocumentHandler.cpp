@@ -180,10 +180,11 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 /// then a @LIT{HTTP 400} is returned and the body of the response contains
 /// an error document.
 ///
-/// @REST{POST /document?collection=@FA{collection-identifier}&createCollection=@FA{create}}
+/// @REST{POST /document?collection=@FA{collection-name}&createCollection=@FA{create}}
 ///
-/// Instead of a @FA{collection-identifier}, a collection name can be used. If
-/// @FA{create} is true, then the collection is created if it does not exists.
+/// Instead of a @FA{collection-identifier}, a @FA{collection-name} can be
+/// used. If @FA{createCollection} is true, then the collection is created if it does not
+/// exists.
 ///
 /// @EXAMPLES
 ///
@@ -368,11 +369,8 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   vector<string> const& suffix = request->suffix();
 
   /// check for an etag
-  string ifNoneMatch = request->header("if-none-match");
-  TRI_voc_rid_t ifNoneRid = parseEtag(ifNoneMatch);
-
-  string ifMatch = request->header("if-match");
-  TRI_voc_rid_t ifRid = parseEtag(ifMatch);
+  TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match");
+  TRI_voc_rid_t ifRid = extractRevision("if-match", "_rev");
 
   // split the document reference
   string cid = suffix[0];
@@ -415,7 +413,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
       generateDocument(document, generateBody);
     }
     else {
-      generatePreconditionFailed();
+      generatePreconditionFailed(_documentCollection->base._cid, document->_did, rid);
     }
   }
   else if (ifNoneRid == rid) {
@@ -426,7 +424,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
       generateNotModified(StringUtils::itoa(rid));
     }
     else {
-      generatePreconditionFailed();
+      generatePreconditionFailed(_documentCollection->base._cid, document->_did, rid);
     }
   }
   else {
@@ -437,7 +435,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
       generateDocument(document, generateBody);
     }
     else {
-      generatePreconditionFailed();
+      generatePreconditionFailed(_documentCollection->base._cid, document->_did, rid);
     }
   }
 
@@ -460,8 +458,10 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readAllDocuments () {
-#ifdef FIXME
-  vector<string> const& suffix = request->suffix();
+
+  // extract the cid
+  bool found;
+  string cid = request->value("collection", found);
 
   // find and load collection given by name oder identifier
   bool ok = findCollection(cid) && loadCollection();
@@ -534,7 +534,6 @@ bool RestDocumentHandler::readAllDocuments () {
   response->body().appendText(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
 
   TRI_AnnihilateStringBuffer(&buffer);
-#endif
 
   return true;
 }
@@ -554,16 +553,16 @@ bool RestDocumentHandler::readAllDocuments () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::checkDocument () {
-#ifdef FIXME
   vector<string> const& suffix = request->suffix();
 
-  if (suffix.size() != 1) {
-    generateError(HttpResponse::BAD, "expecting URI /document/<document-handle>");
+  if (suffix.size() != 2) {
+    generateError(HttpResponse::BAD, 
+                  TRI_REST_ERROR_BAD_PARAMETER,
+                  "expecting URI /document/<document-handle>");
     return false;
   }
 
   return readSingleDocument(false);
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -629,18 +628,18 @@ bool RestDocumentHandler::checkDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::updateDocument () {
-#ifdef FIXME
   vector<string> const& suffix = request->suffix();
 
-  // split the document reference
-  string cid;
-  string did;
-
-  ok = splitDocumentReference(suffix[1], cid, did);
-
-  if (! ok) {
+  if (suffix.size() != 2) {
+    generateError(HttpResponse::BAD, 
+                  TRI_REST_ERROR_BAD_PARAMETER,
+                  "expecting UPDATE /document/<document-handle>");
     return false;
   }
+
+  // split the document reference
+  string cid = suffix[0];
+  string didStr = suffix[1];
 
   // find and load collection given by name oder identifier
   bool ok = findCollection(cid) && loadCollection();
@@ -660,7 +659,7 @@ bool RestDocumentHandler::updateDocument () {
   TRI_voc_did_t did = StringUtils::uint64(didStr);
 
   // extract the revision
-  TRI_voc_rid_t revision = extractRevision();
+  TRI_voc_rid_t revision = extractRevision("if-match", "_rev");
 
   // extract or chose the update policy
   TRI_doc_update_policy_e policy = extractUpdatePolicy();
@@ -672,40 +671,39 @@ bool RestDocumentHandler::updateDocument () {
   _documentCollection->beginWrite(_documentCollection);
 
   // unlocking is performed in updateJson()
-  TRI_doc_mptr_t const* mptr = _documentCollection->updateJson(_documentCollection, json, did, revision, policy, true);
   TRI_voc_rid_t rid = 0;
-
-  if (mptr != 0) {
-    rid = mptr->_rid;
-  }
+  TRI_doc_mptr_t const* mptr = _documentCollection->updateJson(_documentCollection, json, did, revision, &rid, policy, true);
 
   // .............................................................................
   // outside write transaction
   // .............................................................................
 
   if (mptr != 0) {
-    generateOk(_documentCollection->base._cid, did, rid);
+    generateUpdated(_documentCollection->base._cid, did, mptr->_rid);
     return true;
   }
   else {
     if (TRI_errno() == TRI_VOC_ERROR_READ_ONLY) {
-      generateError(HttpResponse::FORBIDDEN, "collection is read-only");
+      generateError(HttpResponse::FORBIDDEN, 
+                    TRI_VOC_ERROR_READ_ONLY,
+                    "collection is read-only");
       return false;
     }
     else if (TRI_errno() == TRI_VOC_ERROR_DOCUMENT_NOT_FOUND) {
-      generateDocumentNotFound(suffix[0], didStr);
+      generateDocumentNotFound(cid + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + didStr);
       return false;
     }
     else if (TRI_errno() == TRI_VOC_ERROR_CONFLICT) {
-      generateConflict(suffix[0], didStr);
+      generatePreconditionFailed(_documentCollection->base._cid, did, rid);
       return false;
     }
     else {
-      generateError(HttpResponse::SERVER_ERROR, "cannot update, failed with " + string(TRI_last_error()));
+      generateError(HttpResponse::SERVER_ERROR,
+                    TRI_ERROR_INTERNAL,
+                    "cannot update, failed with " + string(TRI_last_error()));
       return false;
     }
   }
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -713,9 +711,8 @@ bool RestDocumentHandler::updateDocument () {
 ///
 /// @REST{DELETE /document/@FA{document-handle}}
 ///
-/// Deletes the document identified by @FA{document-handle} from the collection
-/// identified by @FA{collection-identifier}. If the document exists and could
-/// be deleted, then a @LIT{HTTP 204} is returned.
+/// Deletes the document identified by @FA{document-handle}. If the document
+/// exists and could be deleted, then a @LIT{HTTP 204} is returned.
 ///
 /// The body of the response contains a JSON object with the information about
 /// the handle and the revision.  The attribute @LIT{_id} contains the known
@@ -727,7 +724,7 @@ bool RestDocumentHandler::updateDocument () {
 ///
 /// If an etag is supplied in the "If-Match" field, then the AvocadoDB checks
 /// that the revision of the document is equal to the tag. If there is a
-/// mismatch, then a @LIT{HTTP 409} conflict is returned and no delete is
+/// mismatch, then a @LIT{HTTP 412} conflict is returned and no delete is
 /// performed.
 ///
 /// @REST{DELETE /document/@FA{document-handle}?policy=@FA{policy}}
@@ -737,9 +734,9 @@ bool RestDocumentHandler::updateDocument () {
 ///
 /// @REST{DELETE /document/@FA{document-handle}?rev=@FA{etag}}
 ///
-/// You can also supply the etag using the parameter @LIT{rev} instead of an "ETag"
-/// header. You must never supply both the "ETag" header and the @LIT{rev}
-/// parameter.
+/// You can also supply the etag using the parameter @LIT{rev} instead of an
+/// "If-Match" header. You must never supply both the "If-Match" header and the
+/// @LIT{rev} parameter.
 ///
 /// @EXAMPLES
 ///
@@ -757,19 +754,21 @@ bool RestDocumentHandler::updateDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::deleteDocument () {
-#ifdef FIXME
   vector<string> const& suffix = request->suffix();
 
-  // split the document reference
-  string didStr;
-  ok = splitDocumentReference(suffix[1], didStr);
-
-  if (! ok) {
+  if (suffix.size() != 2) {
+    generateError(HttpResponse::BAD, 
+                  TRI_REST_ERROR_BAD_PARAMETER,
+                  "expecting DELETE /document/<document-handle>");
     return false;
   }
 
+  // split the document reference
+  string cid = suffix[0];
+  string didStr = suffix[1];
+
   // find and load collection given by name oder identifier
-  bool ok = findCollection(cid[0]) && loadCollection();
+  bool ok = findCollection(cid) && loadCollection();
 
   if (! ok) {
     return false;
@@ -779,7 +778,7 @@ bool RestDocumentHandler::deleteDocument () {
   TRI_voc_did_t did = StringUtils::uint64(didStr);
 
   // extract the revision
-  TRI_voc_rid_t revision = extractRevision();
+  TRI_voc_rid_t revision = extractRevision("if-match", "_rev");
 
   // extract or chose the update policy
   TRI_doc_update_policy_e policy = extractUpdatePolicy();
@@ -791,35 +790,39 @@ bool RestDocumentHandler::deleteDocument () {
   _documentCollection->beginWrite(_documentCollection);
 
   // unlocking is performed in destroy()
-  ok = _documentCollection->destroy(_documentCollection, did, revision, policy, true);
+  TRI_voc_rid_t rid = 0;
+  ok = _documentCollection->destroy(_documentCollection, did, revision, &rid, policy, true);
 
   // .............................................................................
   // outside write transaction
   // .............................................................................
 
   if (ok) {
-    generateOk();
+    generateDeleted(_documentCollection->base._cid, did, rid);
     return true;
   }
   else {
     if (TRI_errno() == TRI_VOC_ERROR_READ_ONLY) {
-      generateError(HttpResponse::FORBIDDEN, "collection is read-only");
+      generateError(HttpResponse::FORBIDDEN, 
+                    TRI_VOC_ERROR_READ_ONLY,
+                    "collection is read-only");
       return false;
     }
     else if (TRI_errno() == TRI_VOC_ERROR_DOCUMENT_NOT_FOUND) {
-      generateDocumentNotFound(suffix[0], didStr);
+      generateDocumentNotFound(cid + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + didStr);
       return false;
     }
     else if (TRI_errno() == TRI_VOC_ERROR_CONFLICT) {
-      generateConflict(suffix[0], didStr);
+      generatePreconditionFailed(_documentCollection->base._cid, did, rid);
       return false;
     }
     else {
-      generateError(HttpResponse::SERVER_ERROR, "cannot delete, failed with " + string(TRI_last_error()));
+      generateError(HttpResponse::SERVER_ERROR, 
+                    TRI_ERROR_INTERNAL,
+                    "cannot delete, failed with " + string(TRI_last_error()));
       return false;
     }
   }
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

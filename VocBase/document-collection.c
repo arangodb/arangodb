@@ -93,11 +93,12 @@ static bool UpdateLock (TRI_doc_collection_t* document,
                         TRI_shaped_json_t const* json,
                         TRI_voc_did_t did,
                         TRI_voc_rid_t rid,
+                        TRI_voc_rid_t* oldRid,
                         TRI_doc_update_policy_e policy) {
   TRI_doc_mptr_t const* result;
 
   document->beginWrite(document);
-  result = document->update(document, json, did, rid, policy, true);
+  result = document->update(document, json, did, rid, oldRid, policy, true);
 
   return result != NULL;
 }
@@ -110,6 +111,7 @@ static TRI_doc_mptr_t const* UpdateJson (TRI_doc_collection_t* collection,
                                          TRI_json_t const* json,
                                          TRI_voc_did_t did,
                                          TRI_voc_rid_t rid,
+                                         TRI_voc_rid_t* oldRid,
                                          TRI_doc_update_policy_e policy,
                                          bool release) {
   TRI_shaped_json_t* shaped;
@@ -122,7 +124,7 @@ static TRI_doc_mptr_t const* UpdateJson (TRI_doc_collection_t* collection,
     return false;
   }
 
-  result = collection->update(collection, shaped, did, rid, policy, release);
+  result = collection->update(collection, shaped, did, rid, oldRid, policy, release);
 
   TRI_FreeShapedJson(shaped);
 
@@ -136,11 +138,12 @@ static TRI_doc_mptr_t const* UpdateJson (TRI_doc_collection_t* collection,
 static bool DestroyLock (TRI_doc_collection_t* document,
                          TRI_voc_did_t did,
                          TRI_voc_rid_t rid,
+                         TRI_voc_rid_t* oldRid,
                          TRI_doc_update_policy_e policy) {
   bool ok;
 
   document->beginWrite(document);
-  ok = document->destroy(document, did, rid, policy, true);
+  ok = document->destroy(document, did, rid, oldRid, policy, true);
 
   return ok;
 }

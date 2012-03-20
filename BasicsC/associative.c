@@ -82,6 +82,7 @@ static void ResizeAssociativeArray (TRI_associative_array_t* array) {
   array->_nrResizes++;
 
   array->_table = TRI_Allocate(array->_nrAlloc * array->_elementSize);
+  // TODO: handle malloc failures
 
   for (j = 0; j < array->_nrAlloc; j++) {
     array->clearElement(array, array->_table + j * array->_elementSize);
@@ -135,6 +136,7 @@ void TRI_InitAssociativeArray (TRI_associative_array_t* array,
   array->_nrAlloc = 10;
 
   array->_table = TRI_Allocate(array->_elementSize * array->_nrAlloc);
+  // TODO: handle malloc failures
 
   p = array->_table;
   e = p + array->_elementSize * array->_nrAlloc;
@@ -528,6 +530,7 @@ static void ResizeAssociativePointer (TRI_associative_pointer_t* array) {
   array->_nrResizes++;
 
   array->_table = TRI_Allocate(array->_nrAlloc * sizeof(void*));
+  // TODO: handle malloc failures
 
   for (j = 0; j < array->_nrAlloc; j++) {
     array->_table[j] = NULL;
@@ -575,6 +578,7 @@ void TRI_InitAssociativePointer (TRI_associative_pointer_t* array,
   array->_nrAlloc = 10;
 
   array->_table = TRI_Allocate(sizeof(void*) * array->_nrAlloc);
+  // TODO: handle malloc failures
 
   p = array->_table;
   e = p + array->_nrAlloc;
@@ -924,6 +928,7 @@ static void ResizeAssociativeSynced (TRI_associative_synced_t* array) {
   array->_nrResizes++;
 
   array->_table = TRI_Allocate(array->_nrAlloc * sizeof(void*));
+  // TODO: handle malloc failures
 
   for (j = 0; j < array->_nrAlloc; j++) {
     array->_table[j] = NULL;
@@ -971,6 +976,7 @@ void TRI_InitAssociativeSynced (TRI_associative_synced_t* array,
   array->_nrAlloc = 10;
 
   array->_table = TRI_Allocate(sizeof(void*) * array->_nrAlloc);
+  // TODO: handle malloc failures
 
   p = array->_table;
   e = p + array->_nrAlloc;

@@ -878,8 +878,8 @@ static int CompareElementElement (struct TRI_skiplist_s* skiplist, void* leftEle
   // This is where the difference between CompareKeyElement (below) and 
   // CompareElementElement comes into play. Here if the 'keys' are the same,
   // but the doc ptr is different (which it is since we are here), then
-  // we return 1 to indicate that the leftElement is bigger than the rightElement
-  // this has the effect of moving to the next node in the skiplist.
+  // we return what was requested to be returned: 0,-1 or 1. What is returned
+  // depends on the purpose of calling this callback.
   // ............................................................................
    
   return defaultEqual;
@@ -1287,19 +1287,19 @@ static int MultiCompareElementElement (TRI_skiplist_multi_t* multiSkiplist, void
 
   
   if (leftElement == NULL && rightElement == NULL) {
-    return 0;
+    return TRI_SKIPLIST_COMPARE_STRICTLY_EQUAL;
   }    
   
   if (leftElement != NULL && rightElement == NULL) {
-    return 1;
+    return TRI_SKIPLIST_COMPARE_STRICTLY_GREATER;
   }    
 
   if (leftElement == NULL && rightElement != NULL) {
-    return -1;
+    return TRI_SKIPLIST_COMPARE_STRICTLY_LESS;
   }      
   
   if (leftElement == rightElement) {
-    return 0;
+    return TRI_SKIPLIST_COMPARE_STRICTLY_EQUAL;
   }    
 
   if (hLeftElement->numFields != hRightElement->numFields) {
@@ -1307,7 +1307,7 @@ static int MultiCompareElementElement (TRI_skiplist_multi_t* multiSkiplist, void
   }
   
   if (hLeftElement->data == hRightElement->data) {
-    return 0;
+    return TRI_SKIPLIST_COMPARE_STRICTLY_EQUAL;
   }    
 
 
@@ -1389,6 +1389,30 @@ static int  MultiCompareKeyElement (TRI_skiplist_multi_t* multiSkiplist, void* l
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief used to determine the order of two keys
+////////////////////////////////////////////////////////////////////////////////
+
+static bool MultiEqualElementElement (TRI_skiplist_multi_t* multiSkiplist, void* leftElement, void* rightElement) {
+
+  SkiplistIndexElement* hLeftElement  = (SkiplistIndexElement*)(leftElement);
+  SkiplistIndexElement* hRightElement = (SkiplistIndexElement*)(rightElement);
+
+  if (leftElement == rightElement) {
+    return true;
+  }    
+
+  /*
+  printf("%s:%u:%f:%f,%u:%u\n",__FILE__,__LINE__,
+    *((double*)((hLeftElement->fields)->_data.data)),
+    *((double*)((hRightElement->fields)->_data.data)),
+    (uint64_t)(hLeftElement->data),
+    (uint64_t)(hRightElement->data)
+  );
+  */
+  return (hLeftElement->data == hRightElement->data);
+}
+
 
 
 
@@ -1424,6 +1448,7 @@ SkiplistIndex* MultiSkiplistIndex_new() {
                         sizeof(SkiplistIndexElement),
                         MultiCompareElementElement,
                         MultiCompareKeyElement, 
+                        MultiEqualElementElement,
                         TRI_SKIPLIST_PROB_HALF, 40);
                    
   return skiplistIndex;
@@ -1434,6 +1459,7 @@ SkiplistIndex* MultiSkiplistIndex_new() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds (inserts) a data element into a multi skiplist
 ////////////////////////////////////////////////////////////////////////////////
+
 
 int MultiSkiplistIndex_add(SkiplistIndex* skiplistIndex, SkiplistIndexElement* element) {
   bool result;

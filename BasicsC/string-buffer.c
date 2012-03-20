@@ -68,16 +68,15 @@ static void Reserve (TRI_string_buffer_t * self, size_t size) {
 
     self->_len = (size_t)(1.2 * (self->_len + size));
     self->_buffer = TRI_Reallocate(self->_buffer, self->_len + 1);
-    self->_current = self->_buffer + off;
-
-    memset(self->_current, 0, Remaining(self) + 1);
 
 #if I_CARE_ABOUT_MALLOC_FAILURES
     if (NULL == self->_buffer) {
       abort();
     }
 #endif
+    self->_current = self->_buffer + off;
 
+    memset(self->_current, 0, Remaining(self) + 1);
   }
 }
 

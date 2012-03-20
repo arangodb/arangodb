@@ -41,15 +41,15 @@ var console = require("console");
 /// @brief error codes 
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.queryNotFound = 10404;
-exports.queryNotModified = 10304;
+exports.errorQuerySpecificationInvalid = 1512;
+exports.errorCursorNotFound            = 1600;
+
+exports.errorInvalidRequest            = 1700;
+exports.errorJavascriptException       = 1701;
 
 exports.collectionNotFound = 20404;
 exports.documentNotFound = 30404;
 exports.documentNotModified = 30304;
-
-exports.cursorNotFound = 40404;
-exports.cursorNotModified = 40304;
 
 exports.keyValueNotFound = 41404;
 exports.keyValueNotModified = 41304;
