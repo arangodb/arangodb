@@ -34,8 +34,7 @@
 #include <BasicsC/locks.h>
 #include <BasicsC/threads.h>
 #include <BasicsC/vector.h>
-
-#include "VocBase/voc-errors.h"
+#include <BasicsC/voc-errors.h>
 
 #ifdef __cplusplus
 extern "C" {

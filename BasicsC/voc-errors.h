@@ -11,6 +11,32 @@ extern "C" {
 ///
 /// The following errors might be raised when running AvocadoDB:
 ///
+/// - 0: @CODE{no error}
+///   TODO
+/// - 1: @CODE{failed}
+///   TODO
+/// - 2: @CODE{system error}
+///   TODO
+/// - 3: @CODE{out of memory}
+///   TODO
+/// - 4: @CODE{internal error}
+///   TODO
+/// - 5: @CODE{illegal number}
+///   TODO
+/// - 6: @CODE{numeric overflow}
+///   TODO
+/// - 7: @CODE{illegal option}
+///   TODO
+/// - 8: @CODE{dead process identifier}
+///   TODO
+/// - 9: @CODE{open/create file failed}
+///   TODO
+/// - 10: @CODE{write failed}
+///   TODO
+/// - 11: @CODE{lock failed}
+///   TODO
+/// - 12: @CODE{unlock failed}
+///   TODO
 /// - 1000: @CODE{illegal state}
 ///   TODO
 /// - 1001: @CODE{illegal shaper}
@@ -54,7 +80,21 @@ extern "C" {
 /// - 1108: @CODE{file not accessible}
 ///   TODO
 /// - 1200: @CODE{document not found}
-///   TODO
+///   Will be raised when a doucment with a given identifier or handle is
+///   unknown.
+/// - 1201: @CODE{collection not found}
+///   Will be raised when a collection with a given identifier or name is
+///   unknown.
+/// - 1202: @CODE{parameter collection not found}
+///   Will be raised when the collection parameter is missing.
+/// - 1203: @CODE{document altered}
+///   Will be raised when a document has been altered and a change would result
+///   in a conflict.
+/// - 1204: @CODE{illegal document handle}
+///   Will be raised when a document handle is corrupt.
+/// - 1205: @CODE{collection already exists}
+///   Will be raised when a collection with a given identifier or name already
+///   exists.
 /// - 1500: @CODE{out of memory}
 ///   Will be raised during query execution when a memory allocation request
 ///   can not be satisfied.
@@ -115,6 +155,48 @@ extern "C" {
 /// - 1600: @CODE{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
+/// - 1700: @CODE{expecting <prefix>/user/<username>}
+///   TODO
+/// - 1701: @CODE{cannot create user}
+///   TODO
+/// - 1702: @CODE{role not found}
+///   TODO
+/// - 1703: @CODE{no permission to create user with that role}
+///   TODO
+/// - 1704: @CODE{user not found}
+///   TODO
+/// - 1705: @CODE{cannot manage password for user}
+///   TODO
+/// - 1706: @CODE{expecting POST <prefix>/session}
+///   TODO
+/// - 1707: @CODE{expecting GET <prefix>/session/<sid>}
+///   TODO
+/// - 1708: @CODE{expecting PUT <prefix>/session/<sid>/<method>}
+///   TODO
+/// - 1709: @CODE{expecting DELETE <prefix>/session/<sid>}
+///   TODO
+/// - 1710: @CODE{unknown session}
+///   TODO
+/// - 1711: @CODE{session has not bound to user}
+///   TODO
+/// - 1712: @CODE{cannot login with session}
+///   TODO
+/// - 1713: @CODE{expecting GET <prefix>/users}
+///   TODO
+/// - 1714: @CODE{expecting /directory/sessionvoc/<token>}
+///   TODO
+/// - 1715: @CODE{directory server is not configured}
+///   TODO
+/// - 2000: @CODE{unknown client error}
+///   This error should not happen.
+/// - 2001: @CODE{could not connect to server}
+///   Will be raised when the client could not connect to the server.
+/// - 2002: @CODE{could not write to server}
+///   Will be raised when the client could not write data.
+/// - 2003: @CODE{could not read from server}
+///   Will be raised when the client could not read data.
+/// - 3000: @CODE{method not supported}
+///   Will be raised when an unsupported HTTP method is used for an operation.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,7 +214,137 @@ extern "C" {
 /// @brief register all errors for AvocadoDB
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseAvocadoErrors (void);
+void TRI_InitialiseErrorMessages (void);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 0: ERROR_NO_ERROR
+///
+/// no error
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_NO_ERROR                                                (0)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1: ERROR_FAILED
+///
+/// failed
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_FAILED                                                  (1)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 2: ERROR_SYS_ERROR
+///
+/// system error
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SYS_ERROR                                               (2)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3: ERROR_OUT_OF_MEMORY
+///
+/// out of memory
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_OUT_OF_MEMORY                                           (3)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 4: ERROR_INTERNAL
+///
+/// internal error
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_INTERNAL                                                (4)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 5: ERROR_ILLEGAL_NUMBER
+///
+/// illegal number
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ILLEGAL_NUMBER                                          (5)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 6: ERROR_NUMERIC_OVERFLOW
+///
+/// numeric overflow
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_NUMERIC_OVERFLOW                                        (6)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 7: ERROR_ILLEGAL_OPTION
+///
+/// illegal option
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ILLEGAL_OPTION                                          (7)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 8: ERROR_DEAD_PID
+///
+/// dead process identifier
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_DEAD_PID                                                (8)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 9: ERROR_OPEN_ERROR
+///
+/// open/create file failed
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_OPEN_ERROR                                              (9)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 10: ERROR_WRITE_ERROR
+///
+/// write failed
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_WRITE_ERROR                                             (10)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 11: ERROR_LOCK_ERROR
+///
+/// lock failed
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LOCK_ERROR                                              (11)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 12: ERROR_UNLOCKED_FILE
+///
+/// unlock failed
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_UNLOCKED_FILE                                           (12)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1000: VOC_ERROR_ILLEGAL_STATE
@@ -349,10 +561,62 @@ void TRI_InitialiseAvocadoErrors (void);
 ///
 /// document not found
 ///
-/// TODO
+/// Will be raised when a doucment with a given identifier or handle is unknown.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_VOC_ERROR_DOCUMENT_NOT_FOUND                                  (1200)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1201: VOC_ERROR_COLLECTION_NOT_FOUND
+///
+/// collection not found
+///
+/// Will be raised when a collection with a given identifier or name is unknown.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_VOC_ERROR_COLLECTION_NOT_FOUND                                (1201)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1202: VOC_ERROR_COLLECTION_PARAMETER_MISSING
+///
+/// parameter collection not found
+///
+/// Will be raised when the collection parameter is missing.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_VOC_ERROR_COLLECTION_PARAMETER_MISSING                        (1202)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1203: VOC_ERROR_DOCUMENT_ALTERED
+///
+/// document altered
+///
+/// Will be raised when a document has been altered and a change would result
+/// in a conflict.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_VOC_ERROR_DOCUMENT_ALTERED                                    (1203)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1204: VOC_ERROR_DOCUMENT_HANDLE_BAD
+///
+/// illegal document handle
+///
+/// Will be raised when a document handle is corrupt.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_VOC_ERROR_DOCUMENT_HANDLE_BAD                                 (1204)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1205: VOC_ERROR_COLLECTION_EXISTS
+///
+/// collection already exists
+///
+/// Will be raised when a collection with a given identifier or name already
+/// exists.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_VOC_ERROR_COLLECTION_EXISTS                                   (1205)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_OOM
@@ -578,6 +842,216 @@ void TRI_InitialiseAvocadoErrors (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CURSOR_NOT_FOUND                                        (1600)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1700: ERROR_SESSION_USERHANDLER_URL_INVALID
+///
+/// expecting <prefix>/user/<username>
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_USERHANDLER_URL_INVALID                         (1700)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1701: ERROR_SESSION_USERHANDLER_CANNOT_CREATE_USER
+///
+/// cannot create user
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_USERHANDLER_CANNOT_CREATE_USER                  (1701)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1702: ERROR_SESSION_USERHANDLER_ROLE_NOT_FOUND
+///
+/// role not found
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_USERHANDLER_ROLE_NOT_FOUND                      (1702)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1703: ERROR_SESSION_USERHANDLER_NO_CREATE_PERMISSION
+///
+/// no permission to create user with that role
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_USERHANDLER_NO_CREATE_PERMISSION                (1703)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1704: ERROR_SESSION_USERHANDLER_USER_NOT_FOUND
+///
+/// user not found
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_USERHANDLER_USER_NOT_FOUND                      (1704)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1705: ERROR_SESSION_USERHANDLER_CANNOT_CHANGE_PW
+///
+/// cannot manage password for user
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_USERHANDLER_CANNOT_CHANGE_PW                    (1705)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1706: ERROR_SESSION_SESSIONHANDLER_URL_INVALID1
+///
+/// expecting POST <prefix>/session
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_SESSIONHANDLER_URL_INVALID1                     (1706)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1707: ERROR_SESSION_SESSIONHANDLER_URL_INVALID2
+///
+/// expecting GET <prefix>/session/<sid>
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_SESSIONHANDLER_URL_INVALID2                     (1707)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1708: ERROR_SESSION_SESSIONHANDLER_URL_INVALID3
+///
+/// expecting PUT <prefix>/session/<sid>/<method>
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_SESSIONHANDLER_URL_INVALID3                     (1708)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1709: ERROR_SESSION_SESSIONHANDLER_URL_INVALID4
+///
+/// expecting DELETE <prefix>/session/<sid>
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_SESSIONHANDLER_URL_INVALID4                     (1709)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1710: ERROR_SESSION_SESSIONHANDLER_SESSION_UNKNOWN
+///
+/// unknown session
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_SESSIONHANDLER_SESSION_UNKNOWN                  (1710)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1711: ERROR_SESSION_SESSIONHANDLER_SESSION_NOT_BOUND
+///
+/// session has not bound to user
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_SESSIONHANDLER_SESSION_NOT_BOUND                (1711)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1712: ERROR_SESSION_SESSIONHANDLER_CANNOT_LOGIN
+///
+/// cannot login with session
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_SESSIONHANDLER_CANNOT_LOGIN                     (1712)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1713: ERROR_SESSION_USERSHANDLER_INVALID_URL
+///
+/// expecting GET <prefix>/users
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_USERSHANDLER_INVALID_URL                        (1713)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1714: ERROR_SESSION_DIRECTORYSERVER_INVALID_URL
+///
+/// expecting /directory/sessionvoc/<token>
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_DIRECTORYSERVER_INVALID_URL                     (1714)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1715: ERROR_SESSION_DIRECTORYSERVER_NOT_CONFIGURED
+///
+/// directory server is not configured
+///
+/// TODO
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_DIRECTORYSERVER_NOT_CONFIGURED                  (1715)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 2000: SIMPLE_CLIENT_UNKNOWN_ERROR
+///
+/// unknown client error
+///
+/// This error should not happen.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_SIMPLE_CLIENT_UNKNOWN_ERROR                                   (2000)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 2001: SIMPLE_CLIENT_COULD_NOT_CONNECT
+///
+/// could not connect to server
+///
+/// Will be raised when the client could not connect to the server.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT                               (2001)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 2002: SIMPLE_CLIENT_COULD_NOT_WRITE
+///
+/// could not write to server
+///
+/// Will be raised when the client could not write data.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_SIMPLE_CLIENT_COULD_NOT_WRITE                                 (2002)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 2003: SIMPLE_CLIENT_COULD_NOT_READ
+///
+/// could not read from server
+///
+/// Will be raised when the client could not read data.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_SIMPLE_CLIENT_COULD_NOT_READ                                  (2003)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3000: ERROR_PROTOCOL_UNSUPPORTED_METHOD
+///
+/// method not supported
+///
+/// Will be raised when an unsupported HTTP method is used for an operation.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_PROTOCOL_UNSUPPORTED_METHOD                             (3000)
 
 
 ////////////////////////////////////////////////////////////////////////////////

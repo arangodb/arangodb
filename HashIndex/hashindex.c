@@ -37,6 +37,7 @@
 
 #include "hashindex.h"
 
+/* unused
 static bool isEqualJsonJson (const TRI_json_t* left, const TRI_json_t* right) {
   size_t j;
 
@@ -121,7 +122,7 @@ static bool isEqualJsonJson (const TRI_json_t* left, const TRI_json_t* right) {
   assert(false);  
   return false;
 }  // end of function isEqualJsonJson
-
+*/
 
 static bool isEqualShapedJsonShapedJson (const TRI_shaped_json_t* left, const TRI_shaped_json_t* right) {
   if (left == NULL && right == NULL) {
@@ -143,7 +144,7 @@ static bool isEqualShapedJsonShapedJson (const TRI_shaped_json_t* left, const TR
   return ( memcmp(left->_data.data,right->_data.data, left->_data.length) == 0);   
 }  // end of function isEqualShapedJsonShapedJson
 
-
+/* unused
 static uint64_t hashJson (const size_t hash, const TRI_json_t* data) {
   size_t j;
   size_t newHash;
@@ -211,7 +212,7 @@ static uint64_t hashJson (const size_t hash, const TRI_json_t* data) {
   assert(false);  
   return hash;
 }  // end of function isEqualJsonJson
-
+*/
 
 static uint64_t hashShapedJson (const uint64_t hash, const TRI_shaped_json_t* shapedJson) {
   return TRI_FnvHashBlock(hash, shapedJson->_data.data, shapedJson->_data.length); 

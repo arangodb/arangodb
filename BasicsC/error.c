@@ -315,6 +315,21 @@ void TRI_set_errno_string (int error, char const* msg) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return an error message for an error code
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_get_errno_string (const int error) {
+  TRI_error_t* entry;
+  
+  entry = (TRI_error_t*) TRI_LookupByKeyAssociativePointer(&ErrorMessages, (void const*) &error);
+  if (!entry) {
+    return NULL;
+  }
+
+  return entry->_message;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -346,19 +361,7 @@ void TRI_InitialiseError () {
                              EqualError,
                              0);
 
-  TRI_set_errno_string(TRI_ERROR_NO_ERROR,         "no error");
-  TRI_set_errno_string(TRI_ERROR_FAILED,           "failed");
-  TRI_set_errno_string(TRI_ERROR_SYS_ERROR,        "system error");
-  TRI_set_errno_string(TRI_ERROR_OUT_OF_MEMORY,    "out-of-memory");
-  TRI_set_errno_string(TRI_ERROR_INTERNAL,         "internal error");
-  TRI_set_errno_string(TRI_ERROR_ILLEGAL_NUMBER,   "illegal number");
-  TRI_set_errno_string(TRI_ERROR_NUMERIC_OVERFLOW, "numeric overflow");
-  TRI_set_errno_string(TRI_ERROR_ILLEGAL_OPTION,   "illegal option");
-  TRI_set_errno_string(TRI_ERROR_DEAD_PID,         "dead process identifier");
-  TRI_set_errno_string(TRI_ERROR_OPEN_ERROR,       "open/create file failed");
-  TRI_set_errno_string(TRI_ERROR_WRITE_ERROR,      "write failed");
-  TRI_set_errno_string(TRI_ERROR_LOCK_ERROR,       "lock failed");
-  TRI_set_errno_string(TRI_ERROR_UNLOCKED_FILE,    "unlocked file");
+  TRI_InitialiseErrorMessages();
 
 #if defined(TRI_GCC_THREAD_LOCAL_STORAGE) || defined(TRI_WIN32_THREAD_LOCAL_STORAGE)
   ErrorNumber._number = 0;
