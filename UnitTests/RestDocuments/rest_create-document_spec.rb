@@ -2,6 +2,8 @@ require 'rspec'
 require './avocadodb.rb'
 
 describe AvocadoDB do
+  prefix = "rest_create-document"
+
   context "creating a document in a collection" do
 
 ################################################################################
@@ -9,19 +11,6 @@ describe AvocadoDB do
 ################################################################################
 
     context "error handling" do
-      it "returns an error if collection idenifier is missing" do
-	cmd = "/document"
-        doc = AvocadoDB.post(cmd)
-
-	doc.code.should eq(400)
-	doc.parsed_response['error'].should eq(true)
-	doc.parsed_response['errorNum'].should eq(1202)
-	doc.parsed_response['code'].should eq(400)
-	doc.headers['content-type'].should eq("application/json; charset=utf-8")
-
-	AvocadoDB.log(:method => :post, :url => cmd, :result => doc, :output => "rest_create-document-missing-cid")
-      end
-
       it "returns an error if url contains a suffix" do
 	cmd = "/document/123456"
         doc = AvocadoDB.post(cmd)
@@ -32,7 +21,20 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(400)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
-	AvocadoDB.log(:method => :post, :url => cmd, :result => doc, :output => "rest_create.document-superfluous-suffix")
+	AvocadoDB.log(:method => :post, :url => cmd, :result => doc, :output => "#{prefix}-superfluous-suffix")
+      end
+
+      it "returns an error if collection idenifier is missing" do
+	cmd = "/document"
+        doc = AvocadoDB.post(cmd)
+
+	doc.code.should eq(400)
+	doc.parsed_response['error'].should eq(true)
+	doc.parsed_response['errorNum'].should eq(1202)
+	doc.parsed_response['code'].should eq(400)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+	AvocadoDB.log(:method => :post, :url => cmd, :result => doc, :output => "#{prefix}-missing-cid")
       end
 
       it "returns an error if the collection identifier is unknown" do
@@ -45,7 +47,7 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(404)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
-	AvocadoDB.log(:method => :post, :url => cmd, :result => doc, :output => "rest_create-document-unknown-cid")
+	AvocadoDB.log(:method => :post, :url => cmd, :result => doc, :output => "#{prefix}-unknown-cid")
       end
 
       it "returns an error if the collection name is unknown" do
@@ -58,7 +60,7 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(404)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
-	AvocadoDB.log(:method => :post, :url => cmd, :result => doc, :output => "rest_create-document-unknown-name")
+	AvocadoDB.log(:method => :post, :url => cmd, :result => doc, :output => "#{prefix}-unknown-name")
       end
 
       it "returns an error if the JSON body is corrupted" do
@@ -77,7 +79,7 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(400)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
-	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "rest_create-document-bad-json")
+	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-bad-json")
 	AvocadoDB.drop_collection("UnitTestsCollectionBasics")
       end
     end
@@ -124,7 +126,7 @@ describe AvocadoDB do
 	etag.should eq("\"#{rev}\"")
 	location.should eq("/document/#{did}")
 
-	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "rest_create-document")
+	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}")
 
 	AvocadoDB.delete(location)
       end
@@ -172,7 +174,7 @@ describe AvocadoDB do
 	etag.should eq("\"#{rev}\"")
 	location.should eq("/document/#{did}")
 
-	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "rest_create-document-accept")
+	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-accept")
 
 	AvocadoDB.delete(location)
       end
@@ -220,7 +222,7 @@ describe AvocadoDB do
 	etag.should eq("\"#{rev}\"")
 	location.should eq("/document/#{did}")
 
-	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "rest_create-document-new-named-collection")
+	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-new-named-collection")
 
 	AvocadoDB.delete(location)
       end
@@ -250,7 +252,7 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(404)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
-	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc)
+	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-unknown-collection-name")
       end
 
       it "create the collection and the document" do
@@ -277,7 +279,7 @@ describe AvocadoDB do
 	etag.should eq("\"#{rev}\"")
 	location.should eq("/document/#{did}")
 
-	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "rest_create-document-create-collection")
+	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-create-collection")
 
 	AvocadoDB.delete(location)
       end

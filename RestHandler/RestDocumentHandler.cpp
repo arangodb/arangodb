@@ -237,7 +237,7 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
-  // should we create the collection
+  // shall we create the collection?
   string createStr = request->value("createCollection", found);
   bool create = found ? StringUtils::boolean(createStr) : false;
 
@@ -263,15 +263,8 @@ bool RestDocumentHandler::createDocument () {
 
   bool waitForSync = _documentCollection->base._waitForSync;
 
-  // note: unlocked is performed by createJson() FIXME URGENT SHOULD RETURN A DOC_MPTR NOT A POINTER!!!
-  TRI_doc_mptr_t const* mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_DOCUMENT, json, 0, true);
-  TRI_voc_did_t did = 0;
-  TRI_voc_rid_t rid = 0;
-
-  if (mptr != 0) {
-    did = mptr->_did;
-    rid = mptr->_rid;
-  }
+  // note: unlocked is performed by createJson()
+  TRI_doc_mptr_t const mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_DOCUMENT, json, 0, true);
 
   // .............................................................................
   // outside write transaction
@@ -279,12 +272,12 @@ bool RestDocumentHandler::createDocument () {
 
   TRI_FreeJson(json);
 
-  if (mptr != 0) {
+  if (mptr._did != 0) {
     if (waitForSync) {
-      generateCreated(_documentCollection->base._cid, did, rid);
+      generateCreated(_documentCollection->base._cid, mptr._did, mptr._rid);
     }
     else {
-      generateAccepted(_documentCollection->base._cid, did, rid);
+      generateAccepted(_documentCollection->base._cid, mptr._did, mptr._rid);
     }
 
     return true;
@@ -322,7 +315,7 @@ bool RestDocumentHandler::readDocument () {
     default:
       generateError(HttpResponse::BAD, 
                     TRI_REST_ERROR_SUPERFLUOUS_SUFFICES,
-                    "expecting GET /document/<document-handle>");
+                    "expecting GET /document/<document-handle> or GET /document?collection=<collection-identifier>");
       return false;
   }
 }
@@ -389,8 +382,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 
   _documentCollection->beginRead(_documentCollection);
 
-  // FIXME FIXME
-  TRI_doc_mptr_t const* document = findDocument(did);
+  TRI_doc_mptr_t const document = findDocument(did);
 
   _documentCollection->endRead(_documentCollection);
 
@@ -398,22 +390,22 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   // outside read transaction
   // .............................................................................
 
-  if (document == 0) {
+  if (document._did == 0) {
     generateDocumentNotFound(suffix[0]);
     return false;
   }
 
-  TRI_voc_rid_t rid = document->_rid;
+  TRI_voc_rid_t rid = document._rid;
 
   if (ifNoneRid == 0) {
     if (ifRid == 0) {
-      generateDocument(document, generateBody);
+      generateDocument(&document, generateBody);
     }
     else if (ifRid == rid) {
-      generateDocument(document, generateBody);
+      generateDocument(&document, generateBody);
     }
     else {
-      generatePreconditionFailed(_documentCollection->base._cid, document->_did, rid);
+      generatePreconditionFailed(_documentCollection->base._cid, document._did, rid);
     }
   }
   else if (ifNoneRid == rid) {
@@ -424,18 +416,18 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
       generateNotModified(StringUtils::itoa(rid));
     }
     else {
-      generatePreconditionFailed(_documentCollection->base._cid, document->_did, rid);
+      generatePreconditionFailed(_documentCollection->base._cid, document._did, rid);
     }
   }
   else {
     if (ifRid == 0) {
-      generateDocument(document, generateBody);
+      generateDocument(&document, generateBody);
     }
     else if (ifRid == rid) {
-      generateDocument(document, generateBody);
+      generateDocument(&document, generateBody);
     }
     else {
-      generatePreconditionFailed(_documentCollection->base._cid, document->_did, rid);
+      generatePreconditionFailed(_documentCollection->base._cid, document._did, rid);
     }
   }
 
@@ -672,14 +664,14 @@ bool RestDocumentHandler::updateDocument () {
 
   // unlocking is performed in updateJson()
   TRI_voc_rid_t rid = 0;
-  TRI_doc_mptr_t const* mptr = _documentCollection->updateJson(_documentCollection, json, did, revision, &rid, policy, true);
+  TRI_doc_mptr_t const mptr = _documentCollection->updateJson(_documentCollection, json, did, revision, &rid, policy, true);
 
   // .............................................................................
   // outside write transaction
   // .............................................................................
 
-  if (mptr != 0) {
-    generateUpdated(_documentCollection->base._cid, did, mptr->_rid);
+  if (mptr._did != 0) {
+    generateUpdated(_documentCollection->base._cid, did, mptr._rid);
     return true;
   }
   else {
@@ -723,7 +715,7 @@ bool RestDocumentHandler::updateDocument () {
 /// body of the response contains an error document.
 ///
 /// If an etag is supplied in the "If-Match" field, then the AvocadoDB checks
-/// that the revision of the document is equal to the tag. If there is a
+/// that the revision of the document is equal to the etag. If there is a
 /// mismatch, then a @LIT{HTTP 412} conflict is returned and no delete is
 /// performed.
 ///
@@ -782,6 +774,13 @@ bool RestDocumentHandler::deleteDocument () {
 
   // extract or chose the update policy
   TRI_doc_update_policy_e policy = extractUpdatePolicy();
+
+  if (policy == TRI_DOC_UPDATE_ILLEGAL) {
+    generateError(HttpResponse::BAD, 
+                  TRI_REST_ERROR_BAD_PARAMETER,
+                  "policy must be 'error' or 'last'");
+    return false;
+  }
 
   // .............................................................................
   // inside write transaction

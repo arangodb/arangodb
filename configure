@@ -563,7 +563,7 @@ PACKAGE_TARNAME='avocado'
 PACKAGE_VERSION='0.3.3'
 PACKAGE_STRING='triAGENS AvocadoDB 0.3.3'
 PACKAGE_BUGREPORT='info@triagens.de'
-PACKAGE_URL='http://www.worldofvoc.com'
+PACKAGE_URL='http://www.avocadodb.org'
 
 # Factoring default headers for most tests.
 ac_includes_default="\
@@ -1523,7 +1523,7 @@ Use these variables to override the choices made by `configure' or to help
 it to find libraries and programs with nonstandard names/locations.
 
 Report bugs to <info@triagens.de>.
-triAGENS AvocadoDB home page: <http://www.worldofvoc.com>.
+triAGENS AvocadoDB home page: <http://www.avocadodb.org>.
 _ACEOF
 ac_status=$?
 fi
@@ -9914,7 +9914,7 @@ Configuration commands:
 $config_commands
 
 Report bugs to <info@triagens.de>.
-triAGENS AvocadoDB home page: <http://www.worldofvoc.com>."
+triAGENS AvocadoDB home page: <http://www.avocadodb.org>."
 
 _ACEOF
 cat >>$CONFIG_STATUS <<_ACEOF || ac_write_fail=1

@@ -63,7 +63,7 @@ namespace triagens {
         logFacility("-"),
         logLevel("info"),
         logFormat(),
-        logSeverity("all"),
+        logSeverity("human"),
         logFile("+"),
         logPrefix(),
         logSyslog(),

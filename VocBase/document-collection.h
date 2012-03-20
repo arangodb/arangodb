@@ -114,131 +114,136 @@ TRI_doc_collection_info_t;
 /// represented as @ref ShapedJson "shaped JSON objects". Each document has a
 /// place in memory which is determined by the position in the memory mapped
 /// file. As datafiles are compacted during garbage collection, this position
-/// can change over time. Each active document also has a master pointer of
-/// type @ref TRI_doc_mptr_t. This master pointer never changes and is
-/// valid as long as the object is not deleted.
+/// can change over time. Each active document also has a master pointer of type
+/// @ref TRI_doc_mptr_t. This master pointer never changes and is valid as long
+/// as the object is not deleted.
 ///
-/// It is important to use transaction for create, read, update, and delete.
-/// The functions "create", "createJson", "update", "updateJson", and "destroy"
-/// are only allowed within a "beginWrite" and "endWrite". The function read is
-/// only allowed with a "beginRead" and "endRead". Note that "read" returns
-/// a master pointer. After the "endRead" this master pointer might no longer
-/// be valid, because the document could be deleted by another thread after
-/// "endRead" has been executed.
+/// It is important to use locks for create, read, update, and delete.  The
+/// functions @FN{create}, @FN{createJson}, @FN{update}, @FN{updateJson}, and
+/// @FN{destroy} are only allowed within a @FN{beginWrite} and
+/// @FN{endWrite}. The function @FN{read} is only allowed within a
+/// @FN{beginRead} and @FN{endRead}. Note that @FN{read} returns a copy of the
+/// master pointer.
 ///
 /// If a document is deleted, it's master pointer becomes invalid. However, the
-/// document itself exists. Executing a query and constructing its result set,
-/// must be done inside a "beginRead" and
-/// "endRead". However, the result set itself does not contain any master
-/// pointers. Therefore, it stays valid after the "endRead" call.
+/// document itself still exists. Executing a query and constructing its result
+/// set, must be done inside a "beginRead" and "endRead".
 ///
-/// <b><tt>bool beginRead (TRI_doc_collection_t*)</tt></b>
+/// @FUN{bool beginRead (TRI_doc_collection_t*)}
+////////////////////////////////////////////////
 ///
-/// Starts a read transaction. Query and calls to "read" are allowed within a
-/// read transaction, but not calls to "create", "update", or "destroy".
-/// Returns @c true if the transaction could be started. This call might block
-/// until a running write transaction is finished.
+/// Starts a read transaction. Query and calls to @FN{read} are allowed within a
+/// read transaction, but not calls to @FN{create}, @FN{update}, or
+/// @FN{destroy}.  Returns @LIT{true} if the transaction could be started. This
+/// call might block until a running write transaction is finished.
 ///
-/// <b><tt>bool endRead (TRI_doc_collection_t*)</tt></b>
+/// @FUN{<b><tt>bool endRead (TRI_doc_collection_t*)}
+/////////////////////////////////////////////////////
 ///
 /// Ends a read transaction. Should only be called after a successful
 /// "beginRead".
 ///
-/// <b><tt>bool beginWrite (TRI_doc_collection_t*)</tt></b>
+/// @FUN{bool beginWrite (TRI_doc_collection_t*)}
+/////////////////////////////////////////////////
 ///
-/// Starts a write transaction. Query and calls to "create", "read", "update",
-/// and "destroy" are allowed within a write transaction. Returns @c true if the
-/// transaction could be started. This call might block until a running write
-/// transaction is finished.
+/// Starts a write transaction. Query and calls to @FN{create}, @FN{read},
+/// @FN{update}, and @FN{destroy} are allowed within a write
+/// transaction. Returns @LIT{true} if the transaction could be started. This
+/// call might block until a running write transaction is finished.
 ///
-/// <b><tt>bool endWrite (TRI_doc_collection_t*)</tt></b>
+/// @FUN{bool endWrite (TRI_doc_collection_t*)}
+///////////////////////////////////////////////
 ///
 /// Ends a write transaction. Should only be called after a successful
-/// "beginWrite".
+/// @LIT{beginWrite}.
 ///
-/// @FUN{void createHeader (TRI_doc_collection_t* @FA{collection}, TRI_datafile_t* @FA{datafile}, TRI_df_marker_t const* @FA{marker}, size_t @FA{markerSize}, TRI_doc_mptr_t* {mptr}, void const* @FA{data})}
+/// @FUN{void createHeader (TRI_doc_collection_t*, TRI_datafile_t*, TRI_df_marker_t const*, size_t @FA{markerSize}, TRI_doc_mptr_t*, void const* @FA{data})}
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///
 /// Creates a new header.
 ///
-/// @FUN{void updateHeader (TRI_doc_collection_t* @FA{collection}, TRI_datafile_t* @FA{datafile}, TRI_df_marker_t const* @FA{marker}, size_t @FA{markerSize}, TRI_doc_mptr_t const* {mptr}, TRI_doc_mptr_t* @FA{update})}
+/// @FUN{void updateHeader (TRI_doc_collection_t*, TRI_datafile_t*, TRI_df_marker_t const*, size_t @FA{markerSize}, TRI_doc_mptr_t const* {current}, TRI_doc_mptr_t* @FA{update})}
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///
 /// Updates an existing header.
 ///
-/// <b><tt>TRI_doc_mptr_t const* create (TRI_doc_collection_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*, bool release)</tt></b>
+/// @FUN{TRI_doc_mptr_t const create (TRI_doc_collection_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*, bool @FA{release})}
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///
 /// Adds a new document to the collection and returns the master pointer of the
-/// newly created entry. In case of an error, NULL is returned and "TRI_errno()" is
-/// set accordingly. The function DOES NOT acquire or release a write lock. This
-/// must be done by the caller. If release is true, it will release the write lock as
-/// soon as possible.
+/// newly created entry. In case of an error, the attribute @LIT{_did} of the
+/// result is @LIT{0} and "TRI_errno()" is set accordingly. The function DOES
+/// NOT acquire a write lock. This must be done by the caller. If @FA{release}
+/// is true, it will release the write lock as soon as possible.
 ///
-/// <b><tt>TRI_doc_mptr_t const* createJson (TRI_doc_collection_t*, TRI_df_marker_type_e, TRI_json_t const*)</tt></b>
+/// @FUN{TRI_doc_mptr_t const createJson (TRI_doc_collection_t*, TRI_df_marker_type_e, TRI_json_t const*, bool @FA{release})}
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///
-/// Adds a new document to the collection and returns the master pointer of the
-/// newly created entry. In case of an error, NULL is returned and "TRI_errno()"
-/// is set accordingly. The function DOES NOT acquire or release a write lock. This
-/// must be done by the caller. If release is true, it will release the write lock as
-/// soon as possible.
+/// As before, but instead of a shaped json a json object must be given.
 ///
-/// <b><tt>TRI_voc_did_t createLock (TRI_doc_collection_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*)</tt></b>
+/// @FUN{TRI_voc_did_t createLock (TRI_doc_collection_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*)}
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///
-/// Adds a new document to the collection and returns document identifier of the
-/// newly created entry. In case of an error, NULL is returned and "TRI_errno()"
-/// is set accordingly. The function will acquire and release a write lock.
+/// As before, but the function will acquire and release the write lock.
 ///
-/// <b><tt>TRI_doc_mptr_t const* read (TRI_doc_collection_t*, TRI_voc_did_t did)</tt></b>
+/// @FUN{TRI_doc_mptr_t const read (TRI_doc_collection_t*, TRI_voc_did_t)}
+//////////////////////////////////////////////////////////////////////////
 ///
-/// Returns the master pointer of the document with identifier @c did. If the
-/// document does not exists or is deleted, then @c NULL is returned. The function
-/// DOES NOT acquire or release a read lock. This must be done by the caller.
+/// Returns the master pointer of the document with the given identifier. If the
+/// document does not exists or is deleted, then the identifier @LIT{_did} of
+/// the result is @LIT{0}. The function DOES NOT acquire or release a read
+/// lock. This must be done by the caller.
 ///
-/// <b><tt>TRI_doc_mptr_t const* update (TRI_doc_collection_t*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e, bool release)</tt></b>
+/// @FUN{TRI_doc_mptr_t const update (TRI_doc_collection_t*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t @FA{rid}, TRI_voc_rid_t* @FA{current}, TRI_doc_update_policy_e, bool @FA{release})}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///
-/// Updates an existing document of the collection and returns the master
-/// pointer in case of success. Otherwise, @c false is returned and the
-/// "TRI_errno()" is accordingly. The function DOES NOT acquire or release a
-/// write lock. This must be done by the caller. However, if release is true, it
-/// will release the write lock as soon as possible.
+/// Updates an existing document of the collection and returns copy of a valid
+/// master pointer in case of success. Otherwise, the attribute @LIT{_did} of
+/// the result is @LIT{0} and the "TRI_errno()" is set accordingly. The function
+/// DOES NOT acquire a write lock. This must be done by the caller. However, if
+/// @FA{release} is true, it will release the write lock as soon as possible.
 ///
-/// If the policy is @c TRI_DOC_UPDATE_LAST_WRITE, than the revision is ignored
-/// and the update is always performed. If the policy is @c TRI_DOC_UPDATE_ERROR
-/// and the revision is given (i. e. not equal 0), then the update is only
-/// performed if the current revision matches the given.
+/// If the policy is @ref TRI_DOC_UPDATE_LAST_WRITE, than the revision @FA{rid}
+/// is ignored and the update is always performed. If the policy is @ref
+/// TRI_DOC_UPDATE_ERROR and the revision @REF{rid} is given (i. e. not equal
+/// 0), then the update is only performed if the current revision matches the
+/// given. In any case the current revision after the updated of the document is
+/// returned in @FA{current}.
 ///
-/// <b><tt>TRI_doc_mptr_t const* updateJson (TRI_doc_collection_t*, TRI_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e, bool release)</tt></b>
+/// @FUN{TRI_doc_mptr_t const updateJson (TRI_doc_collection_t*, TRI_json_t const*, TRI_voc_did_t, TRI_voc_rid_t @FA{rid}, TRI_voc_rid_t* @FA{current}, TRI_doc_update_policy_e, bool @FA{release})}
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///
-/// Updates an existing document of the collection and returns the master
-/// pointer in case of success. Otherwise, @c false is returned and the
-/// "TRI_errno()" is accordingly.  If release is true, it will release the write
-/// lock as soon as possible.
+/// As before, but instead of a shaped json a json object must be given.
 ///
-/// <b><tt>bool updateLock (TRI_doc_collection_t*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e)</tt></b>
+/// @FUN{bool updateLock (TRI_doc_collection_t*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t @FA{rid}, TRI_voc_rid_t* @FA{current}, TRI_doc_update_policy_e)}
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///
-/// Updates an existing document of the collection and returns @c true in case
+/// As before, but the function will acquire and release the write lock.
+///
+/// @FUN{bool destroy (TRI_doc_collection_t*, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t @FA{rid}, TRI_voc_rid_t* @FA{current}, TRI_doc_update_policy_e, bool @FA{release})}
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///
+/// Deletes an existing document from the given collection and returns @c true in case
 /// of success. Otherwise, @c false is returned and the "TRI_errno()" is
-/// accordingly. The function will acquire and release a write lock.
+/// accordingly. The function DOES NOT acquire a write lock.  However, if
+/// @FA{release} is true, it will release the write lock as soon as possible.
 ///
-/// <b><tt>bool destroy (TRI_doc_collection_t*, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool release)</tt></b>
+/// If the policy is @ref TRI_DOC_UPDATE_ERROR and the reivision is given, than
+/// it must match the current revision of the document. If the delete was
+/// executed, than @FA{current} contains the last valid revision of the
+/// document. If the delete was aborted, than @FA{current} contains the revision
+/// of the still alive document.
 ///
-/// Deletes an existing document of the collection and returns @c true in case
-/// of success. Otherwise, @c false is returned and the "TRI_errno()" is
-/// accordingly. The function DOES NOT acquire or release a write lock.
-/// However, if release is true, it will release the write lock as soon as
-/// possible.
+/// @FUN{destroyLock (TRI_doc_collection_t*, TRI_voc_did_t, TRI_voc_rid_t @FA{rid}, TRI_voc_rid_t* @FA{current}, TRI_doc_update_policy_e)}
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///
-/// If the policy is @c TRI_DOC_UPDATE_ERROR and the reivision is given, than
-/// it must match the current revision of the document.
+/// As before, but the function will acquire and release the write lock.
 ///
-/// <b><tt>bool destroyLock (TRI_doc_collection_t*, TRI_voc_did_t, TRI_voc_rid_t, TRI_doc_update_policy_e)</tt></b>
+/// @FUN{TRI_doc_collection_info_t* figures (TRI_doc_collection_t*)}
+////////////////////////////////////////////////////////////////////
 ///
-/// Deletes an existing document of the collection and returns @c true in case
-/// of success. Otherwise, @c false is returned and the "TRI_errno()" is
-/// accordingly. The function will acquire and release a write lock.
-///
-/// <b><tt>TRI_doc_collection_info_t* figures (TRI_doc_collection_t*)</tt></b>
-///
-/// Returns informatiom about the collection. You must hold a read lock and
-/// must destroy the result after usage.
+/// Returns informatiom about the collection. You must hold a read lock and must
+/// destroy the result after usage.
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_doc_collection_s {
@@ -257,14 +262,14 @@ typedef struct TRI_doc_collection_s {
   void (*createHeader) (struct TRI_doc_collection_s*, TRI_datafile_t*, TRI_df_marker_t const*, size_t, TRI_doc_mptr_t*, void const* data);
   void (*updateHeader) (struct TRI_doc_collection_s*, TRI_datafile_t*, TRI_df_marker_t const*, size_t, TRI_doc_mptr_t const*, TRI_doc_mptr_t*);
 
-  TRI_doc_mptr_t const* (*create) (struct TRI_doc_collection_s*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*, bool release);
-  TRI_doc_mptr_t const* (*createJson) (struct TRI_doc_collection_s*, TRI_df_marker_type_e, TRI_json_t const*, void const*, bool release);
+  TRI_doc_mptr_t const (*create) (struct TRI_doc_collection_s*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*, bool release);
+  TRI_doc_mptr_t const (*createJson) (struct TRI_doc_collection_s*, TRI_df_marker_type_e, TRI_json_t const*, void const*, bool release);
   TRI_voc_did_t (*createLock) (struct TRI_doc_collection_s*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*);
 
-  TRI_doc_mptr_t const* (*read) (struct TRI_doc_collection_s*, TRI_voc_did_t);
+  TRI_doc_mptr_t const (*read) (struct TRI_doc_collection_s*, TRI_voc_did_t);
 
-  TRI_doc_mptr_t const* (*update) (struct TRI_doc_collection_s*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool release);
-  TRI_doc_mptr_t const* (*updateJson) (struct TRI_doc_collection_s*, TRI_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool release);
+  TRI_doc_mptr_t const (*update) (struct TRI_doc_collection_s*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool release);
+  TRI_doc_mptr_t const (*updateJson) (struct TRI_doc_collection_s*, TRI_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool release);
   bool (*updateLock) (struct TRI_doc_collection_s*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e);
 
   bool (*destroy) (struct TRI_doc_collection_s* collection, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool release);

@@ -49,6 +49,7 @@
 namespace triagens {
   namespace httpclient {
     class SimpleHttpClient;
+    class SimpleHttpResult;
   }
 }
 
@@ -104,19 +105,78 @@ namespace triagens {
         return _version;
       }
 
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief do a "GET" request
+      ///
+      /// @param string location                     the request location
+      /// @param map<string, string> headerFields    additional header fields
+      ///
+      /// @return v8::Value                          a V8 JavaScript object
+      ////////////////////////////////////////////////////////////////////////////////
+
       v8::Handle<v8::Value> getData (std::string const& location, map<string, string> const& headerFields);
+
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief do a "DELETE" request
+      ///
+      /// @param string location                     the request location
+      /// @param map<string, string> headerFields    additional header fields
+      ///
+      /// @return v8::Value                          a V8 JavaScript object
+      ////////////////////////////////////////////////////////////////////////////////
 
       v8::Handle<v8::Value> deleteData (std::string const& location, map<string, string> const& headerFields);
 
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief do a "HEAD" request
+      ///
+      /// @param string location                     the request location
+      /// @param map<string, string> headerFields    additional header fields
+      ///
+      /// @return v8::Value                          a V8 JavaScript object
+      ////////////////////////////////////////////////////////////////////////////////
+
       v8::Handle<v8::Value> headData (std::string const& location, map<string, string> const& headerFields);
       
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief do a "POST" request
+      ///
+      /// @param string location                     the request location
+      /// @param string body                         the request body
+      /// @param map<string, string> headerFields    additional header fields
+      ///
+      /// @return v8::Value                          a V8 JavaScript object
+      ////////////////////////////////////////////////////////////////////////////////
+
       v8::Handle<v8::Value> postData (std::string const& location, std::string const& body, map<string, string> const& headerFields);
 
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief do a "PUT" request
+      ///
+      /// @param string location                     the request location
+      /// @param string body                         the request body
+      /// @param map<string, string> headerFields    additional header fields
+      ///
+      /// @return v8::Value                          a V8 JavaScript object
+      ////////////////////////////////////////////////////////////////////////////////
+
       v8::Handle<v8::Value> putData (std::string const& location, std::string const& body, map<string, string> const& headerFields);
+
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief get the last http return code
+      ///
+      /// @return int          the code
+      ////////////////////////////////////////////////////////////////////////////////
 
       int getLastHttpReturnCode () {
         return _lastHttpReturnCode;
       }
+
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief get the last error message
+      ///
+      /// @return string          the error message
+      ////////////////////////////////////////////////////////////////////////////////
 
       const std::string& getErrorMessage () {
         return _lastErrorMessage;
@@ -137,10 +197,10 @@ namespace triagens {
       ////////////////////////////////////////////////////////////////////////////////
       
       int getPort ();
-      
+
     private:
       
-      v8::Handle<v8::Value> sendData (int method, std::string const& location, std::string const& body, map<string, string> const& headerFields);
+      v8::Handle<v8::Value> requestData (int method, std::string const& location, std::string const& body, map<string, string> const& headerFields);
       
     private:
       std::string _version;
@@ -149,7 +209,9 @@ namespace triagens {
       int _lastHttpReturnCode;
       std::string _lastErrorMessage;
       
-      triagens::httpclient::SimpleHttpClient* _client;      
+      triagens::httpclient::SimpleHttpClient* _client;
+      
+      triagens::httpclient::SimpleHttpResult* _httpResult;
     };
   }
 }
