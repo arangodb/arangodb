@@ -1400,6 +1400,7 @@ static TRI_json_t* ConvertHelper(v8::Handle<v8::Value> parameter) {
         TRI_json_t* result = ConvertHelper(item);
         if (result) {
           TRI_PushBack2ListJson(listJson, result);
+          TRI_Free(result);
         }
       }
     }
@@ -1416,6 +1417,7 @@ static TRI_json_t* ConvertHelper(v8::Handle<v8::Value> parameter) {
         TRI_json_t* result = ConvertHelper(item);
         if (result) {
           TRI_Insert2ArrayJson(arrayJson, TRI_ObjectToString(key).c_str(), result);
+          TRI_Free(result);
         }
       }
     }
@@ -1544,7 +1546,6 @@ static v8::Handle<v8::Value> JS_StatementAql (v8::Arguments const& argv) {
     parameters = ConvertHelper(argv[1]);
   }
   
-  // TODO: properly free parameters
   instance = TRI_CreateQueryInstance(template_, parameters);
   if (!instance) {
     if (parameters) {
@@ -3078,7 +3079,7 @@ static v8::Handle<v8::Value> JS_DeleteVocbaseCol (v8::Arguments const& argv) {
   // inside a write transaction
   // .............................................................................
 
-  bool ok = collection->destroyLock(collection, did, 0, TRI_DOC_UPDATE_LAST_WRITE);
+  bool ok = collection->destroyLock(collection, did, 0, 0, TRI_DOC_UPDATE_LAST_WRITE);
 
   // .............................................................................
   // outside a write transaction
@@ -4164,7 +4165,7 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
   // inside a write transaction
   // .............................................................................
 
-  bool ok = collection->updateLock(collection, shaped, did, 0, TRI_DOC_UPDATE_LAST_WRITE);
+  bool ok = collection->updateLock(collection, shaped, did, 0, 0, TRI_DOC_UPDATE_LAST_WRITE);
 
   // .............................................................................
   // outside a write transaction
@@ -4348,7 +4349,7 @@ static v8::Handle<v8::Value> JS_ReplaceEdgesCol (v8::Arguments const& argv) {
   // inside a write transaction
   // .............................................................................
 
-  bool ok = collection->updateLock(collection, shaped, did, 0, TRI_DOC_UPDATE_LAST_WRITE);
+  bool ok = collection->updateLock(collection, shaped, did, 0, 0, TRI_DOC_UPDATE_LAST_WRITE);
 
   // .............................................................................
   // outside a write transaction

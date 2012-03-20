@@ -125,7 +125,8 @@ describe AvocadoDB do
 
 	# get document, if-none-match with same rev
 	cmd = "/document/#{did}"
-        doc = AvocadoDB.get(cmd, :headers => { "if-none-match" => "\"#{rev}\"" })
+	hdr = { "if-none-match" => "\"#{rev}\"" }
+        doc = AvocadoDB.get(cmd, :headers => hdr)
 
 	doc.code.should eq(304)
 
@@ -134,11 +135,12 @@ describe AvocadoDB do
 
 	etag.should eq("\"#{rev}\"")
 
-	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "rest_read-document-if-none-match")
+	AvocadoDB.log(:method => :get, :url => cmd, :headers => hdr, :result => doc, :output => "rest_read-document-if-none-match")
 
 	# get document, if-none-match with different rev
 	cmd = "/document/#{did}"
-        doc = AvocadoDB.get(cmd, :headers => { "if-none-match" => "\"#{rev-1}\"" })
+	hdr = { "if-none-match" => "\"#{rev-1}\"" }
+        doc = AvocadoDB.get(cmd, :headers => hdr)
 
 	doc.code.should eq(200)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -161,11 +163,12 @@ describe AvocadoDB do
 
 	etag.should eq("\"#{rev}\"")
 
-	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "rest_read-document-if-none-match-other")
+	AvocadoDB.log(:method => :get, :url => cmd, :headers => hdr, :result => doc, :output => "rest_read-document-if-none-match-other")
 
 	# get document, if-match with same rev
 	cmd = "/document/#{did}"
-        doc = AvocadoDB.get(cmd, :headers => { "if-match" => "\"#{rev}\"" })
+	hdr = { "if-match" => "\"#{rev}\"" }
+        doc = AvocadoDB.get(cmd, :headers => hdr)
 
 	doc.code.should eq(200)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -183,15 +186,17 @@ describe AvocadoDB do
 
 	etag.should eq("\"#{rev}\"")
 
-	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "rest_read-document-if-match")
+	AvocadoDB.log(:method => :get, :url => cmd, :headers => hdr, :result => doc, :output => "rest_read-document-if-match")
 
 	# get document, if-match with different rev
 	cmd = "/document/#{did}"
-        doc = AvocadoDB.get(cmd, :headers => { "if-match" => "\"#{rev-1}\"" })
+	hdr = { "if-match" => "\"#{rev-1}\"" }
+        doc = AvocadoDB.get(cmd, :headers => hdr)
 
 	doc.code.should eq(412)
+	doc.headers['content-length'].should eq(0)
 
-	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "rest_read-document-if-match-other")
+	AvocadoDB.log(:method => :get, :url => cmd, :headers => hdr, :result => doc, :output => "rest_read-document-if-match-other")
 
 	AvocadoDB.delete(location)
       end

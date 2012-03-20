@@ -1094,7 +1094,7 @@ bool TRI_RemoveElementSkipList (TRI_skiplist_t* skiplist, void* element, void* o
       // Use the callback to determine if the element is less or greater than
       // the next node element.
       // .......................................................................    
-      compareResult = skiplist->compareElementElement(skiplist,element,&(nextNode->_element), 0);   
+      compareResult = skiplist->compareElementElement(skiplist,element,&(nextNode->_element), -1);   
       
       // .......................................................................    
       // We have found the item!
@@ -1354,6 +1354,7 @@ void TRI_InitSkipListMulti (TRI_skiplist_multi_t* skiplist,
                             size_t elementSize,
                             int (*compareElementElement) (TRI_skiplist_multi_t*, void*, void*, int),
                             int (*compareKeyElement) (TRI_skiplist_multi_t*, void*, void*, int),
+                            bool (*equalElementElement) (TRI_skiplist_multi_t*, void*, void*),
                             TRI_skiplist_prob_e probability,
                             uint32_t maximumHeight) {
 
@@ -1367,6 +1368,7 @@ void TRI_InitSkipListMulti (TRI_skiplist_multi_t* skiplist,
   
   skiplist->compareElementElement = compareElementElement;
   skiplist->compareKeyElement     = compareKeyElement;
+  skiplist->equalElementElement   = equalElementElement;
 
   // ..........................................................................  
   // Assign the maximum height of the skip list. This maximum height must be
@@ -1827,6 +1829,10 @@ bool TRI_InsertElementSkipListMulti(TRI_skiplist_multi_t* skiplist, void* elemen
       // We do not allow non-unique elements.
       // .......................................................................    
       if (compareResult == 0) {
+        /* start oreste: */
+        assert(false);
+        /* end oreste: */
+        
         if (overwrite) {
          memcpy(&(nextNode->_element),element,skiplist->_base._elementSize);
          TRI_FreeSkipListNode(&(skiplist->_base), newNode);
@@ -1878,7 +1884,6 @@ bool TRI_InsertElementSkipListMulti(TRI_skiplist_multi_t* skiplist, void* elemen
   // SKIPLIST_ABSOLUTE_MAX_HEIGHT number of elements.
   // ..........................................................................
   
-  
   for (j = 0; j < newHeight; ++j) {
     tempLeftNode  = newNode->_column[j]._prev;
     tempRightNode = tempLeftNode->_column[j]._next;
@@ -1897,6 +1902,7 @@ bool TRI_InsertElementSkipListMulti(TRI_skiplist_multi_t* skiplist, void* elemen
       */
   }  
 
+  
   return true;
 }
 
@@ -2026,12 +2032,12 @@ bool TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist, void* eleme
       // Use the callback to determine if the element is less or greater than
       // the next node element.
       // .......................................................................    
-      compareResult = skiplist->compareElementElement(skiplist,element,&(nextNode->_element), -1);   
+      compareResult = skiplist->compareElementElement(skiplist,element,&(nextNode->_element), TRI_SKIPLIST_COMPARE_SLIGHTLY_LESS);   
       
       // .......................................................................    
       // We have found an item which matches the key
       // .......................................................................    
-      if (compareResult == 0) {
+      if (compareResult == TRI_SKIPLIST_COMPARE_STRICTLY_EQUAL) {
         currentNode = nextNode;
         goto END;
       }
@@ -2051,7 +2057,23 @@ bool TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist, void* eleme
       // We have reached the lowest level of the lists -- no such item.
       // .......................................................................    
       if (currentLevel == 0) {
-        return false;
+      
+        // .....................................................................
+        // The element could not be located        
+        // .....................................................................
+        if (compareResult == TRI_SKIPLIST_COMPARE_STRICTLY_LESS) {
+          return false;
+        }
+        
+        // .....................................................................
+        // The element could be located and we are at the lowest level
+        // .....................................................................
+        if (compareResult == TRI_SKIPLIST_COMPARE_SLIGHTLY_LESS) {
+          goto END;
+        }
+        
+        // can not occur
+        assert(false);
       }
       
       // .......................................................................    
@@ -2066,16 +2088,41 @@ bool TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist, void* eleme
     
   END:
   
+  // ..........................................................................
+  // locate the correct elemet -- since we allow duplicates
+  // ..........................................................................
   
+  while (currentNode != NULL) {
+    if (skiplist->equalElementElement(skiplist, element, &(currentNode->_element))) {
+      break;
+    }
+    currentNode = TRI_NextNodeBaseSkipList(&(skiplist->_base), currentNode); 
+  }
+  
+  
+  // ..........................................................................
+  // The actual element could not be located - an element with a matching key
+  // may exist, but the same data stored within the element could not be located
+  // ..........................................................................
+  
+  if (currentNode == NULL) {
+    return false;
+  }
 
+  
+  // ..........................................................................
+  // Perhaps the user wants a copy before we destory the data?
+  // ..........................................................................
+  
   if (old != NULL) {
     memcpy(old, &(currentNode->_element), skiplist->_base._elementSize);
   }
-    
+
+  
   // ..........................................................................
-  // remove element 
+  // remove element
   // ..........................................................................
-      
+  
   for (j = 0; j < currentNode->_colLength; ++j) {
     tempLeftNode  = currentNode->_column[j]._prev;
     tempRightNode = currentNode->_column[j]._next;
@@ -2185,16 +2232,14 @@ void* TRI_RightLookupByKeySkipListMulti(TRI_skiplist_multi_t* skiplist, void* ke
       // Use the callback to determine if the element is less or greater than
       // the next node element.
       // .......................................................................    
-      compareResult = skiplist->compareKeyElement(skiplist,key,&(prevNode->_element), 0);   
+      compareResult = skiplist->compareKeyElement(skiplist,key,&(prevNode->_element), 1);   
       
       
       // .......................................................................    
-      // We have found the item!
+      // We have found the item! Not possible since we are searching by key!
       // .......................................................................    
       if (compareResult == 0) {
-        //return &(nextNode->_element);
-        //return currentNode;
-        return prevNode->_column[0]._next;
+        assert(false);
       }
       
       // .......................................................................    

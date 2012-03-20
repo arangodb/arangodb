@@ -143,17 +143,7 @@ void RestVocbaseBaseHandler::generateOk () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates ok message without content
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::generateOk (TRI_voc_cid_t, TRI_voc_did_t, TRI_voc_rid_t rid) {
-  response = new HttpResponse(HttpResponse::NO_CONTENT);
-
-  response->setHeader("ETag", "\"" + StringUtils::itoa(rid) + "\"");
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates created message without content but a location header
+/// @brief generates created message
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateCreated (TRI_voc_cid_t cid, TRI_voc_did_t did, TRI_voc_rid_t rid) {
@@ -177,7 +167,7 @@ void RestVocbaseBaseHandler::generateCreated (TRI_voc_cid_t cid, TRI_voc_did_t d
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates accepted message without content but a location header
+/// @brief generates accepted message
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateAccepted (TRI_voc_cid_t cid, TRI_voc_did_t did, TRI_voc_rid_t rid) {
@@ -191,6 +181,50 @@ void RestVocbaseBaseHandler::generateAccepted (TRI_voc_cid_t cid, TRI_voc_did_t 
   response->setContentType("application/json; charset=utf-8");
   response->setHeader("ETag", "\"" + ridStr + "\"");
   response->setHeader("location", DOCUMENT_PATH + "/" + handle);
+
+  response->body()
+    .appendText("{\"error\":false,\"_id\":\"")
+    .appendText(handle.c_str())
+    .appendText("\",\"_rev\":")
+    .appendInteger(rid)
+    .appendText("}");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates deleted message
+////////////////////////////////////////////////////////////////////////////////
+
+void RestVocbaseBaseHandler::generateDeleted (TRI_voc_cid_t cid, TRI_voc_did_t did, TRI_voc_rid_t rid) {
+  string cidStr = StringUtils::itoa(cid);
+  string didStr = StringUtils::itoa(did);
+  string ridStr = StringUtils::itoa(rid);
+  string handle = cidStr + "/" + didStr;
+
+  response = new HttpResponse(HttpResponse::OK);
+
+  response->setContentType("application/json; charset=utf-8");
+
+  response->body()
+    .appendText("{\"error\":false,\"_id\":\"")
+    .appendText(handle.c_str())
+    .appendText("\",\"_rev\":")
+    .appendInteger(rid)
+    .appendText("}");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates updated message
+////////////////////////////////////////////////////////////////////////////////
+
+void RestVocbaseBaseHandler::generateUpdated (TRI_voc_cid_t cid, TRI_voc_did_t did, TRI_voc_rid_t rid) {
+  string cidStr = StringUtils::itoa(cid);
+  string didStr = StringUtils::itoa(did);
+  string ridStr = StringUtils::itoa(rid);
+  string handle = cidStr + "/" + didStr;
+
+  response = new HttpResponse(HttpResponse::OK);
+
+  response->setContentType("application/json; charset=utf-8");
 
   response->body()
     .appendText("{\"error\":false,\"_id\":\"")
@@ -244,8 +278,16 @@ void RestVocbaseBaseHandler::generateNotImplemented (string const& path) {
 /// @brief generates precondition failed
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generatePreconditionFailed () {
+void RestVocbaseBaseHandler::generatePreconditionFailed (TRI_voc_cid_t cid, TRI_voc_did_t did, TRI_voc_rid_t rid) {
   response = new HttpResponse(HttpResponse::PRECONDITION_FAILED);
+  response->setContentType("application/json; charset=utf-8");
+
+  response->body()
+    .appendText("{\"error\":true,\"_id\":\"")
+    .appendInteger(cid).appendChar(TRI_DOCUMENT_HANDLE_SEPARATOR_CHR).appendInteger(did)
+    .appendText("\",\"_rev\":")
+    .appendInteger(rid)
+    .appendText("}");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -274,37 +316,36 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
   // add document identifier to buffer
   TRI_string_buffer_t buffer;
 
-  if (generateDocument) {
-    string id = StringUtils::itoa(_documentCollection->base._cid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::itoa(document->_did);
+  string id = StringUtils::itoa(_documentCollection->base._cid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::itoa(document->_did);
 
-    TRI_json_t augmented;
+  TRI_json_t augmented;
+  TRI_InitArrayJson(&augmented);
 
-    TRI_InitArrayJson(&augmented);
+  TRI_json_t* _id = TRI_CreateStringCopyJson(id.c_str());
 
-    TRI_json_t* _id = TRI_CreateStringCopyJson(id.c_str());
+  if (_id) {
+    TRI_Insert2ArrayJson(&augmented, "_id", _id);
+  }
 
-    if (_id) {
-      TRI_Insert2ArrayJson(&augmented, "_id", _id);
-    }
+  TRI_json_t* _rev = TRI_CreateNumberJson(document->_rid);
 
-    TRI_json_t* _rev = TRI_CreateNumberJson(document->_rid);
+  if (_rev) {
+    TRI_Insert2ArrayJson(&augmented, "_rev", _rev);
+  }
 
-    if (_rev) {
-      TRI_Insert2ArrayJson(&augmented, "_rev", _rev);
-    }
+  // convert object to string
+  TRI_InitStringBuffer(&buffer);
 
-    // convert object to string
-    TRI_InitStringBuffer(&buffer);
+  TRI_StringifyAugmentedShapedJson(_documentCollection->_shaper, &buffer, &document->_document, &augmented);
 
-    TRI_StringifyAugmentedShapedJson(_documentCollection->_shaper, &buffer, &document->_document, &augmented);
+  TRI_DestroyJson(&augmented);
 
-    TRI_DestroyJson(&augmented);
-    if (_id) {
-      TRI_Free(_id);
-    }
-    if (_rev) {
-      TRI_Free(_rev);
-    }
+  if (_id) {
+    TRI_Free(_id);
+  }
+
+  if (_rev) {
+    TRI_Free(_rev);
   }
 
   // and generate a response
@@ -314,18 +355,21 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
 
   if (generateDocument) {
     response->body().appendText(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
-
-    TRI_AnnihilateStringBuffer(&buffer);
   }
+  else {
+    response->headResponse(TRI_LengthStringBuffer(&buffer));
+  }
+
+  TRI_AnnihilateStringBuffer(&buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the revision
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision () {
+TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (string const& header, string const& parameter) {
   bool found;
-  string etag = request->header("etag", found);
+  string etag = StringUtils::trim(request->header(header, found));
 
   if (found && ! etag.empty() && etag[0] == '"' && etag[etag.length()-1] == '"') {
     return StringUtils::uint64(etag.c_str() + 1, etag.length() - 2);
@@ -334,13 +378,18 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision () {
     return 0;
   }
 
-  etag = request->value("_rev", found);
-
-  if (found) {
-    return StringUtils::uint64(etag.c_str() + 1, etag.length() - 2);
+  if (parameter.empty()) {
+    return 0;
   }
   else {
-    return 0;
+    etag = request->value(parameter, found);
+
+    if (found) {
+      return StringUtils::uint64(etag.c_str() + 1, etag.length() - 2);
+    }
+    else {
+      return 0;
+    }
   }
 }
 
@@ -535,21 +584,6 @@ TRI_doc_mptr_t const* RestVocbaseBaseHandler::findDocument (string const& doc) {
   // .............................................................................
 
   return document;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts an etag field
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_voc_rid_t RestVocbaseBaseHandler::parseEtag (string const& etag) {
-  string trim = StringUtils::trim(etag);
-  size_t len = trim.size();
-
-  if (len < 2 || trim[0] != '"' || trim[len-1] != '"') {
-    return 0;
-  }
-
-  return StringUtils::int64(trim.substr(1, len-2));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -36,8 +36,8 @@
 #include <BasicsC/json.h>
 
 #include "VocBase/vocbase.h"
+#include "VocBase/voc-errors.h"
 #include "VocBase/query-node.h"
-#include "VocBase/query-error.h"
 
 #include "QL/parser.h"
 #include "QL/ast-query.h"

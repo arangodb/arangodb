@@ -28,6 +28,10 @@
 #include "VocBase/query-cursor.h"
 #include "VocBase/query-context.h"
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocBase
 /// @{
@@ -50,6 +54,32 @@ static void RemoveCollectionsQueryCursor (TRI_query_cursor_t* cursor) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief frees the data of a cursor 
+///
+/// This will release any locks on the underlying collection data and might be 
+/// called before the actual cursor is disposed.
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeData (TRI_query_cursor_t* const cursor) {
+  if (cursor->_deleted) {
+    return;
+  }
+
+  cursor->_deleted = true;
+
+  assert(cursor->_functionCode);
+  TRI_Free(cursor->_functionCode);
+
+  // free result set
+  if (cursor->_result._selectResult) {
+    cursor->_result._selectResult->free(cursor->_result._selectResult);
+  }
+
+  // free select
+  RemoveCollectionsQueryCursor(cursor);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the next element 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -60,6 +90,8 @@ static TRI_rc_result_t* NextQueryCursor (TRI_query_cursor_t* const cursor) {
 
     return &cursor->_result;
   }
+
+  FreeData(cursor);
 
   return NULL;
 }
@@ -89,25 +121,31 @@ static uint32_t GetBatchSizeQueryCursor (const TRI_query_cursor_t* const cursor)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief frees a cursor 
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeQueryCursor (TRI_query_cursor_t* cursor) {
-  assert(cursor->_functionCode);
-  TRI_Free(cursor->_functionCode);
-
-  // free result set
-  if (cursor->_result._selectResult) {
-    cursor->_result._selectResult->free(cursor->_result._selectResult);
-  }
+  FreeData(cursor);
   
-  // free select
-  RemoveCollectionsQueryCursor(cursor);
   TRI_DestroyMutex(&cursor->_lock);
   TRI_DestroyVectorPointer(&cursor->_containers);
 
   TRI_Free(cursor);
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a cursor

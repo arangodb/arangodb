@@ -35,7 +35,7 @@
 #include <BasicsC/threads.h>
 #include <BasicsC/vector.h>
 
-#include "VocBase/voc-error.h"
+#include "VocBase/voc-errors.h"
 
 #ifdef __cplusplus
 extern "C" {

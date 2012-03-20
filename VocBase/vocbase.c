@@ -890,44 +890,7 @@ void TRI_InitialiseVocBase () {
 
   TRI_InitSpin(&TickLock);
 
-  // general errors
-  TRI_set_errno_string(TRI_VOC_ERROR_ILLEGAL_STATE, "illegal state");
-  TRI_set_errno_string(TRI_VOC_ERROR_SHAPER_FAILED, "illegal shaper");
-  TRI_set_errno_string(TRI_VOC_ERROR_CORRUPTED_DATAFILE, "corrupted datafile");
-  TRI_set_errno_string(TRI_VOC_ERROR_MMAP_FAILED, "mmap failed");
-  TRI_set_errno_string(TRI_VOC_ERROR_MSYNC_FAILED, "msync failed");
-  TRI_set_errno_string(TRI_VOC_ERROR_NO_JOURNAL, "no journal");
-  TRI_set_errno_string(TRI_VOC_ERROR_DATAFILE_SEALED, "datafile sealed");
-  TRI_set_errno_string(TRI_VOC_ERROR_CORRUPTED_COLLECTION, "corrupted collection");
-  TRI_set_errno_string(TRI_VOC_ERROR_UNKNOWN_TYPE, "unknown type");
-  TRI_set_errno_string(TRI_VOC_ERROR_ILLEGAL_PARAMETER, "illegal paramater");
-  TRI_set_errno_string(TRI_VOC_ERROR_INDEX_EXISTS, "index exists");
-  TRI_set_errno_string(TRI_VOC_ERROR_CONFLICT, "conflict");
-
-  // open errors
-  TRI_set_errno_string(TRI_VOC_ERROR_WRONG_PATH, "wrong path");
-
-  // close errors
-  TRI_set_errno_string(TRI_VOC_ERROR_CANNOT_RENAME, "cannot rename");
-
-  // write errors
-  TRI_set_errno_string(TRI_VOC_ERROR_WRITE_FAILED, "write failed");
-  TRI_set_errno_string(TRI_VOC_ERROR_READ_ONLY, "read only");
-  TRI_set_errno_string(TRI_VOC_ERROR_DATAFILE_FULL, "datafile full");
-  TRI_set_errno_string(TRI_VOC_ERROR_FILESYSTEM_FULL, "filesystem full");
-
-  // read errors
-  TRI_set_errno_string(TRI_VOC_ERROR_READ_FAILED, "read failed");
-  TRI_set_errno_string(TRI_VOC_ERROR_FILE_NOT_FOUND, "file not found");
-  TRI_set_errno_string(TRI_VOC_ERROR_FILE_NOT_ACCESSIBLE, "file not accessible");
-
-  // api errors
-  TRI_set_errno_string(TRI_VOC_ERROR_COLLECTION_EXISTS, "collection already exists");
-  TRI_set_errno_string(TRI_VOC_ERROR_COLLECTION_NOT_FOUND, "collection not found");
-  TRI_set_errno_string(TRI_VOC_ERROR_COLLECTION_PARAMETER_MISSING, "parameter <collection> is missing");
-  TRI_set_errno_string(TRI_VOC_ERROR_DOCUMENT_ALTERED, "document has been altered");
-  TRI_set_errno_string(TRI_VOC_ERROR_DOCUMENT_HANDLE_BAD, "illegal or corrupted document handle");
-  TRI_set_errno_string(TRI_VOC_ERROR_DOCUMENT_NOT_FOUND, "document not found");
+  TRI_InitialiseAvocadoErrors();
 
 #ifdef TRI_READLINE_VERSION
   LOG_TRACE("%s", "$Revision: READLINE " TRI_READLINE_VERSION " $");

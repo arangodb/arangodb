@@ -67,6 +67,7 @@ using namespace triagens::avocado;
 
 #include "js/common/bootstrap/js-modules.h"
 #include "js/common/bootstrap/js-print.h"
+#include "js/common/bootstrap/js-errors.h"
 #include "js/server/js-server.h"
 
 // -----------------------------------------------------------------------------
@@ -397,6 +398,7 @@ void AvocadoServer::buildApplicationServer () {
     LOGGER_INFO << "using built-in JavaScript startup files";
     StartupLoader.defineScript("common/bootstrap/modules.js", JS_common_bootstrap_modules);
     StartupLoader.defineScript("common/bootstrap/print.js", JS_common_bootstrap_print);
+    StartupLoader.defineScript("common/bootstrap/errors.js", JS_common_bootstrap_errors);
     StartupLoader.defineScript("server/server.js", JS_server_server);
   }
   else {
@@ -629,6 +631,7 @@ void AvocadoServer::executeShell () {
   bool ok;
   char const* files[] = { "common/bootstrap/modules.js",
                           "common/bootstrap/print.js",
+                          "common/bootstrap/errors.js",
                           "server/server.js"
   };
   size_t i;
