@@ -890,8 +890,6 @@ void TRI_InitialiseVocBase () {
 
   TRI_InitSpin(&TickLock);
 
-  TRI_InitialiseAvocadoErrors();
-
 #ifdef TRI_READLINE_VERSION
   LOG_TRACE("%s", "$Revision: READLINE " TRI_READLINE_VERSION " $");
 #endif

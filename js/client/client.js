@@ -288,12 +288,7 @@ function AvocadoCollection (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.all = function () {
-  var str = this._database._connection.get("/_api/documents/" + encodeURIComponent(this.name));
-
-  var requestResult = undefined;
-  if (str != undefined) {
-    requestResult = JSON.parse(str);
-  }
+  var requestResult = this._database._connection.get("/_api/documents/" + encodeURIComponent(this.name));
     
   if (isErrorResult(requestResult)) {
     return undefined;
@@ -307,12 +302,7 @@ AvocadoCollection.prototype.all = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.document = function (id) {
-  var str = this._database._connection.get("/_api/document/" + encodeURIComponent(this.name) + "/" + encodeURIComponent(id));
-  
-  var requestResult = undefined;
-  if (str != undefined) {
-    requestResult = JSON.parse(str);
-  }
+  var requestResult = this._database._connection.get("/_api/document/" + encodeURIComponent(this.name) + "/" + encodeURIComponent(id));
 
   if (isErrorResult(requestResult)) {
     return undefined;
@@ -326,12 +316,7 @@ AvocadoCollection.prototype.document = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.save = function (data) {    
-  var str = this._database._connection.post("/_api/document/" + encodeURIComponent(this.name), JSON.stringify(data));
-  
-  var requestResult = undefined;
-  if (str != undefined) {
-    requestResult = JSON.parse(str);
-  }
+  var requestResult = this._database._connection.post("/_api/document/" + encodeURIComponent(this.name), JSON.stringify(data));
   
   if (isErrorResult(requestResult)) {
     return undefined;
@@ -345,12 +330,7 @@ AvocadoCollection.prototype.save = function (data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.delete = function (id) {    
-  var str = this._database._connection.delete("/_api/document/" + encodeURIComponent(this.name) + "/" + encodeURIComponent(id));
-  
-  var requestResult = undefined;
-  if (str != undefined) {
-    requestResult = JSON.parse(str);
-  }
+  var requestResult = this._database._connection.delete("/_api/document/" + encodeURIComponent(this.name) + "/" + encodeURIComponent(id));
 
   return !isErrorResult(requestResult);
 }
@@ -360,12 +340,7 @@ AvocadoCollection.prototype.delete = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.update = function (id, data) {    
-  var str = this._database._connection.put("/_api/document/" + encodeURIComponent(this.name) + "/" + encodeURIComponent(id), JSON.stringify(data));
-  
-  var requestResult = undefined;
-  if (str != undefined) {
-    requestResult = JSON.parse(str);
-  }
+  var requestResult = this._database._connection.put("/_api/document/" + encodeURIComponent(this.name) + "/" + encodeURIComponent(id), JSON.stringify(data));
 
   return !isErrorResult(requestResult);
 }
@@ -449,11 +424,7 @@ AvocadoQueryCursor.prototype.next = function () {
       this._hasMore = false;
       
       // load more results      
-      var str = this._database._connection.put("/_api/cursor/"+ encodeURIComponent(this.data._id),  "");
-      var requestResult = undefined;
-      if (str != undefined) {
-        requestResult = JSON.parse(str);
-      }
+      var requestResult = this._database._connection.put("/_api/cursor/"+ encodeURIComponent(this.data._id),  "");
     
       if (isErrorResult(requestResult)) {
         return undefined;
@@ -507,11 +478,7 @@ AvocadoQueryCursor.prototype.dispose = function () {
     return;
   }
 
-  var str = this._database._connection.delete("/_api/cursor/"+ encodeURIComponent(this.data._id), "");
-  var requestResult = undefined;
-  if (str != undefined) {
-    requestResult = JSON.parse(str);
-  }
+  var requestResult = this._database._connection.delete("/_api/cursor/"+ encodeURIComponent(this.data._id), "");
     
   if (!isErrorResult(requestResult)) {
     this.data._id = undefined;
@@ -569,12 +536,7 @@ function AvocadoDatabase (connection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoDatabase.prototype._collections = function () {
-  var str = this._connection.get("/_api/collections");
-  
-  var requestResult = undefined;
-  if (str != undefined) {
-    requestResult = JSON.parse(str);
-  }
+  var requestResult = this._connection.get("/_api/collections");
   
   if (isErrorResult(requestResult)) {
     return undefined;
@@ -598,12 +560,7 @@ AvocadoDatabase.prototype._collections = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoDatabase.prototype._collection = function (id) {
-  var str = this._connection.get("/_api/collection/" + encodeURIComponent(id));
-  
-  var requestResult = undefined;
-  if (str != undefined) {
-    requestResult = JSON.parse(str);
-  }
+  var requestResult = this._connection.get("/_api/collection/" + encodeURIComponent(id));
   
   if (isErrorResult(requestResult)) {
     return undefined;
@@ -864,11 +821,7 @@ AvocadoStoredStatement.prototype.execute = function () {
     body["batchSize"] = this._batchSize;
   }
   
-  var str = this._database._connection.post("/_api/cursor", JSON.stringify(body));
-  var requestResult = undefined;
-  if (str != undefined) {
-    requestResult = JSON.parse(str);
-  }
+  var requestResult = this._database._connection.post("/_api/cursor", JSON.stringify(body));
     
   if (isErrorResult(requestResult)) {
     return undefined;
@@ -1051,11 +1004,7 @@ AvocadoStatement.prototype.parse = function () {
     "query" : this._query,
   }
 
-  var str = this._database._connection.post("/_api/query", JSON.stringify(body));
-  var requestResult = undefined;
-  if (str != undefined) {
-    requestResult = JSON.parse(str);
-  }
+  var requestResult = this._database._connection.post("/_api/query", JSON.stringify(body));
     
   if (isErrorResult(requestResult)) {
     return undefined;
@@ -1083,12 +1032,7 @@ AvocadoStatement.prototype.execute = function () {
     body["batchSize"] = this._batchSize;
   }
 
-  var str = this._database._connection.post("/_api/cursor", JSON.stringify(body));
-
-  var requestResult = undefined;
-  if (str != undefined) {
-    requestResult = JSON.parse(str);
-  }
+  var requestResult = this._database._connection.post("/_api/cursor", JSON.stringify(body));
     
   if (isErrorResult(requestResult)) {
     return undefined;

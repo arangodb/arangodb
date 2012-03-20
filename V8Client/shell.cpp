@@ -743,7 +743,6 @@ static v8::Handle<v8::Value> ClientConnection_getVersion(v8::Arguments const& ar
 
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup V8Shell
 /// @{

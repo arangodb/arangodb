@@ -186,6 +186,20 @@ void RestBaseHandler::generateResult (VariantObject* result) {
 /// @brief generates an error
 ////////////////////////////////////////////////////////////////////////////////
 
+void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int errorCode) {
+  char* message = TRI_get_errno_string(errorCode);
+  if (message) {
+    generateError(code, errorCode, string(message));
+  }
+  else {
+    generateError(code, errorCode, string("unknown error"));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates an error
+////////////////////////////////////////////////////////////////////////////////
+
 void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int errorCode, string const& message) {
   response = new HttpResponse(code);
 

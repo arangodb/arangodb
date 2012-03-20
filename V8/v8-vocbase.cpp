@@ -2099,9 +2099,11 @@ static v8::Handle<v8::Object> WrapSLOperator (TRI_sl_operator_t* slOperator) {
   return operatorObject;
 }
 
+/* unused
 static TRI_sl_operator_t* UnwrapSLOperator (v8::Handle<v8::Object> operatorObject) {
   return UnwrapClass<TRI_sl_operator_t>(operatorObject, WRP_SL_OPERATOR_TYPE);
 }
+*/
 
 
 static TRI_json_t* parametersToJson(v8::Arguments const& argv, int startPos, int endPos) {

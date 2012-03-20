@@ -15,8 +15,8 @@
 #include <BasicsC/common.h>
 #include <BasicsC/conversions.h>
 #include <BasicsC/strings.h>
+#include <BasicsC/voc-errors.h>
 
-#include "VocBase/voc-errors.h"
 #include "VocBase/query-node.h"
 #include "VocBase/query-base.h"
 #include "VocBase/query-parse.h"
