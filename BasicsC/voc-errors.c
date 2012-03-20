@@ -1,0 +1,101 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief auto-generated file generated from errors.dat
+////////////////////////////////////////////////////////////////////////////////
+
+#include <BasicsC/common.h>
+#include "BasicsC/voc-errors.h"
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocError
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitialiseErrorMessages (void) {
+  REG_ERROR(ERROR_NO_ERROR, "no error");
+  REG_ERROR(ERROR_FAILED, "failed");
+  REG_ERROR(ERROR_SYS_ERROR, "system error");
+  REG_ERROR(ERROR_OUT_OF_MEMORY, "out of memory");
+  REG_ERROR(ERROR_INTERNAL, "internal error");
+  REG_ERROR(ERROR_ILLEGAL_NUMBER, "illegal number");
+  REG_ERROR(ERROR_NUMERIC_OVERFLOW, "numeric overflow");
+  REG_ERROR(ERROR_ILLEGAL_OPTION, "illegal option");
+  REG_ERROR(ERROR_DEAD_PID, "dead process identifier");
+  REG_ERROR(ERROR_OPEN_ERROR, "open/create file failed");
+  REG_ERROR(ERROR_WRITE_ERROR, "write failed");
+  REG_ERROR(ERROR_LOCK_ERROR, "lock failed");
+  REG_ERROR(ERROR_UNLOCKED_FILE, "unlock failed");
+  REG_ERROR(VOC_ERROR_ILLEGAL_STATE, "illegal state");
+  REG_ERROR(VOC_ERROR_SHAPER_FAILED, "illegal shaper");
+  REG_ERROR(VOC_ERROR_CORRUPTED_DATAFILE, "corrupted datafile");
+  REG_ERROR(VOC_ERROR_MMAP_FAILED, "mmap failed");
+  REG_ERROR(VOC_ERROR_MSYNC_FAILED, "msync failed");
+  REG_ERROR(VOC_ERROR_NO_JOURNAL, "no journal");
+  REG_ERROR(VOC_ERROR_DATAFILE_SEALED, "datafile sealed");
+  REG_ERROR(VOC_ERROR_CORRUPTED_COLLECTION, "corrupted collection");
+  REG_ERROR(VOC_ERROR_UNKNOWN_TYPE, "unknown type");
+  REG_ERROR(VOC_ERROR_ILLEGAL_PARAMETER, "illegal parameter");
+  REG_ERROR(VOC_ERROR_INDEX_EXISTS, "index exists");
+  REG_ERROR(VOC_ERROR_CONFLICT, "conflict");
+  REG_ERROR(VOC_ERROR_WRONG_PATH, "wrong path");
+  REG_ERROR(VOC_ERROR_CANNOT_RENAME, "cannot rename");
+  REG_ERROR(VOC_ERROR_WRITE_FAILED, "write failed");
+  REG_ERROR(VOC_ERROR_READ_ONLY, "ready only");
+  REG_ERROR(VOC_ERROR_DATAFILE_FULL, "datafile full");
+  REG_ERROR(VOC_ERROR_FILESYSTEM_FULL, "filesystem full");
+  REG_ERROR(VOC_ERROR_READ_FAILED, "read failed");
+  REG_ERROR(VOC_ERROR_FILE_NOT_FOUND, "file not found");
+  REG_ERROR(VOC_ERROR_FILE_NOT_ACCESSIBLE, "file not accessible");
+  REG_ERROR(VOC_ERROR_DOCUMENT_NOT_FOUND, "document not found");
+  REG_ERROR(VOC_ERROR_COLLECTION_NOT_FOUND, "collection not found");
+  REG_ERROR(VOC_ERROR_COLLECTION_PARAMETER_MISSING, "parameter collection not found");
+  REG_ERROR(VOC_ERROR_DOCUMENT_ALTERED, "document altered");
+  REG_ERROR(VOC_ERROR_DOCUMENT_HANDLE_BAD, "illegal document handle");
+  REG_ERROR(VOC_ERROR_COLLECTION_EXISTS, "collection already exists");
+  REG_ERROR(ERROR_QUERY_OOM, "out of memory");
+  REG_ERROR(ERROR_QUERY_KILLED, "query killed");
+  REG_ERROR(ERROR_QUERY_PARSE, "parse error: %s");
+  REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");
+  REG_ERROR(ERROR_QUERY_SPECIFICATION_INVALID, "query specification invalid");
+  REG_ERROR(ERROR_QUERY_NUMBER_OUT_OF_RANGE, "number '%s' is out of range");
+  REG_ERROR(ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE, "limit value '%s' is out of range");
+  REG_ERROR(ERROR_QUERY_TOO_MANY_JOINS, "too many joins.");
+  REG_ERROR(ERROR_QUERY_COLLECTION_NAME_INVALID, "collection name '%s' is invalid");
+  REG_ERROR(ERROR_QUERY_COLLECTION_ALIAS_INVALID, "collection alias '%s' is invalid");
+  REG_ERROR(ERROR_QUERY_COLLECTION_ALIAS_REDECLARED, "collection alias '%s' is declared multiple times in the same query");
+  REG_ERROR(ERROR_QUERY_COLLECTION_ALIAS_UNDECLARED, "collection alias '%s' is used but was not declared in the from clause");
+  REG_ERROR(ERROR_QUERY_COLLECTION_NOT_FOUND, "unable to open collection '%s'");
+  REG_ERROR(ERROR_QUERY_GEO_RESTRICTION_INVALID, "geo restriction for alias '%s' is invalid");
+  REG_ERROR(ERROR_QUERY_GEO_INDEX_MISSING, "no suitable geo index found for geo restriction on '%s'");
+  REG_ERROR(ERROR_QUERY_BIND_PARAMETER_MISSING, "no value specified for declared bind parameter '%s'");
+  REG_ERROR(ERROR_QUERY_BIND_PARAMETER_REDECLARED, "value for bind parameter '%s' is declared multiple times");
+  REG_ERROR(ERROR_QUERY_BIND_PARAMETER_UNDECLARED, "bind parameter '%s' was not declared in the query");
+  REG_ERROR(ERROR_QUERY_BIND_PARAMETER_VALUE_INVALID, "invalid value for bind parameter '%s'");
+  REG_ERROR(ERROR_QUERY_BIND_PARAMETER_NUMBER_OUT_OF_RANGE, "bind parameter number '%s' out of range");
+  REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
+  REG_ERROR(ERROR_SESSION_USERHANDLER_URL_INVALID, "expecting <prefix>/user/<username>");
+  REG_ERROR(ERROR_SESSION_USERHANDLER_CANNOT_CREATE_USER, "cannot create user");
+  REG_ERROR(ERROR_SESSION_USERHANDLER_ROLE_NOT_FOUND, "role not found");
+  REG_ERROR(ERROR_SESSION_USERHANDLER_NO_CREATE_PERMISSION, "no permission to create user with that role");
+  REG_ERROR(ERROR_SESSION_USERHANDLER_USER_NOT_FOUND, "user not found");
+  REG_ERROR(ERROR_SESSION_USERHANDLER_CANNOT_CHANGE_PW, "cannot manage password for user");
+  REG_ERROR(ERROR_SESSION_SESSIONHANDLER_URL_INVALID1, "expecting POST <prefix>/session");
+  REG_ERROR(ERROR_SESSION_SESSIONHANDLER_URL_INVALID2, "expecting GET <prefix>/session/<sid>");
+  REG_ERROR(ERROR_SESSION_SESSIONHANDLER_URL_INVALID3, "expecting PUT <prefix>/session/<sid>/<method>");
+  REG_ERROR(ERROR_SESSION_SESSIONHANDLER_URL_INVALID4, "expecting DELETE <prefix>/session/<sid>");
+  REG_ERROR(ERROR_SESSION_SESSIONHANDLER_SESSION_UNKNOWN, "unknown session");
+  REG_ERROR(ERROR_SESSION_SESSIONHANDLER_SESSION_NOT_BOUND, "session has not bound to user");
+  REG_ERROR(ERROR_SESSION_SESSIONHANDLER_CANNOT_LOGIN, "cannot login with session");
+  REG_ERROR(ERROR_SESSION_USERSHANDLER_INVALID_URL, "expecting GET <prefix>/users");
+  REG_ERROR(ERROR_SESSION_DIRECTORYSERVER_INVALID_URL, "expecting /directory/sessionvoc/<token>");
+  REG_ERROR(ERROR_SESSION_DIRECTORYSERVER_NOT_CONFIGURED, "directory server is not configured");
+  REG_ERROR(SIMPLE_CLIENT_UNKNOWN_ERROR, "unknown client error");
+  REG_ERROR(SIMPLE_CLIENT_COULD_NOT_CONNECT, "could not connect to server");
+  REG_ERROR(SIMPLE_CLIENT_COULD_NOT_WRITE, "could not write to server");
+  REG_ERROR(SIMPLE_CLIENT_COULD_NOT_READ, "could not read from server");
+  REG_ERROR(ERROR_PROTOCOL_UNSUPPORTED_METHOD, "method not supported");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
