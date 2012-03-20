@@ -155,7 +155,7 @@ extern "C" {
 /// - 1600: @CODE{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
-/// - 1700: @CODE{expecting <prefix>/user/<username>}
+/// - 1700: @CODE{expecting \<prefix\>/user/\<username\>}
 ///   TODO
 /// - 1701: @CODE{cannot create user}
 ///   TODO
@@ -167,13 +167,13 @@ extern "C" {
 ///   TODO
 /// - 1705: @CODE{cannot manage password for user}
 ///   TODO
-/// - 1706: @CODE{expecting POST <prefix>/session}
+/// - 1706: @CODE{expecting POST \<prefix\>/session}
 ///   TODO
-/// - 1707: @CODE{expecting GET <prefix>/session/<sid>}
+/// - 1707: @CODE{expecting GET \<prefix\>/session/\<sid\>}
 ///   TODO
-/// - 1708: @CODE{expecting PUT <prefix>/session/<sid>/<method>}
+/// - 1708: @CODE{expecting PUT \<prefix\>/session/\<sid\>/\<method\>}
 ///   TODO
-/// - 1709: @CODE{expecting DELETE <prefix>/session/<sid>}
+/// - 1709: @CODE{expecting DELETE \<prefix\>/session/\<sid\>}
 ///   TODO
 /// - 1710: @CODE{unknown session}
 ///   TODO
@@ -181,9 +181,9 @@ extern "C" {
 ///   TODO
 /// - 1712: @CODE{cannot login with session}
 ///   TODO
-/// - 1713: @CODE{expecting GET <prefix>/users}
+/// - 1713: @CODE{expecting GET \<prefix\>/users}
 ///   TODO
-/// - 1714: @CODE{expecting /directory/sessionvoc/<token>}
+/// - 1714: @CODE{expecting /directory/sessionvoc/\<token\>}
 ///   TODO
 /// - 1715: @CODE{directory server is not configured}
 ///   TODO
@@ -846,7 +846,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1700: ERROR_SESSION_USERHANDLER_URL_INVALID
 ///
-/// expecting <prefix>/user/<username>
+/// expecting \<prefix\>/user/\<username\>
 ///
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
@@ -906,7 +906,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1706: ERROR_SESSION_SESSIONHANDLER_URL_INVALID1
 ///
-/// expecting POST <prefix>/session
+/// expecting POST \<prefix\>/session
 ///
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
@@ -916,7 +916,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1707: ERROR_SESSION_SESSIONHANDLER_URL_INVALID2
 ///
-/// expecting GET <prefix>/session/<sid>
+/// expecting GET \<prefix\>/session/\<sid\>
 ///
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
@@ -926,7 +926,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1708: ERROR_SESSION_SESSIONHANDLER_URL_INVALID3
 ///
-/// expecting PUT <prefix>/session/<sid>/<method>
+/// expecting PUT \<prefix\>/session/\<sid\>/\<method\>
 ///
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
@@ -936,7 +936,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1709: ERROR_SESSION_SESSIONHANDLER_URL_INVALID4
 ///
-/// expecting DELETE <prefix>/session/<sid>
+/// expecting DELETE \<prefix\>/session/\<sid\>
 ///
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
@@ -976,7 +976,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1713: ERROR_SESSION_USERSHANDLER_INVALID_URL
 ///
-/// expecting GET <prefix>/users
+/// expecting GET \<prefix\>/users
 ///
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
@@ -986,7 +986,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1714: ERROR_SESSION_DIRECTORYSERVER_INVALID_URL
 ///
-/// expecting /directory/sessionvoc/<token>
+/// expecting /directory/sessionvoc/\<token\>
 ///
 /// TODO
 ////////////////////////////////////////////////////////////////////////////////
