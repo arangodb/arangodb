@@ -427,6 +427,9 @@ bool RestVocbaseBaseHandler::findCollection (string const& name, bool create) {
   _collection = 0;
 
   if (name.empty()) {
+    generateError(HttpResponse::BAD, 
+                  TRI_REST_ERROR_CORRUPTED_JSON,
+                  "collection identifier is empty");
     return false;
   }
 
@@ -557,9 +560,12 @@ TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
 /// @brief sets the restult-set, needs a loaded collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t const* RestVocbaseBaseHandler::findDocument (string const& doc) {
+TRI_doc_mptr_t const RestVocbaseBaseHandler::findDocument (string const& doc) {
+  TRI_doc_mptr_t document;
+
   if (_documentCollection == 0) {
-    return 0;
+    document._did = 0;
+    return document;
   }
 
   uint32_t id = StringUtils::uint32(doc);
@@ -570,7 +576,7 @@ TRI_doc_mptr_t const* RestVocbaseBaseHandler::findDocument (string const& doc) {
 
   _documentCollection->beginRead(_documentCollection);
 
-  TRI_doc_mptr_t const* document = _documentCollection->read(_documentCollection, id);
+  document = _documentCollection->read(_documentCollection, id);
 
   // keep the oldest barrier
   if (_barrier != 0) {

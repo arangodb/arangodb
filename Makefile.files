@@ -216,6 +216,7 @@ avocsh_SOURCES = \
 ################################################################################
 
 JAVASCRIPT_HEADER = \
+	js/common/bootstrap/js-errors.h \
 	js/common/bootstrap/js-modules.h \
 	js/common/bootstrap/js-print.h \
 	js/common/bootstrap/js-errors.h \

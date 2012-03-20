@@ -87,13 +87,12 @@ TRI_query_javascript_converter_t* TRI_InitQueryJavascript (void) {
   converter->_buffer = NULL;
   converter->_prefix = NULL;
 
-  buffer = (TRI_string_buffer_t*) TRI_Allocate(sizeof(TRI_string_buffer_t));
+  buffer = TRI_CreateStringBuffer();
   if (!buffer) {
     TRI_Free(converter);
     return NULL;
   }
 
-  TRI_InitStringBuffer(buffer);
   converter->_buffer = buffer;
 
   return converter;
@@ -107,8 +106,7 @@ void TRI_FreeQueryJavascript (TRI_query_javascript_converter_t* converter) {
   assert(converter);
   assert(converter->_buffer);
   
-  TRI_DestroyStringBuffer(converter->_buffer);
-  TRI_Free(converter->_buffer);
+  TRI_FreeStringBuffer(converter->_buffer);
   TRI_Free(converter);
 }
 

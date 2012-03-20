@@ -209,13 +209,15 @@ TRI_query_cursor_t* TRI_ExecuteQueryInstance (TRI_query_instance_t* const instan
     if (instance->_query._order._type == QLQueryOrderTypeMustEvaluate) {
       cursor->_result._orderContext = TRI_CreateExecutionContext(instance->_query._order._functionCode);
       if (cursor->_result._orderContext) {
+        LOG_DEBUG("performing order by");
         TRI_OrderDataQuery(&cursor->_result);
+        TRI_FreeExecutionContext(cursor->_result._orderContext);
       }
-      TRI_FreeExecutionContext(cursor->_result._orderContext);
     }
 
     // apply a negative limit or a limit after ordering
     if (applyPostSkipLimit) {
+      LOG_DEBUG("applying post-order skip/limit");
       TransformDataSkipLimit(&cursor->_result, 
                              instance->_query._limit._offset, 
                              instance->_query._limit._count);

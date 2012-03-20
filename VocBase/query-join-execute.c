@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <BasicsC/logging.h>
+#include <BasicsC/string-buffer.h>
 
 #include "VocBase/query-join-execute.h"
 #include "VocBase/query-join.h"
@@ -34,6 +35,36 @@
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief log information about the used index
+////////////////////////////////////////////////////////////////////////////////
+
+static void LogIndexString(const TRI_index_definition_t* const indexDefinition,
+                           const char* const collectionName) {
+
+  TRI_string_buffer_t* buffer = TRI_CreateStringBuffer();
+  size_t i;
+
+  if (!buffer) {
+    return;
+  }
+  
+  for (i = 0; i < indexDefinition->_fields->_length; i++) {
+    if (i > 0) {
+      TRI_AppendStringStringBuffer(buffer, ", "); 
+    }
+    TRI_AppendStringStringBuffer(buffer, indexDefinition->_fields->_buffer[i]);
+  }
+
+  LOG_DEBUG("using %s index (%s) for '%s'", 
+            TRI_GetTypeNameIndex(indexDefinition), 
+            buffer->_buffer, 
+            collectionName);
+
+  TRI_FreeStringBuffer(buffer);
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Determine which geo indexes to use in a query - DEPRECATED
@@ -333,7 +364,7 @@ static TRI_data_feeder_t* DetermineGeoIndexUsage (TRI_query_instance_t* const in
                                     indexDefinition->_iid,
                                     part->_geoRestriction);
 
-    LOG_DEBUG("using geo index for '%s'", part->_alias);
+    LogIndexString(indexDefinition, part->_alias);
     break;
   }
 
@@ -488,7 +519,7 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
           if (feeder) {
             // we always exit if we can use the primary index
             // the primary index guarantees uniqueness
-            LOG_DEBUG("using primary index for '%s'", part->_alias);
+            LogIndexString(indexDefinition, part->_alias);
             goto EXIT;
           }
         } 
@@ -513,7 +544,7 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
                                                    indexDefinition->_iid,
                                                    TRI_CopyVectorPointer(&matches));
             
-              LOG_DEBUG("using skiplist index for '%s'", part->_alias);
+              LogIndexString(indexDefinition, part->_alias);
             }
             else {
               feeder = 
@@ -523,7 +554,7 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
                                                indexDefinition->_iid,
                                                TRI_CopyVectorPointer(&matches));
               
-              LOG_DEBUG("using hash index for '%s'", part->_alias);
+              LogIndexString(indexDefinition, part->_alias);
             }
 
             if (!feeder) {
