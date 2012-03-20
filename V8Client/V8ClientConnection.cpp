@@ -48,6 +48,9 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
+#include "json.h"
+#include "V8/v8-conv.h"
+
 using namespace triagens::basics;
 using namespace triagens::httpclient;
 using namespace std;
@@ -63,7 +66,7 @@ namespace triagens {
             int port,
             double requestTimeout,
             size_t retries,
-            double connectionTimeout) : _client(0) {
+            double connectionTimeout) : _client(0), _httpResult(0) {
       
       _connected = false;
       _lastHttpReturnCode = 0;
@@ -103,29 +106,33 @@ namespace triagens {
     }
 
     V8ClientConnection::~V8ClientConnection () {
+      if (_httpResult) {
+        delete _httpResult;
+      }
+
       if (_client) {
         delete _client;
       }
     }
 
     v8::Handle<v8::Value> V8ClientConnection::getData (std::string const& location, map<string, string> const& headerFields) {
-      return sendData(SimpleHttpClient::GET, location, "", headerFields);
+      return requestData(SimpleHttpClient::GET, location, "", headerFields);
     }
     
     v8::Handle<v8::Value> V8ClientConnection::deleteData (std::string const& location, map<string, string> const& headerFields) {
-      return sendData(SimpleHttpClient::DELETE, location, "", headerFields);
+      return requestData(SimpleHttpClient::DELETE, location, "", headerFields);
     }
     
     v8::Handle<v8::Value> V8ClientConnection::headData (std::string const& location, map<string, string> const& headerFields) {
-      return sendData(SimpleHttpClient::HEAD, location, "", headerFields);
+      return requestData(SimpleHttpClient::HEAD, location, "", headerFields);
     }    
 
     v8::Handle<v8::Value> V8ClientConnection::postData (std::string const& location, std::string const& body, map<string, string> const& headerFields) {
-      return sendData(SimpleHttpClient::POST, location, body, headerFields);
+      return requestData(SimpleHttpClient::POST, location, body, headerFields);
     }
     
     v8::Handle<v8::Value> V8ClientConnection::putData (std::string const& location, std::string const& body, map<string, string> const& headerFields) {
-      return sendData(SimpleHttpClient::PUT, location, body, headerFields);
+      return requestData(SimpleHttpClient::PUT, location, body, headerFields);
     }
 
     const std::string& V8ClientConnection::getHostname () {
@@ -135,69 +142,84 @@ namespace triagens {
     int V8ClientConnection::getPort () {
       return _client->getPort();
     }
-
-    v8::Handle<v8::Value> V8ClientConnection::sendData (int method, string const& location, string const& body, map<string, string> const& headerFields) {
+    
+    v8::Handle<v8::Value> V8ClientConnection::requestData (int method, string const& location, string const& body, map<string, string> const& headerFields) {
       _lastErrorMessage = "";
       _lastHttpReturnCode = 0;
       
-      SimpleHttpResult* result = 0;
+      if (_httpResult) {
+        delete _httpResult;
+      }
       
       if (body.empty()) {
-        result = _client->request(method, location, 0, 0, headerFields);
+        _httpResult = _client->request(method, location, 0, 0, headerFields);
       }
       else {
-        result = _client->request(method, location, body.c_str(), body.length(), headerFields);
+        _httpResult = _client->request(method, location, body.c_str(), body.length(), headerFields);
       }
-      
-      v8::Handle<v8::String> v8string;
-      
-      if (!result->isComplete()) {
-        // save error message
+                  
+      if (!_httpResult->isComplete()) {
+        // not complete
         _lastErrorMessage = _client->getErrorMessage();
-        
-        stringstream message;
-        message << "{";
-        message << "\"error\":true,";
-        message << "\"code\":" << SimpleHttpClient::HTTP_STATUS_SERVER_ERROR << ",";
-        message << "\"errorNum\":" << result->getResultType() << ",";
-        
-        message << "\"errorMessage\":\"";
-        switch (result->getResultType()) {
-          case (SimpleHttpResult::COULD_NOT_CONNECT) :
-            message << "Could not connect to server";
-            break;
-          case (SimpleHttpResult::READ_ERROR) :
-            message << "Error while reading data from server";
-            break;
-          case (SimpleHttpResult::WRITE_ERROR) :
-            message << "Error while reading data to server";
-            break;
-          default :
-            message << "Unknown communication error";
-            break;
-        }
-        message << "\"}";
-        
-        v8string =  v8::String::New(message.str().c_str());        
         _lastHttpReturnCode = SimpleHttpClient::HTTP_STATUS_SERVER_ERROR;
+        
+        v8::Handle<v8::Object> result = v8::Object::New();
+        result->Set(v8::String::New("error"), v8::Boolean::New(true));        
+        result->Set(v8::String::New("code"), v8::Integer::New(SimpleHttpClient::HTTP_STATUS_SERVER_ERROR));
+                
+        int errorNumber = 0;
+        switch (_httpResult->getResultType()) {
+          case (SimpleHttpResult::COULD_NOT_CONNECT) :
+            errorNumber = TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT;
+            break;
+            
+          case (SimpleHttpResult::READ_ERROR) :
+            errorNumber = TRI_SIMPLE_CLIENT_COULD_NOT_READ;
+            break;
+
+          case (SimpleHttpResult::WRITE_ERROR) :
+            errorNumber = TRI_SIMPLE_CLIENT_COULD_NOT_WRITE;
+            break;
+
+          default:
+            errorNumber = TRI_SIMPLE_CLIENT_UNKNOWN_ERROR;
+        }        
+        
+        result->Set(v8::String::New("errorNum"), v8::Integer::New(errorNumber));
+        result->Set(v8::String::New("errorMessage"), v8::String::New(_lastErrorMessage.c_str(), _lastErrorMessage.length()));        
+        return result;
       }
       else {
-        if (result->getBody().str().length() == 0) {
-          // handle empty result
-          result->getBody() << "{\"error\":true,";
-          result->getBody() << "\"code\":" << result->getHttpReturnCode() << ",";
-          result->getBody() << "\"errorNum\":" << result->getHttpReturnCode() << ",";        
-          result->getBody() << "\"errorMessage\":\"No result.\"}";          
-        }
+        // complete        
+        _lastHttpReturnCode = _httpResult->getHttpReturnCode();
         
-        v8string =  v8::String::New(result->getBody().str().c_str());
-        _lastHttpReturnCode = result->getHttpReturnCode();
-      }
-      
-      delete result;
-      
-      // body should be json 
-      return v8string;
+        if (_httpResult->getBody().str().length() > 0) {
+          // got a body
+          
+          string contentType = _httpResult->getContentType();
+          if (contentType == "application/json") {
+            TRI_json_t* js = TRI_JsonString(_httpResult->getBody().str().c_str());
+            if (js) {
+              // return v8 object
+              v8::Handle<v8::Value> result = TRI_ObjectJson(js);
+              TRI_FreeJson(js);
+              return result;
+            }
+          }
+
+          // return body as string
+          v8::Handle<v8::String> result = v8::String::New(_httpResult->getBody().str().c_str(), _httpResult->getBody().str().length());
+          return result;
+        }
+        else {
+          // no body 
+          // this should not happen
+          v8::Handle<v8::Object> result;        
+          result->Set(v8::String::New("error"), v8::Boolean::New(false));
+          result->Set(v8::String::New("code"), v8::Integer::New(_httpResult->getHttpReturnCode()));
+          return result;
+        }        
+      }      
     }
     
   }

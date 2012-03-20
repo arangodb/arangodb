@@ -34,9 +34,9 @@
 #include <BasicsC/strings.h>
 #include <BasicsC/hashes.h>
 #include <BasicsC/json.h>
+#include <BasicsC/voc-errors.h>
 
 #include "VocBase/vocbase.h"
-#include "VocBase/voc-errors.h"
 #include "VocBase/query-node.h"
 
 #include "QL/parser.h"

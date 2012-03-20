@@ -21,14 +21,14 @@ This will install AvocadoDB and all dependencies.
 ## First Steps
 
     ./avocado --shell
-    avocado> db.examples.count();
     avocado> db.examples.save({ Hallo: "World" });
-    avocado> db.examples.select();
+    avocado> db.examples.count();
+    avocado> db.examples.all().toArray();
 
 ## Caveat
 
 Please note that this is a very early version of AvocadoDB. There will be
-bugs and we'd realy appreciate it if you 
+bugs and we'd really appreciate it if you 
 <a href="https://github.com/triAGENS/AvocadoDB/issues">report</a> them:
 
   https://github.com/triAGENS/AvocadoDB/issues

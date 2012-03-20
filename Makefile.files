@@ -28,6 +28,7 @@ libavocado_a_SOURCES = \
 	BasicsC/conversions.c \
 	BasicsC/csv.c \
 	BasicsC/error.c \
+	BasicsC/voc-errors.c \
 	BasicsC/files.c \
 	BasicsC/hashes.c \
 	BasicsC/init.c \
@@ -181,7 +182,6 @@ avocado_SOURCES = \
 	VocBase/query-base.c \
 	VocBase/query-cursor.c \
 	VocBase/query-data-feeder.c \
-	VocBase/query-error.c \
 	VocBase/query-execute.c \
 	VocBase/query-javascript.c \
 	VocBase/query-join.c \
@@ -216,8 +216,10 @@ avocsh_SOURCES = \
 ################################################################################
 
 JAVASCRIPT_HEADER = \
+	js/common/bootstrap/js-errors.h \
 	js/common/bootstrap/js-modules.h \
 	js/common/bootstrap/js-print.h \
+	js/common/bootstrap/js-errors.h \
 	js/client/js-client.h \
 	js/server/js-server.h
 

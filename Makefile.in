@@ -154,13 +154,14 @@ am_libavocado_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 	BasicsC/associative-multi.$(OBJEXT) \
 	BasicsC/associative.$(OBJEXT) BasicsC/conversions.$(OBJEXT) \
 	BasicsC/csv.$(OBJEXT) BasicsC/error.$(OBJEXT) \
-	BasicsC/files.$(OBJEXT) BasicsC/hashes.$(OBJEXT) \
-	BasicsC/init.$(OBJEXT) BasicsC/json.$(OBJEXT) \
-	BasicsC/locks-macos.$(OBJEXT) BasicsC/locks-posix.$(OBJEXT) \
-	BasicsC/logging.$(OBJEXT) BasicsC/memory.$(OBJEXT) \
-	BasicsC/process-utils.$(OBJEXT) BasicsC/random.$(OBJEXT) \
-	BasicsC/socket-utils.$(OBJEXT) BasicsC/string-buffer.$(OBJEXT) \
-	BasicsC/strings.$(OBJEXT) BasicsC/structures.$(OBJEXT) \
+	BasicsC/voc-errors.$(OBJEXT) BasicsC/files.$(OBJEXT) \
+	BasicsC/hashes.$(OBJEXT) BasicsC/init.$(OBJEXT) \
+	BasicsC/json.$(OBJEXT) BasicsC/locks-macos.$(OBJEXT) \
+	BasicsC/locks-posix.$(OBJEXT) BasicsC/logging.$(OBJEXT) \
+	BasicsC/memory.$(OBJEXT) BasicsC/process-utils.$(OBJEXT) \
+	BasicsC/random.$(OBJEXT) BasicsC/socket-utils.$(OBJEXT) \
+	BasicsC/string-buffer.$(OBJEXT) BasicsC/strings.$(OBJEXT) \
+	BasicsC/structures.$(OBJEXT) \
 	BasicsC/system-functions.$(OBJEXT) \
 	BasicsC/terminal-utils-ncurses.$(OBJEXT) \
 	BasicsC/terminal-utils.$(OBJEXT) \
@@ -273,7 +274,7 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	VocBase/headers.$(OBJEXT) VocBase/index.$(OBJEXT) \
 	VocBase/query-base.$(OBJEXT) VocBase/query-cursor.$(OBJEXT) \
 	VocBase/query-data-feeder.$(OBJEXT) \
-	VocBase/query-error.$(OBJEXT) VocBase/query-execute.$(OBJEXT) \
+	VocBase/query-execute.$(OBJEXT) \
 	VocBase/query-javascript.$(OBJEXT) \
 	VocBase/query-join.$(OBJEXT) \
 	VocBase/query-join-execute.$(OBJEXT) \
@@ -578,6 +579,7 @@ libavocado_a_SOURCES = \
 	BasicsC/conversions.c \
 	BasicsC/csv.c \
 	BasicsC/error.c \
+	BasicsC/voc-errors.c \
 	BasicsC/files.c \
 	BasicsC/hashes.c \
 	BasicsC/init.c \
@@ -729,7 +731,6 @@ avocado_SOURCES = \
 	VocBase/query-base.c \
 	VocBase/query-cursor.c \
 	VocBase/query-data-feeder.c \
-	VocBase/query-error.c \
 	VocBase/query-execute.c \
 	VocBase/query-javascript.c \
 	VocBase/query-join.c \
@@ -761,8 +762,10 @@ avocsh_SOURCES = \
 ################################################################################
 ################################################################################
 JAVASCRIPT_HEADER = \
+	js/common/bootstrap/js-errors.h \
 	js/common/bootstrap/js-modules.h \
 	js/common/bootstrap/js-print.h \
+	js/common/bootstrap/js-errors.h \
 	js/client/js-client.h \
 	js/server/js-server.h
 
@@ -997,6 +1000,8 @@ BasicsC/conversions.$(OBJEXT): BasicsC/$(am__dirstamp) \
 BasicsC/csv.$(OBJEXT): BasicsC/$(am__dirstamp) \
 	BasicsC/$(DEPDIR)/$(am__dirstamp)
 BasicsC/error.$(OBJEXT): BasicsC/$(am__dirstamp) \
+	BasicsC/$(DEPDIR)/$(am__dirstamp)
+BasicsC/voc-errors.$(OBJEXT): BasicsC/$(am__dirstamp) \
 	BasicsC/$(DEPDIR)/$(am__dirstamp)
 BasicsC/files.$(OBJEXT): BasicsC/$(am__dirstamp) \
 	BasicsC/$(DEPDIR)/$(am__dirstamp)
@@ -1552,8 +1557,6 @@ VocBase/query-cursor.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/query-data-feeder.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
-VocBase/query-error.$(OBJEXT): VocBase/$(am__dirstamp) \
-	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/query-execute.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/query-javascript.$(OBJEXT): VocBase/$(am__dirstamp) \
@@ -1669,6 +1672,7 @@ mostlyclean-compile:
 	-rm -f BasicsC/terminal-utils.$(OBJEXT)
 	-rm -f BasicsC/threads-posix.$(OBJEXT)
 	-rm -f BasicsC/vector.$(OBJEXT)
+	-rm -f BasicsC/voc-errors.$(OBJEXT)
 	-rm -f Dispatcher/ApplicationServerDispatcher.$(OBJEXT)
 	-rm -f Dispatcher/ApplicationServerDispatcherImpl.$(OBJEXT)
 	-rm -f Dispatcher/DispatcherImpl.$(OBJEXT)
@@ -1795,7 +1799,6 @@ mostlyclean-compile:
 	-rm -f VocBase/query-base.$(OBJEXT)
 	-rm -f VocBase/query-cursor.$(OBJEXT)
 	-rm -f VocBase/query-data-feeder.$(OBJEXT)
-	-rm -f VocBase/query-error.$(OBJEXT)
 	-rm -f VocBase/query-execute.$(OBJEXT)
 	-rm -f VocBase/query-javascript.$(OBJEXT)
 	-rm -f VocBase/query-join-execute.$(OBJEXT)
@@ -1866,6 +1869,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@BasicsC/$(DEPDIR)/terminal-utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@BasicsC/$(DEPDIR)/threads-posix.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@BasicsC/$(DEPDIR)/vector.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@BasicsC/$(DEPDIR)/voc-errors.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Dispatcher/$(DEPDIR)/ApplicationServerDispatcher.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Dispatcher/$(DEPDIR)/ApplicationServerDispatcherImpl.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Dispatcher/$(DEPDIR)/DispatcherImpl.Po@am__quote@
@@ -1992,7 +1996,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-base.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-cursor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-data-feeder.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-error.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-execute.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-javascript.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-join-execute.Po@am__quote@

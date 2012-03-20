@@ -256,10 +256,10 @@ namespace triagens {
           return true;
         }
 
-        setErrorMessage("getsockopt failed with: " + string(strerror(errno)), errno);
+        setErrorMessage("socket not readable. getsockopt() failed with: " + string(strerror(errno)), errno);
       }
       else {
-        setErrorMessage("select failed with: " + string(strerror(errno)), errno);
+        setErrorMessage("socket not readable. select() failed with: " + string(strerror(errno)), errno);
       }
 
       return false;
@@ -290,10 +290,10 @@ namespace triagens {
           return true;
         }
 
-        setErrorMessage("getsockopt failed with: " + string(strerror(errno)), errno);
+        setErrorMessage("socket not writable. getsockopt() failed with: " + string(strerror(errno)), errno);
       }
       else {
-        setErrorMessage("select failed with: " + string(strerror(errno)), errno);
+        setErrorMessage("socket not writable. select() failed with: " + string(strerror(errno)), errno);
       }
 
       return false;
@@ -328,7 +328,7 @@ namespace triagens {
       }
 
       if (error != 0) {
-        setErrorMessage("getaddrinfo failed with: " + string(strerror(errno)), errno);
+        setErrorMessage("socket not connected. getaddrinfo() failed with: " + string(strerror(errno)), errno);
         return false;
       }
 
@@ -359,14 +359,14 @@ namespace triagens {
       }
 
       if (!setNonBlocking(_socket)) {
-        setErrorMessage("set non blocking failed with: " + string(strerror(errno)), errno);
+        setErrorMessage("Socket not connected. Set non blocking failed with: " + string(strerror(errno)), errno);
         ::close(_socket);
         _socket = -1;
         return false;
       }
 
       if (!setCloseOnExec(_socket)) {
-        setErrorMessage("set close on exec failed with: " + string(strerror(errno)), errno);
+        setErrorMessage("Socket not connected. Set close on exec failed with: " + string(strerror(errno)), errno);
         ::close(_socket);
         _socket = -1;
         return false;
@@ -392,13 +392,13 @@ namespace triagens {
           _isConnected = true;
         }
         else {
-          setErrorMessage("getsockopt failed with: " + string(strerror(errno)), errno);
+          setErrorMessage("Could not connect to server. (getsockopt() failed with: " + string(strerror(errno)) + ")", errno);
           ::close(_socket);
           _socket = -1;
         }
       }
       else {
-        setErrorMessage("select failed with: " + string(strerror(errno)), errno);
+        setErrorMessage("Could not connect to server. (select() failed with: " + string(strerror(errno)) + ")", errno);
       }
 
       return _isConnected;

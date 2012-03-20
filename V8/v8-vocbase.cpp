@@ -1078,7 +1078,8 @@ static v8::Handle<v8::Value> JS_DocumentQuery (v8::Arguments const& argv) {
   // get document
   // .............................................................................
 
-  TRI_doc_mptr_t const* document;
+  TRI_doc_mptr_t document;
+  v8::Handle<v8::Value> result;
   
   // .............................................................................
   // inside a read transaction
@@ -1087,13 +1088,12 @@ static v8::Handle<v8::Value> JS_DocumentQuery (v8::Arguments const& argv) {
   collection->_collection->beginRead(collection->_collection);
   
   document = collection->_collection->read(collection->_collection, did);  
-  v8::Handle<v8::Value> result;
 
-  if (document != 0) {
+  if (document._did != 0) {
     TRI_barrier_t* barrier;
 
     barrier = TRI_CreateBarrierElement(&collection->_collection->_barrierList);
-    result = TRI_WrapShapedJson(collection, document, barrier);
+    result = TRI_WrapShapedJson(collection, &document, barrier);
   }
 
   collection->_collection->endRead(collection->_collection);
@@ -1102,7 +1102,7 @@ static v8::Handle<v8::Value> JS_DocumentQuery (v8::Arguments const& argv) {
   // outside a write transaction
   // .............................................................................
 
-  if (document == 0) {
+  if (document._did == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("document not found")));
   }
   
@@ -2099,9 +2099,11 @@ static v8::Handle<v8::Object> WrapSLOperator (TRI_sl_operator_t* slOperator) {
   return operatorObject;
 }
 
+/* unused
 static TRI_sl_operator_t* UnwrapSLOperator (v8::Handle<v8::Object> operatorObject) {
   return UnwrapClass<TRI_sl_operator_t>(operatorObject, WRP_SL_OPERATOR_TYPE);
 }
+*/
 
 
 static TRI_json_t* parametersToJson(v8::Arguments const& argv, int startPos, int endPos) {
