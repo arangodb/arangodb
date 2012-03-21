@@ -15,7 +15,6 @@ static string JS_common_bootstrap_errors =
   "  \"ERROR_NUMERIC_OVERFLOW\"       : { \"code\" : 6, \"message\" : \"numeric overflow\" }, \n"
   "  \"ERROR_ILLEGAL_OPTION\"         : { \"code\" : 7, \"message\" : \"illegal option\" }, \n"
   "  \"ERROR_DEAD_PID\"               : { \"code\" : 8, \"message\" : \"dead process identifier\" }, \n"
-<<<<<<< HEAD
   "  \"ERROR_OPEN_ERROR\"             : { \"code\" : 9, \"message\" : \"open/create file failed\" }, \n"
   "  \"ERROR_WRITE_ERROR\"            : { \"code\" : 10, \"message\" : \"write failed\" }, \n"
   "  \"ERROR_LOCK_ERROR\"             : { \"code\" : 11, \"message\" : \"lock failed\" }, \n"
@@ -67,7 +66,6 @@ static string JS_common_bootstrap_errors =
   "  \"ERROR_QUERY_BIND_PARAMETER_UNDECLARED\" : { \"code\" : 1592, \"message\" : \"bind parameter '%s' was not declared in the query\" }, \n"
   "  \"ERROR_QUERY_BIND_PARAMETER_VALUE_INVALID\" : { \"code\" : 1593, \"message\" : \"invalid value for bind parameter '%s'\" }, \n"
   "  \"ERROR_QUERY_BIND_PARAMETER_NUMBER_OUT_OF_RANGE\" : { \"code\" : 1594, \"message\" : \"bind parameter number '%s' out of range\" }, \n"
-=======
   "  \"ERROR_NOT_IMPLEMENTED\"        : { \"code\" : 9, \"message\" : \"not implemented\" }, \n"
   "  \"ERROR_HTTP_BAD_PARAMETER\"     : { \"code\" : 400, \"message\" : \"bad parameter\" }, \n"
   "  \"ERROR_HTTP_METHOD_NOT_ALLOWED\" : { \"code\" : 405, \"message\" : \"method not supported\" }, \n"
@@ -113,7 +111,6 @@ static string JS_common_bootstrap_errors =
   "  \"ERROR_QUERY_BIND_PARAMETER_UNDECLARED\" : { \"code\" : 1515, \"message\" : \"bind parameter '%s' was not declared in the query\" }, \n"
   "  \"ERROR_QUERY_BIND_PARAMETER_VALUE_INVALID\" : { \"code\" : 1516, \"message\" : \"invalid value for bind parameter '%s'\" }, \n"
   "  \"ERROR_QUERY_BIND_PARAMETER_NUMBER_OUT_OF_RANGE\" : { \"code\" : 1517, \"message\" : \"bind parameter number '%s' out of range\" }, \n"
->>>>>>> 5803d27052780853bde39b1c784cc3867fd3b6cf
   "  \"ERROR_CURSOR_NOT_FOUND\"       : { \"code\" : 1600, \"message\" : \"cursor not found\" }, \n"
   "  \"ERROR_SESSION_USERHANDLER_URL_INVALID\" : { \"code\" : 1700, \"message\" : \"expecting <prefix>/user/<username>\" }, \n"
   "  \"ERROR_SESSION_USERHANDLER_CANNOT_CREATE_USER\" : { \"code\" : 1701, \"message\" : \"cannot create user\" }, \n"
@@ -135,10 +132,7 @@ static string JS_common_bootstrap_errors =
   "  \"SIMPLE_CLIENT_COULD_NOT_CONNECT\" : { \"code\" : 2001, \"message\" : \"could not connect to server\" }, \n"
   "  \"SIMPLE_CLIENT_COULD_NOT_WRITE\" : { \"code\" : 2002, \"message\" : \"could not write to server\" }, \n"
   "  \"SIMPLE_CLIENT_COULD_NOT_READ\" : { \"code\" : 2003, \"message\" : \"could not read from server\" }, \n"
-<<<<<<< HEAD
   "  \"ERROR_PROTOCOL_UNSUPPORTED_METHOD\" : { \"code\" : 3000, \"message\" : \"method not supported\" }, \n"
-=======
->>>>>>> 5803d27052780853bde39b1c784cc3867fd3b6cf
   "};\n"
   "\n"
 ;
