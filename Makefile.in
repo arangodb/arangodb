@@ -2541,7 +2541,7 @@ doxygen: Doxygen/avocado.doxy $(DOXYGEN)
 
 wiki: doxygen $(WIKI)
 	@test -d Doxygen/wiki || mkdir Doxygen/wiki
-	@for w in $(WIKI); do echo "$$w"; @top_srcdir@/Doxygen/Scripts/pandoc.sh $$w; done
+	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/pandoc.sh $$w; done
 	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/md2html.sh `echo $$w | sed -e 's:/xml/:/wiki/:g'`; done
 
 .setup-directories:
