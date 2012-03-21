@@ -1,0 +1,10 @@
+> curl -X GET  --dump - http://localhost:8529/document/183881/8900169?rev=8900168
+
+HTTP/1.1 412 Precondition Failed
+content-type: application/json; charset=utf-8
+
+{
+  "_rev": 8900169,
+  "_id": "183881/8900169",
+  "error": true
+}
