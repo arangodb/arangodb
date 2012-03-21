@@ -93,7 +93,7 @@
 
 #define ABORT_IF_OOM(ptr) \
   if (!ptr) { \
-    TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_OOM, NULL); \
+    TRI_SetQueryError(&template_->_error, TRI_ERROR_OUT_OF_MEMORY, NULL); \
     YYABORT; \
   }
 
