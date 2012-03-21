@@ -203,7 +203,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
         else if (TRI_EqualString2("datafile", first, firstLen)) {
           if (! datafile->_isSealed) {
             LOG_ERROR("datafile '%s' is not sealed, this should never happen", filename);
-            collection->_lastError = TRI_set_errno(TRI_VOC_ERROR_CORRUPTED_DATAFILE);
+            collection->_lastError = TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE);
             stop = true;
             break;
           }
@@ -345,7 +345,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_collection_t* collection,
 
   // sanity check
   if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) > parameter->_maximalSize) {
-    TRI_set_errno(TRI_VOC_ERROR_DATAFILE_FULL);
+    TRI_set_errno(TRI_ERROR_AVOCADO_DATAFILE_FULL);
 
     LOG_ERROR("cannot create datafile '%s' in '%s', maximal size '%u' is too small",
               parameter->_name,
@@ -356,7 +356,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_collection_t* collection,
   }
 
   if (! TRI_IsDirectory(path)) {
-    TRI_set_errno(TRI_VOC_ERROR_WRONG_PATH);
+    TRI_set_errno(TRI_ERROR_AVOCADO_WRONG_VOCBASE_PATH);
 
     LOG_ERROR("cannot create collection '%s', path is not a directory", path);
 
@@ -366,7 +366,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_collection_t* collection,
   filename = TRI_Concatenate2File(path, parameter->_name);
 
   if (TRI_ExistsFile(filename)) {
-    TRI_set_errno(TRI_VOC_ERROR_WRONG_PATH);
+    TRI_set_errno(TRI_ERROR_AVOCADO_WRONG_VOCBASE_PATH);
     TRI_FreeString(filename);
 
     LOG_ERROR("cannot create collection '%s' in '%s', name already exists",
@@ -469,7 +469,7 @@ bool TRI_LoadParameterInfo (char const* path,
   }
 
   if (! TRI_ExistsFile(filename)) {
-    TRI_set_errno(TRI_VOC_ERROR_FILE_NOT_FOUND);
+    TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_PARAMETER_FILE);
     TRI_FreeString(filename);
     return false;
   }
@@ -477,7 +477,7 @@ bool TRI_LoadParameterInfo (char const* path,
   json = TRI_JsonFile(filename, &error);
 
   if (json == NULL) {
-    TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_PARAMETER);
+    TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_PARAMETER_FILE);
     TRI_FreeString(error);
     TRI_FreeString(filename);
 
@@ -489,7 +489,7 @@ bool TRI_LoadParameterInfo (char const* path,
   TRI_FreeString(filename);
 
   if (json->_type != TRI_JSON_ARRAY) {
-    TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_PARAMETER);
+    TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_PARAMETER_FILE);
 
     LOG_ERROR("cannot open '%s', file does not contain a json array", filename);
 
@@ -759,7 +759,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_collection_t* collection,
   freeCol = false;
 
   if (! TRI_IsDirectory(path)) {
-    TRI_set_errno(TRI_VOC_ERROR_WRONG_PATH);
+    TRI_set_errno(TRI_ERROR_AVOCADO_WRONG_VOCBASE_PATH);
 
     LOG_ERROR("cannot open '%s', not a directory or not found", path);
 

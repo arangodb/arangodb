@@ -3088,7 +3088,7 @@ static v8::Handle<v8::Value> JS_DeleteVocbaseCol (v8::Arguments const& argv) {
   // .............................................................................
 
   if (! ok) {
-    if (TRI_errno() == TRI_VOC_ERROR_DOCUMENT_NOT_FOUND) {
+    if (TRI_errno() == TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND) {
       return scope.Close(v8::False());
     }
     else {

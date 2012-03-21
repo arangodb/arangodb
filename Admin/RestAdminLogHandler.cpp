@@ -148,7 +148,7 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
     }
     else {
       generateError(HttpResponse::BAD, 
-                    TRI_REST_ERROR_BAD_PARAMETER,
+                    TRI_ERROR_HTTP_BAD_PARAMETER,
                     "unknown 'upto' log level: '" + upto + "'");
       return HANDLER_DONE;
     }
