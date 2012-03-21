@@ -2718,18 +2718,34 @@ static v8::Handle<v8::Value> JS_GetRowsQueryCursor (v8::Arguments const& argv) {
       context = TRI_CreateExecutionContext(cursor->_functionCode);
     
       if (context) {
-        for (uint32_t i = 0; i < max; ++i) {
-          TRI_rc_result_t* next = cursor->next(cursor);
-          if (!next) {
-            break;
-          }
+        if (cursor->_isConstant) {
+          // if cursor produces constant documents
+          v8::Handle<v8::Object> constantValue; 
+          TRI_ExecuteExecutionContext(context, (void*) &constantValue);
+        
+          for (uint32_t i = 0; i < max; ++i) {
+            if (!cursor->next(cursor)) {
+              break;
+            }
+            rows->Set(i, constantValue->Clone());
+           }
+         }
+         else {
+          // cursor produces variable documents
+          for (uint32_t i = 0; i < max; ++i) {
+            TRI_rc_result_t* next = cursor->next(cursor);
+            if (!next) {
+              break;
+            }
       
-          TRI_DefineSelectExecutionContext(context, next);
-          v8::Handle<v8::Value> value;
-          if (TRI_ExecuteExecutionContext(context, (void*) &value)) {
-            rows->Set(i, value);
+            TRI_DefineSelectExecutionContext(context, next);
+            v8::Handle<v8::Value> value;
+            if (TRI_ExecuteExecutionContext(context, (void*) &value)) {
+              rows->Set(i, value);
+            }
           }
         }
+
         result = true;
       }
     }

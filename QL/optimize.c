@@ -148,46 +148,6 @@ static double QLOptimizeGetDouble (const TRI_query_node_t* const node) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check if a document declaration is static or dynamic
-////////////////////////////////////////////////////////////////////////////////
-
-static bool QLOptimizeIsStaticDocument (const TRI_query_node_t* node) {
-  bool result;
-
-  if (node->_next) {
-    while (node->_next) {
-      result = QLOptimizeIsStaticDocument(node->_next);
-      if (!result) {
-        return false;
-      }
-      node = node->_next;
-    }
-    return true;
-  }
-
-  if (node->_lhs) {
-    result = QLOptimizeIsStaticDocument(node->_lhs);
-    if (!result) {
-      return false;
-    }
-  }
-  if (node->_rhs) {
-    result = QLOptimizeIsStaticDocument(node->_rhs);
-    if (!result) {
-      return false;
-    }
-  }
-  if (node->_type == TRI_QueryNodeReferenceCollectionAlias ||
-      node->_type == TRI_QueryNodeControlFunctionCall ||
-      node->_type == TRI_QueryNodeControlTernary ||
-      node->_type == TRI_QueryNodeContainerMemberAccess) {
-    return false;
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a node to a bool value node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -596,6 +556,48 @@ void QLOptimizeTernaryOperator (TRI_query_node_t* node) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a document declaration is static/constant or dynamic
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLOptimizeIsConst (const TRI_query_node_t* const node) {
+  TRI_query_node_t* next;
+  bool result;
+
+  next = node->_next; 
+  if (next) {
+    while (next) {
+      result = QLOptimizeIsConst(next);
+      if (!result) {
+        return false;
+      }
+      next = next->_next;
+    }
+    return true;
+  }
+
+  if (node->_lhs) {
+    result = QLOptimizeIsConst(node->_lhs);
+    if (!result) {
+      return false;
+    }
+  }
+  if (node->_rhs) {
+    result = QLOptimizeIsConst(node->_rhs);
+    if (!result) {
+      return false;
+    }
+  }
+  if (node->_type == TRI_QueryNodeReferenceCollectionAlias ||
+      node->_type == TRI_QueryNodeControlFunctionCall ||
+      node->_type == TRI_QueryNodeControlTernary ||
+      node->_type == TRI_QueryNodeContainerMemberAccess) {
+    return false;
+  }
+
+  return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether a query part uses bind parameters
@@ -1581,7 +1583,7 @@ TRI_vector_pointer_t* QLOptimizeRanges (TRI_query_node_t* node,
         (type == TRI_QueryNodeBinaryOperatorIdentical || 
          type == TRI_QueryNodeBinaryOperatorEqual) &&
         (rhs->_type == TRI_QueryNodeValueDocument || rhs->_type == TRI_QueryNodeValueArray) && 
-        QLOptimizeIsStaticDocument(rhs)) {
+        QLOptimizeIsConst(rhs)) {
       // collection.attribute == document
       return QLOptimizeCreateRangeVector(QLOptimizeCreateRange(lhs, rhs, type, bindParameters));
     }
@@ -1596,7 +1598,7 @@ TRI_vector_pointer_t* QLOptimizeRanges (TRI_query_node_t* node,
              (type == TRI_QueryNodeBinaryOperatorIdentical ||
               type == TRI_QueryNodeBinaryOperatorEqual) &&
              lhs->_type == TRI_QueryNodeValueDocument &&
-             QLOptimizeIsStaticDocument(lhs)) {
+             QLOptimizeIsConst(lhs)) {
       // document == collection.attribute
       return QLOptimizeCreateRangeVector(QLOptimizeCreateRange(rhs, lhs, type, bindParameters));
     } else if (rhs->_type == TRI_QueryNodeContainerMemberAccess && 

@@ -53,6 +53,7 @@ extern "C" {
 typedef struct TRI_query_cursor_s {
   TRI_vocbase_t* _vocbase;
   char* _functionCode;
+  bool _isConstant;
   bool _hasCount;
   uint32_t _batchSize;
   TRI_vector_pointer_t _containers;
