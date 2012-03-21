@@ -139,7 +139,7 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
     }
 
     if (marker->_size < sizeof(TRI_df_marker_t)) {
-      datafile->_lastError = TRI_set_errno(TRI_VOC_ERROR_CORRUPTED_DATAFILE);
+      datafile->_lastError = TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE);
       datafile->_currentSize = currentSize;
       datafile->_next = datafile->_data + datafile->_currentSize;
       datafile->_state = TRI_DF_STATE_OPEN_ERROR;
@@ -155,7 +155,7 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
     ok = TRI_CheckCrcMarkerDatafile(marker);
 
     if (! ok) {
-      datafile->_lastError = TRI_set_errno(TRI_VOC_ERROR_CORRUPTED_DATAFILE);
+      datafile->_lastError = TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE);
       datafile->_currentSize = currentSize;
       datafile->_next = datafile->_data + datafile->_currentSize;
       datafile->_state = TRI_DF_STATE_OPEN_ERROR;
@@ -231,7 +231,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
   size = status.st_size;
 
   if (size < sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t)) {
-    TRI_set_errno(TRI_VOC_ERROR_CORRUPTED_DATAFILE);
+    TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE);
     close(fd);
 
     LOG_ERROR("datafile '%s' is corrupted, size is only %u", filename, (unsigned int) size);
@@ -256,7 +256,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
   ok = TRI_CheckCrcMarkerDatafile(&header.base);
 
   if (! ok) {
-    TRI_set_errno(TRI_VOC_ERROR_CORRUPTED_DATAFILE);
+    TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE);
 
     LOG_ERROR("corrupted datafile header read from '%s'", filename);
 
@@ -269,7 +269,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
   // check the datafile version
   if (ok) {
     if (header._version != TRI_DF_VERSION) {
-      TRI_set_errno(TRI_VOC_ERROR_CORRUPTED_DATAFILE);
+      TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE);
 
       LOG_ERROR("unknown datafile version '%u' in datafile '%s'",
                 (unsigned int) header._version,
@@ -352,7 +352,7 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
 
   // sanity check
   if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) > maximalSize) {
-    TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_PARAMETER);
+    TRI_set_errno(TRI_ERROR_AVOCADO_MAXIMAL_SIZE_TOO_SMALL);
 
     LOG_ERROR("cannot create datafile '%s', maximal size '%u' is too small", filename, (unsigned int) maximalSize);
 
@@ -563,20 +563,20 @@ bool TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
 
   if (datafile->_state != TRI_DF_STATE_WRITE) {
     if (datafile->_state == TRI_DF_STATE_READ) {
-      TRI_set_errno(TRI_VOC_ERROR_READ_ONLY);
+      TRI_set_errno(TRI_ERROR_AVOCADO_READ_ONLY);
 
       LOG_ERROR("cannot reserve marker, datafile is read-only");
 
       return false;
     }
 
-    TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_STATE);
+    TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_STATE);
     return false;
   }
 
   // add the marker, leave enough room for the footer
   if (datafile->_currentSize + size + datafile->_footerSize > datafile->_maximalSize) {
-    datafile->_lastError = TRI_set_errno(TRI_VOC_ERROR_DATAFILE_FULL);
+    datafile->_lastError = TRI_set_errno(TRI_ERROR_AVOCADO_DATAFILE_FULL);
     datafile->_full = true;
 
     LOG_TRACE("cannot write marker, not enough space");
@@ -615,14 +615,14 @@ bool TRI_WriteElementDatafile (TRI_datafile_t* datafile,
 
   if (datafile->_state != TRI_DF_STATE_WRITE) {
     if (datafile->_state == TRI_DF_STATE_READ) {
-      TRI_set_errno(TRI_VOC_ERROR_READ_ONLY);
+      TRI_set_errno(TRI_ERROR_AVOCADO_READ_ONLY);
 
       LOG_ERROR("cannot write marker, datafile is read-only");
 
       return false;
     }
 
-    TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_STATE);
+    TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_STATE);
     return false;
   }
 
@@ -641,7 +641,7 @@ bool TRI_WriteElementDatafile (TRI_datafile_t* datafile,
       datafile->_state = TRI_DF_STATE_WRITE_ERROR;
 
       if (errno == ENOSPC) {
-        datafile->_lastError = TRI_set_errno(TRI_VOC_ERROR_FILESYSTEM_FULL);
+        datafile->_lastError = TRI_set_errno(TRI_ERROR_AVOCADO_FILESYSTEM_FULL);
       }
       else {
         datafile->_lastError = TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -674,7 +674,7 @@ bool TRI_IterateDatafile (TRI_datafile_t* datafile,
   end = datafile->_data + datafile->_currentSize;
 
   if (datafile->_state != TRI_DF_STATE_READ && datafile->_state != TRI_DF_STATE_WRITE) {
-    TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_STATE);
+    TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_STATE);
     return false;
   }
 
@@ -783,7 +783,7 @@ bool TRI_CloseDatafile (TRI_datafile_t* datafile) {
       datafile->_state = TRI_DF_STATE_WRITE_ERROR;
 
       if (errno == ENOSPC) {
-        datafile->_lastError = TRI_set_errno(TRI_VOC_ERROR_FILESYSTEM_FULL);
+        datafile->_lastError = TRI_set_errno(TRI_ERROR_AVOCADO_FILESYSTEM_FULL);
       }
       else {
         datafile->_lastError = TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -807,7 +807,7 @@ bool TRI_CloseDatafile (TRI_datafile_t* datafile) {
     return true;
   }
   else {
-    TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_STATE);
+    TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_STATE);
     return false;
   }
 }
@@ -822,7 +822,7 @@ bool TRI_RenameDatafile (TRI_datafile_t* datafile, char const* filename) {
   if (TRI_ExistsFile(filename)) {
     LOG_ERROR("cannot overwrite datafile '%s'", filename);
 
-    datafile->_lastError = TRI_set_errno(TRI_VOC_ERROR_CANNOT_RENAME);
+    datafile->_lastError = TRI_set_errno(TRI_ERROR_AVOCADO_DATAFILE_ALREADY_EXISTS);
     return false;
   }
 
@@ -851,17 +851,17 @@ bool TRI_SealDatafile (TRI_datafile_t* datafile) {
   bool ok;
 
   if (datafile->_state == TRI_DF_STATE_READ) {
-    TRI_set_errno(TRI_VOC_ERROR_READ_ONLY);
+    TRI_set_errno(TRI_ERROR_AVOCADO_READ_ONLY);
     return false;
   }
 
   if (datafile->_state != TRI_DF_STATE_WRITE) {
-    TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_STATE);
+    TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_STATE);
     return false;
   }
 
   if (datafile->_isSealed) {
-    TRI_set_errno(TRI_VOC_ERROR_DATAFILE_SEALED);
+    TRI_set_errno(TRI_ERROR_AVOCADO_DATAFILE_SEALED);
     return false;
   }
 
@@ -894,7 +894,7 @@ bool TRI_SealDatafile (TRI_datafile_t* datafile) {
     datafile->_state = TRI_DF_STATE_WRITE_ERROR;
 
     if (errno == ENOSPC) {
-      datafile->_lastError = TRI_set_errno(TRI_VOC_ERROR_FILESYSTEM_FULL);
+      datafile->_lastError = TRI_set_errno(TRI_ERROR_AVOCADO_FILESYSTEM_FULL);
     }
     else {
       datafile->_lastError = TRI_errno();

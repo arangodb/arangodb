@@ -785,17 +785,17 @@ bool TRI_ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t co
   // maybe the collection is already manifested
   if (! vc->_newBorn) {
     if (vc->_corrupted) {
-      TRI_set_errno(TRI_VOC_ERROR_CORRUPTED_DATAFILE);
+      TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE);
       return false;
     }
 
     if (! vc->_loaded) {
-      TRI_set_errno(TRI_VOC_ERROR_CORRUPTED_DATAFILE);
+      TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE);
       return false;
     }
 
     if (vc->_collection == NULL) {
-      TRI_set_errno(TRI_VOC_ERROR_CORRUPTED_DATAFILE);
+      TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE);
       return false;
     }
 
@@ -822,7 +822,7 @@ bool TRI_ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t co
     }
   }
   else {
-    TRI_set_errno(TRI_VOC_ERROR_UNKNOWN_TYPE);
+    TRI_set_errno(TRI_ERROR_AVOCADO_UNKNOWN_COLLECTION_TYPE);
 
     cnv.v->_newBorn = 0;
     cnv.v->_corrupted = 1;
@@ -833,7 +833,7 @@ bool TRI_ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t co
   }
 
   if (collection == NULL) {
-    TRI_set_errno(TRI_VOC_ERROR_CORRUPTED_DATAFILE);
+    TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE);
 
     cnv.v->_newBorn = 0;
     cnv.v->_corrupted = 1;

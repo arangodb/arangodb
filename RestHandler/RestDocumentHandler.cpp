@@ -221,7 +221,7 @@ bool RestDocumentHandler::createDocument () {
 
   if (suffix.size() != 0) {
     generateError(HttpResponse::BAD,
-                  TRI_REST_ERROR_SUPERFLUOUS_SUFFICES,
+                  TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting " + DOCUMENT_PATH + "?collection=<identifier>");
     return false;
   }
@@ -232,7 +232,7 @@ bool RestDocumentHandler::createDocument () {
 
   if (! found || cid.empty()) {
     generateError(HttpResponse::BAD,
-                  TRI_VOC_ERROR_COLLECTION_PARAMETER_MISSING,
+                  TRI_ERROR_AVOCADO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + DOCUMENT_PATH + "?collection=<identifier>");
     return false;
   }
@@ -283,9 +283,9 @@ bool RestDocumentHandler::createDocument () {
     return true;
   }
   else {
-    if (TRI_errno() == TRI_VOC_ERROR_READ_ONLY) {
+    if (TRI_errno() == TRI_ERROR_AVOCADO_READ_ONLY) {
       generateError(HttpResponse::FORBIDDEN, 
-                    TRI_VOC_ERROR_READ_ONLY,
+                    TRI_ERROR_AVOCADO_READ_ONLY,
                     "collection is read-only");
       return false;
     }
@@ -314,7 +314,7 @@ bool RestDocumentHandler::readDocument () {
 
     default:
       generateError(HttpResponse::BAD, 
-                    TRI_REST_ERROR_SUPERFLUOUS_SUFFICES,
+                    TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                     "expecting GET /document/<document-handle> or GET /document?collection=<collection-identifier>");
       return false;
   }
@@ -549,7 +549,7 @@ bool RestDocumentHandler::checkDocument () {
 
   if (suffix.size() != 2) {
     generateError(HttpResponse::BAD, 
-                  TRI_REST_ERROR_BAD_PARAMETER,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting URI /document/<document-handle>");
     return false;
   }
@@ -624,7 +624,7 @@ bool RestDocumentHandler::updateDocument () {
 
   if (suffix.size() != 2) {
     generateError(HttpResponse::BAD, 
-                  TRI_REST_ERROR_BAD_PARAMETER,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting UPDATE /document/<document-handle>");
     return false;
   }
@@ -675,17 +675,17 @@ bool RestDocumentHandler::updateDocument () {
     return true;
   }
   else {
-    if (TRI_errno() == TRI_VOC_ERROR_READ_ONLY) {
+    if (TRI_errno() == TRI_ERROR_AVOCADO_READ_ONLY) {
       generateError(HttpResponse::FORBIDDEN, 
-                    TRI_VOC_ERROR_READ_ONLY,
+                    TRI_ERROR_AVOCADO_READ_ONLY,
                     "collection is read-only");
       return false;
     }
-    else if (TRI_errno() == TRI_VOC_ERROR_DOCUMENT_NOT_FOUND) {
+    else if (TRI_errno() == TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND) {
       generateDocumentNotFound(cid + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + didStr);
       return false;
     }
-    else if (TRI_errno() == TRI_VOC_ERROR_CONFLICT) {
+    else if (TRI_errno() == TRI_ERROR_AVOCADO_CONFLICT) {
       generatePreconditionFailed(_documentCollection->base._cid, did, rid);
       return false;
     }
@@ -750,7 +750,7 @@ bool RestDocumentHandler::deleteDocument () {
 
   if (suffix.size() != 2) {
     generateError(HttpResponse::BAD, 
-                  TRI_REST_ERROR_BAD_PARAMETER,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /document/<document-handle>");
     return false;
   }
@@ -777,7 +777,7 @@ bool RestDocumentHandler::deleteDocument () {
 
   if (policy == TRI_DOC_UPDATE_ILLEGAL) {
     generateError(HttpResponse::BAD, 
-                  TRI_REST_ERROR_BAD_PARAMETER,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
                   "policy must be 'error' or 'last'");
     return false;
   }
@@ -801,17 +801,17 @@ bool RestDocumentHandler::deleteDocument () {
     return true;
   }
   else {
-    if (TRI_errno() == TRI_VOC_ERROR_READ_ONLY) {
+    if (TRI_errno() == TRI_ERROR_AVOCADO_READ_ONLY) {
       generateError(HttpResponse::FORBIDDEN, 
-                    TRI_VOC_ERROR_READ_ONLY,
+                    TRI_ERROR_AVOCADO_READ_ONLY,
                     "collection is read-only");
       return false;
     }
-    else if (TRI_errno() == TRI_VOC_ERROR_DOCUMENT_NOT_FOUND) {
+    else if (TRI_errno() == TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND) {
       generateDocumentNotFound(cid + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + didStr);
       return false;
     }
-    else if (TRI_errno() == TRI_VOC_ERROR_CONFLICT) {
+    else if (TRI_errno() == TRI_ERROR_AVOCADO_CONFLICT) {
       generatePreconditionFailed(_documentCollection->base._cid, did, rid);
       return false;
     }

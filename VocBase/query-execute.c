@@ -136,7 +136,7 @@ static bool AddCollectionsBarrierQueryInstance (TRI_query_instance_t* const inst
     assert(lock->_collection);
     ce = TRI_CreateBarrierElement(&lock->_collection->_barrierList);
     if (!ce) {
-      TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+      TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return false;
     }
     TRI_PushBackVectorPointer(&cursor->_containers, ce);
@@ -159,7 +159,7 @@ TRI_query_cursor_t* TRI_ExecuteQueryInstance (TRI_query_instance_t* const instan
   // create a select result container for the joins
   selectResult = TRI_JoinSelectResult(instance);
   if (!selectResult) {
-    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 

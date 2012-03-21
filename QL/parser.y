@@ -23,7 +23,7 @@
 
 #define ABORT_IF_OOM(ptr) \
   if (!ptr) { \
-    TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_OOM, NULL); \
+    TRI_SetQueryError(&template_->_error, TRI_ERROR_OUT_OF_MEMORY, NULL); \
     YYABORT; \
   }
 
@@ -161,7 +161,7 @@ select_clause:
       $$ = $1;
       ABORT_IF_OOM($$);
     }
-  ;	
+  ;     
 
 from_clause:
     FROM {
@@ -173,7 +173,7 @@ from_clause:
       $$ = TRI_ParseQueryContextPop(template_);
       ABORT_IF_OOM($$);
     }
-  ;	      						
+  ;                                                     
 
 from_list:
     collection_reference geo_restriction {
@@ -647,7 +647,7 @@ collection_alias:
       $$->_value._stringValue = TRI_ParseQueryRegisterString(template_, TRI_UnescapeUtf8String($1 + 1, strlen($1) - 2, &outLength)); 
       ABORT_IF_OOM($$->_value._stringValue);
     }
-  ;	
+  ;     
 
 join_type:
     list_join {

@@ -112,7 +112,7 @@ static bool InitSelectQueryTemplate (TRI_query_template_t* const template_) {
     );
 
     if (!select_->_functionCode) {
-      TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_OOM, NULL);
+      TRI_SetQueryError(&template_->_error, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return false;
     }
     TRI_RegisterStringQuery(&template_->_memory._strings, select_->_functionCode);
@@ -149,7 +149,7 @@ static bool InitWhereQueryTemplate (TRI_query_template_t* const template_) {
     );
 
     if (!where->_functionCode) {
-      TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_OOM, NULL);
+      TRI_SetQueryError(&template_->_error, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return false;
     }
     TRI_RegisterStringQuery(&template_->_memory._strings, where->_functionCode);
@@ -190,7 +190,7 @@ static bool InitOrderQueryTemplate (TRI_query_template_t* const template_) {
       );
 
       if (!order->_functionCode) {
-        TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_OOM, NULL);
+        TRI_SetQueryError(&template_->_error, TRI_ERROR_OUT_OF_MEMORY, NULL);
         return false;
       }
       TRI_RegisterStringQuery(&template_->_memory._strings, order->_functionCode);
@@ -249,7 +249,7 @@ static bool InitFromQueryTemplate (TRI_query_template_t* const template_) {
         );
     
         if (!collection->_where._functionCode) {
-          TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_OOM, NULL);
+          TRI_SetQueryError(&template_->_error, TRI_ERROR_OUT_OF_MEMORY, NULL);
           return false;
         }
         TRI_RegisterStringQuery(&template_->_memory._strings, collection->_where._functionCode);
@@ -388,7 +388,7 @@ bool TRI_AddBindParameterQueryTemplate (TRI_query_template_t* const template_,
   assert(template_);
 
   if (!parameter) {
-    TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_OOM, NULL);
+    TRI_SetQueryError(&template_->_error, TRI_ERROR_OUT_OF_MEMORY, NULL);
   }
 
   assert(parameter->_name);
@@ -556,7 +556,7 @@ static bool AddJoinPartQueryInstance (TRI_query_instance_t* instance,
   part = (TRI_join_part_t*) TRI_Allocate(sizeof(TRI_join_part_t));
 
   if (!part) {
-    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return false;
   }
   
@@ -584,7 +584,7 @@ static bool AddJoinPartQueryInstance (TRI_query_instance_t* instance,
   part->_mustMaterialize._join = (collection->_refCount._join > 0); 
 
   if (!part->_collectionName || !part->_alias) {
-    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
     part->free(part);
     return false;
   }
@@ -605,7 +605,7 @@ static bool AddJoinPartQueryInstance (TRI_query_instance_t* instance,
     assert(part->_where->_functionCode);
     part->_context = TRI_CreateExecutionContext(part->_where->_functionCode);
     if (!part->_context) {
-      TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+      TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
       part->free(part);
       return false;
     }
@@ -667,7 +667,7 @@ static bool InitSelectQueryInstance (TRI_query_instance_t* const instance) {
       queryInstance->_functionCode = functionCode;
     }
     else {
-      TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+      TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return false;
     }
   }
@@ -721,7 +721,7 @@ static bool InitWhereQueryInstance (TRI_query_instance_t* const instance) {
         queryInstance->_functionCode = functionCode;
       }
       else {
-        TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+        TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
         return false;
       }
     }
@@ -730,7 +730,7 @@ static bool InitWhereQueryInstance (TRI_query_instance_t* const instance) {
   if (queryInstance->_functionCode) {
     queryInstance->_context = TRI_CreateExecutionContext(queryInstance->_functionCode);
     if (!queryInstance->_context) {
-      TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+      TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return false;
     }
   }
@@ -782,7 +782,7 @@ static bool InitOrderQueryInstance (TRI_query_instance_t* const instance) {
         queryInstance->_functionCode = functionCode;
       }
       else {
-        TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+        TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
         return false;
       }
     }
@@ -864,7 +864,7 @@ static bool InitFromQueryInstance (TRI_query_instance_t* const instance) {
       copy = TRI_CopyQueryPartQueryInstance(instance, source->_where._base);
       if (!copy) {
         TRI_Free(collection);
-        TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+        TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
         return false;
       }
 
@@ -885,7 +885,7 @@ static bool InitFromQueryInstance (TRI_query_instance_t* const instance) {
           collection->_where._functionCode = functionCode;
         }
         else {
-          TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+          TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
           return false;
         }
       }
@@ -1084,7 +1084,7 @@ static bool InitJoinsQueryInstance (TRI_query_instance_t* const instance) {
 
   while (node) {
     if (!AddJoinSecondaryCollection(instance, node)) {
-      TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+      TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return false;
     }
 
@@ -1182,7 +1182,7 @@ static bool InitLocksQueryInstance (TRI_query_instance_t* const instance) {
     if (insert) {
       lock = (TRI_query_instance_lock_t*) TRI_Allocate(sizeof(TRI_query_instance_lock_t));
       if (!lock) {
-        TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+        TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
         return false;
       }
 
@@ -1190,7 +1190,7 @@ static bool InitLocksQueryInstance (TRI_query_instance_t* const instance) {
       lock->_collectionName = TRI_DuplicateString(part->_collectionName);
       if (!lock->_collectionName) {
         TRI_Free(lock);
-        TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+        TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
         return false;
       }
       TRI_InsertVectorPointer(&instance->_locks, lock, j);
@@ -1250,7 +1250,7 @@ static bool AddBindParameterValues (TRI_query_instance_t* const instance,
       (TRI_json_t*) valueParameter);
 
     if (!parameter) {
-      TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+      TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return false;
     }
     
@@ -1433,7 +1433,7 @@ TRI_query_instance_t* TRI_CreateQueryInstance (const TRI_query_template_t* const
   }
 
   if (!InitPartsQueryInstance(instance)) {
-    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return instance;
   }
 
@@ -1497,7 +1497,7 @@ static TRI_query_node_t* CreateNodeFromJson (TRI_query_instance_t* const instanc
 
   node = TRI_CreateNodeQuery(&instance->_memory._nodes, TRI_QueryNodeValueUndefined);
   if (!node) {
-    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
@@ -1527,7 +1527,7 @@ static TRI_query_node_t* CreateNodeFromJson (TRI_query_instance_t* const instanc
         TRI_RegisterStringQuery(&instance->_memory._strings, stringValue);
       }
       else {
-        TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+        TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
         return NULL;
       }
       break;
@@ -1542,7 +1542,7 @@ static TRI_query_node_t* CreateNodeFromJson (TRI_query_instance_t* const instanc
         container = TRI_CreateNodeQuery(&instance->_memory._nodes, 
                                         TRI_QueryNodeContainerList);
         if (!container) {
-          TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+          TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
           return NULL;
         }
         node->_rhs = container;
@@ -1554,7 +1554,7 @@ static TRI_query_node_t* CreateNodeFromJson (TRI_query_instance_t* const instanc
           namedValueNode = TRI_CreateNodeQuery(&instance->_memory._nodes, 
                                                TRI_QueryNodeValueNamedValue);
           if (!namedValueNode) {
-            TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+            TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
             return NULL;
           }
 
@@ -1569,7 +1569,7 @@ static TRI_query_node_t* CreateNodeFromJson (TRI_query_instance_t* const instanc
           );
 
           if (!namedValueNode->_lhs || !namedValueNode->_rhs) {
-            TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+            TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
             return NULL;
           }
 
@@ -1589,7 +1589,7 @@ static TRI_query_node_t* CreateNodeFromJson (TRI_query_instance_t* const instanc
         container = TRI_CreateNodeQuery(&instance->_memory._nodes, 
                                         TRI_QueryNodeContainerList);
         if (!container) {
-          TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+          TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
           return NULL;
         }
         node->_rhs = container;
@@ -1602,7 +1602,7 @@ static TRI_query_node_t* CreateNodeFromJson (TRI_query_instance_t* const instanc
           );
 
           if (!subNode) {
-            TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+            TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
             return NULL;
           }
 
@@ -1653,7 +1653,7 @@ TRI_query_node_t* TRI_CopyQueryPartQueryInstance (TRI_query_instance_t* const in
   
   copy = TRI_CreateNodeQuery(&instance->_memory._nodes, node->_type);
   if (!copy) {
-    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
   copy->_value = node->_value;
@@ -1662,7 +1662,7 @@ TRI_query_node_t* TRI_CopyQueryPartQueryInstance (TRI_query_instance_t* const in
   while (next) {
     copy->_next = TRI_CopyQueryPartQueryInstance(instance, next);
     if (!copy->_next) {
-      TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+      TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return NULL;
     }
     next = next->_next;

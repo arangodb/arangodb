@@ -120,7 +120,7 @@ static TRI_datafile_t* SelectJournal (TRI_sim_collection_t* collection,
         TRI_UnlockCondition(&collection->_journalsCondition);
         return datafile;
       }
-      else if (! ok && TRI_errno() != TRI_VOC_ERROR_DATAFILE_FULL) {
+      else if (! ok && TRI_errno() != TRI_ERROR_AVOCADO_DATAFILE_FULL) {
         TRI_UnlockCondition(&collection->_journalsCondition);
         return NULL;
       }
@@ -273,7 +273,7 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* collection,
   journal = SelectJournal(collection, total, result);
 
   if (journal == NULL) {
-    collection->base.base._lastError = TRI_set_errno(TRI_VOC_ERROR_NO_JOURNAL);
+    collection->base.base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
 
     if (release) {
       collection->base.endWrite(&collection->base);
@@ -383,7 +383,7 @@ static TRI_doc_mptr_t const UpdateDocument (TRI_sim_collection_t* collection,
     case TRI_DOC_UPDATE_ERROR:
       if (rid != 0) {
         if (rid != header->_rid) {
-          TRI_set_errno(TRI_VOC_ERROR_CONFLICT);
+          TRI_set_errno(TRI_ERROR_AVOCADO_CONFLICT);
 
           if (release) {
             collection->base.endWrite(&collection->base);
@@ -400,7 +400,7 @@ static TRI_doc_mptr_t const UpdateDocument (TRI_sim_collection_t* collection,
       break;
 
     case TRI_DOC_UPDATE_CONFLICT:
-      TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_PARAMETER);
+      TRI_set_errno(TRI_ERROR_NOT_IMPLEMENTED);
 
       if (release) {
         collection->base.endWrite(&collection->base);
@@ -410,7 +410,7 @@ static TRI_doc_mptr_t const UpdateDocument (TRI_sim_collection_t* collection,
       return mptr;
 
     case TRI_DOC_UPDATE_ILLEGAL:
-      TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_PARAMETER);
+      TRI_set_errno(TRI_ERROR_INTERNAL);
 
       if (release) {
         collection->base.endWrite(&collection->base);
@@ -428,7 +428,7 @@ static TRI_doc_mptr_t const UpdateDocument (TRI_sim_collection_t* collection,
   journal = SelectJournal(collection, total, result);
 
   if (journal == NULL) {
-    collection->base.base._lastError = TRI_set_errno(TRI_VOC_ERROR_NO_JOURNAL);
+    collection->base.base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
 
     if (release) {
       collection->base.endWrite(&collection->base);
@@ -513,7 +513,7 @@ static bool DeleteDocument (TRI_sim_collection_t* collection,
   header = TRI_LookupByKeyAssociativePointer(&collection->_primaryIndex, &marker->_did);
 
   if (header == NULL || header->_deletion != 0) {
-    TRI_set_errno(TRI_VOC_ERROR_DOCUMENT_NOT_FOUND);
+    TRI_set_errno(TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND);
 
     if (release) {
       collection->base.endWrite(&collection->base);
@@ -531,7 +531,7 @@ static bool DeleteDocument (TRI_sim_collection_t* collection,
     case TRI_DOC_UPDATE_ERROR:
       if (rid != 0) {
         if (rid != header->_rid) {
-          TRI_set_errno(TRI_VOC_ERROR_CONFLICT);
+          TRI_set_errno(TRI_ERROR_AVOCADO_CONFLICT);
 
           if (release) {
             collection->base.endWrite(&collection->base);
@@ -547,7 +547,7 @@ static bool DeleteDocument (TRI_sim_collection_t* collection,
       break;
 
     case TRI_DOC_UPDATE_CONFLICT:
-      TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_PARAMETER);
+      TRI_set_errno(TRI_ERROR_NOT_IMPLEMENTED);
 
       if (release) {
         collection->base.endWrite(&collection->base);
@@ -556,7 +556,7 @@ static bool DeleteDocument (TRI_sim_collection_t* collection,
       return NULL;
 
     case TRI_DOC_UPDATE_ILLEGAL:
-      TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_PARAMETER);
+      TRI_set_errno(TRI_ERROR_INTERNAL);
 
       if (release) {
         collection->base.endWrite(&collection->base);
@@ -573,7 +573,7 @@ static bool DeleteDocument (TRI_sim_collection_t* collection,
   journal = SelectJournal(collection, total, &result);
 
   if (journal == NULL) {
-    collection->base.base._lastError = TRI_set_errno(TRI_VOC_ERROR_NO_JOURNAL);
+    collection->base.base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
 
     if (release) {
       collection->base.endWrite(&collection->base);
@@ -844,7 +844,7 @@ static TRI_doc_mptr_t const UpdateShapedJson (TRI_doc_collection_t* document,
       document->endWrite(&collection->base);
     }
 
-    TRI_set_errno(TRI_VOC_ERROR_DOCUMENT_NOT_FOUND);
+    TRI_set_errno(TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND);
     mptr._did = 0;
     return mptr;
   }
@@ -1907,7 +1907,7 @@ static bool DeleteImmediateIndexes (TRI_sim_collection_t* collection,
   found = TRI_RemoveKeyAssociativePointer(&collection->_primaryIndex, &header->_did);
 
   if (found == NULL) {
-    TRI_set_errno(TRI_VOC_ERROR_DOCUMENT_NOT_FOUND);
+    TRI_set_errno(TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND);
     return false;
   }
 
@@ -2335,7 +2335,7 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
     idx = TRI_LookupGeoIndex2SimCollection(collection, lat, lon);
   }
   else {
-    TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_PARAMETER);
+    TRI_set_errno(TRI_ERROR_INTERNAL);
 
     LOG_TRACE("expecting either 'location' or 'latitude' and 'longitude'");
 

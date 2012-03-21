@@ -328,7 +328,7 @@ static TRI_data_feeder_t* DetermineGeoIndexUsage (TRI_query_instance_t* const in
   indexDefinitions = TRI_GetCollectionIndexes(instance->_template->_vocbase, 
                                               part->_collectionName);
   if (!indexDefinitions) {
-    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
     
@@ -404,7 +404,7 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
                                                 part->_collectionName);
 
     if (!indexDefinitions) {
-      TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+      TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
       goto EXIT2;
     }
     
@@ -558,7 +558,7 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
             }
 
             if (!feeder) {
-              TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+              TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
               goto EXIT;
             }
 
@@ -757,7 +757,7 @@ static bool CreateCollectionDataPart (TRI_query_instance_t* const instance,
                        part->_mustMaterialize._select,
                        part->_mustMaterialize._order);
   if (!datapart) {
-    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return false;
   }
 
@@ -782,7 +782,7 @@ static bool CreateGeoDataPart (TRI_query_instance_t* const instance,
                        part->_mustMaterialize._order);
 
   if (!datapart) {
-    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return false;
   }
 
@@ -843,7 +843,7 @@ TRI_select_result_t* TRI_JoinSelectResult (TRI_query_instance_t* const instance)
 
   dataparts = (TRI_vector_pointer_t*) TRI_Allocate(sizeof(TRI_vector_pointer_t));
   if (!dataparts) {
-    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
@@ -857,7 +857,7 @@ TRI_select_result_t* TRI_JoinSelectResult (TRI_query_instance_t* const instance)
   // set up the data structures to retrieve the result documents
   result = TRI_CreateSelectResult(dataparts);
   if (!result) {
-    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
     // clean up
     FreeDataParts(instance, dataparts);
     return NULL;
