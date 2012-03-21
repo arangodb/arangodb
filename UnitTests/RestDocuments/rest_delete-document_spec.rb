@@ -252,6 +252,94 @@ describe AvocadoDB do
 
 	AvocadoDB.size_collection(@cid).should eq(0)
       end
+
+      it "create a document and delete it, using rev" do
+	cmd = "/document?collection=#{@cid}"
+	body = "{ \"Hallo\" : \"World\" }"
+	doc = AvocadoDB.post(cmd, :body => body)
+
+	doc.code.should eq(201)
+
+	location = doc.headers['location']
+	location.should be_kind_of(String)
+
+	did = doc.parsed_response['_id']
+	rev = doc.parsed_response['_rev']
+
+	# delete document, different revision
+	cmd = "/document/#{did}?rev=#{rev-1}"
+        doc = AvocadoDB.delete(cmd)
+
+	doc.code.should eq(412)
+	doc.parsed_response['error'].should eq(true)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+	did2 = doc.parsed_response['_id']
+	did2.should be_kind_of(String)
+	did2.should eq(did)
+	
+	rev2 = doc.parsed_response['_rev']
+	rev2.should be_kind_of(Integer)
+	rev2.should eq(rev)
+
+	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}-rev-other")
+
+	# delete document, same revision
+	cmd = "/document/#{did}?rev=#{rev}"
+        doc = AvocadoDB.delete(cmd)
+
+	doc.code.should eq(200)
+	doc.parsed_response['error'].should eq(false)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+	did2 = doc.parsed_response['_id']
+	did2.should be_kind_of(String)
+	did2.should eq(did)
+	
+
+	rev2 = doc.parsed_response['_rev']
+	rev2.should be_kind_of(Integer)
+	rev2.should eq(rev)
+
+	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}-rev")
+
+	AvocadoDB.size_collection(@cid).should eq(0)
+      end
+
+      it "create a document and delete it, using rev and last-write wins" do
+	cmd = "/document?collection=#{@cid}"
+	body = "{ \"Hallo\" : \"World\" }"
+	doc = AvocadoDB.post(cmd, :body => body)
+
+	doc.code.should eq(201)
+
+	location = doc.headers['location']
+	location.should be_kind_of(String)
+
+	did = doc.parsed_response['_id']
+	rev = doc.parsed_response['_rev']
+
+	# delete document, different revision
+	cmd = "/document/#{did}?policy=last"
+	hdr = { "rev" => "\"#{rev-1}\"" }
+        doc = AvocadoDB.delete(cmd, :headers => hdr)
+
+	doc.code.should eq(200)
+	doc.parsed_response['error'].should eq(false)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+	did2 = doc.parsed_response['_id']
+	did2.should be_kind_of(String)
+	did2.should eq(did)
+	
+	rev2 = doc.parsed_response['_rev']
+	rev2.should be_kind_of(Integer)
+	rev2.should eq(rev)
+
+	AvocadoDB.log(:method => :get, :url => cmd, :headers => hdr, :result => doc, :output => "#{prefix}-rev-other-last-write")
+
+	AvocadoDB.size_collection(@cid).should eq(0)
+      end
     end
 
   end

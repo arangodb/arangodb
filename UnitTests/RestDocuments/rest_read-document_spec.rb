@@ -392,7 +392,7 @@ describe AvocadoDB do
 	doc.headers['content-length'].should eq(content_length)
 	doc.body.should eq(nil)
 
-	AvocadoDB.log(:method => :head, :url => cmd, :result => doc, :output => "#{prefix}")
+	AvocadoDB.log(:method => :head, :url => cmd, :result => doc, :output => "#{prefix}-head")
 
 	AvocadoDB.delete(location)
 

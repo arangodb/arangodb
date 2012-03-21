@@ -31,7 +31,7 @@
 /// <ol>
 ///  <li>Querying and Managing Documents
 ///   <ol>
-///    <li>Documents
+///    <li>@ref RestDocument
 ///     <ol>
 ///      <li>@ref RestDocumentRead "GET /document/@FA{document-handle}"</li>
 ///      <li>@ref RestDocumentCreate "POST /document/collection=@FA{collection-identifier}"</li>
