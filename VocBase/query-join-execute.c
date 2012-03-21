@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <BasicsC/logging.h>
+#include <BasicsC/string-buffer.h>
 
 #include "VocBase/query-join-execute.h"
 #include "VocBase/query-join.h"
@@ -34,6 +35,36 @@
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief log information about the used index
+////////////////////////////////////////////////////////////////////////////////
+
+static void LogIndexString(const TRI_index_definition_t* const indexDefinition,
+                           const char* const collectionName) {
+
+  TRI_string_buffer_t* buffer = TRI_CreateStringBuffer();
+  size_t i;
+
+  if (!buffer) {
+    return;
+  }
+  
+  for (i = 0; i < indexDefinition->_fields->_length; i++) {
+    if (i > 0) {
+      TRI_AppendStringStringBuffer(buffer, ", "); 
+    }
+    TRI_AppendStringStringBuffer(buffer, indexDefinition->_fields->_buffer[i]);
+  }
+
+  LOG_DEBUG("using %s index (%s) for '%s'", 
+            TRI_GetTypeNameIndex(indexDefinition), 
+            buffer->_buffer, 
+            collectionName);
+
+  TRI_FreeStringBuffer(buffer);
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Determine which geo indexes to use in a query - DEPRECATED
@@ -297,7 +328,7 @@ static TRI_data_feeder_t* DetermineGeoIndexUsage (TRI_query_instance_t* const in
   indexDefinitions = TRI_GetCollectionIndexes(instance->_template->_vocbase, 
                                               part->_collectionName);
   if (!indexDefinitions) {
-    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
     
@@ -333,7 +364,7 @@ static TRI_data_feeder_t* DetermineGeoIndexUsage (TRI_query_instance_t* const in
                                     indexDefinition->_iid,
                                     part->_geoRestriction);
 
-    LOG_DEBUG("using geo index for '%s'", part->_alias);
+    LogIndexString(indexDefinition, part->_alias);
     break;
   }
 
@@ -373,7 +404,7 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
                                                 part->_collectionName);
 
     if (!indexDefinitions) {
-      TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+      TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
       goto EXIT2;
     }
     
@@ -488,7 +519,7 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
           if (feeder) {
             // we always exit if we can use the primary index
             // the primary index guarantees uniqueness
-            LOG_DEBUG("using primary index for '%s'", part->_alias);
+            LogIndexString(indexDefinition, part->_alias);
             goto EXIT;
           }
         } 
@@ -513,7 +544,7 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
                                                    indexDefinition->_iid,
                                                    TRI_CopyVectorPointer(&matches));
             
-              LOG_DEBUG("using skiplist index for '%s'", part->_alias);
+              LogIndexString(indexDefinition, part->_alias);
             }
             else {
               feeder = 
@@ -523,11 +554,11 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
                                                indexDefinition->_iid,
                                                TRI_CopyVectorPointer(&matches));
               
-              LOG_DEBUG("using hash index for '%s'", part->_alias);
+              LogIndexString(indexDefinition, part->_alias);
             }
 
             if (!feeder) {
-              TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+              TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
               goto EXIT;
             }
 
@@ -726,7 +757,7 @@ static bool CreateCollectionDataPart (TRI_query_instance_t* const instance,
                        part->_mustMaterialize._select,
                        part->_mustMaterialize._order);
   if (!datapart) {
-    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return false;
   }
 
@@ -751,7 +782,7 @@ static bool CreateGeoDataPart (TRI_query_instance_t* const instance,
                        part->_mustMaterialize._order);
 
   if (!datapart) {
-    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return false;
   }
 
@@ -812,7 +843,7 @@ TRI_select_result_t* TRI_JoinSelectResult (TRI_query_instance_t* const instance)
 
   dataparts = (TRI_vector_pointer_t*) TRI_Allocate(sizeof(TRI_vector_pointer_t));
   if (!dataparts) {
-    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
@@ -826,7 +857,7 @@ TRI_select_result_t* TRI_JoinSelectResult (TRI_query_instance_t* const instance)
   // set up the data structures to retrieve the result documents
   result = TRI_CreateSelectResult(dataparts);
   if (!result) {
-    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
     // clean up
     FreeDataParts(instance, dataparts);
     return NULL;

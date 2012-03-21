@@ -203,7 +203,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
         else if (TRI_EqualString2("datafile", first, firstLen)) {
           if (! datafile->_isSealed) {
             LOG_ERROR("datafile '%s' is not sealed, this should never happen", filename);
-            collection->_lastError = TRI_set_errno(TRI_VOC_ERROR_CORRUPTED_DATAFILE);
+            collection->_lastError = TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE);
             stop = true;
             break;
           }
@@ -345,7 +345,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_collection_t* collection,
 
   // sanity check
   if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) > parameter->_maximalSize) {
-    TRI_set_errno(TRI_VOC_ERROR_DATAFILE_FULL);
+    TRI_set_errno(TRI_ERROR_AVOCADO_DATAFILE_FULL);
 
     LOG_ERROR("cannot create datafile '%s' in '%s', maximal size '%u' is too small",
               parameter->_name,
@@ -356,7 +356,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_collection_t* collection,
   }
 
   if (! TRI_IsDirectory(path)) {
-    TRI_set_errno(TRI_VOC_ERROR_WRONG_PATH);
+    TRI_set_errno(TRI_ERROR_AVOCADO_WRONG_VOCBASE_PATH);
 
     LOG_ERROR("cannot create collection '%s', path is not a directory", path);
 
@@ -366,7 +366,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_collection_t* collection,
   filename = TRI_Concatenate2File(path, parameter->_name);
 
   if (TRI_ExistsFile(filename)) {
-    TRI_set_errno(TRI_VOC_ERROR_WRONG_PATH);
+    TRI_set_errno(TRI_ERROR_AVOCADO_WRONG_VOCBASE_PATH);
     TRI_FreeString(filename);
 
     LOG_ERROR("cannot create collection '%s' in '%s', name already exists",
@@ -459,13 +459,17 @@ bool TRI_LoadParameterInfo (char const* path,
   size_t i;
   size_t n;
 
+  memset(parameter, 0, sizeof(TRI_col_info_t));
+
+  // find parameter file
   filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
+
   if (!filename) {
     return false;
   }
 
   if (! TRI_ExistsFile(filename)) {
-    TRI_set_errno(TRI_VOC_ERROR_FILE_NOT_FOUND);
+    TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_PARAMETER_FILE);
     TRI_FreeString(filename);
     return false;
   }
@@ -473,7 +477,7 @@ bool TRI_LoadParameterInfo (char const* path,
   json = TRI_JsonFile(filename, &error);
 
   if (json == NULL) {
-    TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_PARAMETER);
+    TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_PARAMETER_FILE);
     TRI_FreeString(error);
     TRI_FreeString(filename);
 
@@ -485,7 +489,7 @@ bool TRI_LoadParameterInfo (char const* path,
   TRI_FreeString(filename);
 
   if (json->_type != TRI_JSON_ARRAY) {
-    TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_PARAMETER);
+    TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_PARAMETER_FILE);
 
     LOG_ERROR("cannot open '%s', file does not contain a json array", filename);
 
@@ -515,7 +519,9 @@ bool TRI_LoadParameterInfo (char const* path,
       else if (TRI_EqualString(key->_value._string.data, "maximalSize")) {
         parameter->_maximalSize = value->_value._number;
       }
-      else if (TRI_EqualString(key->_value._string.data, "waitForSync")) {
+    }
+    else if (key->_type == TRI_JSON_STRING && value->_type == TRI_JSON_BOOLEAN) {
+      if (TRI_EqualString(key->_value._string.data, "waitForSync")) {
         parameter->_waitForSync = value->_value._boolean;
       }
     }
@@ -538,63 +544,53 @@ bool TRI_LoadParameterInfo (char const* path,
 bool TRI_SaveParameterInfo (char const* path,
                             TRI_col_info_t* info) {
   TRI_json_t* json;
-  TRI_json_t* _version;
-  TRI_json_t* _type;
-  TRI_json_t* _cid;
-  TRI_json_t* _name;
-  TRI_json_t* _maximalSize;
-  TRI_json_t* _waitForSync;
+  TRI_json_t* version;
+  TRI_json_t* type;
+  TRI_json_t* cid;
+  TRI_json_t* name;
+  TRI_json_t* maximalSize;
+  TRI_json_t* waitForSync;
   char* filename;
   bool ok;
   
   filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
+
   if (!filename) {
     return false;
   }
 
   // create a json info object
   json = TRI_CreateArrayJson();
+
   if (!json) {
     TRI_FreeString(filename);
     return false;
   }
    
-  _version     = TRI_CreateNumberJson(info->_version);
-  _type        = TRI_CreateNumberJson(info->_type);
-  _cid         = TRI_CreateNumberJson(info->_cid);
-  _name        = TRI_CreateStringCopyJson(info->_name);
-  _maximalSize = TRI_CreateNumberJson(info->_maximalSize);
-  _waitForSync = TRI_CreateBooleanJson(info->_waitForSync);
+  version     = TRI_CreateNumberJson(info->_version);
+  type        = TRI_CreateNumberJson(info->_type);
+  cid         = TRI_CreateNumberJson(info->_cid);
+  name        = TRI_CreateStringCopyJson(info->_name);
+  maximalSize = TRI_CreateNumberJson(info->_maximalSize);
+  waitForSync = TRI_CreateBooleanJson(info->_waitForSync);
 
-  TRI_Insert2ArrayJson(json, "version", _version);
-  TRI_Insert2ArrayJson(json, "type", _type); 
-  TRI_Insert2ArrayJson(json, "cid", _cid);
-  TRI_Insert2ArrayJson(json, "name", _name);
-  TRI_Insert2ArrayJson(json, "maximalSize", _maximalSize);
-  TRI_Insert2ArrayJson(json, "waitForSync", _waitForSync);
+  TRI_Insert2ArrayJson(json, "version", version);
+  TRI_Insert2ArrayJson(json, "type", type); 
+  TRI_Insert2ArrayJson(json, "cid", cid);
+  TRI_Insert2ArrayJson(json, "name", name);
+  TRI_Insert2ArrayJson(json, "maximalSize", maximalSize);
+  TRI_Insert2ArrayJson(json, "waitForSync", waitForSync);
+
+  TRI_Free(version);
+  TRI_Free(type);
+  TRI_Free(cid);
+  TRI_Free(name);
+  TRI_Free(maximalSize);
+  TRI_Free(waitForSync);
 
   // save json info to file
   ok = TRI_SaveJson(filename, json);
   TRI_FreeJson(json);
-
-  if (_version) {
-    TRI_Free(_version);
-  }
-  if (_type) {
-    TRI_Free(_type);
-  }
-  if (_cid) {
-    TRI_Free(_cid);
-  }
-  if (_name) {
-    TRI_Free(_name);
-  }
-  if (_maximalSize) {
-    TRI_Free(_maximalSize);
-  }
-  if (_waitForSync) {
-    TRI_Free(_waitForSync);
-  }
 
   if (! ok) {
     LOG_ERROR("cannot save info block '%s': '%s'", filename, TRI_last_error());
@@ -763,7 +759,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_collection_t* collection,
   freeCol = false;
 
   if (! TRI_IsDirectory(path)) {
-    TRI_set_errno(TRI_VOC_ERROR_WRONG_PATH);
+    TRI_set_errno(TRI_ERROR_AVOCADO_WRONG_VOCBASE_PATH);
 
     LOG_ERROR("cannot open '%s', not a directory or not found", path);
 

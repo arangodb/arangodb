@@ -83,7 +83,6 @@ namespace triagens {
 
         char buffer[10240];
         StringBuffer result;
-        result.initialise();
 
         while (true) {
           ssize_t n = TRI_READ(fd, buffer, sizeof(buffer));
@@ -105,7 +104,6 @@ namespace triagens {
         TRI_CLOSE(fd);
 
         string r(result.c_str());
-        result.free();
 
         return r;
       }

@@ -60,16 +60,13 @@ namespace triagens {
                         size_t retries,
                         double connectionTimeout) :
                         _requestTimeout(requestTimeout),
-                        _retries(retries),
-                        _connection(0) {
+                        _retries(retries) {
       
       _connection = new SimpleHttpConnection(hostname, port, connectionTimeout);
     }
 
     SimpleHttpClient::~SimpleHttpClient () {
-      if (_connection) {
-        delete _connection;
-      }      
+      delete _connection;
     }
 
 
@@ -94,9 +91,9 @@ namespace triagens {
       fillRequestBuffer(requestBuffer, method, location, body, bodyLength, headerFields);
       LOGGER_TRACE << "Request: " << requestBuffer.str();
 
-      double start = now();
+      double start = _connection->now();
       double runtime = 0.0;
-      
+
       // TODO requestTimeout
       while (retries++ <= _retries && runtime < _requestTimeout) {
 
@@ -108,14 +105,12 @@ namespace triagens {
 
         // write
         else if (!write(requestBuffer, _requestTimeout - runtime)) {
-          closeConnection();
           type = SimpleHttpResult::WRITE_ERROR;
           // LOGGER_WARNING << "write error";
         }
 
         // read
         else if (!read(result, _requestTimeout - runtime)) {
-          closeConnection();
           type = SimpleHttpResult::READ_ERROR;
           // LOGGER_WARNING << "read error";
         }
@@ -124,11 +119,12 @@ namespace triagens {
           break;
         }
         
-        runtime = now() - start;
+        closeConnection();
+        runtime = _connection->now() - start;
       }
 
       result->setResultType(type);
-
+      
       return result;
     }
 
@@ -190,14 +186,14 @@ namespace triagens {
     bool SimpleHttpClient::read (SimpleHttpResult* httpResult, double timeout) {
       httpResult->clear();
               
-      double start = now();
+      double start = _connection->now();
       
       // read the http header
       if (!readHeader(httpResult, timeout)) {
         return false;
       }
       
-      double runtime = now() - start;
+      double runtime = _connection->now() - start;
       
       if (runtime > timeout) {
         LOGGER_WARNING << "read timeout";
@@ -209,21 +205,26 @@ namespace triagens {
     }
 
     bool SimpleHttpClient::readHeader (SimpleHttpResult* httpResult, double timeout) {
+      double start = _connection->now();
+      double runtime = 0.0;
+
+      bool ok = false;
       string line;
       
-      // TODO: timeout
-      while (_connection->readLn(line, timeout)) {
+      while (runtime < timeout && _connection->readLn(line, timeout)) {
         LOGGER_TRACE << "read header line: " << line;
-
-        if (line == "\r\n" || line == "\n") {
+        
+        if (line == "\r" || line == "") {
           // end of header found
+          ok = true;
           break;
         }        
 
-        httpResult->addHeaderField(line);        
+        httpResult->addHeaderField(line);
+        runtime = _connection->now() - start;
       }
 
-      return httpResult->getHttpReturnCode() > 0;
+      return (ok && (httpResult->getHttpReturnCode() > 0));
     }
     
     
@@ -257,12 +258,12 @@ namespace triagens {
     bool SimpleHttpClient::readBodyChunked (SimpleHttpResult* result, double timeout) {
       string line;
       
-      double start = now();
+      double start = _connection->now();
       double runtime = 0.0;
       
       while (runtime < timeout && _connection->readLn(line, timeout)) {
         
-        if (line == "\r\n" || line == "\n") {
+        if (line == "\r" || line == "") {
           // ignore empty line
           continue;
         }
@@ -284,7 +285,7 @@ namespace triagens {
           return false;
         }
         
-        runtime = now() - start;
+        runtime = _connection->now() - start;
 
         if (runtime > timeout) {
           // failed: timeout
@@ -300,7 +301,7 @@ namespace triagens {
           return false;
         }
         
-        runtime = now() - start;
+        runtime = _connection->now() - start;
       }  
       
       LOGGER_WARNING << "readln faild.";
@@ -356,11 +357,11 @@ namespace triagens {
       requestBuffer << ':' << _connection->getPort() << "\r\n";
       requestBuffer << "Connection: Keep-Alive\r\n";
       requestBuffer << "User-Agent: VOC-Client/1.0\r\n";
-      requestBuffer << "Accept: application/json\r\n";
       
-      if (bodyLength > 0) {
-        requestBuffer << "Content-Type: application/json; charset=utf-8\r\n";
-      }
+      //requestBuffer << "Accept: application/json\r\n";      
+      //if (bodyLength > 0) {
+      //  requestBuffer << "Content-Type: application/json; charset=utf-8\r\n";
+      //}
 
       // do basic authorization
       if (_pathToBasicAuth.size() > 0) {        
@@ -383,6 +384,7 @@ namespace triagens {
       }
       
       for (map<string, string>::const_iterator i = headerFields.begin(); i != headerFields.end(); ++i) {
+        // TODO: check Header name and value
         requestBuffer << i->first << ": " << i->second << "\r\n";
       }
 
@@ -397,17 +399,6 @@ namespace triagens {
     void SimpleHttpClient::closeConnection () {
       _connection->close();
     }
-
-    double SimpleHttpClient::now () {
-      struct timeval tv;
-      gettimeofday(&tv, 0);
-
-      double sec = tv.tv_sec;  // seconds
-      double usc = tv.tv_usec; // microseconds
-
-      return sec + usc / 1000000.0;
-    }
-
     
   }
 }

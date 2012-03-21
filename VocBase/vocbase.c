@@ -450,14 +450,6 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
     return NULL;
   }
   
-  // set up shadow data stores for queries
-/*  vocbase->_statements = TRI_CreateShadowsQueryTemplate();
-  if (!vocbase->_statements) {
-    TRI_Free(vocbase);
-    LOG_ERROR("out of memory when opening vocbase");
-    return NULL;
-  }
-*/
   vocbase->_cursors = TRI_CreateShadowsQueryCursor();
   if (!vocbase->_cursors) {
     TRI_FreeShadowStore(vocbase->_cursors);
@@ -470,7 +462,6 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   vocbase->_path = TRI_DuplicateString(path);
 
   if (!vocbase->_path) {
-//    TRI_FreeShadowDocumentStore(vocbase->_statements);
     TRI_FreeShadowStore(vocbase->_cursors);
     TRI_Free(vocbase);
     LOG_ERROR("out of memory when opening vocbase");
@@ -528,12 +519,7 @@ void TRI_CloseVocBase (TRI_vocbase_t* vocbase) {
     // cursors
     TRI_FreeShadowStore(vocbase->_cursors);
   }
-/*
-  if (vocbase->_statements) {
-    // statements
-    TRI_FreeShadowDocumentStore(vocbase->_statements);
-  }
-*/
+  
   TRI_DestroyLockFile(vocbase->_lockFile);
   TRI_FreeString(vocbase->_lockFile);
 }
@@ -543,7 +529,13 @@ void TRI_CloseVocBase (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t const* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t* vocbase, char const* name) {
-  return TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name);
+  TRI_vocbase_col_t const* found;
+
+  TRI_ReadLockReadWriteLock(&vocbase->_lock);
+  found = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name);
+  TRI_ReadUnlockReadWriteLock(&vocbase->_lock);
+
+  return found;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -551,7 +543,13 @@ TRI_vocbase_col_t const* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t* vocba
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t const* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t* vocbase, TRI_voc_cid_t id) {
-  return TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id);
+  TRI_vocbase_col_t const* found;
+
+  TRI_ReadLockReadWriteLock(&vocbase->_lock);
+  found = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id);
+  TRI_ReadUnlockReadWriteLock(&vocbase->_lock);
+
+  return found;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -562,7 +560,7 @@ TRI_vocbase_col_t const* TRI_FindCollectionByNameVocBase (TRI_vocbase_t* vocbase
   TRI_vocbase_col_t const* found;
 
   TRI_ReadLockReadWriteLock(&vocbase->_lock);
-  found = TRI_LookupCollectionByNameVocBase(vocbase, name);
+  found = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name);
   TRI_ReadUnlockReadWriteLock(&vocbase->_lock);
 
   if (found != NULL) {
@@ -778,6 +776,7 @@ bool TRI_ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t co
   union { TRI_vocbase_col_t* v; TRI_vocbase_col_t const* c; } cnv;
   TRI_col_type_e type;
   TRI_doc_collection_t* collection;
+  void* found;
 
   TRI_WriteLockReadWriteLock(&vocbase->_lock);
 
@@ -786,17 +785,17 @@ bool TRI_ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t co
   // maybe the collection is already manifested
   if (! vc->_newBorn) {
     if (vc->_corrupted) {
-      TRI_set_errno(TRI_VOC_ERROR_CORRUPTED_DATAFILE);
+      TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE);
       return false;
     }
 
     if (! vc->_loaded) {
-      TRI_set_errno(TRI_VOC_ERROR_CORRUPTED_DATAFILE);
+      TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE);
       return false;
     }
 
     if (vc->_collection == NULL) {
-      TRI_set_errno(TRI_VOC_ERROR_CORRUPTED_DATAFILE);
+      TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE);
       return false;
     }
 
@@ -823,7 +822,7 @@ bool TRI_ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t co
     }
   }
   else {
-    TRI_set_errno(TRI_VOC_ERROR_UNKNOWN_TYPE);
+    TRI_set_errno(TRI_ERROR_AVOCADO_UNKNOWN_COLLECTION_TYPE);
 
     cnv.v->_newBorn = 0;
     cnv.v->_corrupted = 1;
@@ -834,7 +833,7 @@ bool TRI_ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t co
   }
 
   if (collection == NULL) {
-    TRI_set_errno(TRI_VOC_ERROR_CORRUPTED_DATAFILE);
+    TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE);
 
     cnv.v->_newBorn = 0;
     cnv.v->_corrupted = 1;
@@ -843,10 +842,20 @@ bool TRI_ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t co
     return false;
   }
 
+  // fix collection entry
   cnv.v->_collection = collection;
   cnv.v->_newBorn = 0;
   cnv.v->_loaded = 1;
+  cnv.v->_cid = collection->base._cid;
 
+  // fix lookup tables
+  found = TRI_InsertKeyAssociativePointer(&vocbase->_collectionsById, &vc->_cid, cnv.v, false);
+
+  if (found != NULL) {
+    LOG_ERROR("duplicate collection identifier '%lu' for name '%s'", (unsigned long) vc->_cid, vc->_name);
+  }
+
+  // release locks
   TRI_WriteUnlockReadWriteLock(&vocbase->_lock);
   return true;
 }
@@ -880,40 +889,6 @@ void TRI_InitialiseVocBase () {
   PageSize = getpagesize();
 
   TRI_InitSpin(&TickLock);
-
-  // general errors
-  TRI_set_errno_string(TRI_VOC_ERROR_ILLEGAL_STATE, "illegal state");
-  TRI_set_errno_string(TRI_VOC_ERROR_SHAPER_FAILED, "illegal shaper");
-  TRI_set_errno_string(TRI_VOC_ERROR_CORRUPTED_DATAFILE, "corrupted datafile");
-  TRI_set_errno_string(TRI_VOC_ERROR_MMAP_FAILED, "mmap failed");
-  TRI_set_errno_string(TRI_VOC_ERROR_MSYNC_FAILED, "msync failed");
-  TRI_set_errno_string(TRI_VOC_ERROR_NO_JOURNAL, "no journal");
-  TRI_set_errno_string(TRI_VOC_ERROR_DATAFILE_SEALED, "datafile sealed");
-  TRI_set_errno_string(TRI_VOC_ERROR_CORRUPTED_COLLECTION, "corrupted collection");
-  TRI_set_errno_string(TRI_VOC_ERROR_UNKNOWN_TYPE, "unknown type");
-  TRI_set_errno_string(TRI_VOC_ERROR_ILLEGAL_PARAMETER, "illegal paramater");
-  TRI_set_errno_string(TRI_VOC_ERROR_INDEX_EXISTS, "index exists");
-  TRI_set_errno_string(TRI_VOC_ERROR_CONFLICT, "conflict");
-
-  // open errors
-  TRI_set_errno_string(TRI_VOC_ERROR_WRONG_PATH, "wrong path");
-
-  // close errors
-  TRI_set_errno_string(TRI_VOC_ERROR_CANNOT_RENAME, "cannot rename");
-
-  // write errors
-  TRI_set_errno_string(TRI_VOC_ERROR_WRITE_FAILED, "write failed");
-  TRI_set_errno_string(TRI_VOC_ERROR_READ_ONLY, "read only");
-  TRI_set_errno_string(TRI_VOC_ERROR_DATAFILE_FULL, "datafile full");
-  TRI_set_errno_string(TRI_VOC_ERROR_FILESYSTEM_FULL, "filesystem full");
-
-  // read errors
-  TRI_set_errno_string(TRI_VOC_ERROR_READ_FAILED, "read failed");
-  TRI_set_errno_string(TRI_VOC_ERROR_FILE_NOT_FOUND, "file not found");
-  TRI_set_errno_string(TRI_VOC_ERROR_FILE_NOT_ACCESSIBLE, "file not accessible");
-
-  // document errors
-  TRI_set_errno_string(TRI_VOC_ERROR_DOCUMENT_NOT_FOUND, "document not found");
 
 #ifdef TRI_READLINE_VERSION
   LOG_TRACE("%s", "$Revision: READLINE " TRI_READLINE_VERSION " $");

@@ -100,7 +100,7 @@ static void StringifyJson (TRI_string_buffer_t* buffer, TRI_json_t const* object
         }
 
         StringifyJson(buffer, TRI_AtVector(&object->_value._objects, i), true);
-        TRI_AppendStringStringBuffer(buffer, ":");
+        TRI_AppendCharStringBuffer(buffer, ':');
         StringifyJson(buffer, TRI_AtVector(&object->_value._objects, i + 1), true);
       }
 
@@ -553,7 +553,7 @@ bool TRI_PrintJson (int fd, TRI_json_t const* object) {
     ssize_t m = TRI_WRITE(fd, p, n);
 
     if (m <= 0) {
-      TRI_DestroyStringBuffer(&buffer);
+      TRI_AnnihilateStringBuffer(&buffer);
       return false;
     }
 
@@ -561,7 +561,7 @@ bool TRI_PrintJson (int fd, TRI_json_t const* object) {
     p += m;
   }
 
-  TRI_DestroyStringBuffer(&buffer);
+  TRI_AnnihilateStringBuffer(&buffer);
   return true;
 }
 

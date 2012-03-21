@@ -64,7 +64,7 @@ function print () {
     }
   }
 
-  if ( typeof(COLOR_OUTPUT_RESET) != "undefined") {
+  if (typeof(COLOR_OUTPUT) != "undefined" && typeof(COLOR_OUTPUT_RESET) != "undefined") {
     internal.output(COLOR_OUTPUT_RESET);
   }
 
@@ -262,7 +262,7 @@ function PRINT_OBJECT (object, seen, path, names, level) {
 
   printIdent(level);
   
-  internal.output("}");
+  internal.output(" }");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

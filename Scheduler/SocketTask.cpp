@@ -67,12 +67,10 @@ SocketTask::~SocketTask () {
 
   if (writeBuffer != 0) {
     if (ownBuffer) {
-      writeBuffer->free();
       delete writeBuffer;
     }
   }
 
-  readBuffer->free();
   delete readBuffer;
 
   delete[] tmpReadBuffer;
@@ -186,7 +184,6 @@ bool SocketTask::handleWrite (bool& closed, bool noWrite) {
 
     if (len == 0) {
       if (ownBuffer) {
-        writeBuffer->free();
         delete writeBuffer;
       }
 
@@ -242,7 +239,6 @@ void SocketTask::setWriteBuffer (StringBuffer* buffer, bool ownBuffer) {
 
     if (buffer->empty()) {
       if (ownBuffer) {
-        buffer->free();
         delete buffer;
       }
 
@@ -252,7 +248,6 @@ void SocketTask::setWriteBuffer (StringBuffer* buffer, bool ownBuffer) {
     else {
       if (writeBuffer != 0) {
         if (this->ownBuffer) {
-          writeBuffer->free();
           delete writeBuffer;
         }
 
@@ -300,8 +295,7 @@ void SocketTask::appendWriteBuffer (StringBuffer* buffer) {
     if (writeBuffer == 0) {
       writeLength = 0;
 
-      writeBuffer = new StringBuffer;
-      writeBuffer->initialise();
+      writeBuffer = new StringBuffer();
 
       newBuffer = true;
     }

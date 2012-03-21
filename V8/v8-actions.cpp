@@ -506,13 +506,9 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
         }
 
         case TRI_ACT_COLLECTION_ID: {
-          TRI_ReadLockReadWriteLock(&vocbase->_lock);
-
           TRI_vocbase_col_t const* collection = TRI_LookupCollectionByIdVocBase(
             vocbase,
             TRI_UInt64String(v.c_str()));
-
-          TRI_ReadUnlockReadWriteLock(&vocbase->_lock);
 
           if (collection != 0) {
             parametersArray->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));

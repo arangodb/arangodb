@@ -288,12 +288,7 @@ function AvocadoCollection (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.all = function () {
-  var str = this._database._connection.get("/_api/documents/" + encodeURIComponent(this.name));
-
-  var requestResult = undefined;
-  if (str != undefined) {
-    requestResult = JSON.parse(str);
-  }
+  var requestResult = this._database._connection.get("/_api/documents/" + encodeURIComponent(this.name));
     
   if (isErrorResult(requestResult)) {
     return undefined;
@@ -307,12 +302,7 @@ AvocadoCollection.prototype.all = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.document = function (id) {
-  var str = this._database._connection.get("/_api/document/" + encodeURIComponent(this.name) + "/" + encodeURIComponent(id));
-  
-  var requestResult = undefined;
-  if (str != undefined) {
-    requestResult = JSON.parse(str);
-  }
+  var requestResult = this._database._connection.get("/_api/document/" + encodeURIComponent(this.name) + "/" + encodeURIComponent(id));
 
   if (isErrorResult(requestResult)) {
     return undefined;
@@ -326,12 +316,7 @@ AvocadoCollection.prototype.document = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.save = function (data) {    
-  var str = this._database._connection.post("/_api/document/" + encodeURIComponent(this.name), JSON.stringify(data));
-  
-  var requestResult = undefined;
-  if (str != undefined) {
-    requestResult = JSON.parse(str);
-  }
+  var requestResult = this._database._connection.post("/_api/document/" + encodeURIComponent(this.name), JSON.stringify(data));
   
   if (isErrorResult(requestResult)) {
     return undefined;
@@ -345,12 +330,7 @@ AvocadoCollection.prototype.save = function (data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.delete = function (id) {    
-  var str = this._database._connection.delete("/_api/document/" + encodeURIComponent(this.name) + "/" + encodeURIComponent(id));
-  
-  var requestResult = undefined;
-  if (str != undefined) {
-    requestResult = JSON.parse(str);
-  }
+  var requestResult = this._database._connection.delete("/_api/document/" + encodeURIComponent(this.name) + "/" + encodeURIComponent(id));
 
   return !isErrorResult(requestResult);
 }
@@ -360,12 +340,7 @@ AvocadoCollection.prototype.delete = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.update = function (id, data) {    
-  var str = this._database._connection.put("/_api/document/" + encodeURIComponent(this.name) + "/" + encodeURIComponent(id), JSON.stringify(data));
-  
-  var requestResult = undefined;
-  if (str != undefined) {
-    requestResult = JSON.parse(str);
-  }
+  var requestResult = this._database._connection.put("/_api/document/" + encodeURIComponent(this.name) + "/" + encodeURIComponent(id), JSON.stringify(data));
 
   return !isErrorResult(requestResult);
 }
@@ -449,11 +424,7 @@ AvocadoQueryCursor.prototype.next = function () {
       this._hasMore = false;
       
       // load more results      
-      var str = this._database._connection.put("/_api/cursor/"+ encodeURIComponent(this.data._id),  "");
-      var requestResult = undefined;
-      if (str != undefined) {
-        requestResult = JSON.parse(str);
-      }
+      var requestResult = this._database._connection.put("/_api/cursor/"+ encodeURIComponent(this.data._id),  "");
     
       if (isErrorResult(requestResult)) {
         return undefined;
@@ -507,11 +478,7 @@ AvocadoQueryCursor.prototype.dispose = function () {
     return;
   }
 
-  var str = this._database._connection.delete("/_api/cursor/"+ encodeURIComponent(this.data._id), "");
-  var requestResult = undefined;
-  if (str != undefined) {
-    requestResult = JSON.parse(str);
-  }
+  var requestResult = this._database._connection.delete("/_api/cursor/"+ encodeURIComponent(this.data._id), "");
     
   if (!isErrorResult(requestResult)) {
     this.data._id = undefined;
@@ -569,12 +536,7 @@ function AvocadoDatabase (connection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoDatabase.prototype._collections = function () {
-  var str = this._connection.get("/_api/collections");
-  
-  var requestResult = undefined;
-  if (str != undefined) {
-    requestResult = JSON.parse(str);
-  }
+  var requestResult = this._connection.get("/_api/collections");
   
   if (isErrorResult(requestResult)) {
     return undefined;
@@ -598,12 +560,7 @@ AvocadoDatabase.prototype._collections = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoDatabase.prototype._collection = function (id) {
-  var str = this._connection.get("/_api/collection/" + encodeURIComponent(id));
-  
-  var requestResult = undefined;
-  if (str != undefined) {
-    requestResult = JSON.parse(str);
-  }
+  var requestResult = this._connection.get("/_api/collection/" + encodeURIComponent(id));
   
   if (isErrorResult(requestResult)) {
     return undefined;
@@ -672,7 +629,7 @@ AvocadoDatabase.prototype.toString = function () {
 function AvocadoStoredStatement (database, data) {
   this._database = database;
   this._doCount = false;
-  this._maxResults = null;
+  this._batchSize = null;
   this._bindVars = {};
   this._id = null;
   this.document = {
@@ -860,9 +817,9 @@ AvocadoStoredStatement.prototype.setCount = function (bool) {
 /// iterating over the result documents of a cursor.
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoStoredStatement.prototype.setMax = function (value) {
+AvocadoStoredStatement.prototype.setBatchSize = function (value) {
   if (parseInt(value) > 0) {
-    this._maxResults = parseInt(value);
+    this._batchSize = parseInt(value);
   }
 }
 
@@ -886,15 +843,11 @@ AvocadoStoredStatement.prototype.execute = function () {
     "_id" : this._id
   }
 
-  if (this._maxResults) {
-    body["maxResults"] = this._maxResults;
+  if (this._batchSize) {
+    body["batchSize"] = this._batchSize;
   }
   
-  var str = this._database._connection.post("/_api/cursor", JSON.stringify(body));
-  var requestResult = undefined;
-  if (str != undefined) {
-    requestResult = JSON.parse(str);
-  }
+  var requestResult = this._database._connection.post("/_api/cursor", JSON.stringify(body));
     
   if (isErrorResult(requestResult)) {
     return undefined;
@@ -947,7 +900,7 @@ AvocadoDatabase.prototype._getStoredStatement = function (data) {
 function AvocadoStatement (database, data) {
   this._database = database;
   this._doCount = false;
-  this._maxResults = null;
+  this._batchSize = null;
   this._bindVars = {};
   
   if (!(data instanceof Object)) {
@@ -962,8 +915,8 @@ function AvocadoStatement (database, data) {
   if (data.count != undefined) {
     this.setCount(data.count);
   }
-  if (data.max != undefined) {
-    this.setMax(data.max);
+  if (data.batchSize != undefined) {
+    this.setBatchSize(data.batchSize);
   }
 }
 
@@ -1025,7 +978,7 @@ AvocadoStatement.prototype.getCount = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoStatement.prototype.getMax = function () {
-  return this._maxResults;
+  return this._batchSize;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1054,9 +1007,9 @@ AvocadoStatement.prototype.setCount = function (bool) {
 /// iterating over the result documents of a cursor.
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoStatement.prototype.setMax = function (value) {
+AvocadoStatement.prototype.setBatchSize = function (value) {
   if (parseInt(value) > 0) {
-    this._maxResults = parseInt(value);
+    this._batchSize = parseInt(value);
   }
 }
 
@@ -1077,11 +1030,7 @@ AvocadoStatement.prototype.parse = function () {
     "query" : this._query,
   }
 
-  var str = this._database._connection.post("/_api/query", JSON.stringify(body));
-  var requestResult = undefined;
-  if (str != undefined) {
-    requestResult = JSON.parse(str);
-  }
+  var requestResult = this._database._connection.post("/_api/query", JSON.stringify(body));
     
   if (isErrorResult(requestResult)) {
     return undefined;
@@ -1105,16 +1054,11 @@ AvocadoStatement.prototype.execute = function () {
     "bindVars" : this._bindVars
   }
 
-  if (this._maxResults) {
-    body["maxResults"] = this._maxResults;
+  if (this._batchSize) {
+    body["batchSize"] = this._batchSize;
   }
 
-  var str = this._database._connection.post("/_api/cursor", JSON.stringify(body));
-
-  var requestResult = undefined;
-  if (str != undefined) {
-    requestResult = JSON.parse(str);
-  }
+  var requestResult = this._database._connection.post("/_api/cursor", JSON.stringify(body));
     
   if (isErrorResult(requestResult)) {
     return undefined;
@@ -1177,7 +1121,7 @@ getHeadline("Select query help") +
 ' > st = new AvocadoStatement(db, { "query" : "select..." });        ' + "\n" +
 ' > st = db._createStatement({ "query" : "select..." });             ' + "\n" +
 'Set query options:                                                  ' + "\n" +
-' > st.setMax(<value>);           set the max. number of results     ' + "\n" +
+' > st.setBatchSize(<value>);     set the max. number of results     ' + "\n" +
 '                                 to be transferred per roundtrip    ' + "\n" +
 ' > st.setCount(<value>);         set count flag (return number of   ' + "\n" +
 '                                 results in "count" attribute)      ' + "\n" +
@@ -1257,7 +1201,7 @@ getHeadline("AvocadoStatement help") +
 'Functions:                                                          ' + "\n" +
 '  bind(<key>, <value>);          bind single variable               ' + "\n" +
 '  bind(<values>);                bind multiple variables            ' + "\n" +
-'  setMax(<max>);                 set max. number of results         ' + "\n" +
+'  setBatchSize(<max>);           set max. number of results         ' + "\n" +
 '                                 to be transferred per roundtrip    ' + "\n" +
 '  setCount(<value>);             set count flag (return number of   ' + "\n" +
 '                                 results in "count" attribute)      ' + "\n" +

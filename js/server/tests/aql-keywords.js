@@ -76,7 +76,7 @@ function aqlKeywordsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function executeQuery (query, expectError) {
-    var cursor = AQL_STATEMENT(db, query, undefined);
+    var cursor = AQL_STATEMENT(query, undefined);
     if (expectError) {
       assertTrue(cursor instanceof AvocadoQueryError);
       return null;

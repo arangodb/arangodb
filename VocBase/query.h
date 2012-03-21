@@ -38,6 +38,7 @@
 #include "VocBase/query-order.h"
 #include "VocBase/query-cursor.h"
 #include "VocBase/query-base.h"
+#include "SkipLists/sl-operator.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -377,7 +378,7 @@ TRI_qry_where_t* TRI_CreateQueryWhereHashConstant (TRI_idx_iid_t, TRI_json_t*);
 /// @brief creates a query condition for a hash with constant parameters - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_qry_where_t* TRI_CreateQueryWhereSkiplistConstant (TRI_idx_iid_t, TRI_json_t*);
+TRI_qry_where_t* TRI_CreateQueryWhereSkiplistConstant (TRI_idx_iid_t, TRI_sl_operator_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a query condition using the primary index and a constant - DEPRECATED

@@ -64,6 +64,7 @@ namespace triagens {
         case NOT_FOUND:            return "404 Not Found";
         case METHOD_NOT_ALLOWED:   return "405 Method";
         case CONFLICT:             return "409 Conflict";
+        case PRECONDITION_FAILED:  return "412 Precondition Failed";
         case UNPROCESSABLE_ENTITY: return "422 Unprocessable Entity";
 
         case SERVER_ERROR:         return "500 Internal Error";
@@ -101,6 +102,7 @@ namespace triagens {
         case 404: return NOT_FOUND;
         case 405: return METHOD_NOT_ALLOWED;
         case 409: return CONFLICT;
+        case 412: return PRECONDITION_FAILED;
         case 422: return UNPROCESSABLE_ENTITY;
 
         case 500: return SERVER_ERROR;
@@ -117,38 +119,39 @@ namespace triagens {
     // -----------------------------------------------------------------------------
 
     HttpResponse::HttpResponse ()
-      : code(NOT_IMPLEMENTED),
-        headerFields(5),
-        bodyValue(),
-        freeables() {
-      bodyValue.initialise();
+      : _code(NOT_IMPLEMENTED),
+        _headers(5),
+        _body(),
+        _isHeadResponse(false),
+        _bodySize(0),
+        _freeables() {
     }
 
 
 
     HttpResponse::HttpResponse (string const& header)
-      : code(NOT_IMPLEMENTED),
-        headerFields(5),
-        bodyValue(),
-        freeables() {
-      bodyValue.initialise();
-
+      : _code(NOT_IMPLEMENTED),
+        _headers(5),
+        _body(),
+        _isHeadResponse(false),
+        _bodySize(0),
+        _freeables() {
       setHeaders(header, true);
     }
 
 
 
     HttpResponse::HttpResponse (HttpResponseCode code)
-      : code(code),
-        headerFields(5),
-        bodyValue(),
-        freeables() {
-      bodyValue.initialise();
-
+      : _code(code),
+        _headers(5),
+        _body(),
+        _isHeadResponse(false),
+        _bodySize(0),
+        _freeables() {
       char* headerBuffer = StringUtils::duplicate("server\ntriagens GmbH High-Performance HTTP Server\n"
                                                   "connection\nKeep-Alive\n"
                                                   "content-type\ntext/plain;charset=utf-8\n");
-      freeables.push_back(headerBuffer);
+      _freeables.push_back(headerBuffer);
 
       bool key = true;
       char* startKey = headerBuffer;
@@ -164,7 +167,7 @@ namespace triagens {
             key = false;
           }
           else {
-            headerFields.insert(startKey, startValue);
+            _headers.insert(startKey, startValue);
 
             startKey = ptr + 1;
             startValue = 0;
@@ -177,9 +180,7 @@ namespace triagens {
 
 
     HttpResponse::~HttpResponse () {
-      bodyValue.free();
-
-      for (vector<char const*>::iterator i = freeables.begin();  i != freeables.end();  ++i) {
+      for (vector<char const*>::iterator i = _freeables.begin();  i != _freeables.end();  ++i) {
         delete[] (*i);
       }
     }
@@ -188,6 +189,10 @@ namespace triagens {
     // HttpResponse methods
     // -----------------------------------------------------------------------------
 
+    HttpResponse::HttpResponseCode HttpResponse::responseCode () {
+      return _code;
+    }
+
     void HttpResponse::setContentType (string const& contentType) {
       setHeader("content-type", contentType);
     }
@@ -195,20 +200,25 @@ namespace triagens {
 
 
     size_t HttpResponse::contentLength () {
-      char const* const* i = headerFields.lookup("content-length");
-
-      if (i == 0) {
-        return 0;
+      if (_isHeadResponse) {
+        return _bodySize;
       }
+      else {
+        char const* const* i = _headers.lookup("content-length");
 
-      return StringUtils::uint32(*i);
+        if (i == 0) {
+          return 0;
+        }
+        
+        return StringUtils::uint32(*i);
+      }
     }
 
 
 
     string HttpResponse::header (string const& key) const {
       string k = StringUtils::tolower(key);
-      char const* const* i = headerFields.lookup(k.c_str());
+      char const* const* i = _headers.lookup(k.c_str());
 
       if (i == 0) {
         return "";
@@ -222,7 +232,7 @@ namespace triagens {
 
     string HttpResponse::header (string const& key, bool& found) const {
       string k = StringUtils::tolower(key);
-      char const* const* i = headerFields.lookup(k.c_str());
+      char const* const* i = _headers.lookup(k.c_str());
 
       if (i == 0) {
         found = false;
@@ -242,7 +252,7 @@ namespace triagens {
 
       map<string, string> result;
 
-      for (headerFields.range(begin, end);  begin < end;  ++begin) {
+      for (_headers.range(begin, end);  begin < end;  ++begin) {
         char const* key = begin->_key;
 
         if (key == 0) {
@@ -261,7 +271,7 @@ namespace triagens {
       string lk = StringUtils::tolower(key);
 
       if (value.empty()) {
-        headerFields.erase(lk.c_str());
+        _headers.erase(lk.c_str());
       }
       else {
         StringUtils::trimInPlace(lk);
@@ -269,10 +279,10 @@ namespace triagens {
         char const* k = StringUtils::duplicate(lk);
         char const* v = StringUtils::duplicate(value);
 
-        headerFields.insert(k, lk.size(), v);
+        _headers.insert(k, lk.size(), v);
 
-        freeables.push_back(k);
-        freeables.push_back(v);
+        _freeables.push_back(k);
+        _freeables.push_back(v);
       }
     }
 
@@ -284,7 +294,7 @@ namespace triagens {
       char* headerBuffer = new char[headers.size() + 1];
       memcpy(headerBuffer, headers.c_str(), headers.size() + 1);
 
-      freeables.push_back(headerBuffer);
+      _freeables.push_back(headerBuffer);
 
       // check for '\n' (we check for '\r' later)
       int lineNum = includeLine0 ? 0 : 1;
@@ -327,14 +337,14 @@ namespace triagens {
               if (start2 < end2) {
                 *end2 = '\0';
 
-                code = static_cast<HttpResponseCode>(::atoi(start2));
+                _code = static_cast<HttpResponseCode>(::atoi(start2));
               }
               else {
-                code = NOT_IMPLEMENTED;
+                _code = NOT_IMPLEMENTED;
               }
             }
             else {
-              code = NOT_IMPLEMENTED;
+              _code = NOT_IMPLEMENTED;
             }
           }
 
@@ -359,10 +369,10 @@ namespace triagens {
 
               *end4 = '\0';
 
-              headerFields.insert(start, end3 - start, start2);
+              _headers.insert(start, end3 - start, start2);
             }
             else {
-              headerFields.insert(start, end3 - start, end3);
+              _headers.insert(start, end3 - start, end3);
             }
           }
         }
@@ -379,11 +389,19 @@ namespace triagens {
 
 
     HttpResponse* HttpResponse::swap () {
-      HttpResponse* response = new HttpResponse(code);
+      HttpResponse* response = new HttpResponse(_code);
 
-      response->headerFields.swap(&headerFields);
-      response->bodyValue.swap(&bodyValue);
-      response->freeables.swap(freeables);
+      response->_headers.swap(&_headers);
+      response->_body.swap(&_body);
+      response->_freeables.swap(_freeables);
+
+      bool isHeadResponse = response->_isHeadResponse;
+      response->_isHeadResponse = _isHeadResponse;
+      _isHeadResponse = isHeadResponse;
+
+      size_t bodySize = response->_bodySize;
+      response->_bodySize = _bodySize;
+      _bodySize = bodySize;
 
       return response;
     }
@@ -392,7 +410,7 @@ namespace triagens {
 
     void HttpResponse::writeHeader (StringBuffer* output) {
       output->appendText("HTTP/1.1 ");
-      output->appendText(responseString(code));
+      output->appendText(responseString(_code));
       output->appendText("\r\n");
 
       basics::Dictionary<char const*>::KeyValue const* begin;
@@ -401,7 +419,7 @@ namespace triagens {
       bool seenTransferEncoding = false;
       string transferEncoding;
 
-      for (headerFields.range(begin, end);  begin < end;  ++begin) {
+      for (_headers.range(begin, end);  begin < end;  ++begin) {
         char const* key = begin->_key;
 
         if (key == 0) {
@@ -438,7 +456,14 @@ namespace triagens {
         }
 
         output->appendText("content-length: ");
-        output->appendInteger(static_cast<uint32_t>(bodyValue.length()));
+
+        if (_isHeadResponse) {
+          output->appendInteger(_bodySize);
+        }
+        else {
+          output->appendInteger(_body.length());
+        }
+
         output->appendText("\r\n");
       }
 
@@ -447,8 +472,27 @@ namespace triagens {
 
 
 
+    size_t HttpResponse::bodySize () {
+      if (_isHeadResponse) {
+        return _bodySize;
+      }
+      else {
+        return _body.length();
+      }
+    }
+
+
+
     StringBuffer& HttpResponse::body () {
-      return bodyValue;
+      return _body;
+    }
+
+
+
+    void HttpResponse::headResponse (size_t size) {
+      _body.clear();
+      _isHeadResponse = true;
+      _bodySize = size;
     }
   }
 }

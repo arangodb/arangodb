@@ -51,31 +51,28 @@ static TRI_voc_did_t CreateLock (TRI_doc_collection_t* document,
                                  TRI_df_marker_type_e type,
                                  TRI_shaped_json_t const* json,
                                  void const* data) {
-  TRI_doc_mptr_t const* result;
-
   document->beginWrite(document);
-  result = document->create(document, type, json, data, true);
-
-  return result == NULL ? 0 : result->_did;
+  return document->create(document, type, json, data, true)._did;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new document in the collection from json
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t const* CreateJson (TRI_doc_collection_t* collection,
-                                         TRI_df_marker_type_e type,
-                                         TRI_json_t const* json,
-                                         void const* data,
-                                         bool release) {
+static TRI_doc_mptr_t const CreateJson (TRI_doc_collection_t* collection,
+                                        TRI_df_marker_type_e type,
+                                        TRI_json_t const* json,
+                                        void const* data,
+                                        bool release) {
   TRI_shaped_json_t* shaped;
-  TRI_doc_mptr_t const* result;
+  TRI_doc_mptr_t result;
 
   shaped = TRI_ShapedJsonJson(collection->_shaper, json);
 
   if (shaped == 0) {
-    collection->base._lastError = TRI_set_errno(TRI_VOC_ERROR_SHAPER_FAILED);
-    return false;
+    collection->base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_SHAPER_FAILED);
+    result._did = 0;
+    return result;
   }
 
   result = collection->create(collection, type, shaped, data, release);
@@ -93,36 +90,35 @@ static bool UpdateLock (TRI_doc_collection_t* document,
                         TRI_shaped_json_t const* json,
                         TRI_voc_did_t did,
                         TRI_voc_rid_t rid,
+                        TRI_voc_rid_t* oldRid,
                         TRI_doc_update_policy_e policy) {
-  TRI_doc_mptr_t const* result;
-
   document->beginWrite(document);
-  result = document->update(document, json, did, rid, policy, true);
-
-  return result != NULL;
+  return document->update(document, json, did, rid, oldRid, policy, true)._did != 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a document in the collection from json
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t const* UpdateJson (TRI_doc_collection_t* collection,
-                                         TRI_json_t const* json,
-                                         TRI_voc_did_t did,
-                                         TRI_voc_rid_t rid,
-                                         TRI_doc_update_policy_e policy,
-                                         bool release) {
+static TRI_doc_mptr_t const UpdateJson (TRI_doc_collection_t* collection,
+                                        TRI_json_t const* json,
+                                        TRI_voc_did_t did,
+                                        TRI_voc_rid_t rid,
+                                        TRI_voc_rid_t* oldRid,
+                                        TRI_doc_update_policy_e policy,
+                                        bool release) {
   TRI_shaped_json_t* shaped;
-  TRI_doc_mptr_t const* result;
+  TRI_doc_mptr_t result;
 
   shaped = TRI_ShapedJsonJson(collection->_shaper, json);
 
   if (shaped == 0) {
-    collection->base._lastError = TRI_set_errno(TRI_VOC_ERROR_SHAPER_FAILED);
-    return false;
+    collection->base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_SHAPER_FAILED);
+    result._did = 0;
+    return result;
   }
 
-  result = collection->update(collection, shaped, did, rid, policy, release);
+  result = collection->update(collection, shaped, did, rid, oldRid, policy, release);
 
   TRI_FreeShapedJson(shaped);
 
@@ -136,11 +132,12 @@ static TRI_doc_mptr_t const* UpdateJson (TRI_doc_collection_t* collection,
 static bool DestroyLock (TRI_doc_collection_t* document,
                          TRI_voc_did_t did,
                          TRI_voc_rid_t rid,
+                         TRI_voc_rid_t* oldRid,
                          TRI_doc_update_policy_e policy) {
   bool ok;
 
   document->beginWrite(document);
-  ok = document->destroy(document, did, rid, policy, true);
+  ok = document->destroy(document, did, rid, oldRid, policy, true);
 
   return ok;
 }
@@ -253,7 +250,7 @@ TRI_datafile_t* CreateJournalDocCollection (TRI_doc_collection_t* collection, bo
   journal = TRI_CreateDatafile(filename, collection->base._maximalSize);
 
   if (journal == NULL) {
-    collection->base._lastError = TRI_set_errno(TRI_VOC_ERROR_NO_JOURNAL);
+    collection->base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
     collection->base._state = TRI_COL_STATE_WRITE_ERROR;
 
     LOG_ERROR("cannot create new journal in '%s'", filename);
@@ -359,7 +356,7 @@ bool CloseJournalDocCollection (TRI_doc_collection_t* collection,
 
   // no journal at this position
   if (vector->_length <= position) {
-    TRI_set_errno(TRI_VOC_ERROR_NO_JOURNAL);
+    TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
     return false;
   }
 

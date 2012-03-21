@@ -42,7 +42,7 @@ var actions = require("actions");
 
 function postQuery(req, res) {
   if (req.suffix.length != 0) {
-    actions.actionResultError (req, res, 400, actions.queryNotModified, "Invalid query data"); 
+    actions.actionResultError (req, res, 404, actions.errorInvalidRequest, "Invalid request");
     return;
   }
 
@@ -50,11 +50,11 @@ function postQuery(req, res) {
     var json = JSON.parse(req.requestBody);
       
     if (!json || !(json instanceof Object) || json.query == undefined) {
-      actions.actionResultError (req, res, 400, actions.queryNotModified, "Invalid query data");
+      actions.actionResultError (req, res, 400, actions.errorQuerySpecificationInvalid, "Query specification invalid");
       return;
     }
 
-    var result = AQL_PARSE(db, json.query);
+    var result = AQL_PARSE(json.query);
     if (result instanceof AvocadoQueryError) {
       actions.actionResultError (req, res, 404, result.code, result.message);
       return;
@@ -65,7 +65,7 @@ function postQuery(req, res) {
     actions.actionResultOK(req, res, 200, result);
   }
   catch (e) {
-    actions.actionResultError (req, res, 500, actions.queryNotModified, "Internal server error");
+    actions.actionResultError (req, res, 404, actions.errorJavascriptException, "Javascript exception");
   }
 }
 

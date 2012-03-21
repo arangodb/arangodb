@@ -96,7 +96,7 @@ static TRI_datafile_t* SelectCompactor (TRI_sim_collection_t* collection,
         TRI_UnlockCondition(&collection->_journalsCondition);
         return datafile;
       }
-      else if (! ok && TRI_errno() != TRI_VOC_ERROR_DATAFILE_FULL) {
+      else if (! ok && TRI_errno() != TRI_ERROR_AVOCADO_DATAFILE_FULL) {
         TRI_UnlockCondition(&collection->_journalsCondition);
         return NULL;
       }
@@ -124,7 +124,7 @@ static bool CopyDocument (TRI_sim_collection_t* collection,
   journal = SelectCompactor(collection, total, result);
 
   if (journal == NULL) {
-    collection->base.base._lastError = TRI_set_errno(TRI_VOC_ERROR_NO_JOURNAL);
+    collection->base.base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
     return false;
   }
 
@@ -471,10 +471,7 @@ static void CleanupShadows (TRI_vocbase_t* const vocbase) {
   LOG_TRACE("cleaning shadows");
   
   // clean unused cursors
-  TRI_CleanupShadowData(vocbase->_cursors, SHADOW_CURSOR_MAX_AGE);
-
-  // clean unused statements
-//  TRI_CleanupShadowDocuments(vocbase->_statements, SHADOW_STATEMENT_MAX_AGE);
+  TRI_CleanupShadowData(vocbase->_cursors, SHADOW_CURSOR_MAX_AGE, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

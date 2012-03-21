@@ -1,0 +1,10 @@
+> curl -X GET  --dump - http://localhost:8529/document/169634/13080226
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{
+  "_rev": 13145762,
+  "_id": "169634/13080226",
+  "error": false
+}

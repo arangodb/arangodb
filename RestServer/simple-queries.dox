@@ -33,7 +33,7 @@
 ///   <ol>
 ///    <li>@ref SimpleQueryDocument "db.@FA{collection}.document(@FA{document-reference})"</li>
 ///    <li>@ref SimpleQueryAll "db.@FA{collection}.all()"</li>
-///    <li>@ref SimpleQuerySelect "db.@FA{collection}.select()"</li>
+///    <li>@ref SimpleQueryByExample "db.@FA{collection}.byExample()"</li>
 ///    <li>@ref SimpleQueryCount "@FA{query}.count()"</li>
 ///   </ol>
 ///  </li>
@@ -91,8 +91,8 @@
 /// @copydetails JSF_AvocadoCollection_prototype_all
 /// <hr>
 ///
-/// @anchor SimpleQuerySelect
-/// @copydetails JSF_AvocadoCollection_prototype_select
+/// @anchor SimpleQueryByExample
+/// @copydetails JSF_AvocadoCollection_prototype_byExample
 /// <hr>
 ///
 /// @anchor SimpleQueryCount

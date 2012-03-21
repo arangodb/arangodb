@@ -6,7 +6,7 @@ dnl ============================================================================
 dnl PREAMBLE                                     triAGENS GmbH Build Environment
 dnl ============================================================================
 
-AC_INIT([triAGENS AvocadoDB], [0.3.3], [info@triagens.de], [avocado], [http://www.worldofvoc.com])
+AC_INIT([triAGENS AvocadoDB], [0.3.5], [info@triagens.de], [avocado], [http://www.avocadodb.org])
 
 dnl ----------------------------------------------------------------------------
 dnl auxillary directory for install-sh and missing
@@ -27,6 +27,8 @@ AC_ARG_ENABLE(bison,
 
 AM_CONDITIONAL(ENABLE_BISON, test "x$tr_BISON" = xyes)
 
+
+
 AC_ARG_ENABLE(flex,
   AS_HELP_STRING([--enable-flex], [enable FLEX]),
   [tr_FLEX="${enableval:-yes}"],
@@ -34,6 +36,8 @@ AC_ARG_ENABLE(flex,
 )
 
 AM_CONDITIONAL(ENABLE_FLEX, test "x$tr_FLEX" = xyes)
+
+
 
 AC_ARG_ENABLE(all-in-one,
   AS_HELP_STRING([--enable-all-in-one], [enable supplied V8, BOOST, LIBEV]),
@@ -43,6 +47,8 @@ AC_ARG_ENABLE(all-in-one,
 
 AM_CONDITIONAL(ENABLE_ALL_IN_ONE, test "x$tr_ALL_IN_ONE" = xyes)
 
+
+
 AC_ARG_ENABLE(install-dbdir,
   AS_HELP_STRING([--enable-install-dbdir], [install an empty database directory]),
   [tr_DBDIR="${enableval:-yes}"],
@@ -51,10 +57,12 @@ AC_ARG_ENABLE(install-dbdir,
 
 AM_CONDITIONAL(ENABLE_INSTALL_DBDIR, test "x$tr_DBDIR" = xyes)
 
+
+
 AC_ARG_ENABLE(relative,
   AS_HELP_STRING([--enable-relative], [all path are relative to the binary (yes/no/devel [default])]),
   [tr_RELATIVE="${enableval:-devel}"],
-  [tr_RELATIVE=devel]
+  [tr_RELATIVE=no]
 )
 
 if test "x$tr_RELATIVE" = xyes;  then
@@ -66,6 +74,16 @@ else
   tr_RELATIVE=no
 fi
 fi
+
+
+
+AC_ARG_WITH([boost-test],
+  AS_HELP_STRING([--with-boost-test], [use boost unit test framework]),
+  [tr_BOOST_TEST=yes],
+  [tr_BOOST_TEST=no])
+
+AM_CONDITIONAL(ENABLE_BOOST_TEST, test "x$tr_BOOST_TEST" = xyes)
+
 
 dnl ============================================================================
 dnl CHECKS                                 HOST, PROGRAMS, COMPILER, LIB, SYSTEM
@@ -119,8 +137,6 @@ else
   m4_include([m4/external.v8])
   BASIC_INFO="$BASIC_INFO|ALL-IN-ONE: disabled"
 fi
-
-CPPFLAGS="$CPPFLAGS -DGEO_TRIAGENS=1"
 
 dnl ============================================================================
 dnl OUTPUT                                                        GENERATE FILES

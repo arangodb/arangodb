@@ -97,7 +97,7 @@ uint64_t ActionDispatcherThread::_gcInterval = 1000;
 /// @brief constructs a new dispatcher thread
 ////////////////////////////////////////////////////////////////////////////////
 
-ActionDispatcherThread::ActionDispatcherThread (DispatcherQueue* queue,
+ActionDispatcherThread::ActionDispatcherThread (rest::DispatcherQueue* queue,
                                                 string const& actionQueue,
                                                 JSLoader* actionLoader)
   : DispatcherThread(queue),
@@ -229,6 +229,7 @@ void ActionDispatcherThread::initialise () {
   bool ok;
   char const* files[] = { "common/bootstrap/modules.js",
                           "common/bootstrap/print.js",
+                          "common/bootstrap/errors.js",
                           "server/server.js"
   };
   size_t i;

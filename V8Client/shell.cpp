@@ -56,6 +56,7 @@ using namespace triagens::avocado;
 
 #include "js/common/bootstrap/js-print.h"
 #include "js/common/bootstrap/js-modules.h"
+#include "js/common/bootstrap/js-errors.h"
 #include "js/client/js-client.h"
 
 // -----------------------------------------------------------------------------
@@ -117,7 +118,7 @@ v8::Persistent<v8::ObjectTemplate> ConnectionTempl;
 /// @brief the output pager
 ////////////////////////////////////////////////////////////////////////////////
 
-static string OutputPager = "more";
+static string OutputPager = "less -X -R -F -L";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the pager FILE 
@@ -162,6 +163,20 @@ static bool noAutoComplete = false;
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print to pager
+////////////////////////////////////////////////////////////////////////////////
+
+static void internalPrint (const char *format, const char *str = 0) {
+  if (str) {
+    fprintf(PAGER, format, str);    
+  }
+  else {
+    fprintf(PAGER, "%s", format);    
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief outputs the arguments
 ///
@@ -181,7 +196,7 @@ static v8::Handle<v8::Value> JS_PagerOutput (v8::Arguments const& argv) {
 
     string str = TRI_ObjectToString(val);
 
-    fprintf(PAGER, "%s", str.c_str());
+    internalPrint(str.c_str());
   }
 
   return v8::Undefined();
@@ -192,8 +207,13 @@ static v8::Handle<v8::Value> JS_PagerOutput (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_StartOutputPager (v8::Arguments const& argv) {
-  usePager = true;
-  printf("Using pager '%s' for output buffering.\n", OutputPager.c_str());
+  if (usePager) {
+    internalPrint("Using pager already.\n");        
+  }
+  else {
+    usePager = true;
+    internalPrint("Using pager '%s' for output buffering.\n", OutputPager.c_str());    
+  }
   return v8::Undefined();
 }
 
@@ -202,6 +222,12 @@ static v8::Handle<v8::Value> JS_StartOutputPager (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_StopOutputPager (v8::Arguments const& argv) {
+  if (usePager) {
+    internalPrint("Stopping pager.\n");
+  }
+  else {
+    internalPrint("Pager not running.\n");    
+  }
   usePager = false;
   return v8::Undefined();
 }
@@ -717,7 +743,6 @@ static v8::Handle<v8::Value> ClientConnection_getVersion(v8::Arguments const& ar
 
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup V8Shell
 /// @{
@@ -1030,6 +1055,7 @@ int main (int argc, char* argv[]) {
     if (StartupPath.empty()) {
       StartupLoader.defineScript("common/bootstrap/modules.js", JS_common_bootstrap_modules);
       StartupLoader.defineScript("common/bootstrap/print.js", JS_common_bootstrap_print);
+      StartupLoader.defineScript("common/bootstrap/errors.js", JS_common_bootstrap_errors);
       StartupLoader.defineScript("client/client.js", JS_client_client);
     }
     else {
@@ -1041,6 +1067,7 @@ int main (int argc, char* argv[]) {
     char const* files[] = {
       "common/bootstrap/modules.js",
       "common/bootstrap/print.js",
+      "common/bootstrap/errors.js",
       "client/client.js"
     };
 

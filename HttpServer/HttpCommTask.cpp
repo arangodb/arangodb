@@ -223,7 +223,6 @@ namespace triagens {
 
       // save header
       buffer = new StringBuffer();
-      buffer->initialise();
       response->writeHeader(buffer);
       buffer->appendText(response->body());
 

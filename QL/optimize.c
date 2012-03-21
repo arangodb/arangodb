@@ -148,46 +148,6 @@ static double QLOptimizeGetDouble (const TRI_query_node_t* const node) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check if a document declaration is static or dynamic
-////////////////////////////////////////////////////////////////////////////////
-
-static bool QLOptimizeIsStaticDocument (const TRI_query_node_t* node) {
-  bool result;
-
-  if (node->_next) {
-    while (node->_next) {
-      result = QLOptimizeIsStaticDocument(node->_next);
-      if (!result) {
-        return false;
-      }
-      node = node->_next;
-    }
-    return true;
-  }
-
-  if (node->_lhs) {
-    result = QLOptimizeIsStaticDocument(node->_lhs);
-    if (!result) {
-      return false;
-    }
-  }
-  if (node->_rhs) {
-    result = QLOptimizeIsStaticDocument(node->_rhs);
-    if (!result) {
-      return false;
-    }
-  }
-  if (node->_type == TRI_QueryNodeReferenceCollectionAlias ||
-      node->_type == TRI_QueryNodeControlFunctionCall ||
-      node->_type == TRI_QueryNodeControlTernary ||
-      node->_type == TRI_QueryNodeContainerMemberAccess) {
-    return false;
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a node to a bool value node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -598,6 +558,48 @@ void QLOptimizeTernaryOperator (TRI_query_node_t* node) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a document declaration is static/constant or dynamic
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLOptimizeIsConst (const TRI_query_node_t* const node) {
+  TRI_query_node_t* next;
+  bool result;
+
+  next = node->_next; 
+  if (next) {
+    while (next) {
+      result = QLOptimizeIsConst(next);
+      if (!result) {
+        return false;
+      }
+      next = next->_next;
+    }
+    return true;
+  }
+
+  if (node->_lhs) {
+    result = QLOptimizeIsConst(node->_lhs);
+    if (!result) {
+      return false;
+    }
+  }
+  if (node->_rhs) {
+    result = QLOptimizeIsConst(node->_rhs);
+    if (!result) {
+      return false;
+    }
+  }
+  if (node->_type == TRI_QueryNodeReferenceCollectionAlias ||
+      node->_type == TRI_QueryNodeControlFunctionCall ||
+      node->_type == TRI_QueryNodeControlTernary ||
+      node->_type == TRI_QueryNodeContainerMemberAccess) {
+    return false;
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether a query part uses bind parameters
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -907,16 +909,13 @@ void QLOptimizeFreeRangeVector (TRI_vector_pointer_t* vector) {
       TRI_FreeString(range->_refValue._field);
     }
 
-    if (range->_valueType == RANGE_TYPE_JSON) {
-      // minValue and maxValue point to the same string, just free it once!
-      TRI_FreeString(range->_minValue._stringValue);
-    }
-
-    if (range->_valueType == RANGE_TYPE_STRING) {
+    if (range->_valueType == RANGE_TYPE_JSON ||
+        range->_valueType == RANGE_TYPE_STRING) {
       if (range->_minValue._stringValue) {
         TRI_FreeString(range->_minValue._stringValue);
         range->_minValue._stringValue = 0;
       }
+
       if (range->_maxValue._stringValue) {
         TRI_FreeString(range->_maxValue._stringValue);
         range->_maxValue._stringValue = 0;
@@ -1377,7 +1376,6 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
   if (!range) {
     // clean up
     TRI_FreeStringBuffer(name);
-    TRI_Free(name);
     return NULL;
   }
 
@@ -1415,7 +1413,6 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
 
   // we can now free the temporary name buffer
   TRI_FreeStringBuffer(name);
-  TRI_Free(name);
 
   if (type == TRI_QueryNodeBinaryOperatorIdentical || 
       type == TRI_QueryNodeBinaryOperatorEqual) {
@@ -1427,7 +1424,6 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
       if (name) {
         range->_refValue._field = TRI_DuplicateString(name->_buffer);
         TRI_FreeStringBuffer(name);
-        TRI_Free(name);
       }
     }
     else if (range->_valueType == RANGE_TYPE_DOUBLE) {
@@ -1436,13 +1432,20 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
     }
     else if (range->_valueType == RANGE_TYPE_STRING) { 
       range->_minValue._stringValue = TRI_DuplicateString(valueNode->_value._stringValue);
+      if (!range->_minValue._stringValue) {
+        TRI_Free(range);
+        return NULL;
+      }
+
       range->_maxValue._stringValue = TRI_DuplicateString(valueNode->_value._stringValue);
+      if (!range->_maxValue._stringValue) {
+        TRI_Free(range);
+        return NULL;
+      }
     }
     else if (range->_valueType == RANGE_TYPE_JSON) {
       documentJs = TRI_InitQueryJavascript();
       if (!documentJs) {
-        TRI_FreeStringBuffer(name);
-        TRI_Free(name);
         TRI_Free(range);
         return NULL;
       }
@@ -1450,9 +1453,16 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
       range->_minValue._stringValue = TRI_DuplicateString(documentJs->_buffer->_buffer);
       range->_maxValue._stringValue = TRI_DuplicateString(documentJs->_buffer->_buffer);
       TRI_FreeQueryJavascript(documentJs);
-      if (!range->_minValue._stringValue) {
-        TRI_FreeStringBuffer(name);
-        TRI_Free(name);
+
+      if (!range->_minValue._stringValue || !range->_maxValue._stringValue) {
+        if (range->_minValue._stringValue) {
+          TRI_FreeString(range->_minValue._stringValue);
+        }
+
+        if (range->_maxValue._stringValue) {
+          TRI_FreeString(range->_maxValue._stringValue);
+        }
+
         TRI_Free(range);
         return NULL;
       }
@@ -1573,7 +1583,7 @@ TRI_vector_pointer_t* QLOptimizeRanges (TRI_query_node_t* node,
         (type == TRI_QueryNodeBinaryOperatorIdentical || 
          type == TRI_QueryNodeBinaryOperatorEqual) &&
         (rhs->_type == TRI_QueryNodeValueDocument || rhs->_type == TRI_QueryNodeValueArray) && 
-        QLOptimizeIsStaticDocument(rhs)) {
+        QLOptimizeIsConst(rhs)) {
       // collection.attribute == document
       return QLOptimizeCreateRangeVector(QLOptimizeCreateRange(lhs, rhs, type, bindParameters));
     }
@@ -1588,7 +1598,7 @@ TRI_vector_pointer_t* QLOptimizeRanges (TRI_query_node_t* node,
              (type == TRI_QueryNodeBinaryOperatorIdentical ||
               type == TRI_QueryNodeBinaryOperatorEqual) &&
              lhs->_type == TRI_QueryNodeValueDocument &&
-             QLOptimizeIsStaticDocument(lhs)) {
+             QLOptimizeIsConst(lhs)) {
       // document == collection.attribute
       return QLOptimizeCreateRangeVector(QLOptimizeCreateRange(rhs, lhs, type, bindParameters));
     } else if (rhs->_type == TRI_QueryNodeContainerMemberAccess && 

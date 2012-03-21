@@ -43,6 +43,113 @@
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read the fields of an index from a json structure and return them
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_vector_string_t* GetFieldsIndex (const TRI_idx_type_e indexType,
+                                            TRI_json_t* json,
+                                            TRI_index_geo_variant_e* geoVariant) {
+  TRI_vector_string_t* fields;
+  TRI_json_t* strVal;
+  TRI_json_t* strVal2;
+  char* temp1;
+  char* temp2;
+  char* temp3;
+  uint32_t numFields;
+  size_t i;
+
+  *geoVariant = INDEX_GEO_NONE;
+  fields = (TRI_vector_string_t*) TRI_Allocate(sizeof(TRI_vector_string_t));
+  if (!fields) {
+    return NULL;
+  }
+
+  TRI_InitVectorString(fields);
+  if (indexType == TRI_IDX_TYPE_GEO_INDEX) {
+    strVal = TRI_LookupArrayJson(json, "location");
+    if (!strVal || strVal->_type != TRI_JSON_STRING) {
+      strVal = TRI_LookupArrayJson(json, "latitude");
+      if (!strVal || strVal->_type != TRI_JSON_STRING) {
+        return fields;
+      }
+      strVal2 = TRI_LookupArrayJson(json, "longitude");
+      if (!strVal2 || strVal2->_type != TRI_JSON_STRING) {
+        return fields;
+      }
+      temp1 = TRI_DuplicateString(strVal->_value._string.data);
+      if (!temp1) {
+        return fields;
+      }
+      TRI_PushBackVectorString(fields, temp1);
+
+      temp1 = TRI_DuplicateString(strVal2->_value._string.data);
+      if (!temp1) {
+        return fields;
+      }
+      TRI_PushBackVectorString(fields, temp1);
+      *geoVariant = INDEX_GEO_INDIVIDUAL_LAT_LON;
+    }
+    else {
+      *geoVariant = INDEX_GEO_COMBINED_LON_LAT;
+
+      strVal2 = TRI_LookupArrayJson(json, "geoJson");
+      if (strVal2 && strVal2->_type == TRI_JSON_BOOLEAN) {
+        if (strVal2->_value._boolean) {
+          *geoVariant = INDEX_GEO_COMBINED_LAT_LON;
+        }
+      }
+      TRI_PushBackVectorString(fields, strVal->_value._string.data);
+    }
+  }
+  else {
+    // read number of fields
+    strVal = TRI_LookupArrayJson(json, "fieldCount");
+    if (!strVal || strVal->_type != TRI_JSON_NUMBER) {
+      return fields;
+    }
+    
+    numFields = (uint32_t) strVal->_value._number;
+    if (numFields == 0) {
+      return fields;
+    }
+
+    // read field names 
+    for (i = 0; i < numFields ; i++) {
+      temp1 = TRI_StringUInt32(i);
+      if (temp1) {
+        temp2 = TRI_Concatenate2String("field_", temp1); 
+        if (temp2) {
+          strVal = TRI_LookupArrayJson(json, temp2);
+          if (strVal && strVal->_type == TRI_JSON_STRING) {
+            temp3 = TRI_DuplicateString(strVal->_value._string.data);
+            if (temp3) {
+              TRI_PushBackVectorString(fields, temp3);
+            }
+          }
+          TRI_FreeString(temp2);
+        }
+        TRI_FreeString(temp1);
+      }
+    }
+  }
+
+  return fields;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
@@ -217,97 +324,22 @@ void TRI_FreeIndexDefinitions (TRI_vector_pointer_t* definitions) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read the fields of an index from a json structure and return them
+/// @brief gets name of index type
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_vector_string_t* GetFieldsIndex (const TRI_idx_type_e indexType,
-                                            TRI_json_t* json,
-                                            TRI_index_geo_variant_e* geoVariant) {
-  TRI_vector_string_t* fields;
-  TRI_json_t* strVal;
-  TRI_json_t* strVal2;
-  char* temp1;
-  char* temp2;
-  char* temp3;
-  uint32_t numFields;
-  size_t i;
-
-  *geoVariant = INDEX_GEO_NONE;
-  fields = (TRI_vector_string_t*) TRI_Allocate(sizeof(TRI_vector_string_t));
-  if (!fields) {
-    return NULL;
+char* TRI_GetTypeNameIndex (const TRI_index_definition_t* const indexDefinition) {
+  switch (indexDefinition->_type) {
+    case TRI_IDX_TYPE_HASH_INDEX: 
+      return "hash";
+    case TRI_IDX_TYPE_SKIPLIST_INDEX:
+      return "skiplist";
+    case TRI_IDX_TYPE_GEO_INDEX:
+      return "geo";
+    case TRI_IDX_TYPE_PRIMARY_INDEX:
+      return "primary";
   }
 
-  TRI_InitVectorString(fields);
-  if (indexType == TRI_IDX_TYPE_GEO_INDEX) {
-    strVal = TRI_LookupArrayJson(json, "location");
-    if (!strVal || strVal->_type != TRI_JSON_STRING) {
-      strVal = TRI_LookupArrayJson(json, "latitude");
-      if (!strVal || strVal->_type != TRI_JSON_STRING) {
-        return fields;
-      }
-      strVal2 = TRI_LookupArrayJson(json, "longitude");
-      if (!strVal2 || strVal2->_type != TRI_JSON_STRING) {
-        return fields;
-      }
-      temp1 = TRI_DuplicateString(strVal->_value._string.data);
-      if (!temp1) {
-        return fields;
-      }
-      TRI_PushBackVectorString(fields, temp1);
-
-      temp1 = TRI_DuplicateString(strVal2->_value._string.data);
-      if (!temp1) {
-        return fields;
-      }
-      TRI_PushBackVectorString(fields, temp1);
-      *geoVariant = INDEX_GEO_INDIVIDUAL_LAT_LON;
-    }
-    else {
-      *geoVariant = INDEX_GEO_COMBINED_LON_LAT;
-
-      strVal2 = TRI_LookupArrayJson(json, "geoJson");
-      if (strVal2 && strVal2->_type == TRI_JSON_BOOLEAN) {
-        if (strVal2->_value._boolean) {
-          *geoVariant = INDEX_GEO_COMBINED_LAT_LON;
-        }
-      }
-      TRI_PushBackVectorString(fields, strVal->_value._string.data);
-    }
-  }
-  else {
-    // read number of fields
-    strVal = TRI_LookupArrayJson(json, "fieldCount");
-    if (!strVal || strVal->_type != TRI_JSON_NUMBER) {
-      return fields;
-    }
-    
-    numFields = (uint32_t) strVal->_value._number;
-    if (numFields == 0) {
-      return fields;
-    }
-
-    // read field names 
-    for (i = 0; i < numFields ; i++) {
-      temp1 = TRI_StringUInt32(i);
-      if (temp1) {
-        temp2 = TRI_Concatenate2String("field_", temp1); 
-        if (temp2) {
-          strVal = TRI_LookupArrayJson(json, temp2);
-          if (strVal && strVal->_type == TRI_JSON_STRING) {
-            temp3 = TRI_DuplicateString(strVal->_value._string.data);
-            if (temp3) {
-              TRI_PushBackVectorString(fields, temp3);
-            }
-          }
-          TRI_FreeString(temp2);
-        }
-        TRI_FreeString(temp1);
-      }
-    }
-  }
-
-  return fields;
+  return "unknown";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1244,18 +1276,6 @@ static bool HashIndexHelper (const TRI_hash_index_t* hashIndex,
         return false;
       }
       
-#ifdef DEBUG_ORESTE
-      TRI_json_t* object;
-      TRI_string_buffer_t buffer;
-      TRI_InitStringBuffer(&buffer);
-      object = TRI_JsonShapedJson(hashIndex->base._collection->_shaper, &shapedObject);
-      TRI_Stringify2Json(&buffer,object);
-      printf("%s:%u:%s\n",__FILE__,__LINE__,buffer._buffer);
-      printf("%s:%u:%f:\n",__FILE__,__LINE__,*((double*)(shapedObject._data.data)));
-      TRI_DestroyStringBuffer(&buffer);
-      TRI_Free(object);
-      object = NULL;                      
-#endif
       
       // ..........................................................................
       // Store the field
@@ -1402,7 +1422,7 @@ static TRI_json_t* JsonHashIndex (TRI_index_t* idx, TRI_doc_collection_t* collec
     return NULL;
   }
 
-  fieldCounter = TRI_Allocate(30);
+  fieldCounter = TRI_Allocate(64); // used below to store strings like "field_ddd"
 
   if (!fieldCounter) {
     TRI_Free(fieldList);
@@ -1416,7 +1436,7 @@ static TRI_json_t* JsonHashIndex (TRI_index_t* idx, TRI_doc_collection_t* collec
   TRI_Insert2ArrayJson(json, "fieldCount", TRI_CreateNumberJson(hashIndex->_shapeList->_length));
 
   for (j = 0; j < hashIndex->_shapeList->_length; ++j) {
-    sprintf(fieldCounter,"field_%lu",j);
+    sprintf(fieldCounter,"field_%lu", (unsigned long) j);
     TRI_Insert2ArrayJson(json, fieldCounter, TRI_CreateStringCopyJson(fieldList[j]));
   }
 
@@ -1803,50 +1823,75 @@ HashIndexElements* TRI_LookupHashIndex(TRI_index_t* idx, TRI_json_t* parameterLi
 ////////////////////////////////////////////////////////////////////////////////
 
 // .............................................................................
-// For now return vector list of matches -- later return an iterator?
 // Warning: who ever calls this function is responsible for destroying
-// SkiplistIndexElements* results
+// TRI_skiplist_iterator_t* results
 // .............................................................................
-SkiplistIndexElements* TRI_LookupSkiplistIndex(TRI_index_t* idx, TRI_json_t* parameterList) {
 
-  TRI_skiplist_index_t* skiplistIndex;
-  SkiplistIndexElements* result;
-  SkiplistIndexElement  element;
-  TRI_shaper_t*     shaper;
+static void FillLookupSLOperator(TRI_sl_operator_t* slOperator, TRI_doc_collection_t* collection) {
+  TRI_json_t*                 jsonObject;
+  TRI_shaped_json_t*          shapedObject;
+  TRI_sl_relation_operator_t* relationOperator;
+  TRI_sl_logical_operator_t*  logicalOperator;
   size_t j;
   
-  element.numFields = parameterList->_value._objects._length;
-  element.fields    = TRI_Allocate( sizeof(TRI_json_t) * element.numFields);
-  
-  if (element.fields == NULL) {
-    LOG_WARNING("out-of-memory in LookupSkiplistIndex");
-    return NULL;
-  }  
-    
-  skiplistIndex = (TRI_skiplist_index_t*) idx;
-  shaper = skiplistIndex->base._collection->_shaper;
-    
-  for (j = 0; j < element.numFields; ++j) {
-    TRI_json_t*        jsonObject   = (TRI_json_t*) (TRI_AtVector(&(parameterList->_value._objects),j));
-    TRI_shaped_json_t* shapedObject = TRI_ShapedJsonJson(shaper, jsonObject);
-    element.fields[j] = *shapedObject;
-    TRI_Free(shapedObject);
+  if (slOperator == NULL) {
+    return;
   }
   
-  element.collection = skiplistIndex->base._collection;
+  switch (slOperator->_type) {
+    case TRI_SL_AND_OPERATOR: 
+    case TRI_SL_NOT_OPERATOR:
+    case TRI_SL_OR_OPERATOR: 
+    {
+      logicalOperator = (TRI_sl_logical_operator_t*)(slOperator);
+      FillLookupSLOperator(logicalOperator->_left,collection);
+      FillLookupSLOperator(logicalOperator->_right,collection);
+      break;
+    }
+    
+    case TRI_SL_EQ_OPERATOR: 
+    case TRI_SL_GE_OPERATOR: 
+    case TRI_SL_GT_OPERATOR: 
+    case TRI_SL_NE_OPERATOR: 
+    case TRI_SL_LE_OPERATOR: 
+    case TRI_SL_LT_OPERATOR: 
+    {
+      relationOperator = (TRI_sl_relation_operator_t*)(slOperator);
+      relationOperator->_numFields  = relationOperator->_parameters->_value._objects._length;
+      relationOperator->_fields     = TRI_Allocate( sizeof(TRI_shaped_json_t) * relationOperator->_numFields);
+      relationOperator->_collection = collection;
+      
+      for (j = 0; j < relationOperator->_numFields; ++j) {
+        jsonObject   = (TRI_json_t*) (TRI_AtVector(&(relationOperator->_parameters->_value._objects),j));
+        shapedObject = TRI_ShapedJsonJson(collection->_shaper, jsonObject);
+        relationOperator->_fields[j] = *shapedObject; // shallow copy here is ok
+        TRI_Free(shapedObject); // don't require storage anymore
+      }
+      break;
+    }
+  }
+}
+
+TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex(TRI_index_t* idx, TRI_sl_operator_t* slOperator) {
+  TRI_skiplist_index_t*    skiplistIndex;
+  TRI_skiplist_iterator_t* result;
+  
+  skiplistIndex = (TRI_skiplist_index_t*)(idx);
+  // .........................................................................
+  // fill the relation operators which may be embedded in the slOperator with
+  // additional information. Recall the slOperator is what information was
+  // received from a user for query the skiplist.
+  // .........................................................................
+  
+  FillLookupSLOperator(slOperator, skiplistIndex->base._collection); 
   
   if (skiplistIndex->_unique) {
-    result = SkiplistIndex_find(skiplistIndex->_skiplistIndex, &element);
+    result = SkiplistIndex_find(skiplistIndex->_skiplistIndex, skiplistIndex->_shapeList, slOperator);
   }
   else {
-    result = MultiSkiplistIndex_find(skiplistIndex->_skiplistIndex, &element);
+    result = MultiSkiplistIndex_find(skiplistIndex->_skiplistIndex, skiplistIndex->_shapeList, slOperator);
   }
 
-  for (j = 0; j < element.numFields; ++j) {
-    TRI_DestroyShapedJson(element.fields + j);
-  }
-  TRI_Free(element.fields);
-  
   return result;  
 }
 
@@ -2095,7 +2140,8 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, TRI_doc_collection_t* co
     return NULL;
   }
 
-  fieldCounter = TRI_Allocate(30);
+  fieldCounter = TRI_Allocate(64);
+
   if (!fieldCounter) {
     TRI_Free(fieldList);
     TRI_FreeJson(json);
@@ -2106,8 +2152,9 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, TRI_doc_collection_t* co
   TRI_Insert2ArrayJson(json, "unique", TRI_CreateBooleanJson(skiplistIndex->_unique));
   TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("skiplist"));
   TRI_Insert2ArrayJson(json, "fieldCount", TRI_CreateNumberJson(skiplistIndex->_shapeList->_length));
+
   for (j = 0; j < skiplistIndex->_shapeList->_length; ++j) {
-    sprintf(fieldCounter,"field_%lu",j);
+    sprintf(fieldCounter,"field_%lu", (unsigned long) j);
     TRI_Insert2ArrayJson(json, fieldCounter, TRI_CreateStringCopyJson(fieldList[j]));
   }
 

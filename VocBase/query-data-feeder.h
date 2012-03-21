@@ -388,7 +388,7 @@ TRI_data_feeder_t* TRI_CreateDataFeederHashLookup (TRI_query_instance_t* const,
 typedef struct TRI_data_feeder_skiplist_lookup_s {
   bool _isEmpty;
   TRI_index_t* _index;
-  SkiplistIndexElements* _skiplistElements;
+  TRI_skiplist_iterator_t* _skiplistIterator;
   TRI_js_exec_context_t _context;
   size_t _position;
 }

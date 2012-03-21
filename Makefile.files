@@ -28,6 +28,7 @@ libavocado_a_SOURCES = \
 	BasicsC/conversions.c \
 	BasicsC/csv.c \
 	BasicsC/error.c \
+	BasicsC/voc-errors.c \
 	BasicsC/files.c \
 	BasicsC/hashes.c \
 	BasicsC/init.c \
@@ -139,7 +140,7 @@ avocado_SOURCES = \
 	QL/parser.c \
 	QL/tokens.c \
 	RestHandler/RestActionHandler.cpp \
-	RestHandler/RestCollectionHandler.cpp \
+	RestHandler/RestDocumentHandler.cpp \
 	RestHandler/RestVocbaseBaseHandler.cpp \
 	RestServer/ActionDispatcherThread.cpp \
 	RestServer/AvocadoHttpServer.cpp \
@@ -165,6 +166,7 @@ avocado_SOURCES = \
 	Scheduler/Task.cpp \
 	Scheduler/TaskManager.cpp \
 	Scheduler/TimerTask.cpp \
+	SkipLists/sl-operator.c \
 	SkipLists/skiplist.c \
 	SkipLists/skiplistIndex.c \
 	V8/v8-actions.cpp \
@@ -180,7 +182,6 @@ avocado_SOURCES = \
 	VocBase/query-base.c \
 	VocBase/query-cursor.c \
 	VocBase/query-data-feeder.c \
-	VocBase/query-error.c \
 	VocBase/query-execute.c \
 	VocBase/query-javascript.c \
 	VocBase/query-join.c \
@@ -215,8 +216,10 @@ avocsh_SOURCES = \
 ################################################################################
 
 JAVASCRIPT_HEADER = \
+	js/common/bootstrap/js-errors.h \
 	js/common/bootstrap/js-modules.h \
 	js/common/bootstrap/js-print.h \
+	js/common/bootstrap/js-errors.h \
 	js/client/js-client.h \
 	js/server/js-server.h
 
@@ -273,46 +276,71 @@ DOXYGEN = \
 	Doxygen/js/common/modules/graph.c \
 	Doxygen/js/common/modules/jsunity.c \
 	Doxygen/js/server/modules/actions.c \
-	Doxygen/js/server/server.c
+	Doxygen/js/server/modules/simple-query.c \
+	Doxygen/js/server/server.c \
+        RestServer/cursor.dox \
+        RestServer/examples-setup.dox \
+        RestServer/glossary.dox \
+        RestServer/http-interface.dox \
+        RestServer/install-manual.dox \
+        RestServer/key-value.dox \
+        RestServer/module-actions.dox \
+        RestServer/module-console.dox \
+        RestServer/module-fs.dox \
+        RestServer/module-graph.dox \
+        RestServer/module-internal.dox \
+        RestServer/module-modules.dox \
+        RestServer/otwp.dox \
+        RestServer/ref-manual.dox \
+        RestServer/rest-document.dox \
+        RestServer/rest-system.dox \
+        RestServer/simple-queries.dox \
+        RestServer/user-manual-avocsh.dox \
+        RestServer/user-manual-server.dox 
+
 
 ################################################################################
 ## wiki
 ################################################################################
 
 WIKI = \
+	Doxygen/xml/Actions.md \
+	Doxygen/xml/AQLBasics.md \
+	Doxygen/xml/AvocadoErrors.md \
+	Doxygen/xml/AvocadoScript.md \
+	Doxygen/xml/CommandLineAvocado.md \
+	Doxygen/xml/CommandLineLogging.md \
+	Doxygen/xml/CommandLine.md \
+	Doxygen/xml/CommandLineRandom.md \
+	Doxygen/xml/CommandLineScheduler.md \
+	Doxygen/xml/Compiling.md \
 	Doxygen/xml/DBAdmin.md \
+	Doxygen/xml/DefineAction.md \
+	Doxygen/xml/ExamplesSetup.md \
+	Doxygen/xml/Glossary.md \
+	Doxygen/xml/Graphs.md \
+	Doxygen/xml/HttpInterface.md \
+	Doxygen/xml/IndexUsage.md \
+	Doxygen/xml/Installing.md \
+	Doxygen/xml/InstallManual.md \
+	Doxygen/xml/JavaScriptFuncIndex.md \
+	Doxygen/xml/JavaScriptFunc.md \
+	Doxygen/xml/JSModuleActions.md \
+	Doxygen/xml/JSModuleConsole.md \
+	Doxygen/xml/JSModuleFs.md \
+	Doxygen/xml/JSModuleGraph.md \
+	Doxygen/xml/JSModuleInternal.md \
+	Doxygen/xml/JSModules.md \
+	Doxygen/xml/jsUnity.md \
+	Doxygen/xml/Key-Value.md \
+	Doxygen/xml/Optimizer.md \
+	Doxygen/xml/OTWP.md \
+	Doxygen/xml/RefManual.md \
+	Doxygen/xml/RestCursor.md \
+	Doxygen/xml/RestDocument.md \
+	Doxygen/xml/RestSystem.md \
 	Doxygen/xml/SimpleQueries.md \
-        Doxygen/xml/AQLBasics.md \
-        Doxygen/xml/Actions.md \
-        Doxygen/xml/AvocadoErrors.md \
-        Doxygen/xml/AvocadoScript.md \
-        Doxygen/xml/CommandLine.md \
-        Doxygen/xml/CommandLineAvocado.md \
-        Doxygen/xml/CommandLineLogging.md \
-        Doxygen/xml/CommandLineRandom.md \
-        Doxygen/xml/CommandLineScheduler.md \
-        Doxygen/xml/Compiling.md \
-        Doxygen/xml/DefineAction.md \
-        Doxygen/xml/Graphs.md \
-        Doxygen/xml/HttpInterface.md \
-        Doxygen/xml/IndexUsage.md \
-        Doxygen/xml/InstallManual.md \
-        Doxygen/xml/Installing.md \
-        Doxygen/xml/JSModuleActions.md \
-        Doxygen/xml/JSModuleConsole.md \
-        Doxygen/xml/JSModuleFs.md \
-        Doxygen/xml/JSModuleGraph.md \
-        Doxygen/xml/JSModuleInternal.md \
-        Doxygen/xml/JSModules.md \
-        Doxygen/xml/JavaScriptFunc.md \
-        Doxygen/xml/JavaScriptFuncIndex.md \
-        Doxygen/xml/OTWP.md \
-        Doxygen/xml/RefManual.md \
-        Doxygen/xml/RestCursor.md \
-        Doxygen/xml/RestDocument.md \
-        Doxygen/xml/RestSystem.md \
-        Doxygen/xml/SimpleQueries.md \
-        Doxygen/xml/UserManualServer.md \
-        Doxygen/xml/UserManualShell.md \
-        Doxygen/xml/UserManualShellStartStop.md \
-        Doxygen/xml/jsUnity.md
+	Doxygen/xml/UserManualServer.md \
+	Doxygen/xml/UserManualShell.md \
+	Doxygen/xml/UserManualShellStartStop.md 
+

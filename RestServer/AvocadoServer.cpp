@@ -47,7 +47,7 @@
 #include "Logger/Logger.h"
 #include "Rest/Initialise.h"
 #include "RestHandler/RestActionHandler.h"
-#include "RestHandler/RestCollectionHandler.h"
+#include "RestHandler/RestDocumentHandler.h"
 #include "RestServer/ActionDispatcherThread.h"
 #include "RestServer/AvocadoHttpServer.h"
 #include "V8/JSLoader.h"
@@ -67,6 +67,7 @@ using namespace triagens::avocado;
 
 #include "js/common/bootstrap/js-modules.h"
 #include "js/common/bootstrap/js-print.h"
+#include "js/common/bootstrap/js-errors.h"
 #include "js/server/js-server.h"
 
 // -----------------------------------------------------------------------------
@@ -397,6 +398,7 @@ void AvocadoServer::buildApplicationServer () {
     LOGGER_INFO << "using built-in JavaScript startup files";
     StartupLoader.defineScript("common/bootstrap/modules.js", JS_common_bootstrap_modules);
     StartupLoader.defineScript("common/bootstrap/print.js", JS_common_bootstrap_print);
+    StartupLoader.defineScript("common/bootstrap/errors.js", JS_common_bootstrap_errors);
     StartupLoader.defineScript("server/server.js", JS_server_server);
   }
   else {
@@ -548,7 +550,7 @@ int AvocadoServer::startupServer () {
 
     _applicationAdminServer->addBasicHandlers(factory);
 
-    factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestCollectionHandler>::createData<TRI_vocbase_t*>, _vocbase);
+    factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
     factory->addPrefixHandler("/", RestHandlerCreator<RestActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
 
     _httpServer = _applicationHttpServer->buildServer(new AvocadoHttpServer(scheduler, dispatcher), factory, ports);
@@ -567,7 +569,7 @@ int AvocadoServer::startupServer () {
     _applicationAdminServer->addBasicHandlers(adminFactory);
     _applicationAdminServer->addHandlers(adminFactory, "/admin");
 
-    adminFactory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestCollectionHandler>::createData<TRI_vocbase_t*>, _vocbase);
+    adminFactory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
     adminFactory->addPrefixHandler("/", RestHandlerCreator<RestActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
 
     _adminHttpServer = _applicationHttpServer->buildServer(adminFactory, adminPorts);
@@ -629,6 +631,7 @@ void AvocadoServer::executeShell () {
   bool ok;
   char const* files[] = { "common/bootstrap/modules.js",
                           "common/bootstrap/print.js",
+                          "common/bootstrap/errors.js",
                           "server/server.js"
   };
   size_t i;

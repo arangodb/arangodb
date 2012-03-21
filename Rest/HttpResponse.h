@@ -75,6 +75,7 @@ namespace triagens {
           NOT_FOUND            = 404,
           METHOD_NOT_ALLOWED   = 405,
           CONFLICT             = 409,
+          PRECONDITION_FAILED  = 412,
           UNPROCESSABLE_ENTITY = 422,
 
           SERVER_ERROR         = 500,
@@ -139,9 +140,7 @@ namespace triagens {
         /// @brief returns the response code
         ////////////////////////////////////////////////////////////////////////////////
 
-        HttpResponseCode responseCode () {
-          return code;
-        }
+        HttpResponseCode responseCode ();
 
         ////////////////////////////////////////////////////////////////////////////////
         /// @brief returns the content length
@@ -218,6 +217,12 @@ namespace triagens {
         void writeHeader (basics::StringBuffer*);
 
         ////////////////////////////////////////////////////////////////////////////////
+        /// @brief returns the size of the body
+        ////////////////////////////////////////////////////////////////////////////////
+
+        size_t bodySize ();
+
+        ////////////////////////////////////////////////////////////////////////////////
         /// @brief returns the body
         ///
         /// Returns a reference to the body. This reference is only valid as long as
@@ -229,13 +234,25 @@ namespace triagens {
 
         basics::StringBuffer& body ();
 
+        ////////////////////////////////////////////////////////////////////////////////
+        /// @brief returns the body
+        ///
+        /// In case of HEAD request, no body must be defined. However, the response
+        /// needs to know the size of body.
+        ////////////////////////////////////////////////////////////////////////////////
+
+        void headResponse (size_t);
+
       private:
-        HttpResponseCode code;
+        HttpResponseCode _code;
 
-        basics::Dictionary<char const*> headerFields;
-        basics::StringBuffer bodyValue;
+        basics::Dictionary<char const*> _headers;
+        basics::StringBuffer _body;
 
-        vector<char const*> freeables;
+        bool _isHeadResponse;
+        size_t _bodySize;
+
+        vector<char const*> _freeables;
     };
   }
 }

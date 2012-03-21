@@ -37,6 +37,10 @@
 extern "C" {
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocBase
 /// @{
@@ -48,10 +52,10 @@ extern "C" {
 
 typedef struct TRI_query_cursor_s {
   TRI_vocbase_t* _vocbase;
-  TRI_shadow_t* _shadow;
   char* _functionCode;
+  bool _isConstant;
   bool _hasCount;
-  uint32_t _maxResults;
+  uint32_t _batchSize;
   TRI_vector_pointer_t _containers;
   TRI_mutex_t _lock;
   bool _deleted;
@@ -64,10 +68,28 @@ typedef struct TRI_query_cursor_s {
   TRI_rc_result_t* (*next)(struct TRI_query_cursor_s* const);
   bool (*hasNext)(const struct TRI_query_cursor_s* const);
   bool (*hasCount)(const struct TRI_query_cursor_s* const);
-  uint32_t (*getMax)(const struct TRI_query_cursor_s* const);
+  uint32_t (*getBatchSize)(const struct TRI_query_cursor_s* const);
 }
 TRI_query_cursor_t;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees a cursor 
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeQueryCursor (TRI_query_cursor_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a cursor
@@ -77,12 +99,6 @@ TRI_query_cursor_t* TRI_CreateQueryCursor (TRI_query_instance_t* const,
                                            const TRI_select_result_t* const,
                                            const bool,
                                            const uint32_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Free a cursor based on its shadow
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeShadowQueryCursor (TRI_shadow_store_t*, TRI_shadow_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief exclusively lock a query cursor
@@ -95,6 +111,12 @@ void TRI_LockQueryCursor (TRI_query_cursor_t* const);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_UnlockQueryCursor (TRI_query_cursor_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Free a cursor based on its data pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeShadowQueryCursor (void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create shadow data store for cursors 
