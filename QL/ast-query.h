@@ -117,6 +117,7 @@ typedef struct QL_ast_query_select_s {
   QL_ast_query_select_type_e _type;
   bool                       _usesBindParameters;
   char*                      _functionCode;
+  bool                       _isConstant;
 } 
 QL_ast_query_select_t;
 

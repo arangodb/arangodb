@@ -102,6 +102,7 @@ static bool InitSelectQueryTemplate (TRI_query_template_t* const template_) {
   select_->_type = QLOptimizeGetSelectType(select_->_base, primaryAlias);
   select_->_usesBindParameters = QLOptimizeUsesBindParameters(select_->_base);
   select_->_functionCode = NULL;
+  select_->_isConstant = false;
 
   if (select_->_type == QLQuerySelectTypeEvaluated && 
       !select_->_usesBindParameters) {
@@ -116,6 +117,11 @@ static bool InitSelectQueryTemplate (TRI_query_template_t* const template_) {
       return false;
     }
     TRI_RegisterStringQuery(&template_->_memory._strings, select_->_functionCode);
+
+    if (QLOptimizeIsConst(select_->_base)) {
+      // select produces constant documents
+      select_->_isConstant = true;
+    }
   }
 
   LOG_DEBUG("created select part of query template. type: %i, "
@@ -643,6 +649,7 @@ static bool InitSelectQueryInstance (TRI_query_instance_t* const instance) {
   queryInstance->_type               = queryTemplate->_type;
   queryInstance->_usesBindParameters = queryTemplate->_usesBindParameters;
   queryInstance->_functionCode       = queryTemplate->_functionCode;
+  queryInstance->_isConstant         = queryTemplate->_isConstant;
 
   if (queryInstance->_usesBindParameters) {
     TRI_query_node_t* copy;
@@ -675,6 +682,10 @@ static bool InitSelectQueryInstance (TRI_query_instance_t* const instance) {
   LOG_DEBUG("added select part to query instance. type: %i, functionCode: %s",
             (int) queryInstance->_type,
             (queryInstance->_functionCode ? queryInstance->_functionCode : ""));
+
+  if (queryInstance->_isConstant) {
+    LOG_DEBUG("select expression is constant");
+  }
 
   return true;
 }

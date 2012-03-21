@@ -25,6 +25,8 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <BasicsC/logging.h>
+
 #include "VocBase/query-cursor.h"
 #include "VocBase/query-context.h"
 
@@ -173,6 +175,8 @@ TRI_query_cursor_t* TRI_CreateQueryCursor (TRI_query_instance_t* const instance,
     return NULL;
   }
 
+  // does cursor produce constant documents?
+  cursor->_isConstant = instance->_query._select._isConstant;
   cursor->_hasCount = doCount;
   cursor->_batchSize = batchSize;
   cursor->_deleted = false;
