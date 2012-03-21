@@ -26,7 +26,7 @@ describe AvocadoDB do
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
-	doc.parsed_response['errorNum'].should eq(501)
+	doc.parsed_response['errorNum'].should eq(400)
 	doc.parsed_response['code'].should eq(400)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
@@ -39,7 +39,7 @@ describe AvocadoDB do
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
-	doc.parsed_response['errorNum'].should eq(501)
+	doc.parsed_response['errorNum'].should eq(400)
 	doc.parsed_response['code'].should eq(400)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
@@ -52,7 +52,7 @@ describe AvocadoDB do
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
-	doc.parsed_response['errorNum'].should eq(502)
+	doc.parsed_response['errorNum'].should eq(600)
 	doc.parsed_response['code'].should eq(400)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
@@ -65,7 +65,7 @@ describe AvocadoDB do
 
 	doc.code.should eq(404)
 	doc.parsed_response['error'].should eq(true)
-	doc.parsed_response['errorNum'].should eq(1201)
+	doc.parsed_response['errorNum'].should eq(1203)
 	doc.parsed_response['code'].should eq(404)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
@@ -78,7 +78,7 @@ describe AvocadoDB do
 
 	doc.code.should eq(404)
 	doc.parsed_response['error'].should eq(true)
-	doc.parsed_response['errorNum'].should eq(1200)
+	doc.parsed_response['errorNum'].should eq(1202)
 	doc.parsed_response['code'].should eq(404)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
