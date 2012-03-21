@@ -31,6 +31,8 @@ describe AvocadoDB do
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
 	AvocadoDB.log(:method => :post, :url => cmd, :result => doc, :output => "#{prefix}-missing-handle")
+
+	AvocadoDB.size_collection(@cid).should eq(0)
       end
 
       it "returns an error if document handle is corrupted" do
@@ -44,6 +46,8 @@ describe AvocadoDB do
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
 	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}-bad-handle")
+
+	AvocadoDB.size_collection(@cid).should eq(0)
       end
 
       it "returns an error if document handle is corrupted" do
@@ -57,6 +61,8 @@ describe AvocadoDB do
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
 	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}-bad-handle2")
+
+	AvocadoDB.size_collection(@cid).should eq(0)
       end
 
       it "returns an error if collection identifier is unknown" do
@@ -70,6 +76,8 @@ describe AvocadoDB do
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
 	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}-unknown-cid")
+
+	AvocadoDB.size_collection(@cid).should eq(0)
       end
 
       it "returns an error if document handle is unknown" do
@@ -84,6 +92,8 @@ describe AvocadoDB do
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
 	AvocadoDB.log(:method => :get, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-unknown-handle")
+
+	AvocadoDB.size_collection(@cid).should eq(0)
       end
 
       it "returns an error if the policy parameter is bad" do
@@ -109,6 +119,10 @@ describe AvocadoDB do
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
 	AvocadoDB.log(:method => :get, :url => cmd, :headers => hdr, :result => doc, :output => "#{prefix}-policy-bad")
+
+	AvocadoDB.delete(location)
+
+	AvocadoDB.size_collection(@cid).should eq(0)
       end
     end
 
@@ -159,6 +173,8 @@ describe AvocadoDB do
 	AvocadoDB.log(:method => :get, :url => cmd, :body => body, :result => doc, :output => "#{prefix}")
 
 	AvocadoDB.delete(location)
+
+	AvocadoDB.size_collection(@cid).should eq(0)
       end
 
       it "create a document and update it, using if-match" do
@@ -214,6 +230,8 @@ describe AvocadoDB do
 	rev2.should eq(rev)
 
 	AvocadoDB.log(:method => :get, :url => cmd, :body => body, :headers => hdr, :result => doc, :output => "#{prefix}-if-match")
+
+	AvocadoDB.size_collection(@cid).should eq(0)
       end
 
       it "create a document and delete it, using if-match and last-write wins" do
@@ -248,6 +266,8 @@ describe AvocadoDB do
 	rev2.should eq(rev)
 
 	AvocadoDB.log(:method => :get, :url => cmd, :body => body, :headers => hdr, :result => doc, :output => "#{prefix}-if-match-other-last-write")
+
+	AvocadoDB.size_collection(@cid).should eq(0)
       end
     end
 

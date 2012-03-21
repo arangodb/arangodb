@@ -108,6 +108,10 @@ describe AvocadoDB do
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
 	AvocadoDB.log(:method => :get, :url => cmd, :headers => hdr, :result => doc, :output => "#{prefix}-policy-bad")
+
+	AvocadoDB.delete(location)
+
+	AvocadoDB.size_collection(@cid).should eq(0)
       end
     end
 
@@ -155,6 +159,8 @@ describe AvocadoDB do
 	rev2.should eq(rev)
 
 	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}")
+
+	AvocadoDB.size_collection(@cid).should eq(0)
       end
 
       it "create a document and delete it, using if-match" do
@@ -208,6 +214,8 @@ describe AvocadoDB do
 	rev2.should eq(rev)
 
 	AvocadoDB.log(:method => :get, :url => cmd, :headers => hdr, :result => doc, :output => "#{prefix}-if-match")
+
+	AvocadoDB.size_collection(@cid).should eq(0)
       end
 
       it "create a document and delete it, using if-match and last-write wins" do
@@ -241,6 +249,8 @@ describe AvocadoDB do
 	rev2.should eq(rev)
 
 	AvocadoDB.log(:method => :get, :url => cmd, :headers => hdr, :result => doc, :output => "#{prefix}-if-match-other-last-write")
+
+	AvocadoDB.size_collection(@cid).should eq(0)
       end
     end
 

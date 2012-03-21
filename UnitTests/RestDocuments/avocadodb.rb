@@ -6,6 +6,10 @@ class AvocadoDB
   base_uri 'http://localhost:8529'
   format :json
 
+################################################################################
+## create a collection
+################################################################################
+
   def self.create_collection (name, wait_for_sync = true)
     body = "{ \"name\" : \"#{name}\", \"waitForSync\" : #{wait_for_sync} }"
 
@@ -22,8 +26,27 @@ class AvocadoDB
     return doc.parsed_response['id']
   end
 
+################################################################################
+## drop a collection
+################################################################################
+
   def self.drop_collection (name)
+    # TODO
   end
+
+################################################################################
+## size of a collection
+################################################################################
+
+  def self.size_collection (name)
+    doc = self.get("/document?collection=#{name}") # TODO use api call
+
+    return doc.parsed_response['documents'].length
+  end
+
+################################################################################
+## generate log file
+################################################################################
 
   def self.log (args)
     if args.key?(:output)
@@ -56,9 +79,24 @@ class AvocadoDB
     if method == :get
       logfile.puts "> curl -X GET #{h_option} --dump - http://localhost:8529#{url}"
 	logfile.puts
+    elsif method == :head
+      logfile.puts "> curl -X HEAD #{h_option} --dump - http://localhost:8529#{url}"
+	logfile.puts
+    elsif method == :delete
+      logfile.puts "> curl -X DELETE #{h_option} --dump - http://localhost:8529#{url}"
+	logfile.puts
     elsif method == :post
       if body == nil
 	logfile.puts "> curl -X POST #{h_option} --dump - http://localhost:8529#{url}"
+	logfile.puts
+      else
+	logfile.puts "> curl --data @- -X POST #{h_option} --dump - http://localhost:8529#{url}"
+	logfile.puts body
+	logfile.puts
+      end
+    elsif method == :put
+      if body == nil
+	logfile.puts "> curl -X PUT #{h_option} --dump - http://localhost:8529#{url}"
 	logfile.puts
       else
 	logfile.puts "> curl --data @- -X POST #{h_option} --dump - http://localhost:8529#{url}"
