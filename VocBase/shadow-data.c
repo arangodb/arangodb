@@ -114,8 +114,8 @@ static bool EqualKeyId (TRI_associative_pointer_t* array, void const* k, void co
 
 static uint64_t HashKeyData (TRI_associative_pointer_t* array, void const* k) {
   uint64_t key = 0;
-
-  key = (uint64_t) k;
+  
+  key = (uint64_t) (uintptr_t) k;
   return key;
 }
 
@@ -126,7 +126,7 @@ static uint64_t HashKeyData (TRI_associative_pointer_t* array, void const* k) {
 static uint64_t HashElementData (TRI_associative_pointer_t* array, void const* e) {
   TRI_shadow_t const* element = e;
 
-  return (uint64_t) element->_data;
+  return (uint64_t) (uintptr_t) element->_data;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -136,7 +136,7 @@ static uint64_t HashElementData (TRI_associative_pointer_t* array, void const* e
 static bool EqualKeyData (TRI_associative_pointer_t* array, void const* k, void const* e) {
   TRI_shadow_t const* element = e;
 
-  return ((uint64_t) k == (uint64_t) element->_data);
+  return ((uint64_t) (uintptr_t) k == (uint64_t) (uintptr_t) element->_data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
