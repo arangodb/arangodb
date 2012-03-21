@@ -284,41 +284,38 @@ DOXYGEN = \
 ################################################################################
 
 WIKI = \
-	Doxygen/xml/DBAdmin.md \
-	Doxygen/xml/SimpleQueries.md \
-        Doxygen/xml/AQLBasics.md \
         Doxygen/xml/Actions.md \
+        Doxygen/xml/AQLBasics.md \
         Doxygen/xml/AvocadoErrors.md \
         Doxygen/xml/AvocadoScript.md \
-        Doxygen/xml/CommandLine.md \
         Doxygen/xml/CommandLineAvocado.md \
         Doxygen/xml/CommandLineLogging.md \
+        Doxygen/xml/CommandLine.md \
         Doxygen/xml/CommandLineRandom.md \
         Doxygen/xml/CommandLineScheduler.md \
         Doxygen/xml/Compiling.md \
+        Doxygen/xml/DBAdmin.md \
         Doxygen/xml/DefineAction.md \
-	Doxygen/xml/ExamplesSetup.md \
-        Doxygen/xml/Glossary.md \
         Doxygen/xml/Graphs.md \
         Doxygen/xml/HttpInterface.md \
         Doxygen/xml/IndexUsage.md \
-        Doxygen/xml/InstallManual.md \
         Doxygen/xml/Installing.md \
+        Doxygen/xml/InstallManual.md \
+        Doxygen/xml/JavaScriptFuncIndex.md \
+        Doxygen/xml/JavaScriptFunc.md \
         Doxygen/xml/JSModuleActions.md \
         Doxygen/xml/JSModuleConsole.md \
         Doxygen/xml/JSModuleFs.md \
         Doxygen/xml/JSModuleGraph.md \
         Doxygen/xml/JSModuleInternal.md \
         Doxygen/xml/JSModules.md \
-        Doxygen/xml/JavaScriptFunc.md \
-        Doxygen/xml/JavaScriptFuncIndex.md \
+        Doxygen/xml/jsUnity.md \
+        Doxygen/xml/Key-Value.md \
+        Doxygen/xml/Optimizer.md \
         Doxygen/xml/OTWP.md \
         Doxygen/xml/RefManual.md \
         Doxygen/xml/RestCursor.md \
         Doxygen/xml/RestDocument.md \
         Doxygen/xml/RestSystem.md \
-        Doxygen/xml/SimpleQueries.md \
-        Doxygen/xml/UserManualServer.md \
-        Doxygen/xml/UserManualShell.md \
-        Doxygen/xml/UserManualShellStartStop.md \
-        Doxygen/xml/jsUnity.md
+        Doxygen/xml/SimpleQueries.md 
+

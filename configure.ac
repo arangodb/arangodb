@@ -62,7 +62,7 @@ AM_CONDITIONAL(ENABLE_INSTALL_DBDIR, test "x$tr_DBDIR" = xyes)
 AC_ARG_ENABLE(relative,
   AS_HELP_STRING([--enable-relative], [all path are relative to the binary (yes/no/devel [default])]),
   [tr_RELATIVE="${enableval:-devel}"],
-  [tr_RELATIVE=devel]
+  [tr_RELATIVE=no]
 )
 
 if test "x$tr_RELATIVE" = xyes;  then
