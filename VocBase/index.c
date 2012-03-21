@@ -1436,7 +1436,7 @@ static TRI_json_t* JsonHashIndex (TRI_index_t* idx, TRI_doc_collection_t* collec
   TRI_Insert2ArrayJson(json, "fieldCount", TRI_CreateNumberJson(hashIndex->_shapeList->_length));
 
   for (j = 0; j < hashIndex->_shapeList->_length; ++j) {
-    sprintf(fieldCounter,"field_%lu",j);
+    sprintf(fieldCounter,"field_%lu", (unsigned long) j);
     TRI_Insert2ArrayJson(json, fieldCounter, TRI_CreateStringCopyJson(fieldList[j]));
   }
 
@@ -2152,8 +2152,9 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, TRI_doc_collection_t* co
   TRI_Insert2ArrayJson(json, "unique", TRI_CreateBooleanJson(skiplistIndex->_unique));
   TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("skiplist"));
   TRI_Insert2ArrayJson(json, "fieldCount", TRI_CreateNumberJson(skiplistIndex->_shapeList->_length));
+
   for (j = 0; j < skiplistIndex->_shapeList->_length; ++j) {
-    sprintf(fieldCounter,"field_%lu",j);
+    sprintf(fieldCounter,"field_%lu", (unsigned long) j);
     TRI_Insert2ArrayJson(json, fieldCounter, TRI_CreateStringCopyJson(fieldList[j]));
   }
 
