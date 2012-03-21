@@ -620,6 +620,32 @@ AvocadoDatabase.prototype._collection = function (id) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a single collection, identified by its id
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._create = function (name) {
+  var body = {
+    "name" : name
+  };
+
+  var str = this._connection.post("/_api/database/collection", JSON.stringify(body));
+
+  print(str);
+  
+  var requestResult = undefined;
+
+  if (str != undefined) {
+    requestResult = JSON.parse(str);
+  }
+  
+  if (isErrorResult(requestResult)) {
+    return undefined;
+  }
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief print the help for AvocadoDatabase
 ////////////////////////////////////////////////////////////////////////////////
 
