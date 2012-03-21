@@ -43,7 +43,7 @@
 ///     <ol>
 ///      <li>@ref AQLBasics
 ///      </li>
-///      <li>ref Optimizer
+///      <li>@ref Optimizer
 ///      </li>
 ///      <li>@ref IndexUsage
 ///      </li>
@@ -51,7 +51,7 @@
 ///    </li>
 ///    <li>@ref AvocadoScript
 ///     <ol>
-///      <li>ref GeoCoordinates
+///      <li>GeoCoordinates
 ///      </li>
 ///     </ol>
 ///    </li>
