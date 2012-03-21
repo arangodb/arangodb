@@ -27,7 +27,7 @@ fi
 version=`sed -e 's:.*"\([^[]*[^ []\).*":\1:' $FILE`
 
 if test -z "$version";  then
-  echo "$0: cannot read vision from file $FILE"
+  echo "$0: cannot read revision from file $FILE"
   exit 1
 fi
 

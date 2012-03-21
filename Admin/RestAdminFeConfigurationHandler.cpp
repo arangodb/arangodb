@@ -109,7 +109,7 @@ HttpHandler::status_e RestAdminFeConfigurationHandler::execute () {
 
     default:
       generateError(HttpResponse::METHOD_NOT_ALLOWED, 
-                    TRI_REST_ERROR_METHOD_NOT_ALLOWED,
+                    TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
                     "expecting GET or POST");
       return HANDLER_DONE;
   }

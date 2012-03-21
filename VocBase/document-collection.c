@@ -70,7 +70,7 @@ static TRI_doc_mptr_t const CreateJson (TRI_doc_collection_t* collection,
   shaped = TRI_ShapedJsonJson(collection->_shaper, json);
 
   if (shaped == 0) {
-    collection->base._lastError = TRI_set_errno(TRI_VOC_ERROR_SHAPER_FAILED);
+    collection->base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_SHAPER_FAILED);
     result._did = 0;
     return result;
   }
@@ -113,7 +113,7 @@ static TRI_doc_mptr_t const UpdateJson (TRI_doc_collection_t* collection,
   shaped = TRI_ShapedJsonJson(collection->_shaper, json);
 
   if (shaped == 0) {
-    collection->base._lastError = TRI_set_errno(TRI_VOC_ERROR_SHAPER_FAILED);
+    collection->base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_SHAPER_FAILED);
     result._did = 0;
     return result;
   }
@@ -250,7 +250,7 @@ TRI_datafile_t* CreateJournalDocCollection (TRI_doc_collection_t* collection, bo
   journal = TRI_CreateDatafile(filename, collection->base._maximalSize);
 
   if (journal == NULL) {
-    collection->base._lastError = TRI_set_errno(TRI_VOC_ERROR_NO_JOURNAL);
+    collection->base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
     collection->base._state = TRI_COL_STATE_WRITE_ERROR;
 
     LOG_ERROR("cannot create new journal in '%s'", filename);
@@ -356,7 +356,7 @@ bool CloseJournalDocCollection (TRI_doc_collection_t* collection,
 
   // no journal at this position
   if (vector->_length <= position) {
-    TRI_set_errno(TRI_VOC_ERROR_NO_JOURNAL);
+    TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
     return false;
   }
 

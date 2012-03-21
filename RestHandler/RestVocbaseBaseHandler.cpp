@@ -240,7 +240,7 @@ void RestVocbaseBaseHandler::generateUpdated (TRI_voc_cid_t cid, TRI_voc_did_t d
 
 void RestVocbaseBaseHandler::generateCollectionNotFound (string const& cid) {
   generateError(HttpResponse::NOT_FOUND, 
-                TRI_VOC_ERROR_COLLECTION_NOT_FOUND,
+                TRI_ERROR_AVOCADO_COLLECTION_NOT_FOUND,
                 "collection " + COLLECTION_PATH + "/" + cid + " not found");
 }
 
@@ -250,7 +250,7 @@ void RestVocbaseBaseHandler::generateCollectionNotFound (string const& cid) {
 
 void RestVocbaseBaseHandler::generateDocumentNotFound (string const& handle) {
   generateError(HttpResponse::NOT_FOUND,
-                TRI_VOC_ERROR_DOCUMENT_NOT_FOUND,
+                TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND,
                 "document " + DOCUMENT_PATH + "/" + handle + " not found");
 }
 
@@ -260,7 +260,7 @@ void RestVocbaseBaseHandler::generateDocumentNotFound (string const& handle) {
 
 void RestVocbaseBaseHandler::generateConflict (string const& cid, string const& did) {
   generateError(HttpResponse::CONFLICT, 
-                TRI_VOC_ERROR_DOCUMENT_ALTERED,
+                TRI_ERROR_AVOCADO_CONFLICT,
                 "document " + DOCUMENT_PATH + "/" + cid + "/" + did + " has been altered");
 }
 
@@ -270,7 +270,7 @@ void RestVocbaseBaseHandler::generateConflict (string const& cid, string const& 
 
 void RestVocbaseBaseHandler::generateNotImplemented (string const& path) {
   generateError(HttpResponse::NOT_IMPLEMENTED, 
-                TRI_REST_ERROR_NOT_IMPLEMENTED,
+                TRI_ERROR_NOT_IMPLEMENTED,
                 "'" + path + "' not implemented");
 }
 
@@ -428,7 +428,7 @@ bool RestVocbaseBaseHandler::findCollection (string const& name, bool create) {
 
   if (name.empty()) {
     generateError(HttpResponse::BAD, 
-                  TRI_REST_ERROR_CORRUPTED_JSON,
+                  TRI_ERROR_HTTP_CORRUPTED_JSON,
                   "collection identifier is empty");
     return false;
   }
@@ -469,7 +469,7 @@ bool RestVocbaseBaseHandler::loadCollection () {
   // check for corrupted collections
   if (_collection->_corrupted) {
     generateError(HttpResponse::SERVER_ERROR, 
-                  TRI_VOC_ERROR_CORRUPTED_COLLECTION,
+                  TRI_ERROR_AVOCADO_CORRUPTED_COLLECTION,
                   "collection is corrupted, please run collection check");
     return false;
   }
@@ -478,7 +478,7 @@ bool RestVocbaseBaseHandler::loadCollection () {
   if (_collection->_loaded) {
     if (_collection->_collection == 0) {
       generateError(HttpResponse::SERVER_ERROR, 
-                    TRI_VOC_ERROR_CORRUPTED_COLLECTION,
+                    TRI_ERROR_AVOCADO_CORRUPTED_COLLECTION,
                     "cannot load collection, check log");
       return false;
     }
@@ -519,7 +519,7 @@ bool RestVocbaseBaseHandler::loadCollection () {
 
   if (_collection->_corrupted) {
     generateError(HttpResponse::SERVER_ERROR,
-                  TRI_VOC_ERROR_CORRUPTED_COLLECTION,
+                  TRI_ERROR_AVOCADO_CORRUPTED_COLLECTION,
                   "collection is corrupted, please run collection check");
     return false;
   }
@@ -539,12 +539,12 @@ TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
   if (json == 0) {
     if (errmsg == 0) {
       generateError(HttpResponse::BAD, 
-                    TRI_REST_ERROR_CORRUPTED_JSON,
+                    TRI_ERROR_HTTP_CORRUPTED_JSON,
                     "cannot parse json object");
     }
     else {
       generateError(HttpResponse::BAD, 
-                    TRI_REST_ERROR_CORRUPTED_JSON,
+                    TRI_ERROR_HTTP_CORRUPTED_JSON,
                     errmsg);
 
       TRI_FreeString(errmsg);
