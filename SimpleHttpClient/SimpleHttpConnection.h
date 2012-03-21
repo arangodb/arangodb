@@ -44,6 +44,8 @@ namespace triagens {
 
     class SimpleHttpConnection {
     private:
+      enum { READBUFFER_SIZE = 8096 };
+      
       SimpleHttpConnection (SimpleHttpConnection const&);
       SimpleHttpConnection& operator= (SimpleHttpConnection const&);
 
@@ -160,6 +162,14 @@ namespace triagens {
         return _errorMessage;
       }
       
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief get error message
+      ///
+      /// @return string          the last error message
+      ////////////////////////////////////////////////////////////////////////////////
+      
+      double now ();
+                  
     private:
 
       ////////////////////////////////////////////////////////////////////////////////
@@ -219,6 +229,8 @@ namespace triagens {
       int _errno;
       std::string _errorMessage;
       
+      char _readBuffer[READBUFFER_SIZE];
+      size_t _readBufferSize;      
     };
   }
 }

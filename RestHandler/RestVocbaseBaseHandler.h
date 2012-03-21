@@ -34,71 +34,6 @@
 #include "Rest/HttpResponse.h"
 #include "VocBase/document-collection.h"
 
-////////////////////////////////////////////////////////////////////////////////
-/// @page HttpInterface Lightweight HTTP Interface
-///
-/// The AvocadoDB has a REST interface for accessing the resources. It
-/// also provides a lightweight HTTP interface to execute actions. Actions are
-/// small JavaScript functions which encapsulate business logic.
-///
-/// Each resource has an identifier, which allows to access the given resource.
-///
-/// - collection:
-///     A collection can be referenced using the collection identifier or the
-///     collection name.
-/// - document:
-///     A document can be referenced using the collection identifier and the
-///     document identifier. Alternativly you can use a document reference which
-///     is a string of the form "collection-identifier:document-identifier".
-/// - index:
-///     An index can be referenced using the index identifier.
-/// - revision:
-///     Each document has a unique document identifier. However, it is possible
-///     to update documents. In this case the document identifier stays the
-///     same. Each new revision of such a document gets a new revision number.
-/// - etag:
-///     A revision of a document has an etag.
-///
-/// Next steps: learn more about
-///
-/// - the @ref RestDocument
-///
-/// Advanced Topics: learn more about
-///
-/// - @ref Actions
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page RestSystemTOC
-///
-/// <ol>
-///   <li>@ref RestSystemCollections "GET /_system/collections"</li>
-///   <li>@ref RestSystemCollectionLoad "GET /_system/collection/load"</li>
-///   <li>@ref RestSystemCollectionInfo "GET /_system/collection/info"</li>
-///   <li>@ref RestSystemCollectionIndexes "GET /_system/collection/indexes"</li>
-/// </ol>
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page RestSystem HTTP Interface for System Administration
-///
-/// <hr>
-/// @copydoc RestSystemTOC
-/// <hr>
-///
-/// @anchor RestSystemCollections
-/// @copydetails JSA_collections
-///
-/// @anchor RestSystemCollectionLoad
-/// @copydetails JSA_collection_load
-///
-/// @anchor RestSystemCollectionInfo
-/// @copydetails JSA_collection_info
-///
-/// @anchor RestSystemCollectionIndexes
-/// @copydetails JSA_collection_indexes
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
@@ -211,22 +146,28 @@ namespace triagens {
         void generateOk ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates ok message without content
-////////////////////////////////////////////////////////////////////////////////
-
-        void generateOk (TRI_voc_cid_t, TRI_voc_did_t, TRI_voc_rid_t rid);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates created message without content but a location header
+/// @brief generates created message
 ////////////////////////////////////////////////////////////////////////////////
 
         void generateCreated (TRI_voc_cid_t, TRI_voc_did_t, TRI_voc_rid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates accepted message without content but a location header
+/// @brief generates accepted message
 ////////////////////////////////////////////////////////////////////////////////
 
         void generateAccepted (TRI_voc_cid_t, TRI_voc_did_t, TRI_voc_rid_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates deleted message
+////////////////////////////////////////////////////////////////////////////////
+
+        void generateDeleted (TRI_voc_cid_t, TRI_voc_did_t, TRI_voc_rid_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates updated message
+////////////////////////////////////////////////////////////////////////////////
+
+        void generateUpdated (TRI_voc_cid_t, TRI_voc_did_t, TRI_voc_rid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates collection not found error message
@@ -238,7 +179,7 @@ namespace triagens {
 /// @brief generates document not found error message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDocumentNotFound (string const& cid, string const& did);
+        void generateDocumentNotFound (string const& handle);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates conflict message
@@ -253,22 +194,28 @@ namespace triagens {
         void generateNotImplemented (string const& path);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generates precondition failed
+////////////////////////////////////////////////////////////////////////////////
+
+        void generatePreconditionFailed (TRI_voc_cid_t, TRI_voc_did_t, TRI_voc_rid_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates not modified
+////////////////////////////////////////////////////////////////////////////////
+
+        void generateNotModified (string const& etag);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generates first entry from a result set
 ////////////////////////////////////////////////////////////////////////////////
 
         void generateDocument (TRI_doc_mptr_t const*, bool generateBody);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief splits a document reference into to parts
-////////////////////////////////////////////////////////////////////////////////
-
-        bool splitDocumentReference (string const& name, string& did);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the revision
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_voc_rid_t extractRevision ();
+        TRI_voc_rid_t extractRevision (string const& header, string const& parameter = "");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the update policy
@@ -280,7 +227,7 @@ namespace triagens {
 /// @brief sets the collection variable given a name or an identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool findCollection (string const& name);
+        bool findCollection (string const& name, bool create = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates or loads a collection
@@ -298,7 +245,7 @@ namespace triagens {
 /// @brief sets the rest set, needs the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_doc_mptr_t const* findDocument (string const& doc);
+        TRI_doc_mptr_t const findDocument (string const& doc);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -95,7 +95,7 @@ static TRI_query_parser_t* InitParserQueryTemplate (TRI_query_template_t* const 
 
   parser = (TRI_query_parser_t*) TRI_Allocate(sizeof(TRI_query_parser_t));
   if (!parser) {
-    TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_OOM, NULL);
+    TRI_SetQueryError(&template_->_error, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
   
@@ -135,7 +135,7 @@ bool TRI_ParseQueryTemplate (TRI_query_template_t* const template_) {
  
   template_->_parser = InitParserQueryTemplate(template_);
   if (!template_->_parser) {
-    TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_OOM, NULL);
+    TRI_SetQueryError(&template_->_error, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return false;
   }
   

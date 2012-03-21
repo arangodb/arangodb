@@ -1,0 +1,11 @@
+> curl -X GET --dump - http://localhost:8529/document/161039/11108289
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+etag: "11108289"
+
+{
+  "_rev": 11108289,
+  "_id": "161039/11108289",
+  "Hallo": "World"
+}

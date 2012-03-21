@@ -188,28 +188,6 @@ function require (path) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page JSModuleFsTOC
-///
-/// <ol>
-///   <li>@ref JSModuleFsExists "fs.exists"</li>
-/// </ol>
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page JSModuleFs Module "fs"
-///
-/// The implementation follows the CommonJS specification
-/// <a href="http://wiki.commonjs.org/wiki/Filesystem/A/0">Filesystem/A/0</a>.
-///
-/// <hr>
-/// @copydoc JSModuleFsTOC
-/// <hr>
-///
-/// @anchor JSModuleFsExists
-/// @copydetails JS_Exists
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup V8ModuleFS
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
@@ -229,56 +207,6 @@ fs = ModuleCache["/fs"].exports;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 Module "internal"
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page JSModuleInternalTOC
-///
-/// <ol>
-///   <li>@ref JSModuleInternalExecute "internal.execute"</li>
-///   <li>@ref JSModuleInternalLoad "internal.load"</li>
-///   <li>@ref JSModuleInternalLogLevel "internal.log"</li>
-///   <li>@ref JSModuleInternalLogLevel "internal.logLevel"</li>
-///   <li>@ref JSModuleInternalOutput "internal.output"</li>
-///   <li>@ref JSModuleInternalProcessStat "internal.processStat"</li>
-///   <li>@ref JSModuleInternalRead "internal.read"</li>
-///   <li>@ref JSModuleInternalSPrintF "internal.sprintf"</li>
-///   <li>@ref JSModuleInternalTime "internal.time"</li>
-/// </ol>
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page JSModuleInternal Module "internal"
-///
-/// The following functions are used internally.
-///
-/// <hr>
-/// @copydoc JSModuleInternalTOC
-/// <hr>
-///
-/// @anchor JSModuleInternalExecute
-/// @copydetails JS_Execute
-///
-/// @anchor JSModuleInternalLoad
-/// @copydetails JS_Load
-///
-/// @anchor JSModuleInternalLog
-/// @copydetails JS_Log
-///
-/// @anchor JSModuleInternalLogLevel
-/// @copydetails JS_LogLevel
-///
-/// @anchor JSModuleInternalOutput
-/// @copydetails JS_Output
-///
-/// @anchor JSModuleInternalRead
-/// @copydetails JS_Read
-///
-/// @anchor JSModuleInternalSPrintF
-/// @copydetails JS_SPrintF
-///
-/// @anchor JSModuleInternalTime
-/// @copydetails JS_Time
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup V8ModuleInternal
@@ -364,44 +292,6 @@ internal.loadFile = function (path) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  Module "console"
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page JSModuleConsoleTOC
-///
-/// <ol>
-///   <li>@ref JSModuleConsoleDebug "console.debug"</li>
-///   <li>@ref JSModuleConsoleError "console.error"</li>
-///   <li>@ref JSModuleConsoleInfo "console.info"</li>
-///   <li>@ref JSModuleConsoleLog "console.log"</li>
-///   <li>@ref JSModuleConsoleWarn "console.warn"</li>
-/// </ol>
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page JSModuleConsole Module "console"
-///
-/// The implementation follows the CommonJS specification
-/// <a href="http://wiki.commonjs.org/wiki/Console">Console</a>.
-///
-/// <hr>
-/// @copydoc JSModuleConsoleTOC
-/// <hr>
-///
-/// @anchor JSModuleConsoleDebug
-/// @copydetails JSF_CONSOLE_DEBUG
-///
-/// @anchor JSModuleConsoleError
-/// @copydetails JSF_CONSOLE_ERROR
-///
-/// @anchor JSModuleConsoleInfo
-/// @copydetails JSF_CONSOLE_INFO
-///
-/// @anchor JSModuleConsoleLog
-/// @copydetails JSF_CONSOLE_LOG
-///
-/// @anchor JSModuleConsoleWarn
-/// @copydetails JSF_CONSOLE_WARN
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup V8ModuleConsole

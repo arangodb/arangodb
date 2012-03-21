@@ -127,6 +127,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_WITHIN_COMMON 1
+#include "BasicsC/voc-errors.h"
 #include "BasicsC/error.h"
 #include "BasicsC/memory.h"
 #include "BasicsC/structures.h"

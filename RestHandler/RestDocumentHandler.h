@@ -31,7 +31,7 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             RestCollectionHandler
+// --SECTION--                                             RestDocumentHandler
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -46,7 +46,7 @@ namespace triagens {
 /// @brief collection request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestCollectionHandler : public RestVocbaseBaseHandler {
+    class RestDocumentHandler : public RestVocbaseBaseHandler {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -67,7 +67,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestCollectionHandler (rest::HttpRequest* request, struct TRI_vocbase_s* vocbase);
+        RestDocumentHandler (rest::HttpRequest* request, struct TRI_vocbase_s* vocbase);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

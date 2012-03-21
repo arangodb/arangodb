@@ -110,11 +110,11 @@
 ///
 /// Next steps:
 ///
-/// - learn about @ref SelectionByExample
-/// - learn about @ref FieldSelection
-/// - learn about @ref Sorting
-/// - learn about @ref Pagination
-/// - learn about @ref GeoCoordinates
+/// - learn about ref SelectionByExample
+/// - learn about ref FieldSelection
+/// - learn about ref Sorting
+/// - learn about ref Pagination
+/// - learn about ref GeoCoordinates
 /// - look at all the @ref JavaScriptFunc
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -142,7 +142,7 @@
 ///
 /// - @ref JS_DropIndexVocbaseCol "dropIndex"
 /// - @ref JS_EnsureGeoIndexVocbaseCol "ensureGeoIndex"
-/// - @ref JS_EnsureHashIndexVocbaseCol "ensureHashIndex"
+/// - ref JS_EnsureHashIndexVocbaseCol "ensureHashIndex"
 /// - @ref JS_EnsureMultiHashIndexVocbaseCol "ensureMultiHashIndex"
 /// - @ref JS_GetIndexesVocbaseCol "getIndexes"
 ///
@@ -152,7 +152,7 @@
 ///
 /// - @ref JS_AllQuery "all"
 /// - @ref JS_DocumentQuery "document"
-/// - @ref JS_SelectQuery "select"
+/// - ref JS_SelectQuery "select"
 ///
 /// @section JSFGlobal Global Functions
 ///
@@ -160,7 +160,7 @@
 /// - @ref JS_Load "load"
 /// - @ref JS_LogLevel "logLevel"
 /// - @ref JS_Output "output"
-/// - @ref JS_print "print"
+/// - ref JS_print "print"
 /// - @ref JS_ProcessCsvFile "processCsvFile"
 /// - @ref JS_ProcessJsonFile "processJsonFile"
 /// - @ref JS_Read "read"
@@ -194,7 +194,7 @@
 ///
 /// @copydetails JS_EnsureGeoIndexVocbaseCol
 ///
-/// @copydetails JS_EnsureHashIndexVocbaseCol
+/// copydetails JS_EnsureHashIndexVocbaseCol
 ///
 /// @copydetails JS_EnsureMultiHashIndexVocbaseCol
 ///

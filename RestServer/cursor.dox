@@ -47,7 +47,7 @@
 ///   (optional).
 ///   Calculating the "count" attribute might have a performance penalty for
 ///   some queries so this option is turned off by default.
-/// - maxResults: maximum number of result documents to be transferred from
+/// - batchSize: maximum number of result documents to be transferred from
 ///   the server to the client in one roundtrip (optional). If this attribute
 ///   is not set, a server-controlled default value will be used.
 /// - bindVars: key/value list of bind parameters (optional). 
@@ -105,7 +105,7 @@
 ///
 /// The server will only transfer a certain number of result documents back to
 /// the client in one roundtrip. This number is controllable by the client by
-/// setting the @LIT{maxResults} attribute when issueing the query.
+/// setting the @LIT{batchSize} attribute when issueing the query.
 ///
 /// If the complete result can be transferred to the client in one go, the client 
 /// does not need to issue any further request. The client can check whether
@@ -116,7 +116,7 @@
 /// @subsection RestCursorResultsCursor Using a Cursor
 ///
 /// If the result set contains more documents than should be transferred in a
-/// single roundtrip (i.e. as set via the @LIT{maxResults} attribute), the 
+/// single roundtrip (i.e. as set via the @LIT{batchSize} attribute), the 
 /// server will return the first few documents and create a temporary cursor. 
 /// The cursor id will also be returned to the client. The server will put
 /// the cursor id in the @LIT{_id} attribute of the response object. 
@@ -179,7 +179,7 @@
 /// These query string needs to be passed in the attribute @LIT{query} of a 
 /// JSON object as the body of the POST request.
 ///
-/// The server will respond with @LIT{HTTP 400} or @LIT {HTTP 500} in case of a
+/// The server will respond with @LIT{HTTP 400} or @LIT{HTTP 500} in case of a
 /// malformed request or a general error.
 /// If the query contains a parse error, the server will respond with an
 /// @LIT{HTTP 404} error. 

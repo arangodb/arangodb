@@ -60,7 +60,7 @@ function aqlSimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function executeQuery (query) {
-    var cursor = AQL_STATEMENT(db, query, undefined);
+    var cursor = AQL_STATEMENT(query, undefined);
     if (cursor instanceof AvocadoQueryError) {
       print(query, cursor.message);
     }

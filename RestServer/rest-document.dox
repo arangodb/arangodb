@@ -29,50 +29,105 @@
 /// @page RestDocumentTOC
 ///
 /// <ol>
-///   <li>@ref RestCollectionCreate "POST /collection/@FA{collection-identifier}"</li>
-///   <li>@ref RestCollectionRead "GET /collection/@FA{collection-identifier}/@FA{document-identifier}"</li>
-///   <li>@ref RestCollectionReadAll "GET /collection/@FA{collection-identifier}"</li>
-///   <li>@ref RestCollectionUpdate "PUT /collection/@FA{collection-identifier}/@FA{document-identifier}"</li>
-///   <li>@ref RestCollectionDelete "DELETE /collection/@FA{collection-identifier}/@FA{document-identifier}"</li>
-///   <li>@ref RestCollectionHead "HEAD /collection/@FA{collection-identifier}/@FA{document-identifier}"</li>
+///  <li>@ref RestDocumentIntro</li>
+///  <li>@ref RestDocumentResource</li>
+///  <li>@ref RestDocumentHttp
+///   <ol>
+///    <li>@ref RestDocumentRead "GET /document/@FA{document-handle}"</li>
+///    <li>@ref RestDocumentCreate "POST /document/collection=@FA{collection-identifier}"</li>
+///    <li>@ref RestDocumentUpdate "PUT /document/@FA{document-handle}"</li>
+///    <li>@ref RestDocumentDelete "DELETE /document/@FA{document-handle}"</li>
+///    <li>@ref RestDocumentHead "HEAD /document/@FA{document-handle}"</li>
+///    <li>@ref RestDocumentReadAll "GET /document?collection=@FA{collection-identifier}"</li>
+///   </ol>
+///  </li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page RestDocument REST Interface for Documents
 ///
-/// The basic operations (create, read, update, delete) for documents are mapped
-/// to the standard HTTP methods (POST, GET, PUT, DELETE). An identifier for the
-/// revision is returned in the "ETag" field. If you modify a document, you can
-/// use the "ETag" field to detect conflicts. The revision of a document can be
-/// checking using the HTTP method HEAD.
+/// This is an introduction to AvocadoDB's REST interface to documents.
 ///
 /// <hr>
 /// @copydoc RestDocumentTOC
 /// <hr>
 ///
-/// @anchor RestCollectionCreate
-/// @copydetails triagens::avocado::RestCollectionHandler::createDocument
+/// @section RestDocumentIntro Documents, Identifiers, Handles
+//////////////////////////////////////////////////////////////
+///
+/// @copydoc GlossaryDocument
+///
+/// For example:
+///
+/// @verbinclude document1
+///
+/// All documents contain two special fields, the document handle in @LIT{_id}
+/// and the etag aka document revision in @LIT{_rev}.
+///
+/// All examples in the manual assume that you have created some example
+/// collections, see @ref ExamplesSetup.
+///
+/// @copydoc GlossaryDocumentHandle
+///
+/// @copydoc GlossaryDocumentIdentifier
+///
+/// @copydoc GlossaryDocumentRevision
+///
+/// @copydoc GlossaryDocumentEtag
+///
+/// The basic operations (create, read, update, delete) for documents are mapped
+/// to the standard HTTP methods (POST, GET, PUT, DELETE). An identifier for the
+/// document revision is returned in the "ETag" header field. If you modify a
+/// document, you can use the "If-Match" field to detect conflicts. The revision
+/// of a document can be checking using the HTTP method HEAD.
+///
+/// @section RestDocumentResource Address and ETag of an Document
+/////////////////////////////////////////////////////////////////
+///
+/// All documents in AvocadoDB have a document handle. This handle uniquely
+/// defines a document and is managed by AvocadoDB. Assume that the document
+/// handle, which is stored in the @LIT{_id} field of the document, is
+/// @LIT{7254820/362549736}, then the HTTP URI of that document is:
+///
+/// @LIT{http://localhost:8529/document/7254820/362549736}
+///
+/// Each document also has a document revision or etag with is returned
+/// in the "ETag" header field when requesting a document.
+///
+/// If you obtain a document using @LIT{GET} and you want to check if a 
+/// newer revision is available, then you can use the "If-None-Match"
+/// header. If the document is unchanged, a @LIT{HTTP 412} is returned.
+///
+/// If you want to update or delete a document, then you can use the
+/// "If-Match" header. If the document has changed, then the
+/// operation is aborted and a @LIT{HTTP 412} is returned.
+///
+/// @section RestDocumentHttp Working with Documents using REST
+///////////////////////////////////////////////////////////////
+///
+/// @anchor RestDocumentRead
+/// @copydetails triagens::avocado::RestDocumentHandler::readSingleDocument
 /// <hr>
 ///
-/// @anchor RestCollectionRead
-/// @copydetails triagens::avocado::RestCollectionHandler::readSingleDocument
+/// @anchor RestDocumentCreate
+/// @copydetails triagens::avocado::RestDocumentHandler::createDocument
 /// <hr>
 ///
-/// @anchor RestCollectionReadAll
-/// @copydetails triagens::avocado::RestCollectionHandler::readAllDocuments
+/// @anchor RestDocumentUpdate
+/// @copydetails triagens::avocado::RestDocumentHandler::updateDocument
 /// <hr>
 ///
-/// @anchor RestCollectionUpdate
-/// @copydetails triagens::avocado::RestCollectionHandler::updateDocument
+/// @anchor RestDocumentDelete
+/// @copydetails triagens::avocado::RestDocumentHandler::deleteDocument
 /// <hr>
 ///
-/// @anchor RestCollectionDelete
-/// @copydetails triagens::avocado::RestCollectionHandler::deleteDocument
+/// @anchor RestDocumentHead
+/// @copydetails triagens::avocado::RestDocumentHandler::checkDocument
 /// <hr>
 ///
-/// @anchor RestCollectionHead
-/// @copydetails triagens::avocado::RestCollectionHandler::checkDocument
+/// @anchor RestDocumentReadAll
+/// @copydetails triagens::avocado::RestDocumentHandler::readAllDocuments
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

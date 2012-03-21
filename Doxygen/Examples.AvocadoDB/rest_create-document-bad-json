@@ -1,0 +1,12 @@
+> curl --data @- -X POST --dump - http://localhost:8529/document?collection=173347
+{ 1 : 2 }
+
+HTTP/1.1 400 Bad Request
+content-type: application/json; charset=utf-8
+
+{
+  "errorMessage": "expecting attribute name",
+  "errorNum": 502,
+  "code": 400,
+  "error": true
+}

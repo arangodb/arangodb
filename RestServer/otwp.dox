@@ -31,14 +31,14 @@
 /// <ol>
 ///  <li>Querying and Managing Documents
 ///   <ol>
-///    <li>Documents
+///    <li>@ref RestDocument
 ///     <ol>
-///      <li>@ref RestCollectionCreate "POST /collection/@FA{collection-identifier}"</li>
-///      <li>@ref RestCollectionRead "GET /collection/@FA{collection-identifier}/@FA{document-identifier}"</li>
-///      <li>@ref RestCollectionReadAll "GET /collection/@FA{collection-identifier}"</li>
-///      <li>@ref RestCollectionUpdate "PUT /collection/@FA{collection-identifier}/@FA{document-identifier}"</li>
-///      <li>@ref RestCollectionDelete "DELETE /collection/@FA{collection-identifier}/@FA{document-identifier}"</li>
-///      <li>@ref RestCollectionHead "HEAD /collection/@FA{collection-identifier}/@FA{document-identifier}"</li>
+///      <li>@ref RestDocumentRead "GET /document/@FA{document-handle}"</li>
+///      <li>@ref RestDocumentCreate "POST /document/collection=@FA{collection-identifier}"</li>
+///      <li>@ref RestDocumentUpdate "PUT /document/@FA{document-handle}"</li>
+///      <li>@ref RestDocumentDelete "DELETE /document/@FA{document-handle}"</li>
+///      <li>@ref RestDocumentHead "HEAD /document/@FA{document-handle}"</li>
+///      <li>@ref RestDocumentReadAll "GET /document?collection=@FA{collection-identifier}"</li>
 ///     </ol>
 ///    </li>
 ///    <li>@ref OTWPSimpleQueries
@@ -55,6 +55,15 @@
 ///      <li>@ref RestCursorPut "PUT /_api/cursor/@FA{cursor-identifier}"</li>
 ///      <li>@ref RestCursorDelete "DELETE /_api/cursor/@FA{cursor-identifier}"</li>
 ///      <li>@ref RestQueryPost "POST /_api/query"</li>
+///     </ol>
+///    </li>
+///    <li>@ref Key-Value
+///     <ol>
+///      <li>@ref Key-ValuePost "POST /_api/key/@FA{collection-name}/@FA{key}"</li>
+///      <li>@ref Key-ValuePut "PUT /_api/key/@FA{collection-name}/@FA{key}"</li>
+///      <li>@ref Key-ValueGet "GET /_api/key/@FA{collection-name}/@FA{key}"</li>
+///      <li>@ref Key-ValueDelete "DELETE /_api/key/@FA{collection-name}/@FA{key}"</li>
+///      <li>@ref Key-ValueSearch "GET /_api/keys/@FA{collection-name}/@FA{prefix}"</li>
 ///     </ol>
 ///    </li>
 ///   </ol>

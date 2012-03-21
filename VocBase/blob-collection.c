@@ -64,7 +64,7 @@ static bool CreateJournal (TRI_blob_collection_t* collection) {
 
   // check that a journal was created
   if (journal == NULL) {
-    collection->base._lastError = TRI_set_errno(TRI_VOC_ERROR_NO_JOURNAL);
+    collection->base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
     collection->base._state = TRI_COL_STATE_WRITE_ERROR;
 
     LOG_ERROR("cannot create new journal '%s': %s", filename, TRI_last_error());
@@ -160,7 +160,7 @@ static bool CloseJournal (TRI_blob_collection_t* collection, TRI_datafile_t* jou
   }
 
   if (i == n) {
-    TRI_set_errno(TRI_VOC_ERROR_NO_JOURNAL);
+    TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
     return false;
   }
 
@@ -222,7 +222,7 @@ static TRI_datafile_t* SelectJournal (TRI_blob_collection_t* collection,
   // try to reserve space
   ok = TRI_ReserveElementDatafile(datafile, size, result);
 
-  while (! ok && TRI_errno() == TRI_VOC_ERROR_DATAFILE_FULL) {
+  while (! ok && TRI_errno() == TRI_ERROR_AVOCADO_DATAFILE_FULL) {
     ok = CloseJournal(collection, datafile);
 
     if (! ok) {
@@ -378,11 +378,11 @@ bool TRI_WriteBlobCollection (TRI_blob_collection_t* collection,
   if (collection->base._state != TRI_COL_STATE_WRITE) {
     if (collection->base._state == TRI_COL_STATE_READ) {
       TRI_UnlockMutex(&collection->_lock);
-      return TRI_VOC_ERROR_READ_ONLY;
+      return TRI_ERROR_AVOCADO_READ_ONLY;
     }
 
     TRI_UnlockMutex(&collection->_lock);
-    return TRI_VOC_ERROR_ILLEGAL_STATE;
+    return TRI_ERROR_AVOCADO_ILLEGAL_STATE;
   }
 
   // find and select a journal
@@ -390,7 +390,7 @@ bool TRI_WriteBlobCollection (TRI_blob_collection_t* collection,
 
   if (journal == NULL) {
     TRI_UnlockMutex(&collection->_lock);
-    return TRI_VOC_ERROR_NO_JOURNAL;
+    return TRI_ERROR_AVOCADO_NO_JOURNAL;
   }
 
   // and write marker and blob

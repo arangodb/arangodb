@@ -41,15 +41,15 @@ var console = require("console");
 /// @brief error codes 
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.queryNotFound = 10404;
-exports.queryNotModified = 10304;
+exports.errorQuerySpecificationInvalid = 1512;
+exports.errorCursorNotFound            = 1600;
+
+exports.errorInvalidRequest            = 1700;
+exports.errorJavascriptException       = 1701;
 
 exports.collectionNotFound = 20404;
 exports.documentNotFound = 30404;
 exports.documentNotModified = 30304;
-
-exports.cursorNotFound = 40404;
-exports.cursorNotModified = 40304;
 
 exports.keyValueNotFound = 41404;
 exports.keyValueNotModified = 41304;
@@ -277,31 +277,41 @@ function actionResultOK (req, res, httpReturnCode, result, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an error
 ///
-/// @FUN{actionResultError(@FA{req}, @FA{res}, @FA{code}, @FA{errorNum}, @FA{errorMessage}, @FA{headers})}
+/// @FUN{actionResultError(@FA{req}, @FA{res}, @FA{code}, @FA{errorNum}, @FA{errorMessage}, @FA{headers}, @FA{keyvals})}
 ///
 /// The functions generates an error response. The response body is an array
 /// with an attribute @LIT{errorMessage} containing the error message
-/// @FA{errorMessage}, @LIT{error} containing @LIT{true}, @LIT{code}
-/// containing @FA{code}, @LIT{errorNum} containing @FA{errorNum}, and
-/// $LIT{errorMessage} containing the error message @FA{errorMessage}.
+/// @FA{errorMessage}, @LIT{error} containing @LIT{true}, @LIT{code} containing
+/// @FA{code}, @LIT{errorNum} containing @FA{errorNum}, and $LIT{errorMessage}
+/// containing the error message @FA{errorMessage}. @FA{keyvals} are mixed
+/// into the result.
 ////////////////////////////////////////////////////////////////////////////////
 
-function actionResultError (req, res, httpReturnCode, errorNum, errorMessage, headers) {  
+function actionResultError (req, res, httpReturnCode, errorNum, errorMessage, headers, keyvals) {  
   res.responseCode = httpReturnCode;
   res.contentType = "application/json";
 
   if (typeof errorNum === "string") {
+    keyvals = headers;
     headers = errorMessage;
     errorMessage = errorNum;
     errorNum = httpReturnCode;
   }
   
-  var result = {
-    "error"        : true,
-    "code"         : httpReturnCode,
-    "errorNum"     : errorNum,
-    "errorMessage" : errorMessage
+  var result = {};
+
+  if (keyvals !== undefined) {
+    for (var i in keyvals) {
+      if (keyvals.hasOwnProperty(i)) {
+        result[i] = keyvals[i];
+      }
+    }
   }
+
+  result["error"]        = true;
+  result["code"]         = httpReturnCode;
+  result["errorNum"]     = errorNum;
+  result["errorMessage"] = errorMessage;
   
   res.body = JSON.stringify(result);
 
@@ -395,11 +405,16 @@ exports.HEAD   = "HEAD";
 exports.POST   = "POST";
 exports.PUT    = "PUT";
 
+// HTTP 200
 exports.HTTP_OK                 = 200;
 
+// HTTP 400
 exports.HTTP_NOT_FOUND          = 404;
 exports.HTTP_METHOD_NOT_ALLOWED = 405;
 exports.HTTP_CONFLICT           = 409;
+
+// VOC ERRORS
+exports.VERR_COLLECTION_EXISTS  = 1205;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

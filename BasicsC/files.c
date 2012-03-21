@@ -559,7 +559,7 @@ char* TRI_SlurpFile (char const* filename) {
     if (n < 0) {
       TRI_CLOSE(fd);
 
-      TRI_DestroyStringBuffer(&result);
+      TRI_AnnihilateStringBuffer(&result);
 
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
       return NULL;
@@ -592,7 +592,7 @@ bool TRI_CreateLockFile (char const* filename) {
   fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
 
   if (fd == -1) {
-    TRI_set_errno(TRI_ERROR_OPEN_ERROR);
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
     return false;
   }
 
@@ -601,22 +601,27 @@ bool TRI_CreateLockFile (char const* filename) {
 
   rv = TRI_WRITE(fd, buf, strlen(buf));
 
-  TRI_CLOSE(fd);
-  TRI_FreeString(buf);
-
   if (rv == -1) {
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+
+    TRI_FreeString(buf);
+
+    TRI_CLOSE(fd);
     TRI_UNLINK(filename);
-    TRI_set_errno(TRI_ERROR_WRITE_ERROR);
     return false;
   }
+
+  TRI_FreeString(buf);
+  TRI_CLOSE(fd);
 
   fd = TRI_OPEN(filename, O_RDONLY);
   rv = flock(fd, LOCK_EX);
 
   if (rv == -1) { // file may be locked already
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+
     TRI_CLOSE(fd);
     TRI_UNLINK(filename);
-    TRI_set_errno(TRI_ERROR_LOCK_ERROR);
     return false;
   }
 
@@ -646,6 +651,7 @@ bool TRI_VerifyLockFile (char const* filename) {
   TRI_set_errno(TRI_ERROR_NO_ERROR);
 
   if (! TRI_ExistsFile(filename)) {
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
     return false;
   }
 
@@ -678,7 +684,8 @@ bool TRI_VerifyLockFile (char const* filename) {
   can_lock = flock(fd, LOCK_EX | LOCK_NB);
 
   if (can_lock == 0) { // file was not yet be locked
-    TRI_set_errno(TRI_ERROR_UNLOCKED_FILE);
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+
     flock(fd, LOCK_UN);
     TRI_CLOSE(fd);
 

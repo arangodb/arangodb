@@ -1,6 +1,6 @@
 POST /_api/cursor HTTP/1.1
 
-{"query":"SELECT u FROM users u LIMIT 5","count":true,"maxResults":2}
+{"query":"SELECT u FROM users u LIMIT 5","count":true,"batchSize":2}
 
 
 HTTP/1.1 201 Created

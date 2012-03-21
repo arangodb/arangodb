@@ -25,9 +25,14 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <BasicsC/logging.h>
+
 #include "VocBase/query-cursor.h"
 #include "VocBase/query-context.h"
-#include "VocBase/shadow-data.h"
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocBase
@@ -51,6 +56,32 @@ static void RemoveCollectionsQueryCursor (TRI_query_cursor_t* cursor) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief frees the data of a cursor 
+///
+/// This will release any locks on the underlying collection data and might be 
+/// called before the actual cursor is disposed.
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeData (TRI_query_cursor_t* const cursor) {
+  if (cursor->_deleted) {
+    return;
+  }
+
+  cursor->_deleted = true;
+
+  assert(cursor->_functionCode);
+  TRI_Free(cursor->_functionCode);
+
+  // free result set
+  if (cursor->_result._selectResult) {
+    cursor->_result._selectResult->free(cursor->_result._selectResult);
+  }
+
+  // free select
+  RemoveCollectionsQueryCursor(cursor);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the next element 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -61,6 +92,8 @@ static TRI_rc_result_t* NextQueryCursor (TRI_query_cursor_t* const cursor) {
 
     return &cursor->_result;
   }
+
+  FreeData(cursor);
 
   return NULL;
 }
@@ -85,30 +118,36 @@ static bool HasCountQueryCursor (const TRI_query_cursor_t* const cursor) {
 /// @brief returns the maximum number of results per transfer
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint32_t GetMaxQueryCursor (const TRI_query_cursor_t* const cursor) {
-  return cursor->_maxResults;
+static uint32_t GetBatchSizeQueryCursor (const TRI_query_cursor_t* const cursor) {
+  return cursor->_batchSize;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees a cursor 
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FreeQueryCursor (TRI_query_cursor_t* cursor) {
-  assert(cursor->_functionCode);
-  TRI_Free(cursor->_functionCode);
-
-  // free result set
-  if (cursor->_result._selectResult) {
-    cursor->_result._selectResult->free(cursor->_result._selectResult);
-  }
+void TRI_FreeQueryCursor (TRI_query_cursor_t* cursor) {
+  FreeData(cursor);
   
-  // free select
-  RemoveCollectionsQueryCursor(cursor);
   TRI_DestroyMutex(&cursor->_lock);
   TRI_DestroyVectorPointer(&cursor->_containers);
 
   TRI_Free(cursor);
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a cursor
@@ -117,28 +156,29 @@ static void FreeQueryCursor (TRI_query_cursor_t* cursor) {
 TRI_query_cursor_t* TRI_CreateQueryCursor (TRI_query_instance_t* const instance,
                                            const TRI_select_result_t* const selectResult,
                                            const bool doCount,
-                                           const uint32_t maxResults) {
+                                           const uint32_t batchSize) {
   TRI_query_cursor_t* cursor;
 
   assert(instance);
   
   cursor = TRI_Allocate(sizeof(TRI_query_cursor_t));
   if (!cursor) {
-    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
   assert(instance->_query._select._functionCode);
   cursor->_functionCode = TRI_DuplicateString(instance->_query._select._functionCode);
   if (!cursor->_functionCode) {
-    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
     TRI_Free(cursor);
     return NULL;
   }
 
-  cursor->_shadow = NULL;
+  // does cursor produce constant documents?
+  cursor->_isConstant = instance->_query._select._isConstant;
   cursor->_hasCount = doCount;
-  cursor->_maxResults = maxResults;
+  cursor->_batchSize = batchSize;
   cursor->_deleted = false;
   cursor->_vocbase = instance->_template->_vocbase;
    
@@ -148,8 +188,8 @@ TRI_query_cursor_t* TRI_CreateQueryCursor (TRI_query_instance_t* const instance,
   cursor->next = NextQueryCursor;
   cursor->hasNext = HasNextQueryCursor;
   cursor->hasCount = HasCountQueryCursor;
-  cursor->getMax = GetMaxQueryCursor;
-  cursor->free = FreeQueryCursor;
+  cursor->getBatchSize = GetBatchSizeQueryCursor;
+  cursor->free = TRI_FreeQueryCursor;
   
   TRI_InitMutex(&cursor->_lock);
   TRI_InitVectorPointer(&cursor->_containers);
@@ -158,26 +198,10 @@ TRI_query_cursor_t* TRI_CreateQueryCursor (TRI_query_instance_t* const instance,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Free a cursor based on its shadow
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeShadowQueryCursor (TRI_shadow_store_t* store, TRI_shadow_t* shadow) {
-  TRI_query_cursor_t* cursor = (TRI_query_cursor_t*) shadow->_data;
-
-  if (!cursor) {
-    return;
-  }
-
-  FreeQueryCursor(cursor);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief exclusively lock a query cursor
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_LockQueryCursor (TRI_query_cursor_t* const cursor) {
-  assert(cursor);
-
   TRI_LockMutex(&cursor->_lock);
 }
 
@@ -189,6 +213,16 @@ void TRI_UnlockQueryCursor (TRI_query_cursor_t* const cursor) {
   assert(cursor);
 
   TRI_UnlockMutex(&cursor->_lock);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Free a cursor based on its shadow data pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeShadowQueryCursor (void* data) {
+  TRI_query_cursor_t* cursor = (TRI_query_cursor_t*) data; 
+
+  TRI_FreeQueryCursor(cursor);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

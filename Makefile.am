@@ -65,6 +65,7 @@ build.h: configure.ac
 include Makefile.files
 include Makefile.doxygen
 include Makefile.javascript
+include Makefile.unittests
 
 if ENABLE_FLEX
 include Makefile.flex

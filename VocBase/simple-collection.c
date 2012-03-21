@@ -120,7 +120,7 @@ static TRI_datafile_t* SelectJournal (TRI_sim_collection_t* collection,
         TRI_UnlockCondition(&collection->_journalsCondition);
         return datafile;
       }
-      else if (! ok && TRI_errno() != TRI_VOC_ERROR_DATAFILE_FULL) {
+      else if (! ok && TRI_errno() != TRI_ERROR_AVOCADO_DATAFILE_FULL) {
         TRI_UnlockCondition(&collection->_journalsCondition);
         return NULL;
       }
@@ -246,17 +246,18 @@ static void CreateHeader (TRI_doc_collection_t* c,
 /// @brief creates a new document splitted into marker and body to file
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t* CreateDocument (TRI_sim_collection_t* collection,
-                                       TRI_doc_document_marker_t* marker,
-                                       size_t markerSize,
-                                       void const* body,
-                                       TRI_voc_size_t bodySize,
-                                       TRI_df_marker_t** result,
-                                       void const* additional,
-                                       bool release) {
+static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* collection,
+                                      TRI_doc_document_marker_t* marker,
+                                      size_t markerSize,
+                                      void const* body,
+                                      TRI_voc_size_t bodySize,
+                                      TRI_df_marker_t** result,
+                                      void const* additional,
+                                      bool release) {
 
   TRI_datafile_t* journal;
   TRI_doc_mptr_t* header;
+  TRI_doc_mptr_t mptr;
   TRI_voc_size_t total;
   TRI_doc_datafile_info_t* dfi;
   bool ok;
@@ -272,13 +273,14 @@ static TRI_doc_mptr_t* CreateDocument (TRI_sim_collection_t* collection,
   journal = SelectJournal(collection, total, result);
 
   if (journal == NULL) {
-    collection->base.base._lastError = TRI_set_errno(TRI_VOC_ERROR_NO_JOURNAL);
+    collection->base.base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
 
     if (release) {
       collection->base.endWrite(&collection->base);
     }
 
-    return NULL;
+    mptr._did = 0;
+    return mptr;
   }
 
   // verify the header pointer
@@ -305,7 +307,9 @@ static TRI_doc_mptr_t* CreateDocument (TRI_sim_collection_t* collection,
     // update immediate indexes
     CreateImmediateIndexes(collection, header);
 
-    // release lock
+    mptr = *header;
+
+    // release lock, header might be invalid after this
     if (release) {
       collection->base.endWrite(&collection->base);
     }
@@ -314,7 +318,7 @@ static TRI_doc_mptr_t* CreateDocument (TRI_sim_collection_t* collection,
     WaitSync(collection, journal, ((char const*) *result) + markerSize + bodySize);
 
     // and return
-    return header;
+    return mptr;
   }
   else {
     if (release) {
@@ -322,7 +326,8 @@ static TRI_doc_mptr_t* CreateDocument (TRI_sim_collection_t* collection,
     }
 
     LOG_ERROR("cannot write element: %s", TRI_last_error());
-    return NULL;
+    mptr._did = 0;
+    return mptr;
   }
 }
 
@@ -353,32 +358,39 @@ static void UpdateHeader (TRI_doc_collection_t* c,
 /// @brief updates an existing document splitted into marker and body to file
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t const* UpdateDocument (TRI_sim_collection_t* collection,
-                                             TRI_doc_mptr_t const* header,
-                                             TRI_doc_document_marker_t* marker,
-                                             size_t markerSize,
-                                             void const* body,
-                                             TRI_voc_size_t bodySize,
-                                             TRI_voc_rid_t rid,
-                                             TRI_doc_update_policy_e policy,
-                                             TRI_df_marker_t** result,
-                                             bool release) {
+static TRI_doc_mptr_t const UpdateDocument (TRI_sim_collection_t* collection,
+                                            TRI_doc_mptr_t const* header,
+                                            TRI_doc_document_marker_t* marker,
+                                            size_t markerSize,
+                                            void const* body,
+                                            TRI_voc_size_t bodySize,
+                                            TRI_voc_rid_t rid,
+                                            TRI_voc_rid_t* oldRid,
+                                            TRI_doc_update_policy_e policy,
+                                            TRI_df_marker_t** result,
+                                            bool release) {
+  TRI_doc_mptr_t mptr;
   TRI_datafile_t* journal;
   TRI_voc_size_t total;
   bool ok;
 
   // check the revision
+  if (oldRid != NULL) {
+    *oldRid = header->_rid;
+  }
+
   switch (policy) {
     case TRI_DOC_UPDATE_ERROR:
       if (rid != 0) {
         if (rid != header->_rid) {
-          TRI_set_errno(TRI_VOC_ERROR_CONFLICT);
+          TRI_set_errno(TRI_ERROR_AVOCADO_CONFLICT);
 
           if (release) {
             collection->base.endWrite(&collection->base);
           }
 
-          return NULL;
+          mptr._did = 0;
+          return mptr;
         }
       }
 
@@ -388,22 +400,24 @@ static TRI_doc_mptr_t const* UpdateDocument (TRI_sim_collection_t* collection,
       break;
 
     case TRI_DOC_UPDATE_CONFLICT:
-      TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_PARAMETER);
+      TRI_set_errno(TRI_ERROR_NOT_IMPLEMENTED);
 
       if (release) {
         collection->base.endWrite(&collection->base);
       }
 
-      return NULL;
+      mptr._did = 0;
+      return mptr;
 
     case TRI_DOC_UPDATE_ILLEGAL:
-      TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_PARAMETER);
+      TRI_set_errno(TRI_ERROR_INTERNAL);
 
       if (release) {
         collection->base.endWrite(&collection->base);
       }
 
-      return NULL;
+      mptr._did = 0;
+      return mptr;
   }
 
   // generate a new tick
@@ -414,13 +428,14 @@ static TRI_doc_mptr_t const* UpdateDocument (TRI_sim_collection_t* collection,
   journal = SelectJournal(collection, total, result);
 
   if (journal == NULL) {
-    collection->base.base._lastError = TRI_set_errno(TRI_VOC_ERROR_NO_JOURNAL);
+    collection->base.base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
 
     if (release) {
       collection->base.endWrite(&collection->base);
     }
 
-    return NULL;
+    mptr._did = 0;
+    return mptr;
   }
 
   // generate crc
@@ -454,7 +469,9 @@ static TRI_doc_mptr_t const* UpdateDocument (TRI_sim_collection_t* collection,
     // update immediate indexes
     UpdateImmediateIndexes(collection, header, &update);
 
-    // release lock
+    mptr = *header;
+
+    // release lock, header might be invalid after this
     if (release) {
       collection->base.endWrite(&collection->base);
     }
@@ -463,7 +480,7 @@ static TRI_doc_mptr_t const* UpdateDocument (TRI_sim_collection_t* collection,
     WaitSync(collection, journal, ((char const*) *result) + markerSize + bodySize);
 
     // and return
-    return header;
+    return mptr;
   }
   else {
     if (release) {
@@ -471,7 +488,8 @@ static TRI_doc_mptr_t const* UpdateDocument (TRI_sim_collection_t* collection,
     }
 
     LOG_ERROR("cannot write element");
-    return NULL;
+    mptr._did = 0;
+    return mptr;
   }
 }
 
@@ -482,6 +500,7 @@ static TRI_doc_mptr_t const* UpdateDocument (TRI_sim_collection_t* collection,
 static bool DeleteDocument (TRI_sim_collection_t* collection,
                             TRI_doc_deletion_marker_t* marker,
                             TRI_voc_rid_t rid,
+                            TRI_voc_rid_t* oldRid,
                             TRI_doc_update_policy_e policy,
                             bool release) {
   TRI_datafile_t* journal;
@@ -494,7 +513,7 @@ static bool DeleteDocument (TRI_sim_collection_t* collection,
   header = TRI_LookupByKeyAssociativePointer(&collection->_primaryIndex, &marker->_did);
 
   if (header == NULL || header->_deletion != 0) {
-    TRI_set_errno(TRI_VOC_ERROR_DOCUMENT_NOT_FOUND);
+    TRI_set_errno(TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND);
 
     if (release) {
       collection->base.endWrite(&collection->base);
@@ -504,11 +523,15 @@ static bool DeleteDocument (TRI_sim_collection_t* collection,
   }
 
   // check the revision
+  if (oldRid != NULL) {
+    *oldRid = header->_rid;
+  }
+
   switch (policy) {
     case TRI_DOC_UPDATE_ERROR:
       if (rid != 0) {
         if (rid != header->_rid) {
-          TRI_set_errno(TRI_VOC_ERROR_CONFLICT);
+          TRI_set_errno(TRI_ERROR_AVOCADO_CONFLICT);
 
           if (release) {
             collection->base.endWrite(&collection->base);
@@ -524,7 +547,7 @@ static bool DeleteDocument (TRI_sim_collection_t* collection,
       break;
 
     case TRI_DOC_UPDATE_CONFLICT:
-      TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_PARAMETER);
+      TRI_set_errno(TRI_ERROR_NOT_IMPLEMENTED);
 
       if (release) {
         collection->base.endWrite(&collection->base);
@@ -533,7 +556,7 @@ static bool DeleteDocument (TRI_sim_collection_t* collection,
       return NULL;
 
     case TRI_DOC_UPDATE_ILLEGAL:
-      TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_PARAMETER);
+      TRI_set_errno(TRI_ERROR_INTERNAL);
 
       if (release) {
         collection->base.endWrite(&collection->base);
@@ -550,7 +573,7 @@ static bool DeleteDocument (TRI_sim_collection_t* collection,
   journal = SelectJournal(collection, total, &result);
 
   if (journal == NULL) {
-    collection->base.base._lastError = TRI_set_errno(TRI_VOC_ERROR_NO_JOURNAL);
+    collection->base.base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
 
     if (release) {
       collection->base.endWrite(&collection->base);
@@ -711,11 +734,11 @@ static void DebugHeaderSimCollection (TRI_sim_collection_t* collection) {
 /// @brief creates a new document in the collection from shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t const* CreateShapedJson (TRI_doc_collection_t* document,
-                                               TRI_df_marker_type_e type,
-                                               TRI_shaped_json_t const* json,
-                                               void const* data,
-                                               bool release) {
+static TRI_doc_mptr_t const CreateShapedJson (TRI_doc_collection_t* document,
+                                              TRI_df_marker_type_e type,
+                                              TRI_shaped_json_t const* json,
+                                              void const* data,
+                                              bool release) {
   TRI_df_marker_t* result;
   TRI_sim_collection_t* collection;
 
@@ -775,9 +798,10 @@ static TRI_doc_mptr_t const* CreateShapedJson (TRI_doc_collection_t* document,
 /// @brief reads an element from the document collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t const* ReadShapedJson (TRI_doc_collection_t* document,
-                                             TRI_voc_did_t did) {
+static TRI_doc_mptr_t const ReadShapedJson (TRI_doc_collection_t* document,
+                                            TRI_voc_did_t did) {
   TRI_sim_collection_t* collection;
+  TRI_doc_mptr_t result;
   TRI_doc_mptr_t const* header;
 
   collection = (TRI_sim_collection_t*) document;
@@ -785,10 +809,11 @@ static TRI_doc_mptr_t const* ReadShapedJson (TRI_doc_collection_t* document,
   header = TRI_LookupByKeyAssociativePointer(&collection->_primaryIndex, &did);
 
   if (header == NULL || header->_deletion != 0) {
-    return NULL;
+    result._did = 0;
+    return result;
   }
   else {
-    return header;
+    return *header;
   }
 }
 
@@ -796,14 +821,16 @@ static TRI_doc_mptr_t const* ReadShapedJson (TRI_doc_collection_t* document,
 /// @brief updates a document in the collection from shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t const* UpdateShapedJson (TRI_doc_collection_t* document,
-                                               TRI_shaped_json_t const* json,
-                                               TRI_voc_did_t did,
-                                               TRI_voc_rid_t rid,
-                                               TRI_doc_update_policy_e policy,
-                                               bool release) {
+static TRI_doc_mptr_t const UpdateShapedJson (TRI_doc_collection_t* document,
+                                              TRI_shaped_json_t const* json,
+                                              TRI_voc_did_t did,
+                                              TRI_voc_rid_t rid,
+                                              TRI_voc_rid_t* oldRid,
+                                              TRI_doc_update_policy_e policy,
+                                              bool release) {
   TRI_df_marker_t const* original;
   TRI_df_marker_t* result;
+  TRI_doc_mptr_t mptr;
   TRI_doc_mptr_t const* header;
   TRI_sim_collection_t* collection;
 
@@ -813,8 +840,13 @@ static TRI_doc_mptr_t const* UpdateShapedJson (TRI_doc_collection_t* document,
   header = TRI_LookupByKeyAssociativePointer(&collection->_primaryIndex, &did);
 
   if (header == NULL || header->_deletion != 0) {
-    TRI_set_errno(TRI_VOC_ERROR_DOCUMENT_NOT_FOUND);
-    return NULL;
+    if (release) {
+      document->endWrite(&collection->base);
+    }
+
+    TRI_set_errno(TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND);
+    mptr._did = 0;
+    return mptr;
   }
 
   original = header->_data;
@@ -838,6 +870,7 @@ static TRI_doc_mptr_t const* UpdateShapedJson (TRI_doc_collection_t* document,
                           &marker, sizeof(marker),
                           json->_data.data, json->_data.length,
                           rid,
+                          oldRid,
                           policy,
                           &result,
                           release);
@@ -870,6 +903,7 @@ static TRI_doc_mptr_t const* UpdateShapedJson (TRI_doc_collection_t* document,
                           &marker.base, sizeof(marker),
                           json->_data.data, json->_data.length,
                           rid,
+                          oldRid,
                           policy,
                           &result,
                           release);
@@ -877,6 +911,10 @@ static TRI_doc_mptr_t const* UpdateShapedJson (TRI_doc_collection_t* document,
 
   // do not know
   else {
+    if (release) {
+      document->endWrite(&collection->base);
+    }
+
     LOG_FATAL("unknown marker type %lu", (unsigned long) original->_type);
     exit(EXIT_FAILURE);
   }
@@ -889,6 +927,7 @@ static TRI_doc_mptr_t const* UpdateShapedJson (TRI_doc_collection_t* document,
 static bool DeleteShapedJson (TRI_doc_collection_t* document,
                               TRI_voc_did_t did,
                               TRI_voc_rid_t rid,
+                              TRI_voc_rid_t* oldRid,
                               TRI_doc_update_policy_e policy,
                               bool release) {
   TRI_sim_collection_t* collection;
@@ -904,7 +943,7 @@ static bool DeleteShapedJson (TRI_doc_collection_t* document,
   marker._did = did;
   marker._sid = 0;
 
-  return DeleteDocument(collection, &marker, rid, policy, release);
+  return DeleteDocument(collection, &marker, rid, oldRid, policy, release);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1244,7 +1283,6 @@ static bool OpenIndexIterator (char const* filename, void* data) {
     lat = TRI_LookupArrayJson(json, "latitude");
     lon = TRI_LookupArrayJson(json, "longitude");
     gjs = TRI_LookupArrayJson(json, "geoJson");
-    iid = 0;
     geoJson = false;
     
     if (gjs != NULL && gjs->_type == TRI_JSON_BOOLEAN) {
@@ -1869,7 +1907,7 @@ static bool DeleteImmediateIndexes (TRI_sim_collection_t* collection,
   found = TRI_RemoveKeyAssociativePointer(&collection->_primaryIndex, &header->_did);
 
   if (found == NULL) {
-    TRI_set_errno(TRI_VOC_ERROR_DOCUMENT_NOT_FOUND);
+    TRI_set_errno(TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND);
     return false;
   }
 
@@ -2297,7 +2335,7 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
     idx = TRI_LookupGeoIndex2SimCollection(collection, lat, lon);
   }
   else {
-    TRI_set_errno(TRI_VOC_ERROR_ILLEGAL_PARAMETER);
+    TRI_set_errno(TRI_ERROR_INTERNAL);
 
     LOG_TRACE("expecting either 'location' or 'latitude' and 'longitude'");
 

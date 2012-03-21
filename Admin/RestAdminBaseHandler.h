@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_ADMIN_REST_ADMIN_BASE_HANDLER_H
 #define TRIAGENS_ADMIN_REST_ADMIN_BASE_HANDLER_H 1
 
+#include <BasicsC/common.h>
+
 #include "Admin/RestBaseHandler.h"
 
 namespace triagens {

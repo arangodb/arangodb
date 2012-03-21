@@ -66,12 +66,9 @@ namespace triagens {
         ////////////////////////////////////////////////////////////////////////////////
 
         LineResponse () : _lineRequest(0) {
-          _bodyValue.initialise();
-          _headerValue.initialise();
         }
 
         LineResponse (const char* header, size_t headerLength) : _lineRequest(0) {
-          _headerValue.initialise();
           _headerValue.appendText(header,headerLength);
         }
 
@@ -83,8 +80,6 @@ namespace triagens {
         ////////////////////////////////////////////////////////////////////////////////
 
         virtual ~LineResponse () {
-          _headerValue.free();
-          _bodyValue.free();
           if (_lineRequest != 0) {
             delete _lineRequest;
           }

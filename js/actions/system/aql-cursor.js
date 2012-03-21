@@ -84,41 +84,32 @@ function getCursorResult(cursor) {
 
 function postCursor(req, res) {
   if (req.suffix.length != 0) {
-    actions.actionResultError (req, res, 400, actions.cursorNotModified, "Invalid query data"); 
+    actions.actionResultError (req, res, 404, actions.errorInvalidRequest, "Invalid request");
     return;
   }
 
   try {
-    var cursor;
     var json = JSON.parse(req.requestBody);
       
     if (!json || !(json instanceof Object)) {
-      actions.actionResultError (req, res, 400, actions.cursorNotModified, "Invalid query data");
+      actions.actionResultError (req, res, 400, actions.errorQuerySpecificationInvalid, "Query specification invalid");
       return;
     }
 
-    if (json._id != undefined) {
-      /*
-      cursor = AQL_STORED_STATEMENT(db, 
-                                    json._id, 
-                                    json.bindVars, 
-                                    (json.count != undefined ? json.count : false), 
-                                    (json.maxResults != undefined ? json.maxResults : 1000));  
-      */
-    }    
-    else if (json.query != undefined) {
-      cursor = AQL_STATEMENT(db, 
-                             json.query, 
+    var cursor;
+    if (json.query != undefined) {
+      cursor = AQL_STATEMENT(json.query, 
                              json.bindVars, 
                              (json.count != undefined ? json.count : false), 
-                             (json.maxResults != undefined ? json.maxResults : 1000));  
+                             (json.batchSize != undefined ? json.batchSize : 1000));  
     }
     else {
-      actions.actionResultError (req, res, 400, actions.cursorNotModified, "Invalid query data");
+      actions.actionResultError (req, res, 400, actions.errorQuerySpecificationInvalid, "Query specification invalid");
       return;
     }
    
     if (cursor instanceof AvocadoQueryError) {
+      // error occurred
       actions.actionResultError (req, res, 404, cursor.code, cursor.message);
       return;
     }
@@ -129,7 +120,7 @@ function postCursor(req, res) {
     actions.actionResultOK(req, res, 201, result);
   }
   catch (e) {
-    actions.actionResultError (req, res, 404, actions.cursorNotModified, "Cursor not created");
+    actions.actionResultError (req, res, 404, actions.errorJavascriptException, "Javascript exception");
   }
 }
 
@@ -139,13 +130,13 @@ function postCursor(req, res) {
 
 function putCursor(req, res) {
   if (req.suffix.length != 1) {
-    actions.actionResultError (req, res, 404, actions.cursorNotFound, "Cursor not found");
+    actions.actionResultError (req, res, 404, actions.errorInvalidRequest, "Invalid request");
     return;
   }
 
   try {
     var cursorId = decodeURIComponent(req.suffix[0]); 
-    var cursor = AQL_CURSOR(db, cursorId);
+    var cursor = AQL_CURSOR(cursorId);
     if (!(cursor instanceof AvocadoQueryCursor)) {
       throw "cursor not found";
     } 
@@ -154,7 +145,7 @@ function putCursor(req, res) {
     actions.actionResultOK(req, res, 200, getCursorResult(cursor));
   }
   catch (e) {
-    actions.actionResultError (req, res, 404, actions.cursorNotFound, "Cursor not found");
+    actions.actionResultError (req, res, 404, actions.errorCursorNotFound, "Cursor not found");
   }
 }
 
@@ -164,13 +155,13 @@ function putCursor(req, res) {
 
 function deleteCursor(req, res) {
   if (req.suffix.length != 1) {
-    actions.actionResultError (req, res, 404, actions.cursorNotFound, "Cursor not found");
+    actions.actionResultError (req, res, 404, actions.errorInvalidRequest, "Invalid request");
     return;
   }
 
   try {
     var cursorId = decodeURIComponent(req.suffix[0]);
-    var cursor = AQL_CURSOR(db, cursorId);
+    var cursor = AQL_CURSOR(cursorId);
     if (!(cursor instanceof AvocadoQueryCursor)) {
       throw "cursor not found";
     }
@@ -179,7 +170,7 @@ function deleteCursor(req, res) {
     actions.actionResultOK(req, res, 202, { "_id" : cursorId });                
   }
   catch (e) {
-    actions.actionResultError (req, res, 404, actions.cursorNotFound, "Cursor not found");
+    actions.actionResultError (req, res, 404, actions.errorCursorNotFound, "Cursor not found");
   }
 }
 

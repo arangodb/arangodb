@@ -122,7 +122,16 @@ namespace triagens {
 /// @brief generates an error
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void generateError (rest::HttpResponse::HttpResponseCode, string const& details);
+        virtual void generateError (rest::HttpResponse::HttpResponseCode,
+                                    int errorCode);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates an error
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void generateError (rest::HttpResponse::HttpResponseCode,
+                                    int errorCode,
+                                    string const& details);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a request body in json given a description

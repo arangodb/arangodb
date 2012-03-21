@@ -28,8 +28,9 @@
 #ifndef TRIAGENS_DURHAM_VOC_BASE_QUERY_PARSE_H
 #define TRIAGENS_DURHAM_VOC_BASE_QUERY_PARSE_H 1
 
+#include <BasicsC/voc-errors.h>
+
 #include "VocBase/query-base.h"
-#include "VocBase/query-error.h"
 #include "VocBase/query-memory.h"
 #include "QL/optimize.h"
 

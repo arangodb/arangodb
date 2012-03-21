@@ -1434,7 +1434,7 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
     item->parse(optarg, item->_desc);
   }
 
-  TRI_DestroyStringBuffer(&buffer);
+  TRI_AnnihilateStringBuffer(&buffer);
 
   return true;
 }

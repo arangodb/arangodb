@@ -107,14 +107,14 @@ namespace triagens {
        if (find != string::npos) {
          key = line.substr(0, find);
          if (find + 1 < line.length()) {
-           value = line.substr(find + 1);           
+           value = StringUtils::trim(line.substr(find + 1));
          }
          addHeaderField(key, value);
        }      
     }
     
     void SimpleHttpResult::addHeaderField (string const& key, string const& value) {
-      string k = StringUtils::tolower(key);
+      string k = StringUtils::trim(StringUtils::tolower(key));
 
       if (k == "http/1.1") {
         if (value.length() > 2) {
@@ -134,6 +134,14 @@ namespace triagens {
       _headerFields[k] = value;
     }
 
+    const string SimpleHttpResult::getContentType () {
+       map<string, string>::const_iterator find = _headerFields.find("content-type");
+       if (find != _headerFields.end()) {
+         return find->second;   
+       }
+       return "";
+    }
+    
     
     VariantObject* SimpleHttpResult::getBodyAsVariant () {
 

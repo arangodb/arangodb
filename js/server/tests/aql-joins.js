@@ -93,11 +93,11 @@ function aqlJoinsTestSuite () {
     }
 
     for (var i in row) {
-      if (i === "_id" || !row.hasOwnProperty(i)) {
+      if (i === "_id" || i === "_rev" || !row.hasOwnProperty(i)) {
         continue;
       }
       if (row[i] instanceof Array || row[i] instanceof Object) {
-        copy[i] = this.sanitizeRow(row[i]);
+        copy[i] = sanitizeRow(row[i]);
       }
       else {
         copy[i] = row[i];
@@ -107,11 +107,53 @@ function aqlJoinsTestSuite () {
   }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sort callback function for result documents
+////////////////////////////////////////////////////////////////////////////////
+
+  function sortResult(l, r) {
+    var left = JSON.stringify(l);
+    var right = JSON.stringify(r);
+
+    if (left < right) {
+      return -1;
+    }
+    if (left > right) {
+      return 1;
+    }
+    return 0;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalize result set by removing _id and _rev and by sorting
+////////////////////////////////////////////////////////////////////////////////
+
+  function normalizeResult (result, sortKeys) {
+    var copy = [ ];
+
+    for (var i = 0; i < result.length; i++) {
+      var row = sanitizeRow(result[i]);
+     
+      if (sortKeys instanceof Array) { 
+        for (var key in sortKeys) {
+          var sortKey = sortKeys[key];
+          if (row[sortKey] instanceof Array) {
+            row[sortKey] = row[sortKey].sort(sortResult);
+          }
+        }
+      }
+
+      copy.push(row);
+    }
+
+    return copy;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a given query
 ////////////////////////////////////////////////////////////////////////////////
 
   function executeQuery (query) {
-    var cursor = AQL_STATEMENT(db, query, undefined);
+    var cursor = AQL_STATEMENT(query, undefined);
     assertFalse(cursor instanceof AvocadoQueryError);
     return cursor;
   }
@@ -125,7 +167,7 @@ function aqlJoinsTestSuite () {
     if (cursor) {
       var results = [ ];
       while (cursor.hasNext()) {
-        results.push(this.sanitizeRow(cursor.next()));
+        results.push(cursor.next());
       }
       return results;
     }
@@ -140,6 +182,7 @@ function aqlJoinsTestSuite () {
     var expected = [{ "id" : 1, "name" : "fox"}, { "id" : 1, "name" : "fox"}, { "id" : 1, "name" : "fox"}, { "id" : 2, "name" : "brown"}, { "id" : 2, "name" : "brown"}, { "id" : 5, "name" : "peter"}, { "id" : 5, "name" : "peter"}, { "id" : 5, "name" : "peter"}, { "id" : 5, "name" : "peter"}, { "id" : 5, "name" : "peter"}];
 
     var result = this.getQueryResults("SELECT p FROM " + this.persons._name + " p INNER JOIN " + this.locations._name + " l ON (p.id == l.person) ORDER BY p.id, l.x, l.y");
+    result = normalizeResult(result);
     assertEqual(10, result.length);
     assertEqual(expected, result);
   }
@@ -152,6 +195,7 @@ function aqlJoinsTestSuite () {
     var expected = [{ "p" : { "id" : 1, "name" : "fox"}, "l" : { "person" : 1, "x" : -2, "y" : 3}}, { "p" : { "id" : 1, "name" : "fox"}, "l" : { "person" : 1, "x" : 1, "y" : 5}}, { "p" : { "id" : 1, "name" : "fox"}, "l" : { "person" : 1, "x" : 3, "y" : 4}}, { "p" : { "id" : 2, "name" : "brown"}, "l" : { "person" : 2, "x" : 2, "y" : 1}}, { "p" : { "id" : 2, "name" : "brown"}, "l" : { "person" : 2, "x" : 3, "y" : -2}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 2, "y" : -2}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 3, "y" : -2}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 4, "y" : -1}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 5, "y" : -5}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 6, "y" : -5}}];
 
     var result = this.getQueryResults("SELECT { p : p, l : l } FROM " + this.persons._name + " p INNER JOIN " + this.locations._name + " l ON (p.id == l.person) ORDER BY p.id, l.x, l.y");
+    result = normalizeResult(result);
     assertEqual(10, result.length);
     assertEqual(expected, result);
   }
@@ -164,6 +208,7 @@ function aqlJoinsTestSuite () {
     var expected = [{ "id" : 1, "name" : "fox"}, { "id" : 1, "name" : "fox"}, { "id" : 2, "name" : "brown"}];
 
     var result = this.getQueryResults("SELECT p FROM " + this.persons._name + " p INNER JOIN " + this.locations._name + " l ON (p.id == l.person) ORDER BY p.id, l.x, l.y LIMIT 1, 3");
+    result = normalizeResult(result);
     assertEqual(3, result.length);
     assertEqual(expected, result);
   }
@@ -176,6 +221,7 @@ function aqlJoinsTestSuite () {
     var expected = [{ "id" : 1, "name" : "fox"}, { "id" : 1, "name" : "fox"}, { "id" : 1, "name" : "fox"}, { "id" : 2, "name" : "brown"}, { "id" : 2, "name" : "brown"}, { "id" : 5, "name" : "peter"}, { "id" : 5, "name" : "peter"}, { "id" : 5, "name" : "peter"}, { "id" : 5, "name" : "peter"}, { "id" : 5, "name" : "peter"}, { "id" : 6, "name" : "hulk"}, { "id" : 9, "name" : "fred"}];
 
     var result = this.getQueryResults("SELECT p FROM " + this.persons._name + " p LEFT JOIN " + this.locations._name + " l ON (p.id == l.person) ORDER BY p.id, l.x, l.y");
+    result = normalizeResult(result);
     assertEqual(12, result.length);
     assertEqual(expected, result);
   }
@@ -188,6 +234,7 @@ function aqlJoinsTestSuite () {
     var expected = [{ "p" : { "id" : 1, "name" : "fox"}, "l" : { "person" : 1, "x" : -2, "y" : 3}}, { "p" : { "id" : 1, "name" : "fox"}, "l" : { "person" : 1, "x" : 1, "y" : 5}}, { "p" : { "id" : 1, "name" : "fox"}, "l" : { "person" : 1, "x" : 3, "y" : 4}}, { "p" : { "id" : 2, "name" : "brown"}, "l" : { "person" : 2, "x" : 2, "y" : 1}}, { "p" : { "id" : 2, "name" : "brown"}, "l" : { "person" : 2, "x" : 3, "y" : -2}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 2, "y" : -2}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 3, "y" : -2}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 4, "y" : -1}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 5, "y" : -5}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 6, "y" : -5}}, { "p" : { "id" : 6, "name" : "hulk"}, "l" : null}, { "p" : { "id" : 9, "name" : "fred"}, "l" : null}];
 
     var result = this.getQueryResults("SELECT { p : p, l : l } FROM " + this.persons._name + " p LEFT JOIN " + this.locations._name + " l ON (p.id == l.person) ORDER BY p.id, l.x, l.y");
+    result = normalizeResult(result);
     assertEqual(12, result.length);
     assertEqual(expected, result);
   }
@@ -198,8 +245,10 @@ function aqlJoinsTestSuite () {
 
   function testListJoin1 () {
     var expected = [{ "p" : { "id" : 1, "name" : "fox"}, "l" : [{ "person" : 1, "x" : 1, "y" : 5}, { "person" : 1, "x" : 3, "y" : 4}, { "person" : 1, "x" : -2, "y" : 3}]}, { "p" : { "id" : 2, "name" : "brown"}, "l" : [{ "person" : 2, "x" : 2, "y" : 1}, { "person" : 2, "x" : 3, "y" : -2}]}, { "p" : { "id" : 5, "name" : "peter"}, "l" : [{ "person" : 5, "x" : 5, "y" : -5}, { "person" : 5, "x" : 3, "y" : -2}, { "person" : 5, "x" : 2, "y" : -2}, { "person" : 5, "x" : 6, "y" : -5}, { "person" : 5, "x" : 4, "y" : -1}]}, { "p" : { "id" : 6, "name" : "hulk"}, "l" : [ ]}, { "p" : { "id" : 9, "name" : "fred"}, "l" : [ ]}];
+    expected = normalizeResult(expected, [ 'l' ]);
 
     var result = this.getQueryResults("SELECT { p : p, l : l } FROM " + this.persons._name + " p LIST JOIN " + this.locations._name + " l ON (p.id == l.person) ORDER BY p.id, l.x, l.y");
+    result = normalizeResult(result, [ 'l' ]);
     assertEqual(5, result.length);
     assertEqual(expected, result);
   }
@@ -210,8 +259,10 @@ function aqlJoinsTestSuite () {
 
   function testListJoin2 () {
     var expected = [{ "p" : { "id" : 1, "name" : "fox"}, "f" : [{ "person1" : 1, "person2" : 9}, { "person1" : 1, "person2" : 2}]}, { "p" : { "id" : 2, "name" : "brown"}, "f" : [ ]}, { "p" : { "id" : 5, "name" : "peter"}, "f" : [{ "person1" : 5, "person2" : 6}]}, { "p" : { "id" : 6, "name" : "hulk"}, "f" : [{ "person1" : 6, "person2" : 9}]}, { "p" : { "id" : 9, "name" : "fred"}, "f" : [{ "person1" : 9, "person2" : 1}]}];
+    expected = normalizeResult(expected, [ 'f' ]);
 
     var result = this.getQueryResults("SELECT { p : p, f : f } FROM " + this.persons._name + " p LIST JOIN " + this.friends._name + " f ON (p.id == f.person1) ORDER BY p.id");
+    result = normalizeResult(result, [ 'f' ]);
     assertEqual(5, result.length);
     assertEqual(expected, result);
   }
@@ -222,8 +273,10 @@ function aqlJoinsTestSuite () {
 
   function testListJoin3 () {
     var expected = [{ "p" : { "id" : 1, "name" : "fox"}, "f" : [{ "person1" : 9, "person2" : 1}, { "person1" : 1, "person2" : 9}, { "person1" : 1, "person2" : 2}]}, { "p" : { "id" : 2, "name" : "brown"}, "f" : [{ "person1" : 1, "person2" : 2}]}, { "p" : { "id" : 5, "name" : "peter"}, "f" : [{ "person1" : 5, "person2" : 6}]}, { "p" : { "id" : 6, "name" : "hulk"}, "f" : [{ "person1" : 6, "person2" : 9}, { "person1" : 5, "person2" : 6}]}, { "p" : { "id" : 9, "name" : "fred"}, "f" : [{ "person1" : 9, "person2" : 1}, { "person1" : 1, "person2" : 9}, { "person1" : 6, "person2" : 9}]}];
+    expected = normalizeResult(expected, [ 'f' ]);
 
     var result = this.getQueryResults("SELECT { p : p, f : f } FROM " + this.persons._name + " p LIST JOIN " + this.friends._name + " f ON (p.id == f.person1 || p.id == f.person2) ORDER BY p.id");
+    result = normalizeResult(result, [ 'f' ]);
     assertEqual(5, result.length);
     assertEqual(expected, result);
   }
@@ -234,8 +287,10 @@ function aqlJoinsTestSuite () {
 
   function testSelfJoin () {
     var expected = [{ "id" : 1, "name" : "fox"}, { "id" : 2, "name" : "brown"}, { "id" : 5, "name" : "peter"}, { "id" : 6, "name" : "hulk"}, { "id" : 9, "name" : "fred"}];
+    expected = normalizeResult(expected);
 
     var result = this.getQueryResults("SELECT p FROM " + this.persons._name + " p INNER JOIN " + this.persons._name + " p2 ON (p.id == p2.id) ORDER BY p.id");
+    result = normalizeResult(result);
     assertEqual(5, result.length);
     assertEqual(expected, result);
   }

@@ -1,0 +1,10 @@
+> curl -X GET '-H if-match: "9358920"' --dump - http://localhost:8529/document/183881/9358921
+
+HTTP/1.1 412 Precondition Failed
+content-type: application/json; charset=utf-8
+
+{
+  "_rev": 9358921,
+  "_id": "183881/9358921",
+  "error": true
+}

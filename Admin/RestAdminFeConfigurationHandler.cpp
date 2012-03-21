@@ -108,7 +108,9 @@ HttpHandler::status_e RestAdminFeConfigurationHandler::execute () {
       return executeWrite();
 
     default:
-      generateError(HttpResponse::METHOD_NOT_ALLOWED, "expecting GET or POST");
+      generateError(HttpResponse::METHOD_NOT_ALLOWED, 
+                    TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                    "expecting GET or POST");
       return HANDLER_DONE;
   }
 
@@ -152,7 +154,7 @@ HttpHandler::status_e RestAdminFeConfigurationHandler::executeRead () {
   }
   
   response = new HttpResponse(HttpResponse::OK);
-  response->setContentType("application/json");
+  response->setContentType("application/json; charset=utf-8");
   response->body().appendText(result);
   
   return HANDLER_DONE;
@@ -171,7 +173,9 @@ HttpHandler::status_e RestAdminFeConfigurationHandler::executeWrite () {
       FileUtils::spit(_filename, request->body());
     }
     catch (...) {
-      generateError(HttpResponse::SERVER_ERROR, "cannot write configuration");
+      generateError(HttpResponse::SERVER_ERROR,
+                    TRI_ERROR_SYS_ERROR,
+                    "cannot write configuration");
       return HANDLER_DONE;
     }
   }

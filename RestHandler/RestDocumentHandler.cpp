@@ -25,7 +25,7 @@
 /// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RestCollectionHandler.h"
+#include "RestDocumentHandler.h"
 
 #include "Basics/StringUtils.h"
 #include "BasicsC/string-buffer.h"
@@ -51,7 +51,7 @@ using namespace triagens::avocado;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestCollectionHandler::RestCollectionHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
+RestDocumentHandler::RestDocumentHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
   : RestVocbaseBaseHandler(request, vocbase) {
 }
 
@@ -72,7 +72,7 @@ RestCollectionHandler::RestCollectionHandler (HttpRequest* request, TRI_vocbase_
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestCollectionHandler::isDirect () {
+bool RestDocumentHandler::isDirect () {
   return false;
 }
 
@@ -80,7 +80,7 @@ bool RestCollectionHandler::isDirect () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& RestCollectionHandler::queue () {
+string const& RestDocumentHandler::queue () {
   static string const client = "CLIENT";
 
   return client;
@@ -90,7 +90,7 @@ string const& RestCollectionHandler::queue () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_e RestCollectionHandler::execute () {
+HttpHandler::status_e RestDocumentHandler::execute () {
 
   // extract the sub-request type
   HttpRequest::HttpRequestType type = request->requestType();
@@ -120,22 +120,17 @@ HttpHandler::status_e RestCollectionHandler::execute () {
   // execute one of the CRUD methods
   bool res = false;
 
-  if (request->suffix().size() < 1) {
-    generateError(HttpResponse::BAD, "missing collection identifier");
-  }
-  else {
-    switch (type) {
-      case HttpRequest::HTTP_REQUEST_DELETE: res = deleteDocument(); break;
-      case HttpRequest::HTTP_REQUEST_GET: res = readDocument(); break;
-      case HttpRequest::HTTP_REQUEST_HEAD: res = checkDocument(); break;
-      case HttpRequest::HTTP_REQUEST_POST: res = createDocument(); break;
-      case HttpRequest::HTTP_REQUEST_PUT: res = updateDocument(); break;
+  switch (type) {
+    case HttpRequest::HTTP_REQUEST_DELETE: res = deleteDocument(); break;
+    case HttpRequest::HTTP_REQUEST_GET: res = readDocument(); break;
+    case HttpRequest::HTTP_REQUEST_HEAD: res = checkDocument(); break;
+    case HttpRequest::HTTP_REQUEST_POST: res = createDocument(); break;
+    case HttpRequest::HTTP_REQUEST_PUT: res = updateDocument(); break;
 
-      case HttpRequest::HTTP_REQUEST_ILLEGAL:
-        res = false;
-        generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
-        break;
-    }
+    case HttpRequest::HTTP_REQUEST_ILLEGAL:
+      res = false;
+      generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
+      break;
   }
 
   _timingResult = res ? RES_ERR : RES_OK;
@@ -160,7 +155,7 @@ HttpHandler::status_e RestCollectionHandler::execute () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a document
 ///
-/// @REST{POST /collection/@FA{collection-identifier}}
+/// @REST{POST /document?collection=@FA{collection-identifier}}
 ///
 /// Creates a new document in the collection identified by the
 /// @FA{collection-identifier}.  A JSON representation of the document must be
@@ -168,51 +163,86 @@ HttpHandler::status_e RestCollectionHandler::execute () {
 ///
 /// If the document was created successfully, then a @LIT{HTTP 201} is returned
 /// and the "Location" header contains the path to the newly created
-/// document. The "ETag" header field contains the revision of the newly created
-/// document.
+/// document. The "ETag" header field contains the revision of the document.
+///
+/// The body of the response contains a JSON object with the same information.
+/// The attribute @LIT{_id} contains the document handle of the newly created
+/// document, the attribute @LIT{_rev} contains the document revision.
 ///
 /// If the collection parameter @LIT{waitForSync} is @LIT{false}, then a
 /// @LIT{HTTP 202} is returned in order to indicate that the document has been
 /// accepted but not yet stored.
 ///
 /// If the @FA{collection-identifier} is unknown, then a @LIT{HTTP 404} is
-/// returned.
+/// returned and the body of the response contains an error document.
 ///
 /// If the body does not contain a valid JSON representation of an document,
-/// then a @LIT{HTTP 400} is returned.
+/// then a @LIT{HTTP 400} is returned and the body of the response contains
+/// an error document.
 ///
-/// Instead of a @FA{collection-identifier}, a collection name can be
-/// given.
+/// @REST{POST /document?collection=@FA{collection-name}&createCollection=@FA{create}}
+///
+/// Instead of a @FA{collection-identifier}, a @FA{collection-name} can be
+/// used. If @FA{createCollection} is true, then the collection is created if it does not
+/// exists.
 ///
 /// @EXAMPLES
 ///
-/// Create a document given a collection identifier:
+/// Create a document given a collection identifier @LIT{161039} for the collection
+/// named @LIT{demo}. Note that the revision identifier might or might by equal to
+/// the last part of the document handle. It generally will be equal, but there is
+/// no guaranty.
 ///
-/// @verbinclude rest3
+/// @verbinclude rest_create-document
+///
+/// Create a document in a collection where @LIT{waitForSync} is @LIT{false}.
+///
+/// @verbinclude rest_create-document-accept
+///
+/// Create a document in a known, named collection
+///
+/// @verbinclude rest_create-document-named-collection
+///
+/// Create a document in a new, named collection
+///
+/// @verbinclude rest_create-document-new-named-collection
 ///
 /// Unknown collection identifier:
 ///
-/// @verbinclude rest4
+/// @verbinclude rest_create-document-unknown-cid
 ///
 /// Illegal document:
 ///
-/// @verbinclude rest5
-///
-/// Create a document given a collection name:
-///
-/// @verbinclude rest6
+/// @verbinclude rest_create-document-bad-json
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestCollectionHandler::createDocument () {
+bool RestDocumentHandler::createDocument () {
   vector<string> const& suffix = request->suffix();
 
-  if (suffix.size() != 1) {
-    generateError(HttpResponse::BAD, "superfluous identifier");
+  if (suffix.size() != 0) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+                  "superfluous suffix, expecting " + DOCUMENT_PATH + "?collection=<identifier>");
     return false;
   }
 
+  // extract the cid
+  bool found;
+  string cid = request->value("collection", found);
+
+  if (! found || cid.empty()) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_AVOCADO_COLLECTION_PARAMETER_MISSING,
+                  "'collection' is missing, expecting " + DOCUMENT_PATH + "?collection=<identifier>");
+    return false;
+  }
+
+  // shall we create the collection?
+  string createStr = request->value("createCollection", found);
+  bool create = found ? StringUtils::boolean(createStr) : false;
+
   // find and load collection given by name oder identifier
-  bool ok = findCollection(suffix[0]) && loadCollection();
+  bool ok = findCollection(cid, create) && loadCollection();
 
   if (! ok) {
     return false;
@@ -234,14 +264,7 @@ bool RestCollectionHandler::createDocument () {
   bool waitForSync = _documentCollection->base._waitForSync;
 
   // note: unlocked is performed by createJson()
-  TRI_doc_mptr_t const* mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_DOCUMENT, json, 0, true);
-  TRI_voc_did_t did = 0;
-  TRI_voc_rid_t rid = 0;
-
-  if (mptr != 0) {
-    did = mptr->_did;
-    rid = mptr->_rid;
-  }
+  TRI_doc_mptr_t const mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_DOCUMENT, json, 0, true);
 
   // .............................................................................
   // outside write transaction
@@ -249,23 +272,27 @@ bool RestCollectionHandler::createDocument () {
 
   TRI_FreeJson(json);
 
-  if (mptr != 0) {
+  if (mptr._did != 0) {
     if (waitForSync) {
-      generateCreated(_documentCollection->base._cid, did, rid);
+      generateCreated(_documentCollection->base._cid, mptr._did, mptr._rid);
     }
     else {
-      generateAccepted(_documentCollection->base._cid, did, rid);
+      generateAccepted(_documentCollection->base._cid, mptr._did, mptr._rid);
     }
 
     return true;
   }
   else {
-    if (TRI_errno() == TRI_VOC_ERROR_READ_ONLY) {
-      generateError(HttpResponse::FORBIDDEN, "collection is read-only");
+    if (TRI_errno() == TRI_ERROR_AVOCADO_READ_ONLY) {
+      generateError(HttpResponse::FORBIDDEN, 
+                    TRI_ERROR_AVOCADO_READ_ONLY,
+                    "collection is read-only");
       return false;
     }
     else {
-      generateError(HttpResponse::SERVER_ERROR, "cannot create, failed with: " + string(TRI_last_error()));
+      generateError(HttpResponse::SERVER_ERROR,
+                    TRI_ERROR_INTERNAL,
+                    "cannot create, failed with: " + string(TRI_last_error()));
       return false;
     }
   }
@@ -277,16 +304,18 @@ bool RestCollectionHandler::createDocument () {
 /// Either readSingleDocument or readAllDocuments.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestCollectionHandler::readDocument () {
+bool RestDocumentHandler::readDocument () {
   switch (request->suffix().size()) {
-    case 1:
+    case 0:
       return readAllDocuments();
 
     case 2:
       return readSingleDocument(true);
 
     default:
-      generateError(HttpResponse::BAD, "superfluous identifier");
+      generateError(HttpResponse::BAD, 
+                    TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+                    "expecting GET /document/<document-handle> or GET /document?collection=<collection-identifier>");
       return false;
   }
 }
@@ -294,58 +323,54 @@ bool RestCollectionHandler::readDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single document
 ///
-/// @REST{GET /collection/@FA{collection-identifier}/@FA{document-identifier}}
+/// @REST{GET /document/@FA{document-handle}}
 ///
-/// Returns the document identified by @FA{document-identifier} from the
-/// collection identified by @FA{collection-identifier}.
+/// Returns the document identified by @FA{document-handle}. The returned
+/// document contains two special attributes: @LIT{_id} containing the document
+/// handle and @LIT{_rev} containing the revision.
 ///
 /// If the document exists, then a @LIT{HTTP 200} is returned and the JSON
 /// representation of the document is the body of the response.
 ///
-/// If the collection identifier points to a non-existing collection, then a
+/// If the @FA{document-handle} points to a non-existing document, then a
 /// @LIT{HTTP 404} is returned and the body contains an error document.
 ///
-/// If the document identifier points to a non-existing document, then a
-/// @LIT{HTTP 404} is returned and the body contains an error document.
+/// If the "If-None-Match" header is given, then it must contain exactly one
+/// etag. The document is returned, if it has a different revision than the
+/// given etag. Otherwise a @LIT{HTTP 304} is returned.
 ///
-/// Instead of a @FA{document-identifier}, a document reference can be given. A
-/// @LIT{HTTP 400} is returned, if there is a mismatch between the
-/// @FA{collection-identifier} and the @FA{document-reference}.
-///
-/// Instead of a @FA{collection-identifier}, a collection name can be given.
+/// If the "If-Match" header is given, then it must contain exactly one
+/// etag. The document is returned, if it has the same revision ad the
+/// given etag. Otherwise a @LIT{HTTP 412} is returned.
 ///
 /// @EXAMPLES
 ///
-/// Use a collection and document identfier:
+/// Use a document handle:
 ///
-/// @verbinclude rest1
+/// @verbinclude rest_read-document
 ///
-/// Use a collection name and document reference:
+/// Use a document handle and an etag:
 ///
-/// @verbinclude rest18
+/// @verbinclude rest_read-document-if-none-match
 ///
-/// Unknown document identifier:
+/// Unknown document handle:
 ///
-/// @verbinclude rest2
-///
-/// Unknown collection identifier:
-///
-/// @verbinclude rest17
+/// @verbinclude rest_read-document-unknown-handle
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestCollectionHandler::readSingleDocument (bool generateBody) {
+bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   vector<string> const& suffix = request->suffix();
 
-  // find and load collection given by name oder identifier
-  bool ok = findCollection(suffix[0]) && loadCollection();
-
-  if (! ok) {
-    return false;
-  }
+  /// check for an etag
+  TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match");
+  TRI_voc_rid_t ifRid = extractRevision("if-match", "rev");
 
   // split the document reference
-  string did;
-  ok = splitDocumentReference(suffix[1], did);
+  string cid = suffix[0];
+  string did = suffix[1];
+
+  // find and load collection given by name oder identifier
+  bool ok = findCollection(cid) && loadCollection();
 
   if (! ok) {
     return false;
@@ -357,7 +382,7 @@ bool RestCollectionHandler::readSingleDocument (bool generateBody) {
 
   _documentCollection->beginRead(_documentCollection);
 
-  TRI_doc_mptr_t const* document = findDocument(did);
+  TRI_doc_mptr_t const document = findDocument(did);
 
   _documentCollection->endRead(_documentCollection);
 
@@ -365,35 +390,73 @@ bool RestCollectionHandler::readSingleDocument (bool generateBody) {
   // outside read transaction
   // .............................................................................
 
-  if (document == 0) {
-    generateDocumentNotFound(suffix[0], did);
+  if (document._did == 0) {
+    generateDocumentNotFound(cid + TRI_DOCUMENT_HANDLE_SEPARATOR_STR +  did);
     return false;
   }
 
-  generateDocument(document, generateBody);
+  TRI_voc_rid_t rid = document._rid;
+
+  if (ifNoneRid == 0) {
+    if (ifRid == 0) {
+      generateDocument(&document, generateBody);
+    }
+    else if (ifRid == rid) {
+      generateDocument(&document, generateBody);
+    }
+    else {
+      generatePreconditionFailed(_documentCollection->base._cid, document._did, rid);
+    }
+  }
+  else if (ifNoneRid == rid) {
+    if (ifRid == 0) {
+      generateNotModified(StringUtils::itoa(rid));
+    }
+    else if (ifRid == rid) {
+      generateNotModified(StringUtils::itoa(rid));
+    }
+    else {
+      generatePreconditionFailed(_documentCollection->base._cid, document._did, rid);
+    }
+  }
+  else {
+    if (ifRid == 0) {
+      generateDocument(&document, generateBody);
+    }
+    else if (ifRid == rid) {
+      generateDocument(&document, generateBody);
+    }
+    else {
+      generatePreconditionFailed(_documentCollection->base._cid, document._did, rid);
+    }
+  }
+
   return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads all documents
 ///
-/// @REST{GET /collection/@FA{collection-identifier}}
+/// @REST{GET /document?collection=@FA{collection-identifier}}
 ///
-/// Returns the URI for all documents from the collection identified by
-/// @FA{collection-identifier}.
+/// Returns a list of all URI for all documents from the collection identified
+/// by @FA{collection-identifier}.
 ///
 /// Instead of a @FA{collection-identifier}, a collection name can be given.
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude rest20
+/// @verbinclude rest_read-document-all
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestCollectionHandler::readAllDocuments () {
-  vector<string> const& suffix = request->suffix();
+bool RestDocumentHandler::readAllDocuments () {
+
+  // extract the cid
+  bool found;
+  string cid = request->value("collection", found);
 
   // find and load collection given by name oder identifier
-  bool ok = findCollection(suffix[0]) && loadCollection();
+  bool ok = findCollection(cid) && loadCollection();
 
   if (! ok) {
     return false;
@@ -447,22 +510,23 @@ bool RestCollectionHandler::readAllDocuments () {
   for (vector<TRI_voc_did_t>::iterator i = ids.begin();  i != ids.end();  ++i) {
     TRI_AppendString2StringBuffer(&buffer, prefix.c_str(), prefix.size());
     TRI_AppendUInt64StringBuffer(&buffer, *i);
+    TRI_AppendCharStringBuffer(&buffer, '"');
 
     if (first) {
-      prefix = "\",\n" + prefix;
+      prefix = ",\n" + prefix;
       first = false;
     }
   }
 
-  TRI_AppendStringStringBuffer(&buffer, "\"\n] }\n");
+  TRI_AppendStringStringBuffer(&buffer, "\n] }\n");
 
   // and generate a response
   response = new HttpResponse(HttpResponse::OK);
-  response->setContentType("application/json");
+  response->setContentType("application/json; charset=utf-8");
 
   response->body().appendText(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
 
-  TRI_DestroyStringBuffer(&buffer);
+  TRI_AnnihilateStringBuffer(&buffer);
 
   return true;
 }
@@ -470,85 +534,108 @@ bool RestCollectionHandler::readAllDocuments () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single document head
 ///
-/// @REST{HEAD /collection/@FA{collection-identifier}/@FA{document-identifier}}
+/// @REST{HEAD /document/@FA{document-handle}}
 ///
-/// Like @FN{GET}, but does not return the body.
+/// Like @FN{GET}, but only returns the header fields and not the body. You
+/// can use this call to get the current revision of a document or check if
+/// the document was deleted.
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude rest19
+/// @verbinclude rest_read-document-head
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestCollectionHandler::checkDocument () {
+bool RestDocumentHandler::checkDocument () {
+  vector<string> const& suffix = request->suffix();
+
+  if (suffix.size() != 2) {
+    generateError(HttpResponse::BAD, 
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting URI /document/<document-handle>");
+    return false;
+  }
+
   return readSingleDocument(false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a document
 ///
-/// @REST{PUT /collection/@FA{collection-identifier}/@FA{document-identifier}}
+/// @REST{PUT /document/@FA{document-handle}}
 ///
-/// Updates the document identified by @FA{document-identifier} in the
-/// collection identified by @FA{collection-identifier}. If the document exists
-/// and could be updated, then a @LIT{HTTP 201} is returned and the "ETag"
-/// header field contains the new revision of the document.
+/// Updates the document identified by @FA{document-handle}. If the document exists
+/// and can be updated, then a @LIT{HTTP 201} is returned and the "ETag" header
+/// field contains the new revision of the document.
 ///
-/// If the document does not exists, then a @LIT{HTTP 404} is returned.
+/// Note the updated document passed in the body of the request normally also
+/// contains the @FA{document-handle} in the attribute @LIT{_id} and the
+/// revision in @LIT{_rev}. These attributes, however, are ignored. Only the URI
+/// and the "ETag" header are relevant in order to avoid confusion when using
+/// proxies.
 ///
-/// If an etag is supplied in the "ETag" field, then the AvocadoDB checks that
-/// the revision of the document is equal to the etag. If there is a mismatch,
-/// then a @LIT{HTTP 409} conflict is returned and no update is performed.
+/// The body of the response contains a JSON object with the information about
+/// the handle and the revision.  The attribute @LIT{_id} contains the known
+/// @FA{document-handle} of the updated document, the attribute @LIT{_rev}
+/// contains the new document revision.
 ///
-/// Instead of a @FA{document-identifier}, a document reference can be given.
+/// If the document does not exists, then a @LIT{HTTP 404} is returned and the
+/// body of the response contains an error document.
 ///
-/// Instead of a @FA{collection-identifier}, a collection name can be given.
+/// If an etag is supplied in the "If-Match" header field, then the AvocadoDB
+/// checks that the revision of the document is equal to the etag. If there is a
+/// mismatch, then a @LIT{HTTP 409} conflict is returned and no update is
+/// performed.
 ///
-/// @REST{PUT /collection/@FA{collection-identifier}/@FA{document-identifier}?policy=@FA{policy}}
+/// @REST{PUT /document/@FA{document-handle}?policy=@FA{policy}}
 ///
 /// As before, if @FA{policy} is @LIT{error}. If @FA{policy} is @LIT{last},
 /// then the last write will win.
 ///
-/// @REST{PUT /collection/@FA{collection-identifier}/@FA{document-identifier}?_rev=@FA{etag}}
+/// @REST{PUT /document/@FA{collection-identifier}/@FA{document-identifier}?rev=@FA{etag}}
 ///
-/// You can also supply the etag using the parameter "_rev" instead of an "ETag"
-/// header.
+/// You can also supply the etag using the parameter @LIT{rev} instead of an "ETag"
+/// header. You must never supply both the "ETag" header and the @LIT{rev}
+/// parameter.
 ///
 /// @EXAMPLES
 ///
-/// Using collection and document identifier:
+/// Using document handle:
 ///
-/// @verbinclude rest7
+/// @verbinclude rest_update-document
 ///
-/// Unknown document identifier:
+/// Unknown document handle:
 ///
-/// @verbinclude rest8
+/// @verbinclude rest_update-document-unknown-handle
 ///
 /// Produce a revision conflict:
 ///
-/// @verbinclude rest9
+/// @verbinclude rest_update-document-if-match-other
 ///
 /// Last write wins:
 ///
-/// @verbinclude rest10
+/// @verbinclude rest_update-document-if-match-other-last-write
 ///
-/// Alternative to ETag header field:
+/// Alternative to header field:
 ///
-/// @verbinclude rest11
+/// @verbinclude rest_update-document-rev-other
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestCollectionHandler::updateDocument () {
+bool RestDocumentHandler::updateDocument () {
   vector<string> const& suffix = request->suffix();
 
-  // find and load collection given by name oder identifier
-  bool ok = findCollection(suffix[0]) && loadCollection();
-
-  if (! ok) {
+  if (suffix.size() != 2) {
+    generateError(HttpResponse::BAD, 
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting UPDATE /document/<document-handle>");
     return false;
   }
 
   // split the document reference
-  string didStr;
-  ok = splitDocumentReference(suffix[1], didStr);
+  string cid = suffix[0];
+  string didStr = suffix[1];
+
+  // find and load collection given by name oder identifier
+  bool ok = findCollection(cid) && loadCollection();
 
   if (! ok) {
     return false;
@@ -565,7 +652,7 @@ bool RestCollectionHandler::updateDocument () {
   TRI_voc_did_t did = StringUtils::uint64(didStr);
 
   // extract the revision
-  TRI_voc_rid_t revision = extractRevision();
+  TRI_voc_rid_t revision = extractRevision("if-match", "rev");
 
   // extract or chose the update policy
   TRI_doc_update_policy_e policy = extractUpdatePolicy();
@@ -577,36 +664,36 @@ bool RestCollectionHandler::updateDocument () {
   _documentCollection->beginWrite(_documentCollection);
 
   // unlocking is performed in updateJson()
-  TRI_doc_mptr_t const* mptr = _documentCollection->updateJson(_documentCollection, json, did, revision, policy, true);
   TRI_voc_rid_t rid = 0;
-
-  if (mptr != 0) {
-    rid = mptr->_rid;
-  }
+  TRI_doc_mptr_t const mptr = _documentCollection->updateJson(_documentCollection, json, did, revision, &rid, policy, true);
 
   // .............................................................................
   // outside write transaction
   // .............................................................................
 
-  if (mptr != 0) {
-    generateOk(_documentCollection->base._cid, did, rid);
+  if (mptr._did != 0) {
+    generateUpdated(_documentCollection->base._cid, did, mptr._rid);
     return true;
   }
   else {
-    if (TRI_errno() == TRI_VOC_ERROR_READ_ONLY) {
-      generateError(HttpResponse::FORBIDDEN, "collection is read-only");
+    if (TRI_errno() == TRI_ERROR_AVOCADO_READ_ONLY) {
+      generateError(HttpResponse::FORBIDDEN, 
+                    TRI_ERROR_AVOCADO_READ_ONLY,
+                    "collection is read-only");
       return false;
     }
-    else if (TRI_errno() == TRI_VOC_ERROR_DOCUMENT_NOT_FOUND) {
-      generateDocumentNotFound(suffix[0], didStr);
+    else if (TRI_errno() == TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND) {
+      generateDocumentNotFound(cid + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + didStr);
       return false;
     }
-    else if (TRI_errno() == TRI_VOC_ERROR_CONFLICT) {
-      generateConflict(suffix[0], didStr);
+    else if (TRI_errno() == TRI_ERROR_AVOCADO_CONFLICT) {
+      generatePreconditionFailed(_documentCollection->base._cid, did, rid);
       return false;
     }
     else {
-      generateError(HttpResponse::SERVER_ERROR, "cannot update, failed with " + string(TRI_last_error()));
+      generateError(HttpResponse::SERVER_ERROR,
+                    TRI_ERROR_INTERNAL,
+                    "cannot update, failed with " + string(TRI_last_error()));
       return false;
     }
   }
@@ -615,60 +702,66 @@ bool RestCollectionHandler::updateDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
 ///
-/// @REST{DELETE /collection/@FA{collection-identifier}/@FA{document-identifier}}
+/// @REST{DELETE /document/@FA{document-handle}}
 ///
-/// Deletes the document identified by @FA{document-identifier} from the
-/// collection identified by @FA{collection-identifier}. If the document exists
-/// and could be deleted, then a @LIT{HTTP 204} is returned.
+/// Deletes the document identified by @FA{document-handle}. If the document
+/// exists and could be deleted, then a @LIT{HTTP 204} is returned.
 ///
-/// If the document does not exists, then a @LIT{HTTP 404} is returned.
+/// The body of the response contains a JSON object with the information about
+/// the handle and the revision.  The attribute @LIT{_id} contains the known
+/// @FA{document-handle} of the updated document, the attribute @LIT{_rev}
+/// contains the known document revision.
 ///
-/// If an etag is supplied in the "ETag" field, then the AvocadoDB checks that
-/// the revision of the document is equal to the etag. If there is a mismatch,
-/// then a @LIT{HTTP 409} conflict is returned and no delete is performed.
+/// If the document does not exists, then a @LIT{HTTP 404} is returned and the
+/// body of the response contains an error document.
 ///
-/// Instead of a @FA{document-identifier}, a document reference can be given.
+/// If an etag is supplied in the "If-Match" field, then the AvocadoDB checks
+/// that the revision of the document is equal to the etag. If there is a
+/// mismatch, then a @LIT{HTTP 412} conflict is returned and no delete is
+/// performed.
 ///
-/// Instead of a @FA{collection-identifier}, a collection name can be given.
-///
-/// @REST{DELETE /collection/@FA{collection-identifier}/@FA{document-identifier}?policy=@FA{policy}}
+/// @REST{DELETE /document/@FA{document-handle}?policy=@FA{policy}}
 ///
 /// As before, if @FA{policy} is @LIT{error}. If @FA{policy} is @LIT{last}, then
 /// the last write will win.
 ///
-/// @REST{DELETE /collection/@FA{collection-identifier}/@FA{document-identifier}? _rev=@FA{etag}}
+/// @REST{DELETE /document/@FA{document-handle}?rev=@FA{etag}}
 ///
-/// You can also supply the etag using the parameter "_rev" instead of an "ETag"
-/// header.
+/// You can also supply the etag using the parameter @LIT{rev} instead of an
+/// "If-Match" header. You must never supply both the "If-Match" header and the
+/// @LIT{rev} parameter.
 ///
 /// @EXAMPLES
 ///
-/// Using collection and document identifier:
+/// Using document handle:
 ///
-/// @verbinclude rest13
+/// @verbinclude rest_delete-document
 ///
-/// Unknown document identifier:
+/// Unknown document handle:
 ///
-/// @verbinclude rest14
+/// @verbinclude rest_delete-document-unknown-handle
 ///
 /// Revision conflict:
 ///
-/// @verbinclude rest12
+/// @verbinclude rest_delete-document-if-match-other
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestCollectionHandler::deleteDocument () {
-  vector<string> suffix = request->suffix();
+bool RestDocumentHandler::deleteDocument () {
+  vector<string> const& suffix = request->suffix();
 
-  // find and load collection given by name oder identifier
-  bool ok = findCollection(suffix[0]) && loadCollection();
-
-  if (! ok) {
+  if (suffix.size() != 2) {
+    generateError(HttpResponse::BAD, 
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting DELETE /document/<document-handle>");
     return false;
   }
 
   // split the document reference
-  string didStr;
-  ok = splitDocumentReference(suffix[1], didStr);
+  string cid = suffix[0];
+  string didStr = suffix[1];
+
+  // find and load collection given by name oder identifier
+  bool ok = findCollection(cid) && loadCollection();
 
   if (! ok) {
     return false;
@@ -678,10 +771,17 @@ bool RestCollectionHandler::deleteDocument () {
   TRI_voc_did_t did = StringUtils::uint64(didStr);
 
   // extract the revision
-  TRI_voc_rid_t revision = extractRevision();
+  TRI_voc_rid_t revision = extractRevision("if-match", "rev");
 
   // extract or chose the update policy
   TRI_doc_update_policy_e policy = extractUpdatePolicy();
+
+  if (policy == TRI_DOC_UPDATE_ILLEGAL) {
+    generateError(HttpResponse::BAD, 
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "policy must be 'error' or 'last'");
+    return false;
+  }
 
   // .............................................................................
   // inside write transaction
@@ -690,31 +790,36 @@ bool RestCollectionHandler::deleteDocument () {
   _documentCollection->beginWrite(_documentCollection);
 
   // unlocking is performed in destroy()
-  ok = _documentCollection->destroy(_documentCollection, did, revision, policy, true);
+  TRI_voc_rid_t rid = 0;
+  ok = _documentCollection->destroy(_documentCollection, did, revision, &rid, policy, true);
 
   // .............................................................................
   // outside write transaction
   // .............................................................................
 
   if (ok) {
-    generateOk();
+    generateDeleted(_documentCollection->base._cid, did, rid);
     return true;
   }
   else {
-    if (TRI_errno() == TRI_VOC_ERROR_READ_ONLY) {
-      generateError(HttpResponse::FORBIDDEN, "collection is read-only");
+    if (TRI_errno() == TRI_ERROR_AVOCADO_READ_ONLY) {
+      generateError(HttpResponse::FORBIDDEN, 
+                    TRI_ERROR_AVOCADO_READ_ONLY,
+                    "collection is read-only");
       return false;
     }
-    else if (TRI_errno() == TRI_VOC_ERROR_DOCUMENT_NOT_FOUND) {
-      generateDocumentNotFound(suffix[0], didStr);
+    else if (TRI_errno() == TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND) {
+      generateDocumentNotFound(cid + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + didStr);
       return false;
     }
-    else if (TRI_errno() == TRI_VOC_ERROR_CONFLICT) {
-      generateConflict(suffix[0], didStr);
+    else if (TRI_errno() == TRI_ERROR_AVOCADO_CONFLICT) {
+      generatePreconditionFailed(_documentCollection->base._cid, did, rid);
       return false;
     }
     else {
-      generateError(HttpResponse::SERVER_ERROR, "cannot delete, failed with " + string(TRI_last_error()));
+      generateError(HttpResponse::SERVER_ERROR, 
+                    TRI_ERROR_INTERNAL,
+                    "cannot delete, failed with " + string(TRI_last_error()));
       return false;
     }
   }

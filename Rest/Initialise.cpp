@@ -27,12 +27,12 @@
 
 #include "Initialise.h"
 
-#include <build.h>
+#include "build.h"
 
-#include <Basics/Initialise.h>
-#include <Logger/Logger.h>
-
-#include <Rest/Url.h>
+#include "Basics/Initialise.h"
+#include "Logger/Logger.h"
+#include "Rest/HttpResponse.h"
+#include "Rest/Url.h"
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
