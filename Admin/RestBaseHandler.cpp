@@ -240,7 +240,7 @@ bool RestBaseHandler::parseBody (InputParser::ObjectDescription& desc) {
 
   if (! ok) {
     generateError(HttpResponse::BAD, 
-                  TRI_REST_ERROR_CORRUPTED_JSON,
+                  TRI_ERROR_HTTP_CORRUPTED_JSON,
                   desc.lastError());
   }
 

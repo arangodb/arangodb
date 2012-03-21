@@ -20,6 +20,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_NUMERIC_OVERFLOW, "numeric overflow");
   REG_ERROR(ERROR_ILLEGAL_OPTION, "illegal option");
   REG_ERROR(ERROR_DEAD_PID, "dead process identifier");
+<<<<<<< HEAD
   REG_ERROR(ERROR_OPEN_ERROR, "open/create file failed");
   REG_ERROR(ERROR_WRITE_ERROR, "write failed");
   REG_ERROR(ERROR_LOCK_ERROR, "lock failed");
@@ -52,6 +53,34 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(VOC_ERROR_DOCUMENT_HANDLE_BAD, "illegal document handle");
   REG_ERROR(VOC_ERROR_COLLECTION_EXISTS, "collection already exists");
   REG_ERROR(ERROR_QUERY_OOM, "out of memory");
+=======
+  REG_ERROR(ERROR_NOT_IMPLEMENTED, "not implemented");
+  REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
+  REG_ERROR(ERROR_HTTP_METHOD_NOT_ALLOWED, "method not supported");
+  REG_ERROR(ERROR_HTTP_CORRUPTED_JSON, "invalid JSON object");
+  REG_ERROR(ERROR_HTTP_SUPERFLUOUS_SUFFICES, "superfluous URL suffices");
+  REG_ERROR(ERROR_AVOCADO_ILLEGAL_STATE, "illegal state");
+  REG_ERROR(ERROR_AVOCADO_SHAPER_FAILED, "illegal shaper");
+  REG_ERROR(ERROR_AVOCADO_DATAFILE_SEALED, "datafile sealed");
+  REG_ERROR(ERROR_AVOCADO_UNKNOWN_COLLECTION_TYPE, "unknown type");
+  REG_ERROR(ERROR_AVOCADO_READ_ONLY, "ready only");
+  REG_ERROR(ERROR_AVOCADO_CORRUPTED_DATAFILE, "corrupted datafile");
+  REG_ERROR(ERROR_AVOCADO_ILLEGAL_PARAMETER_FILE, "illegal parameter file");
+  REG_ERROR(ERROR_AVOCADO_CORRUPTED_COLLECTION, "corrupted collection");
+  REG_ERROR(ERROR_AVOCADO_MMAP_FAILED, "mmap failed");
+  REG_ERROR(ERROR_AVOCADO_MSYNC_FAILED, "msync failed");
+  REG_ERROR(ERROR_AVOCADO_NO_JOURNAL, "no journal");
+  REG_ERROR(ERROR_AVOCADO_DATAFILE_ALREADY_EXISTS, "cannot rename, file ready exists");
+  REG_ERROR(ERROR_AVOCADO_FILESYSTEM_FULL, "filesystem full");
+  REG_ERROR(ERROR_AVOCADO_CONFLICT, "conflict");
+  REG_ERROR(ERROR_AVOCADO_WRONG_VOCBASE_PATH, "wrong path for database");
+  REG_ERROR(ERROR_AVOCADO_DOCUMENT_NOT_FOUND, "document not found");
+  REG_ERROR(ERROR_AVOCADO_COLLECTION_NOT_FOUND, "collection not found");
+  REG_ERROR(ERROR_AVOCADO_COLLECTION_PARAMETER_MISSING, "parameter 'collection' not found");
+  REG_ERROR(ERROR_AVOCADO_DOCUMENT_HANDLE_BAD, "illegal document handle");
+  REG_ERROR(ERROR_AVOCADO_MAXIMAL_SIZE_TOO_SMALL, "maixaml size of journal too small");
+  REG_ERROR(ERROR_AVOCADO_DATAFILE_FULL, "datafile full");
+>>>>>>> 5803d27052780853bde39b1c784cc3867fd3b6cf
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "parse error: %s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");
@@ -92,7 +121,10 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_CONNECT, "could not connect to server");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_WRITE, "could not write to server");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_READ, "could not read from server");
+<<<<<<< HEAD
   REG_ERROR(ERROR_PROTOCOL_UNSUPPORTED_METHOD, "method not supported");
+=======
+>>>>>>> 5803d27052780853bde39b1c784cc3867fd3b6cf
 }
 
 ////////////////////////////////////////////////////////////////////////////////

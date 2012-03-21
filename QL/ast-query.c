@@ -549,8 +549,7 @@ bool QLAstQueryAddGeoRestriction (QL_ast_query_t* query,
     restriction->_compareLat._collection = 
       TRI_DuplicateString(valueNode->_lhs->_value._stringValue);
     restriction->_compareLat._field = TRI_DuplicateString(fieldName->_buffer);
-    TRI_DestroyStringBuffer(fieldName);
-    TRI_Free(fieldName);
+    TRI_FreeStringBuffer(fieldName);
   }
   else {
     QLAstQueryFreeRestriction(restriction);
@@ -571,8 +570,7 @@ bool QLAstQueryAddGeoRestriction (QL_ast_query_t* query,
     restriction->_compareLon._collection = 
       TRI_DuplicateString(valueNode->_lhs->_value._stringValue);
     restriction->_compareLon._field = TRI_DuplicateString(fieldName->_buffer);
-    TRI_DestroyStringBuffer(fieldName);
-    TRI_Free(fieldName);
+    TRI_FreeStringBuffer(fieldName);
   } 
   else {
     QLAstQueryFreeRestriction(restriction);
@@ -613,12 +611,10 @@ TRI_string_buffer_t* QLAstQueryGetMemberNameString (TRI_query_node_t* node,
   TRI_query_node_t *lhs, *rhs;
   TRI_string_buffer_t* buffer;
 
-  buffer = (TRI_string_buffer_t*) TRI_Allocate(sizeof(TRI_string_buffer_t));
+  buffer = TRI_CreateStringBuffer();
   if (!buffer) {
     return NULL;
   }
-
-  TRI_InitStringBuffer(buffer);
 
   if (includeCollection) {
     // add collection part

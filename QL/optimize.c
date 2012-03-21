@@ -1373,8 +1373,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
   range = (QL_optimize_range_t*) TRI_Allocate(sizeof(QL_optimize_range_t));
   if (!range) {
     // clean up
-    TRI_DestroyStringBuffer(name);
-    TRI_Free(name);
+    TRI_FreeStringBuffer(name);
     return NULL;
   }
 
@@ -1411,8 +1410,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
   range->_hash       = QLAstQueryGetMemberNameHash(memberNode);
 
   // we can now free the temporary name buffer
-  TRI_DestroyStringBuffer(name);
-  TRI_Free(name);
+  TRI_FreeStringBuffer(name);
 
   if (type == TRI_QueryNodeBinaryOperatorIdentical || 
       type == TRI_QueryNodeBinaryOperatorEqual) {
@@ -1423,8 +1421,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
       name = QLAstQueryGetMemberNameString(valueNode, false);
       if (name) {
         range->_refValue._field = TRI_DuplicateString(name->_buffer);
-        TRI_DestroyStringBuffer(name);
-        TRI_Free(name);
+        TRI_FreeStringBuffer(name);
       }
     }
     else if (range->_valueType == RANGE_TYPE_DOUBLE) {

@@ -136,7 +136,7 @@ static bool AddCollectionsBarrierQueryInstance (TRI_query_instance_t* const inst
     assert(lock->_collection);
     ce = TRI_CreateBarrierElement(&lock->_collection->_barrierList);
     if (!ce) {
-      TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+      TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return false;
     }
     TRI_PushBackVectorPointer(&cursor->_containers, ce);
@@ -159,7 +159,7 @@ TRI_query_cursor_t* TRI_ExecuteQueryInstance (TRI_query_instance_t* const instan
   // create a select result container for the joins
   selectResult = TRI_JoinSelectResult(instance);
   if (!selectResult) {
-    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_OOM, NULL);
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
@@ -209,13 +209,15 @@ TRI_query_cursor_t* TRI_ExecuteQueryInstance (TRI_query_instance_t* const instan
     if (instance->_query._order._type == QLQueryOrderTypeMustEvaluate) {
       cursor->_result._orderContext = TRI_CreateExecutionContext(instance->_query._order._functionCode);
       if (cursor->_result._orderContext) {
+        LOG_DEBUG("performing order by");
         TRI_OrderDataQuery(&cursor->_result);
+        TRI_FreeExecutionContext(cursor->_result._orderContext);
       }
-      TRI_FreeExecutionContext(cursor->_result._orderContext);
     }
 
     // apply a negative limit or a limit after ordering
     if (applyPostSkipLimit) {
+      LOG_DEBUG("applying post-order skip/limit");
       TransformDataSkipLimit(&cursor->_result, 
                              instance->_query._limit._offset, 
                              instance->_query._limit._count);

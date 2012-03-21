@@ -137,13 +137,6 @@ namespace triagens {
 #ifdef TRI_HAVE_POSIX_THREADS
       opensslSetup();
 #endif
-
-      // rest errors
-      TRI_set_errno_string(TRI_REST_ERROR_BAD_PARAMETER, "bad parameter");
-      TRI_set_errno_string(TRI_REST_ERROR_CORRUPTED_JSON, "corrupted JSON");
-      TRI_set_errno_string(TRI_REST_ERROR_METHOD_NOT_ALLOWED, "method not allowed");
-      TRI_set_errno_string(TRI_REST_ERROR_NOT_IMPLEMENTED, "not implemented");
-      TRI_set_errno_string(TRI_REST_ERROR_SUPERFLUOUS_SUFFICES, "superfluous suffices");
     }
 
 
