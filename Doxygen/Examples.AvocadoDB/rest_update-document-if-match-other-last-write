@@ -1,0 +1,10 @@
+> curl -X GET '-H if-match: "13407905"' --dump - http://localhost:8529/document/169634/13407906?policy=last
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{
+  "_rev": 13407906,
+  "_id": "169634/13407906",
+  "error": false
+}
