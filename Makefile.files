@@ -277,7 +277,27 @@ DOXYGEN = \
 	Doxygen/js/common/modules/jsunity.c \
 	Doxygen/js/server/modules/actions.c \
 	Doxygen/js/server/modules/simple-query.c \
-	Doxygen/js/server/server.c
+	Doxygen/js/server/server.c \
+        RestServer/cursor.dox \
+        RestServer/examples-setup.dox \
+        RestServer/glossary.dox \
+        RestServer/http-interface.dox \
+        RestServer/install-manual.dox \
+        RestServer/key-value.dox \
+        RestServer/module-actions.dox \
+        RestServer/module-console.dox \
+        RestServer/module-fs.dox \
+        RestServer/module-graph.dox \
+        RestServer/module-internal.dox \
+        RestServer/module-modules.dox \
+        RestServer/otwp.dox \
+        RestServer/ref-manual.dox \
+        RestServer/rest-document.dox \
+        RestServer/rest-system.dox \
+        RestServer/simple-queries.dox \
+        RestServer/user-manual-avocsh.dox \
+        RestServer/user-manual-server.dox 
+
 
 ################################################################################
 ## wiki
@@ -319,7 +339,7 @@ WIKI = \
 	Doxygen/xml/RestCursor.md \
 	Doxygen/xml/RestDocument.md \
 	Doxygen/xml/RestSystem.md \
-	Doxygen/xml/Simplequeries.md \
+	Doxygen/xml/SimpleQueries.md \
 	Doxygen/xml/UserManualServer.md \
 	Doxygen/xml/UserManualShell.md \
 	Doxygen/xml/UserManualShellStartStop.md 
