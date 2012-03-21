@@ -510,14 +510,15 @@ bool RestDocumentHandler::readAllDocuments () {
   for (vector<TRI_voc_did_t>::iterator i = ids.begin();  i != ids.end();  ++i) {
     TRI_AppendString2StringBuffer(&buffer, prefix.c_str(), prefix.size());
     TRI_AppendUInt64StringBuffer(&buffer, *i);
+    TRI_AppendCharStringBuffer(&buffer, '"');
 
     if (first) {
-      prefix = "\",\n" + prefix;
+      prefix = ",\n" + prefix;
       first = false;
     }
   }
 
-  TRI_AppendStringStringBuffer(&buffer, "\"\n] }\n");
+  TRI_AppendStringStringBuffer(&buffer, "\n] }\n");
 
   // and generate a response
   response = new HttpResponse(HttpResponse::OK);

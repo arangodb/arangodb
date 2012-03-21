@@ -70,6 +70,8 @@ describe AvocadoDB do
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
 	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}-unknown-handle")
+
+	AvocadoDB.size_collection(@cid).should eq(0)
       end
     end
 
@@ -123,6 +125,8 @@ describe AvocadoDB do
 	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}")
 
 	AvocadoDB.delete(location)
+
+	AvocadoDB.size_collection(@cid).should eq(0)
       end
 
       it "create a document and read it, use if-none-match" do
@@ -181,6 +185,8 @@ describe AvocadoDB do
 	AvocadoDB.log(:method => :get, :url => cmd, :headers => hdr, :result => doc, :output => "#{prefix}-if-none-match-other")
 
 	AvocadoDB.delete(location)
+
+	AvocadoDB.size_collection(@cid).should eq(0)
       end
 
       it "create a document and read it, use if-match" do
@@ -237,6 +243,8 @@ describe AvocadoDB do
 	AvocadoDB.log(:method => :get, :url => cmd, :headers => hdr, :result => doc, :output => "#{prefix}-if-match-other")
 
 	AvocadoDB.delete(location)
+
+	AvocadoDB.size_collection(@cid).should eq(0)
       end
     end
 
@@ -252,6 +260,25 @@ describe AvocadoDB do
 
       after do
 	AvocadoDB.drop_collection(@cn)
+      end
+
+      it "get all documents of an empty collection" do
+	cmd = "/document?collection=#{@cid}"
+
+	# get documents
+	cmd = "/document?collection=#{@cid}"
+        doc = AvocadoDB.get(cmd)
+
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+	documents = doc.parsed_response['documents']
+	documents.should be_kind_of(Array)
+	documents.length.should eq(0)
+
+	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}-all")
+
+	AvocadoDB.size_collection(@cid).should eq(0)
       end
 
       it "create three documents and read them using the collection identifier" do
@@ -284,6 +311,8 @@ describe AvocadoDB do
 	for l in location
 	  AvocadoDB.delete(l)
 	end
+
+	AvocadoDB.size_collection(@cid).should eq(0)
       end
 
       it "create three documents and read them using the collection name" do
@@ -316,6 +345,8 @@ describe AvocadoDB do
 	for l in location
 	  AvocadoDB.delete(l)
 	end
+
+	AvocadoDB.size_collection(@cid).should eq(0)
       end
     end
 
@@ -364,6 +395,8 @@ describe AvocadoDB do
 	AvocadoDB.log(:method => :head, :url => cmd, :result => doc, :output => "#{prefix}")
 
 	AvocadoDB.delete(location)
+
+	AvocadoDB.size_collection(@cid).should eq(0)
       end
     end
 
