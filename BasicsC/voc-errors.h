@@ -32,11 +32,11 @@ extern "C" {
 /// - 9: @CODE{not implemented}
 ///   Will be raised when hitting an unimplemented feature.
 /// - 400: @CODE{bad parameter}
-///   Will be raised when the a bad does not fulfill the requirements.
+///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 405: @CODE{method not supported}
 ///   Will be raised when an unsupported HTTP method is used for an operation.
 /// - 600: @CODE{invalid JSON object}
-///   Will be raised when a string representation an JSON object is corrupt."
+///   Will be raised when a string representation an JSON object is corrupt.
 /// - 601: @CODE{superfluous URL suffices}
 ///   Will be raised when the URL contains superfluous suffices.
 /// - 1000: @CODE{illegal state}
@@ -64,7 +64,7 @@ extern "C" {
 ///   Will be raised when the system call msync failed
 /// - 1105: @CODE{no journal}
 ///   Will be raised when a journal cannot be created.
-/// - 1106: @CODE{cannot rename, file ready exists}
+/// - 1106: @CODE{cannot rename because file ready exists}
 ///   Will be raised when the datafile cannot be renamed because a file of the
 ///   same name already exists.
 /// - 1107: @CODE{filesystem full}
@@ -310,7 +310,7 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// bad parameter
 ///
-/// Will be raised when the a bad does not fulfill the requirements.
+/// Will be raised when the HTTP request does not fulfill the requirements.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_HTTP_BAD_PARAMETER                                      (400)
@@ -330,7 +330,7 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// invalid JSON object
 ///
-/// Will be raised when a string representation an JSON object is corrupt."
+/// Will be raised when a string representation an JSON object is corrupt.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_HTTP_CORRUPTED_JSON                                     (600)
@@ -461,7 +461,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1106: ERROR_AVOCADO_DATAFILE_ALREADY_EXISTS
 ///
-/// cannot rename, file ready exists
+/// cannot rename because file ready exists
 ///
 /// Will be raised when the datafile cannot be renamed because a file of the
 /// same name already exists.

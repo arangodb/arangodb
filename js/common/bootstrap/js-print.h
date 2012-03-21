@@ -263,7 +263,7 @@ static string JS_common_bootstrap_print =
   "\n"
   "  printIdent(level);\n"
   "  \n"
-  "  internal.output(\"}\");\n"
+  "  internal.output(\" }\");\n"
   "}\n"
   "\n"
   "////////////////////////////////////////////////////////////////////////////////\n"

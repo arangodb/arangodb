@@ -30,7 +30,7 @@ ModuleCache["/internal"].exports.errors = {
   "ERROR_AVOCADO_MMAP_FAILED"    : { "code" : 1103, "message" : "mmap failed" }, 
   "ERROR_AVOCADO_MSYNC_FAILED"   : { "code" : 1104, "message" : "msync failed" }, 
   "ERROR_AVOCADO_NO_JOURNAL"     : { "code" : 1105, "message" : "no journal" }, 
-  "ERROR_AVOCADO_DATAFILE_ALREADY_EXISTS" : { "code" : 1106, "message" : "cannot rename, file ready exists" }, 
+  "ERROR_AVOCADO_DATAFILE_ALREADY_EXISTS" : { "code" : 1106, "message" : "cannot rename because file ready exists" }, 
   "ERROR_AVOCADO_FILESYSTEM_FULL" : { "code" : 1107, "message" : "filesystem full" }, 
   "ERROR_AVOCADO_CONFLICT"       : { "code" : 1200, "message" : "conflict" }, 
   "ERROR_AVOCADO_WRONG_VOCBASE_PATH" : { "code" : 1201, "message" : "wrong path for database" }, 
