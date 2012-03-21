@@ -65,7 +65,7 @@
 /// All documents contain two special fields, the document handle in @LIT{_id}
 /// and the etag aka document revision in @LIT{_rev}.
 ///
-/// All examples in the document assume that you have created some example
+/// All examples in the manual assume that you have created some example
 /// collections, see @ref ExamplesSetup.
 ///
 /// @copydoc GlossaryDocumentHandle
@@ -101,7 +101,7 @@
 ///
 /// If you want to update or delete a document, then you can use the
 /// "If-Match" header. If the document has changed, then the
-/// operation is aborted and a @LIT{HTTP 409} is returned.
+/// operation is aborted and a @LIT{HTTP 412} is returned.
 ///
 /// @section RestDocumentHttp Working with Documents using REST
 ///////////////////////////////////////////////////////////////

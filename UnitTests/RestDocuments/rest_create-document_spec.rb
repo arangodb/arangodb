@@ -17,7 +17,7 @@ describe AvocadoDB do
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
-	doc.parsed_response['errorNum'].should eq(503)
+	doc.parsed_response['errorNum'].should eq(601)
 	doc.parsed_response['code'].should eq(400)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
@@ -30,7 +30,7 @@ describe AvocadoDB do
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
-	doc.parsed_response['errorNum'].should eq(1202)
+	doc.parsed_response['errorNum'].should eq(1204)
 	doc.parsed_response['code'].should eq(400)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
@@ -43,7 +43,7 @@ describe AvocadoDB do
 
 	doc.code.should eq(404)
 	doc.parsed_response['error'].should eq(true)
-	doc.parsed_response['errorNum'].should eq(1201)
+	doc.parsed_response['errorNum'].should eq(1203)
 	doc.parsed_response['code'].should eq(404)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
@@ -56,7 +56,7 @@ describe AvocadoDB do
 
 	doc.code.should eq(404)
 	doc.parsed_response['error'].should eq(true)
-	doc.parsed_response['errorNum'].should eq(1201)
+	doc.parsed_response['errorNum'].should eq(1203)
 	doc.parsed_response['code'].should eq(404)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
@@ -64,7 +64,8 @@ describe AvocadoDB do
       end
 
       it "returns an error if the JSON body is corrupted" do
-	id = AvocadoDB.create_collection("UnitTestsCollectionBasics")
+	cn = "UnitTestsCollectionBasics"
+	id = AvocadoDB.create_collection(cn)
 
 	id.should be_kind_of(Integer)
 	id.should_not be_zero
@@ -75,12 +76,15 @@ describe AvocadoDB do
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
-	doc.parsed_response['errorNum'].should eq(502)
+	doc.parsed_response['errorNum'].should eq(600)
 	doc.parsed_response['code'].should eq(400)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
 	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-bad-json")
-	AvocadoDB.drop_collection("UnitTestsCollectionBasics")
+
+	AvocadoDB.size_collection(cn).should eq(0)
+
+	AvocadoDB.drop_collection(cn)
       end
     end
 
@@ -129,6 +133,8 @@ describe AvocadoDB do
 	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}")
 
 	AvocadoDB.delete(location)
+
+	AvocadoDB.size_collection(@cid).should eq(0)
       end
     end
 
@@ -177,6 +183,8 @@ describe AvocadoDB do
 	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-accept")
 
 	AvocadoDB.delete(location)
+
+	AvocadoDB.size_collection(@cid).should eq(0)
       end
     end
 
@@ -225,6 +233,8 @@ describe AvocadoDB do
 	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-new-named-collection")
 
 	AvocadoDB.delete(location)
+
+	AvocadoDB.size_collection(@cid).should eq(0)
       end
     end
 
@@ -248,7 +258,7 @@ describe AvocadoDB do
 
 	doc.code.should eq(404)
 	doc.parsed_response['error'].should eq(true)
-	doc.parsed_response['errorNum'].should eq(1201)
+	doc.parsed_response['errorNum'].should eq(1203)
 	doc.parsed_response['code'].should eq(404)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
@@ -282,6 +292,8 @@ describe AvocadoDB do
 	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-create-collection")
 
 	AvocadoDB.delete(location)
+
+	AvocadoDB.size_collection(@cn).should eq(0)
       end
     end
 

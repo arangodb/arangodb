@@ -363,7 +363,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 
   /// check for an etag
   TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match");
-  TRI_voc_rid_t ifRid = extractRevision("if-match", "_rev");
+  TRI_voc_rid_t ifRid = extractRevision("if-match", "rev");
 
   // split the document reference
   string cid = suffix[0];
@@ -391,7 +391,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   // .............................................................................
 
   if (document._did == 0) {
-    generateDocumentNotFound(suffix[0]);
+    generateDocumentNotFound(cid + TRI_DOCUMENT_HANDLE_SEPARATOR_STR +  did);
     return false;
   }
 
@@ -446,7 +446,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude rest20
+/// @verbinclude rest_read-document-all
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readAllDocuments () {
@@ -510,14 +510,15 @@ bool RestDocumentHandler::readAllDocuments () {
   for (vector<TRI_voc_did_t>::iterator i = ids.begin();  i != ids.end();  ++i) {
     TRI_AppendString2StringBuffer(&buffer, prefix.c_str(), prefix.size());
     TRI_AppendUInt64StringBuffer(&buffer, *i);
+    TRI_AppendCharStringBuffer(&buffer, '"');
 
     if (first) {
-      prefix = "\",\n" + prefix;
+      prefix = ",\n" + prefix;
       first = false;
     }
   }
 
-  TRI_AppendStringStringBuffer(&buffer, "\"\n] }\n");
+  TRI_AppendStringStringBuffer(&buffer, "\n] }\n");
 
   // and generate a response
   response = new HttpResponse(HttpResponse::OK);
@@ -541,7 +542,7 @@ bool RestDocumentHandler::readAllDocuments () {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude rest19
+/// @verbinclude rest_read-document-head
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::checkDocument () {
@@ -598,25 +599,25 @@ bool RestDocumentHandler::checkDocument () {
 ///
 /// @EXAMPLES
 ///
-/// Using collection and document identifier:
+/// Using document handle:
 ///
-/// @verbinclude rest7
+/// @verbinclude rest_update-document
 ///
-/// Unknown document identifier:
+/// Unknown document handle:
 ///
-/// @verbinclude rest8
+/// @verbinclude rest_update-document-unknown-handle
 ///
 /// Produce a revision conflict:
 ///
-/// @verbinclude rest9
+/// @verbinclude rest_update-document-if-match-other
 ///
 /// Last write wins:
 ///
-/// @verbinclude rest10
+/// @verbinclude rest_update-document-if-match-other-last-write
 ///
-/// Alternative to ETag header field:
+/// Alternative to header field:
 ///
-/// @verbinclude rest11
+/// @verbinclude rest_update-document-rev-other
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::updateDocument () {
@@ -651,7 +652,7 @@ bool RestDocumentHandler::updateDocument () {
   TRI_voc_did_t did = StringUtils::uint64(didStr);
 
   // extract the revision
-  TRI_voc_rid_t revision = extractRevision("if-match", "_rev");
+  TRI_voc_rid_t revision = extractRevision("if-match", "rev");
 
   // extract or chose the update policy
   TRI_doc_update_policy_e policy = extractUpdatePolicy();
@@ -732,17 +733,17 @@ bool RestDocumentHandler::updateDocument () {
 ///
 /// @EXAMPLES
 ///
-/// Using collection and document identifier:
+/// Using document handle:
 ///
-/// @verbinclude rest13
+/// @verbinclude rest_delete-document
 ///
-/// Unknown document identifier:
+/// Unknown document handle:
 ///
-/// @verbinclude rest14
+/// @verbinclude rest_delete-document-unknown-handle
 ///
 /// Revision conflict:
 ///
-/// @verbinclude rest12
+/// @verbinclude rest_delete-document-if-match-other
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::deleteDocument () {
@@ -770,7 +771,7 @@ bool RestDocumentHandler::deleteDocument () {
   TRI_voc_did_t did = StringUtils::uint64(didStr);
 
   // extract the revision
-  TRI_voc_rid_t revision = extractRevision("if-match", "_rev");
+  TRI_voc_rid_t revision = extractRevision("if-match", "rev");
 
   // extract or chose the update policy
   TRI_doc_update_policy_e policy = extractUpdatePolicy();

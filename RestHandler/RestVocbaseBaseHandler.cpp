@@ -385,7 +385,7 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (string const& header, str
     etag = request->value(parameter, found);
 
     if (found) {
-      return StringUtils::uint64(etag.c_str() + 1, etag.length() - 2);
+      return StringUtils::uint64(etag.c_str());
     }
     else {
       return 0;
