@@ -36,6 +36,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_AVOCADO_CORRUPTED_COLLECTION, "corrupted collection");
   REG_ERROR(ERROR_AVOCADO_MMAP_FAILED, "mmap failed");
   REG_ERROR(ERROR_AVOCADO_FILESYSTEM_FULL, "filesystem full");
+  REG_ERROR(ERROR_AVOCADO_DATABASE_LOCKED, "database is locked");
   REG_ERROR(ERROR_AVOCADO_NO_JOURNAL, "no journal");
   REG_ERROR(ERROR_AVOCADO_DATAFILE_ALREADY_EXISTS, "cannot create/rename datafile because it ready exists");
   REG_ERROR(ERROR_AVOCADO_DATABASE_LOCKED, "database is locked");
