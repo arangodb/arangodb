@@ -138,7 +138,7 @@ static bool EqualKeyAttributeName (TRI_associative_synced_t* array, void const* 
 static TRI_shape_aid_t FindAttributeName (TRI_shaper_t* shaper, char const* name) {
   TRI_df_attribute_marker_t marker;
   TRI_df_marker_t* result;
-  bool ok;
+  int res;
   size_t n;
   voc_shaper_t* s;
   void const* p;
@@ -175,9 +175,9 @@ static TRI_shape_aid_t FindAttributeName (TRI_shaper_t* shaper, char const* name
   marker._size = n;
 
   // write into the shape collection
-  ok = TRI_WriteBlobCollection(s->_collection, &marker.base, sizeof(TRI_df_attribute_marker_t), name, n, &result);
+  res = TRI_WriteBlobCollection(s->_collection, &marker.base, sizeof(TRI_df_attribute_marker_t), name, n, &result);
 
-  if (! ok) {
+  if (res != TRI_ERROR_NO_ERROR) {
     TRI_UnlockMutex(&s->_attributeLock);
     return 0;
   }
@@ -283,7 +283,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
   TRI_df_shape_marker_t marker;
   TRI_shape_t const* found;
   TRI_shape_t* l;
-  bool ok;
+  int res;
   voc_shaper_t* s;
   void* f;
 
@@ -317,9 +317,9 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
   shape->_sid = s->_nextSid++;
 
   // write into the shape collection
-  ok = TRI_WriteBlobCollection(s->_collection, &marker.base, sizeof(TRI_df_shape_marker_t), shape, shape->_size, &result);
+  res = TRI_WriteBlobCollection(s->_collection, &marker.base, sizeof(TRI_df_shape_marker_t), shape, shape->_size, &result);
 
-  if (! ok) {
+  if (res != TRI_ERROR_NO_ERROR) {
     TRI_UnlockMutex(&s->_shapeLock);
     return NULL;
   }

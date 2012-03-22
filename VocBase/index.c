@@ -495,7 +495,7 @@ static int InsertGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   }
   else if (res == -3) {
     LOG_DEBUG("illegal geo-coordinates, ignoring entry");
-    return TRI_set_errno(TRI_VOC_ERROR_GEO_VIOLATED);
+    return TRI_set_errno(TRI_ERROR_AVOCADO_GEO_INDEX_VIOLATED);
   }
   else if (res < 0) {
     return TRI_set_errno(TRI_ERROR_INTERNAL);
@@ -576,7 +576,7 @@ static int  UpdateGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_sha
   }
   else if (res == -3) {
     LOG_DEBUG("illegal geo-coordinates, ignoring entry");
-    return TRI_set_errno(TRI_VOC_ERROR_GEO_VIOLATED);
+    return TRI_set_errno(TRI_ERROR_AVOCADO_GEO_INDEX_VIOLATED);
   }
   else if (res < 0) {
     return TRI_set_errno(TRI_ERROR_INTERNAL);
@@ -1158,7 +1158,6 @@ static TRI_json_t* JsonHashIndex (TRI_index_t* idx, TRI_doc_collection_t* collec
   }
 
   TRI_Free(fieldList);
-  TRI_Free(fieldCounter);
     
   return json;
 }
@@ -1394,7 +1393,7 @@ static int UpdateHashIndex (TRI_index_t* idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateHashIndex (struct TRI_doc_collection_s* collection,
-                                  TRI_vector_string_t* fields,
+                                  TRI_vector_pointer_t* fields,
                                   TRI_vector_t* paths,
                                   bool unique) {
   TRI_hash_index_t* hashIndex;
@@ -1830,7 +1829,7 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, TRI_doc_collection_t* co
   const TRI_shape_path_t* path;
   TRI_skiplist_index_t* skiplistIndex;
   char const** fieldList;
-  char* fieldCounter;
+  char fieldCounter[64];
   size_t j;
    
   // ..........................................................................  
@@ -1874,14 +1873,6 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, TRI_doc_collection_t* co
     return NULL;
   }
 
-  fieldCounter = TRI_Allocate(64);
-
-  if (!fieldCounter) {
-    TRI_Free(fieldList);
-    TRI_FreeJson(json);
-    return NULL;
-  }
-
   TRI_Insert2ArrayJson(json, "iid", TRI_CreateNumberJson(idx->_iid));
   TRI_Insert2ArrayJson(json, "unique", TRI_CreateBooleanJson(skiplistIndex->base._unique));
   TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("skiplist"));
@@ -1893,7 +1884,6 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, TRI_doc_collection_t* co
   }
 
   TRI_Free(fieldList);
-  TRI_Free(fieldCounter);
     
   return json;
 }
@@ -2121,7 +2111,7 @@ static int UpdateSkiplistIndex (TRI_index_t* idx, const TRI_doc_mptr_t* newDoc,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_doc_collection_s* collection,
-                                      TRI_vector_string_t* fields,
+                                      TRI_vector_pointer_t* fields,
                                       TRI_vector_t* paths,
                                       bool unique) {
   TRI_skiplist_index_t* skiplistIndex;

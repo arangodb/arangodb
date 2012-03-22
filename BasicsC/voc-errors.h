@@ -99,10 +99,15 @@ extern "C" {
 /// - 1210: @CODE{unique constraint violated}
 ///   Will be raised when there is a unique constraint violation.
 <<<<<<< HEAD
+<<<<<<< HEAD
 /// - 1211: @CODE{geo index violated}
 ///   Will be raised when a illegale coordinate is used.
 =======
 >>>>>>> index constraint
+=======
+/// - 1211: @CODE{geo index violated}
+///   Will be raised when a illegale coordinate is used.
+>>>>>>> added constraints
 /// - 1300: @CODE{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1500: @CODE{query killed}
@@ -619,6 +624,9 @@ void TRI_InitialiseErrorMessages (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> added constraints
 /// @brief 1211: ERROR_AVOCADO_GEO_INDEX_VIOLATED
 ///
 /// geo index violated
@@ -629,8 +637,11 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_AVOCADO_GEO_INDEX_VIOLATED                              (1211)
 
 ////////////////////////////////////////////////////////////////////////////////
+<<<<<<< HEAD
 =======
 >>>>>>> index constraint
+=======
+>>>>>>> added constraints
 /// @brief 1300: ERROR_AVOCADO_DATAFILE_FULL
 ///
 /// datafile full
