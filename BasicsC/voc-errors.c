@@ -50,14 +50,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_AVOCADO_ILLEGAL_NAME, "illegal name");
   REG_ERROR(ERROR_AVOCADO_NO_INDEX, "no index known");
   REG_ERROR(ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED, "unique constraint violated");
-<<<<<<< HEAD
-<<<<<<< HEAD
   REG_ERROR(ERROR_AVOCADO_GEO_INDEX_VIOLATED, "geo index violated");
-=======
->>>>>>> index constraint
-=======
-  REG_ERROR(ERROR_AVOCADO_GEO_INDEX_VIOLATED, "geo index violated");
->>>>>>> added constraints
   REG_ERROR(ERROR_AVOCADO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "parse error: %s");
