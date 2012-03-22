@@ -340,9 +340,9 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
   TRI_df_header_marker_t header;
   TRI_df_marker_t* position;
   TRI_voc_tick_t tick;
-  bool ok;
   char zero;
   int fd;
+  int result;
   off_t offset;
   ssize_t res;
   void* data;
@@ -355,7 +355,6 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
     TRI_set_errno(TRI_ERROR_AVOCADO_MAXIMAL_SIZE_TOO_SMALL);
 
     LOG_ERROR("cannot create datafile '%s', maximal size '%u' is too small", filename, (unsigned int) maximalSize);
-
     return NULL;
   }
 
@@ -366,7 +365,6 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
     LOG_ERROR("cannot create datafile '%s': '%s'", filename, TRI_last_error());
-
     return NULL;
   }
 
@@ -378,7 +376,6 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
     close(fd);
 
     LOG_ERROR("cannot seek in datafile '%s': '%s'", filename, TRI_last_error());
-
     return NULL;
   }
 
@@ -390,7 +387,6 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
     close(fd);
 
     LOG_ERROR("cannot create sparse datafile '%s': '%s'", filename, TRI_last_error());
-
     return NULL;
   }
 
@@ -402,7 +398,6 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
     close(fd);
 
     LOG_ERROR("cannot memory map file '%s': '%s'", filename, TRI_last_error());
-
     return NULL;
   }
 
@@ -411,8 +406,13 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
 
   // create datafile structure
   datafile = TRI_Allocate(sizeof(TRI_datafile_t));
-  if (!datafile) {
-    // TODO: FIXME
+
+  if (datafile == NULL) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    close(fd);
+
+    LOG_ERROR("out-of-memory");
+    return NULL;
   }
 
   InitDatafile(datafile,
@@ -440,13 +440,13 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
   TRI_FillCrcMarkerDatafile(&header.base, sizeof(TRI_df_header_marker_t), 0, 0);
 
   // reserve space and write header to file
-  ok = TRI_ReserveElementDatafile(datafile, header.base._size, &position);
+  result = TRI_ReserveElementDatafile(datafile, header.base._size, &position);
 
-  if (ok) {
-    ok = TRI_WriteElementDatafile(datafile, position, &header.base, header.base._size, 0, 0, true);
+  if (result == TRI_ERROR_NO_ERROR) {
+    result = TRI_WriteElementDatafile(datafile, position, &header.base, header.base._size, 0, 0, true);
   }
 
-  if (! ok) {
+  if (result != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("cannot write header to datafile '%s'",
               filename);
 
@@ -555,23 +555,20 @@ void TRI_FillCrcMarkerDatafile (TRI_df_marker_t* marker,
 /// @brief reserves room for an element, advances the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
-                                 TRI_voc_size_t size,
-                                 TRI_df_marker_t** position) {
+int TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
+                                TRI_voc_size_t size,
+                                TRI_df_marker_t** position) {
   *position = 0;
   size = ((size + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
 
   if (datafile->_state != TRI_DF_STATE_WRITE) {
     if (datafile->_state == TRI_DF_STATE_READ) {
-      TRI_set_errno(TRI_ERROR_AVOCADO_READ_ONLY);
-
       LOG_ERROR("cannot reserve marker, datafile is read-only");
 
-      return false;
+      return TRI_set_errno(TRI_ERROR_AVOCADO_READ_ONLY);
     }
 
-    TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_STATE);
-    return false;
+    return TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_STATE);
   }
 
   // add the marker, leave enough room for the footer
@@ -581,7 +578,7 @@ bool TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
 
     LOG_TRACE("cannot write marker, not enough space");
 
-    return false;
+    return datafile->_lastError;
   }
 
   *position = (TRI_df_marker_t*) datafile->_next;
@@ -589,20 +586,20 @@ bool TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
   datafile->_next += size;
   datafile->_currentSize += size;
 
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief writes a marker and body to the datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_WriteElementDatafile (TRI_datafile_t* datafile,
-                               void* position,
-                               TRI_df_marker_t const* marker,
-                               TRI_voc_size_t markerSize,
-                               void const* body,
-                               TRI_voc_size_t bodySize,
-                               bool forceSync) {
+int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
+                              void* position,
+                              TRI_df_marker_t const* marker,
+                              TRI_voc_size_t markerSize,
+                              void const* body,
+                              TRI_voc_size_t bodySize,
+                              bool forceSync) {
   TRI_voc_size_t size;
 
   size = markerSize + bodySize;
@@ -615,15 +612,12 @@ bool TRI_WriteElementDatafile (TRI_datafile_t* datafile,
 
   if (datafile->_state != TRI_DF_STATE_WRITE) {
     if (datafile->_state == TRI_DF_STATE_READ) {
-      TRI_set_errno(TRI_ERROR_AVOCADO_READ_ONLY);
-
       LOG_ERROR("cannot write marker, datafile is read-only");
 
-      return false;
+      return TRI_set_errno(TRI_ERROR_AVOCADO_READ_ONLY);
     }
 
-    TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_STATE);
-    return false;
+    return TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_STATE);
   }
 
   memcpy(position, marker, markerSize);
@@ -649,14 +643,14 @@ bool TRI_WriteElementDatafile (TRI_datafile_t* datafile,
 
       LOG_ERROR("msync failed with: %s", TRI_last_error());
 
-      return false;
+      return datafile->_lastError;
     }
     else {
       LOG_TRACE("msync succeeded %p, size %lu", position, (unsigned long) size);
     }
   }
 
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -849,6 +843,7 @@ bool TRI_SealDatafile (TRI_datafile_t* datafile) {
   TRI_df_footer_marker_t footer;
   TRI_df_marker_t* position;
   bool ok;
+  int res;
 
   if (datafile->_state == TRI_DF_STATE_READ) {
     TRI_set_errno(TRI_ERROR_AVOCADO_READ_ONLY);
@@ -877,13 +872,14 @@ bool TRI_SealDatafile (TRI_datafile_t* datafile) {
 
   // reserve space and write footer to file
   datafile->_footerSize = 0;
-  ok = TRI_ReserveElementDatafile(datafile, footer.base._size, &position);
 
-  if (ok) {
-    ok = TRI_WriteElementDatafile(datafile, position, &footer.base, footer.base._size, 0, 0, true);
+  res = TRI_ReserveElementDatafile(datafile, footer.base._size, &position);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    res = TRI_WriteElementDatafile(datafile, position, &footer.base, footer.base._size, 0, 0, true);
   }
 
-  if (! ok) {
+  if (res != TRI_ERROR_NO_ERROR) {
     return false;
   }
 
@@ -912,8 +908,6 @@ bool TRI_SealDatafile (TRI_datafile_t* datafile) {
 
   // truncate datafile
   if (ok) {
-    int res;
-
     res = ftruncate(datafile->_fd, datafile->_currentSize);
 
     if (res < 0) {
@@ -925,7 +919,7 @@ bool TRI_SealDatafile (TRI_datafile_t* datafile) {
     datafile->_state = TRI_DF_STATE_READ;
   }
 
-  return ok;
+  return ok ? TRI_ERROR_NO_ERROR : datafile->_lastError;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

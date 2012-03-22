@@ -112,10 +112,10 @@ static TRI_datafile_t* SelectCompactor (TRI_sim_collection_t* collection,
 /// @brief write document to file
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CopyDocument (TRI_sim_collection_t* collection,
-                          TRI_df_marker_t const* marker,
-                          TRI_df_marker_t** result,
-                          TRI_voc_fid_t* fid) {
+static int CopyDocument (TRI_sim_collection_t* collection,
+                         TRI_df_marker_t const* marker,
+                         TRI_df_marker_t** result,
+                         TRI_voc_fid_t* fid) {
   TRI_datafile_t* journal;
   TRI_voc_size_t total;
 
@@ -140,6 +140,10 @@ static bool CopyDocument (TRI_sim_collection_t* collection,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback to delete datafile
+///
+/// Note that a datafile pointer is never freed. The state of the datafile
+/// will be switch to TRI_DF_STATE_CLOSED - but the datafile pointer is
+/// still valid.
 ////////////////////////////////////////////////////////////////////////////////
 
 static void RemoveDatafileCallback (TRI_datafile_t* datafile, void* data) {
@@ -189,7 +193,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
   TRI_doc_mptr_t const* found;
   TRI_sim_collection_t* collection;
   TRI_voc_fid_t fid;
-  bool ok;
+  int res;
   union { TRI_doc_mptr_t const* c; TRI_doc_mptr_t* v; } cnv;
 
   collection = data;
@@ -226,9 +230,9 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     TRI_ReadUnlockReadWriteLock(&collection->_lock);
 
     // write to compactor files
-    ok = CopyDocument(collection, marker, &result, &fid);
+    res = CopyDocument(collection, marker, &result, &fid);
 
-    if (! ok) {
+    if (res != TRI_ERROR_NO_ERROR) {
       LOG_FATAL("cannot write compactor file: ", TRI_last_error());
       return false;
     }
@@ -269,9 +273,9 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     // TODO: remove TRI_doc_deletion_marker_t from file
 
     // write to compactor files
-    ok = CopyDocument(collection, marker, &result, &fid);
+    res = CopyDocument(collection, marker, &result, &fid);
 
-    if (! ok) {
+    if (res != TRI_ERROR_NO_ERROR) {
       LOG_FATAL("cannot write compactor file: ", TRI_last_error());
       return false;
     }

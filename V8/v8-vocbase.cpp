@@ -2025,7 +2025,7 @@ static v8::Handle<v8::Value> JS_SkiplistSelectAql (v8::Arguments const& argv) {
   if (idx == NULL) {
     return scope.Close(v8::ThrowException(v8::String::New("invalid index in where statement")));
   }
-  if (! CheckWhereSkiplistOperators(idx->_shapeList->_length, slWhere->_operator)) {
+  if (! CheckWhereSkiplistOperators(idx->_paths._length, slWhere->_operator)) {
     return scope.Close(v8::ThrowException(v8::String::New("One or more operators has invalid number of attributes")));
   }  
   

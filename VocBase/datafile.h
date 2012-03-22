@@ -431,15 +431,15 @@ void TRI_FillCrcMarkerDatafile (TRI_df_marker_t* marker,
 /// @brief reserves room for an element, advances the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
-                                 TRI_voc_size_t size,
-                                 TRI_df_marker_t** position);
+int TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
+                                TRI_voc_size_t size,
+                                TRI_df_marker_t** position);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief writes a marker and body to the datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_WriteElementDatafile (TRI_datafile_t*,
+int TRI_WriteElementDatafile (TRI_datafile_t*,
                               void* position,
                               TRI_df_marker_t const* marker,
                               TRI_voc_size_t markerSize,
