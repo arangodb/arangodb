@@ -631,6 +631,16 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED                      (1210)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1211: ERROR_AVOCADO_GEO_INDEX_VIOLATED
+///
+/// geo index violated
+///
+/// Will be raised when a illegale coordinate is used.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AVOCADO_GEO_INDEX_VIOLATED                              (1211)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1207: ERROR_AVOCADO_DUPLICATE_NAME
 ///
 /// duplicate name
