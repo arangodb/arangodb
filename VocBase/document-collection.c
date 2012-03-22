@@ -289,9 +289,9 @@ TRI_datafile_t* CreateJournalDocCollection (TRI_doc_collection_t* collection, bo
   TRI_FreeString(filename);
 
   // create a collection header
-  ok = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position);
+  res = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position);
 
-  if (! ok) {
+  if (res != TRI_ERROR_NO_ERROR) {
     collection->base._lastError = journal->_lastError;
     TRI_FreeDatafile(journal);
 

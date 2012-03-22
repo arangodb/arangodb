@@ -81,6 +81,11 @@ static uint64_t HashElementDocument (TRI_associative_pointer_t* array, void cons
 
 static bool IsEqualKeyDocument (TRI_associative_pointer_t* array, void const* key, void const* element);
 
+static int InsertPrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc);
+static int  UpdatePrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_shaped_json_t const* old);
+static int RemovePrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc);
+static TRI_json_t* JsonPrimary (TRI_index_t* idx, TRI_doc_collection_t* collection);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          JOURNALS
 // -----------------------------------------------------------------------------
@@ -105,7 +110,7 @@ static TRI_datafile_t* SelectJournal (TRI_sim_collection_t* collection,
                                       TRI_voc_size_t size,
                                       TRI_df_marker_t** result) {
   TRI_datafile_t* datafile;
-  bool ok;
+  int res;
   size_t i;
   size_t n;
 
@@ -120,14 +125,14 @@ static TRI_datafile_t* SelectJournal (TRI_sim_collection_t* collection,
       datafile = collection->base.base._journals._buffer[i];
 
       // try to reserve space
-      ok = TRI_ReserveElementDatafile(datafile, size, result);
+      res = TRI_ReserveElementDatafile(datafile, size, result);
 
       // in case of full datafile, try next
-      if (ok) {
+      if (res == TRI_ERROR_NO_ERROR) {
         TRI_UnlockCondition(&collection->_journalsCondition);
         return datafile;
       }
-      else if (! ok && TRI_errno() != TRI_ERROR_AVOCADO_DATAFILE_FULL) {
+      else if (res != TRI_ERROR_AVOCADO_DATAFILE_FULL) {
         TRI_UnlockCondition(&collection->_journalsCondition);
         return NULL;
       }
@@ -277,12 +282,12 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* collection,
   TRI_doc_mptr_t mptr;
   TRI_voc_size_t total;
   TRI_doc_datafile_info_t* dfi;
-  bool ok;
   int res;
+  int originalRes;
 
-  // -----------------------------------------------------------------------------
+  // .............................................................................
   // create header
-  // -----------------------------------------------------------------------------
+  // .............................................................................
 
   // get a new header pointer
   header = collection->_headers->request(collection->_headers);
@@ -305,9 +310,9 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* collection,
     return mptr;
   }
 
-  // -----------------------------------------------------------------------------
+  // .............................................................................
   // write document blob
-  // -----------------------------------------------------------------------------
+  // .............................................................................
 
   // verify the header pointer
   header = collection->_headers->verify(collection->_headers, header);
@@ -316,14 +321,14 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* collection,
   TRI_FillCrcMarkerDatafile(&marker->base, markerSize, body, bodySize);
 
   // and write marker and blob
-  ok = WriteElement(collection, journal, &marker->base, markerSize, body, bodySize, *result);
+  res = WriteElement(collection, journal, &marker->base, markerSize, body, bodySize, *result);
 
-  // -----------------------------------------------------------------------------
+  // .............................................................................
   // update indexes
-  // -----------------------------------------------------------------------------
+  // .............................................................................
 
   // generate create header
-  if (ok) {
+  if (res == TRI_ERROR_NO_ERROR) {
 
     // fill the header
     collection->base.createHeader(&collection->base, journal, *result, markerSize, header, 0);
@@ -336,20 +341,17 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* collection,
 
     // update immediate indexes
     res = CreateImmediateIndexes(collection, header);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_set_errno(res);
-    }
+    originalRes = res;
 
     // check for constraint error
-    if (res == TRI_VOC_ERROR_UNIQUE_VIOLATED) {
+    if (res != TRI_ERROR_NO_ERROR) {
       TRI_doc_deletion_marker_t markerDel;
 
-      LOG_WARNING("encountered constraint violating during create, deleting newly created document");
+      LOG_WARNING("encountered index violating during create, deleting newly created document");
 
-      // -----------------------------------------------------------------------------
+      // .............................................................................
       // rollback
-      // -----------------------------------------------------------------------------
+      // .............................................................................
 
       memset(&markerDel, 0, sizeof(markerDel));
 
@@ -366,22 +368,36 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* collection,
         LOG_ERROR("encountered error '%s' during rollback of create", TRI_last_error());
       }
     }
-    else if (res != TRI_ERROR_NO_ERROR) {
-      LOG_WARNING("cannot update indices: %s", TRI_last_error());
+
+    // .............................................................................
+    // create result
+    // .............................................................................
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      mptr = *header;
+
+      // release lock, header might be invalid after this
+      if (release) {
+        collection->base.endWrite(&collection->base);
+      }
+
+      // wait for sync
+      WaitSync(collection, journal, ((char const*) *result) + markerSize + bodySize);
+
+      // and return
+      return mptr;
+    }
+    else {
+      if (release) {
+        collection->base.endWrite(&collection->base);
+      }
+
+      TRI_set_errno(originalRes);
+
+      mptr._did = 0;
+      return mptr;
     }
 
-    mptr = *header;
-
-    // release lock, header might be invalid after this
-    if (release) {
-      collection->base.endWrite(&collection->base);
-    }
-
-    // wait for sync
-    WaitSync(collection, journal, ((char const*) *result) + markerSize + bodySize);
-
-    // and return
-    return mptr;
   }
   else {
     if (release) {
@@ -439,15 +455,15 @@ static TRI_doc_mptr_t const UpdateDocument (TRI_sim_collection_t* collection,
   TRI_doc_mptr_t resUpd;
   TRI_shaped_json_t originalJson;
   TRI_voc_size_t total;
-  bool ok;
+  int originalRes;
   int res;
 
   originalJson = header->_document;
   originalMarker = header->_data;
 
-  // -----------------------------------------------------------------------------
+  // .............................................................................
   // check the revision
-  // -----------------------------------------------------------------------------
+  // .............................................................................
 
   if (oldRid != NULL) {
     *oldRid = header->_rid;
@@ -494,9 +510,9 @@ static TRI_doc_mptr_t const UpdateDocument (TRI_sim_collection_t* collection,
       return mptr;
   }
 
-  // -----------------------------------------------------------------------------
+  // .............................................................................
   // update header
-  // -----------------------------------------------------------------------------
+  // .............................................................................
 
   // generate a new tick
   marker->_rid = marker->base._tick = TRI_NewTickVocBase();
@@ -516,22 +532,22 @@ static TRI_doc_mptr_t const UpdateDocument (TRI_sim_collection_t* collection,
     return mptr;
   }
 
-  // -----------------------------------------------------------------------------
+  // .............................................................................
   // write document blob
-  // -----------------------------------------------------------------------------
+  // .............................................................................
 
   // generate crc
   TRI_FillCrcMarkerDatafile(&marker->base, markerSize, body, bodySize);
 
   // and write marker and blob
-  ok = WriteElement(collection, journal, &marker->base, markerSize, body, bodySize, *result);
+  res = WriteElement(collection, journal, &marker->base, markerSize, body, bodySize, *result);
 
-  // -----------------------------------------------------------------------------
+  // .............................................................................
   // update indexes
-  // -----------------------------------------------------------------------------
+  // .............................................................................
 
   // update the header
-  if (ok) {
+  if (res == TRI_ERROR_NO_ERROR) {
     TRI_doc_mptr_t update;
     TRI_doc_datafile_info_t* dfi;
 
@@ -554,112 +570,118 @@ static TRI_doc_mptr_t const UpdateDocument (TRI_sim_collection_t* collection,
 
     // update immediate indexes
     res = UpdateImmediateIndexes(collection, header, &update);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_set_errno(res);
-    }
+    originalRes = res;
 
     // check for constraint error
-    if (res == TRI_VOC_ERROR_UNIQUE_VIOLATED) {
-      LOG_WARNING("encountered constraint violating during create, rolling back");
+    if (allowRollback && res != TRI_ERROR_NO_ERROR) {
+      LOG_WARNING("encountered index violating during update, rolling back");
 
-      // -----------------------------------------------------------------------------
+      // .............................................................................
       // rollback
-      // -----------------------------------------------------------------------------
+      // .............................................................................
 
-      if (allowRollback) {
-        if (originalMarker->_type == TRI_DOC_MARKER_DELETION) {
-          TRI_doc_document_marker_t markerUpd;
-
-          // create an update
-          memset(&markerUpd, 0, sizeof(markerUpd));
-          
-          markerUpd.base._size = sizeof(markerUpd) + originalJson._data.length;
-          markerUpd.base._type = originalMarker->_type;
-          
-          markerUpd._did = header->_did;
-          markerUpd._sid = 0;
-          markerUpd._shape = originalJson._sid;
-          
-          resUpd = UpdateDocument(collection,
-                                  header,
-                                  &markerUpd, sizeof(markerUpd),
-                                  originalJson._data.data, originalJson._data.length,
-                                  header->_rid,
-                                  NULL,
-                                  TRI_DOC_UPDATE_LAST_WRITE,
-                                  result,
-                                  false,
-                                  false);
-
-          if (resUpd._did == 0) {
-            LOG_ERROR("encountered error '%s' during rollback of update", TRI_last_error());
-          }
+      if (originalMarker->_type == TRI_DOC_MARKER_DOCUMENT) {
+        TRI_doc_document_marker_t markerUpd;
+        
+        // create an update
+        memset(&markerUpd, 0, sizeof(markerUpd));
+        
+        markerUpd.base._size = sizeof(markerUpd) + originalJson._data.length;
+        markerUpd.base._type = originalMarker->_type;
+        
+        markerUpd._did = header->_did;
+        markerUpd._sid = 0;
+        markerUpd._shape = originalJson._sid;
+        
+        resUpd = UpdateDocument(collection,
+                                header,
+                                &markerUpd, sizeof(markerUpd),
+                                originalJson._data.data, originalJson._data.length,
+                                header->_rid,
+                                NULL,
+                                TRI_DOC_UPDATE_LAST_WRITE,
+                                result,
+                                false,
+                                false);
+        
+        if (resUpd._did == 0) {
+          LOG_ERROR("encountered error '%s' during rollback of update", TRI_last_error());
         }
-        else if (originalMarker->_type == TRI_DOC_MARKER_EDGE) {
-          TRI_doc_edge_marker_t markerUpd;
-          TRI_doc_edge_marker_t const* originalEdge;
-
-          originalEdge = (TRI_doc_edge_marker_t*) originalMarker;
-          
-          // create an update
-          memset(&markerUpd, 0, sizeof(markerUpd));
-          
-          markerUpd.base.base._size = sizeof(markerUpd) + originalJson._data.length;
-          markerUpd.base.base._type = originalMarker->_type;
-          
-          markerUpd.base._did = header->_did;
-          markerUpd.base._sid = 0;
-          markerUpd.base._shape = originalJson._sid;
-          
-          markerUpd._fromCid = originalEdge->_fromCid;
-          markerUpd._fromDid = originalEdge->_fromDid;
-          markerUpd._toCid = originalEdge->_toCid;
-          markerUpd._toDid = originalEdge->_toDid;
-          
-          resUpd = UpdateDocument(collection,
-                                  header,
-                                  &markerUpd.base, sizeof(markerUpd),
-                                  originalJson._data.data, originalJson._data.length,
-                                  header->_rid,
-                                  NULL,
-                                  TRI_DOC_UPDATE_LAST_WRITE,
-                                  result,
-                                  false,
-                                  false);
-
-          if (resUpd._did == 0) {
-            LOG_ERROR("encountered error '%s' during rollback of update", TRI_last_error());
-          }
-        }
-        else {
-          LOG_ERROR("unknown document marker type '%lu' in document '%lu:%lu' revision '%lu'",
-                    (unsigned long) originalMarker->_type,
-                    (unsigned long) collection->base.base._cid,
-                    (unsigned long) header->_did,
-                    (unsigned long) header->_rid);
+      }
+      else if (originalMarker->_type == TRI_DOC_MARKER_EDGE) {
+        TRI_doc_edge_marker_t markerUpd;
+        TRI_doc_edge_marker_t const* originalEdge;
+        
+        originalEdge = (TRI_doc_edge_marker_t*) originalMarker;
+        
+        // create an update
+        memset(&markerUpd, 0, sizeof(markerUpd));
+        
+        markerUpd.base.base._size = sizeof(markerUpd) + originalJson._data.length;
+        markerUpd.base.base._type = originalMarker->_type;
+        
+        markerUpd.base._did = header->_did;
+        markerUpd.base._sid = 0;
+        markerUpd.base._shape = originalJson._sid;
+        
+        markerUpd._fromCid = originalEdge->_fromCid;
+        markerUpd._fromDid = originalEdge->_fromDid;
+        markerUpd._toCid = originalEdge->_toCid;
+        markerUpd._toDid = originalEdge->_toDid;
+        
+        resUpd = UpdateDocument(collection,
+                                header,
+                                &markerUpd.base, sizeof(markerUpd),
+                                originalJson._data.data, originalJson._data.length,
+                                header->_rid,
+                                NULL,
+                                TRI_DOC_UPDATE_LAST_WRITE,
+                                result,
+                                false,
+                                false);
+        
+        if (resUpd._did == 0) {
+          LOG_ERROR("encountered error '%s' during rollback of update", TRI_last_error());
         }
       }
       else {
-        LOG_ERROR("cannot rollback update");
+        LOG_ERROR("unknown document marker type '%lu' in document '%lu:%lu' revision '%lu'",
+                  (unsigned long) originalMarker->_type,
+                  (unsigned long) collection->base.base._cid,
+                  (unsigned long) header->_did,
+                  (unsigned long) header->_rid);
       }
     }
-    else if (res != TRI_ERROR_NO_ERROR) {
-      LOG_WARNING("cannot update indices: %s", TRI_last_error());
+
+    // .............................................................................
+    // create result
+    // .............................................................................
+
+    if (originalRes == TRI_ERROR_NO_ERROR) {
+      mptr = *header;
+
+      // release lock, header might be invalid after this
+      if (release) {
+        collection->base.endWrite(&collection->base);
+      }
+
+      // wait for sync
+      WaitSync(collection, journal, ((char const*) *result) + markerSize + bodySize);
+      
+      // and return
+      return mptr;
+    }
+    else {
+      if (release) {
+        collection->base.endWrite(&collection->base);
+      }
+
+      TRI_set_errno(originalRes);
+
+      mptr._did = 0;
+      return mptr;
     }
 
-    mptr = *header;
-
-    // release lock, header might be invalid after this
-    if (release) {
-      collection->base.endWrite(&collection->base);
-    }
-
-    // wait for sync
-    WaitSync(collection, journal, ((char const*) *result) + markerSize + bodySize);
-
-    // and return
-    return mptr;
   }
   else {
     if (release) {
@@ -692,13 +714,11 @@ static int DeleteDocument (TRI_sim_collection_t* collection,
   header = TRI_LookupByKeyAssociativePointer(&collection->_primaryIndex, &marker->_did);
 
   if (header == NULL || header->_deletion != 0) {
-    TRI_set_errno(TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND);
-
     if (release) {
       collection->base.endWrite(&collection->base);
     }
 
-    return TRI_ERROR_NO_ERROR;
+    return TRI_set_errno(TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND);
   }
 
   // check the revision
@@ -915,8 +935,6 @@ static TRI_doc_mptr_t const CreateShapedJson (TRI_doc_collection_t* document,
   TRI_df_marker_t* result;
   TRI_sim_collection_t* collection;
 
-  TRI_set_errno(TRI_ERROR_NO_ERROR);
-
   collection = (TRI_sim_collection_t*) document;
 
   if (type == TRI_DOC_MARKER_DOCUMENT) {
@@ -1008,8 +1026,6 @@ static TRI_doc_mptr_t const UpdateShapedJson (TRI_doc_collection_t* document,
   TRI_doc_mptr_t mptr;
   TRI_doc_mptr_t const* header;
   TRI_sim_collection_t* collection;
-
-  TRI_set_errno(TRI_ERROR_NO_ERROR);
 
   collection = (TRI_sim_collection_t*) document;
 
@@ -1112,8 +1128,6 @@ static bool DeleteShapedJson (TRI_doc_collection_t* document,
   TRI_sim_collection_t* collection;
   TRI_doc_deletion_marker_t marker;
   int res;
-
-  TRI_set_errno(TRI_ERROR_NO_ERROR);
 
   collection = (TRI_sim_collection_t*) document;
 
@@ -1692,6 +1706,11 @@ static bool InitSimCollection (TRI_sim_collection_t* collection,
   primary->_type = TRI_IDX_TYPE_PRIMARY_INDEX;
   primary->_unique = true;
 
+  primary->insert = InsertPrimary;
+  primary->remove = RemovePrimary;
+  primary->update = UpdatePrimary;
+  primary->json = JsonPrimary;
+
   TRI_PushBackVectorPointer(&collection->_indexes, primary);
 
   // setup methods
@@ -1747,7 +1766,8 @@ TRI_sim_collection_t* TRI_CreateSimCollection (char const* path, TRI_col_paramet
 
   // first create the document collection
   doc = TRI_Allocate(sizeof(TRI_sim_collection_t));
-  if (!doc) {
+
+  if (doc == NULL) {
     LOG_ERROR("cannot create document");
     return NULL;
   }
@@ -1768,9 +1788,8 @@ TRI_sim_collection_t* TRI_CreateSimCollection (char const* path, TRI_col_paramet
     LOG_ERROR("cannot create shapes collection");
 
     TRI_CloseCollection(collection);
-    TRI_FreeCollection(collection);
+    TRI_FreeCollection(collection); // will free doc
 
-    TRI_Free(doc);
     return NULL;
   }
 
@@ -1971,7 +1990,7 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* collection,
               (unsigned long) header->_rid);
 
     collection->_headers->release(collection->_headers, header);
-    return TRI_VOC_ERROR_PRIMARY_VIOLATED;
+    return TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED;
   }
 
   // return in case of a delete
@@ -2072,7 +2091,7 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* collection,
     }
 
     // "prefer" unique constraint violated
-    if (res == TRI_VOC_ERROR_UNIQUE_VIOLATED) {
+    if (res == TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED) {
       constraint = true;
     }
     else if (res != TRI_ERROR_NO_ERROR) {
@@ -2081,7 +2100,7 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* collection,
   }
 
   if (constraint) {
-    return TRI_VOC_ERROR_UNIQUE_VIOLATED;
+    return TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED;
   }
 
   return result;
@@ -2141,7 +2160,7 @@ static int UpdateImmediateIndexes (TRI_sim_collection_t* collection,
     }
 
     // "prefer" unique constraint violated
-    if (res == TRI_VOC_ERROR_UNIQUE_VIOLATED) {
+    if (res == TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED) {
       constraint = true;
     }
     else if (res != TRI_ERROR_NO_ERROR) {
@@ -2150,7 +2169,7 @@ static int UpdateImmediateIndexes (TRI_sim_collection_t* collection,
   }
 
   if (constraint) {
-    return TRI_VOC_ERROR_UNIQUE_VIOLATED;
+    return TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED;
   }
 
   return result;
@@ -2416,7 +2435,12 @@ bool TRI_DropIndexSimCollection (TRI_sim_collection_t* collection, TRI_idx_iid_t
   size_t n;
   size_t i;
 
+  if (iid == 0) {
+    return true;
+  }
+
   vector = TRI_Allocate(sizeof(TRI_vector_pointer_t));
+
   if (!vector) {
     return false;
   }
@@ -2503,6 +2527,47 @@ static bool IsEqualKeyDocument (TRI_associative_pointer_t* array, void const* ke
   TRI_doc_mptr_t const* e = element;
 
   return *k == e->_did;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insert methods does nothing
+////////////////////////////////////////////////////////////////////////////////
+
+static int InsertPrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update methods does nothing
+////////////////////////////////////////////////////////////////////////////////
+
+static int  UpdatePrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_shaped_json_t const* old) {
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove methods does nothing
+////////////////////////////////////////////////////////////////////////////////
+
+static int RemovePrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief JSON description of a geo index, location is a list
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* JsonPrimary (TRI_index_t* idx, TRI_doc_collection_t* collection) {
+  TRI_json_t* json;
+
+  json = TRI_CreateArrayJson();
+
+  TRI_Insert2ArrayJson(json, "iid", TRI_CreateNumberJson(0));
+  TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("primary"));
+  TRI_Insert2ArrayJson(json, "fieldCount", TRI_CreateNumberJson(1));
+  TRI_Insert2ArrayJson(json, "field_0", TRI_CreateStringCopyJson("_id"));
+
+  return json;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2669,7 +2734,7 @@ static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collecti
                                                   bool unique) {
   TRI_index_t* idx;
   TRI_shaper_t* shaper;
-  TRI_vector_string_t fields;
+  TRI_vector_pointer_t fields;
   TRI_vector_t paths;
   bool ok;
   size_t j;
@@ -2678,7 +2743,7 @@ static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collecti
   shaper = collection->base._shaper;
   
   TRI_InitVector(&paths, sizeof(TRI_shape_pid_t));
-  TRI_InitVectorString(&fields);
+  TRI_InitVectorPointer(&fields);
 
   // ...........................................................................
   // Determine the shape ids for the attributes
@@ -2691,7 +2756,7 @@ static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collecti
     path = *((char**)(TRI_AtVector(attributes,j)));    
     pid  = shaper->findAttributePathByName(shaper, path);   
 
-    TRI_PushBackVectorString(&fields, path);
+    TRI_PushBackVectorPointer(&fields, path);
     TRI_PushBackVector(&paths, &pid);
   }
  
@@ -2705,7 +2770,7 @@ static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collecti
   
   if (idx != NULL) {
     TRI_DestroyVector(&paths);
-    TRI_DestroyVectorString(&fields);
+    TRI_DestroyVectorPointer(&fields);
     LOG_TRACE("hash-index already created");
 
     return idx;
@@ -2762,11 +2827,11 @@ static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* coll
   TRI_index_t* idx     = NULL;
   TRI_shaper_t* shaper = collection->base._shaper;
   TRI_vector_t paths;
-  TRI_vector_string_t names;
+  TRI_vector_pointer_t fields;
   size_t j;
   
   TRI_InitVector(&paths, sizeof(TRI_shape_pid_t));
-  TRI_InitVectorString(&names);
+  TRI_InitVectorPointer(&fields);
 
   // ...........................................................................
   // Determine the shape ids for the attributes
@@ -2777,7 +2842,7 @@ static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* coll
     TRI_shape_pid_t shape = shaper->findAttributePathByName(shaper, path);   
 
     TRI_PushBackVector(&paths, &shape);
-    TRI_PushBackVectorString(&names, path);
+    TRI_PushBackVectorPointer(&fields, path);
   }
   
   
@@ -2791,7 +2856,7 @@ static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* coll
   
   if (idx != NULL) {
     TRI_DestroyVector(&paths);
-    TRI_DestroyVectorString(&names);
+    TRI_DestroyVectorPointer(&fields);
 
     LOG_TRACE("skiplist-index already created");
     return idx;
@@ -2801,7 +2866,7 @@ static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* coll
   // Create the skiplist index
   // ...........................................................................
 
-  idx = TRI_CreateSkiplistIndex(&collection->base, &names, &paths, unique);
+  idx = TRI_CreateSkiplistIndex(&collection->base, &fields, &paths, unique);
 
   // ...........................................................................
   // If index id given, use it otherwise use the default.

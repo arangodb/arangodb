@@ -96,9 +96,9 @@ static bool CreateJournal (TRI_blob_collection_t* collection) {
   TRI_FreeString(filename);
 
   // create a collection header
-  ok = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position);
+  res = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position);
 
-  if (! ok) {
+  if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeDatafile(journal);
 
     LOG_ERROR("cannot create document header in journal '%s': %s",
@@ -204,6 +204,7 @@ static TRI_datafile_t* SelectJournal (TRI_blob_collection_t* collection,
                                       TRI_df_marker_t** result) {
   TRI_datafile_t* datafile;
   bool ok;
+  int res;
   size_t n;
 
   // need to create a new journal?
@@ -222,9 +223,9 @@ static TRI_datafile_t* SelectJournal (TRI_blob_collection_t* collection,
   datafile = collection->base._journals._buffer[0];
 
   // try to reserve space
-  ok = TRI_ReserveElementDatafile(datafile, size, result);
+  res = TRI_ReserveElementDatafile(datafile, size, result);
 
-  while (! ok && TRI_errno() == TRI_ERROR_AVOCADO_DATAFILE_FULL) {
+  while (res == TRI_ERROR_AVOCADO_DATAFILE_FULL) {
     ok = CloseJournal(collection, datafile);
 
     if (! ok) {
@@ -240,10 +241,10 @@ static TRI_datafile_t* SelectJournal (TRI_blob_collection_t* collection,
 
     datafile = collection->base._journals._buffer[0];
 
-    ok = TRI_ReserveElementDatafile(datafile, size, result);
+    res = TRI_ReserveElementDatafile(datafile, size, result);
   }
 
-  if (! ok) {
+  if (res != TRI_ERROR_NO_ERROR) {
     collection->base._state = TRI_COL_STATE_WRITE_ERROR;
     return NULL;
   }
@@ -256,22 +257,22 @@ static TRI_datafile_t* SelectJournal (TRI_blob_collection_t* collection,
 /// @brief writes an element to a given position
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool WriteElement (TRI_blob_collection_t* collection,
-                          TRI_datafile_t* journal,
-                          TRI_df_marker_t* position,
-                          TRI_df_marker_t* marker,
-                          TRI_voc_size_t markerSize,
+static int WriteElement (TRI_blob_collection_t* collection,
+                         TRI_datafile_t* journal,
+                         TRI_df_marker_t* position,
+                         TRI_df_marker_t* marker,
+                         TRI_voc_size_t markerSize,
                           void const* body,
-                          size_t bodySize) {
-  bool ok;
+                         size_t bodySize) {
+  int res;
 
-  ok = TRI_WriteElementDatafile(journal, position, marker, markerSize, body, bodySize, true);
+  res = TRI_WriteElementDatafile(journal, position, marker, markerSize, body, bodySize, true);
 
-  if (! ok) {
+  if (res != TRI_ERROR_NO_ERROR) {
     collection->base._state = TRI_COL_STATE_WRITE_ERROR;
   }
 
-  return ok;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -359,14 +360,14 @@ void TRI_FreeBlobCollection (TRI_blob_collection_t* collection) {
 /// @brief writes an element splitted into marker and body to file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_WriteBlobCollection (TRI_blob_collection_t* collection,
-                              TRI_df_marker_t* marker,
-                              TRI_voc_size_t markerSize,
-                              void const* body,
-                              TRI_voc_size_t bodySize,
-                              TRI_df_marker_t** result) {
+int TRI_WriteBlobCollection (TRI_blob_collection_t* collection,
+                             TRI_df_marker_t* marker,
+                             TRI_voc_size_t markerSize,
+                             void const* body,
+                             TRI_voc_size_t bodySize,
+                             TRI_df_marker_t** result) {
   TRI_datafile_t* journal;
-  bool ok;
+  int res;
 
   // generate a new tick
   marker->_tick = TRI_NewTickVocBase();
@@ -396,12 +397,12 @@ bool TRI_WriteBlobCollection (TRI_blob_collection_t* collection,
   }
 
   // and write marker and blob
-  ok = WriteElement(collection, journal, *result, marker, markerSize, body, bodySize);
+  res = WriteElement(collection, journal, *result, marker, markerSize, body, bodySize);
 
   // release lock on collection
   TRI_UnlockMutex(&collection->_lock);
 
-  return ok;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
