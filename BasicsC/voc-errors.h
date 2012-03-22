@@ -52,6 +52,9 @@ extern "C" {
 /// - 1004: @CODE{ready only}
 ///   Internal error that will be raised when trying to write to a read-only
 ///   datafile or collection.
+/// - 1005: @CODE{duplicate identifier}
+///   Internal error that will be raised when a identifier duplicate is
+///   detected.
 /// - 1100: @CODE{corrupted datafile}
 ///   Will be raised when a corruption is detected in a datafile.
 /// - 1101: @CODE{illegal parameter file}
@@ -60,15 +63,15 @@ extern "C" {
 ///   Will be raised when a collection contains one or more corrupted datafiles.
 /// - 1103: @CODE{mmap failed}
 ///   Will be raised when the system call mmap failed.
-/// - 1104: @CODE{msync failed}
-///   Will be raised when the system call msync failed
+/// - 1104: @CODE{filesystem full}
+///   Will be raised when the filesystem is full.
 /// - 1105: @CODE{no journal}
 ///   Will be raised when a journal cannot be created.
 /// - 1106: @CODE{cannot rename because file ready exists}
 ///   Will be raised when the datafile cannot be renamed because a file of the
 ///   same name already exists.
-/// - 1107: @CODE{filesystem full}
-///   Will be raised when the filesystem is full.
+/// - 1107: @CODE{database is locked}
+///   Will be raised when the database is locked by a different process.
 /// - 1200: @CODE{conflict}
 ///   Will be raised when updating or deleting a document and a conflict has
 ///   been detected.
@@ -87,6 +90,14 @@ extern "C" {
 ///   Will be raised when a document handle is corrupt.
 /// - 1206: @CODE{maixaml size of journal too small}
 ///   Will be raised when the maximal size of the journal is too small.
+/// - 1207: @CODE{duplicate name}
+///   Will be raised when a name duplicate is detected.
+/// - 1208: @CODE{illegal name}
+///   Will be raised when an illegal name is detected.
+/// - 1209: @CODE{no index known}
+///   Will be raised when no index is known.
+/// - 1210: @CODE{unique constraint violated}
+///   Will be raised when there is a unique constraint violation.
 /// - 1300: @CODE{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1500: @CODE{query killed}
@@ -399,6 +410,16 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_AVOCADO_READ_ONLY                                       (1004)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1005: ERROR_AVOCADO_DUPLICATE_IDENTIFIER
+///
+/// duplicate identifier
+///
+/// Internal error that will be raised when a identifier duplicate is detected.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AVOCADO_DUPLICATE_IDENTIFIER                            (1005)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1100: ERROR_AVOCADO_CORRUPTED_DATAFILE
 ///
 /// corrupted datafile
@@ -439,14 +460,14 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_AVOCADO_MMAP_FAILED                                     (1103)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1104: ERROR_AVOCADO_MSYNC_FAILED
+/// @brief 1104: ERROR_AVOCADO_FILESYSTEM_FULL
 ///
-/// msync failed
+/// filesystem full
 ///
-/// Will be raised when the system call msync failed
+/// Will be raised when the filesystem is full.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_AVOCADO_MSYNC_FAILED                                    (1104)
+#define TRI_ERROR_AVOCADO_FILESYSTEM_FULL                                 (1104)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1105: ERROR_AVOCADO_NO_JOURNAL
@@ -470,14 +491,14 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_AVOCADO_DATAFILE_ALREADY_EXISTS                         (1106)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1107: ERROR_AVOCADO_FILESYSTEM_FULL
+/// @brief 1107: ERROR_AVOCADO_DATABASE_LOCKED
 ///
-/// filesystem full
+/// database is locked
 ///
-/// Will be raised when the filesystem is full.
+/// Will be raised when the database is locked by a different process.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_AVOCADO_FILESYSTEM_FULL                                 (1107)
+#define TRI_ERROR_AVOCADO_DATABASE_LOCKED                                 (1107)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1200: ERROR_AVOCADO_CONFLICT
@@ -550,6 +571,46 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_AVOCADO_MAXIMAL_SIZE_TOO_SMALL                          (1206)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1207: ERROR_AVOCADO_DUPLICATE_NAME
+///
+/// duplicate name
+///
+/// Will be raised when a name duplicate is detected.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AVOCADO_DUPLICATE_NAME                                  (1207)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1208: ERROR_AVOCADO_ILLEGAL_NAME
+///
+/// illegal name
+///
+/// Will be raised when an illegal name is detected.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AVOCADO_ILLEGAL_NAME                                    (1208)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1209: ERROR_AVOCADO_NO_INDEX
+///
+/// no index known
+///
+/// Will be raised when no index is known.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AVOCADO_NO_INDEX                                        (1209)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1210: ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED
+///
+/// unique constraint violated
+///
+/// Will be raised when there is a unique constraint violation.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED                      (1210)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_AVOCADO_DATAFILE_FULL
