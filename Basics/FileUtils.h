@@ -32,7 +32,7 @@
 
 namespace triagens {
   namespace basics {
-    struct StringBuffer;
+    class StringBuffer;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection of file functions
