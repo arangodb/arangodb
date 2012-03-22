@@ -30,14 +30,15 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_AVOCADO_DATAFILE_SEALED, "datafile sealed");
   REG_ERROR(ERROR_AVOCADO_UNKNOWN_COLLECTION_TYPE, "unknown type");
   REG_ERROR(ERROR_AVOCADO_READ_ONLY, "ready only");
+  REG_ERROR(ERROR_AVOCADO_DUPLICATE_IDENTIFIER, "duplicate identifier");
   REG_ERROR(ERROR_AVOCADO_CORRUPTED_DATAFILE, "corrupted datafile");
   REG_ERROR(ERROR_AVOCADO_ILLEGAL_PARAMETER_FILE, "illegal parameter file");
   REG_ERROR(ERROR_AVOCADO_CORRUPTED_COLLECTION, "corrupted collection");
   REG_ERROR(ERROR_AVOCADO_MMAP_FAILED, "mmap failed");
-  REG_ERROR(ERROR_AVOCADO_MSYNC_FAILED, "msync failed");
+  REG_ERROR(ERROR_AVOCADO_FILESYSTEM_FULL, "filesystem full");
   REG_ERROR(ERROR_AVOCADO_NO_JOURNAL, "no journal");
   REG_ERROR(ERROR_AVOCADO_DATAFILE_ALREADY_EXISTS, "cannot rename because file ready exists");
-  REG_ERROR(ERROR_AVOCADO_FILESYSTEM_FULL, "filesystem full");
+  REG_ERROR(ERROR_AVOCADO_DATABASE_LOCKED, "database is locked");
   REG_ERROR(ERROR_AVOCADO_CONFLICT, "conflict");
   REG_ERROR(ERROR_AVOCADO_WRONG_VOCBASE_PATH, "wrong path for database");
   REG_ERROR(ERROR_AVOCADO_DOCUMENT_NOT_FOUND, "document not found");
@@ -45,6 +46,10 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_AVOCADO_COLLECTION_PARAMETER_MISSING, "parameter 'collection' not found");
   REG_ERROR(ERROR_AVOCADO_DOCUMENT_HANDLE_BAD, "illegal document handle");
   REG_ERROR(ERROR_AVOCADO_MAXIMAL_SIZE_TOO_SMALL, "maixaml size of journal too small");
+  REG_ERROR(ERROR_AVOCADO_DUPLICATE_NAME, "duplicate name");
+  REG_ERROR(ERROR_AVOCADO_ILLEGAL_NAME, "illegal name");
+  REG_ERROR(ERROR_AVOCADO_NO_INDEX, "no index known");
+  REG_ERROR(ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED, "unique constraint violated");
   REG_ERROR(ERROR_AVOCADO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "parse error: %s");

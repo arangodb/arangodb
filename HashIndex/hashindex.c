@@ -368,10 +368,8 @@ HashIndex* HashIndex_new() {
 int HashIndex_add(HashIndex* hashIndex, HashIndexElement* element) {
   bool result;
   result = TRI_InsertElementAssociativeArray(hashIndex->assocArray.uniqueArray, element, false);
-  if (result) {
-    return 0;
-  }    
-  return -1;
+
+  return result ? TRI_ERROR_NO_ERROR : TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED;
 }
 
 
@@ -413,11 +411,11 @@ int HashIndex_insert(HashIndex* hashIndex, HashIndexElement* element) {
 // Removes an entry from the associative array
 // ...............................................................................
 
-bool HashIndex_remove(HashIndex* hashIndex, HashIndexElement* element) {
+int HashIndex_remove(HashIndex* hashIndex, HashIndexElement* element) {
   bool result;
 
   result = TRI_RemoveElementAssociativeArray(hashIndex->assocArray.uniqueArray, element, NULL); 
-  return result;
+  return result ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL;
 }
 
 
@@ -426,10 +424,10 @@ bool HashIndex_remove(HashIndex* hashIndex, HashIndexElement* element) {
 //  then adds the afterElement
 // ...............................................................................
 
-bool HashIndex_update(HashIndex* hashIndex, const HashIndexElement* beforeElement, 
+int HashIndex_update(HashIndex* hashIndex, const HashIndexElement* beforeElement, 
                       const HashIndexElement* afterElement) {
   assert(false);
-  return false;                      
+  return TRI_ERROR_INTERNAL;                      
 }
 
 //------------------------------------------------------------------------------
@@ -640,10 +638,10 @@ int MultiHashIndex_insert(HashIndex* hashIndex, HashIndexElement* element) {
 // Removes an entry from the associative array
 // ...............................................................................
 
-bool MultiHashIndex_remove(HashIndex* hashIndex, HashIndexElement* element) {
+int MultiHashIndex_remove(HashIndex* hashIndex, HashIndexElement* element) {
   bool result;
   result = TRI_RemoveElementMultiArray(hashIndex->assocArray.nonUniqueArray, element, NULL); 
-  return result;
+  return result ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL;
 }
 
 
@@ -652,8 +650,8 @@ bool MultiHashIndex_remove(HashIndex* hashIndex, HashIndexElement* element) {
 //  then adds the afterElement
 // ...............................................................................
 
-bool MultiHashIndex_update(HashIndex* hashIndex, HashIndexElement* beforeElement, 
+int MultiHashIndex_update(HashIndex* hashIndex, HashIndexElement* beforeElement, 
                            HashIndexElement* afterElement) {
   assert(false);
-  return false;                      
+  return TRI_ERROR_INTERNAL;
 }
