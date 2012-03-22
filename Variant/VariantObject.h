@@ -35,7 +35,7 @@
 
 namespace triagens {
   namespace basics {
-    struct StringBuffer;
+    class StringBuffer;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class VariantObject

@@ -33,7 +33,7 @@
 namespace triagens {
   namespace basics {
     class VariantObject;
-    struct StringBuffer;
+    class StringBuffer;
   }
 
   namespace rest {

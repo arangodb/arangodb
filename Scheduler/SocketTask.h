@@ -36,7 +36,7 @@
 
 namespace triagens {
   namespace basics {
-    struct StringBuffer;
+    class StringBuffer;
   }
 
   namespace rest {
