@@ -43,6 +43,7 @@ ModuleCache["/internal"].exports.errors = {
   "ERROR_AVOCADO_DUPLICATE_NAME" : { "code" : 1207, "message" : "duplicate name" }, 
   "ERROR_AVOCADO_ILLEGAL_NAME"   : { "code" : 1208, "message" : "illegal name" }, 
   "ERROR_AVOCADO_NO_INDEX"       : { "code" : 1209, "message" : "no index known" }, 
+  "ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED" : { "code" : 1210, "message" : "unique constraint violated" }, 
   "ERROR_AVOCADO_DATAFILE_FULL"  : { "code" : 1300, "message" : "datafile full" }, 
   "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" }, 
   "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "parse error: %s" }, 
