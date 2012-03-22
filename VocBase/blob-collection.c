@@ -50,6 +50,7 @@ static bool CreateJournal (TRI_blob_collection_t* collection) {
   TRI_datafile_t* journal;
   TRI_df_marker_t* position;
   bool ok;
+  int res;
   char* filename;
   char* jname;
   char* number;
@@ -117,9 +118,10 @@ static bool CreateJournal (TRI_blob_collection_t* collection) {
   cm._cid = collection->base._cid;
 
   TRI_FillCrcMarkerDatafile(&cm.base, sizeof(cm), 0, 0);
-  ok = TRI_WriteElementDatafile(journal, position, &cm.base, sizeof(cm), 0, 0, true);
 
-  if (! ok) {
+  res = TRI_WriteElementDatafile(journal, position, &cm.base, sizeof(cm), 0, 0, true);
+
+  if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeDatafile(journal);
 
     LOG_ERROR("cannot create document header in journal '%s': %s",

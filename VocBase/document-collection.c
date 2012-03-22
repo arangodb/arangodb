@@ -212,6 +212,7 @@ TRI_datafile_t* CreateJournalDocCollection (TRI_doc_collection_t* collection, bo
   TRI_datafile_t* journal;
   TRI_df_marker_t* position;
   bool ok;
+  int res;
   char* filename;
   char* jname;
   char* number;
@@ -308,9 +309,10 @@ TRI_datafile_t* CreateJournalDocCollection (TRI_doc_collection_t* collection, bo
   cm._cid = collection->base._cid;
 
   TRI_FillCrcMarkerDatafile(&cm.base, sizeof(cm), 0, 0);
-  ok = TRI_WriteElementDatafile(journal, position, &cm.base, sizeof(cm), 0, 0, true);
 
-  if (! ok) {
+  res = TRI_WriteElementDatafile(journal, position, &cm.base, sizeof(cm), 0, 0, true);
+
+  if (res != TRI_ERROR_NO_ERROR) {
     collection->base._lastError = journal->_lastError;
     TRI_FreeDatafile(journal);
 
