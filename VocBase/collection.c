@@ -65,6 +65,7 @@ static void InitCollection (TRI_collection_t* collection,
   TRI_CopyString(collection->_name, info->_name, sizeof(collection->_name));
   collection->_maximalSize = info->_maximalSize;
   collection->_waitForSync = info->_waitForSync;
+  collection->_deleted = false;
 
   collection->_directory = directory;
 
@@ -337,8 +338,10 @@ void TRI_InitParameterCollection (TRI_col_parameter_t* parameter,
 TRI_collection_t* TRI_CreateCollection (TRI_collection_t* collection,
                                         char const* path,
                                         TRI_col_info_t* parameter) {
-  bool ok;
   char* filename;
+  char* tmp1;
+  char* tmp2;
+  int res;
 
   // generate a collection identifier
   parameter->_cid = TRI_NewTickVocBase();
@@ -363,10 +366,37 @@ TRI_collection_t* TRI_CreateCollection (TRI_collection_t* collection,
     return NULL;
   }
 
-  filename = TRI_Concatenate2File(path, parameter->_name);
+  // blob collection use the name
+  if (parameter->_type == TRI_COL_TYPE_BLOB) {
+    filename = TRI_Concatenate2File(path, parameter->_name);
+  }
 
+  // simple collection use the collection identifier
+  else if (parameter->_type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    tmp1 = TRI_StringUInt64(parameter->_cid);
+    tmp2 = TRI_Concatenate2String("collection-", tmp1);
+
+    filename = TRI_Concatenate2File(path, tmp2);
+
+    TRI_FreeString(tmp2);
+    TRI_FreeString(tmp1);
+  }
+
+  // uups
+  else {
+    TRI_set_errno(TRI_ERROR_AVOCADO_UNKNOWN_COLLECTION_TYPE);
+
+    LOG_ERROR("cannot create collection '%s' in '%s': unknown type '%d'",
+              parameter->_name,
+              path,
+              (unsigned int) parameter->_type);
+
+    return NULL;
+  }
+
+  // directory must not exists
   if (TRI_ExistsFile(filename)) {
-    TRI_set_errno(TRI_ERROR_AVOCADO_WRONG_VOCBASE_PATH);
+    TRI_set_errno(TRI_ERROR_AVOCADO_COLLECTION_DIRECTORY_ALREADY_EXISTS);
     TRI_FreeString(filename);
 
     LOG_ERROR("cannot create collection '%s' in '%s', name already exists",
@@ -377,17 +407,21 @@ TRI_collection_t* TRI_CreateCollection (TRI_collection_t* collection,
 
   // create directory
   if (! TRI_CreateDirectory(filename)) {
-    TRI_FreeString(filename);
+    LOG_ERROR("cannot create collection '%s' in '%s' as '%s': %s",
+              parameter->_name,
+              path, 
+              filename,
+              TRI_last_error());
 
-    LOG_ERROR("cannot create collection '%s' in '%s': %s", parameter->_name, path, TRI_last_error());
+    TRI_FreeString(filename);
 
     return NULL;
   }
 
   // save the parameter block
-  ok = TRI_SaveParameterInfo(filename, parameter);
+  res = TRI_SaveParameterInfo(filename, parameter);
 
-  if (! ok) {
+  if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeString(filename);
 
     LOG_ERROR("cannot save collection parameter '%s': '%s'", filename, TRI_last_error());
@@ -398,9 +432,6 @@ TRI_collection_t* TRI_CreateCollection (TRI_collection_t* collection,
   // create collection structure
   if (collection == NULL) {
     collection = TRI_Allocate(sizeof(TRI_collection_t));
-    if (!collection) {
-      // TODO: FIXME
-    }
   }
 
   InitCollection(collection, filename, parameter);
@@ -451,8 +482,8 @@ void TRI_FreeCollection (TRI_collection_t* collection) {
 /// @brief creates a parameter info block from file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_LoadParameterInfo (char const* path,
-                            TRI_col_info_t* parameter) {
+int TRI_LoadParameterInfo (char const* path,
+                           TRI_col_info_t* parameter) {
   TRI_json_t* json;
   char* filename;
   char* error;
@@ -464,36 +495,27 @@ bool TRI_LoadParameterInfo (char const* path,
   // find parameter file
   filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
 
-  if (!filename) {
-    return false;
-  }
-
   if (! TRI_ExistsFile(filename)) {
-    TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_PARAMETER_FILE);
     TRI_FreeString(filename);
-    return false;
+    return TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_PARAMETER_FILE);
   }
 
   json = TRI_JsonFile(filename, &error);
 
   if (json == NULL) {
-    TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_PARAMETER_FILE);
     TRI_FreeString(error);
     TRI_FreeString(filename);
 
     LOG_ERROR("cannot open '%s', parameter block not readable: %s", filename, error);
 
-    return false;
+    return TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_PARAMETER_FILE);
   }
 
   TRI_FreeString(filename);
 
   if (json->_type != TRI_JSON_ARRAY) {
-    TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_PARAMETER_FILE);
-
     LOG_ERROR("cannot open '%s', file does not contain a json array", filename);
-
-    return false;
+    return TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_PARAMETER_FILE);
   }
 
   // convert json
@@ -524,6 +546,9 @@ bool TRI_LoadParameterInfo (char const* path,
       if (TRI_EqualString(key->_value._string.data, "waitForSync")) {
         parameter->_waitForSync = value->_value._boolean;
       }
+      else if (TRI_EqualString(key->_value._string.data, "deleted")) {
+        parameter->_deleted = value->_value._boolean;
+      }
     }
     else if (key->_type == TRI_JSON_STRING && value->_type == TRI_JSON_STRING) {
       if (TRI_EqualString(key->_value._string.data, "name")) {
@@ -533,60 +558,31 @@ bool TRI_LoadParameterInfo (char const* path,
   }
 
   TRI_FreeJson(json);
-
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a parameter info block to file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_SaveParameterInfo (char const* path,
-                            TRI_col_info_t* info) {
+int TRI_SaveParameterInfo (char const* path,
+                           TRI_col_info_t* info) {
   TRI_json_t* json;
-  TRI_json_t* version;
-  TRI_json_t* type;
-  TRI_json_t* cid;
-  TRI_json_t* name;
-  TRI_json_t* maximalSize;
-  TRI_json_t* waitForSync;
   char* filename;
   bool ok;
   
   filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
 
-  if (!filename) {
-    return false;
-  }
-
   // create a json info object
   json = TRI_CreateArrayJson();
 
-  if (!json) {
-    TRI_FreeString(filename);
-    return false;
-  }
-   
-  version     = TRI_CreateNumberJson(info->_version);
-  type        = TRI_CreateNumberJson(info->_type);
-  cid         = TRI_CreateNumberJson(info->_cid);
-  name        = TRI_CreateStringCopyJson(info->_name);
-  maximalSize = TRI_CreateNumberJson(info->_maximalSize);
-  waitForSync = TRI_CreateBooleanJson(info->_waitForSync);
-
-  TRI_Insert2ArrayJson(json, "version", version);
-  TRI_Insert2ArrayJson(json, "type", type); 
-  TRI_Insert2ArrayJson(json, "cid", cid);
-  TRI_Insert2ArrayJson(json, "name", name);
-  TRI_Insert2ArrayJson(json, "maximalSize", maximalSize);
-  TRI_Insert2ArrayJson(json, "waitForSync", waitForSync);
-
-  TRI_Free(version);
-  TRI_Free(type);
-  TRI_Free(cid);
-  TRI_Free(name);
-  TRI_Free(maximalSize);
-  TRI_Free(waitForSync);
+  TRI_Insert3ArrayJson(json, "version",     TRI_CreateNumberJson(info->_version));
+  TRI_Insert3ArrayJson(json, "type",        TRI_CreateNumberJson(info->_type)); 
+  TRI_Insert3ArrayJson(json, "cid",         TRI_CreateNumberJson(info->_cid));
+  TRI_Insert3ArrayJson(json, "name",        TRI_CreateStringCopyJson(info->_name));
+  TRI_Insert3ArrayJson(json, "maximalSize", TRI_CreateNumberJson(info->_maximalSize));
+  TRI_Insert3ArrayJson(json, "waitForSync", TRI_CreateBooleanJson(info->_waitForSync));
+  TRI_Insert3ArrayJson(json, "deleted",     TRI_CreateBooleanJson(info->_deleted));
 
   // save json info to file
   ok = TRI_SaveJson(filename, json);
@@ -596,11 +592,11 @@ bool TRI_SaveParameterInfo (char const* path,
     LOG_ERROR("cannot save info block '%s': '%s'", filename, TRI_last_error());
 
     TRI_FreeString(filename);
-    return false;
+    return TRI_errno();
   }
 
   TRI_FreeString(filename);
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -616,9 +612,36 @@ bool TRI_UpdateParameterInfoCollection (TRI_collection_t* collection) {
   TRI_CopyString(parameter._name, collection->_name, sizeof(parameter._name));
   parameter._maximalSize = collection->_maximalSize;
   parameter._waitForSync = collection->_waitForSync;
+  parameter._deleted = collection->_deleted;
   parameter._size = sizeof(TRI_col_info_t);
 
-  return TRI_SaveParameterInfo(collection->_directory, &parameter);
+  return TRI_SaveParameterInfo(collection->_directory, &parameter) == TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief renames a collection
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_RenameCollection (TRI_collection_t* collection, char const* name) {
+  TRI_col_info_t parameter;
+  int res;
+
+  parameter._version = collection->_version;
+  parameter._type = collection->_type;
+  parameter._cid = collection->_cid;
+  TRI_CopyString(parameter._name, name, sizeof(parameter._name));
+  parameter._maximalSize = collection->_maximalSize;
+  parameter._waitForSync = collection->_waitForSync;
+  parameter._deleted = collection->_deleted;
+  parameter._size = sizeof(TRI_col_info_t);
+
+  res = TRI_SaveParameterInfo(collection->_directory, &parameter);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    TRI_CopyString(collection->_name, name, sizeof(collection->_name));
+  }
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -755,6 +778,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_collection_t* collection,
   TRI_col_info_t info;
   bool freeCol;
   bool ok;
+  int res;
 
   freeCol = false;
 
@@ -767,20 +791,16 @@ TRI_collection_t* TRI_OpenCollection (TRI_collection_t* collection,
   }
 
   // read parameter block
-  ok = TRI_LoadParameterInfo(path, &info);
+  res = TRI_LoadParameterInfo(path, &info);
 
-  if (! ok) {
+  if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("cannot save collection parameter '%s': '%s'", path, TRI_last_error());
-
     return NULL;
   }
 
   // create collection
   if (collection == NULL) {
     collection = TRI_Allocate(sizeof(TRI_collection_t));
-    if (!collection) {
-      // TODO: FIXME
-    }
     freeCol = true;
   }
 
