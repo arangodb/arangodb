@@ -2300,6 +2300,7 @@ static bool FillIndex (TRI_sim_collection_t* collection,
   size_t scanned;
   void** end;
   void** ptr;
+  int res;
 
   // update index
   n = collection->_primaryIndex._nrUsed;
@@ -2315,7 +2316,9 @@ static bool FillIndex (TRI_sim_collection_t* collection,
       ++scanned;
 
       if (mptr->_deletion == 0) {
-        if (! idx->insert(idx, *ptr)) {
+        res = idx->insert(idx, *ptr);
+
+        if (res != TRI_ERROR_NO_ERROR) {
           LOG_WARNING("failed to insert document '%lu:%lu'",
                       (unsigned long) collection->base.base._cid,
                       (unsigned long) mptr->_did);
@@ -2652,6 +2655,7 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
   TRI_shape_pid_t loc;
   TRI_shape_pid_t lon;
   TRI_shaper_t* shaper;
+  bool ok;
 
   lat = 0;
   lon = 0;
@@ -2715,8 +2719,13 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
   }
 
   // initialises the index with all existing documents
-  FillIndex(collection, idx);
+  ok = FillIndex(collection, idx);
 
+  if (! ok) {
+    TRI_FreeGeoIndex(idx);
+    return NULL;
+  }
+  
   // and store index
   TRI_PushBackVectorPointer(&collection->_indexes, idx);
 
@@ -2828,6 +2837,7 @@ static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* coll
   TRI_shaper_t* shaper = collection->base._shaper;
   TRI_vector_t paths;
   TRI_vector_pointer_t fields;
+  bool ok;
   size_t j;
   
   TRI_InitVector(&paths, sizeof(TRI_shape_pid_t));
@@ -2880,7 +2890,12 @@ static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* coll
   // initialises the index with all existing documents
   // ...........................................................................
 
-  FillIndex(collection, idx);
+  ok = FillIndex(collection, idx);
+  
+  if (! ok) {
+    TRI_FreeSkiplistIndex(idx);
+    return NULL;
+  }
   
   // ...........................................................................
   // store index
