@@ -25,10 +25,11 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <BasicsC/logging.h>
-#include <BasicsC/string-buffer.h>
+#include "query-join-execute.h"
 
-#include "VocBase/query-join-execute.h"
+#include "BasicsC/logging.h"
+#include "BasicsC/string-buffer.h"
+#include "BasicsC/strings.h"
 #include "VocBase/query-join.h"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -40,25 +41,25 @@
 /// @brief log information about the used index
 ////////////////////////////////////////////////////////////////////////////////
 
-static void LogIndexString(const TRI_index_definition_t* const indexDefinition,
-                           const char* const collectionName) {
-
+static void LogIndexString(TRI_index_t const* idx,
+                           char const* collectionName) {
   TRI_string_buffer_t* buffer = TRI_CreateStringBuffer();
   size_t i;
 
-  if (!buffer) {
+  if (buffer == NULL) {
     return;
   }
   
-  for (i = 0; i < indexDefinition->_fields->_length; i++) {
+  for (i = 0; i < idx->_fields._length; i++) {
     if (i > 0) {
       TRI_AppendStringStringBuffer(buffer, ", "); 
     }
-    TRI_AppendStringStringBuffer(buffer, indexDefinition->_fields->_buffer[i]);
+
+    TRI_AppendStringStringBuffer(buffer, idx->_fields._buffer[i]);
   }
 
   LOG_DEBUG("using %s index (%s) for '%s'", 
-            TRI_GetTypeNameIndex(indexDefinition), 
+            TRI_TypeNameIndex(idx), 
             buffer->_buffer, 
             collectionName);
 
@@ -74,6 +75,9 @@ static TRI_data_feeder_t* DetermineGeoIndexUsageX (const TRI_vocbase_t* vocbase,
                                                   const TRI_select_join_t* join,
                                                   const size_t level,
                                                   const TRI_join_part_t* part) {
+  assert(false);
+
+#if 0
   TRI_vector_pointer_t* indexDefinitions;
   TRI_index_definition_t* indexDefinition;
   TRI_data_feeder_t* feeder = NULL;
@@ -125,6 +129,7 @@ static TRI_data_feeder_t* DetermineGeoIndexUsageX (const TRI_vocbase_t* vocbase,
   TRI_FreeIndexDefinitions(indexDefinitions);
 
   return feeder;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,6 +140,9 @@ static TRI_data_feeder_t* DetermineIndexUsageX (const TRI_vocbase_t* vocbase,
                                                const TRI_select_join_t* join,
                                                const size_t level,
                                                const TRI_join_part_t* part) {
+  assert(false);
+
+#if 0
   TRI_vector_pointer_t* indexDefinitions;
   TRI_index_definition_t* indexDefinition;
   TRI_data_feeder_t* feeder = NULL;
@@ -310,50 +318,51 @@ EXIT2:
   }
 
   return feeder;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Determine which geo indexes to use in a query
+/// @brief determines which geo indexes to use in a query
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_data_feeder_t* DetermineGeoIndexUsage (TRI_query_instance_t* const instance,
                                                   const size_t level,
                                                   const TRI_join_part_t* part) {
-  TRI_vector_pointer_t* indexDefinitions;
+  TRI_vector_pointer_t* indexes;
   TRI_data_feeder_t* feeder = NULL;
   size_t i;
  
   assert(part->_geoRestriction);
 
-  indexDefinitions = TRI_GetCollectionIndexes(instance->_template->_vocbase, 
-                                              part->_collectionName);
-  if (!indexDefinitions) {
-    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
+  if (part->_collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    TRI_RegisterErrorQueryInstance(instance, 
+                                   TRI_ERROR_AVOCADO_UNKNOWN_COLLECTION_TYPE,
+                                   part->_alias);
     return NULL;
   }
-    
+
+  indexes = & ((TRI_sim_collection_t*) part->_collection)->_indexes;
+
   // enum all indexes
-  for (i = 0; i < indexDefinitions->_length; i++) {
-    TRI_index_definition_t* indexDefinition;
+  for (i = 0; i < indexes->_length; i++) {
+    TRI_index_t* idx;
 
-    indexDefinition = (TRI_index_definition_t*) indexDefinitions->_buffer[i];
+    idx = (TRI_index_t*) indexes->_buffer[i];
 
-    if (indexDefinition->_type != TRI_IDX_TYPE_GEO_INDEX) {
+    if (idx->_type != TRI_IDX_TYPE_GEO_INDEX) {
       // ignore all indexes except geo indexes here
       continue;
     }
 
-    if (indexDefinition->_fields->_length != 2) {
+    if (idx->_fields._length != 2) {
       continue;
     }
 
-    if (strcmp(indexDefinition->_fields->_buffer[0],
-               part->_geoRestriction->_compareLat._field) != 0) {
+    if (! TRI_EqualString(idx->_fields._buffer[0], part->_geoRestriction->_compareLat._field)) {
       continue;
     }
     
-    if (strcmp(indexDefinition->_fields->_buffer[1],
-               part->_geoRestriction->_compareLon._field) != 0) {
+    if (! TRI_EqualString(idx->_fields._buffer[1], part->_geoRestriction->_compareLon._field)) {
       continue;
     }
 
@@ -361,16 +370,14 @@ static TRI_data_feeder_t* DetermineGeoIndexUsage (TRI_query_instance_t* const in
       TRI_CreateDataFeederGeoLookup(instance,
                                     (TRI_doc_collection_t*) part->_collection, 
                                     level,
-                                    indexDefinition->_iid,
+                                    idx->_iid,
                                     part->_geoRestriction);
 
-    LogIndexString(indexDefinition, part->_alias);
+    LogIndexString(idx, part->_alias);
     break;
   }
 
-  TRI_FreeIndexDefinitions(indexDefinitions);
-
-  if (!feeder) {
+  if (feeder == NULL) {
     TRI_RegisterErrorQueryInstance(instance, 
                                    TRI_ERROR_QUERY_GEO_INDEX_MISSING, 
                                    part->_alias);
@@ -386,7 +393,7 @@ static TRI_data_feeder_t* DetermineGeoIndexUsage (TRI_query_instance_t* const in
 static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const instance,
                                                const size_t level,
                                                const TRI_join_part_t* part) {
-  TRI_vector_pointer_t* indexDefinitions;
+  TRI_vector_pointer_t* indexes;
   TRI_data_feeder_t* feeder = NULL;
   size_t i;
 
@@ -400,21 +407,24 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
     size_t numConsts;
 
     TRI_InitVectorPointer(&matches);
-    indexDefinitions = TRI_GetCollectionIndexes(instance->_template->_vocbase, 
-                                                part->_collectionName);
 
-    if (!indexDefinitions) {
-      TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
-      goto EXIT2;
+    if (part->_collection->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+      TRI_RegisterErrorQueryInstance(instance, 
+                                     TRI_ERROR_AVOCADO_UNKNOWN_COLLECTION_TYPE,
+                                     part->_alias);
+      return NULL;
     }
-    
+
+    indexes = & ((TRI_sim_collection_t*) part->_collection)->_indexes;
+
     // enum all indexes
-    for (i = 0; i < indexDefinitions->_length; i++) {
-      TRI_index_definition_t* indexDefinition;
+    for (i = 0;  i < indexes->_length;  i++) {
+      TRI_index_t* idx;
       size_t j;
 
-      indexDefinition = (TRI_index_definition_t*) indexDefinitions->_buffer[i];
-      if (indexDefinition->_type == TRI_IDX_TYPE_GEO_INDEX) {
+      idx = (TRI_index_t*) indexes->_buffer[i];
+
+      if (idx->_type == TRI_IDX_TYPE_GEO_INDEX) {
         // ignore all geo indexes here
         continue;
       }
@@ -424,11 +434,13 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
         TRI_DestroyVectorPointer(&matches);
         TRI_InitVectorPointer(&matches);
       }
+
       numFields = 0;
       numConsts = 0;
 
-      numFieldsDefined = indexDefinition->_fields->_length;
-      for (j = 0 ; j < numFieldsDefined; j++) {
+      numFieldsDefined = idx->_fields._length;
+
+      for (j = 0;  j < numFieldsDefined;  j++) {
         size_t k;
 
         // enumerate all fields from the index definition and 
@@ -437,6 +449,7 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
           QL_optimize_range_t* range;
 
           range = (QL_optimize_range_t*) part->_ranges->_buffer[k];
+
           if (!range) {
             continue;
           }
@@ -446,18 +459,17 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
           assert(part->_alias);
 
           // check if collection name matches
-          if (strcmp(range->_collection, part->_alias) != 0) {
+          if (! TRI_EqualString(range->_collection, part->_alias)) {
             continue;
           }
 
           // check if field names match
-          if (strcmp(indexDefinition->_fields->_buffer[j], 
-                     range->_field) != 0) {
+          if (! TRI_EqualString(idx->_fields._buffer[j], range->_field)) {
             continue;
           }
 
-          if (indexDefinition->_type == TRI_IDX_TYPE_PRIMARY_INDEX ||
-              indexDefinition->_type == TRI_IDX_TYPE_HASH_INDEX) {
+          if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX ||
+              idx->_type == TRI_IDX_TYPE_HASH_INDEX) {
             // check if index can be used
             // (primary and hash index only support equality comparisons)
             if (range->_minStatus == RANGE_VALUE_INFINITE || 
@@ -504,7 +516,7 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
         // we have found as many matches as defined in the index definition
         // that means the index is fully covered in the condition
 
-        if (indexDefinition->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
+        if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
           // use the collection's primary index
           if (feeder) {
             // free any other feeder previously set up
@@ -519,7 +531,7 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
           if (feeder) {
             // we always exit if we can use the primary index
             // the primary index guarantees uniqueness
-            LogIndexString(indexDefinition, part->_alias);
+            LogIndexString(idx, part->_alias);
             goto EXIT;
           }
         } 
@@ -528,33 +540,33 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
           // if the index found contains more fields than the one we previously found, 
           // we use the new one 
           // (assumption: the more fields index, the less selective is the index)
-          if (indexDefinition->_type == TRI_IDX_TYPE_HASH_INDEX ||
-              indexDefinition->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+          if (idx->_type == TRI_IDX_TYPE_HASH_INDEX ||
+              idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
             // use a hash index defined for the collection
             if (feeder) {
               // free any other feeder previously set up
               feeder->free(feeder);
             }
 
-            if (indexDefinition->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+            if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
               feeder = 
                 TRI_CreateDataFeederSkiplistLookup(instance, 
                                                    (TRI_doc_collection_t*) part->_collection, 
                                                    level,
-                                                   indexDefinition->_iid,
+                                                   idx->_iid,
                                                    TRI_CopyVectorPointer(&matches));
             
-              LogIndexString(indexDefinition, part->_alias);
+              LogIndexString(idx, part->_alias);
             }
             else {
               feeder = 
                 TRI_CreateDataFeederHashLookup(instance, 
                                                (TRI_doc_collection_t*) part->_collection, 
                                                level,
-                                               indexDefinition->_iid,
+                                               idx->_iid,
                                                TRI_CopyVectorPointer(&matches));
               
-              LogIndexString(indexDefinition, part->_alias);
+              LogIndexString(idx, part->_alias);
             }
 
             if (!feeder) {
@@ -571,11 +583,8 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
     }
 
 EXIT:
-    TRI_FreeIndexDefinitions(indexDefinitions);
     TRI_DestroyVectorPointer(&matches);
   }
-
-EXIT2:
 
   if (!feeder) {
     // if no index can be used, we'll do a full table scan

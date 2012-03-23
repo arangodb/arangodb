@@ -86,9 +86,14 @@
 /////////////////////////////////////////////////////////////////
 ///
 /// All documents in AvocadoDB have a document handle. This handle uniquely
-/// defines a document and is managed by AvocadoDB. Assume that the document
-/// handle, which is stored in the @LIT{_id} field of the document, is
-/// @LIT{7254820/362549736}, then the HTTP URI of that document is:
+/// defines a document and is managed by AvocadoDB. All documents are
+/// found under the URI
+///
+/// @LIT{document/@FA{document-handle}}
+///
+/// For exmaple: Assume that the document handle, which is stored in
+/// the @LIT{_id} field of the document, is @LIT{7254820/362549736},
+/// then the URL of that document is:
 ///
 /// @LIT{http://localhost:8529/document/7254820/362549736}
 ///

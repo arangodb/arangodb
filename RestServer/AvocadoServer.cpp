@@ -316,7 +316,7 @@ void AvocadoServer::buildApplicationServer () {
   map<string, ProgramOptionsDescription> additional;
 
   additional[ApplicationServer::OPTIONS_CMDLINE]
-    ("shell", "do not start as server, start in shell mode instead")
+    ("console", "do not start as server, start an emergency console instead")
   ;
 
   additional[ApplicationServer::OPTIONS_CMDLINE + ":help-extended"]
@@ -459,7 +459,7 @@ void AvocadoServer::buildApplicationServer () {
   // in shell mode ignore the rest
   // .............................................................................
 
-  if (_applicationServer->programOptions().has("shell")) {
+  if (_applicationServer->programOptions().has("console")) {
     executeShell();
     exit(EXIT_SUCCESS);
   }

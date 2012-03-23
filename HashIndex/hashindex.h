@@ -35,6 +35,9 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef TRI_HASH_INDEX_H
+#define TRI_HASH_INDEX_H 1
+
 #include <BasicsC/common.h>
 #include <BasicsC/associative.h>
 #include <BasicsC/associative-multi.h>
@@ -82,9 +85,9 @@ HashIndexElements* HashIndex_find (HashIndex*, HashIndexElement*);
 
 int HashIndex_insert (HashIndex*, HashIndexElement*);
 
-bool HashIndex_remove (HashIndex*, HashIndexElement*); 
+int HashIndex_remove (HashIndex*, HashIndexElement*); 
 
-bool HashIndex_update (HashIndex*, const HashIndexElement*, const HashIndexElement*);
+int HashIndex_update (HashIndex*, const HashIndexElement*, const HashIndexElement*);
 
 
 //------------------------------------------------------------------------------
@@ -102,6 +105,8 @@ HashIndexElements* MultiHashIndex_find (HashIndex*, HashIndexElement*);
 
 int MultiHashIndex_insert (HashIndex*, HashIndexElement*);
 
-bool MultiHashIndex_remove (HashIndex*, HashIndexElement*); 
+int MultiHashIndex_remove (HashIndex*, HashIndexElement*); 
 
-bool MultiHashIndex_update (HashIndex*, HashIndexElement*, HashIndexElement*);
+int MultiHashIndex_update (HashIndex*, HashIndexElement*, HashIndexElement*);
+
+#endif
