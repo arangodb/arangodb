@@ -221,6 +221,7 @@ JAVASCRIPT_HEADER = \
 	js/common/bootstrap/js-print.h \
 	js/common/bootstrap/js-errors.h \
 	js/client/js-client.h \
+	js/server/js-aql-operators.h \
 	js/server/js-server.h
 
 BUILT_SOURCES += $(JAVASCRIPT_HEADER)

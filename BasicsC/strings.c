@@ -404,6 +404,19 @@ void TRI_AppendString (char** dst, char const* src) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief appends text to a string with given length
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_AppendString2 (char** dst, char const* src, size_t len) {
+  char* ptr;
+
+  ptr = TRI_Concatenate2String2(*dst, strlen(*dst), src, len);
+  TRI_FreeString(*dst);
+
+  *dst = ptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief copies a string
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -425,6 +438,26 @@ char* TRI_Concatenate2String (char const* a, char const* b) {
   nb = strlen(b);
 
   result = TRI_Allocate(na + nb + 1);
+
+  if (result) {
+    memcpy(result, a, na);
+    memcpy(result + na, b, nb);
+
+    result[na + nb] = '\0';
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief concatenate two strings with given length
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_Concatenate2String2 (char const* a, size_t na, char const* b, size_t nb) {
+  char* result;
+
+  result = TRI_Allocate(na + nb + 1);
+
   if (result) {
     memcpy(result, a, na);
     memcpy(result + na, b, nb);
@@ -450,6 +483,7 @@ char* TRI_Concatenate3String (char const* a, char const* b, char const* c) {
   nc = strlen(c);
 
   result = TRI_Allocate(na + nb + nc + 1);
+
   if (result) {
     memcpy(result, a, na);
     memcpy(result + na, b, nb);
@@ -478,6 +512,7 @@ char* TRI_Concatenate4String (char const* a, char const* b, char const* c, char 
   nd = strlen(d);
 
   result = TRI_Allocate(na + nb + nc + nd + 1);
+
   if (result) {
     memcpy(result, a, na);
     memcpy(result + na, b, nb);
@@ -509,6 +544,7 @@ char* TRI_Concatenate5String (char const* a, char const* b, char const* c, char 
   ne = strlen(e);
 
   result = TRI_Allocate(na + nb + nc + nd + ne + 1);
+
   if (result) {
     memcpy(result, a, na);
     memcpy(result + na, b, nb);
@@ -543,6 +579,7 @@ char* TRI_Concatenate6String (char const* a, char const* b, char const* c, char 
   nf = strlen(f);
 
   result = TRI_Allocate(na + nb + nc + nd + ne + nf + 1);
+
   if (result) {
     memcpy(result, a, na);
     memcpy(result + na, b, nb);
@@ -576,6 +613,7 @@ TRI_vector_string_t TRI_SplitString (char const* source, char delim) {
 
   size = strlen(source);
   buffer = TRI_Allocate(size + 1);
+
   if (buffer) {
     p = buffer;
 
@@ -631,6 +669,7 @@ TRI_vector_string_t TRI_Split2String (char const* source, char const* delim) {
   delimiterSize = strlen(delim);
   size = strlen(source);
   buffer = TRI_Allocate(size + 1);
+
   if (buffer) {
     p = buffer;
 
