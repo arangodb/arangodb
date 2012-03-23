@@ -25,23 +25,24 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "vocbase.h"
+
+#include <regex.h>
 #include <sys/mman.h>
 
-#include <BasicsC/files.h>
-#include <BasicsC/hashes.h>
-#include <BasicsC/locks.h>
-#include <BasicsC/logging.h>
-#include <BasicsC/random.h>
-#include <BasicsC/strings.h>
-#include <BasicsC/threads.h>
-
-#include "VocBase/vocbase.h"
+#include "BasicsC/files.h"
+#include "BasicsC/hashes.h"
+#include "BasicsC/locks.h"
+#include "BasicsC/logging.h"
+#include "BasicsC/random.h"
+#include "BasicsC/strings.h"
+#include "BasicsC/threads.h"
 #include "VocBase/compactor.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/query-cursor.h"
+#include "VocBase/shadow-data.h"
 #include "VocBase/simple-collection.h"
 #include "VocBase/synchroniser.h"
-#include "VocBase/shadow-data.h"
-#include "VocBase/query-cursor.h"
 #include "VocBase/query-functions.h"
 
 // -----------------------------------------------------------------------------
@@ -230,11 +231,16 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
 static bool ScanPath (TRI_vocbase_t* vocbase, char const* path) {
   TRI_vector_string_t files;
   TRI_col_type_e type;
+  regmatch_t matches[2];
+  regex_t re;
+  int res;
   size_t n;
   size_t i;
 
   files = TRI_FilesDirectory(path);
   n = files._length;
+
+  regcomp(&re, "^collection-([0-9][0-9]*)$", REG_ICASE | REG_EXTENDED);
 
   for (i = 0;  i < n;  ++i) {
     char* name;
@@ -242,24 +248,19 @@ static bool ScanPath (TRI_vocbase_t* vocbase, char const* path) {
 
     name = files._buffer[i];
 
-    if (name[0] == '\0' || name[0] == '_' || name[0] == '.') {
+    if (regexec(&re, name, sizeof(matches) / sizeof(matches[0]), matches, 0) != 0) {
+      LOG_DEBUG("ignoring file/directory '%s''", name);
       continue;
     }
 
     file = TRI_Concatenate2File(path, name);
 
-    if (file == NULL) {
-      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-      return false;
-    }
-
     if (TRI_IsDirectory(file)) {
       TRI_col_info_t info;
-      bool ok;
 
-      ok = TRI_LoadParameterInfo(file, &info);
+      res = TRI_LoadParameterInfo(file, &info);
 
-      if (! ok) {
+      if (res != TRI_ERROR_NO_ERROR) {
         LOG_DEBUG("ignoring directory '%s' without valid parameter file '%s'", file, TRI_COL_PARAMETER_FILE);
       }
       else {
@@ -444,13 +445,6 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
 
   // check if the database is locked
   lockFile = TRI_Concatenate2File(path, "lock");
-
-  if (lockFile == NULL) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    LOG_ERROR("out of memory when opening database");
-    return NULL;
-  }
-
   lockCheck = TRI_VerifyLockFile(lockFile);
 
   if (lockCheck) {
@@ -477,16 +471,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   // setup vocbase structure
   vocbase = TRI_Allocate(sizeof(TRI_vocbase_t));
 
-  if (vocbase == NULL) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    LOG_ERROR("out of memory when opening database");
-    return NULL;
-  }
-  
   vocbase->_cursors = TRI_CreateShadowsQueryCursor();
-
-  if (vocbase->_cursors == NULL) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     TRI_Free(vocbase);
     LOG_ERROR("out of memory when opening database");
     return NULL;
@@ -495,23 +480,8 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   vocbase->_functions = TRI_InitialiseQueryFunctions();
   if (vocbase->_functions == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    TRI_FreeShadowStore(vocbase->_cursors);
-    TRI_Free(vocbase);
-    LOG_ERROR("out of memory when opening database");
-    return NULL;
-  }
-  
   vocbase->_lockFile = lockFile;
   vocbase->_path = TRI_DuplicateString(path);
-
-  if (vocbase->_path == NULL) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    TRI_FreeShadowStore(vocbase->_cursors);
-    TRI_Free(vocbase);
-    LOG_ERROR("out of memory when opening database");
-    return NULL;
-  }
 
   TRI_InitReadWriteLock(&vocbase->_lock);
 
@@ -628,7 +598,7 @@ TRI_vocbase_col_t const* TRI_FindCollectionByNameVocBase (TRI_vocbase_t* vocbase
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns all known collections
+/// @brief returns all known (document) collections
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t* vocbase) {
@@ -797,7 +767,7 @@ TRI_vocbase_col_t const* TRI_LoadCollectionVocBase (TRI_vocbase_t* vocbase, char
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reserves a new collection or returns an existing
+/// @brief reserves a new (document) collection or returns an existing one
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t const* TRI_BearCollectionVocBase (TRI_vocbase_t* vocbase, char const* name) {
@@ -839,7 +809,7 @@ TRI_vocbase_col_t const* TRI_BearCollectionVocBase (TRI_vocbase_t* vocbase, char
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief manifests a new born collection
+/// @brief manifests a new born (document) collection
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t const* vc) {
@@ -856,19 +826,26 @@ bool TRI_ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t co
   if (! vc->_newBorn) {
     if (vc->_corrupted) {
       TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE);
+
+      TRI_WriteUnlockReadWriteLock(&vocbase->_lock);
       return false;
     }
 
     if (! vc->_loaded) {
       TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE);
+
+      TRI_WriteUnlockReadWriteLock(&vocbase->_lock);
       return false;
     }
 
     if (vc->_collection == NULL) {
       TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE);
+
+      TRI_WriteUnlockReadWriteLock(&vocbase->_lock);
       return false;
     }
 
+    TRI_WriteUnlockReadWriteLock(&vocbase->_lock);
     return true;
   }
 
@@ -896,9 +873,10 @@ bool TRI_ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t co
 
     cnv.v->_newBorn = 0;
     cnv.v->_corrupted = 1;
-    TRI_WriteUnlockReadWriteLock(&vocbase->_lock);
 
     LOG_ERROR("unknown collection type: %d", vc->_type);
+
+    TRI_WriteUnlockReadWriteLock(&vocbase->_lock);
     return false;
   }
 
@@ -907,8 +885,8 @@ bool TRI_ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t co
 
     cnv.v->_newBorn = 0;
     cnv.v->_corrupted = 1;
-    TRI_WriteUnlockReadWriteLock(&vocbase->_lock);
 
+    TRI_WriteUnlockReadWriteLock(&vocbase->_lock);
     return false;
   }
 
@@ -928,6 +906,103 @@ bool TRI_ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t co
   // release locks
   TRI_WriteUnlockReadWriteLock(&vocbase->_lock);
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief renames a (document) collection
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col, char const* newName) {
+  TRI_col_info_t info;
+  union { TRI_vocbase_col_t* v; TRI_vocbase_col_t const* c; } cnv;
+  void* found;
+  char wrong;
+  char const* oldName;
+  int res;
+
+  // old name should be different
+  oldName = col->_name;
+
+  if (TRI_EqualString(oldName, newName)) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  // check name conventions
+  wrong = TRI_IsAllowedCollectionName(newName);
+
+  if (wrong != 0) {
+    LOG_ERROR("found illegal character in name: %c", wrong);
+    return TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_NAME);
+  }
+
+  // cannot rename a corrupted collection
+  TRI_WriteLockReadWriteLock(&vocbase->_lock);
+
+  if (col->_corrupted) {
+    TRI_WriteUnlockReadWriteLock(&vocbase->_lock);
+    return TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_COLLECTION);
+  }
+
+  // check if the new name is unused
+  cnv.c = col;
+  found = TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName, newName, cnv.v, false);
+
+  if (found != NULL) {
+    TRI_WriteUnlockReadWriteLock(&vocbase->_lock);
+    return TRI_set_errno(TRI_ERROR_AVOCADO_DUPLICATE_NAME);
+  }
+
+  // new born collection, no datafile/parameter file exists
+  if (col->_newBorn) {
+    TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, oldName);
+    TRI_CopyString(col->_name, newName, sizeof(col->_name));
+  }
+
+  // collection is unloaded
+  else if (! col->_loaded) {
+    res = TRI_LoadParameterInfo(col->_path, &info);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, newName);
+      TRI_WriteUnlockReadWriteLock(&vocbase->_lock);
+      return res;
+    }
+
+    TRI_CopyString(info._name, newName, sizeof(info._name));
+
+    res = TRI_SaveParameterInfo(col->_path, &info);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, newName);
+      TRI_WriteUnlockReadWriteLock(&vocbase->_lock);
+      return res;
+    }
+
+    TRI_CopyString(col->_name, newName, sizeof(col->_name));
+  }
+
+  // collection is loaded
+  else if (col->_collection != NULL) {
+    res = TRI_RenameCollection(&col->_collection->base, newName);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, newName);
+      TRI_WriteUnlockReadWriteLock(&vocbase->_lock);
+      return res;
+    }
+
+    TRI_CopyString(col->_name, newName, sizeof(col->_name));
+  }
+
+  // upps,
+  else {
+    TRI_WriteUnlockReadWriteLock(&vocbase->_lock);
+    return TRI_set_errno(TRI_ERROR_INTERNAL);
+  }
+  
+  // release locks
+  TRI_WriteUnlockReadWriteLock(&vocbase->_lock);
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
