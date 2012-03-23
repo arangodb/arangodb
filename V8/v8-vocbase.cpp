@@ -221,7 +221,7 @@ static T* UnwrapClass (v8::Handle<v8::Object> obj, int32_t type) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Get the vocbase pointer from the current V8 context
+/// @brief get the vocbase pointer from the current V8 context
 ////////////////////////////////////////////////////////////////////////////////
   
 static TRI_vocbase_t* GetContextVocBase () {
@@ -4039,6 +4039,22 @@ static v8::Handle<v8::Value> JS_LoadVocbaseCol (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the name of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_NameVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_col_t const* collection = UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
+  }
+
+  return scope.Close(v8::String::New(collection->_name));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief gets or sets the parameters of a collection
 ///
 /// @FUN{parameter()}
@@ -4131,6 +4147,49 @@ static v8::Handle<v8::Value> JS_ParameterVocbaseCol (v8::Arguments const& argv) 
   }
 
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief renames a collection
+///
+/// @FUN{rename(@FA{name})}
+///
+/// Renames a collection using the new name @FA{name}. The @FA{name} must not
+/// already be used for a different collection.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
+  TRI_v8_global_t* v8g;
+  v8::HandleScope scope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: rename(<name>)")));
+  }
+
+  string name = TRI_ObjectToString(argv[0]);
+
+  if (name.empty()) {
+    return scope.Close(v8::ThrowException(v8::String::New("<name> must be non-empty")));
+  }
+
+  TRI_vocbase_col_t* collection = UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
+  }
+
+  int res = TRI_RenameCollectionVocBase(collection->_vocbase, collection, name.c_str());
+
+  if (res != TRI_ERROR_NO_ERROR) {
+      string err = "cannot rename collection: ";
+      err += TRI_last_error();
+
+      return scope.Close(v8::ThrowException(v8::String::New(err.c_str())));
+  }
+
+  return scope.Close(v8::Undefined());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5025,10 +5084,6 @@ v8::Handle<v8::Object> TRI_WrapCollection (TRI_vocbase_col_t const* collection) 
                                             WRP_VOCBASE_COL_TYPE,
                                             const_cast<TRI_vocbase_col_t*>(collection));
 
-  result->Set(v8::String::New("_name"),
-              v8::String::New(collection->_name),
-              v8::ReadOnly);
-
   result->Set(v8::String::New("_id"),
               v8::Number::New(collection->_cid),
               v8::ReadOnly);
@@ -5048,10 +5103,6 @@ v8::Handle<v8::Object> TRI_WrapEdgesCollection (TRI_vocbase_col_t const* collect
   v8::Handle<v8::Object> result = WrapClass(v8g->EdgesColTempl, 
                                             WRP_VOCBASE_COL_TYPE,
                                             const_cast<TRI_vocbase_col_t*>(collection));
-
-  result->Set(v8::String::New("_name"),
-              v8::String::New(collection->_name),
-              v8::ReadOnly);
 
   result->Set(v8::String::New("_id"),
               v8::Number::New(collection->_cid),
@@ -5180,10 +5231,12 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> IdFuncName = v8::Persistent<v8::String>::New(v8::String::New("id"));
   v8::Handle<v8::String> InEdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("inEdges"));
   v8::Handle<v8::String> LoadFuncName = v8::Persistent<v8::String>::New(v8::String::New("load"));
+  v8::Handle<v8::String> NameFuncName = v8::Persistent<v8::String>::New(v8::String::New("name"));
   v8::Handle<v8::String> NextFuncName = v8::Persistent<v8::String>::New(v8::String::New("next"));
   v8::Handle<v8::String> NextRefFuncName = v8::Persistent<v8::String>::New(v8::String::New("nextRef"));
   v8::Handle<v8::String> OutEdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("outEdges"));
   v8::Handle<v8::String> ParameterFuncName = v8::Persistent<v8::String>::New(v8::String::New("parameter"));
+  v8::Handle<v8::String> RenameFuncName = v8::Persistent<v8::String>::New(v8::String::New("rename"));
   v8::Handle<v8::String> PersistFuncName = v8::Persistent<v8::String>::New(v8::String::New("persist"));
   v8::Handle<v8::String> ReplaceFuncName = v8::Persistent<v8::String>::New(v8::String::New("replace"));
   v8::Handle<v8::String> SaveFuncName = v8::Persistent<v8::String>::New(v8::String::New("save"));
@@ -5312,8 +5365,10 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
   rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));
+  rt->Set(NameFuncName, v8::FunctionTemplate::New(JS_NameVocbaseCol));
   rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
   rt->Set(ParameterFuncName, v8::FunctionTemplate::New(JS_ParameterVocbaseCol));
+  rt->Set(RenameFuncName, v8::FunctionTemplate::New(JS_RenameVocbaseCol));
   rt->Set(StatusFuncName, v8::FunctionTemplate::New(JS_StatusVocbaseCol));
   rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
   
@@ -5347,8 +5402,10 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
   rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));
+  rt->Set(NameFuncName, v8::FunctionTemplate::New(JS_NameVocbaseCol));
   rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
   rt->Set(ParameterFuncName, v8::FunctionTemplate::New(JS_ParameterVocbaseCol));
+  rt->Set(RenameFuncName, v8::FunctionTemplate::New(JS_RenameVocbaseCol));
   rt->Set(StatusFuncName, v8::FunctionTemplate::New(JS_StatusVocbaseCol));
   rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
 

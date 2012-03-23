@@ -444,16 +444,15 @@ void TRI_InsertArrayJson (TRI_json_t* object, char const* name, TRI_json_t* subo
 
   assert(object->_type == TRI_JSON_ARRAY);
 
+  if (subobject == NULL) {
+    return;
+  }
+
   length = strlen(name);
 
   copy._type = TRI_JSON_STRING;
   copy._value._string.length = length + 1;
   copy._value._string.data = TRI_DuplicateString2(name, length); // including '\0'
-
-  if (copy._value._string.data == NULL) {
-    // OOM
-    return;
-  }
 
   TRI_PushBackVector(&object->_value._objects, &copy);
 
@@ -470,7 +469,8 @@ void TRI_Insert2ArrayJson (TRI_json_t* object, char const* name, TRI_json_t* sub
   size_t length;
 
   assert(object->_type == TRI_JSON_ARRAY);
-  if (!subobject) {
+
+  if (subobject == NULL) {
     return;
   }
 
@@ -480,13 +480,34 @@ void TRI_Insert2ArrayJson (TRI_json_t* object, char const* name, TRI_json_t* sub
   copy._value._string.length = length + 1;
   copy._value._string.data = TRI_DuplicateString2(name, length); // including '\0'
 
-  if (copy._value._string.data == NULL) {
-    // OOM
+  TRI_PushBackVector(&object->_value._objects, &copy);
+  TRI_PushBackVector(&object->_value._objects, subobject);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a new attribute, not copying it but freeing the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_Insert3ArrayJson (TRI_json_t* object, char const* name, TRI_json_t* subobject) {
+  TRI_json_t copy;
+  size_t length;
+
+  assert(object->_type == TRI_JSON_ARRAY);
+
+  if (subobject == NULL) {
     return;
   }
 
+  length = strlen(name);
+
+  copy._type = TRI_JSON_STRING;
+  copy._value._string.length = length + 1;
+  copy._value._string.data = TRI_DuplicateString2(name, length); // including '\0'
+
   TRI_PushBackVector(&object->_value._objects, &copy);
   TRI_PushBackVector(&object->_value._objects, subobject);
+
+  TRI_Free(subobject);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
