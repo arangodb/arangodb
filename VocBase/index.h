@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2011-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_DURHAM_VOC_BASE_INDEX_H
@@ -90,19 +90,6 @@ typedef enum {
 TRI_index_geo_variant_e;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief index definition struct as used by the query optimizer
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_index_definition_s {
-  TRI_idx_iid_t _iid;
-  TRI_idx_type_e _type;
-  TRI_vector_string_t* _fields;
-  bool _isUnique;
-  TRI_index_geo_variant_e _geoVariant;
-}
-TRI_index_definition_t;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief index base class
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -111,9 +98,12 @@ typedef struct TRI_index_s {
   TRI_idx_type_e _type;
   struct TRI_doc_collection_s* _collection;
 
-  bool (*insert) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
-  bool (*remove) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
-  bool (*update) (struct TRI_index_s*, struct TRI_doc_mptr_s const*, struct TRI_shaped_json_s const*);
+  bool _unique;
+  TRI_vector_string_t _fields;
+
+  int (*insert) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
+  int (*remove) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
+  int (*update) (struct TRI_index_s*, struct TRI_doc_mptr_s const*, struct TRI_shaped_json_s const*);
   TRI_json_t* (*json) (struct TRI_index_s*, struct TRI_doc_collection_s*);
 }
 TRI_index_t;
@@ -124,6 +114,7 @@ TRI_index_t;
 
 typedef struct TRI_geo_index_s {
   TRI_index_t base;
+  TRI_index_geo_variant_e _variant;
 
   GeoIndex* _geoIndex;
 
@@ -135,7 +126,6 @@ typedef struct TRI_geo_index_s {
 }
 TRI_geo_index_t;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hash index
 ////////////////////////////////////////////////////////////////////////////////
@@ -143,11 +133,10 @@ TRI_geo_index_t;
 typedef struct TRI_hash_index_s {
   TRI_index_t base;
 
-  HashIndex* _hashIndex;    // effectively the associative array
-  TRI_vector_t* _shapeList; // a list of shape pid which identifies the fields of the index
-  bool _unique;
-} TRI_hash_index_t;
-
+  HashIndex* _hashIndex;  // effectively the associative array
+  TRI_vector_t _paths;    // a list of shape pid which identifies the fields of the index
+}
+TRI_hash_index_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief skiplist index
@@ -156,10 +145,10 @@ typedef struct TRI_hash_index_s {
 typedef struct TRI_skiplist_index_s {
   TRI_index_t base;
 
-  SkiplistIndex* _skiplistIndex;    // effectively the skiplist
-  TRI_vector_t* _shapeList; // a list of shape pid which identifies the fields of the index
-  bool _unique;
-} TRI_skiplist_index_t;
+  SkiplistIndex* _skiplistIndex;  // effectively the skiplist
+  TRI_vector_t _paths;            // a list of shape pid which identifies the fields of the index
+}
+TRI_skiplist_index_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -182,7 +171,7 @@ typedef struct TRI_skiplist_index_s {
 /// @brief removes an index file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RemoveIndex (struct TRI_doc_collection_s* collection, TRI_index_t* idx);
+bool TRI_RemoveIndexFile (struct TRI_doc_collection_s* collection, TRI_index_t* idx);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves an index
@@ -197,36 +186,10 @@ bool TRI_SaveIndex (struct TRI_doc_collection_s*, TRI_index_t*);
 TRI_index_t* TRI_LookupIndex (struct TRI_doc_collection_s*, TRI_idx_iid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free an existing index definition
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeIndexDefinition (TRI_index_definition_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free an existing index definitions vector
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeIndexDefinitions (TRI_vector_pointer_t*);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief gets name of index type
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetTypeNameIndex (const TRI_index_definition_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the definitions of all index files for a collection
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vector_pointer_t* TRI_GetCollectionIndexes (const TRI_vocbase_t* vocbase,
-                                                const char* collectionName);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the names of all index files for a collection
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vector_string_t TRI_GetCollectionIndexFiles (const TRI_vocbase_t* vocbase,
-                                                 const char* collectionName);
+char const* TRI_TypeNameIndex (const TRI_index_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -254,6 +217,7 @@ TRI_vector_string_t TRI_GetCollectionIndexFiles (const TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateGeoIndex (struct TRI_doc_collection_s*,
+                                 char const* locationName,
                                  TRI_shape_pid_t,
                                  bool geoJson);
 
@@ -262,7 +226,9 @@ TRI_index_t* TRI_CreateGeoIndex (struct TRI_doc_collection_s*,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateGeoIndex2 (struct TRI_doc_collection_s*,
+                                  char const* latitudeName,
                                   TRI_shape_pid_t,
+                                  char const* longitudeName,
                                   TRI_shape_pid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -333,7 +299,8 @@ GeoCoordinates* TRI_NearestGeoIndex (TRI_index_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateHashIndex (struct TRI_doc_collection_s*,
-                                  TRI_vector_t* shapeList,
+                                  TRI_vector_pointer_t* fields,
+                                  TRI_vector_t* paths,
                                   bool unique);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -392,7 +359,8 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t*, TRI_sl_operator_
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_doc_collection_s*,
-                                      TRI_vector_t* shapeList,
+                                      TRI_vector_pointer_t* fields,
+                                      TRI_vector_t* paths,
                                       bool unique);
 
                                   
