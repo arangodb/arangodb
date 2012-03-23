@@ -212,7 +212,6 @@ static string JS_server_server =
   "////////////////////////////////////////////////////////////////////////////////\n"
   "\n"
   "AvocadoCollection.prototype._PRINT = function() {\n"
-  "  var status = \"unknown\";\n"
   "\n"
   "  switch (this.status()) {\n"
   "    case AvocadoCollection.STATUS_NEW_BORN: status = \"new born\"; break;\n"
