@@ -212,6 +212,8 @@ int main (int argc, char* argv[]) {
   char const* files[] = {
     "js/bootstrap/modules.js",
     "js/bootstrap/print.js",
+    "js/bootstrap/errors.js",
+    "js/server/aql-operators.js",
     "js/modules/shell.js",
     "js/modules/json.js"
   };
