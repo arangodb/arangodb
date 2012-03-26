@@ -38,6 +38,129 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Return the 'undefined' string
+////////////////////////////////////////////////////////////////////////////////
+
+static inline const char* GetUndefinedString (void) {
+  return "undefined";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Return the 'null' string
+////////////////////////////////////////////////////////////////////////////////
+
+static inline const char* GetNullString (void) {
+  return "null";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Return the boolean value string for a node
+////////////////////////////////////////////////////////////////////////////////
+
+static inline const char* GetBoolString (const TRI_query_node_t* const node) {
+  return (node->_value._boolValue ? "true" : "false");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Return the name of a unary operator function for a name
+////////////////////////////////////////////////////////////////////////////////
+
+static const char* GetUnaryOperatorFuncString (const TRI_query_node_t* const node) {
+  switch (node->_type) {
+    case TRI_QueryNodeUnaryOperatorPlus:
+      return "AQL_UNARY_PLUS";
+    case TRI_QueryNodeUnaryOperatorMinus:
+      return "AQL_UNARY_MINUS";
+    case TRI_QueryNodeUnaryOperatorNot:
+      return "AQL_LOGICAL_NOT";
+    default:
+      assert(false);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Return the name of a binary operator function for a name
+////////////////////////////////////////////////////////////////////////////////
+
+static const char* GetBinaryOperatorFuncString (const TRI_query_node_t* const node) {
+  switch (node->_type) {
+    case TRI_QueryNodeBinaryOperatorAnd: 
+      return "AQL_LOGICAL_AND";
+    case TRI_QueryNodeBinaryOperatorOr: 
+      return "AQL_LOGICAL_OR";
+    case TRI_QueryNodeBinaryOperatorEqual: 
+      return "AQL_RELATIONAL_EQUAL";
+    case TRI_QueryNodeBinaryOperatorUnequal: 
+      return "AQL_RELATIONAL_UNEQUAL";
+    case TRI_QueryNodeBinaryOperatorLess: 
+      return "AQL_RELATIONAL_LESS";
+    case TRI_QueryNodeBinaryOperatorGreater: 
+      return "AQL_RELATIONAL_GREATER";
+    case TRI_QueryNodeBinaryOperatorLessEqual:
+      return "AQL_RELATIONAL_LESSEQUAL";
+    case TRI_QueryNodeBinaryOperatorGreaterEqual:
+      return "AQL_RELATIONAL_GREATEREQUAL";
+    case TRI_QueryNodeBinaryOperatorIn:
+      return "AQL_RELATIONAL_IN";
+    case TRI_QueryNodeBinaryOperatorAdd:
+      return "AQL_ARITHMETIC_PLUS";
+    case TRI_QueryNodeBinaryOperatorSubtract:
+      return "AQL_ARITHMETIC_MINUS";
+    case TRI_QueryNodeBinaryOperatorMultiply:
+      return "AQL_ARITHMETIC_TIMES";
+    case TRI_QueryNodeBinaryOperatorDivide:
+      return "AQL_ARITHMETIC_DIVIDE";
+    case TRI_QueryNodeBinaryOperatorModulus:
+      return "AQL_ARITHMETIC_MODULUS";
+    default: 
+      assert(false);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Append the function code for a unary operator function
+////////////////////////////////////////////////////////////////////////////////
+
+static void AppendUnaryFunc (TRI_query_javascript_converter_t* converter,
+                             const TRI_query_node_t* const node,
+                             const TRI_query_node_t* const lhs,
+                             TRI_associative_pointer_t* bindParameters) {
+  // append function name 
+  TRI_AppendStringStringBuffer(converter->_buffer, GetUnaryOperatorFuncString(node));
+  TRI_AppendCharStringBuffer(converter->_buffer, '(');
+  
+  // append sole operand
+  TRI_ConvertQueryJavascript(converter, lhs, bindParameters);
+
+  // finalize
+  TRI_AppendCharStringBuffer(converter->_buffer, ')');
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Append the function code for a binary operator function
+////////////////////////////////////////////////////////////////////////////////
+
+static void AppendBinaryFunc (TRI_query_javascript_converter_t* converter,
+                              const TRI_query_node_t* const node,
+                              const TRI_query_node_t* const lhs,
+                              const TRI_query_node_t* const rhs,
+                              TRI_associative_pointer_t* bindParameters) {
+  // append function name 
+  TRI_AppendStringStringBuffer(converter->_buffer, GetBinaryOperatorFuncString(node));
+  TRI_AppendCharStringBuffer(converter->_buffer, '(');
+
+  // append first operand
+  TRI_ConvertQueryJavascript(converter, lhs, bindParameters);
+  TRI_AppendCharStringBuffer(converter->_buffer, ',');
+
+  // append second operand
+  TRI_ConvertQueryJavascript(converter, rhs, bindParameters);
+
+  // finalize
+  TRI_AppendCharStringBuffer(converter->_buffer, ')');
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Walk a horizontal list of elements and print them
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -135,14 +258,13 @@ void TRI_ConvertQueryJavascript (TRI_query_javascript_converter_t* converter,
 
   switch (node->_type) {
     case TRI_QueryNodeValueUndefined:
-      TRI_AppendStringStringBuffer(converter->_buffer, "undefined");
+      TRI_AppendStringStringBuffer(converter->_buffer, GetUndefinedString());
       return;
     case TRI_QueryNodeValueNull:
-      TRI_AppendStringStringBuffer(converter->_buffer, "null");
+      TRI_AppendStringStringBuffer(converter->_buffer, GetNullString());
       return;
     case TRI_QueryNodeValueBool:
-      TRI_AppendStringStringBuffer(converter->_buffer, 
-                                   node->_value._boolValue ? "true" : "false");
+      TRI_AppendStringStringBuffer(converter->_buffer, GetBoolString(node));
       return;
     case TRI_QueryNodeValueString:
       TRI_AppendCharStringBuffer(converter->_buffer, '"');
@@ -213,11 +335,7 @@ void TRI_ConvertQueryJavascript (TRI_query_javascript_converter_t* converter,
     case TRI_QueryNodeUnaryOperatorPlus:
     case TRI_QueryNodeUnaryOperatorMinus:
     case TRI_QueryNodeUnaryOperatorNot:
-      TRI_AppendStringStringBuffer(
-        converter->_buffer, 
-        TRI_QueryNodeGetUnaryOperatorString(node->_type)
-      );
-      TRI_ConvertQueryJavascript(converter, lhs, bindParameters);
+      AppendUnaryFunc(converter, node, lhs, bindParameters);
       return;
     case TRI_QueryNodeBinaryOperatorAnd: 
     case TRI_QueryNodeBinaryOperatorOr: 
@@ -235,14 +353,7 @@ void TRI_ConvertQueryJavascript (TRI_query_javascript_converter_t* converter,
     case TRI_QueryNodeBinaryOperatorDivide:
     case TRI_QueryNodeBinaryOperatorModulus:
     case TRI_QueryNodeBinaryOperatorIn:
-      TRI_AppendCharStringBuffer(converter->_buffer, '(');
-      TRI_ConvertQueryJavascript(converter, lhs, bindParameters);
-      TRI_AppendStringStringBuffer(
-        converter->_buffer, 
-        TRI_QueryNodeGetBinaryOperatorString(node->_type)
-      );
-      TRI_ConvertQueryJavascript(converter, rhs, bindParameters);
-      TRI_AppendCharStringBuffer(converter->_buffer, ')');
+      AppendBinaryFunc(converter, node, lhs, rhs, bindParameters);
       return;
     case TRI_QueryNodeContainerMemberAccess:
       TRI_ConvertQueryJavascript(converter, lhs, bindParameters);
@@ -308,14 +419,14 @@ void TRI_ConvertOrderQueryJavascript (TRI_query_javascript_converter_t* converte
       // sort ascending
       TRI_AppendStringStringBuffer(
         converter->_buffer, 
-        ";if(lhs<rhs)return -1;if(lhs>rhs)return 1;"
+        ";if(AQL_RELATIONAL_LESS(lhs,rhs))return -1;if(AQL_RELATIONAL_GREATER(lhs,rhs))return 1;"
       );
     } 
     else {
       // sort descending
       TRI_AppendStringStringBuffer(
         converter->_buffer, 
-        ";if(lhs<rhs)return 1;if(lhs>rhs)return -1;"
+        ";if(AQL_RELATIONAL_LESS(lhs,rhs))return 1;if(AQL_RELATIONAL_GREATER(lhs,rhs))return -1;"
       );
     }
     

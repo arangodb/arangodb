@@ -29,11 +29,11 @@
 
 #include <regex.h>
 
-#include "BasicsC/conversions.h"
-#include "BasicsC/files.h"
-#include "BasicsC/json.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/strings.h"
+#include <BasicsC/conversions.h>
+#include <BasicsC/files.h>
+#include <BasicsC/json.h>
+#include <BasicsC/logging.h>
+#include <BasicsC/strings.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions

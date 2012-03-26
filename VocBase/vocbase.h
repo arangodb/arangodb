@@ -196,8 +196,8 @@ typedef struct TRI_vocbase_s {
   TRI_thread_t _synchroniser;
   TRI_thread_t _compactor;
 
-  struct TRI_shadow_document_store_s* _statements;
   struct TRI_shadow_store_s* _cursors;
+  TRI_associative_pointer_t* _functions;
 }
 TRI_vocbase_t;
 

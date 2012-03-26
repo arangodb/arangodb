@@ -42,6 +42,7 @@
 #include "VocBase/synchroniser.h"
 #include "VocBase/shadow-data.h"
 #include "VocBase/query-cursor.h"
+#include "VocBase/query-functions.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -486,7 +487,14 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
 
   if (vocbase->_cursors == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
+    TRI_Free(vocbase);
+    LOG_ERROR("out of memory when opening database");
+    return NULL;
+  }
+  
+  vocbase->_functions = TRI_InitialiseQueryFunctions();
+  if (vocbase->_functions == NULL) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     TRI_FreeShadowStore(vocbase->_cursors);
     TRI_Free(vocbase);
     LOG_ERROR("out of memory when opening database");
@@ -558,6 +566,11 @@ void TRI_CloseVocBase (TRI_vocbase_t* vocbase) {
   // cursors
   if (vocbase->_cursors) {
     TRI_FreeShadowStore(vocbase->_cursors);
+  }
+
+  // query functions
+  if (vocbase->_functions) {
+    TRI_FreeQueryFunctions(vocbase->_functions);
   }
   
   TRI_DestroyLockFile(vocbase->_lockFile);

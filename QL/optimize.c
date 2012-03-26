@@ -374,11 +374,11 @@ static bool QLOptimizeStringComparison (TRI_query_node_t* node) {
   compareResult = strcmp(lhs->_value._stringValue, rhs->_value._stringValue);
   type = node->_type;
 
-  if (type == TRI_QueryNodeBinaryOperatorIdentical || type == TRI_QueryNodeBinaryOperatorEqual) {
+  if (type == TRI_QueryNodeBinaryOperatorEqual) {
     QLOptimizeMakeValueBool(node, compareResult == 0);
     return true;
   }
-  if (type == TRI_QueryNodeBinaryOperatorUnidentical || type == TRI_QueryNodeBinaryOperatorUnequal) {
+  if (type == TRI_QueryNodeBinaryOperatorUnequal) {
     QLOptimizeMakeValueBool(node, compareResult != 0);
     return true;
   } 
@@ -416,15 +416,13 @@ static bool QLOptimizeMemberComparison (TRI_query_node_t* node) {
 
   isSameMember = (QLAstQueryGetMemberNameHash(lhs) == QLAstQueryGetMemberNameHash(rhs));
   if (isSameMember) {
-    if (type == TRI_QueryNodeBinaryOperatorIdentical || 
-        type == TRI_QueryNodeBinaryOperatorEqual || 
+    if (type == TRI_QueryNodeBinaryOperatorEqual || 
         type == TRI_QueryNodeBinaryOperatorGreaterEqual ||
         type == TRI_QueryNodeBinaryOperatorLessEqual) {
       QLOptimizeMakeValueBool(node, true);
       return true;
     }
-    if (type == TRI_QueryNodeBinaryOperatorUnidentical || 
-        type == TRI_QueryNodeBinaryOperatorUnequal || 
+    if (type == TRI_QueryNodeBinaryOperatorUnequal || 
         type == TRI_QueryNodeBinaryOperatorGreater ||
         type == TRI_QueryNodeBinaryOperatorLess) {
       QLOptimizeMakeValueBool(node, false);
@@ -470,13 +468,7 @@ void QLOptimizeRelationalOperator (TRI_query_node_t* node) {
     lhsValue = QLOptimizeGetDouble(lhs);
     rhsValue = QLOptimizeGetDouble(rhs);
 
-    if (type == TRI_QueryNodeBinaryOperatorIdentical) { 
-      QLOptimizeMakeValueBool(node, (lhsValue == rhsValue) && (lhs->_type == rhs->_type));
-    } 
-    else if (type == TRI_QueryNodeBinaryOperatorUnidentical) { 
-      QLOptimizeMakeValueBool(node, (lhsValue != rhsValue) || (lhs->_type != rhs->_type));
-    } 
-    else if (type == TRI_QueryNodeBinaryOperatorEqual) {
+    if (type == TRI_QueryNodeBinaryOperatorEqual) {
       QLOptimizeMakeValueBool(node, lhsValue == rhsValue);
     } 
     else if (type == TRI_QueryNodeBinaryOperatorUnequal) {
@@ -1414,8 +1406,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
   // we can now free the temporary name buffer
   TRI_FreeStringBuffer(name);
 
-  if (type == TRI_QueryNodeBinaryOperatorIdentical || 
-      type == TRI_QueryNodeBinaryOperatorEqual) {
+  if (type == TRI_QueryNodeBinaryOperatorEqual) {
     // === and == ,  range is [ value (inc) ... value (inc) ]
     if (range->_valueType == RANGE_TYPE_FIELD) {
       range->_refValue._collection = TRI_DuplicateString(
@@ -1470,8 +1461,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
     range->_minStatus = RANGE_VALUE_INCLUDED;
     range->_maxStatus = RANGE_VALUE_INCLUDED;
   }
-  else if (type == TRI_QueryNodeBinaryOperatorUnidentical || 
-           type == TRI_QueryNodeBinaryOperatorUnequal) {
+  else if (type == TRI_QueryNodeBinaryOperatorUnequal) {
     // !== and != ,  range is [ -inf ... +inf ]
     range->_minStatus = RANGE_VALUE_INFINITE;
     range->_maxStatus = RANGE_VALUE_INFINITE;
@@ -1560,9 +1550,7 @@ TRI_vector_pointer_t* QLOptimizeRanges (TRI_query_node_t* node,
       return combinedRanges;
     }
   }
-  else if (type == TRI_QueryNodeBinaryOperatorIdentical || 
-           type == TRI_QueryNodeBinaryOperatorUnidentical ||
-           type == TRI_QueryNodeBinaryOperatorEqual ||
+  else if (type == TRI_QueryNodeBinaryOperatorEqual ||
            type == TRI_QueryNodeBinaryOperatorUnequal ||
            type == TRI_QueryNodeBinaryOperatorLess ||
            type == TRI_QueryNodeBinaryOperatorGreater ||
@@ -1571,8 +1559,7 @@ TRI_vector_pointer_t* QLOptimizeRanges (TRI_query_node_t* node,
     // comparison operator 
     if (lhs->_type == TRI_QueryNodeContainerMemberAccess && 
         rhs->_type == TRI_QueryNodeContainerMemberAccess &&
-        (type == TRI_QueryNodeBinaryOperatorIdentical ||
-         type == TRI_QueryNodeBinaryOperatorEqual)) {
+        type == TRI_QueryNodeBinaryOperatorEqual) {
       // collection.attribute relop collection.attribute
       return QLOptimizeMergeRangeVectors(
         QLOptimizeCreateRangeVector(QLOptimizeCreateRange(lhs, rhs, type, bindParameters)),
@@ -1580,8 +1567,7 @@ TRI_vector_pointer_t* QLOptimizeRanges (TRI_query_node_t* node,
       );
     }
     else if (lhs->_type == TRI_QueryNodeContainerMemberAccess &&
-        (type == TRI_QueryNodeBinaryOperatorIdentical || 
-         type == TRI_QueryNodeBinaryOperatorEqual) &&
+        type == TRI_QueryNodeBinaryOperatorEqual &&
         (rhs->_type == TRI_QueryNodeValueDocument || rhs->_type == TRI_QueryNodeValueArray) && 
         QLOptimizeIsConst(rhs)) {
       // collection.attribute == document
@@ -1595,8 +1581,7 @@ TRI_vector_pointer_t* QLOptimizeRanges (TRI_query_node_t* node,
       return QLOptimizeCreateRangeVector(QLOptimizeCreateRange(lhs, rhs, type, bindParameters));
     }
     else if (rhs->_type == TRI_QueryNodeContainerMemberAccess &&
-             (type == TRI_QueryNodeBinaryOperatorIdentical ||
-              type == TRI_QueryNodeBinaryOperatorEqual) &&
+             type == TRI_QueryNodeBinaryOperatorEqual &&
              lhs->_type == TRI_QueryNodeValueDocument &&
              QLOptimizeIsConst(lhs)) {
       // document == collection.attribute

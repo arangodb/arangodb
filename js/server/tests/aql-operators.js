@@ -518,6 +518,8 @@ function aqlOperatorsTestSuite () {
     assertEqual(-1, AQL_CAST_NUMBER('-1 '));
     assertEqual(-1, AQL_CAST_NUMBER(' -1 '));
     assertEqual(-1, AQL_CAST_NUMBER(' -1a'));
+    assertEqual(1, AQL_CAST_NUMBER(' 1a'));
+    assertEqual(12335.3, AQL_CAST_NUMBER(' 12335.3 a'));
     assertEqual(0, AQL_CAST_NUMBER('a1bc'));
     assertEqual(0, AQL_CAST_NUMBER('aaaa1'));
     assertEqual(0, AQL_CAST_NUMBER('-a1'));
@@ -1086,7 +1088,6 @@ function aqlOperatorsTestSuite () {
     assertFalse(AQL_RELATIONAL_EQUAL('-1', -1));
     assertFalse(AQL_RELATIONAL_EQUAL('1.234', 1.234));
     assertFalse(AQL_RELATIONAL_EQUAL('NaN', NaN));
-    
     assertFalse(AQL_RELATIONAL_EQUAL([ 0 ], [ ]));
     assertFalse(AQL_RELATIONAL_EQUAL([ ], [ 0 ]));
     assertFalse(AQL_RELATIONAL_EQUAL([ ], [ 0, 1 ]));
@@ -1252,7 +1253,6 @@ function aqlOperatorsTestSuite () {
     assertTrue(AQL_RELATIONAL_UNEQUAL('1.0', 1));
     assertTrue(AQL_RELATIONAL_UNEQUAL('-1', -1));
     assertTrue(AQL_RELATIONAL_UNEQUAL('1.234', 1.234));
-    
     assertTrue(AQL_RELATIONAL_UNEQUAL([ 0 ], [ ]));
     assertTrue(AQL_RELATIONAL_UNEQUAL([ ], [ 0 ]));
     assertTrue(AQL_RELATIONAL_UNEQUAL([ ], [ 0, 1 ]));
@@ -1510,6 +1510,17 @@ function aqlOperatorsTestSuite () {
     assertTrue(AQL_RELATIONAL_LESS('abcd', 'abdd'));
     assertTrue(AQL_RELATIONAL_LESS('abcd', 'abcde'));
     assertTrue(AQL_RELATIONAL_LESS('0abcd', 'abcde'));
+    assertTrue(AQL_RELATIONAL_LESS('abcd', [ ]));
+    assertTrue(AQL_RELATIONAL_LESS('abcd', [ 0 ]));
+    assertTrue(AQL_RELATIONAL_LESS('abcd', [ -1 ]));
+    assertTrue(AQL_RELATIONAL_LESS('abcd', [ " " ]));
+    assertTrue(AQL_RELATIONAL_LESS('abcd', [ "" ]));
+    assertTrue(AQL_RELATIONAL_LESS('abcd', [ "abc" ]));
+    assertTrue(AQL_RELATIONAL_LESS('abcd', [ "abcd" ]));
+    assertTrue(AQL_RELATIONAL_LESS('abcd', { } ));
+    assertTrue(AQL_RELATIONAL_LESS('abcd', { 'a' : true } ));
+    assertTrue(AQL_RELATIONAL_LESS('abcd', { 'abc' : true } ));
+    assertTrue(AQL_RELATIONAL_LESS('ABCD', { 'a' : true } ));
     assertTrue(AQL_RELATIONAL_LESS([ ], [ 0 ]));
     assertTrue(AQL_RELATIONAL_LESS([ 0 ], [ 1 ]));
     assertTrue(AQL_RELATIONAL_LESS([ 0, 1, 2 ], [ 0, 1, 2, 3 ]));
@@ -1553,6 +1564,41 @@ function aqlOperatorsTestSuite () {
     assertTrue(AQL_RELATIONAL_LESS([ false, false ], [ false, true ]));
     assertTrue(AQL_RELATIONAL_LESS([ false, false ], [ false, 0 ]));
     assertTrue(AQL_RELATIONAL_LESS([ null, null ], [ null, false ]));
+    assertTrue(AQL_RELATIONAL_LESS([ ], { }));
+    assertTrue(AQL_RELATIONAL_LESS([ ], { 'a' : true }));
+    assertTrue(AQL_RELATIONAL_LESS([ ], { 'a' : null }));
+    assertTrue(AQL_RELATIONAL_LESS([ ], { 'a' : false }));
+    assertTrue(AQL_RELATIONAL_LESS([ '' ], { }));
+    assertTrue(AQL_RELATIONAL_LESS([ 0 ], { }));
+    assertTrue(AQL_RELATIONAL_LESS([ null ], { }));
+    assertTrue(AQL_RELATIONAL_LESS([ false ], { }));
+    assertTrue(AQL_RELATIONAL_LESS([ false ], { 'a' : false }));
+    assertTrue(AQL_RELATIONAL_LESS([ true ], { 'a' : false }));
+    assertTrue(AQL_RELATIONAL_LESS([ 'abcd' ], { 'a' : false }));
+    assertTrue(AQL_RELATIONAL_LESS([ 5 ], { 'a' : false }));
+    assertTrue(AQL_RELATIONAL_LESS([ 5, 6 ], { 'a' : 2, 'b' : 2 }));
+    assertTrue(AQL_RELATIONAL_LESS([ 5, 6, 7 ], { }));
+    assertTrue(AQL_RELATIONAL_LESS([ 5, 6, false ], [ 5, 6, true ]));
+    assertTrue(AQL_RELATIONAL_LESS([ 5, 6, true ], [ 5, 6, 0 ]));
+    assertTrue(AQL_RELATIONAL_LESS([ 5, 6, 999 ], [ 5, 6, '' ]));
+    assertTrue(AQL_RELATIONAL_LESS([ 5, 6, 'a' ], [ 5, 6, 'b' ]));
+    assertTrue(AQL_RELATIONAL_LESS([ 5, 6, 'A' ], [ 5, 6, 'a' ]));
+    assertTrue(AQL_RELATIONAL_LESS([ 5, 6, '' ], [ 5, 6, 'a' ]));
+    assertTrue(AQL_RELATIONAL_LESS([ 5, 6, 9, 9 ], [ 5, 6, [ ] ]));
+    assertTrue(AQL_RELATIONAL_LESS([ 5, 6, true ], [ 5, 6, [ ] ]));
+    assertTrue(AQL_RELATIONAL_LESS([ 5, 6, true ], [ 5, 6, { } ]));
+    assertTrue(AQL_RELATIONAL_LESS([ 5, 6, 9, 9 ], [ 5, 6, { } ]));
+    assertTrue(AQL_RELATIONAL_LESS({ }, { 'a' : 0 }));
+    assertTrue(AQL_RELATIONAL_LESS({ 'a' : 1 }, { 'a' : 2 }));
+    assertTrue(AQL_RELATIONAL_LESS({ 'a' : 1 }, { 'A' : 2 }));
+    assertTrue(AQL_RELATIONAL_LESS({ 'a' : 2 }, { 'A' : 1 }));
+    assertTrue(AQL_RELATIONAL_LESS({ 'a' : 1, 'b' : 2 }, { 'a' : 1, 'b' : 2, 'c' : null }));
+    assertTrue(AQL_RELATIONAL_LESS({ 'b' : 1 }, { 'a' : 1 }));
+    assertTrue(AQL_RELATIONAL_LESS({ 'b' : 2, 'a' : 1 }, { 'a' : 1, 'b' : 2, 'c' : null }));
+    assertTrue(AQL_RELATIONAL_LESS({ 'a' : [ 9 ], 'b' : false }, { 'a' : [ 10 ], 'b' : true }));
+    assertTrue(AQL_RELATIONAL_LESS({ 'a' : [ 9 ], 'b' : true }, { 'a' : [ 10 ], 'b' : true }));
+    assertTrue(AQL_RELATIONAL_LESS({ 'a' : [ ], 'b' : true }, { 'a' : [ 10 ], 'b' : true }));
+    assertTrue(AQL_RELATIONAL_LESS({ 'a' : [ 10 ], 'b' : true }, { 'a' : [ 10, 1 ] }));
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1560,6 +1606,7 @@ function aqlOperatorsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function testRelationalLessFalse () {
+    assertFalse(AQL_RELATIONAL_LESS(null, null));
     assertFalse(AQL_RELATIONAL_LESS(false, null));
     assertFalse(AQL_RELATIONAL_LESS(true, null));
     assertFalse(AQL_RELATIONAL_LESS(0, null));
@@ -1578,6 +1625,8 @@ function aqlOperatorsTestSuite () {
     assertFalse(AQL_RELATIONAL_LESS([ 0 ], null));
     assertFalse(AQL_RELATIONAL_LESS({ }, null));
     assertFalse(AQL_RELATIONAL_LESS({ 'a' : null }, null));
+    assertFalse(AQL_RELATIONAL_LESS(false, false));
+    assertFalse(AQL_RELATIONAL_LESS(true, true));
     assertFalse(AQL_RELATIONAL_LESS(true, false));
     assertFalse(AQL_RELATIONAL_LESS(0, false));
     assertFalse(AQL_RELATIONAL_LESS(1, false));
@@ -1611,6 +1660,11 @@ function aqlOperatorsTestSuite () {
     assertFalse(AQL_RELATIONAL_LESS([ 0 ], true));
     assertFalse(AQL_RELATIONAL_LESS({ }, true));
     assertFalse(AQL_RELATIONAL_LESS({ 'a' : null }, true));
+    assertFalse(AQL_RELATIONAL_LESS(0, 0));
+    assertFalse(AQL_RELATIONAL_LESS(1, 1));
+    assertFalse(AQL_RELATIONAL_LESS(-10, -10));
+    assertFalse(AQL_RELATIONAL_LESS(-100, -100));
+    assertFalse(AQL_RELATIONAL_LESS(-334.5, -334.5));
     assertFalse(AQL_RELATIONAL_LESS(1, 0));
     assertFalse(AQL_RELATIONAL_LESS(2, 1));
     assertFalse(AQL_RELATIONAL_LESS(100, 1));
@@ -1666,6 +1720,11 @@ function aqlOperatorsTestSuite () {
     assertFalse(AQL_RELATIONAL_LESS({ 'a' : 1000 }, 100));
     assertFalse(AQL_RELATIONAL_LESS({ 'a' : false }, 'zz'));
     assertFalse(AQL_RELATIONAL_LESS({ 'a' : 'a' }, 'zz'));
+    assertFalse(AQL_RELATIONAL_LESS('', ''));
+    assertFalse(AQL_RELATIONAL_LESS(' ', ' '));
+    assertFalse(AQL_RELATIONAL_LESS('a', 'a'));
+    assertFalse(AQL_RELATIONAL_LESS(' a', ' a'));
+    assertFalse(AQL_RELATIONAL_LESS('abcd', 'abcd'));
     assertFalse(AQL_RELATIONAL_LESS(' ', ''));
     assertFalse(AQL_RELATIONAL_LESS('a', '0'));
     assertFalse(AQL_RELATIONAL_LESS('a ', 'a'));
@@ -1677,6 +1736,13 @@ function aqlOperatorsTestSuite () {
     assertFalse(AQL_RELATIONAL_LESS('abdd', 'abcd'));
     assertFalse(AQL_RELATIONAL_LESS('abcde', 'abcd'));
     assertFalse(AQL_RELATIONAL_LESS('abcde', '0abcde'));
+    assertFalse(AQL_RELATIONAL_LESS([ ], [ ]));
+    assertFalse(AQL_RELATIONAL_LESS([ 0 ], [ 0 ]));
+    assertFalse(AQL_RELATIONAL_LESS([ 1 ], [ 1 ]));
+    assertFalse(AQL_RELATIONAL_LESS([ true ], [ true ]));
+    assertFalse(AQL_RELATIONAL_LESS([ false ], [ false ]));
+    assertFalse(AQL_RELATIONAL_LESS([ [ 0, 1, 2 ] ], [ [ 0, 1, 2 ] ]));
+    assertFalse(AQL_RELATIONAL_LESS([ [ 1, [ "true", 0, -99 , false ] ], 4 ], [ [ 1, [ "true", 0, -99, false ] ], 4 ]));
     assertFalse(AQL_RELATIONAL_LESS([ 0 ], [ ]));
     assertFalse(AQL_RELATIONAL_LESS([ 1 ], [ 0 ]));
     assertFalse(AQL_RELATIONAL_LESS([ 0, 1, 2, 3 ], [ 0, 1, 2 ]));
@@ -1720,6 +1786,30 @@ function aqlOperatorsTestSuite () {
     assertFalse(AQL_RELATIONAL_LESS([ false, true ], [ false, false ]));
     assertFalse(AQL_RELATIONAL_LESS([ false, 0 ], [ false, false ]));
     assertFalse(AQL_RELATIONAL_LESS([ null, false ], [ null, null ]));
+    assertFalse(AQL_RELATIONAL_LESS({ }, [ ]));
+    assertFalse(AQL_RELATIONAL_LESS({ 'a' : true }, [ ]));
+    assertFalse(AQL_RELATIONAL_LESS({ 'a' : null }, [ ]));
+    assertFalse(AQL_RELATIONAL_LESS({ 'a' : false }, [ ]));
+    assertFalse(AQL_RELATIONAL_LESS({ }, [ '' ]));
+    assertFalse(AQL_RELATIONAL_LESS({ }, [ 0 ]));
+    assertFalse(AQL_RELATIONAL_LESS({ }, [ null ]));
+    assertFalse(AQL_RELATIONAL_LESS({ }, [ false ]));
+    assertFalse(AQL_RELATIONAL_LESS({ 'a' : false }, [ false ]));
+    assertFalse(AQL_RELATIONAL_LESS({ 'a' : false }, [ true ]));
+    assertFalse(AQL_RELATIONAL_LESS({ 'a' : false }, [ 'abcd' ]));
+    assertFalse(AQL_RELATIONAL_LESS({ 'a' : false }, [ 5 ]));
+    assertFalse(AQL_RELATIONAL_LESS({ 'a' : 2, 'b' : 2 }, [ 5, 6 ]));
+    assertFalse(AQL_RELATIONAL_LESS({ }, [ 5, 6, 7 ]));
+    assertFalse(AQL_RELATIONAL_LESS([ 5, 6, true ], [ 5, 6, false ]));
+    assertFalse(AQL_RELATIONAL_LESS([ 5, 6, 0 ], [ 5, 6, true ]));
+    assertFalse(AQL_RELATIONAL_LESS([ 5, 6, '' ], [ 5, 6, 999 ]));
+    assertFalse(AQL_RELATIONAL_LESS([ 5, 6, 'b' ], [ 5, 6, 'a' ]));
+    assertFalse(AQL_RELATIONAL_LESS([ 5, 6, 'a' ], [ 5, 6, 'A' ]));
+    assertFalse(AQL_RELATIONAL_LESS([ 5, 6, 'a' ], [ 5, 6, '' ]));
+    assertFalse(AQL_RELATIONAL_LESS([ 5, 6, [ ] ], [ 5, 6, 9 ,9 ]));
+    assertFalse(AQL_RELATIONAL_LESS([ 5, 6, [ ] ], [ 5, 6, true ]));
+    assertFalse(AQL_RELATIONAL_LESS([ 5, 6, { } ], [ 5, 6, true ]));
+    assertFalse(AQL_RELATIONAL_LESS([ 5, 6, { } ], [ 5, 6, 9, 9 ]));
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1941,6 +2031,17 @@ function aqlOperatorsTestSuite () {
     assertTrue(AQL_RELATIONAL_GREATER([ false, true ], [ false, false ]));
     assertTrue(AQL_RELATIONAL_GREATER([ false, 0 ], [ false, false ]));
     assertTrue(AQL_RELATIONAL_GREATER([ null, false ], [ null, null ]));
+    assertTrue(AQL_RELATIONAL_GREATER({ 'a' : 0 }, { }));
+    assertTrue(AQL_RELATIONAL_GREATER({ 'a' : 2 }, { 'a' : 1 }));
+    assertTrue(AQL_RELATIONAL_GREATER({ 'A' : 2 }, { 'a' : 1 }));
+    assertTrue(AQL_RELATIONAL_GREATER({ 'A' : 1 }, { 'a' : 2 }));
+    assertTrue(AQL_RELATIONAL_GREATER({ 'a' : 1, 'b' : 2, 'c' : null }, { 'a' : 1, 'b' : 2 }));
+    assertTrue(AQL_RELATIONAL_GREATER({ 'a' : 1 }, { 'b' : 1 }));
+    assertTrue(AQL_RELATIONAL_GREATER({ 'a' : 1, 'b' : 2, 'c': null }, { 'b' : 2, 'a' : 1 }));
+    assertTrue(AQL_RELATIONAL_GREATER({ 'a' : [ 10 ], 'b' : true }, { 'a' : [ 9 ], 'b' : false }));
+    assertTrue(AQL_RELATIONAL_GREATER({ 'a' : [ 10 ], 'b' : true }, { 'a' : [ 9 ], 'b' : true }));
+    assertTrue(AQL_RELATIONAL_GREATER({ 'a' : [ 10 ], 'b' : true }, { 'a' : [ ], 'b' : true }));
+    assertTrue(AQL_RELATIONAL_GREATER({ 'a' : [ 10, 1 ] }, { 'a' : [ 10 ], 'b' : true }));
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1948,6 +2049,7 @@ function aqlOperatorsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function testRelationalGreaterFalse () {
+    assertFalse(AQL_RELATIONAL_GREATER(null, null));
     assertFalse(AQL_RELATIONAL_GREATER(null, false));
     assertFalse(AQL_RELATIONAL_GREATER(null, true));
     assertFalse(AQL_RELATIONAL_GREATER(null, 0));
@@ -1966,6 +2068,8 @@ function aqlOperatorsTestSuite () {
     assertFalse(AQL_RELATIONAL_GREATER(null, [ 0 ]));
     assertFalse(AQL_RELATIONAL_GREATER(null, { }));
     assertFalse(AQL_RELATIONAL_GREATER(null, { 'a' : null }));
+    assertFalse(AQL_RELATIONAL_GREATER(false, false));
+    assertFalse(AQL_RELATIONAL_GREATER(true, true));
     assertFalse(AQL_RELATIONAL_GREATER(false, true));
     assertFalse(AQL_RELATIONAL_GREATER(false, 0));
     assertFalse(AQL_RELATIONAL_GREATER(false, 1));
@@ -1999,6 +2103,11 @@ function aqlOperatorsTestSuite () {
     assertFalse(AQL_RELATIONAL_GREATER(true, [ 0 ]));
     assertFalse(AQL_RELATIONAL_GREATER(true, { }));
     assertFalse(AQL_RELATIONAL_GREATER(true, { 'a' : null }));
+    assertFalse(AQL_RELATIONAL_GREATER(0, 0));
+    assertFalse(AQL_RELATIONAL_GREATER(1, 1));
+    assertFalse(AQL_RELATIONAL_GREATER(-10, -10));
+    assertFalse(AQL_RELATIONAL_GREATER(-100, -100));
+    assertFalse(AQL_RELATIONAL_GREATER(-334.5, -334.5));
     assertFalse(AQL_RELATIONAL_GREATER(0, 1));
     assertFalse(AQL_RELATIONAL_GREATER(1, 2));
     assertFalse(AQL_RELATIONAL_GREATER(1, 100));
@@ -2052,6 +2161,11 @@ function aqlOperatorsTestSuite () {
     assertFalse(AQL_RELATIONAL_GREATER(100, { 'a' : 100 }));
     assertFalse(AQL_RELATIONAL_GREATER(100, { 'a' : 101 }));
     assertFalse(AQL_RELATIONAL_GREATER(100, { 'a' : 1000 }));
+    assertFalse(AQL_RELATIONAL_GREATER('', ''));
+    assertFalse(AQL_RELATIONAL_GREATER(' ', ' '));
+    assertFalse(AQL_RELATIONAL_GREATER('a', 'a'));
+    assertFalse(AQL_RELATIONAL_GREATER(' a', ' a'));
+    assertFalse(AQL_RELATIONAL_GREATER('abcd', 'abcd'));
     assertFalse(AQL_RELATIONAL_GREATER('', ' '));
     assertFalse(AQL_RELATIONAL_GREATER('0', 'a'));
     assertFalse(AQL_RELATIONAL_GREATER('a', 'a '));
@@ -2063,6 +2177,13 @@ function aqlOperatorsTestSuite () {
     assertFalse(AQL_RELATIONAL_GREATER('abcd', 'abdd'));
     assertFalse(AQL_RELATIONAL_GREATER('abcd', 'abcde'));
     assertFalse(AQL_RELATIONAL_GREATER('0abcd', 'abcde'));
+    assertFalse(AQL_RELATIONAL_GREATER([ ], [ ]));
+    assertFalse(AQL_RELATIONAL_GREATER([ 0 ], [ 0 ]));
+    assertFalse(AQL_RELATIONAL_GREATER([ 1 ], [ 1 ]));
+    assertFalse(AQL_RELATIONAL_GREATER([ true ], [ true ]));
+    assertFalse(AQL_RELATIONAL_GREATER([ false ], [ false ]));
+    assertFalse(AQL_RELATIONAL_GREATER([ [ 0, 1, 2 ] ], [ [ 0, 1, 2 ] ]));
+    assertFalse(AQL_RELATIONAL_GREATER([ [ 1, [ "true", 0, -99 , false ] ], 4 ], [ [ 1, [ "true", 0, -99, false ] ], 4 ]));
     assertFalse(AQL_RELATIONAL_GREATER([ ], [ 0 ]));
     assertFalse(AQL_RELATIONAL_GREATER([ 0 ], [ 1 ]));
     assertFalse(AQL_RELATIONAL_GREATER([ 0, 1, 2 ], [ 0, 1, 2, 3 ]));
@@ -2106,6 +2227,1890 @@ function aqlOperatorsTestSuite () {
     assertFalse(AQL_RELATIONAL_GREATER([ false, false ], [ false, true ]));
     assertFalse(AQL_RELATIONAL_GREATER([ false, false ], [ false, 0 ]));
     assertFalse(AQL_RELATIONAL_GREATER([ null, null ], [ null, false ]));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL_RELATIONAL_LESSEQUAL function
+////////////////////////////////////////////////////////////////////////////////
+
+  function testRelationalLessEqualUndefined () {
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(undefined, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(undefined, null));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(undefined, true));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(undefined, false));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(undefined, 0.0));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(undefined, 1.0));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(undefined, -1.0));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(undefined, ''));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(undefined, '0'));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(undefined, '1'));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(undefined, [ ]));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(undefined, [ 0 ]));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(undefined, [ 0, 1 ]));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(undefined, [ 1, 2 ]));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(undefined, { }));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(undefined, { 'a' : 0 }));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(undefined, { 'a' : 1 }));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(undefined, { '0' : false }));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(null, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(true, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(false, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(0.0, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(1.0, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(-1.0, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL('', undefined));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL('0', undefined));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL('1', undefined));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL([ ], undefined));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL([ 0 ], undefined));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL([ 0, 1 ], undefined));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL([ 1, 2 ], undefined));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL({ }, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL({ 'a' : 0 }, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL({ 'a' : 1 }, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL({ '0' : false }, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(NaN, false));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(NaN, true));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(NaN, ''));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(NaN, 0));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(NaN, null));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(NaN, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(false, NaN));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(true, NaN));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL('', NaN));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(0, NaN));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(null, NaN));
+    assertEqual(undefined, AQL_RELATIONAL_LESSEQUAL(undefined, NaN));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL_RELATIONAL_LESSEQUAL function
+////////////////////////////////////////////////////////////////////////////////
+
+  function testRelationalLessEqualTrue () {
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(null, false));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(null, true));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(null, 0));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(null, 1));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(null, -1));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(null, ''));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(null, ' '));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(null, '1'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(null, '0'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(null, 'abcd'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(null, 'null'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(null, [ ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(null, [ true ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(null, [ false ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(null, [ null ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(null, [ 0 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(null, { }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(null, { 'a' : null }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(null, null));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(false, true));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(false, 0));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(false, 1));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(false, -1));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(false, ''));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(false, ' '));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(false, '1'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(false, '0'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(false, 'abcd'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(false, 'true'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(false, [ ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(false, [ true ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(false, [ false ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(false, [ null ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(false, [ 0 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(false, { }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(false, { 'a' : null }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(false, false));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(true, 0));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(true, 1));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(true, -1));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(true, ''));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(true, ' '));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(true, '1'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(true, '0'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(true, 'abcd'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(true, 'true'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(true, [ ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(true, [ true ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(true, [ false ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(true, [ null ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(true, [ 0 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(true, { }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(true, { 'a' : null }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(true, true));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(0, 1));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(1, 2));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(1, 100));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(20, 100));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(-100, 1));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(-100, -10));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(-11, -10));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(999, 1000));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(-1, 1));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(-1, 0));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(1.0, 1.01));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(1.111, 1.2));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(-1.111, -1.110));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(-1.111, -1.1109));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(0, 0));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(1, 1));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(2, 2));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(20, 20));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(100, 100));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(-100, -100));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(-11, -11));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(999, 999));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(-1, -1));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(1.0, 1.0));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(1.111, 1.111));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(1.2, 1.2));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(-1.111, -1.111));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(0, ''));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(0, ' '));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(0, '0'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(0, '1'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(0, '-1'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(0, 'true'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(0, 'false'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(0, 'null'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(1, ''));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(1, ' '));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(1, '0'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(1, '1'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(1, '-1'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(1, 'true'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(1, 'false'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(1, 'null'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(0, '-1'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(0, '-100'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(0, '-1.1'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(0, '-0.0'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(1000, '-1'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(1000, '10'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(1000, '10000'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(0, [ ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(0, [ 0 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(10, [ ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(100, [ ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(100, [ 0 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(100, [ 0, 1 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(100, [ 99 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(100, [ 100 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(100, [ 101 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(100, { }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(100, { 'a' : 0 }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(100, { 'a' : 1 }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(100, { 'a' : 99 }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(100, { 'a' : 100 }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(100, { 'a' : 101 }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(100, { 'a' : 1000 }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL('', ' '));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL('0', 'a'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL('a', 'a '));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL('a', 'b'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL('A', 'a'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL('AB', 'Ab'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL('abcd', 'bbcd'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL('abcd', 'abda'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL('abcd', 'abdd'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL('abcd', 'abcde'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL('0abcd', 'abcde'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(' abcd', 'abcd'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL('', ''));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL('0', '0'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL('a', 'a'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL('A', 'A'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL('AB', 'AB'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL('Ab', 'Ab'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL('abcd', 'abcd'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL('0abcd', '0abcd'));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL(' ', ' '));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL('  ', '  '));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ ], [ 0 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ 0 ], [ 1 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ 0, 1, 2 ], [ 0, 1, 2, 3 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ 0, 1, 2 ], [ 0, 1, 3 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ 0, 1, 4 ], [ 1, 0, 0 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ 0, 1, 4 ], [ 1 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ 15, 99 ], [ 110 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ 15, 99 ], [ 15, 100 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ ], [ undefined ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ ], [ null ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ ], [ false ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ ], [ true ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ ], [ 0 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ ], [ -1 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ ], [ '' ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ ], [ '0' ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ ], [ 'abcd' ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ ], [ [ ] ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ ], [ [ null ] ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ ], [ { } ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ ], [ ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ 0 ], [ 0 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ 0, 1, 2 ], [ 0, 1, 2 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ 15, 99 ], [ 15, 99 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ null ], [ null ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ [ [ null, 1, 9 ], [ 12, "true", false ] ] , 0 ], [ [ [ null, 1, 9 ], [ 12, "true", false ] ] ,0 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ false ], [ false ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ false, true ], [ false, true ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ null ], [ false ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ null ], [ true ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ null ], [ 0 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ null ], [ [ ] ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ false ], [ true ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ false ], [ 0 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ false ], [ -1 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ false ], [ '' ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ false ], [ '0' ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ false ], [ 'abcd' ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ false ], [ [ ] ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ false ], [ [ false ] ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ true ], [ 0 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ true ], [ -1 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ true ], [ '' ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ true ], [ '0' ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ true ], [ 'abcd' ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ true ], [ [ ] ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ true ], [ [ false ] ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ false, false ], [ true ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ false, false ], [ false, true ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ false, false ], [ false, 0 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ null, null ], [ null, false ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ ], { }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ ], { 'a' : true }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ ], { 'a' : null }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ ], { 'a' : false }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ '' ], { }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ 0 ], { }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ null ], { }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ false ], { }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ false ], { 'a' : false }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ true ], { 'a' : false }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ 'abcd' ], { 'a' : false }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ 5 ], { 'a' : false }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ 5, 6 ], { 'a' : 2, 'b' : 2 }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ 5, 6, 7 ], { }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ 5, 6, false ], [ 5, 6, true ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ 5, 6, true ], [ 5, 6, 0 ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ 5, 6, 999 ], [ 5, 6, '' ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ 5, 6, 'a' ], [ 5, 6, 'b' ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ 5, 6, 'A' ], [ 5, 6, 'a' ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ 5, 6, '' ], [ 5, 6, 'a' ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ 5, 6, 9, 9 ], [ 5, 6, [ ] ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ 5, 6, true ], [ 5, 6, [ ] ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ 5, 6, true ], [ 5, 6, { } ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL([ 5, 6, 9, 9 ], [ 5, 6, { } ]));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL({ }, { }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL({ 'A' : true }, { 'A' : true }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL({ 'a' : true, 'b' : false }, { 'a' : true, 'b' : false }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL({ 'a' : true, 'b' : false }, { 'b' : false, 'a' : true }));
+    assertTrue(AQL_RELATIONAL_LESSEQUAL({ 'a' : true, 'b' : { 'c' : 1, 'f' : 2 }, 'x' : 9 }, { 'x' : 9, 'b' : { 'f' : 2, 'c' : 1 }, 'a' : true }));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL_RELATIONAL_LESSEQUAL function
+////////////////////////////////////////////////////////////////////////////////
+
+  function testRelationalLessEqualFalse () {
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(false, null));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(true, null));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(0, null));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(1, null));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(-1, null));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('', null));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(' ', null));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('1', null));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('0', null));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('abcd', null));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('null', null));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ ], null));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ true ], null));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ false ], null));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ null ], null));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ 0 ], null));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL({ }, null));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL({ 'a' : null }, null));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(true, false));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(0, false));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(1, false));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(-1, false));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('', false));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(' ', false));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('1', false));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('0', false));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('abcd', false));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('true', false));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ ], false));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ true ], false));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ false ], false));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ null ], false));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ 0 ], false));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL({ }, false));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL({ 'a' : null }, false));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(0, true));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(1, true));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(-1, true));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('', true));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(' ', true));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('1', true));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('0', true));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('abcd', true));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('true', true));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ ], true));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ true ], true));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ false ], true));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ null ], true));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ 0 ], true));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL({ }, true));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL({ 'a' : null }, true));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(1, 0));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(2, 1));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(100, 1));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(100, 20));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(1, -100));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(-10, -100));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(-10, -11));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(1000, 999));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(1, -1));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(0, -1));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(1.01, 1.0));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(1.2, 1.111));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(-1.110, -1.111));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(-1.1109, -1.111));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('', 0));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(' ', 0));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('0', 0));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('1', 0));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('-1', 0));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('true', 0));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('false', 0));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('null', 0));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('', 1));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(' ', 1));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('0', 1));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('1', 1));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('-1', 1));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('true', 1));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('false', 1));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('null', 1));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('-1', 0));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('-100', 0));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('-1.1', 0));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('-0.0', 0));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('-1', 1000));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('10', 1000));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('10000', 1000));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ ], 0));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ 0 ], 0));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ ], 10));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ ], 100));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ 0 ], 100));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ 0, 1 ], 100));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ 99 ], 100));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ 100 ], 100));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ 101 ], 100));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL({ }, 100));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL({ 'a' : 0 }, 100));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL({ 'a' : 1 }, 100));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL({ 'a' : 99 }, 100));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL({ 'a' : 100 }, 100));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL({ 'a' : 101 }, 100));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL({ 'a' : 1000 }, 100));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL({ 'a' : false }, 'zz'));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL({ 'a' : 'a' }, 'zz'));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL(' ', ''));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('a', '0'));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('a ', 'a'));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('b', 'a'));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('a', 'A'));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('Ab', 'AB'));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('bbcd', 'abcd'));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('abda', 'abcd'));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('abdd', 'abcd'));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('abcde', 'abcd'));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL('abcde', '0abcde'));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ 0 ], [ ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ 1 ], [ 0 ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ 0, 1, 2, 3 ], [ 0, 1, 2 ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ 0, 1, 3 ], [ 0, 1, 2 ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ 1, 0, 0 ], [ 0, 1, 4 ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ 1 ], [ 0, 1, 4 ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ 110 ], [ 15, 99 ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ 15, 100 ], [ 15, 99 ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ undefined ], [ ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ null ], [ ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ false ], [ ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ true ], [ ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ 0 ], [ ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ -1 ], [ ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ '' ], [ ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ '0' ], [ ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ 'abcd' ], [ ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ [ ] ], [ ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ [ null ] ], [ ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ { } ], [ ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ false ], [ null ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ true ], [ null ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ 0 ], [ null ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ [ ] ], [ null ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ true ], [ false ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ 0 ], [ false ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ -1 ], [ false ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ '' ], [ false ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ '0' ], [ false ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ 'abcd' ], [ false ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ [ ] ], [ false ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ [ false ] ], [ false ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ 0 ], [ true ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ -1 ], [ true ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ '' ], [ true ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ '0' ], [ true ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ 'abcd' ], [ true ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ [ ] ], [ true ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ [ false] ], [ true ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ true ], [ false, false ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ false, true ], [ false, false ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ false, 0 ], [ false, false ]));
+    assertFalse(AQL_RELATIONAL_LESSEQUAL([ null, false ], [ null, null ]));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL_RELATIONAL_GREATEREQUAL function
+////////////////////////////////////////////////////////////////////////////////
+
+  function testRelationalGreaterEqualUndefined () {
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(undefined, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(undefined, null));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(undefined, true));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(undefined, false));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(undefined, 0.0));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(undefined, 1.0));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(undefined, -1.0));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(undefined, ''));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(undefined, '0'));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(undefined, '1'));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(undefined, [ ]));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(undefined, [ 0 ]));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(undefined, [ 0, 1 ]));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(undefined, [ 1, 2 ]));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(undefined, { }));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(undefined, { 'a' : 0 }));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(undefined, { 'a' : 1 }));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(undefined, { '0' : false }));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(null, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(true, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(false, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(0.0, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(1.0, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(-1.0, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL('', undefined));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL('0', undefined));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL('1', undefined));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL([ ], undefined));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL([ 0 ], undefined));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL([ 0, 1 ], undefined));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL([ 1, 2 ], undefined));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL({ }, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL({ 'a' : 0 }, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL({ 'a' : 1 }, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL({ '0' : false }, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(NaN, false));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(NaN, true));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(NaN, ''));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(NaN, 0));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(NaN, null));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(NaN, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(false, NaN));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(true, NaN));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL('', NaN));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(0, NaN));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(null, NaN));
+    assertEqual(undefined, AQL_RELATIONAL_GREATEREQUAL(undefined, NaN));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL_RELATIONAL_GREATEREQUAL function
+////////////////////////////////////////////////////////////////////////////////
+
+  function testRelationalGreaterEqualTrue () {
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(false, null));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(true, null));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(0, null));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(1, null));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(-1, null));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('', null));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(' ', null));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('1', null));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('0', null));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('abcd', null));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('null', null));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ ], null));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ true ], null));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ false ], null));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ null ], null));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 0 ], null));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ }, null));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : null }, null));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(true, false));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(0, false));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(1, false));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(-1, false));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('', false));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(' ', false));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('1', false));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('0', false));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('abcd', false));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('true', false));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ ], false));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ true ], false));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ false ], false));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ null ], false));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 0 ], false));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ }, false));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : null }, false));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(0, true));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(1, true));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(-1, true));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('', true));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(' ', true));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('1', true));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('0', true));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('abcd', true));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('true', true));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ ], true));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ true ], true));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ false ], true));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ null ], true));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 0 ], true));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ }, true));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : null }, true));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(1, 0));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(2, 1));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(100, 1));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(100, 20));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(1, -100));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(-10, -100));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(-10, -11));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(1000, 999));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(1, -1));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(0, -1));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(1.01, 1.0));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(1.2, 1.111));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(-1.110, -1.111));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(-1.1109, -1.111));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('', 0));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(' ', 0));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('0', 0));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('1', 0));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('-1', 0));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('true', 0));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('false', 0));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('null', 0));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('', 1));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(' ', 1));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('0', 1));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('1', 1));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('-1', 1));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('true', 1));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('false', 1));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('null', 1));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('-1', 0));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('-100', 0));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('-1.1', 0));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('-0.0', 0));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('-1', 1000));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('10', 1000));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('10000', 1000));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ ], 0));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 0 ], 0));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ ], 10));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ ], 100));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 0 ], 100));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 0, 1 ], 100));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 99 ], 100));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 100 ], 100));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 101 ], 100));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ }, 100));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : 0 }, 100));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : 1 }, 100));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : 99 }, 100));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : 100 }, 100));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : 101 }, 100));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : 1000 }, 100));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : false }, 'zz'));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : 'a' }, 'zz'));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(' ', ''));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('a', '0'));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('a ', 'a'));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('b', 'a'));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('a', 'A'));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('Ab', 'AB'));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('bbcd', 'abcd'));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('abda', 'abcd'));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('abdd', 'abcd'));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('abcde', 'abcd'));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('abcde', '0abcde'));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 0 ], [ ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 1 ], [ 0 ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 0, 1, 2, 3 ], [ 0, 1, 2 ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 0, 1, 3 ], [ 0, 1, 2 ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 1, 0, 0 ], [ 0, 1, 4 ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 1 ], [ 0, 1, 4 ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 110 ], [ 15, 99 ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 15, 100 ], [ 15, 99 ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ undefined ], [ ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ null ], [ ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ false ], [ ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ true ], [ ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 0 ], [ ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ -1 ], [ ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ '' ], [ ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ '0' ], [ ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 'abcd' ], [ ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ [ ] ], [ ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ [ null ] ], [ ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ { } ], [ ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ false ], [ null ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ true ], [ null ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 0 ], [ null ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ [ ] ], [ null ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ true ], [ false ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 0 ], [ false ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ -1 ], [ false ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ '' ], [ false ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ '0' ], [ false ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 'abcd' ], [ false ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ [ ] ], [ false ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ [ false ] ], [ false ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 0 ], [ true ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ -1 ], [ true ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ '' ], [ true ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ '0' ], [ true ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 'abcd' ], [ true ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ [ ] ], [ true ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ [ false] ], [ true ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ true ], [ false, false ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ false, true ], [ false, false ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ false, 0 ], [ false, false ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ null, false ], [ null, null ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(null, null));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(false, false));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(true, true));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(0, 0));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(1, 1));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(2, 2));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(20, 20));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(100, 100));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(-100, -100));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(-11, -11));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(999, 999));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(-1, -1));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(1.0, 1.0));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(1.111, 1.111));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(1.2, 1.2));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(-1.111, -1.111));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('', ''));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('0', '0'));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('a', 'a'));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('A', 'A'));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('AB', 'AB'));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('Ab', 'Ab'));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('abcd', 'abcd'));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('0abcd', '0abcd'));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL(' ', ' '));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL('  ', '  '));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ ], [ ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 0 ], [ 0 ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 0, 1, 2 ], [ 0, 1, 2 ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 15, 99 ], [ 15, 99 ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ null ], [ null ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ [ [ null, 1, 9 ], [ 12, "true", false ] ] , 0 ], [ [ [ null, 1, 9 ], [ 12, "true", false ] ] ,0 ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ false ], [ false ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ false, true ], [ false, true ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ }, [ ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : true }, [ ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : null }, [ ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : false }, [ ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ }, [ '' ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ }, [ 0 ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ }, [ null ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ }, [ false ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : false }, [ false ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : false }, [ true ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : false }, [ 'abcd' ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : false }, [ 5 ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : 2, 'b' : 2 }, [ 5, 6 ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ }, [ 5, 6, 7 ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 5, 6, true ], [ 5, 6, false ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 5, 6, 0 ], [ 5, 6, true ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 5, 6, '' ], [ 5, 6, 999 ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 5, 6, 'b' ], [ 5, 6, 'a' ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 5, 6, 'a' ], [ 5, 6, 'A' ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 5, 6, 'a' ], [ 5, 6, '' ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 5, 6, [ ] ], [ 5, 6, 9, 9 ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 5, 6, [ ] ], [ 5, 6, true ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 5, 6, { } ], [ 5, 6, true ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL([ 5, 6, { } ], [ 5, 6, 9, 9 ]));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : 0 }, { }));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : 2 }, { 'a' : 1 }));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'A' : 2 }, { 'a' : 1 }));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'A' : 1 }, { 'a' : 2 }));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : 1, 'b' : 2, 'c' : null }, { 'a' : 1, 'b' : 2 }));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : 1 }, { 'b' : 1 }));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : 1, 'b' : 2, 'c': null }, { 'b' : 2, 'a' : 1 }));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : [ 10 ], 'b' : true }, { 'a' : [ 9 ], 'b' : false }));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : [ 10 ], 'b' : true }, { 'a' : [ 9 ], 'b' : true }));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : [ 10 ], 'b' : true }, { 'a' : [ ], 'b' : true }));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : [ 10, 1 ] }, { 'a' : [ 10 ], 'b' : true }));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ }, { }));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'A' : true }, { 'A' : true }));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : true, 'b' : false }, { 'a' : true, 'b' : false }));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : true, 'b' : false }, { 'b' : false, 'a' : true }));
+    assertTrue(AQL_RELATIONAL_GREATEREQUAL({ 'a' : true, 'b' : { 'c' : 1, 'f' : 2 }, 'x' : 9 }, { 'x' : 9, 'b' : { 'f' : 2, 'c' : 1 }, 'a' : true }));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL_RELATIONAL_GREATEREQUAL function
+////////////////////////////////////////////////////////////////////////////////
+
+  function testRelationalGreaterEqualFalse () {
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(null, false));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(null, true));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(null, 0));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(null, 1));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(null, -1));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(null, ''));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(null, ' '));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(null, '1'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(null, '0'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(null, 'abcd'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(null, 'null'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(null, [ ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(null, [ true ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(null, [ false ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(null, [ null ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(null, [ 0 ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(null, { }));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(null, { 'a' : null }));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(false, true));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(false, 0));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(false, 1));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(false, -1));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(false, ''));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(false, ' '));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(false, '1'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(false, '0'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(false, 'abcd'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(false, 'true'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(false, [ ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(false, [ true ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(false, [ false ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(false, [ null ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(false, [ 0 ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(false, { }));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(false, { 'a' : null }));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(true, 0));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(true, 1));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(true, -1));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(true, ''));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(true, ' '));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(true, '1'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(true, '0'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(true, 'abcd'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(true, 'true'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(true, [ ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(true, [ true ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(true, [ false ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(true, [ null ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(true, [ 0 ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(true, { }));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(true, { 'a' : null }));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(0, 1));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(1, 2));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(1, 100));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(20, 100));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(-100, 1));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(-100, -10));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(-11, -10));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(999, 1000));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(-1, 1));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(-1, 0));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(1.0, 1.01));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(1.111, 1.2));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(-1.111, -1.110));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(-1.111, -1.1109));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(0, ''));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(0, ' '));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(0, '0'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(0, '1'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(0, '-1'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(0, 'true'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(0, 'false'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(0, 'null'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(1, ''));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(1, ' '));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(1, '0'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(1, '1'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(1, '-1'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(1, 'true'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(1, 'false'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(1, 'null'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(0, '-1'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(0, '-100'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(0, '-1.1'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(0, '-0.0'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(1000, '-1'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(1000, '10'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(1000, '10000'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(0, [ ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(0, [ 0 ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(10, [ ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(100, [ ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(100, [ 0 ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(100, [ 0, 1 ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(100, [ 99 ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(100, [ 100 ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(100, [ 101 ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(100, { }));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(100, { 'a' : 0 }));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(100, { 'a' : 1 }));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(100, { 'a' : 99 }));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(100, { 'a' : 100 }));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(100, { 'a' : 101 }));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(100, { 'a' : 1000 }));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL('', ' '));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL('0', 'a'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL('a', 'a '));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL('a', 'b'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL('A', 'a'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL('AB', 'Ab'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL('abcd', 'bbcd'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL('abcd', 'abda'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL('abcd', 'abdd'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL('abcd', 'abcde'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL('0abcd', 'abcde'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL(' abcd', 'abcd'));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ ], [ 0 ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ 0 ], [ 1 ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ 0, 1, 2 ], [ 0, 1, 2, 3 ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ 0, 1, 2 ], [ 0, 1, 3 ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ 0, 1, 4 ], [ 1, 0, 0 ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ 0, 1, 4 ], [ 1 ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ 15, 99 ], [ 110 ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ 15, 99 ], [ 15, 100 ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ ], [ undefined ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ ], [ null ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ ], [ false ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ ], [ true ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ ], [ 0 ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ ], [ -1 ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ ], [ '' ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ ], [ '0' ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ ], [ 'abcd' ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ ], [ [ ] ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ ], [ [ null ] ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ ], [ { } ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ null ], [ false ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ null ], [ true ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ null ], [ 0 ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ null ], [ [ ] ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ false ], [ true ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ false ], [ 0 ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ false ], [ -1 ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ false ], [ '' ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ false ], [ '0' ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ false ], [ 'abcd' ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ false ], [ [ ] ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ false ], [ [ false ] ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ true ], [ 0 ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ true ], [ -1 ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ true ], [ '' ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ true ], [ '0' ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ true ], [ 'abcd' ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ true ], [ [ ] ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ true ], [ [ false ] ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ false, false ], [ true ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ false, false ], [ false, true ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ false, false ], [ false, 0 ]));
+    assertFalse(AQL_RELATIONAL_GREATEREQUAL([ null, null ], [ null, false ]));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL_RELATIONAL_IN function
+////////////////////////////////////////////////////////////////////////////////
+
+  function testRelationalInUndefined () {
+    assertEqual(undefined, AQL_RELATIONAL_IN(undefined, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_IN(undefined, null));
+    assertEqual(undefined, AQL_RELATIONAL_IN(undefined, true));
+    assertEqual(undefined, AQL_RELATIONAL_IN(undefined, false));
+    assertEqual(undefined, AQL_RELATIONAL_IN(undefined, 0.0));
+    assertEqual(undefined, AQL_RELATIONAL_IN(undefined, 1.0));
+    assertEqual(undefined, AQL_RELATIONAL_IN(undefined, -1.0));
+    assertEqual(undefined, AQL_RELATIONAL_IN(undefined, ''));
+    assertEqual(undefined, AQL_RELATIONAL_IN(undefined, '0'));
+    assertEqual(undefined, AQL_RELATIONAL_IN(undefined, '1'));
+    assertEqual(undefined, AQL_RELATIONAL_IN(undefined, [ ]));
+    assertEqual(undefined, AQL_RELATIONAL_IN(undefined, [ 0 ]));
+    assertEqual(undefined, AQL_RELATIONAL_IN(undefined, [ 0, 1 ]));
+    assertEqual(undefined, AQL_RELATIONAL_IN(undefined, [ 1, 2 ]));
+    assertEqual(undefined, AQL_RELATIONAL_IN(undefined, { }));
+    assertEqual(undefined, AQL_RELATIONAL_IN(undefined, { 'a' : 0 }));
+    assertEqual(undefined, AQL_RELATIONAL_IN(undefined, { 'a' : 1 }));
+    assertEqual(undefined, AQL_RELATIONAL_IN(undefined, { '0' : false }));
+    assertEqual(undefined, AQL_RELATIONAL_IN(null, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_IN(true, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_IN(false, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_IN(0.0, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_IN(1.0, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_IN(-1.0, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_IN('', undefined));
+    assertEqual(undefined, AQL_RELATIONAL_IN('0', undefined));
+    assertEqual(undefined, AQL_RELATIONAL_IN('1', undefined));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ ], undefined));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ 0 ], undefined));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ 0, 1 ], undefined));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ 1, 2 ], undefined));
+    assertEqual(undefined, AQL_RELATIONAL_IN({ }, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_IN({ 'a' : 0 }, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_IN({ 'a' : 1 }, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_IN({ '0' : false }, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_IN(NaN, false));
+    assertEqual(undefined, AQL_RELATIONAL_IN(NaN, true));
+    assertEqual(undefined, AQL_RELATIONAL_IN(NaN, ''));
+    assertEqual(undefined, AQL_RELATIONAL_IN(NaN, 0));
+    assertEqual(undefined, AQL_RELATIONAL_IN(NaN, null));
+    assertEqual(undefined, AQL_RELATIONAL_IN(NaN, undefined));
+    assertEqual(undefined, AQL_RELATIONAL_IN(false, NaN));
+    assertEqual(undefined, AQL_RELATIONAL_IN(true, NaN));
+    assertEqual(undefined, AQL_RELATIONAL_IN('', NaN));
+    assertEqual(undefined, AQL_RELATIONAL_IN(0, NaN));
+    assertEqual(undefined, AQL_RELATIONAL_IN(null, NaN));
+    assertEqual(undefined, AQL_RELATIONAL_IN(undefined, NaN));
+    
+    assertEqual(undefined, AQL_RELATIONAL_IN(null, null));
+    assertEqual(undefined, AQL_RELATIONAL_IN(null, false));
+    assertEqual(undefined, AQL_RELATIONAL_IN(null, true));
+    assertEqual(undefined, AQL_RELATIONAL_IN(null, 0));
+    assertEqual(undefined, AQL_RELATIONAL_IN(null, 1));
+    assertEqual(undefined, AQL_RELATIONAL_IN(null, ''));
+    assertEqual(undefined, AQL_RELATIONAL_IN(null, '1'));
+    assertEqual(undefined, AQL_RELATIONAL_IN(null, 'a'));
+    assertEqual(undefined, AQL_RELATIONAL_IN(null, { }));
+    assertEqual(undefined, AQL_RELATIONAL_IN(null, { 'A' : true }));
+    assertEqual(undefined, AQL_RELATIONAL_IN(false, null));
+    assertEqual(undefined, AQL_RELATIONAL_IN(false, false));
+    assertEqual(undefined, AQL_RELATIONAL_IN(false, true));
+    assertEqual(undefined, AQL_RELATIONAL_IN(false, 0));
+    assertEqual(undefined, AQL_RELATIONAL_IN(false, 1));
+    assertEqual(undefined, AQL_RELATIONAL_IN(false, ''));
+    assertEqual(undefined, AQL_RELATIONAL_IN(false, '1'));
+    assertEqual(undefined, AQL_RELATIONAL_IN(false, 'a'));
+    assertEqual(undefined, AQL_RELATIONAL_IN(false, { }));
+    assertEqual(undefined, AQL_RELATIONAL_IN(false, { 'A' : true }));
+    assertEqual(undefined, AQL_RELATIONAL_IN(true, null));
+    assertEqual(undefined, AQL_RELATIONAL_IN(true, false));
+    assertEqual(undefined, AQL_RELATIONAL_IN(true, true));
+    assertEqual(undefined, AQL_RELATIONAL_IN(true, 0));
+    assertEqual(undefined, AQL_RELATIONAL_IN(true, 1));
+    assertEqual(undefined, AQL_RELATIONAL_IN(true, ''));
+    assertEqual(undefined, AQL_RELATIONAL_IN(true, '1'));
+    assertEqual(undefined, AQL_RELATIONAL_IN(true, 'a'));
+    assertEqual(undefined, AQL_RELATIONAL_IN(true, { }));
+    assertEqual(undefined, AQL_RELATIONAL_IN(true, { 'A' : true }));
+    assertEqual(undefined, AQL_RELATIONAL_IN(0, null));
+    assertEqual(undefined, AQL_RELATIONAL_IN(0, false));
+    assertEqual(undefined, AQL_RELATIONAL_IN(0, true));
+    assertEqual(undefined, AQL_RELATIONAL_IN(0, 0));
+    assertEqual(undefined, AQL_RELATIONAL_IN(0, 1));
+    assertEqual(undefined, AQL_RELATIONAL_IN(0, ''));
+    assertEqual(undefined, AQL_RELATIONAL_IN(0, '1'));
+    assertEqual(undefined, AQL_RELATIONAL_IN(0, 'a'));
+    assertEqual(undefined, AQL_RELATIONAL_IN(0, { }));
+    assertEqual(undefined, AQL_RELATIONAL_IN(0, { 'A' : true }));
+    assertEqual(undefined, AQL_RELATIONAL_IN(1, null));
+    assertEqual(undefined, AQL_RELATIONAL_IN(1, false));
+    assertEqual(undefined, AQL_RELATIONAL_IN(1, true));
+    assertEqual(undefined, AQL_RELATIONAL_IN(1, 0));
+    assertEqual(undefined, AQL_RELATIONAL_IN(1, 1));
+    assertEqual(undefined, AQL_RELATIONAL_IN(1, ''));
+    assertEqual(undefined, AQL_RELATIONAL_IN(1, '1'));
+    assertEqual(undefined, AQL_RELATIONAL_IN(1, 'a'));
+    assertEqual(undefined, AQL_RELATIONAL_IN(1, { }));
+    assertEqual(undefined, AQL_RELATIONAL_IN(1, { 'A' : true }));
+    assertEqual(undefined, AQL_RELATIONAL_IN('', null));
+    assertEqual(undefined, AQL_RELATIONAL_IN('', false));
+    assertEqual(undefined, AQL_RELATIONAL_IN('', true));
+    assertEqual(undefined, AQL_RELATIONAL_IN('', 0));
+    assertEqual(undefined, AQL_RELATIONAL_IN('', 1));
+    assertEqual(undefined, AQL_RELATIONAL_IN('', ''));
+    assertEqual(undefined, AQL_RELATIONAL_IN('', '1'));
+    assertEqual(undefined, AQL_RELATIONAL_IN('', 'a'));
+    assertEqual(undefined, AQL_RELATIONAL_IN('', { }));
+    assertEqual(undefined, AQL_RELATIONAL_IN('', { 'A' : true }));
+    assertEqual(undefined, AQL_RELATIONAL_IN('a', null));
+    assertEqual(undefined, AQL_RELATIONAL_IN('a', false));
+    assertEqual(undefined, AQL_RELATIONAL_IN('a', true));
+    assertEqual(undefined, AQL_RELATIONAL_IN('a', 0));
+    assertEqual(undefined, AQL_RELATIONAL_IN('a', 1));
+    assertEqual(undefined, AQL_RELATIONAL_IN('a', ''));
+    assertEqual(undefined, AQL_RELATIONAL_IN('a', '1'));
+    assertEqual(undefined, AQL_RELATIONAL_IN('a', 'a'));
+    assertEqual(undefined, AQL_RELATIONAL_IN('a', { }));
+    assertEqual(undefined, AQL_RELATIONAL_IN('a', { 'A' : true }));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ ], null));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ ], false));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ ], true));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ ], 0));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ ], 1));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ ], ''));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ ], '1'));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ ], 'a'));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ ], { }));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ ], { 'A' : true }));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ 0 ], null));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ 0 ], false));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ 0 ], true));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ 0 ], 0));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ 0 ], 1));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ 0 ], ''));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ 0 ], '1'));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ 0 ], 'a'));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ 0 ], { }));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ 0 ], { 'A' : true }));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ 1 ], null));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ 1 ], false));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ 1 ], true));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ 1 ], 0));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ 1 ], 1));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ 1 ], ''));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ 1 ], '1'));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ 1 ], 'a'));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ 1 ], { }));
+    assertEqual(undefined, AQL_RELATIONAL_IN([ 1 ], { 'A' : true }));
+    assertEqual(undefined, AQL_RELATIONAL_IN({ }, null));
+    assertEqual(undefined, AQL_RELATIONAL_IN({ }, false));
+    assertEqual(undefined, AQL_RELATIONAL_IN({ }, true));
+    assertEqual(undefined, AQL_RELATIONAL_IN({ }, 0));
+    assertEqual(undefined, AQL_RELATIONAL_IN({ }, 1));
+    assertEqual(undefined, AQL_RELATIONAL_IN({ }, ''));
+    assertEqual(undefined, AQL_RELATIONAL_IN({ }, '1'));
+    assertEqual(undefined, AQL_RELATIONAL_IN({ }, 'a'));
+    assertEqual(undefined, AQL_RELATIONAL_IN({ }, { }));
+    assertEqual(undefined, AQL_RELATIONAL_IN({ }, { 'A' : true }));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL_RELATIONAL_IN function
+////////////////////////////////////////////////////////////////////////////////
+
+  function testRelationalInTrue () {
+    assertTrue(AQL_RELATIONAL_IN(null, [ null ]));
+    assertTrue(AQL_RELATIONAL_IN(null, [ null, false ]));
+    assertTrue(AQL_RELATIONAL_IN(null, [ false, null ]));
+    assertTrue(AQL_RELATIONAL_IN(false, [ false ]));
+    assertTrue(AQL_RELATIONAL_IN(false, [ true, false ]));
+    assertTrue(AQL_RELATIONAL_IN(false, [ 0, false ]));
+    assertTrue(AQL_RELATIONAL_IN(true, [ true ]));
+    assertTrue(AQL_RELATIONAL_IN(true, [ false, true ]));
+    assertTrue(AQL_RELATIONAL_IN(true, [ 0, false, true ]));
+    assertTrue(AQL_RELATIONAL_IN(0, [ 0 ]));
+    assertTrue(AQL_RELATIONAL_IN(1, [ 1 ]));
+    assertTrue(AQL_RELATIONAL_IN(0, [ 3, 2, 1, 0 ]));
+    assertTrue(AQL_RELATIONAL_IN(1, [ 3, 2, 1, 0 ]));
+    assertTrue(AQL_RELATIONAL_IN(-35.5, [ 3, 2, 1, -35.5, 0 ]));
+    assertTrue(AQL_RELATIONAL_IN(1.23e32, [ 3, 2, 1, 1.23e32, 35.5, 0 ]));
+    assertTrue(AQL_RELATIONAL_IN('', [ '' ]));
+    assertTrue(AQL_RELATIONAL_IN('', [ ' ', '' ]));
+    assertTrue(AQL_RELATIONAL_IN('', [ 'a', 'b', 'c', '' ]));
+    assertTrue(AQL_RELATIONAL_IN('A', [ 'c', 'b', 'a', 'A' ]));
+    assertTrue(AQL_RELATIONAL_IN(' ', [ ' ' ]));
+    assertTrue(AQL_RELATIONAL_IN(' a', [ ' a' ]));
+    assertTrue(AQL_RELATIONAL_IN(' a ', [ ' a ' ]));
+    assertTrue(AQL_RELATIONAL_IN([ ], [ [ ] ]));
+    assertTrue(AQL_RELATIONAL_IN([ ], [ 1, null, 2, 3, [ ], 5 ]));
+    assertTrue(AQL_RELATIONAL_IN([ null ], [ [ null ] ]));
+    assertTrue(AQL_RELATIONAL_IN([ null ], [ null, [ null ], true ]));
+    assertTrue(AQL_RELATIONAL_IN([ null, false ], [ [ null, false ] ]));
+    assertTrue(AQL_RELATIONAL_IN([ 'a', 'A', false ], [ 'a', true, [ 'a', 'A', false ] ]));
+    assertTrue(AQL_RELATIONAL_IN({ }, [ { } ]));
+    assertTrue(AQL_RELATIONAL_IN({ }, [ 'a', null, false, 0, { } ]));
+    assertTrue(AQL_RELATIONAL_IN({ 'a' : true }, [ 'a', null, false, 0, { 'a' : true } ]));
+    assertTrue(AQL_RELATIONAL_IN({ 'a' : true, 'A': false }, [ 'a', null, false, 0, { 'A' : false, 'a' : true } ]));
+    assertTrue(AQL_RELATIONAL_IN({ 'a' : { 'b' : null, 'c': 1 } }, [ { 'a' : { 'c' : 1, 'b' : null } } ]));
+    assertTrue(AQL_RELATIONAL_IN({ 'a' : { 'b' : null, 'c': 1 } }, [ 'a', 'b', { 'a' : { 'c' : 1, 'b' : null } } ]));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL_RELATIONAL_IN function
+////////////////////////////////////////////////////////////////////////////////
+
+  function testRelationalInFalse () {
+    assertFalse(AQL_RELATIONAL_IN(null, [ ]));
+    assertFalse(AQL_RELATIONAL_IN(false, [ ]));
+    assertFalse(AQL_RELATIONAL_IN(true, [ ]));
+    assertFalse(AQL_RELATIONAL_IN(0, [ ]));
+    assertFalse(AQL_RELATIONAL_IN(1, [ ]));
+    assertFalse(AQL_RELATIONAL_IN('', [ ]));
+    assertFalse(AQL_RELATIONAL_IN('0', [ ]));
+    assertFalse(AQL_RELATIONAL_IN('1', [ ]));
+    assertFalse(AQL_RELATIONAL_IN([ ], [ ]));
+    assertFalse(AQL_RELATIONAL_IN([ 0 ], [ ]));
+    assertFalse(AQL_RELATIONAL_IN({ }, [ ]));
+    assertFalse(AQL_RELATIONAL_IN({ 'a' : true }, [ ]));
+    assertFalse(AQL_RELATIONAL_IN(null, [ '0', '1', '', 'null', 'true', 'false', -1, 0, 1, 2, 3, true, false, { }, [ ] ]));
+    assertFalse(AQL_RELATIONAL_IN(true, [ '0', '1', '', 'null', 'true', 'false', -1, 0, 1, 2, 3, null, false, { }, [ ] ]));
+    assertFalse(AQL_RELATIONAL_IN(false, [ '0', '1', '', 'null', 'true', 'false', -1, 0, 1, 2, 3, null, true, { }, [ ] ]));
+    assertFalse(AQL_RELATIONAL_IN(0, [ '0', '1', '', 'null', 'true', 'false', -1, 1, 2, 3, null, true, false, { }, [ ] ]));
+    assertFalse(AQL_RELATIONAL_IN(1, [ '0', '1', '', 'null', 'true', 'false', -1, 0, 2, 3, null, true, false, { }, [ ] ]));
+    assertFalse(AQL_RELATIONAL_IN(-1, [ '0', '1', '', 'null', 'true', 'false', 0, 1, 2, 3, null, true, false, { }, [ ] ]));
+    assertFalse(AQL_RELATIONAL_IN('', [ '0', '1', 'null', 'true', 'false', -1, 0, 1, 2, 3, null, true, false, { }, [ ] ]));
+    assertFalse(AQL_RELATIONAL_IN('0', [ '1', '', 'null', 'true', 'false', -1, 0, 1, 2, 3, null, true, false, { }, [ ] ]));
+    assertFalse(AQL_RELATIONAL_IN('1', [ '0', '', 'null', 'true', 'false', -1, 0, 1, 2, 3, null, true, false, { }, [ ] ]));
+    assertFalse(AQL_RELATIONAL_IN([ ], [ '0', '1', '', 'null', 'true', 'false', -1, 0, 1, 2, 3, null, true, false, { } ]));
+    assertFalse(AQL_RELATIONAL_IN({ }, [ '0', '1', '', 'null', 'true', 'false', -1, 0, 1, 2, 3, null, true, false, [ ] ]));
+    assertFalse(AQL_RELATIONAL_IN(null, [ [ null ]]));
+    assertFalse(AQL_RELATIONAL_IN(false, [ [ false ]]));
+    assertFalse(AQL_RELATIONAL_IN(true, [ [ true ]]));
+    assertFalse(AQL_RELATIONAL_IN(0, [ [ 0 ]]));
+    assertFalse(AQL_RELATIONAL_IN(1, [ [ 1 ]]));
+    assertFalse(AQL_RELATIONAL_IN('', [ [ '' ]]));
+    assertFalse(AQL_RELATIONAL_IN('1', [ [ '1' ]]));
+    assertFalse(AQL_RELATIONAL_IN('', [ [ '' ]]));
+    assertFalse(AQL_RELATIONAL_IN(' ', [ [ ' ' ]]));
+    assertFalse(AQL_RELATIONAL_IN('a', [ 'A' ]));
+    assertFalse(AQL_RELATIONAL_IN('a', [ 'b', 'c', 'd' ]));
+    assertFalse(AQL_RELATIONAL_IN('', [ ' ', '  ' ]));
+    assertFalse(AQL_RELATIONAL_IN(' ', [ '', '  ' ]));
+    assertFalse(AQL_RELATIONAL_IN([ ], [ 0 ]));
+    assertFalse(AQL_RELATIONAL_IN([ ], [ 1, 2 ]));
+    assertFalse(AQL_RELATIONAL_IN([ 0 ], [ 1, 2 ]));
+    assertFalse(AQL_RELATIONAL_IN([ 1 ], [ 1, 2 ]));
+    assertFalse(AQL_RELATIONAL_IN([ 2 ], [ 1, 2 ]));
+    assertFalse(AQL_RELATIONAL_IN([ 1, 2 ], [ 1, 2 ]));
+    assertFalse(AQL_RELATIONAL_IN([ 1, 2 ], [ [ 1 ], [ 2 ] ]));
+    assertFalse(AQL_RELATIONAL_IN([ 1, 2 ], [ [ 2, 1 ] ]));
+    assertFalse(AQL_RELATIONAL_IN([ 1, 2 ], [ [ 1, 2, 3 ] ]));
+    assertFalse(AQL_RELATIONAL_IN([ 1, 2, 3 ], [ [ 1, 2, 4 ] ]));
+    assertFalse(AQL_RELATIONAL_IN([ 1, 2, 3 ], [ [ 0, 1, 2, 3 ] ]));
+    assertFalse(AQL_RELATIONAL_IN({ 'a' : true }, [ { 'a' : true, 'b' : false } ]));
+    assertFalse(AQL_RELATIONAL_IN({ 'a' : true }, [ { 'a' : false } ]));
+    assertFalse(AQL_RELATIONAL_IN({ 'a' : true }, [ { 'b' : true } ]));
+    assertFalse(AQL_RELATIONAL_IN({ 'a' : true }, [ [ { 'a' : true } ] ]));
+    assertFalse(AQL_RELATIONAL_IN({ 'a' : true }, [ 1, 2, { 'a' : { 'a' : true } } ]));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL_UNARY_PLUS function
+////////////////////////////////////////////////////////////////////////////////
+
+  function testUnaryPlusUndefined () {
+    assertEqual(undefined, AQL_UNARY_PLUS(undefined));
+    assertEqual(undefined, AQL_UNARY_PLUS(null));
+    assertEqual(undefined, AQL_UNARY_PLUS(false));
+    assertEqual(undefined, AQL_UNARY_PLUS(true));
+    assertEqual(undefined, AQL_UNARY_PLUS(' '));
+    assertEqual(undefined, AQL_UNARY_PLUS('abc'));
+    assertEqual(undefined, AQL_UNARY_PLUS('1abc'));
+    assertEqual(undefined, AQL_UNARY_PLUS(''));
+    assertEqual(undefined, AQL_UNARY_PLUS('-1'));
+    assertEqual(undefined, AQL_UNARY_PLUS('0'));
+    assertEqual(undefined, AQL_UNARY_PLUS('1'));
+    assertEqual(undefined, AQL_UNARY_PLUS('1.5'));
+    assertEqual(undefined, AQL_UNARY_PLUS([ ]));
+    assertEqual(undefined, AQL_UNARY_PLUS([ 0 ]));
+    assertEqual(undefined, AQL_UNARY_PLUS([ 1 ]));
+    assertEqual(undefined, AQL_UNARY_PLUS({ 'a' : 1 }));
+    assertEqual(undefined, AQL_UNARY_PLUS(NaN));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL_UNARY_PLUS function
+////////////////////////////////////////////////////////////////////////////////
+
+  function testUnaryPlusValue () {
+    assertEqual(0, AQL_UNARY_PLUS(0));
+    assertEqual(1, AQL_UNARY_PLUS(1));
+    assertEqual(-1, AQL_UNARY_PLUS(-1));
+    assertEqual(0.0001, AQL_UNARY_PLUS(0.0001));
+    assertEqual(-0.0001, AQL_UNARY_PLUS(-0.0001));
+    assertEqual(100, AQL_UNARY_PLUS(100));
+    assertEqual(1054.342, AQL_UNARY_PLUS(1054.342));
+    assertEqual(-1054.342, AQL_UNARY_PLUS(-1054.342));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL_UNARY_MINUS function
+////////////////////////////////////////////////////////////////////////////////
+
+  function testUnaryMinusUndefined () {
+    assertEqual(undefined, AQL_UNARY_MINUS(undefined));
+    assertEqual(undefined, AQL_UNARY_MINUS(null));
+    assertEqual(undefined, AQL_UNARY_MINUS(false));
+    assertEqual(undefined, AQL_UNARY_MINUS(true));
+    assertEqual(undefined, AQL_UNARY_MINUS(' '));
+    assertEqual(undefined, AQL_UNARY_MINUS('abc'));
+    assertEqual(undefined, AQL_UNARY_MINUS('1abc'));
+    assertEqual(undefined, AQL_UNARY_MINUS(''));
+    assertEqual(undefined, AQL_UNARY_MINUS('-1'));
+    assertEqual(undefined, AQL_UNARY_MINUS('0'));
+    assertEqual(undefined, AQL_UNARY_MINUS('1'));
+    assertEqual(undefined, AQL_UNARY_MINUS('1.5'));
+    assertEqual(undefined, AQL_UNARY_MINUS([ ]));
+    assertEqual(undefined, AQL_UNARY_MINUS([ 0 ]));
+    assertEqual(undefined, AQL_UNARY_MINUS([ 1 ]));
+    assertEqual(undefined, AQL_UNARY_MINUS({ 'a' : 1 }));
+    assertEqual(undefined, AQL_UNARY_PLUS(NaN));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL_UNARY_MINUS function
+////////////////////////////////////////////////////////////////////////////////
+  
+  function testUnaryMinusValue () {
+    assertEqual(0, AQL_UNARY_MINUS(0));
+    assertEqual(1, AQL_UNARY_MINUS(-1));
+    assertEqual(-1, AQL_UNARY_MINUS(1));
+    assertEqual(0.0001, AQL_UNARY_MINUS(-0.0001));
+    assertEqual(-0.0001, AQL_UNARY_MINUS(0.0001));
+    assertEqual(100, AQL_UNARY_MINUS(-100));
+    assertEqual(-100, AQL_UNARY_MINUS(100));
+    assertEqual(1054.342, AQL_UNARY_MINUS(-1054.342));
+    assertEqual(-1054.342, AQL_UNARY_MINUS(1054.342));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL_ARITHMETIC_PLUS function
+////////////////////////////////////////////////////////////////////////////////
+
+  function testArithmeticPlusUndefined () {
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(undefined, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(undefined, null));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(undefined, false));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(undefined, true));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(undefined, 0));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(undefined, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(undefined, 2));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(undefined, -1));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(undefined, ''));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(undefined, '0'));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(undefined, ' '));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(undefined, 'a'));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(undefined, [ ]));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(undefined, [ 1 ]));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(undefined, { }));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(undefined, { 'a' : 0 }));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(undefined, NaN));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(null, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(false, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(true, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(0, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(1, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(2, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(-1, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS('', undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS('0', undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(' ', undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS('a', undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS([ ], undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS([ 1 ], undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS({ }, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS({ 'a' : 0 }, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(NaN, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(1, NaN));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(1, null));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(1, false));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(1, true));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(1, ''));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(1, ' '));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(1, '0'));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(1, '1'));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(1, 'a'));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(1, [ ]));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(1, [ 0 ]));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(1, { }));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(1, { 'a' : 0 }));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(NaN, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(null, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(false, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(true, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS('', 1));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(' ', 1));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS('0', 1));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS('1', 1));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS('a', 1));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS([ ], 1));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS([ 0 ], 1));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS({ }, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS({ 'a' : 0 }, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS('0', '0'));
+    assertEqual(undefined, AQL_ARITHMETIC_PLUS(1.3e317, 1.3e317));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL_ARITHMETIC_PLUS function
+////////////////////////////////////////////////////////////////////////////////
+
+  function testArithmeticPlusValue () {
+    assertEqual(0, AQL_ARITHMETIC_PLUS(0, 0));
+    assertEqual(0, AQL_ARITHMETIC_PLUS(1, -1));
+    assertEqual(0, AQL_ARITHMETIC_PLUS(-1, 1));
+    assertEqual(0, AQL_ARITHMETIC_PLUS(-100, 100));
+    assertEqual(0, AQL_ARITHMETIC_PLUS(100, -100));
+    assertEqual(0, AQL_ARITHMETIC_PLUS(0.11, -0.11));
+    assertEqual(10, AQL_ARITHMETIC_PLUS(5, 5));
+    assertEqual(10, AQL_ARITHMETIC_PLUS(4, 6));
+    assertEqual(10, AQL_ARITHMETIC_PLUS(1, 9));
+    assertEqual(10, AQL_ARITHMETIC_PLUS(0.1, 9.9));
+    assertEqual(9.8, AQL_ARITHMETIC_PLUS(-0.1, 9.9));
+    assertEqual(-34.2, AQL_ARITHMETIC_PLUS(-17.1, -17.1));
+    assertEqual(-2, AQL_ARITHMETIC_PLUS(-1, -1)); 
+    assertEqual(2.6e307, AQL_ARITHMETIC_PLUS(1.3e307, 1.3e307));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL_ARITHMETIC_MINUS function
+////////////////////////////////////////////////////////////////////////////////
+
+  function testArithmeticMinusUndefined () {
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(undefined, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(undefined, null));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(undefined, false));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(undefined, true));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(undefined, 0));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(undefined, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(undefined, 2));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(undefined, -1));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(undefined, ''));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(undefined, '0'));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(undefined, ' '));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(undefined, 'a'));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(undefined, [ ]));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(undefined, [ 1 ]));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(undefined, { }));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(undefined, { 'a' : 0 }));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(undefined, NaN));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(null, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(false, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(true, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(0, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(1, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(2, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(-1, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS('', undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS('0', undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(' ', undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS('a', undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS([ ], undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS([ 1 ], undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS({ }, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS({ 'a' : 0 }, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(NaN, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(1, NaN));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(1, null));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(1, false));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(1, true));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(1, ''));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(1, ' '));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(1, '0'));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(1, '1'));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(1, 'a'));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(1, [ ]));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(1, [ 0 ]));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(1, { }));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(1, { 'a' : 0 }));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(NaN, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(null, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(false, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(true, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS('', 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(' ', 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS('0', 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS('1', 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS('a', 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS([ ], 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS([ 0 ], 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS({ }, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS({ 'a' : 0 }, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS('0', '0'));
+    assertEqual(undefined, AQL_ARITHMETIC_MINUS(-1.3e317, 1.3e317));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL_ARITHMETIC_MINUS function
+////////////////////////////////////////////////////////////////////////////////
+
+  function testArithmeticMinusValue () {
+    assertEqual(0, AQL_ARITHMETIC_MINUS(0, 0));
+    assertEqual(-1, AQL_ARITHMETIC_MINUS(0, 1));
+    assertEqual(0, AQL_ARITHMETIC_MINUS(-1, -1)); 
+    assertEqual(0, AQL_ARITHMETIC_MINUS(1, 1));
+    assertEqual(2, AQL_ARITHMETIC_MINUS(1, -1));
+    assertEqual(-2, AQL_ARITHMETIC_MINUS(-1, 1));
+    assertEqual(-200, AQL_ARITHMETIC_MINUS(-100, 100));
+    assertEqual(200, AQL_ARITHMETIC_MINUS(100, -100));
+    assertEqual(0.22, AQL_ARITHMETIC_MINUS(0.11, -0.11));
+    assertEqual(0, AQL_ARITHMETIC_MINUS(5, 5));
+    assertEqual(-2, AQL_ARITHMETIC_MINUS(4, 6));
+    assertEqual(-8, AQL_ARITHMETIC_MINUS(1, 9));
+    assertEqual(-9.8, AQL_ARITHMETIC_MINUS(0.1, 9.9));
+    assertEqual(-10, AQL_ARITHMETIC_MINUS(-0.1, 9.9));
+    assertEqual(0, AQL_ARITHMETIC_MINUS(-17.1, -17.1));
+    assertEqual(0, AQL_ARITHMETIC_MINUS(1.3e307, 1.3e307));
+    assertEqual(2.6e307, AQL_ARITHMETIC_MINUS(1.3e307, -1.3e307));
+    assertEqual(-2.6e307, AQL_ARITHMETIC_MINUS(-1.3e307, 1.3e307));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL_ARITHMETIC_TIMES function
+////////////////////////////////////////////////////////////////////////////////
+
+  function testArithmeticTimesUndefined () {
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(undefined, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(undefined, null));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(undefined, false));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(undefined, true));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(undefined, 0));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(undefined, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(undefined, 2));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(undefined, -1));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(undefined, ''));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(undefined, '0'));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(undefined, ' '));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(undefined, 'a'));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(undefined, [ ]));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(undefined, [ 1 ]));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(undefined, { }));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(undefined, { 'a' : 0 }));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(undefined, NaN));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(null, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(false, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(true, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(0, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(1, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(2, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(-1, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES('', undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES('0', undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(' ', undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES('a', undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES([ ], undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES([ 1 ], undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES({ }, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES({ 'a' : 0 }, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(NaN, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(1, NaN));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(1, null));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(1, false));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(1, true));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(1, ''));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(1, ' '));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(1, '0'));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(1, '1'));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(1, 'a'));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(1, [ ]));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(1, [ 0 ]));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(1, { }));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(1, { 'a' : 0 }));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(NaN, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(null, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(false, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(true, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES('', 1));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(' ', 1));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES('0', 1));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES('1', 1));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES('a', 1));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES([ ], 1));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES([ 0 ], 1));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES({ }, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES({ 'a' : 0 }, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(1.3e190, 1.3e190));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(1.3e307, 1.3e307));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES(1.3e317, 1.3e317));
+    assertEqual(undefined, AQL_ARITHMETIC_TIMES('0', '0'));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL_ARITHMETIC_TIMES function
+////////////////////////////////////////////////////////////////////////////////
+
+  function testArithmeticTimesValue () {
+    assertEqual(0, AQL_ARITHMETIC_TIMES(0, 0));
+    assertEqual(0, AQL_ARITHMETIC_TIMES(1, 0));
+    assertEqual(0, AQL_ARITHMETIC_TIMES(0, 1));
+    assertEqual(1, AQL_ARITHMETIC_TIMES(1, 1));
+    assertEqual(2, AQL_ARITHMETIC_TIMES(2, 1));
+    assertEqual(2, AQL_ARITHMETIC_TIMES(1, 2));
+    assertEqual(4, AQL_ARITHMETIC_TIMES(2, 2));
+    assertEqual(100, AQL_ARITHMETIC_TIMES(10, 10));
+    assertEqual(1000, AQL_ARITHMETIC_TIMES(10, 100));
+    assertEqual(1.44, AQL_ARITHMETIC_TIMES(1.2, 1.2));
+    assertEqual(-1.44, AQL_ARITHMETIC_TIMES(1.2, -1.2));
+    assertEqual(1.44, AQL_ARITHMETIC_TIMES(-1.2, -1.2));
+    assertEqual(2, AQL_ARITHMETIC_TIMES(0.25, 8));
+    assertEqual(2, AQL_ARITHMETIC_TIMES(8, 0.25));
+    assertEqual(2.25, AQL_ARITHMETIC_TIMES(9, 0.25));
+    assertEqual(-2.25, AQL_ARITHMETIC_TIMES(9, -0.25));
+    assertEqual(-2.25, AQL_ARITHMETIC_TIMES(-9, 0.25));
+    assertEqual(2.25, AQL_ARITHMETIC_TIMES(-9, -0.25));
+    assertEqual(4, AQL_ARITHMETIC_TIMES(-2, -2));
+    assertEqual(-4, AQL_ARITHMETIC_TIMES(-2, 2));
+    assertEqual(-4, AQL_ARITHMETIC_TIMES(2, -2));
+    assertEqual(1000000, AQL_ARITHMETIC_TIMES(1000, 1000));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL_ARITHMETIC_DIVIDE function
+////////////////////////////////////////////////////////////////////////////////
+
+  function testArithmeticDivideUndefined () {
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(undefined, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(undefined, null));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(undefined, false));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(undefined, true));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(undefined, 0));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(undefined, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(undefined, 2));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(undefined, -1));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(undefined, ''));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(undefined, '0'));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(undefined, ' '));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(undefined, 'a'));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(undefined, [ ]));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(undefined, [ 1 ]));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(undefined, { }));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(undefined, { 'a' : 0 }));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(undefined, NaN));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(null, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(false, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(true, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(0, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(1, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(2, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(-1, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE('', undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE('0', undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(' ', undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE('a', undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE([ ], undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE([ 1 ], undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE({ }, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE({ 'a' : 0 }, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(NaN, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(1, NaN));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(1, null));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(1, false));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(1, true));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(1, ''));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(1, ' '));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(1, '0'));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(1, '1'));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(1, 'a'));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(1, [ ]));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(1, [ 0 ]));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(1, { }));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(1, { 'a' : 0 }));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(NaN, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(null, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(false, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(true, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE('', 1));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(' ', 1));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE('0', 1));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE('1', 1));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE('a', 1));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE([ ], 1));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE([ 0 ], 1));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE({ }, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE({ 'a' : 0 }, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(1, 0));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(100, 0));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(-1, 0));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(-100, 0));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE(0, 0));
+    assertEqual(undefined, AQL_ARITHMETIC_DIVIDE('0', '0'));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL_ARITHMETIC_DIVIDE function
+////////////////////////////////////////////////////////////////////////////////
+
+  function testArithmeticDivideValue () {
+    assertEqual(0, AQL_ARITHMETIC_DIVIDE(0, 1));
+    assertEqual(0, AQL_ARITHMETIC_DIVIDE(0, 2));
+    assertEqual(0, AQL_ARITHMETIC_DIVIDE(0, 10));
+    assertEqual(0, AQL_ARITHMETIC_DIVIDE(0, -1));
+    assertEqual(0, AQL_ARITHMETIC_DIVIDE(0, -2));
+    assertEqual(0, AQL_ARITHMETIC_DIVIDE(0, -10));
+    assertEqual(1, AQL_ARITHMETIC_DIVIDE(1, 1));
+    assertEqual(2, AQL_ARITHMETIC_DIVIDE(2, 1));
+    assertEqual(-1, AQL_ARITHMETIC_DIVIDE(-1, 1));
+    assertEqual(100, AQL_ARITHMETIC_DIVIDE(100, 1));
+    assertEqual(-100, AQL_ARITHMETIC_DIVIDE(-100, 1));
+    assertEqual(-1, AQL_ARITHMETIC_DIVIDE(1, -1));
+    assertEqual(-2, AQL_ARITHMETIC_DIVIDE(2, -1));
+    assertEqual(1, AQL_ARITHMETIC_DIVIDE(-1, -1));
+    assertEqual(-100, AQL_ARITHMETIC_DIVIDE(100, -1));
+    assertEqual(100, AQL_ARITHMETIC_DIVIDE(-100, -1));
+    assertEqual(0.5, AQL_ARITHMETIC_DIVIDE(1, 2));
+    assertEqual(1, AQL_ARITHMETIC_DIVIDE(2, 2));
+    assertEqual(2, AQL_ARITHMETIC_DIVIDE(4, 2));
+    assertEqual(1, AQL_ARITHMETIC_DIVIDE(4, 4));
+    assertEqual(5, AQL_ARITHMETIC_DIVIDE(10, 2));
+    assertEqual(2, AQL_ARITHMETIC_DIVIDE(10, 5));
+    assertEqual(2.5, AQL_ARITHMETIC_DIVIDE(10, 4));
+    assertEqual(1, AQL_ARITHMETIC_DIVIDE(1.2, 1.2));
+    assertEqual(-1, AQL_ARITHMETIC_DIVIDE(1.2, -1.2));
+    assertEqual(1, AQL_ARITHMETIC_DIVIDE(-1.2, -1.2));
+    assertEqual(2, AQL_ARITHMETIC_DIVIDE(1, 0.5));
+    assertEqual(4, AQL_ARITHMETIC_DIVIDE(1, 0.25));
+    assertEqual(16, AQL_ARITHMETIC_DIVIDE(4, 0.25));
+    assertEqual(-16, AQL_ARITHMETIC_DIVIDE(4, -0.25));
+    assertEqual(-16, AQL_ARITHMETIC_DIVIDE(-4, 0.25));
+    assertEqual(100, AQL_ARITHMETIC_DIVIDE(25, 0.25));
+    assertEqual(-100, AQL_ARITHMETIC_DIVIDE(25, -0.25));
+    assertEqual(-100, AQL_ARITHMETIC_DIVIDE(-25, 0.25));
+    assertEqual(1, AQL_ARITHMETIC_DIVIDE(0.22, 0.22));
+    assertEqual(0.5, AQL_ARITHMETIC_DIVIDE(0.22, 0.44));
+    assertEqual(2, AQL_ARITHMETIC_DIVIDE(0.22, 0.11));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL_ARITHMETIC_MODULUS function
+////////////////////////////////////////////////////////////////////////////////
+
+  function testArithmeticModulusUndefined () {
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(undefined, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(undefined, null));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(undefined, false));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(undefined, true));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(undefined, 0));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(undefined, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(undefined, 2));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(undefined, -1));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(undefined, ''));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(undefined, '0'));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(undefined, ' '));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(undefined, 'a'));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(undefined, [ ]));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(undefined, [ 1 ]));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(undefined, { }));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(undefined, { 'a' : 0 }));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(undefined, NaN));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(null, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(false, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(true, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(0, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(1, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(2, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(-1, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS('', undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS('0', undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(' ', undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS('a', undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS([ ], undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS([ 1 ], undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS({ }, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS({ 'a' : 0 }, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(NaN, undefined));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(1, NaN));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(1, null));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(1, false));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(1, true));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(1, ''));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(1, ' '));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(1, '0'));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(1, '1'));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(1, 'a'));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(1, [ ]));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(1, [ 0 ]));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(1, { }));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(1, { 'a' : 0 }));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(NaN, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(null, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(false, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(true, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS('', 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(' ', 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS('0', 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS('1', 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS('a', 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS([ ], 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS([ 0 ], 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS({ }, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS({ 'a' : 0 }, 1));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(1, 0));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(100, 0));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(-1, 0));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(-100, 0));
+    assertEqual(undefined, AQL_ARITHMETIC_MODULUS(0, 0));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL_ARITHMETIC_MODULUS function
+////////////////////////////////////////////////////////////////////////////////
+
+  function testArithmeticModulusValue () {
+    assertEqual(0, AQL_ARITHMETIC_MODULUS(0, 1));
+    assertEqual(0, AQL_ARITHMETIC_MODULUS(1, 1));
+    assertEqual(1, AQL_ARITHMETIC_MODULUS(1, 2));
+    assertEqual(1, AQL_ARITHMETIC_MODULUS(1, 3));
+    assertEqual(1, AQL_ARITHMETIC_MODULUS(1, 4));
+    assertEqual(0, AQL_ARITHMETIC_MODULUS(2, 2));
+    assertEqual(2, AQL_ARITHMETIC_MODULUS(2, 3));
+    assertEqual(0, AQL_ARITHMETIC_MODULUS(3, 3));
+    assertEqual(0, AQL_ARITHMETIC_MODULUS(10, 1));
+    assertEqual(0, AQL_ARITHMETIC_MODULUS(10, 2));
+    assertEqual(1, AQL_ARITHMETIC_MODULUS(10, 3));
+    assertEqual(2, AQL_ARITHMETIC_MODULUS(10, 4));
+    assertEqual(0, AQL_ARITHMETIC_MODULUS(10, 5));
+    assertEqual(4, AQL_ARITHMETIC_MODULUS(10, 6));
+    assertEqual(3, AQL_ARITHMETIC_MODULUS(10, 7));
+    assertEqual(2, AQL_ARITHMETIC_MODULUS(10, 8));
+    assertEqual(1, AQL_ARITHMETIC_MODULUS(10, 9));
+    assertEqual(0, AQL_ARITHMETIC_MODULUS(10, 10));
+    assertEqual(10, AQL_ARITHMETIC_MODULUS(10, 11));
+    assertEqual(1, AQL_ARITHMETIC_MODULUS(4, 3));
+    assertEqual(2, AQL_ARITHMETIC_MODULUS(5, 3));
+    assertEqual(0, AQL_ARITHMETIC_MODULUS(6, 3));
+    assertEqual(1, AQL_ARITHMETIC_MODULUS(7, 3));
+    assertEqual(2, AQL_ARITHMETIC_MODULUS(8, 3));
+    assertEqual(0, AQL_ARITHMETIC_MODULUS(9, 3));
+    assertEqual(1, AQL_ARITHMETIC_MODULUS(10, 3));
+    assertEqual(0, AQL_ARITHMETIC_MODULUS(10, -1));
+    assertEqual(0, AQL_ARITHMETIC_MODULUS(10, -2));
+    assertEqual(1, AQL_ARITHMETIC_MODULUS(10, -3));
+    assertEqual(2, AQL_ARITHMETIC_MODULUS(10, -4));
+    assertEqual(0, AQL_ARITHMETIC_MODULUS(10, -5));
+    assertEqual(4, AQL_ARITHMETIC_MODULUS(10, -6));
+    assertEqual(3, AQL_ARITHMETIC_MODULUS(10, -7));
+    assertEqual(2, AQL_ARITHMETIC_MODULUS(10, -8));
+    assertEqual(1, AQL_ARITHMETIC_MODULUS(10, -9));
+    assertEqual(0, AQL_ARITHMETIC_MODULUS(10, -10));
+    assertEqual(10, AQL_ARITHMETIC_MODULUS(10, -11));
+    assertEqual(-1, AQL_ARITHMETIC_MODULUS(-1, 3));
+    assertEqual(-2, AQL_ARITHMETIC_MODULUS(-2, 3));
+    assertEqual(0, AQL_ARITHMETIC_MODULUS(-3, 3));
+    assertEqual(-1, AQL_ARITHMETIC_MODULUS(-4, 3));
+    assertEqual(-2, AQL_ARITHMETIC_MODULUS(-5, 3));
+    assertEqual(0, AQL_ARITHMETIC_MODULUS(-6, 3));
+    assertEqual(-1, AQL_ARITHMETIC_MODULUS(-7, 3));
+    assertEqual(-2, AQL_ARITHMETIC_MODULUS(-8, 3));
+    assertEqual(0, AQL_ARITHMETIC_MODULUS(-9, 3));
+    assertEqual(-1, AQL_ARITHMETIC_MODULUS(-10, 3));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL_STRING_CONCAT function
+////////////////////////////////////////////////////////////////////////////////
+
+  function testStringConcatUndefined () {
+    assertEqual(undefined, AQL_STRING_CONCAT(undefined, undefined));
+    assertEqual(undefined, AQL_STRING_CONCAT(undefined, null));
+    assertEqual(undefined, AQL_STRING_CONCAT(undefined, false));
+    assertEqual(undefined, AQL_STRING_CONCAT(undefined, true));
+    assertEqual(undefined, AQL_STRING_CONCAT(undefined, 0));
+    assertEqual(undefined, AQL_STRING_CONCAT(undefined, 1));
+    assertEqual(undefined, AQL_STRING_CONCAT(undefined, 2));
+    assertEqual(undefined, AQL_STRING_CONCAT(undefined, -1));
+    assertEqual(undefined, AQL_STRING_CONCAT(undefined, ''));
+    assertEqual(undefined, AQL_STRING_CONCAT(undefined, '0'));
+    assertEqual(undefined, AQL_STRING_CONCAT(undefined, ' '));
+    assertEqual(undefined, AQL_STRING_CONCAT(undefined, 'a'));
+    assertEqual(undefined, AQL_STRING_CONCAT(undefined, [ ]));
+    assertEqual(undefined, AQL_STRING_CONCAT(undefined, [ 1 ]));
+    assertEqual(undefined, AQL_STRING_CONCAT(undefined, { }));
+    assertEqual(undefined, AQL_STRING_CONCAT(undefined, { 'a' : 0 }));
+    assertEqual(undefined, AQL_STRING_CONCAT(undefined, NaN));
+    assertEqual(undefined, AQL_STRING_CONCAT(null, undefined));
+    assertEqual(undefined, AQL_STRING_CONCAT(false, undefined));
+    assertEqual(undefined, AQL_STRING_CONCAT(true, undefined));
+    assertEqual(undefined, AQL_STRING_CONCAT(0, undefined));
+    assertEqual(undefined, AQL_STRING_CONCAT(1, undefined));
+    assertEqual(undefined, AQL_STRING_CONCAT(2, undefined));
+    assertEqual(undefined, AQL_STRING_CONCAT(-1, undefined));
+    assertEqual(undefined, AQL_STRING_CONCAT('', undefined));
+    assertEqual(undefined, AQL_STRING_CONCAT('0', undefined));
+    assertEqual(undefined, AQL_STRING_CONCAT(' ', undefined));
+    assertEqual(undefined, AQL_STRING_CONCAT('a', undefined));
+    assertEqual(undefined, AQL_STRING_CONCAT([ ], undefined));
+    assertEqual(undefined, AQL_STRING_CONCAT([ 1 ], undefined));
+    assertEqual(undefined, AQL_STRING_CONCAT({ }, undefined));
+    assertEqual(undefined, AQL_STRING_CONCAT({ 'a' : 0 }, undefined));
+    assertEqual(undefined, AQL_STRING_CONCAT(NaN, undefined));
+    assertEqual(undefined, AQL_STRING_CONCAT(1, NaN));
+    assertEqual(undefined, AQL_STRING_CONCAT(1, null));
+    assertEqual(undefined, AQL_STRING_CONCAT(1, false));
+    assertEqual(undefined, AQL_STRING_CONCAT(1, true));
+    assertEqual(undefined, AQL_STRING_CONCAT(1, ''));
+    assertEqual(undefined, AQL_STRING_CONCAT(1, ' '));
+    assertEqual(undefined, AQL_STRING_CONCAT(1, '0'));
+    assertEqual(undefined, AQL_STRING_CONCAT(1, '1'));
+    assertEqual(undefined, AQL_STRING_CONCAT(1, 'a'));
+    assertEqual(undefined, AQL_STRING_CONCAT(1, [ ]));
+    assertEqual(undefined, AQL_STRING_CONCAT(1, [ 0 ]));
+    assertEqual(undefined, AQL_STRING_CONCAT(1, { }));
+    assertEqual(undefined, AQL_STRING_CONCAT(1, { 'a' : 0 }));
+    assertEqual(undefined, AQL_STRING_CONCAT(NaN, 1));
+    assertEqual(undefined, AQL_STRING_CONCAT(null, 1));
+    assertEqual(undefined, AQL_STRING_CONCAT(false, 1));
+    assertEqual(undefined, AQL_STRING_CONCAT(true, 1));
+    assertEqual(undefined, AQL_STRING_CONCAT('', 1));
+    assertEqual(undefined, AQL_STRING_CONCAT(' ', 1));
+    assertEqual(undefined, AQL_STRING_CONCAT('0', 1));
+    assertEqual(undefined, AQL_STRING_CONCAT('1', 1));
+    assertEqual(undefined, AQL_STRING_CONCAT('a', 1));
+    assertEqual(undefined, AQL_STRING_CONCAT([ ], 1));
+    assertEqual(undefined, AQL_STRING_CONCAT([ 0 ], 1));
+    assertEqual(undefined, AQL_STRING_CONCAT({ }, 1));
+    assertEqual(undefined, AQL_STRING_CONCAT({ 'a' : 0 }, 1));
+    assertEqual(undefined, AQL_STRING_CONCAT(1, 0));
+    assertEqual(undefined, AQL_STRING_CONCAT(100, 0));
+    assertEqual(undefined, AQL_STRING_CONCAT(-1, 0));
+    assertEqual(undefined, AQL_STRING_CONCAT(-100, 0));
+    assertEqual(undefined, AQL_STRING_CONCAT(0, 0));
+    assertEqual(undefined, AQL_STRING_CONCAT('', null));
+    assertEqual(undefined, AQL_STRING_CONCAT('', false));
+    assertEqual(undefined, AQL_STRING_CONCAT('', true));
+    assertEqual(undefined, AQL_STRING_CONCAT('', [ ]));
+    assertEqual(undefined, AQL_STRING_CONCAT('', { }));
+    assertEqual(undefined, AQL_STRING_CONCAT('a', null));
+    assertEqual(undefined, AQL_STRING_CONCAT('a', false));
+    assertEqual(undefined, AQL_STRING_CONCAT('a', true));
+    assertEqual(undefined, AQL_STRING_CONCAT('a', [ ]));
+    assertEqual(undefined, AQL_STRING_CONCAT('a', { }));
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL_STRING_CONCAT function
+////////////////////////////////////////////////////////////////////////////////
+
+  function testStringConcatValue () {
+    assertEqual('', AQL_STRING_CONCAT('', ''));
+    assertEqual(' ', AQL_STRING_CONCAT(' ', ''));
+    assertEqual(' ', AQL_STRING_CONCAT('', ' '));
+    assertEqual('  ', AQL_STRING_CONCAT(' ', ' '));
+    assertEqual(' a a', AQL_STRING_CONCAT(' a', ' a'));
+    assertEqual(' a a ', AQL_STRING_CONCAT(' a', ' a '));
+    assertEqual('a', AQL_STRING_CONCAT('a', ''));
+    assertEqual('a', AQL_STRING_CONCAT('', 'a'));
+    assertEqual('a ', AQL_STRING_CONCAT('', 'a '));
+    assertEqual('a ', AQL_STRING_CONCAT('', 'a '));
+    assertEqual('a ', AQL_STRING_CONCAT('a ', ''));
+    assertEqual('ab', AQL_STRING_CONCAT('a', 'b'));
+    assertEqual('ba', AQL_STRING_CONCAT('b', 'a'));
+    assertEqual('AA', AQL_STRING_CONCAT('A', 'A'));
+    assertEqual('AaA', AQL_STRING_CONCAT('A', 'aA'));
+    assertEqual('AaA', AQL_STRING_CONCAT('Aa', 'A'));
+    assertEqual('0.00', AQL_STRING_CONCAT('0.00', ''));
+    assertEqual('abc', AQL_STRING_CONCAT('a', AQL_STRING_CONCAT('b', 'c')));
+    assertEqual('', AQL_STRING_CONCAT('', AQL_STRING_CONCAT('', '')));
   }
 
 }

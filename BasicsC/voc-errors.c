@@ -37,8 +37,9 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_AVOCADO_MMAP_FAILED, "mmap failed");
   REG_ERROR(ERROR_AVOCADO_FILESYSTEM_FULL, "filesystem full");
   REG_ERROR(ERROR_AVOCADO_NO_JOURNAL, "no journal");
-  REG_ERROR(ERROR_AVOCADO_DATAFILE_ALREADY_EXISTS, "cannot rename because file ready exists");
+  REG_ERROR(ERROR_AVOCADO_DATAFILE_ALREADY_EXISTS, "cannot create/rename datafile because it ready exists");
   REG_ERROR(ERROR_AVOCADO_DATABASE_LOCKED, "database is locked");
+  REG_ERROR(ERROR_AVOCADO_COLLECTION_DIRECTORY_ALREADY_EXISTS, "cannot create/rename collection because directory ready exists");
   REG_ERROR(ERROR_AVOCADO_CONFLICT, "conflict");
   REG_ERROR(ERROR_AVOCADO_WRONG_VOCBASE_PATH, "wrong path for database");
   REG_ERROR(ERROR_AVOCADO_DOCUMENT_NOT_FOUND, "document not found");
@@ -57,7 +58,6 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");
   REG_ERROR(ERROR_QUERY_SPECIFICATION_INVALID, "query specification invalid");
   REG_ERROR(ERROR_QUERY_NUMBER_OUT_OF_RANGE, "number '%s' is out of range");
-  REG_ERROR(ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE, "limit value '%s' is out of range");
   REG_ERROR(ERROR_QUERY_TOO_MANY_JOINS, "too many joins.");
   REG_ERROR(ERROR_QUERY_COLLECTION_NAME_INVALID, "collection name '%s' is invalid");
   REG_ERROR(ERROR_QUERY_COLLECTION_ALIAS_INVALID, "collection alias '%s' is invalid");
@@ -71,6 +71,8 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_QUERY_BIND_PARAMETER_UNDECLARED, "bind parameter '%s' was not declared in the query");
   REG_ERROR(ERROR_QUERY_BIND_PARAMETER_VALUE_INVALID, "invalid value for bind parameter '%s'");
   REG_ERROR(ERROR_QUERY_BIND_PARAMETER_NUMBER_OUT_OF_RANGE, "bind parameter number '%s' out of range");
+  REG_ERROR(ERROR_QUERY_FUNCTION_NAME_UNKNOWN, "usage of unknown function '%s'");
+  REG_ERROR(ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE, "limit value '%s' is out of range");
   REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
   REG_ERROR(ERROR_SESSION_USERHANDLER_URL_INVALID, "expecting <prefix>/user/<username>");
   REG_ERROR(ERROR_SESSION_USERHANDLER_CANNOT_CREATE_USER, "cannot create user");

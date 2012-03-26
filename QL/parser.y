@@ -101,7 +101,7 @@ void QLerror (YYLTYPE* locp, TRI_query_template_t* const template_, const char* 
 %token WITHIN NEAR
 %token LIMIT
 %token AND OR NOT IN 
-%token ASSIGNMENT GREATER LESS GREATER_EQUAL LESS_EQUAL EQUAL UNEQUAL IDENTICAL UNIDENTICAL
+%token ASSIGNMENT GREATER LESS GREATER_EQUAL LESS_EQUAL EQUAL UNEQUAL 
 %token NULLX TRUE FALSE UNDEFINED
 %token IDENTIFIER QUOTED_IDENTIFIER PARAMETER PARAMETER_NAMED STRING REAL  
 
@@ -109,7 +109,7 @@ void QLerror (YYLTYPE* locp, TRI_query_template_t* const template_, const char* 
 %right TERNARY COLON
 %left OR 
 %left AND
-%left IDENTICAL UNIDENTICAL EQUAL UNEQUAL
+%left EQUAL UNEQUAL
 %left IN
 %left LESS GREATER LESS_EQUAL GREATER_EQUAL
 %left '+' '-'
@@ -126,13 +126,15 @@ void QLerror (YYLTYPE* locp, TRI_query_template_t* const template_, const char* 
 
 
 query:
-    select_query {
+    select_query query_terminator {
     }
-  | select_query ';' {
+  | empty_query query_terminator {
     }
-  | empty_query {
-    }
-  | empty_query ';' {
+  ;
+
+query_terminator:
+    /* empty */
+  | ';' {
     }
   ;
 
@@ -886,22 +888,6 @@ binary_operator:
     }
   | expression '%' expression {
       $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorModulus);
-      ABORT_IF_OOM($$);
-      ABORT_IF_OOM($1);
-      ABORT_IF_OOM($3);
-      $$->_lhs = $1;
-      $$->_rhs = $3;
-    }
-  | expression IDENTICAL expression {
-      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorIdentical);
-      ABORT_IF_OOM($$);
-      ABORT_IF_OOM($1);
-      ABORT_IF_OOM($3);
-      $$->_lhs = $1;
-      $$->_rhs = $3;
-    }
-  | expression UNIDENTICAL expression {
-      $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorUnidentical);
       ABORT_IF_OOM($$);
       ABORT_IF_OOM($1);
       ABORT_IF_OOM($3);
