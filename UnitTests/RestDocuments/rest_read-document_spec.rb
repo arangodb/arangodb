@@ -276,7 +276,7 @@ describe AvocadoDB do
 	documents.should be_kind_of(Array)
 	documents.length.should eq(0)
 
-	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}-all")
+	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}-all-0")
 
 	AvocadoDB.size_collection(@cid).should eq(0)
       end
@@ -330,7 +330,7 @@ describe AvocadoDB do
 	end
 
 	# get document
-	cmd = "/document?collection=#{@cid}"
+	cmd = "/document?collection=#{@cn}"
         doc = AvocadoDB.get(cmd)
 
 	doc.code.should eq(200)
@@ -340,7 +340,7 @@ describe AvocadoDB do
 	documents.should be_kind_of(Array)
 	documents.length.should eq(3)
 
-	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}-all")
+	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}-all-name")
 
 	for l in location
 	  AvocadoDB.delete(l)

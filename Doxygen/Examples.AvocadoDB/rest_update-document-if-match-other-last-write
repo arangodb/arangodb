@@ -1,11 +1,11 @@
-> curl --data @- -X POST '-H if-match: "25071852"' --dump - http://localhost:8529/document/73482/25071853?policy=last
+> curl --data @- -X PUT '-H if-match: "30246701"' --dump - http://localhost:8529/document/73482/30246702?policy=last
 { "World" : "Hallo" }
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
 
 {
-  "_rev": 25137389,
-  "_id": "73482/25071853",
+  "_rev": 30312238,
+  "_id": "73482/30246702",
   "error": false
 }
