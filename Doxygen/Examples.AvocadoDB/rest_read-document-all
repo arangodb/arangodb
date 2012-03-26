@@ -1,12 +1,12 @@
-> curl -X GET  --dump - http://localhost:8529/document?collection=5805730
+> curl -X GET  --dump - http://localhost:8529/document?collection=6627082
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
 
 {
   "documents": [
-    "/document/5805730/7837346",
-    "/document/5805730/7706274",
-    "/document/5805730/7771810"
+    "/document/6627082/24023277",
+    "/document/6627082/24088813",
+    "/document/6627082/24154349"
   ]
 }

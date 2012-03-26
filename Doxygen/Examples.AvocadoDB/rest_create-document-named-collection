@@ -1,13 +1,13 @@
-> curl --data @- -X POST --dump - http://localhost:8529/document?collection=demo
+> curl --data @- -X POST  --dump - http://localhost:8529/document?collection=UnitTestsCollectionBasics
 { "Hallo" : "World" }
 
 HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
-location: /document/161039/3965188
-etag: "3965188"
+location: /document/73482/21532909
+etag: "21532909"
 
 {
-  "_rev": 3965188,
-  "_id": "161039/3965188",
+  "_rev": 21532909,
+  "_id": "73482/21532909",
   "error": false
 }

@@ -234,7 +234,7 @@ describe AvocadoDB do
 	etag.should eq("\"#{rev}\"")
 	location.should eq("/document/#{did}")
 
-	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-new-named-collection")
+	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-named-collection")
 
 	AvocadoDB.delete(location)
 
