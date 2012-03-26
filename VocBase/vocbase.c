@@ -1151,24 +1151,24 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col,
     return TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_NAME);
   }
 
-  // lock the vocbase because we are going to change the name
-  TRI_WriteLockReadWriteLock(&vocbase->_lock);
-
   // lock collection because we are going to change the name
   TRI_WriteLockReadWriteLock(&col->_lock);
 
+  // the must be done after the collection lock
+  TRI_WriteLockReadWriteLock(&vocbase->_lock);
+
   // cannot rename a corrupted collection
   if (col->_status == TRI_VOC_COL_STATUS_CORRUPTED) {
-    TRI_WriteUnlockReadWriteLock(&col->_lock);
     TRI_WriteUnlockReadWriteLock(&vocbase->_lock);
+    TRI_WriteUnlockReadWriteLock(&col->_lock);
 
     return TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_COLLECTION);
   }
 
   // cannot rename a deleted collection
   if (col->_status == TRI_VOC_COL_STATUS_DELETED) {
-    TRI_WriteUnlockReadWriteLock(&col->_lock);
     TRI_WriteUnlockReadWriteLock(&vocbase->_lock);
+    TRI_WriteUnlockReadWriteLock(&col->_lock);
 
     return TRI_set_errno(TRI_ERROR_AVOCADO_COLLECTION_NOT_FOUND);
   }
@@ -1178,8 +1178,8 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col,
   found = TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName, newName, cnv.v, false);
 
   if (found != NULL) {
-    TRI_WriteUnlockReadWriteLock(&col->_lock);
     TRI_WriteUnlockReadWriteLock(&vocbase->_lock);
+    TRI_WriteUnlockReadWriteLock(&col->_lock);
 
     return TRI_set_errno(TRI_ERROR_AVOCADO_DUPLICATE_NAME);
   }
@@ -1202,8 +1202,8 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col,
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, newName);
 
-      TRI_WriteUnlockReadWriteLock(&col->_lock);
       TRI_WriteUnlockReadWriteLock(&vocbase->_lock);
+      TRI_WriteUnlockReadWriteLock(&col->_lock);
 
       return TRI_set_errno(res);
     }
@@ -1215,8 +1215,8 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col,
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, newName);
 
-      TRI_WriteUnlockReadWriteLock(&col->_lock);
       TRI_WriteUnlockReadWriteLock(&vocbase->_lock);
+      TRI_WriteUnlockReadWriteLock(&col->_lock);
 
       return TRI_set_errno(res);
     }
@@ -1234,8 +1234,8 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col,
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, newName);
 
-      TRI_WriteUnlockReadWriteLock(&col->_lock);
       TRI_WriteUnlockReadWriteLock(&vocbase->_lock);
+      TRI_WriteUnlockReadWriteLock(&col->_lock);
 
       return TRI_set_errno(res);
     }
@@ -1250,8 +1250,8 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col,
   else {
     TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, newName);
 
-    TRI_WriteUnlockReadWriteLock(&col->_lock);
     TRI_WriteUnlockReadWriteLock(&vocbase->_lock);
+    TRI_WriteUnlockReadWriteLock(&col->_lock);
 
     return TRI_set_errno(TRI_ERROR_INTERNAL);
   }
@@ -1262,8 +1262,8 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col,
 
   TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, oldName);
 
-  TRI_WriteUnlockReadWriteLock(&col->_lock);
   TRI_WriteUnlockReadWriteLock(&vocbase->_lock);
+  TRI_WriteUnlockReadWriteLock(&col->_lock);
 
   return TRI_ERROR_NO_ERROR;
 }
