@@ -394,29 +394,6 @@ TRI_collection_t* TRI_CreateCollection (TRI_collection_t* collection,
     return NULL;
   }
 
-  // simple collection use the collection identifier
-  else if (parameter->_type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
-    tmp1 = TRI_StringUInt64(parameter->_cid);
-    tmp2 = TRI_Concatenate2String("collection-", tmp1);
-
-    filename = TRI_Concatenate2File(path, tmp2);
-
-    TRI_FreeString(tmp2);
-    TRI_FreeString(tmp1);
-  }
-
-  // uups
-  else {
-    TRI_set_errno(TRI_ERROR_AVOCADO_UNKNOWN_COLLECTION_TYPE);
-
-    LOG_ERROR("cannot create collection '%s' in '%s': unknown type '%d'",
-              parameter->_name,
-              path,
-              (unsigned int) parameter->_type);
-
-    return NULL;
-  }
-
   // directory must not exists
   if (TRI_ExistsFile(filename)) {
     TRI_set_errno(TRI_ERROR_AVOCADO_COLLECTION_DIRECTORY_ALREADY_EXISTS);
