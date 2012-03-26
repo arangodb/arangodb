@@ -335,34 +335,39 @@ void TRI_SynchroniserVocBase (void* data) {
     n = collections._length;
 
     for (i = 0;  i < n;  ++i) {
-      TRI_vocbase_col_t* col;
-      TRI_doc_collection_t* collection;
+      TRI_vocbase_col_t* collection;
+      TRI_doc_collection_t* doc;
       bool result;
 
-      col = collections._buffer[i];
+      collection = collections._buffer[i];
 
-      if (! col->_loaded) {
+      TRI_ReadLockReadWriteLock(&collection->_lock);
+
+      if (collection->_status != TRI_VOC_COL_STATUS_LOADED) {
+        TRI_ReadUnlockReadWriteLock(&collection->_lock);
         continue;
       }
 
-      collection = col->_collection;
+      doc = collection->_collection;
 
       // for simple document collection, first sync and then seal
-      type = collection->base._type;
+      type = doc->base._type;
 
       if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
-        result = CheckSyncSimCollection((TRI_sim_collection_t*) collection);
+        result = CheckSyncSimCollection((TRI_sim_collection_t*) doc);
         worked |= result;
 
-        result = CheckJournalSimCollection((TRI_sim_collection_t*) collection);
+        result = CheckJournalSimCollection((TRI_sim_collection_t*) doc);
         worked |= result;
 
-        result = CheckSyncCompactorSimCollection((TRI_sim_collection_t*) collection);
+        result = CheckSyncCompactorSimCollection((TRI_sim_collection_t*) doc);
         worked |= result;
 
-        result = CheckCompactorSimCollection((TRI_sim_collection_t*) collection);
+        result = CheckCompactorSimCollection((TRI_sim_collection_t*) doc);
         worked |= result;
       }
+
+      TRI_ReadUnlockReadWriteLock(&collection->_lock);
     }
 
     if (! worked) {

@@ -144,8 +144,7 @@ char* TRI_SlurpFile (char const* filename);
 /// file is filled with the process identifier as decimal number and a
 /// lock on the file is obtained using @FN{flock}.
 ///
-/// On success true is returned. False is returned on failure. See
-/// @FN{TRI_errno} for details.
+/// On success @ref TRI_ERROR_NO_ERROR is returned.
 ///
 /// Internally, the functions keeps a list of open pid files. Calling the
 /// function twice with the same @FA{filename} will succeed and will not
@@ -153,30 +152,25 @@ char* TRI_SlurpFile (char const* filename);
 /// all open locks upon exit.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CreateLockFile (char const* filename);
+int TRI_CreateLockFile (char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief verifies a lock file based on the PID
 ///
-/// The function checks if the file named @FA{filename} exists. If it does not
-/// then TRI_ERROR_NO_ERROR is returned.  If the file exists, then the
-/// following checks are performed:
+/// The function checks if the file named @FA{filename} exists. If the
+/// file exists, then the following checks are performed:
 ///
-/// - Does the file contain a valid decimal number? Otherwise
-///   TRI_ERROR_ILLEGAL_NUMBER is returned.
-///
-/// - Does this number belong to a living process? Otherwise
-///   TRI_ERROR_DEAD_PID is returned.
-///
+/// - Does the file contain a valid decimal number?
+/// - Does this number belong to a living process?
 /// - Is it possible to lock the file using @FN{flock}. This should failed.
-///   If the lock can be obtained, then TRI_ERROR_UNLOCKED_FILE is returned and
-///   the lock is released.
+///   If the lock can be obtained, then it is assume that the lock is invalid.
 ///
 /// If the verification returns an error, than @FN{TRI_UnlinkFile} should be
-/// used to remove the lock file.
+/// used to remove the lock file. If the verification returns @ref
+/// TRI_ERROR_NO_ERROR than the file is locked and the lock is valid.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_VerifyLockFile (char const* filename);
+int TRI_VerifyLockFile (char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a lock file based on the PID

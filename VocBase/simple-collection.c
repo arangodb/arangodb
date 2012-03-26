@@ -1119,15 +1119,14 @@ static TRI_doc_mptr_t const UpdateShapedJson (TRI_doc_collection_t* document,
 /// @brief deletes a json document given the identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool DeleteShapedJson (TRI_doc_collection_t* document,
-                              TRI_voc_did_t did,
-                              TRI_voc_rid_t rid,
-                              TRI_voc_rid_t* oldRid,
-                              TRI_doc_update_policy_e policy,
-                              bool release) {
+static int DeleteShapedJson (TRI_doc_collection_t* document,
+                             TRI_voc_did_t did,
+                             TRI_voc_rid_t rid,
+                             TRI_voc_rid_t* oldRid,
+                             TRI_doc_update_policy_e policy,
+                             bool release) {
   TRI_sim_collection_t* collection;
   TRI_doc_deletion_marker_t marker;
-  int res;
 
   collection = (TRI_sim_collection_t*) document;
 
@@ -1139,65 +1138,59 @@ static bool DeleteShapedJson (TRI_doc_collection_t* document,
   marker._did = did;
   marker._sid = 0;
 
-  res = DeleteDocument(collection, &marker, rid, oldRid, policy, release);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_set_errno(res);
-  }
-
-  return res == TRI_ERROR_NO_ERROR;
+  return DeleteDocument(collection, &marker, rid, oldRid, policy, release);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read locks a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool BeginRead (TRI_doc_collection_t* document) {
+static int BeginRead (TRI_doc_collection_t* document) {
   TRI_sim_collection_t* collection;
 
   collection = (TRI_sim_collection_t*) document;
   TRI_ReadLockReadWriteLock(&collection->_lock);
 
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read unlocks a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool EndRead (TRI_doc_collection_t* document) {
+static int EndRead (TRI_doc_collection_t* document) {
   TRI_sim_collection_t* collection;
 
   collection = (TRI_sim_collection_t*) document;
   TRI_ReadUnlockReadWriteLock(&collection->_lock);
 
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write locks a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool BeginWrite (TRI_doc_collection_t* document) {
+static int BeginWrite (TRI_doc_collection_t* document) {
   TRI_sim_collection_t* collection;
 
   collection = (TRI_sim_collection_t*) document;
   TRI_WriteLockReadWriteLock(&collection->_lock);
 
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write unlocks a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool EndWrite (TRI_doc_collection_t* document) {
+static int EndWrite (TRI_doc_collection_t* document) {
   TRI_sim_collection_t* collection;
 
   collection = (TRI_sim_collection_t*) document;
   TRI_WriteUnlockReadWriteLock(&collection->_lock);
 
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1750,7 +1743,9 @@ static bool InitSimCollection (TRI_sim_collection_t* collection,
 /// @brief creates a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_sim_collection_t* TRI_CreateSimCollection (char const* path, TRI_col_parameter_t* parameter) {
+TRI_sim_collection_t* TRI_CreateSimCollection (char const* path,
+                                               TRI_col_parameter_t* parameter,
+                                               TRI_voc_cid_t cid) {
   TRI_col_info_t info;
   TRI_collection_t* collection;
   TRI_shaper_t* shaper;
@@ -1759,7 +1754,7 @@ TRI_sim_collection_t* TRI_CreateSimCollection (char const* path, TRI_col_paramet
   memset(&info, 0, sizeof(info));
   info._version = TRI_COL_VERSION;
   info._type = parameter->_type;
-  info._cid = TRI_NewTickVocBase();
+  info._cid = cid == 0 ? TRI_NewTickVocBase() : cid;
   TRI_CopyString(info._name, parameter->_name, sizeof(info._name));
   info._maximalSize = parameter->_maximalSize;
   info._size = sizeof(TRI_col_info_t);
@@ -1926,24 +1921,24 @@ TRI_sim_collection_t* TRI_OpenSimCollection (char const* path) {
 /// @brief closes an open collection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CloseSimCollection (TRI_sim_collection_t* collection) {
-  bool ok;
+int TRI_CloseSimCollection (TRI_sim_collection_t* collection) {
+  int res;
 
-  ok = TRI_CloseCollection(&collection->base.base);
+  res = TRI_CloseCollection(&collection->base.base);
 
-  if (! ok) {
-    return false;
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
   }
 
-  ok = TRI_CloseVocShaper(collection->base._shaper);
+  res = TRI_CloseVocShaper(collection->base._shaper);
 
-  if (! ok) {
-    return false;
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
   }
 
   collection->base._shaper = NULL;
 
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

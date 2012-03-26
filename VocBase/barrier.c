@@ -124,42 +124,86 @@ TRI_barrier_t* TRI_CreateBarrierDatafile (TRI_barrier_list_t* container,
                                           TRI_datafile_t* datafile,
                                           void (*callback) (struct TRI_datafile_s*, void*),
                                           void* data) {
-  TRI_barrier_t* element;
+  TRI_barrier_datafile_cb_t* element;
 
-  element = TRI_Allocate(sizeof(TRI_barrier_t));
-  if (!element) {
-    return NULL;
-  }
+  element = TRI_Allocate(sizeof(TRI_barrier_datafile_cb_t));
 
-  element->_type = TRI_BARRIER_DATAFILE;
-  element->_container = container;
+  element->base._type = TRI_BARRIER_DATAFILE_CALLBACK;
+  element->base._container = container;
+
   element->_datafile = datafile;
-  element->_datafileData = data;
-  element->datafileCallback = callback;
+  element->_data = data;
+
+  element->callback = callback;
 
   TRI_LockSpin(&container->_lock);
 
   // empty list
   if (container->_end == NULL) {
-    element->_next = NULL;
-    element->_prev = NULL;
+    element->base._next = NULL;
+    element->base._prev = NULL;
 
-    container->_begin = element;
-    container->_end = element;
+    container->_begin = &element->base;
+    container->_end = &element->base;
   }
 
   // add to the end
   else {
-    element->_next = NULL;
-    element->_prev = container->_end;
+    element->base._next = NULL;
+    element->base._prev = container->_end;
 
-    container->_end->_next = element;
-    container->_end = element;
+    container->_end->_next = &element->base;
+    container->_end = &element->base;
   }
 
   TRI_UnlockSpin(&container->_lock);
 
-  return element;
+  return &element->base;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new collection deletion barrier
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_barrier_t* TRI_CreateBarrierCollection (TRI_barrier_list_t* container,
+                                            struct TRI_collection_s* collection,
+                                            bool (*callback) (struct TRI_collection_s*, void*),
+                                            void* data) {
+  TRI_barrier_collection_cb_t* element;
+
+  element = TRI_Allocate(sizeof(TRI_barrier_collection_cb_t));
+
+  element->base._type = TRI_BARRIER_COLLECTION_CALLBACK;
+  element->base._container = container;
+
+  element->_collection = collection;
+  element->_data = data;
+
+  element->callback = callback;
+
+  TRI_LockSpin(&container->_lock);
+
+  // empty list
+  if (container->_end == NULL) {
+    element->base._next = NULL;
+    element->base._prev = NULL;
+
+    container->_begin = &element->base;
+    container->_end = &element->base;
+  }
+
+  // add to the end
+  else {
+    element->base._next = NULL;
+    element->base._prev = container->_end;
+
+    container->_end->_next = &element->base;
+    container->_end = &element->base;
+  }
+
+  TRI_UnlockSpin(&container->_lock);
+
+  return &element->base;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

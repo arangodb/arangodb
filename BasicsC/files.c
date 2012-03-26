@@ -576,24 +576,24 @@ char* TRI_SlurpFile (char const* filename) {
 /// @brief creates a lock file based on the PID
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CreateLockFile (char const* filename) {
+int TRI_CreateLockFile (char const* filename) {
   TRI_pid_t pid;
   char* buf;
   char* fn;
   int fd;
   int rv;
+  int res;
 
   InitialiseLockFiles();
 
   if (LookupElementVectorString(&FileNames, filename) >= 0) {
-    return true;
+    return TRI_ERROR_NO_ERROR;
   }
 
   fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
 
   if (fd == -1) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    return false;
+    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 
   pid = TRI_CurrentProcessId();
@@ -602,13 +602,14 @@ bool TRI_CreateLockFile (char const* filename) {
   rv = TRI_WRITE(fd, buf, strlen(buf));
 
   if (rv == -1) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
     TRI_FreeString(buf);
 
     TRI_CLOSE(fd);
     TRI_UNLINK(filename);
-    return false;
+
+    return res;
   }
 
   TRI_FreeString(buf);
@@ -622,7 +623,8 @@ bool TRI_CreateLockFile (char const* filename) {
 
     TRI_CLOSE(fd);
     TRI_UNLINK(filename);
-    return false;
+
+    return TRI_errno();
   }
 
   //  close(fd); file descriptor has to be valid for file locking
@@ -633,26 +635,24 @@ bool TRI_CreateLockFile (char const* filename) {
   TRI_PushBackVectorString(&FileNames, fn);
   TRI_WriteUnlockReadWriteLock(&LockFileNames);
 
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief verifies a lock file based on the PID
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_VerifyLockFile (char const* filename) {
-  int fd;
+int TRI_VerifyLockFile (char const* filename) {
   TRI_pid_t pid;
-  ssize_t n;
-  uint32_t fc;
   char buffer[128];
   int can_lock;
-
-  TRI_set_errno(TRI_ERROR_NO_ERROR);
+  int fd;
+  int res;
+  ssize_t n;
+  uint32_t fc;
 
   if (! TRI_ExistsFile(filename)) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    return false;
+    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 
   fd = TRI_OPEN(filename, O_RDONLY);
@@ -660,40 +660,39 @@ bool TRI_VerifyLockFile (char const* filename) {
   TRI_CLOSE(fd);
 
   if (n == 0) { // file empty
-    TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
-    return false;
+    return TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
   }
 
   // not really necessary, but this shuts up valgrind
   memset(buffer, 0, sizeof(buffer));
 
   fc = TRI_UInt32String(buffer);
+  res = TRI_errno();
 
-  if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-    return false;
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
   }
 
   pid = fc;
 
   if (kill(pid, 0) == -1) {
-    TRI_set_errno(TRI_ERROR_DEAD_PID);
-    return false;
+    return TRI_set_errno(TRI_ERROR_DEAD_PID);
   }
 
   fd = TRI_OPEN(filename, O_RDONLY);
   can_lock = flock(fd, LOCK_EX | LOCK_NB);
 
   if (can_lock == 0) { // file was not yet be locked
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
     flock(fd, LOCK_UN);
     TRI_CLOSE(fd);
 
-    return false;
+    return res;
   }
 
   TRI_CLOSE(fd);
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
