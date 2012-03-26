@@ -41,15 +41,6 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Hash function used to hash bind parameter names
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashBindParameterName (TRI_associative_pointer_t* array, 
-                                       void const* key) {
-  return TRI_FnvHashString((char const*) key);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Hash function used to hash bind parameters
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -447,7 +438,7 @@ TRI_query_template_t* TRI_CreateQueryTemplate (const char* queryString,
   TRI_InitQueryError(&template_->_error);
 
   TRI_InitAssociativePointer(&template_->_bindParameters,
-                             HashBindParameterName,
+                             TRI_HashStringKeyAssociativePointer,
                              HashBindParameter,
                              EqualBindParameter,
                              0);
@@ -1420,13 +1411,13 @@ TRI_query_instance_t* TRI_CreateQueryInstance (const TRI_query_template_t* const
   TRI_InitVectorPointer(&instance->_locks);
 
   TRI_InitAssociativePointer(&instance->_bindParameters,
-                             HashBindParameterName,
+                             TRI_HashStringKeyAssociativePointer,
                              HashBindParameter,
                              EqualBindParameter,
                              0);
   
   TRI_InitAssociativePointer(&instance->_query._from._collections,
-                             QLHashKey,
+                             TRI_HashStringKeyAssociativePointer,
                              QLHashCollectionElement,
                              QLEqualCollectionKeyElement,
                              0);

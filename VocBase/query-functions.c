@@ -37,15 +37,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Hash function used to hash function name
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashName (TRI_associative_pointer_t* array, 
-                          void const* key) {
-  return TRI_FnvHashString((char const*) key);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Hash function used to hash function struct
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -53,7 +44,7 @@ static uint64_t HashFunction (TRI_associative_pointer_t* array,
                               void const* element) {
   TRI_query_function_t* function = (TRI_query_function_t*) element;
 
-  return TRI_FnvHashString(function->_name);
+  return TRI_FnvHashString(function->_externalName);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,7 +56,7 @@ static bool EqualName (TRI_associative_pointer_t* array,
                        void const* element) {
   TRI_query_function_t* function = (TRI_query_function_t*) element;
 
-  return TRI_EqualString(key, function->_name);
+  return TRI_EqualString(key, function->_externalName);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -93,42 +84,32 @@ TRI_associative_pointer_t* TRI_InitialiseQueryFunctions (void) {
     return NULL;
   }
 
-  TRI_InitAssociativePointer(functions, HashName, HashFunction, EqualName, 0); 
-  TRI_RegisterQueryFunction(functions, "AQL_IS_UNDEFINED", 1, 1);
+  TRI_InitAssociativePointer(functions, 
+                             TRI_HashStringKeyAssociativePointer, 
+                             HashFunction, 
+                             EqualName, 
+                             NULL); 
+
+  // cast functions
+  TRI_RegisterQueryFunction(functions, "toNumber", "AQL_CAST_NUMBER", 1, 1);
+  TRI_RegisterQueryFunction(functions, "toString", "AQL_CAST_STRING", 1, 1);
+  TRI_RegisterQueryFunction(functions, "toBool", "AQL_CAST_BOOL", 1, 1);
+  TRI_RegisterQueryFunction(functions, "toNull", "AQL_CAST_NULL", 1, 1);
+  TRI_RegisterQueryFunction(functions, "toUndefined", "AQL_CAST_UNDEFINED", 1, 1);
+  
+  // type check functions
+  TRI_RegisterQueryFunction(functions, "isString", "AQL_IS_STRING", 1, 1);
+  TRI_RegisterQueryFunction(functions, "isNumber", "AQL_IS_NUMBER", 1, 1);
+  TRI_RegisterQueryFunction(functions, "isBool", "AQL_IS_BOOL", 1, 1);
+  TRI_RegisterQueryFunction(functions, "isNull", "AQL_IS_NULL", 1, 1);
+  TRI_RegisterQueryFunction(functions, "isUndefined", "AQL_IS_UNDEFINED", 1, 1);
+  TRI_RegisterQueryFunction(functions, "isArray", "AQL_IS_ARRAY", 1, 1);
+  TRI_RegisterQueryFunction(functions, "isObject", "AQL_IS_OBJECT", 1, 1);
+  
+  // string concat
+  TRI_RegisterQueryFunction(functions, "concat", "AQL_STRING_CONCAT", 1, 1024);
 
   return functions;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief register a function name
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_RegisterQueryFunction (TRI_associative_pointer_t* functions,
-                                char* functionName, 
-                                int minArgs, 
-                                int maxArgs) {
-  TRI_query_function_t* function = 
-    (TRI_query_function_t*) TRI_Allocate(sizeof(TRI_query_function_t));
-
-  if (!function) {
-    return false;
-  }
-
-  function->_name = TRI_DuplicateString(functionName);
-  if (!function->_name) {
-    TRI_Free(function);
-    return false;
-  }
-  function->_minArgs = minArgs; 
-  function->_maxArgs = maxArgs; 
-
-  if (TRI_InsertKeyAssociativePointer(functions, functionName, function, false)) {
-    TRI_Free(function->_name);
-    TRI_Free(function);
-    return false;
-  }
-
-  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,14 +126,83 @@ void TRI_FreeQueryFunctions (TRI_associative_pointer_t* functions) {
       continue;
     }
 
-    if (function->_name) {
-      TRI_Free(function->_name);
-    }
+    TRI_Free(function->_externalName);
+    TRI_Free(function->_internalName);
     TRI_Free(function);
   }
 
   TRI_DestroyAssociativePointer(functions);
   TRI_Free(functions);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a function name is valid
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsValidQueryFunction (TRI_associative_pointer_t* functions,
+                               const char* const externalName) {
+  if (TRI_LookupByKeyAssociativePointer(functions, externalName)) {
+    return true;
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get internal function name for an external one
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_GetInternalNameQueryFunction (TRI_associative_pointer_t* functions,
+                                        const char* const externalName) {
+  TRI_query_function_t* function = (TRI_query_function_t*) 
+    TRI_LookupByKeyAssociativePointer(functions, externalName);
+
+  if (!function) {
+    return NULL;
+  }
+
+  return function->_internalName;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a function name
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_RegisterQueryFunction (TRI_associative_pointer_t* functions,
+                                const char* const externalName, 
+                                const char* const internalName, 
+                                const int minArgs, 
+                                const int maxArgs) {
+  TRI_query_function_t* function = 
+    (TRI_query_function_t*) TRI_Allocate(sizeof(TRI_query_function_t));
+
+  if (!function) {
+    return false;
+  }
+
+  function->_externalName = TRI_DuplicateString(externalName);
+  if (!function->_externalName) {
+    TRI_Free(function);
+    return false;
+  }
+
+  function->_internalName = TRI_DuplicateString(internalName);
+  if (!function->_internalName) {
+    TRI_Free(function->_externalName);
+    TRI_Free(function);
+    return false;
+  }
+  function->_minArgs = minArgs; 
+  function->_maxArgs = maxArgs; 
+
+  if (TRI_InsertKeyAssociativePointer(functions, externalName, function, false)) {
+    TRI_Free(function->_externalName);
+    TRI_Free(function->_internalName);
+    TRI_Free(function);
+    return false;
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VocBase/query-parse.h"
+#include "VocBase/query-functions.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocBase
@@ -392,12 +393,7 @@ bool TRI_ParseQueryValidateFunctionCalls (TRI_query_template_t* const template_,
     assert(node->_lhs); // function name
     
     funcName = node->_lhs->_value._stringValue;
-    if (!TRI_LookupByKeyAssociativePointer(template_->_vocbase->_functions, funcName)) {
-      TRI_SetQueryError(&template_->_error, 
-                        TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN,
-                        funcName);
-      return false;
-    }
+    // TODO: validate arguments
   }
    
   lhs = node->_lhs;
