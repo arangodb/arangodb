@@ -793,15 +793,8 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
 
   vocbase = TRI_Allocate(sizeof(TRI_vocbase_t));
 
-  vocbase->_cursors = TRI_CreateShadowsQueryCursor();
-    TRI_Free(vocbase);
-    LOG_ERROR("out of memory when opening database");
-    return NULL;
-  }
   
   vocbase->_functions = TRI_InitialiseQueryFunctions();
-  if (vocbase->_functions == NULL) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
   vocbase->_lockFile = lockFile;
   vocbase->_path = TRI_DuplicateString(path);
 
@@ -881,9 +874,8 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   TRI_DestroyAssociativePointer(&vocbase->_collectionsById);
   TRI_DestroyVectorPointer(&vocbase->_collections);
 
-  // query functions
-  if (vocbase->_functions) {
-    TRI_FreeQueryFunctions(vocbase->_functions);
+  // free query functions
+  TRI_FreeQueryFunctions(vocbase->_functions);
 
   // release lock on database
   TRI_DestroyLockFile(vocbase->_lockFile);
