@@ -275,6 +275,7 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	VocBase/query-base.$(OBJEXT) VocBase/query-cursor.$(OBJEXT) \
 	VocBase/query-data-feeder.$(OBJEXT) \
 	VocBase/query-execute.$(OBJEXT) \
+	VocBase/query-functions.$(OBJEXT) \
 	VocBase/query-javascript.$(OBJEXT) \
 	VocBase/query-join.$(OBJEXT) \
 	VocBase/query-join-execute.$(OBJEXT) \
@@ -732,6 +733,7 @@ avocado_SOURCES = \
 	VocBase/query-cursor.c \
 	VocBase/query-data-feeder.c \
 	VocBase/query-execute.c \
+	VocBase/query-functions.c \
 	VocBase/query-javascript.c \
 	VocBase/query-join.c \
 	VocBase/query-join-execute.c \
@@ -1580,6 +1582,8 @@ VocBase/query-data-feeder.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/query-execute.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
+VocBase/query-functions.$(OBJEXT): VocBase/$(am__dirstamp) \
+	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/query-javascript.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/query-join.$(OBJEXT): VocBase/$(am__dirstamp) \
@@ -1821,6 +1825,7 @@ mostlyclean-compile:
 	-rm -f VocBase/query-cursor.$(OBJEXT)
 	-rm -f VocBase/query-data-feeder.$(OBJEXT)
 	-rm -f VocBase/query-execute.$(OBJEXT)
+	-rm -f VocBase/query-functions.$(OBJEXT)
 	-rm -f VocBase/query-javascript.$(OBJEXT)
 	-rm -f VocBase/query-join-execute.$(OBJEXT)
 	-rm -f VocBase/query-join.$(OBJEXT)
@@ -2018,6 +2023,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-cursor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-data-feeder.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-execute.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-functions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-javascript.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-join-execute.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-join.Po@am__quote@

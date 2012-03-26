@@ -183,6 +183,7 @@ avocado_SOURCES = \
 	VocBase/query-cursor.c \
 	VocBase/query-data-feeder.c \
 	VocBase/query-execute.c \
+	VocBase/query-functions.c \
 	VocBase/query-javascript.c \
 	VocBase/query-join.c \
 	VocBase/query-join-execute.c \
