@@ -179,6 +179,13 @@ bool TRI_ParseQueryValidateCollectionName (const char*);
 bool TRI_ParseQueryValidateCollectionAlias (const char*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Validate the function names used in a query part
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ParseQueryValidateFunctionCalls (TRI_query_template_t* const,
+                                          const TRI_query_node_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Validate the collections used in a query part
 ///
 /// Currently validates if all used collection names in the query part are 
@@ -186,7 +193,7 @@ bool TRI_ParseQueryValidateCollectionAlias (const char*);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ParseQueryValidateCollections (TRI_query_template_t* const, 
-                                        TRI_query_node_t*,
+                                        const TRI_query_node_t* const,
                                         QL_parser_validate_func,
                                         size_t*);
 

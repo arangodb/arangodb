@@ -183,14 +183,6 @@
   * comparison operators 
   * --------------------------------------------------------------------------- */
 
-"===" {
-  return IDENTICAL;
-}
-
-"!==" {
-  return UNIDENTICAL;
-}
-
 "!=" {
   return UNEQUAL;
 }

@@ -89,9 +89,9 @@ catch (err) {
 /// @brief prints a shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-ShapedJson.prototype._PRINT = function(seen, path, names) {
+ShapedJson.prototype._PRINT = function(seen, path, names, level) {
   if (this instanceof ShapedJson) {
-    PRINT_OBJECT(this, seen, path, names);
+    PRINT_OBJECT(this, seen, path, names, level);
   }
   else {
     internal.output(this.toString());
@@ -165,14 +165,6 @@ AvocadoEdges.prototype._drop = AvocadoDatabase._drop;
 
 AvocadoCollection.prototype.drop = function() {
   db._drop(this);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts collection into an array
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoCollection.prototype.toArray = function() {
-  return this.all().toArray();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -109,10 +109,6 @@ const char* TRI_QueryNodeGetName (const TRI_query_node_type_e type) {
       return "binary: and";
     case TRI_QueryNodeBinaryOperatorOr:
       return "binary: or";
-    case TRI_QueryNodeBinaryOperatorIdentical:
-      return "binary: identical";
-    case TRI_QueryNodeBinaryOperatorUnidentical:
-      return "binary: unidentical";
     case TRI_QueryNodeBinaryOperatorEqual:
       return "binary: equal";
     case TRI_QueryNodeBinaryOperatorUnequal:
@@ -197,8 +193,6 @@ TRI_query_node_type_group_e TRI_QueryNodeGetTypeGroup (const TRI_query_node_type
     case TRI_QueryNodeBinaryOperatorIn:
     case TRI_QueryNodeBinaryOperatorAnd:
     case TRI_QueryNodeBinaryOperatorOr:
-    case TRI_QueryNodeBinaryOperatorIdentical:
-    case TRI_QueryNodeBinaryOperatorUnidentical:
     case TRI_QueryNodeBinaryOperatorEqual:
     case TRI_QueryNodeBinaryOperatorUnequal:
     case TRI_QueryNodeBinaryOperatorLess:
@@ -226,31 +220,29 @@ TRI_query_node_type_group_e TRI_QueryNodeGetTypeGroup (const TRI_query_node_type
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_query_node_type_e TRI_QueryNodeGetReversedRelationalOperator (const TRI_query_node_type_e type) {
-  if (type == TRI_QueryNodeBinaryOperatorIdentical || 
-      type == TRI_QueryNodeBinaryOperatorEqual ||
-      type == TRI_QueryNodeBinaryOperatorUnidentical ||
-      type == TRI_QueryNodeBinaryOperatorUnequal) {
-    return type;
+  switch (type) {
+    case TRI_QueryNodeBinaryOperatorEqual:
+      return TRI_QueryNodeBinaryOperatorUnequal;
+    case TRI_QueryNodeBinaryOperatorUnequal:
+      return TRI_QueryNodeBinaryOperatorEqual;
+    case TRI_QueryNodeBinaryOperatorLess:
+      return TRI_QueryNodeBinaryOperatorGreaterEqual;
+    case TRI_QueryNodeBinaryOperatorLessEqual:
+      return TRI_QueryNodeBinaryOperatorGreater;
+    case TRI_QueryNodeBinaryOperatorGreater:
+      return TRI_QueryNodeBinaryOperatorLessEqual;
+    case TRI_QueryNodeBinaryOperatorGreaterEqual:
+      return TRI_QueryNodeBinaryOperatorLess;
+    default:
+      assert(false);
   }
-  if (type == TRI_QueryNodeBinaryOperatorLess) {
-    return TRI_QueryNodeBinaryOperatorGreaterEqual;
-  }
-  if (type == TRI_QueryNodeBinaryOperatorLessEqual) {
-    return TRI_QueryNodeBinaryOperatorGreater;
-  }
-  if (type == TRI_QueryNodeBinaryOperatorGreater) {
-    return TRI_QueryNodeBinaryOperatorLessEqual;
-  }
-  if (type == TRI_QueryNodeBinaryOperatorGreaterEqual) {
-    return TRI_QueryNodeBinaryOperatorLess;
-  }
-  assert(false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the label string for a unary operator
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 char* TRI_QueryNodeGetUnaryOperatorString (const TRI_query_node_type_e type) {
   switch (type) {
     case TRI_QueryNodeUnaryOperatorPlus:
@@ -263,11 +255,13 @@ char* TRI_QueryNodeGetUnaryOperatorString (const TRI_query_node_type_e type) {
       return "";
   }
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the label string for a binary operator
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 char* TRI_QueryNodeGetBinaryOperatorString (const TRI_query_node_type_e type) {
   switch (type) {
     case TRI_QueryNodeBinaryOperatorAnd: 
@@ -306,6 +300,7 @@ char* TRI_QueryNodeGetBinaryOperatorString (const TRI_query_node_type_e type) {
       return "";
   }
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether a node is a value node
@@ -373,8 +368,6 @@ bool TRI_QueryNodeIsBinaryOperator (const TRI_query_node_t* const node) {
     case TRI_QueryNodeBinaryOperatorIn:
     case TRI_QueryNodeBinaryOperatorAnd:
     case TRI_QueryNodeBinaryOperatorOr:
-    case TRI_QueryNodeBinaryOperatorIdentical:
-    case TRI_QueryNodeBinaryOperatorUnidentical:
     case TRI_QueryNodeBinaryOperatorEqual:
     case TRI_QueryNodeBinaryOperatorUnequal:
     case TRI_QueryNodeBinaryOperatorLess:
@@ -421,8 +414,6 @@ bool TRI_QueryNodeIsLogicalOperator (const TRI_query_node_t* const node) {
 
 bool TRI_QueryNodeIsRelationalOperator (const TRI_query_node_t* const node) {
   switch (node->_type) {
-    case TRI_QueryNodeBinaryOperatorIdentical:
-    case TRI_QueryNodeBinaryOperatorUnidentical:
     case TRI_QueryNodeBinaryOperatorEqual:
     case TRI_QueryNodeBinaryOperatorUnequal:
     case TRI_QueryNodeBinaryOperatorLess:

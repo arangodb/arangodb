@@ -67,11 +67,14 @@ extern "C" {
 ///   Will be raised when the filesystem is full.
 /// - 1105: @CODE{no journal}
 ///   Will be raised when a journal cannot be created.
-/// - 1106: @CODE{cannot rename because file ready exists}
-///   Will be raised when the datafile cannot be renamed because a file of the
-///   same name already exists.
+/// - 1106: @CODE{cannot create/rename datafile because it ready exists}
+///   Will be raised when the datafile cannot be created or renamed because a
+///   file of the same name already exists.
 /// - 1107: @CODE{database is locked}
 ///   Will be raised when the database is locked by a different process.
+/// - 1108: @CODE{cannot create/rename collection because directory ready exists}
+///   Will be raised when the collection cannot be created because a directory
+///   of the same name already exists.
 /// - 1200: @CODE{conflict}
 ///   Will be raised when updating or deleting a document and a conflict has
 ///   been detected.
@@ -116,9 +119,6 @@ extern "C" {
 /// - 1504: @CODE{number '\%s' is out of range}
 ///   Will be raised when a numeric value inside a query is out of the allowed
 ///   value range.
-/// - 1521: @CODE{limit value '\%s' is out of range}
-///   Will be raised when a limit value in the query is outside the allowed
-///   range (e. g. when passing a negative skip value).
 /// - 1505: @CODE{too many joins.}
 ///   Will be raised when the number of joins in a query is beyond the allowed
 ///   value.
@@ -156,6 +156,11 @@ extern "C" {
 /// - 1517: @CODE{bind parameter number '\%s' out of range}
 ///   Will be specified when the numeric index for a bind parameter of type @n
 ///   is out of the allowed range.
+/// - 1518: @CODE{usage of unknown function '\%s'}
+///   Will be raised when an undefined function is called.
+/// - 1521: @CODE{limit value '\%s' is out of range}
+///   Will be raised when a limit value in the query is outside the allowed
+///   range (e. g. when passing a negative skip value).
 /// - 1600: @CODE{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
@@ -484,10 +489,10 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1106: ERROR_AVOCADO_DATAFILE_ALREADY_EXISTS
 ///
-/// cannot rename because file ready exists
+/// cannot create/rename datafile because it ready exists
 ///
-/// Will be raised when the datafile cannot be renamed because a file of the
-/// same name already exists.
+/// Will be raised when the datafile cannot be created or renamed because a
+/// file of the same name already exists.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_AVOCADO_DATAFILE_ALREADY_EXISTS                         (1106)
@@ -501,6 +506,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_AVOCADO_DATABASE_LOCKED                                 (1107)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1108: ERROR_AVOCADO_COLLECTION_DIRECTORY_ALREADY_EXISTS
+///
+/// cannot create/rename collection because directory ready exists
+///
+/// Will be raised when the collection cannot be created because a directory of
+/// the same name already exists.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AVOCADO_COLLECTION_DIRECTORY_ALREADY_EXISTS             (1108)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1200: ERROR_AVOCADO_CONFLICT
@@ -687,17 +703,6 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE                               (1504)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1521: ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE
-///
-/// limit value '%s' is out of range
-///
-/// Will be raised when a limit value in the query is outside the allowed range
-/// (e. g. when passing a negative skip value).
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE                          (1521)
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief 1505: ERROR_QUERY_TOO_MANY_JOINS
 ///
 /// too many joins.
@@ -836,6 +841,27 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_BIND_PARAMETER_NUMBER_OUT_OF_RANGE                (1517)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1518: ERROR_QUERY_FUNCTION_NAME_UNKNOWN
+///
+/// usage of unknown function '%s'
+///
+/// Will be raised when an undefined function is called.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN                             (1518)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1521: ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE
+///
+/// limit value '%s' is out of range
+///
+/// Will be raised when a limit value in the query is outside the allowed range
+/// (e. g. when passing a negative skip value).
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE                          (1521)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1600: ERROR_CURSOR_NOT_FOUND

@@ -27,8 +27,6 @@
 
 #include "simple-collection.h"
 
-#include <regex.h>
-
 #include "BasicsC/conversions.h"
 #include "BasicsC/files.h"
 #include "BasicsC/hashes.h"
@@ -1413,7 +1411,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 /// @brief iterator for index open
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool OpenIndexIterator2 (char const* filename, void* data) {
+static bool OpenIndexIterator (char const* filename, void* data) {
   TRI_idx_iid_t iid;
   TRI_index_t* idx;
   TRI_json_t* fieldCount;
@@ -1469,7 +1467,7 @@ static bool OpenIndexIterator2 (char const* filename, void* data) {
     iid = iis->_value._number;
   }
   else {
-    LOG_ERROR("ignoring index, index identifier could not be located");
+    LOG_ERROR("ignore hash-index, index identifier could not be located");
     return false;
   }  
 
@@ -1500,7 +1498,7 @@ static bool OpenIndexIterator2 (char const* filename, void* data) {
       CreateGeoIndexSimCollection(doc, NULL, lat->_value._string.data, lon->_value._string.data, false, iid);
     }
     else {
-      LOG_ERROR("ignoring geo-index %lu, need either 'location' or 'latitude' and 'longitude'",
+      LOG_ERROR("ignore geo-index %lu, need either 'location' or 'latitude' and 'longitude'",
                 (unsigned long) iid);
 
       TRI_FreeJson(json);
@@ -1526,7 +1524,7 @@ static bool OpenIndexIterator2 (char const* filename, void* data) {
       uniqueIndex = gjs->_value._boolean;
     }
     else {
-      LOG_ERROR("ignoring %s-index %lu, could not determine if unique or non-unique",
+      LOG_ERROR("ignore %s-index %lu, could not determine if unique or non-unique",
                 typeStr,
                 (unsigned long) iid);
 
@@ -1544,7 +1542,7 @@ static bool OpenIndexIterator2 (char const* filename, void* data) {
     }
 
     if (intCount < 1) {
-      LOG_ERROR("ignoring %s-index %lu, field count missing", typeStr, (unsigned long) iid);
+      LOG_ERROR("ignore %s-index %lu, field count missing", typeStr, (unsigned long) iid);
 
       TRI_FreeJson(json);
       return false;
@@ -1561,7 +1559,7 @@ static bool OpenIndexIterator2 (char const* filename, void* data) {
       fieldStr = TRI_LookupArrayJson(json, fieldChar);
 
       if (fieldStr->_type != TRI_JSON_STRING) {
-        LOG_ERROR("ignoring %s-index %lu, invalid field name for hash index",
+        LOG_ERROR("ignore %s-index %lu, invalid field name for hash index",
                   (unsigned long) iid);
 
         TRI_DestroyVector(&attributes);
@@ -1609,54 +1607,6 @@ static bool OpenIndexIterator2 (char const* filename, void* data) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief iterator for index open
-////////////////////////////////////////////////////////////////////////////////
-
-static bool OpenIndexIterator (char const* filename, void* data) {
-  regmatch_t matches[3];
-  regex_t re;
-  bool ok;
-  char* tmp1;
-  char* tmp2;
-  char* corrupted;
-
-  ok = OpenIndexIterator2(filename, data);
-
-  if (! ok) {
-    regcomp(&re, "^(.*)/index-([0-9][0-9]*)\\.json$", REG_ICASE | REG_EXTENDED);
-
-
-    if (regexec(&re, filename, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
-      char const* first = filename + matches[1].rm_so;
-      size_t firstLen = matches[1].rm_eo - matches[1].rm_so;
-
-      char const* second = filename + matches[2].rm_so;
-      size_t secondLen = matches[2].rm_eo - matches[2].rm_so;
-
-      tmp1 = TRI_DuplicateString("bad-index-");
-      TRI_AppendString2(&tmp1, second, secondLen);
-      TRI_AppendString(&tmp1, ".json");
-
-      tmp2 = TRI_DuplicateString2(first, firstLen);
-
-      corrupted = TRI_Concatenate2File(tmp2, tmp1);
-      TRI_FreeString(tmp1);
-      TRI_FreeString(tmp2);
-
-      ok = TRI_RenameFile(filename, corrupted);
-
-      if (ok) {
-        LOG_WARNING("dropping corrupted index, renamed it to '%s'", corrupted);
-      }
-      else {
-        LOG_ERROR("dropping corrupted index, failed to renamed it to '%s'", corrupted);
-      }
-    }
-  }
-
-  return ok;
-}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief hashes an edge header

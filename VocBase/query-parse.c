@@ -76,6 +76,26 @@ static bool ValidateQueryTemplate (TRI_query_template_t* const template_) {
     return false;
   }
 
+  if (!TRI_ParseQueryValidateFunctionCalls(template_, 
+                                           template_->_query->_select._base)) {
+    return false;
+  }
+  
+  if (!TRI_ParseQueryValidateFunctionCalls(template_, 
+                                           template_->_query->_where._base)) {
+    return false;
+  }
+  
+  if (!TRI_ParseQueryValidateFunctionCalls(template_, 
+                                           template_->_query->_order._base)) {
+    return false;
+  }
+  
+  if (!TRI_ParseQueryValidateFunctionCalls(template_, 
+                                           template_->_query->_from._base)) {
+    return false;
+  }
+
   return true;
 }
 
@@ -342,13 +362,63 @@ bool TRI_ParseQueryValidateCollectionAlias (const char* name) {
   
   return ((totalLength > 0) && (totalLength <= TRI_QUERY_ALIAS_MAX_LENGTH));
 }
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Validate the function names used in a query part
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ParseQueryValidateFunctionCalls (TRI_query_template_t* const template_,
+                                          const TRI_query_node_t* const node) {
+  TRI_query_node_t* lhs;
+  TRI_query_node_t* rhs;
+  TRI_query_node_t* next;
+  
+  if (!node) {
+    return true; 
+  }
+  
+  if (node->_type == TRI_QueryNodeContainerList) {
+    next = node->_next;
+    while (next) {
+      if (!TRI_ParseQueryValidateFunctionCalls(template_, next)) {
+        return false;
+      }
+      next = next->_next;
+    }
+  }
+
+  if (node->_type == TRI_QueryNodeControlFunctionCall) {
+    char* funcName;
+    assert(node->_lhs); // function name
+    
+    funcName = node->_lhs->_value._stringValue;
+    if (!TRI_LookupByKeyAssociativePointer(template_->_vocbase->_functions, funcName)) {
+      TRI_SetQueryError(&template_->_error, 
+                        TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN,
+                        funcName);
+      return false;
+    }
+  }
+   
+  lhs = node->_lhs;
+  if (lhs && !TRI_ParseQueryValidateFunctionCalls(template_, lhs)) {
+    return false;
+  }
+
+  rhs = node->_rhs;
+  if (rhs && !TRI_ParseQueryValidateFunctionCalls(template_, rhs)) {
+    return false;
+  }
+
+  return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Validate the collections used in a query part
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ParseQueryValidateCollections (TRI_query_template_t* const template_,
-                                        TRI_query_node_t* node,
+                                        const TRI_query_node_t* const node,
                                         QL_parser_validate_func validateFunc,
                                         size_t* order) {
   TRI_query_node_t* lhs;

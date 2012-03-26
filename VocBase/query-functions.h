@@ -1,0 +1,87 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief In-query functions
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Jan Steemann
+/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef TRIAGENS_DURHAM_VOC_BASE_QUERY_FUNCTIONS_H
+#define TRIAGENS_DURHAM_VOC_BASE_QUERY_FUNCTIONS_H 1
+
+#include <BasicsC/common.h>
+#include <BasicsC/associative.h>
+#include <BasicsC/hashes.h>
+#include <BasicsC/strings.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief query function data structure
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_query_function_s {
+  char* _name;
+  int _minArgs;
+  int _maxArgs;
+}
+TRI_query_function_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise the array with the function declarations 
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_associative_pointer_t* TRI_InitialiseQueryFunctions (void);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a function name
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_RegisterQueryFunction (TRI_associative_pointer_t*, char*, int, int);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free the array with the function declarations 
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeQueryFunctions (TRI_associative_pointer_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:

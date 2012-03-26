@@ -34,6 +34,18 @@ var AQL_TYPEWEIGHT_ARRAY     = 5;
 var AQL_TYPEWEIGHT_OBJECT    = 6;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the numeric value or undefined if it is out of range
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_NUMERIC_VALUE (lhs) {
+  if (isNaN(lhs) || !isFinite(lhs)) {
+    return undefined;
+  }
+
+  return lhs;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the sort type of an operand
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -231,6 +243,7 @@ function AQL_RELATIONAL_UNEQUAL (lhs, rhs) {
         return result;
       }
     }
+
     return false;
   }
 
@@ -276,18 +289,23 @@ function AQL_RELATIONAL_GREATER_REC (lhs, rhs) {
       var key = l[i];
       if (key < r[i]) {
         // left key is less than right key
-        return false;
+        return true;
       } 
       else if (key > r[i]) {
         // left key is bigger than right key
-        return true;
+        return false;
       }
 
-      var result = AQL_RELATIONAL_GREATER_REC(lhs[i], rhs[i]);
+      var result = AQL_RELATIONAL_GREATER_REC(lhs[key], rhs[key]);
       if (result !== null) {
         return result;
       }
     }
+    
+    if (numRight > numLeft) {
+      return false;
+    }
+
     return null;
   }
 
@@ -313,10 +331,10 @@ function AQL_RELATIONAL_GREATER (lhs, rhs) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief perform greater equal check 
+/// @brief perform greater equal check (inner function)
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_RELATIONAL_GREATEREQUAL (lhs, rhs) {
+function AQL_RELATIONAL_GREATEREQUAL_REC (lhs, rhs) {
   // determines if lhs is greater or equal to rhs, returns a bool or undefined
   var leftWeight = AQL_TYPEWEIGHT(lhs);
   var rightWeight = AQL_TYPEWEIGHT(rhs);
@@ -346,16 +364,48 @@ function AQL_RELATIONAL_GREATEREQUAL (lhs, rhs) {
       if (i >= numRight) {
         return true;
       }
-      var result = AQL_RELATIONAL_GREATEREQUAL(lhs[i], rhs[i]);
-      if (result === undefined || result === false) {
+      var key = l[i];
+      if (key < r[i]) {
+        // left key is less than right key
+        return true;
+      } 
+      else if (key > r[i]) {
+        // left key is bigger than right key
+        return false;
+      }
+
+      var result = AQL_RELATIONAL_GREATEREQUAL_REC(lhs[key], rhs[key]);
+      if (result !== null) {
         return result;
       }
     }
-    return true;
+    
+    if (numRight > numLeft) {
+      return false;
+    }
+
+    return null;
   }
 
   // primitive type
+  if (lhs === rhs) {
+    return null;
+  }
   return (lhs >= rhs);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform greater equal check 
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_RELATIONAL_GREATEREQUAL (lhs, rhs) {
+  var result = AQL_RELATIONAL_GREATEREQUAL_REC(lhs, rhs);
+
+  if (result === null) {
+    result = true;
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -396,17 +446,23 @@ function AQL_RELATIONAL_LESS_REC (lhs, rhs) {
       var key = l[i];
       if (key < r[i]) {
         // left key is less than right key
-        return true;
+        return false;
       } 
       else if (key > r[i]) {
-        // left key is bigger than right key
-        return false;
+        // left key is bigger than right key ("b", "a") {"b" : 1}, {"a" : 1}
+        return true;
       }
+      // keys are equal
       var result = AQL_RELATIONAL_LESS_REC(lhs[key], rhs[key]);
       if (result !== null) {
         return result;
       }
     }
+    
+    if (numLeft > numRight) {
+      return false;
+    }
+
     return null;
   }
 
@@ -432,10 +488,10 @@ function AQL_RELATIONAL_LESS (lhs, rhs) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief perform less equal check 
+/// @brief perform less equal check (inner function)
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_RELATIONAL_LESSEQUAL (lhs, rhs) {
+function AQL_RELATIONAL_LESSEQUAL_REC (lhs, rhs) {
   // determines if lhs is less or equal to rhs, returns a bool or undefined
   var leftWeight = AQL_TYPEWEIGHT(lhs);
   var rightWeight = AQL_TYPEWEIGHT(rhs);
@@ -465,16 +521,48 @@ function AQL_RELATIONAL_LESSEQUAL (lhs, rhs) {
       if (i >= numLeft) {
         return true;
       }
-      var result = AQL_RELATIONAL_LESSEQUAL(lhs[i], rhs[i]);
-      if (result === undefined || result === false) {
+      var key = l[i];
+      if (key < r[i]) {
+        // left key is less than right key
+        return false;
+      } 
+      else if (key > r[i]) {
+        // left key is bigger than right key
+        return true;
+      }
+      var result = AQL_RELATIONAL_LESSEQUAL_REC(lhs[key], rhs[key]);
+      if (result !== null) {
         return result;
       }
     }
-    return true;
+
+    if (numLeft > numRight) {
+      return false;
+    }
+
+    return null;
+  }
+  
+  if (lhs === rhs) {
+    return null;
   }
 
   // primitive type
   return (lhs <= rhs);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform less than check 
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_RELATIONAL_LESSEQUAL (lhs, rhs) {
+  var result = AQL_RELATIONAL_LESSEQUAL_REC(lhs, rhs);
+
+  if (result === null) {
+    result = true;
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -495,7 +583,8 @@ function AQL_RELATIONAL_IN (lhs, rhs) {
   var numRight = r.length;
 
   for (var i = 0; i < numRight; ++i) {
-    if (AQL_RELATIONAL_EQUAL(lhs, r[i])) {
+    var key = r[i];
+    if (AQL_RELATIONAL_EQUAL(lhs, rhs[key])) {
       return true;
     }
   }
@@ -513,7 +602,7 @@ function AQL_UNARY_PLUS (lhs) {
     return undefined;
   }
 
-  return lhs;
+  return AQL_NUMERIC_VALUE(lhs);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -526,7 +615,7 @@ function AQL_UNARY_MINUS (lhs) {
     return undefined;
   }
 
-  return -lhs;
+  return AQL_NUMERIC_VALUE(-lhs);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -540,7 +629,7 @@ function AQL_ARITHMETIC_PLUS (lhs, rhs) {
     return undefined;
   }
 
-  return (lhs + rhs);
+  return AQL_NUMERIC_VALUE(lhs + rhs);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -554,7 +643,7 @@ function AQL_ARITHMETIC_MINUS (lhs, rhs) {
     return undefined;
   }
 
-  return (lhs - rhs);
+  return AQL_NUMERIC_VALUE(lhs - rhs);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -568,7 +657,7 @@ function AQL_ARITHMETIC_TIMES (lhs, rhs) {
     return undefined;
   }
 
-  return (lhs * rhs);
+  return AQL_NUMERIC_VALUE(lhs * rhs);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -583,7 +672,7 @@ function AQL_ARITHMETIC_DIVIDE (lhs, rhs) {
     return undefined;
   }
 
-  return (lhs / rhs);
+  return AQL_NUMERIC_VALUE(lhs / rhs);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -598,7 +687,7 @@ function AQL_ARITHMETIC_MODULUS (lhs, rhs) {
     return undefined;
   }
 
-  return (lhs % rhs);
+  return AQL_NUMERIC_VALUE(lhs % rhs);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
