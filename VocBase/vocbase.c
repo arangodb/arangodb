@@ -473,6 +473,8 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
     return NULL;
   }
 
+  TRI_FreeString(lockFile);
+
   // setup vocbase structure
   vocbase = TRI_Allocate(sizeof(TRI_vocbase_t));
 
