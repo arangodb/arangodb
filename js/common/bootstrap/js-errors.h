@@ -67,6 +67,7 @@ static string JS_common_bootstrap_errors =
   "  \"ERROR_QUERY_BIND_PARAMETER_VALUE_INVALID\" : { \"code\" : 1516, \"message\" : \"invalid value for bind parameter '%s'\" }, \n"
   "  \"ERROR_QUERY_BIND_PARAMETER_NUMBER_OUT_OF_RANGE\" : { \"code\" : 1517, \"message\" : \"bind parameter number '%s' out of range\" }, \n"
   "  \"ERROR_QUERY_FUNCTION_NAME_UNKNOWN\" : { \"code\" : 1518, \"message\" : \"usage of unknown function '%s'\" }, \n"
+  "  \"ERROR_QUERY_RUNTIME_ERROR\"    : { \"code\" : 1520, \"message\" : \"runtime error in query\" }, \n"
   "  \"ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE\" : { \"code\" : 1521, \"message\" : \"limit value '%s' is out of range\" }, \n"
   "  \"ERROR_CURSOR_NOT_FOUND\"       : { \"code\" : 1600, \"message\" : \"cursor not found\" }, \n"
   "  \"ERROR_SESSION_USERHANDLER_URL_INVALID\" : { \"code\" : 1700, \"message\" : \"expecting <prefix>/user/<username>\" }, \n"

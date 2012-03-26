@@ -695,10 +695,11 @@ static void WeakQueryCursorCallback (v8::Persistent<v8::Value> object, void* par
 /// @brief stores a cursor in a javascript object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Object> WrapQueryCursor (TRI_query_cursor_t* cursor) {
-  TRI_v8_global_t* v8g;
+static v8::Handle<v8::Value> WrapQueryCursor (TRI_query_cursor_t* cursor) {
   v8::HandleScope scope;
+  v8::TryCatch tryCatch;
 
+  TRI_v8_global_t* v8g;
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> cursorObject = v8g->QueryCursorTempl->NewInstance();
@@ -707,9 +708,12 @@ static v8::Handle<v8::Object> WrapQueryCursor (TRI_query_cursor_t* cursor) {
   if (i == v8g->JSQueryCursors.end()) {
     v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(cursor));
 
+    if (tryCatch.HasCaught()) {
+      return scope.Close(v8::Undefined());
+    }
+
     cursorObject->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_QUERY_CURSOR_TYPE));
     cursorObject->SetInternalField(SLOT_CLASS, persistent);
-
     v8g->JSQueryCursors[cursor] = persistent;
 
     persistent.MakeWeak(cursor, WeakQueryCursorCallback);
@@ -1423,6 +1427,7 @@ static TRI_json_t* ConvertHelper(v8::Handle<v8::Value> parameter) {
 
 static v8::Handle<v8::Value> JS_ParseAql (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  v8::TryCatch tryCatch;
   
   if (argv.Length() != 1) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_PARSE(<querystring>)")));
@@ -1467,12 +1472,16 @@ static v8::Handle<v8::Value> JS_ParseAql (v8::Arguments const& argv) {
     TRI_DestroyVectorString(&parameters);
     TRI_FreeQueryTemplate(template_);
 
+    if (tryCatch.HasCaught()) {
+      return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
+    }
     return scope.Close(result);
   } 
   catch (...) {
   }
 
   TRI_FreeQueryTemplate(template_);
+
   return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
 }
   
@@ -1483,6 +1492,7 @@ static v8::Handle<v8::Value> JS_ParseAql (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_StatementAql (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  v8::TryCatch tryCatch;
 
   if (argv.Length() < 1 || argv.Length() > 4) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_STATEMENT(<querystring>, <bindvalues>, <doCount>, <max>)")));
@@ -1560,12 +1570,12 @@ static v8::Handle<v8::Value> JS_StatementAql (v8::Arguments const& argv) {
     TRI_FreeQueryTemplate(template_);
     return scope.Close(errorObject);
   }
-  
+
   TRI_FreeQueryInstance(instance);
   TRI_FreeQueryTemplate(template_);
   
   TRI_StoreShadowData(vocbase->_cursors, (const void* const) cursor);
-  
+      
   return scope.Close(WrapQueryCursor(cursor));
 }
 
@@ -2534,6 +2544,7 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_DisposeQueryCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  v8::TryCatch tryCatch;
 
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: dispose()")));
@@ -2545,7 +2556,9 @@ static v8::Handle<v8::Value> JS_DisposeQueryCursor (v8::Arguments const& argv) {
   }
 
   if (TRI_DeleteDataShadowData(vocbase->_cursors, UnwrapQueryCursor(argv.Holder()))) {
-    return scope.Close(v8::True());
+    if (!tryCatch.HasCaught()) {
+      return scope.Close(v8::True());
+    }
   }
 
   return scope.Close(v8::ThrowException(v8::String::New("corrupted or already disposed cursor")));
@@ -2557,6 +2570,7 @@ static v8::Handle<v8::Value> JS_DisposeQueryCursor (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_IdQueryCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  v8::TryCatch tryCatch;
 
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: id()")));
@@ -2568,7 +2582,7 @@ static v8::Handle<v8::Value> JS_IdQueryCursor (v8::Arguments const& argv) {
   }
   
   TRI_shadow_id id = TRI_GetIdDataShadowData(vocbase->_cursors, UnwrapQueryCursor(argv.Holder()));
-  if (id) {
+  if (id && !tryCatch.HasCaught()) {
     return scope.Close(v8::Number::New(id));
   }
   
@@ -2581,6 +2595,7 @@ static v8::Handle<v8::Value> JS_IdQueryCursor (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_CountQueryCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  v8::TryCatch tryCatch;
 
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: count()")));
@@ -2610,6 +2625,7 @@ static v8::Handle<v8::Value> JS_CountQueryCursor (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_NextQueryCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  v8::TryCatch tryCatch;
 
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: next()")));
@@ -2655,8 +2671,8 @@ static v8::Handle<v8::Value> JS_NextQueryCursor (v8::Arguments const& argv) {
     if (context) {
       TRI_FreeExecutionContext(context);
     }
-
-    if (result) {
+    
+    if (result && !tryCatch.HasCaught()) {
       return scope.Close(value);
     }
   }
@@ -2670,6 +2686,7 @@ static v8::Handle<v8::Value> JS_NextQueryCursor (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_PersistQueryCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  v8::TryCatch tryCatch;
 
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: persist()")));
@@ -2681,7 +2698,7 @@ static v8::Handle<v8::Value> JS_PersistQueryCursor (v8::Arguments const& argv) {
   }
 
   bool result = TRI_PersistDataShadowData(vocbase->_cursors, UnwrapQueryCursor(argv.Holder()));
-  if (result) {
+  if (result && !tryCatch.HasCaught()) {
     return scope.Close(v8::True());
   }
     
@@ -2697,6 +2714,7 @@ static v8::Handle<v8::Value> JS_PersistQueryCursor (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_GetRowsQueryCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  v8::TryCatch tryCatch;
 
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: getRows()")));
@@ -2765,7 +2783,7 @@ static v8::Handle<v8::Value> JS_GetRowsQueryCursor (v8::Arguments const& argv) {
       TRI_FreeExecutionContext(context);
     }
 
-    if (result) {
+    if (result && !tryCatch.HasCaught()) {
       return scope.Close(rows);
     }
   }
@@ -2779,6 +2797,7 @@ static v8::Handle<v8::Value> JS_GetRowsQueryCursor (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_GetBatchSizeQueryCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  v8::TryCatch tryCatch;
 
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: getBatchSize()")));
@@ -2808,6 +2827,7 @@ static v8::Handle<v8::Value> JS_GetBatchSizeQueryCursor (v8::Arguments const& ar
 
 static v8::Handle<v8::Value> JS_HasCountQueryCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  v8::TryCatch tryCatch;
 
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: hasCount()")));
@@ -2837,6 +2857,7 @@ static v8::Handle<v8::Value> JS_HasCountQueryCursor (v8::Arguments const& argv) 
 
 static v8::Handle<v8::Value> JS_HasNextQueryCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  v8::TryCatch tryCatch;
 
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: hasNext()")));
@@ -4295,7 +4316,7 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
   // inside a write transaction
   // .............................................................................
 
-  bool ok = doc->updateLock(doc, shaped, did, 0, 0, TRI_DOC_UPDATE_LAST_WRITE);
+  int res = doc->updateLock(doc, shaped, did, 0, 0, TRI_DOC_UPDATE_LAST_WRITE);
 
   // .............................................................................
   // outside a write transaction
@@ -4303,7 +4324,7 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
 
   TRI_FreeShapedJson(shaped);
 
-  if (! ok) {
+  if (res != TRI_ERROR_NO_ERROR) {
     string err = "cannot replace document: ";
     err += TRI_last_error();
 
@@ -4505,7 +4526,7 @@ static v8::Handle<v8::Value> JS_ReplaceEdgesCol (v8::Arguments const& argv) {
   // inside a write transaction
   // .............................................................................
 
-  bool ok = doc->updateLock(doc, shaped, did, 0, 0, TRI_DOC_UPDATE_LAST_WRITE);
+  int res = doc->updateLock(doc, shaped, did, 0, 0, TRI_DOC_UPDATE_LAST_WRITE);
 
   // .............................................................................
   // outside a write transaction
@@ -4513,7 +4534,7 @@ static v8::Handle<v8::Value> JS_ReplaceEdgesCol (v8::Arguments const& argv) {
 
   TRI_FreeShapedJson(shaped);
 
-  if (! ok) {
+  if (res != TRI_ERROR_NO_ERROR) {
     string err = "cannot replace document: ";
     err += TRI_last_error();
 

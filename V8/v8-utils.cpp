@@ -646,6 +646,7 @@ bool TRI_ExecuteRefExecutionContext (TRI_js_exec_context_t context, TRI_json_t* 
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ExecuteOrderExecutionContext (TRI_js_exec_context_t context, int* r) {
+  v8::TryCatch tryCatch;
   js_exec_context_t* ctx;
 
   ctx = (js_exec_context_t*) context;

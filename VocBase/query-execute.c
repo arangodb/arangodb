@@ -223,6 +223,13 @@ TRI_query_cursor_t* TRI_ExecuteQueryInstance (TRI_query_instance_t* const instan
                              instance->_query._limit._count);
     }
   }
+      
+  if (instance->_doAbort) {
+    selectResult->free(selectResult);
+    cursor->_result._selectResult = NULL;
+    cursor->free(cursor);
+    return NULL;
+  }
   
   // adjust cursor length
   cursor->_length = selectResult->_numRows; 

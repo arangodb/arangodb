@@ -324,6 +324,15 @@ extern "C" {
 ///
 /// @verbinclude compare3
 ///
+/// The @LIT{in} operator checks whether the left-hand operand is contained in the 
+/// right-hand operand. Therefore, the right-hand operand is supposed to be a 
+/// list. If the right-hand operand is not of type list, the result will be @LIT{undefined}.
+/// The result will also be @LIT{undefined} if the left-hand operand is of type
+/// @LIT{undefined}. If the right-hand operand is a list, the list values will be
+/// checked one by one and be compared to the left-hand operand. If the left-hand
+/// operand is equal to one of the list elements, the result will be @LIT{true}.
+/// Otherwise, the result will be @LIT{false}.
+///
 /// @subsubsection AqlOperatorsLog Logical operators
 ///
 /// The following logical operators are supported:
@@ -334,15 +343,17 @@ extern "C" {
 ///
 /// @verbinclude logical
 ///
-/// The @LIT{&&} and @LIT{||} operators return a boolean value if the result of the 
-/// operation is known, and @LIT{undefined} otherwise.
+/// The @LIT{&&} and @LIT{||} operators expect their input operands to be boolean
+/// values. They will return @LIT{undefined} if any of the input operands is not a 
+/// boolean value. If both input operands are booleans, the result of the operation
+/// will also be a boolean.
 ///
 /// Both @LIT{&&} and @LIT{||} use short-circuit evaluation and only
 /// evaluate the second operand if the result of the operation cannot be
 /// determined by the first operand alone.
 ///
-/// The @LIT{!} operator returns boolean value if the operation can be processed, or
-/// @LIT{undefined} if the operand is @LIT{undefined}.
+/// The @LIT{!} operator returns boolean value if the operation input operand is a 
+/// boolean value, and @LIT{undefined} if the input operand is not of type boolean.
 ///
 /// @subsubsection AqlOperatorsArit Arithmetic operators
 ///
@@ -379,6 +390,8 @@ extern "C" {
 /// @subsubsection AQLOperatorsOther String concatenation
 ///
 /// String concatenation can be achieved by using the @LIT{concat} function.
+/// 
+/// @verbinclude concat
 ///
 /// @subsubsection AQLOperatorsPrec Operator precedence
 ///

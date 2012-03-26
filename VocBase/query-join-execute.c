@@ -917,7 +917,10 @@ static inline bool CheckJoinClause (TRI_query_instance_t* const instance,
 
   part = (TRI_join_part_t*) instance->_join._buffer[level];
   TRI_DefineWhereExecutionContext(instance, part->_context, level, true);
-  TRI_ExecuteConditionExecutionContext(instance, part->_context, &whereResult);
+  if (!TRI_ExecuteConditionExecutionContext(instance, part->_context, &whereResult)) {
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_RUNTIME_ERROR, "");
+    return false;
+  }
 
   return whereResult;
 }
@@ -931,7 +934,10 @@ static inline bool CheckWhereClause (TRI_query_instance_t* const instance,
   bool whereResult;
   
   TRI_DefineWhereExecutionContext(instance, instance->_query._where._context, level, false);
-  TRI_ExecuteConditionExecutionContext(instance, instance->_query._where._context, &whereResult);
+  if (!TRI_ExecuteConditionExecutionContext(instance, instance->_query._where._context, &whereResult)) {
+    TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_QUERY_RUNTIME_ERROR, "");
+    return false;
+  }
 
   return whereResult;
 }

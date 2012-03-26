@@ -260,7 +260,6 @@ function aqlSimpleTestSuite () {
     this.checkLength(0, 'c.value2 <= -100');
     
     this.checkLength(0, 'c.value2 == 21');
-    this.checkLength(0, 'c.value2 === 21');
     this.checkLength(0, 'c.value2 == 110');
     this.checkLength(0, 'c.value2 == 20.001');
     this.checkLength(0, 'c.value2 > 20');
@@ -295,16 +294,12 @@ function aqlSimpleTestSuite () {
     this.checkLength(0, 'c.value1 > 0', 'c.value1 > 20');
     this.checkLength(0, 'c.value1 >= 0', 'c.value1 > 20');
     this.checkLength(0, 'c.value1 == 0', 'c.value1 > 20');
-    this.checkLength(0, 'c.value1 === 0', 'c.value1 > 20');
-    this.checkLength(0, 'c.value1 !== 0', 'c.value1 > 20');
     this.checkLength(0, 'c.value1 != 0', 'c.value1 > 20');
     this.checkLength(0, 'c.value1 > 20', 'c.value1 > 0');
     this.checkLength(0, 'c.value1 > 20', 'c.value1 >= 0');
     this.checkLength(0, 'c.value1 >= 21', 'c.value1 > 0');
     this.checkLength(0, 'c.value1 >= 21', 'c.value1 >= 0');
     this.checkLength(0, 'c.value1 >= 21', 'c.value1 == 0');
-    this.checkLength(0, 'c.value1 >= 21', 'c.value1 === 0');
-    this.checkLength(0, 'c.value1 >= 21', 'c.value1 !== 0');
     this.checkLength(0, 'c.value1 >= 21', 'c.value1 != 0');
   }
 
@@ -430,24 +425,17 @@ function aqlSimpleTestSuite () {
   function testMixedQueries () {
     this.checkLength(175,'c.value1 != 0', 'c.value2 < 11');
     this.checkLength(0,'c.value1 < 0', 'c.value2 > 14');
-    this.checkLength(0,'c.value1 === 0', 'c.value2 === 18');
     this.checkLength(0,'c.value1 < 0', 'c.value2 >= 19');
     this.checkLength(1,'c.value1 == 0', 'c.value2 != 2');
     this.checkLength(0,'c.value1 < 0', 'c.value2 == 3');
     this.checkLength(0,'c.value1 <= 0', 'c.value2 > 4');
     this.checkLength(111,'c.value1 >= 0', 'c.value2 < 6');
     this.checkLength(7,'c.value1 > 10', 'c.value2 == 14');
-    this.checkLength(7,'c.value1 != 10', 'c.value2 === 14');
     this.checkLength(11,'c.value1 == 10', 'c.value2 != 19');
     this.checkLength(3,'c.value1 == 10', 'c.value2 <= 2');
-    this.checkLength(3,'c.value1 < 10', 'c.value2 === 7');
     this.checkLength(12,'c.value1 != 10', 'c.value2 == 8');
     this.checkLength(50,'c.value1 >= 11', 'c.value2 < 5');
-    this.checkLength(6,'c.value1 === 11', 'c.value2 < 6');
-    this.checkLength(10,'c.value1 != 12', 'c.value2 === 10');
     this.checkLength(132,'c.value1 > 12', 'c.value2 != 12');
-    this.checkLength(13,'c.value1 === 12', 'c.value2 != 14');
-    this.checkLength(0,'c.value1 === 12', 'c.value2 == 15');
     this.checkLength(0,'c.value1 <= 12', 'c.value2 > 18');
     this.checkLength(204,'c.value1 != 12', 'c.value2 != 6');
     this.checkLength(91,'c.value1 > 13', 'c.value2 <= 12');
@@ -463,28 +451,19 @@ function aqlSimpleTestSuite () {
     this.checkLength(7,'c.value1 == 15', 'c.value2 < 7');
     this.checkLength(99,'c.value1 < 15', 'c.value2 <= 8');
     this.checkLength(54,'c.value1 >= 15', 'c.value2 <= 8');
-    this.checkLength(1,'c.value1 === 16', 'c.value2 == 3');
-    this.checkLength(16,'c.value1 === 16', 'c.value2 != 6');
     this.checkLength(152,'c.value1 < 17', 'c.value2 != 16');
     this.checkLength(6,'c.value1 >= 17', 'c.value2 > 17');
-    this.checkLength(16,'c.value1 <= 17', 'c.value2 === 2');
     this.checkLength(33,'c.value1 < 17', 'c.value2 < 2');
-    this.checkLength(9,'c.value1 <= 18', 'c.value2 === 10');
     this.checkLength(205,'c.value1 != 18', 'c.value2 != 13');
     this.checkLength(171,'c.value1 < 18', 'c.value2 != 20');
-    this.checkLength(0,'c.value1 === 18', 'c.value2 > 20');
     this.checkLength(161,'c.value1 < 18', 'c.value2 != 8');
-    this.checkLength(2,'c.value1 > 18', 'c.value2 === 8');
-    this.checkLength(1,'c.value1 == 19', 'c.value2 === 15');
     this.checkLength(2,'c.value1 >= 19', 'c.value2 == 18');
     this.checkLength(178,'c.value1 < 19', 'c.value2 != 7');
     this.checkLength(7,'c.value1 > 1', 'c.value2 == 14');
     this.checkLength(213,'c.value1 > 1', 'c.value2 <= 15');
     this.checkLength(1,'c.value1 > 1', 'c.value2 == 20');
-    this.checkLength(0,'c.value1 == 1', 'c.value2 === 5');
     this.checkLength(55,'c.value1 <= 20', 'c.value2 > 10');
     this.checkLength(5,'c.value1 >= 20', 'c.value2 >= 16');
-    this.checkLength(0,'c.value1 != 20', 'c.value2 === 20');
     this.checkLength(9,'c.value1 == 20', 'c.value2 <= 8');
     this.checkLength(10,'c.value1 >= 20', 'c.value2 <= 9');
     this.checkLength(3,'c.value1 > 2', 'c.value2 == 18');
@@ -493,16 +472,11 @@ function aqlSimpleTestSuite () {
     this.checkLength(17,'c.value1 != 3', 'c.value2 == 4');
     this.checkLength(208,'c.value1 > 3', 'c.value2 != 8');
     this.checkLength(188,'c.value1 > 4', 'c.value2 <= 13');
-    this.checkLength(0,'c.value1 < 4', 'c.value2 === 4');
     this.checkLength(101,'c.value1 >= 4', 'c.value2 <= 5');
     this.checkLength(0,'c.value1 == 4', 'c.value2 > 7');
     this.checkLength(205,'c.value1 != 5', 'c.value2 >= 1');
     this.checkLength(150,'c.value1 >= 5', 'c.value2 < 10');
-    this.checkLength(6,'c.value1 === 5', 'c.value2 < 14');
-    this.checkLength(4,'c.value1 >= 5', 'c.value2 === 17');
-    this.checkLength(4,'c.value1 > 5', 'c.value2 === 17');
     this.checkLength(0,'c.value1 <= 5', 'c.value2 == 18');
-    this.checkLength(1,'c.value1 === 5', 'c.value2 == 2');
     this.checkLength(215,'c.value1 >= 5', 'c.value2 != 20');
     this.checkLength(15,'c.value1 > 5', 'c.value2 == 3');
     this.checkLength(202,'c.value1 >= 6', 'c.value2 != 13');
@@ -514,16 +488,11 @@ function aqlSimpleTestSuite () {
     this.checkLength(0,'c.value1 <= 7', 'c.value2 == 16');
     this.checkLength(0,'c.value1 == 7', 'c.value2 == 20');
     this.checkLength(203,'c.value1 >= 7', 'c.value2 <= 20');
-    this.checkLength(5,'c.value1 <= 7', 'c.value2 === 3');
-    this.checkLength(14,'c.value1 >= 7', 'c.value2 === 5');
     this.checkLength(36,'c.value1 <= 7', 'c.value2 <= 7');
     this.checkLength(174,'c.value1 > 8', 'c.value2 != 1');
-    this.checkLength(9,'c.value1 === 8', 'c.value2 != 10');
     this.checkLength(167,'c.value1 != 8', 'c.value2 < 11');
-    this.checkLength(9,'c.value1 === 8', 'c.value2 < 14');
     this.checkLength(0,'c.value1 <= 8', 'c.value2 == 20');
     this.checkLength(0,'c.value1 == 8', 'c.value2 >= 9');
-    this.checkLength(4,'c.value1 >= 9', 'c.value2 === 17');
     this.checkLength(55,'c.value1 <= 9', 'c.value2 <= 18');
     this.checkLength(48,'c.value1 >= 9', 'c.value2 <= 3');
     this.checkLength(12,'c.value1 >= 9', 'c.value2 == 5');
@@ -590,7 +559,7 @@ function aqlSimpleTestSuite () {
 
   function testValueTypes1 () {
     for (var i = 0; i <= 20; i++) {
-      var results = this.runQuery("{ value1: c.value1, value2: c.value1 - 1, value3: c.value1 + 1, value4: null, value5: 'der fux' + 'xx' }", new Array("c.value1 == " + i));
+      var results = this.runQuery("{ value1: c.value1, value2: c.value1 - 1, value3: c.value1 + 1, value4: null, value5: concat('der fux' , 'xx') }", new Array("c.value1 == " + i));
       for (var j = 0; j < results.length; j++) {
         assertEqual(i, results[j]["value1"]);
         assertEqual(i - 1, results[j]["value2"]);
@@ -610,7 +579,7 @@ function aqlSimpleTestSuite () {
       var results = this.runQuery("{ value1: null, value2: null + null, value3: undefined, value4: [], value5: { }, value6: 0, value7: 0.0 }", new Array("c.value1 == " + i));
       for (var j = 0; j < results.length; j++) {
         assertEqual(null, results[j]["value1"]);
-        assertEqual(0, results[j]["value2"]);
+        assertEqual(undefined, results[j]["value2"]);
         assertEqual(undefined, results[j]["value3"]);
         assertEqual([], results[j]["value4"]);
         assertEqual({}, results[j]["value5"]);
