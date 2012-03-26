@@ -327,6 +327,10 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* collection,
   // update indexes
   // .............................................................................
 
+  // -----------------------------------------------------------------------------
+  // update indexes
+  // -----------------------------------------------------------------------------
+
   // generate create header
   if (res == TRI_ERROR_NO_ERROR) {
 
@@ -545,6 +549,10 @@ static TRI_doc_mptr_t const UpdateDocument (TRI_sim_collection_t* collection,
   // .............................................................................
   // update indexes
   // .............................................................................
+
+  // -----------------------------------------------------------------------------
+  // update indexes
+  // -----------------------------------------------------------------------------
 
   // update the header
   if (res == TRI_ERROR_NO_ERROR) {
@@ -935,6 +943,8 @@ static TRI_doc_mptr_t const CreateShapedJson (TRI_doc_collection_t* document,
   TRI_df_marker_t* result;
   TRI_sim_collection_t* collection;
 
+  TRI_set_errno(TRI_ERROR_NO_ERROR);
+
   collection = (TRI_sim_collection_t*) document;
 
   if (type == TRI_DOC_MARKER_DOCUMENT) {
@@ -1026,6 +1036,8 @@ static TRI_doc_mptr_t const UpdateShapedJson (TRI_doc_collection_t* document,
   TRI_doc_mptr_t mptr;
   TRI_doc_mptr_t const* header;
   TRI_sim_collection_t* collection;
+
+  TRI_set_errno(TRI_ERROR_NO_ERROR);
 
   collection = (TRI_sim_collection_t*) document;
 
@@ -2172,6 +2184,10 @@ static int UpdateImmediateIndexes (TRI_sim_collection_t* collection,
     return TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED;
   }
 
+  if (constraint) {
+    return TRI_VOC_ERROR_UNIQUE_VIOLATED;
+  }
+
   return result;
 }
 
@@ -2856,7 +2872,7 @@ static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* coll
   
   if (idx != NULL) {
     TRI_DestroyVector(&paths);
-    TRI_DestroyVectorPointer(&fields);
+    TRI_DestroyVectorString(&names);
 
     LOG_TRACE("skiplist-index already created");
     return idx;
