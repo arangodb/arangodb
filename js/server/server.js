@@ -223,6 +223,9 @@ AvocadoCollection.prototype._PRINT = function() {
   }
   
   SYS_OUTPUT("[AvocadoCollection ", this._id, ", \"", this.name(), "\" (status ", status, ")]");
+  }
+  
+  SYS_OUTPUT("[AvocadoCollection ", this._id, ", \"", this.name(), "\" (status ", status, ")]");
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
