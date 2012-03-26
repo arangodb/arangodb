@@ -28,6 +28,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page Glossary
 ///
+/// @copydoc GlossaryCollection
+///
 /// @copydoc GlossaryCollectionIdentifier
 ///
 /// @copydoc GlossaryDocument
@@ -37,6 +39,11 @@
 /// @copydoc GlossaryDocumentIdentifier
 ///
 /// @copydoc GlossaryDocumentRevision
+///
+/// @page GlossaryCollection
+///
+/// @GE{Collection}: A collection consists of documents. It is uniquely identified
+/// by it's collection identifier. It also has a unique name.
 ///
 /// @page GlossaryCollectionIdentifier
 ///

@@ -252,6 +252,7 @@ bool RestDocumentHandler::createDocument () {
   int res = useCollection(collection, create);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    releaseCollection();
     return false;
   }
 
@@ -377,6 +378,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   int res = useCollection(collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    releaseCollection();
     return false;
   }
 
@@ -400,7 +402,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 
   // generate result
   if (document._did == 0) {
-    generateDocumentNotFound(cid + TRI_DOCUMENT_HANDLE_SEPARATOR_STR +  did);
+    generateDocumentNotFound(cid,  did);
     return false;
   }
 
@@ -468,6 +470,7 @@ bool RestDocumentHandler::readAllDocuments () {
   int res = useCollection(collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    releaseCollection();
     return false;
   }
 
@@ -669,6 +672,7 @@ bool RestDocumentHandler::updateDocument () {
   int res = useCollection(collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    releaseCollection();
     return false;
   }
 
@@ -706,7 +710,7 @@ bool RestDocumentHandler::updateDocument () {
         return false;
 
       case TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND:
-        generateDocumentNotFound(cid + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + didStr);
+        generateDocumentNotFound(cid, didStr);
         return false;
 
       case TRI_ERROR_AVOCADO_CONFLICT:
@@ -803,6 +807,7 @@ bool RestDocumentHandler::deleteDocument () {
   int res = useCollection(collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    releaseCollection();
     return false;
   }
 
@@ -839,7 +844,7 @@ bool RestDocumentHandler::deleteDocument () {
         return false;
 
       case TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND:
-        generateDocumentNotFound(cid + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + didStr);
+        generateDocumentNotFound(cid, didStr);
         return false;
 
       case TRI_ERROR_AVOCADO_CONFLICT:
