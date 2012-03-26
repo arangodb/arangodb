@@ -158,6 +158,9 @@ extern "C" {
 ///   is out of the allowed range.
 /// - 1518: @CODE{usage of unknown function '\%s'}
 ///   Will be raised when an undefined function is called.
+/// - 1520: @CODE{runtime error in query}
+///   Will be raised when a Javascript runtime error occurs while executing a
+///   query.
 /// - 1521: @CODE{limit value '\%s' is out of range}
 ///   Will be raised when a limit value in the query is outside the allowed
 ///   range (e. g. when passing a negative skip value).
@@ -951,6 +954,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN                             (1518)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1520: ERROR_QUERY_RUNTIME_ERROR
+///
+/// runtime error in query
+///
+/// Will be raised when a Javascript runtime error occurs while executing a
+/// query.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_RUNTIME_ERROR                                     (1520)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1521: ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE

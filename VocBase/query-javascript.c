@@ -160,15 +160,59 @@ static void AppendBinaryFunc (TRI_query_javascript_converter_t* converter,
   TRI_AppendCharStringBuffer(converter->_buffer, ')');
 }
 
+
+static size_t WalkMembers (TRI_string_buffer_t* const buffer, 
+                           const TRI_query_node_t* const node) {
+  TRI_query_node_t* next = node->_next; 
+  size_t num = 0;
+ 
+  while (next) {
+    TRI_AppendStringStringBuffer(buffer, ",'");
+    TRI_AppendStringStringBuffer(buffer, next->_value._stringValue);
+    TRI_AppendStringStringBuffer(buffer, "')");
+    next = next->_next;
+    ++num;
+  }
+
+  return num;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Walk a horizontal list of elements and print them
 ////////////////////////////////////////////////////////////////////////////////
 
-static void TRI_WalkListQueryJavascript (TRI_query_javascript_converter_t* converter, 
-                                         const TRI_query_node_t* const node, 
-                                         TRI_associative_pointer_t* bindParameters,
-                                         const char separator, 
-                                         size_t counter) {
+static void MemberAccess (TRI_query_javascript_converter_t* converter, 
+                          const TRI_query_node_t* const node,
+                          TRI_associative_pointer_t* bindParameters) { 
+  TRI_string_buffer_t* buffer;
+  size_t length;
+  size_t i;
+
+  buffer = TRI_CreateStringBuffer();
+  if (!buffer) {
+    return;
+  }
+
+  length = WalkMembers(buffer, node->_rhs);
+
+  for (i = 0; i < length; ++i) {
+    TRI_AppendStringStringBuffer(converter->_buffer, "AQL_ACCESS_MEMBER(");
+  }
+  TRI_ConvertQueryJavascript(converter, node->_lhs, bindParameters);
+  TRI_AppendStringStringBuffer(converter->_buffer, buffer->_buffer);
+
+  TRI_FreeStringBuffer(buffer);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Walk a horizontal list of elements and print them
+////////////////////////////////////////////////////////////////////////////////
+
+static void WalkList (TRI_query_javascript_converter_t* converter, 
+                      const TRI_query_node_t* const node, 
+                      TRI_associative_pointer_t* bindParameters,
+                      const char separator, 
+                      size_t counter) {
   TRI_query_node_t* next; 
 
   if (!node) { 
@@ -291,12 +335,12 @@ void TRI_ConvertQueryJavascript (TRI_query_javascript_converter_t* converter,
       return;
     case TRI_QueryNodeValueArray:
       TRI_AppendCharStringBuffer(converter->_buffer, '[');
-      TRI_WalkListQueryJavascript(converter, rhs, bindParameters, ',', 0);
+      WalkList(converter, rhs, bindParameters, ',', 0);
       TRI_AppendCharStringBuffer(converter->_buffer, ']');
       return; 
     case TRI_QueryNodeValueDocument:
       TRI_AppendCharStringBuffer(converter->_buffer, '{');
-      TRI_WalkListQueryJavascript(converter, rhs, bindParameters, ',', 0);
+      WalkList(converter, rhs, bindParameters, ',', 0);
       TRI_AppendCharStringBuffer(converter->_buffer, '}');
       return; 
     case TRI_QueryNodeValueParameterNamed:
@@ -356,24 +400,26 @@ void TRI_ConvertQueryJavascript (TRI_query_javascript_converter_t* converter,
       AppendBinaryFunc(converter, node, lhs, rhs, bindParameters);
       return;
     case TRI_QueryNodeContainerMemberAccess:
-      TRI_ConvertQueryJavascript(converter, lhs, bindParameters);
-      TRI_WalkListQueryJavascript(converter, rhs, bindParameters, '.', 1);
-      return;
-    case TRI_QueryNodeContainerTernarySwitch:
-      TRI_ConvertQueryJavascript(converter, lhs, bindParameters);
-      TRI_AppendCharStringBuffer(converter->_buffer, ':');
-      TRI_ConvertQueryJavascript(converter, rhs, bindParameters);
+      MemberAccess(converter, node, bindParameters);
       return;
     case TRI_QueryNodeControlFunctionCall:
       TRI_ConvertQueryJavascript(converter, lhs, bindParameters);
       TRI_AppendCharStringBuffer(converter->_buffer, '(');
-      TRI_WalkListQueryJavascript(converter, rhs, bindParameters, ',', 0);
+      WalkList(converter, rhs, bindParameters, ',', 0);
+      TRI_AppendCharStringBuffer(converter->_buffer, ')');
+      return;
+    case TRI_QueryNodeContainerTernarySwitch:
+      TRI_AppendStringStringBuffer(converter->_buffer, "(r?");
+      TRI_ConvertQueryJavascript(converter, lhs, bindParameters);
+      TRI_AppendCharStringBuffer(converter->_buffer, ':');
+      TRI_ConvertQueryJavascript(converter, rhs, bindParameters);
       TRI_AppendCharStringBuffer(converter->_buffer, ')');
       return;
     case TRI_QueryNodeControlTernary:
       TRI_AppendCharStringBuffer(converter->_buffer, '(');
+      TRI_AppendStringStringBuffer(converter->_buffer, "AQL_TYPEWEIGHT(r=(");
       TRI_ConvertQueryJavascript(converter, lhs, bindParameters);
-      TRI_AppendCharStringBuffer(converter->_buffer, '?');
+      TRI_AppendStringStringBuffer(converter->_buffer, "))===AQL_TYPEWEIGHT_UNDEFINED?undefined:");
       TRI_ConvertQueryJavascript(converter, rhs, bindParameters);
       TRI_AppendCharStringBuffer(converter->_buffer, ')');
       return;
