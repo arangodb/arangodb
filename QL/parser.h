@@ -67,24 +67,22 @@
      LESS_EQUAL = 283,
      EQUAL = 284,
      UNEQUAL = 285,
-     IDENTICAL = 286,
-     UNIDENTICAL = 287,
-     NULLX = 288,
-     TRUE = 289,
-     FALSE = 290,
-     UNDEFINED = 291,
-     IDENTIFIER = 292,
-     QUOTED_IDENTIFIER = 293,
-     PARAMETER = 294,
-     PARAMETER_NAMED = 295,
-     STRING = 296,
-     REAL = 297,
-     COLON = 298,
-     TERNARY = 299,
-     FCALL = 300,
-     UPLUS = 301,
-     UMINUS = 302,
-     MEMBER = 303
+     NULLX = 286,
+     TRUE = 287,
+     FALSE = 288,
+     UNDEFINED = 289,
+     IDENTIFIER = 290,
+     QUOTED_IDENTIFIER = 291,
+     PARAMETER = 292,
+     PARAMETER_NAMED = 293,
+     STRING = 294,
+     REAL = 295,
+     COLON = 296,
+     TERNARY = 297,
+     FCALL = 298,
+     UPLUS = 299,
+     UMINUS = 300,
+     MEMBER = 301
    };
 #endif
 
@@ -105,7 +103,7 @@ typedef union YYSTYPE
 
 
 /* Line 1676 of yacc.c  */
-#line 109 "QL/parser.h"
+#line 107 "QL/parser.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
