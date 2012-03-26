@@ -343,9 +343,6 @@ TRI_collection_t* TRI_CreateCollection (TRI_collection_t* collection,
   char* tmp2;
   int res;
 
-  // generate a collection identifier
-  parameter->_cid = TRI_NewTickVocBase();
-
   // sanity check
   if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) > parameter->_maximalSize) {
     TRI_set_errno(TRI_ERROR_AVOCADO_DATAFILE_FULL);

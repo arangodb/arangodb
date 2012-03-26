@@ -432,7 +432,7 @@ int RestVocbaseBaseHandler::useCollection (string const& name, bool create) {
     generateError(HttpResponse::BAD, 
                   TRI_ERROR_HTTP_CORRUPTED_JSON,
                   "collection identifier is empty");
-    return false;
+    return TRI_set_errno(TRI_ERROR_HTTP_CORRUPTED_JSON);
   }
 
   // try to find the collection
@@ -451,7 +451,14 @@ int RestVocbaseBaseHandler::useCollection (string const& name, bool create) {
   }
 
   // and use the collection
-  return TRI_UseCollectionVocBase(_vocbase, const_cast<TRI_vocbase_col_s*>(_collection));
+  int res = TRI_UseCollectionVocBase(_vocbase, const_cast<TRI_vocbase_col_s*>(_collection));
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    _documentCollection = _collection->_collection;
+    assert(_documentCollection != 0);
+  }
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
