@@ -1,0 +1,14 @@
+--------------------------------------------------------------------------------
+> curl --data @- -X POST  --dump - http://localhost:8529/document?collection=UnitTestsCollectionNamed1332797165&createCollection=true
+{ "Hallo" : "World" }
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+location: /document/21663981/23105773
+etag: "23105773"
+
+{
+  "_rev": 23105773,
+  "_id": "21663981/23105773",
+  "error": false
+}
