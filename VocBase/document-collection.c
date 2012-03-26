@@ -86,14 +86,23 @@ static TRI_doc_mptr_t const CreateJson (TRI_doc_collection_t* collection,
 /// @brief updates a document in the collection from shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool UpdateLock (TRI_doc_collection_t* document,
-                        TRI_shaped_json_t const* json,
-                        TRI_voc_did_t did,
-                        TRI_voc_rid_t rid,
-                        TRI_voc_rid_t* oldRid,
-                        TRI_doc_update_policy_e policy) {
+static int UpdateLock (TRI_doc_collection_t* document,
+                       TRI_shaped_json_t const* json,
+                       TRI_voc_did_t did,
+                       TRI_voc_rid_t rid,
+                       TRI_voc_rid_t* oldRid,
+                       TRI_doc_update_policy_e policy) {
+  TRI_doc_mptr_t result;
+
   document->beginWrite(document);
-  return document->update(document, json, did, rid, oldRid, policy, true)._did != 0;
+  result = document->update(document, json, did, rid, oldRid, policy, true);
+
+  if (result._did == 0) {
+    return TRI_errno();
+  }
+  else {
+    return TRI_ERROR_NO_ERROR;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -129,17 +138,13 @@ static TRI_doc_mptr_t const UpdateJson (TRI_doc_collection_t* collection,
 /// @brief deletes a json document given the identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool DestroyLock (TRI_doc_collection_t* document,
-                         TRI_voc_did_t did,
-                         TRI_voc_rid_t rid,
-                         TRI_voc_rid_t* oldRid,
-                         TRI_doc_update_policy_e policy) {
-  bool ok;
-
+static int DestroyLock (TRI_doc_collection_t* document,
+                        TRI_voc_did_t did,
+                        TRI_voc_rid_t rid,
+                        TRI_voc_rid_t* oldRid,
+                        TRI_doc_update_policy_e policy) {
   document->beginWrite(document);
-  ok = document->destroy(document, did, rid, oldRid, policy, true);
-
-  return ok;
+  return document->destroy(document, did, rid, oldRid, policy, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -39,6 +39,7 @@ extern "C" {
 // -----------------------------------------------------------------------------
 
 struct TRI_doc_collection_s;
+struct TRI_collection_s;
 struct TRI_datafile_s;
 
 // -----------------------------------------------------------------------------
@@ -56,7 +57,8 @@ struct TRI_datafile_s;
 
 typedef enum {
   TRI_BARRIER_ELEMENT,
-  TRI_BARRIER_DATAFILE
+  TRI_BARRIER_DATAFILE_CALLBACK,
+  TRI_BARRIER_COLLECTION_CALLBACK,
 }
 TRI_barrier_type_e;
 
@@ -77,6 +79,32 @@ typedef struct TRI_barrier_s {
   void (*datafileCallback) (struct TRI_datafile_s*, void*);
 }
 TRI_barrier_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief barrier element datafile callback
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_barrier_datafile_cb_s {
+  TRI_barrier_t base;
+
+  struct TRI_datafile_s* _datafile;
+  void* _data;
+  void (*callback) (struct TRI_datafile_s*, void*);
+}
+TRI_barrier_datafile_cb_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief barrier element collection callback
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_barrier_collection_cb_s {
+  TRI_barrier_t base;
+
+  struct TRI_collection_s* _collection;
+  void* _data;
+  bool (*callback) (struct TRI_collection_s*, void*);
+}
+TRI_barrier_collection_cb_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief doubly linked list of barriers
@@ -131,6 +159,15 @@ TRI_barrier_t* TRI_CreateBarrierDatafile (TRI_barrier_list_t* container,
                                           struct TRI_datafile_s* datafile,
                                           void (*callback) (struct TRI_datafile_s*, void*),
                                           void* data);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new collection deletion barrier
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_barrier_t* TRI_CreateBarrierCollection (TRI_barrier_list_t* container,
+                                            struct TRI_collection_s* collection,
+                                            bool (*callback) (struct TRI_collection_s*, void*),
+                                            void* data);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes and frees a barrier element or datafile deletion marker
