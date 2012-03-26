@@ -184,6 +184,18 @@ AvocadoCollection.STATUS_LOADED = 3;
 AvocadoCollection.STATUS_CORRUPTED = 4;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief collection is deleted
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.STATUS_DELETED = 5;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection is unloading
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.STATUS_UNLOADING = 6;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief drops a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -204,7 +216,18 @@ AvocadoCollection.prototype.toArray = function() {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype._PRINT = function() {
-  SYS_OUTPUT("[AvocadoCollection ", this._id, ", \"", this.name(), "\" (status ", this.status(), ")]");
+  var status = "unknown";
+
+  switch (this.status()) {
+    case AvocadoCollection.STATUS_NEW_BORN: status = "new born"; break;
+    case AvocadoCollection.STATUS_UNLOADED: status = "unloaded"; break;
+    case AvocadoCollection.STATUS_UNLOADING: status = "unloading"; break;
+    case AvocadoCollection.STATUS_LOADED: status = "loaded"; break;
+    case AvocadoCollection.STATUS_CORRUPTED: status = "corrupted"; break;
+    case AvocadoCollection.STATUS_DELETED: status = "deleted"; break;
+  }
+  
+  SYS_OUTPUT("[AvocadoCollection ", this._id, ", \"", this.name(), "\" (status ", status, ")]");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

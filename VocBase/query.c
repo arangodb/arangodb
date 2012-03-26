@@ -953,6 +953,9 @@ static bool InitCollectionsQuery (TRI_query_t* query) {
   TRI_vocbase_col_t const* collection;
   size_t i;
 
+#warning FIX TRI_LoadCollectionVocBase => TRI_UseCollectionByNameVocBase & TRI_ReleaseCollectionVocBase
+
+#if 0
   assert(query->_vocbase);
 
   for (i = 0 ; i < query->_joins->_parts._length; i++) {
@@ -968,6 +971,7 @@ static bool InitCollectionsQuery (TRI_query_t* query) {
       query->_primary = part->_collection;
     }
   }
+#endif
 
   return true;
 }

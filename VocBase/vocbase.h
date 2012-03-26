@@ -177,20 +177,30 @@ typedef uint32_t TRI_col_type_t;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief database
 ///
-/// Note that access to _collections, _collectionsByName, and _collectionsById
-/// is only allowed while holding the _lock.
+/// There are the following locks:
+///
+/// @CODE{TRI_vocbase_t._lock}: This lock protects the access to _collections,
+/// _collectionsByName, and _collectionsById.
+///
+/// @CODE{TRI_vocbase_col_t._lock}: This lock protects the status (loaded,
+/// unloaded) of the collection. If you want to use a collection, you must call
+/// @ref TRI_UseCollectionVocBase, this will either load or manifest the
+/// collection and a read-lock is held when the functions returns.  You must
+/// call @ref TRI_ReleaseUseCollectionVocBase, when you finished using the
+/// collection. The functions that modify the status of collection (load,
+/// unload, manifest) will grab a write-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_vocbase_s {
   char const* _path;
   char* _lockFile;
 
+  TRI_read_write_lock_t _lock;
+
   TRI_vector_pointer_t _collections;
 
   TRI_associative_pointer_t _collectionsByName;
   TRI_associative_pointer_t _collectionsById;
-
-  TRI_read_write_lock_t _lock;
 
   sig_atomic_t _active;
   TRI_thread_t _synchroniser;
@@ -200,6 +210,21 @@ typedef struct TRI_vocbase_s {
   struct TRI_shadow_store_s* _cursors;
 }
 TRI_vocbase_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief status of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+  TRI_VOC_COL_STATUS_UNKNOWN = 0,
+  TRI_VOC_COL_STATUS_NEW_BORN = 1,
+  TRI_VOC_COL_STATUS_UNLOADED = 2,
+  TRI_VOC_COL_STATUS_LOADED = 3,
+  TRI_VOC_COL_STATUS_CORRUPTED = 4,
+  TRI_VOC_COL_STATUS_DELETED = 5,
+  TRI_VOC_COL_STATUS_UNLOADING = 6
+}
+TRI_vocbase_col_status_e;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document collection container
@@ -212,12 +237,11 @@ typedef struct TRI_vocbase_col_s {
   TRI_voc_cid_t _cid;                // collecttion identifier
   char _name[TRI_COL_PATH_LENGTH];   // name of the collection
 
-  char const* _path;
+  char const* _path;                 // path to the collection files
 
+  TRI_read_write_lock_t _lock;               // lock protecting the status
+  TRI_vocbase_col_status_e _status;          // status of the collection
   struct TRI_doc_collection_s* _collection;  // NULL or pointer to loaded collection
-  sig_atomic_t _newBorn;                     // true if collection is newly born
-  sig_atomic_t _loaded;                      // true if collection is loaded
-  sig_atomic_t _corrupted;                   // true if collection could not be loaded
 }
 TRI_vocbase_col_t;
 
@@ -281,25 +305,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path);
 /// @brief closes a database and all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CloseVocBase (TRI_vocbase_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a (document) collection by name
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_col_t const* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t*, char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a (document) collection by identifier
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_col_t const* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t*, TRI_voc_cid_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds up a (document) collection by name
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_col_t const* TRI_FindCollectionByNameVocBase (TRI_vocbase_t*, char const*, bool bear);
+void TRI_DestroyVocBase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all known collections
@@ -308,34 +314,65 @@ TRI_vocbase_col_t const* TRI_FindCollectionByNameVocBase (TRI_vocbase_t*, char c
 TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t* vocbase);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new (document) collection
+/// @brief looks up a (document) collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t const* TRI_CreateCollectionVocBase (TRI_vocbase_t*, struct TRI_col_parameter_s*);
+TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t*, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief loads an existing (document) collection
+/// @brief looks up a (document) collection by identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t const* TRI_LoadCollectionVocBase (TRI_vocbase_t* vocbase, char const* name);
+TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t*, TRI_voc_cid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reserves a new collection or returns an existing
+/// @brief finds a (document) collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t const* TRI_BearCollectionVocBase (TRI_vocbase_t* vocbase, char const* name);
+TRI_vocbase_col_t* TRI_FindCollectionByNameVocBase (TRI_vocbase_t*, char const*, bool bear);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief manifests a new born collection
+/// @brief creates a new (document) collection from parameter set
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t const*);
+TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t*, struct TRI_col_parameter_s*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unloads a (document) collection
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_UnloadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a (document) collection
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col, char const* name);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locks a (document) collection for usage, loading or manifesting it
+///
+/// Note that this will READ lock the collection you have to release the
+/// collection lock by yourself.
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_UseCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locks a (document) collection for usage by name
+///
+/// Note that this will READ lock the collection you have to release the
+/// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
+/// when you are done with the collection.
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase (TRI_vocbase_t* vocbase, char const* name);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief releases a (document) collection from usage
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ReleaseCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

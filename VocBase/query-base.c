@@ -1131,6 +1131,9 @@ static bool InitCollectionsQueryInstance (TRI_query_instance_t* const instance) 
   TRI_vocbase_t* vocbase;
   size_t i;
 
+#warning FIX TRI_LoadCollectionVocBase => TRI_UseCollectionByNameVocBase & TRI_ReleaseCollectionVocBase
+
+#if 0
   assert(instance);
   
   vocbase = instance->_template->_vocbase;
@@ -1152,6 +1155,7 @@ static bool InitCollectionsQueryInstance (TRI_query_instance_t* const instance) 
     }
     part->_collection = (TRI_doc_collection_t*) collection->_collection;
   }
+#endif
 
   return true;
 }

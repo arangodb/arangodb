@@ -228,9 +228,9 @@ bool RestDocumentHandler::createDocument () {
 
   // extract the cid
   bool found;
-  string cid = request->value("collection", found);
+  string collection = request->value("collection", found);
 
-  if (! found || cid.empty()) {
+  if (! found || collection.empty()) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_AVOCADO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + DOCUMENT_PATH + "?collection=<identifier>");
@@ -241,17 +241,17 @@ bool RestDocumentHandler::createDocument () {
   string createStr = request->value("createCollection", found);
   bool create = found ? StringUtils::boolean(createStr) : false;
 
-  // find and load collection given by name oder identifier
-  bool ok = findCollection(cid, create) && loadCollection();
-
-  if (! ok) {
-    return false;
-  }
-
   // parse document
   TRI_json_t* json = parseJsonBody();
 
   if (json == 0) {
+    return false;
+  }
+
+  // find and load collection given by name oder identifier
+  int res = useCollection(collection, create);
+
+  if (res != TRI_ERROR_NO_ERROR) {
     return false;
   }
 
@@ -262,6 +262,7 @@ bool RestDocumentHandler::createDocument () {
   _documentCollection->beginWrite(_documentCollection);
 
   bool waitForSync = _documentCollection->base._waitForSync;
+  TRI_voc_cid_t cid = _documentCollection->base._cid;
 
   // note: unlocked is performed by createJson()
   TRI_doc_mptr_t const mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_DOCUMENT, json, 0, true);
@@ -270,14 +271,17 @@ bool RestDocumentHandler::createDocument () {
   // outside write transaction
   // .............................................................................
 
+  // release collection and free json
+  releaseCollection();
   TRI_FreeJson(json);
 
+  // generate result
   if (mptr._did != 0) {
     if (waitForSync) {
-      generateCreated(_documentCollection->base._cid, mptr._did, mptr._rid);
+      generateCreated(cid, mptr._did, mptr._rid);
     }
     else {
-      generateAccepted(_documentCollection->base._cid, mptr._did, mptr._rid);
+      generateAccepted(cid, mptr._did, mptr._rid);
     }
 
     return true;
@@ -287,14 +291,14 @@ bool RestDocumentHandler::createDocument () {
       generateError(HttpResponse::FORBIDDEN, 
                     TRI_ERROR_AVOCADO_READ_ONLY,
                     "collection is read-only");
-      return false;
     }
     else {
       generateError(HttpResponse::SERVER_ERROR,
                     TRI_ERROR_INTERNAL,
                     "cannot create, failed with: " + string(TRI_last_error()));
-      return false;
     }
+
+    return false;
   }
 }
 
@@ -366,13 +370,13 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   TRI_voc_rid_t ifRid = extractRevision("if-match", "rev");
 
   // split the document reference
-  string cid = suffix[0];
+  string collection = suffix[0];
   string did = suffix[1];
 
   // find and load collection given by name oder identifier
-  bool ok = findCollection(cid) && loadCollection();
+  int res = useCollection(collection);
 
-  if (! ok) {
+  if (res != TRI_ERROR_NO_ERROR) {
     return false;
   }
 
@@ -382,6 +386,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 
   _documentCollection->beginRead(_documentCollection);
 
+  TRI_voc_cid_t cid = _documentCollection->base._cid;
   TRI_doc_mptr_t const document = findDocument(did);
 
   _documentCollection->endRead(_documentCollection);
@@ -390,6 +395,10 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   // outside read transaction
   // .............................................................................
 
+  // release collection
+  releaseCollection();
+
+  // generate result
   if (document._did == 0) {
     generateDocumentNotFound(cid + TRI_DOCUMENT_HANDLE_SEPARATOR_STR +  did);
     return false;
@@ -405,7 +414,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
       generateDocument(&document, generateBody);
     }
     else {
-      generatePreconditionFailed(_documentCollection->base._cid, document._did, rid);
+      generatePreconditionFailed(cid, document._did, rid);
     }
   }
   else if (ifNoneRid == rid) {
@@ -416,7 +425,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
       generateNotModified(StringUtils::itoa(rid));
     }
     else {
-      generatePreconditionFailed(_documentCollection->base._cid, document._did, rid);
+      generatePreconditionFailed(cid, document._did, rid);
     }
   }
   else {
@@ -427,7 +436,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
       generateDocument(&document, generateBody);
     }
     else {
-      generatePreconditionFailed(_documentCollection->base._cid, document._did, rid);
+      generatePreconditionFailed(cid, document._did, rid);
     }
   }
 
@@ -453,12 +462,12 @@ bool RestDocumentHandler::readAllDocuments () {
 
   // extract the cid
   bool found;
-  string cid = request->value("collection", found);
+  string collection = request->value("collection", found);
 
   // find and load collection given by name oder identifier
-  bool ok = findCollection(cid) && loadCollection();
+  int res = useCollection(collection);
 
-  if (! ok) {
+  if (res != TRI_ERROR_NO_ERROR) {
     return false;
   }
 
@@ -469,6 +478,8 @@ bool RestDocumentHandler::readAllDocuments () {
   vector<TRI_voc_did_t> ids;
 
   _documentCollection->beginRead(_documentCollection);
+
+  TRI_voc_cid_t cid = _documentCollection->base._cid;
 
   try {
     TRI_sim_collection_t* collection = (TRI_sim_collection_t*) _documentCollection;
@@ -498,6 +509,10 @@ bool RestDocumentHandler::readAllDocuments () {
   // outside read transaction
   // .............................................................................
 
+  // release collection
+  releaseCollection();
+
+  // generate result
   TRI_string_buffer_t buffer;
 
   TRI_InitStringBuffer(&buffer);
@@ -505,7 +520,7 @@ bool RestDocumentHandler::readAllDocuments () {
   TRI_AppendStringStringBuffer(&buffer, "{ \"documents\" : [\n");
 
   bool first = true;
-  string prefix = "\"" + DOCUMENT_PATH + "/" + StringUtils::itoa(_documentCollection->base._cid) + "/";
+  string prefix = "\"" + DOCUMENT_PATH + "/" + StringUtils::itoa(cid) + "/";
 
   for (vector<TRI_voc_did_t>::iterator i = ids.begin();  i != ids.end();  ++i) {
     TRI_AppendString2StringBuffer(&buffer, prefix.c_str(), prefix.size());
@@ -631,15 +646,8 @@ bool RestDocumentHandler::updateDocument () {
   }
 
   // split the document reference
-  string cid = suffix[0];
+  string collection = suffix[0];
   string didStr = suffix[1];
-
-  // find and load collection given by name oder identifier
-  bool ok = findCollection(cid) && loadCollection();
-
-  if (! ok) {
-    return false;
-  }
 
   // parse document
   TRI_json_t* json = parseJsonBody();
@@ -657,6 +665,13 @@ bool RestDocumentHandler::updateDocument () {
   // extract or chose the update policy
   TRI_doc_update_policy_e policy = extractUpdatePolicy();
 
+  // find and load collection given by name oder identifier
+  int res = useCollection(collection);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return false;
+  }
+
   // .............................................................................
   // inside write transaction
   // .............................................................................
@@ -665,36 +680,44 @@ bool RestDocumentHandler::updateDocument () {
 
   // unlocking is performed in updateJson()
   TRI_voc_rid_t rid = 0;
+  TRI_voc_cid_t cid = _documentCollection->base._cid;
+
   TRI_doc_mptr_t const mptr = _documentCollection->updateJson(_documentCollection, json, did, revision, &rid, policy, true);
+  int en = mptr._did == 0 ? TRI_errno() : 0;
 
   // .............................................................................
   // outside write transaction
   // .............................................................................
 
+  // release collection
+  releaseCollection();
+
+  // generate result
   if (mptr._did != 0) {
-    generateUpdated(_documentCollection->base._cid, did, mptr._rid);
+    generateUpdated(cid, did, mptr._rid);
     return true;
   }
   else {
-    if (TRI_errno() == TRI_ERROR_AVOCADO_READ_ONLY) {
-      generateError(HttpResponse::FORBIDDEN, 
-                    TRI_ERROR_AVOCADO_READ_ONLY,
-                    "collection is read-only");
-      return false;
-    }
-    else if (TRI_errno() == TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND) {
-      generateDocumentNotFound(cid + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + didStr);
-      return false;
-    }
-    else if (TRI_errno() == TRI_ERROR_AVOCADO_CONFLICT) {
-      generatePreconditionFailed(_documentCollection->base._cid, did, rid);
-      return false;
-    }
-    else {
-      generateError(HttpResponse::SERVER_ERROR,
-                    TRI_ERROR_INTERNAL,
-                    "cannot update, failed with " + string(TRI_last_error()));
-      return false;
+    switch (en) {
+      case TRI_ERROR_AVOCADO_READ_ONLY:
+        generateError(HttpResponse::FORBIDDEN, 
+                      TRI_ERROR_AVOCADO_READ_ONLY,
+                      "collection is read-only");
+        return false;
+
+      case TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND:
+        generateDocumentNotFound(cid + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + didStr);
+        return false;
+
+      case TRI_ERROR_AVOCADO_CONFLICT:
+        generatePreconditionFailed(_documentCollection->base._cid, did, rid);
+        return false;
+
+      default:
+        generateError(HttpResponse::SERVER_ERROR,
+                      TRI_ERROR_INTERNAL,
+                      "cannot update, failed with " + string(TRI_last_error()));
+        return false;
     }
   }
 }
@@ -757,15 +780,8 @@ bool RestDocumentHandler::deleteDocument () {
   }
 
   // split the document reference
-  string cid = suffix[0];
+  string collection = suffix[0];
   string didStr = suffix[1];
-
-  // find and load collection given by name oder identifier
-  bool ok = findCollection(cid) && loadCollection();
-
-  if (! ok) {
-    return false;
-  }
 
   // extract document identifier
   TRI_voc_did_t did = StringUtils::uint64(didStr);
@@ -783,44 +799,58 @@ bool RestDocumentHandler::deleteDocument () {
     return false;
   }
 
+  // find and load collection given by name oder identifier
+  int res = useCollection(collection);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return false;
+  }
+
   // .............................................................................
   // inside write transaction
   // .............................................................................
 
   _documentCollection->beginWrite(_documentCollection);
 
-  // unlocking is performed in destroy()
   TRI_voc_rid_t rid = 0;
-  ok = _documentCollection->destroy(_documentCollection, did, revision, &rid, policy, true);
+  TRI_voc_cid_t cid = _documentCollection->base._cid;
+
+  // unlocking is performed in destroy()
+  res = _documentCollection->destroy(_documentCollection, did, revision, &rid, policy, true);
 
   // .............................................................................
   // outside write transaction
   // .............................................................................
 
-  if (ok) {
-    generateDeleted(_documentCollection->base._cid, did, rid);
+  // release collection
+  releaseCollection();
+
+  // generate result
+  if (res == TRI_ERROR_NO_ERROR) {
+    generateDeleted(cid, did, rid);
     return true;
   }
   else {
-    if (TRI_errno() == TRI_ERROR_AVOCADO_READ_ONLY) {
-      generateError(HttpResponse::FORBIDDEN, 
-                    TRI_ERROR_AVOCADO_READ_ONLY,
-                    "collection is read-only");
-      return false;
-    }
-    else if (TRI_errno() == TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND) {
-      generateDocumentNotFound(cid + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + didStr);
-      return false;
-    }
-    else if (TRI_errno() == TRI_ERROR_AVOCADO_CONFLICT) {
-      generatePreconditionFailed(_documentCollection->base._cid, did, rid);
-      return false;
-    }
-    else {
-      generateError(HttpResponse::SERVER_ERROR, 
-                    TRI_ERROR_INTERNAL,
-                    "cannot delete, failed with " + string(TRI_last_error()));
-      return false;
+    switch (res) {
+      case TRI_ERROR_AVOCADO_READ_ONLY:
+        generateError(HttpResponse::FORBIDDEN, 
+                      TRI_ERROR_AVOCADO_READ_ONLY,
+                      "collection is read-only");
+        return false;
+
+      case TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND:
+        generateDocumentNotFound(cid + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + didStr);
+        return false;
+
+      case TRI_ERROR_AVOCADO_CONFLICT:
+        generatePreconditionFailed(_documentCollection->base._cid, did, rid);
+        return false;
+
+      default:
+        generateError(HttpResponse::SERVER_ERROR, 
+                      TRI_ERROR_INTERNAL,
+                      "cannot delete, failed with " + string(TRI_last_error()));
+        return false;
     }
   }
 }
