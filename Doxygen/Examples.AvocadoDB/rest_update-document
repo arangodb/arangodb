@@ -1,10 +1,11 @@
-> curl -X GET  --dump - http://localhost:8529/document/169634/13080226
+> curl --data @- -X POST  --dump - http://localhost:8529/document/73482/24678637
+{ "World" : "Hallo" }
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
 
 {
-  "_rev": 13145762,
-  "_id": "169634/13080226",
+  "_rev": 24744173,
+  "_id": "73482/24678637",
   "error": false
 }

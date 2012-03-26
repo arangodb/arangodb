@@ -205,7 +205,7 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ///
 /// Create a document in a new, named collection
 ///
-/// @verbinclude rest_create-document-new-named-collection
+/// @verbinclude rest_create-document-create-collection
 ///
 /// Unknown collection identifier:
 ///
