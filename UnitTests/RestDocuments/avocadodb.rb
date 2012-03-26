@@ -50,9 +50,9 @@ class AvocadoDB
 
   def self.log (args)
     if args.key?(:output)
-      logfile = File.new("#{args[:output]}.log", "a")
+      logfile = File.new("logs/#{args[:output]}.log", "a")
     else
-      logfile = File.new("output.log", "a")
+      logfile = File.new("logs/output.log", "a")
     end
 
     method = args[:method] || :get
