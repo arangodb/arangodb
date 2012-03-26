@@ -95,16 +95,6 @@ static void QLAstQueryFreeGeoRestrictions (TRI_associative_pointer_t* const arra
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Hash function used to hash collection aliases
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t QLHashKey (TRI_associative_pointer_t* array, void const* key) {
-  char const* k = (char const*) key;
-
-  return TRI_FnvHashString(k);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Hash function used to hash elements in the collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -175,13 +165,13 @@ void QLAstQueryInit (QL_ast_query_t* const query) {
   query->_isEmpty                    = false;
 
   TRI_InitAssociativePointer(&query->_from._collections,
-                             QLHashKey,
+                             TRI_HashStringKeyAssociativePointer,
                              QLHashCollectionElement,
                              QLEqualCollectionKeyElement,
                              0);
   
   TRI_InitAssociativePointer(&query->_geo._restrictions,
-                             QLHashKey,
+                             TRI_HashStringKeyAssociativePointer,
                              HashRestrictionElement,
                              EqualRestrictionKeyElement,
                              0);

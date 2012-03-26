@@ -27,6 +27,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "associative.h"
+#include "hashes.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 ASSOCIATIVE ARRAY
@@ -627,6 +628,15 @@ void TRI_FreeAssociativePointer (TRI_associative_pointer_t* array) {
 /// @addtogroup Collections
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief General hash function that can be used to hash a key
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t TRI_HashStringKeyAssociativePointer (TRI_associative_pointer_t* array, 
+                                              void const* key) {
+  return TRI_FnvHashString((char const*) key);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given a key
