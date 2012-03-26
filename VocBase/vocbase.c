@@ -793,7 +793,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
 
   vocbase = TRI_Allocate(sizeof(TRI_vocbase_t));
 
-  
+  vocbase->_cursors = TRI_CreateShadowsQueryCursor();
   vocbase->_functions = TRI_InitialiseQueryFunctions();
   vocbase->_lockFile = lockFile;
   vocbase->_path = TRI_DuplicateString(path);
