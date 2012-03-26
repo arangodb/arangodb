@@ -29,37 +29,6 @@ var internal = require("internal");
 var console = require("console");
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public constants
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoActions
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief error codes 
-////////////////////////////////////////////////////////////////////////////////
-
-exports.errorQuerySpecificationInvalid = 1512;
-exports.errorCursorNotFound            = 1600;
-
-exports.errorInvalidRequest            = 1700;
-exports.errorJavascriptException       = 1701;
-
-exports.collectionNotFound = 20404;
-exports.documentNotFound = 30404;
-exports.documentNotModified = 30304;
-
-exports.keyValueNotFound = 41404;
-exports.keyValueNotModified = 41304;
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
@@ -249,13 +218,16 @@ function actionError (req, res, err) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a result
 ///
-/// @FUN{actionResultOK(@FA{req}, @FA{res}, @FA{code}, @FA{result}, @FA{headers}})}
+/// @FUN{actions.resultOk(@FA{req}, @FA{res}, @FA{code}, @FA{result}, @FA{headers}})}
 ///
-/// Works like @FN{actionResult} but adds the attribute @LIT{error} with
-/// value @LIT{false} and @LIT{code} with value @FA{code} to the @FA{result}.
+/// The functions defines a response. @FA{code} is the status code to
+/// return. @FA{result} is the result object, which will be returned as JSON
+/// object in the body. @LIT{headers} is an array of headers to returned.
+/// The function adds the attribute @LIT{error} with value @LIT{false}
+/// and @LIT{code} with value @FA{code} to the @FA{result}.
 ////////////////////////////////////////////////////////////////////////////////
 
-function actionResultOK (req, res, httpReturnCode, result, headers) {  
+function ResultOk (req, res, httpReturnCode, result, headers) {  
   res.responseCode = httpReturnCode;
   res.contentType = "application/json";
   
@@ -321,6 +293,18 @@ function actionResultError (req, res, httpReturnCode, errorNum, errorMessage, he
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generates an error for a bad request
+///
+/// @FUN{badParameter(@FA{req}, @FA{res}, @FA{error-code}, @{msg}, @FA{headers})}
+///
+/// The functions generates an error response.
+////////////////////////////////////////////////////////////////////////////////
+
+function ResultBad (req, res, code, msg, headers) {
+  actionResultError(req, res, exports.BAD, code, msg, headers);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an error for unsupported methods
 ///
 /// @FUN{actionResultUnsupported(@FA{req}, @FA{res}, @FA{headers})}
@@ -379,15 +363,19 @@ function collectionUnknown (req, res, collection, headers) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+exports.resultBad = ResultBad;
+exports.resultOk = ResultOk;
+
+
 exports.defineHttp = defineHttp;
 exports.actionResult = actionResult;
-exports.actionResultOK = actionResultOK;
+exports.actionResultOK = ResultOk;
 exports.actionResultError = actionResultError;
 exports.actionResultUnsupported = actionResultUnsupported;
 exports.actionError = actionError;
+exports.resultOK = ResultOk;
 
 exports.result = actionResult;
-exports.resultOK = actionResultOK;
 exports.unsupported = actionResultUnsupported;
 exports.error = actionResultError;
 
@@ -412,9 +400,6 @@ exports.HTTP_OK                 = 200;
 exports.HTTP_NOT_FOUND          = 404;
 exports.HTTP_METHOD_NOT_ALLOWED = 405;
 exports.HTTP_CONFLICT           = 409;
-
-// VOC ERRORS
-exports.VERR_COLLECTION_EXISTS  = 1205;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
