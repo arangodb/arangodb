@@ -758,7 +758,7 @@ void AvocadoServer::openDatabase () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void AvocadoServer::closeDatabase () {
-  TRI_CloseVocBase(_vocbase);
+  TRI_DestroyVocBase(_vocbase);
   _vocbase = 0;
   LOGGER_INFO << "AvocadoDB has been shut down";
 }
