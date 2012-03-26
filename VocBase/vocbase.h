@@ -186,7 +186,7 @@ typedef uint32_t TRI_col_type_t;
 /// unloaded) of the collection. If you want to use a collection, you must call
 /// @ref TRI_UseCollectionVocBase, this will either load or manifest the
 /// collection and a read-lock is held when the functions returns.  You must
-/// call @ref TRI_ReleaseUseCollectionVocBase, when you finished using the
+/// call @ref TRI_ReleaseCollectionVocBase, when you finished using the
 /// collection. The functions that modify the status of collection (load,
 /// unload, manifest) will grab a write-lock.
 ////////////////////////////////////////////////////////////////////////////////
