@@ -4,13 +4,13 @@ require './avocadodb.rb'
 describe AvocadoDB do
   prefix = "rest_update-document"
 
-  context "update a document in a collection" do
+  context "update a document:" do
 
 ################################################################################
 ## error handling
 ################################################################################
 
-    context "error handling" do
+    context "error handling:" do
       before do
 	@cn = "UnitTestsCollectionBasics"
 	@cid = AvocadoDB.create_collection(@cn)
@@ -22,7 +22,8 @@ describe AvocadoDB do
 
       it "returns an error if document handle is missing" do
 	cmd = "/document"
-        doc = AvocadoDB.put(cmd)
+	body = "{}"
+        doc = AvocadoDB.put(cmd, :body => body)
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
@@ -30,14 +31,15 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(400)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
-	AvocadoDB.log(:method => :post, :url => cmd, :result => doc, :output => "#{prefix}-missing-handle")
+	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-missing-handle")
 
 	AvocadoDB.size_collection(@cid).should eq(0)
       end
 
       it "returns an error if document handle is corrupted" do
 	cmd = "/document/123456"
-        doc = AvocadoDB.put(cmd)
+	body = "{}"
+        doc = AvocadoDB.put(cmd, :body => body)
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
@@ -45,14 +47,15 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(400)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
-	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}-bad-handle")
+	AvocadoDB.log(:method => :get, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-bad-handle")
 
 	AvocadoDB.size_collection(@cid).should eq(0)
       end
 
       it "returns an error if document handle is corrupted" do
 	cmd = "/document//123456"
-        doc = AvocadoDB.put(cmd)
+	body = "{}"
+        doc = AvocadoDB.put(cmd, :body => body)
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
@@ -60,14 +63,15 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(400)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
-	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}-bad-handle2")
+	AvocadoDB.log(:method => :get, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-bad-handle2")
 
 	AvocadoDB.size_collection(@cid).should eq(0)
       end
 
       it "returns an error if collection identifier is unknown" do
 	cmd = "/document/123456/234567"
-        doc = AvocadoDB.put(cmd)
+	body = "{}"
+        doc = AvocadoDB.put(cmd, :body => body)
 
 	doc.code.should eq(404)
 	doc.parsed_response['error'].should eq(true)
@@ -75,7 +79,7 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(404)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
-	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}-unknown-cid")
+	AvocadoDB.log(:method => :get, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-unknown-cid")
 
 	AvocadoDB.size_collection(@cid).should eq(0)
       end
@@ -130,7 +134,7 @@ describe AvocadoDB do
 ## updating documents
 ################################################################################
 
-    context "updating documents" do
+    context "updating document:" do
       before do
 	@cn = "UnitTestsCollectionBasics"
 	@cid = AvocadoDB.create_collection(@cn)

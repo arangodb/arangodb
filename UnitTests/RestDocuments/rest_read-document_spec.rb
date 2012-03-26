@@ -4,13 +4,13 @@ require './avocadodb.rb'
 describe AvocadoDB do
   prefix = "rest_read-document"
 
-  context "reading a document in a collection" do
+  context "reading a document:" do
 
 ################################################################################
 ## error handling
 ################################################################################
 
-    context "error handling" do
+    context "error handling:" do
       before do
 	@cn = "UnitTestsCollectionBasics"
 	@cid = AvocadoDB.create_collection(@cn)
@@ -79,7 +79,7 @@ describe AvocadoDB do
 ## reading documents
 ################################################################################
 
-    context "reading documents" do
+    context "reading a document:" do
       before do
 	@cn = "UnitTestsCollectionBasics"
 	@cid = AvocadoDB.create_collection(@cn)
@@ -252,7 +252,7 @@ describe AvocadoDB do
 ## reading all documents
 ################################################################################
 
-    context "reading all documents" do
+    context "reading all documents:" do
       before do
 	@cn = "UnitTestsCollectionAll"
 	@cid = AvocadoDB.create_collection(@cn)
@@ -354,7 +354,7 @@ describe AvocadoDB do
 ## checking document
 ################################################################################
 
-    context "checking a document" do
+    context "checking a document:" do
       before do
 	@cn = "UnitTestsCollectionBasics"
 	@cid = AvocadoDB.create_collection(@cn)

@@ -4,16 +4,17 @@ require './avocadodb.rb'
 describe AvocadoDB do
   prefix = "rest_create-document"
 
-  context "creating a document in a collection" do
+  context "creating a document:" do
 
 ################################################################################
 ## error handling
 ################################################################################
 
-    context "error handling" do
+    context "error handling:" do
       it "returns an error if url contains a suffix" do
 	cmd = "/document/123456"
-        doc = AvocadoDB.post(cmd)
+	body = "{}"
+        doc = AvocadoDB.post(cmd, :body => body)
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
@@ -21,12 +22,13 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(400)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
-	AvocadoDB.log(:method => :post, :url => cmd, :result => doc, :output => "#{prefix}-superfluous-suffix")
+	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-superfluous-suffix")
       end
 
       it "returns an error if collection idenifier is missing" do
 	cmd = "/document"
-        doc = AvocadoDB.post(cmd)
+	body = "{}"
+        doc = AvocadoDB.post(cmd, :body => body)
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
@@ -34,12 +36,13 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(400)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
-	AvocadoDB.log(:method => :post, :url => cmd, :result => doc, :output => "#{prefix}-missing-cid")
+	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-missing-cid")
       end
 
       it "returns an error if the collection identifier is unknown" do
 	cmd = "/document?collection=123456"
-        doc = AvocadoDB.post(cmd)
+	body = "{}"
+        doc = AvocadoDB.post(cmd, :body => body)
 
 	doc.code.should eq(404)
 	doc.parsed_response['error'].should eq(true)
@@ -47,12 +50,13 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(404)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
-	AvocadoDB.log(:method => :post, :url => cmd, :result => doc, :output => "#{prefix}-unknown-cid")
+	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-unknown-cid")
       end
 
       it "returns an error if the collection name is unknown" do
 	cmd = "/document?collection=unknown_collection"
-        doc = AvocadoDB.post(cmd)
+	body = "{}"
+        doc = AvocadoDB.post(cmd, :body => body)
 
 	doc.code.should eq(404)
 	doc.parsed_response['error'].should eq(true)
@@ -60,7 +64,7 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(404)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
-	AvocadoDB.log(:method => :post, :url => cmd, :result => doc, :output => "#{prefix}-unknown-name")
+	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-unknown-name")
       end
 
       it "returns an error if the JSON body is corrupted" do
@@ -92,7 +96,7 @@ describe AvocadoDB do
 ## known collection identifier, waitForSync = true
 ################################################################################
 
-    context "known collection identifier, waitForSync = true" do
+    context "known collection identifier, waitForSync = true:" do
       before do
 	@cn = "UnitTestsCollectionBasics"
 	@cid = AvocadoDB.create_collection(@cn)
@@ -142,7 +146,7 @@ describe AvocadoDB do
 ## known collection identifier, waitForSync = false
 ################################################################################
 
-    context "known collection identifier, waitForSync = false" do
+    context "known collection identifier, waitForSync = false:" do
       before do
 	@cn = "UnitTestsCollectionUnsynced"
 	@cid = AvocadoDB.create_collection(@cn, false)
@@ -192,7 +196,7 @@ describe AvocadoDB do
 ## known collection name
 ################################################################################
 
-    context "known collection name" do
+    context "known collection name:" do
       before do
 	@cn = "UnitTestsCollectionBasics"
 	@cid = AvocadoDB.create_collection(@cn)
@@ -242,7 +246,7 @@ describe AvocadoDB do
 ## unknown collection name
 ################################################################################
 
-    context "unknown collection name" do
+    context "unknown collection name:" do
       before do
 	@cn = "UnitTestsCollectionNamed#{Time.now.to_i}"
       end
