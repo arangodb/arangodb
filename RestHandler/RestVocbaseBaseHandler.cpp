@@ -420,12 +420,14 @@ TRI_doc_update_policy_e RestVocbaseBaseHandler::extractUpdatePolicy () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the collection variable using a a name or an identifier
+/// @brief uses a collection, loading or manifesting and locking it
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestVocbaseBaseHandler::findCollection (string const& name, bool create) {
+int RestVocbaseBaseHandler::useCollection (string const& name, bool create) {
   _collection = 0;
+  _documentCollection = 0;
 
+  // sanity check
   if (name.empty()) {
     generateError(HttpResponse::BAD, 
                   TRI_ERROR_HTTP_CORRUPTED_JSON,
@@ -433,6 +435,7 @@ bool RestVocbaseBaseHandler::findCollection (string const& name, bool create) {
     return false;
   }
 
+  // try to find the collection
   if (isdigit(name[0])) {
     TRI_voc_cid_t id = StringUtils::uint64(name);
 
@@ -444,88 +447,23 @@ bool RestVocbaseBaseHandler::findCollection (string const& name, bool create) {
 
   if (_collection == 0) {
     generateCollectionNotFound(name);
-    return false;
+    return TRI_set_errno(TRI_ERROR_AVOCADO_COLLECTION_NOT_FOUND);
   }
-  else {
-    return true;
-  }
+
+  // and use the collection
+  return TRI_UseCollectionVocBase(_vocbase, const_cast<TRI_vocbase_col_s*>(_collection));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates or loads a collection
+/// @brief releases a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestVocbaseBaseHandler::loadCollection () {
-  _documentCollection = 0;
-
-  // collection name must be known
+void RestVocbaseBaseHandler::releaseCollection () {
   if (_collection == 0) {
-    generateError(HttpResponse::SERVER_ERROR,
-                  TRI_ERROR_INTERNAL,
-                  "no collection is known, this should not happen");
-    return false;
+    return;
   }
 
-  // check for corrupted collections
-  if (_collection->_corrupted) {
-    generateError(HttpResponse::SERVER_ERROR, 
-                  TRI_ERROR_AVOCADO_CORRUPTED_COLLECTION,
-                  "collection is corrupted, please run collection check");
-    return false;
-  }
-
-  // check for loaded collections
-  if (_collection->_loaded) {
-    if (_collection->_collection == 0) {
-      generateError(HttpResponse::SERVER_ERROR, 
-                    TRI_ERROR_AVOCADO_CORRUPTED_COLLECTION,
-                    "cannot load collection, check log");
-      return false;
-    }
-
-    _documentCollection = const_cast<TRI_doc_collection_t*>(_collection->_collection);
-    return true;
-  }
-
-  // create or load collection
-  if (_collection->_newBorn) {
-    LOGGER_INFO << "creating new collection: '" << _collection->_name << "'";
-
-    bool ok = TRI_ManifestCollectionVocBase(_collection->_vocbase, _collection);
-
-    if (! ok) {
-      generateError(HttpResponse::SERVER_ERROR,
-                    TRI_errno(),
-                    "cannot create collection, check log");
-      return false;
-    }
-
-    LOGGER_DEBUG << "collection created";
-  }
-  else {
-    LOGGER_INFO << "loading collection: '" << _collection->_name << "'";
-
-    _collection = TRI_LoadCollectionVocBase(_collection->_vocbase, _collection->_name);
-
-    LOGGER_DEBUG << "collection loaded";
-  }
-
-  if (_collection == 0 || _collection->_collection == 0) {
-    generateError(HttpResponse::SERVER_ERROR,
-                  TRI_errno(),
-                  "cannot load collection, check log");
-    return false;
-  }
-
-  if (_collection->_corrupted) {
-    generateError(HttpResponse::SERVER_ERROR,
-                  TRI_ERROR_AVOCADO_CORRUPTED_COLLECTION,
-                  "collection is corrupted, please run collection check");
-    return false;
-  }
-
-  _documentCollection = const_cast<TRI_doc_collection_t*>(_collection->_collection);
-  return true;
+  TRI_ReleaseCollectionVocBase(_vocbase, _collection);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

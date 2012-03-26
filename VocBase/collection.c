@@ -828,7 +828,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_collection_t* collection,
 /// @brief closes an open collection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CloseCollection (TRI_collection_t* collection) {
+int TRI_CloseCollection (TRI_collection_t* collection) {
   TRI_datafile_t* datafile;
   size_t n;
   size_t i;
@@ -860,7 +860,7 @@ bool TRI_CloseCollection (TRI_collection_t* collection) {
     TRI_CloseDatafile(datafile);
   }
 
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

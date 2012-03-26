@@ -133,7 +133,8 @@ TRI_edge_header_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_sim_collection_t* TRI_CreateSimCollection (char const* path,
-                                               TRI_col_parameter_t* parameter);
+                                               TRI_col_parameter_t* parameter,
+                                               TRI_voc_cid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated, but does not free the pointer
@@ -185,7 +186,7 @@ TRI_sim_collection_t* TRI_OpenSimCollection (char const* path);
 /// @brief closes an open collection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CloseSimCollection (TRI_sim_collection_t* collection);
+int TRI_CloseSimCollection (TRI_sim_collection_t* collection);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
