@@ -1,4 +1,4 @@
-> curl --data @- -X POST  --dump - http://localhost:8529/document/73482/234567
+> curl --data @- -X PUT --dump - http://localhost:8529/document/73482/234567
 {}
 
 HTTP/1.1 404 Not Found
