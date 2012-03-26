@@ -375,10 +375,10 @@ TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase (TRI_vocbase_t* vocbase, char 
 void TRI_ReleaseCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief renames a (document) collection
+/// @brief releases a (document) collection from usage
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col, char const* name);
+void TRI_ReleaseCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

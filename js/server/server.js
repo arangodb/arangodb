@@ -211,6 +211,7 @@ AvocadoCollection.prototype.drop = function() {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype._PRINT = function() {
+  var status = "unknown";
 
   switch (this.status()) {
     case AvocadoCollection.STATUS_NEW_BORN: status = "new born"; break;
