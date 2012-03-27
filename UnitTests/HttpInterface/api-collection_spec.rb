@@ -37,6 +37,50 @@ describe AvocadoDB do
 
 	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}-bad-handle")
       end
+
+      it "creating a collection without name" do
+	cmd = api
+        doc = AvocadoDB.post(cmd)
+
+	doc.code.should eq(400)
+	doc.parsed_response['error'].should eq(true)
+	doc.parsed_response['code'].should eq(400)
+	doc.parsed_response['errorNum'].should eq(1208)
+	doc.headers['content-type'].should eq("application/json")
+
+	AvocadoDB.log(:method => :post, :url => cmd, :result => doc, :output => "#{prefix}-create-missing-name")
+      end
+
+      it "creating a collection with an illegal name" do
+	cmd = api
+	body = "{ \"name\" : \"1\" }"
+        doc = AvocadoDB.post(cmd, :body => body)
+
+	doc.code.should eq(400)
+	doc.parsed_response['error'].should eq(true)
+	doc.parsed_response['code'].should eq(400)
+	doc.parsed_response['errorNum'].should eq(1208)
+	doc.headers['content-type'].should eq("application/json")
+
+	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-create-illegal-name")
+      end
+
+      it "creating a collection with a duplicate name" do
+	cn = "UnitTestsCollectionBasics"
+	cid = AvocadoDB.create_collection(cn)
+
+	cmd = api
+	body = "{ \"name\" : \"#{cn}\" }"
+        doc = AvocadoDB.post(cmd, :body => body)
+
+	doc.code.should eq(400)
+	doc.parsed_response['error'].should eq(true)
+	doc.parsed_response['code'].should eq(400)
+	doc.parsed_response['errorNum'].should eq(1207)
+	doc.headers['content-type'].should eq("application/json")
+
+	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-create-illegal-name")
+      end
     end
 
 ################################################################################
@@ -46,6 +90,7 @@ describe AvocadoDB do
     context "reading:" do
       before do
 	@cn = "UnitTestsCollectionBasics"
+	AvocadoDB.drop_collection(@cn)
 	@cid = AvocadoDB.create_collection(@cn)
       end
 
@@ -178,6 +223,52 @@ describe AvocadoDB do
 
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['code'].should eq(404)
+      end
+    end
+
+################################################################################
+## creating a collection
+################################################################################
+
+    context "creating:" do
+      before do
+	@cn = "UnitTestsCollectionBasics"
+      end
+
+      it "create a collection" do
+	cmd = api
+	body = "{ \"name\" : \"#{@cn}\" }"
+        doc = AvocadoDB.post(cmd, :body => body)
+
+	doc.code.should eq(200)
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['id'].should be_kind_of(Integer)
+	doc.parsed_response['name'].should eq(@cn)
+	doc.parsed_response['waitForSync'].should == false
+	doc.headers['content-type'].should eq("application/json")
+
+	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-create-collection")
+
+	AvocadoDB.drop_collection(@cn)
+      end
+
+      it "create a collection, sync" do
+	cmd = api
+	body = "{ \"name\" : \"#{@cn}\", \"waitForSync\" : true }"
+        doc = AvocadoDB.post(cmd, :body => body)
+
+	doc.code.should eq(200)
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['id'].should be_kind_of(Integer)
+	doc.parsed_response['name'].should eq(@cn)
+	doc.parsed_response['waitForSync'].should == true
+	doc.headers['content-type'].should eq("application/json")
+
+	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-create-collection-sync")
+
+	AvocadoDB.drop_collection(@cn)
       end
     end
   end
