@@ -34,6 +34,7 @@
 ///  <li>@ref HttpCollectionHttp
 ///   <ol>
 ///    <li>@ref HttpCollectionRead "GET /_api/collection/@FA{collection-identifier}"</li>
+///    <li>@ref HttpCollectionCreate "POST /_api/collection"</li>
 ///    <li>@ref HttpCollectionDelete "DELETE /_api/collection/@FA{collection-identifier}"</li>
 ///   </ol>
 ///  </li>
@@ -80,6 +81,10 @@
 ///
 /// @anchor HttpCollectionRead
 /// @copydetails JSF_GET_api_collection
+/// <hr>
+///
+/// @anchor HttpCollectionCreate
+/// @copydetails JSF_POST_api_collection
 /// <hr>
 ///
 /// @anchor HttpCollectionDelete
