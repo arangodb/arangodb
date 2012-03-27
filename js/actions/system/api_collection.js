@@ -38,6 +38,70 @@ var API = "_api/";
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a collection
+///
+/// @REST{POST /_api/collection}
+///
+/// Creates an new collection with a given name. The request must contain an
+/// object with the following attributes.
+///
+/// @LIT{name}: The name of the collection.
+///
+/// @LIT{waitForSync} (optional, default: false): If @LIT{true} then the data
+/// is synchronised to disk before returning from a create or update of an
+/// document.
+///
+/// @EXAMPLES
+///
+/// @verbinclude api-collection-create-collection
+////////////////////////////////////////////////////////////////////////////////
+
+function POST_api_collection (req, res) {
+  var body = JSON.parse(req.requestBody || "{}");
+  var waitForSync = false;
+
+  if (! body.hasOwnProperty("name")) {
+    actions.resultBad(req, res, actions.ERROR_AVOCADO_ILLEGAL_NAME,
+                      "name must be non-empty");
+    return;
+  }
+
+  var name = body.name;
+
+  if (body.hasOwnProperty("waitForSync")) {
+    waitForSync = body.waitForSync;
+  }
+
+  if (db._collection(name) != null) {
+    actions.resultBad(req, res, actions.ERROR_AVOCADO_DUPLICATE_NAME,
+                      "collection '" + name + "' already exists");
+  }
+  else {
+    var collection = db[name];
+
+    if (collection == undefined) {
+      actions.resultBad(req, res, actions.ERROR_AVOCADO_ILLEGAL_NAME,
+                        "cannot create collection");
+    }
+    else {
+      var result = {};
+      var headers = {};
+
+      collection.parameter({ waitForSync : waitForSync });
+
+      result.id = collection._id;
+      result.name = collection.name();
+      result.waitForSync = collection.parameter().waitForSync;
+      result.status = collection.status();
+
+      headers.location = "/" + API + "collection/" + collection._id;
+      
+      actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a collection
 ///
 /// @REST{GET /_api/collection/@FA{collection-identifier}}
@@ -303,11 +367,9 @@ actions.defineHttp({
     else if (req.requestType == actions.DELETE) {
       DELETE_api_collection(req, res);
     }
-    /*
     else if (req.requestType == actions.POST) {
-      POST_api_database_collection(req, res);
+      POST_api_collection(req, res);
     }
-    */
     else {
       actions.resultUnsupported(req, res);
     }

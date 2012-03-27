@@ -317,6 +317,21 @@ function ResultNotFound (req, res, msg, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generates an error for unsupported methods
+///
+/// @FUN{actions.resultUnsupported(@FA{req}, @FA{res}, @FA{headers})}
+///
+/// The functions generates an error response.
+////////////////////////////////////////////////////////////////////////////////
+
+function ResultUnsupported (req, res, headers) {
+  actionResultError(req, res,
+                    exports.HTTP_METHOD_NOT_ALLOWED, exports.ERROR_HTTP_METHOD_NOT_ALLOWED,
+                    "Unsupported method",
+                    headers);  
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an error for unknown collection
 ///
 /// @FUN{actions.collectionNotFound(@FA{req}, @FA{res}, @FA{collection}, @FA{headers})}
@@ -347,18 +362,6 @@ function CollectionNotFound (req, res, collection, headers) {
 
 
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates an error for unsupported methods
-///
-/// @FUN{actionResultUnsupported(@FA{req}, @FA{res}, @FA{headers})}
-///
-/// The functions generates an error response.
-////////////////////////////////////////////////////////////////////////////////
-
-function actionResultUnsupported (req, res, headers) {
-  actionResultError(req, res, 405, 405, "Unsupported method", headers);  
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an error for a bad parameter
@@ -421,6 +424,7 @@ function badParameter (req, res, name, headers) {
 
 exports.resultBad = ResultBad;
 exports.resultNotFound = ResultNotFound;
+exports.resultUnsupported = ResultUnsupported;
 exports.resultOk = ResultOk;
 
 exports.collectionNotFound = CollectionNotFound;

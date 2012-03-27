@@ -1,0 +1,15 @@
+> curl --data @- -X POST --dump - http://localhost:8529/_api/collection
+{ "name" : "UnitTestsCollectionBasics" }
+
+HTTP/1.1 200 OK
+content-type: application/json
+location: /_api/collection/179665369
+
+{
+  "name": "UnitTestsCollectionBasics",
+  "code": 200,
+  "waitForSync": false,
+  "id": 179665369,
+  "status": 3,
+  "error": false
+}
