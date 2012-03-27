@@ -187,6 +187,7 @@ avocado_SOURCES = \
 	VocBase/query-javascript.c \
 	VocBase/query-join.c \
 	VocBase/query-join-execute.c \
+	VocBase/query-locks.c \
 	VocBase/query-memory.c \
 	VocBase/query-node.c \
 	VocBase/query-order.c \
