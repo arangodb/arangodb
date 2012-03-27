@@ -4,13 +4,13 @@ require './avocadodb.rb'
 describe AvocadoDB do
   prefix = "rest_delete-document"
 
-  context "delete a document in a collection" do
+  context "delete a document:" do
 
 ################################################################################
 ## error handling
 ################################################################################
 
-    context "error handling" do
+    context "error handling:" do
       before do
 	@cn = "UnitTestsCollectionBasics"
 	@cid = AvocadoDB.create_collection(@cn)
@@ -119,7 +119,7 @@ describe AvocadoDB do
 ## deleting documents
 ################################################################################
 
-    context "deleting documents" do
+    context "deleting documents:" do
       before do
 	@cn = "UnitTestsCollectionBasics"
 	@cid = AvocadoDB.create_collection(@cn)
