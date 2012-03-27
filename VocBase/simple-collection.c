@@ -1202,13 +1202,32 @@ static int EndWrite (TRI_doc_collection_t* document) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_voc_size_t SizeSimCollection (TRI_doc_collection_t* doc) {
+  TRI_doc_mptr_t const* mptr;
   TRI_sim_collection_t* sim;
   TRI_voc_size_t result;
+  size_t n;
+  void** end;
+  void** ptr;
 
   sim = (TRI_sim_collection_t*) doc;
 
   TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
-  result = sim->_primaryIndex._nrUsed;
+
+  n = sim->_primaryIndex._nrUsed;
+  ptr = sim->_primaryIndex._table;
+  end = sim->_primaryIndex._table + sim->_primaryIndex._nrAlloc;
+  result = 0;
+
+  for (;  ptr < end;  ++ptr) {
+    if (*ptr != NULL) {
+      mptr = *ptr;
+
+      if (mptr->_deletion == 0) {
+        ++result;
+      }
+    }
+  }
+
   TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
   return result;

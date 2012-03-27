@@ -91,7 +91,7 @@
 ///
 /// @LIT{http://@FA{server}:@FA{port}/document/@FA{document-handle}}
 ///
-/// For exmaple: Assume that the document handle, which is stored in
+/// For example: Assume that the document handle, which is stored in
 /// the @LIT{_id} field of the document, is @LIT{7254820/362549736},
 /// then the URL of that document is:
 ///

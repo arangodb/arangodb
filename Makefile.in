@@ -803,6 +803,7 @@ BISONXX_FILES = \
 ################################################################################
 ################################################################################
 DOXYGEN = \
+	Doxygen/js/actions/system/api_collection.c \
 	Doxygen/js/actions/system/api_database.c \
 	Doxygen/js/actions/system/api_simple.c \
 	Doxygen/js/actions/system/collections.c \

@@ -57,6 +57,7 @@
 ///  <li>@ref OTWP
 ///   <ol>
 ///      <li>@ref RestDocument</li>
+///      <li>@ref HttpCollection</li>
 ///   </ol>
 ///  </li>
 /// </ol>

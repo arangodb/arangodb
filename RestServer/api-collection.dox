@@ -29,23 +29,18 @@
 /// @page HttpCollectionTOC
 ///
 /// <ol>
-///  <li>@ref RestDocumentIntro</li>
-///  <li>@ref RestDocumentResource</li>
-///  <li>@ref RestDocumentHttp
+///  <li>@ref HttpCollectionIntro</li>
+///  <li>@ref HttpCollectionResource</li>
+///  <li>@ref HttpCollectionHttp
 ///   <ol>
-///    <li>@ref RestDocumentRead "GET /document/@FA{document-handle}"</li>
-///    <li>@ref RestDocumentCreate "POST /document?collection=@FA{collection-identifier}"</li>
-///    <li>@ref RestDocumentUpdate "PUT /document/@FA{document-handle}"</li>
-///    <li>@ref RestDocumentDelete "DELETE /document/@FA{document-handle}"</li>
-///    <li>@ref RestDocumentHead "HEAD /document/@FA{document-handle}"</li>
-///    <li>@ref RestDocumentReadAll "GET /document?collection=@FA{collection-identifier}"</li>
+///    <li>@ref HttpCollectionRead "GET /_api/collection/@FA{collection-identifier}"</li>
 ///   </ol>
 ///  </li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page HttpCollection Http Interface for Collections
+/// @page HttpCollection HTTP Interface for Collections
 ///
 /// This is an introduction to AvocadoDB's Http interface to documents.
 ///
@@ -53,12 +48,14 @@
 /// @copydoc HttpCollectionTOC
 /// <hr>
 ///
-/// @section HttpCollectionIntro Dealing with Collections
-/////////////////////////////////////////////////////////
+/// @section HttpCollectionIntro Collections
+////////////////////////////////////////////
 ///
 /// @copydoc GlossaryCollection
 ///
 /// @copydoc GlossaryCollectionIdentifier
+///
+/// @copydoc GlossaryCollectionName
 ///
 /// The basic operations (create, read, update, delete) for documents are mapped
 /// to the standard HTTP methods (POST, GET, PUT, DELETE).
@@ -72,7 +69,7 @@
 ///
 /// @LIT{http://@FA{server}:@FA{port}/_api/collection/@FA{collection-identifier}}
 ///
-/// For exmaple: Assume that the collection identifier is @LIT{7254820},
+/// For example: Assume that the collection identifier is @LIT{7254820},
 /// then the URL of that collection is:
 ///
 /// @LIT{http://localhost:8529/_api/collection/7254820}
@@ -80,8 +77,8 @@
 /// @section HttpCollectionHttp Working with Collections using HTTP
 ///////////////////////////////////////////////////////////////////
 ///
-/// @anchor RestDocumentRead
-/// @copydetails triagens::avocado::RestDocumentHandler::readSingleDocument
+/// @anchor HttpCollectionRead
+/// @copydetails JSF_GET_api_collection
 /// <hr>
 ///
 /// @anchor RestDocumentCreate
