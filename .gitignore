@@ -71,4 +71,4 @@ UnitTests/Philadelphia/Runner.cpp
 UnitTests/test_suite
 .v8-build
 VC++
-UnitTests/RestDocuments/logs
+UnitTests/HttpInterface/logs

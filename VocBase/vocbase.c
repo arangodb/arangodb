@@ -789,10 +789,10 @@ char TRI_IsAllowedCollectionName (char const* name) {
 
   for (ptr = name;  *ptr;  ++ptr) {
     if (name < ptr) {
-      ok = (*ptr == '_') || ('0' <= *ptr && *ptr <= '9') || ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
+      ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') || ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
     }
     else {
-      ok = ('0' <= *ptr && *ptr <= '9') || ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
+      ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
     }
 
     if (! ok) {
