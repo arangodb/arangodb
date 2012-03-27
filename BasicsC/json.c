@@ -652,14 +652,14 @@ bool TRI_SaveJson (char const* filename, TRI_json_t const* object) {
     return false;
   }
 
-  ok = TRI_RenameFile(tmp, filename);
+  res = TRI_RenameFile(tmp, filename);
 
-  if (! ok) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("cannot rename saved file '%s' to '%s': '%s'", tmp, filename, TRI_LAST_ERROR_STR);
     TRI_UnlinkFile(tmp);
     TRI_FreeString(tmp);
-    return false;
+
+    return res;
   }
 
   TRI_FreeString(tmp);

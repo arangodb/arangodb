@@ -415,8 +415,8 @@ TRI_collection_t* TRI_CreateCollection (TRI_collection_t* collection,
     return NULL;
   }
 
-  // save the parameter block
-  res = TRI_SaveParameterInfo(filename, parameter);
+  // save the parameter block (within create, no need to lock)
+  res = TRI_SaveParameterInfoCollection(filename, parameter);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeString(filename);
@@ -477,10 +477,12 @@ void TRI_FreeCollection (TRI_collection_t* collection) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a parameter info block from file
+///
+/// You must hold the @ref TRI_READ_LOCK_STATUS_VOCBASE_COL when calling this
+/// function.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_LoadParameterInfo (char const* path,
-                           TRI_col_info_t* parameter) {
+int TRI_LoadParameterInfoCollection (char const* path, TRI_col_info_t* parameter) {
   TRI_json_t* json;
   char* filename;
   char* error;
@@ -560,10 +562,12 @@ int TRI_LoadParameterInfo (char const* path,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a parameter info block to file
+///
+/// You must hold the @ref TRI_WRITE_LOCK_STATUS_VOCBASE_COL when calling this
+/// function.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveParameterInfo (char const* path,
-                           TRI_col_info_t* info) {
+int TRI_SaveParameterInfoCollection (char const* path, TRI_col_info_t* info) {
   TRI_json_t* json;
   char* filename;
   bool ok;
@@ -598,9 +602,12 @@ int TRI_SaveParameterInfo (char const* path,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates the parameter info block
+///
+/// You must hold the @ref TRI_WRITE_LOCK_STATUS_VOCBASE_COL when calling this
+/// function.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_UpdateParameterInfoCollection (TRI_collection_t* collection) {
+int TRI_UpdateParameterInfoCollection (TRI_collection_t* collection) {
   TRI_col_info_t parameter;
 
   parameter._version = collection->_version;
@@ -612,11 +619,14 @@ bool TRI_UpdateParameterInfoCollection (TRI_collection_t* collection) {
   parameter._deleted = collection->_deleted;
   parameter._size = sizeof(TRI_col_info_t);
 
-  return TRI_SaveParameterInfo(collection->_directory, &parameter) == TRI_ERROR_NO_ERROR;
+  return TRI_SaveParameterInfoCollection(collection->_directory, &parameter);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a collection
+///
+/// You must hold the @ref TRI_WRITE_LOCK_STATUS_VOCBASE_COL when calling this
+/// function.
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RenameCollection (TRI_collection_t* collection, char const* name) {
@@ -632,7 +642,7 @@ int TRI_RenameCollection (TRI_collection_t* collection, char const* name) {
   parameter._deleted = collection->_deleted;
   parameter._size = sizeof(TRI_col_info_t);
 
-  res = TRI_SaveParameterInfo(collection->_directory, &parameter);
+  res = TRI_SaveParameterInfoCollection(collection->_directory, &parameter);
 
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_CopyString(collection->_name, name, sizeof(collection->_name));
@@ -770,8 +780,7 @@ void TRI_IterateIndexCollection (TRI_collection_t* collection,
 /// @brief opens an existing collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_collection_t* TRI_OpenCollection (TRI_collection_t* collection,
-                                      char const* path) {
+TRI_collection_t* TRI_OpenCollection (TRI_collection_t* collection, char const* path) {
   TRI_col_info_t info;
   bool freeCol;
   bool ok;
@@ -787,8 +796,8 @@ TRI_collection_t* TRI_OpenCollection (TRI_collection_t* collection,
     return NULL;
   }
 
-  // read parameter block
-  res = TRI_LoadParameterInfo(path, &info);
+  // read parameter block, no need to lock as we are opening the collection
+  res = TRI_LoadParameterInfoCollection(path, &info);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("cannot save collection parameter '%s': '%s'", path, TRI_last_error());

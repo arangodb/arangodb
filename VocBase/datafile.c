@@ -811,7 +811,7 @@ bool TRI_CloseDatafile (TRI_datafile_t* datafile) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_RenameDatafile (TRI_datafile_t* datafile, char const* filename) {
-  bool ok;
+  int res;
 
   if (TRI_ExistsFile(filename)) {
     LOG_ERROR("cannot overwrite datafile '%s'", filename);
@@ -820,9 +820,9 @@ bool TRI_RenameDatafile (TRI_datafile_t* datafile, char const* filename) {
     return false;
   }
 
-  ok = TRI_RenameFile(datafile->_filename, filename);
+  res = TRI_RenameFile(datafile->_filename, filename);
 
-  if (! ok) {
+  if (res != TRI_ERROR_NO_ERROR) {
     datafile->_state = TRI_DF_STATE_RENAME_ERROR;
     datafile->_lastError = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 

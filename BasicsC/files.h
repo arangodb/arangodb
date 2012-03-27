@@ -103,7 +103,7 @@ TRI_vector_string_t TRI_FilesDirectory (char const* path);
 /// @brief renames a file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RenameFile (char const* old, char const* filename);
+int TRI_RenameFile (char const* old, char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlinks a file
