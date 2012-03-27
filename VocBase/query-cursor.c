@@ -29,6 +29,7 @@
 
 #include "VocBase/query-cursor.h"
 #include "VocBase/query-context.h"
+#include "VocBase/query-locks.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -141,6 +142,10 @@ static uint32_t GetBatchSizeQueryCursor (const TRI_query_cursor_t* const cursor)
 
 void TRI_FreeQueryCursor (TRI_query_cursor_t* cursor) {
   FreeData(cursor);
+
+  if (cursor->_locks) {
+    TRI_FreeLocksQueryInstance(cursor->_vocbase, cursor->_locks);
+  }
   
   TRI_DestroyMutex(&cursor->_lock);
   TRI_DestroyVectorPointer(&cursor->_containers);
@@ -177,6 +182,9 @@ TRI_query_cursor_t* TRI_CreateQueryCursor (TRI_query_instance_t* const instance,
 
   // does cursor produce constant documents?
   cursor->_isConstant = instance->_query._select._isConstant;
+
+  cursor->_locks = NULL;
+
   cursor->_hasCount = doCount;
   cursor->_batchSize = batchSize;
   cursor->_deleted = false;

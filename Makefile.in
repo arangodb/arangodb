@@ -279,10 +279,10 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	VocBase/query-javascript.$(OBJEXT) \
 	VocBase/query-join.$(OBJEXT) \
 	VocBase/query-join-execute.$(OBJEXT) \
-	VocBase/query-memory.$(OBJEXT) VocBase/query-node.$(OBJEXT) \
-	VocBase/query-order.$(OBJEXT) VocBase/query-parse.$(OBJEXT) \
-	VocBase/query-result.$(OBJEXT) VocBase/query.$(OBJEXT) \
-	VocBase/shadow-data.$(OBJEXT) \
+	VocBase/query-locks.$(OBJEXT) VocBase/query-memory.$(OBJEXT) \
+	VocBase/query-node.$(OBJEXT) VocBase/query-order.$(OBJEXT) \
+	VocBase/query-parse.$(OBJEXT) VocBase/query-result.$(OBJEXT) \
+	VocBase/query.$(OBJEXT) VocBase/shadow-data.$(OBJEXT) \
 	VocBase/simple-collection.$(OBJEXT) \
 	VocBase/synchroniser.$(OBJEXT) VocBase/voc-shaper.$(OBJEXT) \
 	VocBase/vocbase.$(OBJEXT)
@@ -737,6 +737,7 @@ avocado_SOURCES = \
 	VocBase/query-javascript.c \
 	VocBase/query-join.c \
 	VocBase/query-join-execute.c \
+	VocBase/query-locks.c \
 	VocBase/query-memory.c \
 	VocBase/query-node.c \
 	VocBase/query-order.c \
@@ -1591,6 +1592,8 @@ VocBase/query-join.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/query-join-execute.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
+VocBase/query-locks.$(OBJEXT): VocBase/$(am__dirstamp) \
+	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/query-memory.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/query-node.$(OBJEXT): VocBase/$(am__dirstamp) \
@@ -1830,6 +1833,7 @@ mostlyclean-compile:
 	-rm -f VocBase/query-javascript.$(OBJEXT)
 	-rm -f VocBase/query-join-execute.$(OBJEXT)
 	-rm -f VocBase/query-join.$(OBJEXT)
+	-rm -f VocBase/query-locks.$(OBJEXT)
 	-rm -f VocBase/query-memory.$(OBJEXT)
 	-rm -f VocBase/query-node.$(OBJEXT)
 	-rm -f VocBase/query-order.$(OBJEXT)
@@ -2028,6 +2032,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-javascript.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-join-execute.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-join.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-locks.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-memory.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-node.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-order.Po@am__quote@
