@@ -3153,6 +3153,31 @@ static v8::Handle<v8::Value> JS_DeleteVocbaseCol (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief drops a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_col_t* collection = UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
+  }
+
+  int res = TRI_DropCollectionVocBase(collection->_vocbase, collection);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+      string err = "cannot drop collection: ";
+      err += TRI_last_error();
+
+      return scope.Close(v8::ThrowException(v8::String::New(err.c_str())));
+  }
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an index
 ///
 /// @FUN{dropIndex(@FA{index-identifier})}
@@ -4009,16 +4034,16 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
 
   v8::Handle<v8::Object> result = v8::Object::New();
 
-  TRI_ReadLockReadWriteLock(&collection->_lock);
+  TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
   TRI_vocbase_col_status_e status = collection->_status;
 
   if (status != TRI_VOC_COL_STATUS_LOADED) {
-    TRI_ReadUnlockReadWriteLock(&collection->_lock);
+    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
     return scope.Close(result);
   }
 
   if (collection->_collection == 0) {
-    TRI_ReadUnlockReadWriteLock(&collection->_lock);
+    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
     return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
   }
 
@@ -4037,7 +4062,7 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
 
   TRI_Free(info);
 
-  TRI_ReadUnlockReadWriteLock(&collection->_lock);
+  TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
   return scope.Close(result);
 }
 
@@ -4169,31 +4194,28 @@ static v8::Handle<v8::Value> JS_ParameterVocbaseCol (v8::Arguments const& argv) 
 
   TRI_sim_collection_t* sim = (TRI_sim_collection_t*) doc;
 
-  // check if we want to change same parameters
+  // check if we want to change some parameters
   if (0 < argv.Length()) {
     v8::Handle<v8::Value> par = argv[0];
 
     if (par->IsObject()) {
       v8::Handle<v8::Object> po = par->ToObject();
 
-      TRI_LockCondition(&sim->_journalsCondition);
+      // holding a lock on the vocbase collection: if we ever want to
+      // change the maximal size a real lock is required.
       bool waitForSync = sim->base.base._waitForSync;
-      TRI_UnlockCondition(&sim->_journalsCondition);
 
       // extract sync after objects
       if (po->Has(v8g->WaitForSyncKey)) {
         waitForSync = TRI_ObjectToBoolean(po->Get(v8g->WaitForSyncKey));
       }
 
-      // try to write new parameter to file
-      TRI_LockCondition(&sim->_journalsCondition);
-
       sim->base.base._waitForSync = waitForSync;
-      bool ok = TRI_UpdateParameterInfoCollection(&sim->base.base);
 
-      TRI_UnlockCondition(&sim->_journalsCondition);
+      // try to write new parameter to file
+      int res = TRI_UpdateParameterInfoCollection(&sim->base.base);
 
-      if (! ok) {
+      if (res != TRI_ERROR_NO_ERROR) {
         ReleaseCollection(collection);
         return scope.Close(v8::ThrowException(v8::String::New(TRI_last_error())));
       }
@@ -4204,12 +4226,8 @@ static v8::Handle<v8::Value> JS_ParameterVocbaseCol (v8::Arguments const& argv) 
   v8::Handle<v8::Object> result = v8::Object::New();
 
   if (doc->base._type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
-    TRI_LockCondition(&sim->_journalsCondition);
-
     TRI_voc_size_t maximalSize = sim->base.base._maximalSize;
     bool waitForSync = sim->base.base._waitForSync;
-
-    TRI_UnlockCondition(&sim->_journalsCondition);
 
     result->Set(v8g->WaitForSyncKey, waitForSync ? v8::True() : v8::False());
     result->Set(v8g->JournalSizeKey, v8::Number::New(maximalSize));
@@ -4357,9 +4375,9 @@ static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
   }
 
-  TRI_ReadLockReadWriteLock(&collection->_lock);
+  TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
   TRI_vocbase_col_status_e status = collection->_status;
-  TRI_ReadUnlockReadWriteLock(&collection->_lock);
+  TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
   return scope.Close(v8::Number::New((int) status));
 }
@@ -5322,6 +5340,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> DeleteFuncName = v8::Persistent<v8::String>::New(v8::String::New("delete"));
   v8::Handle<v8::String> DisposeFuncName = v8::Persistent<v8::String>::New(v8::String::New("dispose"));
   v8::Handle<v8::String> DocumentFuncName = v8::Persistent<v8::String>::New(v8::String::New("document"));
+  v8::Handle<v8::String> DropFuncName = v8::Persistent<v8::String>::New(v8::String::New("drop"));
   v8::Handle<v8::String> DropIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("dropIndex"));
   v8::Handle<v8::String> EdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("edges"));
   v8::Handle<v8::String> EnsureGeoIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureGeoIndex"));
@@ -5465,6 +5484,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountVocbaseCol));
   rt->Set(DeleteFuncName, v8::FunctionTemplate::New(JS_DeleteVocbaseCol));
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentQuery));
+  rt->Set(DropFuncName, v8::FunctionTemplate::New(JS_DropVocbaseCol));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
   rt->Set(EnsureMultiHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureMultiHashIndexVocbaseCol));
@@ -5503,6 +5523,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountVocbaseCol));
   rt->Set(DeleteFuncName, v8::FunctionTemplate::New(JS_DeleteVocbaseCol));
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentQuery));
+  rt->Set(DropFuncName, v8::FunctionTemplate::New(JS_DropVocbaseCol));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
   rt->Set(EnsureMultiHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureMultiHashIndexVocbaseCol));

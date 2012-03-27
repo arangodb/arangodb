@@ -418,18 +418,17 @@ TRI_vector_string_t TRI_FilesDirectory (char const* path) {
 /// @brief renames a file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RenameFile (char const* old, char const* filename) {
+int TRI_RenameFile (char const* old, char const* filename) {
   int res;
 
   res = rename(old, filename);
 
   if (res != 0) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
     LOG_TRACE("cannot rename file from '%s' to '%s': %s", old, filename, TRI_LAST_ERROR_STR);
-    return false;
+    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

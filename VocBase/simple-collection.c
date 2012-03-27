@@ -106,7 +106,7 @@ static TRI_json_t* JsonPrimary (TRI_index_t* idx, TRI_doc_collection_t* collecti
 /// to allow the gc to start when waiting for a journal to appear.
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_datafile_t* SelectJournal (TRI_sim_collection_t* collection,
+static TRI_datafile_t* SelectJournal (TRI_sim_collection_t* sim,
                                       TRI_voc_size_t size,
                                       TRI_df_marker_t** result) {
   TRI_datafile_t* datafile;
@@ -114,34 +114,34 @@ static TRI_datafile_t* SelectJournal (TRI_sim_collection_t* collection,
   size_t i;
   size_t n;
 
-  TRI_LockCondition(&collection->_journalsCondition);
+  TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
   while (true) {
-    n = collection->base.base._journals._length;
+    n = sim->base.base._journals._length;
 
     for (i = 0;  i < n;  ++i) {
 
       // select datafile
-      datafile = collection->base.base._journals._buffer[i];
+      datafile = sim->base.base._journals._buffer[i];
 
       // try to reserve space
       res = TRI_ReserveElementDatafile(datafile, size, result);
 
       // in case of full datafile, try next
       if (res == TRI_ERROR_NO_ERROR) {
-        TRI_UnlockCondition(&collection->_journalsCondition);
+        TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
         return datafile;
       }
       else if (res != TRI_ERROR_AVOCADO_DATAFILE_FULL) {
-        TRI_UnlockCondition(&collection->_journalsCondition);
+        TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
         return NULL;
       }
     }
 
-    TRI_WaitCondition(&collection->_journalsCondition);
+    TRI_WAIT_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
   }
 
-  TRI_UnlockCondition(&collection->_journalsCondition);
+  TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -153,19 +153,21 @@ static TRI_datafile_t* SelectJournal (TRI_sim_collection_t* collection,
 /// datafile and has been synced.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void WaitSync (TRI_sim_collection_t* collection,
+static void WaitSync (TRI_sim_collection_t* sim,
                       TRI_datafile_t* journal,
                       char const* position) {
   TRI_collection_t* base;
 
-  base = &collection->base.base;
+  base = &sim->base.base;
 
-  // no condition at all
+  // no condition at all. Do NOT acquire a lock, in the worst
+  // case we will miss a parameter change.
+
   if (! base->_waitForSync) {
     return;
   }
 
-  TRI_LockCondition(&collection->_journalsCondition);
+  TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
   // wait until the sync condition is fullfilled
   while (true) {
@@ -186,17 +188,17 @@ static void WaitSync (TRI_sim_collection_t* collection,
     }
 
     // we have to wait a bit longer
-    TRI_WaitCondition(&collection->_journalsCondition);
+    TRI_WAIT_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
   }
 
-  TRI_UnlockCondition(&collection->_journalsCondition);
+  TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief writes data to the journal and updates the barriers
 ////////////////////////////////////////////////////////////////////////////////
 
-static int WriteElement (TRI_sim_collection_t* collection,
+static int WriteElement (TRI_sim_collection_t* sim,
                          TRI_datafile_t* journal,
                          TRI_df_marker_t* marker,
                          TRI_voc_size_t markerSize,
@@ -215,10 +217,12 @@ static int WriteElement (TRI_sim_collection_t* collection,
     return res;
   }
 
-  TRI_LockCondition(&collection->_journalsCondition);
+  TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+
   journal->_written = ((char*) result) + marker->_size;
   journal->_nWritten++;
-  TRI_UnlockCondition(&collection->_journalsCondition);
+
+  TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1145,11 +1149,11 @@ static int DeleteShapedJson (TRI_doc_collection_t* document,
 /// @brief read locks a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int BeginRead (TRI_doc_collection_t* document) {
-  TRI_sim_collection_t* collection;
+static int BeginRead (TRI_doc_collection_t* doc) {
+  TRI_sim_collection_t* sim;
 
-  collection = (TRI_sim_collection_t*) document;
-  TRI_ReadLockReadWriteLock(&collection->_lock);
+  sim = (TRI_sim_collection_t*) doc;
+  TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1158,11 +1162,11 @@ static int BeginRead (TRI_doc_collection_t* document) {
 /// @brief read unlocks a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int EndRead (TRI_doc_collection_t* document) {
-  TRI_sim_collection_t* collection;
+static int EndRead (TRI_doc_collection_t* doc) {
+  TRI_sim_collection_t* sim;
 
-  collection = (TRI_sim_collection_t*) document;
-  TRI_ReadUnlockReadWriteLock(&collection->_lock);
+  sim = (TRI_sim_collection_t*) doc;
+  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1171,11 +1175,11 @@ static int EndRead (TRI_doc_collection_t* document) {
 /// @brief write locks a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int BeginWrite (TRI_doc_collection_t* document) {
-  TRI_sim_collection_t* collection;
+static int BeginWrite (TRI_doc_collection_t* doc) {
+  TRI_sim_collection_t* sim;
 
-  collection = (TRI_sim_collection_t*) document;
-  TRI_WriteLockReadWriteLock(&collection->_lock);
+  sim = (TRI_sim_collection_t*) doc;
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1185,10 +1189,10 @@ static int BeginWrite (TRI_doc_collection_t* document) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int EndWrite (TRI_doc_collection_t* document) {
-  TRI_sim_collection_t* collection;
+  TRI_sim_collection_t* sim;
 
-  collection = (TRI_sim_collection_t*) document;
-  TRI_WriteUnlockReadWriteLock(&collection->_lock);
+  sim = (TRI_sim_collection_t*) document;
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1197,15 +1201,15 @@ static int EndWrite (TRI_doc_collection_t* document) {
 /// @brief size of a document collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_voc_size_t SizeSimCollection (TRI_doc_collection_t* document) {
-  TRI_sim_collection_t* collection;
+static TRI_voc_size_t SizeSimCollection (TRI_doc_collection_t* doc) {
+  TRI_sim_collection_t* sim;
   TRI_voc_size_t result;
 
-  collection = (TRI_sim_collection_t*) document;
+  sim = (TRI_sim_collection_t*) doc;
 
-  TRI_ReadLockReadWriteLock(&collection->_lock);
-  result = collection->_primaryIndex._nrUsed;
-  TRI_ReadUnlockReadWriteLock(&collection->_lock);
+  TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  result = sim->_primaryIndex._nrUsed;
+  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
   return result;
 }
@@ -2348,42 +2352,39 @@ static bool FillIndex (TRI_sim_collection_t* collection,
 /// @brief returns a description of all indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* collection) {
+TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* sim) {
   TRI_vector_pointer_t* vector;
   size_t n;
   size_t i;
 
   vector = TRI_Allocate(sizeof(TRI_vector_pointer_t));
-  if (!vector) {
-    return NULL;
-  }
   TRI_InitVectorPointer(vector);
 
   // .............................................................................
-  // within read-lock the collection
+  // inside read-lock
   // .............................................................................
 
-  TRI_ReadLockReadWriteLock(&collection->_lock);
+  TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
-  n = collection->_indexes._length;
+  n = sim->_indexes._length;
 
   for (i = 0;  i < n;  ++i) {
     TRI_index_t* idx;
     TRI_json_t* json;
 
-    idx = collection->_indexes._buffer[i];
+    idx = sim->_indexes._buffer[i];
 
-    json = idx->json(idx, &collection->base);
+    json = idx->json(idx, &sim->base);
 
     if (json != NULL) {
       TRI_PushBackVectorPointer(vector, json);
     }
   }
 
-  TRI_ReadUnlockReadWriteLock(&collection->_lock);
+  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
   // .............................................................................
-  // without read-lock
+  // outside read-lock
   // .............................................................................
 
   return vector;
@@ -2393,31 +2394,31 @@ TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* collection
 /// @brief returns a description of anindex
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_IndexSimCollection (TRI_sim_collection_t* collection, TRI_idx_iid_t iid) {
+TRI_index_t* TRI_IndexSimCollection (TRI_sim_collection_t* sim, TRI_idx_iid_t iid) {
   TRI_index_t* idx = NULL;
   size_t n;
   size_t i;
 
   // .............................................................................
-  // within read-lock the collection
+  // inside read-lock
   // .............................................................................
 
-  TRI_ReadLockReadWriteLock(&collection->_lock);
+  TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
-  n = collection->_indexes._length;
+  n = sim->_indexes._length;
 
   for (i = 0;  i < n;  ++i) {
-    idx = collection->_indexes._buffer[i];
+    idx = sim->_indexes._buffer[i];
     
     if (idx->_iid == iid) {
       break;
     }
   }
 
-  TRI_ReadUnlockReadWriteLock(&collection->_lock);
+  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
   // .............................................................................
-  // without read-lock
+  // outside read-lock
   // .............................................................................
 
   return i < n ? idx : NULL;
@@ -2427,8 +2428,7 @@ TRI_index_t* TRI_IndexSimCollection (TRI_sim_collection_t* collection, TRI_idx_i
 /// @brief drops an index
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_DropIndexSimCollection (TRI_sim_collection_t* collection, TRI_idx_iid_t iid) {
-  TRI_vector_pointer_t* vector;
+bool TRI_DropIndexSimCollection (TRI_sim_collection_t* sim, TRI_idx_iid_t iid) {
   TRI_index_t* found;
   size_t n;
   size_t i;
@@ -2437,42 +2437,35 @@ bool TRI_DropIndexSimCollection (TRI_sim_collection_t* collection, TRI_idx_iid_t
     return true;
   }
 
-  vector = TRI_Allocate(sizeof(TRI_vector_pointer_t));
-
-  if (!vector) {
-    return false;
-  }
-
   found = NULL;
-  TRI_InitVectorPointer(vector);
 
   // .............................................................................
-  // within write-lock
+  // inside write-lock
   // .............................................................................
 
-  TRI_WriteLockReadWriteLock(&collection->_lock);
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
-  n = collection->_indexes._length;
+  n = sim->_indexes._length;
 
   for (i = 0;  i < n;  ++i) {
     TRI_index_t* idx;
 
-    idx = collection->_indexes._buffer[i];
+    idx = sim->_indexes._buffer[i];
 
     if (idx->_iid == iid) {
-      found = TRI_RemoveVectorPointer(&collection->_indexes, i);
+      found = TRI_RemoveVectorPointer(&sim->_indexes, i);
       break;
     }
   }
 
-  TRI_WriteUnlockReadWriteLock(&collection->_lock);
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
   // .............................................................................
-  // without write-lock
+  // outside write-lock
   // .............................................................................
 
   if (found != NULL) {
-    return TRI_RemoveIndexFile(&collection->base, found);
+    return TRI_RemoveIndexFile(&sim->base, found);
   }
   else {
     return false;
@@ -2560,10 +2553,10 @@ static TRI_json_t* JsonPrimary (TRI_index_t* idx, TRI_doc_collection_t* collecti
 
   json = TRI_CreateArrayJson();
 
-  TRI_Insert2ArrayJson(json, "iid", TRI_CreateNumberJson(0));
-  TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("primary"));
-  TRI_Insert2ArrayJson(json, "fieldCount", TRI_CreateNumberJson(1));
-  TRI_Insert2ArrayJson(json, "field_0", TRI_CreateStringCopyJson("_id"));
+  TRI_Insert3ArrayJson(json, "iid", TRI_CreateNumberJson(0));
+  TRI_Insert3ArrayJson(json, "type", TRI_CreateStringCopyJson("primary"));
+  TRI_Insert3ArrayJson(json, "fieldCount", TRI_CreateNumberJson(1));
+  TRI_Insert3ArrayJson(json, "field_0", TRI_CreateStringCopyJson("_id"));
 
   return json;
 }
@@ -2639,7 +2632,7 @@ TRI_vector_pointer_t TRI_LookupEdgesSimCollection (TRI_sim_collection_t* edges,
 /// @brief adds a geo index to a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collection,
+static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* sim,
                                                  char const* location,
                                                  char const* latitude,
                                                  char const* longitude,
@@ -2657,7 +2650,7 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
   loc = 0;
   idx = NULL;
 
-  shaper = collection->base._shaper;
+  shaper = sim->base._shaper;
 
   if (location != NULL) {
     loc = shaper->findAttributePathByName(shaper, location);
@@ -2673,10 +2666,10 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
 
   // check, if we know the index
   if (location != NULL) {
-    idx = TRI_LookupGeoIndexSimCollection(collection, loc, geoJson);
+    idx = TRI_LookupGeoIndexSimCollection(sim, loc, geoJson);
   }
   else if (longitude != NULL && latitude != NULL) {
-    idx = TRI_LookupGeoIndex2SimCollection(collection, lat, lon);
+    idx = TRI_LookupGeoIndex2SimCollection(sim, lat, lon);
   }
   else {
     TRI_set_errno(TRI_ERROR_INTERNAL);
@@ -2694,14 +2687,14 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
 
   // create a new index
   if (location != NULL) {
-    idx = TRI_CreateGeoIndex(&collection->base, location, loc, geoJson);
+    idx = TRI_CreateGeoIndex(&sim->base, location, loc, geoJson);
 
     LOG_TRACE("created geo-index for location '%s': %d",
               location,
               (unsigned long) loc);
   }
   else if (longitude != NULL && latitude != NULL) {
-    idx = TRI_CreateGeoIndex2(&collection->base, latitude, lat, longitude, lon);
+    idx = TRI_CreateGeoIndex2(&sim->base, latitude, lat, longitude, lon);
 
     LOG_TRACE("created geo-index for location '%s': %d, %d",
               location,
@@ -2714,7 +2707,7 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
   }
 
   // initialises the index with all existing documents
-  ok = FillIndex(collection, idx);
+  ok = FillIndex(sim, idx);
 
   if (! ok) {
     TRI_FreeGeoIndex(idx);
@@ -2722,7 +2715,7 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
   }
   
   // and store index
-  TRI_PushBackVectorPointer(&collection->_indexes, idx);
+  TRI_PushBackVectorPointer(&sim->_indexes, idx);
 
   return idx;
 }
@@ -2849,7 +2842,6 @@ static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* coll
     TRI_PushBackVector(&paths, &shape);
     TRI_PushBackVectorPointer(&fields, path);
   }
-  
   
   // ...........................................................................
   // Attempt to find an existing index which matches the attributes above.
@@ -2978,7 +2970,6 @@ TRI_index_t* TRI_LookupGeoIndex2SimCollection (TRI_sim_collection_t* collection,
   return NULL;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a hash index (unique or non-unique)
 ////////////////////////////////////////////////////////////////////////////////
@@ -3003,7 +2994,6 @@ TRI_index_t* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t* collection,
     TRI_index_t* idx            = collection->_indexes._buffer[j];
     TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
     bool found                  = true;
-
         
     // .........................................................................
     // check that the type of the index is in fact a hash index 
@@ -3012,7 +3002,6 @@ TRI_index_t* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t* collection,
     if (idx->_type != TRI_IDX_TYPE_HASH_INDEX) {
       continue;
     }
-
         
     // .........................................................................
     // check that the number of paths (fields) in the hash index matches that
@@ -3023,7 +3012,6 @@ TRI_index_t* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t* collection,
       continue;
     }
         
-        
     // .........................................................................
     // Go through all the attributes and see if they match
     // .........................................................................
@@ -3031,6 +3019,7 @@ TRI_index_t* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t* collection,
     for (k = 0; k < paths->_length; ++k) {
       TRI_shape_pid_t field = *((TRI_shape_pid_t*)(TRI_AtVector(&hashIndex->_paths,k)));   
       TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(paths,k)));
+
       if (field != shape) {
         found = false;
         break;          
@@ -3073,7 +3062,6 @@ TRI_index_t* TRI_LookupSkiplistIndexSimCollection (TRI_sim_collection_t* collect
     TRI_skiplist_index_t* skiplistIndex = (TRI_skiplist_index_t*) idx;
     bool found                          = true;
 
-        
     // .........................................................................
     // check that the type of the index is in fact a skiplist index 
     // .........................................................................
@@ -3081,7 +3069,6 @@ TRI_index_t* TRI_LookupSkiplistIndexSimCollection (TRI_sim_collection_t* collect
     if (idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX) {
       continue;
     }
-
         
     // .........................................................................
     // check that the number of paths (fields) in the index matches that
@@ -3092,7 +3079,6 @@ TRI_index_t* TRI_LookupSkiplistIndexSimCollection (TRI_sim_collection_t* collect
       continue;
     }
         
-        
     // .........................................................................
     // Go through all the attributes and see if they match
     // .........................................................................
@@ -3100,6 +3086,7 @@ TRI_index_t* TRI_LookupSkiplistIndexSimCollection (TRI_sim_collection_t* collect
     for (k = 0; k < paths->_length; ++k) {
       TRI_shape_pid_t field = *((TRI_shape_pid_t*)(TRI_AtVector(&skiplistIndex->_paths,k)));   
       TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(paths,k)));
+
       if (field != shape) {
         found = false;
         break;          
@@ -3120,32 +3107,32 @@ TRI_index_t* TRI_LookupSkiplistIndexSimCollection (TRI_sim_collection_t* collect
 /// @brief ensures that a geo index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_idx_iid_t TRI_EnsureGeoIndexSimCollection (TRI_sim_collection_t* collection,
+TRI_idx_iid_t TRI_EnsureGeoIndexSimCollection (TRI_sim_collection_t* sim,
                                                char const* location,
                                                bool geoJson) {
   TRI_index_t* idx;
   bool ok;
 
   // .............................................................................
-  // within write-lock the collection
+  // inside write-lock
   // .............................................................................
 
-  TRI_WriteLockReadWriteLock(&collection->_lock);
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
-  idx = CreateGeoIndexSimCollection(collection, location, NULL, NULL, geoJson, 0);
+  idx = CreateGeoIndexSimCollection(sim, location, NULL, NULL, geoJson, 0);
 
   if (idx == NULL) {
-    TRI_WriteUnlockReadWriteLock(&collection->_lock);
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
     return 0;
   }
 
-  TRI_WriteUnlockReadWriteLock(&collection->_lock);
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
   // .............................................................................
-  // without write-lock
+  // outside write-lock
   // .............................................................................
 
-  ok = TRI_SaveIndex(&collection->base, idx);
+  ok = TRI_SaveIndex(&sim->base, idx);
 
   return ok ? idx->_iid : 0;
 }
@@ -3154,32 +3141,32 @@ TRI_idx_iid_t TRI_EnsureGeoIndexSimCollection (TRI_sim_collection_t* collection,
 /// @brief ensures that a geo index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_idx_iid_t TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* collection,
+TRI_idx_iid_t TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* sim,
                                                 char const* latitude,
                                                 char const* longitude) {
   TRI_index_t* idx;
   bool ok;
 
   // .............................................................................
-  // within write-lock the collection
+  // inside write-lock
   // .............................................................................
 
-  TRI_WriteLockReadWriteLock(&collection->_lock);
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
-  idx = CreateGeoIndexSimCollection(collection, NULL, latitude, longitude, false, 0);
+  idx = CreateGeoIndexSimCollection(sim, NULL, latitude, longitude, false, 0);
 
   if (idx == NULL) {
-    TRI_WriteUnlockReadWriteLock(&collection->_lock);
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
     return 0;
   }
 
-  TRI_WriteUnlockReadWriteLock(&collection->_lock);
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
   // .............................................................................
-  // without write-lock
+  // outside write-lock
   // .............................................................................
 
-  ok = TRI_SaveIndex(&collection->base, idx);
+  ok = TRI_SaveIndex(&sim->base, idx);
 
   return ok ? idx->_iid : 0;
 }
@@ -3189,43 +3176,37 @@ TRI_idx_iid_t TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* collection
 /// @brief ensures that a hash index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_idx_iid_t TRI_EnsureHashIndexSimCollection(TRI_sim_collection_t* collection,
+TRI_idx_iid_t TRI_EnsureHashIndexSimCollection(TRI_sim_collection_t* sim,
                                                const TRI_vector_t* attributes,
                                                bool unique) {
   TRI_index_t* idx;
   bool ok;
 
   // .............................................................................
-  // within write-lock the collection
+  // inside write-lock
   // .............................................................................
 
-  TRI_WriteLockReadWriteLock(&collection->_lock);
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
   
   // ............................................................................. 
   // Given the list of attributes (as strings) 
   // .............................................................................
 
-  idx = CreateHashIndexSimCollection(collection, attributes, 0, unique);
+  idx = CreateHashIndexSimCollection(sim, attributes, 0, unique);
   
   if (idx == NULL) {
-    TRI_WriteUnlockReadWriteLock(&collection->_lock);
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
     return 0;
   }
 
-  TRI_WriteUnlockReadWriteLock(&collection->_lock);
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
   // .............................................................................
-  // without write-lock
+  // outside write-lock
   // .............................................................................
 
-  ok = TRI_SaveIndex(&collection->base, idx);
+  ok = TRI_SaveIndex(&sim->base, idx);
 
-  if (ok) {
-  }  
-  else {
-    assert(0);
-  }
-  
   return ok ? idx->_iid : 0;
 }                                                
 
@@ -3233,42 +3214,36 @@ TRI_idx_iid_t TRI_EnsureHashIndexSimCollection(TRI_sim_collection_t* collection,
 /// @brief ensures that a skiplist index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_idx_iid_t TRI_EnsureSkiplistIndexSimCollection(TRI_sim_collection_t* collection,
+TRI_idx_iid_t TRI_EnsureSkiplistIndexSimCollection(TRI_sim_collection_t* sim,
                                                    const TRI_vector_t* attributes,
                                                    bool unique) {
   TRI_index_t* idx;
   bool ok;
 
   // .............................................................................
-  // within write-lock the collection
+  // inside write-lock the collection
   // .............................................................................
-  TRI_WriteLockReadWriteLock(&collection->_lock);
 
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
   
   // ............................................................................. 
   // Given the list of attributes (as strings) 
   // .............................................................................
 
-  idx = CreateSkiplistIndexSimCollection(collection, attributes, 0, unique);
+  idx = CreateSkiplistIndexSimCollection(sim, attributes, 0, unique);
   
   if (idx == NULL) {
-    TRI_WriteUnlockReadWriteLock(&collection->_lock);
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
     return 0;
   }
 
-  TRI_WriteUnlockReadWriteLock(&collection->_lock);
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
   // .............................................................................
-  // without write-lock
+  // outside write-lock
   // .............................................................................
 
-  ok = TRI_SaveIndex(&collection->base, idx);
-
-  if (ok) {
-  }  
-  else {
-    assert(0);
-  }
+  ok = TRI_SaveIndex(&sim->base, idx);
   
   return ok ? idx->_iid : 0;
 }                                                

@@ -44,7 +44,7 @@
 /// @brief checks if a file needs to be synced
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CheckSyncSimCollection (TRI_sim_collection_t* collection) {
+static bool CheckSyncSimCollection (TRI_sim_collection_t* sim) {
   TRI_collection_t* base;
   TRI_datafile_t* journal;
   TRI_voc_size_t nWritten;
@@ -57,7 +57,7 @@ static bool CheckSyncSimCollection (TRI_sim_collection_t* collection) {
   size_t n;
 
   worked = false;
-  base = &collection->base.base;
+  base = &sim->base.base;
 
   // .............................................................................
   // the only thread MODIFYING the _journals variable is this thread,
@@ -69,21 +69,21 @@ static bool CheckSyncSimCollection (TRI_sim_collection_t* collection) {
   for (i = 0;  i < n; ++i) {
     journal = base->_journals._buffer[i];
 
-    TRI_LockCondition(&collection->_journalsCondition);
+    TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
     synced = journal->_synced;
 
     written = journal->_written;
     nWritten = journal->_nWritten;
 
-    TRI_UnlockCondition(&collection->_journalsCondition);
+    TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
     if (synced < written) {
       worked = true;
       ok = TRI_msync(journal->_fd, synced, written);
       ti = TRI_microtime();
 
-      TRI_LockCondition(&collection->_journalsCondition);
+      TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
       if (ok) {
         journal->_synced = written;
@@ -94,8 +94,8 @@ static bool CheckSyncSimCollection (TRI_sim_collection_t* collection) {
         journal->_state = TRI_DF_STATE_WRITE_ERROR;
       }
 
-      TRI_BroadcastCondition(&collection->_journalsCondition);
-      TRI_UnlockCondition(&collection->_journalsCondition);
+      TRI_BROADCAST_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+      TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
       if (ok) {
         LOG_TRACE("msync succeeded %p, size %lu", synced, (unsigned long)(written - synced));
@@ -113,7 +113,7 @@ static bool CheckSyncSimCollection (TRI_sim_collection_t* collection) {
 /// @brief checks the journal of a document collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CheckJournalSimCollection (TRI_sim_collection_t* collection) {
+static bool CheckJournalSimCollection (TRI_sim_collection_t* sim) {
   TRI_collection_t* base;
   TRI_datafile_t* journal;
   bool worked;
@@ -121,7 +121,7 @@ static bool CheckJournalSimCollection (TRI_sim_collection_t* collection) {
   size_t n;
 
   worked = false;
-  base = &collection->base.base;
+  base = &sim->base.base;
 
   // .............................................................................
   // the only thread MODIFYING the _journals variable is this thread,
@@ -138,9 +138,9 @@ static bool CheckJournalSimCollection (TRI_sim_collection_t* collection) {
 
       LOG_DEBUG("closing full journal '%s'", journal->_filename);
 
-      TRI_LockCondition(&collection->_journalsCondition);
-      TRI_CloseJournalDocCollection(&collection->base, i);
-      TRI_UnlockCondition(&collection->_journalsCondition);
+      TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+      TRI_CloseJournalDocCollection(&sim->base, i);
+      TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
       n = base->_journals._length;
       i = 0;
@@ -153,16 +153,16 @@ static bool CheckJournalSimCollection (TRI_sim_collection_t* collection) {
   if (base->_journals._length == 0) {
     worked = true;
 
-    TRI_LockCondition(&collection->_journalsCondition);
+    TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
-    journal = TRI_CreateJournalDocCollection(&collection->base);
+    journal = TRI_CreateJournalDocCollection(&sim->base);
 
     if (journal != NULL) {
       LOG_DEBUG("created new journal '%s'", journal->_filename);
     }
 
-    TRI_BroadcastCondition(&collection->_journalsCondition);
-    TRI_UnlockCondition(&collection->_journalsCondition);
+    TRI_BROADCAST_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+    TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
   }
 
   return worked;
@@ -172,10 +172,9 @@ static bool CheckJournalSimCollection (TRI_sim_collection_t* collection) {
 /// @brief checks if a compactor file needs to be synced
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CheckSyncCompactorSimCollection (TRI_sim_collection_t* collection) {
+static bool CheckSyncCompactorSimCollection (TRI_sim_collection_t* sim) {
   TRI_collection_t* base;
   TRI_datafile_t* journal;
-  // TRI_voc_size_t nWritten;
   bool ok;
   bool worked;
   char const* synced;
@@ -185,7 +184,7 @@ static bool CheckSyncCompactorSimCollection (TRI_sim_collection_t* collection) {
   size_t n;
 
   worked = false;
-  base = &collection->base.base;
+  base = &sim->base.base;
 
   // .............................................................................
   // the only thread MODIFYING the _compactors variable is this thread,
@@ -197,22 +196,19 @@ static bool CheckSyncCompactorSimCollection (TRI_sim_collection_t* collection) {
   for (i = 0;  i < n; ++i) {
     journal = base->_compactors._buffer[i];
 
-    TRI_LockCondition(&collection->_journalsCondition);
+    TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
     synced = journal->_synced;
-
     written = journal->_written;
-    // TODO: remove if not used
-    // nWritten = journal->_nWritten;
 
-    TRI_UnlockCondition(&collection->_journalsCondition);
+    TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
     if (synced < written) {
       worked = true;
       ok = TRI_msync(journal->_fd, synced, written);
       ti = TRI_microtime();
 
-      TRI_LockCondition(&collection->_journalsCondition);
+      TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
       if (ok) {
         journal->_synced = written;
@@ -222,8 +218,8 @@ static bool CheckSyncCompactorSimCollection (TRI_sim_collection_t* collection) {
         journal->_state = TRI_DF_STATE_WRITE_ERROR;
       }
 
-      TRI_BroadcastCondition(&collection->_journalsCondition);
-      TRI_UnlockCondition(&collection->_journalsCondition);
+      TRI_BROADCAST_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+      TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
       if (ok) {
         LOG_TRACE("msync succeeded %p, size %lu", synced, (unsigned long)(written - synced));
@@ -241,7 +237,7 @@ static bool CheckSyncCompactorSimCollection (TRI_sim_collection_t* collection) {
 /// @brief checks the compactor of a document collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CheckCompactorSimCollection (TRI_sim_collection_t* collection) {
+static bool CheckCompactorSimCollection (TRI_sim_collection_t* sim) {
   TRI_collection_t* base;
   TRI_datafile_t* compactor;
   bool worked;
@@ -249,7 +245,7 @@ static bool CheckCompactorSimCollection (TRI_sim_collection_t* collection) {
   size_t n;
 
   worked = false;
-  base = &collection->base.base;
+  base = &sim->base.base;
 
   // .............................................................................
   // the only thread MODIFYING the _compactor variable is this thread,
@@ -266,9 +262,9 @@ static bool CheckCompactorSimCollection (TRI_sim_collection_t* collection) {
 
       LOG_DEBUG("closing full compactor '%s'", compactor->_filename);
 
-      TRI_LockCondition(&collection->_journalsCondition);
-      TRI_CloseCompactorDocCollection(&collection->base, i);
-      TRI_UnlockCondition(&collection->_journalsCondition);
+      TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+      TRI_CloseCompactorDocCollection(&sim->base, i);
+      TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
       n = base->_compactors._length;
       i = 0;
@@ -281,16 +277,16 @@ static bool CheckCompactorSimCollection (TRI_sim_collection_t* collection) {
   if (base->_compactors._length == 0) {
     worked = true;
 
-    TRI_LockCondition(&collection->_journalsCondition);
+    TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
-    compactor = TRI_CreateCompactorDocCollection(&collection->base);
+    compactor = TRI_CreateCompactorDocCollection(&sim->base);
 
     if (compactor != NULL) {
       LOG_DEBUG("created new compactor '%s'", compactor->_filename);
     }
 
-    TRI_BroadcastCondition(&collection->_journalsCondition);
-    TRI_UnlockCondition(&collection->_journalsCondition);
+    TRI_BROADCAST_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+    TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
   }
 
   return worked;
@@ -328,9 +324,11 @@ void TRI_SynchroniserVocBase (void* data) {
     worked = false;
 
     // copy all collections
-    TRI_ReadLockReadWriteLock(&vocbase->_lock);
+    TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
+
     TRI_CopyDataVectorPointer(&collections, &vocbase->_collections);
-    TRI_ReadUnlockReadWriteLock(&vocbase->_lock);
+
+    TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
     n = collections._length;
 
@@ -341,10 +339,10 @@ void TRI_SynchroniserVocBase (void* data) {
 
       collection = collections._buffer[i];
 
-      TRI_ReadLockReadWriteLock(&collection->_lock);
+      TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
       if (collection->_status != TRI_VOC_COL_STATUS_LOADED) {
-        TRI_ReadUnlockReadWriteLock(&collection->_lock);
+        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
         continue;
       }
 
@@ -367,7 +365,7 @@ void TRI_SynchroniserVocBase (void* data) {
         worked |= result;
       }
 
-      TRI_ReadUnlockReadWriteLock(&collection->_lock);
+      TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
     }
 
     if (! worked) {
