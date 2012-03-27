@@ -50,7 +50,7 @@ class AvocadoDB
 
   def self.log (args)
     if args.key?(:output)
-      logfile = File.new("#{args[:output]}.log", "a")
+      logfile = File.new("logs/#{args[:output]}", "a")
     else
       logfile = File.new("output.log", "a")
     end
@@ -74,32 +74,33 @@ class AvocadoDB
 	  h_sep = " "
 	end
       end
+      h_option = h_option + h_sep
     end
 
     if method == :get
-      logfile.puts "> curl -X GET #{h_option} --dump - http://localhost:8529#{url}"
+      logfile.puts "> curl -X GET #{h_option}--dump - http://localhost:8529#{url}"
 	logfile.puts
     elsif method == :head
-      logfile.puts "> curl -X HEAD #{h_option} --dump - http://localhost:8529#{url}"
+      logfile.puts "> curl -X HEAD #{h_option}--dump - http://localhost:8529#{url}"
 	logfile.puts
     elsif method == :delete
-      logfile.puts "> curl -X DELETE #{h_option} --dump - http://localhost:8529#{url}"
+      logfile.puts "> curl -X DELETE #{h_option}--dump - http://localhost:8529#{url}"
 	logfile.puts
     elsif method == :post
       if body == nil
-	logfile.puts "> curl -X POST #{h_option} --dump - http://localhost:8529#{url}"
+	logfile.puts "> curl -X POST #{h_option}--dump - http://localhost:8529#{url}"
 	logfile.puts
       else
-	logfile.puts "> curl --data @- -X POST #{h_option} --dump - http://localhost:8529#{url}"
+	logfile.puts "> curl --data @- -X POST #{h_option}--dump - http://localhost:8529#{url}"
 	logfile.puts body
 	logfile.puts
       end
     elsif method == :put
       if body == nil
-	logfile.puts "> curl -X PUT #{h_option} --dump - http://localhost:8529#{url}"
+	logfile.puts "> curl -X PUT #{h_option}--dump - http://localhost:8529#{url}"
 	logfile.puts
       else
-	logfile.puts "> curl --data @- -X POST #{h_option} --dump - http://localhost:8529#{url}"
+	logfile.puts "> curl --data @- -X PUT #{h_option}--dump - http://localhost:8529#{url}"
 	logfile.puts body
 	logfile.puts
       end

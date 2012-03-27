@@ -1,13 +1,13 @@
-> curl --data @- -X POST --dump - http://localhost:8529/document?collection=164100
+> curl --data @- -X POST --dump - http://localhost:8529/document?collection=2957066
 { "Hallo" : "World" }
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-location: /document/164100/2982148
-etag: "2982148"
+location: /document/2957066/26576686
+etag: "26576686"
 
 {
-  "_rev": 2982148,
-  "_id": "164100/2982148",
+  "_rev": 26576686,
+  "_id": "2957066/26576686",
   "error": false
 }

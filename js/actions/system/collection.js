@@ -26,7 +26,7 @@ function getCollection(req, res) {
 }
 
 actions.defineHttp({
-  url : "_api/collection",
+  url : "_api/collection_OLD",
   context : "api",
 
   callback : function (req, res) {

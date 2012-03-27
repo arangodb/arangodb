@@ -1,4 +1,6 @@
 #!/bin/sh
+test -d logs || mkdir logs
+
 rspec rest_create-document_spec.rb --format d
 rspec rest_read-document_spec.rb --format d
 rspec rest_update-document_spec.rb --format d
