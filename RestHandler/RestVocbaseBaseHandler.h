@@ -179,7 +179,7 @@ namespace triagens {
 /// @brief generates document not found error message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDocumentNotFound (string const& handle);
+        void generateDocumentNotFound (TRI_voc_cid_t, string const& did);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates conflict message

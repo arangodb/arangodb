@@ -28,6 +28,7 @@
 #include <BasicsC/logging.h>
 
 #include "VocBase/query-execute.h"
+#include "VocBase/query-locks.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -80,72 +81,6 @@ static bool TransformDataSkipLimit (TRI_rc_result_t* result,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read locks all collections of a query
-////////////////////////////////////////////////////////////////////////////////
-
-static void ReadLockCollectionsQueryInstance (TRI_query_instance_t* const instance) {
-  size_t i;
-
-  for (i = 0; i < instance->_locks._length; i++) {
-    TRI_query_instance_lock_t* lock = instance->_locks._buffer[i];
-
-    assert(lock);
-    assert(lock->_collection);
-
-    LOG_DEBUG("locking collection '%s'", lock->_collectionName);
-    lock->_collection->beginRead(lock->_collection);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read unlocks all collections of a query
-////////////////////////////////////////////////////////////////////////////////
-
-static void ReadUnlockCollectionsQueryInstance (TRI_query_instance_t* const instance) {
-  size_t i;
-  
-  i = instance->_locks._length;
-  while (i > 0) {
-    TRI_query_instance_lock_t* lock;
-    
-    i--;
-
-    lock = instance->_locks._buffer[i];
-    assert(lock);
-    assert(lock->_collection);
-
-    LOG_DEBUG("unlocking collection '%s'", lock->_collectionName);
-    lock->_collection->endRead(lock->_collection);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a gc marker for all collections
-////////////////////////////////////////////////////////////////////////////////
-
-static bool AddCollectionsBarrierQueryInstance (TRI_query_instance_t* const instance,
-                                                TRI_query_cursor_t* const cursor) {
-  size_t i;
-
-  // note: the same collection might be added multiple times here
-  for (i = 0; i < instance->_locks._length; i++) {
-    TRI_query_instance_lock_t* lock = instance->_locks._buffer[i];
-    TRI_barrier_t* ce;
-
-    assert(lock);
-    assert(lock->_collection);
-    ce = TRI_CreateBarrierElement(&lock->_collection->_barrierList);
-    if (!ce) {
-      TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
-      return false;
-    }
-    TRI_PushBackVectorPointer(&cursor->_containers, ce);
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -193,8 +128,8 @@ TRI_query_cursor_t* TRI_ExecuteQueryInstance (TRI_query_instance_t* const instan
       applyPostSkipLimit = true;
     }
 
-    ReadLockCollectionsQueryInstance(instance);
-    if (!AddCollectionsBarrierQueryInstance(instance, cursor)) {
+    TRI_ReadLockCollectionsQueryInstance(instance);
+    if (!TRI_AddCollectionsBarrierQueryInstance(instance, cursor)) {
       selectResult->free(selectResult);
       cursor->free(cursor);
       return NULL;
@@ -203,7 +138,7 @@ TRI_query_cursor_t* TRI_ExecuteQueryInstance (TRI_query_instance_t* const instan
     // Execute joins
     TRI_ExecuteJoins(instance, selectResult, skip, limit);
 
-    ReadUnlockCollectionsQueryInstance(instance);
+    TRI_ReadUnlockCollectionsQueryInstance(instance);
 
     // order by
     if (instance->_query._order._type == QLQueryOrderTypeMustEvaluate) {
@@ -234,6 +169,12 @@ TRI_query_cursor_t* TRI_ExecuteQueryInstance (TRI_query_instance_t* const instan
   // adjust cursor length
   cursor->_length = selectResult->_numRows; 
   cursor->_currentRow = 0;
+
+  if (cursor->_length > 0 && !instance->_query._select._isConstant) {
+    // we have a result set. the cursor now becomes responsible
+    // for freeing any locks we still have on the underlying collections
+    TRI_HandoverLocksQueryInstance(instance, cursor);
+  }
 
   return cursor;
 }

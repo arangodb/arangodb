@@ -1,10 +1,11 @@
-> curl -X GET  --dump - http://localhost:8529/document/169634/234567
+> curl --data @- -X PUT --dump - http://localhost:8529/document/73482/234567
+{}
 
 HTTP/1.1 404 Not Found
 content-type: application/json; charset=utf-8
 
 {
-  "errorMessage": "document /document/169634/234567 not found",
+  "errorMessage": "document /document/73482/234567 not found",
   "errorNum": 1202,
   "code": 404,
   "error": true

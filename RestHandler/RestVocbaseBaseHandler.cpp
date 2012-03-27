@@ -248,10 +248,12 @@ void RestVocbaseBaseHandler::generateCollectionNotFound (string const& cid) {
 /// @brief generates document not found error message
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateDocumentNotFound (string const& handle) {
+void RestVocbaseBaseHandler::generateDocumentNotFound (TRI_voc_cid_t cid, string const& did) {
+  string location = DOCUMENT_PATH + "/" + StringUtils::itoa(cid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + did;
+
   generateError(HttpResponse::NOT_FOUND,
                 TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND,
-                "document " + DOCUMENT_PATH + "/" + handle + " not found");
+                "document " + location + " not found");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

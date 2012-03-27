@@ -1,10 +1,10 @@
-> curl -X GET  --dump - http://localhost:8529/document/183881/9227849
+> curl -X DELETE --dump - http://localhost:8529/document/73482/30967598
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
 
 {
-  "_rev": 9227849,
-  "_id": "183881/9227849",
+  "_rev": 30967598,
+  "_id": "73482/30967598",
   "error": false
 }
