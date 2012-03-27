@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief query cursors
+/// @brief Collection locking in queries
 ///
 /// @file
 ///
@@ -25,109 +25,108 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_QUERY_CURSOR_H
-#define TRIAGENS_DURHAM_VOC_BASE_QUERY_CURSOR_H 1
+#ifndef TRIAGENS_DURHAM_VOC_BASE_QUERY_LOCKS_H 
+#define TRIAGENS_DURHAM_VOC_BASE_QUERY_LOCKS_H 1 
 
-#include <BasicsC/vector.h>
 #include <BasicsC/logging.h>
+#include <BasicsC/vector.h>
 
-#include "VocBase/vocbase.h"
-#include "VocBase/shadow-data.h"
 #include "VocBase/query-base.h"
-#include "VocBase/query-result.h"
+#include "VocBase/query-cursor.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief result cursor
+/// @brief Collection lock
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_query_cursor_s {
-  TRI_vocbase_t* _vocbase;
-  char* _functionCode;
-  bool _isConstant;
-  bool _hasCount;
-  uint32_t _batchSize;
-  TRI_vector_pointer_t _containers;
-  TRI_mutex_t _lock;
-  bool _deleted;
-
-  TRI_vector_pointer_t* _locks;
-
-  TRI_rc_result_t _result;
-  TRI_select_size_t _length;
-  TRI_select_size_t _currentRow;
-
-  void (*free) (struct TRI_query_cursor_s*);
-  TRI_rc_result_t* (*next)(struct TRI_query_cursor_s* const);
-  bool (*hasNext)(const struct TRI_query_cursor_s* const);
-  bool (*hasCount)(const struct TRI_query_cursor_s* const);
-  uint32_t (*getBatchSize)(const struct TRI_query_cursor_s* const);
+typedef struct TRI_query_instance_lock_s {
+  char*              _collectionName;
+  TRI_vocbase_col_t* _collection;
 }
-TRI_query_cursor_t;
+TRI_query_instance_lock_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief free the locks for the query
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+void TRI_FreeLocksQueryInstance (TRI_vocbase_t* const, TRI_vector_pointer_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
+/// @brief unlock all collections we already marked as being used
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees a cursor 
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeQueryCursor (TRI_query_cursor_t*);
+void TRI_UnlockCollectionsQueryInstance (TRI_vocbase_t* const, TRI_vector_pointer_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a cursor
+/// @brief set up the collection locks for the query
+///
+/// This will populate a vector with the collections to be read-locked for the
+/// duration of the query. The order of collections in the vector is
+/// deterministic (simple lexicographical order). The collections will be locked
+/// in this exact same order. When the collections are read-unlocked at the end 
+/// of the query, the collections will be read-unlocked in the reverse order.
+/// This should avoid deadlocks when locking.
+///
+/// Each collection will only be put into the vector once, even if it is 
+/// referenced using different aliases. 
+///
+/// This function will acquire a global read lock on the list of collections
+/// and open them one by one. It will mark all collections are being read so
+/// no other concurrent requests may delete/unload them.
+///
+/// The read usage markers must be removed when the query is over, otherwise
+/// the collections are non-unloadable and non-deletable.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_query_cursor_t* TRI_CreateQueryCursor (TRI_query_instance_t* const, 
-                                           const TRI_select_result_t* const,
-                                           const bool,
-                                           const uint32_t);
+bool TRI_LockCollectionsQueryInstance (TRI_vocbase_t* const,
+                                       TRI_query_instance_t* const,
+                                       TRI_vector_pointer_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief exclusively lock a query cursor
+/// @brief read locks all collections of a query
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_LockQueryCursor (TRI_query_cursor_t* const);
+void TRI_ReadLockCollectionsQueryInstance (TRI_query_instance_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief unlock a query cursor
+/// @brief read-unlocks all collections of a query
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_UnlockQueryCursor (TRI_query_cursor_t* const);
+void TRI_ReadUnlockCollectionsQueryInstance (TRI_query_instance_t* const); 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Free a cursor based on its data pointer
+/// @brief adds a gc marker for all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeShadowQueryCursor (void*);
+bool TRI_AddCollectionsBarrierQueryInstance (TRI_query_instance_t* const,
+                                             TRI_query_cursor_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create shadow data store for cursors 
+/// @brief hand over locks from query instance to result cursor
+///
+/// This function is called when there is a select result with at least one row.
+/// The query instance will be freed immediately after executing the select,
+/// but the result set cursor might still be in use. The underlying collections
+/// are still needed and are still read-locked. When the cursor usage is over,
+/// the cursor is responsible for freeing the locks held.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shadow_store_t* TRI_CreateShadowsQueryCursor (void);
+void TRI_HandoverLocksQueryInstance (TRI_query_instance_t* const,
+                                     TRI_query_cursor_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a vector for holding collection locks
+////////////////////////////////////////////////////////////////////////////////
+  
+TRI_vector_pointer_t* TRI_InitLocksQueryInstance (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
