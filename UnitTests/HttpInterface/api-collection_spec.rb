@@ -24,10 +24,23 @@ describe AvocadoDB do
 
 	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}-bad-handle")
       end
+
+      it "returns an error if collection identifier is unknown" do
+	cmd = api + "/123456"
+        doc = AvocadoDB.get(cmd)
+
+	doc.code.should eq(404)
+	doc.parsed_response['error'].should eq(true)
+	doc.parsed_response['errorNum'].should eq(404)
+	doc.parsed_response['code'].should eq(404)
+	doc.headers['content-type'].should eq("application/json")
+
+	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}-bad-handle")
+      end
     end
 
 ################################################################################
-## reading of an collection
+## reading a collection
 ################################################################################
 
     context "reading:" do
@@ -52,6 +65,7 @@ describe AvocadoDB do
 	doc.parsed_response['id'].should eq(@cid)
 	doc.parsed_response['name'].should eq(@cn)
 	doc.parsed_response['status'].should be_kind_of(Integer)
+	doc.parsed_response['waitForSync'].should == true
 	doc.headers['location'].should eq(api + "/" + String(@cid))
 
 	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}-get-collection-identifier")
@@ -69,6 +83,7 @@ describe AvocadoDB do
 	doc.parsed_response['id'].should eq(@cid)
 	doc.parsed_response['name'].should eq(@cn)
 	doc.parsed_response['status'].should be_kind_of(Integer)
+	doc.parsed_response['waitForSync'].should == true
 	doc.headers['location'].should eq(api + "/" + String(@cid))
 
 	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}-get-collection-name")
@@ -86,6 +101,7 @@ describe AvocadoDB do
 	doc.parsed_response['id'].should eq(@cid)
 	doc.parsed_response['name'].should eq(@cn)
 	doc.parsed_response['status'].should eq(3)
+	doc.parsed_response['waitForSync'].should == true
 	doc.parsed_response['count'].should be_kind_of(Integer)
 	doc.headers['location'].should eq(api + "/" + String(@cid) + "/count")
 
@@ -105,13 +121,64 @@ describe AvocadoDB do
 	doc.parsed_response['name'].should eq(@cn)
 	doc.parsed_response['status'].should eq(3)
 	doc.parsed_response['count'].should be_kind_of(Integer)
-	doc.parsed_response['alive']['number'].should be_kind_of(Integer)
-	doc.parsed_response['count'].should eq(doc.parsed_response['alive']['count'])
+	doc.parsed_response['waitForSync'].should == true
+	doc.parsed_response['figures']['alive']['count'].should be_kind_of(Integer)
+	doc.parsed_response['count'].should eq(doc.parsed_response['figures']['alive']['count'])
+	doc.parsed_response['journalSize'].should be_kind_of(Integer)
 	doc.headers['location'].should eq(api + "/" + String(@cid) + "/figures")
 
 	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}-get-collection-figures")
       end
+    end
 
+################################################################################
+## deleting of collection
+################################################################################
+
+    context "deleting:" do
+      before do
+	@cn = "UnitTestsCollectionBasics"
+      end
+
+      it "delete an existing collection by identifier" do
+	cid = AvocadoDB.create_collection(@cn)
+	cmd = api + "/" + String(cid)
+        doc = AvocadoDB.delete(cmd)
+
+	doc.code.should eq(200)
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['id'].should eq(cid)
+	doc.headers['content-type'].should eq("application/json")
+
+	AvocadoDB.log(:method => :delete, :url => cmd, :result => doc, :output => "#{prefix}-delete-collection-identifier")
+
+	cmd = api + "/" + String(cid)
+	doc = AvocadoDB.get(cmd)
+
+	doc.parsed_response['error'].should eq(true)
+	doc.parsed_response['code'].should eq(404)
+      end
+
+      it "delete an existing collection by name" do
+	cid = AvocadoDB.create_collection(@cn)
+	cmd = api + "/" + @cn
+        doc = AvocadoDB.delete(cmd)
+
+	doc.code.should eq(200)
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['id'].should eq(cid)
+	doc.headers['content-type'].should eq("application/json")
+
+	AvocadoDB.log(:method => :delete, :url => cmd, :result => doc, :output => "#{prefix}-delete-collection-name")
+
+	cmd = api + "/" + String(cid)
+	doc = AvocadoDB.get(cmd)
+
+	doc.parsed_response['error'].should eq(true)
+	doc.parsed_response['code'].should eq(404)
+      end
     end
   end
 end

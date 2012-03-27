@@ -2,12 +2,13 @@
 
 HTTP/1.1 200 OK
 content-type: application/json
-location: /_api/collection/128562
+location: /_api/collection/73482
 
 {
   "name": "UnitTestsCollectionBasics",
   "code": 200,
-  "id": 128562,
-  "status": 2,
+  "waitForSync": true,
+  "id": 73482,
+  "status": 3,
   "error": false
 }

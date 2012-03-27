@@ -456,6 +456,7 @@ exports.HTTP_OK                 = 200;
 
 // HTTP 400
 exports.HTTP_BAD                = 400;
+exports.ERROR_HTTP_NOT_FOUND          = 404;
 exports.HTTP_NOT_FOUND          = 404;
 exports.HTTP_METHOD_NOT_ALLOWED = 405;
 exports.HTTP_CONFLICT           = 409;

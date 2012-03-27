@@ -34,6 +34,7 @@
 ///  <li>@ref HttpCollectionHttp
 ///   <ol>
 ///    <li>@ref HttpCollectionRead "GET /_api/collection/@FA{collection-identifier}"</li>
+///    <li>@ref HttpCollectionDelete "DELETE /_api/collection/@FA{collection-identifier}"</li>
 ///   </ol>
 ///  </li>
 /// </ol>
@@ -42,7 +43,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page HttpCollection HTTP Interface for Collections
 ///
-/// This is an introduction to AvocadoDB's Http interface to documents.
+/// This is an introduction to AvocadoDB's Http interface for collections.
 ///
 /// <hr>
 /// @copydoc HttpCollectionTOC
@@ -63,9 +64,9 @@
 /// @section HttpCollectionResource Address of an Collection
 ////////////////////////////////////////////////////////////
 ///
-/// All collections in AvocadoDB have a document indentifier. This
-/// collection identifier uniquely defines a collection and is managed
-/// by AvocadoDB. All collections are found under the URI
+/// All collections in AvocadoDB have an unique identifier. This collection
+/// identifier identifies a collection and is managed by AvocadoDB. All
+/// collections are found under the URI
 ///
 /// @LIT{http://@FA{server}:@FA{port}/_api/collection/@FA{collection-identifier}}
 ///
@@ -81,24 +82,8 @@
 /// @copydetails JSF_GET_api_collection
 /// <hr>
 ///
-/// @anchor RestDocumentCreate
-/// @copydetails triagens::avocado::RestDocumentHandler::createDocument
-/// <hr>
-///
-/// @anchor RestDocumentUpdate
-/// @copydetails triagens::avocado::RestDocumentHandler::updateDocument
-/// <hr>
-///
-/// @anchor RestDocumentDelete
-/// @copydetails triagens::avocado::RestDocumentHandler::deleteDocument
-/// <hr>
-///
-/// @anchor RestDocumentHead
-/// @copydetails triagens::avocado::RestDocumentHandler::checkDocument
-/// <hr>
-///
-/// @anchor RestDocumentReadAll
-/// @copydetails triagens::avocado::RestDocumentHandler::readAllDocuments
+/// @anchor HttpCollectionDelete
+/// @copydetails JSF_DELETE_api_collection
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

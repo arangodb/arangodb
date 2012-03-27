@@ -1,14 +1,15 @@
-> curl -X GET --dump - http://localhost:8529/_api/collection/128562/count
+> curl -X GET --dump - http://localhost:8529/_api/collection/73482/count
 
 HTTP/1.1 200 OK
 content-type: application/json
-location: /_api/collection/128562/count
+location: /_api/collection/73482/count
 
 {
   "name": "UnitTestsCollectionBasics",
-  "count": 36,
   "code": 200,
-  "id": 128562,
+  "waitForSync": true,
+  "id": 73482,
+  "count": 0,
   "status": 3,
   "error": false
 }

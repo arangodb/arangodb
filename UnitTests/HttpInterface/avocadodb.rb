@@ -31,7 +31,8 @@ class AvocadoDB
 ################################################################################
 
   def self.drop_collection (name)
-    # TODO
+    cmd = "/_api/collection/#{name}"
+    self.delete(cmd)
   end
 
 ################################################################################
@@ -39,9 +40,9 @@ class AvocadoDB
 ################################################################################
 
   def self.size_collection (name)
-    doc = self.get("/document?collection=#{name}") # TODO use api call
+    doc = self.get("/_api/collection/#{name}/count") # TODO use api call
 
-    return doc.parsed_response['documents'].length
+    return doc.parsed_response['count']
   end
 
 ################################################################################
