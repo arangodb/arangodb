@@ -338,7 +338,7 @@ static uint32_t RandomGeoCoordinateDistance (void) {
 #include <BasicsC/fsrt.inc>
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create result
+/// @brief creates result
 ////////////////////////////////////////////////////////////////////////////////
 
 static void StoreGeoResult (TRI_vocbase_col_t const* collection,
@@ -388,6 +388,24 @@ static void StoreGeoResult (TRI_vocbase_col_t const* collection,
   }
 
   TRI_Free(tmp);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an error in a javascript object
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Object> CreateErrorObject (int errorNumber, string const& message) {
+  TRI_v8_global_t* v8g;
+  v8::HandleScope scope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  v8::Handle<v8::Object> errorObject = v8g->ErrorTempl->NewInstance();
+
+  errorObject->Set(v8::String::New("errorNum"), v8::Number::New(errorNumber));
+  errorObject->Set(v8::String::New("errorMessage"), v8::String::New(message.c_str()));
+
+  return errorObject;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -603,9 +621,11 @@ static v8::Handle<v8::Object> CreateQueryErrorObject (TRI_query_error_t* error) 
   char* errorMessage = TRI_GetStringQueryError(error);
 
   v8::Handle<v8::Object> errorObject = v8g->QueryErrorTempl->NewInstance();
+
   errorObject->Set(v8::String::New("code"), 
                    v8::Integer::New(TRI_GetCodeQueryError(error)),
                    v8::ReadOnly);
+
   errorObject->Set(v8::String::New("message"), 
                    v8::String::New(errorMessage),
                    v8::ReadOnly);
@@ -1805,7 +1825,7 @@ static v8::Handle<v8::Value> JS_WhereSkiplistConstAql (const v8::Arguments& argv
     else {
       v8::Handle<v8::Value> parameter = argv[1];
       v8::Handle<v8::Object> operatorObject = parameter->ToObject();
-      TRI_sl_operator_t* op  = UnwrapClass<TRI_sl_operator_t>(operatorObject, WRP_SL_OPERATOR_TYPE);
+      TRI_sl_operator_t* op  = UnwrapClass<TRI_sl_operator_t>(operatorObject, WRP_SL_OPERATOR_TYPE);      
       where = TRI_CreateQueryWhereSkiplistConstant(iid, op);
     }
   }
@@ -2186,8 +2206,9 @@ static v8::Handle<v8::Value> JS_Operator_AND (v8::Arguments const& argv) {
   // ...........................................................................
   // Allocate the storage for a logial (AND) operator and assign it that type
   // ...........................................................................  
-  logicalOperator = (TRI_sl_logical_operator_t*)(CreateSLOperator(TRI_SL_AND_OPERATOR,leftOperator,rightOperator,NULL, NULL, 2, NULL));
-  
+  logicalOperator = (TRI_sl_logical_operator_t*)(CreateSLOperator(TRI_SL_AND_OPERATOR,
+                                                 CopySLOperator(leftOperator),
+                                                 CopySLOperator(rightOperator),NULL, NULL, 2, NULL));
   // ...........................................................................
   // Wrap it up for later use and return.
   // ...........................................................................
@@ -2236,7 +2257,9 @@ static v8::Handle<v8::Value> JS_Operator_OR (v8::Arguments const& argv) {
   // ...........................................................................
   // Allocate the storage for a logial (AND) operator and assign it that type
   // ...........................................................................  
-  logicalOperator = (TRI_sl_logical_operator_t*)(CreateSLOperator(TRI_SL_OR_OPERATOR,leftOperator,rightOperator,NULL, NULL, 2, NULL));
+  logicalOperator = (TRI_sl_logical_operator_t*)(CreateSLOperator(TRI_SL_OR_OPERATOR,
+                                                 CopySLOperator(leftOperator),
+                                                 CopySLOperator(rightOperator),NULL, NULL, 2, NULL));
   
   return scope.Close(WrapSLOperator(&(logicalOperator->_base)));
 }
@@ -3158,20 +3181,19 @@ static v8::Handle<v8::Value> JS_DeleteVocbaseCol (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  int res;
 
   TRI_vocbase_col_t* collection = UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
+    res = TRI_ERROR_INTERNAL;
+  }
+  else {
+    res = TRI_DropCollectionVocBase(collection->_vocbase, collection);
   }
 
-  int res = TRI_DropCollectionVocBase(collection->_vocbase, collection);
-
   if (res != TRI_ERROR_NO_ERROR) {
-      string err = "cannot drop collection: ";
-      err += TRI_last_error();
-
-      return scope.Close(v8::ThrowException(v8::String::New(err.c_str())));
+    return scope.Close(v8::ThrowException(CreateErrorObject(res, "cannot drop collection")));
   }
 
   return scope.Close(v8::Undefined());
@@ -4720,7 +4742,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a single collections or null
+/// @brief returns a single collection or null
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CollectionVocBase (v8::Arguments const& argv) {
@@ -4811,6 +4833,41 @@ static v8::Handle<v8::Value> JS_CompletionsVocBase (v8::Arguments const& argv) {
   TRI_DestroyVectorPointer(&colls);
 
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new collection
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_CreateCollectionVocBase (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+  
+  if (vocbase == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+
+  // expecting one argument
+  if (argv.Length() != 2) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: _create(<name>, <wait-for-sync>)")));
+  }
+
+  string name = TRI_ObjectToString(argv[0]);
+
+  TRI_col_parameter_t parameter;
+
+  parameter._type = TRI_COL_TYPE_SIMPLE_DOCUMENT;
+  parameter._waitForSync = TRI_ObjectToBoolean(argv[1]);
+  TRI_CopyString(parameter._name, name.c_str(), sizeof(parameter._name));
+
+  TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase, &parameter);
+
+  if (collection == NULL) {
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_errno(), "cannot create collection")));
+  }
+
+  return scope.Close(TRI_WrapCollection(collection));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5337,6 +5394,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> CollectionFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collection"));
   v8::Handle<v8::String> CollectionsFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collections"));
   v8::Handle<v8::String> CountFuncName = v8::Persistent<v8::String>::New(v8::String::New("count"));
+  v8::Handle<v8::String> CreateFuncName = v8::Persistent<v8::String>::New(v8::String::New("_create"));
   v8::Handle<v8::String> DeleteFuncName = v8::Persistent<v8::String>::New(v8::String::New("delete"));
   v8::Handle<v8::String> DisposeFuncName = v8::Persistent<v8::String>::New(v8::String::New("dispose"));
   v8::Handle<v8::String> DocumentFuncName = v8::Persistent<v8::String>::New(v8::String::New("document"));
@@ -5401,6 +5459,21 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   }
 
   // .............................................................................
+  // generate the query error template
+  // .............................................................................
+
+  ft = v8::FunctionTemplate::New();
+  ft->SetClassName(v8::String::New("AvocadoError"));
+
+  rt = ft->InstanceTemplate();
+
+  v8g->ErrorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+
+  // must come after SetInternalFieldCount
+  context->Global()->Set(v8::String::New("AvocadoError"),
+                         ft->GetFunction());
+  
+  // .............................................................................
   // generate the TRI_vocbase_t template
   // .............................................................................
 
@@ -5415,6 +5488,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(CollectionFuncName, v8::FunctionTemplate::New(JS_CollectionVocBase));
   rt->Set(CollectionsFuncName, v8::FunctionTemplate::New(JS_CollectionsVocBase));
   rt->Set(CompletionsFuncName, v8::FunctionTemplate::New(JS_CompletionsVocBase));
+  rt->Set(CreateFuncName, v8::FunctionTemplate::New(JS_CreateCollectionVocBase));
 
   v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
@@ -5434,8 +5508,10 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
 
   rt->SetNamedPropertyHandler(MapGetEdges);
 
+  rt->Set(CollectionFuncName, v8::FunctionTemplate::New(JS_CollectionVocBase));
   rt->Set(CollectionsFuncName, v8::FunctionTemplate::New(JS_CollectionsEdges));
   rt->Set(CompletionsFuncName, v8::FunctionTemplate::New(JS_CompletionsVocBase));
+  rt->Set(CreateFuncName, v8::FunctionTemplate::New(JS_CreateCollectionVocBase));
 
   v8g->EdgesTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 

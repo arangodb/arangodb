@@ -76,6 +76,7 @@ TRI_sl_operator_t* CreateSLOperator(TRI_sl_operator_type_e operatorType,
     case TRI_SL_OR_OPERATOR: 
     {
       newLogicalOperator              = (TRI_sl_logical_operator_t*)TRI_Allocate(sizeof(TRI_sl_logical_operator_t));
+      /* FIXME: memory allocation might fail */
       newLogicalOperator->_base._type = operatorType;
       newLogicalOperator->_left       = leftOperand;
       newLogicalOperator->_right      = rightOperand;
@@ -91,6 +92,7 @@ TRI_sl_operator_t* CreateSLOperator(TRI_sl_operator_type_e operatorType,
     case TRI_SL_LT_OPERATOR: 
     {
       newRelationOperator              = (TRI_sl_relation_operator_t*)TRI_Allocate(sizeof(TRI_sl_relation_operator_t));
+      /* FIXME: memory allocation might fail */
       newRelationOperator->_base._type = operatorType;
       newRelationOperator->_parameters = parameters;
       newRelationOperator->_fields     = fields;
@@ -173,6 +175,7 @@ TRI_sl_operator_t* CopySLOperator(TRI_sl_operator_t* slOperator) {
     {
       oldLogicalOperator              = (TRI_sl_logical_operator_t*)(slOperator);
       newLogicalOperator              = (TRI_sl_logical_operator_t*) (TRI_Allocate( sizeof(TRI_sl_logical_operator_t) ));
+      /* FIXME: memory allocation might fail */
       newLogicalOperator->_base._type = slOperator->_type;
       newLogicalOperator->_left       = CopySLOperator(oldLogicalOperator->_left);
       newLogicalOperator->_right      = CopySLOperator(oldLogicalOperator->_right);
@@ -189,6 +192,7 @@ TRI_sl_operator_t* CopySLOperator(TRI_sl_operator_t* slOperator) {
     {
       oldRelationOperator              = (TRI_sl_relation_operator_t*)(slOperator);
       newRelationOperator              = (TRI_sl_relation_operator_t*) (TRI_Allocate( sizeof(TRI_sl_relation_operator_t) ));
+      /* FIXME: memory allocation might fail */
       newRelationOperator->_base._type = slOperator->_type;
       newRelationOperator->_parameters = TRI_CopyJson(oldRelationOperator->_parameters);
       newRelationOperator->_fields     = TRI_CopyShapedJson(oldRelationOperator->_fields);

@@ -113,7 +113,7 @@ function aqlKeywordsTestSuite () {
       }
      
       // this is expected to fail  
-      this.getQueryResults("SELECT { " + this.keywords[i] + " : null } FROM " + this.collection._name + " c", true); 
+      this.getQueryResults("SELECT { " + this.keywords[i] + " : null } FROM " + this.collection.name() + " c", true); 
     }
   }
 
@@ -128,7 +128,7 @@ function aqlKeywordsTestSuite () {
       }
      
       // this is expected to work 
-      this.getQueryResults("SELECT { \"" + this.keywords[i] + "\" : null } FROM " + this.collection._name + " c", false); 
+      this.getQueryResults("SELECT { \"" + this.keywords[i] + "\" : null } FROM " + this.collection.name() + " c", false); 
     }
   }
 
@@ -143,7 +143,7 @@ function aqlKeywordsTestSuite () {
       }
      
       // this is expected to work 
-      this.getQueryResults("SELECT { value : \"" + this.keywords[i] + "\" } FROM " + this.collection._name + " c", false); 
+      this.getQueryResults("SELECT { value : \"" + this.keywords[i] + "\" } FROM " + this.collection.name() + " c", false); 
     }
   }
 
@@ -158,7 +158,7 @@ function aqlKeywordsTestSuite () {
       }
      
       // this is expected to work 
-      var result = this.getQueryResults("SELECT { value : c.`" + this.keywords[i] + "` } FROM " + this.collection._name + " c WHERE c.`" + this.keywords[i] + "` == '" + this.keywords[i] + "'", false); 
+      var result = this.getQueryResults("SELECT { value : c.`" + this.keywords[i] + "` } FROM " + this.collection.name() + " c WHERE c.`" + this.keywords[i] + "` == '" + this.keywords[i] + "'", false); 
       for (var j in result) {
         if (!result.hasOwnProperty(j)) {
           continue;
@@ -179,7 +179,7 @@ function aqlKeywordsTestSuite () {
       }
      
       // this is expected to work 
-      this.getQueryResults("SELECT { } FROM " + this.collection._name + " " + this.keywords[i], true); 
+      this.getQueryResults("SELECT { } FROM " + this.collection.name() + " " + this.keywords[i], true); 
     }
   }
 
@@ -194,7 +194,7 @@ function aqlKeywordsTestSuite () {
       }
      
       // this is expected to work 
-      var result = this.getQueryResults("SELECT `" + this.keywords[i] + "` FROM " + this.collection._name + " `" + this.keywords[i] + "`", false); 
+      var result = this.getQueryResults("SELECT `" + this.keywords[i] + "` FROM " + this.collection.name() + " `" + this.keywords[i] + "`", false); 
       assertEqual(result.length, this.keywords.length);
     }
   }
@@ -210,7 +210,7 @@ function aqlKeywordsTestSuite () {
       }
      
       // this is expected to work 
-      this.getQueryResults("SELECT { } FROM " + this.collection._name + " c WHERE c." + this.keywords[i] + " == '" + this.keywords[i] + "'", true); 
+      this.getQueryResults("SELECT { } FROM " + this.collection.name() + " c WHERE c." + this.keywords[i] + " == '" + this.keywords[i] + "'", true); 
     }
   }
 
@@ -225,7 +225,7 @@ function aqlKeywordsTestSuite () {
       }
      
       // this is expected to work 
-      var result = this.getQueryResults("SELECT { \"" + this.keywords[i] + "\" : c.`" + this.keywords[i] + "` } FROM " + this.collection._name + " c WHERE '" + this.keywords[i] + "' == c.`" + this.keywords[i] + "`", false); 
+      var result = this.getQueryResults("SELECT { \"" + this.keywords[i] + "\" : c.`" + this.keywords[i] + "` } FROM " + this.collection.name() + " c WHERE '" + this.keywords[i] + "' == c.`" + this.keywords[i] + "`", false); 
       for (var j in result) {
         if (!result.hasOwnProperty(j)) {
           continue;

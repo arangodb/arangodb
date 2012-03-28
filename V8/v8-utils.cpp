@@ -200,7 +200,7 @@ bool TRI_DefineWhereExecutionContextX (TRI_js_exec_context_t context,
       } 
       else {
         v8::Handle<v8::Value> result;
-        bool ok = TRI_ObjectDocumentPointer(part->_collection, document, &result);
+        bool ok = TRI_ObjectDocumentPointer(part->_collection->_collection, document, &result);
         if (!ok) {
           return false;
         }
@@ -220,7 +220,7 @@ bool TRI_DefineWhereExecutionContextX (TRI_js_exec_context_t context,
         document = (TRI_doc_mptr_t*) part->_listDocuments._buffer[n];
         if (document) {
           v8::Handle<v8::Value> result;
-          bool ok = TRI_ObjectDocumentPointer(part->_collection, document, &result);
+          bool ok = TRI_ObjectDocumentPointer(part->_collection->_collection, document, &result);
           if (!ok) {
             return false;
           }
@@ -280,7 +280,7 @@ bool TRI_DefineWhereExecutionContext (TRI_query_instance_t* const instance,
       } 
       else {
         v8::Handle<v8::Value> result;
-        bool ok = TRI_ObjectDocumentPointer(part->_collection, document, &result);
+        bool ok = TRI_ObjectDocumentPointer(part->_collection->_collection, document, &result);
         if (!ok) {
           return false;
         }
@@ -300,7 +300,7 @@ bool TRI_DefineWhereExecutionContext (TRI_query_instance_t* const instance,
         document = (TRI_doc_mptr_t*) part->_listDocuments._buffer[n];
         if (document) {
           v8::Handle<v8::Value> result;
-          bool ok = TRI_ObjectDocumentPointer(part->_collection, document, &result);
+          bool ok = TRI_ObjectDocumentPointer(part->_collection->_collection, document, &result);
           if (!ok) {
             return false;
           }

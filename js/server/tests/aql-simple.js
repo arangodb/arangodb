@@ -129,7 +129,7 @@ function aqlSimpleTestSuite () {
       limitClause = "LIMIT " + limit;
     }
 
-    var query = "SELECT " + selectClause + " FROM " + this.collection._name + " c " + 
+    var query = "SELECT " + selectClause + " FROM " + this.collection.name() + " c " + 
                 whereClause + orderClause + limitClause;
 
     return query;

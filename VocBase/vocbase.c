@@ -378,7 +378,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   TRI_CopyString(collection->_name, name, sizeof(collection->_name));
   collection->_path = (path == NULL ? NULL : TRI_DuplicateString(path));
   collection->_collection = NULL;
-  collection->_status = TRI_VOC_COL_STATUS_UNKNOWN;
+  collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
   collection->_cid = cid;
 
   // check name
