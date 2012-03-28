@@ -316,7 +316,6 @@ describe AvocadoDB do
 	doc.parsed_response['id'].should eq(cid)
 	doc.parsed_response['name'].should eq(@cn)
 	doc.parsed_response['status'].should eq(3)
-	doc.parsed_response['waitForSync'].should == true
 	doc.parsed_response['count'].should be_kind_of(Integer)
 	doc.headers['content-type'].should eq("application/json")
 
@@ -336,7 +335,6 @@ describe AvocadoDB do
 	doc.parsed_response['id'].should eq(cid)
 	doc.parsed_response['name'].should eq(@cn)
 	doc.parsed_response['status'].should eq(3)
-	doc.parsed_response['waitForSync'].should == true
 	doc.parsed_response['count'].should be_kind_of(Integer)
 	doc.headers['content-type'].should eq("application/json")
 
