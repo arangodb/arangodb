@@ -383,7 +383,7 @@ function PUT_api_collection_load (req, res, collection) {
   try {
     collection.load();
 
-    var result = CollectionRepresentation(collection, true, true, false);
+    var result = CollectionRepresentation(collection, false, true, false);
     
     actions.resultOk(req, res, actions.HTTP_OK, result);
   }
