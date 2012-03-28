@@ -180,7 +180,6 @@ describe AvocadoDB do
 	doc.parsed_response['id'].should eq(@cid)
 	doc.parsed_response['name'].should eq(@cn)
 	doc.parsed_response['status'].should eq(3)
-	doc.parsed_response['waitForSync'].should == true
 	doc.parsed_response['count'].should be_kind_of(Integer)
 	doc.headers['location'].should eq(api + "/" + String(@cid) + "/count")
       end
@@ -198,7 +197,6 @@ describe AvocadoDB do
 	doc.parsed_response['name'].should eq(@cn)
 	doc.parsed_response['status'].should eq(3)
 	doc.parsed_response['count'].should be_kind_of(Integer)
-	doc.parsed_response['waitForSync'].should == true
 	doc.parsed_response['figures']['alive']['count'].should be_kind_of(Integer)
 	doc.parsed_response['count'].should eq(doc.parsed_response['figures']['alive']['count'])
 	doc.parsed_response['journalSize'].should be_kind_of(Integer)
@@ -274,6 +272,13 @@ describe AvocadoDB do
 	doc.parsed_response['waitForSync'].should == false
 	doc.headers['content-type'].should eq("application/json")
 
+	cmd = api + "/" + String(@cn) + "/figures"
+        doc = AvocadoDB.get(cmd)
+
+	puts doc
+
+	doc.parsed_response['waitForSync'].should == false
+
 	AvocadoDB.drop_collection(@cn)
       end
 
@@ -289,6 +294,13 @@ describe AvocadoDB do
 	doc.parsed_response['name'].should eq(@cn)
 	doc.parsed_response['waitForSync'].should == true
 	doc.headers['content-type'].should eq("application/json")
+
+	cmd = api + "/" + String(@cn) + "/figures"
+        doc = AvocadoDB.get(cmd)
+
+	puts doc
+
+	doc.parsed_response['waitForSync'].should == true
 
 	AvocadoDB.drop_collection(@cn)
       end
