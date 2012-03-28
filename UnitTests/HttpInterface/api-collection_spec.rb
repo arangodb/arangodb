@@ -81,6 +81,35 @@ describe AvocadoDB do
 
 	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-create-illegal-name")
       end
+
+      it "creating a collection with an illegal body" do
+	cmd = api
+	body = "{ name : world }"
+        doc = AvocadoDB.post(cmd, :body => body)
+
+	doc.code.should eq(400)
+	doc.parsed_response['error'].should eq(true)
+	doc.parsed_response['code'].should eq(400)
+	doc.parsed_response['errorNum'].should eq(600)
+	doc.parsed_response['errorMessage'].should eq("SyntaxError: Unexpected token n")
+	doc.headers['content-type'].should eq("application/json")
+
+	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-create-illegal-body")
+      end
+
+      it "creating a collection with a null body" do
+	cmd = api
+	body = "null"
+        doc = AvocadoDB.post(cmd, :body => body)
+
+	doc.code.should eq(400)
+	doc.parsed_response['error'].should eq(true)
+	doc.parsed_response['code'].should eq(400)
+	doc.parsed_response['errorNum'].should eq(1208)
+	doc.headers['content-type'].should eq("application/json")
+
+	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-create-null-body")
+      end
     end
 
 ################################################################################

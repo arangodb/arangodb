@@ -275,7 +275,7 @@ function ResultOk (req, res, httpReturnCode, result, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ResultBad (req, res, code, msg, headers) {
-  ResultError(req, res, exports.HTTP_BAD, code, msg, headers);
+  ResultError(req, res, exports.HTTP_BAD, code, "" + msg, headers);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -287,7 +287,7 @@ function ResultBad (req, res, code, msg, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ResultNotFound (req, res, msg, headers) {
-  ResultError(req, res, exports.HTTP_NOT_FOUND, exports.ERROR_HTTP_NOT_FOUND, msg, headers);
+  ResultError(req, res, exports.HTTP_NOT_FOUND, exports.ERROR_HTTP_NOT_FOUND, "" + msg, headers);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

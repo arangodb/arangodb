@@ -529,7 +529,7 @@ static TRI_vocbase_col_t* BearCollectionVocBase (TRI_vocbase_t* vocbase, char co
   if (wrong != 0) {
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
-    LOG_ERROR("found illegal character in name: %c", wrong);
+    LOG_DEBUG("found illegal character in name: %c", wrong);
 
     TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_NAME);
     return NULL;
@@ -1159,7 +1159,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase, TRI_col_
   if (wrong != 0) {
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
-    LOG_ERROR("found illegal character in name: %c", wrong);
+    LOG_DEBUG("found illegal character in name: %c", wrong);
 
     TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_NAME);
     return NULL;
@@ -1404,7 +1404,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
   wrong = TRI_IsAllowedCollectionName(newName);
 
   if (wrong != 0) {
-    LOG_ERROR("found illegal character in name: %c", wrong);
+    LOG_DEBUG("found illegal character in name: %c", wrong);
     return TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_NAME);
   }
 
