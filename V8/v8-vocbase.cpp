@@ -2661,13 +2661,21 @@ static v8::Handle<v8::Value> JS_NextQueryCursor (v8::Arguments const& argv) {
   }
 
   bool result = false;
-  TRI_js_exec_context_t context = NULL;
   v8::Handle<v8::Value> value;
   TRI_query_cursor_t* cursor = (TRI_query_cursor_t*) 
     TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapQueryCursor(argv.Holder()));
 
   if (cursor) {
+    TRI_js_exec_context_t context = NULL;
+
     TRI_LockQueryCursor(cursor);
+
+    if (cursor->_length == 0) {
+      TRI_UnlockQueryCursor(cursor);
+      TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
+
+      return scope.Close(v8::Undefined());
+    }
 
     // exceptions must be caught in the following part because we hold an exclusive
     // lock that might otherwise not be freed
@@ -4846,7 +4854,7 @@ static v8::Handle<v8::Value> JS_CreateCollectionVocBase (v8::Arguments const& ar
     return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
   }
 
-  // expecting one argument
+  // expecting two arguments
   if (argv.Length() != 2) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: _create(<name>, <wait-for-sync>)")));
   }
@@ -4855,9 +4863,8 @@ static v8::Handle<v8::Value> JS_CreateCollectionVocBase (v8::Arguments const& ar
 
   TRI_col_parameter_t parameter;
 
-  parameter._type = TRI_COL_TYPE_SIMPLE_DOCUMENT;
+  TRI_InitParameterCollection(&parameter, name.c_str(), DEFAULT_MAXIMAL_SIZE);
   parameter._waitForSync = TRI_ObjectToBoolean(argv[1]);
-  TRI_CopyString(parameter._name, name.c_str(), sizeof(parameter._name));
 
   TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase, &parameter);
 

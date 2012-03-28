@@ -54,10 +54,10 @@ actions.defineHttp({
     try {
       req.collection.load();
 
-      actions.actionResult(req, res, 204);
+      actions.resultOk(req, res, 204);
     }
     catch (err) {
-      actions.actionError(req, res, err);
+      actions.resultError(req, res, err);
     }
   },
 
@@ -81,14 +81,14 @@ actions.defineHttp({
   callback : function (req, res) {
     try {
       result = {};
-      result.name = req.collection._name;
+      result.name = req.collection.name();
       result.id = req.collection._id;
       result.indexes = req.collection.getIndexes();
 
-      actions.actionResult(req, res, 200, result);
+      actions.resultOk(req, res, 200, result);
     }
     catch (err) {
-      actions.actionError(req, res, err);
+      actions.resultError(req, res, err);
     }
   },
 
@@ -112,10 +112,10 @@ actions.defineHttp({
       result = {};
       result.system = SYS_PROCESS_STAT();
 
-      actions.actionResult(req, res, 200, result);
+      actions.resultOk(req, res, 200, result);
     }
     catch (err) {
-      actions.actionError(req, res, err);
+      actions.resultError(req, res, err);
     }
   }
 });

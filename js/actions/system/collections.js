@@ -44,15 +44,16 @@ function getCollections(req, res) {
 
   for (var i = skip;  i < end;  ++i) {
     coll = colls[i];
-    result.collections[coll._name] = {
+    var name = coll.name();
+    result.collections[name] = {
       _id : coll._id,
-      name : coll._name,
+      name : name,
       status : coll.status(),
       figures : coll.figures()
     };
   }
 
-  actions.actionResultOK(req, res, 200, result);  
+  actions.resultOk(req, res, 200, result);  
 }
 
 actions.defineHttp({
@@ -66,7 +67,7 @@ actions.defineHttp({
         break;
 
       default:
-        actions.actionResultUnsupported(req, res);
+        actions.resultUnsupported(req, res);
     }
   }
 });
