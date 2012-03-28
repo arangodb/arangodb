@@ -110,19 +110,6 @@ bool TRI_AddCollectionsBarrierQueryInstance (TRI_query_instance_t* const,
                                              TRI_query_cursor_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hand over locks from query instance to result cursor
-///
-/// This function is called when there is a select result with at least one row.
-/// The query instance will be freed immediately after executing the select,
-/// but the result set cursor might still be in use. The underlying collections
-/// are still needed and are still read-locked. When the cursor usage is over,
-/// the cursor is responsible for freeing the locks held.
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_HandoverLocksQueryInstance (TRI_query_instance_t* const,
-                                     TRI_query_cursor_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a vector for holding collection locks
 ////////////////////////////////////////////////////////////////////////////////
   
