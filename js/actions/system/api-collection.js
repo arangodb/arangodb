@@ -148,11 +148,9 @@ function POST_api_collection (req, res) {
     var result = {};
     var headers = {};
 
-    collection.parameter({ waitForSync : waitForSync });
-
     result.id = collection._id;
     result.name = collection.name();
-    result.waitForSync = collection.parameter().waitForSync;
+    result.waitForSync = waitForSync;
     result.status = collection.status();
 
     headers.location = "/" + API + "collection/" + collection._id;
