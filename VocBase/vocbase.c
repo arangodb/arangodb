@@ -306,11 +306,15 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
       size_t secondLen = matches[2].rm_eo - matches[2].rm_so;
       
       tmp1 = TRI_DuplicateString2(first, firstLen);
+      // FIXME: memory allocation might fail
       tmp2 = TRI_DuplicateString2(second, secondLen);
+      // FIXME: memory allocation might fail
       tmp3 = TRI_Concatenate2String("deleted-", tmp2);
+      // FIXME: memory allocation might fail
       TRI_FreeString(tmp2);
       
       newFilename = TRI_Concatenate2File(tmp1, tmp3);
+      // FIXME: memory allocation might fail
       TRI_FreeString(tmp1);
       TRI_FreeString(tmp3);
       
@@ -384,6 +388,8 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   TRI_CopyString(collection->_name, name, sizeof(collection->_name));
   collection->_path = (path == NULL ? NULL : TRI_DuplicateString(path));
   /* FIXME: memory allocation might fail */
+  /* FIXME: collection->_path is never freed after being assigned to */
+
   collection->_collection = NULL;
   collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
   collection->_cid = cid;

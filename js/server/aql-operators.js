@@ -25,13 +25,13 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var AQL_TYPEWEIGHT_UNDEFINED = 0;
-var AQL_TYPEWEIGHT_NULL      = 1;
-var AQL_TYPEWEIGHT_BOOL      = 2;
-var AQL_TYPEWEIGHT_NUMBER    = 3;
-var AQL_TYPEWEIGHT_STRING    = 4;
-var AQL_TYPEWEIGHT_ARRAY     = 5;
-var AQL_TYPEWEIGHT_OBJECT    = 6;
+var AQL_TYPEWEIGHT_UNDEFINED = 1;
+var AQL_TYPEWEIGHT_NULL      = 2;
+var AQL_TYPEWEIGHT_BOOL      = 4;
+var AQL_TYPEWEIGHT_NUMBER    = 8;
+var AQL_TYPEWEIGHT_STRING    = 16;
+var AQL_TYPEWEIGHT_ARRAY     = 32;
+var AQL_TYPEWEIGHT_OBJECT    = 64;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the numeric value or undefined if it is out of range
