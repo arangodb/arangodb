@@ -68,7 +68,7 @@ void TRI_FreeLocksQueryInstance (TRI_vocbase_t* const vocbase,
     TRI_Free(lock);
   }
 
-  TRI_DestroyVectorPointer(locks);
+  TRI_FreeVectorPointer(locks);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

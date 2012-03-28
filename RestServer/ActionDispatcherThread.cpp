@@ -231,6 +231,8 @@ void ActionDispatcherThread::initialise () {
                           "common/bootstrap/print.js",
                           "common/bootstrap/errors.js",
                           "server/aql-operators.js",
+                          "server/aql-functions-numeric.js",
+                          "server/aql-functions-string.js",
                           "server/server.js"
   };
   size_t i;
