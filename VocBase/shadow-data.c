@@ -78,6 +78,68 @@ static TRI_shadow_t* CreateShadow (const void* const data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief decrease the refcount for a shadow
+////////////////////////////////////////////////////////////////////////////////
+
+static void DecreaseRefCount (TRI_shadow_store_t* const store, TRI_shadow_t* const shadow) {
+  LOG_TRACE("decreasing refcount for shadow %p with data ptr %p and id %lu", 
+            shadow, 
+            shadow->_data, 
+            (unsigned long) shadow->_id);
+
+  if (--shadow->_rc <= 0 && shadow->_type == SHADOW_TRANSIENT) {
+    LOG_TRACE("deleting shadow %p", shadow);
+
+    TRI_RemoveKeyAssociativePointer(&store->_ids, &shadow->_id);
+    TRI_RemoveKeyAssociativePointer(&store->_pointers, shadow->_data);
+    store->destroyShadow(shadow->_data);
+    TRI_Free(shadow);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief increase the refcount for a shadow
+////////////////////////////////////////////////////////////////////////////////
+
+static void IncreaseRefCount (TRI_shadow_store_t* const store, TRI_shadow_t* const shadow) {
+  LOG_TRACE("increasing refcount for shadow %p with data ptr %p and id %lu", 
+            shadow, 
+            shadow->_data, 
+            (unsigned long) shadow->_id);
+
+  ++shadow->_rc;
+  UpdateTimestampShadow(shadow);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the persistence flag for a shadow
+////////////////////////////////////////////////////////////////////////////////
+
+static void PersistShadow (TRI_shadow_t* const shadow) {
+  LOG_TRACE("persisting shadow %p with data ptr %p and id %lu", 
+            shadow, 
+            shadow->_data, 
+            (unsigned long) shadow->_id);
+
+  shadow->_type = SHADOW_PERSISTENT;
+  UpdateTimestampShadow(shadow);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the deleted flag for a shadow
+////////////////////////////////////////////////////////////////////////////////
+
+static void DeleteShadow (TRI_shadow_store_t* const store, TRI_shadow_t* const shadow) {
+  LOG_TRACE("setting deleted flag for shadow %p with data ptr %p and id %lu", 
+            shadow, 
+            shadow->_data, 
+            (unsigned long) shadow->_id);
+
+  shadow->_deleted = true;
+  DecreaseRefCount(store, shadow);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes an element in the ids index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -260,13 +322,7 @@ void* TRI_BeginUsageDataShadowData (TRI_shadow_store_t* const store,
   shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_pointers, data);
 
   if (shadow && !shadow->_deleted) {
-    LOG_TRACE("increasing refcount for shadow %p with data ptr %p and id %lu", 
-              shadow, 
-              shadow->_data, 
-              (unsigned long) shadow->_id);
-
-    ++shadow->_rc;
-    UpdateTimestampShadow(shadow);
+    IncreaseRefCount(store, shadow);
     TRI_UnlockMutex(&store->_lock);
     return shadow->_data;
   } 
@@ -292,13 +348,7 @@ void* TRI_BeginUsageIdShadowData (TRI_shadow_store_t* const store,
   shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_ids, (void const*) &id);
 
   if (shadow && !shadow->_deleted) {
-    LOG_TRACE("increasing refcount for shadow %p with data ptr %p and id %lu", 
-              shadow, 
-              shadow->_data, 
-              (unsigned long) shadow->_id);
-
-    ++shadow->_rc;
-    UpdateTimestampShadow(shadow);
+    IncreaseRefCount(store, shadow);
     TRI_UnlockMutex(&store->_lock);
     return shadow->_data;
   } 
@@ -325,19 +375,7 @@ void TRI_EndUsageDataShadowData (TRI_shadow_store_t* const store,
   shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_pointers, data);
 
   if (shadow && !shadow->_deleted) {
-    LOG_TRACE("decreasing refcount for shadow %p with data ptr %p and id %lu", 
-              shadow, 
-              shadow->_data, 
-              (unsigned long) shadow->_id);
-
-    if (--shadow->_rc <= 0 && shadow->_type == SHADOW_TRANSIENT) {
-      LOG_TRACE("deleting shadow %p", shadow);
-
-      TRI_RemoveKeyAssociativePointer(&store->_ids, &shadow->_id);
-      TRI_RemoveKeyAssociativePointer(&store->_pointers, data);
-      store->destroyShadow(shadow->_data);
-      TRI_Free(shadow);
-    }
+    DecreaseRefCount(store, shadow); // this might delete the shadow
   } 
 
   TRI_UnlockMutex(&store->_lock);
@@ -361,19 +399,7 @@ void TRI_EndUsageIdShadowData (TRI_shadow_store_t* const store,
   shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_ids, &id);
 
   if (shadow && !shadow->_deleted) {
-    LOG_TRACE("decreasing refcount for shadow %p with data ptr %p and id %lu", 
-              shadow, 
-              shadow->_data, 
-              (unsigned long) shadow->_id);
-
-    if (--shadow->_rc <= 0 && shadow->_type == SHADOW_TRANSIENT) {
-      LOG_TRACE("deleting shadow %p", shadow);
-
-      TRI_RemoveKeyAssociativePointer(&store->_ids, &id);
-      TRI_RemoveKeyAssociativePointer(&store->_pointers, shadow->_data);
-      store->destroyShadow(shadow->_data);
-      TRI_Free(shadow);
-    }
+    DecreaseRefCount(store, shadow); // this might delete the shadow
   } 
 
   TRI_UnlockMutex(&store->_lock);
@@ -394,13 +420,7 @@ bool TRI_PersistDataShadowData (TRI_shadow_store_t* const store,
   shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_pointers, data);
 
   if (shadow && !shadow->_deleted) {
-    LOG_TRACE("persisting shadow %p with data ptr %p and id %lu", 
-              shadow, 
-              shadow->_data, 
-              (unsigned long) shadow->_id);
-
-    shadow->_type = SHADOW_PERSISTENT;
-    UpdateTimestampShadow(shadow);
+    PersistShadow(shadow);
     result = true;
   } 
 
@@ -424,13 +444,7 @@ bool TRI_PersistIdShadowData (TRI_shadow_store_t* const store,
   shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_ids, &id);
 
   if (shadow && !shadow->_deleted) {
-    LOG_TRACE("persisting shadow %p with data ptr %p and id %lu", 
-              shadow, 
-              shadow->_data, 
-              (unsigned long) shadow->_id);
-
-    shadow->_type = SHADOW_PERSISTENT;
-    UpdateTimestampShadow(shadow);
+    PersistShadow(shadow);
     result = true;
   } 
 
@@ -455,12 +469,7 @@ bool TRI_DeleteDataShadowData (TRI_shadow_store_t* const store,
     shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_pointers, data);
 
     if (shadow && !shadow->_deleted) {
-      LOG_TRACE("setting deleted flag for shadow %p with data ptr %p and id %lu", 
-              shadow, 
-              shadow->_data, 
-              (unsigned long) shadow->_id);
-
-      shadow->_deleted = true;
+      DeleteShadow(store, shadow);
       found = true;
     } 
 
@@ -485,12 +494,7 @@ bool TRI_DeleteIdShadowData (TRI_shadow_store_t* const store,
   shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_ids, &id);
 
   if (shadow && !shadow->_deleted) {
-    LOG_TRACE("setting deleted flag for shadow %p with data ptr %p and id %lu", 
-            shadow, 
-            shadow->_data, 
-            (unsigned long) shadow->_id);
-
-    shadow->_deleted = true;
+    DeleteShadow(store, shadow);
     found = true;
   } 
 

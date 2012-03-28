@@ -170,12 +170,6 @@ TRI_query_cursor_t* TRI_ExecuteQueryInstance (TRI_query_instance_t* const instan
   cursor->_length = selectResult->_numRows; 
   cursor->_currentRow = 0;
 
-  if (cursor->_length > 0 && !instance->_query._select._isConstant) {
-    // we have a result set. the cursor now becomes responsible
-    // for freeing any locks we still have on the underlying collections
-    TRI_HandoverLocksQueryInstance(instance, cursor);
-  }
-
   return cursor;
 }
 

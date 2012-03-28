@@ -271,9 +271,9 @@ BUILT_SOURCES += $(BISONXX_FILES)
 ################################################################################
 
 DOXYGEN = \
-	Doxygen/js/actions/system/api_collection.c \
-	Doxygen/js/actions/system/api_database.c \
-	Doxygen/js/actions/system/api_simple.c \
+	Doxygen/js/actions/system/api-collection.c \
+	Doxygen/js/actions/system/api-database.c \
+	Doxygen/js/actions/system/api-simple.c \
 	Doxygen/js/actions/system/collections.c \
 	Doxygen/js/common/bootstrap/modules.c \
 	Doxygen/js/common/bootstrap/print.c \

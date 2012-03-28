@@ -29,6 +29,65 @@ var actions = require("actions");
 var API = "_api/";
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoAPI
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection representation
+////////////////////////////////////////////////////////////////////////////////
+
+function CollectionRepresentation (collection, showParameter, showCount, showFigures) {
+  var result = {};
+
+  result.id = collection._id;
+  result.name = collection.name();
+
+  if (showParameter) {
+    var parameter = collection.parameter();
+
+    result.waitForSync = parameter.waitForSync;
+    result.journalSize = parameter.journalSize;
+  }
+
+  if (showCount) {
+    result.count = collection.count();
+  }
+
+  if (showFigures) {
+    var figures = collection.figures();
+
+    if (figures) {
+      result.figures = {
+        alive : {
+          count : figures.numberAlive,
+          size : figures.sizeAlive
+        },
+        dead : {
+          count : figures.numberDead,
+          size : figures.sizeDead
+        },
+        datafiles : {
+          count : figures.numberDatafiles
+        }
+      };
+    }
+  }
+
+  result.status = collection.status();
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
@@ -41,6 +100,7 @@ var API = "_api/";
 /// @brief creates a collection
 ///
 /// @REST{POST /_api/collection}
+////////////////////////////////
 ///
 /// Creates an new collection with a given name. The request must contain an
 /// object with the following attributes.
@@ -52,6 +112,7 @@ var API = "_api/";
 /// document.
 ///
 /// @EXAMPLES
+/////////////
 ///
 /// @verbinclude api-collection-create-collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,9 +165,47 @@ function POST_api_collection (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns all collections
+///
+/// @REST{GET /_api/collection}
+///////////////////////////////
+///
+/// Returns an object with an attribute @LIT{collections} containing a 
+/// list of all collection descriptions. The same information is also
+/// available in the @LIT{names} as hash map with the collection names
+/// as keys.
+///
+/// @EXAMPLES
+/////////////
+///
+/// Return information about all collections:
+///
+/// @verbinclude api-collection-all-collections
+////////////////////////////////////////////////////////////////////////////////
+
+function GET_api_collections (req, res) {
+  var list = [];
+  var names = {};
+  var collections = db._collections();
+
+  for (var i = 0;  i < collections.length;  ++i) {
+    var collection = collections[i];
+    var rep = CollectionRepresentation(collection);
+    
+    list.push(rep);
+    names[rep.name] = rep;
+  }
+
+  var result = { collections : list, names : names };
+  
+  actions.resultOk(req, res, actions.HTTP_OK, result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a collection
 ///
 /// @REST{GET /_api/collection/@FA{collection-identifier}}
+//////////////////////////////////////////////////////////
 ///
 /// The result is an objects describing the collection with the following
 /// attributes:
@@ -128,15 +227,15 @@ function POST_api_collection (req, res) {
 ///
 /// Every other status indicates a corrupted collection.
 ///
-/// If the @FA{collection-identifier} is missing, then a @LIT{HTTP 400} is
-/// returned.  If the @FA{collection-identifier} is unknown, then a @LIT{HTTP
-/// 404} is returned.
+/// If the @FA{collection-identifier} is unknown, then a @LIT{HTTP 404} is
+/// returned.
 ///
 /// It is possible to specify a name instead of an identifier.  In this case the
 /// response will contain a field "Location" which contains the correct
 /// location.
 ///
 /// @REST{GET /_api/collection/@FA{collection-identifier}/count}
+////////////////////////////////////////////////////////////////
 ///
 /// In addition to the above, the result also contains the number of documents.
 /// Note that this will always load the collection into memory.
@@ -144,6 +243,7 @@ function POST_api_collection (req, res) {
 /// @LIT{count}: The number of documents inside the collection.
 ///
 /// @REST{GET /_api/collection/@FA{collection-identifier}/figures}
+//////////////////////////////////////////////////////////////////
 ///
 /// In addition to the above, the result also contains the number of documents
 /// and additional statistical information about the collection.  Note that this
@@ -166,6 +266,7 @@ function POST_api_collection (req, res) {
 /// @LIT{journalSize}: The maximal size of the journal in bytes.
 ///
 /// @EXAMPLES
+/////////////
 ///
 /// Using an identifier:
 ///
@@ -185,9 +286,13 @@ function POST_api_collection (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_api_collection (req, res) {
+
+  // .............................................................................
+  // /_api/collection
+  // .............................................................................
+
   if (req.suffix.length == 0) {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                      "expected GET /" + API + "collection/<collection-identifer>")
+    GET_api_collections(req, res);
   }
   else {
     var name = decodeURIComponent(req.suffix[0]);
@@ -198,23 +303,14 @@ function GET_api_collection (req, res) {
       actions.collectionNotFound(req, res, name);
     }
     else {
-
       // .............................................................................
       // /_api/collection/<identifier>
       // .............................................................................
 
       if (req.suffix.length == 1) {
-        var result = {};
-        var headers = {};
-        var parameter = collection.parameter();
-      
-        result.id = collection._id;
-        result.name = collection.name();
-        result.waitForSync = parameter.waitForSync;
-        result.status = collection.status();
+        var result = CollectionRepresentation(collection, false, false, false);
+        var headers = { location : "/" + API + "collection/" + collection._id };
 
-        headers.location = "/" + API + "collection/" + collection._id;
-      
         actions.resultOk(req, res, actions.HTTP_OK, result, headers);
       }
 
@@ -226,38 +322,9 @@ function GET_api_collection (req, res) {
         // .............................................................................
 
         if (sub == "figures") {
-          var result = {};
-          var headers = {};
-          var parameter = collection.parameter();
-      
-          result.id = collection._id;
-          result.name = collection.name();
-          result.count = collection.count();
-          result.journalSize = parameter.journalSize;
-          result.waitForSync = parameter.waitForSync;
+          var result = CollectionRepresentation(collection, true, true, true);
+          var headers = { location : "/" + API + "collection/" + collection._id + "/figures" };
 
-          var figures = collection.figures();
-
-          if (figures) {
-            result.figures = {
-              alive : {
-                count : figures.numberAlive,
-                size : figures.sizeAlive
-              },
-              dead : {
-                count : figures.numberDead,
-                size : figures.sizeDead
-              },
-              datafiles : {
-                count : figures.numberDatafiles
-              }
-            };
-          }
-
-          result.status = collection.status();
-
-          headers.location = "/" + API + "collection/" + collection._id + "/figures";
-      
           actions.resultOk(req, res, actions.HTTP_OK, result, headers);
         }
 
@@ -266,23 +333,14 @@ function GET_api_collection (req, res) {
         // .............................................................................
 
         else if (sub == "count") {
-          var result = {};
-          var headers = {};
-          var parameter = collection.parameter();
-      
-          result.id = collection._id;
-          result.name = collection.name();
-          result.count = collection.count();
-          result.waitForSync = parameter.waitForSync;
-          result.status = collection.status();
-
-          headers.location = "/" + API + "collection/" + collection._id + "/count";
+          var result = CollectionRepresentation(collection, true, true, false);
+          var headers = { location : "/" + API + "collection/" + collection._id + "/count" };
       
           actions.resultOk(req, res, actions.HTTP_OK, result, headers);
         }
 
         else {
-          actions.resultNotFound(req, res, "expecting one of the sub-method 'count', 'figures'");
+          actions.resultNotFound(req, res, "expecting one of the resources 'count', 'figures'");
         }
       }
       else {
@@ -290,6 +348,197 @@ function GET_api_collection (req, res) {
                           "expect GET /" + API + "collection/<collection-identifer>/<method>")
       }
     }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief loads a collection
+///
+/// @REST{PUT /_api/collection/@FA{collection-identifier}/load}
+///////////////////////////////////////////////////////////////
+///
+/// Loads a collection into memory.  On success an object with the following
+///
+/// @LIT{id}: The identifier of the collection.
+///
+/// @LIT{name}: The name of the collection.
+///
+/// @LIT{count}: The number of documents inside the collection.
+///
+/// @LIT{status}: The status of the collection as number.
+///
+/// If the @FA{collection-identifier} is missing, then a @LIT{HTTP 400} is
+/// returned.  If the @FA{collection-identifier} is unknown, then a @LIT{HTTP
+/// 404} is returned.
+///
+/// It is possible to specify a name instead of an identifier.
+///
+/// @EXAMPLES
+/////////////
+///
+/// @verbinclude api-collection-identifier-load
+////////////////////////////////////////////////////////////////////////////////
+
+function PUT_api_collection_load (req, res, collection) {
+  try {
+    collection.load();
+
+    var result = CollectionRepresentation(collection, true, true, false);
+    
+    actions.resultOk(req, res, actions.HTTP_OK, result);
+  }
+  catch (err) {
+    actions.resultException(req, res, err);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unloads a collection
+///
+/// @REST{PUT /_api/collection/@FA{collection-identifier}/unload}
+/////////////////////////////////////////////////////////////////
+///
+/// Removes a collection from memory. This call does not delete any documents.
+/// You can use the collection afterwards; in which case it will be loaded into
+/// memory, again. On success an object with the following
+///
+/// @LIT{id}: The identifier of the collection.
+///
+/// @LIT{name}: The name of the collection.
+///
+/// @LIT{status}: The status of the collection as number.
+///
+/// If the @FA{collection-identifier} is missing, then a @LIT{HTTP 400} is
+/// returned.  If the @FA{collection-identifier} is unknown, then a @LIT{HTTP
+/// 404} is returned.
+///
+/// @EXAMPLES
+/////////////
+///
+/// @verbinclude api-collection-identifier-unload
+////////////////////////////////////////////////////////////////////////////////
+
+function PUT_api_collection_unload (req, res, collection) {
+  try {
+    collection.unload();
+
+    var result = CollectionRepresentation(collection);
+    
+    actions.resultOk(req, res, actions.HTTP_OK, result);
+  }
+  catch (err) {
+    actions.resultException(req, res, err);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief truncates a collection
+///
+/// @REST{PUT /_api/collection/@FA{collection-identifier}/truncate}
+///////////////////////////////////////////////////////////////////
+///
+/// Removes all documents from the collection, but leaves the indexes intact.
+///
+/// @EXAMPLES
+/////////////
+///
+////////////////////////////////////////////////////////////////////////////////
+
+function PUT_api_collection_truncate (req, res, collection) {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief changes a collection
+///
+/// @REST{PUT /_api/collection/@FA{collection-identifier}/parameter}
+////////////////////////////////////////////////////////////////////
+///
+/// Changes the parameter of a collection. Expects an object with the
+/// attribute(s)
+///
+/// @LIT{waitForSync}: If @LIT{true} then creating or changing a document will
+/// wait until the data has been synchronised to disk.
+///
+/// If returns an object with the attributes
+///
+/// @LIT{id}: The identifier of the collection.
+///
+/// @LIT{name}: The name of the collection.
+///
+/// @LIT{waitForSync}: The new value.
+///
+/// @EXAMPLES
+/////////////
+///
+////////////////////////////////////////////////////////////////////////////////
+
+function PUT_api_collection_parameter (req, res, collection) {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief renames a collection
+///
+/// @REST{PUT /_api/collection/@FA{collection-identifier}/rename}
+/////////////////////////////////////////////////////////////////
+///
+/// Renames a collection. Expects an object with the attribute(s)
+///
+/// @LIT{name}: The new name.
+///
+/// If returns an object with the attributes
+///
+/// @LIT{id}: The identifier of the collection.
+///
+/// @LIT{name}: The new name of the collection.
+///
+/// @EXAMPLES
+/////////////
+///
+////////////////////////////////////////////////////////////////////////////////
+
+function PUT_api_collection_rename (req, res, collection) {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief changes a collection
+////////////////////////////////////////////////////////////////////////////////
+
+function PUT_api_collection (req, res) {
+
+  if (req.suffix.length != 2) {
+    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+                      "expected PUT /" + API + "collection/<collection-identifer>/<action>")
+    return;
+  }
+
+  var name = decodeURIComponent(req.suffix[0]);
+  var id = parseInt(name) || name;
+  var collection = db._collection(id);
+    
+  if (collection == null) {
+    actions.collectionNotFound(req, res, name);
+    return;
+  }
+
+  var sub = decodeURIComponent(req.suffix[1]);
+
+  if (sub == "load") {
+    PUT_api_collection_load(req, res, collection);
+  }
+  else if (sub == "unload") {
+    PUT_api_collection_unload(req, res, collection);
+  }
+  else if (sub == "truncate") {
+    PUT_api_collection_truncate(req, res, collection);
+  }
+  else if (sub == "parameter") {
+    PUT_api_collection_parameter(req, res, collection);
+  }
+  else if (sub == "rename") {
+    PUT_api_collection_rename(req, res, collection);
+  }
+  else {
+    actions.resultNotFound(req, res, "expecting one of the actions 'load', 'unload', 'truncate', 'parameter', 'rename'");
   }
 }
 
@@ -371,6 +620,9 @@ actions.defineHttp({
     }
     else if (req.requestType == actions.POST) {
       POST_api_collection(req, res);
+    }
+    else if (req.requestType == actions.PUT) {
+      PUT_api_collection(req, res);
     }
     else {
       actions.resultUnsupported(req, res);

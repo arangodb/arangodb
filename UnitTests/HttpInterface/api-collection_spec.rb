@@ -8,61 +8,78 @@ describe AvocadoDB do
   context "dealing with collections:" do
 
 ################################################################################
+## reading all collection
+################################################################################
+
+    context "all collections:" do
+      before do
+	for cn in ["units", "employees", "locations" ] do
+	  AvocadoDB.drop_collection(cn)
+	  @cid = AvocadoDB.create_collection(cn)
+	end
+      end
+
+      after do
+	for cn in ["units", "employees", "locations" ] do
+	  AvocadoDB.drop_collection(cn)
+	end
+      end
+
+      it "returns all collections" do
+	cmd = api
+        doc = AvocadoDB.log_get("#{prefix}-all-collections", cmd)
+
+	doc.code.should eq(200)
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.headers['content-type'].should eq("application/json")
+
+	collections = doc.parsed_response['collections']
+	names = doc.parsed_response['names']
+
+	for collection in collections do
+	  names[collection['name']].should eq(collection)
+	end
+      end
+    end
+
+################################################################################
 ## error handling
 ################################################################################
 
     context "error handling:" do
-      it "returns an error if collection identifier is missing" do
-	cmd = api
-        doc = AvocadoDB.get(cmd)
-
-	doc.code.should eq(400)
-	doc.parsed_response['error'].should eq(true)
-	doc.parsed_response['errorNum'].should eq(400)
-	doc.parsed_response['code'].should eq(400)
-	doc.headers['content-type'].should eq("application/json")
-
-	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}-bad-handle")
-      end
-
       it "returns an error if collection identifier is unknown" do
 	cmd = api + "/123456"
-        doc = AvocadoDB.get(cmd)
+        doc = AvocadoDB.log_get("#{prefix}-bad-handle", cmd)
 
 	doc.code.should eq(404)
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['errorNum'].should eq(1203)
 	doc.parsed_response['code'].should eq(404)
 	doc.headers['content-type'].should eq("application/json")
-
-	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}-bad-handle")
       end
 
       it "creating a collection without name" do
 	cmd = api
-        doc = AvocadoDB.post(cmd)
+        doc = AvocadoDB.log_post("#{prefix}-create-missing-name", cmd)
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['code'].should eq(400)
 	doc.parsed_response['errorNum'].should eq(1208)
 	doc.headers['content-type'].should eq("application/json")
-
-	AvocadoDB.log(:method => :post, :url => cmd, :result => doc, :output => "#{prefix}-create-missing-name")
       end
 
       it "creating a collection with an illegal name" do
 	cmd = api
 	body = "{ \"name\" : \"1\" }"
-        doc = AvocadoDB.post(cmd, :body => body)
+        doc = AvocadoDB.log_post("#{prefix}-create-illegal-name", cmd, :body => body)
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['code'].should eq(400)
 	doc.parsed_response['errorNum'].should eq(1208)
 	doc.headers['content-type'].should eq("application/json")
-
-	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-create-illegal-name")
       end
 
       it "creating a collection with a duplicate name" do
@@ -71,21 +88,19 @@ describe AvocadoDB do
 
 	cmd = api
 	body = "{ \"name\" : \"#{cn}\" }"
-        doc = AvocadoDB.post(cmd, :body => body)
+        doc = AvocadoDB.log_post("#{prefix}-create-illegal-name", cmd, :body => body)
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['code'].should eq(400)
 	doc.parsed_response['errorNum'].should eq(1207)
 	doc.headers['content-type'].should eq("application/json")
-
-	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-create-illegal-name")
       end
 
       it "creating a collection with an illegal body" do
 	cmd = api
 	body = "{ name : world }"
-        doc = AvocadoDB.post(cmd, :body => body)
+        doc = AvocadoDB.log_post("#{prefix}-create-illegal-body", cmd, :body => body)
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
@@ -93,22 +108,18 @@ describe AvocadoDB do
 	doc.parsed_response['errorNum'].should eq(600)
 	doc.parsed_response['errorMessage'].should eq("SyntaxError: Unexpected token n")
 	doc.headers['content-type'].should eq("application/json")
-
-	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-create-illegal-body")
       end
 
       it "creating a collection with a null body" do
 	cmd = api
 	body = "null"
-        doc = AvocadoDB.post(cmd, :body => body)
+        doc = AvocadoDB.log_post("#{prefix}-create-null-body", cmd, :body => body)
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['code'].should eq(400)
 	doc.parsed_response['errorNum'].should eq(1208)
 	doc.headers['content-type'].should eq("application/json")
-
-	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-create-null-body")
       end
     end
 
@@ -129,7 +140,7 @@ describe AvocadoDB do
 
       it "finds the collection by identifier" do
 	cmd = api + "/" + String(@cid)
-        doc = AvocadoDB.get(cmd)
+        doc = AvocadoDB.log_get("#{prefix}-get-collection-identifier", cmd)
 
 	doc.code.should eq(200)
 	doc.parsed_response['error'].should eq(false)
@@ -139,15 +150,12 @@ describe AvocadoDB do
 	doc.parsed_response['id'].should eq(@cid)
 	doc.parsed_response['name'].should eq(@cn)
 	doc.parsed_response['status'].should be_kind_of(Integer)
-	doc.parsed_response['waitForSync'].should == true
 	doc.headers['location'].should eq(api + "/" + String(@cid))
-
-	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}-get-collection-identifier")
       end
 
       it "finds the collection by name" do
 	cmd = api + "/" + String(@cn)
-        doc = AvocadoDB.get(cmd)
+        doc = AvocadoDB.log_get("#{prefix}-get-collection-name", cmd)
 
 	doc.code.should eq(200)
 	doc.parsed_response['error'].should eq(false)
@@ -157,15 +165,12 @@ describe AvocadoDB do
 	doc.parsed_response['id'].should eq(@cid)
 	doc.parsed_response['name'].should eq(@cn)
 	doc.parsed_response['status'].should be_kind_of(Integer)
-	doc.parsed_response['waitForSync'].should == true
 	doc.headers['location'].should eq(api + "/" + String(@cid))
-
-	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}-get-collection-name")
       end
 
       it "checks the size of a collection" do
 	cmd = api + "/" + String(@cid) + "/count"
-        doc = AvocadoDB.get(cmd)
+        doc = AvocadoDB.log_get("#{prefix}-get-collection-count", cmd)
 
 	doc.code.should eq(200)
 	doc.parsed_response['error'].should eq(false)
@@ -178,13 +183,11 @@ describe AvocadoDB do
 	doc.parsed_response['waitForSync'].should == true
 	doc.parsed_response['count'].should be_kind_of(Integer)
 	doc.headers['location'].should eq(api + "/" + String(@cid) + "/count")
-
-	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}-get-collection-count")
       end
 
       it "extracting the figures for a collection" do
 	cmd = api + "/" + String(@cid) + "/figures"
-        doc = AvocadoDB.get(cmd)
+        doc = AvocadoDB.log_get("#{prefix}-get-collection-figures", cmd)
 
 	doc.code.should eq(200)
 	doc.parsed_response['error'].should eq(false)
@@ -200,8 +203,6 @@ describe AvocadoDB do
 	doc.parsed_response['count'].should eq(doc.parsed_response['figures']['alive']['count'])
 	doc.parsed_response['journalSize'].should be_kind_of(Integer)
 	doc.headers['location'].should eq(api + "/" + String(@cid) + "/figures")
-
-	AvocadoDB.log(:method => :get, :url => cmd, :result => doc, :output => "#{prefix}-get-collection-figures")
       end
     end
 
@@ -217,15 +218,13 @@ describe AvocadoDB do
       it "delete an existing collection by identifier" do
 	cid = AvocadoDB.create_collection(@cn)
 	cmd = api + "/" + String(cid)
-        doc = AvocadoDB.delete(cmd)
+        doc = AvocadoDB.log_delete("#{prefix}-delete-collection-identifier", cmd)
 
 	doc.code.should eq(200)
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should eq(cid)
 	doc.headers['content-type'].should eq("application/json")
-
-	AvocadoDB.log(:method => :delete, :url => cmd, :result => doc, :output => "#{prefix}-delete-collection-identifier")
 
 	cmd = api + "/" + String(cid)
 	doc = AvocadoDB.get(cmd)
@@ -237,15 +236,13 @@ describe AvocadoDB do
       it "delete an existing collection by name" do
 	cid = AvocadoDB.create_collection(@cn)
 	cmd = api + "/" + @cn
-        doc = AvocadoDB.delete(cmd)
+        doc = AvocadoDB.log_delete("#{prefix}-delete-collection-name", cmd)
 
 	doc.code.should eq(200)
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should eq(cid)
 	doc.headers['content-type'].should eq("application/json")
-
-	AvocadoDB.log(:method => :delete, :url => cmd, :result => doc, :output => "#{prefix}-delete-collection-name")
 
 	cmd = api + "/" + String(cid)
 	doc = AvocadoDB.get(cmd)
@@ -267,7 +264,7 @@ describe AvocadoDB do
       it "create a collection" do
 	cmd = api
 	body = "{ \"name\" : \"#{@cn}\" }"
-        doc = AvocadoDB.post(cmd, :body => body)
+        doc = AvocadoDB.log_post("#{prefix}-create-collection", cmd, :body => body)
 
 	doc.code.should eq(200)
 	doc.parsed_response['error'].should eq(false)
@@ -277,15 +274,13 @@ describe AvocadoDB do
 	doc.parsed_response['waitForSync'].should == false
 	doc.headers['content-type'].should eq("application/json")
 
-	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-create-collection")
-
 	AvocadoDB.drop_collection(@cn)
       end
 
       it "create a collection, sync" do
 	cmd = api
 	body = "{ \"name\" : \"#{@cn}\", \"waitForSync\" : true }"
-        doc = AvocadoDB.post(cmd, :body => body)
+        doc = AvocadoDB.log_post("#{prefix}-create-collection-sync", cmd, :body => body)
 
 	doc.code.should eq(200)
 	doc.parsed_response['error'].should eq(false)
@@ -295,12 +290,95 @@ describe AvocadoDB do
 	doc.parsed_response['waitForSync'].should == true
 	doc.headers['content-type'].should eq("application/json")
 
-	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-create-collection-sync")
+	AvocadoDB.drop_collection(@cn)
+      end
+    end
+
+################################################################################
+## updating a collection
+################################################################################
+
+    context "updating:" do
+      before do
+	@cn = "UnitTestsCollectionBasics"
+      end
+
+      it "load a collection by identifier" do
+	AvocadoDB.drop_collection(@cn)
+	cid = AvocadoDB.create_collection(@cn)
+
+	cmd = api + "/" + String(cid) + "/load"
+        doc = AvocadoDB.log_put("#{prefix}-identifier-load", cmd)
+
+	doc.code.should eq(200)
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['id'].should eq(cid)
+	doc.parsed_response['name'].should eq(@cn)
+	doc.parsed_response['status'].should eq(3)
+	doc.parsed_response['waitForSync'].should == true
+	doc.parsed_response['count'].should be_kind_of(Integer)
+	doc.headers['content-type'].should eq("application/json")
+
+	AvocadoDB.drop_collection(@cn)
+      end
+
+      it "load a collection by name" do
+	AvocadoDB.drop_collection(@cn)
+	cid = AvocadoDB.create_collection(@cn)
+
+	cmd = api + "/" + @cn + "/load"
+        doc = AvocadoDB.log_put("#{prefix}-name-load", cmd)
+
+	doc.code.should eq(200)
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['id'].should eq(cid)
+	doc.parsed_response['name'].should eq(@cn)
+	doc.parsed_response['status'].should eq(3)
+	doc.parsed_response['waitForSync'].should == true
+	doc.parsed_response['count'].should be_kind_of(Integer)
+	doc.headers['content-type'].should eq("application/json")
+
+	AvocadoDB.drop_collection(@cn)
+      end
+
+      it "unload a collection by identifier" do
+	AvocadoDB.drop_collection(@cn)
+	cid = AvocadoDB.create_collection(@cn)
+
+	cmd = api + "/" + String(cid) + "/unload"
+        doc = AvocadoDB.log_put("#{prefix}-identifier-unload", cmd)
+
+	doc.code.should eq(200)
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['id'].should eq(cid)
+	doc.parsed_response['name'].should eq(@cn)
+	doc.parsed_response['status'].should eq(4)
+	doc.headers['content-type'].should eq("application/json")
+
+	AvocadoDB.drop_collection(@cn)
+      end
+
+      it "unload a collection by name" do
+	AvocadoDB.drop_collection(@cn)
+	cid = AvocadoDB.create_collection(@cn)
+
+	cmd = api + "/" + @cn + "/unload"
+        doc = AvocadoDB.log_put("#{prefix}-name-unload", cmd)
+
+	doc.code.should eq(200)
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['id'].should eq(cid)
+	doc.parsed_response['name'].should eq(@cn)
+	doc.parsed_response['status'].should eq(4)
+	doc.headers['content-type'].should eq("application/json")
 
 	AvocadoDB.drop_collection(@cn)
       end
     end
+
   end
 end
-
-

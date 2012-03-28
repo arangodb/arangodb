@@ -13,7 +13,7 @@ class AvocadoDB
   def self.create_collection (name, wait_for_sync = true)
     body = "{ \"name\" : \"#{name}\", \"waitForSync\" : #{wait_for_sync} }"
 
-    doc = self.post("/_api/database/collection", :body => body)
+    doc = self.post("/_api/collection", :body => body)
 
     if doc.code == 409
       return doc.parsed_response['id']
@@ -43,6 +43,56 @@ class AvocadoDB
     doc = self.get("/_api/collection/#{name}/count") # TODO use api call
 
     return doc.parsed_response['count']
+  end
+
+################################################################################
+## issues a get
+################################################################################
+
+  def self.log_get (output, url, args = {})
+    doc = self.get(url, args);
+    self.log(:method => :get, :url => url, :body => args[:body], :headers => args[:headers], :result => doc, :output => output);
+    return doc
+  end
+
+################################################################################
+## issues a head
+################################################################################
+
+  def self.log_head (output, url, args = {})
+    doc = self.head(url, args);
+    self.log(:method => :head, :url => url, :body => args[:body], :headers => args[:headers], :result => doc, :output => output);
+    return doc
+  end
+
+################################################################################
+## issues a post
+################################################################################
+
+  def self.log_post (output, url, args = {})
+    doc = self.post(url, args);
+    self.log(:method => :post, :url => url, :body => args[:body], :headers => args[:headers], :result => doc, :output => output);
+    return doc
+  end
+
+################################################################################
+## issues a put
+################################################################################
+
+  def self.log_put (output, url, args = {})
+    doc = self.put(url, args);
+    self.log(:method => :put, :url => url, :body => args[:body], :headers => args[:headers], :result => doc, :output => output);
+    return doc
+  end
+
+################################################################################
+## issues a delete
+################################################################################
+
+  def self.log_delete (output, url, args = {})
+    doc = self.delete(url, args);
+    self.log(:method => :delete, :url => url, :body => args[:body], :headers => args[:headers], :result => doc, :output => output);
+    return doc
   end
 
 ################################################################################

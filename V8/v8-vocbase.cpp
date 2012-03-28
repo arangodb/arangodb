@@ -272,24 +272,42 @@ static bool IsDocumentId (v8::Handle<v8::Value> arg, TRI_voc_cid_t& cid, TRI_voc
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an error in a javascript object
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Object> CreateErrorObject (int errorNumber, string const& message) {
+  TRI_v8_global_t* v8g;
+  v8::HandleScope scope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  v8::Handle<v8::Object> errorObject = v8g->ErrorTempl->NewInstance();
+
+  errorObject->Set(v8::String::New("errorNum"), v8::Number::New(errorNumber));
+  errorObject->Set(v8::String::New("errorMessage"), v8::String::New(message.c_str()));
+
+  return errorObject;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief loads a collection for usage
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_vocbase_col_t const* UseCollection (v8::Handle<v8::Object> collection,
-                                               v8::Handle<v8::String>* err) {
+                                               v8::Handle<v8::Object>* err) {
                                                 
   TRI_vocbase_col_t* col = UnwrapClass<TRI_vocbase_col_t>(collection, WRP_VOCBASE_COL_TYPE);
 
   int res = TRI_UseCollectionVocBase(col->_vocbase, col);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    *err = v8::String::New(TRI_last_error());
+    *err = CreateErrorObject(res, "cannot use/load collection");
     return 0;
   }
 
   if (col->_collection == 0) {
     TRI_set_errno(TRI_ERROR_INTERNAL);
-    *err = v8::String::New(TRI_last_error());
+    *err = CreateErrorObject(TRI_ERROR_NO_ERROR, "cannot use/load collection");
     return 0;
   }
 
@@ -391,24 +409,6 @@ static void StoreGeoResult (TRI_vocbase_col_t const* collection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an error in a javascript object
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Object> CreateErrorObject (int errorNumber, string const& message) {
-  TRI_v8_global_t* v8g;
-  v8::HandleScope scope;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-  v8::Handle<v8::Object> errorObject = v8g->ErrorTempl->NewInstance();
-
-  errorObject->Set(v8::String::New("errorNum"), v8::Number::New(errorNumber));
-  errorObject->Set(v8::String::New("errorMessage"), v8::String::New(message.c_str()));
-
-  return errorObject;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -435,7 +435,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
   // extract the collection
   v8::Handle<v8::Object> operand = argv.Holder();
 
-  v8::Handle<v8::String> err;
+  v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(operand, &err);
 
   if (collection == 0) {
@@ -895,7 +895,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   // extract the collection
   v8::Handle<v8::Object> operand = argv.Holder();
 
-  v8::Handle<v8::String> err;
+  v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(operand, &err);
 
   if (collection == 0) {
@@ -1049,7 +1049,7 @@ static v8::Handle<v8::Value> JS_DocumentQuery (v8::Arguments const& argv) {
   // extract the collection
   v8::Handle<v8::Object> operand = argv.Holder();
 
-  v8::Handle<v8::String> err;
+  v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(operand, &err);
 
   if (collection == 0) {
@@ -1157,7 +1157,7 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
   // extract the collection
   v8::Handle<v8::Object> operand = argv.Holder();
 
-  v8::Handle<v8::String> err;
+  v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(operand, &err);
 
   if (collection == 0) {
@@ -1257,7 +1257,7 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
   // extract the collection
   v8::Handle<v8::Object> operand = argv.Holder();
 
-  v8::Handle<v8::String> err;
+  v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(operand, &err);
 
   if (collection == 0) {
@@ -1927,8 +1927,8 @@ static v8::Handle<v8::Value> JS_HashSelectAql (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("expecting a COLLECTION as second argument")));
   }
   v8::Handle<v8::Object> collectionObj = collectionArg->ToObject();
-  v8::Handle<v8::String> err;
 
+  v8::Handle<v8::Object> err;
   const TRI_vocbase_col_t* collection = UseCollection(collectionObj, &err);
 
   if (collection == 0) {
@@ -2028,12 +2028,13 @@ static v8::Handle<v8::Value> JS_SkiplistSelectAql (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("expecting a COLLECTION as first argument")));
   }
   v8::Handle<v8::Object> collectionObj = collectionArg->ToObject();
-  v8::Handle<v8::String> err;
+
+  v8::Handle<v8::Object> err;
   const TRI_vocbase_col_t* collection = UseCollection(collectionObj, &err);
+
   if (collection == 0) {
     return scope.Close(v8::ThrowException(err));
   }
-
   
   // ...........................................................................
   // Extract the where clause
@@ -3089,7 +3090,7 @@ static v8::Handle<v8::Value> JS_HasNextCursor (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  v8::Handle<v8::String> err;
+  v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
 
   if (collection == 0) {
@@ -3119,7 +3120,7 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_DeleteVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  v8::Handle<v8::String> err;
+  v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
 
   if (collection == 0) {
@@ -3213,7 +3214,7 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  v8::Handle<v8::String> err;
+  v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
 
   if (collection == 0) {
@@ -3296,7 +3297,7 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  v8::Handle<v8::String> err;
+  v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
 
   if (collection == 0) {
@@ -3397,12 +3398,12 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
 
 static v8::Handle<v8::Value> JS_EnsureUniqueConstraintVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;  
-  v8::Handle<v8::String> err;
   
   // .............................................................................
   // Check that we have a valid collection                      
   // .............................................................................
 
+  v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
   
   if (collection == 0) {
@@ -3562,12 +3563,12 @@ static v8::Handle<v8::Value> JS_EnsureUniqueConstraintVocbaseCol (v8::Arguments 
 
 static v8::Handle<v8::Value> JS_EnsureMultiHashIndexVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;  
-  v8::Handle<v8::String> err;
   
   // .............................................................................
   // Check that we have a valid collection                      
   // .............................................................................
 
+  v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
   
   if (collection == 0) {
@@ -3727,12 +3728,12 @@ static v8::Handle<v8::Value> JS_EnsureMultiHashIndexVocbaseCol (v8::Arguments co
 
 static v8::Handle<v8::Value> JS_EnsureSkiplistIndexVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;  
-  v8::Handle<v8::String> err;
   
   // .............................................................................
   // Check that we have a valid collection                      
   // .............................................................................
 
+  v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
   
   if (collection == 0) {
@@ -3894,12 +3895,12 @@ static v8::Handle<v8::Value> JS_EnsureSkiplistIndexVocbaseCol (v8::Arguments con
 
 static v8::Handle<v8::Value> JS_EnsureMultiSkiplistIndexVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;  
-  v8::Handle<v8::String> err;
   
   // .............................................................................
   // Check that we have a valid collection                      
   // .............................................................................
 
+  v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
   
   if (collection == 0) {
@@ -4101,7 +4102,7 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  v8::Handle<v8::String> err;
+  v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
 
   if (collection == 0) {
@@ -4141,7 +4142,7 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
 static v8::Handle<v8::Value> JS_LoadVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  v8::Handle<v8::String> err;
+  v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
 
   if (collection == 0) {
@@ -4200,7 +4201,7 @@ static v8::Handle<v8::Value> JS_ParameterVocbaseCol (v8::Arguments const& argv) 
 
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
-  v8::Handle<v8::String> err;
+  v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
 
   if (collection == 0) {
@@ -4317,7 +4318,7 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  v8::Handle<v8::String> err;
+  v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
 
   if (collection == 0) {
@@ -4417,7 +4418,7 @@ static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  v8::Handle<v8::String> err;
+  v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
 
   if (collection == 0) {
@@ -4486,10 +4487,7 @@ static v8::Handle<v8::Value> JS_UnloadVocbaseCol (v8::Arguments const& argv) {
   int res = TRI_UnloadCollectionVocBase(collection->_vocbase, collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
-      string err = "cannot load collection: ";
-      err += TRI_last_error();
-
-      return scope.Close(v8::ThrowException(v8::String::New(err.c_str())));
+    return scope.Close(v8::ThrowException(CreateErrorObject(res, "cannot unload collection")));
   }
 
   return scope.Close(v8::Undefined());
@@ -4527,7 +4525,7 @@ static v8::Handle<v8::Value> JS_UnloadVocbaseCol (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_ReplaceEdgesCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  v8::Handle<v8::String> err;
+  v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
 
   if (collection == 0) {
@@ -4600,7 +4598,7 @@ static v8::Handle<v8::Value> JS_ReplaceEdgesCol (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_SaveEdgesCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  v8::Handle<v8::String> err;
+  v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
 
   if (collection == 0) {
