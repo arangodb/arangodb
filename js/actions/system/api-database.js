@@ -74,7 +74,7 @@ actions.defineHttp({
       for (var i = 0;  i < collections.length;  ++i) {
         collection = collections[i];
 
-        result.push({ id : collection._id, name : collection._name });
+        result.push({ id : collection._id, name : collection.name() });
       }
 
       actions.result(req, res, actions.HTTP_OK, result);
@@ -129,7 +129,7 @@ function GET_api_database_collection (req, res) {
       var result = {};
       
       result.id = collection._id;
-      result.name = collection._name;
+      result.name = collection.name();
       
       actions.resultOk(req, res, actions.HTTP_OK, result);
     }
@@ -199,7 +199,7 @@ function POST_api_database_collection (req, res) {
                     actions.VERR_COLLECTION_EXISTS,
                     "collection already exists",
                     undefined,
-                    { name : collection._name, id : collection._id });
+                    { name : collection.name(), id : collection._id });
     }
     else {
       collection = db[name];
@@ -219,7 +219,7 @@ function POST_api_database_collection (req, res) {
           var result = {};
 
           result.id = collection._id;
-          result.name = collection._name;
+          result.name = collection.name();
 
           collection.parameter({ waitForSync : waitForSync });
 

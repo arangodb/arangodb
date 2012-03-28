@@ -62,7 +62,7 @@
 /// The basic operations (create, read, update, delete) for documents are mapped
 /// to the standard HTTP methods (POST, GET, PUT, DELETE).
 ///
-/// @section HttpCollectionResource Address of an Collection
+/// @section HttpCollectionResource Address of a Collection
 ////////////////////////////////////////////////////////////
 ///
 /// All collections in AvocadoDB have an unique identifier. This collection

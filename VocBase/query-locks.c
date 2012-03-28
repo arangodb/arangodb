@@ -256,18 +256,6 @@ bool TRI_AddCollectionsBarrierQueryInstance (TRI_query_instance_t* const instanc
   return true;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hand over locks from query instance to result cursor
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_HandoverLocksQueryInstance (TRI_query_instance_t* const instance,
-                                     TRI_query_cursor_t* const cursor) {
-  cursor->_locks   = instance->_locks;
-  instance->_locks = NULL;
-  // cursor is now responsible for freeing the locks
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a vector for holding collection locks
 ////////////////////////////////////////////////////////////////////////////////

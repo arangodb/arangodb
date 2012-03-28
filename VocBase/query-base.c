@@ -1121,9 +1121,6 @@ static void FreeJoinsQueryInstance (TRI_query_instance_t* const instance) {
 
 static bool AddBindParameterValues (TRI_query_instance_t* const instance, 
                                     const TRI_json_t* parameters) {
-  TRI_bind_parameter_t* parameter;
-  void* nameParameter;
-  void* valueParameter;
   size_t i;
 
   assert(parameters);
@@ -1136,6 +1133,10 @@ static bool AddBindParameterValues (TRI_query_instance_t* const instance,
   }
     
   for (i = 0; i < parameters->_value._objects._length; i += 2) {
+    void* nameParameter;
+    void* valueParameter;
+    TRI_bind_parameter_t* parameter;
+
     nameParameter = TRI_AtVector(&parameters->_value._objects, i);
     valueParameter = TRI_AtVector(&parameters->_value._objects, i + 1);
 
@@ -1181,7 +1182,6 @@ static bool AddBindParameterValues (TRI_query_instance_t* const instance,
 static bool ValidateBindParameters (TRI_query_instance_t* const instance) {
   TRI_associative_pointer_t* templateParameters;
   TRI_associative_pointer_t* instanceParameters;
-  TRI_bind_parameter_t* parameter;
   size_t i;
 
   templateParameters = &instance->_template->_bindParameters;
@@ -1189,6 +1189,8 @@ static bool ValidateBindParameters (TRI_query_instance_t* const instance) {
 
   // enumerate all template bind parameters....
   for (i = 0; i < templateParameters->_nrAlloc; i++) {
+    TRI_bind_parameter_t* parameter;
+
     parameter = (TRI_bind_parameter_t*) templateParameters->_table[i];
     if (!parameter) {
       continue;

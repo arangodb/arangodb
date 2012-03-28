@@ -113,7 +113,7 @@ function buildDocumentFromReq(req) {
 
 function postKeyValue(req, res) {
   if (req.suffix.length < 2) {
-    actions.actionResultError (req, res, 404, actions.keyValueNotModified, "Key value pair not created. Missing key."); 
+    actions.resultError (req, res, 404, actions.keyValueNotModified, "Key value pair not created. Missing key."); 
     return;
   }
 
@@ -121,7 +121,7 @@ function postKeyValue(req, res) {
     var collection = req.suffix[0];
     
     if (db._collection(collection) == null) {
-      actions.actionResultError (req, res, 404, actions.keyValueNotModified, "Collection not found."); 
+      actions.resultError (req, res, 404, actions.keyValueNotModified, "Collection not found."); 
       return;      
     }
     
@@ -131,7 +131,7 @@ function postKeyValue(req, res) {
     s.execute();
         
     if (s._countTotal != 0) {
-      actions.actionResultError (req, res, 404, actions.keyValueNotModified, "Use PUT to change value");      
+      actions.resultError (req, res, 404, actions.keyValueNotModified, "Use PUT to change value");      
     }
     else {
       var id = db[collection].save(doc);    
@@ -139,11 +139,11 @@ function postKeyValue(req, res) {
         "saved" : true,
         "_id" : id
       }
-      actions.actionResultOK(req, res, 201, result);      
+      actions.resultOk(req, res, 201, result);      
     }
   }
   catch (e) {
-    actions.actionResultError (req, res, 404, actions.keyValueNotModified, "Key value pair not created. " + e.message);
+    actions.resultError (req, res, 404, actions.keyValueNotModified, "Key value pair not created. " + e.message);
   }
 }
 
@@ -153,7 +153,7 @@ function postKeyValue(req, res) {
 
 function putKeyValue(req, res) {
   if (req.suffix.length < 2) {
-    actions.actionResultError (req, res, 404, actions.keyValueNotModified, "Key value pair not found");
+    actions.resultError (req, res, 404, actions.keyValueNotModified, "Key value pair not found");
     return;
   }
 
@@ -161,7 +161,7 @@ function putKeyValue(req, res) {
     var collection = req.suffix[0];
     
     if (db._collection(collection) == null) {
-      actions.actionResultError (req, res, 404, actions.keyValueNotModified, "Collection not found."); 
+      actions.resultError (req, res, 404, actions.keyValueNotModified, "Collection not found."); 
       return;      
     }
     
@@ -177,13 +177,13 @@ function putKeyValue(req, res) {
           "saved" : true,
           "_id" : id
         }
-        actions.actionResultOK(req, res, 201, result);      
+        actions.resultOk(req, res, 201, result);      
         return;
       }
-      actions.actionResultError (req, res, 404, actions.keyValueNotModified, "Key value pair not found");      
+      actions.resultError (req, res, 404, actions.keyValueNotModified, "Key value pair not found");      
     }
     else if (s._countTotal > 1) {
-      actions.actionResultError (req, res, 404, actions.keyValueNotModified, "Key value pair not found. Wrong key?");
+      actions.resultError (req, res, 404, actions.keyValueNotModified, "Key value pair not found. Wrong key?");
     }
     else {
       // get _id
@@ -197,15 +197,15 @@ function putKeyValue(req, res) {
       
       // replace the document
       if (db[collection].replace(id, doc)) {            
-        actions.actionResultOK(req, res, 202, {"changed" : true});                              
+        actions.resultOk(req, res, 202, {"changed" : true});                              
       }
       else {
-        actions.actionResultError(req, res, 404, actions.keyValueNotModified, "Value not changed");        
+        actions.resultError(req, res, 404, actions.keyValueNotModified, "Value not changed");        
       }
     }
   }
   catch (e) {
-    actions.actionResultError (req, res, 404, actions.keyValueNotModified, "Key value pair not found. " + e.message);
+    actions.resultError (req, res, 404, actions.keyValueNotModified, "Key value pair not found. " + e.message);
   }
 }
 
@@ -215,7 +215,7 @@ function putKeyValue(req, res) {
 
 function deleteKeyValue(req, res) {
   if (req.suffix.length < 2) {
-    actions.actionResultError (req, res, 404, actions.keyValueNotModified, "Key value pair not found");
+    actions.resultError (req, res, 404, actions.keyValueNotModified, "Key value pair not found");
     return;
   }
 
@@ -223,7 +223,7 @@ function deleteKeyValue(req, res) {
     var collection = req.suffix[0];
     
     if (db._collection(collection) == null) {
-      actions.actionResultError (req, res, 404, actions.keyValueNotModified, "Collection not found."); 
+      actions.resultError (req, res, 404, actions.keyValueNotModified, "Collection not found."); 
       return;      
     }
     
@@ -237,23 +237,23 @@ function deleteKeyValue(req, res) {
     s.execute();
     
     if (s._countTotal < 1) {
-      actions.actionResultError (req, res, 404, actions.keyValueNotModified, "Key value pair not found");      
+      actions.resultError (req, res, 404, actions.keyValueNotModified, "Key value pair not found");      
     }
     else if (s._countTotal > 1) {
-      actions.actionResultError (req, res, 404, actions.keyValueNotModified, "Key value pair not found. Wrong key?");
+      actions.resultError (req, res, 404, actions.keyValueNotModified, "Key value pair not found. Wrong key?");
     }
     else {
       var id = s._execution._documents[0]._id;
       if (db[collection].delete(id)) {            
-        actions.actionResultOK(req, res, 202, {"removed" : true});                              
+        actions.resultOk(req, res, 202, {"removed" : true});                              
       }
       else {
-        actions.actionResultError(req, res, 404, actions.keyValueNotModified, "Value not removed");        
+        actions.resultError(req, res, 404, actions.keyValueNotModified, "Value not removed");        
       }
     }
   }
   catch (e) {
-    actions.actionResultError (req, res, 404, actions.keyValueNotModified, "Key value pair not found. " + e.message);
+    actions.resultError (req, res, 404, actions.keyValueNotModified, "Key value pair not found. " + e.message);
   }
 }
 
@@ -263,7 +263,7 @@ function deleteKeyValue(req, res) {
 
 function getKeyValue(req, res) {
   if (req.suffix.length < 2) {
-    actions.actionResultError (req, res, 404, actions.keyValueNotFound, "Key value pair not found");
+    actions.resultError (req, res, 404, actions.keyValueNotFound, "Key value pair not found");
     return;
   }
 
@@ -271,7 +271,7 @@ function getKeyValue(req, res) {
     var collection = req.suffix[0];
     
     if (db._collection(collection) == null) {
-      actions.actionResultError (req, res, 404, actions.keyValueNotFound, "Collection not found."); 
+      actions.resultError (req, res, 404, actions.keyValueNotFound, "Collection not found."); 
       return;      
     }
     
@@ -285,10 +285,10 @@ function getKeyValue(req, res) {
     s.execute();
     
     if (s._countTotal < 1) {
-      actions.actionResultError (req, res, 404, actions.keyValueNotFound, "Key value pair not found");      
+      actions.resultError (req, res, 404, actions.keyValueNotFound, "Key value pair not found");      
     }
     else if (s._countTotal > 1) {
-      actions.actionResultError (req, res, 404, actions.keyValueNotFound, "Key value pair not found. Wrong key?");
+      actions.resultError (req, res, 404, actions.keyValueNotFound, "Key value pair not found. Wrong key?");
     }
     else {
       var headers = {};
@@ -306,11 +306,11 @@ function getKeyValue(req, res) {
         headers["x-voc-created"] = formatTimeStamp(s._execution._documents[0]["x-voc-created"]);
       }
       
-      actions.actionResultOK(req, res, 200, s._execution._documents[0].value, headers);                      
+      actions.resultOk(req, res, 200, s._execution._documents[0].value, headers);                      
     }
   }
   catch (e) {
-    actions.actionResultError (req, res, 404, actions.keyValueNotFound, "Key value pair not found. " + e.message);
+    actions.resultError (req, res, 404, actions.keyValueNotFound, "Key value pair not found. " + e.message);
   }
 }
 
@@ -345,7 +345,7 @@ actions.defineHttp({
         break;
 
       default:
-        actions.actionResultUnsupported(req, res);
+        actions.resultUnsupported(req, res);
     }
   }
 });
@@ -370,7 +370,7 @@ actions.defineHttp({
 
 function searchKeyValue(req, res) {
   if (req.suffix.length < 2) {
-    actions.actionResultError (req, res, 404, actions.keyValueNotFound, "Key value pairs not found.");
+    actions.resultError (req, res, 404, actions.keyValueNotFound, "Key value pairs not found.");
     return;
   }
 
@@ -378,7 +378,7 @@ function searchKeyValue(req, res) {
     var collection = req.suffix[0];
     
     if (db._collection(collection) == null) {
-      actions.actionResultError (req, res, 404, actions.keyValueNotFound, "Collection not found."); 
+      actions.resultError (req, res, 404, actions.keyValueNotFound, "Collection not found."); 
       return;      
     }
     
@@ -407,10 +407,10 @@ function searchKeyValue(req, res) {
       }
     }
 
-    actions.actionResult (req, res, 200, result);
+    actions.result (req, res, 200, result);
   }
   catch (e) {
-    actions.actionResultError (req, res, 404, actions.keyValueNotFound, "Key value pairs not found. " + e.message);
+    actions.resultError (req, res, 404, actions.keyValueNotFound, "Key value pairs not found. " + e.message);
   }
 }
 
@@ -433,7 +433,7 @@ actions.defineHttp({
         break;
         
       default:
-        actions.actionResultUnsupported(req, res);
+        actions.resultUnsupported(req, res);
     }
   }
 });

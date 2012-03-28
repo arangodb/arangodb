@@ -84,7 +84,7 @@ function getCursorResult(cursor) {
 
 function postCursor(req, res) {
   if (req.suffix.length != 0) {
-    actions.actionResultError (req, res, 404, actions.errorInvalidRequest, "Invalid request");
+    actions.resultError (req, res, 404, actions.errorInvalidRequest, "Invalid request");
     return;
   }
 
@@ -92,7 +92,7 @@ function postCursor(req, res) {
     var json = JSON.parse(req.requestBody);
       
     if (!json || !(json instanceof Object)) {
-      actions.actionResultError (req, res, 400, actions.errorQuerySpecificationInvalid, "Query specification invalid");
+      actions.resultError (req, res, 400, actions.errorQuerySpecificationInvalid, "Query specification invalid");
       return;
     }
 
@@ -104,23 +104,23 @@ function postCursor(req, res) {
                              (json.batchSize != undefined ? json.batchSize : 1000));  
     }
     else {
-      actions.actionResultError (req, res, 400, actions.errorQuerySpecificationInvalid, "Query specification invalid");
+      actions.resultError (req, res, 400, actions.errorQuerySpecificationInvalid, "Query specification invalid");
       return;
     }
    
     if (cursor instanceof AvocadoQueryError) {
       // error occurred
-      actions.actionResultError (req, res, 404, cursor.code, cursor.message);
+      actions.resultError (req, res, 404, cursor.code, cursor.message);
       return;
     }
 
     // this might dispose or persist the cursor
     var result = getCursorResult(cursor);
 
-    actions.actionResultOK(req, res, 201, result);
+    actions.resultOk(req, res, 201, result);
   }
   catch (e) {
-    actions.actionResultError (req, res, 404, actions.errorJavascriptException, "Javascript exception");
+    actions.resultError (req, res, 404, actions.errorJavascriptException, "Javascript exception");
   }
 }
 
@@ -130,7 +130,7 @@ function postCursor(req, res) {
 
 function putCursor(req, res) {
   if (req.suffix.length != 1) {
-    actions.actionResultError (req, res, 404, actions.errorInvalidRequest, "Invalid request");
+    actions.resultError (req, res, 404, actions.errorInvalidRequest, "Invalid request");
     return;
   }
 
@@ -142,10 +142,10 @@ function putCursor(req, res) {
     } 
 
     // note: this might dispose or persist the cursor
-    actions.actionResultOK(req, res, 200, getCursorResult(cursor));
+    actions.resultOk(req, res, 200, getCursorResult(cursor));
   }
   catch (e) {
-    actions.actionResultError (req, res, 404, actions.errorCursorNotFound, "Cursor not found");
+    actions.resultError (req, res, 404, actions.errorCursorNotFound, "Cursor not found");
   }
 }
 
@@ -155,7 +155,7 @@ function putCursor(req, res) {
 
 function deleteCursor(req, res) {
   if (req.suffix.length != 1) {
-    actions.actionResultError (req, res, 404, actions.errorInvalidRequest, "Invalid request");
+    actions.resultError (req, res, 404, actions.errorInvalidRequest, "Invalid request");
     return;
   }
 
@@ -167,10 +167,10 @@ function deleteCursor(req, res) {
     }
 
     cursor.dispose();
-    actions.actionResultOK(req, res, 202, { "_id" : cursorId });                
+    actions.resultOk(req, res, 202, { "_id" : cursorId });                
   }
   catch (e) {
-    actions.actionResultError (req, res, 404, actions.errorCursorNotFound, "Cursor not found");
+    actions.resultError (req, res, 404, actions.errorCursorNotFound, "Cursor not found");
   }
 }
 
@@ -201,7 +201,7 @@ actions.defineHttp({
         break;
 
       default:
-        actions.actionResultUnsupported(req, res);
+        actions.resultUnsupported(req, res);
     }
   }
 });
