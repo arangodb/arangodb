@@ -113,7 +113,7 @@ TRI_qry_select_t* TRI_CreateQuerySelectDocument () {
   TRI_qry_select_direct_t* result;
 
   result = TRI_Allocate(sizeof(TRI_qry_select_direct_t));
-
+  
   result->base._type = TRI_QRY_SELECT_DOCUMENT;
 
   result->base.clone = CloneQuerySelectDocument;
@@ -949,29 +949,36 @@ TRI_qry_where_t* TRI_CreateQueryWhereSkiplistConstant (TRI_idx_iid_t iid, TRI_sl
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool InitCollectionsQuery (TRI_query_t* query) {
-  TRI_join_part_t* part;
-  TRI_vocbase_col_t const* collection;
+  TRI_vocbase_col_t* collection;
   size_t i;
 
-#warning FIX TRI_LoadCollectionVocBase => TRI_UseCollectionByNameVocBase & TRI_ReleaseCollectionVocBase
-
-#if 0
   assert(query->_vocbase);
 
   for (i = 0 ; i < query->_joins->_parts._length; i++) {
+    TRI_join_part_t* part;
+
     part = (TRI_join_part_t*) query->_joins->_parts._buffer[i];
     assert(part->_collection == NULL);
     assert(part->_alias);
-    collection = TRI_LoadCollectionVocBase(query->_vocbase, part->_collectionName);
+    collection = TRI_UseCollectionByNameVocBase(query->_vocbase, part->_collectionName);
     if (!collection) {
+      size_t j;
+
+      // unlock collections again
+      for (j = 0; j < i; ++j) {
+        part = (TRI_join_part_t*) query->_joins->_parts._buffer[j];
+        if (part->_collection) {
+          TRI_ReleaseCollectionVocBase(query->_vocbase, part->_collection);
+          part->_collection = NULL; 
+        }
+      }
       return false;
     }
-    part->_collection = (TRI_doc_collection_t*) collection->_collection;
+    part->_collection = collection;
     if (part->_type == JOIN_TYPE_PRIMARY) {
-      query->_primary = part->_collection;
+      query->_primary = collection->_collection;
     }
   }
-#endif
 
   return true;
 }
@@ -1064,6 +1071,17 @@ void TRI_FreeQuery (TRI_query_t* query) {
     query->_where->free(query->_where);
   }
   if (query->_joins != NULL) {
+    TRI_join_part_t* part;
+    size_t i;
+
+    // unlock collections 
+    for (i = 0; i < query->_joins->_parts._length; ++i) {
+      part = (TRI_join_part_t*) query->_joins->_parts._buffer[i];
+      if (part->_collection) {
+        TRI_ReleaseCollectionVocBase(query->_vocbase, part->_collection);
+      }
+    }
+
     query->_joins->free(query->_joins);
   }
 
@@ -1160,7 +1178,7 @@ void TRI_ReadLockCollectionsQuery (TRI_query_t* query) {
   for (i = 0; i < query->_joins->_parts._length; i++) {
     part = (TRI_join_part_t*) query->_joins->_parts._buffer[i];
     assert(part->_collection);
-    part->_collection->beginRead(part->_collection);
+    part->_collection->_collection->beginRead(part->_collection->_collection);
   }
 }
 
@@ -1183,7 +1201,7 @@ void TRI_ReadUnlockCollectionsQuery (TRI_query_t* query) {
     i--;
     part = (TRI_join_part_t*) query->_joins->_parts._buffer[i];
     assert(part->_collection);
-    part->_collection->endRead(part->_collection);
+    part->_collection->_collection->endRead(part->_collection->_collection);
   }
 }
 
@@ -1207,7 +1225,7 @@ void TRI_AddCollectionsCursor (TRI_rc_cursor_t* cursor, TRI_query_t* query) {
   for (i = 0; i < query->_joins->_parts._length; i++) {
     part = (TRI_join_part_t*) query->_joins->_parts._buffer[i];
     assert(part->_collection);
-    ce = TRI_CreateBarrierElement(&part->_collection->_barrierList);
+    ce = TRI_CreateBarrierElement(&part->_collection->_collection->_barrierList);
     TRI_PushBackVectorPointer(&cursor->_containers, ce);
   }
 }

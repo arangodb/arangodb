@@ -429,6 +429,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_collection_t* collection,
   // create collection structure
   if (collection == NULL) {
     collection = TRI_Allocate(sizeof(TRI_collection_t));
+    /* FIXME: memory allocation might fail */
   }
 
   InitCollection(collection, filename, parameter);
@@ -807,6 +808,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_collection_t* collection, char const* 
   // create collection
   if (collection == NULL) {
     collection = TRI_Allocate(sizeof(TRI_collection_t));
+    /* FIXME: memory allocation might fail */
     freeCol = true;
   }
 

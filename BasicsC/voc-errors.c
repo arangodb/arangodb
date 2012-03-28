@@ -22,7 +22,9 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_DEAD_PID, "dead process identifier");
   REG_ERROR(ERROR_NOT_IMPLEMENTED, "not implemented");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
+  REG_ERROR(ERROR_HTTP_NOT_FOUND, "not found");
   REG_ERROR(ERROR_HTTP_METHOD_NOT_ALLOWED, "method not supported");
+  REG_ERROR(ERROR_HTTP_SERVER_ERROR, "internal server error");
   REG_ERROR(ERROR_HTTP_CORRUPTED_JSON, "invalid JSON object");
   REG_ERROR(ERROR_HTTP_SUPERFLUOUS_SUFFICES, "superfluous URL suffices");
   REG_ERROR(ERROR_AVOCADO_ILLEGAL_STATE, "illegal state");

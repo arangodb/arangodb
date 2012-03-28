@@ -131,7 +131,7 @@ function GET_api_database_collection (req, res) {
       result.id = collection._id;
       result.name = collection._name;
       
-      actions.resultOK(req, res, actions.HTTP_OK, result);
+      actions.resultOk(req, res, actions.HTTP_OK, result);
     }
   }
 }
@@ -223,7 +223,7 @@ function POST_api_database_collection (req, res) {
 
           collection.parameter({ waitForSync : waitForSync });
 
-          actions.resultOK(req, res, actions.HTTP_OK, result);
+          actions.resultOk(req, res, actions.HTTP_OK, result);
         }
       }
     }

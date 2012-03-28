@@ -134,7 +134,7 @@ bool TRI_LockCollectionsQueryInstance (TRI_vocbase_t* const vocbase,
         insert = false;
    
         // still we need to give the join part the collection pointer 
-        part->_collection = lock->_collection->_collection;
+        part->_collection = lock->_collection;
         break;
       }
     }
@@ -180,7 +180,7 @@ bool TRI_LockCollectionsQueryInstance (TRI_vocbase_t* const vocbase,
 
     TRI_InsertVectorPointer(locks, lock, j);
       
-    part->_collection = lock->_collection->_collection;
+    part->_collection = lock->_collection;
   }
   
   return true;

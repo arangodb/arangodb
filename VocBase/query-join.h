@@ -73,7 +73,7 @@ typedef struct TRI_join_part_s {
   TRI_join_type_e _type;
   QL_ast_query_where_t* _where;
   TRI_vector_pointer_t* _ranges;
-  TRI_doc_collection_t* _collection;
+  TRI_vocbase_col_t* _collection;
   char* _collectionName;
   char* _alias;
   struct {

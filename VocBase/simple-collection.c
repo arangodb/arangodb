@@ -288,7 +288,7 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* collection,
   TRI_doc_datafile_info_t* dfi;
   int res;
   int originalRes;
-
+  
   // .............................................................................
   // create header
   // .............................................................................
@@ -1708,10 +1708,17 @@ static bool InitSimCollection (TRI_sim_collection_t* collection,
 
   // create primary index
   primary = TRI_Allocate(sizeof(TRI_index_t));
-  id = TRI_DuplicateString("_id");
-
-  if (primary == NULL || id == NULL) {
+  if (primary == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return false;
+  }
+
+  id = TRI_DuplicateString("_id");
+  if (id == NULL) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    TRI_Free(primary);
+
     return false;
   }
 

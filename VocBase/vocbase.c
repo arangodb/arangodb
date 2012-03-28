@@ -373,10 +373,17 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
 
   // create a new proxy
   collection = TRI_Allocate(sizeof(TRI_vocbase_col_t));
+  if (collection == NULL) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return NULL;
+  }
+
   collection->_vocbase = vocbase;
   collection->_type = type;
   TRI_CopyString(collection->_name, name, sizeof(collection->_name));
   collection->_path = (path == NULL ? NULL : TRI_DuplicateString(path));
+  /* FIXME: memory allocation might fail */
   collection->_collection = NULL;
   collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
   collection->_cid = cid;
@@ -929,11 +936,25 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   // .............................................................................
 
   vocbase = TRI_Allocate(sizeof(TRI_vocbase_t));
+  if (!vocbase) {
+    TRI_FreeString(lockFile);
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return NULL;
+  }
 
   vocbase->_cursors = TRI_CreateShadowsQueryCursor();
   vocbase->_functions = TRI_InitialiseQueryFunctions();
   vocbase->_lockFile = lockFile;
   vocbase->_path = TRI_DuplicateString(path);
+
+  if (!vocbase->_path) {
+    TRI_Free(vocbase);
+    TRI_FreeString(lockFile);
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return NULL;
+  }
 
   TRI_InitVectorPointer(&vocbase->_collections);
 
@@ -1513,7 +1534,6 @@ int TRI_UseCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collect
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-
 /// @brief locks a (document) collection for usage by name
 ////////////////////////////////////////////////////////////////////////////////
 
