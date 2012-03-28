@@ -69,6 +69,8 @@ using namespace triagens::avocado;
 #include "js/common/bootstrap/js-print.h"
 #include "js/common/bootstrap/js-errors.h"
 #include "js/server/js-aql-operators.h"
+#include "js/server/js-aql-functions-numeric.h"
+#include "js/server/js-aql-functions-string.h"
 #include "js/server/js-server.h"
 
 // -----------------------------------------------------------------------------
@@ -401,6 +403,8 @@ void AvocadoServer::buildApplicationServer () {
     StartupLoader.defineScript("common/bootstrap/print.js", JS_common_bootstrap_print);
     StartupLoader.defineScript("common/bootstrap/errors.js", JS_common_bootstrap_errors);
     StartupLoader.defineScript("server/aql-operators.js", JS_server_aql_operators);
+    StartupLoader.defineScript("server/aql-functions-numeric.js", JS_server_aql_functions_numeric);
+    StartupLoader.defineScript("server/aql-functions-string.js", JS_server_aql_functions_string);
     StartupLoader.defineScript("server/server.js", JS_server_server);
   }
   else {
@@ -635,6 +639,8 @@ void AvocadoServer::executeShell () {
                           "common/bootstrap/print.js",
                           "common/bootstrap/errors.js",
                           "server/aql-operators.js",
+                          "server/aql-functions-numeric.js",
+                          "server/aql-functions-string.js",
                           "server/server.js"
   };
   size_t i;

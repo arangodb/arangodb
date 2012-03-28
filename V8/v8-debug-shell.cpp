@@ -214,6 +214,8 @@ int main (int argc, char* argv[]) {
     "js/bootstrap/print.js",
     "js/bootstrap/errors.js",
     "js/server/aql-operators.js",
+    "js/server/aql-functions-numeric.js",
+    "js/server/aql-functions-string.js",
     "js/modules/shell.js",
     "js/modules/json.js"
   };

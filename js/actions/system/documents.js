@@ -2,7 +2,7 @@ var actions = require("actions");
 
 function getDocuments(req, res) {
   if (req.suffix.length != 1) {
-    actions.actionResultError (req, res, 404, actions.collectionNotFound, "Collection not found");
+    actions.resultError (req, res, 404, actions.collectionNotFound, "Collection not found");
     return;
   }
   
@@ -26,10 +26,10 @@ function getDocuments(req, res) {
 
   try {  
     var result = db[collection].ALL(skip, limit);
-    actions.actionResultOK(req, res, 200, result);    
+    actions.resultOk(req, res, 200, result);    
   }
   catch (e) {
-    actions.actionResultError (req, res, 404, actions.collectionNotFound, "Collection not found") 
+    actions.resultError (req, res, 404, actions.collectionNotFound, "Collection not found") 
   }
 }
 
@@ -44,7 +44,7 @@ actions.defineHttp({
         break;
 
       default:
-        actions.actionResultUnsupported(req, res);
+        actions.resultUnsupported(req, res);
     }
   },
 

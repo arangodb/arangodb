@@ -108,6 +108,24 @@ TRI_associative_pointer_t* TRI_InitialiseQueryFunctions (void) {
   
   // string concat
   TRI_RegisterQueryFunction(functions, "concat", "AQL_STRING_CONCAT", 1, 1024);
+  
+  // numeric functions
+  TRI_RegisterQueryFunction(functions, "floor", "AQL_NUMBER_FLOOR", 1, 1);
+  TRI_RegisterQueryFunction(functions, "ceil", "AQL_NUMBER_CEIL", 1, 1);
+  TRI_RegisterQueryFunction(functions, "round", "AQL_NUMBER_ROUND", 1, 1);
+  TRI_RegisterQueryFunction(functions, "abs", "AQL_NUMBER_ABS", 1, 1);
+  TRI_RegisterQueryFunction(functions, "min", "AQL_NUMBER_MIN", 1, 1);
+  TRI_RegisterQueryFunction(functions, "max", "AQL_NUMBER_MAX", 1, 1);
+  TRI_RegisterQueryFunction(functions, "rand", "AQL_NUMBER_RAND", 0, 0);
+  
+  // string functions
+  TRI_RegisterQueryFunction(functions, "length", "AQL_STRING_LENGTH", 1, 1);
+  TRI_RegisterQueryFunction(functions, "substring", "AQL_STRING_SUBSTRING", 2, 3);
+  TRI_RegisterQueryFunction(functions, "upper", "AQL_STRING_UPPER", 1, 1);
+  TRI_RegisterQueryFunction(functions, "lower", "AQL_STRING_LOWER", 1, 1);
+  TRI_RegisterQueryFunction(functions, "position", "AQL_STRING_POSITION", 2, 3);
+  TRI_RegisterQueryFunction(functions, "contains", "AQL_STRING_CONTAINS", 2, 3);
+  TRI_RegisterQueryFunction(functions, "replace", "AQL_STRING_REPLACE", 3, 4);
 
   return functions;
 }
