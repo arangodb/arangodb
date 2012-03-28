@@ -57,7 +57,16 @@ var API = "_api/";
 ////////////////////////////////////////////////////////////////////////////////
 
 function POST_api_collection (req, res) {
-  var body = JSON.parse(req.requestBody || "{}");
+  var body;
+
+  try {
+    body = JSON.parse(req.requestBody || "{}") || {};
+  }
+  catch (err) {
+    actions.resultBad(req, res, actions.ERROR_HTTP_CORRUPTED_JSON, err);
+    return;
+  }
+
   var waitForSync = false;
 
   if (! body.hasOwnProperty("name")) {
@@ -72,31 +81,25 @@ function POST_api_collection (req, res) {
     waitForSync = body.waitForSync;
   }
 
-  if (db._collection(name) != null) {
-    actions.resultBad(req, res, actions.ERROR_AVOCADO_DUPLICATE_NAME,
-                      "collection '" + name + "' already exists");
-  }
-  else {
-    try {
-      var collection = db._create(name, waitForSync);
+  try {
+    var collection = db._create(name, waitForSync);
 
-      var result = {};
-      var headers = {};
+    var result = {};
+    var headers = {};
 
-      collection.parameter({ waitForSync : waitForSync });
+    collection.parameter({ waitForSync : waitForSync });
 
-      result.id = collection._id;
-      result.name = collection.name();
-      result.waitForSync = collection.parameter().waitForSync;
-      result.status = collection.status();
+    result.id = collection._id;
+    result.name = collection.name();
+    result.waitForSync = collection.parameter().waitForSync;
+    result.status = collection.status();
 
-      headers.location = "/" + API + "collection/" + collection._id;
+    headers.location = "/" + API + "collection/" + collection._id;
       
-      actions.resultOk(req, res, actions.HTTP_OK, result, headers);
-    }
-    catch (err) {
-      actions.resultException(req, res, err);
-    }
+    actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+  }
+  catch (err) {
+    actions.resultException(req, res, err);
   }
 }
 
