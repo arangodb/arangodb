@@ -33,8 +33,12 @@ extern "C" {
 ///   Will be raised when hitting an unimplemented feature.
 /// - 400: @CODE{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
+/// - 404: @CODE{not found}
+///   Will be raised when an URI is unknown.
 /// - 405: @CODE{method not supported}
 ///   Will be raised when an unsupported HTTP method is used for an operation.
+/// - 500: @CODE{internal server error}
+///   Will be raised when an internal server is encountered.
 /// - 600: @CODE{invalid JSON object}
 ///   Will be raised when a string representation an JSON object is corrupt.
 /// - 601: @CODE{superfluous URL suffices}
@@ -337,6 +341,16 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_HTTP_BAD_PARAMETER                                      (400)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 404: ERROR_HTTP_NOT_FOUND
+///
+/// not found
+///
+/// Will be raised when an URI is unknown.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_HTTP_NOT_FOUND                                          (404)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 405: ERROR_HTTP_METHOD_NOT_ALLOWED
 ///
 /// method not supported
@@ -345,6 +359,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_HTTP_METHOD_NOT_ALLOWED                                 (405)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 500: ERROR_HTTP_SERVER_ERROR
+///
+/// internal server error
+///
+/// Will be raised when an internal server is encountered.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_HTTP_SERVER_ERROR                                       (500)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 600: ERROR_HTTP_CORRUPTED_JSON
@@ -592,106 +616,6 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_AVOCADO_MAXIMAL_SIZE_TOO_SMALL                          (1206)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1207: ERROR_AVOCADO_DUPLICATE_NAME
-///
-/// duplicate name
-///
-/// Will be raised when a name duplicate is detected.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_AVOCADO_DUPLICATE_NAME                                  (1207)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1208: ERROR_AVOCADO_ILLEGAL_NAME
-///
-/// illegal name
-///
-/// Will be raised when an illegal name is detected.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_AVOCADO_ILLEGAL_NAME                                    (1208)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1209: ERROR_AVOCADO_NO_INDEX
-///
-/// no index known
-///
-/// Will be raised when no index is known.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_AVOCADO_NO_INDEX                                        (1209)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1210: ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED
-///
-/// unique constraint violated
-///
-/// Will be raised when there is a unique constraint violation.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED                      (1210)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1211: ERROR_AVOCADO_GEO_INDEX_VIOLATED
-///
-/// geo index violated
-///
-/// Will be raised when a illegale coordinate is used.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_AVOCADO_GEO_INDEX_VIOLATED                              (1211)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1207: ERROR_AVOCADO_DUPLICATE_NAME
-///
-/// duplicate name
-///
-/// Will be raised when a name duplicate is detected.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_AVOCADO_DUPLICATE_NAME                                  (1207)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1208: ERROR_AVOCADO_ILLEGAL_NAME
-///
-/// illegal name
-///
-/// Will be raised when an illegal name is detected.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_AVOCADO_ILLEGAL_NAME                                    (1208)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1209: ERROR_AVOCADO_NO_INDEX
-///
-/// no index known
-///
-/// Will be raised when no index is known.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_AVOCADO_NO_INDEX                                        (1209)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1210: ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED
-///
-/// unique constraint violated
-///
-/// Will be raised when there is a unique constraint violation.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED                      (1210)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1211: ERROR_AVOCADO_GEO_INDEX_VIOLATED
-///
-/// geo index violated
-///
-/// Will be raised when a illegale coordinate is used.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_AVOCADO_GEO_INDEX_VIOLATED                              (1211)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1207: ERROR_AVOCADO_DUPLICATE_NAME

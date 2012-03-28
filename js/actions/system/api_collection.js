@@ -95,7 +95,7 @@ function POST_api_collection (req, res) {
       actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
     catch (err) {
-      actions.resultException(err);
+      actions.resultException(req, res, err);
     }
   }
 }
@@ -345,7 +345,7 @@ function DELETE_api_collection (req, res) {
         actions.resultOk(req, res, actions.HTTP_OK, result);
       }
       catch (err) {
-        actions.resultException(err);
+        actions.resultException(req, res, err);
       }
     }
   }
