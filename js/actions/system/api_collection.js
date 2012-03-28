@@ -77,13 +77,9 @@ function POST_api_collection (req, res) {
                       "collection '" + name + "' already exists");
   }
   else {
-    var collection = db[name];
+    try {
+      var collection = db._create(name, waitForSync);
 
-    if (collection == undefined) {
-      actions.resultBad(req, res, actions.ERROR_AVOCADO_ILLEGAL_NAME,
-                        "cannot create collection");
-    }
-    else {
       var result = {};
       var headers = {};
 
@@ -97,6 +93,9 @@ function POST_api_collection (req, res) {
       headers.location = "/" + API + "collection/" + collection._id;
       
       actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+    }
+    catch (err) {
+      actions.resultException(err);
     }
   }
 }
@@ -121,8 +120,8 @@ function POST_api_collection (req, res) {
 /// - 1: new born collection
 /// - 2: unloaded
 /// - 3: loaded
+/// - 4: in the process of being unloaded
 /// - 5: deleted
-/// - 6: in the process of being unloaded
 ///
 /// Every other status indicates a corrupted collection.
 ///
@@ -346,7 +345,7 @@ function DELETE_api_collection (req, res) {
         actions.resultOk(req, res, actions.HTTP_OK, result);
       }
       catch (err) {
-        actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER, err);
+        actions.resultException(err);
       }
     }
   }

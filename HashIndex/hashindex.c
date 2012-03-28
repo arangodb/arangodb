@@ -382,6 +382,7 @@ HashIndexElements* HashIndex_find(HashIndex* hashIndex, HashIndexElement* elemen
   HashIndexElements* results;
 
   results = TRI_Allocate(sizeof(HashIndexElements));    
+  /* FIXME: memory allocation might fail */
   
   result = (HashIndexElement*) (TRI_FindByElementAssociativeArray(hashIndex->assocArray.uniqueArray, element)); 
   
@@ -522,7 +523,6 @@ static uint64_t multiHashElement (struct TRI_multi_array_s* multiArray, void* el
 
   for (j = 0; j < hElement->numFields; j++) {
     hash = hashShapedJson(hash, (j + hElement->fields) );
-    //printf("%s:%u:%u:%f\n",__FILE__,__LINE__,hash, *((double*)((j + hElement->fields)->_data.data)));
   }
   return  hash;
 }
@@ -535,7 +535,6 @@ static uint64_t multiHashKey (struct TRI_multi_array_s* multiArray, void* elemen
 
   for (j = 0; j < hElement->numFields; j++) {
     hash = hashShapedJson(hash, (j + hElement->fields) );
-    //printf("%s:%u:%u:%f\n",__FILE__,__LINE__,hash, *((double*)((j + hElement->fields)->_data.data)));
   }
   return  hash;
 }
@@ -601,6 +600,7 @@ HashIndexElements* MultiHashIndex_find(HashIndex* hashIndex, HashIndexElement* e
   size_t j;
   
   results = TRI_Allocate(sizeof(HashIndexElements));    
+  /* FIXME: memory allocation might fail */
   
   // .............................................................................
   // We can only use the LookupByKey method for non-unique hash indexes, since
@@ -616,6 +616,7 @@ HashIndexElements* MultiHashIndex_find(HashIndex* hashIndex, HashIndexElement* e
   else {  
     results->_numElements = result._length;
     results->_elements = TRI_Allocate(sizeof(HashIndexElement) * result._length); 
+    /* FIXME: memory allocation might fail */
     for (j = 0; j < result._length; ++j) {  
       results->_elements[j] = *((HashIndexElement*)(result._buffer[j]));
     }  

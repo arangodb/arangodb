@@ -99,6 +99,7 @@ static void GrowNodeHeight(TRI_skiplist_node_t* node, uint32_t newHeight) {
   }
   
   node->_column = TRI_Allocate(sizeof(TRI_skiplist_node_t) * newHeight);
+  /* FIXME: memory allocation might fail */
   memcpy(node->_column, oldColumn, node->_colLength * sizeof(TRI_skiplist_node_t) );
   
   // ...........................................................................
@@ -1423,6 +1424,7 @@ void TRI_InitSkipListMulti (TRI_skiplist_multi_t* skiplist,
   // do it here once off.
   // ..........................................................................  
   skiplist->_base._random = TRI_Allocate(sizeof(uint32_t) * skiplist->_base._numRandom);
+  /* FIXME: memory allocation might fail */
   
   // ..........................................................................  
   // Assign the element size
@@ -1829,10 +1831,6 @@ bool TRI_InsertElementSkipListMulti(TRI_skiplist_multi_t* skiplist, void* elemen
       // We do not allow non-unique elements.
       // .......................................................................    
       if (compareResult == 0) {
-        /* start oreste: */
-        assert(false);
-        /* end oreste: */
-        
         if (overwrite) {
          memcpy(&(nextNode->_element),element,skiplist->_base._elementSize);
          TRI_FreeSkipListNode(&(skiplist->_base), newNode);

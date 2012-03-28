@@ -87,7 +87,7 @@ function aqlBindParametersTestSuite () {
 
   function executeRsLengthCheckNull (expectedLength, value) {
     var params = { "7" : value };
-    var result = this.getQueryResults("SELECT { value: @7 } FROM " + this.collection._name + " c " +
+    var result = this.getQueryResults("SELECT { value: @7 } FROM " + this.collection.name() + " c " +
                                       "WHERE c.value4 == @7", params);
 
     assertEqual(expectedLength, result.length);
@@ -99,7 +99,7 @@ function aqlBindParametersTestSuite () {
 
   function executeRsLengthCheckString (expectedLength, value) {
     var params = { "0" : value };
-    var result = this.getQueryResults("SELECT { value: @0 } FROM " + this.collection._name + " c " +
+    var result = this.getQueryResults("SELECT { value: @0 } FROM " + this.collection.name() + " c " +
                                       "WHERE c.value3 == @0", params);
 
     assertEqual(expectedLength, result.length);
@@ -111,7 +111,7 @@ function aqlBindParametersTestSuite () {
 
   function executeRsLengthCheck (expectedLength, value) {
     var params = { "value1" : value };
-    var result = this.getQueryResults("SELECT { value: @value1@ } FROM " + this.collection._name + " c " +
+    var result = this.getQueryResults("SELECT { value: @value1@ } FROM " + this.collection.name() + " c " +
                                       "WHERE c.value1 == @value1@", params);
 
     assertEqual(expectedLength, result.length);
@@ -123,7 +123,7 @@ function aqlBindParametersTestSuite () {
 
   function executeRsLengthCheck2 (expectedLength, value1, value2) {
     var params = { "value1" : value1, "value2" : value2 };
-    var result = this.getQueryResults("SELECT { value: @value1@ } FROM " + this.collection._name + " c " +
+    var result = this.getQueryResults("SELECT { value: @value1@ } FROM " + this.collection.name() + " c " +
                                       "WHERE c.value1 == @value1@ && c.value2 == @value2@", params);
 
     assertEqual(expectedLength, result.length);

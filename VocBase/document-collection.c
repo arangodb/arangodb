@@ -66,7 +66,7 @@ static TRI_doc_mptr_t const CreateJson (TRI_doc_collection_t* collection,
                                         bool release) {
   TRI_shaped_json_t* shaped;
   TRI_doc_mptr_t result;
-
+  
   shaped = TRI_ShapedJsonJson(collection->_shaper, json);
 
   if (shaped == 0) {

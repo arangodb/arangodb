@@ -295,89 +295,13 @@ function actionResultError (req, res, httpReturnCode, errorNum, errorMessage, he
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an error for a bad request
 ///
-/// @FUN{actions.resultBad(@FA{req}, @FA{res}, @FA{error-code}, @FA{msg}, @FA{headers})}
+/// @FUN{badParameter(@FA{req}, @FA{res}, @FA{error-code}, @{msg}, @FA{headers})}
 ///
 /// The functions generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function ResultBad (req, res, code, msg, headers) {
-  actionResultError(req, res, exports.HTTP_BAD, code, msg, headers);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates an error for not found 
-///
-/// @FUN{actions.resultNotFound(@FA{req}, @FA{res}, @FA{msg}, @FA{headers})}
-///
-/// The functions generates an error response.
-////////////////////////////////////////////////////////////////////////////////
-
-function ResultNotFound (req, res, msg, headers) {
-  actionResultError(req, res, exports.HTTP_NOT_FOUND, exports.ERROR_HTTP_NOT_FOUND, msg, headers);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates an error for unsupported methods
-///
-/// @FUN{actions.resultUnsupported(@FA{req}, @FA{res}, @FA{headers})}
-///
-/// The functions generates an error response.
-////////////////////////////////////////////////////////////////////////////////
-
-function ResultUnsupported (req, res, headers) {
-  actionResultError(req, res,
-                    exports.HTTP_METHOD_NOT_ALLOWED, exports.ERROR_HTTP_METHOD_NOT_ALLOWED,
-                    "Unsupported method",
-                    headers);  
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates an error for unknown collection
-///
-/// @FUN{actions.collectionNotFound(@FA{req}, @FA{res}, @FA{collection}, @FA{headers})}
-///
-/// The functions generates an error response.
-////////////////////////////////////////////////////////////////////////////////
-
-function CollectionNotFound (req, res, collection, headers) {
-  if (collection == null) {
-    actionResultError(req, res,
-                      exports.HTTP_BAD, exports.ERROR_HTTP_BAD_PARAMETER,
-                      "expecting a collection name or identifier",
-                      headers);
-  }
-  else {
-    actionResultError(req, res,
-                      exports.HTTP_NOT_FOUND, exports.ERROR_HTTP_NOT_FOUND,
-                      "unknown collection '" + collection + "'", headers);
-  }
-}
-
-
-
-
-
-
-
-
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates an error for a bad parameter
-///
-/// @FUN{badParameter(@FA{req}, @FA{res}, @FA{name}, @FA{headers})}
-///
-/// The functions generates an error response.
-////////////////////////////////////////////////////////////////////////////////
-
-function badParameter (req, res, name, headers) {
-  if (name == null) {
-    actionResultError(req, res, 400, 400, "bad parameter", headers);
-  }
-  else {
-    actionResultError(req, res, 400, 400, "bad parameter '" + name + "'", headers);
-  }
+  actionResultError(req, res, exports.BAD, code, msg, headers);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -410,6 +334,23 @@ function badParameter (req, res, name, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generates an error for unknown collection
+///
+/// @FUN{collectionUnknown(@FA{req}, @FA{res}, @FA{collection}, @FA{headers})}
+///
+/// The functions generates an error response.
+////////////////////////////////////////////////////////////////////////////////
+
+function collectionUnknown (req, res, collection, headers) {
+  if (collection == null) {
+    actionResultError(req, res, 400, 400, "expecting a collection name or identifier", headers);
+  }
+  else {
+    actionResultError(req, res, 405, 405, "unknown collection '" + collection + "'", headers);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -423,11 +364,7 @@ function badParameter (req, res, name, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.resultBad = ResultBad;
-exports.resultNotFound = ResultNotFound;
-exports.resultUnsupported = ResultUnsupported;
 exports.resultOk = ResultOk;
-
-exports.collectionNotFound = CollectionNotFound;
 
 
 exports.defineHttp = defineHttp;
@@ -442,6 +379,7 @@ exports.result = actionResult;
 exports.unsupported = actionResultUnsupported;
 exports.error = actionResultError;
 
+exports.collectionUnknown = collectionUnknown;
 exports.badParameter      = badParameter;
 
 exports.COLLECTION            = "collection";
@@ -459,18 +397,9 @@ exports.PUT    = "PUT";
 exports.HTTP_OK                 = 200;
 
 // HTTP 400
-exports.HTTP_BAD                = 400;
-exports.ERROR_HTTP_NOT_FOUND          = 404;
 exports.HTTP_NOT_FOUND          = 404;
 exports.HTTP_METHOD_NOT_ALLOWED = 405;
 exports.HTTP_CONFLICT           = 409;
-
-// copy error codes
-for (var name in internal.errors) {
-  if (internal.errors.hasOwnProperty(name)) {
-    exports[name] = internal.errors[name].code;
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
