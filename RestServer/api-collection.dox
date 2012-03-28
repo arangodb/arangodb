@@ -35,7 +35,13 @@
 ///   <ol>
 ///    <li>@ref HttpCollectionRead "GET /_api/collection/@FA{collection-identifier}"</li>
 ///    <li>@ref HttpCollectionCreate "POST /_api/collection"</li>
+///    <li>@ref HttpCollectionLoad "PUT /_api/collection/@FA{collection-identifier}/load"</li>
+///    <li>@ref HttpCollectionUnload "PUT /_api/collection/@FA{collection-identifier}/unload"</li>
+///    <li>@ref HttpCollectionTruncate "PUT /_api/collection/@FA{collection-identifier}/truncate"</li>
+///    <li>@ref HttpCollectionParameter "PUT /_api/collection/@FA{collection-identifier}/parameter"</li>
+///    <li>@ref HttpCollectionRename "PUT /_api/collection/@FA{collection-identifier}/rename"</li>
 ///    <li>@ref HttpCollectionDelete "DELETE /_api/collection/@FA{collection-identifier}"</li>
+///    <li>@ref HttpCollectionReadAll "GET /_api/collection/"</li>
 ///   </ol>
 ///  </li>
 /// </ol>
@@ -62,7 +68,7 @@
 /// The basic operations (create, read, update, delete) for documents are mapped
 /// to the standard HTTP methods (POST, GET, PUT, DELETE).
 ///
-/// @section HttpCollectionResource Address of an Collection
+/// @section HttpCollectionResource Address of a Collection
 ////////////////////////////////////////////////////////////
 ///
 /// All collections in AvocadoDB have an unique identifier. This collection
@@ -87,8 +93,32 @@
 /// @copydetails JSF_POST_api_collection
 /// <hr>
 ///
+/// @anchor HttpCollectionLoad
+/// @copydetails JSF_PUT_api_collection_load
+/// <hr>
+///
+/// @anchor HttpCollectionUnload
+/// @copydetails JSF_PUT_api_collection_unload
+/// <hr>
+///
+/// @anchor HttpCollectionTruncate
+/// @copydetails JSF_PUT_api_collection_truncate
+/// <hr>
+///
+/// @anchor HttpCollectionParameter
+/// @copydetails JSF_PUT_api_collection_parameter
+/// <hr>
+///
+/// @anchor HttpCollectionRename
+/// @copydetails JSF_PUT_api_collection_rename
+/// <hr>
+///
 /// @anchor HttpCollectionDelete
 /// @copydetails JSF_DELETE_api_collection
+/// <hr>
+///
+/// @anchor HttpCollectionReadAll
+/// @copydetails JSF_GET_api_collections
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

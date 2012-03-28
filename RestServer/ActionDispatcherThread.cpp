@@ -143,7 +143,7 @@ void ActionDispatcherThread::tick (bool idle) {
   _gc += (idle ? 10 : 1);
 
   if (_gc > _gcInterval) {
-    LOG_DEBUG("collecting garbage...");
+    LOG_TRACE("collecting garbage...");
 
     while (!v8::V8::IdleNotification()) {
     }

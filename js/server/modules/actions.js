@@ -363,7 +363,7 @@ function ResultException (req, res, err, headers) {
   else {
     ResultError(req, res,
                 exports.HTTP_SERVER_ERROR, exports.ERROR_HTTP_SERVER_ERROR,
-                err,
+                "" + err,
                 headers);
   }
 }

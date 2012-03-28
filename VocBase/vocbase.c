@@ -1147,7 +1147,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase, TRI_col_
   if (found != NULL) {
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
-    LOG_ERROR("collection named '%s' already exists", name);
+    LOG_DEBUG("collection named '%s' already exists", name);
 
     TRI_set_errno(TRI_ERROR_AVOCADO_DUPLICATE_NAME);
     return NULL;
