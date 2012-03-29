@@ -23,15 +23,13 @@ describe AvocadoDB do
       it "returns an error if document handle is missing" do
 	cmd = "/document"
 	body = "{}"
-        doc = AvocadoDB.put(cmd, :body => body)
+        doc = AvocadoDB.log_put("#{prefix}-missing-handle", cmd, :body => body)
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['errorNum'].should eq(400)
 	doc.parsed_response['code'].should eq(400)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
-
-	AvocadoDB.log(:method => :put, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-missing-handle")
 
 	AvocadoDB.size_collection(@cid).should eq(0)
       end
@@ -39,7 +37,7 @@ describe AvocadoDB do
       it "returns an error if document handle is corrupted" do
 	cmd = "/document/123456"
 	body = "{}"
-        doc = AvocadoDB.put(cmd, :body => body)
+        doc = AvocadoDB.log_put("#{prefix}-bad-handle", cmd, :body => body)
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
@@ -47,15 +45,13 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(400)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
-	AvocadoDB.log(:method => :put, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-bad-handle")
-
 	AvocadoDB.size_collection(@cid).should eq(0)
       end
 
       it "returns an error if document handle is corrupted" do
 	cmd = "/document//123456"
 	body = "{}"
-        doc = AvocadoDB.put(cmd, :body => body)
+        doc = AvocadoDB.log_put("#{prefix}-bad-handle2", cmd, :body => body)
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
@@ -63,15 +59,13 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(400)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
-	AvocadoDB.log(:method => :put, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-bad-handle2")
-
 	AvocadoDB.size_collection(@cid).should eq(0)
       end
 
       it "returns an error if collection identifier is unknown" do
 	cmd = "/document/123456/234567"
 	body = "{}"
-        doc = AvocadoDB.put(cmd, :body => body)
+        doc = AvocadoDB.log_put("#{prefix}-unknown-cid", cmd, :body => body)
 
 	doc.code.should eq(404)
 	doc.parsed_response['error'].should eq(true)
@@ -79,23 +73,19 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(404)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
-	AvocadoDB.log(:method => :put, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-unknown-cid")
-
 	AvocadoDB.size_collection(@cid).should eq(0)
       end
 
       it "returns an error if document handle is unknown" do
 	cmd = "/document/#{@cid}/234567"
 	body = "{}"
-        doc = AvocadoDB.put(cmd, :body => body)
+        doc = AvocadoDB.log_put("#{prefix}-unknown-handle", cmd, :body => body)
 
 	doc.code.should eq(404)
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['errorNum'].should eq(1202)
 	doc.parsed_response['code'].should eq(404)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
-
-	AvocadoDB.log(:method => :put, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-unknown-handle")
 
 	AvocadoDB.size_collection(@cid).should eq(0)
       end
@@ -116,13 +106,11 @@ describe AvocadoDB do
 	# update document, different revision
 	cmd = "/document/#{did}?policy=last-write"
 	hdr = { "if-match" => "\"#{rev-1}\"" }
-        doc = AvocadoDB.put(cmd, :headers => hdr)
+        doc = AvocadoDB.log_put("#{prefix}-policy-bad", cmd, :headers => hdr)
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
-
-	AvocadoDB.log(:method => :put, :url => cmd, :headers => hdr, :result => doc, :output => "#{prefix}-policy-bad")
 
 	AvocadoDB.delete(location)
 
@@ -160,7 +148,7 @@ describe AvocadoDB do
 	# update document
 	cmd = "/document/#{did}"
 	body = "{ \"World\" : \"Hallo\" }"
-        doc = AvocadoDB.put(cmd, :body => body)
+        doc = AvocadoDB.log_put("#{prefix}", cmd, :body => body)
 
 	doc.code.should eq(200)
 	doc.parsed_response['error'].should eq(false)
@@ -173,8 +161,6 @@ describe AvocadoDB do
 	rev2 = doc.parsed_response['_rev']
 	rev2.should be_kind_of(Integer)
 	rev2.should_not eq(rev)
-
-	AvocadoDB.log(:method => :put, :url => cmd, :body => body, :result => doc, :output => "#{prefix}")
 
 	AvocadoDB.delete(location)
 
@@ -198,7 +184,7 @@ describe AvocadoDB do
 	cmd = "/document/#{did}"
 	hdr = { "if-match" => "\"#{rev-1}\"" }
 	body = "{ \"World\" : \"Hallo\" }"
-        doc = AvocadoDB.put(cmd, :headers => hdr, :body => body)
+        doc = AvocadoDB.log_put("#{prefix}-if-match-other", cmd, :headers => hdr, :body => body)
 
 	doc.code.should eq(412)
 	doc.parsed_response['error'].should eq(true)
@@ -212,13 +198,11 @@ describe AvocadoDB do
 	rev2.should be_kind_of(Integer)
 	rev2.should eq(rev)
 
-	AvocadoDB.log(:method => :put, :url => cmd, :body => body, :headers => hdr, :result => doc, :output => "#{prefix}-if-match-other")
-
 	# update document, same revision
 	cmd = "/document/#{did}"
 	hdr = { "if-match" => "\"#{rev}\"" }
 	body = "{ \"World\" : \"Hallo\" }"
-        doc = AvocadoDB.put(cmd, :headers => hdr, :body => body)
+        doc = AvocadoDB.log_put("#{prefix}-if-match", cmd, :headers => hdr, :body => body)
 
 	doc.code.should eq(200)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -231,8 +215,6 @@ describe AvocadoDB do
 	rev2 = doc.parsed_response['_rev']
 	rev2.should be_kind_of(Integer)
 	rev2.should_not eq(rev)
-
-	AvocadoDB.log(:method => :put, :url => cmd, :body => body, :headers => hdr, :result => doc, :output => "#{prefix}-if-match")
 
 	AvocadoDB.delete(location)
 
@@ -256,7 +238,7 @@ describe AvocadoDB do
 	cmd = "/document/#{did}?policy=last"
 	hdr = { "if-match" => "\"#{rev-1}\"" }
 	body = "{ \"World\" : \"Hallo\" }"
-        doc = AvocadoDB.put(cmd, :headers => hdr, :body => body)
+        doc = AvocadoDB.log_put("#{prefix}-if-match-other-last-write", cmd, :headers => hdr, :body => body)
 
 	doc.code.should eq(200)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -269,8 +251,6 @@ describe AvocadoDB do
 	rev2 = doc.parsed_response['_rev']
 	rev2.should be_kind_of(Integer)
 	rev2.should_not eq(rev)
-
-	AvocadoDB.log(:method => :put, :url => cmd, :body => body, :headers => hdr, :result => doc, :output => "#{prefix}-if-match-other-last-write")
 
 	AvocadoDB.delete(location)
 
@@ -293,7 +273,7 @@ describe AvocadoDB do
 	# update document, different revision
 	cmd = "/document/#{did}?rev=#{rev-1}"
 	body = "{ \"World\" : \"Hallo\" }"
-        doc = AvocadoDB.put(cmd, :body => body)
+        doc = AvocadoDB.log_put("#{prefix}-rev-other", cmd, :body => body)
 
 	doc.code.should eq(412)
 	doc.parsed_response['error'].should eq(true)
@@ -307,12 +287,10 @@ describe AvocadoDB do
 	rev2.should be_kind_of(Integer)
 	rev2.should eq(rev)
 
-	AvocadoDB.log(:method => :put, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-rev-other")
-
 	# update document, same revision
 	cmd = "/document/#{did}?rev=#{rev}"
 	body = "{ \"World\" : \"Hallo\" }"
-        doc = AvocadoDB.put(cmd, :body => body)
+        doc = AvocadoDB.log_put("#{prefix}-rev", cmd, :body => body)
 
 	doc.code.should eq(200)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -325,8 +303,6 @@ describe AvocadoDB do
 	rev2 = doc.parsed_response['_rev']
 	rev2.should be_kind_of(Integer)
 	rev2.should_not eq(rev)
-
-	AvocadoDB.log(:method => :put, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-rev")
 
 	AvocadoDB.delete(location)
 
@@ -349,7 +325,7 @@ describe AvocadoDB do
 	# update document, different revision
 	cmd = "/document/#{did}?policy=last&rev=#{rev-1}"
 	body = "{ \"World\" : \"Hallo\" }"
-        doc = AvocadoDB.put(cmd, :body => body)
+        doc = AvocadoDB.log_put("#{prefix}-rev-other-last-write", cmd, :body => body)
 
 	doc.code.should eq(200)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -362,8 +338,6 @@ describe AvocadoDB do
 	rev2 = doc.parsed_response['_rev']
 	rev2.should be_kind_of(Integer)
 	rev2.should_not eq(rev)
-
-	AvocadoDB.log(:method => :put, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-rev-other-last-write")
 
 	AvocadoDB.delete(location)
 

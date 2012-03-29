@@ -275,8 +275,6 @@ describe AvocadoDB do
 	cmd = api + "/" + String(@cn) + "/figures"
         doc = AvocadoDB.get(cmd)
 
-	puts doc
-
 	doc.parsed_response['waitForSync'].should == false
 
 	AvocadoDB.drop_collection(@cn)
@@ -297,8 +295,6 @@ describe AvocadoDB do
 
 	cmd = api + "/" + String(@cn) + "/figures"
         doc = AvocadoDB.get(cmd)
-
-	puts doc
 
 	doc.parsed_response['waitForSync'].should == true
 
@@ -383,7 +379,7 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should eq(cid)
 	doc.parsed_response['name'].should eq(@cn)
-	doc.parsed_response['status'].should eq(4)
+	[2,4].include?(doc.parsed_response['status']).should be_true
 	doc.headers['content-type'].should eq("application/json")
 
 	AvocadoDB.drop_collection(@cn)
