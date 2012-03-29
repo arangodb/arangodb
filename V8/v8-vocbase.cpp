@@ -283,8 +283,10 @@ static v8::Handle<v8::Object> CreateErrorObject (int errorNumber, string const& 
 
   v8::Handle<v8::Object> errorObject = v8g->ErrorTempl->NewInstance();
 
+  string msg = TRI_last_error() + string(": ") + message;
+
   errorObject->Set(v8::String::New("errorNum"), v8::Number::New(errorNumber));
-  errorObject->Set(v8::String::New("errorMessage"), v8::String::New(message.c_str()));
+  errorObject->Set(v8::String::New("errorMessage"), v8::String::New(msg.c_str()));
 
   return errorObject;
 }
@@ -4845,7 +4847,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocBase (v8::Arguments const& argv) {
 /// @brief creates a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_CreateCollectionVocBase (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_CreateVocBase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
@@ -5493,7 +5495,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(CollectionFuncName, v8::FunctionTemplate::New(JS_CollectionVocBase));
   rt->Set(CollectionsFuncName, v8::FunctionTemplate::New(JS_CollectionsVocBase));
   rt->Set(CompletionsFuncName, v8::FunctionTemplate::New(JS_CompletionsVocBase));
-  rt->Set(CreateFuncName, v8::FunctionTemplate::New(JS_CreateCollectionVocBase));
+  rt->Set(CreateFuncName, v8::FunctionTemplate::New(JS_CreateVocBase));
 
   v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
@@ -5516,7 +5518,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(CollectionFuncName, v8::FunctionTemplate::New(JS_CollectionVocBase));
   rt->Set(CollectionsFuncName, v8::FunctionTemplate::New(JS_CollectionsEdges));
   rt->Set(CompletionsFuncName, v8::FunctionTemplate::New(JS_CompletionsVocBase));
-  rt->Set(CreateFuncName, v8::FunctionTemplate::New(JS_CreateCollectionVocBase));
+  rt->Set(CreateFuncName, v8::FunctionTemplate::New(JS_CreateVocBase));
 
   v8g->EdgesTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 

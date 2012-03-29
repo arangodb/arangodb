@@ -549,12 +549,12 @@ void TRI_CompactorVocBase (void* data) {
 
       collection = collections._buffer[i];
 
-      TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
+      TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
       doc = collection->_collection;
 
       if (doc == NULL) {
-        TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
         continue;
       }
 
@@ -567,7 +567,7 @@ void TRI_CompactorVocBase (void* data) {
         }
       }
 
-      TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+      TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
       // now release the lock and maybe unload the collection or some datafiles
       if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
