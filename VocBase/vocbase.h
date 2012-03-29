@@ -271,6 +271,7 @@ typedef struct TRI_vocbase_s {
   TRI_read_write_lock_t _lock;
 
   TRI_vector_pointer_t _collections;
+  TRI_vector_pointer_t _deadCollections; // pointers to collections dropped that can be removed later
 
   TRI_associative_pointer_t _collectionsByName;
   TRI_associative_pointer_t _collectionsById;

@@ -288,8 +288,12 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
       break;
     }
   }
+ 
+  // we need to clean up the pointers later so we insert it into this vector
+  TRI_PushBackVectorPointer(&vocbase->_deadCollections, collection);
   
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+
 
   // .............................................................................
   // rename collection directory
@@ -364,6 +368,29 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief free the path buffer allocated for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void FreeCollectionPath (TRI_vocbase_col_t* const collection) {
+  if (collection->_path) {
+    TRI_Free((char*) collection->_path);
+  }
+  collection->_path = NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free the memory associated with a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) {
+  FreeCollectionPath(collection);
+
+  TRI_DestroyReadWriteLock(&collection->_lock);
+
+  TRI_Free(collection);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -386,9 +413,18 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   collection->_vocbase = vocbase;
   collection->_type = type;
   TRI_CopyString(collection->_name, name, sizeof(collection->_name));
-  collection->_path = (path == NULL ? NULL : TRI_DuplicateString(path));
-  /* FIXME: memory allocation might fail */
-  /* FIXME: collection->_path is never freed after being assigned to */
+  if (path == NULL) {
+    collection->_path = NULL;
+  }
+  else {
+    collection->_path = TRI_DuplicateString(path);
+    if (!collection->_path) {
+      TRI_Free(collection);
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+      return NULL;
+    }
+  }
 
   collection->_collection = NULL;
   collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
@@ -398,6 +434,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   found = TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName, name, collection, false);
 
   if (found != NULL) {
+    FreeCollectionPath(collection);
     TRI_Free(collection);
 
     LOG_ERROR("duplicate entry for name '%s'", name);
@@ -411,6 +448,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
 
   if (found != NULL) {
     TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, name);
+    FreeCollectionPath(collection);
     TRI_Free(collection);
 
     LOG_ERROR("duplicate collection identifier '%lu' for name '%s'", (unsigned long) cid, name);
@@ -455,6 +493,10 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
     }
 
     file = TRI_Concatenate2File(path, name);
+    if (!file) {
+      LOG_FATAL("out of memory");
+      return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    }
 
     if (TRI_IsDirectory(file)) {
       TRI_col_info_t info;
@@ -478,6 +520,9 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
 
           if (c == NULL) {
             LOG_FATAL("failed to add simple document collection from '%s'", file);
+            TRI_FreeString(file);
+            regfree(&re);
+            TRI_DestroyVectorString(&files);
             return TRI_set_errno(TRI_ERROR_AVOCADO_CORRUPTED_COLLECTION);
           }
 
@@ -623,6 +668,7 @@ static int ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t*
 
     collection->_status = TRI_VOC_COL_STATUS_LOADED;
     collection->_collection = &sim->base;
+    FreeCollectionPath(collection);
     collection->_path = TRI_DuplicateString(sim->base.base._directory);
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -738,6 +784,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
 
       collection->_collection = &sim->base;
       collection->_status = TRI_VOC_COL_STATUS_LOADED;
+      FreeCollectionPath(collection);
       collection->_path = TRI_DuplicateString(sim->base.base._directory);
 
       // release the WRITE lock and try again
@@ -963,6 +1010,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   }
 
   TRI_InitVectorPointer(&vocbase->_collections);
+  TRI_InitVectorPointer(&vocbase->_deadCollections);
 
   TRI_InitAssociativePointer(&vocbase->_collectionsById,
                             HashKeyCid,
@@ -988,6 +1036,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
     TRI_DestroyAssociativePointer(&vocbase->_collectionsByName);
     TRI_DestroyAssociativePointer(&vocbase->_collectionsById);
     TRI_DestroyVectorPointer(&vocbase->_collections);
+    TRI_DestroyVectorPointer(&vocbase->_deadCollections);
     TRI_DestroyLockFile(vocbase->_lockFile);
     TRI_FreeString(vocbase->_lockFile);
     TRI_FreeShadowStore(vocbase->_cursors);
@@ -1032,22 +1081,39 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   // stop synchroniser and compactor
   TRI_JoinThread(&vocbase->_synchroniser);
   TRI_JoinThread(&vocbase->_compactor);
+
+  // free dead collections (already dropped but pointers still around)
+  for (i = 0;  i < vocbase->_deadCollections._length;  ++i) {
+    TRI_vocbase_col_t* collection;
+
+    collection = (TRI_vocbase_col_t*) vocbase->_deadCollections._buffer[i];
+    FreeCollection(vocbase, collection);
+  }
   
-  // clear the hashs and vectors
+  // free collections
+  for (i = 0;  i < vocbase->_collections._length;  ++i) {
+    TRI_vocbase_col_t* collection;
+
+    collection = (TRI_vocbase_col_t*) vocbase->_collections._buffer[i];
+    FreeCollection(vocbase, collection);
+  }
+  
+  // clear the hashes and vectors
   TRI_DestroyAssociativePointer(&vocbase->_collectionsByName);
   TRI_DestroyAssociativePointer(&vocbase->_collectionsById);
   TRI_DestroyVectorPointer(&vocbase->_collections);
+  TRI_DestroyVectorPointer(&vocbase->_deadCollections);
 
   // free query functions
   TRI_FreeQueryFunctions(vocbase->_functions);
+  
+  // free the cursors
+  TRI_FreeShadowStore(vocbase->_cursors);
 
   // release lock on database
   TRI_DestroyLockFile(vocbase->_lockFile);
   TRI_FreeString(vocbase->_lockFile);
 
-  // free the cursors
-  TRI_FreeShadowStore(vocbase->_cursors);
-  
   // destroy lock
   TRI_DestroyReadWriteLock(&vocbase->_lock);
 }
@@ -1218,6 +1284,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase, TRI_col_
 
   collection->_status = TRI_VOC_COL_STATUS_LOADED;
   collection->_collection = doc;
+  FreeCollectionPath(collection);
   collection->_path = TRI_DuplicateString(doc->base._directory);
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
