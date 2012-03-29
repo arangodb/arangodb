@@ -57,7 +57,9 @@ static bool CreateJournal (TRI_blob_collection_t* collection) {
 
   number = TRI_StringUInt32(TRI_NewTickVocBase());
   jname = TRI_Concatenate3String("journal-", number, ".db");
+  /* TODO FIXME: memory allocation might fail */
   filename = TRI_Concatenate2File(collection->base._directory, jname);
+  /* TODO FIXME: memory allocation might fail */
   TRI_FreeString(number);
   TRI_FreeString(jname);
 
@@ -80,7 +82,9 @@ static bool CreateJournal (TRI_blob_collection_t* collection) {
   // and use the correct name
   number = TRI_StringUInt32(journal->_fid);
   jname = TRI_Concatenate3String("journal-", number, ".db");
+  /* TODO FIXME: memory allocation might fail */
   filename = TRI_Concatenate2File(collection->base._directory, jname);
+  /* TODO FIXME: memory allocation might fail */
   TRI_FreeString(number);
   TRI_FreeString(jname);
 
@@ -176,7 +180,9 @@ static bool CloseJournal (TRI_blob_collection_t* collection, TRI_datafile_t* jou
 
   number = TRI_StringUInt32(journal->_fid);
   dname = TRI_Concatenate3String("datafile-", number, ".db");
+  /* TODO FIXME: memory allocation might fail */
   filename = TRI_Concatenate2File(collection->base._directory, dname);
+  /* TODO FIXME: memory allocation might fail */
   TRI_FreeString(dname);
   TRI_FreeString(number);
 
@@ -330,6 +336,8 @@ TRI_blob_collection_t* TRI_CreateBlobCollection (char const* path, TRI_col_param
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyBlobCollection (TRI_blob_collection_t* collection) {
+  assert(collection);
+
   TRI_DestroyMutex(&collection->_lock);
   TRI_DestroyCollection(&collection->base);
 }
@@ -339,6 +347,8 @@ void TRI_DestroyBlobCollection (TRI_blob_collection_t* collection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeBlobCollection (TRI_blob_collection_t* collection) {
+  assert(collection);
+
   TRI_DestroyBlobCollection(collection);
   TRI_Free(collection);
 }

@@ -1205,7 +1205,6 @@ static TRI_voc_size_t SizeSimCollection (TRI_doc_collection_t* doc) {
   TRI_doc_mptr_t const* mptr;
   TRI_sim_collection_t* sim;
   TRI_voc_size_t result;
-  size_t n;
   void** end;
   void** ptr;
 
@@ -1213,7 +1212,6 @@ static TRI_voc_size_t SizeSimCollection (TRI_doc_collection_t* doc) {
 
   TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
-  n = sim->_primaryIndex._nrUsed;
   ptr = sim->_primaryIndex._table;
   end = sim->_primaryIndex._table + sim->_primaryIndex._nrAlloc;
   result = 0;
@@ -1851,11 +1849,11 @@ void TRI_DestroySimCollection (TRI_sim_collection_t* collection) {
     TRI_index_t* idx = (TRI_index_t*) collection->_indexes._buffer[i];
   
     TRI_DestroyVectorString(&idx->_fields);
+    TRI_Free(idx);
   }
   // free index vector
   TRI_DestroyVectorPointer(&collection->_indexes);
 
-  /* FIXME: DestroyDocCollection does also free the shaper?? */
   TRI_DestroyDocCollection(&collection->base);
 }
 
@@ -1978,6 +1976,9 @@ int TRI_CloseSimCollection (TRI_sim_collection_t* collection) {
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
+
+  // this does also destroy the shaper's underlying blob collection
+  TRI_FreeVocShaper(collection->base._shaper);
 
   collection->base._shaper = NULL;
 
@@ -2877,7 +2878,6 @@ static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* coll
   for (j = 0;  j < attributes->_length;  ++j) {
     char* path = *((char**)(TRI_AtVector(attributes,j)));    
     TRI_shape_pid_t shape = shaper->findAttributePathByName(shaper, path);   
-
     TRI_PushBackVector(&paths, &shape);
     TRI_PushBackVectorPointer(&fields, path);
   }
