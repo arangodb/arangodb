@@ -495,6 +495,7 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
     file = TRI_Concatenate2File(path, name);
     if (!file) {
       LOG_FATAL("out of memory");
+      regfree(&re);
       return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     }
 
