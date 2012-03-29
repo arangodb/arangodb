@@ -212,7 +212,7 @@ static bool IsEqualKeyElementDatafile (TRI_associative_pointer_t* array, void co
 /// @brief creates a journal or a compactor journal
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* CreateJournalDocCollection (TRI_doc_collection_t* collection, bool compactor) {
+static TRI_datafile_t* CreateJournalDocCollection (TRI_doc_collection_t* collection, bool compactor) {
   TRI_col_header_marker_t cm;
   TRI_datafile_t* journal;
   TRI_df_marker_t* position;
@@ -231,9 +231,11 @@ TRI_datafile_t* CreateJournalDocCollection (TRI_doc_collection_t* collection, bo
 
   if (compactor) {
     jname = TRI_Concatenate3String("journal-", number, ".db");
+    /* TODO FIXME: memory allocation might fail */
   }
   else {
     jname = TRI_Concatenate3String("compactor-", number, ".db");
+    /* TODO FIXME: memory allocation might fail */
   }
 
   if (jname == NULL) {
@@ -279,6 +281,7 @@ TRI_datafile_t* CreateJournalDocCollection (TRI_doc_collection_t* collection, bo
   }
 
   filename = TRI_Concatenate2File(collection->base._directory, jname);
+  /* TODO FIXME: memory allocation might fail */
   TRI_FreeString(number);
   TRI_FreeString(jname);
 
@@ -344,9 +347,9 @@ TRI_datafile_t* CreateJournalDocCollection (TRI_doc_collection_t* collection, bo
 /// _journals entry.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool CloseJournalDocCollection (TRI_doc_collection_t* collection,
-                                size_t position,
-                                bool compactor) {
+static bool CloseJournalDocCollection (TRI_doc_collection_t* collection,
+                                       size_t position,
+                                       bool compactor) {
   TRI_datafile_t* journal;
   TRI_vector_pointer_t* vector;
   bool ok;
@@ -384,12 +387,14 @@ bool CloseJournalDocCollection (TRI_doc_collection_t* collection,
   }
 
   dname = TRI_Concatenate3String("datafile-", number, ".db");
+  /* TODO FIXME: memory allocation might fail */
   if (!dname) {
     TRI_FreeString(number);
     return false;
   }
 
   filename = TRI_Concatenate2File(collection->base._directory, dname);
+  /* TODO FIXME: memory allocation might fail */
   if (!filename) {
     TRI_FreeString(number);
     TRI_FreeString(dname);
@@ -416,6 +421,27 @@ bool CloseJournalDocCollection (TRI_doc_collection_t* collection,
   TRI_PushBackVectorPointer(&collection->base._datafiles, journal);
 
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free an assoc array of datafile infos
+////////////////////////////////////////////////////////////////////////////////
+  
+static void FreeDatafileInfo (TRI_associative_pointer_t* const files) {
+  size_t i;
+  size_t n;
+
+  n = files->_nrAlloc;
+  for (i = 0; i < n; ++i) {
+    TRI_doc_datafile_info_t* file = files->_table[i];
+    if (!file) {
+      continue;
+    }
+
+    TRI_Free(file);
+  }
+
+  TRI_DestroyAssociativePointer(files);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -467,7 +493,7 @@ void TRI_DestroyDocCollection (TRI_doc_collection_t* collection) {
     TRI_FreeVocShaper(collection->_shaper);
   }
 
-  TRI_DestroyAssociativePointer(&collection->_datafileInfo);
+  FreeDatafileInfo(&collection->_datafileInfo);
   TRI_DestroyBarrierList(&collection->_barrierList);
 
   TRI_DestroyCollection(&collection->base);

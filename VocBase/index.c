@@ -1693,8 +1693,8 @@ static bool SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
   else if (document != NULL) {
   
     // ..........................................................................
-    // Assign the document to the HashIndexElement structure - so that it can later
-    // be retreived.
+    // Assign the document to the SkiplistIndexElement structure so that it can 
+    // be retreived later.
     // ..........................................................................
     cnv.c = document;
     skiplistElement->data = cnv.p;
@@ -1756,9 +1756,11 @@ static int InsertSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   int res;
   bool ok;
 
+  
   // ............................................................................
   // Obtain the skip listindex structure
   // ............................................................................
+  
   skiplistIndex = (TRI_skiplist_index_t*) idx;
   if (idx == NULL) {
     LOG_WARNING("internal error in InsertSkiplistIndex");
@@ -1781,11 +1783,18 @@ static int InsertSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   }  
   ok = SkiplistIndexHelper(skiplistIndex, &skiplistElement, doc, NULL);
     
+  
+  // ............................................................................
+  // most likely the cause of this error is that the 'shape' of the document
+  // does not match the 'shape' of the index structure -- so the document
+  // is ignored. So not really an error at all.
+  // ............................................................................
+  
   if (!ok) {
-    return TRI_ERROR_INTERNAL;
+    return TRI_ERROR_NO_ERROR;
   }    
   
-  
+
   // ............................................................................
   // Fill the json field list from the document for unique skiplist index
   // ............................................................................
@@ -1802,6 +1811,12 @@ static int InsertSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
     res = MultiSkiplistIndex_insert(skiplistIndex->_skiplistIndex, &skiplistElement);
   }
 
+  
+  // ............................................................................
+  // Take the appropriate action which depends on what was returned by the insert
+  // method of the index.
+  // ............................................................................
+  
   if (res == -1) {
     LOG_WARNING("found duplicate entry in skiplist-index, should not happen");
     return TRI_ERROR_INTERNAL;
@@ -1815,6 +1830,11 @@ static int InsertSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
     return TRI_ERROR_INTERNAL;
   }
 
+  
+  // ............................................................................
+  // Everything OK
+  // ............................................................................
+  
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -2148,7 +2168,6 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_doc_collection_s* collection,
 
   for (j = 0;  j < fields->_length;  ++j) {
     char const* name = fields->_buffer[j];
-
     TRI_PushBackVectorString(&skiplistIndex->base._fields, TRI_DuplicateString(name));
   }
   
@@ -2169,13 +2188,16 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_doc_collection_s* collection,
 void TRI_DestroySkiplistIndex (TRI_index_t* idx) {
   TRI_skiplist_index_t* sl;
 
+  if (idx == NULL) {
+    return;
+  }
+  
   TRI_DestroyVectorString(&idx->_fields);
 
   sl = (TRI_skiplist_index_t*) idx;
-
   TRI_DestroyVector(&sl->_paths);
 
-  LOG_ERROR("TRI_DestroyHashIndex not implemented TODO oreste");
+  SkiplistIndexFree(sl->_skiplistIndex);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2183,6 +2205,9 @@ void TRI_DestroySkiplistIndex (TRI_index_t* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeSkiplistIndex (TRI_index_t* idx) {
+  if (idx == NULL) {
+    return;
+  }  
   TRI_DestroySkiplistIndex(idx);
   TRI_Free(idx);
 }

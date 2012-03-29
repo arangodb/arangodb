@@ -389,11 +389,11 @@ bool TRI_ParseQueryValidateFunctionCalls (TRI_query_template_t* const template_,
   }
 
   if (node->_type == TRI_QueryNodeControlFunctionCall) {
-    char* funcName;
-    assert(node->_lhs); // function name
+    //char* funcName;
+    //assert(node->_lhs); // function name
     
-    funcName = node->_lhs->_value._stringValue;
-    // TODO: validate arguments
+    //funcName = node->_lhs->_value._stringValue;
+    // TODO FIXME: validate arguments
   }
    
   lhs = node->_lhs;

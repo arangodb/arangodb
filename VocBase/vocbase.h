@@ -276,7 +276,7 @@ typedef struct TRI_vocbase_s {
   TRI_associative_pointer_t _collectionsByName;
   TRI_associative_pointer_t _collectionsById;
 
-  sig_atomic_t _active;
+  sig_atomic_t _active; // 0 = inactive, 1 = normal operation, 2 = in shutdown process
   TRI_thread_t _synchroniser;
   TRI_thread_t _compactor;
 
