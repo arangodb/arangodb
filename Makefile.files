@@ -64,6 +64,7 @@ libavocado_a_SOURCES = \
 	Rest/HttpRequest.cpp \
 	Rest/HttpResponse.cpp \
 	Rest/Initialise.cpp \
+	Rest/JsonContainer.cpp \
 	Rest/SslInterface.cpp \
 	Rest/Url.cpp \
 	ShapedJson/json-shaper.c \
