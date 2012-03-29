@@ -14,57 +14,49 @@ describe AvocadoDB do
       it "returns an error if url contains a suffix" do
 	cmd = "/document/123456"
 	body = "{}"
-        doc = AvocadoDB.post(cmd, :body => body)
+        doc = AvocadoDB.log_post("#{prefix}-superfluous-suffix", cmd, :body => body)
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['errorNum'].should eq(601)
 	doc.parsed_response['code'].should eq(400)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
-
-	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-superfluous-suffix")
       end
 
       it "returns an error if collection idenifier is missing" do
 	cmd = "/document"
 	body = "{}"
-        doc = AvocadoDB.post(cmd, :body => body)
+        doc = AvocadoDB.log_post("#{prefix}-missing-cid", cmd, :body => body)
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['errorNum'].should eq(1204)
 	doc.parsed_response['code'].should eq(400)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
-
-	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-missing-cid")
       end
 
       it "returns an error if the collection identifier is unknown" do
 	cmd = "/document?collection=123456"
 	body = "{}"
-        doc = AvocadoDB.post(cmd, :body => body)
+        doc = AvocadoDB.log_post("#{prefix}-unknown-cid", cmd, :body => body)
 
 	doc.code.should eq(404)
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['errorNum'].should eq(1203)
 	doc.parsed_response['code'].should eq(404)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
-
-	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-unknown-cid")
       end
 
       it "returns an error if the collection name is unknown" do
 	cmd = "/document?collection=unknown_collection"
 	body = "{}"
-        doc = AvocadoDB.post(cmd, :body => body)
+        doc = AvocadoDB.log_post("#{prefix}-unknown-name", cmd, :body => body)
 
 	doc.code.should eq(404)
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['errorNum'].should eq(1203)
 	doc.parsed_response['code'].should eq(404)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
-
-	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-unknown-name")
       end
 
       it "returns an error if the JSON body is corrupted" do
@@ -76,15 +68,13 @@ describe AvocadoDB do
 
 	cmd = "/document?collection=#{id}"
 	body = "{ 1 : 2 }"
-        doc = AvocadoDB.post(cmd, :body => body)
+        doc = AvocadoDB.log_post("#{prefix}-bad-json", cmd, :body => body)
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['errorNum'].should eq(600)
 	doc.parsed_response['code'].should eq(400)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
-
-	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-bad-json")
 
 	AvocadoDB.size_collection(cn).should eq(0)
 
@@ -109,7 +99,7 @@ describe AvocadoDB do
       it "creating a new document" do
 	cmd = "/document?collection=#{@cid}"
 	body = "{ \"Hallo\" : \"World\" }"
-	doc = AvocadoDB.post(cmd, :body => body)
+	doc = AvocadoDB.log_post("#{prefix}", cmd, :body => body)
 
 	doc.code.should eq(201)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -133,8 +123,6 @@ describe AvocadoDB do
 
 	etag.should eq("\"#{rev}\"")
 	location.should eq("/document/#{did}")
-
-	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}")
 
 	AvocadoDB.delete(location)
 
@@ -159,7 +147,7 @@ describe AvocadoDB do
       it "creating a new document" do
 	cmd = "/document?collection=#{@cid}"
 	body = "{ \"Hallo\" : \"World\" }"
-	doc = AvocadoDB.post(cmd, :body => body)
+	doc = AvocadoDB.log_post("#{prefix}-accept", cmd, :body => body)
 
 	doc.code.should eq(202)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -183,8 +171,6 @@ describe AvocadoDB do
 
 	etag.should eq("\"#{rev}\"")
 	location.should eq("/document/#{did}")
-
-	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-accept")
 
 	AvocadoDB.delete(location)
 
@@ -209,7 +195,7 @@ describe AvocadoDB do
       it "creating a new document" do
 	cmd = "/document?collection=#{@cn}"
 	body = "{ \"Hallo\" : \"World\" }"
-	doc = AvocadoDB.post(cmd, :body => body)
+	doc = AvocadoDB.log_post("#{prefix}-named-collection", cmd, :body => body)
 
 	doc.code.should eq(201)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -234,8 +220,6 @@ describe AvocadoDB do
 	etag.should eq("\"#{rev}\"")
 	location.should eq("/document/#{did}")
 
-	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-named-collection")
-
 	AvocadoDB.delete(location)
 
 	AvocadoDB.size_collection(@cid).should eq(0)
@@ -258,21 +242,19 @@ describe AvocadoDB do
       it "returns an error if collection is unknown" do
 	cmd = "/document?collection=#{@cn}"
 	body = "{ \"Hallo\" : \"World\" }"
-	doc = AvocadoDB.post(cmd, :body => body)
+	doc = AvocadoDB.log_post("#{prefix}-unknown-collection-name", cmd, :body => body)
 
 	doc.code.should eq(404)
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['errorNum'].should eq(1203)
 	doc.parsed_response['code'].should eq(404)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
-
-	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-unknown-collection-name")
       end
 
       it "create the collection and the document" do
 	cmd = "/document?collection=#{@cn}&createCollection=true"
 	body = "{ \"Hallo\" : \"World\" }"
-	doc = AvocadoDB.post(cmd, :body => body)
+	doc = AvocadoDB.log_post("#{prefix}-create-collection", cmd, :body => body)
 
 	doc.code.should eq(202)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -292,8 +274,6 @@ describe AvocadoDB do
 	
 	etag.should eq("\"#{rev}\"")
 	location.should eq("/document/#{did}")
-
-	AvocadoDB.log(:method => :post, :url => cmd, :body => body, :result => doc, :output => "#{prefix}-create-collection")
 
 	AvocadoDB.delete(location)
 
