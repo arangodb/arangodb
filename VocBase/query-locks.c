@@ -56,7 +56,7 @@ void TRI_FreeLocksQueryInstance (TRI_vocbase_t* const vocbase,
                                  TRI_vector_pointer_t* const locks) {
   size_t i;
   
-  for (i = 0; i < locks->_length; i++) {
+  for (i = 0; i < locks->_length; ++i) {
     TRI_query_instance_lock_t* lock = (TRI_query_instance_lock_t*) locks->_buffer[i];
 
     assert(lock);
@@ -106,7 +106,7 @@ bool TRI_LockCollectionsQueryInstance (TRI_vocbase_t* const vocbase,
 
   assert(vocbase);
 
-  for (i = 0; i < instance->_join._length; i++) {
+  for (i = 0; i < instance->_join._length; ++i) {
     // iterate over all collections used in query
     TRI_join_part_t* part = (TRI_join_part_t*) instance->_join._buffer[i];
     TRI_query_instance_lock_t* lock;
@@ -118,7 +118,7 @@ bool TRI_LockCollectionsQueryInstance (TRI_vocbase_t* const vocbase,
     assert(!part->_collection);
 
     insert = true;
-    for (j = 0; j < locks->_length; j++) {
+    for (j = 0; j < locks->_length; ++j) {
       // iterate over all collections we have already found & locked
       int compareResult;
 
@@ -174,6 +174,7 @@ bool TRI_LockCollectionsQueryInstance (TRI_vocbase_t* const vocbase,
                                      part->_collectionName);
 
       TRI_UnlockCollectionsQueryInstance(vocbase, locks);
+      TRI_Free(lock->_collectionName);
       TRI_Free(lock);
       return false;
     }
