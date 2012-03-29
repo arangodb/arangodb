@@ -242,15 +242,12 @@ bool RestDocumentHandler::createDocument () {
   string createStr = request->value("createCollection", found);
   bool create = found ? StringUtils::boolean(createStr) : false;
 
-  // parse document
-  TRI_json_t* json = parseJsonBody();
-
+  // auto-ptr that will free JSON data when scope is left
+  JsonContainer container(parseJsonBody());
+  TRI_json_t* json = container.ptr();
   if (json == 0) {
     return false;
   }
-  
-  // auto-ptr that will free JSON data when scope is left
-  JsonContainer container(json);
 
   // find and load collection given by name oder identifier
   int res = useCollection(collection, create);
@@ -655,15 +652,12 @@ bool RestDocumentHandler::updateDocument () {
   string collection = suffix[0];
   string didStr = suffix[1];
 
-  // parse document
-  TRI_json_t* json = parseJsonBody();
-
+  // auto-ptr that will free JSON data when scope is left
+  JsonContainer container(parseJsonBody());
+  TRI_json_t* json = container.ptr();
   if (json == 0) {
     return false;
   }
-
-  // auto-ptr that will free JSON data when scope is left
-  JsonContainer container(json);
 
   // extract document identifier
   TRI_voc_did_t did = StringUtils::uint64(didStr);

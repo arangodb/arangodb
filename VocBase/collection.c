@@ -296,6 +296,30 @@ static bool CheckCollection (TRI_collection_t* collection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief free all datafiles in a vector
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeDatafilesVector (TRI_vector_pointer_t* const vector) {
+  size_t i;
+  size_t n;
+
+  assert(vector);
+
+  n = vector->_length;
+  for (i = 0; i < n ; ++i) {
+    TRI_datafile_t* datafile = (TRI_datafile_t*) vector->_buffer[i];
+    
+    LOG_TRACE("freeing collection datafile");
+
+    assert(datafile);
+    TRI_FreeDatafile(datafile);
+  }
+
+  TRI_DestroyVectorPointer(vector);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -366,14 +390,17 @@ TRI_collection_t* TRI_CreateCollection (TRI_collection_t* collection,
   // blob collection use the name
   if (parameter->_type == TRI_COL_TYPE_BLOB) {
     filename = TRI_Concatenate2File(path, parameter->_name);
+    /* TODO FIXME: memory allocation might fail */
   }
 
   // simple collection use the collection identifier
   else if (parameter->_type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
     tmp1 = TRI_StringUInt64(parameter->_cid);
     tmp2 = TRI_Concatenate2String("collection-", tmp1);
+    /* TODO FIXME: memory allocation might fail */
 
     filename = TRI_Concatenate2File(path, tmp2);
+    /* TODO FIXME: memory allocation might fail */
 
     TRI_FreeString(tmp2);
     TRI_FreeString(tmp1);
@@ -429,7 +456,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_collection_t* collection,
   // create collection structure
   if (collection == NULL) {
     collection = TRI_Allocate(sizeof(TRI_collection_t));
-    /* FIXME: memory allocation might fail */
+    /* TODO FIXME: memory allocation might fail */
   }
 
   InitCollection(collection, filename, parameter);
@@ -446,9 +473,11 @@ TRI_collection_t* TRI_CreateCollection (TRI_collection_t* collection,
 
 void TRI_DestroyCollection (TRI_collection_t* collection) {
   assert(collection);
-  TRI_DestroyVectorPointer(&collection->_datafiles);
-  TRI_DestroyVectorPointer(&collection->_journals);
-  TRI_DestroyVectorPointer(&collection->_compactors);
+
+  FreeDatafilesVector(&collection->_datafiles);
+  FreeDatafilesVector(&collection->_journals);
+  FreeDatafilesVector(&collection->_compactors);
+
   TRI_DestroyVectorString(&collection->_indexFiles);
   TRI_FreeString(collection->_directory);
 }
@@ -808,7 +837,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_collection_t* collection, char const* 
   // create collection
   if (collection == NULL) {
     collection = TRI_Allocate(sizeof(TRI_collection_t));
-    /* FIXME: memory allocation might fail */
+    /* TODO FIXME: memory allocation might fail */
     freeCol = true;
   }
 

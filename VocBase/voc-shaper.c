@@ -605,18 +605,22 @@ TRI_shaper_t* TRI_CreateVocShaper (char const* path, char const* name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an persistent shaper, but does not free the pointer
+/// @brief destroys a persistent shaper, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyVocShaper (TRI_shaper_t* s) {
   voc_shaper_t* shaper = (voc_shaper_t*) s;
+  
+  assert(shaper);
+  assert(shaper->_collection);
 
-  TRI_DestroyBlobCollection(shaper->_collection);
+  TRI_FreeBlobCollection(shaper->_collection);
 
   TRI_DestroyAssociativeSynced(&shaper->_attributeNames);
   TRI_DestroyAssociativeSynced(&shaper->_attributeIds);
   TRI_DestroyAssociativeSynced(&shaper->_shapeDictionary);
   TRI_DestroyAssociativeSynced(&shaper->_shapeIds);
+  TRI_DestroyAssociativePointer(&shaper->_accessors);
 
   TRI_DestroyMutex(&shaper->_shapeLock);
   TRI_DestroyMutex(&shaper->_attributeLock);
@@ -625,10 +629,11 @@ void TRI_DestroyVocShaper (TRI_shaper_t* s) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an persistent shaper and frees the pointer
+/// @brief destroys a persistent shaper and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeVocShaper (TRI_shaper_t* shaper) {
+  TRI_DestroyVocShaper(shaper);
   TRI_Free(shaper);
 }
 
@@ -699,10 +704,7 @@ int TRI_CloseVocShaper (TRI_shaper_t* s) {
 
   if (err != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("cannot close blob collection of shaper, error %lu", (unsigned long) err);
-    TRI_FreeBlobCollection(shaper->_collection);
   }
-
-  shaper->_collection = NULL;
 
   return err;
 }

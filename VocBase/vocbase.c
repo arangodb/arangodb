@@ -1068,8 +1068,6 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
 void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   size_t i;
 
-  vocbase->_active = 0;
-
   // starts unloading of collections
   for (i = 0;  i < vocbase->_collections._length;  ++i) {
     TRI_vocbase_col_t* collection;
@@ -1077,8 +1075,11 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
     collection = (TRI_vocbase_col_t*) vocbase->_collections._buffer[i];
     TRI_UnloadCollectionVocBase(vocbase, collection);
   }
+  
+  // this will signal the synchroniser and the compactor to do one last iteration
+  vocbase->_active = 2;
 
-  // stop synchroniser and compactor
+  // wait until synchroniser and compactor are finished
   TRI_JoinThread(&vocbase->_synchroniser);
   TRI_JoinThread(&vocbase->_compactor);
 

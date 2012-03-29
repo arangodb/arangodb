@@ -47,8 +47,8 @@
 
 
 // forward declaration
-static int skiplistIndex_findHelperIntervalValid(SkiplistIndex*, TRI_skiplist_iterator_interval_t*);
-static int multiSkiplistIndex_findHelperIntervalValid(SkiplistIndex*, TRI_skiplist_iterator_interval_t*);
+static bool skiplistIndex_findHelperIntervalValid(SkiplistIndex*, TRI_skiplist_iterator_interval_t*);
+static bool multiSkiplistIndex_findHelperIntervalValid(SkiplistIndex*, TRI_skiplist_iterator_interval_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Helper method for recursion for CompareShapedJsonShapedJson
@@ -207,12 +207,14 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
           else {
             leftString = (char*)(sizeof(TRI_shape_length_long_string_t) + left->_data.data);
           }          
-          if (leftType == TRI_SHAPE_SHORT_STRING) {
+          
+          if (rightType == TRI_SHAPE_SHORT_STRING) {
             rightString = (char*)(sizeof(TRI_shape_length_short_string_t) + right->_data.data);
           }
           else {
             rightString = (char*)(sizeof(TRI_shape_length_long_string_t) + right->_data.data);
           }         
+          
           result = strcmp(leftString,rightString);          
           return result;
         }
@@ -262,18 +264,20 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
               TRI_AtHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*)(leftShape),
                                               left,j,&leftElement);
             }            
-            else if (TRI_SHAPE_HOMOGENEOUS_SIZED_LIST) {
+            else if (leftType == TRI_SHAPE_HOMOGENEOUS_SIZED_LIST) {
               TRI_AtHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*)(leftShape),
                                                    left,j,&leftElement);
             }
             else {
               TRI_AtListShapedJson((const TRI_list_shape_t*)(leftShape),left,j,&leftElement);
             }
+            
+            
             if (rightType == TRI_SHAPE_HOMOGENEOUS_LIST) {
               TRI_AtHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*)(rightShape),
                                               right,j,&rightElement);
             }            
-            else if (TRI_SHAPE_HOMOGENEOUS_SIZED_LIST) {
+            else if (rightType == TRI_SHAPE_HOMOGENEOUS_SIZED_LIST) {
               TRI_AtHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*)(rightShape),
                                                    right,j,&rightElement);
             }
@@ -820,6 +824,54 @@ static void* SkiplistPrevsIterationCallback(TRI_skiplist_iterator_t* iterator, i
 
 
 
+// -----------------------------------------------------------------------------
+// --SECTION--                           skiplistIndex     common public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup skiplistIndex
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys a skip list index , but does not free the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void SkiplistIndexDestroy(SkiplistIndex* slIndex) {
+  if (slIndex == NULL) {
+    return;
+  }  
+  if (slIndex->unique) {
+    TRI_FreeSkipList(slIndex->skiplist.uniqueSkiplist);
+    slIndex->skiplist.uniqueSkiplist = NULL;
+  }
+  else {
+    TRI_FreeSkipListMulti(slIndex->skiplist.nonUniqueSkiplist);
+    slIndex->skiplist.nonUniqueSkiplist = NULL;
+  }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys a skip list index and frees the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void SkiplistIndexFree(SkiplistIndex* slIndex) {
+  if (slIndex == NULL) {
+    return;
+  }  
+  SkiplistIndexDestroy(slIndex);
+  TRI_Free(slIndex);
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+
 
 
 
@@ -1176,27 +1228,26 @@ static bool skiplistIndex_findHelperIntervalIntersectionValid(SkiplistIndex* ski
     interval->_rightEndPoint = rNode;
   }  
 
-  compareResult = skiplistIndex_findHelperIntervalValid(skiplistIndex, interval); 
-  return (compareResult < 0); 
+  return skiplistIndex_findHelperIntervalValid(skiplistIndex, interval); 
 }
 
-static int skiplistIndex_findHelperIntervalValid(SkiplistIndex* skiplistIndex, TRI_skiplist_iterator_interval_t* interval) {
+static bool skiplistIndex_findHelperIntervalValid(SkiplistIndex* skiplistIndex, TRI_skiplist_iterator_interval_t* interval) {
   int compareResult;
   TRI_skiplist_node_t* lNode;
   TRI_skiplist_node_t* rNode;
   
   
   if ((interval->_leftEndPoint == NULL) || (interval->_rightEndPoint == NULL)) {
-    return 0;
+    return false;
   }
 
   if (interval->_leftEndPoint == interval->_rightEndPoint) {
-    return 0;
+    return false;
   }
     
   if ( (interval->_leftEndPoint  == TRI_StartNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist)) || 
        (interval->_rightEndPoint == TRI_EndNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist)))  {
-    return -1;
+    return true;
   }
   
   lNode = (TRI_skiplist_node_t*)(interval->_leftEndPoint);
@@ -1206,7 +1257,7 @@ static int skiplistIndex_findHelperIntervalValid(SkiplistIndex* skiplistIndex, T
   compareResult = skiplistIndex->skiplist.uniqueSkiplist->compareKeyElement(
                                               skiplistIndex->skiplist.uniqueSkiplist, 
                                               &(lNode->_element), &(rNode->_element), 0);
-  return compareResult;                                              
+  return (compareResult == -1);                                              
 } 
 
 
@@ -1292,90 +1343,54 @@ static void SkiplistIndex_findHelper(SkiplistIndex* skiplistIndex,
         interval._rightEndPoint = TRI_RightLookupByKeySkipList(skiplistIndex->skiplist.uniqueSkiplist, &values); 
       }      
       
-      if (skiplistIndex_findHelperIntervalValid(skiplistIndex,&interval) != -1) {
-        return;
+      if (skiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
+        TRI_PushBackVector(resultIntervalList,&interval);
       }
-      // ok to add interval to the list of intervals; 
-      TRI_PushBackVector(resultIntervalList,&interval);
       return;    
     }
     
     case TRI_SL_LE_OPERATOR: {
-      if (relationOperator->_numFields > 1) {
-        values.numFields  = relationOperator->_numFields - 1;
-        interval._leftEndPoint  = TRI_LeftLookupByKeySkipList(skiplistIndex->skiplist.uniqueSkiplist, &values); 
-        values.numFields  = relationOperator->_numFields;
-      }  
-      else {
-        interval._leftEndPoint  = TRI_StartNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist);
-      }
-
+      interval._leftEndPoint  = TRI_StartNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist);
       interval._rightEndPoint = TRI_RightLookupByKeySkipList(skiplistIndex->skiplist.uniqueSkiplist, &values); 
-
-      if (skiplistIndex_findHelperIntervalValid(skiplistIndex,&interval) != -1) {
-        return;
-      }
-      TRI_PushBackVector(resultIntervalList,&interval);
+      if (skiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
+        TRI_PushBackVector(resultIntervalList,&interval);
+      }  
       return;
     }  
     
     
     case TRI_SL_LT_OPERATOR: {
-      if (relationOperator->_numFields > 1) {
-        values.numFields  = relationOperator->_numFields - 1;
-        interval._leftEndPoint  = TRI_LeftLookupByKeySkipList(skiplistIndex->skiplist.uniqueSkiplist, &values); 
-        values.numFields  = relationOperator->_numFields;
-      }  
-      else {
-        interval._leftEndPoint  = TRI_StartNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist);
-      }
+      interval._leftEndPoint  = TRI_StartNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist);
       interval._rightEndPoint = TRI_LeftLookupByKeySkipList(skiplistIndex->skiplist.uniqueSkiplist, &values); 
-      
-      if (skiplistIndex_findHelperIntervalValid(skiplistIndex,&interval) != -1) {
-        return;  
-      }
-      
-      interval._rightEndPoint = TRI_NextNodeSkipList (skiplistIndex->skiplist.uniqueSkiplist, interval._rightEndPoint);      
-      TRI_PushBackVector(resultIntervalList,&interval);
+      if (interval._rightEndPoint != TRI_EndNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist)) { 
+        interval._rightEndPoint = TRI_NextNodeSkipList (skiplistIndex->skiplist.uniqueSkiplist, interval._rightEndPoint);      
+      }      
+      if (skiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
+        TRI_PushBackVector(resultIntervalList,&interval);
+      }  
       return;
     }  
     
 
     case TRI_SL_GE_OPERATOR: {
-      if (relationOperator->_numFields > 1) {
-        values.numFields  = relationOperator->_numFields - 1;
-        interval._rightEndPoint = TRI_RightLookupByKeySkipList(skiplistIndex->skiplist.uniqueSkiplist, &values); 
-        values.numFields  = relationOperator->_numFields;
-      }
-      else {
-        interval._rightEndPoint = TRI_EndNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist);
-      }
-      
       interval._leftEndPoint  = TRI_LeftLookupByKeySkipList(skiplistIndex->skiplist.uniqueSkiplist, &values); 
-      if (skiplistIndex_findHelperIntervalValid(skiplistIndex,&interval) != -1) {
-        return;  
-      }
-      TRI_PushBackVector(resultIntervalList,&interval);
+      interval._rightEndPoint = TRI_EndNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist);
+      if (skiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
+        TRI_PushBackVector(resultIntervalList,&interval);
+      }  
       return;
     }  
   
   
     case TRI_SL_GT_OPERATOR: {
-      if (relationOperator->_numFields > 1) {
-        values.numFields  = relationOperator->_numFields - 1;
-        interval._rightEndPoint = TRI_RightLookupByKeySkipList(skiplistIndex->skiplist.uniqueSkiplist, &values); 
-        values.numFields  = relationOperator->_numFields;
-      }
-      else {
-        interval._rightEndPoint = TRI_EndNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist);
-      }
-      
-      interval._leftEndPoint  = TRI_RightLookupByKeySkipList(skiplistIndex->skiplist.uniqueSkiplist, &values); 
-      if (skiplistIndex_findHelperIntervalValid(skiplistIndex,&interval) != -1) {
-        return;  
-      }
-      interval._leftEndPoint = TRI_PrevNodeSkipList (skiplistIndex->skiplist.uniqueSkiplist, interval._leftEndPoint);      
-      TRI_PushBackVector(resultIntervalList,&interval);
+      interval._leftEndPoint = TRI_RightLookupByKeySkipList(skiplistIndex->skiplist.uniqueSkiplist, &values); 
+      interval._rightEndPoint = TRI_EndNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist);
+      if (interval._leftEndPoint != TRI_StartNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist)) {
+        interval._leftEndPoint = TRI_PrevNodeSkipList(skiplistIndex->skiplist.uniqueSkiplist, interval._leftEndPoint);      
+      }  
+      if (skiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
+        TRI_PushBackVector(resultIntervalList,&interval);
+      }  
       return;
     }  
     
@@ -1765,13 +1780,12 @@ static bool multiSkiplistIndex_findHelperIntervalIntersectionValid(SkiplistIndex
     interval->_rightEndPoint = rNode;
   }  
 
-  compareResult = multiSkiplistIndex_findHelperIntervalValid(skiplistIndex, interval); 
-  return (compareResult < 0); 
+  return multiSkiplistIndex_findHelperIntervalValid(skiplistIndex, interval); 
 }
 
 
 
-static int multiSkiplistIndex_findHelperIntervalValid(SkiplistIndex* skiplistIndex, TRI_skiplist_iterator_interval_t* interval) {
+static bool multiSkiplistIndex_findHelperIntervalValid(SkiplistIndex* skiplistIndex, TRI_skiplist_iterator_interval_t* interval) {
   int compareResult;
   TRI_skiplist_node_t* lNode;
   TRI_skiplist_node_t* rNode;
@@ -1797,9 +1811,8 @@ static int multiSkiplistIndex_findHelperIntervalValid(SkiplistIndex* skiplistInd
   compareResult = skiplistIndex->skiplist.nonUniqueSkiplist->compareKeyElement(
                                               skiplistIndex->skiplist.nonUniqueSkiplist, 
                                               &(lNode->_element), &(rNode->_element), 0);
-  return compareResult;                                              
+  return (compareResult == -1);  
 } 
-
 
 
 
@@ -1858,103 +1871,57 @@ static void MultiSkiplistIndex_findHelper(SkiplistIndex* skiplistIndex,
 
     
     case TRI_SL_EQ_OPERATOR: {
-      // ............................................................................
-      // The index is constructed from n fields and the client has sent us n values  
-      // ............................................................................
-      
       interval._leftEndPoint  = TRI_LeftLookupByKeySkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, &values); 
       interval._rightEndPoint = TRI_RightLookupByKeySkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, &values); 
-
-      if (multiSkiplistIndex_findHelperIntervalValid(skiplistIndex,&interval) != -1) {
-        return;
+      if (multiSkiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
+        TRI_PushBackVector(resultIntervalList,&interval);
       }
-      // ok to add interval to the list of intervals; 
-      TRI_PushBackVector(resultIntervalList,&interval);
       return;    
     }
         
     
     case TRI_SL_LE_OPERATOR: {
-    
-      if (relationOperator->_numFields > 1) {
-        values.numFields  = relationOperator->_numFields - 1;
-        interval._leftEndPoint  = TRI_LeftLookupByKeySkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, &values); 
-        values.numFields  = relationOperator->_numFields;
-      }  
-      else {
-        interval._leftEndPoint  = TRI_StartNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist);
-      }
+      interval._leftEndPoint  = TRI_StartNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist);
       interval._rightEndPoint = TRI_RightLookupByKeySkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, &values); 
-      
-      if (multiSkiplistIndex_findHelperIntervalValid(skiplistIndex,&interval) != -1) {
-        return;
+      if (multiSkiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
+        TRI_PushBackVector(resultIntervalList,&interval);
       }
-      TRI_PushBackVector(resultIntervalList,&interval);
       return;
     }  
     
     
     case TRI_SL_LT_OPERATOR: {
-    
-      if (relationOperator->_numFields > 1) {
-        values.numFields  = relationOperator->_numFields - 1;
-        interval._leftEndPoint  = TRI_LeftLookupByKeySkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, &values); 
-        values.numFields  = relationOperator->_numFields;
-      }  
-      else {
-        interval._leftEndPoint  = TRI_StartNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist);
-      }
+      interval._leftEndPoint  = TRI_StartNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist);
       interval._rightEndPoint = TRI_LeftLookupByKeySkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, &values); 
-
-      if (multiSkiplistIndex_findHelperIntervalValid(skiplistIndex,&interval) != -1) {
-        return;  
+      if (interval._rightEndPoint != TRI_EndNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist)) {
+        interval._rightEndPoint = TRI_NextNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, interval._rightEndPoint);      
       }
-      
-      interval._rightEndPoint = TRI_NextNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, interval._rightEndPoint);      
-      TRI_PushBackVector(resultIntervalList,&interval);
+      if (multiSkiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
+        TRI_PushBackVector(resultIntervalList,&interval);
+      }      
       return;
     }  
     
 
     case TRI_SL_GE_OPERATOR: {
-    
-      if (relationOperator->_numFields > 1) {
-        values.numFields  = relationOperator->_numFields - 1;
-        interval._rightEndPoint = TRI_RightLookupByKeySkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, &values); 
-        values.numFields  = relationOperator->_numFields;
-      }
-      else {
-        interval._rightEndPoint = TRI_EndNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist);
-      }
-      
       interval._leftEndPoint  = TRI_LeftLookupByKeySkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, &values); 
-      
-      if (multiSkiplistIndex_findHelperIntervalValid(skiplistIndex,&interval) != -1) {
-        return;  
+      interval._rightEndPoint = TRI_EndNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist);
+      if (multiSkiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
+        TRI_PushBackVector(resultIntervalList,&interval);
       }
-      TRI_PushBackVector(resultIntervalList,&interval);
       return;
     }  
   
   
     case TRI_SL_GT_OPERATOR: {
-    
-      if (relationOperator->_numFields > 1) {
-        values.numFields  = relationOperator->_numFields - 1;
-        interval._rightEndPoint = TRI_RightLookupByKeySkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, &values); 
-        values.numFields  = relationOperator->_numFields;
-      }
-      else {
-        interval._rightEndPoint = TRI_EndNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist);
-      }
-      
       interval._leftEndPoint  = TRI_RightLookupByKeySkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, &values); 
-      if (multiSkiplistIndex_findHelperIntervalValid(skiplistIndex,&interval) != -1) {
-        return;  
+      interval._rightEndPoint = TRI_EndNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist);
+      if (interval._leftEndPoint != TRI_StartNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist)) {
+        interval._leftEndPoint = TRI_PrevNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, interval._leftEndPoint);      
       }
-
-      interval._leftEndPoint = TRI_PrevNodeSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist, interval._leftEndPoint);      
-      TRI_PushBackVector(resultIntervalList,&interval);
+      if (multiSkiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
+        TRI_PushBackVector(resultIntervalList,&interval);
+      }      
       return;
     }  
     
