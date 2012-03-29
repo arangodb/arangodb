@@ -491,6 +491,8 @@ static void CleanupSimCollection (TRI_sim_collection_t* sim) {
 
   // try again
   if (! deleted) {
+    // TODO FIXME: this might lead to infinite recursion
+    // can this be replaced with     while (++iterations < MAX_ITERATIONS) { /* do cleanup */ } ?
     CleanupSimCollection(sim);
   }
 }
@@ -526,13 +528,17 @@ static void CleanupShadows (TRI_vocbase_t* const vocbase) {
 void TRI_CompactorVocBase (void* data) {
   TRI_vocbase_t* vocbase = data;
   TRI_vector_pointer_t collections;
+  
+  assert(vocbase->_active);
 
   TRI_InitVectorPointer(&collections);
 
-  while (vocbase->_active) {
+  while (true) {
     size_t n;
     size_t i;
     TRI_col_type_e type;
+    // keep initial _active value as vocbase->_active might change during compaction loop
+    int active = vocbase->_active; 
 
     // copy all collections
     TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -578,7 +584,15 @@ void TRI_CompactorVocBase (void* data) {
     // clean up unused shadows
     CleanupShadows(vocbase);
 
-    usleep(COMPACTOR_INTERVAL);
+    if (vocbase->_active == 1) {
+      // only sleep while server is still running
+      usleep(COMPACTOR_INTERVAL);
+    }
+
+    if (active == 2) {
+      // server shutdown
+      break;
+    }
   }
 
   TRI_DestroyVectorPointer(&collections);

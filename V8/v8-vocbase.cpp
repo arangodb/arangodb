@@ -3994,7 +3994,7 @@ static v8::Handle<v8::Value> JS_EnsureMultiSkiplistIndexVocbaseCol (v8::Argument
   // .............................................................................
   
   for (size_t j = 0; j < attributes._length; ++j) {  
-    char* left = *((char**) (TRI_AtVector(&attributes, j)));    
+    char* left = *((char**) (TRI_AtVector(&attributes, j)));  
     for (size_t k = j + 1; k < attributes._length; ++k) {
       char* right = *((char**) (TRI_AtVector(&attributes, k)));
       if (strcmp(left,right) == 0) {
@@ -4280,10 +4280,7 @@ static v8::Handle<v8::Value> JS_ParameterVocbaseCol (v8::Arguments const& argv) 
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
-  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   if (argv.Length() != 1) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: rename(<name>)")));
@@ -4304,10 +4301,10 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
   int res = TRI_RenameCollectionVocBase(collection->_vocbase, collection, name.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-      string err = "cannot rename collection: ";
-      err += TRI_last_error();
+    string err = "cannot rename collection: ";
+    err += TRI_last_error();
 
-      return scope.Close(v8::ThrowException(v8::String::New(err.c_str())));
+    return scope.Close(v8::ThrowException(v8::String::New(err.c_str())));
   }
 
   return scope.Close(v8::Undefined());
