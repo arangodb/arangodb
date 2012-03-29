@@ -369,6 +369,8 @@ void TRI_ClearVectorPointer (TRI_vector_pointer_t* vector) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ResizeVectorPointer (TRI_vector_pointer_t* vector, size_t n) {
+  assert(n >= 0);
+
   if (vector->_length == n) {
     return;
   }
@@ -413,11 +415,13 @@ void TRI_PushBackVectorPointer (TRI_vector_pointer_t* vector, void* element) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts an element at position n
+/// @brief inserts an element at position n, shifting the following elements
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InsertVectorPointer (TRI_vector_pointer_t* vector, void* element, size_t n) {
-  if (n >= vector->_capacity) {
+  assert(n >= 0);
+
+  if (vector->_length >= vector->_capacity) {
     void* newBuffer;
 
     vector->_capacity = (size_t)(1 + GROW_FACTOR * vector->_capacity);
@@ -434,13 +438,20 @@ void TRI_InsertVectorPointer (TRI_vector_pointer_t* vector, void* element, size_
     vector->_buffer = newBuffer;
   }
 
-  if (n != vector->_length) {
+  if (n < vector->_length) {
     memmove(vector->_buffer + n + 1, 
             vector->_buffer + n, 
             sizeof(void*) * (vector->_length - n));
   }
-  vector->_length++;
+  
   vector->_buffer[n] = element;
+
+  if (n > vector->_length) {
+    vector->_length = n + 1;
+  } 
+  else {
+    ++vector->_length;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -465,6 +476,18 @@ void* TRI_RemoveVectorPointer (TRI_vector_pointer_t* vector, size_t n) {
   }
 
   return old;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the element at a given position
+////////////////////////////////////////////////////////////////////////////////
+
+void* TRI_AtVectorPointer (TRI_vector_pointer_t const* vector, size_t pos) {
+  if (pos >= vector->_length) {
+    return 0;
+  }
+
+  return vector->_buffer[pos];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
