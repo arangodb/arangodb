@@ -1677,6 +1677,22 @@ static bool InitSimCollection (TRI_sim_collection_t* collection,
                                TRI_shaper_t* shaper) {
   TRI_index_t* primary;
   char* id;
+  
+  // create primary index
+  primary = TRI_Allocate(sizeof(TRI_index_t));
+  if (primary == NULL) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return false;
+  }
+
+  id = TRI_DuplicateString("_id");
+  if (id == NULL) {
+    TRI_Free(primary);
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return false;
+  }
 
   TRI_InitDocCollection(&collection->base, shaper);
 
@@ -1705,22 +1721,6 @@ static bool InitSimCollection (TRI_sim_collection_t* collection,
   TRI_InitCondition(&collection->_journalsCondition);
 
   TRI_InitVectorPointer(&collection->_indexes);
-
-  // create primary index
-  primary = TRI_Allocate(sizeof(TRI_index_t));
-  if (primary == NULL) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    return false;
-  }
-
-  id = TRI_DuplicateString("_id");
-  if (id == NULL) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    TRI_Free(primary);
-
-    return false;
-  }
 
   TRI_InitVectorString(&primary->_fields);
   TRI_PushBackVectorString(&primary->_fields, id);
@@ -1832,18 +1832,34 @@ TRI_sim_collection_t* TRI_CreateSimCollection (char const* path,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroySimCollection (TRI_sim_collection_t* collection) {
+  size_t i;
+  size_t n;
+
   TRI_DestroyCondition(&collection->_journalsCondition);
 
   TRI_DestroyAssociativePointer(&collection->_primaryIndex);
 
+  TRI_DestroyMultiPointer(&collection->_edgesIndex);
+
   TRI_FreeSimpleHeaders(collection->_headers);
 
   TRI_DestroyReadWriteLock(&collection->_lock);
+ 
+  // free memory allocated for index field names
+  n = collection->_indexes._length;
+  for (i = 0 ; i < n ; ++i) {
+    TRI_index_t* idx = (TRI_index_t*) collection->_indexes._buffer[i];
+  
+    TRI_DestroyVectorString(&idx->_fields);
+  }
+  // free index vector
+  TRI_DestroyVectorPointer(&collection->_indexes);
 
   if (collection->base._shaper != NULL) {
     TRI_FreeVocShaper(collection->base._shaper);
   }
-
+  
+  /* FIXME: DestroyDocCollection does also free the shaper?? */
   TRI_DestroyDocCollection(&collection->base);
 }
 

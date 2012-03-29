@@ -127,6 +127,9 @@ TRI_barrier_t* TRI_CreateBarrierDatafile (TRI_barrier_list_t* container,
   TRI_barrier_datafile_cb_t* element;
 
   element = TRI_Allocate(sizeof(TRI_barrier_datafile_cb_t));
+  if (!element) {
+    return NULL;
+  }
 
   element->base._type = TRI_BARRIER_DATAFILE_CALLBACK;
   element->base._container = container;
@@ -172,6 +175,9 @@ TRI_barrier_t* TRI_CreateBarrierCollection (TRI_barrier_list_t* container,
   TRI_barrier_collection_cb_t* element;
 
   element = TRI_Allocate(sizeof(TRI_barrier_collection_cb_t));
+  if (!element) {
+    return NULL;
+  }
 
   element->base._type = TRI_BARRIER_COLLECTION_CALLBACK;
   element->base._container = container;
