@@ -1786,6 +1786,7 @@ TRI_sim_collection_t* TRI_CreateSimCollection (char const* path,
   info._type = parameter->_type;
   info._cid = cid == 0 ? TRI_NewTickVocBase() : cid;
   TRI_CopyString(info._name, parameter->_name, sizeof(info._name));
+  info._waitForSync = parameter->_waitForSync;
   info._maximalSize = parameter->_maximalSize;
   info._size = sizeof(TRI_col_info_t);
 
