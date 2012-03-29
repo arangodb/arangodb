@@ -176,8 +176,9 @@ am_libavocado_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 	ProgramOptions/program-options.$(OBJEXT) \
 	Rest/AddressPort.$(OBJEXT) Rest/AnyServer.$(OBJEXT) \
 	Rest/HttpRequest.$(OBJEXT) Rest/HttpResponse.$(OBJEXT) \
-	Rest/Initialise.$(OBJEXT) Rest/SslInterface.$(OBJEXT) \
-	Rest/Url.$(OBJEXT) ShapedJson/json-shaper.$(OBJEXT) \
+	Rest/Initialise.$(OBJEXT) Rest/JsonContainer.$(OBJEXT) \
+	Rest/SslInterface.$(OBJEXT) Rest/Url.$(OBJEXT) \
+	ShapedJson/json-shaper.$(OBJEXT) \
 	ShapedJson/shape-accessor.$(OBJEXT) \
 	ShapedJson/shaped-json.$(OBJEXT) V8/JSLoader.$(OBJEXT) \
 	V8/v8-conv.$(OBJEXT) V8/v8-json.$(OBJEXT) \
@@ -616,6 +617,7 @@ libavocado_a_SOURCES = \
 	Rest/HttpRequest.cpp \
 	Rest/HttpResponse.cpp \
 	Rest/Initialise.cpp \
+	Rest/JsonContainer.cpp \
 	Rest/SslInterface.cpp \
 	Rest/Url.cpp \
 	ShapedJson/json-shaper.c \
@@ -1131,6 +1133,8 @@ Rest/HttpRequest.$(OBJEXT): Rest/$(am__dirstamp) \
 Rest/HttpResponse.$(OBJEXT): Rest/$(am__dirstamp) \
 	Rest/$(DEPDIR)/$(am__dirstamp)
 Rest/Initialise.$(OBJEXT): Rest/$(am__dirstamp) \
+	Rest/$(DEPDIR)/$(am__dirstamp)
+Rest/JsonContainer.$(OBJEXT): Rest/$(am__dirstamp) \
 	Rest/$(DEPDIR)/$(am__dirstamp)
 Rest/SslInterface.$(OBJEXT): Rest/$(am__dirstamp) \
 	Rest/$(DEPDIR)/$(am__dirstamp)
@@ -1748,6 +1752,7 @@ mostlyclean-compile:
 	-rm -f Rest/HttpRequest.$(OBJEXT)
 	-rm -f Rest/HttpResponse.$(OBJEXT)
 	-rm -f Rest/Initialise.$(OBJEXT)
+	-rm -f Rest/JsonContainer.$(OBJEXT)
 	-rm -f Rest/SslInterface.$(OBJEXT)
 	-rm -f Rest/Url.$(OBJEXT)
 	-rm -f RestHandler/RestActionHandler.$(OBJEXT)
@@ -1947,6 +1952,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Rest/$(DEPDIR)/HttpRequest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Rest/$(DEPDIR)/HttpResponse.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Rest/$(DEPDIR)/Initialise.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Rest/$(DEPDIR)/JsonContainer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Rest/$(DEPDIR)/SslInterface.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Rest/$(DEPDIR)/Url.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestHandler/$(DEPDIR)/RestActionHandler.Po@am__quote@

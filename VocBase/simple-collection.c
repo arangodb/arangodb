@@ -1855,10 +1855,6 @@ void TRI_DestroySimCollection (TRI_sim_collection_t* collection) {
   // free index vector
   TRI_DestroyVectorPointer(&collection->_indexes);
 
-  if (collection->base._shaper != NULL) {
-    TRI_FreeVocShaper(collection->base._shaper);
-  }
-  
   /* FIXME: DestroyDocCollection does also free the shaper?? */
   TRI_DestroyDocCollection(&collection->base);
 }
