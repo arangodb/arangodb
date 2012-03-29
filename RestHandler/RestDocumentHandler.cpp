@@ -30,6 +30,7 @@
 #include "Basics/StringUtils.h"
 #include "BasicsC/string-buffer.h"
 #include "Rest/HttpRequest.h"
+#include "Rest/JsonContainer.h"
 #include "VocBase/simple-collection.h"
 #include "VocBase/vocbase.h"
 
@@ -247,6 +248,9 @@ bool RestDocumentHandler::createDocument () {
   if (json == 0) {
     return false;
   }
+  
+  // auto-ptr that will free JSON data when scope is left
+  JsonContainer container(json);
 
   // find and load collection given by name oder identifier
   int res = useCollection(collection, create);
@@ -274,7 +278,6 @@ bool RestDocumentHandler::createDocument () {
 
   // release collection and free json
   releaseCollection();
-  TRI_FreeJson(json);
 
   // generate result
   if (mptr._did != 0) {
@@ -659,6 +662,9 @@ bool RestDocumentHandler::updateDocument () {
     return false;
   }
 
+  // auto-ptr that will free JSON data when scope is left
+  JsonContainer container(json);
+
   // extract document identifier
   TRI_voc_did_t did = StringUtils::uint64(didStr);
 
@@ -695,7 +701,7 @@ bool RestDocumentHandler::updateDocument () {
 
   // release collection
   releaseCollection();
-
+  
   // generate result
   if (mptr._did != 0) {
     generateUpdated(cid, did, mptr._rid);
