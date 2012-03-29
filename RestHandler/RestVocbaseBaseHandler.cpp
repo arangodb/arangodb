@@ -515,7 +515,7 @@ TRI_doc_mptr_t const RestVocbaseBaseHandler::findDocument (string const& doc) {
     return document;
   }
 
-  uint32_t id = StringUtils::uint32(doc);
+  TRI_voc_did_t id = StringUtils::uint64(doc);
 
   // .............................................................................
   // inside read transaction
