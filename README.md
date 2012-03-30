@@ -20,10 +20,38 @@ This will install AvocadoDB and all dependencies.
 
 ## First Steps
 
-    ./avocado --shell
-    avocado> db.examples.save({ Hallo: "World" });
-    avocado> db.examples.count();
-    avocado> db.examples.all().toArray();
+Start the server:
+
+    > mkdir /tmp/vocbase
+    > ./avocado /tmp/vocbase
+    2012-03-30T12:54:19Z [11794] INFO AvocadoDB (version 0.x.y) is ready for business
+    2012-03-30T12:54:19Z [11794] INFO HTTP client port: 127.0.0.1:8529
+    2012-03-30T12:54:19Z [11794] INFO HTTP admin port: 127.0.0.1:8530
+    2012-03-30T12:54:19Z [11794] INFO Have Fun!
+
+Start in another windows the shell:
+
+    > ./avocsh
+				_         
+       __ ___   _____   ___ ___| |__      
+      / _` \ \ / / _ \ / __/ __| '_ \   
+     | (_| |\ V / (_) | (__\__ \ | | | 
+      \__,_| \_/ \___/ \___|___/_| |_|   
+
+    Welcome to avocsh 0.3.5. Copyright (c) 2012 triAGENS GmbH.
+    Using Google V8 3.9.4.0 JavaScript engine.
+    Using READLINE 6.1.
+
+    Connected to Avocado DB 127.0.0.1:8529 Version 0.3.5
+
+    avocsh> db._create("examples")
+    [AvocadoCollection 106097, "examples]
+
+    avocsh> db.examples.save({ Hallo: "World" });
+    {"error":false,"_id":"106097/2333739","_rev":2333739}
+
+    avocsh> db.examples.all();
+    [{ _id : "82883/1524675", _rev : 1524675, Hallo : "World" }]
 
 ## Caveat
 
