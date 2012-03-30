@@ -3162,23 +3162,19 @@ static v8::Handle<v8::Value> JS_DeleteVocbaseCol (v8::Arguments const& argv) {
   // inside a write transaction
   // .............................................................................
 
-  bool ok = doc->destroyLock(doc, did, 0, 0, TRI_DOC_UPDATE_LAST_WRITE);
+  int res = doc->destroyLock(doc, did, 0, 0, TRI_DOC_UPDATE_LAST_WRITE);
 
   // .............................................................................
   // outside a write transaction
   // .............................................................................
 
-  if (! ok) {
-    if (TRI_errno() == TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND) {
+  if (res != TRI_ERROR_NO_ERROR) {
+    if (res == TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND) {
       ReleaseCollection(collection);
       return scope.Close(v8::False());
     }
     else {
-      string err = "cannot delete document: ";
-      err += TRI_last_error();
-
-      ReleaseCollection(collection);
-      return scope.Close(v8::ThrowException(v8::String::New(err.c_str())));
+      return scope.Close(v8::ThrowException(CreateErrorObject(res, "cannot delete document")));
     }
   }
 
@@ -4301,10 +4297,7 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
   int res = TRI_RenameCollectionVocBase(collection->_vocbase, collection, name.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    string err = "cannot rename collection: ";
-    err += TRI_last_error();
-
-    return scope.Close(v8::ThrowException(v8::String::New(err.c_str())));
+    return scope.Close(v8::ThrowException(CreateErrorObject(res, "cannot rename collection")));
   }
 
   return scope.Close(v8::Undefined());

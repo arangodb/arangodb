@@ -100,7 +100,6 @@ function CollectionRepresentation (collection, showParameter, showCount, showFig
 /// @brief creates a collection
 ///
 /// @REST{POST /_api/collection}
-////////////////////////////////
 ///
 /// Creates an new collection with a given name. The request must contain an
 /// object with the following attributes.
@@ -112,7 +111,6 @@ function CollectionRepresentation (collection, showParameter, showCount, showFig
 /// document.
 ///
 /// @EXAMPLES
-/////////////
 ///
 /// @verbinclude api-collection-create-collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,8 +126,6 @@ function POST_api_collection (req, res) {
     return;
   }
 
-  var waitForSync = false;
-
   if (! body.hasOwnProperty("name")) {
     actions.resultBad(req, res, actions.ERROR_AVOCADO_ILLEGAL_NAME,
                       "name must be non-empty");
@@ -137,6 +133,7 @@ function POST_api_collection (req, res) {
   }
 
   var name = body.name;
+  var waitForSync = false;
 
   if (body.hasOwnProperty("waitForSync")) {
     waitForSync = body.waitForSync;
@@ -166,7 +163,6 @@ function POST_api_collection (req, res) {
 /// @brief returns all collections
 ///
 /// @REST{GET /_api/collection}
-///////////////////////////////
 ///
 /// Returns an object with an attribute @LIT{collections} containing a 
 /// list of all collection descriptions. The same information is also
@@ -174,7 +170,6 @@ function POST_api_collection (req, res) {
 /// as keys.
 ///
 /// @EXAMPLES
-/////////////
 ///
 /// Return information about all collections:
 ///
@@ -353,7 +348,6 @@ function GET_api_collection (req, res) {
 /// @brief loads a collection
 ///
 /// @REST{PUT /_api/collection/@FA{collection-identifier}/load}
-///////////////////////////////////////////////////////////////
 ///
 /// Loads a collection into memory.  On success an object with the following
 ///
@@ -372,7 +366,6 @@ function GET_api_collection (req, res) {
 /// It is possible to specify a name instead of an identifier.
 ///
 /// @EXAMPLES
-/////////////
 ///
 /// @verbinclude api-collection-identifier-load
 ////////////////////////////////////////////////////////////////////////////////
@@ -394,7 +387,6 @@ function PUT_api_collection_load (req, res, collection) {
 /// @brief unloads a collection
 ///
 /// @REST{PUT /_api/collection/@FA{collection-identifier}/unload}
-/////////////////////////////////////////////////////////////////
 ///
 /// Removes a collection from memory. This call does not delete any documents.
 /// You can use the collection afterwards; in which case it will be loaded into
@@ -411,7 +403,6 @@ function PUT_api_collection_load (req, res, collection) {
 /// 404} is returned.
 ///
 /// @EXAMPLES
-/////////////
 ///
 /// @verbinclude api-collection-identifier-unload
 ////////////////////////////////////////////////////////////////////////////////
@@ -433,23 +424,31 @@ function PUT_api_collection_unload (req, res, collection) {
 /// @brief truncates a collection
 ///
 /// @REST{PUT /_api/collection/@FA{collection-identifier}/truncate}
-///////////////////////////////////////////////////////////////////
 ///
 /// Removes all documents from the collection, but leaves the indexes intact.
 ///
 /// @EXAMPLES
-/////////////
 ///
+/// @verbinclude api-collection-identifier-truncate
 ////////////////////////////////////////////////////////////////////////////////
 
 function PUT_api_collection_truncate (req, res, collection) {
+  try {
+    collection.truncate();
+
+    var result = CollectionRepresentation(collection);
+    
+    actions.resultOk(req, res, actions.HTTP_OK, result);
+  }
+  catch (err) {
+    actions.resultException(req, res, err);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief changes a collection
 ///
 /// @REST{PUT /_api/collection/@FA{collection-identifier}/parameter}
-////////////////////////////////////////////////////////////////////
 ///
 /// Changes the parameter of a collection. Expects an object with the
 /// attribute(s)
@@ -466,18 +465,36 @@ function PUT_api_collection_truncate (req, res, collection) {
 /// @LIT{waitForSync}: The new value.
 ///
 /// @EXAMPLES
-/////////////
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
 function PUT_api_collection_parameter (req, res, collection) {
+  var body;
+
+  try {
+    body = JSON.parse(req.requestBody || "{}") || {};
+  }
+  catch (err) {
+    actions.resultBad(req, res, actions.ERROR_HTTP_CORRUPTED_JSON, err);
+    return;
+  }
+
+  try {
+    collection.parameter(body);
+
+    var result = CollectionRepresentation(collection, true);
+    
+    actions.resultOk(req, res, actions.HTTP_OK, result);
+  }
+  catch (err) {
+    actions.resultException(req, res, err);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a collection
 ///
 /// @REST{PUT /_api/collection/@FA{collection-identifier}/rename}
-/////////////////////////////////////////////////////////////////
 ///
 /// Renames a collection. Expects an object with the attribute(s)
 ///
@@ -490,11 +507,39 @@ function PUT_api_collection_parameter (req, res, collection) {
 /// @LIT{name}: The new name of the collection.
 ///
 /// @EXAMPLES
-/////////////
 ///
+/// @verbinclude api-collection-identifier-rename
 ////////////////////////////////////////////////////////////////////////////////
 
 function PUT_api_collection_rename (req, res, collection) {
+  var body;
+
+  try {
+    body = JSON.parse(req.requestBody || "{}") || {};
+  }
+  catch (err) {
+    actions.resultBad(req, res, actions.ERROR_HTTP_CORRUPTED_JSON, err);
+    return;
+  }
+
+  if (! body.hasOwnProperty("name")) {
+    actions.resultBad(req, res, actions.ERROR_AVOCADO_ILLEGAL_NAME,
+                      "name must be non-empty");
+    return;
+  }
+
+  var name = body.name;
+
+  try {
+    collection.rename(name);
+
+    var result = CollectionRepresentation(collection);
+    
+    actions.resultOk(req, res, actions.HTTP_OK, result);
+  }
+  catch (err) {
+    actions.resultException(req, res, err);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

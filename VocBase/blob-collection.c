@@ -315,7 +315,6 @@ TRI_blob_collection_t* TRI_CreateBlobCollection (char const* path, TRI_col_param
   info._cid = TRI_NewTickVocBase();
   TRI_CopyString(info._name, parameter->_name, sizeof(info._name));
   info._maximalSize = parameter->_maximalSize;
-  info._size = sizeof(TRI_col_info_t);
 
   collection = TRI_CreateCollection(&blob->base, path, &info);
 

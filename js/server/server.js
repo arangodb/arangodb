@@ -167,6 +167,30 @@ AvocadoDatabase.prototype._drop = function(name) {
 AvocadoEdges.prototype._drop = AvocadoDatabase._drop;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief truncates a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._truncate = function(name) {
+  var collection = name;
+
+  if (typeof name === "string") {
+    collection = db[name];
+  }
+
+  if (collection == null) {
+    return;
+  }
+
+  var all = collection.ALL(null, null).documents;
+
+  for (var i = 0;  i < all.length;  ++i) {
+    collection.delete(all[i]._id);
+  }
+}
+
+AvocadoEdges.prototype._truncate = AvocadoDatabase._truncate;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -221,6 +245,14 @@ AvocadoCollection.STATUS_DELETED = 5;
 
 AvocadoCollection.prototype.toArray = function() {
   return this.all().toArray();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief truncates a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.truncate = function() {
+  return db._truncate(this);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
