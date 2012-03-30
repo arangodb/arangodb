@@ -134,16 +134,22 @@ namespace triagens {
       _headerFields[k] = value;
     }
 
-    const string SimpleHttpResult::getContentType () {
-       map<string, string>::const_iterator find = _headerFields.find("content-type");
-       if (find != _headerFields.end()) {
-         size_t semicolon = find->second.find(";");
-         if (semicolon == string::npos) {
-           return find->second;   
-         }
-         return find->second.substr(0, semicolon);
-       }
-       return "";
+    const string SimpleHttpResult::getContentType (const bool partial) {
+      map<string, string>::const_iterator find = _headerFields.find("content-type");
+      if (find != _headerFields.end()) {
+        // header found
+        if (partial) {
+          // return partial match before first semicolon
+          size_t semicolon = find->second.find(";");
+          if (semicolon != string::npos) {
+            // partial match found
+            return find->second.substr(0, semicolon);
+          }
+        }
+        return find->second;   
+      }
+
+      return "";
     }
     
     
