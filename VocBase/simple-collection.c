@@ -63,17 +63,20 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collectio
                                                  char const* latitude,
                                                  char const* longitude,
                                                  bool geoJson,
-                                                 TRI_idx_iid_t iid);
+                                                 TRI_idx_iid_t iid,
+                                                 bool* created);
 
 static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collection,
                                                   const TRI_vector_t* attributes,
                                                   TRI_idx_iid_t iid,
-                                                  bool unique);
+                                                  bool unique,
+                                                  bool* created);
                                                  
 static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* collection,
                                                       const TRI_vector_t* attributes,
                                                       TRI_idx_iid_t iid,
-                                                      bool unique);
+                                                      bool unique,
+                                                      bool* created);
                                                  
 static uint64_t HashKeyHeader (TRI_associative_pointer_t* array, void const* key);
 
@@ -84,7 +87,7 @@ static bool IsEqualKeyDocument (TRI_associative_pointer_t* array, void const* ke
 static int InsertPrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc);
 static int  UpdatePrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_shaped_json_t const* old);
 static int RemovePrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc);
-static TRI_json_t* JsonPrimary (TRI_index_t* idx, TRI_doc_collection_t* collection);
+static TRI_json_t* JsonPrimary (TRI_index_t* idx, TRI_doc_collection_t const* collection);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          JOURNALS
@@ -1428,8 +1431,8 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 static bool OpenIndexIterator (char const* filename, void* data) {
   TRI_idx_iid_t iid;
   TRI_index_t* idx;
-  TRI_json_t* fieldCount;
   TRI_json_t* fieldStr;
+  TRI_json_t* fld;
   TRI_json_t* gjs;
   TRI_json_t* iis;
   TRI_json_t* json;
@@ -1438,9 +1441,8 @@ static bool OpenIndexIterator (char const* filename, void* data) {
   TRI_vector_t attributes;
   bool uniqueIndex;
   char const* typeStr;
-  char fieldChar[30];
   char* error;
-  int intCount;
+  int fieldCount;
   int j;
 
   // load json description of the index
@@ -1475,29 +1477,48 @@ static bool OpenIndexIterator (char const* filename, void* data) {
   typeStr = type->_value._string.data;
 
   // extract the index identifier
-  iis = TRI_LookupArrayJson(json, "iid");
+  iis = TRI_LookupArrayJson(json, "id");
 
   if (iis != NULL && iis->_type == TRI_JSON_NUMBER) {
     iid = iis->_value._number;
   }
   else {
-    LOG_ERROR("ignore hash-index, index identifier could not be located");
+    LOG_ERROR("ignoring index, index identifier could not be located");
     return false;
-  }  
+  }
 
+  // extract the fields
+  fld = TRI_LookupArrayJson(json, "fields");
+
+  if (fld == NULL || fld->_type != TRI_JSON_LIST) {
+    LOG_ERROR("ignoring %s-index %lu, 'fields' must be a list",
+              typeStr, (unsigned long) iid);
+
+    TRI_FreeJson(json);
+    return false;
+  }
+
+  fieldCount = fld->_value._objects._length;
+
+  for (j = 0;  j < fieldCount;  ++j) {
+    TRI_json_t* sub = TRI_AtVector(&fld->_value._objects, j);
+
+    if (sub->_type != TRI_JSON_STRING) {
+        LOG_ERROR("ignoring %s-index %lu, 'fields' must be a list of attribute paths", 
+                  typeStr, (unsigned long) iid);
+
+        TRI_FreeJson(json);
+        return false;
+    }
+  }
+  
   // ...........................................................................
   // GEO INDEX
   // ...........................................................................
 
   if (TRI_EqualString(typeStr, "geo")) {
-    TRI_json_t* lat;
-    TRI_json_t* loc;
-    TRI_json_t* lon;
     bool geoJson;
 
-    loc = TRI_LookupArrayJson(json, "location");
-    lat = TRI_LookupArrayJson(json, "latitude");
-    lon = TRI_LookupArrayJson(json, "longitude");
     gjs = TRI_LookupArrayJson(json, "geoJson");
     geoJson = false;
     
@@ -1505,23 +1526,35 @@ static bool OpenIndexIterator (char const* filename, void* data) {
       geoJson = gjs->_value._boolean;
     }
 
-    if (loc != NULL && loc->_type == TRI_JSON_STRING) {
-      CreateGeoIndexSimCollection(doc, loc->_value._string.data, NULL, NULL, geoJson, iid);
+    if (fieldCount == 1) {
+      TRI_json_t* loc;
+
+      loc = TRI_AtVector(&fld->_value._objects, 0);
+
+      CreateGeoIndexSimCollection(doc, loc->_value._string.data, NULL, NULL, geoJson, iid, NULL);
+
+      TRI_FreeJson(json);
+      return true;
     }
-    else if (lat != NULL && lat->_type == TRI_JSON_STRING && lon != NULL && lon ->_type == TRI_JSON_STRING) {
-      CreateGeoIndexSimCollection(doc, NULL, lat->_value._string.data, lon->_value._string.data, false, iid);
+    else if (fieldCount == 2) {
+      TRI_json_t* lat;
+      TRI_json_t* lon;
+
+      lat = TRI_AtVector(&fld->_value._objects, 0);
+      lon = TRI_AtVector(&fld->_value._objects, 1);
+
+      CreateGeoIndexSimCollection(doc, NULL, lat->_value._string.data, lon->_value._string.data, false, iid, NULL);
+
+      TRI_FreeJson(json);
+      return true;
     }
     else {
-      LOG_ERROR("ignore geo-index %lu, need either 'location' or 'latitude' and 'longitude'",
-                (unsigned long) iid);
+      LOG_ERROR("ignoring %s-index %lu, 'fields' must be a list with 1 or 2 entries",
+                typeStr, (unsigned long) iid);
 
       TRI_FreeJson(json);
       return false;
     }
-
-    TRI_FreeJson(json);
-
-    return true;
   }
   
   // ...........................................................................
@@ -1538,25 +1571,17 @@ static bool OpenIndexIterator (char const* filename, void* data) {
       uniqueIndex = gjs->_value._boolean;
     }
     else {
-      LOG_ERROR("ignore %s-index %lu, could not determine if unique or non-unique",
-                typeStr,
-                (unsigned long) iid);
+      LOG_ERROR("ignoring %s-index %lu, could not determine if unique or non-unique",
+                typeStr, (unsigned long) iid);
 
       TRI_FreeJson(json);
       return false;
     }  
     
-    // Extract the list of fields
-    fieldCount = 0;
-    fieldCount = TRI_LookupArrayJson(json, "fieldCount");
-    intCount = 0;
-
-    if ( (fieldCount != NULL) && (fieldCount->_type == TRI_JSON_NUMBER) ) {
-      intCount = fieldCount->_value._number;
-    }
-
-    if (intCount < 1) {
-      LOG_ERROR("ignore %s-index %lu, field count missing", typeStr, (unsigned long) iid);
+    // extract the list of fields
+    if (fieldCount < 1) {
+      LOG_ERROR("ignoring %s-index %lu, need at least von attribute path",
+                typeStr, (unsigned long) iid);
 
       TRI_FreeJson(json);
       return false;
@@ -1567,29 +1592,18 @@ static bool OpenIndexIterator (char const* filename, void* data) {
     TRI_InitVector(&attributes, sizeof(char*));
     
     // find fields
-    for (j = 0;  j < intCount;  ++j) {
-      sprintf(fieldChar, "field_%i", j);
-
-      fieldStr = TRI_LookupArrayJson(json, fieldChar);
-
-      if (fieldStr->_type != TRI_JSON_STRING) {
-        LOG_ERROR("ignore %s-index %lu, invalid field name for hash index",
-                  (unsigned long) iid);
-
-        TRI_DestroyVector(&attributes);
-        TRI_FreeJson(json);
-        return false;
-      }  
+    for (j = 0;  j < fieldCount;  ++j) {
+      fieldStr = TRI_AtVector(&fld->_value._objects, j);
 
       TRI_PushBackVector(&attributes, &(fieldStr->_value._string.data));
     }  
 
     // create the index
     if (TRI_EqualString(typeStr, "hash")) {
-      idx = CreateHashIndexSimCollection (doc, &attributes, iid, uniqueIndex); 
+      idx = CreateHashIndexSimCollection(doc, &attributes, iid, uniqueIndex, NULL); 
     }
     else if (TRI_EqualString(typeStr, "skiplist")) {
-      idx = CreateSkiplistIndexSimCollection (doc, &attributes, iid, uniqueIndex); 
+      idx = CreateSkiplistIndexSimCollection(doc, &attributes, iid, uniqueIndex, NULL); 
     }
     else {
       LOG_ERROR("internal error for hash type '%s'", typeStr);
@@ -2587,7 +2601,7 @@ static int RemovePrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 /// @brief JSON description of a geo index, location is a list
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonPrimary (TRI_index_t* idx, TRI_doc_collection_t* collection) {
+static TRI_json_t* JsonPrimary (TRI_index_t* idx, TRI_doc_collection_t const* collection) {
   TRI_json_t* json;
   TRI_json_t* fields;
 
@@ -2679,7 +2693,8 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* sim,
                                                  char const* latitude,
                                                  char const* longitude,
                                                  bool geoJson,
-                                                 TRI_idx_iid_t iid) {
+                                                 TRI_idx_iid_t iid,
+                                                 bool* created) {
   TRI_index_t* idx;
   TRI_shape_pid_t lat;
   TRI_shape_pid_t loc;
@@ -2724,6 +2739,10 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* sim,
   if (idx != NULL) {
     LOG_TRACE("geo-index already created for location '%s'", location);
 
+    if (created != NULL) {
+      *created = false;
+    }
+
     return idx;
   }
 
@@ -2759,6 +2778,10 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* sim,
   // and store index
   TRI_PushBackVectorPointer(&sim->_indexes, idx);
 
+  if (created != NULL) {
+    *created = true;
+  }
+
   return idx;
 }
 
@@ -2770,7 +2793,8 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* sim,
 static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collection,
                                                   const TRI_vector_t* attributes,
                                                   TRI_idx_iid_t iid,
-                                                  bool unique) {
+                                                  bool unique,
+                                                  bool* created) {
   TRI_index_t* idx;
   TRI_shaper_t* shaper;
   TRI_vector_pointer_t fields;
@@ -2812,6 +2836,10 @@ static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collecti
     TRI_DestroyVectorPointer(&fields);
     LOG_TRACE("hash-index already created");
 
+    if (created != NULL) {
+      *created = false;
+    }
+
     return idx;
   }
 
@@ -2852,6 +2880,10 @@ static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collecti
 
   TRI_PushBackVectorPointer(&collection->_indexes, idx);
 
+  if (created != NULL) {
+    *created = true;
+  }
+
   return idx;  
 }
 
@@ -2862,7 +2894,8 @@ static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collecti
 static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* collection,
                                                       const TRI_vector_t* attributes,
                                                       TRI_idx_iid_t iid,
-                                                      bool unique) {
+                                                      bool unique,
+                                                      bool* created) {
   TRI_index_t* idx     = NULL;
   TRI_shaper_t* shaper = collection->base._shaper;
   TRI_vector_t paths;
@@ -2897,6 +2930,11 @@ static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* coll
     TRI_DestroyVectorPointer(&fields);
 
     LOG_TRACE("skiplist-index already created");
+
+    if (created != NULL) {
+      *created = false;
+    }
+
     return idx;
   }
 
@@ -2936,6 +2974,10 @@ static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* coll
   // ...........................................................................
 
   TRI_DestroyVector(&paths);
+
+  if (created != NULL) {
+    *created = true;
+  }
   
   return idx;  
 }
@@ -3148,11 +3190,12 @@ TRI_index_t* TRI_LookupSkiplistIndexSimCollection (TRI_sim_collection_t* collect
 /// @brief ensures that a geo index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_idx_iid_t TRI_EnsureGeoIndexSimCollection (TRI_sim_collection_t* sim,
-                                               char const* location,
-                                               bool geoJson) {
+TRI_index_t* TRI_EnsureGeoIndexSimCollection (TRI_sim_collection_t* sim,
+                                              char const* location,
+                                              bool geoJson,
+                                              bool* created) {
   TRI_index_t* idx;
-  bool ok;
+  int res;
 
   // .............................................................................
   // inside write-lock
@@ -3160,11 +3203,11 @@ TRI_idx_iid_t TRI_EnsureGeoIndexSimCollection (TRI_sim_collection_t* sim,
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
-  idx = CreateGeoIndexSimCollection(sim, location, NULL, NULL, geoJson, 0);
+  idx = CreateGeoIndexSimCollection(sim, location, NULL, NULL, geoJson, 0, created);
 
   if (idx == NULL) {
     TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
-    return 0;
+    return NULL;
   }
 
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
@@ -3173,20 +3216,21 @@ TRI_idx_iid_t TRI_EnsureGeoIndexSimCollection (TRI_sim_collection_t* sim,
   // outside write-lock
   // .............................................................................
 
-  ok = TRI_SaveIndex(&sim->base, idx);
+  res = TRI_SaveIndex(&sim->base, idx);
 
-  return ok ? idx->_iid : 0;
+  return res == TRI_ERROR_NO_ERROR ? idx : NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_idx_iid_t TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* sim,
-                                                char const* latitude,
-                                                char const* longitude) {
+TRI_index_t* TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* sim,
+                                               char const* latitude,
+                                               char const* longitude,
+                                               bool* created) {
   TRI_index_t* idx;
-  bool ok;
+  int res;
 
   // .............................................................................
   // inside write-lock
@@ -3194,11 +3238,11 @@ TRI_idx_iid_t TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* sim,
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
-  idx = CreateGeoIndexSimCollection(sim, NULL, latitude, longitude, false, 0);
+  idx = CreateGeoIndexSimCollection(sim, NULL, latitude, longitude, false, 0, created);
 
   if (idx == NULL) {
     TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
-    return 0;
+    return NULL;
   }
 
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
@@ -3207,9 +3251,9 @@ TRI_idx_iid_t TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* sim,
   // outside write-lock
   // .............................................................................
 
-  ok = TRI_SaveIndex(&sim->base, idx);
+  res = TRI_SaveIndex(&sim->base, idx);
 
-  return ok ? idx->_iid : 0;
+  return res == TRI_ERROR_NO_ERROR ? idx : NULL;
 }
 
 
@@ -3217,11 +3261,12 @@ TRI_idx_iid_t TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* sim,
 /// @brief ensures that a hash index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_idx_iid_t TRI_EnsureHashIndexSimCollection(TRI_sim_collection_t* sim,
-                                               const TRI_vector_t* attributes,
-                                               bool unique) {
+TRI_index_t* TRI_EnsureHashIndexSimCollection(TRI_sim_collection_t* sim,
+                                              const TRI_vector_t* attributes,
+                                              bool unique,
+                                              bool* created) {
   TRI_index_t* idx;
-  bool ok;
+  int res;
 
   // .............................................................................
   // inside write-lock
@@ -3233,11 +3278,11 @@ TRI_idx_iid_t TRI_EnsureHashIndexSimCollection(TRI_sim_collection_t* sim,
   // Given the list of attributes (as strings) 
   // .............................................................................
 
-  idx = CreateHashIndexSimCollection(sim, attributes, 0, unique);
+  idx = CreateHashIndexSimCollection(sim, attributes, 0, unique, created);
   
   if (idx == NULL) {
     TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
-    return 0;
+    return NULL;
   }
 
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
@@ -3246,20 +3291,21 @@ TRI_idx_iid_t TRI_EnsureHashIndexSimCollection(TRI_sim_collection_t* sim,
   // outside write-lock
   // .............................................................................
 
-  ok = TRI_SaveIndex(&sim->base, idx);
+  res = TRI_SaveIndex(&sim->base, idx);
 
-  return ok ? idx->_iid : 0;
+  return res == TRI_ERROR_NO_ERROR ? idx : NULL;
 }                                                
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a skiplist index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_idx_iid_t TRI_EnsureSkiplistIndexSimCollection(TRI_sim_collection_t* sim,
-                                                   const TRI_vector_t* attributes,
-                                                   bool unique) {
+TRI_index_t* TRI_EnsureSkiplistIndexSimCollection(TRI_sim_collection_t* sim,
+                                                  const TRI_vector_t* attributes,
+                                                  bool unique,
+                                                  bool* created) {
   TRI_index_t* idx;
-  bool ok;
+  int res;
 
   // .............................................................................
   // inside write-lock the collection
@@ -3271,11 +3317,11 @@ TRI_idx_iid_t TRI_EnsureSkiplistIndexSimCollection(TRI_sim_collection_t* sim,
   // Given the list of attributes (as strings) 
   // .............................................................................
 
-  idx = CreateSkiplistIndexSimCollection(sim, attributes, 0, unique);
+  idx = CreateSkiplistIndexSimCollection(sim, attributes, 0, unique, created);
   
   if (idx == NULL) {
     TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
-    return 0;
+    return NULL;
   }
 
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
@@ -3284,9 +3330,9 @@ TRI_idx_iid_t TRI_EnsureSkiplistIndexSimCollection(TRI_sim_collection_t* sim,
   // outside write-lock
   // .............................................................................
 
-  ok = TRI_SaveIndex(&sim->base, idx);
+  res = TRI_SaveIndex(&sim->base, idx);
   
-  return ok ? idx->_iid : 0;
+  return res == TRI_ERROR_NO_ERROR ? idx : NULL;
 }                                                
 
                                                 
