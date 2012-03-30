@@ -1461,7 +1461,7 @@ static v8::Handle<v8::Value> JS_ParseAql (v8::Arguments const& argv) {
   }
 
   // get the query string
-  v8::Handle<v8::Value> queryArg = argv[1];
+  v8::Handle<v8::Value> queryArg = argv[0];
   if (!queryArg->IsString()) {
     return scope.Close(v8::ThrowException(v8::String::New("expecting string for <querystring>")));
   }
