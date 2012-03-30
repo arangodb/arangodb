@@ -636,6 +636,7 @@ static int RemoveGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 
 static TRI_json_t* JsonGeoIndex (TRI_index_t* idx, TRI_doc_collection_t* collection) {
   TRI_json_t* json;
+  TRI_json_t* fields;
   TRI_shape_path_t const* path;
   char const* location;
   TRI_geo_index_t* geo;
@@ -659,10 +660,13 @@ static TRI_json_t* JsonGeoIndex (TRI_index_t* idx, TRI_doc_collection_t* collect
     return NULL;
   }
 
-  TRI_Insert2ArrayJson(json, "iid", TRI_CreateNumberJson(idx->_iid));
+  fields = TRI_CreateListJson();
+  TRI_PushBack3ListJson(fields, TRI_CreateStringCopyJson(location));
+
+  TRI_Insert2ArrayJson(json, "id", TRI_CreateNumberJson(idx->_iid));
   TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("geo"));
-  TRI_Insert2ArrayJson(json, "location", TRI_CreateStringCopyJson(location));
   TRI_Insert2ArrayJson(json, "geoJson", TRI_CreateBooleanJson(geo->_geoJson));
+  TRI_Insert2ArrayJson(json, "fields", fields);
 
   return json;
 }
@@ -673,6 +677,7 @@ static TRI_json_t* JsonGeoIndex (TRI_index_t* idx, TRI_doc_collection_t* collect
 
 static TRI_json_t* JsonGeoIndex2 (TRI_index_t* idx, TRI_doc_collection_t* collection) {
   TRI_json_t* json;
+  TRI_json_t* fields;
   TRI_shape_path_t const* path;
   char const* latitude;
   char const* longitude;
@@ -706,10 +711,13 @@ static TRI_json_t* JsonGeoIndex2 (TRI_index_t* idx, TRI_doc_collection_t* collec
     return NULL;
   }
 
-  TRI_Insert2ArrayJson(json, "iid", TRI_CreateNumberJson(idx->_iid));
+  fields = TRI_CreateListJson();
+  TRI_PushBack3ListJson(fields, TRI_CreateStringCopyJson(latitude));
+  TRI_PushBack3ListJson(fields, TRI_CreateStringCopyJson(longitude));
+
+  TRI_Insert2ArrayJson(json, "id", TRI_CreateNumberJson(idx->_iid));
   TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("geo"));
-  TRI_Insert2ArrayJson(json, "latitude", TRI_CreateStringCopyJson(latitude));
-  TRI_Insert2ArrayJson(json, "longitude", TRI_CreateStringCopyJson(longitude));
+  TRI_Insert2ArrayJson(json, "fields", fields);
 
   return json;
 }
@@ -1090,10 +1098,10 @@ static int InsertHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 
 static TRI_json_t* JsonHashIndex (TRI_index_t* idx, TRI_doc_collection_t* collection) {
   TRI_json_t* json;
+  TRI_json_t* fields;
   const TRI_shape_path_t* path;
   TRI_hash_index_t* hashIndex;
   char const** fieldList;
-  char fieldCounter[64]; // used below to store strings like "field_ddd"
   size_t j;
    
   // ..........................................................................  
@@ -1147,15 +1155,16 @@ static TRI_json_t* JsonHashIndex (TRI_index_t* idx, TRI_doc_collection_t* collec
     return NULL;
   }
 
-  TRI_Insert2ArrayJson(json, "iid", TRI_CreateNumberJson(idx->_iid));
-  TRI_Insert2ArrayJson(json, "unique", TRI_CreateBooleanJson(hashIndex->base._unique));
-  TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("hash"));
-  TRI_Insert2ArrayJson(json, "fieldCount", TRI_CreateNumberJson(hashIndex->_paths._length));
+  fields = TRI_CreateListJson();
 
   for (j = 0; j < hashIndex->_paths._length; ++j) {
-    snprintf(fieldCounter, sizeof(fieldCounter), "field_%lu", (unsigned long) j);
-    TRI_Insert2ArrayJson(json, fieldCounter, TRI_CreateStringCopyJson(fieldList[j]));
+    TRI_PushBack3ListJson(fields, TRI_CreateStringCopyJson(fieldList[j]));
   }
+
+  TRI_Insert3ArrayJson(json, "id", TRI_CreateNumberJson(idx->_iid));
+  TRI_Insert3ArrayJson(json, "unique", TRI_CreateBooleanJson(hashIndex->base._unique));
+  TRI_Insert3ArrayJson(json, "type", TRI_CreateStringCopyJson("hash"));
+  TRI_Insert3ArrayJson(json, "fields", fields);
 
   TRI_Free(fieldList);
     
@@ -1844,12 +1853,11 @@ static int InsertSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, TRI_doc_collection_t* collection) {
-
   TRI_json_t* json;
+  TRI_json_t* fields;
   const TRI_shape_path_t* path;
   TRI_skiplist_index_t* skiplistIndex;
   char const** fieldList;
-  char fieldCounter[64];
   size_t j;
    
   // ..........................................................................  
@@ -1893,15 +1901,16 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, TRI_doc_collection_t* co
     return NULL;
   }
 
-  TRI_Insert2ArrayJson(json, "iid", TRI_CreateNumberJson(idx->_iid));
-  TRI_Insert2ArrayJson(json, "unique", TRI_CreateBooleanJson(skiplistIndex->base._unique));
-  TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("skiplist"));
-  TRI_Insert2ArrayJson(json, "fieldCount", TRI_CreateNumberJson(skiplistIndex->_paths._length));
+  fields = TRI_CreateListJson();
 
   for (j = 0; j < skiplistIndex->_paths._length; ++j) {
-    sprintf(fieldCounter,"field_%lu", (unsigned long) j);
-    TRI_Insert2ArrayJson(json, fieldCounter, TRI_CreateStringCopyJson(fieldList[j]));
+    TRI_PushBack3ListJson(fields, TRI_CreateStringCopyJson(fieldList[j]));
   }
+
+  TRI_Insert3ArrayJson(json, "id", TRI_CreateNumberJson(idx->_iid));
+  TRI_Insert3ArrayJson(json, "unique", TRI_CreateBooleanJson(skiplistIndex->base._unique));
+  TRI_Insert3ArrayJson(json, "type", TRI_CreateStringCopyJson("skiplist"));
+  TRI_Insert3ArrayJson(json, "fields", fields);
 
   TRI_Free(fieldList);
     

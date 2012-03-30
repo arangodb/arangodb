@@ -51,9 +51,10 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_AVOCADO_MAXIMAL_SIZE_TOO_SMALL, "maixaml size of journal too small");
   REG_ERROR(ERROR_AVOCADO_DUPLICATE_NAME, "duplicate name");
   REG_ERROR(ERROR_AVOCADO_ILLEGAL_NAME, "illegal name");
-  REG_ERROR(ERROR_AVOCADO_NO_INDEX, "no index known");
+  REG_ERROR(ERROR_AVOCADO_NO_INDEX, "no suitable index known");
   REG_ERROR(ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED, "unique constraint violated");
   REG_ERROR(ERROR_AVOCADO_GEO_INDEX_VIOLATED, "geo index violated");
+  REG_ERROR(ERROR_AVOCADO_INDEX_NOT_FOUND, "index not found");
   REG_ERROR(ERROR_AVOCADO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "parse error: %s");

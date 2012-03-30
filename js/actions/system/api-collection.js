@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var actions = require("actions");
-var API = "_api/";
+var API = "_api/collection";
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -150,7 +150,7 @@ function POST_api_collection (req, res) {
     result.waitForSync = waitForSync;
     result.status = collection.status();
 
-    headers.location = "/" + API + "collection/" + collection._id;
+    headers.location = "/" + API + "/" + collection._id;
       
     actions.resultOk(req, res, actions.HTTP_OK, result, headers);
   }
@@ -302,7 +302,7 @@ function GET_api_collection (req, res) {
 
       if (req.suffix.length == 1) {
         var result = CollectionRepresentation(collection, false, false, false);
-        var headers = { location : "/" + API + "collection/" + collection._id };
+        var headers = { location : "/" + API + "/" + collection._id };
 
         actions.resultOk(req, res, actions.HTTP_OK, result, headers);
       }
@@ -316,7 +316,7 @@ function GET_api_collection (req, res) {
 
         if (sub == "figures") {
           var result = CollectionRepresentation(collection, true, true, true);
-          var headers = { location : "/" + API + "collection/" + collection._id + "/figures" };
+          var headers = { location : "/" + API + "/" + collection._id + "/figures" };
 
           actions.resultOk(req, res, actions.HTTP_OK, result, headers);
         }
@@ -327,7 +327,7 @@ function GET_api_collection (req, res) {
 
         else if (sub == "count") {
           var result = CollectionRepresentation(collection, true, true, false);
-          var headers = { location : "/" + API + "collection/" + collection._id + "/count" };
+          var headers = { location : "/" + API + "/" + collection._id + "/count" };
       
           actions.resultOk(req, res, actions.HTTP_OK, result, headers);
         }
@@ -338,7 +338,7 @@ function GET_api_collection (req, res) {
       }
       else {
         actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                          "expect GET /" + API + "collection/<collection-identifer>/<method>")
+                          "expect GET /" + API + "/<collection-identifer>/<method>")
       }
     }
   }
@@ -551,7 +551,7 @@ function PUT_api_collection (req, res) {
 
   if (req.suffix.length != 2) {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                      "expected PUT /" + API + "collection/<collection-identifer>/<action>")
+                      "expected PUT /" + API + "/<collection-identifer>/<action>")
     return;
   }
 
@@ -620,7 +620,7 @@ function PUT_api_collection (req, res) {
 function DELETE_api_collection (req, res) {
   if (req.suffix.length != 1) {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                      "expected DELETE /" + API + "collection/<collection-identifer>")
+                      "expected DELETE /" + API + "/<collection-identifer>")
   }
   else {
     var name = decodeURIComponent(req.suffix[0]);
@@ -652,7 +652,7 @@ function DELETE_api_collection (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : API + "collection",
+  url : API,
   context : "api",
 
   callback : function (req, res) {
