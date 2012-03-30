@@ -1,0 +1,15 @@
+> curl --data @- -X PUT --dump - http://localhost:8529/_api/collection/70109828/parameter
+{ "waitForSync" : true }
+
+HTTP/1.1 200 OK
+content-type: application/json
+
+{
+  "name": "UnitTestsCollectionBasics",
+  "code": 200,
+  "waitForSync": true,
+  "id": 70109828,
+  "journalSize": 134217728,
+  "status": 3,
+  "error": false
+}
