@@ -466,6 +466,7 @@ function PUT_api_collection_truncate (req, res, collection) {
 ///
 /// @EXAMPLES
 ///
+/// @verbinclude api-collection-identifier-parameter-sync
 ////////////////////////////////////////////////////////////////////////////////
 
 function PUT_api_collection_parameter (req, res, collection) {
