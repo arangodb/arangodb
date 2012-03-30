@@ -560,7 +560,7 @@ static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
   v8::Handle<v8::Value> index = TRI_ObjectJson(json);
   
   if (index->IsObject()) {
-    index->ToObject()->Set(v8::String::New("isNewyCreated"), created ? v8::True() : v8::False());
+    index->ToObject()->Set(v8::String::New("isNewlyCreated"), created ? v8::True() : v8::False());
   }
 
   ReleaseCollection(collection);
@@ -3535,14 +3535,15 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
 
   else {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: ensureGeoIndex(<latitude>, <longitude>) or ensureGeoIndex(<location>, [<geojson>])")));
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+      "usage: ensureGeoIndex(<latitude>, <longitude>) or ensureGeoIndex(<location>, [<geojson>])")));
   }
 
   TRI_json_t* json = idx->json(idx, collection->_collection);
   v8::Handle<v8::Value> index = TRI_ObjectJson(json);
   
   if (index->IsObject()) {
-    index->ToObject()->Set(v8::String::New("isNewyCreated"), created ? v8::True() : v8::False());
+    index->ToObject()->Set(v8::String::New("isNewlyCreated"), created ? v8::True() : v8::False());
   }
 
   ReleaseCollection(collection);
