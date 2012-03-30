@@ -435,6 +435,7 @@ exports.resultError = ResultError;
 
 // AvocadoDB specific responses
 exports.collectionNotFound = CollectionNotFound;
+exports.indexNotFound = IndexNotFound;
 exports.resultException = ResultException;
 
 // some useful constants

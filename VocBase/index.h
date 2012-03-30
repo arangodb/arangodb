@@ -104,7 +104,7 @@ typedef struct TRI_index_s {
   int (*insert) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
   int (*remove) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
   int (*update) (struct TRI_index_s*, struct TRI_doc_mptr_s const*, struct TRI_shaped_json_s const*);
-  TRI_json_t* (*json) (struct TRI_index_s*, struct TRI_doc_collection_s*);
+  TRI_json_t* (*json) (struct TRI_index_s*, struct TRI_doc_collection_s const*);
 }
 TRI_index_t;
 
@@ -177,7 +177,7 @@ bool TRI_RemoveIndexFile (struct TRI_doc_collection_s* collection, TRI_index_t* 
 /// @brief saves an index
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_SaveIndex (struct TRI_doc_collection_s*, TRI_index_t*);
+int TRI_SaveIndex (struct TRI_doc_collection_s*, TRI_index_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an index identifier

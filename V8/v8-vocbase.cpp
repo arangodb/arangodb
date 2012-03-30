@@ -227,12 +227,8 @@ static T* UnwrapClass (v8::Handle<v8::Object> obj, int32_t type) {
 static TRI_vocbase_t* GetContextVocBase () {
   v8::Handle<v8::Context> currentContext = v8::Context::GetCurrent(); 
   v8::Handle<v8::Object> db = currentContext->Global()->Get(v8::String::New("db"))->ToObject();
-  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(db, WRP_VOCBASE_TYPE);
-  if (!vocbase) {
-    return 0;
-  }
 
-  return vocbase;
+  return UnwrapClass<TRI_vocbase_t>(db, WRP_VOCBASE_TYPE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -358,7 +354,7 @@ static uint32_t RandomGeoCoordinateDistance (void) {
 #include <BasicsC/fsrt.inc>
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates result
+/// @brief creates a geo result
 ////////////////////////////////////////////////////////////////////////////////
 
 static void StoreGeoResult (TRI_vocbase_col_t const* collection,
@@ -408,6 +404,167 @@ static void StoreGeoResult (TRI_vocbase_col_t const* collection,
   }
 
   TRI_Free(tmp);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensure a hash or skip-list index
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
+                                                      v8::Arguments const& argv,
+                                                      bool unique,
+                                                      int type) {
+  v8::HandleScope scope;  
+  
+  // .............................................................................
+  // Check that we have a valid collection                      
+  // .............................................................................
+
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
+  
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+  
+  // .............................................................................
+  // Check collection type
+  // .............................................................................
+
+  TRI_doc_collection_t* doc = collection->_collection;
+  
+  if (doc->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
+  }
+
+  TRI_sim_collection_t* sim = (TRI_sim_collection_t*) doc;
+  
+  // .............................................................................
+  // Ensure that there is at least one string parameter sent to this method
+  // .............................................................................  
+
+  if (argv.Length() == 0) {
+    ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: " + cmd + "(<path>, ...))")));
+  }
+  
+  // .............................................................................
+  // Return string when there is an error of some sort.
+  // .............................................................................
+
+  int res = TRI_ERROR_NO_ERROR;
+  string errorString;
+  
+  // .............................................................................
+  // Create a list of paths, these will be used to create a list of shapes
+  // which will be used by the hash index.
+  // .............................................................................
+  
+  TRI_vector_t attributes;
+  TRI_InitVector(&attributes, sizeof(char*));
+  
+  for (int j = 0; j < argv.Length(); ++j) {
+    v8::Handle<v8::Value> argument = argv[j];
+
+    if (! argument->IsString() ) {
+      res = TRI_ERROR_ILLEGAL_OPTION;
+      errorString = "invalid parameter passed to " + cmd + "(...)";
+      break;
+    }
+    
+    // ...........................................................................
+    // convert the argument into a "C" string
+    // ...........................................................................
+    
+    v8::String::Utf8Value argumentString(argument);   
+    char* cArgument = *argumentString == 0 ? 0 : TRI_DuplicateString(*argumentString);
+
+    TRI_PushBackVector(&attributes, &cArgument);
+  }
+  
+  // .............................................................................
+  // Check that each parameter is unique
+  // .............................................................................
+  
+  for (size_t j = 0; j < attributes._length; ++j) {  
+    char* left = *((char**) (TRI_AtVector(&attributes, j)));    
+
+    for (size_t k = j + 1; k < attributes._length; ++k) {
+      char* right = *((char**) (TRI_AtVector(&attributes, k)));
+
+      if (TRI_EqualString(left, right)) {
+        res = TRI_ERROR_ILLEGAL_OPTION;
+        errorString = "duplicate parameters sent to " + cmd + "(...)";
+        break;
+      }   
+    }
+  }    
+  
+  // .............................................................................
+  // Some sort of error occurred -- display error message and abort index creation
+  // (or index retrieval).
+  // .............................................................................
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+
+    // Remove the memory allocated to the list of attributes used for the hash index
+    for (size_t j = 0;  j < attributes._length;  ++j) {
+      char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
+      TRI_FreeString(cArgument);
+    }    
+
+    TRI_DestroyVector(&attributes);
+    return scope.Close(v8::ThrowException(CreateErrorObject(res, errorString)));
+  }  
+  
+  // .............................................................................
+  // Actually create the index here
+  // .............................................................................
+
+  bool created;
+  TRI_index_t* idx;
+
+  if (type == 0) {
+    idx = TRI_EnsureHashIndexSimCollection(sim, &attributes, unique, &created);
+  }
+  else if (type == 1) {
+    idx = TRI_EnsureSkiplistIndexSimCollection(sim, &attributes, unique, &created);
+  }
+  else {
+    LOG_ERROR("unknown index type %d", type);
+    idx = 0;
+  }
+
+  // .............................................................................
+  // Remove the memory allocated to the list of attributes used for the hash index
+  // .............................................................................   
+
+  for (size_t j = 0; j < attributes._length; ++j) {
+    char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
+    TRI_Free(cArgument);
+  }    
+
+  TRI_DestroyVector(&attributes);
+
+  if (idx == 0) {
+    ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(CreateErrorObject(res, "index could not be created")));
+  }  
+  
+  // .............................................................................
+  // Return the newly assigned index identifier
+  // .............................................................................
+
+  TRI_json_t* json = idx->json(idx, collection->_collection);
+  v8::Handle<v8::Value> index = TRI_ObjectJson(json);
+  
+  if (index->IsObject()) {
+    index->ToObject()->Set(v8::String::New("isNewyCreated"), created ? v8::True() : v8::False());
+  }
+
+  ReleaseCollection(collection);
+  return scope.Close(index);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3314,11 +3471,12 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
 
   if (doc->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
   }
 
   TRI_sim_collection_t* sim = (TRI_sim_collection_t*) doc;
-  TRI_idx_iid_t iid = 0;
+  TRI_index_t* idx = 0;
+  bool created;
 
   // .............................................................................
   // case: <location>
@@ -3329,10 +3487,10 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
 
     if (*loc == 0) {
       ReleaseCollection(collection);
-      return scope.Close(v8::ThrowException(v8::String::New("<location> must be an attribute path")));
+      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "<location> must be an attribute path")));
     }
 
-    iid = TRI_EnsureGeoIndexSimCollection(sim, *loc, false);
+    idx = TRI_EnsureGeoIndexSimCollection(sim, *loc, false, &created);
   }
 
   // .............................................................................
@@ -3344,10 +3502,10 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
 
     if (*loc == 0) {
       ReleaseCollection(collection);
-      return scope.Close(v8::ThrowException(v8::String::New("<location> must be an attribute path")));
+      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "<location> must be an attribute path")));
     }
 
-    iid = TRI_EnsureGeoIndexSimCollection(sim, *loc, TRI_ObjectToBoolean(argv[1]));
+    idx = TRI_EnsureGeoIndexSimCollection(sim, *loc, TRI_ObjectToBoolean(argv[1]), &created);
   }
 
   // .............................................................................
@@ -3360,15 +3518,15 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
 
     if (*lat == 0) {
       ReleaseCollection(collection);
-      return scope.Close(v8::ThrowException(v8::String::New("<latitude> must be an attribute path")));
+      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "<latitude> must be an attribute path")));
     }
 
     if (*lon == 0) {
       ReleaseCollection(collection);
-      return scope.Close(v8::ThrowException(v8::String::New("<longitude> must be an attribute path")));
+      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "<longitude> must be an attribute path")));
     }
 
-    iid = TRI_EnsureGeoIndex2SimCollection(sim, *lat, *lon);
+    idx = TRI_EnsureGeoIndex2SimCollection(sim, *lat, *lon, &created);
   }
 
   // .............................................................................
@@ -3377,11 +3535,18 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
 
   else {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("usage: ensureGeoIndex(<latitude>, <longitude>) or ensureGeoIndex(<location>, [<geojson>])")));
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: ensureGeoIndex(<latitude>, <longitude>) or ensureGeoIndex(<location>, [<geojson>])")));
+  }
+
+  TRI_json_t* json = idx->json(idx, collection->_collection);
+  v8::Handle<v8::Value> index = TRI_ObjectJson(json);
+  
+  if (index->IsObject()) {
+    index->ToObject()->Set(v8::String::New("isNewyCreated"), created ? v8::True() : v8::False());
   }
 
   ReleaseCollection(collection);
-  return scope.Close(v8::Number::New(iid));
+  return scope.Close(index);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3403,158 +3568,13 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_EnsureUniqueConstraintVocbaseCol (v8::Arguments const& argv) {
-  v8::HandleScope scope;  
-  
-  // .............................................................................
-  // Check that we have a valid collection                      
-  // .............................................................................
-
-  v8::Handle<v8::Object> err;
-  TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
-  
-  if (collection == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-  
-  // .............................................................................
-  // Check collection type
-  // .............................................................................
-
-  TRI_doc_collection_t* doc = collection->_collection;
-  
-  if (doc->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
-    ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
-  }
-
-  TRI_sim_collection_t* sim = (TRI_sim_collection_t*) doc;
-  
-  // .............................................................................
-  // Ensure that there is at least one string parameter sent to this method
-  // .............................................................................  
-
-  if (argv.Length() == 0) {
-    ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("one or more string parameters required for the ensureUniqueConstraint(...) command")));
-  }
-  
-  // .............................................................................
-  // The index id which will either be an existing one or a newly created 
-  // hash index. 
-  // .............................................................................  
-
-  TRI_idx_iid_t iid = 0;
-  
-  // .............................................................................
-  // Return string when there is an error of some sort.
-  // .............................................................................
-
-  string errorString;
-  
-  // .............................................................................
-  // Create a list of paths, these will be used to create a list of shapes
-  // which will be used by the hash index.
-  // .............................................................................
-  
-  TRI_vector_t attributes;
-  TRI_InitVector(&attributes,sizeof(char*));
-  
-  bool ok = true;
-  
-  for (int j = 0; j < argv.Length(); ++j) {
-    v8::Handle<v8::Value> argument = argv[j];
-
-    if (! argument->IsString() ) {
-      errorString = "invalid parameter passed to ensureUniqueConstraint(...) command";
-      ok = false;
-      break;
-    }
-    
-    // ...........................................................................
-    // convert the argument into a "C" string
-    // ...........................................................................
-    
-    v8::String::Utf8Value argumentString(argument);   
-    char* cArgument = *argumentString == 0 ? 0 : TRI_DuplicateString(*argumentString);
-
-    if (cArgument == NULL) {
-      errorString = "insuffient memory to complete ensureUniqueConstraint(...) command";
-      ok = false;
-      break;
-    }  
-
-    TRI_PushBackVector(&attributes, &cArgument);
-  }
-  
-  // .............................................................................
-  // Check that each parameter is unique
-  // .............................................................................
-  
-  for (size_t j = 0; j < attributes._length; ++j) {  
-    char* left = *((char**) (TRI_AtVector(&attributes, j)));    
-
-    for (size_t k = j + 1; k < attributes._length; ++k) {
-      char* right = *((char**) (TRI_AtVector(&attributes, k)));
-
-      if (TRI_EqualString(left, right)) {
-        errorString = "duplicate parameters sent to ensureUniqueConstraint(...) command";
-        ok = false;
-        break;
-      }   
-    }
-  }    
-  
-  // .............................................................................
-  // Some sort of error occurred -- display error message and abort index creation
-  // (or index retrieval).
-  // .............................................................................
-  
-  if (!ok) {
-
-    // Remove the memory allocated to the list of attributes used for the hash index
-    for (size_t j = 0; j < attributes._length; ++j) {
-      char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
-      TRI_Free(cArgument);
-    }    
-
-    TRI_DestroyVector(&attributes);
-    return scope.Close(v8::ThrowException(v8::String::New(errorString.c_str(), errorString.length())));
-  }  
-  
-  // .............................................................................
-  // Actually create the index here
-  // .............................................................................
-
-  iid = TRI_EnsureHashIndexSimCollection(sim, &attributes, true);
-
-  // .............................................................................
-  // Remove the memory allocated to the list of attributes used for the hash index
-  // .............................................................................   
-
-  for (size_t j = 0; j < attributes._length; ++j) {
-    char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
-    TRI_Free(cArgument);
-  }    
-
-  TRI_DestroyVector(&attributes);
-
-  if (iid == 0) {
-    ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("hash index could not be created")));
-  }  
-  
-  // .............................................................................
-  // Return the newly assigned index identifier
-  // .............................................................................
-
-  ReleaseCollection(collection);
-  return scope.Close(v8::Number::New(iid));
+  return EnsureHashSkipListIndex("ensureUniqueConstrain", argv, true, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a hash index exists
 ///
-/// @FUN{ensureMutliHashIndex(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
+/// @FUN{ensureHashIndex(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
 ///
 /// Creates a non-unique hash index on all documents using attributes as paths
 /// to the fields. At least one attribute must be given. All documents, which do
@@ -3567,159 +3587,14 @@ static v8::Handle<v8::Value> JS_EnsureUniqueConstraintVocbaseCol (v8::Arguments 
 /// @verbinclude fluent14
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_EnsureMultiHashIndexVocbaseCol (v8::Arguments const& argv) {
-  v8::HandleScope scope;  
-  
-  // .............................................................................
-  // Check that we have a valid collection                      
-  // .............................................................................
-
-  v8::Handle<v8::Object> err;
-  TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
-  
-  if (collection == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-  
-  // .............................................................................
-  // Check collection type
-  // .............................................................................
-
-  TRI_doc_collection_t* doc = collection->_collection;
-  
-  if (doc->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
-    ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
-  }
-
-  TRI_sim_collection_t* sim = (TRI_sim_collection_t*) doc;
-
-  // .............................................................................
-  // Ensure that there is at least one string parameter sent to this method
-  // .............................................................................  
-
-  if (argv.Length() == 0) {
-    ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("one or more string parameters required for the ensureHashIndex(...) command")));
-  }
-  
-  // .............................................................................
-  // The index id which will either be an existing one or a newly created 
-  // hash index. 
-  // .............................................................................  
-
-  TRI_idx_iid_t iid = 0;
-  
-  // .............................................................................
-  // Return string when there is an error of some sort.
-  // .............................................................................
-
-  string errorString;
-  
-  // .............................................................................
-  // Create a list of paths, these will be used to create a list of shapes
-  // which will be used by the hash index.
-  // .............................................................................
-  
-  TRI_vector_t attributes;
-  TRI_InitVector(&attributes,sizeof(char*));
-  
-  bool ok = true;
-  
-  for (int j = 0; j < argv.Length(); ++j) {
-    v8::Handle<v8::Value> argument = argv[j];
-
-    if (! argument->IsString() ) {
-      errorString = "invalid parameter passed to ensureMultiHashIndex(...) command";
-      ok = false;
-      break;
-    }
-    
-    // ...........................................................................
-    // convert the argument into a "C" string
-    // ...........................................................................
-    
-    v8::String::Utf8Value argumentString(argument);   
-    char* cArgument = *argumentString == 0 ? 0 : TRI_DuplicateString(*argumentString);
-
-    if (cArgument == NULL) {
-      errorString = "insuffient memory to complete ensureMultiHashIndex(...) command";
-      ok = false;
-      break;
-    }  
-        
-    TRI_PushBackVector(&attributes,&cArgument);
-  }
-  
-  // .............................................................................
-  // Check that each parameter is unique
-  // .............................................................................
-  
-  for (size_t j = 0; j < attributes._length; ++j) {  
-    char* left = *((char**) (TRI_AtVector(&attributes, j)));    
-
-    for (size_t k = j + 1; k < attributes._length; ++k) {
-      char* right = *((char**) (TRI_AtVector(&attributes, k)));
-
-      if (TRI_EqualString(left,right)) {
-        errorString = "duplicate parameters sent to ensureMultiHashIndex(...) command";
-        ok = false;
-        break;
-      }   
-    }
-  }    
-  
-  // .............................................................................
-  // Some sort of error occurred -- display error message and abort index creation
-  // (or index retrieval).
-  // .............................................................................
-  
-  if (!ok) {
-
-    // Remove the memory allocated to the list of attributes used for the hash index
-    for (size_t j = 0; j < attributes._length; ++j) {
-      char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
-      TRI_Free(cArgument);
-    }    
-
-    TRI_DestroyVector(&attributes);
-    return scope.Close(v8::ThrowException(v8::String::New(errorString.c_str(), errorString.length())));
-  }  
-  
-  // .............................................................................
-  // Actually create the index here
-  // .............................................................................
-
-  iid = TRI_EnsureHashIndexSimCollection(sim, &attributes, false);
-
-  // .............................................................................
-  // Remove the memory allocated to the list of attributes used for the hash index
-  // .............................................................................   
-
-  for (size_t j = 0; j < attributes._length; ++j) {
-    char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
-    TRI_Free(cArgument);
-  }    
-
-  TRI_DestroyVector(&attributes);
-
-  if (iid == 0) {
-    ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("non-unique hash index could not be created")));
-  }  
-  
-  // .............................................................................
-  // Return the newly assigned index identifier
-  // .............................................................................
-
-  ReleaseCollection(collection);
-  return scope.Close(v8::Number::New(iid));
+static v8::Handle<v8::Value> JS_EnsureHashIndexVocbaseCol (v8::Arguments const& argv) {
+  return EnsureHashSkipListIndex("ensureHashIndex", argv, false, 0);
 }
-
+  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a skiplist index exists
 ///
-/// @FUN{ensureSLIndex(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
+/// @FUN{ensureUniqueSkiplist(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
 ///
 /// Creates a skiplist index on all documents using attributes as paths to
 /// the fields. At least one attribute must be given.  
@@ -3732,161 +3607,14 @@ static v8::Handle<v8::Value> JS_EnsureMultiHashIndexVocbaseCol (v8::Arguments co
 /// @verbinclude fluent14
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_EnsureSkiplistIndexVocbaseCol (v8::Arguments const& argv) {
-  v8::HandleScope scope;  
-  
-  // .............................................................................
-  // Check that we have a valid collection                      
-  // .............................................................................
-
-  v8::Handle<v8::Object> err;
-  TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
-  
-  if (collection == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  // .............................................................................
-  // Check collection type
-  // .............................................................................
-
-  TRI_doc_collection_t* doc = collection->_collection;
-  
-  if (doc->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
-    ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
-  }
-
-  TRI_sim_collection_t* sim = (TRI_sim_collection_t*) doc;
-
-  // .............................................................................
-  // Return string when there is an error of some sort.
-  // .............................................................................
-
-  string errorString;
-  
-  // .............................................................................
-  // Ensure that there is at least one string parameter sent to this method
-  // .............................................................................  
-
-  if (argv.Length() == 0) {
-    ReleaseCollection(collection);
-
-    errorString = "one or more string parameters required for the ensureSLIndex(...) command";
-    return scope.Close(v8::String::New(errorString.c_str(),errorString.length()));
-  }
-   
-  // .............................................................................
-  // The index id which will either be an existing one or a newly created 
-  // hash index. 
-  // .............................................................................  
-
-  TRI_idx_iid_t iid = 0;
-  
-  // .............................................................................
-  // Create a list of paths, these will be used to create a list of shapes
-  // which will be used by the hash index.
-  // .............................................................................
-  
-  TRI_vector_t attributes;
-  TRI_InitVector(&attributes,sizeof(char*));
-  
-  bool ok = true;
-  
-  for (int j = 0; j < argv.Length(); ++j) {
-  
-    v8::Handle<v8::Value> argument = argv[j];
-    if (! argument->IsString() ) {
-      errorString = "invalid parameter passed to ensureSLIndex(...) command";
-      ok = false;
-      break;
-    }
-    
-    // ...........................................................................
-    // convert the argument into a "C" string
-    // ...........................................................................
-    
-    v8::String::Utf8Value argumentString(argument);   
-    char* cArgument = (char*) (TRI_Allocate(argumentString.length() + 1));       
-    if (cArgument == NULL) {
-      errorString = "insuffient memory to complete ensureSLIndex(...) command";
-      ok = false;
-      break;
-    }  
-        
-    memcpy(cArgument, *argumentString, argumentString.length());
-    TRI_PushBackVector(&attributes,&cArgument);
-  }
-
-  // .............................................................................
-  // Check that each parameter is unique
-  // .............................................................................
-  
-  for (size_t j = 0; j < attributes._length; ++j) {  
-    char* left = *((char**) (TRI_AtVector(&attributes, j)));    
-    for (size_t k = j + 1; k < attributes._length; ++k) {
-      char* right = *((char**) (TRI_AtVector(&attributes, k)));
-      if (strcmp(left,right) == 0) {
-        errorString = "duplicate parameters sent to ensureSLIndex(...) command";
-        ok = false;
-        break;
-      }   
-    }
-  }    
-  
-  // .............................................................................
-  // Some sort of error occurred -- display error message and abort index creation
-  // (or index retrieval).
-  // .............................................................................
-  
-  if (!ok) {
-    // ...........................................................................
-    // Remove the memory allocated to the list of attributes used for the hash index
-    // ...........................................................................   
-    for (size_t j = 0; j < attributes._length; ++j) {
-      char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
-      TRI_Free(cArgument);
-    }    
-    TRI_DestroyVector(&attributes);
-
-    ReleaseCollection(collection);
-    return scope.Close(v8::String::New(errorString.c_str(),errorString.length()));
-  }  
-  
-  // .............................................................................
-  // Actually create the index here
-  // .............................................................................
-
-  iid = TRI_EnsureSkiplistIndexSimCollection(sim, &attributes, true);
-
-  // .............................................................................
-  // Remove the memory allocated to the list of attributes used for the hash index
-  // .............................................................................   
-
-  for (size_t j = 0; j < attributes._length; ++j) {
-    char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
-    TRI_Free(cArgument);
-  }    
-
-  TRI_DestroyVector(&attributes);
-
-  if (iid == 0) {
-    ReleaseCollection(collection);
-    return scope.Close(v8::String::New("skiplist index could not be created"));
-  }  
-  
-  // .............................................................................
-  // Return the newly assigned index identifier
-  // .............................................................................
-
-  ReleaseCollection(collection);
-  return scope.Close(v8::Number::New(iid));
+static v8::Handle<v8::Value> JS_EnsureUniqueSkiplistVocbaseCol (v8::Arguments const& argv) {
+  return EnsureHashSkipListIndex("ensureUniqueSkipList", argv, true, 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a multi skiplist index exists
 ///
-/// @FUN{ensureMultiSLIndex(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
+/// @FUN{ensureSkiplist(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
 ///
 /// Creates a multi skiplist index on all documents using attributes as paths to
 /// the fields. At least one attribute must be given.  
@@ -3899,153 +3627,8 @@ static v8::Handle<v8::Value> JS_EnsureSkiplistIndexVocbaseCol (v8::Arguments con
 /// @verbinclude fluent14
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_EnsureMultiSkiplistIndexVocbaseCol (v8::Arguments const& argv) {
-  v8::HandleScope scope;  
-  
-  // .............................................................................
-  // Check that we have a valid collection                      
-  // .............................................................................
-
-  v8::Handle<v8::Object> err;
-  TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
-  
-  if (collection == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  // .............................................................................
-  // Check collection type
-  // .............................................................................
-
-  TRI_doc_collection_t* doc = collection->_collection;
-  
-  if (doc->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
-    ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
-  }
-
-  TRI_sim_collection_t* sim = (TRI_sim_collection_t*) doc;
- 
-  // .............................................................................
-  // Return string when there is an error of some sort.
-  // .............................................................................
-
-  string errorString;
-  
-  // .............................................................................
-  // Ensure that there is at least one string parameter sent to this method
-  // .............................................................................  
-
-  if (argv.Length() == 0) {
-    ReleaseCollection(collection);
-
-    errorString = "one or more string parameters required for the ensureMutliSLIndex(...) command";
-    return scope.Close(v8::String::New(errorString.c_str(),errorString.length()));
-  }
-    
-  // .............................................................................
-  // The index id which will either be an existing one or a newly created 
-  // hash index. 
-  // .............................................................................  
-
-  TRI_idx_iid_t iid = 0;
-  
-  // .............................................................................
-  // Create a list of paths, these will be used to create a list of shapes
-  // which will be used by the hash index.
-  // .............................................................................
-  
-  TRI_vector_t attributes;
-  TRI_InitVector(&attributes,sizeof(char*));
-  
-  bool ok = true;
-  
-  for (int j = 0; j < argv.Length(); ++j) {
-  
-    v8::Handle<v8::Value> argument = argv[j];
-    if (! argument->IsString() ) {
-      errorString = "invalid parameter passed to ensureMultiSLIndex(...) command";
-      ok = false;
-      break;
-    }
-    
-    // ...........................................................................
-    // convert the argument into a "C" string
-    // ...........................................................................
-    
-    v8::String::Utf8Value argumentString(argument);   
-    char* cArgument = (char*) (TRI_Allocate(argumentString.length() + 1));       
-    if (cArgument == NULL) {
-      errorString = "insuffient memory to complete ensureMultiSLIndex(...) command";
-      ok = false;
-      break;
-    }  
-        
-    memcpy(cArgument, *argumentString, argumentString.length());
-    TRI_PushBackVector(&attributes,&cArgument);
-  }
- 
-  // .............................................................................
-  // Check that each parameter is unique
-  // .............................................................................
-  
-  for (size_t j = 0; j < attributes._length; ++j) {  
-    char* left = *((char**) (TRI_AtVector(&attributes, j)));  
-    for (size_t k = j + 1; k < attributes._length; ++k) {
-      char* right = *((char**) (TRI_AtVector(&attributes, k)));
-      if (strcmp(left,right) == 0) {
-        errorString = "duplicate parameters sent to ensureMultiSLIndex(...) command";
-        ok = false;
-        break;
-      }   
-    }
-  }    
-  
-  // .............................................................................
-  // Some sort of error occurred -- display error message and abort index creation
-  // (or index retrieval).
-  // .............................................................................
-  
-  if (!ok) {
-    // ...........................................................................
-    // Remove the memory allocated to the list of attributes used for the hash index
-    // ...........................................................................   
-    for (size_t j = 0; j < attributes._length; ++j) {
-      char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
-      TRI_Free(cArgument);
-    }    
-    TRI_DestroyVector(&attributes);
-
-    ReleaseCollection(collection);
-    return scope.Close(v8::String::New(errorString.c_str(),errorString.length()));
-  }  
-  
-  
-  // .............................................................................
-  // Actually create the index here
-  // .............................................................................
-  iid = TRI_EnsureSkiplistIndexSimCollection(sim, &attributes, false);
-
-  // .............................................................................
-  // Remove the memory allocated to the list of attributes used for the hash index
-  // .............................................................................   
-  for (size_t j = 0; j < attributes._length; ++j) {
-    char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
-    TRI_Free(cArgument);
-  }    
-  TRI_DestroyVector(&attributes);
-
-  if (iid == 0) {
-    ReleaseCollection(collection);
-    return scope.Close(v8::String::New("multi skiplist index could not be created"));
-  }  
-  
-  // .............................................................................
-  // Return the newly assigned index identifier
-  // .............................................................................
-
-  ReleaseCollection(collection);
-  return scope.Close(v8::Number::New(iid));
+static v8::Handle<v8::Value> JS_EnsureSkiplistVocbaseCol (v8::Arguments const& argv) {
+  return EnsureHashSkipListIndex("ensureSkipList", argv, false, 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5399,9 +4982,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> DropIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("dropIndex"));
   v8::Handle<v8::String> EdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("edges"));
   v8::Handle<v8::String> EnsureGeoIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureGeoIndex"));
-  v8::Handle<v8::String> EnsureMultiHashIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureMultiHashIndex"));
-  v8::Handle<v8::String> EnsureMultiSkiplistIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureMultiSLIndex"));
-  v8::Handle<v8::String> EnsureSkiplistIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureSLIndex"));
+  v8::Handle<v8::String> EnsureHashIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureHashIndex"));
+  v8::Handle<v8::String> EnsureSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureSkiplist"));
+  v8::Handle<v8::String> EnsureUniqueSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureUniqueSkiplist"));
   v8::Handle<v8::String> EnsureUniqueConstraintFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureUniqueConstraint"));
   v8::Handle<v8::String> ExecuteFuncName = v8::Persistent<v8::String>::New(v8::String::New("execute"));
   v8::Handle<v8::String> FiguresFuncName = v8::Persistent<v8::String>::New(v8::String::New("figures"));
@@ -5560,9 +5143,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(DropFuncName, v8::FunctionTemplate::New(JS_DropVocbaseCol));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
-  rt->Set(EnsureMultiHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureMultiHashIndexVocbaseCol));
-  rt->Set(EnsureMultiSkiplistIndexFuncName, v8::FunctionTemplate::New(JS_EnsureMultiSkiplistIndexVocbaseCol));
-  rt->Set(EnsureSkiplistIndexFuncName, v8::FunctionTemplate::New(JS_EnsureSkiplistIndexVocbaseCol));
+  rt->Set(EnsureHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureHashIndexVocbaseCol));
+  rt->Set(EnsureSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureSkiplistVocbaseCol));
+  rt->Set(EnsureUniqueSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueSkiplistVocbaseCol));
   rt->Set(EnsureUniqueConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueConstraintVocbaseCol));
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
@@ -5599,9 +5182,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(DropFuncName, v8::FunctionTemplate::New(JS_DropVocbaseCol));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
-  rt->Set(EnsureMultiHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureMultiHashIndexVocbaseCol));
-  rt->Set(EnsureMultiSkiplistIndexFuncName, v8::FunctionTemplate::New(JS_EnsureMultiSkiplistIndexVocbaseCol));
-  rt->Set(EnsureSkiplistIndexFuncName, v8::FunctionTemplate::New(JS_EnsureSkiplistIndexVocbaseCol));
+  rt->Set(EnsureHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureHashIndexVocbaseCol));
+  rt->Set(EnsureSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureSkiplistVocbaseCol));
+  rt->Set(EnsureUniqueSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueSkiplistVocbaseCol));
   rt->Set(EnsureUniqueConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueConstraintVocbaseCol));
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));

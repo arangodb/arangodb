@@ -50,7 +50,7 @@ describe AvocadoDB do
     context "error handling:" do
       it "returns an error if collection identifier is unknown" do
 	cmd = api + "/123456"
-        doc = AvocadoDB.log_get("#{prefix}-bad-handle", cmd)
+        doc = AvocadoDB.log_get("#{prefix}-bad-identifier", cmd)
 
 	doc.code.should eq(404)
 	doc.headers['content-type'].should eq("application/json")

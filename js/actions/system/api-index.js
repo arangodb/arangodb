@@ -108,6 +108,8 @@ function GET_api_indexes (req, res) {
 /// All other attributes are type-dependent.
 ///
 /// @EXAMPLES
+///
+/// @verbinclude api-index-primary-index
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_api_index (req, res) {
@@ -147,6 +149,103 @@ function GET_api_index (req, res) {
   else {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
                       "expect GET /" + API + "/<collection-identifer>/<index-identifier>");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a geo index
+////////////////////////////////////////////////////////////////////////////////
+
+function POST_api_index_geo (req, res, collection, body) {
+  var fields = body.fields;
+
+  if (! (fields instanceof Array)) {
+    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+                      "fields must be a list of attribute paths: " + fields);
+  }
+
+  try {
+    var index;
+
+    if (fields.length == 1) {
+      if (body.hasOwnProperty("geoJson")) {
+        index = collection.ensureGeoIndex(fields[0], body.geoJson);
+      }
+      else {
+        index = collection.ensureGeoIndex(fields[0]);
+      }
+    }
+    else if (fields.length == 2) {
+      index = collection.ensureGeoIndex(fields[0], fields[1]);
+    }
+    else {
+      actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+                      "fields must be a list of attribute paths of length 1 or 2: " + fields);
+      return;
+    }
+
+    if (index.isNewlyCreated) {
+      actions.resultOk(req, res, actions.HTTP_CREATED, index);
+    }
+    else {
+      actions.resultOk(req, res, actions.HTTP_OK, index);
+    }
+  }
+  catch (err) {
+    actions.resultException(req, res, err);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an index
+///
+/// @REST{POST /_api/index/@FA{collection-identifier}}
+///
+/// Creates a new index in the collection @FA{collection-identifier}. Expects
+/// an object containing the index details.
+///
+/// If the index does not already exists and could be created, then a @LIT{HTTP
+/// 201} is returned.  If the index already exists, then a @LIT{HTTP 200} is
+/// returned.
+///
+/// If the @FA{collection-identifier} is unknown, then a @LIT{HTTP 404} is
+/// returned. It is possible to specify a name instead of an identifier.  
+///
+/// @EXAMPLES
+////////////////////////////////////////////////////////////////////////////////
+
+function POST_api_index (req, res) {
+  if (require.suffix.length != 1) {
+    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+                      "expect POST /" + API + "/<collection-identifer>/<method>");
+    return;
+  }
+
+  var name = decodeURIComponent(req.suffix[0]);
+  var id = parseInt(name) || name;
+  var collection = db._collection(id);
+
+  if (collection == null) {
+    actions.collectionNotFound(req, res, name);
+    return;
+  }
+
+  var body;
+
+  try {
+    body = JSON.parse(req.requestBody || "{}") || {};
+  }
+  catch (err) {
+    actions.resultBad(req, res, actions.ERROR_HTTP_CORRUPTED_JSON, err);
+    return;
+  }
+
+  if (body.type == "geo") {
+    POST_api_index_geo(req, res, collection, body);
+  }
+  else {
+    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+                      "unknown index type '" + body.type + "'");
   }
 }
 

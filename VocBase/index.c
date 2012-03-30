@@ -109,7 +109,7 @@ bool TRI_RemoveIndexFile (TRI_doc_collection_t* collection, TRI_index_t* idx) {
 /// @brief saves an index
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_SaveIndex (TRI_doc_collection_t* collection, TRI_index_t* idx) {
+int TRI_SaveIndex (TRI_doc_collection_t* collection, TRI_index_t* idx) {
   TRI_json_t* json;
   char* filename;
   char* name;
@@ -120,45 +120,14 @@ bool TRI_SaveIndex (TRI_doc_collection_t* collection, TRI_index_t* idx) {
   json = idx->json(idx, collection);
 
   if (json == NULL) {
-    TRI_set_errno(TRI_ERROR_INTERNAL);
-
     LOG_TRACE("cannot save index definition: index cannot be jsonfied");
-    return false;
+    return TRI_set_errno(TRI_ERROR_INTERNAL);
   }
 
   // construct filename
   number = TRI_StringUInt64(idx->_iid);
-
-  if (number == NULL) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    LOG_ERROR("out of memory when creating index number");
-    TRI_FreeJson(json);
-    return false;
-  }
-
   name = TRI_Concatenate3String("index-", number, ".json");
-
-  if (name == NULL) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    LOG_ERROR("out of memory when creating index name");
-    TRI_FreeJson(json);
-    TRI_FreeString(number);
-    return false;
-  }
-
   filename = TRI_Concatenate2File(collection->base._directory, name);
-
-  if (filename == NULL) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    LOG_ERROR("out of memory when creating index filename");
-    TRI_FreeJson(json);
-    TRI_FreeString(number);
-    TRI_FreeString(name);
-    return false;
-  }
 
   TRI_FreeString(name);
   TRI_FreeString(number);
@@ -171,10 +140,10 @@ bool TRI_SaveIndex (TRI_doc_collection_t* collection, TRI_index_t* idx) {
 
   if (! ok) {
     LOG_ERROR("cannot save index definition: %s", TRI_last_error());
-    return false;
+    return TRI_errno();
   }
 
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

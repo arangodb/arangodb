@@ -338,7 +338,7 @@ function GET_api_collection (req, res) {
       }
       else {
         actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                          "expect GET /" + API + "/<collection-identifer>/<method>")
+                          "expect GET /" + API + "/<collection-identifer>/<method>");
       }
     }
   }
@@ -551,7 +551,7 @@ function PUT_api_collection (req, res) {
 
   if (req.suffix.length != 2) {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                      "expected PUT /" + API + "/<collection-identifer>/<action>")
+                      "expected PUT /" + API + "/<collection-identifer>/<action>");
     return;
   }
 
@@ -620,7 +620,7 @@ function PUT_api_collection (req, res) {
 function DELETE_api_collection (req, res) {
   if (req.suffix.length != 1) {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                      "expected DELETE /" + API + "/<collection-identifer>")
+                      "expected DELETE /" + API + "/<collection-identifer>");
   }
   else {
     var name = decodeURIComponent(req.suffix[0]);
