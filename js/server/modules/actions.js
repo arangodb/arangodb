@@ -177,6 +177,19 @@ function DefineHttp (options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get an error message string for an error code
+////////////////////////////////////////////////////////////////////////////////
+
+function GetErrorMessage (code) {
+  var error = internal.errors[code];
+  if (!error) {
+    return "";
+  }
+
+  return error.message;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an error
 ///
 /// @FUN{ResultError(@FA{req}, @FA{res}, @FA{code}, @FA{errorNum}, @FA{errorMessage}, @FA{headers}, @FA{keyvals})}
@@ -383,18 +396,20 @@ function ResultException (req, res, err, headers) {
 
 // public functions
 exports.defineHttp = DefineHttp;
+exports.getErrorMessage = GetErrorMessage;
 
 // standard HTTP responses
 exports.resultBad = ResultBad;
 exports.resultNotFound = ResultNotFound;
 exports.resultOk = ResultOk;
 exports.resultUnsupported = ResultUnsupported;
+exports.resultError = ResultError;
 
 // AvocadoDB specific responses
 exports.collectionNotFound = CollectionNotFound;
 exports.resultException = ResultException;
 
-// some usefull constants
+// some useful constants
 exports.COLLECTION            = "collection";
 exports.COLLECTION_IDENTIFIER = "collection-identifier";
 exports.COLLECTION_NAME       = "collection-name";
@@ -408,6 +423,8 @@ exports.PUT    = "PUT";
 
 // HTTP 2xx
 exports.HTTP_OK                 = 200;
+exports.HTTP_CREATED            = 201;
+exports.HTTP_ACCEPTED           = 202;
 
 // HTTP 4xx
 exports.HTTP_BAD                = 400;

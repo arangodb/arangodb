@@ -84,7 +84,7 @@ function getCursorResult(cursor) {
 
 function postCursor(req, res) {
   if (req.suffix.length != 0) {
-    actions.resultError (req, res, 404, actions.errorInvalidRequest, "Invalid request");
+    actions.resultNotFound(req, res, actions.ERROR_HTTP_NOT_FOUND);
     return;
   }
 
@@ -92,7 +92,7 @@ function postCursor(req, res) {
     var json = JSON.parse(req.requestBody);
       
     if (!json || !(json instanceof Object)) {
-      actions.resultError (req, res, 400, actions.errorQuerySpecificationInvalid, "Query specification invalid");
+      actions.resultBad(req, res, actions.ERROR_QUERY_SPECIFICATION_INVALID, actions.getErrorMessage(actions.ERROR_QUERY_SPECIFICATION_INVALID));
       return;
     }
 
@@ -104,23 +104,23 @@ function postCursor(req, res) {
                              (json.batchSize != undefined ? json.batchSize : 1000));  
     }
     else {
-      actions.resultError (req, res, 400, actions.errorQuerySpecificationInvalid, "Query specification invalid");
+      actions.resultBad(req, res, actions.ERROR_QUERY_SPECIFICATION_INVALID, actions.getErrorMessage(actions.ERROR_QUERY_SPECIFICATION_INVALID));
       return;
     }
    
     if (cursor instanceof AvocadoQueryError) {
       // error occurred
-      actions.resultError (req, res, 404, cursor.code, cursor.message);
+      actions.resultBad(req, res, cursor.code, cursor.message);
       return;
     }
 
     // this might dispose or persist the cursor
     var result = getCursorResult(cursor);
 
-    actions.resultOk(req, res, 201, result);
+    actions.resultOk(req, res, actions.HTTP_CREATED, result);
   }
-  catch (e) {
-    actions.resultError (req, res, 404, actions.errorJavascriptException, "Javascript exception");
+  catch (err) {
+    actions.resultException(req, res, err);
   }
 }
 
@@ -130,7 +130,7 @@ function postCursor(req, res) {
 
 function putCursor(req, res) {
   if (req.suffix.length != 1) {
-    actions.resultError (req, res, 404, actions.errorInvalidRequest, "Invalid request");
+    actions.resultNotFound(req, res, actions.ERROR_HTTP_NOT_FOUND);
     return;
   }
 
@@ -138,14 +138,15 @@ function putCursor(req, res) {
     var cursorId = decodeURIComponent(req.suffix[0]); 
     var cursor = AQL_CURSOR(cursorId);
     if (!(cursor instanceof AvocadoQueryCursor)) {
-      throw "cursor not found";
+      actions.resultBad(req, res, actions.ERROR_CURSOR_NOT_FOUND, actions.getErrorMessage(actions.ERROR_CURSOR_NOT_FOUND));
+      return;
     } 
 
     // note: this might dispose or persist the cursor
-    actions.resultOk(req, res, 200, getCursorResult(cursor));
+    actions.resultOk(req, res, actions.HTTP_OK, getCursorResult(cursor));
   }
-  catch (e) {
-    actions.resultError (req, res, 404, actions.errorCursorNotFound, "Cursor not found");
+  catch (err) {
+    actions.resultException(req, res, err);
   }
 }
 
@@ -155,7 +156,7 @@ function putCursor(req, res) {
 
 function deleteCursor(req, res) {
   if (req.suffix.length != 1) {
-    actions.resultError (req, res, 404, actions.errorInvalidRequest, "Invalid request");
+    actions.resultNotFound(req, res, actions.ERROR_HTTP_NOT_FOUND);
     return;
   }
 
@@ -163,14 +164,15 @@ function deleteCursor(req, res) {
     var cursorId = decodeURIComponent(req.suffix[0]);
     var cursor = AQL_CURSOR(cursorId);
     if (!(cursor instanceof AvocadoQueryCursor)) {
-      throw "cursor not found";
+      actions.resultBad(req, res, actions.ERROR_CURSOR_NOT_FOUND, actions.getErrorMessage(actions.ERROR_CURSOR_NOT_FOUND));
+      return;
     }
 
     cursor.dispose();
-    actions.resultOk(req, res, 202, { "_id" : cursorId });                
+    actions.resultOk(req, res, actions.HTTP_ACCEPTED, { "_id" : cursorId });                
   }
-  catch (e) {
-    actions.resultError (req, res, 404, actions.errorCursorNotFound, "Cursor not found");
+  catch (err) {
+    actions.resultException(req, res, err);
   }
 }
 
@@ -188,15 +190,15 @@ actions.defineHttp({
 
   callback : function (req, res) {
     switch (req.requestType) {
-      case ("POST") : 
+      case (actions.POST) : 
         postCursor(req, res); 
         break;
 
-      case ("PUT") :  
+      case (actions.PUT) :  
         putCursor(req, res); 
         break;
 
-      case ("DELETE") :  
+      case (actions.DELETE) :  
         deleteCursor(req, res); 
         break;
 
