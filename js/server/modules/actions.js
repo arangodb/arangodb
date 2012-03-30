@@ -354,6 +354,34 @@ function CollectionNotFound (req, res, collection, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generates an error for unknown index
+///
+/// @FUN{actions.collectionNotFound(@FA{req}, @FA{res}, @FA{collection}, @FA{index}, @FA{headers})}
+///
+/// The functions generates an error response.
+////////////////////////////////////////////////////////////////////////////////
+
+function IndexNotFound (req, res, collection, index, headers) {
+  if (collection == null) {
+    ResultError(req, res,
+                exports.HTTP_BAD, exports.ERROR_HTTP_BAD_PARAMETER,
+                "expecting a collection name or identifier",
+                headers);
+  }
+  else if (index == null) {
+    ResultError(req, res,
+                exports.HTTP_BAD, exports.ERROR_HTTP_BAD_PARAMETER,
+                "expecting an index identifier",
+                headers);
+  }
+  else {
+    ResultError(req, res,
+                exports.HTTP_NOT_FOUND, exports.ERROR_AVOCADO_INDEX_NOT_FOUND,
+                "unknown index '" + index + "'", headers);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an error for an exception
 ///
 /// @FUN{actions.resultException(@FA{req}, @FA{res}, @FA{err}, @FA{headers})}

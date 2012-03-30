@@ -101,12 +101,14 @@ extern "C" {
 ///   Will be raised when a name duplicate is detected.
 /// - 1208: @CODE{illegal name}
 ///   Will be raised when an illegal name is detected.
-/// - 1209: @CODE{no index known}
-///   Will be raised when no index is known.
+/// - 1209: @CODE{no suitable index known}
+///   Will be raised when no suitable index for the query is known.
 /// - 1210: @CODE{unique constraint violated}
 ///   Will be raised when there is a unique constraint violation.
 /// - 1211: @CODE{geo index violated}
 ///   Will be raised when a illegale coordinate is used.
+/// - 1212: @CODE{index not found}
+///   Will be raised when an index with a given identifier is unknown.
 /// - 1300: @CODE{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1500: @CODE{query killed}
@@ -640,9 +642,9 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1209: ERROR_AVOCADO_NO_INDEX
 ///
-/// no index known
+/// no suitable index known
 ///
-/// Will be raised when no index is known.
+/// Will be raised when no suitable index for the query is known.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_AVOCADO_NO_INDEX                                        (1209)
@@ -666,6 +668,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_AVOCADO_GEO_INDEX_VIOLATED                              (1211)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1212: ERROR_AVOCADO_INDEX_NOT_FOUND
+///
+/// index not found
+///
+/// Will be raised when an index with a given identifier is unknown.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AVOCADO_INDEX_NOT_FOUND                                 (1212)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_AVOCADO_DATAFILE_FULL

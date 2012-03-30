@@ -29,10 +29,10 @@ Start the server:
     2012-03-30T12:54:19Z [11794] INFO HTTP admin port: 127.0.0.1:8530
     2012-03-30T12:54:19Z [11794] INFO Have Fun!
 
-Start in another windows the shell:
+Start the shell in another windows:
 
     > ./avocsh
-				_         
+                                _         
        __ ___   _____   ___ ___| |__      
       / _` \ \ / / _ \ / __/ __| '_ \   
      | (_| |\ V / (_) | (__\__ \ | | | 

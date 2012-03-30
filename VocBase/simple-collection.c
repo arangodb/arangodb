@@ -2589,13 +2589,16 @@ static int RemovePrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 
 static TRI_json_t* JsonPrimary (TRI_index_t* idx, TRI_doc_collection_t* collection) {
   TRI_json_t* json;
+  TRI_json_t* fields;
 
   json = TRI_CreateArrayJson();
+  fields = TRI_CreateListJson();
 
-  TRI_Insert3ArrayJson(json, "iid", TRI_CreateNumberJson(0));
+  TRI_PushBack3ListJson(fields, TRI_CreateStringCopyJson("_id"));
+
+  TRI_Insert3ArrayJson(json, "id", TRI_CreateNumberJson(0));
   TRI_Insert3ArrayJson(json, "type", TRI_CreateStringCopyJson("primary"));
-  TRI_Insert3ArrayJson(json, "fieldCount", TRI_CreateNumberJson(1));
-  TRI_Insert3ArrayJson(json, "field_0", TRI_CreateStringCopyJson("_id"));
+  TRI_Insert3ArrayJson(json, "fields", fields);
 
   return json;
 }

@@ -1463,7 +1463,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
 int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection, char const* newName) {
   union { TRI_vocbase_col_t* v; TRI_vocbase_col_t const* c; } cnv;
   TRI_col_info_t info;
-  void* found;
+  void const* found;
   char wrong;
   char const* oldName;
   int res;
