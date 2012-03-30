@@ -179,8 +179,6 @@ typedef struct TRI_col_info_s {
   bool _waitForSync;                 // if true, wait for msync
 
   bool _deleted;                     // if true, collections has been deleted
-
-  TRI_voc_size_t _size;              // total size of the parameter info block
 }
 TRI_col_info_t;
 

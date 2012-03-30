@@ -647,7 +647,6 @@ int TRI_UpdateParameterInfoCollection (TRI_collection_t* collection) {
   parameter._maximalSize = collection->_maximalSize;
   parameter._waitForSync = collection->_waitForSync;
   parameter._deleted = collection->_deleted;
-  parameter._size = sizeof(TRI_col_info_t);
 
   return TRI_SaveParameterInfoCollection(collection->_directory, &parameter);
 }
@@ -670,7 +669,6 @@ int TRI_RenameCollection (TRI_collection_t* collection, char const* name) {
   parameter._maximalSize = collection->_maximalSize;
   parameter._waitForSync = collection->_waitForSync;
   parameter._deleted = collection->_deleted;
-  parameter._size = sizeof(TRI_col_info_t);
 
   res = TRI_SaveParameterInfoCollection(collection->_directory, &parameter);
 

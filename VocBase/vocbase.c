@@ -1506,8 +1506,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
   }
 
   // check if the new name is unused
-  cnv.c = collection;
-  found = TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName, newName, cnv.v, false);
+  found = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, newName);
 
   if (found != NULL) {
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -1521,7 +1520,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
   // .............................................................................
 
   if (collection->_status == TRI_VOC_COL_STATUS_NEW_BORN) {
-    TRI_CopyString(collection->_name, newName, sizeof(collection->_name));
+    // do nothing
   }
 
   // .............................................................................
@@ -1532,8 +1531,6 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
     res = TRI_LoadParameterInfoCollection(collection->_path, &info);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, newName);
-
       TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -1545,15 +1542,11 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
     res = TRI_SaveParameterInfoCollection(collection->_path, &info);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, newName);
-
       TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
       return TRI_set_errno(res);
     }
-
-    TRI_CopyString(collection->_name, newName, sizeof(collection->_name));
   }
 
   // .............................................................................
@@ -1564,15 +1557,11 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
     res = TRI_RenameCollection(&collection->_collection->base, newName);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, newName);
-
       TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
       return TRI_set_errno(res);
     }
-
-    TRI_CopyString(collection->_name, newName, sizeof(collection->_name));
   }
 
   // .............................................................................
@@ -1580,8 +1569,6 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
   // .............................................................................
 
   else {
-    TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, newName);
-
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -1589,10 +1576,14 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
   }
   
   // .............................................................................
-  // remove old name and release locks
+  // rename and release locks
   // .............................................................................
 
   TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, oldName);
+  TRI_CopyString(collection->_name, newName, sizeof(collection->_name));
+
+  cnv.c = collection;
+  TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName, newName, cnv.v, false);
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
