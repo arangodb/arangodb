@@ -42,7 +42,7 @@ var actions = require("actions");
 
 function postQuery(req, res) {
   if (req.suffix.length != 0) {
-    actions.resultError (req, res, 404, actions.errorInvalidRequest, "Invalid request");
+    actions.resultNotFound(req, res, actions.ERROR_HTTP_NOT_FOUND);
     return;
   }
 
@@ -50,22 +50,22 @@ function postQuery(req, res) {
     var json = JSON.parse(req.requestBody);
       
     if (!json || !(json instanceof Object) || json.query == undefined) {
-      actions.resultError (req, res, 400, actions.errorQuerySpecificationInvalid, "Query specification invalid");
+      actions.resultBad(req, res, actions.ERROR_QUERY_SPECIFICATION_INVALID, actions.getErrorMessage(actions.ERROR_QUERY_SPECIFICATION_INVALID));
       return;
     }
 
     var result = AQL_PARSE(json.query);
     if (result instanceof AvocadoQueryError) {
-      actions.resultError (req, res, 404, result.code, result.message);
+      actions.resultBad(req, res, result.code, result.message);
       return;
     }
 
     result = { "bindVars" : result };
 
-    actions.resultOk (req, res, 200, result);
+    actions.resultOk(req, res, actions.HTTP_OK, result);
   }
-  catch (e) {
-    actions.resultError (req, res, 404, actions.errorJavascriptException, "Javascript exception");
+  catch (err) {
+    actions.resultException(req, res, err);
   }
 }
 
@@ -83,7 +83,7 @@ actions.defineHttp({
 
   callback : function (req, res) {
     switch (req.requestType) {
-      case ("POST") : 
+      case (actions.POST) : 
         postQuery(req, res); 
         break;
 
