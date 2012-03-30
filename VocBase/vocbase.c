@@ -1506,7 +1506,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
   }
 
   // check if the new name is unused
-  found = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, newName);
+  found = (void*) TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, newName);
 
   if (found != NULL) {
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);

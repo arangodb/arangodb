@@ -210,7 +210,7 @@ namespace triagens {
       /// @brief get content type header field
       ////////////////////////////////////////////////////////////////////////////////
 
-      const std::string getContentType ();
+      const std::string getContentType (const bool partial);
 
 
     private:

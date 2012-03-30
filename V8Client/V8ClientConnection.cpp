@@ -196,7 +196,7 @@ namespace triagens {
         if (_httpResult->getBody().str().length() > 0) {
           // got a body
           
-          string contentType = _httpResult->getContentType();
+          string contentType = _httpResult->getContentType(true);
           if (contentType == "application/json") {
             TRI_json_t* js = TRI_JsonString(_httpResult->getBody().str().c_str());
             if (js) {
