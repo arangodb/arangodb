@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for TRI_string_buffer_t
+/// @brief test suite for TRI_vector_pointer_t
 ///
 /// @file
 ///
@@ -21,8 +21,7 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Tim Becker
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
