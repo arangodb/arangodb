@@ -85,7 +85,7 @@ function GET_api_indexes (req, res) {
     var index = indexes[i];
     
     list.push(index);
-    ids[index.iid] = index;
+    ids[index.id] = index;
   }
 
   var result = { indexes : list, identifiers : ids };
@@ -215,7 +215,7 @@ function POST_api_index_geo (req, res, collection, body) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function POST_api_index (req, res) {
-  if (require.suffix.length != 1) {
+  if (req.suffix.length != 1) {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
                       "expect POST /" + API + "/<collection-identifer>/<method>");
     return;

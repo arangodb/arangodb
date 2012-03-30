@@ -323,7 +323,6 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
       TRI_FreeString(tmp3);
       
       res = TRI_RenameFile(collection->_path, newFilename);
-      TRI_FreeString(newFilename);
       
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_ERROR("cannot rename dropped collection '%s' from '%s' to '%s'",
@@ -337,6 +336,8 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
                   collection->_path,
                   newFilename);
       }
+
+      TRI_FreeString(newFilename);
     }
     else {
       LOG_ERROR("cannot rename dropped collection '%s': unknown path '%s'",
