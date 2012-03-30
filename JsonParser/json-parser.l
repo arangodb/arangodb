@@ -98,7 +98,7 @@ struct jsonData {
   * strings
   * ----------------------------------------------------------------------------- */
 
-\"[^\"]*\" {
+\"(\\.|[^\\\"])*\" {
   return STRING_CONSTANT;
 }
 
@@ -363,6 +363,7 @@ static TRI_json_t* ParseObject (yyscan_t scanner, int c) {
 
     case STRING_CONSTANT:
       ptr = TRI_UnescapeUtf8String(yytext + 1, yyleng - 2, &outLength);
+
       return TRI_CreateString2Json(ptr, outLength);
 
     case OPEN_BRACE:
