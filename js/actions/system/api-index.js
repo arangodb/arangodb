@@ -197,12 +197,83 @@ function POST_api_index_geo (req, res, collection, body) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a hash index
+////////////////////////////////////////////////////////////////////////////////
+
+function POST_api_index_hash (req, res, collection, body) {
+  var fields = body.fields;
+
+  if (! (fields instanceof Array)) {
+    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+                      "fields must be a list of attribute paths: " + fields);
+  }
+
+  try {
+    var index;
+
+    if (body.unique) {
+      index = collection.ensureUniqueConstraint.apply(collection, fields);
+    }
+    else {
+      index = collection.ensureHashIndex.apply(collection, fields);
+    }
+
+    if (index.isNewlyCreated) {
+      actions.resultOk(req, res, actions.HTTP_CREATED, index);
+    }
+    else {
+      actions.resultOk(req, res, actions.HTTP_OK, index);
+    }
+  }
+  catch (err) {
+    actions.resultException(req, res, err);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a skip-list
+////////////////////////////////////////////////////////////////////////////////
+
+function POST_api_index_skiplist (req, res, collection, body) {
+  var fields = body.fields;
+
+  if (! (fields instanceof Array)) {
+    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+                      "fields must be a list of attribute paths: " + fields);
+  }
+
+  try {
+    var index;
+
+    if (body.unique) {
+      index = collection.ensureUniqueSkiplist.apply(collection, fields);
+    }
+    else {
+      index = collection.ensureSkiplist.apply(collection, fields);
+    }
+
+    if (index.isNewlyCreated) {
+      actions.resultOk(req, res, actions.HTTP_CREATED, index);
+    }
+    else {
+      actions.resultOk(req, res, actions.HTTP_OK, index);
+    }
+  }
+  catch (err) {
+    actions.resultException(req, res, err);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an index
 ///
 /// @REST{POST /_api/index/@FA{collection-identifier}}
 ///
 /// Creates a new index in the collection @FA{collection-identifier}. Expects
 /// an object containing the index details.
+///
+/// See @ref IndexGeo, @ref IndexUniqueConstraint, @ref IndexHash,
+/// @ref IndexSkiplist, and @ref IndexUniqueSkiplist for details.
 ///
 /// If the index does not already exists and could be created, then a @LIT{HTTP
 /// 201} is returned.  If the index already exists, then a @LIT{HTTP 200} is
@@ -212,12 +283,22 @@ function POST_api_index_geo (req, res, collection, body) {
 /// returned. It is possible to specify a name instead of an identifier.  
 ///
 /// @EXAMPLES
+///
+/// Creating a geo index:
+///
+/// Creating an unique constraint:
+///
+/// Creating a hash index:
+///
+/// Creating a skip-list:
+///
+/// Creating a unique skip-list:
 ////////////////////////////////////////////////////////////////////////////////
 
 function POST_api_index (req, res) {
   if (req.suffix.length != 1) {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                      "expect POST /" + API + "/<collection-identifer>/<method>");
+                      "expect POST /" + API + "/<collection-identifer>");
     return;
   }
 
@@ -243,9 +324,59 @@ function POST_api_index (req, res) {
   if (body.type == "geo") {
     POST_api_index_geo(req, res, collection, body);
   }
+  else if (body.type == "hash") {
+    POST_api_index_hash(req, res, collection, body);
+  }
+  else if (body.type == "skiplist") {
+    POST_api_index_skiplist(req, res, collection, body);
+  }
   else {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
                       "unknown index type '" + body.type + "'");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an index
+///
+/// @REST{DELETE /_api/index/@FA{collection-identifier}/@FA{index-identifier}}
+///
+/// Deletes an index with identifier @FA{indexn-identifier} in the collection
+/// @FA{collection-identifier}.
+///
+/// @EXAMPLES
+///
+////////////////////////////////////////////////////////////////////////////////
+
+function DELETE_api_index (req, res) {
+  if (req.suffix.length != 2) {
+    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+                      "expect DELETE /" + API + "/<collection-identifer>/<index-identifer>");
+    return;
+  }
+
+  var name = decodeURIComponent(req.suffix[0]);
+  var id = parseInt(name) || name;
+  var collection = db._collection(id);
+
+  if (collection == null) {
+    actions.collectionNotFound(req, res, name);
+    return;
+  }
+
+  try {
+    var iid = parseInt(decodeURIComponent(req.suffix[1]));
+    var droped = collection.dropIndex(iid);
+
+    if (droped) {
+      actions.resultOk(req, res, actions.HTTP_OK, { id : iid });
+    }
+    else {
+      actions.indexNotFound(req, res, collection, iid);
+    }
+  }
+  catch (err) {
+    actions.resultException(req, res, err);
   }
 }
 

@@ -133,6 +133,40 @@ extern "C" {
   TRI_BroadcastCondition(&(a)->_journalsCondition)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the shape identifier pointer from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(dst, src)                                     \
+  do {                                                                                    \
+    if (((TRI_df_marker_t const*) (src))->_type == TRI_DOC_MARKER_DOCUMENT) {             \
+      (dst) = ((TRI_doc_document_marker_t*) (src))->_shape;                               \
+    }                                                                                     \
+    else if (((TRI_df_marker_t const*) (src))->_type == TRI_DOC_MARKER_EDGE) {            \
+      (dst) = ((TRI_doc_edge_marker_t*) (src))->base._shape;                              \
+    }                                                                                     \
+    else {                                                                                \
+      (dst) = 0;                                                                          \
+    }                                                                                     \
+  } while (false)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the shaped JSON pointer from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_EXTRACT_SHAPED_JSON_MARKER(dst, src)                                          \
+  do {                                                                                    \
+    if (((TRI_df_marker_t const*) (src))->_type == TRI_DOC_MARKER_DOCUMENT) {             \
+      (dst) = (TRI_shaped_json_t*) (((char*) (src)) + sizeof(TRI_doc_document_marker_t)); \
+    }                                                                                     \
+    else if (((TRI_df_marker_t const*) (src))->_type == TRI_DOC_MARKER_EDGE) {            \
+      (dst) = (TRI_shaped_json_t*) (((char*) (src)) + sizeof(TRI_doc_edge_marker_t));     \
+    }                                                                                     \
+    else {                                                                                \
+      (dst) = NULL;                                                                       \
+    }                                                                                     \
+  } while (false)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

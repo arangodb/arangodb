@@ -858,6 +858,7 @@ WIKI = \
 	Doxygen/xml/Glossary.md \
 	Doxygen/xml/Graphs.md \
 	Doxygen/xml/HttpCollection.md \
+	Doxygen/xml/HttpIndexes.md \
 	Doxygen/xml/HttpInterface.md \
 	Doxygen/xml/IndexUsage.md \
 	Doxygen/xml/Installing.md \

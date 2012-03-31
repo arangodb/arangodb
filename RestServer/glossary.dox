@@ -88,6 +88,10 @@
 /// @page GlossaryDocumentEtag 
 ///
 /// @GE{Document Etag}: The document revision enclosed in double quotes.
+///
+/// @page GlossaryDocumentEtag 
+///
+/// @GE{Document Etag}: The document revision enclosed in double quotes.
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
