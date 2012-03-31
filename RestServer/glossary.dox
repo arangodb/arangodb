@@ -36,21 +36,36 @@
 ///
 /// @copydoc GlossaryDocumentHandle
 ///
+/// @copydoc GlossaryDocumentEtag
+///
 /// @copydoc GlossaryDocumentIdentifier
 ///
 /// @copydoc GlossaryDocumentRevision
 ///
+/// @copydoc GlossaryIndex
+///
+/// @copydoc GlossaryIndexGeo
+///
+/// @copydoc GlossaryIndexHash
+///
+/// @copydoc GlossaryIndexSkiplist
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @page GlossaryCollection
+////////////////////////////
 ///
 /// @GE{Collection}: A collection consists of documents. It is uniquely identified
 /// by it's collection identifier. It also has a unique name.
 ///
 /// @page GlossaryCollectionIdentifier
+//////////////////////////////////////
 ///
 /// @GE{Collection Identifier}: A collection identifier identifies a collection
 /// in a database. It is an integer and is unique within the database.
 ///
 /// @page GlossaryCollectionName
+////////////////////////////////
 ///
 /// @GE{Collection Name}: A collection name identifies a collection in a
 /// database. It is an string and is unique within the database. Unlike the
@@ -59,24 +74,33 @@
 /// @LIT{-}. However, the first character must be a letter.
 ///
 /// @page GlossaryDocument
+//////////////////////////
 ///
 /// @GE{Document}: Documents in AvocadoDB are JSON objects. These objects can be
 /// nested (to any depth) and may contains lists. Each document is unique identified
 /// by its document handle.
 ///
 /// @page GlossaryDocumentHandle
+////////////////////////////////
 ///
 /// @GE{Document Handle}: A document handle uniquely identifies a document in
 /// the database. It is a string and consists of a collection identifier and a
 /// document identifier separated by @LIT{/}.
 ///
+/// @page GlossaryDocumentEtag
+//////////////////////////////
+///
+/// @GE{Document Etag}: The document revision enclosed in double quotes.
+///
 /// @page GlossaryDocumentIdentifier 
+////////////////////////////////////
 ///
 /// @GE{Document Identifier}: A document identifier identifies a document in a
 /// given collection. It is an integer and is unique within the collection of the
 /// document.
 ///
 /// @page GlossaryDocumentRevision
+//////////////////////////////////
 ///
 /// @GE{Document Revision}: As AvocaodDB supports MVCC, documents can exist in
 /// more than one revision.  The document revision is the MVCC token used to
@@ -85,13 +109,28 @@
 /// of a document have smaller numbers. In order to find a particular revision
 /// of a document, you need the document handle and the document revision.
 ///
-/// @page GlossaryDocumentEtag 
+/// @page GlossaryIndex
+///////////////////////
 ///
-/// @GE{Document Etag}: The document revision enclosed in double quotes.
+/// @GE{Index}: Indexes are used to allow fast access to documents. For each
+/// collection there is always the primary index which is a hash index for
+/// the document identifier.
 ///
-/// @page GlossaryDocumentEtag 
+/// @page GlossaryIndexGeo
+//////////////////////////
 ///
-/// @GE{Document Etag}: The document revision enclosed in double quotes.
+/// @GE{Geo Index}: A geo index is used to find places on the surface of the
+/// earth fast.
+///
+/// @page GlossaryIndexHash
+///////////////////////////
+///
+/// @GE{Hash Index}: A hash index is used to find documents based on examples.
+///
+/// @page GlossaryIndexSkiplist
+///////////////////////////////
+///
+/// @GE{Hash Index}: A skiplist is used to find ranges of documents.
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

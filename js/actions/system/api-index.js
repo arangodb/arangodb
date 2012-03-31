@@ -96,7 +96,7 @@ function GET_api_indexes (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns an index
 ///
-/// @REST{GET /_api/index/@FA{index-identifier}}
+/// @REST{GET /_api/index/@FA{collection-identifier}/@FA{index-identifier}}
 ///
 /// The result is an objects describing the index with the following
 /// attributes:
@@ -272,8 +272,7 @@ function POST_api_index_skiplist (req, res, collection, body) {
 /// Creates a new index in the collection @FA{collection-identifier}. Expects
 /// an object containing the index details.
 ///
-/// See @ref IndexGeo, @ref IndexUniqueConstraint, @ref IndexHash,
-/// @ref IndexSkiplist, and @ref IndexUniqueSkiplist for details.
+/// See @ref IndexGeo, @ref IndexHash, and @ref IndexSkiplist for details.
 ///
 /// If the index does not already exists and could be created, then a @LIT{HTTP
 /// 201} is returned.  If the index already exists, then a @LIT{HTTP 200} is
@@ -284,15 +283,29 @@ function POST_api_index_skiplist (req, res, collection, body) {
 ///
 /// @EXAMPLES
 ///
-/// Creating a geo index:
+/// Creating a geo index with a location attribute:
+///
+/// @verbinclude api-index-create-geo-location
+///
+/// Creating a geo index with latitude and longitude attributes:
+///
+/// @verbinclude api-index-create-geo-latitude-longitude
 ///
 /// Creating an unique constraint:
 ///
+/// @verbinclude api-index-create-new-unique-constraint
+///
 /// Creating a hash index:
+///
+/// @verbinclude api-index-create-new-hash-index
 ///
 /// Creating a skip-list:
 ///
+/// @verbinclude api-index-create-new-skiplist
+///
 /// Creating a unique skip-list:
+///
+/// @verbinclude api-index-create-new-unique-skiplist
 ////////////////////////////////////////////////////////////////////////////////
 
 function POST_api_index (req, res) {

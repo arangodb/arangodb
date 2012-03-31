@@ -142,8 +142,8 @@
 ///
 /// - @ref JS_DropIndexVocbaseCol "dropIndex"
 /// - @ref JS_EnsureGeoIndexVocbaseCol "ensureGeoIndex"
-/// - ref JS_EnsureHashIndexVocbaseCol "ensureHashIndex"
-/// - @ref JS_EnsureMultiHashIndexVocbaseCol "ensureMultiHashIndex"
+/// - ref JS_EnsureUniqueConstraintVocbaseCol "ensureUniqueConstraint"
+/// - @ref JS_EnsureHashIndexVocbaseCol "ensureHashIndex"
 /// - @ref JS_GetIndexesVocbaseCol "getIndexes"
 ///
 /// @section JSFQueries Query Functions
@@ -194,9 +194,9 @@
 ///
 /// @copydetails JS_EnsureGeoIndexVocbaseCol
 ///
-/// copydetails JS_EnsureHashIndexVocbaseCol
+/// copydetails JS_EnsureUniqueConstraintVocbaseCol
 ///
-/// @copydetails JS_EnsureMultiHashIndexVocbaseCol
+/// @copydetails JS_EnsureHashIndexVocbaseCol
 ///
 /// @copydetails JS_GetIndexesVocbaseCol
 ///
