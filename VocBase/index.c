@@ -603,7 +603,7 @@ static int RemoveGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 /// @brief JSON description of a geo index, location is a list
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonGeoIndex (TRI_index_t* idx, TRI_doc_collection_t* collection) {
+static TRI_json_t* JsonGeoIndex (TRI_index_t* idx, TRI_doc_collection_t const* collection) {
   TRI_json_t* json;
   TRI_json_t* fields;
   TRI_shape_path_t const* path;
@@ -644,7 +644,7 @@ static TRI_json_t* JsonGeoIndex (TRI_index_t* idx, TRI_doc_collection_t* collect
 /// @brief saves the index to file, location is an array
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonGeoIndex2 (TRI_index_t* idx, TRI_doc_collection_t* collection) {
+static TRI_json_t* JsonGeoIndex2 (TRI_index_t* idx, TRI_doc_collection_t const* collection) {
   TRI_json_t* json;
   TRI_json_t* fields;
   TRI_shape_path_t const* path;
@@ -1065,7 +1065,7 @@ static int InsertHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 /// @brief describes a hash index as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonHashIndex (TRI_index_t* idx, TRI_doc_collection_t* collection) {
+static TRI_json_t* JsonHashIndex (TRI_index_t* idx, TRI_doc_collection_t const* collection) {
   TRI_json_t* json;
   TRI_json_t* fields;
   const TRI_shape_path_t* path;
@@ -1821,7 +1821,7 @@ static int InsertSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 /// @brief describes a skiplist  index as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, TRI_doc_collection_t* collection) {
+static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, TRI_doc_collection_t const* collection) {
   TRI_json_t* json;
   TRI_json_t* fields;
   const TRI_shape_path_t* path;

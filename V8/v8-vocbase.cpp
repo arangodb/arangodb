@@ -4646,10 +4646,10 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
   TRI_shape_t const* shape = acc->_shape;
   TRI_shaped_json_t json;
 
-  TRI_shaped_json_t* document;
+  TRI_shaped_json_t document;
   TRI_EXTRACT_SHAPED_JSON_MARKER(document, marker);
 
-  if (TRI_ExecuteShapeAccessor(acc, document, &json)) {    
+  if (TRI_ExecuteShapeAccessor(acc, &document, &json)) {    
     TRI_FreeShapeAccessor(acc);
     return scope.Close(TRI_JsonShapeData(shaper, shape, json._data.data, json._data.length));
   }
