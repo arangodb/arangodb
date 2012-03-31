@@ -4605,9 +4605,9 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
   }
 
   // get shaped json
-  TRI_shaped_json_t* document = UnwrapClass<TRI_shaped_json_t>(self, WRP_SHAPED_JSON_TYPE);
+  void* marker = UnwrapClass<void*>(self, WRP_SHAPED_JSON_TYPE);
 
-  if (document == 0) {
+  if (marker == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted shaped json")));
   }
 
@@ -4628,13 +4628,17 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
   // get shape accessor
   TRI_shaper_t* shaper = collection->_shaper;
   TRI_shape_pid_t pid = shaper->findAttributePathByName(shaper, key.c_str()); 
-  TRI_shape_sid_t sid = document->_sid;    
+
+  TRI_shape_sid_t sid;
+  TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, marker);
+
   TRI_shape_access_t* acc = TRI_ShapeAccessor(shaper, sid, pid);
 
   if (acc == NULL || acc->_shape == NULL) {
-    if (acc) {
+    if (acc != NULL) {
       TRI_FreeShapeAccessor(acc);
     }
+
     return scope.Close(v8::Handle<v8::Value>());
   }
 
@@ -4642,12 +4646,15 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
   TRI_shape_t const* shape = acc->_shape;
   TRI_shaped_json_t json;
 
+  TRI_shaped_json_t* document;
+  TRI_EXTRACT_SHAPED_JSON_MARKER(document, marker);
+
   if (TRI_ExecuteShapeAccessor(acc, document, &json)) {    
     TRI_FreeShapeAccessor(acc);
     return scope.Close(TRI_JsonShapeData(shaper, shape, json._data.data, json._data.length));
   }
-  TRI_FreeShapeAccessor(acc);
 
+  TRI_FreeShapeAccessor(acc);
   return scope.Close(v8::ThrowException(v8::String::New("cannot extract attribute")));  
 }
 
@@ -4671,9 +4678,9 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
   }
 
   // get shaped json
-  TRI_shaped_json_t* document = UnwrapClass<TRI_shaped_json_t>(info.Holder(), WRP_SHAPED_JSON_TYPE);
+  void* marker = UnwrapClass<void*>(self, WRP_SHAPED_JSON_TYPE);
 
-  if (document == 0) {
+  if (marker == 0) {
     return scope.Close(result);
   }
 
@@ -4682,7 +4689,11 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
 
   // check for array shape
   TRI_shaper_t* shaper = collection->_shaper;  
-  TRI_shape_t const* shape = shaper->lookupShapeId(shaper, document->_sid);
+
+  TRI_shape_sid_t sid;
+  TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, marker);
+
+  TRI_shape_t const* shape = shaper->lookupShapeId(shaper, sid);
 
   if (shape == 0 || shape->_type != TRI_SHAPE_ARRAY) {
     return scope.Close(result);
@@ -4736,9 +4747,9 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
   }
 
   // get shaped json
-  TRI_shaped_json_t* document = UnwrapClass<TRI_shaped_json_t>(self, WRP_SHAPED_JSON_TYPE);
+  void* marker = UnwrapClass<TRI_shaped_json_t>(self, WRP_SHAPED_JSON_TYPE);
 
-  if (document == 0) {
+  if (marker == 0) {
     return scope.Close(v8::Handle<v8::Integer>());
   }
 
@@ -4763,18 +4774,22 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
   // get shape accessor
   TRI_shaper_t* shaper = collection->_shaper;
   TRI_shape_pid_t pid = shaper->findAttributePathByName(shaper, key.c_str()); 
-  TRI_shape_sid_t sid = document->_sid;    
+
+  TRI_shape_sid_t sid;
+  TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, marker);
+
   TRI_shape_access_t* acc = TRI_ShapeAccessor(shaper, sid, pid);
 
   // key not found
   if (acc == NULL || acc->_shape == NULL) {
-    if (acc) {
+    if (acc != NULL) {
       TRI_FreeShapeAccessor(acc);
     }
+
     return scope.Close(v8::Handle<v8::Integer>());
   }
-  TRI_FreeShapeAccessor(acc);
 
+  TRI_FreeShapeAccessor(acc);
   return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::ReadOnly)));
 }
 
@@ -4892,7 +4907,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
 
   // point the 0 index Field to the c++ pointer for unwrapping later
   result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_SHAPED_JSON_TYPE));
-  result->SetInternalField(SLOT_CLASS, v8::External::New(const_cast<TRI_shaped_json_t*>(&document->_document)));
+  result->SetInternalField(SLOT_CLASS, v8::External::New(const_cast<void*>(document->_data)));
 
   map< void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSBarriers.find(barrier);
 

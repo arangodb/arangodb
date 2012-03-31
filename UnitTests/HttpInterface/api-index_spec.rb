@@ -49,7 +49,7 @@ describe AvocadoDB do
 ## creating a geo index
 ################################################################################
 
-    context "geo indexes:" do
+    context "creating geo indexes:" do
       before do
 	@cn = "UnitTestsCollectionIndexes"
 	AvocadoDB.drop_collection(@cn)
@@ -167,7 +167,7 @@ describe AvocadoDB do
 	AvocadoDB.drop_collection(@cn)
     end
 
-      it "survives" do
+      it "survives unload" do
 	cmd = api + "/#{@cid}"
 	body = "{ \"type\" : \"geo\", \"fields\" : [ \"a\" ] }"
         doc = AvocadoDB.post(cmd, :body => body)
@@ -209,10 +209,410 @@ describe AvocadoDB do
     end
 
 ################################################################################
+## creating an unique constraint
+################################################################################
+
+    context "creating unique constraints:" do
+      before do
+	@cn = "UnitTestsCollectionIndexes"
+	AvocadoDB.drop_collection(@cn)
+	@cid = AvocadoDB.create_collection(@cn)
+      end
+
+      after do
+	AvocadoDB.drop_collection(@cn)
+    end
+
+      it "returns either 201 for new or 200 for old indexes" do
+	cmd = api + "/#{@cid}"
+	body = "{ \"type\" : \"hash\", \"unique\" : true, \"fields\" : [ \"a\", \"b\" ] }"
+        doc = AvocadoDB.log_post("#{prefix}-create-new-unique-constraint", cmd, :body => body)
+	
+	doc.code.should eq(201)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(201)
+	doc.parsed_response['id'].should_not eq(0)
+	doc.parsed_response['type'].should eq("hash")
+	doc.parsed_response['unique'].should eq(true)
+	doc.parsed_response['fields'].should eq([ "a", "b" ])
+	doc.parsed_response['isNewlyCreated'].should eq(true)
+
+        doc = AvocadoDB.log_post("#{prefix}-create-old-unique-constraint", cmd, :body => body)
+	
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['id'].should_not eq(0)
+	doc.parsed_response['type'].should eq("hash")
+	doc.parsed_response['unique'].should eq(true)
+	doc.parsed_response['fields'].should eq([ "a", "b" ])
+	doc.parsed_response['isNewlyCreated'].should eq(false)
+      end
+    end
+
+################################################################################
+## creating an unique constraint and unloading
+################################################################################
+
+    context "unique constraints after unload/load:" do
+      before do
+	@cn = "UnitTestsCollectionIndexes"
+	AvocadoDB.drop_collection(@cn)
+	@cid = AvocadoDB.create_collection(@cn)
+      end
+
+      after do
+	AvocadoDB.drop_collection(@cn)
+    end
+
+      it "survives unload" do
+	cmd = api + "/#{@cid}"
+	body = "{ \"type\" : \"hash\", \"unique\" : true, \"fields\" : [ \"a\", \"b\" ] }"
+        doc = AvocadoDB.post(cmd, :body => body)
+	
+	doc.code.should eq(201)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(201)
+	doc.parsed_response['id'].should_not eq(0)
+
+	iid = doc.parsed_response['id']
+
+	cmd = "/_api/collection/#{@cid}/unload"
+	doc = AvocadoDB.put(cmd)
+
+	doc.code.should eq(200)
+
+	cmd = "/_api/collection/#{@cid}"
+	doc = AvocadoDB.get(cmd)
+	doc.code.should eq(200)
+
+	while doc.parsed_response['status'] != 2
+	  doc = AvocadoDB.get(cmd)
+	  doc.code.should eq(200)
+	end
+
+	cmd = api + "/#{@cid}/#{iid}"
+        doc = AvocadoDB.get(cmd, :body => body)
+
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['id'].should eq(iid)
+	doc.parsed_response['type'].should eq("hash")
+	doc.parsed_response['unique'].should eq(true)
+	doc.parsed_response['fields'].should eq([ "a", "b" ])
+      end
+    end
+
+################################################################################
+## creating a hash index
+################################################################################
+
+    context "creating hash indexes:" do
+      before do
+	@cn = "UnitTestsCollectionIndexes"
+	AvocadoDB.drop_collection(@cn)
+	@cid = AvocadoDB.create_collection(@cn)
+      end
+
+      after do
+	AvocadoDB.drop_collection(@cn)
+    end
+
+      it "returns either 201 for new or 200 for old indexes" do
+	cmd = api + "/#{@cid}"
+	body = "{ \"type\" : \"hash\", \"unique\" : false, \"fields\" : [ \"a\", \"b\" ] }"
+        doc = AvocadoDB.log_post("#{prefix}-create-new-hash-index", cmd, :body => body)
+	
+	doc.code.should eq(201)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(201)
+	doc.parsed_response['id'].should_not eq(0)
+	doc.parsed_response['type'].should eq("hash")
+	doc.parsed_response['unique'].should eq(false)
+	doc.parsed_response['fields'].should eq([ "a", "b" ])
+	doc.parsed_response['isNewlyCreated'].should eq(true)
+
+        doc = AvocadoDB.log_post("#{prefix}-create-old-hash-index", cmd, :body => body)
+	
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['id'].should_not eq(0)
+	doc.parsed_response['type'].should eq("hash")
+	doc.parsed_response['unique'].should eq(false)
+	doc.parsed_response['fields'].should eq([ "a", "b" ])
+	doc.parsed_response['isNewlyCreated'].should eq(false)
+      end
+    end
+
+################################################################################
+## creating a hash index and unloading
+################################################################################
+
+    context "hash indexes after unload/load:" do
+      before do
+	@cn = "UnitTestsCollectionIndexes"
+	AvocadoDB.drop_collection(@cn)
+	@cid = AvocadoDB.create_collection(@cn)
+      end
+
+      after do
+	AvocadoDB.drop_collection(@cn)
+    end
+
+      it "survives unload" do
+	cmd = api + "/#{@cid}"
+	body = "{ \"type\" : \"hash\", \"unique\" : false, \"fields\" : [ \"a\", \"b\" ] }"
+        doc = AvocadoDB.post(cmd, :body => body)
+	
+	doc.code.should eq(201)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(201)
+	doc.parsed_response['id'].should_not eq(0)
+
+	iid = doc.parsed_response['id']
+
+	cmd = "/_api/collection/#{@cid}/unload"
+	doc = AvocadoDB.put(cmd)
+
+	doc.code.should eq(200)
+
+	cmd = "/_api/collection/#{@cid}"
+	doc = AvocadoDB.get(cmd)
+	doc.code.should eq(200)
+
+	while doc.parsed_response['status'] != 2
+	  doc = AvocadoDB.get(cmd)
+	  doc.code.should eq(200)
+	end
+
+	cmd = api + "/#{@cid}/#{iid}"
+        doc = AvocadoDB.get(cmd, :body => body)
+
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['id'].should eq(iid)
+	doc.parsed_response['type'].should eq("hash")
+	doc.parsed_response['unique'].should eq(false)
+	doc.parsed_response['fields'].should eq([ "a", "b" ])
+      end
+    end
+
+################################################################################
+## creating a skiplist
+################################################################################
+
+    context "creating skiplists:" do
+      before do
+	@cn = "UnitTestsCollectionIndexes"
+	AvocadoDB.drop_collection(@cn)
+	@cid = AvocadoDB.create_collection(@cn)
+      end
+
+      after do
+	AvocadoDB.drop_collection(@cn)
+    end
+
+      it "returns either 201 for new or 200 for old indexes" do
+	cmd = api + "/#{@cid}"
+	body = "{ \"type\" : \"skiplist\", \"unique\" : false, \"fields\" : [ \"a\", \"b\" ] }"
+        doc = AvocadoDB.log_post("#{prefix}-create-new-skiplist", cmd, :body => body)
+	
+	doc.code.should eq(201)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(201)
+	doc.parsed_response['id'].should_not eq(0)
+	doc.parsed_response['type'].should eq("skiplist")
+	doc.parsed_response['unique'].should eq(false)
+	doc.parsed_response['fields'].should eq([ "a", "b" ])
+	doc.parsed_response['isNewlyCreated'].should eq(true)
+
+        doc = AvocadoDB.log_post("#{prefix}-create-old-skiplist", cmd, :body => body)
+	
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['id'].should_not eq(0)
+	doc.parsed_response['type'].should eq("skiplist")
+	doc.parsed_response['unique'].should eq(false)
+	doc.parsed_response['fields'].should eq([ "a", "b" ])
+	doc.parsed_response['isNewlyCreated'].should eq(false)
+      end
+    end
+
+################################################################################
+## creating a skiplist and unloading
+################################################################################
+
+    context "skiplists after unload/load:" do
+      before do
+	@cn = "UnitTestsCollectionIndexes"
+	AvocadoDB.drop_collection(@cn)
+	@cid = AvocadoDB.create_collection(@cn)
+      end
+
+      after do
+	AvocadoDB.drop_collection(@cn)
+    end
+
+      it "survives unload" do
+	cmd = api + "/#{@cid}"
+	body = "{ \"type\" : \"skiplist\", \"unique\" : false, \"fields\" : [ \"a\", \"b\" ] }"
+        doc = AvocadoDB.post(cmd, :body => body)
+	
+	doc.code.should eq(201)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(201)
+	doc.parsed_response['id'].should_not eq(0)
+
+	iid = doc.parsed_response['id']
+
+	cmd = "/_api/collection/#{@cid}/unload"
+	doc = AvocadoDB.put(cmd)
+
+	doc.code.should eq(200)
+
+	cmd = "/_api/collection/#{@cid}"
+	doc = AvocadoDB.get(cmd)
+	doc.code.should eq(200)
+
+	while doc.parsed_response['status'] != 2
+	  doc = AvocadoDB.get(cmd)
+	  doc.code.should eq(200)
+	end
+
+	cmd = api + "/#{@cid}/#{iid}"
+        doc = AvocadoDB.get(cmd, :body => body)
+
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['id'].should eq(iid)
+	doc.parsed_response['type'].should eq("skiplist")
+	doc.parsed_response['unique'].should eq(false)
+	doc.parsed_response['fields'].should eq([ "a", "b" ])
+      end
+    end
+
+################################################################################
+## creating a unique skiplist
+################################################################################
+
+    context "creating unique skiplists:" do
+      before do
+	@cn = "UnitTestsCollectionIndexes"
+	AvocadoDB.drop_collection(@cn)
+	@cid = AvocadoDB.create_collection(@cn)
+      end
+
+      after do
+	AvocadoDB.drop_collection(@cn)
+    end
+
+      it "returns either 201 for new or 200 for old indexes" do
+	cmd = api + "/#{@cid}"
+	body = "{ \"type\" : \"skiplist\", \"unique\" : true, \"fields\" : [ \"a\", \"b\" ] }"
+        doc = AvocadoDB.log_post("#{prefix}-create-new-unique-skiplist", cmd, :body => body)
+	
+	doc.code.should eq(201)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(201)
+	doc.parsed_response['id'].should_not eq(0)
+	doc.parsed_response['type'].should eq("skiplist")
+	doc.parsed_response['unique'].should eq(true)
+	doc.parsed_response['fields'].should eq([ "a", "b" ])
+	doc.parsed_response['isNewlyCreated'].should eq(true)
+
+        doc = AvocadoDB.log_post("#{prefix}-create-old-unique-skiplist", cmd, :body => body)
+	
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['id'].should_not eq(0)
+	doc.parsed_response['type'].should eq("skiplist")
+	doc.parsed_response['unique'].should eq(true)
+	doc.parsed_response['fields'].should eq([ "a", "b" ])
+	doc.parsed_response['isNewlyCreated'].should eq(false)
+      end
+    end
+
+################################################################################
+## creating a skiplist and unloading
+################################################################################
+
+    context "unique skiplists after unload/load:" do
+      before do
+	@cn = "UnitTestsCollectionIndexes"
+	AvocadoDB.drop_collection(@cn)
+	@cid = AvocadoDB.create_collection(@cn)
+      end
+
+      after do
+	AvocadoDB.drop_collection(@cn)
+    end
+
+      it "survives unload" do
+	cmd = api + "/#{@cid}"
+	body = "{ \"type\" : \"skiplist\", \"unique\" : true, \"fields\" : [ \"a\", \"b\" ] }"
+        doc = AvocadoDB.post(cmd, :body => body)
+	
+	doc.code.should eq(201)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(201)
+	doc.parsed_response['id'].should_not eq(0)
+
+	iid = doc.parsed_response['id']
+
+	cmd = "/_api/collection/#{@cid}/unload"
+	doc = AvocadoDB.put(cmd)
+
+	doc.code.should eq(200)
+
+	cmd = "/_api/collection/#{@cid}"
+	doc = AvocadoDB.get(cmd)
+	doc.code.should eq(200)
+
+	while doc.parsed_response['status'] != 2
+	  doc = AvocadoDB.get(cmd)
+	  doc.code.should eq(200)
+	end
+
+	cmd = api + "/#{@cid}/#{iid}"
+        doc = AvocadoDB.get(cmd, :body => body)
+
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['id'].should eq(iid)
+	doc.parsed_response['type'].should eq("skiplist")
+	doc.parsed_response['unique'].should eq(true)
+	doc.parsed_response['fields'].should eq([ "a", "b" ])
+      end
+    end
+
+################################################################################
 ## reading all indexes
 ################################################################################
 
-    context "all indexes:" do
+    context "reading all indexes:" do
       before do
 	@cn = "UnitTestsCollectionIndexes"
 	AvocadoDB.drop_collection(@cn)
@@ -295,6 +695,58 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should eq(0)
 	doc.parsed_response['type'].should eq("primary")
+      end
+    end
+
+################################################################################
+## deleting an index
+################################################################################
+
+    context "deleting an index:" do
+      before do
+	@cn = "UnitTestsCollectionIndexes"
+	AvocadoDB.drop_collection(@cn)
+	@cid = AvocadoDB.create_collection(@cn)
+      end
+
+      after do
+	AvocadoDB.drop_collection(@cn)
+    end
+
+      it "deleting an index" do
+	cmd = api + "/#{@cid}"
+	body = "{ \"type\" : \"skiplist\", \"unique\" : true, \"fields\" : [ \"a\", \"b\" ] }"
+        doc = AvocadoDB.post(cmd, :body => body)
+	
+	doc.code.should eq(201)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(201)
+	doc.parsed_response['id'].should_not eq(0)
+	doc.parsed_response['type'].should eq("skiplist")
+	doc.parsed_response['unique'].should eq(true)
+	doc.parsed_response['fields'].should eq([ "a", "b" ])
+	doc.parsed_response['isNewlyCreated'].should eq(true)
+
+	iid = doc.parsed_response['id']
+
+	cmd = api + "/#{@cid}/#{iid}"
+        doc = AvocadoDB.log_delete("#{prefix}-delete-unique-skiplist", cmd, :body => body)
+	
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['id'].should eq(iid)
+
+	cmd = api + "/#{@cid}/#{iid}"
+	doc = AvocadoDB.get(cmd)
+
+	doc.code.should eq(404)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(true)
+	doc.parsed_response['code'].should eq(404)
+	doc.parsed_response['errorNum'].should eq(1212)
       end
     end
 
