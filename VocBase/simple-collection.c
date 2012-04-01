@@ -357,7 +357,6 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* sim,
 
     // check for constraint error, rollback if necessary
     if (res != TRI_ERROR_NO_ERROR) {
-      TRI_doc_deletion_marker_t markerDel;
       int resRollback;
 
       LOG_DEBUG("encountered index violating during create, deleting newly created document");
