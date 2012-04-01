@@ -32,13 +32,19 @@
 ///  <li>@ref HttpIndexIntro</li>
 ///  <li>@ref HttpIndexResource</li>
 ///  <li>@ref HttpIndexHttp
-///   <ol>
-///    <li>@ref HttpIndexRead "GET /_api/index/@FA{collection-identifier}/@FA{index-identifier}"</li>
-///    <li>@ref HttpIndexCreate "POST /_api/index/@FA{collection-identifier}"</li>
-///    <li>@ref HttpIndexDelete "DELETE /_api/index/@FA{collection-identifier}/@FA{index-identifier}"</li>
-///    <li>@ref HttpIndexReadAll "GET /_api/index/@FA{collection-identifier}"</li>
-///   </ol>
+///   @copydetails HttpIndexCallsTOC
 ///  </li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page HttpIndexCallsTOC
+///
+/// <ol>
+///  <li>@ref HttpIndexRead "GET /_api/index/@FA{collection-identifier}/@FA{index-identifier}"</li>
+///  <li>@ref HttpIndexCreate "POST /_api/index/@FA{collection-identifier}"</li>
+///  <li>@ref HttpIndexDelete "DELETE /_api/index/@FA{collection-identifier}/@FA{index-identifier}"</li>
+///  <li>@ref HttpIndexReadAll "GET /_api/index/@FA{collection-identifier}"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -58,6 +58,7 @@
 ///   <ol>
 ///      <li>@ref RestDocument</li>
 ///      <li>@ref HttpCollection</li>
+///      <li>@ref HttpIndex</li>
 ///   </ol>
 ///  </li>
 /// </ol>

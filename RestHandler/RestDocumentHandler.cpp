@@ -288,10 +288,13 @@ bool RestDocumentHandler::createDocument () {
     return true;
   }
   else {
-    if (TRI_errno() == TRI_ERROR_AVOCADO_READ_ONLY) {
-      generateError(HttpResponse::FORBIDDEN, 
-                    TRI_ERROR_AVOCADO_READ_ONLY,
-                    "collection is read-only");
+    int res = TRI_errno();
+
+    if (res == TRI_ERROR_AVOCADO_READ_ONLY) {
+      generateError(HttpResponse::FORBIDDEN, res, "collection is read-only");
+    }
+    else if (res == TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED) {
+      generateError(HttpResponse::CONFLICT, res, "cannot create document, unique constraint violated");
     }
     else {
       generateError(HttpResponse::SERVER_ERROR,
