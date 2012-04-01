@@ -32,14 +32,7 @@
 ///  <li>Querying and Managing Documents
 ///   <ol>
 ///    <li>@ref RestDocument
-///     <ol>
-///      <li>@ref RestDocumentRead "GET /document/@FA{document-handle}"</li>
-///      <li>@ref RestDocumentCreate "POST /document/collection=@FA{collection-identifier}"</li>
-///      <li>@ref RestDocumentUpdate "PUT /document/@FA{document-handle}"</li>
-///      <li>@ref RestDocumentDelete "DELETE /document/@FA{document-handle}"</li>
-///      <li>@ref RestDocumentHead "HEAD /document/@FA{document-handle}"</li>
-///      <li>@ref RestDocumentReadAll "GET /document?collection=@FA{collection-identifier}"</li>
-///     </ol>
+///     @copydetails RestDocumentCallsTOC
 ///    </li>
 ///    <li>@ref OTWPSimpleQueries
 ///     <ol>
@@ -68,21 +61,11 @@
 ///    </li>
 ///   </ol>
 ///  </li>
-///  <li>@ref OTWPDatabase
-///   <ol>
-///    <li>@ref OTWPDatabaseCollections "GET /_api/database/collections"</li>
-///    <li>@ref OTWPDatabaseCollection "GET /_api/datebase/collection/@FA{collection-identifier}"</li>
-///    <li>@ref OTWPDatabaseCollectionCreate "POST /_api/datebase/collection"</li>
-///   </ol>
+///  <li>@ref HttpCollection
+///   @copydetails HttpCollectionCallsTOC
 ///  </li>
-///  <li>Administration
-///   <ol>
-///    <li>GET /_admin/database/collection/@FA{collection-identifier}</li>
-///    <li>POST /_admin/database/collection/@FA{collection-identifier}/index</li>
-///    <li>GET /_admin/database/collection/@FA{collection-identifier}/indexes</li>
-///    <li>GET /_admin/vocbase/collection/@FA{collection-identifier}/index/@FA{index-identifier}</li>
-///    <li>DELETE /_admin/vocbase/collection/@FA{collection-identifier}/index/@FA{index-identifier}</li>
-///   </ol>
+///  <li>@ref HttpIndex
+///   @copydetails HttpIndexCallsTOC
 ///  </li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,21 +94,6 @@
 ///
 /// @anchor OTWPSimpleQueriesWithin
 /// @copydetails JSA_PUT_api_simple_within
-/// <hr>
-///
-/// @section OTWPDatabase Querying and Managing Collections
-///////////////////////////////////////////////////////////
-///
-/// @anchor OTWPDatabaseCollections
-/// @copydetails JSA_GET_api_datebase_collections
-/// <hr>
-///
-/// @anchor OTWPDatabaseCollection
-/// @copydetails JSF_GET_api_database_collection
-/// <hr>
-///
-/// @anchor OTWPDatabaseCollectionCreate
-/// @copydetails JSF_POST_api_database_collection
 /// <hr>
 ///
 ////////////////////////////////////////////////////////////////////////////////

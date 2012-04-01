@@ -58,6 +58,13 @@ static int DeleteDocument (TRI_sim_collection_t* collection,
                            TRI_doc_update_policy_e policy,
                            bool release);
 
+static int DeleteShapedJson (TRI_doc_collection_t* doc,
+                             TRI_voc_did_t did,
+                             TRI_voc_rid_t rid,
+                             TRI_voc_rid_t* oldRid,
+                             TRI_doc_update_policy_e policy,
+                             bool release);
+
 static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* collection,
                                                  char const* location,
                                                  char const* latitude,
@@ -275,7 +282,7 @@ static void CreateHeader (TRI_doc_collection_t* c,
 /// @brief creates a new document splitted into marker and body to file
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* collection,
+static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* sim,
                                       TRI_doc_document_marker_t* marker,
                                       size_t markerSize,
                                       void const* body,
@@ -290,27 +297,26 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* collection,
   TRI_voc_size_t total;
   TRI_doc_datafile_info_t* dfi;
   int res;
-  int originalRes;
   
   // .............................................................................
   // create header
   // .............................................................................
 
   // get a new header pointer
-  header = collection->_headers->request(collection->_headers);
+  header = sim->_headers->request(sim->_headers);
 
   // generate a new tick
   marker->_rid = marker->_did = marker->base._tick = TRI_NewTickVocBase();
 
   // find and select a journal
   total = markerSize + bodySize;
-  journal = SelectJournal(collection, total, result);
+  journal = SelectJournal(sim, total, result);
 
   if (journal == NULL) {
-    collection->base.base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
+    sim->base.base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
 
     if (release) {
-      collection->base.endWrite(&collection->base);
+      sim->base.endWrite(&sim->base);
     }
 
     mptr._did = 0;
@@ -322,13 +328,13 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* collection,
   // .............................................................................
 
   // verify the header pointer
-  header = collection->_headers->verify(collection->_headers, header);
+  header = sim->_headers->verify(sim->_headers, header);
 
   // generate crc
   TRI_FillCrcMarkerDatafile(&marker->base, markerSize, body, bodySize);
 
   // and write marker and blob
-  res = WriteElement(collection, journal, &marker->base, markerSize, body, bodySize, *result);
+  res = WriteElement(sim, journal, &marker->base, markerSize, body, bodySize, *result);
 
   // .............................................................................
   // update indexes
@@ -338,41 +344,30 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* collection,
   if (res == TRI_ERROR_NO_ERROR) {
 
     // fill the header
-    collection->base.createHeader(&collection->base, journal, *result, markerSize, header, 0);
+    sim->base.createHeader(&sim->base, journal, *result, markerSize, header, 0);
 
     // update the datafile info
-    dfi = TRI_FindDatafileInfoDocCollection(&collection->base, journal->_fid);
+    dfi = TRI_FindDatafileInfoDocCollection(&sim->base, journal->_fid);
 
     dfi->_numberAlive += 1;
     dfi->_sizeAlive += header->_document._data.length;
 
     // update immediate indexes
-    res = CreateImmediateIndexes(collection, header);
-    originalRes = res;
+    res = CreateImmediateIndexes(sim, header);
 
-    // check for constraint error
+    // check for constraint error, rollback if necessary
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_doc_deletion_marker_t markerDel;
+      int resRollback;
 
-      LOG_WARNING("encountered index violating during create, deleting newly created document");
+      LOG_DEBUG("encountered index violating during create, deleting newly created document");
 
-      // .............................................................................
-      // rollback
-      // .............................................................................
+      // rollback, ignore any additional errors
+      resRollback = DeleteShapedJson(&sim->base, header->_did, header->_rid, 0, TRI_DOC_UPDATE_LAST_WRITE, false);
 
-      memset(&markerDel, 0, sizeof(markerDel));
-
-      markerDel.base._size = sizeof(markerDel);
-      markerDel.base._type = TRI_DOC_MARKER_DELETION;
-
-      markerDel._did = header->_did;
-      markerDel._sid = 0;
-
-      // ignore any additional errors
-      res = DeleteDocument(collection, &markerDel, header->_rid, NULL, TRI_DOC_UPDATE_LAST_WRITE, false);
-
-      if (res != TRI_ERROR_NO_ERROR) {
+      if (resRollback != TRI_ERROR_NO_ERROR) {
         LOG_ERROR("encountered error '%s' during rollback of create", TRI_last_error());
+        TRI_set_errno(res);
       }
     }
 
@@ -385,21 +380,19 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* collection,
 
       // release lock, header might be invalid after this
       if (release) {
-        collection->base.endWrite(&collection->base);
+        sim->base.endWrite(&sim->base);
       }
 
       // wait for sync
-      WaitSync(collection, journal, ((char const*) *result) + markerSize + bodySize);
+      WaitSync(sim, journal, ((char const*) *result) + markerSize + bodySize);
 
       // and return
       return mptr;
     }
     else {
       if (release) {
-        collection->base.endWrite(&collection->base);
+        sim->base.endWrite(&sim->base);
       }
-
-      TRI_set_errno(originalRes);
 
       mptr._did = 0;
       return mptr;
@@ -408,10 +401,11 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* collection,
   }
   else {
     if (release) {
-      collection->base.endWrite(&collection->base);
+      sim->base.endWrite(&sim->base);
     }
 
     LOG_ERROR("cannot write element: %s", TRI_last_error());
+
     mptr._did = 0;
     return mptr;
   }
@@ -480,12 +474,11 @@ static TRI_doc_mptr_t const UpdateDocument (TRI_sim_collection_t* collection,
     case TRI_DOC_UPDATE_ERROR:
       if (rid != 0) {
         if (rid != header->_rid) {
-          TRI_set_errno(TRI_ERROR_AVOCADO_CONFLICT);
-
           if (release) {
             collection->base.endWrite(&collection->base);
           }
 
+          TRI_set_errno(TRI_ERROR_AVOCADO_CONFLICT);
           mptr._did = 0;
           return mptr;
         }
@@ -497,22 +490,20 @@ static TRI_doc_mptr_t const UpdateDocument (TRI_sim_collection_t* collection,
       break;
 
     case TRI_DOC_UPDATE_CONFLICT:
-      TRI_set_errno(TRI_ERROR_NOT_IMPLEMENTED);
-
       if (release) {
         collection->base.endWrite(&collection->base);
       }
 
+      TRI_set_errno(TRI_ERROR_NOT_IMPLEMENTED);
       mptr._did = 0;
       return mptr;
 
     case TRI_DOC_UPDATE_ILLEGAL:
-      TRI_set_errno(TRI_ERROR_INTERNAL);
-
       if (release) {
         collection->base.endWrite(&collection->base);
       }
 
+      TRI_set_errno(TRI_ERROR_INTERNAL);
       mptr._did = 0;
       return mptr;
   }
@@ -684,7 +675,6 @@ static TRI_doc_mptr_t const UpdateDocument (TRI_sim_collection_t* collection,
       }
 
       TRI_set_errno(originalRes);
-
       mptr._did = 0;
       return mptr;
     }
@@ -741,7 +731,7 @@ static int DeleteDocument (TRI_sim_collection_t* collection,
             collection->base.endWrite(&collection->base);
           }
 
-          return TRI_ERROR_AVOCADO_CONFLICT;
+          return TRI_set_errno(TRI_ERROR_AVOCADO_CONFLICT);
         }
       }
 
@@ -755,14 +745,14 @@ static int DeleteDocument (TRI_sim_collection_t* collection,
         collection->base.endWrite(&collection->base);
       }
 
-      return TRI_ERROR_NOT_IMPLEMENTED;
+      return TRI_set_errno(TRI_ERROR_NOT_IMPLEMENTED);
 
     case TRI_DOC_UPDATE_ILLEGAL:
       if (release) {
         collection->base.endWrite(&collection->base);
       }
 
-      return TRI_ERROR_INTERNAL;
+      return TRI_set_errno(TRI_ERROR_INTERNAL);
   }
 
   // generate a new tick
@@ -1126,16 +1116,16 @@ static TRI_doc_mptr_t const UpdateShapedJson (TRI_doc_collection_t* document,
 /// @brief deletes a json document given the identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static int DeleteShapedJson (TRI_doc_collection_t* document,
+static int DeleteShapedJson (TRI_doc_collection_t* doc,
                              TRI_voc_did_t did,
                              TRI_voc_rid_t rid,
                              TRI_voc_rid_t* oldRid,
                              TRI_doc_update_policy_e policy,
                              bool release) {
-  TRI_sim_collection_t* collection;
+  TRI_sim_collection_t* sim;
   TRI_doc_deletion_marker_t marker;
 
-  collection = (TRI_sim_collection_t*) document;
+  sim = (TRI_sim_collection_t*) doc;
 
   memset(&marker, 0, sizeof(marker));
 
@@ -1145,7 +1135,7 @@ static int DeleteShapedJson (TRI_doc_collection_t* document,
   marker._did = did;
   marker._sid = 0;
 
-  return DeleteDocument(collection, &marker, rid, oldRid, policy, release);
+  return DeleteDocument(sim, &marker, rid, oldRid, policy, release);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1692,19 +1682,8 @@ static bool InitSimCollection (TRI_sim_collection_t* collection,
   
   // create primary index
   primary = TRI_Allocate(sizeof(TRI_index_t));
-  if (primary == NULL) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    return false;
-  }
 
   id = TRI_DuplicateString("_id");
-  if (id == NULL) {
-    TRI_Free(primary);
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    return false;
-  }
 
   TRI_InitDocCollection(&collection->base, shaper);
 
@@ -2019,7 +1998,7 @@ int TRI_CloseSimCollection (TRI_sim_collection_t* collection) {
 /// @brief creates a new entry in the immediate indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CreateImmediateIndexes (TRI_sim_collection_t* collection,
+static int CreateImmediateIndexes (TRI_sim_collection_t* sim,
                                    TRI_doc_mptr_t* header) {
   TRI_df_marker_t const* marker;
   TRI_doc_mptr_t* found;
@@ -2033,7 +2012,7 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* collection,
   // .............................................................................
 
   // add a new header
-  found = TRI_InsertKeyAssociativePointer(&collection->_primaryIndex, &header->_did, header, false);
+  found = TRI_InsertKeyAssociativePointer(&sim->_primaryIndex, &header->_did, header, false);
 
   if (found != NULL) {
     LOG_ERROR("document %lu already existed with revision %lu while creating revision %lu",
@@ -2041,11 +2020,11 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* collection,
               (unsigned long) found->_rid,
               (unsigned long) header->_rid);
 
-    collection->_headers->release(collection->_headers, header);
-    return TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED;
+    sim->_headers->release(sim->_headers, header);
+    return TRI_set_errno(TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED);
   }
 
-  // return in case of a delete
+  // return in case of a deleted document
   if (header->_deletion != 0) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -2067,58 +2046,42 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* collection,
     // IN
     entry = TRI_Allocate(sizeof(TRI_edge_header_t));
 
-    if (!entry) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
     entry->_mptr = header;
     entry->_direction = TRI_EDGE_IN;
     entry->_cid = edge->_toCid;
     entry->_did = edge->_toDid;
 
-    TRI_InsertElementMultiPointer(&collection->_edgesIndex, entry, true);
+    TRI_InsertElementMultiPointer(&sim->_edgesIndex, entry, true);
 
     // OUT
     entry = TRI_Allocate(sizeof(TRI_edge_header_t));
-
-    if (!entry) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
 
     entry->_mptr = header;
     entry->_direction = TRI_EDGE_OUT;
     entry->_cid = edge->_fromCid;
     entry->_did = edge->_fromDid;
 
-    TRI_InsertElementMultiPointer(&collection->_edgesIndex, entry, true);
+    TRI_InsertElementMultiPointer(&sim->_edgesIndex, entry, true);
 
     // ANY
     entry = TRI_Allocate(sizeof(TRI_edge_header_t));
-
-    if (!entry) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
 
     entry->_mptr = header;
     entry->_direction = TRI_EDGE_ANY;
     entry->_cid = edge->_toCid;
     entry->_did = edge->_toDid;
 
-    TRI_InsertElementMultiPointer(&collection->_edgesIndex, entry, true);
+    TRI_InsertElementMultiPointer(&sim->_edgesIndex, entry, true);
 
     if (edge->_toCid != edge->_fromCid || edge->_toDid != edge->_fromDid) {
       entry = TRI_Allocate(sizeof(TRI_edge_header_t));
-
-      if (!entry) {
-        return TRI_ERROR_OUT_OF_MEMORY;
-      }
 
       entry->_mptr = header;
       entry->_direction = TRI_EDGE_ANY;
       entry->_cid = edge->_fromCid;
       entry->_did = edge->_fromDid;
 
-      TRI_InsertElementMultiPointer(&collection->_edgesIndex, entry, true);
+      TRI_InsertElementMultiPointer(&sim->_edgesIndex, entry, true);
     }
   }
 
@@ -2126,7 +2089,7 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* collection,
   // update all the other indices
   // .............................................................................
 
-  n = collection->_indexes._length;
+  n = sim->_indexes._length;
   result = TRI_ERROR_NO_ERROR;
   constraint = false;
 
@@ -2134,7 +2097,7 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* collection,
     TRI_index_t* idx;
     int res;
 
-    idx = collection->_indexes._buffer[i];
+    idx = sim->_indexes._buffer[i];
     res = idx->insert(idx, header);
 
     // in case of no-memory, return immediately
@@ -2152,7 +2115,7 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* collection,
   }
 
   if (constraint) {
-    return TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED;
+    return TRI_set_errno(TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED);
   }
 
   return result;
@@ -2221,7 +2184,7 @@ static int UpdateImmediateIndexes (TRI_sim_collection_t* collection,
   }
 
   if (constraint) {
-    return TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED;
+    return TRI_set_errno(TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED);
   }
 
   return result;

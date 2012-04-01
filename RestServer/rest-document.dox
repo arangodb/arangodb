@@ -32,15 +32,21 @@
 ///  <li>@ref RestDocumentIntro</li>
 ///  <li>@ref RestDocumentResource</li>
 ///  <li>@ref RestDocumentHttp
-///   <ol>
-///    <li>@ref RestDocumentRead "GET /document/@FA{document-handle}"</li>
-///    <li>@ref RestDocumentCreate "POST /document?collection=@FA{collection-identifier}"</li>
-///    <li>@ref RestDocumentUpdate "PUT /document/@FA{document-handle}"</li>
-///    <li>@ref RestDocumentDelete "DELETE /document/@FA{document-handle}"</li>
-///    <li>@ref RestDocumentHead "HEAD /document/@FA{document-handle}"</li>
-///    <li>@ref RestDocumentReadAll "GET /document?collection=@FA{collection-identifier}"</li>
-///   </ol>
+///    @copydetails RestDocumentCallsTOC
 ///  </li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page RestDocumentCallsTOC
+///
+/// <ol>
+///  <li>@ref RestDocumentRead "GET /document/@FA{document-handle}"</li>
+///  <li>@ref RestDocumentCreate "POST /document?collection=@FA{collection-identifier}"</li>
+///  <li>@ref RestDocumentUpdate "PUT /document/@FA{document-handle}"</li>
+///  <li>@ref RestDocumentDelete "DELETE /document/@FA{document-handle}"</li>
+///  <li>@ref RestDocumentHead "HEAD /document/@FA{document-handle}"</li>
+///  <li>@ref RestDocumentReadAll "GET /document?collection=@FA{collection-identifier}"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
