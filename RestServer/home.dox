@@ -1,0 +1,87 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief indexes
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page Home AvocadoDB
+///
+/// My colleagues and I started developing a document-store, which focuses on
+/// durability of the data taking advantage of new technologies like SSD,
+/// support for graph and geo algorithms needed in social networks, ease of use
+/// for the developer and minimal effort to operate for the administrator. The
+/// design goals are described <a href="http://www.avocadodb.org/">here</a>.
+///
+/// The AvocadoDB consists of a server, a separate shell, which allows you to
+/// administrate the server, and a set of client API for various languages.
+///
+/// @section AvocadoDBServer AvocadoDB Server
+/// 
+/// <ul>
+///   <li>@ref InstallManual</li>
+///   <li>@ref UserManualServer</a></li>
+///   <li>@ref RefManual</li>
+///   <li>@ref Glossary</li>
+/// </ul>
+/// 
+/// @section AvocadoDB AvocadoDB Shell
+/// 
+/// <ul>
+///   <li>@ref UserManualShell</li>
+/// </ul>
+/// 
+/// @section API
+/// 
+/// @subsection CLINQ C\# / LINQ
+/// 
+/// @subsection PHP
+/// 
+/// There is a PHP client available in a separate project:
+/// https://github.com/triAGENS/AvocadoDB-PHP
+///
+/// See also Packagist:
+/// http://packagist.org/packages/triagens/Avocado
+/// 
+/// @subsection Python
+/// 
+/// Help wanted:
+/// http://www.avocadodb.org/2012/03/24/contributors-for-python-api-wanted-for-nosql-project
+/// 
+/// @subsection REST
+/// 
+/// Ruby
+///
+/// There is a Ruby client available in a separate project:
+/// https://github.com/triAGENS/Ashikawa
+///
+/// A discussion group can be found here:
+/// https://groups.google.com/forum/#!forum/ashikawa
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: c++
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// End:
