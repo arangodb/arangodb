@@ -1,6 +1,11 @@
 #!/bin/bash
 
 INPUT="$1"
-OUTPUT="Doxygen/wiki/`basename $INPUT`"
+BASENAME="`basename $INPUT`"
+OUTPUT="Doxygen/wiki/$BASENAME"
 
-cp $INPUT $OUTPUT
+if test "$BASENAME" = "Home.md";  then
+  sed -e 's:a href=":a href="wiki/:g' < $INPUT > $OUTPUT
+else
+  cp $INPUT $OUTPUT
+fi

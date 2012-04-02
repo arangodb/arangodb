@@ -178,10 +178,15 @@ function DefineHttp (options) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get an error message string for an error code
+///
+/// @FUN{actions.getErrorMessage(@FA{code})
+///
+/// Returns the error message for an error code.
 ////////////////////////////////////////////////////////////////////////////////
 
 function GetErrorMessage (code) {
   var error = internal.errors[code];
+
   if (!error) {
     return "";
   }
@@ -192,7 +197,7 @@ function GetErrorMessage (code) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an error
 ///
-/// @FUN{ResultError(@FA{req}, @FA{res}, @FA{code}, @FA{errorNum}, @FA{errorMessage}, @FA{headers}, @FA{keyvals})}
+/// @FUN{actions.resultError(@FA{req}, @FA{res}, @FA{code}, @FA{errorNum}, @FA{errorMessage}, @FA{headers}, @FA{keyvals})}
 ///
 /// The functions generates an error response. The response body is an array
 /// with an attribute @LIT{errorMessage} containing the error message

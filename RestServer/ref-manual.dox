@@ -29,30 +29,20 @@
 /// @page RefManual AvocadoDB Reference Manual
 ///
 /// <ol>
+///  <li>@ref CommandLine
+///   @copydetails CommandLineSubTOC
+///  </li>
 ///  <li>@ref JSModules
 ///   <ol>
-///    <li>@ref JSModuleActions
-///    </li>
-///    <li>@ref JSModuleConsole
-///    </li>
-///    <li>@ref JSModuleFs
-///    </li>
-///    <li>@ref JSModuleGraph
-///    </li>
-///    <li>@ref JSModuleInternal
-///    </li>
+///    <li>@ref JSModuleActions</li>
+///    <li>@ref JSModuleConsole</li>
+///    <li>@ref JSModuleFs</li>
+///    <li>@ref JSModuleGraph</li>
+///    <li>@ref JSModuleInternal</li>
 ///   </ol>
-///  <li>@ref CommandLine
-///   <ol>
-///    <li>@ref CommandLineAvocado
-///    </li>
-///    <li>@ref CommandLineScheduler
-///    </li>
-///    <li>@ref CommandLineLogging
-///    </li>
-///    <li>@ref CommandLineRandom
-///    </li>
-///   </ol>
+///  </li>
+///  <li>@ref Indexes
+///   @copydetails IndexesTOC
 ///  </li>
 ///  <li>@ref OTWP
 ///   <ol>
@@ -61,6 +51,17 @@
 ///      <li>@ref HttpIndex</li>
 ///   </ol>
 ///  </li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page CommandLineSubTOC
+///
+/// <ol>
+///  <li>@ref CommandLineAvocado</li>
+///  <li>@ref CommandLineScheduler</li>
+///  <li>@ref CommandLineLogging</li>
+///  <li>@ref CommandLineRandom</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -127,10 +128,7 @@
 /// <hr>
 /// Next steps:
 ///
-///  - @ref CommandLineAvocado "Command-Line Options for the AvocadoDB"
-///  - @ref CommandLineScheduler "Command-Line Options for Communication"
-///  - @ref CommandLineLogging "Command-Line Options for Logging"
-///  - @ref CommandLineRandom "Command-Line Options for Random Numbers"
+/// @copydetails CommandLineSubTOC
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
