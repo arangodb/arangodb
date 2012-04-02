@@ -542,8 +542,9 @@ BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(FLEX_FILES) \
 
 ################################################################################
 ################################################################################
-CLEANUP = $(DOXYGEN) $(WIKI) $(subst Doxygen/xml,Doxygen/wiki,$(WIKI)) \
-	$(JAVASCRIPT_HEADER) $(am__append_1) $(am__append_2)
+CLEANUP = $(DOXYGEN) $(addprefix Doxygen/xml/,$(WIKI)) $(addprefix \
+	Doxygen/wiki/,$(WIKI)) $(JAVASCRIPT_HEADER) $(am__append_1) \
+	$(am__append_2)
 noinst_LIBRARIES = libavocado.a
 nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/js/actions/system -name "*.js" -print) \
@@ -817,75 +818,58 @@ DOXYGEN = \
 	Doxygen/js/common/modules/jsunity.c \
 	Doxygen/js/server/modules/actions.c \
 	Doxygen/js/server/modules/simple-query.c \
-	Doxygen/js/server/server.c \
-        RestServer/cursor.dox \
-        RestServer/examples-setup.dox \
-        RestServer/glossary.dox \
-        RestServer/http-interface.dox \
-        RestServer/install-manual.dox \
-        RestServer/key-value.dox \
-        RestServer/module-actions.dox \
-        RestServer/module-console.dox \
-        RestServer/module-fs.dox \
-        RestServer/module-graph.dox \
-        RestServer/module-internal.dox \
-        RestServer/module-modules.dox \
-        RestServer/otwp.dox \
-        RestServer/ref-manual.dox \
-        RestServer/rest-document.dox \
-        RestServer/rest-system.dox \
-        RestServer/simple-queries.dox \
-        RestServer/user-manual-avocsh.dox \
-        RestServer/user-manual-server.dox 
+	Doxygen/js/server/server.c
 
 
 ################################################################################
 ################################################################################
 WIKI = \
-	Doxygen/xml/AQLBasics.md \
-	Doxygen/xml/Actions.md \
-	Doxygen/xml/AvocadoErrors.md \
-	Doxygen/xml/AvocadoScript.md \
-	Doxygen/xml/CommandLine.md \
-	Doxygen/xml/CommandLineAvocado.md \
-	Doxygen/xml/CommandLineLogging.md \
-	Doxygen/xml/CommandLineRandom.md \
-	Doxygen/xml/CommandLineScheduler.md \
-	Doxygen/xml/Compiling.md \
-	Doxygen/xml/DBAdmin.md \
-	Doxygen/xml/DefineAction.md \
-	Doxygen/xml/ExamplesSetup.md \
-	Doxygen/xml/Glossary.md \
-	Doxygen/xml/Graphs.md \
-	Doxygen/xml/HttpCollection.md \
-	Doxygen/xml/HttpIndex.md \
-	Doxygen/xml/HttpInterface.md \
-	Doxygen/xml/IndexGeo.md \
-	Doxygen/xml/IndexHash.md \
-	Doxygen/xml/IndexSkiplist.md \
-	Doxygen/xml/IndexUsage.md \
-	Doxygen/xml/InstallManual.md \
-	Doxygen/xml/Installing.md \
-	Doxygen/xml/JSModuleActions.md \
-	Doxygen/xml/JSModuleConsole.md \
-	Doxygen/xml/JSModuleFs.md \
-	Doxygen/xml/JSModuleGraph.md \
-	Doxygen/xml/JSModuleInternal.md \
-	Doxygen/xml/JSModules.md \
-	Doxygen/xml/JavaScriptFunc.md \
-	Doxygen/xml/JavaScriptFuncIndex.md \
-	Doxygen/xml/Key-Value.md \
-	Doxygen/xml/OTWP.md \
-	Doxygen/xml/Optimizer.md \
-	Doxygen/xml/RefManual.md \
-	Doxygen/xml/RestCursor.md \
-	Doxygen/xml/RestDocument.md \
-	Doxygen/xml/RestSystem.md \
-	Doxygen/xml/SimpleQueries.md \
-	Doxygen/xml/jsUnity.md \
-	Doxygen/xml/UserManualServer.md \
-	Doxygen/xml/UserManualShell.md \
-	Doxygen/xml/UserManualShellStartStop.md 
+	AQLBasics.md \
+	Actions.md \
+	AvocadoErrors.md \
+	AvocadoScript.md \
+	CommandLine.md \
+	CommandLineAvocado.md \
+	CommandLineLogging.md \
+	CommandLineRandom.md \
+	CommandLineScheduler.md \
+	Compiling.md \
+	DBAdmin.md \
+	DefineAction.md \
+	ExamplesSetup.md \
+	Glossary.md \
+	Graphs.md \
+	Home.md \
+	HttpCollection.md \
+	HttpIndex.md \
+	HttpInterface.md \
+	IndexGeo.md \
+	IndexHash.md \
+	IndexSkiplist.md \
+	IndexUsage.md \
+	Indexes.md \
+	InstallManual.md \
+	Installing.md \
+	JSModuleActions.md \
+	JSModuleConsole.md \
+	JSModuleFs.md \
+	JSModuleGraph.md \
+	JSModuleInternal.md \
+	JSModules.md \
+	JavaScriptFunc.md \
+	JavaScriptFuncIndex.md \
+	Key-Value.md \
+	OTWP.md \
+	Optimizer.md \
+	RefManual.md \
+	RestCursor.md \
+	RestDocument.md \
+	RestSystem.md \
+	SimpleQueries.md \
+	UserManualServer.md \
+	UserManualShell.md \
+	UserManualShellStartStop.md  \
+	jsUnity.md
 
 @ENABLE_BOOST_TEST_TRUE@UnitTests_test_suite_LDADD = -L@top_builddir@ -lavocado -lboost_unit_test_framework
 @ENABLE_BOOST_TEST_TRUE@UnitTests_test_suite_DEPENDENCIES = @top_builddir@/libavocado.a
@@ -2565,10 +2549,10 @@ doxygen: Doxygen/avocado.doxy $(DOXYGEN)
 
 .PHONY: wiki
 
-wiki: doxygen $(WIKI)
+wiki: doxygen $(addprefix Doxygen/xml/,$(WIKI))
 	@test -d Doxygen/wiki || mkdir Doxygen/wiki
-	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/pandoc.sh $$w; done
-	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/md2html.sh `echo $$w | sed -e 's:/xml/:/wiki/:g'`; done
+	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/pandoc.sh Doxygen/xml/$$w; done
+	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/md2html.sh Doxygen/wiki/$$w; done
 
 .setup-directories:
 	@test -d js || mkdir js
