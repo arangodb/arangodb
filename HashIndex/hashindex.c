@@ -140,7 +140,7 @@ static bool isEqualShapedJsonShapedJson (const TRI_shaped_json_t* left, const TR
   if (left->_data.length != right->_data.length) {
     return false;
   }
-  
+
   return ( memcmp(left->_data.data,right->_data.data, left->_data.length) == 0);   
 }  // end of function isEqualShapedJsonShapedJson
 
@@ -246,13 +246,12 @@ static bool isEmptyElement (struct TRI_associative_array_s* associativeArray, vo
 
 // .............................................................................
 // Determines if two elements of the unique assoc array are equal
-// Two elements are 'equal' if the shaped json content is equal. 
+// Two elements are 'equal' if the document pointer is the same. 
 // .............................................................................
 static bool isEqualElementElement (struct TRI_associative_array_s* associativeArray, 
                                    void* leftElement, void* rightElement) {
   HashIndexElement* hLeftElement  = (HashIndexElement*)(leftElement);
   HashIndexElement* hRightElement = (HashIndexElement*)(rightElement);
-  size_t j;
   
   if (leftElement == NULL || rightElement == NULL) {
     return false;
@@ -262,13 +261,7 @@ static bool isEqualElementElement (struct TRI_associative_array_s* associativeAr
     return false; // should never happen
   }
 
-  for (j = 0; j < hLeftElement->numFields; j++) {
-    if (!isEqualShapedJsonShapedJson((j + hLeftElement->fields), (j + hRightElement->fields))) {
-      return false;
-    }
-  }
-  
-  return true;
+  return (hLeftElement->data == hRightElement->data);
 }
 
 
@@ -367,7 +360,7 @@ HashIndex* HashIndex_new() {
 
 int HashIndex_add(HashIndex* hashIndex, HashIndexElement* element) {
   bool result;
-  result = TRI_InsertElementAssociativeArray(hashIndex->assocArray.uniqueArray, element, false);
+  result = TRI_InsertKeyAssociativeArray(hashIndex->assocArray.uniqueArray, element, element, false);
 
   return result ? TRI_ERROR_NO_ERROR : TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED;
 }
