@@ -856,13 +856,13 @@ HTML_FILE_EXTENSION    = .html
 # each generated HTML page. If it is left blank doxygen will generate a
 # standard header.
 
-HTML_HEADER            =
+HTML_HEADER            = @srcdir@/Doxygen/Scripts/avocadodb_header.html
 
 # The HTML_FOOTER tag can be used to specify a personal HTML footer for
 # each generated HTML page. If it is left blank doxygen will generate a
 # standard footer.
 
-HTML_FOOTER            =
+HTML_FOOTER            = @srcdir@/Doxygen/Scripts/avocadodb_footer.html
 
 # The HTML_STYLESHEET tag can be used to specify a user-defined cascading
 # style sheet that is used by each HTML page. It can be used to
@@ -871,7 +871,7 @@ HTML_FOOTER            =
 # the style sheet file to the HTML output directory, so don't put your own
 # stylesheet in the HTML output directory as well, or it will be erased!
 
-HTML_STYLESHEET        =
+HTML_STYLESHEET        = @srcdir@/Doxygen/Scripts/avocadodb.css
 
 # The HTML_COLORSTYLE_HUE tag controls the color of the HTML output.
 # Doxygen will adjust the colors in the stylesheet and background images
@@ -881,7 +881,7 @@ HTML_STYLESHEET        =
 # 180 is cyan, 240 is blue, 300 purple, and 360 is red again.
 # The allowed range is 0 to 359.
 
-HTML_COLORSTYLE_HUE    = 220
+HTML_COLORSTYLE_HUE    = 120
 
 # The HTML_COLORSTYLE_SAT tag controls the purity (or saturation) of
 # the colors in the HTML output. For a value of 0 the output will use
@@ -902,7 +902,7 @@ HTML_COLORSTYLE_GAMMA  = 80
 # page will contain the date and time when the page was generated. Setting
 # this to NO can help when comparing the output of multiple runs.
 
-HTML_TIMESTAMP         = NO
+HTML_TIMESTAMP         = YES
 
 # If the HTML_ALIGN_MEMBERS tag is set to YES, the members of classes,
 # files or namespaces will be aligned in HTML using tables. If set to
@@ -1073,7 +1073,7 @@ ECLIPSE_DOC_ID         = org.doxygen.Project
 # top of each HTML page. The value NO (the default) enables the index and
 # the value YES disables it.
 
-DISABLE_INDEX          = NO
+DISABLE_INDEX          = YES
 
 # This tag can be used to set the number of enum values (range [0,1..20])
 # that doxygen will group on one line in the generated HTML documentation.
