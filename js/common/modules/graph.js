@@ -1151,7 +1151,7 @@ Graph.prototype.constructEdge = function(id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._PRINT = function (seen, path, names) {
-  internal.output("Graph(\"", this._vertices._name, "\", \"" + this._edges._name, "\")");
+  internal.output("Graph(\"", this._vertices.name(), "\", \"" + this._edges.name(), "\")");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

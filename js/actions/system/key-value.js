@@ -113,7 +113,7 @@ function buildDocumentFromReq(req) {
 
 function postKeyValue(req, res) {
   if (req.suffix.length < 2) {
-    actions.resultError (req, res, 404, actions.keyValueNotModified, "Key value pair not created. Missing key."); 
+    actions.resultBad(req, res, actions.ERROR_KEYVALUE_INVALID_KEY, actions.getErrorMessage(actions.ERROR_KEYVALUE_INVALID_KEY));
     return;
   }
 
@@ -121,7 +121,7 @@ function postKeyValue(req, res) {
     var collection = req.suffix[0];
     
     if (db._collection(collection) == null) {
-      actions.resultError (req, res, 404, actions.keyValueNotModified, "Collection not found."); 
+      actions.collectionNotFound(req, res, collection);
       return;      
     }
     
@@ -131,7 +131,7 @@ function postKeyValue(req, res) {
     s.execute();
         
     if (s._countTotal != 0) {
-      actions.resultError (req, res, 404, actions.keyValueNotModified, "Use PUT to change value");      
+      actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_KEY_EXISTS, actions.getMessage(actions.ERROR_KEYVALUE_KEY_EXISTS));
     }
     else {
       var id = db[collection].save(doc);    
@@ -139,11 +139,11 @@ function postKeyValue(req, res) {
         "saved" : true,
         "_id" : id
       }
-      actions.resultOk(req, res, 201, result);      
+      actions.resultOk(req, res, actions.HTTP_CREATED, result);      
     }
   }
-  catch (e) {
-    actions.resultError (req, res, 404, actions.keyValueNotModified, "Key value pair not created. " + e.message);
+  catch (err) {
+    actions.resultException(req, res, err);
   }
 }
 
@@ -153,7 +153,7 @@ function postKeyValue(req, res) {
 
 function putKeyValue(req, res) {
   if (req.suffix.length < 2) {
-    actions.resultError (req, res, 404, actions.keyValueNotModified, "Key value pair not found");
+    actions.resultBad(req, res, actions.ERROR_KEYVALUE_INVALID_KEY, actions.getErrorMessage(actions.ERROR_KEYVALUE_INVALID_KEY));
     return;
   }
 
@@ -161,7 +161,7 @@ function putKeyValue(req, res) {
     var collection = req.suffix[0];
     
     if (db._collection(collection) == null) {
-      actions.resultError (req, res, 404, actions.keyValueNotModified, "Collection not found."); 
+      actions.collectionNotFound(req, res);
       return;      
     }
     
@@ -177,13 +177,13 @@ function putKeyValue(req, res) {
           "saved" : true,
           "_id" : id
         }
-        actions.resultOk(req, res, 201, result);      
+        actions.resultOk(req, res, actions.HTTP_CREATED, result);      
         return;
       }
-      actions.resultError (req, res, 404, actions.keyValueNotModified, "Key value pair not found");      
+      actions.resultError(req, res, actions.HTTP_NOT_FOUND, actions.ERROR_KEYVALUE_KEY_NOT_FOUND, actions.getMessage(actions.ERROR_KEYVALUE_KEY_NOT_FOUND));
     }
     else if (s._countTotal > 1) {
-      actions.resultError (req, res, 404, actions.keyValueNotModified, "Key value pair not found. Wrong key?");
+      actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_KEY_NOT_UNIQUE, actions.getMessage(actions.ERROR_KEYVALUE_KEY_NOT_UNIQUE));
     }
     else {
       // get _id
@@ -197,15 +197,15 @@ function putKeyValue(req, res) {
       
       // replace the document
       if (db[collection].replace(id, doc)) {            
-        actions.resultOk(req, res, 202, {"changed" : true});                              
+        actions.resultOk(req, res, actions.HTTP_ACCEPTED, {"changed" : true});                              
       }
       else {
-        actions.resultError(req, res, 404, actions.keyValueNotModified, "Value not changed");        
+        actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_KEY_NOT_CHANGED, actions.getMessage(actions.ERROR_KEYVALUE_KEY_NOT_CHANGED));
       }
     }
   }
-  catch (e) {
-    actions.resultError (req, res, 404, actions.keyValueNotModified, "Key value pair not found. " + e.message);
+  catch (err) {
+    actions.resultException(req, res, err);
   }
 }
 
@@ -215,7 +215,7 @@ function putKeyValue(req, res) {
 
 function deleteKeyValue(req, res) {
   if (req.suffix.length < 2) {
-    actions.resultError (req, res, 404, actions.keyValueNotModified, "Key value pair not found");
+    actions.resultBad(req, res, actions.ERROR_KEYVALUE_INVALID_KEY, actions.getErrorMessage(actions.ERROR_KEYVALUE_INVALID_KEY));
     return;
   }
 
@@ -223,7 +223,7 @@ function deleteKeyValue(req, res) {
     var collection = req.suffix[0];
     
     if (db._collection(collection) == null) {
-      actions.resultError (req, res, 404, actions.keyValueNotModified, "Collection not found."); 
+      actions.collectionNotFound(req, res);
       return;      
     }
     
@@ -237,23 +237,23 @@ function deleteKeyValue(req, res) {
     s.execute();
     
     if (s._countTotal < 1) {
-      actions.resultError (req, res, 404, actions.keyValueNotModified, "Key value pair not found");      
+      actions.resultError(req, res, actions.HTTP_NOT_FOUND, actions.ERROR_KEYVALUE_KEY_NOT_FOUND, actions.getMessage(actions.ERROR_KEYVALUE_KEY_NOT_FOUND));
     }
     else if (s._countTotal > 1) {
-      actions.resultError (req, res, 404, actions.keyValueNotModified, "Key value pair not found. Wrong key?");
+      actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_KEY_NOT_UNIQUE, actions.getMessage(actions.ERROR_KEYVALUE_KEY_NOT_UNIQUE));
     }
     else {
       var id = s._execution._documents[0]._id;
       if (db[collection].delete(id)) {            
-        actions.resultOk(req, res, 202, {"removed" : true});                              
+        actions.resultOk(req, res, actions.HTTP_ACCEPTED, {"removed" : true});                              
       }
       else {
-        actions.resultError(req, res, 404, actions.keyValueNotModified, "Value not removed");        
+        actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_KEY_NOT_REMOVED, actions.getMessage(actions.ERROR_KEYVALUE_KEY_NOT_REMOVED));
       }
     }
   }
-  catch (e) {
-    actions.resultError (req, res, 404, actions.keyValueNotModified, "Key value pair not found. " + e.message);
+  catch (err) {
+    actions.resultException(req, res, err);
   }
 }
 
@@ -263,7 +263,7 @@ function deleteKeyValue(req, res) {
 
 function getKeyValue(req, res) {
   if (req.suffix.length < 2) {
-    actions.resultError (req, res, 404, actions.keyValueNotFound, "Key value pair not found");
+    actions.resultBad(req, res, actions.ERROR_KEYVALUE_INVALID_KEY, actions.getErrorMessage(actions.ERROR_KEYVALUE_INVALID_KEY));
     return;
   }
 
@@ -271,7 +271,7 @@ function getKeyValue(req, res) {
     var collection = req.suffix[0];
     
     if (db._collection(collection) == null) {
-      actions.resultError (req, res, 404, actions.keyValueNotFound, "Collection not found."); 
+      actions.collectionNotFound(req, res);
       return;      
     }
     
@@ -285,10 +285,10 @@ function getKeyValue(req, res) {
     s.execute();
     
     if (s._countTotal < 1) {
-      actions.resultError (req, res, 404, actions.keyValueNotFound, "Key value pair not found");      
+      actions.resultError(req, res, actions.HTTP_NOT_FOUND, actions.ERROR_KEYVALUE_KEY_NOT_FOUND, actions.getMessage(actions.ERROR_KEYVALUE_KEY_NOT_FOUND));
     }
     else if (s._countTotal > 1) {
-      actions.resultError (req, res, 404, actions.keyValueNotFound, "Key value pair not found. Wrong key?");
+      actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_KEY_NOT_UNIQUE, actions.getMessage(actions.ERROR_KEYVALUE_KEY_NOT_UNIQUE));
     }
     else {
       var headers = {};
@@ -306,11 +306,11 @@ function getKeyValue(req, res) {
         headers["x-voc-created"] = formatTimeStamp(s._execution._documents[0]["x-voc-created"]);
       }
       
-      actions.resultOk(req, res, 200, s._execution._documents[0].value, headers);                      
+      actions.resultOk(req, res, actions.HTTP_OK, s._execution._documents[0].value, headers);                      
     }
   }
-  catch (e) {
-    actions.resultError (req, res, 404, actions.keyValueNotFound, "Key value pair not found. " + e.message);
+  catch (err) {
+    actions.resultException(req, res, err);
   }
 }
 
@@ -328,19 +328,19 @@ actions.defineHttp({
 
   callback : function (req, res) {
     switch (req.requestType) {
-      case ("POST") :
+      case (actions.HTTP_POST) :
         postKeyValue(req, res); 
         break;
 
-      case ("GET") :
+      case (actions.HTTP_GET) :
         getKeyValue(req, res); 
         break;
 
-      case ("PUT") :
+      case (actions.HTTP_PUT) :
         putKeyValue(req, res); 
         break;
 
-      case ("DELETE") :
+      case (actions.HTTP_DELETE) :
         deleteKeyValue(req, res); 
         break;
 
@@ -370,7 +370,7 @@ actions.defineHttp({
 
 function searchKeyValue(req, res) {
   if (req.suffix.length < 2) {
-    actions.resultError (req, res, 404, actions.keyValueNotFound, "Key value pairs not found.");
+    actions.resultBad(req, res, actions.ERROR_KEYVALUE_INVALID_KEY, actions.getErrorMessage(actions.ERROR_KEYVALUE_INVALID_KEY));
     return;
   }
 
@@ -378,7 +378,7 @@ function searchKeyValue(req, res) {
     var collection = req.suffix[0];
     
     if (db._collection(collection) == null) {
-      actions.resultError (req, res, 404, actions.keyValueNotFound, "Collection not found."); 
+      actions.collectionNotFound(req, res);
       return;      
     }
     
@@ -392,13 +392,12 @@ function searchKeyValue(req, res) {
     // TODO: build a query which selects the keys
     //
     
-    var query = "select f from " + collection + " f ";
+    var query = "select f from `" + collection + "` f ";
     var bindVars = {};    
-    var cursor = AQL_STATEMENT(db, 
-                             query, 
-                             bindVars, 
-                             false, 
-                             1000);  
+    var cursor = AQL_STATEMENT(query, 
+                               bindVars, 
+                               false, 
+                               1000);  
     result = [];
     while (cursor.hasNext() ) {
       var doc = cursor.next();
@@ -407,10 +406,10 @@ function searchKeyValue(req, res) {
       }
     }
 
-    actions.result (req, res, 200, result);
+    actions.resultOk(req, res, actions.HTTP_OK, result);
   }
-  catch (e) {
-    actions.resultError (req, res, 404, actions.keyValueNotFound, "Key value pairs not found. " + e.message);
+  catch (err) {
+    actions.resultException(req, res, err);
   }
 }
 
@@ -428,7 +427,7 @@ actions.defineHttp({
 
   callback : function (req, res) {
     switch (req.requestType) {
-      case ("GET") :
+      case (actions.HTTP_GET) :
         searchKeyValue(req, res); 
         break;
         

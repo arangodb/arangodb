@@ -639,7 +639,7 @@ SimpleQueryAll.prototype.execute = function () {
 SimpleQueryAll.prototype._PRINT = function () {
   var text;
 
-  text = "SimpleQueryAll(" + this._collection._name + ")";
+  text = "SimpleQueryAll(" + this._collection.name() + ")";
 
   if (this._skip != null && this._skip != 0) {
     text += ".skip(" + this._skip + ")";
@@ -749,7 +749,7 @@ SimpleQueryByExample.prototype.execute = function () {
       this._skip = 0;
     }
 
-    var queryString = "SELECT c FROM `" + this._collection._name + "` c";
+    var queryString = "SELECT c FROM `" + this._collection.name() + "` c";
 
     if (!(this._example instanceof Object)) {
       throw "invalid example specification";
@@ -812,7 +812,7 @@ SimpleQueryByExample.prototype.execute = function () {
 SimpleQueryByExample.prototype._PRINT = function () {
   var text;
 
-  text = "SimpleQueryByExample(" + this._collection._name + ")";
+  text = "SimpleQueryByExample(" + this._collection.name() + ")";
 
   if (this._skip != null && this._skip != 0) {
     text += ".skip(" + this._skip + ")";
@@ -1079,7 +1079,7 @@ SimpleQueryGeo.prototype._PRINT = function () {
   var text;
 
   text = "GeoIndex("
-       + this._collection._name
+       + this._collection.name()
        + ", "
        + this._index
        + ")";
@@ -1246,7 +1246,7 @@ SimpleQueryNear.prototype._PRINT = function () {
   var text;
 
   text = "SimpleQueryNear("
-       + this._collection._name
+       + this._collection.name()
        + ", "
        + this._latitude
        + ", "
@@ -1419,7 +1419,7 @@ SimpleQueryWithin.prototype._PRINT = function () {
   var text;
 
   text = "SimpleQueryWithin("
-       + this._collection._name
+       + this._collection.name()
        + ", "
        + this._latitude
        + ", "
