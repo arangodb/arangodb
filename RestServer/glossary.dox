@@ -130,7 +130,7 @@
 /// @page GlossaryIndexSkiplist
 ///////////////////////////////
 ///
-/// @GE{Hash Index}: A skiplist is used to find ranges of documents.
+/// @GE{Skiplist Index}: A skiplist is used to find ranges of documents.
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

@@ -82,7 +82,7 @@ actions.defineHttp({
     var name = body.collection;
 
     if (req.requestType != actions.PUT) {
-      actions.unsupported(req, res);
+      actions.resultUnsupported(req, res);
     }
     else {
       collection = db._collection(name);
@@ -101,7 +101,7 @@ actions.defineHttp({
           result = result.limit(limit);
         }
 
-        actions.result(req, res, actions.HTTP_OK, result.toArray());
+        actions.resultOk(req, res, actions.HTTP_OK, result.toArray());
       }
     }
   }
@@ -217,7 +217,7 @@ actions.defineHttp({
           result = result.distance(distance);
         }
 
-        actions.result(req, res, actions.HTTP_OK, result.toArray());
+        actions.resultOk(req, res, actions.HTTP_OK, result.toArray());
       }
     }
   }
@@ -335,7 +335,7 @@ actions.defineHttp({
           result = result.distance(distance);
         }
 
-        actions.result(req, res, actions.HTTP_OK, result.toArray());
+        actions.resultOk(req, res, actions.HTTP_OK, result.toArray());
       }
     }
   }
@@ -407,7 +407,7 @@ actions.defineHttp({
           result = result.limit(limit);
         }
 
-        actions.result(req, res, actions.HTTP_OK, result.toArray());
+        actions.resultOk(req, res, actions.HTTP_OK, result.toArray());
       }
     }
   }

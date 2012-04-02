@@ -423,32 +423,32 @@ function ResultException (req, res, err, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // public functions
-exports.defineHttp = DefineHttp;
-exports.getErrorMessage = GetErrorMessage;
+exports.defineHttp              = DefineHttp;
+exports.getErrorMessage         = GetErrorMessage;
 
 // standard HTTP responses
-exports.resultBad = ResultBad;
-exports.resultNotFound = ResultNotFound;
-exports.resultOk = ResultOk;
-exports.resultUnsupported = ResultUnsupported;
-exports.resultError = ResultError;
+exports.resultBad               = ResultBad;
+exports.resultNotFound          = ResultNotFound;
+exports.resultOk                = ResultOk;
+exports.resultUnsupported       = ResultUnsupported;
+exports.resultError             = ResultError;
 
 // AvocadoDB specific responses
-exports.collectionNotFound = CollectionNotFound;
-exports.indexNotFound = IndexNotFound;
-exports.resultException = ResultException;
+exports.collectionNotFound      = CollectionNotFound;
+exports.indexNotFound           = IndexNotFound;
+exports.resultException         = ResultException;
 
 // some useful constants
-exports.COLLECTION            = "collection";
-exports.COLLECTION_IDENTIFIER = "collection-identifier";
-exports.COLLECTION_NAME       = "collection-name";
-exports.NUMBER                = "number";
+exports.COLLECTION              = "collection";
+exports.COLLECTION_IDENTIFIER   = "collection-identifier";
+exports.COLLECTION_NAME         = "collection-name";
+exports.NUMBER                  = "number";
 
-exports.DELETE = "DELETE";
-exports.GET    = "GET";
-exports.HEAD   = "HEAD";
-exports.POST   = "POST";
-exports.PUT    = "PUT";
+exports.DELETE                  = "DELETE";
+exports.GET                     = "GET";
+exports.HEAD                    = "HEAD";
+exports.POST                    = "POST";
+exports.PUT                     = "PUT";
 
 // HTTP 2xx
 exports.HTTP_OK                 = 200;
