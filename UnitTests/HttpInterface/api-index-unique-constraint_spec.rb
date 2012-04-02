@@ -82,6 +82,30 @@ describe AvocadoDB do
 	doc.parsed_response['b'].should eq(1)
 	doc.parsed_response['_id'].should eq(id1)
 	doc.parsed_response['_rev'].should eq(rev1)
+
+	# unload collection
+	cmd3 = "/_api/collection/#{@cid}/unload"
+	doc = AvocadoDB.log_put("#{prefix}", cmd3)
+
+	doc.code.should eq(200)
+
+	cmd3 = "/_api/collection/#{@cid}"
+	doc = AvocadoDB.log_get("#{prefix}", cmd3)
+	doc.code.should eq(200)
+
+	while doc.parsed_response['status'] != 2
+	  doc = AvocadoDB.get(cmd3)
+	  doc.code.should eq(200)
+	end
+
+	# check it again
+	doc = AvocadoDB.log_get("#{prefix}", cmd2)
+
+	doc.code.should eq(200)
+	doc.parsed_response['a'].should eq(1)
+	doc.parsed_response['b'].should eq(1)
+	doc.parsed_response['_id'].should eq(id1)
+	doc.parsed_response['_rev'].should eq(rev1)
       end
     end
   end
@@ -179,6 +203,31 @@ describe AvocadoDB do
 	doc = AvocadoDB.log_put("#{prefix}", cmd2, :body => body)
 
 	doc.code.should eq(409)
+
+	# check the first document again
+	doc = AvocadoDB.log_get("#{prefix}", cmd2)
+
+	doc.code.should eq(200)
+	doc.parsed_response['a'].should eq(1)
+	doc.parsed_response['b'].should eq(1)
+	doc.parsed_response['_id'].should eq(id1)
+	doc.parsed_response['_rev'].should_not eq(rev1)
+	doc.parsed_response['_rev'].should_not eq(rev3)
+
+	# unload collection
+	cmd4 = "/_api/collection/#{@cid}/unload"
+	doc = AvocadoDB.log_put("#{prefix}", cmd4)
+
+	doc.code.should eq(200)
+
+	cmd4 = "/_api/collection/#{@cid}"
+	doc = AvocadoDB.log_get("#{prefix}", cmd4)
+	doc.code.should eq(200)
+
+	while doc.parsed_response['status'] != 2
+	  doc = AvocadoDB.get(cmd4)
+	  doc.code.should eq(200)
+	end
 
 	# check the first document again
 	doc = AvocadoDB.log_get("#{prefix}", cmd2)
