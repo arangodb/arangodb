@@ -716,6 +716,10 @@ bool RestDocumentHandler::updateDocument () {
         generateDocumentNotFound(cid, didStr);
         return false;
 
+      case TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED:
+        generateError(HttpResponse::CONFLICT, res, "cannot create document, unique constraint violated");
+        return false;
+
       case TRI_ERROR_AVOCADO_CONFLICT:
         generatePreconditionFailed(_documentCollection->base._cid, did, rid);
         return false;

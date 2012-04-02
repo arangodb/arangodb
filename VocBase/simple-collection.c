@@ -51,6 +51,19 @@ static int DeleteImmediateIndexes (TRI_sim_collection_t* collection,
                                    TRI_doc_mptr_t const* header,
                                    TRI_voc_tick_t);
 
+static TRI_doc_mptr_t const UpdateDocument (TRI_sim_collection_t* collection,
+                                            TRI_doc_mptr_t const* header,
+                                            TRI_doc_document_marker_t* marker,
+                                            size_t markerSize,
+                                            void const* body,
+                                            TRI_voc_size_t bodySize,
+                                            TRI_voc_rid_t rid,
+                                            TRI_voc_rid_t* oldRid,
+                                            TRI_doc_update_policy_e policy,
+                                            TRI_df_marker_t** result,
+                                            bool release,
+                                            bool allowRollback);
+
 static int DeleteDocument (TRI_sim_collection_t* collection,
                            TRI_doc_deletion_marker_t* marker,
                            TRI_voc_rid_t rid,
@@ -434,6 +447,54 @@ static void UpdateHeader (TRI_doc_collection_t* c,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief roll backs an update
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_doc_mptr_t const RollbackUpdate (TRI_sim_collection_t* sim,
+                                            TRI_doc_mptr_t const* header,
+                                            TRI_df_marker_t const* originalMarker,
+                                            TRI_df_marker_t** result) {
+  TRI_doc_document_marker_t* marker;
+  TRI_doc_document_marker_t documentUpdate;
+  TRI_doc_edge_marker_t edgeUpdate;
+  char* data;
+  size_t dataLength;
+  size_t markerLength;
+
+  if (originalMarker->_type == TRI_DOC_MARKER_DOCUMENT) {
+    memcpy(&documentUpdate, originalMarker, sizeof(TRI_doc_document_marker_t));
+    marker = &documentUpdate;
+    markerLength = sizeof(TRI_doc_document_marker_t);
+    data = ((char*) originalMarker) + sizeof(TRI_doc_document_marker_t);
+    dataLength = originalMarker->_size - sizeof(TRI_doc_document_marker_t);
+  }
+  else if (originalMarker->_type == TRI_DOC_MARKER_EDGE) {
+    memcpy(&edgeUpdate, originalMarker, sizeof(TRI_doc_document_marker_t));
+    marker = &edgeUpdate.base;
+    markerLength = sizeof(TRI_doc_edge_marker_t);
+    data = ((char*) originalMarker) + sizeof(TRI_doc_edge_marker_t);
+    dataLength = originalMarker->_size - sizeof(TRI_doc_edge_marker_t);
+  }
+  else {
+    TRI_doc_mptr_t mptr;
+    TRI_set_errno(TRI_ERROR_INTERNAL);
+    mptr._did = 0;
+    return mptr;
+  }
+
+  return UpdateDocument(sim,
+                        header,
+                        marker, markerLength,
+                        data, dataLength,
+                        header->_rid,
+                        NULL,
+                        TRI_DOC_UPDATE_LAST_WRITE,
+                        result,
+                        false,
+                        false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief updates an existing document splitted into marker and body to file
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -453,12 +514,9 @@ static TRI_doc_mptr_t const UpdateDocument (TRI_sim_collection_t* collection,
   TRI_datafile_t* journal;
   TRI_df_marker_t const* originalMarker;
   TRI_doc_mptr_t resUpd;
-  TRI_shaped_json_t originalJson;
   TRI_voc_size_t total;
-  int originalRes;
   int res;
 
-  originalJson = header->_document;
   originalMarker = header->_data;
 
   // .............................................................................
@@ -567,86 +625,16 @@ static TRI_doc_mptr_t const UpdateDocument (TRI_sim_collection_t* collection,
 
     // update immediate indexes
     res = UpdateImmediateIndexes(collection, header, &update);
-    originalRes = res;
 
     // check for constraint error
     if (allowRollback && res != TRI_ERROR_NO_ERROR) {
-      LOG_WARNING("encountered index violating during update, rolling back");
+      LOG_DEBUG("encountered index violating during update, rolling back");
 
-      // .............................................................................
-      // rollback
-      // .............................................................................
+      resUpd = RollbackUpdate(collection, header, originalMarker, result);
 
-      if (originalMarker->_type == TRI_DOC_MARKER_DOCUMENT) {
-        TRI_doc_document_marker_t markerUpd;
-        
-        // create an update
-        memset(&markerUpd, 0, sizeof(markerUpd));
-        
-        markerUpd.base._size = sizeof(markerUpd) + originalJson._data.length;
-        markerUpd.base._type = originalMarker->_type;
-        
-        markerUpd._did = header->_did;
-        markerUpd._sid = 0;
-        markerUpd._shape = originalJson._sid;
-        
-        resUpd = UpdateDocument(collection,
-                                header,
-                                &markerUpd, sizeof(markerUpd),
-                                originalJson._data.data, originalJson._data.length,
-                                header->_rid,
-                                NULL,
-                                TRI_DOC_UPDATE_LAST_WRITE,
-                                result,
-                                false,
-                                false);
-        
-        if (resUpd._did == 0) {
-          LOG_ERROR("encountered error '%s' during rollback of update", TRI_last_error());
-        }
-      }
-      else if (originalMarker->_type == TRI_DOC_MARKER_EDGE) {
-        TRI_doc_edge_marker_t markerUpd;
-        TRI_doc_edge_marker_t const* originalEdge;
-        
-        originalEdge = (TRI_doc_edge_marker_t*) originalMarker;
-        
-        // create an update
-        memset(&markerUpd, 0, sizeof(markerUpd));
-        
-        markerUpd.base.base._size = sizeof(markerUpd) + originalJson._data.length;
-        markerUpd.base.base._type = originalMarker->_type;
-        
-        markerUpd.base._did = header->_did;
-        markerUpd.base._sid = 0;
-        markerUpd.base._shape = originalJson._sid;
-        
-        markerUpd._fromCid = originalEdge->_fromCid;
-        markerUpd._fromDid = originalEdge->_fromDid;
-        markerUpd._toCid = originalEdge->_toCid;
-        markerUpd._toDid = originalEdge->_toDid;
-        
-        resUpd = UpdateDocument(collection,
-                                header,
-                                &markerUpd.base, sizeof(markerUpd),
-                                originalJson._data.data, originalJson._data.length,
-                                header->_rid,
-                                NULL,
-                                TRI_DOC_UPDATE_LAST_WRITE,
-                                result,
-                                false,
-                                false);
-        
-        if (resUpd._did == 0) {
-          LOG_ERROR("encountered error '%s' during rollback of update", TRI_last_error());
-        }
-      }
-      else {
-        LOG_ERROR("unknown document marker type '%lu' in document '%lu:%lu' revision '%lu'",
-                  (unsigned long) originalMarker->_type,
-                  (unsigned long) collection->base.base._cid,
-                  (unsigned long) header->_did,
-                  (unsigned long) header->_rid);
+      if (resUpd._did == 0) {
+        LOG_ERROR("encountered error '%s' during rollback of update", TRI_last_error());
+        TRI_set_errno(res);
       }
     }
 
@@ -654,7 +642,7 @@ static TRI_doc_mptr_t const UpdateDocument (TRI_sim_collection_t* collection,
     // create result
     // .............................................................................
 
-    if (originalRes == TRI_ERROR_NO_ERROR) {
+    if (res == TRI_ERROR_NO_ERROR) {
       mptr = *header;
 
       // release lock, header might be invalid after this
@@ -673,7 +661,6 @@ static TRI_doc_mptr_t const UpdateDocument (TRI_sim_collection_t* collection,
         collection->base.endWrite(&collection->base);
       }
 
-      TRI_set_errno(originalRes);
       mptr._did = 0;
       return mptr;
     }
