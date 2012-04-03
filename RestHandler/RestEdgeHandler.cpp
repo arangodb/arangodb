@@ -78,11 +78,10 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
 /// must be passed in @FA{from-handle}. The object handle of the end point must
 /// be passed in @FA{to-handle}.
 ///
-/// In all other respects the method works like @ref
-/// triagens::avocado::RestDocumentHandler::createDocument "POST /document".
+/// In all other respects the method works like @LIT{POST /document}.
 ///
 /// If you request such an edge, the returned document will also contain the
-/// attributes @LIT{_from} and @LIT{_TO}.
+/// attributes @LIT{_from} and @LIT{_to}.
 ///
 /// @EXAMPLES
 ///
