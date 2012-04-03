@@ -210,7 +210,6 @@ avocsh_LDADD = libavocado.a $(LIBS)
 
 avocsh_SOURCES = \
 	SimpleHttpClient/SimpleHttpClient.cpp \
-	SimpleHttpClient/SimpleHttpConnection.cpp \
 	SimpleHttpClient/SimpleHttpResult.cpp \
 	V8Client/V8ClientConnection.cpp \
 	V8Client/shell.cpp

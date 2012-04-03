@@ -1385,7 +1385,8 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
                                          TRI_shape_t const* shape,
                                          char const* data,
                                          uint64_t size,
-                                         bool braces) {
+                                         bool braces,
+                                         size_t* num) {
   TRI_array_shape_t const* s;
   TRI_shape_aid_t const* aids;
   TRI_shape_sid_t const* sids;
@@ -1403,6 +1404,10 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
   v = s->_variableEntries;
   n = f + v;
   first = true;
+
+  if (num != NULL) {
+    *num = n;
+  }
 
   qtr = (char const*) shape;
 
@@ -1735,7 +1740,7 @@ static bool StringifyJsonShapeData (TRI_shaper_t* shaper,
       return StringifyJsonShapeDataLongString(shaper, buffer, shape, data, size);
 
     case TRI_SHAPE_ARRAY:
-      return StringifyJsonShapeDataArray(shaper, buffer, shape, data, size, true);
+      return StringifyJsonShapeDataArray(shaper, buffer, shape, data, size, true, NULL);
 
     case TRI_SHAPE_LIST:
       return StringifyJsonShapeDataList(shaper, buffer, shape, data, size);
@@ -1897,6 +1902,7 @@ bool TRI_StringifyAugmentedShapedJson (TRI_shaper_t* shaper,
                                        TRI_json_t const* augment) {
   TRI_shape_t const* shape;
   bool ok;
+  size_t num;
 
   shape = shaper->lookupShapeId(shaper, shaped->_sid);
 
@@ -1910,9 +1916,9 @@ bool TRI_StringifyAugmentedShapedJson (TRI_shaper_t* shaper,
 
   TRI_AppendCharStringBuffer(buffer, '{');
 
-  ok = StringifyJsonShapeDataArray(shaper, buffer, shape, shaped->_data.data, shaped->_data.length, false);
+  ok = StringifyJsonShapeDataArray(shaper, buffer, shape, shaped->_data.data, shaped->_data.length, false, &num);
 
-  if (shaped->_data.length != 0) {
+  if (0 < num) {
     TRI_AppendStringStringBuffer(buffer, ",");
   }
 

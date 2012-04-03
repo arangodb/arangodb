@@ -292,7 +292,6 @@ avocado_OBJECTS = $(am_avocado_OBJECTS)
 am__DEPENDENCIES_1 =
 avocado_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_1)
 am_avocsh_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
-	SimpleHttpClient/SimpleHttpConnection.$(OBJEXT) \
 	SimpleHttpClient/SimpleHttpResult.$(OBJEXT) \
 	V8Client/V8ClientConnection.$(OBJEXT) V8Client/shell.$(OBJEXT)
 avocsh_OBJECTS = $(am_avocsh_OBJECTS)
@@ -761,7 +760,6 @@ avocado_SOURCES = \
 avocsh_LDADD = libavocado.a $(LIBS)
 avocsh_SOURCES = \
 	SimpleHttpClient/SimpleHttpClient.cpp \
-	SimpleHttpClient/SimpleHttpConnection.cpp \
 	SimpleHttpClient/SimpleHttpResult.cpp \
 	V8Client/V8ClientConnection.cpp \
 	V8Client/shell.cpp
@@ -1627,9 +1625,6 @@ SimpleHttpClient/$(DEPDIR)/$(am__dirstamp):
 SimpleHttpClient/SimpleHttpClient.$(OBJEXT):  \
 	SimpleHttpClient/$(am__dirstamp) \
 	SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
-SimpleHttpClient/SimpleHttpConnection.$(OBJEXT):  \
-	SimpleHttpClient/$(am__dirstamp) \
-	SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
 SimpleHttpClient/SimpleHttpResult.$(OBJEXT):  \
 	SimpleHttpClient/$(am__dirstamp) \
 	SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
@@ -1779,7 +1774,6 @@ mostlyclean-compile:
 	-rm -f ShapedJson/shape-accessor.$(OBJEXT)
 	-rm -f ShapedJson/shaped-json.$(OBJEXT)
 	-rm -f SimpleHttpClient/SimpleHttpClient.$(OBJEXT)
-	-rm -f SimpleHttpClient/SimpleHttpConnection.$(OBJEXT)
 	-rm -f SimpleHttpClient/SimpleHttpResult.$(OBJEXT)
 	-rm -f SkipLists/skiplist.$(OBJEXT)
 	-rm -f SkipLists/skiplistIndex.$(OBJEXT)
@@ -1980,7 +1974,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@ShapedJson/$(DEPDIR)/shape-accessor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ShapedJson/$(DEPDIR)/shaped-json.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@SimpleHttpClient/$(DEPDIR)/SimpleHttpClient.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@SimpleHttpClient/$(DEPDIR)/SimpleHttpConnection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@SimpleHttpClient/$(DEPDIR)/SimpleHttpResult.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@SkipLists/$(DEPDIR)/skiplist.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@SkipLists/$(DEPDIR)/skiplistIndex.Po@am__quote@
