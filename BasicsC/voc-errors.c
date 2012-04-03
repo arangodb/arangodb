@@ -94,6 +94,12 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_SESSION_USERSHANDLER_INVALID_URL, "expecting GET <prefix>/users");
   REG_ERROR(ERROR_SESSION_DIRECTORYSERVER_INVALID_URL, "expecting /directory/sessionvoc/<token>");
   REG_ERROR(ERROR_SESSION_DIRECTORYSERVER_NOT_CONFIGURED, "directory server is not configured");
+  REG_ERROR(ERROR_KEYVALUE_INVALID_KEY, "invalid key declaration");
+  REG_ERROR(ERROR_KEYVALUE_KEY_EXISTS, "key already exists");
+  REG_ERROR(ERROR_KEYVALUE_KEY_NOT_FOUND, "key not found");
+  REG_ERROR(ERROR_KEYVALUE_KEY_NOT_UNIQUE, "key is not unique");
+  REG_ERROR(ERROR_KEYVALUE_KEY_NOT_CHANGED, "key value not changed");
+  REG_ERROR(ERROR_KEYVALUE_KEY_NOT_REMOVED, "key value not removed");
   REG_ERROR(SIMPLE_CLIENT_UNKNOWN_ERROR, "unknown client error");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_CONNECT, "could not connect to server");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_WRITE, "could not write to server");

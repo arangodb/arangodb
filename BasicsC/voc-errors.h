@@ -205,6 +205,18 @@ extern "C" {
 ///   TODO
 /// - 1715: @CODE{directory server is not configured}
 ///   TODO
+/// - 1800: @CODE{invalid key declaration}
+///   Will be raised when an invalid key specification is passed to the server
+/// - 1801: @CODE{key already exists}
+///   Will be raised when a key is to be created that already exists
+/// - 1802: @CODE{key not found}
+///   Will be raised when the specified key is not found
+/// - 1803: @CODE{key is not unique}
+///   Will be raised when the specified key is not unique
+/// - 1804: @CODE{key value not changed}
+///   Will be raised when updating the value for a key does not work
+/// - 1805: @CODE{key value not removed}
+///   Will be raised when deleting a key/value pair does not work
 /// - 2000: @CODE{unknown client error}
 ///   This error should not happen.
 /// - 2001: @CODE{could not connect to server}
@@ -1083,6 +1095,66 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_SESSION_DIRECTORYSERVER_NOT_CONFIGURED                  (1715)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1800: ERROR_KEYVALUE_INVALID_KEY
+///
+/// invalid key declaration
+///
+/// Will be raised when an invalid key specification is passed to the server
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_KEYVALUE_INVALID_KEY                                    (1800)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1801: ERROR_KEYVALUE_KEY_EXISTS
+///
+/// key already exists
+///
+/// Will be raised when a key is to be created that already exists
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_KEYVALUE_KEY_EXISTS                                     (1801)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1802: ERROR_KEYVALUE_KEY_NOT_FOUND
+///
+/// key not found
+///
+/// Will be raised when the specified key is not found
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_KEYVALUE_KEY_NOT_FOUND                                  (1802)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1803: ERROR_KEYVALUE_KEY_NOT_UNIQUE
+///
+/// key is not unique
+///
+/// Will be raised when the specified key is not unique
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_KEYVALUE_KEY_NOT_UNIQUE                                 (1803)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1804: ERROR_KEYVALUE_KEY_NOT_CHANGED
+///
+/// key value not changed
+///
+/// Will be raised when updating the value for a key does not work
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_KEYVALUE_KEY_NOT_CHANGED                                (1804)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1805: ERROR_KEYVALUE_KEY_NOT_REMOVED
+///
+/// key value not removed
+///
+/// Will be raised when deleting a key/value pair does not work
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_KEYVALUE_KEY_NOT_REMOVED                                (1805)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 2000: SIMPLE_CLIENT_UNKNOWN_ERROR
