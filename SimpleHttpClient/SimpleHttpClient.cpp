@@ -5,338 +5,306 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright by triAGENS GmbH - All rights reserved.
+/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
 ///
-/// The Programs (which include both the software and documentation)
-/// contain proprietary information of triAGENS GmbH; they are
-/// provided under a license agreement containing restrictions on use and
-/// disclosure and are also protected by copyright, patent and other
-/// intellectual and industrial property laws. Reverse engineering,
-/// disassembly or decompilation of the Programs, except to the extent
-/// required to obtain interoperability with other independently created
-/// software or as specified by law, is prohibited.
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
 ///
-/// The Programs are not intended for use in any nuclear, aviation, mass
-/// transit, medical, or other inherently dangerous applications. It shall
-/// be the licensee's responsibility to take all appropriate fail-safe,
-/// backup, redundancy, and other measures to ensure the safe use of such
-/// applications if the Programs are used for such purposes, and triAGENS
-/// GmbH disclaims liability for any damages caused by such use of
-/// the Programs.
+///     http://www.apache.org/licenses/LICENSE-2.0
 ///
-/// This software is the confidential and proprietary information of
-/// triAGENS GmbH. You shall not disclose such confidential and
-/// proprietary information and shall use it only in accordance with the
-/// terms of the license agreement you entered into with triAGENS GmbH.
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2008-2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2009, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SimpleHttpClient.h"
-#include "SimpleHttpResult.h"
-#include "SimpleHttpConnection.h"
+
+#include <stdio.h>
+#include <string>
+#include <errno.h>
+
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netdb.h>
 
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 
+#include "SimpleHttpResult.h"
+
 using namespace triagens::basics;
 using namespace std;
-
-///////////////////////////////////////////////////////////////////////////////
-/// constructor and destructor
-////////////////////////////////////////////////////////////////////////////////
 
 namespace triagens {
   namespace httpclient {
 
-    SimpleHttpClient::SimpleHttpClient (
-                        const std::string& hostname, 
-                        int port, 
-                        double requestTimeout,
-                        size_t retries,
-                        double connectionTimeout) :
-                        _requestTimeout(requestTimeout),
-                        _retries(retries) {
+    // -----------------------------------------------------------------------------
+    // constructors and destructors
+    // -----------------------------------------------------------------------------
+
+    SimpleHttpClient::SimpleHttpClient (string const& hostname,
+            int port,
+            double requestTimeout,
+            double connectTimeout,
+            size_t connectRetries) :
+    _hostname (hostname),
+    _port (port),
+    _requestTimeout (requestTimeout),
+    _connectTimeout (connectTimeout),
+    _connectRetries (connectRetries) {
+
+      _lastConnectTime = 0.0;
+      _numConnectRetries = 0;
+      _result = 0;
+      _errorMessage = "";
+
+      // _writeBuffer.clear();
       
-      _connection = new SimpleHttpConnection(hostname, port, connectionTimeout);
+      reset();
+
     }
 
     SimpleHttpClient::~SimpleHttpClient () {
-      delete _connection;
+      if (_isConnected) {
+        ::close(_socket);
+      }
+
     }
 
+    // -----------------------------------------------------------------------------
+    // public methods
+    // -----------------------------------------------------------------------------
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// public methods
-    ////////////////////////////////////////////////////////////////////////////////
-
-    SimpleHttpResult* SimpleHttpClient::request (
-            int method, 
-            const std::string& location,
-            const char* body, 
+    SimpleHttpResult* SimpleHttpClient::request (int method,
+            const string& location,
+            const char* body,
             size_t bodyLength,
             const map<string, string>& headerFields) {
+      
+      _result = new SimpleHttpResult;
+      _errorMessage = "";
 
-      SimpleHttpResult* result = new SimpleHttpResult();
-      SimpleHttpResult::resultTypes type = SimpleHttpResult::UNKNOWN;
+      // set body to all connections
+      setRequest(method, location, body, bodyLength, headerFields);
 
-      size_t retries = 0;
+      double endTime = now() + _requestTimeout;
+      double remainingTime = _requestTimeout;
 
-      // build request
-      stringstream requestBuffer;
-      fillRequestBuffer(requestBuffer, method, location, body, bodyLength, headerFields);
-      LOGGER_TRACE << "Request: " << requestBuffer.str();
+      while (isWorking() && remainingTime > 0.0) {
+        switch (_state) {
+          case (IN_CONNECT):
+            handleConnect();
+            break;
 
-      double start = _connection->now();
-      double runtime = 0.0;
+          case (IN_WRITE):
+            handleWrite(remainingTime);
+            break;
 
-      // TODO requestTimeout
-      while (retries++ <= _retries && runtime < _requestTimeout) {
-
-        // check connection
-        if (!checkConnection()) {
-          type = SimpleHttpResult::COULD_NOT_CONNECT;
-          // LOGGER_WARNING << "could not connect to '" << _connection->getHostname() << ":" << _connection->getPort() << "'";
+          case (IN_READ_HEADER):
+          case (IN_READ_BODY):
+          case (IN_READ_CHUNKED_HEADER):
+          case (IN_READ_CHUNKED_BODY):
+            handleRead(remainingTime);
+            break;
+          default:
+            break;
         }
 
-        // write
-        else if (!write(requestBuffer, _requestTimeout - runtime)) {
-          type = SimpleHttpResult::WRITE_ERROR;
-          // LOGGER_WARNING << "write error";
-        }
+        remainingTime = endTime - now();
+      }
+      
+      if (isWorking() && _errorMessage=="" ) {
+        LOGGER_ERROR << "Request timeout reached.";
+        _errorMessage = "Request timeout reached.";
+      }
+      
+      return getResult();
+    }
 
-        // read
-        else if (!read(result, _requestTimeout - runtime)) {
-          type = SimpleHttpResult::READ_ERROR;
-          // LOGGER_WARNING << "read error";
-        }
-        else {
-          type = SimpleHttpResult::COMPLETE; 
+    // -----------------------------------------------------------------------------
+    // private methods
+    // -----------------------------------------------------------------------------
+
+    void SimpleHttpClient::handleConnect () {
+      _isConnected = false;
+      _socket = -1;
+
+      if (_numConnectRetries < _connectRetries + 1) {
+        _numConnectRetries++;
+      }
+      else {
+        LOGGER_ERROR << "Could not connect to '" << _hostname << ":" << _port << "'! Connection is dead";
+        _state = DEAD;
+        return;
+      }
+
+      if (_hostname == "" || _port == 0) {
+        _errorMessage = "Could not connect to '" + _hostname + ":" + StringUtils::itoa(_port) + "'";
+        LOGGER_ERROR << "Could not connect to '" << _hostname << ":" << _port << "'! Connection is dead";
+        _state = DEAD;
+        return;
+      }
+    
+      _lastConnectTime = now();
+
+      struct addrinfo *result, *aip;
+      struct addrinfo hints;
+      int error;
+
+      memset(&hints, 0, sizeof (struct addrinfo));
+      hints.ai_family = AF_INET; // Allow IPv4 or IPv6
+      hints.ai_flags = AI_NUMERICSERV | AI_ALL;
+      hints.ai_socktype = SOCK_STREAM;
+
+      string portString = StringUtils::itoa(_port);
+
+      error = getaddrinfo(_hostname.c_str(), portString.c_str(), &hints, &result);
+
+      if (error != 0) {
+        LOGGER_ERROR << "Could not connect to '" << _hostname << ":" << _port << "'! Connection is dead";
+        _errorMessage = "Could not connect to '" + _hostname + ":" + StringUtils::itoa(_port) +
+                "'! getaddrinfo() failed with: " + string(gai_strerror(error));
+        _state = DEAD;
+        return;
+      }
+
+      // Try all returned addresses until one works
+      for (aip = result; aip != NULL; aip = aip->ai_next) {
+
+        // try to connect the address info pointer
+        if (connectSocket(aip)) {
+          // is connected
+          LOGGER_TRACE << "Connected to '" << _hostname << ":" << _port << "'!";
+          _isConnected = true;
           break;
         }
-        
-        closeConnection();
-        runtime = _connection->now() - start;
+
       }
 
-      result->setResultType(type);
-      
-      return result;
-    }
+      freeaddrinfo(result);
 
-    const string& SimpleHttpClient::getErrorMessage () {
-      static const string nc = "not connected";
-      
-      if (!_connection) {
-        return nc;
-      }      
-      
-      return _connection->getErrorMessage();
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief get the hostname 
-    ////////////////////////////////////////////////////////////////////////////////
-
-    const std::string& SimpleHttpClient::getHostname () {
-      return _connection->getHostname();
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief get the port
-    ////////////////////////////////////////////////////////////////////////////////
-
-    int SimpleHttpClient::getPort () {
-      return _connection->getPort();
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief returns true if the client is connected
-    ////////////////////////////////////////////////////////////////////////////////
-
-    bool SimpleHttpClient::isConnected () {
-      if (!_connection) {
-        return false;
+      if (_isConnected) {
+        // can write now
+        _state = IN_WRITE;
       }
-      return _connection->isConnected();
+    }
+
+    void SimpleHttpClient::handleWrite (double timeout) {
+      struct timeval tv;
+      fd_set fdset;
+
+      tv.tv_sec = (uint64_t) timeout;
+      tv.tv_usec = ((uint64_t) (timeout * 1000000.0)) % 1000000;
+
+      FD_ZERO(&fdset);
+      FD_SET(_socket, &fdset);
+
+      if (select(_socket + 1, NULL, &fdset, NULL, &tv) > 0) {
+        write();
+      }
+    }
+
+    void SimpleHttpClient::handleRead (double timeout) {
+      struct timeval tv;
+      fd_set fdset;
+
+      tv.tv_sec = (uint64_t) timeout;
+      tv.tv_usec = ((uint64_t) (timeout * 1000000.0)) % 1000000;
+
+      FD_ZERO(&fdset);
+      FD_SET(_socket, &fdset);
+
+      if (select(_socket + 1, &fdset, NULL, NULL, &tv) > 0) {
+        read();
+      }
     }
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief sets username and password 
     ////////////////////////////////////////////////////////////////////////////////
-      
+
     void SimpleHttpClient::setUserNamePassword (
-            const string& prefix, 
-            const string& username, 
+            const string& prefix,
+            const string& username,
             const string& password) {
-      
+
       string value = triagens::basics::StringUtils::encodeBase64(username + ":" + password);
-      
-      _pathToBasicAuth.push_back(make_pair(prefix, value));      
-    }
-    
-    ////////////////////////////////////////////////////////////////////////////////
-    /// private methods
-    ////////////////////////////////////////////////////////////////////////////////
-    
-    bool SimpleHttpClient::read (SimpleHttpResult* httpResult, double timeout) {
-      httpResult->clear();
-              
-      double start = _connection->now();
-      
-      // read the http header
-      if (!readHeader(httpResult, timeout)) {
-        return false;
-      }
-      
-      double runtime = _connection->now() - start;
-      
-      if (runtime > timeout) {
-        LOGGER_WARNING << "read timeout";
-        return false;
-      }
-      
-      // read the body
-      return readBody(httpResult, timeout - runtime);
+
+      _pathToBasicAuth.push_back(make_pair(prefix, value));
     }
 
-    bool SimpleHttpClient::readHeader (SimpleHttpResult* httpResult, double timeout) {
-      double start = _connection->now();
-      double runtime = 0.0;
-
-      bool ok = false;
-      string line;
-      
-      while (runtime < timeout && _connection->readLn(line, timeout)) {
-        LOGGER_TRACE << "read header line: " << line;
-        
-        if (line == "\r" || line == "") {
-          // end of header found
-          ok = true;
+    SimpleHttpResult* SimpleHttpClient::getResult () {
+      switch (_state) {
+        case (IN_CONNECT):
+          _result->setResultType(SimpleHttpResult::COULD_NOT_CONNECT);
           break;
-        }        
 
-        httpResult->addHeaderField(line);
-        runtime = _connection->now() - start;
+        case (IN_WRITE):
+          _result->setResultType(SimpleHttpResult::WRITE_ERROR);
+          break;
+
+        case (IN_READ_HEADER):
+        case (IN_READ_BODY):
+        case (IN_READ_CHUNKED_HEADER):
+        case (IN_READ_CHUNKED_BODY):
+          _result->setResultType(SimpleHttpResult::READ_ERROR);
+          break;
+
+        case (FINISHED):
+          _result->setResultType(SimpleHttpResult::COMPLETE);
+          break;
+
+        default :
+          _result->setResultType(SimpleHttpResult::COULD_NOT_CONNECT);
       }
 
-      return (ok && (httpResult->getHttpReturnCode() > 0));
-    }
-    
-    
-    bool SimpleHttpClient::readBody (SimpleHttpResult* result, double timeout) {
-      if (result->isChunked()) {
-        return readBodyChunked(result, timeout);
-      }
-      else {
-        return readBodyContentLength(result, timeout);
-      }
+      return _result;
     }
 
-    bool SimpleHttpClient::readBodyContentLength (SimpleHttpResult* result, double timeout) {
-      int contentLength = result->getContenLength();
-
-      if (contentLength <= 0) {
-        // nothing to read
-        //_logger->TraceLogger("Result has no content.");
-        return true;
-      }
-
-      int len_read = _connection->read(result->getBody(), contentLength, timeout);
-      LOGGER_TRACE << "body: " << result->getBody().str();
-      
-      if (len_read == contentLength) {
-        return true;
-      }
-      return false;      
-    }
-    
-    bool SimpleHttpClient::readBodyChunked (SimpleHttpResult* result, double timeout) {
-      string line;
-      
-      double start = _connection->now();
-      double runtime = 0.0;
-      
-      while (runtime < timeout && _connection->readLn(line, timeout)) {
-        
-        if (line == "\r" || line == "") {
-          // ignore empty line
-          continue;
-        }
-
-        string trimed = StringUtils::trim(line);
-        
-        uint32_t contentLength;
-        sscanf(trimed.c_str(), "%x", &contentLength);
-        
-        if (contentLength == 0) {
-          // OK: last content length found
-          LOGGER_TRACE << "body chunked: " << result->getBody().str();
-          return true;
-        }
-        
-        if (contentLength > 1000000) {
-          // failed: too many bytes
-          LOGGER_WARNING << "read body chunked faild: too many bytes.";
-          return false;
-        }
-        
-        runtime = _connection->now() - start;
-
-        if (runtime > timeout) {
-          // failed: timeout
-          LOGGER_WARNING << "read body chunked faild: timeout.";
-          return false;
-        }
-        
-        size_t len_read = _connection->read(result->getBody(), contentLength, timeout - runtime);
-        
-        if (len_read < contentLength) {
-          // failed: could not read all data
-          LOGGER_WARNING << "read body chunked faild: not enough bytes.";
-          return false;
-        }
-        
-        runtime = _connection->now() - start;
-      }  
-      
-      LOGGER_WARNING << "readln faild.";
-      return false;
-    }
-        
-    bool SimpleHttpClient::write (stringstream &buffer, double timeout) {
-      return _connection->write(buffer.str(), timeout);
-    }
-
-    void SimpleHttpClient::fillRequestBuffer (stringstream &requestBuffer, 
-            int method,
-            const std::string& location, 
-            const char* body, 
+    void SimpleHttpClient::setRequest (int method,
+            const string& location,
+            const char* body,
             size_t bodyLength,
             const map<string, string>& headerFields) {
 
+      if (_state == DEAD) {
+        _numConnectRetries = 0;
+        _lastConnectTime = 0.0;
+      }
+
+      ///////////////////// fill the write buffer //////////////////////////////      
+      _writeBuffer.clear();
+
       switch (method) {
         case GET:
-          requestBuffer << "GET ";
+          _writeBuffer.appendText("GET ");
           break;
         case POST:
-          requestBuffer << "POST ";
+          _writeBuffer.appendText("POST ");
           break;
         case PUT:
-          requestBuffer << "PUT ";
+          _writeBuffer.appendText("PUT ");
           break;
         case DELETE:
-          requestBuffer << "DELETE ";
+          _writeBuffer.appendText("DELETE ");
           break;
         case HEAD:
-          requestBuffer << "HEAD ";
+          _writeBuffer.appendText("HEAD ");
           break;
         default:
-          requestBuffer << "POST ";
+          _writeBuffer.appendText("POST ");
           break;
       }
 
@@ -345,26 +313,26 @@ namespace triagens {
         l = "/" + location;
       }
 
-      requestBuffer << l << " HTTP/1.1\r\n";      
-      
-      requestBuffer << "Host: ";
-      if (_connection->getHostname().find(':') != string::npos) {
-        requestBuffer << "[" << _connection->getHostname() << "]";        
-      }
-      else {
-        requestBuffer << _connection->getHostname();        
-      }
-      requestBuffer << ':' << _connection->getPort() << "\r\n";
-      requestBuffer << "Connection: Keep-Alive\r\n";
-      requestBuffer << "User-Agent: VOC-Client/1.0\r\n";
-      
+      LOGGER_TRACE << "Request: " << _writeBuffer.c_str() << l;
+
+      _writeBuffer.appendText(l);
+      _writeBuffer.appendText(" HTTP/1.1\r\n");
+
+      _writeBuffer.appendText("Host: ");
+      _writeBuffer.appendText(_hostname);
+      _writeBuffer.appendText(":");
+      _writeBuffer.appendInteger(_port);
+      _writeBuffer.appendText("\r\n");
+      _writeBuffer.appendText("Connection: Keep-Alive\r\n");
+      _writeBuffer.appendText("User-Agent: VOC-Client/1.0\r\n");
+
       //requestBuffer << "Accept: application/json\r\n";      
       //if (bodyLength > 0) {
       //  requestBuffer << "Content-Type: application/json; charset=utf-8\r\n";
       //}
 
       // do basic authorization
-      if (_pathToBasicAuth.size() > 0) {        
+      if (_pathToBasicAuth.size() > 0) {
         string foundPrefix;
         string foundValue;
         std::vector< std::pair<std::string, std::string> >::iterator i = _pathToBasicAuth.begin();
@@ -372,33 +340,412 @@ namespace triagens {
           string f = i->first;
           if (l.find(f) == 0) {
             // f is prefix of l
-            if ( f.length() > foundPrefix.length() ) {
+            if (f.length() > foundPrefix.length()) {
               foundPrefix = f;
               foundValue = i->second;
             }
-          }           
+          }
         }
         if (foundValue.length() > 0) {
-          requestBuffer << "Authorization: Basic " << foundValue << "\r\n";          
+          _writeBuffer.appendText("Authorization: Basic ");
+          _writeBuffer.appendText(foundValue);
+          _writeBuffer.appendText("\r\n");
         }
       }
-      
+
       for (map<string, string>::const_iterator i = headerFields.begin(); i != headerFields.end(); ++i) {
         // TODO: check Header name and value
-        requestBuffer << i->first << ": " << i->second << "\r\n";
+        _writeBuffer.appendText(i->first);
+        _writeBuffer.appendText(": ");
+        _writeBuffer.appendText(i->second);
+        _writeBuffer.appendText("\r\n");
       }
 
-      requestBuffer << "Content-Length: " << bodyLength << "\r\n\r\n";
-      requestBuffer.write(body, bodyLength);
+      _writeBuffer.appendText("Content-Length: ");
+      _writeBuffer.appendInteger(bodyLength);
+      _writeBuffer.appendText("\r\n\r\n");
+      _writeBuffer.appendText(body, bodyLength);
+
+      //////////////////////////////////////////////////////////////////////////
+
+
+      if (_state != FINISHED) {
+        // close connection to reset all read and write buffers
+        close();
+      }
+
+      if (_isConnected) {
+        // we are connected start with writing
+        _state = IN_WRITE;
+      }
+      else {
+        // connect to server
+        _state = IN_CONNECT;
+      }
     }
 
-    bool SimpleHttpClient::checkConnection () {      
-      return _connection->connect();
+
+    // -----------------------------------------------------------------------------
+    // private methods
+    // -----------------------------------------------------------------------------
+
+    bool SimpleHttpClient::close () {
+      if (_isConnected) {
+        ::close(_socket);
+        _isConnected = false;
+      }
+
+      reset();
+
+      return true;
     }
 
-    void SimpleHttpClient::closeConnection () {
-      _connection->close();
+    bool SimpleHttpClient::write () {
+      if (!checkSocket()) {
+        return false;
+      }
+
+      //printf("write():\n%s\n", _writeBuffer);
+
+#ifdef __APPLE__
+      int status = ::send(_socket, _writeBuffer.c_str(), _writeBuffer.length(), 0);
+#else
+      int status = ::send(_socket, _writeBuffer.c_str(), _writeBuffer.length(), MSG_NOSIGNAL);
+#endif
+
+      if (status == -1) {
+        _errorMessage = "::send() failed with: " + string(strerror(errno));
+        LOGGER_TRACE << "::send() failed with " << strerror(errno);
+        
+        close();
+        
+        return false;
+      }
+      
+      _state = IN_READ_HEADER;
+      return true;
     }
-    
+
+    bool SimpleHttpClient::read () {
+      if (!checkSocket()) {
+        return false;
+      }
+
+     do {
+        char buffer[READBUFFER_SIZE];
+
+        int len_read = ::read(_socket, buffer, READBUFFER_SIZE - 1);
+
+        if (len_read <= 0) {
+          // error: stop reading
+          break;
+        }
+
+        _readBuffer.appendText(buffer, len_read);
+      }
+      while(readable());
+
+      switch (_state) {
+        case (IN_READ_HEADER):
+          readHeader();
+          break;
+
+        case (IN_READ_BODY):
+          readBody();
+          break;
+
+        case (IN_READ_CHUNKED_HEADER):
+          readChunkedHeader();
+          break;
+
+        case (IN_READ_CHUNKED_BODY):
+          readChunkedBody();
+          break;
+
+        default:
+          break;
+      }
+      return true;
+    }
+
+    bool SimpleHttpClient::readHeader () {
+      char* pos = (char*) memchr(_readBuffer.c_str(), '\n', _readBuffer.length());
+
+      while (pos) {
+        size_t len = pos - _readBuffer.c_str();
+        string line(_readBuffer.c_str(), len);
+        _readBuffer.erase_front(len + 1);
+
+        //printf("found header line %s\n", line.c_str());
+
+        if (line == "\r" || line == "") {
+          // end of header found
+          if (_result->isChunked()) {
+            _state = IN_READ_CHUNKED_HEADER;
+            return readChunkedHeader();
+          }
+          else if (_result->getContenLength()) {
+            
+            if (_result->getContenLength() > 5000000) {
+              _errorMessage = "Content length > 5000000 bytes found!";
+              LOGGER_ERROR << "Content length > 5000000 bytes found! Closing connection.";
+              
+              // reset connection 
+              close();
+          
+              return false;              
+            }
+
+            _state = IN_READ_BODY;
+            return readBody();
+          }
+          else {
+            _result->setResultType(SimpleHttpResult::COMPLETE);
+            _state = FINISHED;
+          }
+          break;
+        }
+        else {
+          _result->addHeaderField(line);
+        }
+
+        pos = (char*) memchr(_readBuffer.c_str(), '\n', _readBuffer.length());
+      }
+      return true;
+    }
+
+    bool SimpleHttpClient::readBody () {
+      if (_readBuffer.length() >= _result->getContenLength()) {
+        _result->getBody().write(_readBuffer.c_str(), (size_t) _result->getContenLength());
+        _readBuffer.erase_front((size_t) _result->getContenLength());
+        _result->setResultType(SimpleHttpResult::COMPLETE);
+        _state = FINISHED;
+      }
+
+      return true;
+    }
+
+    bool SimpleHttpClient::readChunkedHeader () {
+      char* pos = (char*) memchr(_readBuffer.c_str(), '\n', _readBuffer.length());
+
+      while (pos) {
+        // got a line
+        size_t len = pos - _readBuffer.c_str();
+        string line(_readBuffer.c_str(), len);
+        _readBuffer.erase_front(len + 1);
+
+        string trimed = StringUtils::trim(line);
+
+        if (trimed == "\r" || trimed == "") {
+          // ignore empty lines
+          pos = (char*) memchr(_readBuffer.c_str(), '\n', _readBuffer.length());
+          continue;
+        }
+
+        uint32_t contentLength;
+        sscanf(trimed.c_str(), "%x", &contentLength);
+
+        if (contentLength == 0) {
+          // OK: last content length found
+          //printf("Last length found\n");
+
+          _result->setResultType(SimpleHttpResult::COMPLETE);
+          
+          _state = FINISHED;
+          
+          return true;
+        }
+
+        if (contentLength > 5000000) {
+          // failed: too many bytes
+          
+          _errorMessage = "Content length > 5000000 bytes found!";
+          LOGGER_ERROR << "Content length > 5000000 bytes found! Closing connection.";
+ 
+          // reset connection 
+          close();
+          
+          return false;
+        }
+
+        _state = IN_READ_CHUNKED_BODY;
+        _nextChunkedSize = contentLength;
+        return readChunkedBody();
+      }
+
+      return true;
+    }
+
+    bool SimpleHttpClient::readChunkedBody () {
+
+      if (_readBuffer.length() >= _nextChunkedSize) {
+
+        _result->getBody().write(_readBuffer.c_str(), (size_t) _nextChunkedSize);
+        _readBuffer.erase_front((size_t) _nextChunkedSize);
+        _state = IN_READ_CHUNKED_HEADER;
+        return readChunkedHeader();
+      }
+
+      return true;
+    }
+
+    bool SimpleHttpClient::readable () {
+      fd_set fdset;
+      FD_ZERO(&fdset);
+      FD_SET(_socket, &fdset);
+
+      struct timeval tv;
+      tv.tv_sec = 0;
+      tv.tv_usec = 0;
+
+      if (select(_socket + 1, &fdset, NULL, NULL, &tv) == 1) {        
+        return checkSocket();
+      }
+      
+      return false;
+    }
+
+    bool SimpleHttpClient::checkSocket () {
+      int so_error = -1;
+      socklen_t len = sizeof so_error;
+
+      getsockopt(_socket, SOL_SOCKET, SO_ERROR, &so_error, &len);
+
+      if (so_error == 0) {
+        return true;
+      }
+
+      _errorMessage = "getsockopt() failed with: " + string(strerror(errno));
+      LOGGER_ERROR << "getsockopt() failed with: " << strerror(errno) << ". Closing connection.";
+
+      //close and reset conection
+      close();
+
+      _state = IN_CONNECT;
+
+      return false;
+    }
+
+    bool SimpleHttpClient::connectSocket (struct addrinfo *aip) {
+
+      // create socket and connect socket here
+      
+      _socket = socket(aip->ai_family, aip->ai_socktype, aip->ai_protocol);
+
+      // check socket and set the socket not blocking and close on exit 
+      
+      if (_socket == -1) {
+        //setErrorMessage("Socket not connected. socket() faild with: " + string(strerror(errno)), errno);
+        return false;
+      }
+
+      if (!setNonBlocking(_socket)) {
+        //setErrorMessage("Socket not connected. Set non blocking failed with: " + string(strerror(errno)), errno);
+        ::close(_socket);
+        _socket = -1;
+        return false;
+      }
+
+      if (!setCloseOnExec(_socket)) {
+        //setErrorMessage("Socket not connected. Set close on exec failed with: " + string(strerror(errno)), errno);
+        ::close(_socket);
+        _socket = -1;
+        return false;
+      }
+
+      ::connect(_socket, (const struct sockaddr *) aip->ai_addr, aip->ai_addrlen);
+
+      struct timeval tv;
+      fd_set fdset;
+
+      tv.tv_sec = (uint64_t) _connectTimeout;
+      tv.tv_usec = ((uint64_t) (_connectTimeout * 1000000.0)) % 1000000;
+
+      FD_ZERO(&fdset);
+      FD_SET(_socket, &fdset);
+
+      if (select(_socket + 1, NULL, &fdset, NULL, &tv) > 0) {
+
+        if (checkSocket()) {
+          return true;
+        }
+
+        return false;
+      }
+
+      // connect timeout reached
+      _errorMessage = "Could not conect to server in " + StringUtils::ftoa(_connectTimeout) + " seconds.";
+      LOGGER_WARNING << "Could not conect to server in " << _connectTimeout << " seconds.";
+
+      ::close(_socket);
+      
+      return false;
+    }
+
+    bool SimpleHttpClient::setNonBlocking (socket_t fd) {
+#ifdef TRI_HAVE_WIN32_NON_BLOCKING
+      DWORD ul = 1;
+
+      return ioctlsocket(fd, FIONBIO, &ul) == SOCKET_ERROR ? false : true;
+#else
+      long flags = fcntl(fd, F_GETFL, 0);
+
+      if (flags < 0) {
+        return false;
+      }
+
+      flags = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+
+      if (flags < 0) {
+        return false;
+      }
+
+      return true;
+#endif
+    }
+
+    bool SimpleHttpClient::setCloseOnExec (socket_t fd) {
+#ifdef TRI_HAVE_WIN32_CLOSE_ON_EXEC
+#else
+      long flags = fcntl(fd, F_GETFD, 0);
+
+      if (flags < 0) {
+        return false;
+      }
+
+      flags = fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
+
+      if (flags < 0) {
+        return false;
+      }
+#endif
+
+      return true;
+    }
+
+    void SimpleHttpClient::reset () {
+      _state = IN_CONNECT;
+
+      _isConnected = false;
+      _socket = -1;
+
+      if (_result) {
+        _result->clear();
+      }
+
+      _readBuffer.clear();
+    }
+
+    double SimpleHttpClient::now () {
+      struct timeval tv;
+      gettimeofday(&tv, 0);
+
+      double sec = tv.tv_sec; // seconds
+      double usc = tv.tv_usec; // microseconds
+
+      return sec + usc / 1000000.0;
+    }
+
   }
+
 }

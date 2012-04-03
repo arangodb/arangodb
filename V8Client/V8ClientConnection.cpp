@@ -84,7 +84,7 @@ namespace triagens {
       }
       else {
         _lastHttpReturnCode = result->getHttpReturnCode();
-        if (result->getHttpReturnCode() == SimpleHttpClient::HTTP_STATUS_OK) {
+        if (result->getHttpReturnCode() == SimpleHttpResult::HTTP_STATUS_OK) {
 
           triagens::basics::VariantArray* json = result->getBodyAsVariantArray();
           if (json) {
@@ -161,11 +161,11 @@ namespace triagens {
       if (!_httpResult->isComplete()) {
         // not complete
         _lastErrorMessage = _client->getErrorMessage();
-        _lastHttpReturnCode = SimpleHttpClient::HTTP_STATUS_SERVER_ERROR;
+        _lastHttpReturnCode = SimpleHttpResult::HTTP_STATUS_SERVER_ERROR;
         
         v8::Handle<v8::Object> result = v8::Object::New();
         result->Set(v8::String::New("error"), v8::Boolean::New(true));        
-        result->Set(v8::String::New("code"), v8::Integer::New(SimpleHttpClient::HTTP_STATUS_SERVER_ERROR));
+        result->Set(v8::String::New("code"), v8::Integer::New(SimpleHttpResult::HTTP_STATUS_SERVER_ERROR));
                 
         int errorNumber = 0;
         switch (_httpResult->getResultType()) {
