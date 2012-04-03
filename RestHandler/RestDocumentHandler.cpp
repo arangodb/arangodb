@@ -145,7 +145,7 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
+// --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -245,11 +245,12 @@ bool RestDocumentHandler::createDocument () {
   // auto-ptr that will free JSON data when scope is left
   JsonContainer container(parseJsonBody());
   TRI_json_t* json = container.ptr();
+
   if (json == 0) {
     return false;
   }
 
-  // find and load collection given by name oder identifier
+  // find and load collection given by name or identifier
   int res = useCollection(collection, create);
 
   if (res != TRI_ERROR_NO_ERROR) {

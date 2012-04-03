@@ -244,6 +244,7 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	QL/parser.$(OBJEXT) QL/tokens.$(OBJEXT) \
 	RestHandler/RestActionHandler.$(OBJEXT) \
 	RestHandler/RestDocumentHandler.$(OBJEXT) \
+	RestHandler/RestEdgeHandler.$(OBJEXT) \
 	RestHandler/RestVocbaseBaseHandler.$(OBJEXT) \
 	RestServer/ActionDispatcherThread.$(OBJEXT) \
 	RestServer/AvocadoHttpServer.$(OBJEXT) \
@@ -694,6 +695,7 @@ avocado_SOURCES = \
 	QL/tokens.c \
 	RestHandler/RestActionHandler.cpp \
 	RestHandler/RestDocumentHandler.cpp \
+	RestHandler/RestEdgeHandler.cpp \
 	RestHandler/RestVocbaseBaseHandler.cpp \
 	RestServer/ActionDispatcherThread.cpp \
 	RestServer/AvocadoHttpServer.cpp \
@@ -1456,6 +1458,8 @@ RestHandler/RestActionHandler.$(OBJEXT): RestHandler/$(am__dirstamp) \
 RestHandler/RestDocumentHandler.$(OBJEXT):  \
 	RestHandler/$(am__dirstamp) \
 	RestHandler/$(DEPDIR)/$(am__dirstamp)
+RestHandler/RestEdgeHandler.$(OBJEXT): RestHandler/$(am__dirstamp) \
+	RestHandler/$(DEPDIR)/$(am__dirstamp)
 RestHandler/RestVocbaseBaseHandler.$(OBJEXT):  \
 	RestHandler/$(am__dirstamp) \
 	RestHandler/$(DEPDIR)/$(am__dirstamp)
@@ -1745,6 +1749,7 @@ mostlyclean-compile:
 	-rm -f Rest/Url.$(OBJEXT)
 	-rm -f RestHandler/RestActionHandler.$(OBJEXT)
 	-rm -f RestHandler/RestDocumentHandler.$(OBJEXT)
+	-rm -f RestHandler/RestEdgeHandler.$(OBJEXT)
 	-rm -f RestHandler/RestVocbaseBaseHandler.$(OBJEXT)
 	-rm -f RestServer/ActionDispatcherThread.$(OBJEXT)
 	-rm -f RestServer/AvocadoHttpServer.$(OBJEXT)
@@ -1945,6 +1950,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Rest/$(DEPDIR)/Url.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestHandler/$(DEPDIR)/RestActionHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestHandler/$(DEPDIR)/RestDocumentHandler.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@RestHandler/$(DEPDIR)/RestEdgeHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestHandler/$(DEPDIR)/RestVocbaseBaseHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/ActionDispatcherThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/AvocadoHttpServer.Po@am__quote@
