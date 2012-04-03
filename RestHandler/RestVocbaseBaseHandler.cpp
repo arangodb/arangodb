@@ -28,6 +28,7 @@
 #include "RestVocbaseBaseHandler.h"
 
 #include "Basics/StringUtils.h"
+#include "BasicsC/conversions.h"
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/strings.h"
 #include "Rest/HttpRequest.h"
@@ -75,6 +76,12 @@ LoggerData::Extra const RestVocbaseBaseHandler::RES_FAIL;
 ////////////////////////////////////////////////////////////////////////////////
 
 string RestVocbaseBaseHandler::DOCUMENT_PATH = "/document";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief document path
+////////////////////////////////////////////////////////////////////////////////
+
+string RestVocbaseBaseHandler::EDGE_PATH = "/edge";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection path
@@ -335,6 +342,17 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
     TRI_Insert2ArrayJson(&augmented, "_rev", _rev);
   }
 
+  TRI_df_marker_type_t type = ((TRI_df_marker_t*) document->_data)->_type;
+
+  if (type == TRI_DOC_MARKER_EDGE) {
+    TRI_doc_edge_marker_t* marker = (TRI_doc_edge_marker_t*) document->_data;
+    string from = StringUtils::itoa(marker->_fromCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::itoa(marker->_fromDid);
+    string to = StringUtils::itoa(marker->_toCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::itoa(marker->_toDid);
+
+    TRI_Insert3ArrayJson(&augmented, "_from", TRI_CreateStringCopyJson(from.c_str()));
+    TRI_Insert3ArrayJson(&augmented, "_to", TRI_CreateStringCopyJson(to.c_str()));
+  }
+
   // convert object to string
   TRI_InitStringBuffer(&buffer);
 
@@ -537,6 +555,34 @@ TRI_doc_mptr_t const RestVocbaseBaseHandler::findDocument (string const& doc) {
   // .............................................................................
 
   return document;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parses a document handle
+////////////////////////////////////////////////////////////////////////////////
+
+int RestVocbaseBaseHandler::parseDocumentId (string const& handle,
+                                             TRI_voc_cid_t& cid,
+                                             TRI_voc_did_t& did) {
+  vector<string> split;
+  int res;
+
+  split = StringUtils::split(handle, '/');
+
+  if (split.size() != 2) {
+    return TRI_set_errno(TRI_ERROR_HTTP_BAD_PARAMETER);
+  }
+
+  cid = TRI_UInt64String(split[0].c_str());
+  res = TRI_errno();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  did = TRI_UInt64String(split[1].c_str());
+
+  return TRI_errno();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
