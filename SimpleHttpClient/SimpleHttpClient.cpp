@@ -141,7 +141,7 @@ namespace triagens {
       _isConnected = false;
       _socket = -1;
 
-      if (_numConnectRetries < _connectRetries + 1) {
+      if (_numConnectRetries < (int) _connectRetries + 1) {
         _numConnectRetries++;
       }
       else {
@@ -515,7 +515,7 @@ namespace triagens {
     }
 
     bool SimpleHttpClient::readBody () {
-      if (_readBuffer.length() >= _result->getContenLength()) {
+      if (_readBuffer.length() >= (size_t) _result->getContenLength()) {
         _result->getBody().write(_readBuffer.c_str(), (size_t) _result->getContenLength());
         _readBuffer.erase_front((size_t) _result->getContenLength());
         _result->setResultType(SimpleHttpResult::COMPLETE);

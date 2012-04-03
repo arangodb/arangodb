@@ -78,13 +78,21 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
 /// must be passed in @FA{from-handle}. The object handle of the end point must
 /// be passed in @FA{to-handle}.
 ///
-/// In all other respects the method works like @ref triagens::avocado::RestDocumentHandler::createDocument "POST /document".
+/// In all other respects the method works like @ref
+/// triagens::avocado::RestDocumentHandler::createDocument "POST /document".
+///
+/// If you request such an edge, the returned document will also contain the
+/// attributes @LIT{_from} and @LIT{_TO}.
 ///
 /// @EXAMPLES
 ///
-/// Illegal document:
+/// Create an edge:
 ///
-/// @verbinclude rest_create-document-bad-json
+/// @verbinclude rest_edge-create-edge
+///
+/// Read an edge:
+///
+/// @verbinclude rest_edge-read-edge
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestEdgeHandler::createDocument () {
@@ -159,6 +167,10 @@ bool RestEdgeHandler::createDocument () {
 
   if (res != TRI_ERROR_NO_ERROR) {
     releaseCollection();
+
+    generateError(HttpResponse::BAD,
+                  res,
+                  "'from' is not a document handle");
     return false;
   }
 
@@ -166,6 +178,10 @@ bool RestEdgeHandler::createDocument () {
 
   if (res != TRI_ERROR_NO_ERROR) {
     releaseCollection();
+
+    generateError(HttpResponse::BAD,
+                  res,
+                  "'to' is not a document handle");
     return false;
   }
 
