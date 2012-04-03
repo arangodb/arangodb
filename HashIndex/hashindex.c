@@ -261,6 +261,13 @@ static bool isEqualElementElement (struct TRI_associative_array_s* associativeAr
     return false; // should never happen
   }
 
+  /*
+  printf("%s:%u:%u:%u\n",__FILE__,__LINE__,
+    (uint64_t)(hLeftElement->data),
+    (uint64_t)(hRightElement->data)
+  );
+  */
+  
   return (hLeftElement->data == hRightElement->data);
 }
 
@@ -284,6 +291,14 @@ static bool isEqualKeyElement (struct TRI_associative_array_s* associativeArray,
   }
 
   for (j = 0; j < hLeftElement->numFields; j++) {
+    /*
+    printf("%s:%u:%f:%f,%u:%u\n",__FILE__,__LINE__,
+      *((double*)((j + hLeftElement->fields)->_data.data)),
+      *((double*)((j + hRightElement->fields)->_data.data)),
+      (uint64_t)(hLeftElement->data),
+      (uint64_t)(hRightElement->data)
+    );
+    */
     if (!isEqualShapedJsonShapedJson((j + hLeftElement->fields), (j + hRightElement->fields))) {
       return false;
     }
@@ -361,7 +376,6 @@ HashIndex* HashIndex_new() {
 int HashIndex_add(HashIndex* hashIndex, HashIndexElement* element) {
   bool result;
   result = TRI_InsertKeyAssociativeArray(hashIndex->assocArray.uniqueArray, element, element, false);
-
   return result ? TRI_ERROR_NO_ERROR : TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED;
 }
 
@@ -409,6 +423,7 @@ int HashIndex_remove(HashIndex* hashIndex, HashIndexElement* element) {
   bool result;
 
   result = TRI_RemoveElementAssociativeArray(hashIndex->assocArray.uniqueArray, element, NULL); 
+  
   return result ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL;
 }
 

@@ -1252,7 +1252,8 @@ static int UpdateHashIndex (TRI_index_t* idx,
   // ............................................................................
   
   if (hashIndex->base._unique) {
-    if (HashIndexHelper(hashIndex, &hashElement, NULL, oldDoc)) {
+    res = HashIndexHelper(hashIndex, &hashElement, NULL, oldDoc);
+    if (res == TRI_ERROR_NO_ERROR) {
     
       // ............................................................................
       // We must fill the hashElement with the value of the document shape -- this
@@ -1273,6 +1274,10 @@ static int UpdateHashIndex (TRI_index_t* idx,
       }
     }    
 
+    else {
+      LOG_WARNING("existing document could not be removed");
+    }
+    
     // ............................................................................
     // Fill the json simple list from the document
     // ............................................................................
