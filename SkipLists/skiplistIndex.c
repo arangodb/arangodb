@@ -841,7 +841,8 @@ static void* SkiplistPrevsIterationCallback(TRI_skiplist_iterator_t* iterator, i
 void SkiplistIndexDestroy(SkiplistIndex* slIndex) {
   if (slIndex == NULL) {
     return;
-  }  
+  } 
+  
   if (slIndex->unique) {
     TRI_FreeSkipList(slIndex->skiplist.uniqueSkiplist);
     slIndex->skiplist.uniqueSkiplist = NULL;

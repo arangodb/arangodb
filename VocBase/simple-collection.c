@@ -2359,6 +2359,10 @@ TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* sim) {
   size_t i;
 
   vector = TRI_Allocate(sizeof(TRI_vector_pointer_t));
+  if (!vector) {
+    return NULL;
+  }
+
   TRI_InitVectorPointer(vector);
 
   // .............................................................................
@@ -2802,6 +2806,7 @@ static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collecti
   // ...........................................................................
 
   TRI_DestroyVector(&paths);
+  TRI_DestroyVectorPointer(&fields);
   
   // ...........................................................................
   // If index id given, use it otherwise use the default.
@@ -2876,7 +2881,6 @@ static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* coll
   if (idx != NULL) {
     TRI_DestroyVector(&paths);
     TRI_DestroyVectorPointer(&fields);
-
     LOG_TRACE("skiplist-index already created");
 
     if (created != NULL) {
@@ -2922,6 +2926,7 @@ static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* coll
   // ...........................................................................
 
   TRI_DestroyVector(&paths);
+  TRI_DestroyVectorPointer(&fields);
 
   if (created != NULL) {
     *created = true;
