@@ -21,6 +21,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ILLEGAL_OPTION, "illegal option");
   REG_ERROR(ERROR_DEAD_PID, "dead process identifier");
   REG_ERROR(ERROR_NOT_IMPLEMENTED, "not implemented");
+  REG_ERROR(ERROR_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_NOT_FOUND, "not found");
   REG_ERROR(ERROR_HTTP_METHOD_NOT_ALLOWED, "method not supported");
@@ -55,6 +56,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED, "unique constraint violated");
   REG_ERROR(ERROR_AVOCADO_GEO_INDEX_VIOLATED, "geo index violated");
   REG_ERROR(ERROR_AVOCADO_INDEX_NOT_FOUND, "index not found");
+  REG_ERROR(ERROR_AVOCADO_CROSS_COLLECTION_REQUEST, "cross collection request not allowed");
   REG_ERROR(ERROR_AVOCADO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "parse error: %s");
@@ -104,6 +106,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_CONNECT, "could not connect to server");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_WRITE, "could not write to server");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_READ, "could not read from server");
+  REG_ERROR(ERROR_AVOCADO_INDEX_PQ_INSERT_FAILED, "priority queue insert failure");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

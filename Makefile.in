@@ -542,8 +542,9 @@ BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(FLEX_FILES) \
 
 ################################################################################
 ################################################################################
-CLEANUP = $(DOXYGEN) $(addprefix Doxygen/xml/,$(WIKI)) $(addprefix \
-	Doxygen/wiki/,$(WIKI)) $(JAVASCRIPT_HEADER) $(am__append_1) \
+CLEANUP = $(DOXYGEN) $(addsuffix .md,$(addprefix \
+	Doxygen/xml/,$(WIKI))) $(addsuffix .md,$(addprefix \
+	Doxygen/wiki/,$(WIKI))) $(JAVASCRIPT_HEADER) $(am__append_1) \
 	$(am__append_2)
 noinst_LIBRARIES = libavocado.a
 nobase_pkgdata_DATA = \
@@ -824,53 +825,53 @@ DOXYGEN = \
 ################################################################################
 ################################################################################
 WIKI = \
-	AQLBasics.md \
-	Actions.md \
-	AvocadoErrors.md \
-	AvocadoScript.md \
-	CommandLine.md \
-	CommandLineAvocado.md \
-	CommandLineLogging.md \
-	CommandLineRandom.md \
-	CommandLineScheduler.md \
-	Compiling.md \
-	DBAdmin.md \
-	DefineAction.md \
-	ExamplesSetup.md \
-	Glossary.md \
-	Graphs.md \
-	Home.md \
-	HttpCollection.md \
-	HttpIndex.md \
-	HttpInterface.md \
-	IndexGeo.md \
-	IndexHash.md \
-	IndexSkiplist.md \
-	IndexUsage.md \
-	Indexes.md \
-	InstallManual.md \
-	Installing.md \
-	JSModuleActions.md \
-	JSModuleConsole.md \
-	JSModuleFs.md \
-	JSModuleGraph.md \
-	JSModuleInternal.md \
-	JSModules.md \
-	JavaScriptFunc.md \
-	JavaScriptFuncIndex.md \
-	Key-Value.md \
-	OTWP.md \
-	Optimizer.md \
-	RefManual.md \
-	RestCursor.md \
-	RestDocument.md \
-	RestEdge.md \
-	RestSystem.md \
-	SimpleQueries.md \
-	UserManualServer.md \
-	UserManualShell.md \
-	UserManualShellStartStop.md  \
-	jsUnity.md
+	AQLBasics \
+	Actions \
+	AvocadoErrors \
+	AvocadoScript \
+	CommandLine \
+	CommandLineAvocado \
+	CommandLineLogging \
+	CommandLineRandom \
+	CommandLineScheduler \
+	Compiling \
+	DBAdmin \
+	DefineAction \
+	ExamplesSetup \
+	Glossary \
+	Graphs \
+	Home \
+	HttpCollection \
+	HttpIndex \
+	HttpInterface \
+	IndexGeo \
+	IndexHash \
+	IndexSkiplist \
+	IndexUsage \
+	Indexes \
+	InstallManual \
+	Installing \
+	JSModuleActions \
+	JSModuleConsole \
+	JSModuleFs \
+	JSModuleGraph \
+	JSModuleInternal \
+	JSModules \
+	JavaScriptFunc \
+	JavaScriptFuncIndex \
+	Key-Value \
+	OTWP \
+	Optimizer \
+	RefManual \
+	RestCursor \
+	RestDocument \
+	RestEdge \
+	RestSystem \
+	SimpleQueries \
+	UserManualServer \
+	UserManualShell \
+	UserManualShellStartStop  \
+	jsUnity
 
 @ENABLE_BOOST_TEST_TRUE@UnitTests_test_suite_LDADD = -L@top_builddir@ -lavocado -lboost_unit_test_framework
 @ENABLE_BOOST_TEST_TRUE@UnitTests_test_suite_DEPENDENCIES = @top_builddir@/libavocado.a
@@ -2549,10 +2550,10 @@ doxygen: Doxygen/avocado.doxy $(DOXYGEN)
 
 .PHONY: wiki
 
-wiki: doxygen $(addprefix Doxygen/xml/,$(WIKI))
+wiki: doxygen $(addsuffix .md,$(addprefix Doxygen/xml/,$(WIKI)))
 	@test -d Doxygen/wiki || mkdir Doxygen/wiki
-	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/pandoc.sh Doxygen/xml/$$w; done
-	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/md2html.sh Doxygen/wiki/$$w; done
+	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/pandoc.sh Doxygen/xml/$$w.md; done
+	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/md2html.sh Doxygen/wiki/$$w.md; done
 
 .setup-directories:
 	@test -d js || mkdir js
@@ -2580,6 +2581,8 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
 
 @ENABLE_BOOST_TEST_FALSE@unittests:
 @ENABLE_BOOST_TEST_FALSE@	@echo "enable unit-testing with 'configure --with-boost-test'"
+
+-include Makefile.local
 
 @ENABLE_FLEX_TRUE@JsonParser/%.c: @srcdir@/JsonParser/%.l
 @ENABLE_FLEX_TRUE@	@top_srcdir@/config/flex-c.sh $(LEX) $@ $<

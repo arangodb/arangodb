@@ -396,8 +396,6 @@ void TRI_ClearVectorPointer (TRI_vector_pointer_t* vector) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ResizeVectorPointer (TRI_vector_pointer_t* vector, size_t n) {
-  assert(n >= 0);
-
   if (vector->_length == n) {
     return;
   }
@@ -456,8 +454,6 @@ void TRI_PushBackVectorPointer (TRI_vector_pointer_t* vector, void* element) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InsertVectorPointer (TRI_vector_pointer_t* vector, void* element, size_t n) {
-  assert(n >= 0);
-
   if (vector->_length >= vector->_capacity) {
     void* newBuffer;
     size_t newSize = (size_t) (1 + GROW_FACTOR * vector->_capacity);

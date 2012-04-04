@@ -279,7 +279,7 @@ static v8::Handle<v8::Object> CreateErrorObject (int errorNumber, string const& 
 
   v8::Handle<v8::Object> errorObject = v8g->ErrorTempl->NewInstance();
 
-  string msg = TRI_last_error() + string(": ") + message;
+  string msg = TRI_errno_string(errorNumber) + string(": ") + message;
 
   errorObject->Set(v8::String::New("errorNum"), v8::Number::New(errorNumber));
   errorObject->Set(v8::String::New("errorMessage"), v8::String::New(msg.c_str()));
@@ -1187,11 +1187,11 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a document
 ///
-/// @FUN{document(@FA{document-identifier})}
+/// @FUN{@FA{collection}.document(@FA{document-identifier})}
 ///
-/// The @FN{document} operator finds a document given it's identifier.  It
-/// returns the document. Undefined is returned if the document identifier is
-/// not valid.
+/// The @FN{document} operator finds a document given it's identifier.
+/// It returns the document. @LIT{undefined} is returned if the
+/// document identifier is not known.
 ///
 /// Note that the returned docuement contains two pseudo-attributes, namely
 /// @LIT{_id} and @LIT{_rev}. The attribute @LIT{_id} contains the document
@@ -1202,7 +1202,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 /// @verbinclude simple1
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_DocumentQuery (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_DocumentVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // extract the collection
@@ -1218,7 +1218,9 @@ static v8::Handle<v8::Value> JS_DocumentQuery (v8::Arguments const& argv) {
   // first and only argument schould be an document idenfifier
   if (argv.Length() != 1) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("usage: document_wrapped(<document-identifier>)")));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                           "usage: document(<document-identifier>)")));
   }
 
   v8::Handle<v8::Value> arg1 = argv[0];
@@ -1227,12 +1229,16 @@ static v8::Handle<v8::Value> JS_DocumentQuery (v8::Arguments const& argv) {
 
   if (! IsDocumentId(arg1, cid, did)) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("<document-idenifier> must be a document identifier")));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                           "<document-idenifier> must be a document identifier")));
   }
 
   if (cid != collection->_collection->base._cid) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("cannot execute cross collection query")));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_AVOCADO_CROSS_COLLECTION_REQUEST,
+                                           "cannot execute cross collection query")));
   }
 
   // .............................................................................
@@ -1265,7 +1271,9 @@ static v8::Handle<v8::Value> JS_DocumentQuery (v8::Arguments const& argv) {
 
   if (document._did == 0) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("document not found")));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND,
+                                           "document not found")));
   }
   
   ReleaseCollection(collection);
@@ -5155,7 +5163,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
   rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountVocbaseCol));
   rt->Set(DeleteFuncName, v8::FunctionTemplate::New(JS_DeleteVocbaseCol));
-  rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentQuery));
+  rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbaseCol));
   rt->Set(DropFuncName, v8::FunctionTemplate::New(JS_DropVocbaseCol));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
@@ -5194,7 +5202,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
   rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountVocbaseCol));
   rt->Set(DeleteFuncName, v8::FunctionTemplate::New(JS_DeleteVocbaseCol));
-  rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentQuery));
+  rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbaseCol));
   rt->Set(DropFuncName, v8::FunctionTemplate::New(JS_DropVocbaseCol));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
