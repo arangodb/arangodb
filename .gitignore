@@ -72,3 +72,4 @@ UnitTests/test_suite
 .v8-build
 VC++
 UnitTests/HttpInterface/logs
+Makefile.local
