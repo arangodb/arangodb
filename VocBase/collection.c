@@ -318,6 +318,26 @@ static void FreeDatafilesVector (TRI_vector_pointer_t* const vector) {
   TRI_DestroyVectorPointer(vector);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief closes the datafiles passed in the vector
+////////////////////////////////////////////////////////////////////////////////
+
+static bool CloseDataFiles (const TRI_vector_pointer_t* const files) {
+  TRI_datafile_t* datafile;
+  size_t n = files->_length;
+  size_t i;
+  bool result = true;
+  
+  for (i = 0;  i < n;  ++i) {
+    datafile = files->_buffer[i];
+
+    assert(datafile);
+
+    result &= TRI_CloseDatafile(datafile);
+  }
+
+  return result;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -864,36 +884,15 @@ TRI_collection_t* TRI_OpenCollection (TRI_collection_t* collection, char const* 
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_CloseCollection (TRI_collection_t* collection) {
-  TRI_datafile_t* datafile;
-  size_t n;
-  size_t i;
 
   // close compactor files
-  n = collection->_compactors._length;
-
-  for (i = 0;  i < n;  ++i) {
-    datafile = collection->_compactors._buffer[i];
-
-    TRI_CloseDatafile(datafile);
-  }
+  CloseDataFiles(&collection->_compactors);
 
   // close journal files
-  n = collection->_journals._length;
-
-  for (i = 0;  i < n;  ++i) {
-    datafile = collection->_journals._buffer[i];
-
-    TRI_CloseDatafile(datafile);
-  }
+  CloseDataFiles(&collection->_journals);
 
   // close datafiles
-  n = collection->_datafiles._length;
-
-  for (i = 0;  i < n;  ++i) {
-    datafile = collection->_datafiles._buffer[i];
-
-    TRI_CloseDatafile(datafile);
-  }
+  CloseDataFiles(&collection->_datafiles);
 
   return TRI_ERROR_NO_ERROR;
 }
