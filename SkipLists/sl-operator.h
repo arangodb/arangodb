@@ -101,8 +101,13 @@ TRI_sl_operator_t* CreateSLOperator (TRI_sl_operator_type_e,
                                     TRI_sl_operator_t*,TRI_sl_operator_t*,
                                     TRI_json_t*, TRI_shaped_json_t*,
                                     size_t, void*);                                    
-void ClearSLOperator (TRI_sl_operator_t*); 
 TRI_sl_operator_t* CopySLOperator (TRI_sl_operator_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a skiplist operator with all its linked sub information
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeSLOperator(TRI_sl_operator_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

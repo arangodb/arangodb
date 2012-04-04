@@ -274,9 +274,9 @@ TRI_data_feeder_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_data_feeder_table_scan_s {
-  void **_start;
-  void **_end;
-  void **_current;
+  void** _start;
+  void** _end;
+  void** _current;
 }
 TRI_data_feeder_table_scan_t;
 
@@ -389,6 +389,7 @@ typedef struct TRI_data_feeder_skiplist_lookup_s {
   bool _isEmpty;
   TRI_index_t* _index;
   TRI_skiplist_iterator_t* _skiplistIterator;
+  TRI_sl_operator_t* _skiplistOperation;
   TRI_js_exec_context_t _context;
   size_t _position;
 }

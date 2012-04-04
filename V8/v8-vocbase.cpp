@@ -1891,7 +1891,7 @@ static v8::Handle<v8::Value> JS_WhereSkiplistConstAql (const v8::Arguments& argv
         v8::Handle<v8::Object> rightObject   = rightParameter->ToObject();
         TRI_sl_operator_t* rightOp = UnwrapClass<TRI_sl_operator_t>(rightObject, WRP_SL_OPERATOR_TYPE);
         if (rightOp == 0) {
-          ClearSLOperator(leftOp); 
+          TRI_FreeSLOperator(leftOp); 
           return scope.Close(v8::ThrowException(v8::String::New("either logical/relational operators or constants allowed, but not both")));
         }
         TRI_sl_operator_t* tempAndOperator = CreateSLOperator(TRI_SL_AND_OPERATOR,leftOp, rightOp, NULL, NULL, 2, NULL);
@@ -2185,8 +2185,7 @@ static void WeakSLOperatorCallback(v8::Persistent<v8::Value> object, void* param
   persistent.Clear();
 
   // and free the left and right operand -- depends on the type
-  ClearSLOperator(slOperator);
-  TRI_Free(slOperator);
+  TRI_FreeSLOperator(slOperator);
 }
 
 static v8::Handle<v8::Object> WrapSLOperator (TRI_sl_operator_t* slOperator) {
