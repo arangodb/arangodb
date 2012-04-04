@@ -557,6 +557,10 @@ static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
   // .............................................................................
 
   TRI_json_t* json = idx->json(idx, collection->_collection);
+  if (!json) {
+    return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
+  }
+
   v8::Handle<v8::Value> index = TRI_ObjectJson(json);
   
   if (index->IsObject()) {
@@ -564,6 +568,8 @@ static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
   }
 
   ReleaseCollection(collection);
+  TRI_FreeJson(json);
+
   return scope.Close(index);
 }
 
@@ -3557,6 +3563,10 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
   }
 
   TRI_json_t* json = idx->json(idx, collection->_collection);
+  if (!json) {
+    return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
+  }
+
   v8::Handle<v8::Value> index = TRI_ObjectJson(json);
   
   if (index->IsObject()) {
@@ -3564,6 +3574,8 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
   }
 
   ReleaseCollection(collection);
+  TRI_FreeJson(json);
+
   return scope.Close(index);
 }
 
@@ -3727,6 +3739,9 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
 
   // get a list of indexes
   TRI_vector_pointer_t* indexes = TRI_IndexesSimCollection(sim);
+  if (!indexes) {
+    return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
+  }
 
   v8::Handle<v8::Array> result = v8::Array::New();
 
@@ -3734,11 +3749,16 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
 
   for (uint32_t i = 0;  i < n;  ++i) {
     TRI_json_t* idx = (TRI_json_t*) indexes->_buffer[i];
-
-    result->Set(i, TRI_ObjectJson(idx));
+    if (idx) {
+      result->Set(i, TRI_ObjectJson(idx));
+      TRI_FreeJson(idx);
+    }
   }
 
   ReleaseCollection(collection);
+
+  TRI_FreeVectorPointer(indexes);
+
   return scope.Close(result);
 }
 
