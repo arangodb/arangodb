@@ -187,7 +187,8 @@ void RestBaseHandler::generateResult (VariantObject* result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int errorCode) {
-  char* message = TRI_get_errno_string(errorCode);
+  char const* message = TRI_errno_string(errorCode);
+
   if (message) {
     generateError(code, errorCode, string(message));
   }

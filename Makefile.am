@@ -66,6 +66,7 @@ include Makefile.files
 include Makefile.doxygen
 include Makefile.javascript
 include Makefile.unittests
+-include Makefile.local
 
 if ENABLE_FLEX
 include Makefile.flex

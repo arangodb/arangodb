@@ -318,11 +318,12 @@ void TRI_set_errno_string (int error, char const* msg) {
 /// @brief return an error message for an error code
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_get_errno_string (const int error) {
+char const* TRI_errno_string (int error) {
   TRI_error_t* entry;
   
   entry = (TRI_error_t*) TRI_LookupByKeyAssociativePointer(&ErrorMessages, (void const*) &error);
-  if (!entry) {
+
+  if (entry == NULL) {
     return NULL;
   }
 
