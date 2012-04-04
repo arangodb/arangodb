@@ -570,7 +570,7 @@ HttpResponse* TRI_ExecuteActionVocBase (TRI_vocbase_t* vocbase,
       if (v8Headers->IsObject()) {
         v8::Handle<v8::Array> props = v8Headers->GetPropertyNames();
 
-        for (size_t i = 0; i < props->Length(); i++) {          
+        for (uint32_t i = 0; i < props->Length(); i++) {          
           v8::Handle<v8::Value> key = props->Get(v8::Integer::New(i));
           response->setHeader(TRI_ObjectToString(key), TRI_ObjectToString(v8Headers->Get(key)));
         }

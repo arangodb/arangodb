@@ -31,6 +31,8 @@ extern "C" {
 ///   Will be raised when a PID without a living process was found.
 /// - 9: @CODE{not implemented}
 ///   Will be raised when hitting an unimplemented feature.
+/// - 10: @CODE{bad parameter}
+///   Will be raised when the parameter does not fulfill the requirements.
 /// - 400: @CODE{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 404: @CODE{not found}
@@ -109,6 +111,8 @@ extern "C" {
 ///   Will be raised when a illegale coordinate is used.
 /// - 1212: @CODE{index not found}
 ///   Will be raised when an index with a given identifier is unknown.
+/// - 1213: @CODE{cross collection request not allowed}
+///   Will be raised when a cross-collection is requested.
 /// - 1300: @CODE{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1500: @CODE{query killed}
@@ -225,6 +229,9 @@ extern "C" {
 ///   Will be raised when the client could not write data.
 /// - 2003: @CODE{could not read from server}
 ///   Will be raised when the client could not read data.
+/// - 3100: @CODE{priority queue insert failure}
+///   Will be raised when an attempt to insert a document into a priority queue
+///   index fails for some reason.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -343,6 +350,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_NOT_IMPLEMENTED                                         (9)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 10: ERROR_BAD_PARAMETER
+///
+/// bad parameter
+///
+/// Will be raised when the parameter does not fulfill the requirements.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_BAD_PARAMETER                                           (10)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER
@@ -690,6 +707,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_AVOCADO_INDEX_NOT_FOUND                                 (1212)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1213: ERROR_AVOCADO_CROSS_COLLECTION_REQUEST
+///
+/// cross collection request not allowed
+///
+/// Will be raised when a cross-collection is requested.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AVOCADO_CROSS_COLLECTION_REQUEST                        (1213)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_AVOCADO_DATAFILE_FULL
@@ -1195,6 +1222,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_SIMPLE_CLIENT_COULD_NOT_READ                                  (2003)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3100: ERROR_AVOCADO_INDEX_PQ_INSERT_FAILED
+///
+/// priority queue insert failure
+///
+/// Will be raised when an attempt to insert a document into a priority queue
+/// index fails for some reason.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AVOCADO_INDEX_PQ_INSERT_FAILED                          (3100)
 
 
 ////////////////////////////////////////////////////////////////////////////////

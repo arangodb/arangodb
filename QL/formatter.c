@@ -73,7 +73,7 @@ void QLFormatterPrintBlockStart (QL_formatter_t* formatter, const char* name) {
 /// @brief Print end of a block
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLFormatterPrintBlockEnd (QL_formatter_t* formatter, const char* name) {
+void QLFormatterPrintBlockEnd (QL_formatter_t* formatter) {
   QLFormatterPrintIndentation(formatter);
   printf("}\n");
 }
@@ -82,9 +82,9 @@ void QLFormatterPrintBlockEnd (QL_formatter_t* formatter, const char* name) {
 /// @brief Print an indented int value
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLFormatterPrintInt (QL_formatter_t* formatter, const char* name, uint64_t value) {
+void QLFormatterPrintInt (QL_formatter_t* formatter, const char* name, int64_t value) {
   QLFormatterPrintIndentation(formatter);
-  printf("%s: %lu\n",name,(unsigned long) value);
+  printf("%s: %li\n",name, (long) value);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,7 +132,7 @@ void QLFormatterDump (TRI_query_node_t* node, QL_formatter_t* formatter) {
       next = next->_next;
     }
     QLFormatterIndentationDec(formatter);
-    QLFormatterPrintBlockEnd(formatter,"");
+    QLFormatterPrintBlockEnd(formatter);
     return;
   }
 
@@ -166,7 +166,7 @@ void QLFormatterDump (TRI_query_node_t* node, QL_formatter_t* formatter) {
   }
 
   QLFormatterIndentationDec(formatter);
-  QLFormatterPrintBlockEnd(formatter,"");
+  QLFormatterPrintBlockEnd(formatter);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

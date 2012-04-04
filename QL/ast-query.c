@@ -579,7 +579,7 @@ bool QLAstQueryAddGeoRestriction (QL_ast_query_t* query,
     restriction->_arg._radius = restrictionNode->_value._doubleValue;
   }
   else {
-    restriction->_arg._numDocuments = restrictionNode->_value._intValue;
+    restriction->_arg._numDocuments = (size_t) restrictionNode->_value._intValue;
   }
 
   TRI_InsertKeyAssociativePointer(&query->_geo._restrictions, 
