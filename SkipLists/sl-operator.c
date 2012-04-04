@@ -147,8 +147,6 @@ void ClearSLOperator(TRI_sl_operator_t* slOperator) {
     case TRI_SL_LE_OPERATOR: 
     case TRI_SL_LT_OPERATOR: 
     {
-      size_t i;
-
       relationOperator = (TRI_sl_relation_operator_t*)(slOperator);
       if (relationOperator->_parameters != NULL) {
         TRI_FreeJson(relationOperator->_parameters);
