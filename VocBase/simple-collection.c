@@ -1826,8 +1826,7 @@ void TRI_DestroySimCollection (TRI_sim_collection_t* collection) {
   for (i = 0 ; i < n ; ++i) {
     TRI_index_t* idx = (TRI_index_t*) collection->_indexes._buffer[i];
   
-    TRI_DestroyVectorString(&idx->_fields);
-    TRI_Free(idx);
+    TRI_FreeIndex(idx);
   }
   // free index vector
   TRI_DestroyVectorPointer(&collection->_indexes);
