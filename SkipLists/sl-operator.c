@@ -147,15 +147,21 @@ void ClearSLOperator(TRI_sl_operator_t* slOperator) {
     case TRI_SL_LE_OPERATOR: 
     case TRI_SL_LT_OPERATOR: 
     {
+      size_t i;
+
       relationOperator = (TRI_sl_relation_operator_t*)(slOperator);
       if (relationOperator->_parameters != NULL) {
         TRI_FreeJson(relationOperator->_parameters);
       } 
-      
-      if (relationOperator->_fields) { 
-        TRI_FreeShapedJson(relationOperator->_fields);
-      }  
-
+     
+      // relationOperator->_fields contains _numFields shapedJson objects
+      for (i = 0; i < relationOperator->_numFields; ++i) {
+        // destroy each individual shapedJson object
+        TRI_shaped_json_t* shaped = relationOperator->_fields + i;
+        TRI_DestroyShapedJson(shaped);
+      }
+      // free the memory pointer
+      TRI_Free(relationOperator->_fields);
       TRI_Free(relationOperator);
       break;
     }    
