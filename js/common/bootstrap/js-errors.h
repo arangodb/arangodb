@@ -16,6 +16,7 @@ static string JS_common_bootstrap_errors =
   "  \"ERROR_ILLEGAL_OPTION\"         : { \"code\" : 7, \"message\" : \"illegal option\" }, \n"
   "  \"ERROR_DEAD_PID\"               : { \"code\" : 8, \"message\" : \"dead process identifier\" }, \n"
   "  \"ERROR_NOT_IMPLEMENTED\"        : { \"code\" : 9, \"message\" : \"not implemented\" }, \n"
+  "  \"ERROR_BAD_PARAMETER\"          : { \"code\" : 10, \"message\" : \"bad parameter\" }, \n"
   "  \"ERROR_HTTP_BAD_PARAMETER\"     : { \"code\" : 400, \"message\" : \"bad parameter\" }, \n"
   "  \"ERROR_HTTP_NOT_FOUND\"         : { \"code\" : 404, \"message\" : \"not found\" }, \n"
   "  \"ERROR_HTTP_METHOD_NOT_ALLOWED\" : { \"code\" : 405, \"message\" : \"method not supported\" }, \n"
@@ -50,6 +51,7 @@ static string JS_common_bootstrap_errors =
   "  \"ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED\" : { \"code\" : 1210, \"message\" : \"unique constraint violated\" }, \n"
   "  \"ERROR_AVOCADO_GEO_INDEX_VIOLATED\" : { \"code\" : 1211, \"message\" : \"geo index violated\" }, \n"
   "  \"ERROR_AVOCADO_INDEX_NOT_FOUND\" : { \"code\" : 1212, \"message\" : \"index not found\" }, \n"
+  "  \"ERROR_AVOCADO_CROSS_COLLECTION_REQUEST\" : { \"code\" : 1213, \"message\" : \"cross collection request not allowed\" }, \n"
   "  \"ERROR_AVOCADO_DATAFILE_FULL\"  : { \"code\" : 1300, \"message\" : \"datafile full\" }, \n"
   "  \"ERROR_QUERY_KILLED\"           : { \"code\" : 1500, \"message\" : \"query killed\" }, \n"
   "  \"ERROR_QUERY_PARSE\"            : { \"code\" : 1501, \"message\" : \"parse error: %s\" }, \n"
@@ -99,6 +101,7 @@ static string JS_common_bootstrap_errors =
   "  \"SIMPLE_CLIENT_COULD_NOT_CONNECT\" : { \"code\" : 2001, \"message\" : \"could not connect to server\" }, \n"
   "  \"SIMPLE_CLIENT_COULD_NOT_WRITE\" : { \"code\" : 2002, \"message\" : \"could not write to server\" }, \n"
   "  \"SIMPLE_CLIENT_COULD_NOT_READ\" : { \"code\" : 2003, \"message\" : \"could not read from server\" }, \n"
+  "  \"ERROR_AVOCADO_INDEX_PQ_INSERT_FAILED\" : { \"code\" : 3100, \"message\" : \"priority queue insert failure\" }, \n"
   "};\n"
   "\n"
 ;
