@@ -1,0 +1,5 @@
+avocado> db.example.document("1432124/123456");
+JavaScript exception in file '(avocado)' at 1,12:
+  [AvocadoError 1202: document not found: document not found]
+!db.example.document("1432124/123456");
+!           ^
