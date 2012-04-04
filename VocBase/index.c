@@ -827,14 +827,26 @@ TRI_index_t* TRI_CreateGeoIndex2 (struct TRI_doc_collection_s* collection,
                                   char const* longitudeName,
                                   TRI_shape_pid_t longitude) {
   TRI_geo_index_t* geo;
-  char* lan;
+  char* lat;
   char* lon;
 
   geo = TRI_Allocate(sizeof(TRI_geo_index_t));
-  lan = TRI_DuplicateString(latitudeName);
-  lon = TRI_DuplicateString(longitudeName);
+  if (geo == NULL) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    return NULL;
+  }
 
-  if (geo == NULL || lan == NULL || lon == NULL) {
+  lat = TRI_DuplicateString(latitudeName);
+  if (lat == NULL) {
+    TRI_Free(geo);
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    return NULL;
+  }
+
+  lon = TRI_DuplicateString(longitudeName);
+  if (lon == NULL) {
+    TRI_Free(geo);
+    TRI_Free(lat);
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return NULL;
   }
@@ -851,7 +863,7 @@ TRI_index_t* TRI_CreateGeoIndex2 (struct TRI_doc_collection_s* collection,
   geo->base.update = UpdateGeoIndex;
   geo->base.json = JsonGeoIndex2;
 
-  TRI_PushBackVectorString(&geo->base._fields, lan);
+  TRI_PushBackVectorString(&geo->base._fields, lat);
   TRI_PushBackVectorString(&geo->base._fields, lon);
 
   geo->_geoIndex = GeoIndex_new();
@@ -1647,13 +1659,16 @@ static void FillLookupSLOperator(TRI_sl_operator_t* slOperator, TRI_doc_collecti
       relationOperator = (TRI_sl_relation_operator_t*)(slOperator);
       relationOperator->_numFields  = relationOperator->_parameters->_value._objects._length;
       relationOperator->_fields     = TRI_Allocate( sizeof(TRI_shaped_json_t) * relationOperator->_numFields);
+      /* TODO FIXME: memory allocation might fail */
       relationOperator->_collection = collection;
       
       for (j = 0; j < relationOperator->_numFields; ++j) {
         jsonObject   = (TRI_json_t*) (TRI_AtVector(&(relationOperator->_parameters->_value._objects),j));
         shapedObject = TRI_ShapedJsonJson(collection->_shaper, jsonObject);
-        relationOperator->_fields[j] = *shapedObject; // shallow copy here is ok
-        TRI_Free(shapedObject); // don't require storage anymore
+        if (shapedObject) {
+          relationOperator->_fields[j] = *shapedObject; // shallow copy here is ok
+          TRI_Free(shapedObject); // don't require storage anymore
+        }
       }
       break;
     }

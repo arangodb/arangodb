@@ -918,8 +918,9 @@ static void InitFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
   state->_isEmpty  = true;
   state->_context  = NULL;
   state->_position = 0;
+  state->_skiplistOperation = NULL;
+  state->_skiplistIterator  = NULL;
 
-  state->_skiplistIterator = NULL;
   state->_index = TRI_IndexSimCollection((TRI_sim_collection_t*) feeder->_collection, 
                                          feeder->_indexId);
   if (!state->_index) {
@@ -963,13 +964,14 @@ static void InitFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
   }
   else {
     // const access
-    TRI_sl_operator_t* skipListOperation = CreateSkipListOperation(feeder);
-    if (!skipListOperation) {
+    TRI_sl_operator_t* skiplistOperation = CreateSkipListOperation(feeder);
+    if (!skiplistOperation) {
       return;
     }
     
     feeder->_accessType = ACCESS_CONST;
-    state->_skiplistIterator = TRI_LookupSkiplistIndex(state->_index, skipListOperation); 
+    state->_skiplistOperation = skiplistOperation;
+    state->_skiplistIterator = TRI_LookupSkiplistIndex(state->_index, state->_skiplistOperation); 
   }
 
   state->_isEmpty = false;
@@ -985,7 +987,7 @@ static void RewindFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
    
   state = (TRI_data_feeder_skiplist_lookup_t*) feeder->_state;
   state->_position = 0;
-
+  
   if (feeder->_accessType == ACCESS_REF) {
     if (state->_skiplistIterator) {
       // TODO: free skiplist iterator!
@@ -1050,6 +1052,11 @@ static void FreeFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
   TRI_data_feeder_skiplist_lookup_t* state;
 
   state = (TRI_data_feeder_skiplist_lookup_t*) feeder->_state;
+  
+  if (state->_skiplistOperation) {
+    TRI_FreeSLOperator(state->_skiplistOperation);
+  }
+
   if (state->_skiplistIterator) {
     // TODO: free iterator!!!!!!
 //    FreeSkiplistElements(state->_skiplistElements);

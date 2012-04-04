@@ -558,18 +558,18 @@ bool QLOptimizeToJsonListRange (TRI_json_t* const list,
                                 const bool useMax) {
   if (range->_valueType == RANGE_TYPE_STRING) {
     if (useMax) {
-      TRI_PushBack2ListJson(list, TRI_CreateStringCopyJson(range->_maxValue._stringValue));
+      TRI_PushBack3ListJson(list, TRI_CreateStringCopyJson(range->_maxValue._stringValue));
     }
     else {
-      TRI_PushBack2ListJson(list, TRI_CreateStringCopyJson(range->_minValue._stringValue));
+      TRI_PushBack3ListJson(list, TRI_CreateStringCopyJson(range->_minValue._stringValue));
     }
   }
   else if (range->_valueType == RANGE_TYPE_DOUBLE) {
     if (useMax) {
-      TRI_PushBack2ListJson(list, TRI_CreateNumberJson(range->_maxValue._doubleValue));
+      TRI_PushBack3ListJson(list, TRI_CreateNumberJson(range->_maxValue._doubleValue));
     }
     else {
-      TRI_PushBack2ListJson(list, TRI_CreateNumberJson(range->_minValue._doubleValue));
+      TRI_PushBack3ListJson(list, TRI_CreateNumberJson(range->_minValue._doubleValue));
     }
   }
   else if (range->_valueType == RANGE_TYPE_JSON) {

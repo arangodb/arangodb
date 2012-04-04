@@ -808,8 +808,7 @@ static void FreeQueryWhereHashConstant (TRI_qry_where_t* w) {
 static void FreeQueryWhereSkiplistConstant (TRI_qry_where_t* w) {
   TRI_qry_where_skiplist_const_t* whereClause;
   whereClause = (TRI_qry_where_skiplist_const_t*) w;
-  ClearSLOperator(whereClause->_operator);
-  TRI_Free(whereClause->_operator);
+  TRI_FreeSLOperator(whereClause->_operator);
 }
 
 static void FreeQueryWhereWithinConstant (TRI_qry_where_t* w) {
