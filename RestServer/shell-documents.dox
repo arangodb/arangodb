@@ -1,0 +1,127 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief avocado shell
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page ShellDocumentTOC
+///
+/// <ol>
+///  <li>@ref ShellDocumentIntro</li>
+///  <li>@ref ShellDocumentResource</li>
+///  <li>@ref ShellDocumentHttp
+///    @copydetails ShellDocumentCallsTOC
+///  </li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page ShellDocument AvocadoDB Interface for Documents
+///
+/// This is an introduction to AvocadoDB's interface for documents.
+///
+/// <hr>
+/// @copydoc ShellDocumentTOC
+/// <hr>
+///
+/// @section ShellDocumentIntro Documents, Identifiers, Handles
+///////////////////////////////////////////////////////////////
+///
+/// @copydoc GlossaryDocument
+///
+/// For example:
+///
+/// @verbinclude document1
+///
+/// All documents contain two special fields, the document handle in @LIT{_id}
+/// and the etag aka document revision in @LIT{_rev}.
+///
+/// All examples in the manual assume that you have created some example
+/// collections, see @ref ExamplesSetup.
+///
+/// @copydoc GlossaryDocumentHandle
+///
+/// @copydoc GlossaryDocumentIdentifier
+///
+/// @copydoc GlossaryDocumentRevision
+///
+/// @copydoc GlossaryDocumentEtag
+///
+/// @section ShellDocumentResource Address and ETag of an Document
+//////////////////////////////////////////////////////////////////
+///
+/// All documents in AvocadoDB have a document handle. This handle uniquely
+/// defines a document and is managed by AvocadoDB. The interface allows
+/// you to access the documents of a collection as
+///
+/// @LIT{db.@FA{collection}.documet(@FA{document-handle})}
+///
+/// For example: Assume that the document handle, which is stored in
+/// the @LIT{_id} field of the document, is @LIT{7254820/362549736}
+/// and the document lives in a collection named @FA{examples}, then
+/// that document can be accessed as:
+///
+/// @LIT{db.examples.document("7254820/362549736")}
+///
+/// Because the document handle is unique within the database, you
+/// can leave out the @FA{collection} and use the shortcut
+///
+/// @LIT{db._document("7254820/362549736")}
+///
+/// Each document also has a document revision or etag with is returned
+/// in the @LIT{_rev} field when requesting a document.
+///
+/// @section ShellDocumentHttp Working with Documents using REST
+///////////////////////////////////////////////////////////////
+///
+/// @anchor ShellDocumentRead
+/// @copydetails triagens::avocado::ShellDocumentHandler::readSingleDocument
+/// <hr>
+///
+/// @anchor ShellDocumentCreate
+/// @copydetails triagens::avocado::ShellDocumentHandler::createDocument
+/// <hr>
+///
+/// @anchor ShellDocumentUpdate
+/// @copydetails triagens::avocado::ShellDocumentHandler::updateDocument
+/// <hr>
+///
+/// @anchor ShellDocumentDelete
+/// @copydetails triagens::avocado::ShellDocumentHandler::deleteDocument
+/// <hr>
+///
+/// @anchor ShellDocumentHead
+/// @copydetails triagens::avocado::ShellDocumentHandler::checkDocument
+/// <hr>
+///
+/// @anchor ShellDocumentReadAll
+/// @copydetails triagens::avocado::ShellDocumentHandler::readAllDocuments
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: c++
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// End:
