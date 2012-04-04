@@ -438,7 +438,7 @@ static bool QLOptimizeMemberComparison (TRI_query_node_t* node) {
 /// @brief optimize a relational operation
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLOptimizeRelationalOperator (TRI_query_node_t* node) {
+static void QLOptimizeRelationalOperator (TRI_query_node_t* node) {
   double lhsValue, rhsValue;
   TRI_query_node_t *lhs, *rhs;
   TRI_query_node_type_e type;
@@ -501,7 +501,7 @@ void QLOptimizeRelationalOperator (TRI_query_node_t* node) {
 /// Freeing memory is done later when the whole query structure is deallocated.
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLOptimizeBinaryOperator (TRI_query_node_t* node) {
+static void QLOptimizeBinaryOperator (TRI_query_node_t* node) {
   if (TRI_QueryNodeIsArithmeticOperator(node)) {
     // optimize arithmetic operation
     QLOptimizeArithmeticOperator(node);
@@ -525,7 +525,7 @@ void QLOptimizeBinaryOperator (TRI_query_node_t* node) {
 /// false.
 ////////////////////////////////////////////////////////////////////////////////
 
-void QLOptimizeTernaryOperator (TRI_query_node_t* node) {
+static void QLOptimizeTernaryOperator (TRI_query_node_t* node) {
   TRI_query_node_t *lhs, *rhs;
   bool lhsValue;
 
@@ -548,6 +548,107 @@ void QLOptimizeTernaryOperator (TRI_query_node_t* node) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a range value to a json list
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLOptimizeToJsonListRange (TRI_json_t* const list, 
+                                const QL_optimize_range_t* const range, 
+                                const bool useMax) {
+  if (range->_valueType == RANGE_TYPE_STRING) {
+    if (useMax) {
+      TRI_PushBack2ListJson(list, TRI_CreateStringCopyJson(range->_maxValue._stringValue));
+    }
+    else {
+      TRI_PushBack2ListJson(list, TRI_CreateStringCopyJson(range->_minValue._stringValue));
+    }
+  }
+  else if (range->_valueType == RANGE_TYPE_DOUBLE) {
+    if (useMax) {
+      TRI_PushBack2ListJson(list, TRI_CreateNumberJson(range->_maxValue._doubleValue));
+    }
+    else {
+      TRI_PushBack2ListJson(list, TRI_CreateNumberJson(range->_minValue._doubleValue));
+    }
+  }
+  else if (range->_valueType == RANGE_TYPE_JSON) {
+    TRI_json_t* doc = TRI_JsonString(range->_minValue._stringValue);
+    if (!doc) {
+      return false;
+    }
+    TRI_PushBackListJson(list, doc);
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a range is a single value (min == max)
+////////////////////////////////////////////////////////////////////////////////
+
+bool QLIsEqualRange (const QL_optimize_range_t* const range) {
+  if (range->_minStatus != RANGE_VALUE_INCLUDED) {
+    return false;
+  }
+
+  if (range->_maxStatus != RANGE_VALUE_INCLUDED) {
+    return false;
+  }
+
+  if (range->_valueType == RANGE_TYPE_DOUBLE &&
+      range->_minValue._doubleValue != range->_maxValue._doubleValue) {
+    return false;
+  }
+
+  if ((range->_valueType == RANGE_TYPE_STRING ||
+       range->_valueType == RANGE_TYPE_JSON) &&
+      !TRI_EqualString(range->_minValue._stringValue, range->_maxValue._stringValue)) {
+    return false;
+  }
+
+  if (range->_valueType == RANGE_TYPE_REF) {
+    // references are always equality comparisons
+    return true;
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the comparison type included in a range
+////////////////////////////////////////////////////////////////////////////////
+
+QL_optimize_range_compare_type_e QLGetCompareTypeRange (const QL_optimize_range_t* const range) {
+  QL_optimize_range_compare_type_e result = COMPARE_TYPE_UNKNOWN;
+
+  if (range->_minStatus == RANGE_VALUE_INFINITE) {
+    if (range->_maxStatus == RANGE_VALUE_INCLUDED) {
+      result = COMPARE_TYPE_LE;
+    }
+    else if (range->_maxStatus == RANGE_VALUE_EXCLUDED) {
+      result = COMPARE_TYPE_LT;
+    }
+  }
+  else if (range->_maxStatus == RANGE_VALUE_INFINITE) {
+    if (range->_minStatus == RANGE_VALUE_INCLUDED) {
+      result = COMPARE_TYPE_GE;
+    }
+    else if (range->_minStatus == RANGE_VALUE_EXCLUDED) {
+      result = COMPARE_TYPE_GT;
+    }
+  }
+  else {
+    if (QLIsEqualRange(range)) {
+      result = COMPARE_TYPE_EQ;
+    }
+    else {
+      result = COMPARE_TYPE_BETWEEN;
+    }
+  }
+
+  return result;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a document declaration is static/constant or dynamic
@@ -1391,7 +1492,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
     range->_valueType = RANGE_TYPE_JSON;
   }
   else if (valueNode->_type == TRI_QueryNodeContainerMemberAccess) {
-    range->_valueType = RANGE_TYPE_FIELD;
+    range->_valueType = RANGE_TYPE_REF;
   }
   else {
     assert(false);
@@ -1408,7 +1509,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
 
   if (type == TRI_QueryNodeBinaryOperatorEqual) {
     // === and == ,  range is [ value (inc) ... value (inc) ]
-    if (range->_valueType == RANGE_TYPE_FIELD) {
+    if (range->_valueType == RANGE_TYPE_REF) {
       range->_refValue._collection = TRI_DuplicateString(
         ((TRI_query_node_t*) valueNode->_lhs)->_value._stringValue);
       name = QLAstQueryGetMemberNameString(valueNode, false);
@@ -1458,6 +1559,7 @@ static QL_optimize_range_t* QLOptimizeCreateRange (TRI_query_node_t* memberNode,
         return NULL;
       }
     }
+
     range->_minStatus = RANGE_VALUE_INCLUDED;
     range->_maxStatus = RANGE_VALUE_INCLUDED;
   }

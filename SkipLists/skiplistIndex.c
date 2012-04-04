@@ -1646,7 +1646,7 @@ SkiplistIndex* MultiSkiplistIndex_new() {
   }
 
   skiplistIndex->unique = false;
-  skiplistIndex->skiplist.nonUniqueSkiplist = TRI_Allocate(sizeof(TRI_skiplist_t));
+  skiplistIndex->skiplist.nonUniqueSkiplist = TRI_Allocate(sizeof(TRI_skiplist_multi_t));
   if (skiplistIndex->skiplist.nonUniqueSkiplist == NULL) {
     TRI_Free(skiplistIndex);
     return NULL;
@@ -1835,11 +1835,23 @@ static void MultiSkiplistIndex_findHelper(SkiplistIndex* skiplistIndex,
   TRI_InitVector(&(leftResult), sizeof(TRI_skiplist_iterator_interval_t));
   TRI_InitVector(&(rightResult), sizeof(TRI_skiplist_iterator_interval_t));
   
-  relationOperator  = (TRI_sl_relation_operator_t*)(slOperator);
   logicalOperator   = (TRI_sl_logical_operator_t*)(slOperator);
-  values.fields     = relationOperator->_fields;
-  values.numFields  = relationOperator->_numFields;
-  values.collection = relationOperator->_collection;
+  relationOperator  = (TRI_sl_relation_operator_t*)(slOperator);
+
+  switch (slOperator->_type) {
+    case TRI_SL_EQ_OPERATOR:
+    case TRI_SL_LE_OPERATOR: 
+    case TRI_SL_LT_OPERATOR: 
+    case TRI_SL_GE_OPERATOR: 
+    case TRI_SL_GT_OPERATOR: 
+      values.fields     = relationOperator->_fields;
+      values.numFields  = relationOperator->_numFields;
+      values.collection = relationOperator->_collection;
+    default: {
+      // must not access relationOperator->xxx if the operator is not a relational one
+      // otherwise we'll get invalid reads and the prog might crash
+    }
+  }
   
   switch (slOperator->_type) {
 
