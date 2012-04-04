@@ -54,9 +54,9 @@ static bool TransformDataSkipLimit (TRI_rc_result_t* result,
     return TRI_SliceSelectResult(_result, 0, 0);
   }
 
-  // positive limit, skip and slice from front
+  // positive limit. skip and slice from front
   if (limit > 0) {
-    if (_result->_numRows - skip < limit) {
+    if ((int64_t) limit > (int64_t) (_result->_numRows - skip)) {
       return TRI_SliceSelectResult(_result, skip, _result->_numRows - skip);
     }
 
@@ -64,7 +64,7 @@ static bool TransformDataSkipLimit (TRI_rc_result_t* result,
   }
 
   // negative limit, slice from back
-  if (_result->_numRows - skip < -limit) {
+  if ((int64_t) (_result->_numRows - skip) < (int64_t) (-limit)) {
     return TRI_SliceSelectResult(_result, 0, _result->_numRows - skip);
   }
 
