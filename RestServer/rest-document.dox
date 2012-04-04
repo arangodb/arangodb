@@ -93,7 +93,7 @@
 ///
 /// All documents in AvocadoDB have a document handle. This handle uniquely
 /// defines a document and is managed by AvocadoDB. All documents are
-/// found under the URI
+/// found under the URI:
 ///
 /// @LIT{http://@FA{server}:@FA{port}/document/@FA{document-handle}}
 ///
