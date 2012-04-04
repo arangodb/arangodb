@@ -232,7 +232,7 @@ bool TRI_DefineWhereExecutionContextX (TRI_js_exec_context_t context,
       if (part->_extraData._size) {
         // make extra values available
         v8::Handle<v8::Array> array = v8::Array::New();
-        size_t pos = 0;
+        uint32_t pos = 0;
         for (size_t n = 0; n < part->_extraData._listValues._length; n++) {
           double* data = (double*) part->_extraData._listValues._buffer[n];
           if (data) {
@@ -295,7 +295,7 @@ bool TRI_DefineWhereExecutionContext (TRI_query_instance_t* const instance,
     else {
       // part is a multi-document container
       v8::Handle<v8::Array> array = v8::Array::New();
-      size_t pos = 0;
+      uint32_t pos = 0;
       for (size_t n = 0; n < part->_listDocuments._length; n++) {
         document = (TRI_doc_mptr_t*) part->_listDocuments._buffer[n];
         if (document) {
@@ -459,7 +459,7 @@ static bool MakeObject (TRI_select_result_t* result, TRI_sr_documents_t* docPtr,
     else if (part->_type == RESULT_PART_DOCUMENT_MULTI) {
       // part is a multi-document container
       v8::Handle<v8::Array> array = v8::Array::New();
-      size_t pos = 0;
+      uint32_t pos = 0;
       for (size_t i = 0; i < num; i++) {
         document = (TRI_sr_documents_t) *docPtr++;
         if (document) {
@@ -482,7 +482,7 @@ static bool MakeObject (TRI_select_result_t* result, TRI_sr_documents_t* docPtr,
     }
     else if (part->_type == RESULT_PART_VALUE_MULTI) {
       v8::Handle<v8::Array> array = v8::Array::New();
-      size_t pos = 0;
+      uint32_t pos = 0;
       for (size_t i = 0; i < num; i++) {
         void* value = (void*) docPtr;
         array->Set(pos++, v8::Number::New(*(double*) value));
@@ -618,7 +618,7 @@ bool TRI_ExecuteRefExecutionContext (TRI_js_exec_context_t context, TRI_json_t* 
     
   v8::Handle<v8::Object> obj = result->ToObject(); 
 
-  size_t position = 0;
+  uint32_t position = 0;
   while (true) {
     if (!obj->Has(position)) {
       break;
@@ -1167,13 +1167,13 @@ static v8::Handle<v8::Value> JS_ProcessStat (v8::Arguments const& argv) {
 
   TRI_process_info_t info = TRI_ProcessInfoSelf();
 
-  result->Set(v8::String::New("minorPageFaults"), v8::Number::New(info._minorPageFaults));
-  result->Set(v8::String::New("majorPageFaults"), v8::Number::New(info._majorPageFaults));
-  result->Set(v8::String::New("userTime"), v8::Number::New(info._userTime));
-  result->Set(v8::String::New("systemTime"), v8::Number::New(info._systemTime));
-  result->Set(v8::String::New("numberThreads"), v8::Number::New(info._numberThreads));
-  result->Set(v8::String::New("residentSize"), v8::Number::New(info._residentSize));
-  result->Set(v8::String::New("virtualSize"), v8::Number::New(info._virtualSize));
+  result->Set(v8::String::New("minorPageFaults"), v8::Number::New((double) info._minorPageFaults));
+  result->Set(v8::String::New("majorPageFaults"), v8::Number::New((double) info._majorPageFaults));
+  result->Set(v8::String::New("userTime"), v8::Number::New((double) info._userTime));
+  result->Set(v8::String::New("systemTime"), v8::Number::New((double) info._systemTime));
+  result->Set(v8::String::New("numberThreads"), v8::Number::New((double) info._numberThreads));
+  result->Set(v8::String::New("residentSize"), v8::Number::New((double) info._residentSize));
+  result->Set(v8::String::New("virtualSize"), v8::Number::New((double) info._virtualSize));
 
   return scope.Close(result);
 }
