@@ -316,7 +316,7 @@ namespace triagens {
       SimpleHttpResult* _result;
       
       double _lastConnectTime;
-      int _numConnectRetries;
+      size_t _numConnectRetries;
       
       string _errorMessage;
       

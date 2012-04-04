@@ -228,7 +228,7 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
   char* tmp3;
   char* newFilename;
   int res;
-  int i;
+  size_t i;
   
   collection = data;
 
