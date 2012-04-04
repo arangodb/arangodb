@@ -52,11 +52,11 @@
 ///   <li>@ref UserManualShell</li>
 /// </ul>
 /// 
-/// @section API
+/// @section HomeApi API
 /// 
-/// @subsection CLINQ C\# / LINQ
+/// @subsection HomeCLINQ C\# / LINQ
 /// 
-/// @subsection PHP
+/// @subsection HomePHP PHP
 /// 
 /// There is a PHP client available in a separate project:
 /// https://github.com/triAGENS/AvocadoDB-PHP
@@ -64,20 +64,30 @@
 /// See also Packagist:
 /// http://packagist.org/packages/triagens/Avocado
 /// 
-/// @subsection Python
+/// @subsection HomePython Python
 /// 
 /// Help wanted:
 /// http://www.avocadodb.org/2012/03/24/contributors-for-python-api-wanted-for-nosql-project
 /// 
-/// @subsection REST
+/// @subsection HomeREST REST
 /// 
-/// Ruby
+/// @subsection HomeRuby Ruby
 ///
 /// There is a Ruby client available in a separate project:
 /// https://github.com/triAGENS/Ashikawa
 ///
 /// A discussion group can be found here:
 /// https://groups.google.com/forum/#!forum/ashikawa
+///
+/// @section HomeStayInContact Stay in Contact
+///
+/// Frank is twittering for the project on Twitter using <a
+/// href="http://www.twitter.com/fceller">@@fceller</a>. We've also a
+/// "generic" twitter account mainly for announcements called <a
+/// href="http://www.twitter.com/avocadodb">@@avocadodb</a>
+///
+/// You can also subscribe to a low traffic announcement list on the
+/// <a href="http://www.avocadodb.org/connect">connect page</a>.
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
