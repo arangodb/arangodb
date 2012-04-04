@@ -41,12 +41,12 @@
 /// @page ShellDocumentCallsTOC
 ///
 /// <ol>
-///  <li>@ref ShellDocumentRead "@FA{collection}.document(@FA{document-handle}"</li>
-///  <li>@ref ShellDocumentDbRead "@FA{db}._document(@FA{document-handle}"</li>
-///  <li>@ref ShellDocumentCreate "POST /document?collection=@FA{collection-identifier}"</li>
-///  <li>@ref ShellDocumentUpdate "PUT /document/@FA{document-handle}"</li>
+///  <li>@ref ShellDocumentRead "collection.document(document-handle)"</li>
+///  <li>@ref ShellDocumentCreate "collection.save(data)"</li>
+///  <li>@ref ShellDocumentUpdate "collection.replace(document, data)"</li>
 ///  <li>@ref ShellDocumentDelete "DELETE /document/@FA{document-handle}"</li>
 ///  <li>@ref ShellDocumentHead "HEAD /document/@FA{document-handle}"</li>
+///  <li>@ref ShellDocumentDbRead "db._document(document-handle)"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -87,7 +87,7 @@
 ///
 /// All documents in AvocadoDB have a document handle. This handle uniquely
 /// defines a document and is managed by AvocadoDB. The interface allows
-/// you to access the documents of a collection as
+/// you to access the documents of a collection as:
 ///
 /// @LIT{db.@FA{collection}.documet(@FA{document-handle})}
 ///
@@ -99,7 +99,7 @@
 /// @LIT{db.examples.document("7254820/362549736")}
 ///
 /// Because the document handle is unique within the database, you
-/// can leave out the @FA{collection} and use the shortcut
+/// can leave out the @FA{collection} and use the shortcut:
 ///
 /// @LIT{db._document("7254820/362549736")}
 ///
@@ -113,16 +113,12 @@
 /// @copydetails JS_DocumentVocbaseCol
 /// <hr>
 ///
-/// @anchor ShellDocumentDbRead
-/// @copydetails JS_DocumentVocbase
-/// <hr>
-///
 /// @anchor ShellDocumentCreate
-/// @copydetails triagens::avocado::ShellDocumentHandler::createDocument
+/// @copydetails JS_SaveVocbaseCol
 /// <hr>
 ///
 /// @anchor ShellDocumentUpdate
-/// @copydetails triagens::avocado::ShellDocumentHandler::updateDocument
+/// @copydetails JS_ReplaceVocbaseCol
 /// <hr>
 ///
 /// @anchor ShellDocumentDelete
@@ -135,6 +131,10 @@
 ///
 /// @anchor ShellDocumentReadAll
 /// @copydetails triagens::avocado::ShellDocumentHandler::readAllDocuments
+/// <hr>
+///
+/// @anchor ShellDocumentDbRead
+/// @copydetails JS_DocumentVocbase
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

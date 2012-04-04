@@ -568,6 +568,122 @@ static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief parse document or document handle
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
+                                                            TRI_vocbase_col_t const*& collection,
+                                                            TRI_voc_did_t& did,
+                                                            v8::Handle<v8::Value> val) {
+  v8::HandleScope scope;
+
+  TRI_voc_cid_t cid = 0;
+
+  if (! IsDocumentId(val, cid, did)) {
+    return scope.Close(CreateErrorObject(TRI_ERROR_AVOCADO_DOCUMENT_HANDLE_BAD, 
+                                         "<document-handle> must be a document-handle"));
+  }
+
+  // lockup the collection
+  if (collection == 0) {
+    TRI_vocbase_col_t* vc = TRI_LookupCollectionByIdVocBase(vocbase, cid);
+
+    if (vc == 0) {
+      return scope.Close(CreateErrorObject(TRI_ERROR_AVOCADO_COLLECTION_NOT_FOUND,
+                                           "collection of <document-handle> is unknown"));;
+    }
+
+    // use the collection
+    int res = TRI_UseCollectionVocBase(vocbase, vc);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return scope.Close(CreateErrorObject(res, "cannot use/load collection"));;
+    }
+
+    collection = vc;
+
+    if (collection->_collection == 0) {
+      return scope.Close(CreateErrorObject(TRI_ERROR_INTERNAL, "cannot use/load collection"));
+    }
+  }
+
+  // check cross collection requests
+  if (cid != collection->_collection->base._cid) {
+    return scope.Close(CreateErrorObject(TRI_ERROR_AVOCADO_CROSS_COLLECTION_REQUEST,
+                                         "cannot execute cross collection query"));
+  }
+
+  v8::Handle<v8::Value> empty;
+  return scope.Close(empty);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a document
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> DocumentVocbaseCol (TRI_vocbase_t* vocbase,
+                                                 TRI_vocbase_col_t const* collection,
+                                                 v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // first and only argument schould be a document idenfifier
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                           "usage: document(<document-handle>)")));
+  }
+
+  TRI_voc_did_t did;
+  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, collection, did, argv[0]);
+
+  if (! err.IsEmpty()) {
+    if (collection != 0) {
+      ReleaseCollection(collection);
+    }
+
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  // .............................................................................
+  // get document
+  // .............................................................................
+
+  TRI_doc_mptr_t document;
+  v8::Handle<v8::Value> result;
+  
+  // .............................................................................
+  // inside a read transaction
+  // .............................................................................
+
+  collection->_collection->beginRead(collection->_collection);
+  
+  document = collection->_collection->read(collection->_collection, did);  
+
+  if (document._did != 0) {
+    TRI_barrier_t* barrier;
+
+    barrier = TRI_CreateBarrierElement(&collection->_collection->_barrierList);
+    result = TRI_WrapShapedJson(collection, &document, barrier);
+  }
+
+  collection->_collection->endRead(collection->_collection);
+
+  // .............................................................................
+  // outside a write transaction
+  // .............................................................................
+
+  if (document._did == 0) {
+    ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND,
+                                           "document not found")));
+  }
+  
+  ReleaseCollection(collection);
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1729,7 +1845,7 @@ static v8::Handle<v8::Value> JS_WherePrimaryConstAql (v8::Arguments const& argv)
     return scope.Close(v8::ThrowException(v8::String::New("usage: wherePrimaryConst(<document-handle>)")));
   }
 
-  // extract the document identifier
+  // extract the document handle
   TRI_voc_cid_t cid = 0;
   TRI_voc_did_t did = 0;
   bool ok = IsDocumentId(argv[0], cid, did);
@@ -1960,7 +2076,7 @@ static v8::Handle<v8::Value> JS_WhereWithinConstAql (v8::Arguments const& argv) 
     return scope.Close(v8::ThrowException(v8::String::New("usage: whereWithinConst(<index-identifier>, <latitude>, <longitude>, <radius>[, <distance>])")));
   }
 
-  // extract the document identifier
+  // extract the document handle
   TRI_idx_iid_t iid = TRI_ObjectToDouble(argv[0]);
   double latitude = TRI_ObjectToDouble(argv[1]);
   double longitude = TRI_ObjectToDouble(argv[2]);
@@ -3256,7 +3372,7 @@ static v8::Handle<v8::Value> JS_DeleteVocbaseCol (v8::Arguments const& argv) {
 ///
 /// @FUN{@FA{collection}.document(@FA{document-handle})}
 ///
-/// The @FN{document} operator finds a document given it's identifier.  It
+/// The @FN{document} method finds a document given it's identifier.  It
 /// returns the document. Note that the returned docuement contains two
 /// pseudo-attributes, namely @LIT{_id} and @LIT{_rev}.
 ///
@@ -3290,70 +3406,8 @@ static v8::Handle<v8::Value> JS_DocumentVocbaseCol (v8::Arguments const& argv) {
   if (collection == 0) {
     return scope.Close(v8::ThrowException(err));
   }
-  
-  // first and only argument schould be an document idenfifier
-  if (argv.Length() != 1) {
-    ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(
-                         CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                           "usage: document(<document-handle>)")));
-  }
 
-  v8::Handle<v8::Value> arg1 = argv[0];
-  TRI_voc_cid_t cid = collection->_collection->base._cid;
-  TRI_voc_did_t did;
-
-  if (! IsDocumentId(arg1, cid, did)) {
-    ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(
-                         CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                           "<document-idenifier> must be a document identifier")));
-  }
-
-  if (cid != collection->_collection->base._cid) {
-    ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(
-                         CreateErrorObject(TRI_ERROR_AVOCADO_CROSS_COLLECTION_REQUEST,
-                                           "cannot execute cross collection query")));
-  }
-
-  // .............................................................................
-  // get document
-  // .............................................................................
-
-  TRI_doc_mptr_t document;
-  v8::Handle<v8::Value> result;
-  
-  // .............................................................................
-  // inside a read transaction
-  // .............................................................................
-
-  collection->_collection->beginRead(collection->_collection);
-  
-  document = collection->_collection->read(collection->_collection, did);  
-
-  if (document._did != 0) {
-    TRI_barrier_t* barrier;
-
-    barrier = TRI_CreateBarrierElement(&collection->_collection->_barrierList);
-    result = TRI_WrapShapedJson(collection, &document, barrier);
-  }
-
-  collection->_collection->endRead(collection->_collection);
-
-  // .............................................................................
-  // outside a write transaction
-  // .............................................................................
-
-  if (document._did == 0) {
-    ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(
-                         CreateErrorObject(TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND,
-                                           "document not found")));
-  }
-  
-  ReleaseCollection(collection);
-  return scope.Close(result);
+  return DocumentVocbaseCol(collection->_vocbase, collection, argv);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3907,17 +3961,45 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces a document
 ///
-/// @FUN{replace(@FA{document-handle}, @FA{document})}
+/// @FUN{@FA{collection}.replace(@FA{document}, @FA{data})}
 ///
-/// Replaces an existing document. The @FA{document-handle} must point to a
-/// document in the current collection. This document is than replaced with the
-/// value given as second argument and the @FA{document-handle} is returned.
+/// Replaces an existing @FA{document}. The @FA{document} must be a document in
+/// the current collection. This document is than replaced with the value
+/// @FA{data} given as second argument.
 ///
-/// @verbinclude fluent21
+/// The method returns a document with the attributes @LIT{_id} and @LIT{_rev}.
+/// The attribute @LIT{_id} contains the document handle of the updated
+/// document, the attribute @LIT{_rev} contains the document revision.
+///
+/// If there is a conflict, i. e. if the revision of the @LIT{document} does not
+/// match the revision in the collection, then an error is thrown.
+/// 
+/// @FUN{@FA{collection}.replace(@FA{document}, @FA{data}, true)}
+///
+/// As before, but in case of a conflict, the conflict is ignored and the old
+/// document is overwritten.
+///
+/// @FUN{@FA{collection}.replace(@FA{document-handle}, @FA{data})}
+///
+/// As before. Instead of document a @FA{document-handle} can be passed as
+/// first argument.
+///
+/// @EXAMPLES
+///
+/// Create and update a document:
+///
+/// @verbinclude shell_update-document
+///
+/// Use a document handle:
+///
+/// @verbinclude shell_update-document-handle
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
@@ -3928,25 +4010,75 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
 
   TRI_doc_collection_t* doc = collection->_collection;
 
-  if (argv.Length() != 2) {
+  if (argv.Length() < 2) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("usage: replace(<document-handle>, <document>)")));
+
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                           "usage: replace(<document>, <data>, <overwrite>)")));
   }
 
   TRI_voc_cid_t cid = doc->base._cid;
   TRI_voc_did_t did;
+  TRI_voc_rid_t rid = 0;
 
-  if (IsDocumentId(argv[0], cid, did)) {
-    if (cid != doc->base._cid) {
+  v8::Handle<v8::Value> val = argv[0];
+
+  // extract the document identifier
+  if (val->IsString() || val->IsStringObject()) {
+    if (IsDocumentId(val, cid, did)) {
+      if (cid != doc->base._cid) {
+        ReleaseCollection(collection);
+
+        return scope.Close(v8::ThrowException(
+                             CreateErrorObject(TRI_ERROR_AVOCADO_CROSS_COLLECTION_REQUEST,
+                                               "cannot execute cross collection update")));
+      }
+    }
+    else {
       ReleaseCollection(collection);
-      return scope.Close(v8::ThrowException(v8::String::New("cannot execute cross collection update")));
+
+      return scope.Close(v8::ThrowException(
+                           CreateErrorObject(TRI_ERROR_AVOCADO_DOCUMENT_HANDLE_BAD,
+                                             "expecting a document-handle")));
     }
   }
-  else {
-    ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("expecting a document identifier")));
+
+  // extract the document identifier and revision from a string
+  else if (val->IsObject()) {
+    v8::Handle<v8::Object> obj = val->ToObject();
+    v8::Handle<v8::Value> didVal = obj->Get(v8g->DidKey);
+
+    if (IsDocumentId(didVal, cid, did)) {
+      if (cid != doc->base._cid) {
+        ReleaseCollection(collection);
+
+        return scope.Close(v8::ThrowException(
+                             CreateErrorObject(TRI_ERROR_AVOCADO_CROSS_COLLECTION_REQUEST,
+                                               "cannot execute cross collection update")));
+      }
+    }
+    else {
+      ReleaseCollection(collection);
+
+      return scope.Close(v8::ThrowException(
+                           CreateErrorObject(TRI_ERROR_AVOCADO_DOCUMENT_HANDLE_BAD,
+                                             "expecting a document-handle in _id")));
+    }
+    
+    rid = TRI_ObjectToUInt64(obj->Get(v8g->RevKey));
   }
 
+  // ups
+  else {
+    ReleaseCollection(collection);
+
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                           "usage: replace(<document>, <data>, <overwrite>)")));
+  }
+
+  // convert data
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[1], doc->_shaper);
 
   if (shaped == 0) {
@@ -3954,11 +4086,27 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("<document> cannot be converted into JSON shape")));
   }
 
+  TRI_doc_update_policy_e policy = TRI_DOC_UPDATE_ERROR;
+
+  if (3 <= argv.Length()) {
+    bool overwrite = TRI_ObjectToBoolean(argv[2]);
+
+    if (overwrite) {
+      policy = TRI_DOC_UPDATE_LAST_WRITE;
+    }
+    else {
+      policy = TRI_DOC_UPDATE_CONFLICT;
+    }
+  }
+
   // .............................................................................
   // inside a write transaction
   // .............................................................................
 
-  int res = doc->updateLock(doc, shaped, did, 0, 0, TRI_DOC_UPDATE_LAST_WRITE);
+  collection->_collection->beginWrite(collection->_collection);
+
+  TRI_voc_rid_t oldRid = 0;
+  TRI_doc_mptr_t mptr = doc->update(doc, shaped, did, rid, &oldRid, policy, true);
 
   // .............................................................................
   // outside a write transaction
@@ -3966,24 +4114,22 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
 
   TRI_FreeShapedJson(shaped);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    string err = "cannot replace document: ";
-    err += TRI_last_error();
-
+  if (mptr._did == 0) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New(err.c_str())));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_errno(), 
+                                           "cannot replace document")));
   }
 
-  char* cidStr = TRI_StringUInt64(doc->base._cid);
-  char* didStr = TRI_StringUInt64(did);
+  string id = StringUtils::itoa(doc->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + StringUtils::itoa(mptr._did);
 
-  string name = cidStr + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + didStr;
-
-  TRI_FreeString(didStr);
-  TRI_FreeString(cidStr);
+  v8::Handle<v8::Object> result = v8::Object::New();
+  result->Set(v8g->DidKey, v8::String::New(id.c_str()));
+  result->Set(v8g->RevKey, v8::Number::New(mptr._rid));
+  result->Set(v8g->OldRevKey, v8::Number::New(oldRid));
 
   ReleaseCollection(collection);
-  return scope.Close(v8::String::New(name.c_str()));
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4009,15 +4155,26 @@ static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a new document
 ///
-/// @FUN{save(@FA{document})}
+/// @FUN{@FA{collection}.save(@FA{data})}
 ///
-/// Saves a new document and returns the document-handle.
+/// Creates a new document in the @FA{collection} from the given @FA{data}. The
+/// @FA{data} must be an hash array. It must not contain attributes starting
+/// with @LIT{_}.
 ///
-/// @verbinclude fluent22
+/// The method returns a document with the attributes @LIT{_id} and @LIT{_rev}.
+/// The attribute @LIT{_id} contains the document handle of the newly created
+/// document, the attribute @LIT{_rev} contains the document revision.
+///
+/// @EXAMPLES
+///
+/// @verbinclude shell_create-document
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
@@ -4030,21 +4187,27 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
 
   if (argv.Length() != 1) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("usage: save(<document>)")));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                           "usage: save(<data>)")));
   }
 
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[0], doc->_shaper);
 
   if (shaped == 0) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("<document> cannot be converted into JSON shape")));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_errno(),
+                                           "<data> cannot be converted into JSON shape")));
   }
 
   // .............................................................................
   // inside a write transaction
   // .............................................................................
 
-  TRI_voc_did_t did = doc->createLock(doc, TRI_DOC_MARKER_DOCUMENT, shaped, 0);
+  collection->_collection->beginWrite(collection->_collection);
+
+  TRI_doc_mptr_t mptr = doc->create(doc, TRI_DOC_MARKER_DOCUMENT, shaped, 0, true);
 
   // .............................................................................
   // outside a write transaction
@@ -4052,24 +4215,21 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
 
   TRI_FreeShapedJson(shaped);
 
-  if (did == 0) {
-    string err = "cannot save document: ";
-    err += TRI_last_error();
-
+  if (mptr._did == 0) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New(err.c_str())));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_errno(), 
+                                           "cannot save document")));
   }
 
-  char* cidStr = TRI_StringUInt64(doc->base._cid);
-  char* didStr = TRI_StringUInt64(did);
+  string id = StringUtils::itoa(doc->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + StringUtils::itoa(mptr._did);
 
-  string name = cidStr + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + didStr;
-
-  TRI_FreeString(didStr);
-  TRI_FreeString(cidStr);
+  v8::Handle<v8::Object> result = v8::Object::New();
+  result->Set(v8g->DidKey, v8::String::New(id.c_str()));
+  result->Set(v8g->RevKey, v8::Number::New(mptr._rid));
 
   ReleaseCollection(collection);
-  return scope.Close(v8::String::New(name.c_str()));
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4110,80 +4270,6 @@ static v8::Handle<v8::Value> JS_UnloadVocbaseCol (v8::Arguments const& argv) {
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replaces a document
-///
-/// @FUN{replace(@FA{document-handle}, @FA{document})}
-///
-/// Replaces an existing document. The @FA{document-handle} must point to a
-/// document in the current collection. This document is than replaced with the
-/// value given as second argument and the @FA{document-handle} is returned.
-///
-/// @verbinclude fluent21
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_ReplaceEdgesCol (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  v8::Handle<v8::Object> err;
-  TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
-
-  if (collection == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  TRI_doc_collection_t* doc = collection->_collection;
-
-  if (argv.Length() != 2) {
-    ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("usage: replace(<document-handle>, <document>)")));
-  }
-
-  TRI_voc_cid_t cid = doc->base._cid;
-  TRI_voc_did_t did;
-
-  if (IsDocumentId(argv[0], cid, did)) {
-    if (cid != doc->base._cid) {
-      ReleaseCollection(collection);
-      return scope.Close(v8::ThrowException(v8::String::New("cannot execute cross collection update")));
-    }
-  }
-  else {
-    ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("expecting a document identifier")));
-  }
-
-  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[1], doc->_shaper);
-
-  if (shaped == 0) {
-    ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("<document> cannot be converted into JSON shape")));
-  }
-
-  // .............................................................................
-  // inside a write transaction
-  // .............................................................................
-
-  int res = doc->updateLock(doc, shaped, did, 0, 0, TRI_DOC_UPDATE_LAST_WRITE);
-
-  // .............................................................................
-  // outside a write transaction
-  // .............................................................................
-
-  TRI_FreeShapedJson(shaped);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    string err = "cannot replace document: ";
-    err += TRI_last_error();
-
-    ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New(err.c_str())));
-  }
-
-  ReleaseCollection(collection);
-  return scope.Close(v8::Number::New((double) did));
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a new document
@@ -4475,7 +4561,7 @@ static v8::Handle<v8::Value> JS_CreateVocBase (v8::Arguments const& argv) {
 ///
 /// @FUN{@FA{db}._document(@FA{document-handle})}
 ///
-/// The @FN{document} operator finds a document given it's identifier.  It
+/// The @FN{document} method finds a document given it's identifier.  It
 /// returns the document. Note that the returned docuement contains two
 /// pseudo-attributes, namely @LIT{_id} and @LIT{_rev}.
 ///
@@ -4495,80 +4581,7 @@ static v8::Handle<v8::Value> JS_DocumentVocbase (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
   }
 
-  // first and only argument schould be an document idenfifier
-  if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(
-                         CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                           "usage: document(<document-handle>)")));
-  }
-
-  v8::Handle<v8::Value> arg1 = argv[0];
-  TRI_voc_cid_t cid = 0;
-  TRI_voc_did_t did;
-
-  if (! IsDocumentId(arg1, cid, did)) {
-    return scope.Close(v8::ThrowException(
-                         CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                           "<document-idenifier> must be a document identifier")));
-  }
-
-  // lockup the collection
-  TRI_vocbase_col_t* collection = TRI_LookupCollectionByIdVocBase(vocbase, cid);
-
-  if (collection == 0) {
-    return scope.Close(v8::ThrowException(
-                         CreateErrorObject(TRI_ERROR_AVOCADO_COLLECTION_NOT_FOUND,
-                                           "collection of <document-handle> is unknown")));
-  }
-
-  // use the collection
-  int res = TRI_UseCollectionVocBase(vocbase, collection);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(CreateErrorObject(res, "cannot use/load collection")));
-  }
-
-  if (collection->_collection == 0) {
-    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_INTERNAL, "cannot use/load collection")));
-  }
-
-  // .............................................................................
-  // get document
-  // .............................................................................
-
-  TRI_doc_mptr_t document;
-  v8::Handle<v8::Value> result;
-  
-  // .............................................................................
-  // inside a read transaction
-  // .............................................................................
-
-  collection->_collection->beginRead(collection->_collection);
-  
-  document = collection->_collection->read(collection->_collection, did);  
-
-  if (document._did != 0) {
-    TRI_barrier_t* barrier;
-
-    barrier = TRI_CreateBarrierElement(&collection->_collection->_barrierList);
-    result = TRI_WrapShapedJson(collection, &document, barrier);
-  }
-
-  collection->_collection->endRead(collection->_collection);
-
-  // .............................................................................
-  // outside a write transaction
-  // .............................................................................
-
-  if (document._did == 0) {
-    ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(
-                         CreateErrorObject(TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND,
-                                           "document not found")));
-  }
-  
-  ReleaseCollection(collection);
-  return scope.Close(result);
+  return DocumentVocbaseCol(vocbase, 0, argv);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5169,6 +5182,10 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
     v8g->FromKey = v8::Persistent<v8::String>::New(v8::String::New("_from"));
   }
 
+  if (v8g->OldRevKey.IsEmpty()) {
+    v8g->OldRevKey = v8::Persistent<v8::String>::New(v8::String::New("_oldRev"));
+  }
+
   if (v8g->RevKey.IsEmpty()) {
     v8g->RevKey = v8::Persistent<v8::String>::New(v8::String::New("_rev"));
   }
@@ -5325,8 +5342,8 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
   rt->Set(EnsureHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureHashIndexVocbaseCol));
   rt->Set(EnsureSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureSkiplistVocbaseCol));
-  rt->Set(EnsureUniqueSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueSkiplistVocbaseCol));
   rt->Set(EnsureUniqueConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueConstraintVocbaseCol));
+  rt->Set(EnsureUniqueSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueSkiplistVocbaseCol));
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
   rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));
@@ -5334,11 +5351,11 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
   rt->Set(ParameterFuncName, v8::FunctionTemplate::New(JS_ParameterVocbaseCol));
   rt->Set(RenameFuncName, v8::FunctionTemplate::New(JS_RenameVocbaseCol));
+  rt->Set(ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbaseCol));
   rt->Set(StatusFuncName, v8::FunctionTemplate::New(JS_StatusVocbaseCol));
   rt->Set(UnloadFuncName, v8::FunctionTemplate::New(JS_UnloadVocbaseCol));
   rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
 
-  rt->Set(ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceEdgesCol));
   rt->Set(SaveFuncName, v8::FunctionTemplate::New(JS_SaveEdgesCol));
 
   rt->Set(EdgesFuncName, v8::FunctionTemplate::New(JS_EdgesQuery));
