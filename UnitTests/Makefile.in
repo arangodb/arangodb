@@ -256,6 +256,7 @@ top_srcdir = @top_srcdir@
 SUBDIRS = .
 PID := $(shell echo $$PPID)
 TMP_DIR := "/tmp/avocadodb.$(PID)"
+PID_FILE := "/tmp//avocadodb.$(PID).pid"
 all: all-recursive
 
 .SUFFIXES:
