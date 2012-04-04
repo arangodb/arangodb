@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <BasicsC/logging.h>
+#include <BasicsC/json.h>
 
 #include "VocBase/query-data-feeder.h"
 #include "VocBase/query-join.h"
@@ -300,7 +301,7 @@ static void InitFeederPrimaryLookup (TRI_data_feeder_t* feeder) {
 
   range = (QL_optimize_range_t*) feeder->_ranges->_buffer[0];
 
-  if (range->_valueType == RANGE_TYPE_FIELD) {
+  if (range->_valueType == RANGE_TYPE_REF) {
     // ref access
     feeder->_accessType = ACCESS_REF;
 
@@ -537,7 +538,7 @@ static void InitFeederHashLookup (TRI_data_feeder_t* feeder) {
   assert(feeder->_ranges->_length >= 1);
   
   range = (QL_optimize_range_t*) feeder->_ranges->_buffer[0];
-  if (range->_valueType == RANGE_TYPE_FIELD) {
+  if (range->_valueType == RANGE_TYPE_REF) {
     // ref access
     feeder->_accessType = ACCESS_REF; 
     buffer = TRI_CreateStringBuffer();
@@ -773,47 +774,18 @@ static void FreeSkiplistElements (SkiplistIndexElements* elements) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a skiplist single-value operator
+/// @brief copy a JSON parameter list
 ////////////////////////////////////////////////////////////////////////////////
-      
-static TRI_sl_operator_t* CreateSkipListValueOperator (const TRI_sl_operator_type_e type,
-                                                       const QL_optimize_range_t* const range,
-                                                       const bool useMax) {
-  TRI_sl_operator_t* operator;
-  
-  TRI_json_t* parameters = TRI_CreateListJson();
-  if (!parameters) {
+
+static TRI_json_t* CopyParameters (const TRI_json_t* const src) {
+  TRI_json_t* dst = TRI_CreateListJson();
+  if (!dst) {
     return NULL;
   }
 
-  if (range->_valueType == RANGE_TYPE_STRING) {
-    if (useMax) {
-      TRI_PushBack2ListJson(parameters, TRI_CreateStringCopyJson(range->_maxValue._stringValue));
-    }
-    else {
-      TRI_PushBack2ListJson(parameters, TRI_CreateStringCopyJson(range->_minValue._stringValue));
-    }
-  }
-  else if (range->_valueType == RANGE_TYPE_DOUBLE) {
-    if (useMax) {
-      TRI_PushBack2ListJson(parameters, TRI_CreateNumberJson(range->_maxValue._doubleValue));
-    }
-    else {
-      TRI_PushBack2ListJson(parameters, TRI_CreateNumberJson(range->_minValue._doubleValue));
-    }
-  }
-  else if (range->_valueType == RANGE_TYPE_JSON) {
-    TRI_json_t* doc = TRI_JsonString(range->_minValue._stringValue);
-    if (!doc) {
-      TRI_FreeJson(parameters);
-      return NULL;
-    }
-    TRI_PushBackListJson(parameters, doc);
-  }
+  TRI_CopyToJson(dst, src);
 
-  operator = CreateSLOperator(type, NULL, NULL, parameters, NULL, 1, NULL);
-
-  return operator;
+  return dst;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -821,49 +793,108 @@ static TRI_sl_operator_t* CreateSkipListValueOperator (const TRI_sl_operator_typ
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_sl_operator_t* CreateSkipListOperation (TRI_data_feeder_t* feeder) {
+  TRI_json_t* parameters = NULL;
   TRI_sl_operator_t* lastOp = NULL;
+  size_t n = feeder->_ranges->_length;
   size_t i;
-
-  for (i = 0; i < feeder->_ranges->_length; i++) {
+  
+  for (i = 0; i < n; ++i) {
     TRI_sl_operator_t* op = NULL;
-    QL_optimize_range_t* range;
+    QL_optimize_range_t* range = (QL_optimize_range_t*) feeder->_ranges->_buffer[i];
+    QL_optimize_range_compare_type_e compareType = QLGetCompareTypeRange(range);
+   
+    if (parameters == NULL) {
+      // init list
+      parameters = TRI_CreateListJson();
+    }
+    else {
+      // copy previous list
+      TRI_json_t* temp = CopyParameters(parameters);
 
-    range = (QL_optimize_range_t*) feeder->_ranges->_buffer[i];
+      // TODO FIXME: do something if temp is NULL
+      parameters = temp;
+    }
 
-    if (range->_minStatus == RANGE_VALUE_INFINITE &&
-        range->_maxStatus == RANGE_VALUE_INCLUDED) {
-      // oo .. x| 
-      op = CreateSkipListValueOperator(TRI_SL_LE_OPERATOR, range, true);
-    } 
-    else if (range->_minStatus == RANGE_VALUE_INFINITE && 
-             range->_maxStatus == RANGE_VALUE_EXCLUDED) {
-      // oo .. |x
-      op = CreateSkipListValueOperator(TRI_SL_LT_OPERATOR, range, true);
+    if (!parameters) {
+      // TODO FIXME: free all operators and parameter lists created
+      return NULL;
     }
-    else if (range->_minStatus == RANGE_VALUE_INCLUDED &&
-             range->_maxStatus == RANGE_VALUE_INFINITE) {
-      // |x .. oo
-      op = CreateSkipListValueOperator(TRI_SL_GE_OPERATOR, range, false);
-    }
-    else if (range->_minStatus == RANGE_VALUE_EXCLUDED &&
-             range->_maxStatus == RANGE_VALUE_INFINITE) {
-      // x| .. oo
-      op = CreateSkipListValueOperator(TRI_SL_GT_OPERATOR, range, false);
-    }
-    else if (range->_minStatus == RANGE_VALUE_INCLUDED &&
-             range->_maxStatus == RANGE_VALUE_INCLUDED) {
-      // x
-      if ((range->_valueType == RANGE_TYPE_DOUBLE && range->_minValue._doubleValue == range->_maxValue._doubleValue) ||
-          (range->_valueType == RANGE_TYPE_STRING && strcmp(range->_minValue._stringValue, range->_maxValue._stringValue) == 0) ||
-          (range->_valueType == RANGE_TYPE_JSON)) {
-          op = CreateSkipListValueOperator(TRI_SL_EQ_OPERATOR, range, true);
+  
+    switch (compareType) {
+      case COMPARE_TYPE_LE: {
+        // oo .. x| 
+        QLOptimizeToJsonListRange(parameters, range, true);
+        op = CreateSLOperator(TRI_SL_LE_OPERATOR, NULL, NULL, parameters, NULL, 1, NULL);
+        break;
+      } 
+
+      case COMPARE_TYPE_LT: {
+        // oo .. |x
+        QLOptimizeToJsonListRange(parameters, range, true);
+        op = CreateSLOperator(TRI_SL_LT_OPERATOR, NULL, NULL, parameters, NULL, 1, NULL);
+        break;
       }
+
+      case COMPARE_TYPE_GE: {
+        // |x .. oo
+        QLOptimizeToJsonListRange(parameters, range, false);
+        op = CreateSLOperator(TRI_SL_GE_OPERATOR, NULL, NULL, parameters, NULL, 1, NULL);
+        break;
+      }
+
+      case COMPARE_TYPE_GT: {
+        // x| .. oo
+        QLOptimizeToJsonListRange(parameters, range, false);
+        op = CreateSLOperator(TRI_SL_GT_OPERATOR, NULL, NULL, parameters, NULL, 1, NULL);
+        break;
+      }
+
+      case COMPARE_TYPE_EQ: {
+        // x
+        QLOptimizeToJsonListRange(parameters, range, true);
+        op = CreateSLOperator(TRI_SL_EQ_OPERATOR, NULL, NULL, parameters, NULL, 1, NULL);
+        break;
+      }
+
+      case COMPARE_TYPE_BETWEEN: {
+        TRI_json_t* temp = CopyParameters(parameters);
+        TRI_sl_operator_t* op1 = NULL;
+        TRI_sl_operator_t* op2 = NULL;
+
+        // lower bound operator
+        QLOptimizeToJsonListRange(parameters, range, false);
+        if (range->_minStatus == RANGE_VALUE_INCLUDED) {
+          // >= 
+          op1 = CreateSLOperator(TRI_SL_GE_OPERATOR, NULL, NULL, parameters, NULL, 1, NULL);
+        } 
+        else {
+          // >
+          op1 = CreateSLOperator(TRI_SL_GT_OPERATOR, NULL, NULL, parameters, NULL, 1, NULL);
+        }
+        
+        // upper bound operator
+        QLOptimizeToJsonListRange(temp, range, true);
+        if (range->_maxStatus == RANGE_VALUE_INCLUDED) {
+          // <=
+          op2 = CreateSLOperator(TRI_SL_LE_OPERATOR, NULL, NULL, temp, NULL, 1, NULL);
+        } 
+        else {
+          // <
+          op2 = CreateSLOperator(TRI_SL_LT_OPERATOR, NULL, NULL, temp, NULL, 1, NULL);
+        }
+
+        op = CreateSLOperator(TRI_SL_AND_OPERATOR, op1, op2, NULL, NULL, 2, NULL);
+        break;
+      }
+
+      default:
+        break;
     }
 
     if (op == NULL) {
       continue;
     }
-
+  
     if (lastOp != NULL) {
       lastOp = CreateSLOperator(TRI_SL_AND_OPERATOR, op, lastOp, NULL, NULL, 2, NULL);
     }
@@ -898,12 +929,13 @@ static void InitFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
   assert(feeder->_ranges->_length >= 1);
   
   range = (QL_optimize_range_t*) feeder->_ranges->_buffer[0];
-  if (range->_valueType == RANGE_TYPE_FIELD) {
+  if (range->_valueType == RANGE_TYPE_REF) {
     TRI_string_buffer_t* buffer;
     size_t i;
 
     // ref access
     feeder->_accessType = ACCESS_REF; 
+
     buffer = TRI_CreateStringBuffer();
     if (!buffer) {
       return;
@@ -930,15 +962,13 @@ static void InitFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
     }
   }
   else {
-    TRI_sl_operator_t* skipListOperation;
-
     // const access
-    feeder->_accessType = ACCESS_CONST;
-
-    skipListOperation = CreateSkipListOperation(feeder);
+    TRI_sl_operator_t* skipListOperation = CreateSkipListOperation(feeder);
     if (!skipListOperation) {
       return;
     }
+    
+    feeder->_accessType = ACCESS_CONST;
     state->_skiplistIterator = TRI_LookupSkiplistIndex(state->_index, skipListOperation); 
   }
 

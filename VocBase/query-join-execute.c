@@ -222,13 +222,15 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
   TRI_data_feeder_t* feeder = NULL;
   size_t i;
 
+  assert(part);
+  assert(part->_alias);
   assert(!part->_geoRestriction);
 
   if (part->_ranges) {
     TRI_vector_pointer_t matches;
     size_t indexLength = 0;
     size_t numFieldsDefined;
-    size_t numFields;
+    size_t numRefs;
     size_t numConsts;
 
     TRI_InitVectorPointer(&matches);
@@ -244,26 +246,24 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
 
     // enum all indexes
     for (i = 0;  i < indexes->_length;  i++) {
-      TRI_index_t* idx;
+      TRI_index_t* idx = (TRI_index_t*) indexes->_buffer[i];
+      QL_optimize_range_compare_type_e lastCompareType = COMPARE_TYPE_UNKNOWN;
       size_t j;
-
-      idx = (TRI_index_t*) indexes->_buffer[i];
 
       if (idx->_type == TRI_IDX_TYPE_GEO_INDEX) {
         // ignore all geo indexes here
         continue;
       }
+      
+      numFieldsDefined = idx->_fields._length;
 
       // reset compare state
+      numRefs = 0;
+      numConsts = 0;
       if (matches._length) {
         TRI_DestroyVectorPointer(&matches);
         TRI_InitVectorPointer(&matches);
       }
-
-      numFields = 0;
-      numConsts = 0;
-
-      numFieldsDefined = idx->_fields._length;
 
       for (j = 0;  j < numFieldsDefined;  j++) {
         size_t k;
@@ -271,17 +271,13 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
         // enumerate all fields from the index definition and 
         // check all ranges we found for the collection
         for (k = 0; k < part->_ranges->_length; k++) {
-          QL_optimize_range_t* range;
-
-          range = (QL_optimize_range_t*) part->_ranges->_buffer[k];
+          QL_optimize_range_t* range = (QL_optimize_range_t*) part->_ranges->_buffer[k];
 
           if (!range) {
             continue;
           }
 
-          assert(range);
           assert(range->_collection);
-          assert(part->_alias);
 
           // check if collection name matches
           if (! TRI_EqualString(range->_collection, part->_alias)) {
@@ -292,44 +288,64 @@ static TRI_data_feeder_t* DetermineIndexUsage (TRI_query_instance_t* const insta
           if (! TRI_EqualString(idx->_fields._buffer[j], range->_field)) {
             continue;
           }
-
-          if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX ||
-              idx->_type == TRI_IDX_TYPE_HASH_INDEX) {
-            // check if index can be used
-            // (primary and hash index only support equality comparisons)
-            if (range->_minStatus == RANGE_VALUE_INFINITE || 
-                range->_maxStatus == RANGE_VALUE_INFINITE) {
-              // if this is an unbounded range comparison, continue
-              continue;
-            }
-            if (range->_valueType == RANGE_TYPE_DOUBLE && 
-                range->_minValue._doubleValue != range->_maxValue._doubleValue) {
-              // if min double value != max value, continue
-              continue; 
-            }
-            if ((range->_valueType == RANGE_TYPE_STRING || 
-                 range->_valueType == RANGE_TYPE_JSON) && 
-                strcmp(range->_minValue._stringValue, 
-                       range->_maxValue._stringValue) != 0) {
-              // if min string value != max value, continue
-              continue; 
-            }
-          }
-
-          if ((range->_valueType == RANGE_TYPE_FIELD && numConsts > 0) ||
-              (range->_valueType != RANGE_TYPE_FIELD && numFields > 0)) {
+          
+          // check whether we'll be mixing const and ref access
+          if ((range->_valueType == RANGE_TYPE_REF && numConsts > 0) ||
+              (range->_valueType != RANGE_TYPE_REF && numRefs > 0)) {
             // cannot mix ref access and const access
             continue;
           }
+          
+          // primary and hash index only support equality comparisons
+          if ((idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX ||
+               idx->_type == TRI_IDX_TYPE_HASH_INDEX) && 
+              !QLIsEqualRange(range)) {
+            // this is not an equality comparison, continue
+            continue;
+          }
 
-          if (range->_valueType == RANGE_TYPE_FIELD) {
+          if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+            QL_optimize_range_compare_type_e compareType = QLGetCompareTypeRange(range);
+
+            if (lastCompareType == COMPARE_TYPE_UNKNOWN) {
+              if (compareType != COMPARE_TYPE_EQ && 
+                  compareType != COMPARE_TYPE_LT &&
+                  compareType != COMPARE_TYPE_GT &&
+                  compareType != COMPARE_TYPE_LE &&
+                  compareType != COMPARE_TYPE_GE &&
+                  compareType != COMPARE_TYPE_BETWEEN) {
+                // unsupported initial compare type for skiplist index
+                continue;
+              }
+            }
+            else if (lastCompareType == COMPARE_TYPE_EQ) {
+              if (compareType != COMPARE_TYPE_EQ && 
+                  compareType != COMPARE_TYPE_LT &&
+                  compareType != COMPARE_TYPE_GT &&
+                  compareType != COMPARE_TYPE_LE &&
+                  compareType != COMPARE_TYPE_GE &&
+                  compareType != COMPARE_TYPE_BETWEEN) {
+                // unsupported continued compare type for skiplist index
+                continue;
+              }
+            }
+            else {
+              // unsupported continued compare type for skiplist index
+              continue;
+            }
+
+            lastCompareType = compareType;
+          }
+
+          if (range->_valueType == RANGE_TYPE_REF) {
             // we found a reference
-            numFields++;
+            numRefs++;
           }
           else {
             // we found a constant
             numConsts++;
           }
+
 
           // push this candidate onto the stack
           TRI_PushBackVectorPointer(&matches, range);
