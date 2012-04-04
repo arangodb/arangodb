@@ -28,7 +28,7 @@
 var jsUnity = require("jsunity").jsUnity;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            db.collection.document
+// --SECTION--                                                collection methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -43,9 +43,13 @@ function readCollectionDocumentSuiteErrorHandling () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function testErrorHandlingBadHandle () {
-    assertException(function() {
-                      db[cn].document("123456");
-                    });
+    try {
+      db[cn].document("123456");
+      fail();
+    }
+    catch (err) {
+      assertEqual(1205, err.errorNum);
+    }
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,9 +57,13 @@ function readCollectionDocumentSuiteErrorHandling () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function testErrorHandlingUnknownDocument () {
-    assertException(function() {
-                      db[cn].document(db[cn]._id + "/123456");
-                    });
+    try {
+      db[cn].document(db[cn]._id + "/123456");
+      fail();
+    }
+    catch (err) {
+      assertEqual(1202, err.errorNum);
+    }
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,14 +71,18 @@ function readCollectionDocumentSuiteErrorHandling () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function testErrorHandlingCrossCollection () {
-    assertException(function() {
-                      db[cn].document("123456/123456");
-                    });
+    try {
+      db[cn].document("123456/123456");
+      fail();
+    }
+    catch (err) {
+      assertEqual(1213, err.errorNum);
+    }
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: reading
+/// @brief test suite: normal operations
 ////////////////////////////////////////////////////////////////////////////////
 
 function readCollectionDocumentSuiteReadDocument () {
@@ -97,23 +109,74 @@ function readCollectionDocumentSuiteReadDocument () {
   }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a document
+////////////////////////////////////////////////////////////////////////////////
+
+  function testSaveDocument () {
+    var doc = this.collection.save({ "Hallo" : "World" });
+
+    assertTypeOf("string", doc._id);
+    assertTypeOf("number", doc._rev);
+  }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief read a document
 ////////////////////////////////////////////////////////////////////////////////
 
   function testReadDocument () {
-    var id = this.collection.save({ "Hallo" : "World" });
+    var id = this.collection.save({ "Hallo" : "World" })._id;
 
     var doc = this.collection.document(id);
 
     assertEqual(id, doc._id);
     assertTypeOf("number", doc._rev);
+  }
 
-    assertEqual(1, this.collection.count());
+////////////////////////////////////////////////////////////////////////////////
+/// @brief udpate a document
+////////////////////////////////////////////////////////////////////////////////
+
+  function testUpdateDocument () {
+    var a1 = this.collection.save({ a : 1});
+
+    assertTypeOf("string", a1._id);
+    assertTypeOf("number", a1._rev);
+
+    var a2 = this.collection.replace(a1, { a : 2 });
+
+    assertEqual(a1._id, a2._id);
+    assertNotEqual(a1._rev, a2._rev);
+
+    try {
+      this.collection.replace(a1, { a : 3 });
+      fail();
+    }
+    catch (err) {
+      assertEqual(1200, err.errorNum);
+    }
+
+    var doc2 = this.collection.document(a1._id);
+
+    assertEqual(a1._id, doc2._id);
+    assertEqual(a2._rev, doc2._rev);
+    assertEqual(2, doc2.a);
+
+    var a4 = this.collection.replace(a2, { a : 4 }, true);
+
+    assertEqual(a1._id, a4._id);
+    assertNotEqual(a1._rev, a4._rev);
+    assertNotEqual(a2._rev, a4._rev);
+
+    var doc4 = this.collection.document(a1._id);
+
+    assertEqual(a1._id, doc4._id);
+    assertEqual(a4._rev, doc4._rev);
+    assertEqual(4, doc4.a);
   }
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      db._document
+// --SECTION--                                                   vocbase methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,9 +191,13 @@ function readDocumentSuiteErrorHandling () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function testErrorHandlingBadHandle () {
-    assertException(function() {
-                      db._document("123456");
-                    });
+    try {
+      db._document("123456");
+      fail();
+    }
+    catch (err) {
+      assertEqual(1205, err.errorNum);
+    }
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -138,13 +205,18 @@ function readDocumentSuiteErrorHandling () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function testErrorHandlingUnknownDocument () {
-    assertException(function() {
-                      db_.document(db[cn]._id + "/123456");
-                    });
+    try {
+      db._document(db[cn]._id + "/123456");
+      fail();
+    }
+    catch (err) {
+      assertEqual(1202, err.errorNum);
+    }
   }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: reading
+/// @brief test suite: normal operations
 ////////////////////////////////////////////////////////////////////////////////
 
 function readDocumentSuiteReadDocument () {
@@ -175,14 +247,56 @@ function readDocumentSuiteReadDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function testReadDocument () {
-    var id = this.collection.save({ "Hallo" : "World" });
+    var id = this.collection.save({ "Hallo" : "World" })._id;
 
-    var doc = this_.document(id);
+    var doc = db._document(id);
 
     assertEqual(id, doc._id);
     assertTypeOf("number", doc._rev);
 
     assertEqual(1, this.collection.count());
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief udpate a document
+////////////////////////////////////////////////////////////////////////////////
+
+  function testUpdateDocument () {
+    var a1 = this.collection.save({ a : 1});
+
+    assertTypeOf("string", a1._id);
+    assertTypeOf("number", a1._rev);
+
+    var a2 = db._replace(a1, { a : 2 });
+
+    assertEqual(a1._id, a2._id);
+    assertNotEqual(a1._rev, a2._rev);
+
+    try {
+      db._replace(a1, { a : 3 });
+      fail();
+    }
+    catch (err) {
+      assertEqual(1200, err.errorNum);
+    }
+
+    var doc2 = db._document(a1._id);
+
+    assertEqual(a1._id, doc2._id);
+    assertEqual(a2._rev, doc2._rev);
+    assertEqual(2, doc2.a);
+
+    var a4 = db._replace(a2, { a : 4 }, true);
+
+    assertEqual(a1._id, a4._id);
+    assertNotEqual(a1._rev, a4._rev);
+    assertNotEqual(a2._rev, a4._rev);
+
+    var doc4 = db._document(a1._id);
+
+    assertEqual(a1._id, doc4._id);
+    assertEqual(a4._rev, doc4._rev);
+    assertEqual(4, doc4.a);
   }
 }
 
@@ -196,6 +310,9 @@ function readDocumentSuiteReadDocument () {
 
 jsUnity.run(readCollectionDocumentSuiteErrorHandling);
 jsUnity.run(readCollectionDocumentSuiteReadDocument);
+
+jsUnity.run(readDocumentSuiteErrorHandling);
+jsUnity.run(readDocumentSuiteReadDocument);
 
 // Local Variables:
 // mode: outline-minor
