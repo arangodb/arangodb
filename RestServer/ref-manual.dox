@@ -47,6 +47,7 @@
 ///  <li>@ref OTWP
 ///   <ol>
 ///      <li>@ref RestDocument</li>
+///      <li>@ref RestEdge</li>
 ///      <li>@ref HttpCollection</li>
 ///      <li>@ref HttpIndex</li>
 ///   </ol>

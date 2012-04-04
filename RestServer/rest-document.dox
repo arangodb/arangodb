@@ -47,7 +47,6 @@
 ///  <li>@ref RestDocumentDelete "DELETE /document/@FA{document-handle}"</li>
 ///  <li>@ref RestDocumentHead "HEAD /document/@FA{document-handle}"</li>
 ///  <li>@ref RestDocumentReadAll "GET /document?collection=@FA{collection-identifier}"</li>
-///  <li>@ref RestEdgeCreate "POST /edge?collection=@FA{collection-identifier}&from=@FA{from-handle}&to=@FA{to-handle}"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -140,10 +139,6 @@
 ///
 /// @anchor RestDocumentReadAll
 /// @copydetails triagens::avocado::RestDocumentHandler::readAllDocuments
-/// <hr>
-///
-/// @anchor RestEdgeCreate
-/// @copydetails triagens::avocado::RestEdgeHandler::createDocument
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

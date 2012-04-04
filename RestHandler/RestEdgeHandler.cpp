@@ -68,9 +68,9 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a document
+/// @brief creates an edge
 ///
-/// @REST{POST /document?collection=@FA{collection-identifier}&from=@FA{from-handle}&to=@FA{to-handle}}
+/// @REST{POST /edge?collection=@FA{collection-identifier}&from=@FA{from-handle}&to=@FA{to-handle}}
 ///
 /// Creates a new edge in the collection identified by the
 /// @FA{collection-identifier}.  A JSON representation of the document must be
@@ -78,7 +78,8 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
 /// must be passed in @FA{from-handle}. The object handle of the end point must
 /// be passed in @FA{to-handle}.
 ///
-/// In all other respects the method works like @LIT{POST /document}.
+/// In all other respects the method works like @LIT{POST /document}, see
+/// @ref RestDocument for details.
 ///
 /// If you request such an edge, the returned document will also contain the
 /// attributes @LIT{_from} and @LIT{_to}.

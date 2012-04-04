@@ -331,6 +331,7 @@ WIKI = \
 	RefManual.md \
 	RestCursor.md \
 	RestDocument.md \
+	RestEdge.md \
 	RestSystem.md \
 	SimpleQueries.md \
 	UserManualServer.md \
