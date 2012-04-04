@@ -38,6 +38,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @page ShellDocumentCallsTOC
+///
+/// <ol>
+///  <li>@ref ShellDocumentRead "@FA{collection}.document(@FA{document-handle}"</li>
+///  <li>@ref ShellDocumentDbRead "@FA{db}._document(@FA{document-handle}"</li>
+///  <li>@ref ShellDocumentCreate "POST /document?collection=@FA{collection-identifier}"</li>
+///  <li>@ref ShellDocumentUpdate "PUT /document/@FA{document-handle}"</li>
+///  <li>@ref ShellDocumentDelete "DELETE /document/@FA{document-handle}"</li>
+///  <li>@ref ShellDocumentHead "HEAD /document/@FA{document-handle}"</li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @page ShellDocument AvocadoDB Interface for Documents
 ///
 /// This is an introduction to AvocadoDB's interface for documents.
@@ -93,11 +106,15 @@
 /// Each document also has a document revision or etag with is returned
 /// in the @LIT{_rev} field when requesting a document.
 ///
-/// @section ShellDocumentHttp Working with Documents using REST
-///////////////////////////////////////////////////////////////
+/// @section ShellDocumentHttp Working with Documents
+/////////////////////////////////////////////////////
 ///
 /// @anchor ShellDocumentRead
-/// @copydetails triagens::avocado::ShellDocumentHandler::readSingleDocument
+/// @copydetails JS_DocumentVocbaseCol
+/// <hr>
+///
+/// @anchor ShellDocumentDbRead
+/// @copydetails JS_DocumentVocbase
 /// <hr>
 ///
 /// @anchor ShellDocumentCreate

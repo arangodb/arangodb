@@ -44,6 +44,11 @@
 ///  <li>@ref Indexes
 ///   @copydetails IndexesTOC
 ///  </li>
+///  <li>Shell Commands
+///   <ol>
+///      <li>@ref ShellDocument</li>
+///   </ol>
+///  </li>
 ///  <li>@ref OTWP
 ///   <ol>
 ///      <li>@ref RestDocument</li>
