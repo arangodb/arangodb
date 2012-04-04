@@ -141,7 +141,7 @@ namespace triagens {
       /// @brief returns the content length
       ////////////////////////////////////////////////////////////////////////////////
 
-      int getContenLength () {
+      size_t getContentLength () {
         return _contentLength;
       }
 
@@ -149,7 +149,7 @@ namespace triagens {
       /// @brief sets the content length
       ////////////////////////////////////////////////////////////////////////////////
 
-      void setContenLength (int len) {
+      void setContentLength (size_t len) {
         _contentLength = len;
       }
 
@@ -244,7 +244,7 @@ namespace triagens {
 
       // header informtion
       int _returnCode;
-      int _contentLength;
+      size_t _contentLength;
       bool _chunked;
 
       // body content
