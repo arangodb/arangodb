@@ -1218,8 +1218,9 @@ static v8::Handle<v8::Value> JS_DocumentVocbaseCol (v8::Arguments const& argv) {
   // first and only argument schould be an document idenfifier
   if (argv.Length() != 1) {
     ReleaseCollection(collection);
-    return scope.Close(CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                         "usage: document(<document-identifier>)"));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                           "usage: document(<document-identifier>)")));
   }
 
   v8::Handle<v8::Value> arg1 = argv[0];
@@ -1228,14 +1229,16 @@ static v8::Handle<v8::Value> JS_DocumentVocbaseCol (v8::Arguments const& argv) {
 
   if (! IsDocumentId(arg1, cid, did)) {
     ReleaseCollection(collection);
-    return scope.Close(CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                         "<document-idenifier> must be a document identifier"));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                           "<document-idenifier> must be a document identifier")));
   }
 
   if (cid != collection->_collection->base._cid) {
     ReleaseCollection(collection);
-    return scope.Close(CreateErrorObject(TRI_ERROR_AVOCADO_CROSS_COLLECTION_REQUEST,
-                                         "cannot execute cross collection query"));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_AVOCADO_CROSS_COLLECTION_REQUEST,
+                                           "cannot execute cross collection query")));
   }
 
   // .............................................................................
@@ -1268,8 +1271,9 @@ static v8::Handle<v8::Value> JS_DocumentVocbaseCol (v8::Arguments const& argv) {
 
   if (document._did == 0) {
     ReleaseCollection(collection);
-    return scope.Close(CreateErrorObject(TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND,
-                                         "document not found"));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND,
+                                           "document not found")));
   }
   
   ReleaseCollection(collection);
