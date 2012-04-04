@@ -217,6 +217,7 @@ static TRI_shape_pid_t FindNameAttributePath (TRI_shaper_t* shaper, char const* 
   // split path into attribute pieces
   count = 0;
   aids = TRI_Allocate(len * sizeof(TRI_shape_aid_t));
+  /* TODO FIXME: memory allocation might fail */
 
   buffer = ptr = TRI_DuplicateString2(name, len);
   end = buffer + len + 1;
@@ -239,6 +240,7 @@ static TRI_shape_pid_t FindNameAttributePath (TRI_shaper_t* shaper, char const* 
   // create element
   total = sizeof(TRI_shape_path_t) + (len + 1) + (count * sizeof(TRI_shape_aid_t));
   result = TRI_Allocate(total);
+  /* TODO FIXME: memory allocation might fail */
 
   result->_pid = shaper->_nextPid++;
   result->_nameLength = len + 1;
@@ -331,6 +333,7 @@ static TRI_shape_aid_t FindAttributeNameArrayShaper (TRI_shaper_t* shaper, char 
 
     n = strlen(name) + 1;
     a2i = TRI_Allocate(sizeof(attribute_2_id_t) + n);
+    /* TODO FIXME: memory allocation might fail */
 
     a2i->_aid = 1 + s->_attributes._length;
     a2i->_size = n;
@@ -479,6 +482,7 @@ TRI_shaper_t* TRI_CreateArrayShaper () {
 
   // create the shaper
   shaper = TRI_Allocate(sizeof(array_shaper_t));
+  /* TODO FIXME: memory allocation might fail */
 
   TRI_InitShaper(&shaper->base);
 
@@ -640,6 +644,19 @@ void TRI_InitShaper (TRI_shaper_t* shaper) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyShaper (TRI_shaper_t* shaper) {
+  size_t n = shaper->_attributePathsByName._nrAlloc;
+  size_t i;
+
+  // only free pointers in attributePathsByName
+  // (attributePathsByPid contains the same pointers!)
+  for (i = 0; i < n; ++i) {
+    void* data = shaper->_attributePathsByName._table[i];
+
+    if (data) {
+      TRI_Free(data);
+    }
+  }
+
   TRI_DestroyAssociativeSynced(&shaper->_attributePathsByName);
   TRI_DestroyAssociativeSynced(&shaper->_attributePathsByPid);
 
@@ -656,6 +673,7 @@ bool TRI_InsertBasicTypesShaper (TRI_shaper_t* shaper) {
 
   // NULL
   shape = TRI_Allocate(sizeof(TRI_null_shape_t));
+  /* TODO FIXME: memory allocation might fail */
   memset(shape, 0, sizeof(TRI_null_shape_t));
 
   shape->_size = sizeof(TRI_null_shape_t);
@@ -672,6 +690,7 @@ bool TRI_InsertBasicTypesShaper (TRI_shaper_t* shaper) {
 
   // BOOLEAN
   shape = TRI_Allocate(sizeof(TRI_boolean_shape_t));
+  /* TODO FIXME: memory allocation might fail */
   memset(shape, 0, sizeof(TRI_boolean_shape_t));
 
   shape->_size = sizeof(TRI_boolean_shape_t);
@@ -688,6 +707,7 @@ bool TRI_InsertBasicTypesShaper (TRI_shaper_t* shaper) {
 
   // NUMBER
   shape = TRI_Allocate(sizeof(TRI_number_shape_t));
+  /* TODO FIXME: memory allocation might fail */
   memset(shape, 0, sizeof(TRI_number_shape_t));
 
   shape->_size = sizeof(TRI_number_shape_t);
@@ -704,6 +724,7 @@ bool TRI_InsertBasicTypesShaper (TRI_shaper_t* shaper) {
 
   // SHORT STRING
   shape = TRI_Allocate(sizeof(TRI_short_string_shape_t));
+  /* TODO FIXME: memory allocation might fail */
   memset(shape, 0, sizeof(TRI_short_string_shape_t));
 
   shape->_size = sizeof(TRI_short_string_shape_t);
@@ -720,6 +741,7 @@ bool TRI_InsertBasicTypesShaper (TRI_shaper_t* shaper) {
 
   // LONG STRING
   shape = TRI_Allocate(sizeof(TRI_long_string_shape_t));
+  /* TODO FIXME: memory allocation might fail */
   memset(shape, 0, sizeof(TRI_long_string_shape_t));
 
   shape->_size = sizeof(TRI_long_string_shape_t);
@@ -736,6 +758,7 @@ bool TRI_InsertBasicTypesShaper (TRI_shaper_t* shaper) {
 
   // LIST
   shape = TRI_Allocate(sizeof(TRI_list_shape_t));
+  /* TODO FIXME: memory allocation might fail */
   memset(shape, 0, sizeof(TRI_list_shape_t));
 
   shape->_size = sizeof(TRI_list_shape_t);

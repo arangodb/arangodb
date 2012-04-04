@@ -52,6 +52,38 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief free an index
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeIndex (TRI_index_t* const idx) {
+  assert(idx);
+
+  LOG_TRACE("freeing index");
+
+  switch (idx->_type) {
+    case TRI_IDX_TYPE_GEO_INDEX:
+      TRI_FreeGeoIndex(idx);
+      break;
+
+    case TRI_IDX_TYPE_HASH_INDEX:
+      TRI_FreeHashIndex(idx);
+      break;
+
+    case TRI_IDX_TYPE_SKIPLIST_INDEX:
+      TRI_FreeSkiplistIndex(idx);
+      break;
+
+    case TRI_IDX_TYPE_PRIMARY_INDEX:
+      TRI_FreePrimaryIndex(idx);
+      break;
+
+    default: 
+      // no action necessary
+      break;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an index file
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -194,6 +226,38 @@ char const* TRI_TypeNameIndex (const TRI_index_t* const idx) {
   }
 
   return "unknown";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     PRIMARY INDEX
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys a primary index, but does not free the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyPrimaryIndex (TRI_index_t* idx) {
+  LOG_TRACE("destroying primary index");
+
+  TRI_DestroyVectorString(&idx->_fields);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys a primary index and frees the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreePrimaryIndex (TRI_index_t* idx) {
+  TRI_DestroyPrimaryIndex(idx);
+  TRI_Free(idx); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -684,9 +748,9 @@ static TRI_json_t* JsonGeoIndex2 (TRI_index_t* idx, TRI_doc_collection_t const* 
   TRI_PushBack3ListJson(fields, TRI_CreateStringCopyJson(latitude));
   TRI_PushBack3ListJson(fields, TRI_CreateStringCopyJson(longitude));
 
-  TRI_Insert2ArrayJson(json, "id", TRI_CreateNumberJson(idx->_iid));
-  TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("geo"));
-  TRI_Insert2ArrayJson(json, "fields", fields);
+  TRI_Insert3ArrayJson(json, "id", TRI_CreateNumberJson(idx->_iid));
+  TRI_Insert3ArrayJson(json, "type", TRI_CreateStringCopyJson("geo"));
+  TRI_Insert3ArrayJson(json, "fields", fields);
 
   return json;
 }
@@ -716,9 +780,14 @@ TRI_index_t* TRI_CreateGeoIndex (struct TRI_doc_collection_s* collection,
   char* ln;
 
   geo = TRI_Allocate(sizeof(TRI_geo_index_t));
-  ln = TRI_DuplicateString(locationName);
+  if (geo == NULL) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    return NULL;
+  }
 
-  if (geo == NULL || ln == NULL) {
+  ln = TRI_DuplicateString(locationName);
+  if (ln == NULL) {
+    TRI_Free(geo);
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return NULL;
   }
@@ -802,6 +871,7 @@ TRI_index_t* TRI_CreateGeoIndex2 (struct TRI_doc_collection_s* collection,
 void TRI_DestroyGeoIndex (TRI_index_t* idx) {
   TRI_geo_index_t* geo;
 
+  LOG_TRACE("destroying geo index");
   TRI_DestroyVectorString(&idx->_fields);
 
   geo = (TRI_geo_index_t*) idx;
@@ -1436,13 +1506,15 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_doc_collection_s* collection,
 void TRI_DestroyHashIndex (TRI_index_t* idx) {
   TRI_hash_index_t* hash;
 
+  LOG_TRACE("destroying hash index");
   TRI_DestroyVectorString(&idx->_fields);
 
   hash = (TRI_hash_index_t*) idx;
 
   TRI_DestroyVector(&hash->_paths);
 
-  LOG_ERROR("TRI_DestroyHashIndex not implemented TODO oreste");
+  // TODO FIXME: not implemented
+  LOG_DEBUG("TRI_DestroyHashIndex not implemented TODO oreste");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2175,6 +2247,7 @@ void TRI_DestroySkiplistIndex (TRI_index_t* idx) {
     return;
   }
   
+  LOG_TRACE("destroying skiplist index");
   TRI_DestroyVectorString(&idx->_fields);
 
   sl = (TRI_skiplist_index_t*) idx;
@@ -2191,6 +2264,7 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx) {
   if (idx == NULL) {
     return;
   }  
+
   TRI_DestroySkiplistIndex(idx);
   TRI_Free(idx);
 }
