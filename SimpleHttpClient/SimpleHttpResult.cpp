@@ -123,7 +123,7 @@ namespace triagens {
         }
       }
       else if (k == "content-length") {
-        setContenLength(StringUtils::int64(value.c_str()));
+        setContentLength((size_t) StringUtils::int64(value.c_str()));
       }
       else if (k == "transfer-encoding") {
         if (StringUtils::tolower(value) == "chunked") {

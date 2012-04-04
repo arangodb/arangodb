@@ -141,7 +141,7 @@ namespace triagens {
       _isConnected = false;
       _socket = -1;
 
-      if (_numConnectRetries < (int) _connectRetries + 1) {
+      if (_numConnectRetries < _connectRetries + 1) {
         _numConnectRetries++;
       }
       else {
@@ -484,9 +484,9 @@ namespace triagens {
             _state = IN_READ_CHUNKED_HEADER;
             return readChunkedHeader();
           }
-          else if (_result->getContenLength()) {
+          else if (_result->getContentLength()) {
             
-            if (_result->getContenLength() > 5000000) {
+            if (_result->getContentLength() > 5000000) {
               _errorMessage = "Content length > 5000000 bytes found!";
               LOGGER_ERROR << "Content length > 5000000 bytes found! Closing connection.";
               
@@ -515,9 +515,9 @@ namespace triagens {
     }
 
     bool SimpleHttpClient::readBody () {
-      if (_readBuffer.length() >= (size_t) _result->getContenLength()) {
-        _result->getBody().write(_readBuffer.c_str(), (size_t) _result->getContenLength());
-        _readBuffer.erase_front((size_t) _result->getContenLength());
+      if (_readBuffer.length() >= _result->getContentLength()) {
+        _result->getBody().write(_readBuffer.c_str(), _result->getContentLength());
+        _readBuffer.erase_front(_result->getContentLength());
         _result->setResultType(SimpleHttpResult::COMPLETE);
         _state = FINISHED;
       }

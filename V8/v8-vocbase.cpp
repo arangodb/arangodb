@@ -241,7 +241,7 @@ static bool IsDocumentId (v8::Handle<v8::Value> arg, TRI_voc_cid_t& cid, TRI_voc
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   if (arg->IsNumber()) {
-    did = arg->ToNumber()->Value();
+    did = (TRI_voc_did_t) arg->ToNumber()->Value();
     return true;
   }
 
@@ -640,7 +640,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
   collection->_collection->beginRead(collection->_collection);
 
   TRI_barrier_t* barrier = 0;
-  size_t count = 0;
+  uint32_t count = 0;
 
   // argument is a list of vertices
   if (argv[0]->IsArray()) {
@@ -1081,11 +1081,11 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   TRI_voc_ssize_t limit = TRI_QRY_NO_LIMIT;
 
   if (! argv[0]->IsNull()) {
-    skip = TRI_ObjectToDouble(argv[0]);
+    skip = (TRI_voc_size_t) TRI_ObjectToDouble(argv[0]);
   }
 
   if (! argv[1]->IsNull()) {
-    limit = TRI_ObjectToDouble(argv[1]);
+    limit = (TRI_voc_ssize_t) TRI_ObjectToDouble(argv[1]);
   }
 
   // setup result
@@ -1177,7 +1177,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   // outside a write transaction
   // .............................................................................
 
-  result->Set(v8::String::New("total"), v8::Number::New(total));
+  result->Set(v8::String::New("total"), v8::Number::New((double) total));
   result->Set(v8::String::New("count"), v8::Number::New(count));
 
   ReleaseCollection(collection);
@@ -1250,7 +1250,7 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
   }
 
   // extract the index
-  TRI_idx_iid_t iid = TRI_ObjectToDouble(argv[0]);
+  TRI_idx_iid_t iid = (TRI_idx_iid_t) TRI_ObjectToDouble(argv[0]);
   TRI_index_t* idx = TRI_LookupIndex(doc, iid);
 
   if (idx == 0) {
@@ -1268,7 +1268,7 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
   double longitude = TRI_ObjectToDouble(argv[2]);
 
   // extract the limit
-  TRI_voc_ssize_t limit = TRI_ObjectToDouble(argv[3]);
+  TRI_voc_ssize_t limit = (TRI_voc_ssize_t) TRI_ObjectToDouble(argv[3]);
 
   // setup result
   v8::Handle<v8::Object> result = v8::Object::New();
@@ -1350,7 +1350,7 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
   }
 
   // extract the index
-  TRI_idx_iid_t iid = TRI_ObjectToDouble(argv[0]);
+  TRI_idx_iid_t iid = (TRI_idx_iid_t) TRI_ObjectToDouble(argv[0]);
   TRI_index_t* idx = TRI_LookupIndex(doc, iid);
 
   if (idx == 0) {
@@ -1480,7 +1480,7 @@ static TRI_json_t* ConvertHelper(v8::Handle<v8::Value> parameter) {
     v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
     TRI_json_t* listJson = TRI_CreateListJson();
     if (listJson) {
-      for (size_t j = 0; j < arrayParameter->Length(); ++j) {
+      for (uint32_t j = 0; j < arrayParameter->Length(); ++j) {
         v8::Handle<v8::Value> item = arrayParameter->Get(j);    
         TRI_json_t* result = ConvertHelper(item);
         if (result) {
@@ -1496,7 +1496,7 @@ static TRI_json_t* ConvertHelper(v8::Handle<v8::Value> parameter) {
     TRI_json_t* arrayJson = TRI_CreateArrayJson();
     if (arrayJson) {
       v8::Handle<v8::Array> names = arrayParameter->GetOwnPropertyNames();
-      for (size_t j = 0; j < names->Length(); ++j) {
+      for (uint32_t j = 0; j < names->Length(); ++j) {
         v8::Handle<v8::Value> key = names->Get(j);
         v8::Handle<v8::Value> item = arrayParameter->Get(key);    
         TRI_json_t* result = ConvertHelper(item);
@@ -1554,7 +1554,7 @@ static v8::Handle<v8::Value> JS_ParseAql (v8::Arguments const& argv) {
     v8::Handle<v8::Array> result = v8::Array::New();
     TRI_vector_string_t parameters = TRI_GetNamesBindParameter(&template_->_bindParameters);
     try {
-      for (size_t i = 0;  i < parameters._length;  ++i) {
+      for (uint32_t i = 0;  i < parameters._length;  ++i) {
         result->Set(i, v8::String::New(parameters._buffer[i])); 
       }
     } catch (...) {
@@ -2678,7 +2678,7 @@ static v8::Handle<v8::Value> JS_IdQueryCursor (v8::Arguments const& argv) {
   
   TRI_shadow_id id = TRI_GetIdDataShadowData(vocbase->_cursors, UnwrapQueryCursor(argv.Holder()));
   if (id && !tryCatch.HasCaught()) {
-    return scope.Close(v8::Number::New(id));
+    return scope.Close(v8::Number::New((double) id));
   }
   
   return scope.Close(v8::ThrowException(v8::String::New("corrupted or already disposed cursor")));
@@ -3180,7 +3180,7 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
   size_t s = doc->size(doc);
 
   ReleaseCollection(collection);
-  return scope.Close(v8::Number::New(s));
+  return scope.Close(v8::Number::New((double) s));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3730,9 +3730,9 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
 
   v8::Handle<v8::Array> result = v8::Array::New();
 
-  size_t n = indexes->_length;
+  uint32_t n = (uint32_t) indexes->_length;
 
-  for (size_t i = 0;  i < n;  ++i) {
+  for (uint32_t i = 0;  i < n;  ++i) {
     TRI_json_t* idx = (TRI_json_t*) indexes->_buffer[i];
 
     result->Set(i, TRI_ObjectJson(idx));
@@ -4182,7 +4182,7 @@ static v8::Handle<v8::Value> JS_ReplaceEdgesCol (v8::Arguments const& argv) {
   }
 
   ReleaseCollection(collection);
-  return scope.Close(v8::Number::New(did));
+  return scope.Close(v8::Number::New((double) did));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4396,7 +4396,8 @@ static v8::Handle<v8::Value> JS_CollectionsVocBase (v8::Arguments const& argv) {
   v8::Handle<v8::Array> result = v8::Array::New();
   TRI_vector_pointer_t colls = TRI_CollectionsVocBase(vocbase);
 
-  for (size_t i = 0;  i < colls._length;  ++i) {
+  uint32_t n = (uint32_t) colls._length;
+  for (uint32_t i = 0;  i < n;  ++i) {
     TRI_vocbase_col_t const* collection = (TRI_vocbase_col_t const*) colls._buffer[i];
 
     result->Set(i, TRI_WrapCollection(collection));
@@ -4423,7 +4424,8 @@ static v8::Handle<v8::Value> JS_CompletionsVocBase (v8::Arguments const& argv) {
 
   TRI_vector_pointer_t colls = TRI_CollectionsVocBase(vocbase);
 
-  for (size_t i = 0;  i < colls._length;  ++i) {
+  uint32_t n = (uint32_t) colls._length;
+  for (uint32_t i = 0;  i < n;  ++i) {
     TRI_vocbase_col_t const* collection = (TRI_vocbase_col_t const*) colls._buffer[i];
 
     result->Set(i, v8::String::New(collection->_name));
@@ -4653,8 +4655,9 @@ static v8::Handle<v8::Value> JS_CollectionsEdges (v8::Arguments const& argv) {
 
   v8::Handle<v8::Array> result = v8::Array::New();
   TRI_vector_pointer_t colls = TRI_CollectionsVocBase(vocbase);
-
-  for (size_t i = 0;  i < colls._length;  ++i) {
+ 
+  uint32_t n = (uint32_t) colls._length;
+  for (uint32_t i = 0;  i < n;  ++i) {
     TRI_vocbase_col_t const* collection = (TRI_vocbase_col_t const*) colls._buffer[i];
 
     result->Set(i, TRI_WrapEdgesCollection(collection));
