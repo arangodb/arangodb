@@ -692,10 +692,10 @@ static TRI_json_t* JsonGeoIndex (TRI_index_t* idx, TRI_doc_collection_t const* c
   fields = TRI_CreateListJson();
   TRI_PushBack3ListJson(fields, TRI_CreateStringCopyJson(location));
 
-  TRI_Insert2ArrayJson(json, "id", TRI_CreateNumberJson(idx->_iid));
-  TRI_Insert2ArrayJson(json, "type", TRI_CreateStringCopyJson("geo"));
-  TRI_Insert2ArrayJson(json, "geoJson", TRI_CreateBooleanJson(geo->_geoJson));
-  TRI_Insert2ArrayJson(json, "fields", fields);
+  TRI_Insert3ArrayJson(json, "id", TRI_CreateNumberJson(idx->_iid));
+  TRI_Insert3ArrayJson(json, "type", TRI_CreateStringCopyJson("geo"));
+  TRI_Insert3ArrayJson(json, "geoJson", TRI_CreateBooleanJson(geo->_geoJson));
+  TRI_Insert3ArrayJson(json, "fields", fields);
 
   return json;
 }
