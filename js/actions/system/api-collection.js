@@ -183,7 +183,7 @@ function GET_api_collections (req, res) {
 
   for (var i = 0;  i < collections.length;  ++i) {
     var collection = collections[i];
-    var rep = CollectionRepresentation(collection, true);
+    var rep = CollectionRepresentation(collection);
     
     list.push(rep);
     names[rep.name] = rep;
@@ -207,9 +207,6 @@ function GET_api_collections (req, res) {
 ///
 /// @LIT{name}: The name of the collection.
 ///
-/// @LIT{waitForSync}: If @LIT{true} then creating or changing a document will
-/// wait until the data has been synchronised to disk.
-///
 /// @LIT{status}: The status of the collection as number.
 ///
 /// - 1: new born collection
@@ -226,6 +223,18 @@ function GET_api_collections (req, res) {
 /// It is possible to specify a name instead of an identifier.  In this case the
 /// response will contain a field "Location" which contains the correct
 /// location.
+///
+/// @REST{GET /_api/collection/@FA{collection-identifier}/parameter}
+////////////////////////////////////////////////////////////////
+///
+/// In addition to the above, the result will always contain the
+/// @LIT{waitForSync} parameter. This is achieved by forcing a load of
+/// the underlying collection.
+///
+/// @LIT{waitForSync}: If @LIT{true} then creating or changing a document will
+/// wait until the data has been synchronised to disk. 
+///
+/// @LIT{count}: The number of documents inside the collection.
 ///
 /// @REST{GET /_api/collection/@FA{collection-identifier}/count}
 ////////////////////////////////////////////////////////////////
@@ -301,7 +310,7 @@ function GET_api_collection (req, res) {
       // .............................................................................
 
       if (req.suffix.length == 1) {
-        var result = CollectionRepresentation(collection, true, false, false);
+        var result = CollectionRepresentation(collection, false, false, false);
         var headers = { location : "/" + API + "/" + collection._id };
 
         actions.resultOk(req, res, actions.HTTP_OK, result, headers);
@@ -331,9 +340,20 @@ function GET_api_collection (req, res) {
       
           actions.resultOk(req, res, actions.HTTP_OK, result, headers);
         }
+        
+        // .............................................................................
+        // /_api/collection/<identifier>/parameter
+        // .............................................................................
+
+        else if (sub == "parameter") {
+          var result = CollectionRepresentation(collection, true, false, false);
+          var headers = { location : "/" + API + "/" + collection._id + "/parameter" };
+      
+          actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+        }
 
         else {
-          actions.resultNotFound(req, res, "expecting one of the resources 'count', 'figures'");
+          actions.resultNotFound(req, res, "expecting one of the resources 'count', 'figures', 'parameter'");
         }
       }
       else {
