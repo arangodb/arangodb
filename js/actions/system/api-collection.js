@@ -183,7 +183,7 @@ function GET_api_collections (req, res) {
 
   for (var i = 0;  i < collections.length;  ++i) {
     var collection = collections[i];
-    var rep = CollectionRepresentation(collection);
+    var rep = CollectionRepresentation(collection, true);
     
     list.push(rep);
     names[rep.name] = rep;
@@ -301,7 +301,7 @@ function GET_api_collection (req, res) {
       // .............................................................................
 
       if (req.suffix.length == 1) {
-        var result = CollectionRepresentation(collection, false, false, false);
+        var result = CollectionRepresentation(collection, true, false, false);
         var headers = { location : "/" + API + "/" + collection._id };
 
         actions.resultOk(req, res, actions.HTTP_OK, result, headers);
