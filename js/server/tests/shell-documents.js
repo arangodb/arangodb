@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, simple queries
+/// @brief test the document interface
 ///
 /// @file
 ///
@@ -25,7 +25,7 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsUnity = require("jsunity").jsUnity;
+var jsunity = require("jsunity");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                collection methods
@@ -48,7 +48,7 @@ function readCollectionDocumentSuiteErrorHandling () {
       fail();
     }
     catch (err) {
-      assertEqual(1205, err.errorNum);
+      assertEqual(ERRORS.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
     }
   }
 
@@ -62,7 +62,7 @@ function readCollectionDocumentSuiteErrorHandling () {
       fail();
     }
     catch (err) {
-      assertEqual(1202, err.errorNum);
+      assertEqual(ERRORS.ERROR_AVOCADO_DOCUMENT_NOT_FOUND.code, err.errorNum);
     }
   }
 
@@ -76,7 +76,7 @@ function readCollectionDocumentSuiteErrorHandling () {
       fail();
     }
     catch (err) {
-      assertEqual(1213, err.errorNum);
+      assertEqual(ERRORS.ERROR_AVOCADO_CROSS_COLLECTION_REQUEST.code, err.errorNum);
     }
   }
 }
@@ -124,12 +124,45 @@ function readCollectionDocumentSuiteReadDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function testReadDocument () {
-    var id = this.collection.save({ "Hallo" : "World" })._id;
+    var d = this.collection.save({ "Hallo" : "World" });
 
-    var doc = this.collection.document(id);
+    var doc = this.collection.document(d._id);
 
-    assertEqual(id, doc._id);
-    assertTypeOf("number", doc._rev);
+    assertEqual(d._id, doc._id);
+    assertEqual(d._rev, doc._rev);
+
+    doc = this.collection.document(d);
+
+    assertEqual(d._id, doc._id);
+    assertEqual(d._rev, doc._rev);
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read a document with conflict
+////////////////////////////////////////////////////////////////////////////////
+
+  function testReadDocumentConflict () {
+    var d = this.collection.save({ "Hallo" : "World" });
+
+    var doc = this.collection.document(d._id);
+
+    assertEqual(d._id, doc._id);
+    assertEqual(d._rev, doc._rev);
+
+    var r = this.collection.replace(d, { "Hallo" : "You" });
+
+    doc = this.collection.document(r);
+
+    assertEqual(d._id, doc._id);
+    assertNotEqual(d._rev, doc._rev);
+
+    try {
+      this.collection.document(d);
+      fail();
+    }
+    catch (err) {
+      assertEqual(ERRORS.ERROR_AVOCADO_CONFLICT.code, err.errorNum);
+    }
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,7 +185,7 @@ function readCollectionDocumentSuiteReadDocument () {
       fail();
     }
     catch (err) {
-      assertEqual(1200, err.errorNum);
+      assertEqual(ERRORS.ERROR_AVOCADO_CONFLICT.code, err.errorNum);
     }
 
     var doc2 = this.collection.document(a1._id);
@@ -172,6 +205,29 @@ function readCollectionDocumentSuiteReadDocument () {
     assertEqual(a1._id, doc4._id);
     assertEqual(a4._rev, doc4._rev);
     assertEqual(4, doc4.a);
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete a document
+////////////////////////////////////////////////////////////////////////////////
+
+  function testDeleteDocument () {
+    var a1 = this.collection.save({ a : 1});
+
+    assertTypeOf("string", a1._id);
+    assertTypeOf("number", a1._rev);
+
+    var a2 = this.collection.delete(a1);
+
+    assertEqual(a2, true);
+
+    try {
+      this.collection.delete(a1);
+      fail();
+    }
+    catch (err) {
+      assertEqual(ERRORS.ERROR_AVOCADO_CONFLICT.code, err.errorNum);
+    }
   }
 }
 
@@ -196,7 +252,7 @@ function readDocumentSuiteErrorHandling () {
       fail();
     }
     catch (err) {
-      assertEqual(1205, err.errorNum);
+      assertEqual(ERRORS.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
     }
   }
 
@@ -210,7 +266,7 @@ function readDocumentSuiteErrorHandling () {
       fail();
     }
     catch (err) {
-      assertEqual(1202, err.errorNum);
+      assertEqual(ERRORS.ERROR_AVOCADO_DOCUMENT_NOT_FOUND.code, err.errorNum);
     }
   }
 }
@@ -247,14 +303,45 @@ function readDocumentSuiteReadDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function testReadDocument () {
-    var id = this.collection.save({ "Hallo" : "World" })._id;
+    var d = this.collection.save({ "Hallo" : "World" });
 
-    var doc = db._document(id);
+    var doc = db._document(d._id);
 
-    assertEqual(id, doc._id);
-    assertTypeOf("number", doc._rev);
+    assertEqual(d._id, doc._id);
+    assertEqual(d._rev, doc._rev);
 
-    assertEqual(1, this.collection.count());
+    doc = db._document(d);
+
+    assertEqual(d._id, doc._id);
+    assertEqual(d._rev, doc._rev);
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read a document with conflict
+////////////////////////////////////////////////////////////////////////////////
+
+  function testReadDocumentConflict () {
+    var d = this.collection.save({ "Hallo" : "World" });
+
+    var doc = db._document(d._id);
+
+    assertEqual(d._id, doc._id);
+    assertEqual(d._rev, doc._rev);
+
+    var r = this.collection.replace(d, { "Hallo" : "You" });
+
+    doc = db._document(r);
+
+    assertEqual(d._id, doc._id);
+    assertNotEqual(d._rev, doc._rev);
+
+    try {
+      db._document(d);
+      fail();
+    }
+    catch (err) {
+      assertEqual(ERRORS.ERROR_AVOCADO_CONFLICT.code, err.errorNum);
+    }
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -277,7 +364,7 @@ function readDocumentSuiteReadDocument () {
       fail();
     }
     catch (err) {
-      assertEqual(1200, err.errorNum);
+      assertEqual(ERRORS.ERROR_AVOCADO_CONFLICT.code, err.errorNum);
     }
 
     var doc2 = db._document(a1._id);
@@ -308,11 +395,15 @@ function readDocumentSuiteReadDocument () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsUnity.run(readCollectionDocumentSuiteErrorHandling);
-jsUnity.run(readCollectionDocumentSuiteReadDocument);
+var context = {
+  ERRORS : require("internal").errors
+};
 
-jsUnity.run(readDocumentSuiteErrorHandling);
-jsUnity.run(readDocumentSuiteReadDocument);
+jsunity.run(readCollectionDocumentSuiteErrorHandling, context);
+jsunity.run(readCollectionDocumentSuiteReadDocument, context);
+
+jsunity.run(readDocumentSuiteErrorHandling, context);
+jsunity.run(readDocumentSuiteReadDocument, context);
 
 // Local Variables:
 // mode: outline-minor

@@ -44,7 +44,7 @@ jsUnity.log = console;
 ///
 /// @verbinclude jsunity1
 ///
-/// Then you can run the test suite using @FN{runTest}
+/// Then you can run the test suite using @FN{jsunity.runTest}
 ///
 /// @verbinclude jsunity2
 ///
@@ -57,9 +57,9 @@ jsUnity.log = console;
 ///
 /// @CODE{node-jscoverage lib lib-cov}
 ///
-/// to create a copy of the JavaScript files with coverage information.
-/// Start the AvocadoDB with these files and use @FN{runCoverage} instead
-/// of @FN{runTest}.
+/// to create a copy of the JavaScript files with coverage information.  Start
+/// the AvocadoDB with these files and use @FN{jsunity.runCoverage} instead of
+/// @FN{jsunity.runTest}.
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
@@ -286,10 +286,19 @@ function reportCoverage (cov, files) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief runs a test with context
+////////////////////////////////////////////////////////////////////////////////
+
+function Run (tests, context) {
+  var suite = jsUnity.compile(tests);
+  jsUnity.run(suite);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief runs a JSUnity test file
 ////////////////////////////////////////////////////////////////////////////////
 
-function runTest (path) {
+function RunTest (path) {
   var content;
   var f;
 
@@ -315,8 +324,8 @@ function runTest (path) {
 /// @brief runs a JSUnity test file with coverage
 ////////////////////////////////////////////////////////////////////////////////
 
-function runCoverage (path, files) {
-  runTest(path);
+function RunCoverage (path, files) {
+  RunTest(path);
 
   populateCoverage(_$jscoverage);
   reportCoverage(_$jscoverage, files);
@@ -336,8 +345,9 @@ function runCoverage (path, files) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.jsUnity = jsUnity;
-exports.runTest = runTest; 
-exports.runCoverage = runCoverage; 
+exports.run = Run;
+exports.runTest = RunTest; 
+exports.runCoverage = RunCoverage; 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

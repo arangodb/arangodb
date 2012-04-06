@@ -123,7 +123,6 @@ static int32_t const WRP_QUERY_INSTANCE_TYPE = 5;
 static int32_t const WRP_SHAPED_JSON_TYPE = 6;
 
 ////////////////////////////////////////////////////////////////////////////////
-
 /// @brief wrapped class for TRI_qry_where_t - DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -580,14 +579,41 @@ static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
 static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
                                                             TRI_vocbase_col_t const*& collection,
                                                             TRI_voc_did_t& did,
+                                                            TRI_voc_rid_t& rid,
                                                             v8::Handle<v8::Value> val) {
   v8::HandleScope scope;
+  TRI_v8_global_t* v8g;
 
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  // reset the collection identifier and the revision
   TRI_voc_cid_t cid = 0;
+  rid = 0;
 
-  if (! IsDocumentId(val, cid, did)) {
-    return scope.Close(CreateErrorObject(TRI_ERROR_AVOCADO_DOCUMENT_HANDLE_BAD, 
-                                         "<document-handle> must be a document-handle"));
+  // extract the document identifier and revision from a string
+  if (val->IsString() || val->IsStringObject()) {
+    if (! IsDocumentId(val, cid, did)) {
+      return scope.Close(CreateErrorObject(TRI_ERROR_AVOCADO_DOCUMENT_HANDLE_BAD, 
+                                           "<document-handle> must be a document-handle"));
+    }
+  }
+
+  // extract the document identifier and revision from a string
+  else if (val->IsObject()) {
+    v8::Handle<v8::Object> obj = val->ToObject();
+    v8::Handle<v8::Value> didVal = obj->Get(v8g->DidKey);
+
+    if (! IsDocumentId(didVal, cid, did)) {
+      return scope.Close(CreateErrorObject(TRI_ERROR_AVOCADO_DOCUMENT_HANDLE_BAD,
+                                           "expecting a document-handle in _id"));
+    }
+
+    rid = TRI_ObjectToUInt64(obj->Get(v8g->RevKey));
+
+    if (rid == 0) {
+      return scope.Close(CreateErrorObject(TRI_ERROR_AVOCADO_DOCUMENT_HANDLE_BAD,
+                                           "expecting a revision identifier in _rev"));
+    }
   }
 
   // lockup the collection
@@ -640,7 +666,8 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (TRI_vocbase_t* vocbase,
   }
 
   TRI_voc_did_t did;
-  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, collection, did, argv[0]);
+  TRI_voc_rid_t rid;
+  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, collection, did, rid, argv[0]);
 
   if (! err.IsEmpty()) {
     if (collection != 0) {
@@ -678,15 +705,183 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (TRI_vocbase_t* vocbase,
   // outside a write transaction
   // .............................................................................
 
+  ReleaseCollection(collection);
+
   if (document._did == 0) {
-    ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(
                          CreateErrorObject(TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND,
                                            "document not found")));
   }
+
+  if (rid != 0 && document._rid != rid) {
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_AVOCADO_CONFLICT,
+                                           "revision not found")));
+  }
   
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replaces a document
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ReplaceVocbaseCol (TRI_vocbase_t* vocbase,
+                                                TRI_vocbase_col_t const* collection,
+                                                v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  // check the arguments
+  if (argv.Length() < 2) {
+    ReleaseCollection(collection);
+
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                           "usage: replace(<document>, <data>, <overwrite>)")));
+  }
+
+  TRI_voc_did_t did;
+  TRI_voc_rid_t rid;
+
+  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, collection, did, rid, argv[0]);
+
+  if (! err.IsEmpty()) {
+    if (collection != 0) {
+      ReleaseCollection(collection);
+    }
+
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  // convert data
+  TRI_doc_collection_t* doc = collection->_collection;
+  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[1], doc->_shaper);
+
+  if (shaped == 0) {
+    ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(v8::String::New("<document> cannot be converted into JSON shape")));
+  }
+
+  // check policy
+  TRI_doc_update_policy_e policy = TRI_DOC_UPDATE_ERROR;
+
+  if (3 <= argv.Length()) {
+    bool overwrite = TRI_ObjectToBoolean(argv[2]);
+
+    if (overwrite) {
+      policy = TRI_DOC_UPDATE_LAST_WRITE;
+    }
+    else {
+      policy = TRI_DOC_UPDATE_CONFLICT;
+    }
+  }
+
+  // .............................................................................
+  // inside a write transaction
+  // .............................................................................
+
+  collection->_collection->beginWrite(collection->_collection);
+
+  TRI_voc_rid_t oldRid = 0;
+  TRI_doc_mptr_t mptr = doc->update(doc, shaped, did, rid, &oldRid, policy, true);
+
+  // .............................................................................
+  // outside a write transaction
+  // .............................................................................
+
+  TRI_FreeShapedJson(shaped);
+
+  if (mptr._did == 0) {
+    ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_errno(), 
+                                           "cannot replace document")));
+  }
+
+  string id = StringUtils::itoa(doc->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + StringUtils::itoa(mptr._did);
+
+  v8::Handle<v8::Object> result = v8::Object::New();
+  result->Set(v8g->DidKey, v8::String::New(id.c_str()));
+  result->Set(v8g->RevKey, v8::Number::New(mptr._rid));
+  result->Set(v8g->OldRevKey, v8::Number::New(oldRid));
+
   ReleaseCollection(collection);
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes a document
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> DeleteVocbaseCol (TRI_vocbase_t* vocbase,
+                                               TRI_vocbase_col_t const* collection,
+                                               v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  // check the arguments
+  if (argv.Length() != 1) {
+    ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(v8::String::New("usage: delete(<document>)")));
+  }
+
+  TRI_voc_did_t did;
+  TRI_voc_rid_t rid;
+
+  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, collection, did, rid, argv[0]);
+
+  if (! err.IsEmpty()) {
+    if (collection != 0) {
+      ReleaseCollection(collection);
+    }
+
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  // check policy
+  TRI_doc_update_policy_e policy = TRI_DOC_UPDATE_ERROR;
+
+  if (3 <= argv.Length()) {
+    bool overwrite = TRI_ObjectToBoolean(argv[2]);
+
+    if (overwrite) {
+      policy = TRI_DOC_UPDATE_LAST_WRITE;
+    }
+    else {
+      policy = TRI_DOC_UPDATE_CONFLICT;
+    }
+  }
+
+  // .............................................................................
+  // inside a write transaction
+  // .............................................................................
+
+  TRI_doc_collection_t* doc = collection->_collection;
+  TRI_voc_rid_t oldRid;
+
+  int res = doc->destroyLock(doc, did, rid, &oldRid, policy);
+
+  // .............................................................................
+  // outside a write transaction
+  // .............................................................................
+
+  ReleaseCollection(collection);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    if (res == TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND && policy == TRI_DOC_UPDATE_LAST_WRITE) {
+      return scope.Close(v8::False());
+    }
+    else {
+      return scope.Close(v8::ThrowException(CreateErrorObject(res, "cannot delete document")));
+    }
+  }
+
+  return scope.Close(v8::True());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3307,14 +3502,26 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
 ///
-/// @FUN{delete(@FA{document-handle})}
+/// @FUN{@FA{collection}.delete(@FA{document})}
 ///
-/// Deletes a document with a given document identifier. If the document does
-/// not exists, then @LIT{false} is returned. If the document existed and was
-/// deleted, then @LIT{true} is returned. An exception is thrown in case of an
-/// error.
+/// Deletes a document. If there is revision mismatch, then an error is thrown.
 ///
-/// @verbinclude fluent16
+/// @FUN{delete(@FA{document}, true)}
+///
+/// Deletes a document. If there is revision mismatch, then mismatch is ignored and document is  deleted. The function returns @LIT{true} if the
+/// document existed and was deleted. It returns @LIT{false}, if the document
+/// was already deleted.
+///
+/// @FUN{@FA{collection}.delete(@FA{document-handle}, @FA{data})}
+///
+/// As before. Instead of document a @FA{document-handle} can be passed as
+/// first argument.
+///
+/// @EXAMPLES
+///
+/// Create and update a document:
+///
+/// @verbinclude shell_delete-document
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DeleteVocbaseCol (v8::Arguments const& argv) {
@@ -3327,62 +3534,30 @@ static v8::Handle<v8::Value> JS_DeleteVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(err));
   }
 
-  TRI_doc_collection_t* doc = collection->_collection;
-
-  if (argv.Length() != 1) {
-    ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("usage: delete(<document-handle>)")));
-  }
-
-  TRI_voc_cid_t cid = doc->base._cid;
-  TRI_voc_did_t did;
-
-  if (IsDocumentId(argv[0], cid, did)) {
-    if (cid != doc->base._cid) {
-      ReleaseCollection(collection);
-      return scope.Close(v8::ThrowException(v8::String::New("cannot execute cross collection delete")));
-    }
-  }
-  else {
-    ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("expecting a document identifier")));
-  }
-
-  // .............................................................................
-  // inside a write transaction
-  // .............................................................................
-
-  int res = doc->destroyLock(doc, did, 0, 0, TRI_DOC_UPDATE_LAST_WRITE);
-
-  // .............................................................................
-  // outside a write transaction
-  // .............................................................................
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    if (res == TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND) {
-      ReleaseCollection(collection);
-      return scope.Close(v8::False());
-    }
-    else {
-      return scope.Close(v8::ThrowException(CreateErrorObject(res, "cannot delete document")));
-    }
-  }
-
-  ReleaseCollection(collection);
-  return scope.Close(v8::True());
+  return DeleteVocbaseCol(collection->_vocbase, collection, argv);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a document
 ///
-/// @FUN{@FA{collection}.document(@FA{document-handle})}
+/// @FUN{@FA{collection}.document(@FA{document})}
 ///
 /// The @FN{document} method finds a document given it's identifier.  It
 /// returns the document. Note that the returned docuement contains two
-/// pseudo-attributes, namely @LIT{_id} and @LIT{_rev}.
+/// pseudo-attributes, namely @LIT{_id} and @LIT{_rev}. @LIT{_id}
+/// contains the @FA{docuement-handle} and @LIT{_rev} the revision of
+/// the document.
+///
+/// An error is thrown if there @LIT{_rev} does not longer match the current
+/// revision of the document.
 ///
 /// The document must be part of the @FA{collection}; otherwise, an error
 /// is thrown.
+///
+/// @FUN{@FA{collection}.document(@FA{document-handle})}
+///
+/// As before. Instead of document a @FA{document-handle} can be passed as
+/// first argument.
 ///
 /// @EXAMPLES
 ///
@@ -3986,9 +4161,11 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
 /// the current collection. This document is than replaced with the value
 /// @FA{data} given as second argument.
 ///
-/// The method returns a document with the attributes @LIT{_id} and @LIT{_rev}.
-/// The attribute @LIT{_id} contains the document handle of the updated
-/// document, the attribute @LIT{_rev} contains the document revision.
+/// The method returns a document with the attributes @LIT{_id}, @LIT{_rev} and
+/// @LIT{_oldRev}.  The attribute @LIT{_id} contains the document handle of the
+/// updated document, the attribute @LIT{_rev} contains the document revision of
+/// the updated document, the attribute @LIT{_oldRev} contains the revision of
+/// the old (now replaced) document.
 ///
 /// If there is a conflict, i. e. if the revision of the @LIT{document} does not
 /// match the revision in the collection, then an error is thrown.
@@ -4016,10 +4193,8 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  TRI_v8_global_t* v8g;
 
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
+  // extract the collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
 
@@ -4027,148 +4202,7 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(err));
   }
 
-  TRI_doc_collection_t* doc = collection->_collection;
-
-  if (argv.Length() < 2) {
-    ReleaseCollection(collection);
-
-    return scope.Close(v8::ThrowException(
-                         CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                           "usage: replace(<document>, <data>, <overwrite>)")));
-  }
-
-  TRI_voc_cid_t cid = doc->base._cid;
-  TRI_voc_did_t did;
-  TRI_voc_rid_t rid = 0;
-
-  v8::Handle<v8::Value> val = argv[0];
-
-  // extract the document identifier
-  if (val->IsString() || val->IsStringObject()) {
-    if (IsDocumentId(val, cid, did)) {
-      if (cid != doc->base._cid) {
-        ReleaseCollection(collection);
-
-        return scope.Close(v8::ThrowException(
-                             CreateErrorObject(TRI_ERROR_AVOCADO_CROSS_COLLECTION_REQUEST,
-                                               "cannot execute cross collection update")));
-      }
-    }
-    else {
-      ReleaseCollection(collection);
-
-      return scope.Close(v8::ThrowException(
-                           CreateErrorObject(TRI_ERROR_AVOCADO_DOCUMENT_HANDLE_BAD,
-                                             "expecting a document-handle")));
-    }
-  }
-
-  // extract the document identifier and revision from a string
-  else if (val->IsObject()) {
-    v8::Handle<v8::Object> obj = val->ToObject();
-    v8::Handle<v8::Value> didVal = obj->Get(v8g->DidKey);
-
-    if (IsDocumentId(didVal, cid, did)) {
-      if (cid != doc->base._cid) {
-        ReleaseCollection(collection);
-
-        return scope.Close(v8::ThrowException(
-                             CreateErrorObject(TRI_ERROR_AVOCADO_CROSS_COLLECTION_REQUEST,
-                                               "cannot execute cross collection update")));
-      }
-    }
-    else {
-      ReleaseCollection(collection);
-
-      return scope.Close(v8::ThrowException(
-                           CreateErrorObject(TRI_ERROR_AVOCADO_DOCUMENT_HANDLE_BAD,
-                                             "expecting a document-handle in _id")));
-    }
-    
-    rid = TRI_ObjectToUInt64(obj->Get(v8g->RevKey));
-  }
-
-  // ups
-  else {
-    ReleaseCollection(collection);
-
-    return scope.Close(v8::ThrowException(
-                         CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                           "usage: replace(<document>, <data>, <overwrite>)")));
-  }
-
-  // convert data
-  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[1], doc->_shaper);
-
-  if (shaped == 0) {
-    ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("<document> cannot be converted into JSON shape")));
-  }
-
-  TRI_doc_update_policy_e policy = TRI_DOC_UPDATE_ERROR;
-
-  if (3 <= argv.Length()) {
-    bool overwrite = TRI_ObjectToBoolean(argv[2]);
-
-    if (overwrite) {
-      policy = TRI_DOC_UPDATE_LAST_WRITE;
-    }
-    else {
-      policy = TRI_DOC_UPDATE_CONFLICT;
-    }
-  }
-
-  // .............................................................................
-  // inside a write transaction
-  // .............................................................................
-
-  collection->_collection->beginWrite(collection->_collection);
-
-  TRI_voc_rid_t oldRid = 0;
-  TRI_doc_mptr_t mptr = doc->update(doc, shaped, did, rid, &oldRid, policy, true);
-
-  // .............................................................................
-  // outside a write transaction
-  // .............................................................................
-
-  TRI_FreeShapedJson(shaped);
-
-  if (mptr._did == 0) {
-    ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(
-                         CreateErrorObject(TRI_errno(), 
-                                           "cannot replace document")));
-  }
-
-  string id = StringUtils::itoa(doc->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + StringUtils::itoa(mptr._did);
-
-  v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, v8::String::New(id.c_str()));
-  result->Set(v8g->RevKey, v8::Number::New(mptr._rid));
-  result->Set(v8g->OldRevKey, v8::Number::New(oldRid));
-
-  ReleaseCollection(collection);
-  return scope.Close(result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the status of a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  TRI_vocbase_col_t* collection = UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
-
-  if (collection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
-  }
-
-  TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
-  TRI_vocbase_col_status_e status = collection->_status;
-  TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-
-  return scope.Close(v8::Number::New((int) status));
+  return ReplaceVocbaseCol(collection->_vocbase, collection, argv);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4249,6 +4283,26 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
 
   ReleaseCollection(collection);
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the status of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_col_t* collection = UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
+  }
+
+  TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+  TRI_vocbase_col_status_e status = collection->_status;
+  TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+
+  return scope.Close(v8::Number::New((int) status));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4576,13 +4630,60 @@ static v8::Handle<v8::Value> JS_CreateVocBase (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes a document
+///
+/// @FUN{@FA{db}._delete(@FA{document})}
+///
+/// Deletes a document. If there is revision mismatch, then an error is thrown.
+///
+/// @FUN{@FA{db}._delete(@FA{document}, true)}
+///
+/// Deletes a document. If there is revision mismatch, then mismatch is ignored and document is  deleted. The function returns @LIT{true} if the
+/// document existed and was deleted. It returns @LIT{false}, if the document
+/// was already deleted.
+///
+/// @FUN{@FA{db}._delete(@FA{document-handle}, @FA{data})}
+///
+/// As before. Instead of document a @FA{document-handle} can be passed as
+/// first argument.
+///
+/// @EXAMPLES
+///
+/// Create and update a document:
+///
+/// @verbinclude shell_delete-document
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DeleteVocbase (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+  
+  if (vocbase == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+
+  return DeleteVocbaseCol(vocbase, 0, argv);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a document
 ///
-/// @FUN{@FA{db}._document(@FA{document-handle})}
+/// @FUN{@FA{db}._document(@FA{document})}
 ///
 /// The @FN{document} method finds a document given it's identifier.  It
 /// returns the document. Note that the returned docuement contains two
-/// pseudo-attributes, namely @LIT{_id} and @LIT{_rev}.
+/// pseudo-attributes, namely @LIT{_id} and @LIT{_rev}. @LIT{_id}
+/// contains the @FA{docuement-handle} and @LIT{_rev} the revision of
+/// the document.
+///
+/// An error is thrown if there @LIT{_rev} does not longer match the current
+/// revision of the document.
+///
+/// @FUN{@FA{db}._document(@FA{document-handle})}
+///
+/// As before. Instead of document a @FA{document-handle} can be passed as
+/// first argument.
 ///
 /// @EXAMPLES
 ///
@@ -4601,6 +4702,49 @@ static v8::Handle<v8::Value> JS_DocumentVocbase (v8::Arguments const& argv) {
   }
 
   return DocumentVocbaseCol(vocbase, 0, argv);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replaces a document
+///
+/// @FUN{@FA{db}._replace(@FA{document}, @FA{data})}
+///
+/// The method returns a document with the attributes @LIT{_id}, @LIT{_rev} and
+/// @LIT{_oldRev}.  The attribute @LIT{_id} contains the document handle of the
+/// updated document, the attribute @LIT{_rev} contains the document revision of
+/// the updated document, the attribute @LIT{_oldRev} contains the revision of
+/// the old (now replaced) document.
+///
+/// If there is a conflict, i. e. if the revision of the @LIT{document} does not
+/// match the revision in the collection, then an error is thrown.
+/// 
+/// @FUN{@FA{db}._replace(@FA{document}, @FA{data}, true)}
+///
+/// As before, but in case of a conflict, the conflict is ignored and the old
+/// document is overwritten.
+///
+/// @FUN{@FA{db}._replace(@FA{document-handle}, @FA{data})}
+///
+/// As before. Instead of document a @FA{document-handle} can be passed as
+/// first argument.
+///
+/// @EXAMPLES
+///
+/// Return the document:
+///
+/// @verbinclude shell_read-document-db
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ReplaceVocbase (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+  
+  if (vocbase == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+
+  return ReplaceVocbaseCol(vocbase, 0, argv);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5178,7 +5322,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> _CollectionsFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collections"));
   v8::Handle<v8::String> _CompletionsFuncName = v8::Persistent<v8::String>::New(v8::String::New("_COMPLETIONS"));
   v8::Handle<v8::String> _CreateFuncName = v8::Persistent<v8::String>::New(v8::String::New("_create"));
+  v8::Handle<v8::String> _DeleteFuncName = v8::Persistent<v8::String>::New(v8::String::New("_delete"));
   v8::Handle<v8::String> _DocumentFuncName = v8::Persistent<v8::String>::New(v8::String::New("_document"));
+  v8::Handle<v8::String> _ReplaceFuncName = v8::Persistent<v8::String>::New(v8::String::New("_replace"));
 
   // .............................................................................
   // query types
@@ -5244,7 +5390,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(_CollectionsFuncName, v8::FunctionTemplate::New(JS_CollectionsVocBase));
   rt->Set(_CompletionsFuncName, v8::FunctionTemplate::New(JS_CompletionsVocBase));
   rt->Set(_CreateFuncName, v8::FunctionTemplate::New(JS_CreateVocBase));
+  rt->Set(_DeleteFuncName, v8::FunctionTemplate::New(JS_DeleteVocbase));
   rt->Set(_DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbase));
+  rt->Set(_ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbase));
 
   v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
