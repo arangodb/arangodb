@@ -42,6 +42,10 @@
 ///
 /// <ol>
 ///  <li>@ref HttpCollectionRead "GET /_api/collection/@FA{collection-identifier}"</li>
+///  <li>@ref HttpCollectionRead "GET /_api/collection/@FA{collection-identifier}/parameter"</li>
+///  <li>@ref HttpCollectionRead "GET /_api/collection/@FA{collection-identifier}/count"</li>
+///  <li>@ref HttpCollectionRead "GET /_api/collection/@FA{collection-identifier}/figures"</li>
+///  <li>@ref HttpCollectionRead "GET /_api/collection/@FA{collection-identifier}"</li>
 ///  <li>@ref HttpCollectionCreate "POST /_api/collection"</li>
 ///  <li>@ref HttpCollectionLoad "PUT /_api/collection/@FA{collection-identifier}/load"</li>
 ///  <li>@ref HttpCollectionUnload "PUT /_api/collection/@FA{collection-identifier}/unload"</li>
