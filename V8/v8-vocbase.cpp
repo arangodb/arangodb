@@ -820,9 +820,6 @@ static v8::Handle<v8::Value> DeleteVocbaseCol (TRI_vocbase_t* vocbase,
                                                TRI_vocbase_col_t const* collection,
                                                v8::Arguments const& argv) {
   v8::HandleScope scope;
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   // check the arguments
   if (argv.Length() != 1) {
