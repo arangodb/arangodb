@@ -19,10 +19,10 @@ jsUnity = (function () {
             var arr = [];
             
             for (var p in v) {
-				if (v.hasOwnProperty(p)) {
-					arr.push(p);
-					arr.push(hash(v[p]));    
-				}
+                                if (v.hasOwnProperty(p)) {
+                                        arr.push(p);
+                                        arr.push(hash(v[p]));    
+                                }
             }
             
             return arr.join("#");

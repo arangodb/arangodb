@@ -67,6 +67,21 @@ jsUnity.log = console;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief pad the given string to the maximum width provided
+///
+/// From: http://www.bennadel.com/blog/1927-Faking-Context-In-Javascript-s-Function-Constructor.htm
+////////////////////////////////////////////////////////////////////////////////
+
+function FunctionContext (func) {
+  var body = "  for (var __i in context) {"
+           + "    eval('var ' + __i + ' = context[__i];');"
+           + "  }"
+           + "  return " + func + ";";
+
+  return new Function("context", body);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup Expresso
 /// @{
 ///
@@ -289,8 +304,56 @@ function reportCoverage (cov, files) {
 /// @brief runs a test with context
 ////////////////////////////////////////////////////////////////////////////////
 
-function Run (tests, context) {
+function Run (tests) {
   var suite = jsUnity.compile(tests);
+  var context = tests();
+
+  if (context != undefined) {
+    var nsuite = '{ "tests" : [ ';
+    var sep = "";
+
+
+    for (var i = 0;  i < suite.tests.length;  ++i) {
+      var test = suite.tests[i];
+
+      nsuite += sep + '{ "name" : "' + test.name + '", "fn" : ' + test.fn + ' }';
+      sep = ", ";
+    }
+
+    nsuite += " ]";
+
+    if (suite.hasOwnProperty("setUp")) {
+      nsuite += ', \"setup\" : ' + suite.setUp;
+    }
+
+    if (suite.hasOwnProperty("tearDown")) {
+      nsuite += ', \"tearDown\" : ' + suite.tearDown;
+    }
+
+    nsuite += " };";
+
+    nsuite = (new FunctionContext(nsuite))(context);
+
+    nsuite.scope = {};
+
+    for (var i = 0;  i < nsuite.tests.length;  ++i) {
+      var test = nsuite.tests[i];
+
+      nsuite.scope[test.name] = test.fn;
+    }
+
+    if (nsuite.hasOwnProperty("setUp")) {
+      nsuite.scope["setUp"] = nsuite.setUp;
+    }
+
+    if (nsuite.hasOwnProperty("tearDown")) {
+      nsuite.scope["tearDown"] = nsuite.tearDown;
+    }
+
+    nsuite.suiteName = suite.suiteName;
+    suite = nsuite;
+  }
+
   jsUnity.run(suite);
 }
 

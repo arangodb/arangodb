@@ -36,7 +36,10 @@ var jsunity = require("jsunity");
 ////////////////////////////////////////////////////////////////////////////////
 
 function readCollectionDocumentSuiteErrorHandling () {
-  var cn = "UnitTestsCollectionBasics";
+  return {
+    cn : "UnitTestsCollectionBasics",
+    ERRORS : require("internal").errors
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief bad handle
@@ -86,8 +89,11 @@ function readCollectionDocumentSuiteErrorHandling () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function readCollectionDocumentSuiteReadDocument () {
-  var cn = "UnitTestsCollectionBasics";
-  var collection = null;
+  return {
+    cn : "UnitTestsCollectionBasics",
+    ERRORS : require("internal").errors,
+    collection : null
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set up
@@ -95,9 +101,9 @@ function readCollectionDocumentSuiteReadDocument () {
 
   function setUp () {
     db._drop(cn);
-    this.collection = db[cn];
+    collection = db[cn];
 
-    this.collection.load();
+    collection.load();
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,7 +111,7 @@ function readCollectionDocumentSuiteReadDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function tearDown () {
-    this.collection.drop();
+    collection.drop();
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -113,7 +119,7 @@ function readCollectionDocumentSuiteReadDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function testSaveDocument () {
-    var doc = this.collection.save({ "Hallo" : "World" });
+    var doc = collection.save({ "Hallo" : "World" });
 
     assertTypeOf("string", doc._id);
     assertTypeOf("number", doc._rev);
@@ -124,14 +130,14 @@ function readCollectionDocumentSuiteReadDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function testReadDocument () {
-    var d = this.collection.save({ "Hallo" : "World" });
+    var d = collection.save({ "Hallo" : "World" });
 
-    var doc = this.collection.document(d._id);
+    var doc = collection.document(d._id);
 
     assertEqual(d._id, doc._id);
     assertEqual(d._rev, doc._rev);
 
-    doc = this.collection.document(d);
+    doc = collection.document(d);
 
     assertEqual(d._id, doc._id);
     assertEqual(d._rev, doc._rev);
@@ -142,22 +148,22 @@ function readCollectionDocumentSuiteReadDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function testReadDocumentConflict () {
-    var d = this.collection.save({ "Hallo" : "World" });
+    var d = collection.save({ "Hallo" : "World" });
 
-    var doc = this.collection.document(d._id);
+    var doc = collection.document(d._id);
 
     assertEqual(d._id, doc._id);
     assertEqual(d._rev, doc._rev);
 
-    var r = this.collection.replace(d, { "Hallo" : "You" });
+    var r = collection.replace(d, { "Hallo" : "You" });
 
-    doc = this.collection.document(r);
+    doc = collection.document(r);
 
     assertEqual(d._id, doc._id);
     assertNotEqual(d._rev, doc._rev);
 
     try {
-      this.collection.document(d);
+      collection.document(d);
       fail();
     }
     catch (err) {
@@ -170,37 +176,37 @@ function readCollectionDocumentSuiteReadDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function testUpdateDocument () {
-    var a1 = this.collection.save({ a : 1});
+    var a1 = collection.save({ a : 1});
 
     assertTypeOf("string", a1._id);
     assertTypeOf("number", a1._rev);
 
-    var a2 = this.collection.replace(a1, { a : 2 });
+    var a2 = collection.replace(a1, { a : 2 });
 
     assertEqual(a1._id, a2._id);
     assertNotEqual(a1._rev, a2._rev);
 
     try {
-      this.collection.replace(a1, { a : 3 });
+      collection.replace(a1, { a : 3 });
       fail();
     }
     catch (err) {
       assertEqual(ERRORS.ERROR_AVOCADO_CONFLICT.code, err.errorNum);
     }
 
-    var doc2 = this.collection.document(a1._id);
+    var doc2 = collection.document(a1._id);
 
     assertEqual(a1._id, doc2._id);
     assertEqual(a2._rev, doc2._rev);
     assertEqual(2, doc2.a);
 
-    var a4 = this.collection.replace(a2, { a : 4 }, true);
+    var a4 = collection.replace(a2, { a : 4 }, true);
 
     assertEqual(a1._id, a4._id);
     assertNotEqual(a1._rev, a4._rev);
     assertNotEqual(a2._rev, a4._rev);
 
-    var doc4 = this.collection.document(a1._id);
+    var doc4 = collection.document(a1._id);
 
     assertEqual(a1._id, doc4._id);
     assertEqual(a4._rev, doc4._rev);
@@ -212,17 +218,17 @@ function readCollectionDocumentSuiteReadDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function testDeleteDocument () {
-    var a1 = this.collection.save({ a : 1});
+    var a1 = collection.save({ a : 1});
 
     assertTypeOf("string", a1._id);
     assertTypeOf("number", a1._rev);
 
-    var a2 = this.collection.delete(a1);
+    var a2 = collection.delete(a1);
 
     assertEqual(a2, true);
 
     try {
-      this.collection.delete(a1);
+      collection.delete(a1);
       fail();
     }
     catch (err) {
@@ -240,7 +246,10 @@ function readCollectionDocumentSuiteReadDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function readDocumentSuiteErrorHandling () {
-  var cn = "UnitTestsCollectionBasics";
+  return {
+    cn : "UnitTestsCollectionBasics",
+    ERRORS : require("internal").errors,
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief bad handle
@@ -276,8 +285,11 @@ function readDocumentSuiteErrorHandling () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function readDocumentSuiteReadDocument () {
-  var cn = "UnitTestsCollectionBasics";
-  var collection = null;
+  return {
+    cn : "UnitTestsCollectionBasics",
+    ERRORS : require("internal").errors,
+    collection : null
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set up
@@ -285,9 +297,9 @@ function readDocumentSuiteReadDocument () {
 
   function setUp () {
     db._drop(cn);
-    this.collection = db[cn];
+    collection = db[cn];
 
-    this.collection.load();
+    collection.load();
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -295,7 +307,7 @@ function readDocumentSuiteReadDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function tearDown () {
-    this.collection.drop();
+    collection.drop();
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -303,7 +315,7 @@ function readDocumentSuiteReadDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function testReadDocument () {
-    var d = this.collection.save({ "Hallo" : "World" });
+    var d = collection.save({ "Hallo" : "World" });
 
     var doc = db._document(d._id);
 
@@ -321,14 +333,14 @@ function readDocumentSuiteReadDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function testReadDocumentConflict () {
-    var d = this.collection.save({ "Hallo" : "World" });
+    var d = collection.save({ "Hallo" : "World" });
 
     var doc = db._document(d._id);
 
     assertEqual(d._id, doc._id);
     assertEqual(d._rev, doc._rev);
 
-    var r = this.collection.replace(d, { "Hallo" : "You" });
+    var r = collection.replace(d, { "Hallo" : "You" });
 
     doc = db._document(r);
 
@@ -349,7 +361,7 @@ function readDocumentSuiteReadDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function testUpdateDocument () {
-    var a1 = this.collection.save({ a : 1});
+    var a1 = collection.save({ a : 1});
 
     assertTypeOf("string", a1._id);
     assertTypeOf("number", a1._rev);
@@ -395,15 +407,11 @@ function readDocumentSuiteReadDocument () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-var context = {
-  ERRORS : require("internal").errors
-};
+jsunity.run(readCollectionDocumentSuiteErrorHandling);
+jsunity.run(readCollectionDocumentSuiteReadDocument);
 
-jsunity.run(readCollectionDocumentSuiteErrorHandling, context);
-jsunity.run(readCollectionDocumentSuiteReadDocument, context);
-
-jsunity.run(readDocumentSuiteErrorHandling, context);
-jsunity.run(readDocumentSuiteReadDocument, context);
+jsunity.run(readDocumentSuiteErrorHandling);
+jsunity.run(readDocumentSuiteReadDocument);
 
 // Local Variables:
 // mode: outline-minor
