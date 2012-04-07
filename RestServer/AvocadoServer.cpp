@@ -320,6 +320,7 @@ void AvocadoServer::buildApplicationServer () {
 
   additional[ApplicationServer::OPTIONS_CMDLINE]
     ("console", "do not start as server, start an emergency console instead")
+    ("unit-tests", &_unitTests, "do not start as server, run unit tests instead")
   ;
 
   additional[ApplicationServer::OPTIONS_CMDLINE + ":help-extended"]
@@ -465,8 +466,13 @@ void AvocadoServer::buildApplicationServer () {
   // .............................................................................
 
   if (_applicationServer->programOptions().has("console")) {
-    executeShell();
-    exit(EXIT_SUCCESS);
+    int res = executeShell(false);
+    exit(res);
+  }
+
+  if (! _unitTests.empty()) {
+    int res = executeShell(true);
+    exit(res);
   }
 
   // .............................................................................
@@ -634,7 +640,7 @@ int AvocadoServer::startupServer () {
 /// @brief executes the shell
 ////////////////////////////////////////////////////////////////////////////////
 
-void AvocadoServer::executeShell () {
+int AvocadoServer::executeShell (bool tests) {
   v8::Isolate* isolate;
   v8::Persistent<v8::Context> context;
   bool ok;
@@ -668,8 +674,8 @@ void AvocadoServer::executeShell () {
 
   if (context.IsEmpty()) {
     LOGGER_FATAL << "cannot initialize V8 engine";
-    cerr << "cannot initialize V8 engine\n";
-    exit(EXIT_FAILURE);
+    TRI_FlushLogging();
+    return EXIT_FAILURE;
   }
 
   context->Enter();
@@ -690,54 +696,87 @@ void AvocadoServer::executeShell () {
     }
     else {
       LOGGER_FATAL << "cannot load json file '" << files[i] << "'";
-      cerr << "cannot load json file '" << files[i] << "'\n";
-      exit(EXIT_FAILURE);
+      TRI_FlushLogging();
+      return EXIT_FAILURE;
     }
   }
 
   // run the shell
   printf("AvocadoDB shell [V8 version %s, DB version %s]\n", v8::V8::GetVersion(), TRIAGENS_VERSION);
 
-  v8::Context::Scope contextScope(context);
   v8::Local<v8::String> name(v8::String::New("(avocado)"));
+  v8::Context::Scope contextScope(context);
 
-  V8LineEditor* console = new V8LineEditor(context, ".avocado");
+  ok = true;
 
-  console->open(true);
-
-  while (true) {
-    while(! v8::V8::IdleNotification()) {
-    }
-
-    char* input = console->prompt("avocado> ");
-
-    if (input == 0) {
-      printf("bye...\n");
-      TRI_FreeString(input);
-      break;
-    }
-
-    if (*input == '\0') {
-      TRI_FreeString(input);
-      continue;
-    }
-
-    console->addHistory(input);
-
+  // run all unit tests
+  if (tests) {
     v8::HandleScope scope;
     v8::TryCatch tryCatch;
 
-    TRI_ExecuteStringVocBase(context, v8::String::New(input), name, true);
-    TRI_FreeString(input);
+    // set-up unit tests array
+    v8::Handle<v8::Array> sysTestFiles = v8::Array::New();
 
+    for (size_t i = 0;  i < _unitTests.size();  ++i) {
+      sysTestFiles->Set((uint32_t) i, v8::String::New(_unitTests[i].c_str()));
+    }
+
+    context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
+    context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
+
+    // run tests
+    char const* input = "require(\"jsunity\").runCommandLineTests();";
+    TRI_ExecuteStringVocBase(context, v8::String::New(input), name, true);
+      
     if (tryCatch.HasCaught()) {
       cout << TRI_StringifyV8Exception(&tryCatch);
+      ok = false;
+    }
+    else {
+      ok = TRI_ObjectToBoolean(context->Global()->Get(v8::String::New("SYS_UNIT_TESTS_RESULT")));
     }
   }
 
-  console->close();
+  // run a shell
+  else {
+    V8LineEditor* console = new V8LineEditor(context, ".avocado");
 
-  delete console;
+    console->open(true);
+
+    while (true) {
+      while(! v8::V8::IdleNotification()) {
+      }
+
+      char* input = console->prompt("avocado> ");
+
+      if (input == 0) {
+        printf("bye...\n");
+        TRI_FreeString(input);
+        break;
+      }
+
+      if (*input == '\0') {
+        TRI_FreeString(input);
+        continue;
+      }
+
+      console->addHistory(input);
+
+      v8::HandleScope scope;
+      v8::TryCatch tryCatch;
+
+      TRI_ExecuteStringVocBase(context, v8::String::New(input), name, true);
+      TRI_FreeString(input);
+      
+      if (tryCatch.HasCaught()) {
+        cout << TRI_StringifyV8Exception(&tryCatch);
+      }
+    }
+
+    console->close();
+
+    delete console;
+  }
 
   // and return from the context and isolate
   context->Exit();
@@ -745,6 +784,8 @@ void AvocadoServer::executeShell () {
 
   // close the database
   closeDatabase();
+
+  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

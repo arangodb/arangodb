@@ -28,6 +28,11 @@
 var internal = require("internal");
 var console = require("console");
 
+var TOTAL = 0;
+var PASSED = 0;
+var FAILED = 0;
+var DURATION = 0;
+
 internal.loadFile("jsunity/jsunity");
 jsUnity.log = console;
 
@@ -306,55 +311,64 @@ function reportCoverage (cov, files) {
 
 function Run (tests) {
   var suite = jsUnity.compile(tests);
-  var context = tests();
+  var definition = tests();
 
-  if (context != undefined) {
-    var nsuite = '{ "tests" : [ ';
-    var sep = "";
+  var tests = [];
+  var setUp = undefined;
+  var tearDown = undefined;
 
-
-    for (var i = 0;  i < suite.tests.length;  ++i) {
-      var test = suite.tests[i];
-
-      nsuite += sep + '{ "name" : "' + test.name + '", "fn" : ' + test.fn + ' }';
-      sep = ", ";
-    }
-
-    nsuite += " ]";
-
-    if (suite.hasOwnProperty("setUp")) {
-      nsuite += ', \"setup\" : ' + suite.setUp;
-    }
-
-    if (suite.hasOwnProperty("tearDown")) {
-      nsuite += ', \"tearDown\" : ' + suite.tearDown;
-    }
-
-    nsuite += " };";
-
-    nsuite = (new FunctionContext(nsuite))(context);
-
-    nsuite.scope = {};
-
-    for (var i = 0;  i < nsuite.tests.length;  ++i) {
-      var test = nsuite.tests[i];
-
-      nsuite.scope[test.name] = test.fn;
-    }
-
-    if (nsuite.hasOwnProperty("setUp")) {
-      nsuite.scope["setUp"] = nsuite.setUp;
-    }
-
-    if (nsuite.hasOwnProperty("tearDown")) {
-      nsuite.scope["tearDown"] = nsuite.tearDown;
-    }
-
-    nsuite.suiteName = suite.suiteName;
-    suite = nsuite;
+  if (definition.hasOwnProperty("setUp")) {
+    setUp = definition.setUp;
   }
 
-  jsUnity.run(suite);
+  if (definition.hasOwnProperty("tearDown")) {
+    tearDown = definition.tearDown;
+  }
+  
+  var scope = {};
+  scope.setUp = setUp;
+  scope.tearDown = tearDown;
+
+  for (var key in definition) {
+    if (key.indexOf("test") == 0) {
+      var test = { name : key, fn : definition[key] };
+
+      tests.push(test);
+    }
+    else if (key != "tearDown" && key != "setUp") {
+      console.error("unknown function: %s", key);
+    }
+  }
+
+  suite = new jsUnity.TestSuite(suite.suiteName, scope);
+
+  suite.tests = tests;
+  suite.setUp = setUp;
+  suite.tearDown = tearDown;
+  
+  var result = jsUnity.run(suite);
+
+  TOTAL += result.total;
+  PASSED += result.passed;
+  FAILED += result.failed;
+  DURATION += result.duration;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief done with all tests
+////////////////////////////////////////////////////////////////////////////////
+
+function Done () {
+  console.log("%d total, %d passed, %d failed, %d ms", TOTAL, PASSED, FAILED, DURATION);
+
+  var ok = FAILED == 0;
+
+  TOTAL = 0;
+  PASSED = 0;
+  FAILED = 0;
+  DURATION = 0;
+
+  return ok;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -380,7 +394,7 @@ function RunTest (path) {
     throw "cannot create context function";
   }
 
-  f(exports.jsUnity);
+  return f(exports.jsUnity);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -392,6 +406,30 @@ function RunCoverage (path, files) {
 
   populateCoverage(_$jscoverage);
   reportCoverage(_$jscoverage, files);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief runs tests from command-line
+////////////////////////////////////////////////////////////////////////////////
+
+function RunCommandLineTests () {
+  var result = true;
+
+  for (var i = 0;  i < SYS_UNIT_TESTS.length;  ++i) {
+    var file = SYS_UNIT_TESTS[i];
+
+    try {
+      var ok = RunTest(file);
+
+      result = result && ok;
+    }
+    catch (err) {
+      print("cannot run test file '" + file + "': " + err);
+      result = false;
+    }
+  }
+
+  SYS_UNIT_TESTS_RESULT = result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -409,8 +447,10 @@ function RunCoverage (path, files) {
 
 exports.jsUnity = jsUnity;
 exports.run = Run;
+exports.done = Done;
 exports.runTest = RunTest; 
 exports.runCoverage = RunCoverage; 
+exports.runCommandLineTests = RunCommandLineTests;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

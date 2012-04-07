@@ -873,6 +873,7 @@ WIKI = \
 	UserManualShellStartStop  \
 	jsUnity
 
+SHELL_SERVER = @srcdir@/js/server/tests/shell-documents.js
 @ENABLE_BOOST_TEST_TRUE@UnitTests_test_suite_LDADD = -L@top_builddir@ -lavocado -lboost_unit_test_framework
 @ENABLE_BOOST_TEST_TRUE@UnitTests_test_suite_DEPENDENCIES = @top_builddir@/libavocado.a
 @ENABLE_BOOST_TEST_TRUE@UnitTests_test_suite_SOURCES = \
@@ -881,6 +882,9 @@ WIKI = \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringBufferTest.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringUtilsTest.cpp
 
+OPTION = $(addprefix --unit-tests ,$(SHELL_SERVER))
+PID := $(shell echo $$PPID)
+VOCDIR = /tmp/vocdir.$(PID)
 @ENABLE_32BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.ia32
 @ENABLE_64BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.x64
 @ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_FALSE@LIBEV_CFLAGS_32 = -O2 -g
@@ -2574,13 +2578,49 @@ js/client/js-%.h: @srcdir@/js/client/%.js .setup-directories
 js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
 	@top_srcdir@/config/js2c.sh $< > $@
 
-.TARGET: unittests
+.PHONY: unittests unittests-boost
 
-@ENABLE_BOOST_TEST_TRUE@unittests:
+unittests: unittests-boost unittests-shell-server
+
+################################################################################
+################################################################################
+
+@ENABLE_BOOST_TEST_TRUE@unittests-boost:
+
+@ENABLE_BOOST_TEST_TRUE@	@echo "================================================================================"
+@ENABLE_BOOST_TEST_TRUE@	@echo "BOOST TESTS"
+@ENABLE_BOOST_TEST_TRUE@	@echo "================================================================================"
+
 @ENABLE_BOOST_TEST_TRUE@	@builddir@/UnitTests/test_suite --show_progress
 
-@ENABLE_BOOST_TEST_FALSE@unittests:
+@ENABLE_BOOST_TEST_TRUE@	@echo
+
+@ENABLE_BOOST_TEST_TRUE@unittests-boost: UnitTests/test_suite
+
+@ENABLE_BOOST_TEST_FALSE@	@echo "================================================================================"
+@ENABLE_BOOST_TEST_FALSE@	@echo "BOOST TESTS"
+@ENABLE_BOOST_TEST_FALSE@	@echo "================================================================================"
+
 @ENABLE_BOOST_TEST_FALSE@	@echo "enable unit-testing with 'configure --with-boost-test'"
+
+@ENABLE_BOOST_TEST_FALSE@	@echo
+
+################################################################################
+################################################################################
+
+.PHONY: unittests-shell-server
+
+unittests-shell-server:
+	@echo "================================================================================"
+	@echo "SHELL SERVER TESTS"
+	@echo "================================================================================"
+
+	@rm -rf "$(VOCDIR)"
+	@mkdir "$(VOCDIR)"
+
+	@builddir@/avocado "$(VOCDIR)" $(OPTION)
+
+	@rm -rf "$(VOCDIR)"
 
 -include Makefile.local
 
