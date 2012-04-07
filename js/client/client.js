@@ -35,10 +35,9 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief change internal.output to shell output
+/// @addtogroup AvocadoShell
+/// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-ModuleCache["/internal"].exports.output = TRI_SYS_OUTPUT;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default collection for saving queries
@@ -59,17 +58,26 @@ var helpAvocadoStoredStatement = "";
 var helpAvocadoStatement = "";
 var helpExtended = "";
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  helper functions
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a formatted type string for object
 /// 
-/// if the object has an id, it will be included in the string
+/// If the object has an id, it will be included in the string.
 ////////////////////////////////////////////////////////////////////////////////
 
-function getIdString (object, typeName) {
+function TRI_GetIdString (object, typeName) {
   var result = "[object " + typeName;
   
   if (object._id) {
@@ -84,10 +92,59 @@ function getIdString (object, typeName) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief handles error results
+/// 
+/// throws an exception in case of an an error
+////////////////////////////////////////////////////////////////////////////////
+
+function TRI_CheckRequestResult (requestResult) {
+  if (requestResult == undefined) {    
+    requestResult = {
+      "error" : true,
+      "code"  : 0,
+      "errorNum" : 0,
+      "errorMessage" : "Unknown error. Request result is empty"
+    }    
+  }
+  
+  if (requestResult["error"] != undefined && requestResult["error"]) {    
+    throw new AvocadoError(requestResult);
+  }  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a formatted headline text 
+////////////////////////////////////////////////////////////////////////////////
+
+function TRI_CreateHelpHeadline (text) {
+  var x = parseInt(Math.abs(78 - text.length) / 2);
+  
+  var p = "";
+  for (var i = 0; i < x; ++i) {
+    p += "-";
+  }
+  
+  return "\n" + p + " " + text + " " + p + "\n";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief turn off pretty printing
 ////////////////////////////////////////////////////////////////////////////////
 
-function printPlain (data) {
+function print_plain (data) {
   var p = PRETTY_PRINT;
   PRETTY_PRINT = false;
   var c;
@@ -113,37 +170,6 @@ function printPlain (data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief handles error results
-/// 
-/// throws an exception in case of an an error
-////////////////////////////////////////////////////////////////////////////////
-
-function checkErrorResult (requestResult) {
-  if (requestResult == undefined) {    
-    requestResult = {
-      "error" : true,
-      "code"  : 0,
-      "errorNum" : 0,
-      "errorMessage" : "Unknown error. Request result is empty"
-    }    
-  }
-  
-  if (requestResult["error"] != undefined && requestResult["error"]) {    
-    throw new AvocadoError(requestResult);
-  }  
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stop pretty printing
-////////////////////////////////////////////////////////////////////////////////
-
-function stop_pretty_print () {
-  print("stop pretty printing");
-  PRETTY_PRINT=false;
-  return undefined;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief start pretty printing
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -157,9 +183,9 @@ function start_pretty_print () {
 /// @brief stop pretty printing
 ////////////////////////////////////////////////////////////////////////////////
 
-function stop_color_print () {
-  print("stop color printing");
-  COLOR_OUTPUT = undefined;
+function stop_pretty_print () {
+  print("stop pretty printing");
+  PRETTY_PRINT=false;
   return undefined;
 }
 
@@ -179,18 +205,13 @@ function start_color_print (color) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a formatted headline text 
+/// @brief stop pretty printing
 ////////////////////////////////////////////////////////////////////////////////
 
-function getHeadline (text) {
-  var x = parseInt(Math.abs(78 - text.length) / 2);
-  
-  var p = "";
-  for (var i = 0; i < x; ++i) {
-    p += "-";
-  }
-  
-  return "\n" + p + " " + text + " " + p + "\n";
+function stop_color_print () {
+  print("stop color printing");
+  COLOR_OUTPUT = undefined;
+  return undefined;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -207,6 +228,10 @@ function help () {
   print(helpExtended);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 Module "internal"
 // -----------------------------------------------------------------------------
@@ -215,6 +240,12 @@ function help () {
 /// @addtogroup AvocadoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief change internal.output to shell output
+////////////////////////////////////////////////////////////////////////////////
+
+ModuleCache["/internal"].exports.output = TRI_SYS_OUTPUT;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log function
@@ -241,8 +272,13 @@ ModuleCache["/internal"].exports.stop_pager = SYS_STOP_PAGER;
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 AvocadoCollection
+// --SECTION--                                                      AvocadoError
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -277,9 +313,29 @@ AvocadoError.prototype._PRINT = function() {
   print(this.errorMessage);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints an error
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoError.prototype.toString = function() {
+  var errorNum = this.errorNum;
+  var errorMessage = this.errorMessage;
+
+  return "[AvocadoError " + errorNum + ": " + errorMessage + "]";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 AvocadoCollection
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -305,7 +361,7 @@ function AvocadoCollection (database, data) {
 AvocadoCollection.prototype.all = function () {
   var requestResult = this._database._connection.get("/_api/documents/" + encodeURIComponent(this.name));
 
-  checkErrorResult(requestResult);
+  TRI_CheckRequestResult(requestResult);
 
   return requestResult["documents"];
 }
@@ -317,7 +373,7 @@ AvocadoCollection.prototype.all = function () {
 AvocadoCollection.prototype.document = function (id) {
   var requestResult = this._database._connection.get("/document/" + id);
 
-  checkErrorResult(requestResult);
+  TRI_CheckRequestResult(requestResult);
 
   return requestResult;
 }
@@ -329,7 +385,7 @@ AvocadoCollection.prototype.document = function (id) {
 AvocadoCollection.prototype.save = function (data) {    
   var requestResult = this._database._connection.post("/document?collection=" + encodeURIComponent(this.name), JSON.stringify(data));
   
-  checkErrorResult(requestResult);
+  TRI_CheckRequestResult(requestResult);
 
   return requestResult;
 }
@@ -341,7 +397,7 @@ AvocadoCollection.prototype.save = function (data) {
 AvocadoCollection.prototype.delete = function (id) {    
   var requestResult = this._database._connection.delete("/_api/document/" + encodeURIComponent(this.name) + "/" + encodeURIComponent(id));
 
-  checkErrorResult(requestResult);
+  TRI_CheckRequestResult(requestResult);
 
   return requestResult;
 }
@@ -353,7 +409,7 @@ AvocadoCollection.prototype.delete = function (id) {
 AvocadoCollection.prototype.update = function (id, data) {    
   var requestResult = this._database._connection.put("/_api/document/" + encodeURIComponent(this.name) + "/" + encodeURIComponent(id), JSON.stringify(data));
 
-  checkErrorResult(requestResult);
+  TRI_CheckRequestResult(requestResult);
 
   return requestResult;
 }
@@ -371,7 +427,7 @@ AvocadoCollection.prototype._help = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.toString = function () {  
-  return getIdString(this, "AvocadoCollection");
+  return TRI_GetIdString(this, "AvocadoCollection");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -447,7 +503,7 @@ AvocadoQueryCursor.prototype.next = function () {
       // load more results      
       var requestResult = this._database._connection.put("/_api/cursor/"+ encodeURIComponent(this.data._id),  "");
     
-      checkErrorResult(requestResult);
+      TRI_CheckRequestResult(requestResult);
       
       this.data = requestResult;
       this._count = requestResult.result.length;
@@ -499,7 +555,7 @@ AvocadoQueryCursor.prototype.dispose = function () {
 
   var requestResult = this._database._connection.delete("/_api/cursor/"+ encodeURIComponent(this.data._id), "");
     
-  checkErrorResult(requestResult);
+  TRI_CheckRequestResult(requestResult);
 
   this.data._id = undefined;
 }
@@ -535,7 +591,7 @@ AvocadoQueryCursor.prototype._help = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoQueryCursor.prototype.toString = function () {  
-  return getIdString(this, "AvocadoQueryCursor");
+  return TRI_GetIdString(this, "AvocadoQueryCursor");
 }
 
 // -----------------------------------------------------------------------------
@@ -557,7 +613,7 @@ function AvocadoDatabase (connection) {
 AvocadoDatabase.prototype._collections = function () {
   var requestResult = this._connection.get("/_api/collections");
   
-  checkErrorResult(requestResult);
+  TRI_CheckRequestResult(requestResult);
 
   if (requestResult["collections"] != undefined) {
     
@@ -579,7 +635,7 @@ AvocadoDatabase.prototype._collections = function () {
 AvocadoDatabase.prototype._collection = function (id) {
   var requestResult = this._connection.get("/_api/collection/" + encodeURIComponent(id));
   
-  checkErrorResult(requestResult);
+  TRI_CheckRequestResult(requestResult);
 
   var name = requestResult["name"];
 
@@ -601,7 +657,7 @@ AvocadoDatabase.prototype._create = function (name) {
 
   var requestResult = this._connection.post("/_api/collection", JSON.stringify(body));
 
-  checkErrorResult(requestResult);
+  TRI_CheckRequestResult(requestResult);
 
   var name = requestResult["name"];
 
@@ -771,7 +827,7 @@ AvocadoStatement.prototype.parse = function () {
 
   var requestResult = this._database._connection.post("/_api/query", JSON.stringify(body));
     
-  checkErrorResult(requestResult);
+  TRI_CheckRequestResult(requestResult);
 
   return true;
 }
@@ -797,7 +853,7 @@ AvocadoStatement.prototype.execute = function () {
 
   var requestResult = this._database._connection.post("/_api/cursor", JSON.stringify(body));
     
-  checkErrorResult(requestResult);
+  TRI_CheckRequestResult(requestResult);
 
   return new AvocadoQueryCursor(this._database, requestResult);
 }
@@ -815,7 +871,7 @@ AvocadoStatement.prototype._help = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoStatement.prototype.toString = function () {  
-  return getIdString(this, "AvocadoStatement");
+  return TRI_GetIdString(this, "AvocadoStatement");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -835,7 +891,7 @@ AvocadoDatabase.prototype._createStatement = function (data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 HELP = 
-getHeadline("Help") +
+TRI_CreateHelpHeadline("Help") +
 'Predefined objects:                                                 ' + "\n" +
 '  avocado:                               AvocadoConnection          ' + "\n" +
 '  db:                                    AvocadoDatabase            ' + "\n" +
@@ -850,7 +906,7 @@ getHeadline("Help") +
 ' > exit                                                             ';
 
 helpQueries = 
-getHeadline("Select query help") +
+TRI_CreateHelpHeadline("Select query help") +
 
 'Create a select query:                                              ' + "\n" +
 ' > st = new AvocadoStatement(db, { "query" : "select..." });        ' + "\n" +
@@ -878,7 +934,7 @@ getHeadline("Select query help") +
 ' > while (c.hasNext()) { print( c.next() ); }                       ';
 
 helpAvocadoDatabase = 
-getHeadline("AvocadoDatabase help") +
+TRI_CreateHelpHeadline("AvocadoDatabase help") +
 'AvocadoDatabase constructor:                                        ' + "\n" +
 ' > db2 = new AvocadoDatabase(connection);                           ' + "\n" +
 'Functions:                                                          ' + "\n" +
@@ -893,7 +949,7 @@ getHeadline("AvocadoDatabase help") +
 '  <collection names>                                                ';
 
 helpAvocadoCollection = 
-getHeadline("AvocadoCollection help") +
+TRI_CreateHelpHeadline("AvocadoCollection help") +
 'AvocadoCollection constructor:                                      ' + "\n" +
 ' > col = db.mycoll;                                                 ' + "\n" +
 'Functions:                                                          ' + "\n" +
@@ -910,7 +966,7 @@ getHeadline("AvocadoCollection help") +
 '  figures                                                           ';
 
 helpAvocadoQueryCursor = 
-getHeadline("AvocadoQueryCursor help") +
+TRI_CreateHelpHeadline("AvocadoQueryCursor help") +
 'AvocadoQueryCursor constructor:                                     ' + "\n" +
 ' > cu1 = qi1.execute();                                             ' + "\n" +
 'Functions:                                                          ' + "\n" +
@@ -929,7 +985,7 @@ getHeadline("AvocadoQueryCursor help") +
 ' > while (c.hasNext()) { print( c.next() ); }                       ';
 
 helpAvocadoStatement = 
-getHeadline("AvocadoStatement help") +
+TRI_CreateHelpHeadline("AvocadoStatement help") +
 'AvocadoStatement constructor:                                       ' + "\n" +
 ' > st = new AvocadoStatement({ "query" : "select..." });            ' + "\n" +
 ' > st = db._createStatement({ "query" : "select ...." });           ' + "\n" +
@@ -958,7 +1014,7 @@ getHeadline("AvocadoStatement help") +
 ' > print(c.elements());                                             ';
 
 helpExtended = 
-getHeadline("More help") +
+TRI_CreateHelpHeadline("More help") +
 'Pager:                                                              ' + "\n" +
 ' > internal.stop_pager()               stop the pager output        ' + "\n" +
 ' > internal.start_pager()              start the pager              ' + "\n" +
@@ -971,7 +1027,7 @@ getHeadline("More help") +
 ' > start_color_print(COLOR_BLUE)       set color                    ' + "\n" +
 'Print function:                                                     ' + "\n" +
 ' > print(x)                            std. print function          ' + "\n" +
-' > printPlain(x)                       print without pretty printing' + "\n" +
+' > print_plain(x)                      print without pretty printing' + "\n" +
 '                                       and without colors           ';
 
 ////////////////////////////////////////////////////////////////////////////////

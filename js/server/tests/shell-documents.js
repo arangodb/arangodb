@@ -38,8 +38,26 @@ var jsunity = require("jsunity");
 function readCollectionDocumentSuiteErrorHandling () {
   var cn = "UnitTestsCollectionBasics";
   var ERRORS = require("internal").errors;
+  var collection = null;
 
   return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(cn);
+      collection = db._create(cn, false);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      collection.drop();
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief bad handle
@@ -47,7 +65,7 @@ function readCollectionDocumentSuiteErrorHandling () {
 
     testErrorHandlingBadHandle : function () {
       try {
-        db[cn].document("123456");
+        collection.document("123456");
         fail();
       }
       catch (err) {
@@ -61,7 +79,7 @@ function readCollectionDocumentSuiteErrorHandling () {
 
     testErrorHandlingUnknownDocument: function () {
       try {
-        db[cn].document(db[cn]._id + "/123456");
+        collection.document(collection._id + "/123456");
         fail();
       }
       catch (err) {
@@ -75,7 +93,7 @@ function readCollectionDocumentSuiteErrorHandling () {
 
     testErrorHandlingCrossCollection: function () {
       try {
-        db[cn].document("123456/123456");
+        collection.document("123456/123456");
         fail();
       }
       catch (err) {
@@ -102,7 +120,7 @@ function readCollectionDocumentSuiteReadDocument () {
 
     setUp : function () {
       db._drop(cn);
-      collection = db[cn];
+      collection = db._create(cn, false);
 
       collection.load();
     },
@@ -273,13 +291,17 @@ function readDocumentSuiteErrorHandling () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testErrorHandlingUnknownDocument : function () {
+      var collection = db._create(cn, false);
+
       try {
-        db._document(db[cn]._id + "/123456");
+        db._document(collection._id + "/123456");
         fail();
       }
       catch (err) {
         assertEqual(ERRORS.ERROR_AVOCADO_DOCUMENT_NOT_FOUND.code, err.errorNum);
       }
+
+      collection.drop();
     }
   };
 }
@@ -301,7 +323,7 @@ function readDocumentSuiteReadDocument () {
 
     setUp : function () {
       db._drop(cn);
-      collection = db[cn];
+      collection = db._create(cn, false);
 
       collection.load();
     },
