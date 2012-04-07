@@ -96,7 +96,7 @@ ShapedJson.prototype._PRINT = function(seen, path, names, level) {
   else {
     internal.output(this.toString());
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -120,7 +120,7 @@ AvocadoError.prototype._PRINT = function() {
   var errorMessage = this.errorMessage;
 
   internal.output("[AvocadoError ", errorNum, ": ", errorMessage, "]");
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts error to string
@@ -131,7 +131,7 @@ AvocadoError.prototype.toString = function() {
   var errorMessage = this.errorMessage;
 
   return "[AvocadoError " + errorNum + ": " + errorMessage + "]";
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -162,7 +162,7 @@ AvocadoDatabase.prototype._drop = function(name) {
   }
 
   return collection.drop()
-}
+};
 
 AvocadoEdges.prototype._drop = AvocadoDatabase._drop;
 
@@ -186,9 +186,33 @@ AvocadoDatabase.prototype._truncate = function(name) {
   for (var i = 0;  i < all.length;  ++i) {
     collection.delete(all[i]._id);
   }
-}
+};
 
 AvocadoEdges.prototype._truncate = AvocadoDatabase._truncate;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints a database
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._PRINT = function(seen, path, names, level) {
+  internal.output("[AvocadoDatabase \"" + this._path + "\"]");
+};
+
+AvocadoEdges.prototype._PRINT =  function(seen, path, names, level) {
+  internal.output("[AvocadoEdges \"" + this._path + "\"]");
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief strng representation of a database
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype.toString = function(seen, path, names, level) {
+  return "[AvocadoDatabase \"" + this._path + "\"]";
+};
+
+AvocadoEdges.prototype.toString = function(seen, path, names, level) {
+  return "[AvocadoEdges \"" + this._path + "\"]";
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -245,7 +269,7 @@ AvocadoCollection.STATUS_DELETED = 5;
 
 AvocadoCollection.prototype.toArray = function() {
   return this.ALL(null, null).documents;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncates a collection
@@ -253,7 +277,7 @@ AvocadoCollection.prototype.toArray = function() {
 
 AvocadoCollection.prototype.truncate = function() {
   return db._truncate(this);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds an index of a collection
@@ -271,7 +295,7 @@ AvocadoCollection.prototype.index = function(id) {
   }
 
   return null;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a collection
@@ -290,7 +314,15 @@ AvocadoCollection.prototype._PRINT = function() {
   }
   
   SYS_OUTPUT("[AvocadoCollection ", this._id, ", \"", this.name(), "\" (status ", status, ")]");
-}
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief strng representation of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.toString = function(seen, path, names, level) {
+  return "[AvocadoCollection " + this._id + "]";
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
