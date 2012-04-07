@@ -138,6 +138,7 @@ describe AvocadoDB do
 	AvocadoDB.drop_collection(@cn)
       end
 
+      # get
       it "finds the collection by identifier" do
 	cmd = api + "/" + String(@cid)
         doc = AvocadoDB.log_get("#{prefix}-get-collection-identifier", cmd)
@@ -166,6 +167,7 @@ describe AvocadoDB do
 	doc.headers['location'].should eq(api + "/" + String(@cid))
       end
 
+      # get
       it "finds the collection by name" do
 	cmd = api + "/" + String(@cn)
         doc = AvocadoDB.log_get("#{prefix}-get-collection-name", cmd)
@@ -194,6 +196,7 @@ describe AvocadoDB do
 	doc.headers['location'].should eq(api + "/" + String(@cid))
       end
 
+      # get count
       it "checks the size of a collection" do
 	cmd = api + "/" + String(@cid) + "/count"
         doc = AvocadoDB.log_get("#{prefix}-get-collection-count", cmd)
@@ -209,6 +212,24 @@ describe AvocadoDB do
 	doc.headers['location'].should eq(api + "/" + String(@cid) + "/count")
       end
 
+      # get count
+      it "checks the parameter of a collection" do
+	cmd = api + "/" + String(@cid) + "/parameter"
+        doc = AvocadoDB.log_get("#{prefix}-get-collection-parameter", cmd)
+
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['id'].should eq(@cid)
+	doc.parsed_response['name'].should eq(@cn)
+	doc.parsed_response['status'].should eq(3)
+	doc.parsed_response['waitForSync'].should eq(true)
+	doc.parsed_response['journalSize'].should be_kind_of(Integer)
+	doc.headers['location'].should eq(api + "/" + String(@cid) + "/parameter")
+      end
+
+      # get figures
       it "extracting the figures for a collection" do
 	cmd = api + "/" + String(@cid) + "/figures"
         doc = AvocadoDB.log_get("#{prefix}-get-collection-figures", cmd)

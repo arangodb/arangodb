@@ -228,13 +228,13 @@ function GET_api_collections (req, res) {
 ////////////////////////////////////////////////////////////////////
 ///
 /// In addition to the above, the result will always contain the
-/// @LIT{waitForSync} parameter. This is achieved by forcing a load of
-/// the underlying collection.
+/// @LIT{waitForSync} and the @LIT{journalSize} parameters. This is
+/// achieved by forcing a load of the underlying collection.
 ///
 /// @LIT{waitForSync}: If @LIT{true} then creating or changing a document will
 /// wait until the data has been synchronised to disk. 
 ///
-/// @LIT{count}: The number of documents inside the collection.
+/// @LIT{journalSize}: The maximal size of a journal / datafile.
 ///
 /// @REST{GET /_api/collection/@FA{collection-identifier}/count}
 ////////////////////////////////////////////////////////////////
