@@ -225,7 +225,7 @@ function GET_api_collections (req, res) {
 /// location.
 ///
 /// @REST{GET /_api/collection/@FA{collection-identifier}/parameter}
-////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
 ///
 /// In addition to the above, the result will always contain the
 /// @LIT{waitForSync} parameter. This is achieved by forcing a load of

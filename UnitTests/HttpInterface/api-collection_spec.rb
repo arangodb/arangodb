@@ -148,7 +148,21 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should eq(@cid)
 	doc.parsed_response['name'].should eq(@cn)
-	doc.parsed_response['status'].should be_kind_of(Integer)
+	doc.parsed_response['status'].should eq(3)
+	doc.headers['location'].should eq(api + "/" + String(@cid))
+
+	cmd2 = api + "/" + String(@cid) + "/unload"
+        doc = AvocadoDB.put(cmd2)
+
+        doc = AvocadoDB.log_get("#{prefix}-get-collection-identifier", cmd)
+
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['id'].should eq(@cid)
+	doc.parsed_response['name'].should eq(@cn)
+	[2,4].include?(doc.parsed_response['status']).should be_true
 	doc.headers['location'].should eq(api + "/" + String(@cid))
       end
 
@@ -162,7 +176,21 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should eq(@cid)
 	doc.parsed_response['name'].should eq(@cn)
-	doc.parsed_response['status'].should be_kind_of(Integer)
+	doc.parsed_response['status'].should eq(3)
+	doc.headers['location'].should eq(api + "/" + String(@cid))
+
+	cmd2 = api + "/" + String(@cid) + "/unload"
+        doc = AvocadoDB.put(cmd2)
+
+        doc = AvocadoDB.log_get("#{prefix}-get-collection-name", cmd)
+
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['id'].should eq(@cid)
+	doc.parsed_response['name'].should eq(@cn)
+	[2,4].include?(doc.parsed_response['status']).should be_true
 	doc.headers['location'].should eq(api + "/" + String(@cid))
       end
 
