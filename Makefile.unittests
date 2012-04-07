@@ -6,14 +6,27 @@
 
 SHELL_SERVER = @srcdir@/js/server/tests/shell-documents.js
 
+PID := $(shell echo $$PPID)
+PIDFILE := /tmp/avocado.$(PID).pid
+VOCDIR := /tmp/vocdir.$(PID)
+
 .PHONY: unittests unittests-boost
 
-unittests: unittests-boost unittests-shell-server
+unittests: unittests-boost unittests-shell-server unittests-http-server
+
+.PHONY: start-server stop-server
+
+start-server:
+	@echo "starting the server"
+	@rm -f "$(PIDFILE)"
+	@rm -rf "$(VOCDIR)"
+	@mkdir "$(VOCDIR)"
+
+	@builddir@/avocado "$(VOCDIR)" --pid-file $(PIDFILE) &
 
 ################################################################################
 ## BOOST TESTS
 ################################################################################
-
 
 if ENABLE_BOOST_TEST
 
@@ -58,8 +71,6 @@ endif
 .PHONY: unittests-shell-server
 
 OPTION = $(addprefix --unit-tests ,$(SHELL_SERVER))
-PID := $(shell echo $$PPID)
-VOCDIR = /tmp/vocdir.$(PID)
 
 unittests-shell-server:
 	@echo "================================================================================"
@@ -72,3 +83,16 @@ unittests-shell-server:
 	@builddir@/avocado "$(VOCDIR)" $(OPTION)
 
 	@rm -rf "$(VOCDIR)"
+
+################################################################################
+## HTTP SERVER TESTS
+################################################################################
+
+.PHONY: unittests-http-server
+
+unittests-http-server: start-server
+	@echo "================================================================================"
+	@echo "HTTP SERVER TESTS"
+	@echo "================================================================================"
+
+	cd @srcdir@/UnitTests/HttpInterface && ./run_tests
