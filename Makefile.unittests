@@ -4,25 +4,30 @@
 ## unittests target
 ################################################################################
 
-.TARGET: unittests
+SHELL_SERVER = @srcdir@/js/server/tests/shell-documents.js
+
+.PHONY: unittests unittests-boost
+
+unittests: unittests-boost unittests-shell-server
+
+################################################################################
+## BOOST TESTS
+################################################################################
+
 
 if ENABLE_BOOST_TEST
 
-unittests:
+unittests-boost:
+
+	@echo "================================================================================"
+	@echo "BOOST TESTS"
+	@echo "================================================================================"
+
 	@builddir@/UnitTests/test_suite --show_progress
 
-else
+	@echo
 
-unittests:
-	@echo "enable unit-testing with 'configure --with-boost-test'"
-
-endif
-
-################################################################################
-## tests
-################################################################################
-
-if ENABLE_BOOST_TEST
+unittests-boost: UnitTests/test_suite
 
 noinst_PROGRAMS = UnitTests/test_suite
 
@@ -34,5 +39,36 @@ UnitTests_test_suite_SOURCES = \
 	UnitTests/Philadelphia/string-buffer-test.cpp \
 	UnitTests/Jutland/StringBufferTest.cpp \
 	UnitTests/Jutland/StringUtilsTest.cpp
+
+else
+
+	@echo "================================================================================"
+	@echo "BOOST TESTS"
+	@echo "================================================================================"
+
+	@echo "enable unit-testing with 'configure --with-boost-test'"
+
+	@echo
 endif
 
+################################################################################
+## SHELL SERVER TESTS
+################################################################################
+
+.PHONY: unittests-shell-server
+
+OPTION = $(addprefix --unit-tests ,$(SHELL_SERVER))
+PID := $(shell echo $$PPID)
+VOCDIR = /tmp/vocdir.$(PID)
+
+unittests-shell-server:
+	@echo "================================================================================"
+	@echo "SHELL SERVER TESTS"
+	@echo "================================================================================"
+
+	@rm -rf "$(VOCDIR)"
+	@mkdir "$(VOCDIR)"
+
+	@builddir@/avocado "$(VOCDIR)" $(OPTION)
+
+	@rm -rf "$(VOCDIR)"
