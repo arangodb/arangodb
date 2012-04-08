@@ -40,12 +40,22 @@ AM_CONDITIONAL(ENABLE_FLEX, test "x$tr_FLEX" = xyes)
 
 
 AC_ARG_ENABLE(all-in-one,
-  AS_HELP_STRING([--enable-all-in-one], [enable supplied V8, BOOST, LIBEV]),
+  AS_HELP_STRING([--enable-all-in-one], [use supplied V8, LIBEV from 3rdParty directory]),
   [tr_ALL_IN_ONE="${enableval:-yes}"],
   [tr_ALL_IN_ONE=yes]
 )
 
 AM_CONDITIONAL(ENABLE_ALL_IN_ONE, test "x$tr_ALL_IN_ONE" = xyes)
+
+
+
+AC_ARG_ENABLE(included-boost,
+  AS_HELP_STRING([--enable-included-boost], [use supplied BOOST from 3rdParty directory]),
+  [tr_INCLUDED_BOOST="${enableval:-yes}"],
+  [tr_INCLUDED_BOOST=yes]
+)
+
+AM_CONDITIONAL(ENABLE_INCLUDED_BOOST, test "x$tr_INCLUDED_BOOST" = xyes)
 
 
 
@@ -127,15 +137,21 @@ m4_include([m4/external.readline])
 m4_include([m4/external.openssl])
 
 if test "x$tr_ALL_IN_ONE" = xyes;  then
-  m4_include([m4/all-in-one.boost])
   m4_include([m4/all-in-one.libev])
   m4_include([m4/all-in-one.v8])
   BASIC_INFO="$BASIC_INFO|ALL-IN-ONE: enabled"
 else
-  m4_include([m4/external.boost])
   m4_include([m4/external.libev])
   m4_include([m4/external.v8])
   BASIC_INFO="$BASIC_INFO|ALL-IN-ONE: disabled"
+fi
+
+if test "x$tr_INCLUDED_BOOST" = xyes;  then
+  m4_include([m4/all-in-one.boost])
+  BASIC_INFO="$BASIC_INFO|INCLUDED-BOOST: enabled"
+else
+  m4_include([m4/external.boost])
+  BASIC_INFO="$BASIC_INFO|INCLUDED-BOOST: disabled"
 fi
 
 dnl ============================================================================

@@ -52,10 +52,10 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
 	$(top_srcdir)/m4/external.ncurses \
 	$(top_srcdir)/m4/external.readline \
 	$(top_srcdir)/m4/external.openssl \
-	$(top_srcdir)/m4/all-in-one.boost \
 	$(top_srcdir)/m4/all-in-one.libev \
-	$(top_srcdir)/m4/all-in-one.v8 $(top_srcdir)/m4/external.boost \
-	$(top_srcdir)/m4/external.libev $(top_srcdir)/m4/external.v8 \
+	$(top_srcdir)/m4/all-in-one.v8 $(top_srcdir)/m4/external.libev \
+	$(top_srcdir)/m4/external.v8 $(top_srcdir)/m4/all-in-one.boost \
+	$(top_srcdir)/m4/external.boost \
 	$(top_srcdir)/m4/configure.information \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
