@@ -97,7 +97,7 @@ void ConditionVariable::wait () {
 /// @brief waits for an event with timeout in milli seconds
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ConditionVariable::timedwait (uint64_t delay) {
+bool ConditionVariable::wait (uint64_t delay) {
   return TRI_TimedWaitCondition(&_condition, delay);
 }
 
