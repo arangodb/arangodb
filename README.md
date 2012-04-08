@@ -16,7 +16,13 @@ On Mac OS X you can install AvocadoDB using the packagemanager [Homebrew](http:/
 
 * `brew install avocadodb` (use `--HEAD` in order to build AvocadoDB from current master)
 
-This will install AvocadoDB and all dependencies. 
+This will install AvocadoDB and all dependencies. Note that the server will be installed as
+
+    /usr/local/sbin/avocado
+
+The AvocadoDB shell will be install as
+
+    /usr/local/bin/avocsh
 
 ## First Steps
 
