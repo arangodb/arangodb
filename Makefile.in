@@ -873,7 +873,9 @@ WIKI = \
 	UserManualShellStartStop  \
 	jsUnity
 
-SHELL_SERVER = @srcdir@/js/server/tests/shell-documents.js
+
+################################################################################
+################################################################################
 PID := $(shell echo $$PPID)
 PIDFILE := /tmp/avocado.$(PID).pid
 VOCDIR := /tmp/vocdir.$(PID)
@@ -887,6 +889,10 @@ VOCHOST := 127.0.0.1
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringBufferTest.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringUtilsTest.cpp
 
+
+################################################################################
+################################################################################
+SHELL_SERVER = @srcdir@/js/server/tests/shell-documents.js
 OPTION = $(addprefix --unit-tests ,$(SHELL_SERVER))
 @ENABLE_32BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.ia32
 @ENABLE_64BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.x64
@@ -2581,9 +2587,36 @@ js/client/js-%.h: @srcdir@/js/client/%.js .setup-directories
 js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
 	@top_srcdir@/config/js2c.sh $< > $@
 
-.PHONY: unittests unittests-boost
+.PHONY: unittests unittests-brief unittests-verbose
 
-unittests: unittests-boost unittests-shell-server unittests-http-server
+unittests: unittests-verbose unittests-brief
+
+unittests-brief: unittests-boost unittests-shell-server unittests-http-server
+
+unittests-verbose:
+	@echo "################################################################################"
+	@echo "#"
+	@echo "# In order to run the unit-tests you need to either install the JavaScript"
+	@echo "# library files or configure the AvocadoDB in such a way, that it uses a"
+	@echo "# relative path."
+	@echo "#"
+	@echo "# Library Files"
+	@echo "# -------------"
+	@echo "#"
+	@echo "# > ./configure ...."
+	@echo "# > make install"
+	@echo "# > make unittests"
+	@echo "#"
+	@echo "# Relative Paths"
+	@echo "# --------------"
+	@echo "#"
+	@echo "# > ./configure --enable-relative=devel ..."
+	@echo "# > make unittests"
+	@echo "#"
+	@echo "################################################################################"
+	@echo
+
+	@sleep 1
 
 .PHONY: start-server
 
@@ -2606,6 +2639,8 @@ start-server:
 
 ################################################################################
 ################################################################################
+
+.PHONY: unittests-boost
 
 @ENABLE_BOOST_TEST_TRUE@unittests-boost:
 @ENABLE_BOOST_TEST_TRUE@	@echo
@@ -2630,9 +2665,6 @@ start-server:
 @ENABLE_BOOST_TEST_FALSE@	@echo "enable unit-testing with 'configure --with-boost-test'"
 
 @ENABLE_BOOST_TEST_FALSE@	@echo
-
-################################################################################
-################################################################################
 
 .PHONY: unittests-shell-server
 
