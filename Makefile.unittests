@@ -53,7 +53,7 @@ start-server:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
-	@builddir@/avocado "$(VOCDIR)" --pid-file $(PIDFILE) --watch-process $(PID) --server.http-port $(VOCHOST):$(VOCPORT) &
+	(@builddir@/avocado "$(VOCDIR)" --pid-file $(PIDFILE) --watch-process $(PID) --server.http-port $(VOCHOST):$(VOCPORT) && rm -rf "$(VOCDIR)") &
 
 	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
 	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
