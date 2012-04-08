@@ -128,6 +128,39 @@ describe AvocadoDB do
 
 	AvocadoDB.size_collection(@cid).should eq(0)
       end
+
+      it "creating a new document complex body" do
+	cmd = "/document?collection=#{@cid}"
+	body = "{ \"Hallo\" : \"Wo\\\"rld\" }"
+	doc = AvocadoDB.log_post("#{prefix}", cmd, :body => body)
+
+	doc.code.should eq(201)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	doc.parsed_response['error'].should eq(false)
+
+	etag = doc.headers['etag']
+	etag.should be_kind_of(String)
+
+	location = doc.headers['location']
+	location.should be_kind_of(String)
+
+	rev = doc.parsed_response['_rev']
+	rev.should be_kind_of(Integer)
+
+	did = doc.parsed_response['_id']
+	did.should be_kind_of(String)
+	
+	match = /([0-9]*)\/([0-9]*)/.match(did)
+
+	match[1].should eq("#{@cid}")
+
+	etag.should eq("\"#{rev}\"")
+	location.should eq("/document/#{did}")
+
+	AvocadoDB.delete(location)
+
+	AvocadoDB.size_collection(@cid).should eq(0)
+      end
     end
 
 ################################################################################
