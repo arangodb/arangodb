@@ -84,6 +84,7 @@
 #define TRI_HAVE_SYS_TIME_H                 1
 #define TRI_HAVE_UNISTD_H                   1
 
+#define TRI_HAVE_GETPPID                    1
 #define TRI_HAVE_GETTIMEOFDAY               1
 #define TRI_HAVE_GMTIME_R                   1
 #define TRI_HAVE_LINUX_SOCKETS              1
@@ -212,6 +213,7 @@
 #define TRI_HAVE_SYS_TIME_H                 1
 #define TRI_HAVE_UNISTD_H                   1
 
+#define TRI_HAVE_GETPPID                    1
 #define TRI_HAVE_GETLINE                    1
 #define TRI_HAVE_GETTIMEOFDAY               1
 #define TRI_HAVE_GMTIME_R                   1

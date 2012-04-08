@@ -216,7 +216,23 @@ namespace triagens {
 
         while (_scheduler->isRunning()) {
           LOGGER_TRACE << "waiting for scheduler to stop";
-          _schedulerCond.wait();
+          _schedulerCond.wait(1000);
+
+#ifdef TRI_HAVE_GETPPID
+          if (_exitOnParentDeath && getppid() == 1) {
+            LOGGER_INFO << "parent has died";
+            break;
+          }
+#endif
+
+          if (_watchParent != 0) {
+            int res = kill(_watchParent, 0);
+
+            if (res != 0) {
+              LOGGER_INFO << "parent " << _watchParent << " has died";
+              break;
+            }
+          }
         }
 
         LOGGER_TRACE << "scheduler has stopped";

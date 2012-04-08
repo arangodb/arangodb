@@ -1,9 +1,11 @@
 require 'httparty'
 
+$address = ENV['AVOCADO_SERVER'] || '127.0.0.1:8529'
+
 class AvocadoDB
   include HTTParty
 
-  base_uri 'http://localhost:8529'
+  base_uri "http://#{$address}"
   format :json
 
 ################################################################################

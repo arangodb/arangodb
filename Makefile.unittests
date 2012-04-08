@@ -9,12 +9,14 @@ SHELL_SERVER = @srcdir@/js/server/tests/shell-documents.js
 PID := $(shell echo $$PPID)
 PIDFILE := /tmp/avocado.$(PID).pid
 VOCDIR := /tmp/vocdir.$(PID)
+VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
+VOCHOST := 127.0.0.1
 
 .PHONY: unittests unittests-boost
 
 unittests: unittests-boost unittests-shell-server unittests-http-server
 
-.PHONY: start-server stop-server
+.PHONY: start-server
 
 start-server:
 	@echo "starting the server"
@@ -22,7 +24,16 @@ start-server:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
-	@builddir@/avocado "$(VOCDIR)" --pid-file $(PIDFILE) &
+	@builddir@/avocado "$(VOCDIR)" --pid-file $(PIDFILE) --watch-process $(PID) --server.http-port $(VOCHOST):$(VOCPORT) &
+
+	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
+	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
+	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
+	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
+
+	curl http://$(VOCHOST):$(VOCPORT)/version
+
+	@echo
 
 ################################################################################
 ## BOOST TESTS
@@ -31,10 +42,11 @@ start-server:
 if ENABLE_BOOST_TEST
 
 unittests-boost:
-
+	@echo
 	@echo "================================================================================"
 	@echo "BOOST TESTS"
 	@echo "================================================================================"
+	@echo
 
 	@builddir@/UnitTests/test_suite --show_progress
 
@@ -55,9 +67,12 @@ UnitTests_test_suite_SOURCES = \
 
 else
 
+unittests-boost:
+	@echo
 	@echo "================================================================================"
 	@echo "BOOST TESTS"
 	@echo "================================================================================"
+	@echo
 
 	@echo "enable unit-testing with 'configure --with-boost-test'"
 
@@ -73,9 +88,11 @@ endif
 OPTION = $(addprefix --unit-tests ,$(SHELL_SERVER))
 
 unittests-shell-server:
+	@echo
 	@echo "================================================================================"
 	@echo "SHELL SERVER TESTS"
 	@echo "================================================================================"
+	@echo
 
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
@@ -84,6 +101,8 @@ unittests-shell-server:
 
 	@rm -rf "$(VOCDIR)"
 
+	@echo
+
 ################################################################################
 ## HTTP SERVER TESTS
 ################################################################################
@@ -91,8 +110,12 @@ unittests-shell-server:
 .PHONY: unittests-http-server
 
 unittests-http-server: start-server
+	@echo
 	@echo "================================================================================"
 	@echo "HTTP SERVER TESTS"
 	@echo "================================================================================"
+	@echo
 
-	cd @srcdir@/UnitTests/HttpInterface && ./run_tests
+	cd @srcdir@/UnitTests/HttpInterface && AVOCADO_SERVER="$(VOCHOST):$(VOCPORT)" ./run_tests
+
+	@echo
