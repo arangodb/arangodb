@@ -611,18 +611,21 @@ function AvocadoDatabase (connection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoDatabase.prototype._collections = function () {
-  var requestResult = this._connection.get("/_api/collections");
+  var requestResult = this._connection.get("/_api/collection");
   
   TRI_CheckRequestResult(requestResult);
 
   if (requestResult["collections"] != undefined) {
+    var collections = requestResult["collections"];
     
     // add all collentions to object
-    for (var i in requestResult["collections"]) {
-      this[i] = new AvocadoCollection(this, requestResult["collections"][i]);
+    for (var i = 0;  i < collections.length;  ++i) {
+      var collection = collections[i];
+
+      this[collection.name] = new AvocadoCollection(this, collection);
     }
       
-    return requestResult["collections"];
+    return collections;
   }
   
   return undefined;
