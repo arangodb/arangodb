@@ -31,7 +31,7 @@ describe AvocadoDB do
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
 
-      it "returns an error if document handle is corrupted" do
+      it "returns an error if document handle is corrupted with empty cid" do
 	cmd = "/document//123456"
         doc = AvocadoDB.log_get("#{prefix}-bad-handle2", cmd)
 

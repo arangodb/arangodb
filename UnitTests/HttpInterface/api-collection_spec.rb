@@ -417,7 +417,7 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should eq(cid)
 	doc.parsed_response['name'].should eq(@cn)
-	doc.parsed_response['status'].should eq(4)
+        [2,4].include?(doc.parsed_response['status']).should be_true
 
 	AvocadoDB.drop_collection(@cn)
       end

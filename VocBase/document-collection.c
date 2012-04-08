@@ -59,11 +59,11 @@ static TRI_voc_did_t CreateLock (TRI_doc_collection_t* document,
 /// @brief creates a new document in the collection from json
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t const CreateJson (TRI_doc_collection_t* collection,
-                                        TRI_df_marker_type_e type,
-                                        TRI_json_t const* json,
-                                        void const* data,
-                                        bool release) {
+static TRI_doc_mptr_t CreateJson (TRI_doc_collection_t* collection,
+                                  TRI_df_marker_type_e type,
+                                  TRI_json_t const* json,
+                                  void const* data,
+                                  bool release) {
   TRI_shaped_json_t* shaped;
   TRI_doc_mptr_t result;
   
@@ -109,13 +109,13 @@ static int UpdateLock (TRI_doc_collection_t* document,
 /// @brief updates a document in the collection from json
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t const UpdateJson (TRI_doc_collection_t* collection,
-                                        TRI_json_t const* json,
-                                        TRI_voc_did_t did,
-                                        TRI_voc_rid_t rid,
-                                        TRI_voc_rid_t* oldRid,
-                                        TRI_doc_update_policy_e policy,
-                                        bool release) {
+static TRI_doc_mptr_t UpdateJson (TRI_doc_collection_t* collection,
+                                  TRI_json_t const* json,
+                                  TRI_voc_did_t did,
+                                  TRI_voc_rid_t rid,
+                                  TRI_voc_rid_t* oldRid,
+                                  TRI_doc_update_policy_e policy,
+                                  bool release) {
   TRI_shaped_json_t* shaped;
   TRI_doc_mptr_t result;
 
