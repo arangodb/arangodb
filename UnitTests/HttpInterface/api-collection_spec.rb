@@ -37,6 +37,8 @@ describe AvocadoDB do
 	collections = doc.parsed_response['collections']
 	names = doc.parsed_response['names']
 
+	collections.length.should eq(3)
+
 	for collection in collections do
 	  names[collection['name']].should eq(collection)
 	end
