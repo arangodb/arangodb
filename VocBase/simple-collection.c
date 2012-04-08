@@ -51,18 +51,18 @@ static int DeleteImmediateIndexes (TRI_sim_collection_t* collection,
                                    TRI_doc_mptr_t const* header,
                                    TRI_voc_tick_t);
 
-static TRI_doc_mptr_t const UpdateDocument (TRI_sim_collection_t* collection,
-                                            TRI_doc_mptr_t const* header,
-                                            TRI_doc_document_marker_t* marker,
-                                            size_t markerSize,
-                                            void const* body,
-                                            TRI_voc_size_t bodySize,
-                                            TRI_voc_rid_t rid,
-                                            TRI_voc_rid_t* oldRid,
-                                            TRI_doc_update_policy_e policy,
-                                            TRI_df_marker_t** result,
-                                            bool release,
-                                            bool allowRollback);
+static TRI_doc_mptr_t UpdateDocument (TRI_sim_collection_t* collection,
+                                      TRI_doc_mptr_t const* header,
+                                      TRI_doc_document_marker_t* marker,
+                                      size_t markerSize,
+                                      void const* body,
+                                      TRI_voc_size_t bodySize,
+                                      TRI_voc_rid_t rid,
+                                      TRI_voc_rid_t* oldRid,
+                                      TRI_doc_update_policy_e policy,
+                                      TRI_df_marker_t** result,
+                                      bool release,
+                                      bool allowRollback);
 
 static int DeleteDocument (TRI_sim_collection_t* collection,
                            TRI_doc_deletion_marker_t* marker,
@@ -450,10 +450,10 @@ static void UpdateHeader (TRI_doc_collection_t* c,
 /// @brief roll backs an update
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t const RollbackUpdate (TRI_sim_collection_t* sim,
-                                            TRI_doc_mptr_t const* header,
-                                            TRI_df_marker_t const* originalMarker,
-                                            TRI_df_marker_t** result) {
+static TRI_doc_mptr_t RollbackUpdate (TRI_sim_collection_t* sim,
+                                      TRI_doc_mptr_t const* header,
+                                      TRI_df_marker_t const* originalMarker,
+                                      TRI_df_marker_t** result) {
   TRI_doc_document_marker_t* marker;
   TRI_doc_document_marker_t documentUpdate;
   TRI_doc_edge_marker_t edgeUpdate;
@@ -498,18 +498,18 @@ static TRI_doc_mptr_t const RollbackUpdate (TRI_sim_collection_t* sim,
 /// @brief updates an existing document splitted into marker and body to file
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t const UpdateDocument (TRI_sim_collection_t* collection,
-                                            TRI_doc_mptr_t const* header,
-                                            TRI_doc_document_marker_t* marker,
-                                            size_t markerSize,
-                                            void const* body,
-                                            TRI_voc_size_t bodySize,
-                                            TRI_voc_rid_t rid,
-                                            TRI_voc_rid_t* oldRid,
-                                            TRI_doc_update_policy_e policy,
-                                            TRI_df_marker_t** result,
-                                            bool release,
-                                            bool allowRollback) {
+static TRI_doc_mptr_t UpdateDocument (TRI_sim_collection_t* collection,
+                                      TRI_doc_mptr_t const* header,
+                                      TRI_doc_document_marker_t* marker,
+                                      size_t markerSize,
+                                      void const* body,
+                                      TRI_voc_size_t bodySize,
+                                      TRI_voc_rid_t rid,
+                                      TRI_voc_rid_t* oldRid,
+                                      TRI_doc_update_policy_e policy,
+                                      TRI_df_marker_t** result,
+                                      bool release,
+                                      bool allowRollback) {
   TRI_doc_mptr_t mptr;
   TRI_datafile_t* journal;
   TRI_df_marker_t const* originalMarker;
@@ -910,11 +910,11 @@ static void DebugHeaderSimCollection (TRI_sim_collection_t* collection) {
 /// @brief creates a new document in the collection from shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t const CreateShapedJson (TRI_doc_collection_t* document,
-                                              TRI_df_marker_type_e type,
-                                              TRI_shaped_json_t const* json,
-                                              void const* data,
-                                              bool release) {
+static TRI_doc_mptr_t CreateShapedJson (TRI_doc_collection_t* document,
+                                        TRI_df_marker_type_e type,
+                                        TRI_shaped_json_t const* json,
+                                        void const* data,
+                                        bool release) {
   TRI_df_marker_t* result;
   TRI_sim_collection_t* collection;
 
@@ -974,8 +974,8 @@ static TRI_doc_mptr_t const CreateShapedJson (TRI_doc_collection_t* document,
 /// @brief reads an element from the document collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t const ReadShapedJson (TRI_doc_collection_t* document,
-                                            TRI_voc_did_t did) {
+static TRI_doc_mptr_t ReadShapedJson (TRI_doc_collection_t* document,
+                                      TRI_voc_did_t did) {
   TRI_sim_collection_t* collection;
   TRI_doc_mptr_t result;
   TRI_doc_mptr_t const* header;
@@ -997,13 +997,13 @@ static TRI_doc_mptr_t const ReadShapedJson (TRI_doc_collection_t* document,
 /// @brief updates a document in the collection from shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t const UpdateShapedJson (TRI_doc_collection_t* document,
-                                              TRI_shaped_json_t const* json,
-                                              TRI_voc_did_t did,
-                                              TRI_voc_rid_t rid,
-                                              TRI_voc_rid_t* oldRid,
-                                              TRI_doc_update_policy_e policy,
-                                              bool release) {
+static TRI_doc_mptr_t UpdateShapedJson (TRI_doc_collection_t* document,
+                                        TRI_shaped_json_t const* json,
+                                        TRI_voc_did_t did,
+                                        TRI_voc_rid_t rid,
+                                        TRI_voc_rid_t* oldRid,
+                                        TRI_doc_update_policy_e policy,
+                                        bool release) {
   TRI_df_marker_t const* original;
   TRI_df_marker_t* result;
   TRI_doc_mptr_t mptr;
