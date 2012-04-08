@@ -4,17 +4,46 @@
 ## unittests target
 ################################################################################
 
-SHELL_SERVER = @srcdir@/js/server/tests/shell-documents.js
+.PHONY: unittests unittests-brief unittests-verbose
+
+unittests: unittests-verbose unittests-brief
+
+unittests-brief: unittests-boost unittests-shell-server unittests-http-server
+
+unittests-verbose:
+	@echo "################################################################################"
+	@echo "#"
+	@echo "# In order to run the unit-tests you need to either install the JavaScript"
+	@echo "# library files or configure the AvocadoDB in such a way, that it uses a"
+	@echo "# relative path."
+	@echo "#"
+	@echo "# Library Files"
+	@echo "# -------------"
+	@echo "#"
+	@echo "# > ./configure ...."
+	@echo "# > make install"
+	@echo "# > make unittests"
+	@echo "#"
+	@echo "# Relative Paths"
+	@echo "# --------------"
+	@echo "#"
+	@echo "# > ./configure --enable-relative=devel ..."
+	@echo "# > make unittests"
+	@echo "#"
+	@echo "################################################################################"
+	@echo
+
+	@sleep 1
+
+################################################################################
+## start the avocado server
+################################################################################
 
 PID := $(shell echo $$PPID)
 PIDFILE := /tmp/avocado.$(PID).pid
 VOCDIR := /tmp/vocdir.$(PID)
 VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
 VOCHOST := 127.0.0.1
-
-.PHONY: unittests unittests-boost
-
-unittests: unittests-boost unittests-shell-server unittests-http-server
 
 .PHONY: start-server
 
@@ -38,6 +67,8 @@ start-server:
 ################################################################################
 ## BOOST TESTS
 ################################################################################
+
+.PHONY: unittests-boost
 
 if ENABLE_BOOST_TEST
 
@@ -82,6 +113,8 @@ endif
 ################################################################################
 ## SHELL SERVER TESTS
 ################################################################################
+
+SHELL_SERVER = @srcdir@/js/server/tests/shell-documents.js
 
 .PHONY: unittests-shell-server
 
