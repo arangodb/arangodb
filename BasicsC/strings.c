@@ -789,7 +789,8 @@ char* TRI_EscapeUtf8String (char const* in, size_t inLength, bool escapeSlash, s
   char const * end;
 
   buffer = (char*) TRI_Allocate(6 * inLength + 1);
-  if (!buffer) {
+
+  if (buffer == NULL) {
     return NULL;
   }
 
@@ -922,7 +923,8 @@ char* TRI_EscapeUtf8String (char const* in, size_t inLength, bool escapeSlash, s
   *outLength = qtr - buffer;
 
   qtr = TRI_Allocate(*outLength + 1);
-  if (qtr) {
+
+  if (qtr != NULL) {
     memcpy(qtr, buffer, *outLength + 1);
   }
 

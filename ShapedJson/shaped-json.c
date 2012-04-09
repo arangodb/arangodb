@@ -32,6 +32,7 @@
 #include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/string-buffer.h"
+#include "BasicsC/strings.h"
 #include "BasicsC/vector.h"
 #include "ShapedJson/json-shaper.h"
 
@@ -1358,12 +1359,18 @@ static bool StringifyJsonShapeDataShortString (TRI_shaper_t* shaper,
                                                char const* data,
                                                uint64_t size) {
   TRI_shape_length_short_string_t l;
+  char* unicoded;
+  size_t out;
 
   l = * (TRI_shape_length_short_string_t const*) data;
   data += sizeof(TRI_shape_length_short_string_t);
 
   TRI_AppendCharStringBuffer(buffer, '"');
-  TRI_AppendString2StringBuffer(buffer, data, l - 1);
+
+  unicoded = TRI_EscapeUtf8String(data, l - 1, true, &out);
+  TRI_AppendString2StringBuffer(buffer, unicoded, out);
+  TRI_FreeString(unicoded);
+
   TRI_AppendCharStringBuffer(buffer, '"');
 
   return true;
@@ -1379,12 +1386,18 @@ static bool StringifyJsonShapeDataLongString (TRI_shaper_t* shaper,
                                               char const* data,
                                               uint64_t size) {
   TRI_shape_length_long_string_t l;
+  char* unicoded;
+  size_t out;
 
   l = * (TRI_shape_length_long_string_t const*) data;
   data += sizeof(TRI_shape_length_long_string_t);
 
   TRI_AppendCharStringBuffer(buffer, '"');
-  TRI_AppendString2StringBuffer(buffer, data, l - 1);
+
+  unicoded = TRI_EscapeUtf8String(data, l - 1, true, &out);
+  TRI_AppendString2StringBuffer(buffer, unicoded, out);
+  TRI_FreeString(unicoded);
+
   TRI_AppendCharStringBuffer(buffer, '"');
 
   return true;
@@ -1412,6 +1425,8 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
   TRI_shape_size_t v;
   bool first;
   char const* qtr;
+  char* unicoded;
+  size_t out;
 
   s = (TRI_array_shape_t const*) shape;
   f = s->_fixedEntries;
@@ -1471,7 +1486,11 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
     }
 
     TRI_AppendCharStringBuffer(buffer, '"');
-    TRI_AppendStringStringBuffer(buffer, name);
+
+    unicoded = TRI_EscapeUtf8String(name, strlen(name), true, &out);
+    TRI_AppendString2StringBuffer(buffer, unicoded, out);
+    TRI_FreeString(unicoded);
+
     TRI_AppendCharStringBuffer(buffer, '"');
     TRI_AppendCharStringBuffer(buffer, ':');
 
@@ -1517,7 +1536,11 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
     }
 
     TRI_AppendCharStringBuffer(buffer, '"');
-    TRI_AppendStringStringBuffer(buffer, name);
+
+    unicoded = TRI_EscapeUtf8String(name, strlen(name), true, &out);
+    TRI_AppendString2StringBuffer(buffer, unicoded, out);
+    TRI_FreeString(unicoded);
+
     TRI_AppendCharStringBuffer(buffer, '"');
     TRI_AppendCharStringBuffer(buffer, ':');
 
@@ -1935,7 +1958,7 @@ bool TRI_StringifyAugmentedShapedJson (TRI_shaper_t* shaper,
   ok = StringifyJsonShapeDataArray(shaper, buffer, shape, shaped->_data.data, shaped->_data.length, false, &num);
 
   if (0 < num) {
-    TRI_AppendStringStringBuffer(buffer, ",");
+    TRI_AppendCharStringBuffer(buffer, ',');
   }
 
   if (! ok) {
