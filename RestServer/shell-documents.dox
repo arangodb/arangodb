@@ -41,12 +41,21 @@
 /// @page ShellDocumentCallsTOC
 ///
 /// <ol>
-///  <li>@ref ShellDocumentRead "collection.document(document-handle)"</li>
-///  <li>@ref ShellDocumentCreate "collection.save(data)"</li>
-///  <li>@ref ShellDocumentUpdate "collection.replace(document, data)"</li>
-///  <li>@ref ShellDocumentDelete "DELETE /document/@FA{document-handle}"</li>
-///  <li>@ref ShellDocumentHead "HEAD /document/@FA{document-handle}"</li>
-///  <li>@ref ShellDocumentDbRead "db._document(document-handle)"</li>
+///  <li>Collection Methods
+///   <ol>
+///    <li>@ref ShellDocumentRead "collection.document(document-handle)"</li>
+///    <li>@ref ShellDocumentCreate "collection.save(data)"</li>
+///    <li>@ref ShellDocumentUpdate "collection.replace(document, data)"</li>
+///    <li>@ref ShellDocumentDelete "collection.delete(document)"</li>
+///   </ol>
+///  </li>
+///  <li>Database Methods
+///   <ol>
+///    <li>@ref ShellDocumentDbRead "db._document(document-handle)"</li>
+///    <li>@ref ShellDocumentDbUpdate "db._replace(document-handle, data)"</li>
+///    <li>@ref ShellDocumentDbDelete "db._delete(document-handle)"</li>
+///   </ol>
+///  </li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -122,19 +131,19 @@
 /// <hr>
 ///
 /// @anchor ShellDocumentDelete
-/// @copydetails triagens::avocado::ShellDocumentHandler::deleteDocument
-/// <hr>
-///
-/// @anchor ShellDocumentHead
-/// @copydetails triagens::avocado::ShellDocumentHandler::checkDocument
-/// <hr>
-///
-/// @anchor ShellDocumentReadAll
-/// @copydetails triagens::avocado::ShellDocumentHandler::readAllDocuments
+/// @copydetails JS_DeleteVocbaseCol
 /// <hr>
 ///
 /// @anchor ShellDocumentDbRead
 /// @copydetails JS_DocumentVocbase
+/// <hr>
+///
+/// @anchor ShellDocumentDbUpdate
+/// @copydetails JS_ReplaceVocbase
+/// <hr>
+///
+/// @anchor ShellDocumentDbDelete
+/// @copydetails JS_DeleteVocbase
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
