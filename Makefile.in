@@ -867,6 +867,7 @@ WIKI = \
 	RestDocument \
 	RestEdge \
 	RestSystem \
+	ShellDocument \
 	SimpleQueries \
 	UserManualServer \
 	UserManualShell \

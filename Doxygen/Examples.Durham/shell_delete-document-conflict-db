@@ -1,0 +1,14 @@
+avocado> a1 = db.example.save({ a : 1 });
+{ "_id" : "116308/4042634", "_rev" : 4042634 }
+avocado> a2 = db._replace(a1, { a : 2 });
+{ "_id" : "116308/4042634", "_rev" : 4108170, "_oldRev" : 4042634 }
+avocado> db._delete(a1);
+JavaScript exception in file '(avocado)' at 1,4: [AvocadoError 1200: conflict: cannot delete document]
+!db._delete(a1);
+!   ^
+avocado> db._delete(a1, true);
+true
+avocado> db._document(a1);
+JavaScript exception in file '(avocado)' at 1,4: [AvocadoError 1202: document not found: document not found]
+!db._document(a1);
+!   ^

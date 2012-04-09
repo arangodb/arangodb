@@ -822,9 +822,9 @@ static v8::Handle<v8::Value> DeleteVocbaseCol (TRI_vocbase_t* vocbase,
   v8::HandleScope scope;
 
   // check the arguments
-  if (argv.Length() != 1) {
+  if (argv.Length() < 1) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("usage: delete(<document>)")));
+    return scope.Close(v8::ThrowException(v8::String::New("usage: delete(<document>, <overwrite>)")));
   }
 
   TRI_voc_did_t did;
@@ -843,8 +843,8 @@ static v8::Handle<v8::Value> DeleteVocbaseCol (TRI_vocbase_t* vocbase,
   // check policy
   TRI_doc_update_policy_e policy = TRI_DOC_UPDATE_ERROR;
 
-  if (3 <= argv.Length()) {
-    bool overwrite = TRI_ObjectToBoolean(argv[2]);
+  if (2 <= argv.Length()) {
+    bool overwrite = TRI_ObjectToBoolean(argv[1]);
 
     if (overwrite) {
       policy = TRI_DOC_UPDATE_LAST_WRITE;
@@ -3516,9 +3516,13 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
 ///
 /// @EXAMPLES
 ///
-/// Create and update a document:
+/// Delete a document:
 ///
 /// @verbinclude shell_delete-document
+///
+/// Delete a document with a conflict:
+///
+/// @verbinclude shell_delete-document-conflict
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DeleteVocbaseCol (v8::Arguments const& argv) {
@@ -3558,15 +3562,15 @@ static v8::Handle<v8::Value> JS_DeleteVocbaseCol (v8::Arguments const& argv) {
 ///
 /// @EXAMPLES
 ///
-/// Return the document:
+/// Return the document for a document-handle:
 ///
 /// @verbinclude shell_read-document
 ///
-/// An error is raised of the document is unknown:
+/// An error is raised if the document is unknown:
 ///
 /// @verbinclude shell_read-document-not-found
 ///
-/// An error is raised of the handle is invalid:
+/// An error is raised if the handle is invalid:
 ///
 /// @verbinclude shell_read-document-bad-handle
 ////////////////////////////////////////////////////////////////////////////////
@@ -4155,7 +4159,7 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
 /// @FUN{@FA{collection}.replace(@FA{document}, @FA{data})}
 ///
 /// Replaces an existing @FA{document}. The @FA{document} must be a document in
-/// the current collection. This document is than replaced with the value
+/// the current collection. This document is than replaced with the
 /// @FA{data} given as second argument.
 ///
 /// The method returns a document with the attributes @LIT{_id}, @LIT{_rev} and
@@ -4646,9 +4650,13 @@ static v8::Handle<v8::Value> JS_CreateVocBase (v8::Arguments const& argv) {
 ///
 /// @EXAMPLES
 ///
-/// Create and update a document:
+/// Delete a document:
 ///
-/// @verbinclude shell_delete-document
+/// @verbinclude shell_delete-document-db
+///
+/// Delete a document with a conflict:
+///
+/// @verbinclude shell_delete-document-conflict-db
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DeleteVocbase (v8::Arguments const& argv) {
@@ -4727,9 +4735,9 @@ static v8::Handle<v8::Value> JS_DocumentVocbase (v8::Arguments const& argv) {
 ///
 /// @EXAMPLES
 ///
-/// Return the document:
+/// Create and update a document:
 ///
-/// @verbinclude shell_read-document-db
+/// @verbinclude shell_update-document-db
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ReplaceVocbase (v8::Arguments const& argv) {
