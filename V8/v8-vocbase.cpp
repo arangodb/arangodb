@@ -2169,6 +2169,70 @@ static v8::Handle<v8::Value> JS_WhereHashConstAql (const v8::Arguments& argv) {
 /// @brief DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
+static v8::Handle<v8::Value> JS_WherePQConstAql (const v8::Arguments& argv) {
+  v8::HandleScope scope;
+  TRI_json_t* parameterList;
+
+  if (argv.Length() > 2 ||  argv.Length() == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_WHERE_PQ_CONST(<index-identifier> {,<value 1>})")));
+  }
+
+  
+  // ..........................................................................
+  // check that the first parameter sent is a double value -- the index id
+  // ..........................................................................
+  
+  bool inValidType = true;
+  TRI_idx_iid_t iid = TRI_ObjectToDouble(argv[0], inValidType); 
+  
+  if (inValidType || iid == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("<index-identifier> must be an positive integer")));       
+  }  
+
+
+  // ..........................................................................
+  // Store the index field parameters in a json object -- there is only one
+  // possible parameter to be sent - the number of top documents to query.
+  // ..........................................................................
+  
+  parameterList = TRI_CreateListJson();
+  if (!parameterList) {
+    return scope.Close(v8::ThrowException(v8::String::New("out of memory in JS_WherePQConstAql")));
+  }
+
+  
+  if (argv.Length() == 1) {
+    TRI_json_t* jsonParameter = TRI_CreateNumberJson(1);
+    if (jsonParameter == NULL) { // failure of some sort
+      return scope.Close(v8::ThrowException(v8::String::New("internal error in JS_WherePQConstAql")));       
+    }
+    TRI_PushBackListJson(parameterList, jsonParameter);
+  }
+  
+  else {
+    for (int j = 1; j < argv.Length(); ++j) {  
+      v8::Handle<v8::Value> parameter = argv[j];
+      TRI_json_t* jsonParameter = ConvertHelper(parameter);
+      if (jsonParameter == NULL) { // NOT the null json value! 
+        return scope.Close(v8::ThrowException(v8::String::New("type value not currently supported for priority queue index")));       
+      }
+      TRI_PushBackListJson(parameterList, jsonParameter);
+    }
+  }  
+
+  // build document priority queue access
+  TRI_qry_where_t* where = TRI_CreateQueryWherePQConstant(iid, parameterList);
+
+  // wrap it up
+  return scope.Close(WrapWhere(where));
+  
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
 static v8::Handle<v8::Value> JS_WhereSkiplistConstAql (const v8::Arguments& argv) {
   v8::HandleScope scope;
   TRI_json_t* parameterList;
@@ -2390,6 +2454,79 @@ static v8::Handle<v8::Value> JS_HashSelectAql (v8::Arguments const& argv) {
   ReleaseCollection(collection);
   return scope.Close(WrapQuery(query));
 }
+
+
+
+
+
+static v8::Handle<v8::Value> JS_PQSelectAql (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 2) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: AQL_PQ_SELECT(collection, where)")));
+  }
+
+  // ...........................................................................
+  // extract the primary collection
+  // ...........................................................................
+  v8::Handle<v8::Value> collectionArg = argv[0];
+  if (! collectionArg->IsObject()) {
+    return scope.Close(v8::ThrowException(v8::String::New("expecting a COLLECTION as first argument")));
+  }
+  v8::Handle<v8::Object> collectionObj = collectionArg->ToObject();
+
+  v8::Handle<v8::Object> err;
+  const TRI_vocbase_col_t* collection = UseCollection(collectionObj, &err);
+
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+  
+  // ...........................................................................
+  // Extract the where clause
+  // ...........................................................................
+  v8::Handle<v8::Value> whereArg = argv[1];
+  TRI_qry_where_t* where = 0;
+  if (whereArg->IsNull()) {
+    ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(v8::String::New("expecting a WHERE object as second argument")));
+  }
+  v8::Handle<v8::Object> whereObj = whereArg->ToObject();
+  where = UnwrapClass<TRI_qry_where_t>(whereObj, WRP_QRY_WHERE_TYPE);
+  if (where == 0) {
+    ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted WHERE")));
+  }
+    
+  // ...........................................................................
+  // Check the operators
+  // ...........................................................................
+  TRI_qry_where_priorityqueue_const_t* pqWhere = (TRI_qry_where_priorityqueue_const_t*)(where);
+  TRI_priorityqueue_index_t* idx               = (TRI_priorityqueue_index_t*)(TRI_LookupIndex(collection->_collection, pqWhere->_iid));
+  if (idx == NULL) {
+    ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(v8::String::New("invalid index in where statement")));
+  }
+  
+  // ...........................................................................
+  // Create the skiplist query 
+  // ...........................................................................
+  TRI_query_t* query = TRI_CreatePriorityQueueQuery(where, collection->_collection); 
+  if (!query) {
+    ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(v8::String::New("could not create query object")));
+  }
+
+
+  // ...........................................................................
+  // wrap it up
+  // ...........................................................................
+
+  ReleaseCollection(collection);
+  return scope.Close(WrapQuery(query));
+}
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new query from given parts - DEPRECATED
@@ -3882,6 +4019,179 @@ static v8::Handle<v8::Value> JS_EnsureHashIndexVocbaseCol (v8::Arguments const& 
   return EnsureHashSkipListIndex("ensureHashIndex", argv, false, 0);
 }
   
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a priority queue index exists
+///
+/// @FUN{ensureSLIndex(@FA{field1})}
+///
+/// Creates a priority queue index on all documents using attributes as paths to
+/// the fields. Currently only supports one attribute of the type double.
+/// All documents, which do not have the attribute path are ignored.
+///
+/// In case that the index was successfully created, the index indetifier
+/// is returned.
+///
+/// @verbinclude fluent14
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;  
+  bool created = false;
+  TRI_index_t* idx;
+  
+  
+  // .............................................................................
+  // Check that we have a valid collection                      
+  // .............................................................................
+
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
+  
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  // .............................................................................
+  // Check collection type
+  // .............................................................................
+
+  TRI_doc_collection_t* doc = collection->_collection;
+  
+  if (doc->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
+  }
+
+  TRI_sim_collection_t* sim = (TRI_sim_collection_t*) doc;
+
+  // .............................................................................
+  // Return string when there is an error of some sort.
+  // .............................................................................
+
+  string errorString;
+  
+  // .............................................................................
+  // Ensure that there is at least one string parameter sent to this method
+  // .............................................................................  
+
+  if (argv.Length() != 1) {
+    ReleaseCollection(collection);
+
+    errorString = "one string parameter required for the ensurePQIndex(...) command";
+    return scope.Close(v8::String::New(errorString.c_str(),errorString.length()));
+  }
+   
+
+  // .............................................................................
+  // Create a list of paths, these will be used to create a list of shapes
+  // which will be used by the priority queue index.
+  // .............................................................................
+  
+  TRI_vector_t attributes;
+  TRI_InitVector(&attributes,sizeof(char*));
+  
+  bool ok = true;
+  
+  for (int j = 0; j < argv.Length(); ++j) {
+  
+    v8::Handle<v8::Value> argument = argv[j];
+    if (! argument->IsString() ) {
+      errorString = "invalid parameter passed to ensurePQIndex(...) command";
+      ok = false;
+      break;
+    }
+    
+    // ...........................................................................
+    // convert the argument into a "C" string
+    // ...........................................................................
+    
+    v8::String::Utf8Value argumentString(argument);   
+    char* cArgument = (char*) (TRI_Allocate(argumentString.length() + 1));       
+    if (cArgument == NULL) {
+      errorString = "insuffient memory to complete ensurePQIndex(...) command";
+      ok = false;
+      break;
+    }  
+        
+    memcpy(cArgument, *argumentString, argumentString.length());
+    TRI_PushBackVector(&attributes,&cArgument);
+  }
+
+  // .............................................................................
+  // Check that each parameter is unique
+  // .............................................................................
+  
+  for (size_t j = 0; j < attributes._length; ++j) {  
+    char* left = *((char**) (TRI_AtVector(&attributes, j)));    
+    for (size_t k = j + 1; k < attributes._length; ++k) {
+      char* right = *((char**) (TRI_AtVector(&attributes, k)));
+      if (strcmp(left,right) == 0) {
+        errorString = "duplicate parameters sent to ensurePQIndex(...) command";
+        ok = false;
+        break;
+      }   
+    }
+  }    
+  
+  // .............................................................................
+  // Some sort of error occurred -- display error message and abort index creation
+  // (or index retrieval).
+  // .............................................................................
+  
+  if (!ok) {
+    // ...........................................................................
+    // Remove the memory allocated to the list of attributes used for the hash index
+    // ...........................................................................   
+    for (size_t j = 0; j < attributes._length; ++j) {
+      char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
+      TRI_Free(cArgument);
+    }    
+    TRI_DestroyVector(&attributes);
+
+    ReleaseCollection(collection);
+    return scope.Close(v8::String::New(errorString.c_str(),errorString.length()));
+  }  
+  
+  // .............................................................................
+  // Actually create the index here. Note that priority queue is never unique.
+  // .............................................................................
+
+  idx = TRI_EnsurePriorityQueueIndexSimCollection(sim, &attributes, false, &created);
+
+  // .............................................................................
+  // Remove the memory allocated to the list of attributes used for the hash index
+  // .............................................................................   
+
+  for (size_t j = 0; j < attributes._length; ++j) {
+    char* cArgument = *((char**) (TRI_AtVector(&attributes, j)));
+    TRI_Free(cArgument);
+  }    
+
+  TRI_DestroyVector(&attributes);
+
+  if (idx == NULL) {
+    ReleaseCollection(collection);
+    return scope.Close(v8::String::New("Priority Queue index could not be created"));
+  }  
+  
+  // .............................................................................
+  // Return the newly assigned index identifier
+  // .............................................................................
+
+  TRI_json_t* json = idx->json(idx, collection->_collection);
+  v8::Handle<v8::Value> index = TRI_ObjectJson(json);
+  
+  if (index->IsObject()) {
+    index->ToObject()->Set(v8::String::New("isNewlyCreated"), created ? v8::True() : v8::False());
+  }
+
+  ReleaseCollection(collection);
+  return scope.Close(index);
+}
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a skiplist index exists
 ///
@@ -3901,6 +4211,8 @@ static v8::Handle<v8::Value> JS_EnsureHashIndexVocbaseCol (v8::Arguments const& 
 static v8::Handle<v8::Value> JS_EnsureUniqueSkiplistVocbaseCol (v8::Arguments const& argv) {
   return EnsureHashSkipListIndex("ensureUniqueSkipList", argv, true, 1);
 }
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a multi skiplist index exists
@@ -4058,32 +4370,32 @@ static v8::Handle<v8::Value> JS_NameVocbaseCol (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gets or sets the parameters of a collection
+/// @brief gets or sets the properties of a collection
 ///
-/// @FUN{parameter()}
+/// @FUN{properties()}
 ///
-/// Returns an object containing all collection parameters.
+/// Returns an object containing all collection properties.
 ///
 /// - @LIT{waitForSync}: If @LIT{true} creating a document will only return
 ///   after the data was synced to disk.
 /// - @LIT{journalSize} : The size of the journal in bytes.
 ///
-/// @FUN{parameter(@FA{parameter-array})}
+/// @FUN{properties(@FA{properties-array})}
 ///
-/// Changes the collection parameters.
+/// Changes the collection properties.
 ///
 /// @EXAMPLES
 ///
-/// Read all parameters
+/// Read all properties
 ///
 /// @verbinclude admin1
 ///
-/// Change a parameter
+/// Change a property
 ///
 /// @verbinclude admin2
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_ParameterVocbaseCol (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv) {
   TRI_v8_global_t* v8g;
   v8::HandleScope scope;
 
@@ -5367,10 +5679,18 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> DropIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("dropIndex"));
   v8::Handle<v8::String> EdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("edges"));
   v8::Handle<v8::String> EnsureGeoIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureGeoIndex"));
+/*  
+  oreste:
+  v8::Handle<v8::String> EnsureMultiHashIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureMultiHashIndex"));
+  v8::Handle<v8::String> EnsureMultiSkiplistIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureMultiSLIndex"));
+  v8::Handle<v8::String> EnsureSkiplistIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureSLIndex"));
+*/  
   v8::Handle<v8::String> EnsureHashIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureHashIndex"));
+  v8::Handle<v8::String> EnsurePriorityQueueIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensurePQIndex"));
   v8::Handle<v8::String> EnsureSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureSkiplist"));
   v8::Handle<v8::String> EnsureUniqueConstraintFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureUniqueConstraint"));
   v8::Handle<v8::String> EnsureUniqueSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureUniqueSkiplist"));
+
   v8::Handle<v8::String> ExecuteFuncName = v8::Persistent<v8::String>::New(v8::String::New("execute"));
   v8::Handle<v8::String> FiguresFuncName = v8::Persistent<v8::String>::New(v8::String::New("figures"));
   v8::Handle<v8::String> GetBatchSizeFuncName = v8::Persistent<v8::String>::New(v8::String::New("getBatchSize"));
@@ -5385,8 +5705,8 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> NextFuncName = v8::Persistent<v8::String>::New(v8::String::New("next"));
   v8::Handle<v8::String> NextRefFuncName = v8::Persistent<v8::String>::New(v8::String::New("nextRef"));
   v8::Handle<v8::String> OutEdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("outEdges"));
-  v8::Handle<v8::String> ParameterFuncName = v8::Persistent<v8::String>::New(v8::String::New("parameter"));
   v8::Handle<v8::String> PersistFuncName = v8::Persistent<v8::String>::New(v8::String::New("persist"));
+  v8::Handle<v8::String> PropertiesFuncName = v8::Persistent<v8::String>::New(v8::String::New("properties"));
   v8::Handle<v8::String> RenameFuncName = v8::Persistent<v8::String>::New(v8::String::New("rename"));
   v8::Handle<v8::String> ReplaceFuncName = v8::Persistent<v8::String>::New(v8::String::New("replace"));
   v8::Handle<v8::String> SaveFuncName = v8::Persistent<v8::String>::New(v8::String::New("save"));
@@ -5544,16 +5864,25 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(DropFuncName, v8::FunctionTemplate::New(JS_DropVocbaseCol));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
+  
+  /* oreste:
+  rt->Set(EnsureMultiHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureMultiHashIndexVocbaseCol));
+  rt->Set(EnsureMultiSkiplistIndexFuncName, v8::FunctionTemplate::New(JS_EnsureMultiSkiplistIndexVocbaseCol));
+  rt->Set(EnsureSkiplistIndexFuncName, v8::FunctionTemplate::New(JS_EnsureSkiplistIndexVocbaseCol));
+  */
+  
   rt->Set(EnsureHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureHashIndexVocbaseCol));
+  rt->Set(EnsurePriorityQueueIndexFuncName, v8::FunctionTemplate::New(JS_EnsurePriorityQueueIndexVocbaseCol));
   rt->Set(EnsureSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureSkiplistVocbaseCol));
   rt->Set(EnsureUniqueSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueSkiplistVocbaseCol));
   rt->Set(EnsureUniqueConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueConstraintVocbaseCol));
+  
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
   rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));
   rt->Set(NameFuncName, v8::FunctionTemplate::New(JS_NameVocbaseCol));
   rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
-  rt->Set(ParameterFuncName, v8::FunctionTemplate::New(JS_ParameterVocbaseCol));
+  rt->Set(PropertiesFuncName, v8::FunctionTemplate::New(JS_PropertiesVocbaseCol));
   rt->Set(RenameFuncName, v8::FunctionTemplate::New(JS_RenameVocbaseCol));
   rt->Set(StatusFuncName, v8::FunctionTemplate::New(JS_StatusVocbaseCol));
   rt->Set(UnloadFuncName, v8::FunctionTemplate::New(JS_UnloadVocbaseCol));
@@ -5583,16 +5912,23 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(DropFuncName, v8::FunctionTemplate::New(JS_DropVocbaseCol));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
+  /* oreste
+  rt->Set(EnsureMultiHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureMultiHashIndexVocbaseCol));
+  rt->Set(EnsureMultiSkiplistIndexFuncName, v8::FunctionTemplate::New(JS_EnsureMultiSkiplistIndexVocbaseCol));
+  rt->Set(EnsureSkiplistIndexFuncName, v8::FunctionTemplate::New(JS_EnsureSkiplistIndexVocbaseCol));
+  */
   rt->Set(EnsureHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureHashIndexVocbaseCol));
+  rt->Set(EnsurePriorityQueueIndexFuncName, v8::FunctionTemplate::New(JS_EnsurePriorityQueueIndexVocbaseCol));
   rt->Set(EnsureSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureSkiplistVocbaseCol));
   rt->Set(EnsureUniqueConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueConstraintVocbaseCol));
   rt->Set(EnsureUniqueSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueSkiplistVocbaseCol));
+
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
   rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));
   rt->Set(NameFuncName, v8::FunctionTemplate::New(JS_NameVocbaseCol));
   rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
-  rt->Set(ParameterFuncName, v8::FunctionTemplate::New(JS_ParameterVocbaseCol));
+  rt->Set(PropertiesFuncName, v8::FunctionTemplate::New(JS_PropertiesVocbaseCol));
   rt->Set(RenameFuncName, v8::FunctionTemplate::New(JS_RenameVocbaseCol));
   rt->Set(ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbaseCol));
   rt->Set(StatusFuncName, v8::FunctionTemplate::New(JS_StatusVocbaseCol));
@@ -5742,6 +6078,10 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
                          v8::FunctionTemplate::New(JS_WhereHashConstAql)->GetFunction(),
                          v8::ReadOnly);
                          
+  context->Global()->Set(v8::String::New("AQL_WHERE_PQ_CONST"),
+                         v8::FunctionTemplate::New(JS_WherePQConstAql)->GetFunction(),
+                         v8::ReadOnly);
+                         
   context->Global()->Set(v8::String::New("AQL_WHERE_SL_CONST"),
                          v8::FunctionTemplate::New(JS_WhereSkiplistConstAql)->GetFunction(),
                          v8::ReadOnly);
@@ -5760,6 +6100,10 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
                          
   context->Global()->Set(v8::String::New("AQL_HASH_SELECT"),
                          v8::FunctionTemplate::New(JS_HashSelectAql)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("AQL_PQ_SELECT"),
+                         v8::FunctionTemplate::New(JS_PQSelectAql)->GetFunction(),
                          v8::ReadOnly);
 
   context->Global()->Set(v8::String::New("AQL_SL_SELECT"),

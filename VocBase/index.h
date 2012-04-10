@@ -34,6 +34,7 @@
 #include "ShapedJson/shaped-json.h"
 #include "GeoIndex/GeoIndex.h"
 #include "HashIndex/hashindex.h"
+#include "PriorityQueue/pqueueindex.h"
 #include "SkipLists/skiplistIndex.h"
 #include "SkipLists/sl-operator.h"
 
@@ -73,6 +74,7 @@ typedef enum {
   TRI_IDX_TYPE_PRIMARY_INDEX,
   TRI_IDX_TYPE_GEO_INDEX,
   TRI_IDX_TYPE_HASH_INDEX,
+  TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX,
   TRI_IDX_TYPE_SKIPLIST_INDEX
 }
 TRI_idx_type_e;
@@ -137,6 +139,19 @@ typedef struct TRI_hash_index_s {
   TRI_vector_t _paths;    // a list of shape pid which identifies the fields of the index
 }
 TRI_hash_index_t;
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief skiplist index
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_priorityqueue_index_s {
+  TRI_index_t base;
+  PQIndex* _pqIndex; 
+  TRI_vector_t _paths; // a list of shape pid which identifies the fields of the index
+}
+TRI_priorityqueue_index_t;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief skiplist index
@@ -368,6 +383,59 @@ HashIndexElements* TRI_LookupHashIndex (TRI_index_t*, TRI_json_t*);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              PRIORITY QUEUE INDEX
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+PQIndexElements* TRI_LookupPriorityQueueIndex (TRI_index_t*, TRI_json_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a priority queue index
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_CreatePriorityQueueIndex (struct TRI_doc_collection_s*,
+                                           TRI_vector_pointer_t*,
+                                           TRI_vector_t*,
+                                           bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees the memory allocated, but does not free the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyPriorityQueueIndex (TRI_index_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees the memory allocated and frees the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreePriorityQueueIndex (TRI_index_t*);
+                                  
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    SKIPLIST INDEX
