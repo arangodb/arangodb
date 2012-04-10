@@ -246,8 +246,8 @@ void ActionDispatcherThread::initialise () {
 
   if (_context.IsEmpty()) {
     LOGGER_FATAL << "cannot initialize V8 engine";
-    cerr << "cannot initialize V8 engine\n";
     _isolate->Exit();
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 
@@ -265,9 +265,9 @@ void ActionDispatcherThread::initialise () {
 
     if (! ok) {
       LOGGER_FATAL << "cannot load json utilities from file '" << files[i] << "'";
-      cerr << "cannot load json utilities from file '" << files[i] << "'\n";
       _context->Exit();
       _isolate->Exit();
+      TRI_FlushLogging();
       exit(EXIT_FAILURE);
     }
   }
