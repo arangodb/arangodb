@@ -333,6 +333,8 @@ namespace triagens {
 /// collection directory will be renamed to @LIT{deleted-...}, but remains on
 /// hard disk. To restore such a dropped collection, you can simple rename to
 /// the directory to @LIT{collection-...}.
+///
+/// The default is @LIT{true}.
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _removeOnDrop;
@@ -345,9 +347,25 @@ namespace triagens {
 /// Normally the garbage collection will removed compacted datafile. For debug
 /// purposes you can use this option to keep the old datafiles. You should
 /// never set it to @LIT{false} on a live system.
+///
+/// The default is @LIT{true}.
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _removeOnCompacted;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default journal size
+///
+/// @CMDOPT{--database.maximal-journal-size @CA{size}}
+///
+/// Maximal size of journal in bytes. Can be overwritten when creating a new
+/// collection. Note that this also limits the maximal size of a single
+/// document.
+///
+/// The default is @LIT{32MB}.
+////////////////////////////////////////////////////////////////////////////////
+
+        uint64_t _defaultMaximalSize;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unit tests

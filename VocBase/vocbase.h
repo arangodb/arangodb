@@ -142,7 +142,13 @@ extern size_t PageSize;
 /// @brief default maximal collection journal size
 ////////////////////////////////////////////////////////////////////////////////
 
-#define DEFAULT_MAXIMAL_SIZE (1024 * 1024 * 128)
+#define TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE (1024 * 1024 * 32)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief minimal collection journal size
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_JOURNAL_MINIMAL_SIZE (1024 * 1024 * 128)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document handle separator as character
@@ -270,6 +276,7 @@ typedef struct TRI_vocbase_s {
 
   bool _removeOnDrop; // wipe collection from disk after dropping
   bool _removeOnCompacted; // wipe datafile from disk after compaction
+  TRI_voc_size_t _defaultMaximalSize;
 
   TRI_read_write_lock_t _lock;
 

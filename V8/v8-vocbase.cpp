@@ -4988,20 +4988,55 @@ static v8::Handle<v8::Value> JS_CreateVocBase (v8::Arguments const& argv) {
   TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
   
   if (vocbase == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_INTERNAL, "corrupted vocbase")));
   }
 
-  // expecting two arguments
-  if (argv.Length() != 2) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: _create(<name>, <wait-for-sync>)")));
+  // expecting at least one arguments
+  if (argv.Length() < 1) {
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                           "usage: _create(<name>, <parameters>)")));
   }
 
+  // extract the name
   string name = TRI_ObjectToString(argv[0]);
 
+  // extract the parameter
   TRI_col_parameter_t parameter;
 
-  TRI_InitParameterCollection(&parameter, name.c_str(), DEFAULT_MAXIMAL_SIZE);
-  parameter._waitForSync = TRI_ObjectToBoolean(argv[1]);
+  if (2 <= argv.Length()) {
+    if (! argv[1]->IsObject()) {
+      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "<parameters> must be an object")));
+    }
+
+    v8::Handle<v8::Object> p = argv[1]->ToObject();
+    v8::Handle<v8::String> waitForSyncKey = v8::String::New("waitForSync");
+    v8::Handle<v8::String> journalSizeKey = v8::String::New("journalSize");
+
+    if (p->Has(journalSizeKey)) {
+      double s = TRI_ObjectToDouble(p->Get(journalSizeKey));
+
+      if (s < TRI_JOURNAL_MINIMAL_SIZE) {
+        return scope.Close(v8::ThrowException(
+                             CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                               "<parameters>.journalSize too small")));
+      }
+
+      TRI_InitParameterCollection(&parameter, name.c_str(), (TRI_voc_size_t) s);
+    }
+    else {
+      TRI_InitParameterCollection(&parameter, name.c_str(), vocbase->_defaultMaximalSize);
+    }
+
+    if (p->Has(waitForSyncKey)) {
+      parameter._waitForSync = TRI_ObjectToBoolean(p->Get(waitForSyncKey));
+    }
+
+  }
+  else {
+    TRI_InitParameterCollection(&parameter, name.c_str(), vocbase->_defaultMaximalSize);
+  }
+
 
   TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase, &parameter);
 

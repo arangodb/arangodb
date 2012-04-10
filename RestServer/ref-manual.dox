@@ -142,6 +142,8 @@
 ///
 /// <ol>
 ///  <li>database.directory</li>
+///  <li>database.remove-on-drop</li>
+///  <li>database.maximal-journal-size</li>
 ///  <li>server.admin-port</li>
 ///  <li>server.http-port</li>
 /// </ol>
@@ -155,6 +157,10 @@
 /// <hr>
 ///
 /// @copydetails triagens::avocado::AvocadoServer::_databasePath
+///
+/// @copydetails triagens::avocado::AvocadoServer::_removeOnDrop
+///
+/// @copydetails triagens::avocado::AvocadoServer::_defaultMaximalSize
 ///
 /// @copydetails triagens::avocado::AvocadoServer::_adminPort
 ///
