@@ -478,7 +478,7 @@ bool TRI_CloseDatafile (TRI_datafile_t* datafile);
 /// @brief seals a database, writes a footer, sets it to read-only
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_SealDatafile (TRI_datafile_t* datafile);
+int TRI_SealDatafile (TRI_datafile_t* datafile);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a datafile
