@@ -225,8 +225,10 @@ function GET_api_collections (req, res) {
 /// location.
 ///
 /// @REST{GET /_api/collection/@FA{collection-identifier}/properties}
-/// DEPRECATED: @REST{GET /_api/collection/@FA{collection-identifier}/parameter}
 ////////////////////////////////////////////////////////////////////
+///
+/// @deprecated
+/// @REST{GET /_api/collection/@FA{collection-identifier}/parameter}
 ///
 /// In addition to the above, the result will always contain the
 /// @LIT{waitForSync} and the @LIT{journalSize} properties. This is
@@ -481,7 +483,9 @@ function PUT_api_collection_truncate (req, res, collection) {
 /// @brief changes a collection
 ///
 /// @REST{PUT /_api/collection/@FA{collection-identifier}/properties}
-/// DEPRECATED: @REST{PUT /_api/collection/@FA{collection-identifier}/parameter}
+///
+/// @deprecated
+/// @REST{PUT /_api/collection/@FA{collection-identifier}/parameter}
 ///
 /// Changes the properties of a collection. Expects an object with the
 /// attribute(s)
