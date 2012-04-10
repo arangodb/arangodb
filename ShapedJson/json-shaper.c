@@ -140,7 +140,7 @@ static uint64_t HashNameKeyAttributePath (TRI_associative_synced_t* array, void 
   char const* k;
 
   k = (char const*) key;
-
+  
   return TRI_FnvHashString(k);
 }
 
@@ -171,10 +171,13 @@ static bool EqualNameKeyAttributePath (TRI_associative_synced_t* array, void con
   k = (char const*) key;
   e = (char const*) element;
   ee = (TRI_shape_path_t const*) element;
-
+  
+  return TRI_EqualString(k,e + sizeof(TRI_shape_path_t) + ee->_aidLength * sizeof(TRI_shape_aid_t));
+  /*                          
   return TRI_EqualString2(k,
                           e + sizeof(TRI_shape_path_t) + ee->_aidLength * sizeof(TRI_shape_aid_t),
                           ee->_nameLength - 1);
+  */                          
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -195,7 +198,7 @@ static TRI_shape_pid_t FindNameAttributePath (TRI_shaper_t* shaper, char const* 
   void const* p;
 
   p = TRI_LookupByKeyAssociativeSynced(&shaper->_attributePathsByName, name);
-
+  
   if (p != NULL) {
     return ((TRI_shape_path_t const*) p)->_pid;
   }

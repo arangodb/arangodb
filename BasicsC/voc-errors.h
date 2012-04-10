@@ -232,6 +232,12 @@ extern "C" {
 /// - 3100: @CODE{priority queue insert failure}
 ///   Will be raised when an attempt to insert a document into a priority queue
 ///   index fails for some reason.
+/// - 3110: @CODE{priority queue remove failure}
+///   Will be raised when an attempt to remove a document from a priority queue
+///   index fails for some reason.
+/// - 3111: @CODE{priority queue remove failure - item missing in index}
+///   Will be raised when an attempt to remove a document from a priority queue
+///   index fails when document can not be located within the index.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1233,6 +1239,28 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_AVOCADO_INDEX_PQ_INSERT_FAILED                          (3100)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3110: ERROR_AVOCADO_INDEX_PQ_REMOVE_FAILED
+///
+/// priority queue remove failure
+///
+/// Will be raised when an attempt to remove a document from a priority queue
+/// index fails for some reason.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AVOCADO_INDEX_PQ_REMOVE_FAILED                          (3110)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3111: ERROR_AVOCADO_INDEX_PQ_REMOVE_ITEM_MISSING
+///
+/// priority queue remove failure - item missing in index
+///
+/// Will be raised when an attempt to remove a document from a priority queue
+/// index fails when document can not be located within the index.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AVOCADO_INDEX_PQ_REMOVE_ITEM_MISSING                    (3111)
 
 
 ////////////////////////////////////////////////////////////////////////////////

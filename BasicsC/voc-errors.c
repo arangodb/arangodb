@@ -107,6 +107,8 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_WRITE, "could not write to server");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_READ, "could not read from server");
   REG_ERROR(ERROR_AVOCADO_INDEX_PQ_INSERT_FAILED, "priority queue insert failure");
+  REG_ERROR(ERROR_AVOCADO_INDEX_PQ_REMOVE_FAILED, "priority queue remove failure");
+  REG_ERROR(ERROR_AVOCADO_INDEX_PQ_REMOVE_ITEM_MISSING, "priority queue remove failure - item missing in index");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

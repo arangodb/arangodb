@@ -92,6 +92,12 @@ static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collecti
                                                   bool unique,
                                                   bool* created);
                                                  
+static TRI_index_t* CreatePriorityQueueIndexSimCollection (TRI_sim_collection_t* collection,
+                                                           const TRI_vector_t* attributes,
+                                                           TRI_idx_iid_t iid,
+                                                           bool unique,
+                                                           bool* created);
+                                                 
 static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* collection,
                                                       const TRI_vector_t* attributes,
                                                       TRI_idx_iid_t iid,
@@ -1537,7 +1543,9 @@ static bool OpenIndexIterator (char const* filename, void* data) {
   // HASH INDEX OR SKIPLIST INDEX
   // ...........................................................................
 
-  else if (TRI_EqualString(typeStr, "hash") || TRI_EqualString(typeStr, "skiplist")) {
+  else if (TRI_EqualString(typeStr, "hash") || TRI_EqualString(typeStr, "skiplist") ||
+            TRI_EqualString(typeStr, "priorityqueue")
+           ) {
   
     // Determine if the hash index is unique or non-unique
     gjs = TRI_LookupArrayJson(json, "unique");
@@ -1578,6 +1586,9 @@ static bool OpenIndexIterator (char const* filename, void* data) {
     if (TRI_EqualString(typeStr, "hash")) {
       idx = CreateHashIndexSimCollection(doc, &attributes, iid, uniqueIndex, NULL); 
     }
+    else if (TRI_EqualString(typeStr, "priorityqueue")) {
+      idx = CreatePriorityQueueIndexSimCollection(doc, &attributes, iid, uniqueIndex, NULL); 
+    }
     else if (TRI_EqualString(typeStr, "skiplist")) {
       idx = CreateSkiplistIndexSimCollection(doc, &attributes, iid, uniqueIndex, NULL); 
     }
@@ -1597,8 +1608,9 @@ static bool OpenIndexIterator (char const* filename, void* data) {
     return true;
   }
 
+  
   // .........................................................................
-  // ups, unknown index type
+  // oops, unknown index type
   // .........................................................................
 
   else {
@@ -2841,6 +2853,104 @@ static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collecti
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a priroity queue index to the collection
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_index_t* CreatePriorityQueueIndexSimCollection (TRI_sim_collection_t* collection,
+                                                           const TRI_vector_t* attributes,
+                                                           TRI_idx_iid_t iid,
+                                                           bool unique,
+                                                           bool* created) {
+  TRI_index_t* idx     = NULL;
+  TRI_shaper_t* shaper = collection->base._shaper;
+  TRI_vector_t paths;
+  TRI_vector_pointer_t fields;
+  bool ok;
+  size_t j;
+
+
+  TRI_InitVector(&paths, sizeof(TRI_shape_pid_t));
+  TRI_InitVectorPointer(&fields);
+
+  // ...........................................................................
+  // Determine the shape ids for the attributes
+  // ...........................................................................
+
+  for (j = 0;  j < attributes->_length;  ++j) {
+    char* path = *((char**)(TRI_AtVector(attributes,j)));    
+    TRI_shape_pid_t shape = shaper->findAttributePathByName(shaper, path);   
+    TRI_PushBackVector(&paths, &shape);
+    TRI_PushBackVectorPointer(&fields, path);
+  }
+  
+  // ...........................................................................
+  // Attempt to find an existing index which matches the attributes above.
+  // If a suitable index is found, return that one otherwise we need to create
+  // a new one.
+  // ...........................................................................
+
+  idx = TRI_LookupPriorityQueueIndexSimCollection(collection, &paths);
+  
+  if (idx != NULL) {
+    TRI_DestroyVector(&paths);
+    TRI_DestroyVectorPointer(&fields);
+
+    LOG_TRACE("priority queue  index already created");
+
+    if (created != NULL) {
+      *created = false;
+    }
+
+    return idx;
+  }
+
+  // ...........................................................................
+  // Create the priority queue index
+  // ...........................................................................
+
+  idx = TRI_CreatePriorityQueueIndex(&collection->base, &fields, &paths, unique);
+
+  // ...........................................................................
+  // If index id given, use it otherwise use the default.
+  // ...........................................................................
+
+  if (iid) {
+    idx->_iid = iid;
+  }
+  
+  // ...........................................................................
+  // initialises the index with all existing documents
+  // ...........................................................................
+
+  ok = FillIndex(collection, idx);
+  
+  if (! ok) {
+    TRI_FreeSkiplistIndex(idx);
+    return NULL;
+  }
+  
+  // ...........................................................................
+  // store index
+  // ...........................................................................
+
+  TRI_PushBackVectorPointer(&collection->_indexes, idx);
+  
+  // ...........................................................................
+  // release memory allocated to vector
+  // ...........................................................................
+
+  TRI_DestroyVector(&paths);
+
+  if (created != NULL) {
+    *created = true;
+  }
+  
+  return idx;  
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a skiplist index to the collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2934,6 +3044,7 @@ static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* coll
   
   return idx;  
 }
+
                                                   
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -3071,6 +3182,75 @@ TRI_index_t* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t* collection,
   
   return matchedIndex;  
 }
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a priority queue index (non-unique)
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_LookupPriorityQueueIndexSimCollection (TRI_sim_collection_t* collection,
+                                                        const TRI_vector_t* paths) {
+  TRI_index_t* matchedIndex = NULL;                                                                                        
+  size_t j, k;
+  
+  // ...........................................................................
+  // Note: This function does NOT differentiate between non-unique and unique
+  //       skiplist indexes. The first index which matches the attributes
+  //       (paths parameter) will be returned.
+  // ...........................................................................
+  
+  
+  // ........................................................................... 
+  // go through every index and see if we have a match 
+  // ........................................................................... 
+  
+  for (j = 0;  j < collection->_indexes._length;  ++j) {
+    TRI_index_t* idx                    = collection->_indexes._buffer[j];
+    TRI_priorityqueue_index_t* pqIndex  = (TRI_priorityqueue_index_t*) idx;
+    bool found                          = true;
+
+    // .........................................................................
+    // check that the type of the index is in fact a skiplist index 
+    // .........................................................................
+        
+    if (idx->_type != TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX) {
+      continue;
+    }
+        
+    // .........................................................................
+    // check that the number of paths (fields) in the index matches that
+    // of the number of attributes
+    // .........................................................................
+        
+    if (paths->_length != pqIndex->_paths._length) {
+      continue;
+    }
+        
+    // .........................................................................
+    // Go through all the attributes and see if they match
+    // .........................................................................
+
+    for (k = 0; k < paths->_length; ++k) {
+      TRI_shape_pid_t field = *((TRI_shape_pid_t*)(TRI_AtVector(&pqIndex->_paths,k)));   
+      TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(paths,k)));
+
+      if (field != shape) {
+        found = false;
+        break;          
+      } 
+    }  
+        
+
+    if (found) {
+      matchedIndex = idx;
+      break;
+    }    
+  }
+  
+  return matchedIndex;  
+}
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3248,6 +3428,47 @@ TRI_index_t* TRI_EnsureHashIndexSimCollection(TRI_sim_collection_t* sim,
 
   return res == TRI_ERROR_NO_ERROR ? idx : NULL;
 }                                                
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a priority queue index exists
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_EnsurePriorityQueueIndexSimCollection(TRI_sim_collection_t* sim,
+                                                       const TRI_vector_t* attributes,
+                                                       bool unique,
+                                                       bool* created) {
+  TRI_index_t* idx;
+  int res;
+
+  // .............................................................................
+  // inside write-lock
+  // .............................................................................
+
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  
+  // ............................................................................. 
+  // Given the list of attributes (as strings) 
+  // .............................................................................
+
+  idx = CreatePriorityQueueIndexSimCollection(sim, attributes, 0, unique, created);
+  
+  if (idx == NULL) {
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+    return NULL;
+  }
+
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+
+  // .............................................................................
+  // outside write-lock
+  // .............................................................................
+
+  res = TRI_SaveIndex(&sim->base, idx);
+
+  return res == TRI_ERROR_NO_ERROR ? idx : NULL;
+}                                                
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a skiplist index exists
