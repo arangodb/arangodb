@@ -169,8 +169,7 @@ describe AvocadoDB do
 	newBody.should eq("\\u00F6\\u00E4\\u00FC\\u00D6\\u00C4\\u00DC\\u00DF\\u3042\\u5BFF\\u53F8")
 
 	doc.parsed_response['Hallo'].should eq('öäüÖÄÜßあ寿司')
-	doc.parsed_response['str"ange'].should eq('""a')
-
+	
 	AvocadoDB.delete(location)
 
 	AvocadoDB.size_collection(@cid).should eq(0)

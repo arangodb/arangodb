@@ -125,7 +125,7 @@ static void EscapeUtf8Range0800TFFFF (char** dst, char const** src) {
     uint16_t i3;
     uint16_t i4;
 
-    n = ((c & 0x08) << 12) | ((d & 0x3f) << 6) | (e & 0x3f);
+    n = ((c & 0x3f) << 12) | ((d & 0x3f) << 6) | (e & 0x3f);
 
     i1 = (n & 0xF000) >> 12;
     i2 = (n & 0x0F00) >>  8;
@@ -883,7 +883,7 @@ char* TRI_EscapeUtf8String (char const* in, size_t inLength, bool escapeSlash, s
 
           // unicode range 0800 - ffff (3-byte sequence UTF-8)
           else if ((c & 0xF0) == 0xE0) {
-
+            
             // hopefully correct UTF-8
             if (ptr + 2 < end) {
               EscapeUtf8Range0800TFFFF(&qtr, &ptr);
