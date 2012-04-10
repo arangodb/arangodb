@@ -826,7 +826,8 @@ static v8::Handle<v8::Value> DeleteVocbaseCol (TRI_vocbase_t* vocbase,
   // check the arguments
   if (argv.Length() < 1) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("usage: delete(<document>, <overwrite>)")));
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                                            "usage: delete(<document>, <overwrite>)")));
   }
 
   TRI_voc_did_t did;
@@ -922,7 +923,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
 
   if (doc->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
   }
 
   TRI_sim_collection_t* sim = (TRI_sim_collection_t*) doc;
@@ -933,16 +934,24 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
 
     switch (direction) {
       case TRI_EDGE_UNUSED:
-        return scope.Close(v8::ThrowException(v8::String::New("usage: edge(<vertices>)")));
+        return scope.Close(v8::ThrowException(
+                             CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                               "usage: edge(<vertices>)")));
 
       case TRI_EDGE_IN:
-        return scope.Close(v8::ThrowException(v8::String::New("usage: inEdge(<vertices>)")));
+        return scope.Close(v8::ThrowException(
+                             CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                               "usage: inEdge(<vertices>)")));
 
       case TRI_EDGE_OUT:
-        return scope.Close(v8::ThrowException(v8::String::New("usage: outEdge(<vertices>)")));
+        return scope.Close(v8::ThrowException(
+                             CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                               "usage: outEdge(<vertices>)")));
 
       case TRI_EDGE_ANY:
-        return scope.Close(v8::ThrowException(v8::String::New("usage: edge(<vertices>)")));
+        return scope.Close(v8::ThrowException(
+                             CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                               "usage: edge(<vertices>)")));
     }
   }
 
@@ -965,17 +974,23 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
 
     for (uint32_t i = 0;  i < len;  ++i) {
       TRI_vector_pointer_t edges;
-      // v8::Handle<v8::Value> val = vertices->Get(i);
-      
       TRI_voc_cid_t cid;
       TRI_voc_did_t did;
-      bool ok;
+      TRI_voc_rid_t rid;
       
-      ok = TRI_IdentifiersObjectReference(vertices->Get(i), cid, did);
+      TRI_vocbase_col_t const* vertexCollection = 0;
+      v8::Handle<v8::Value> errMsg = ParseDocumentOrDocumentHandle(collection->_vocbase, vertexCollection, did, rid, vertices->Get(i));
       
-      if (! ok || cid == 0) {
+      if (! errMsg.IsEmpty()) {
+        if (vertexCollection != 0) {
+          ReleaseCollection(vertexCollection);
+        }
+
         continue;
       }
+
+      cid = vertexCollection->_cid;
+      ReleaseCollection(vertexCollection);
       
       edges = TRI_LookupEdgesSimCollection(sim, direction, cid, did);
       
@@ -996,14 +1011,23 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
     TRI_vector_pointer_t edges;
     TRI_voc_cid_t cid;
     TRI_voc_did_t did;
-    bool ok;
+    TRI_voc_rid_t rid;
       
-    ok = TRI_IdentifiersObjectReference(argv[0], cid, did);
-
-    if (! ok) {
+    TRI_vocbase_col_t const* vertexCollection = 0;
+    v8::Handle<v8::Value> errMsg = ParseDocumentOrDocumentHandle(collection->_vocbase, vertexCollection, did, rid, argv[0]);
+      
+    if (! errMsg.IsEmpty()) {
       collection->_collection->endRead(collection->_collection);
-      return scope.Close(v8::ThrowException(v8::String::New("<vertices> must be an array or a single object-reference")));
+
+      if (vertexCollection != 0) {
+        ReleaseCollection(vertexCollection);
+      }
+
+      return scope.Close(v8::ThrowException(errMsg));
     }
+
+    cid = vertexCollection->_cid;
+    ReleaseCollection(vertexCollection);
 
     edges = TRI_LookupEdgesSimCollection(sim, direction, cid, did);
       
@@ -1382,7 +1406,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 
   if (doc->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
   }
 
   TRI_sim_collection_t* sim = (TRI_sim_collection_t*) doc;
@@ -1390,7 +1414,9 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   // expecting two arguments
   if (argv.Length() != 2) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("usage: ALL(<skip>, <limit>)")));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                           "usage: ALL(<skip>, <limit>)")));
   }
 
   TRI_voc_size_t skip = TRI_QRY_NO_SKIP;
@@ -1556,13 +1582,15 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
 
   if (doc->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
   }
 
   // expect: NEAR(<index-id>, <latitude>, <longitude>, <limit>)
   if (argv.Length() != 4) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("usage: NEAR(<index-id>, <latitude>, <longitude>, <limit>)")));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                           "usage: NEAR(<index-id>, <latitude>, <longitude>, <limit>)")));
   }
 
   // extract the index
@@ -1571,12 +1599,12 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
 
   if (idx == 0) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("unknown index identifier")));
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_AVOCADO_INDEX_NOT_FOUND, "unknown index identifier")));
   }
 
   if (idx->_type != TRI_IDX_TYPE_GEO_INDEX) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("index must be a geo-index")));
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a geo-index")));
   }
 
   // extract latitude and longitude
@@ -1656,13 +1684,15 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
 
   if (doc->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
   }
 
   // expect: NEAR(<index-id>, <latitude>, <longitude>, <limit>)
   if (argv.Length() != 4) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("usage: NEAR(<index-id>, <latitude>, <longitude>, <limit>)")));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                           "usage: WITHIN(<index-id>, <latitude>, <longitude>, <radius>)")));
   }
 
   // extract the index
@@ -1671,12 +1701,12 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
 
   if (idx == 0) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("unknown index identifier")));
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_AVOCADO_INDEX_NOT_FOUND, "unknown index identifier")));
   }
 
   if (idx->_type != TRI_IDX_TYPE_GEO_INDEX) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("index must be a geo-index")));
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a geo-index")));
   }
 
   // extract latitude and longitude
@@ -4395,10 +4425,16 @@ static v8::Handle<v8::Value> JS_SaveEdgesCol (v8::Arguments const& argv) {
 
   if (! errMsg.IsEmpty()) {
     ReleaseCollection(collection);
+
+    if (fromCollection != 0) {
+      ReleaseCollection(fromCollection);
+    }
+
     return scope.Close(v8::ThrowException(errMsg));
   }
 
   edge._fromCid = fromCollection->_cid;
+  ReleaseCollection(fromCollection);
 
   // extract to
   TRI_vocbase_col_t const* toCollection = 0;
@@ -4408,10 +4444,16 @@ static v8::Handle<v8::Value> JS_SaveEdgesCol (v8::Arguments const& argv) {
 
   if (! errMsg.IsEmpty()) {
     ReleaseCollection(collection);
+
+    if (toCollection != 0) {
+      ReleaseCollection(toCollection);
+    }
+
     return scope.Close(v8::ThrowException(errMsg));
   }
 
   edge._toCid = toCollection->_cid;
+  ReleaseCollection(toCollection);
 
   // extract shaped data
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[2], doc->_shaper);
