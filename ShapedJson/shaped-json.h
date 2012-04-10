@@ -580,11 +580,6 @@ TRI_long_string_shape_t;
 ///     <td>number of variable attributes</td>
 ///   </tr>
 ///   <tr>
-///     <td>@c TRI_shape_size_t</td>
-///     <td>_variableEntries</td>
-///     <td>number of variable attributes</td>
-///   </tr>
-///   <tr>
 ///     <td>@c TRI_shape_sid_t</td>
 ///     <td>_sids[_fixedEntries + _variableEntries]</td>
 ///     <td>shape identifier of the corresponding attribute</td>

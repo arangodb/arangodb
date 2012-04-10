@@ -432,6 +432,16 @@ struct TRI_index_s* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t*,
 
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a priority queue index
+///
+/// Note that the caller must hold at least a read-lock.
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_LookupPriorityQueueIndexSimCollection (TRI_sim_collection_t*,
+                                                               TRI_vector_t const*);
+                                                               
+                                                               
+////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a skiplist index
 ///
 /// Note that the caller must hold at least a read-lock.
@@ -467,8 +477,19 @@ struct TRI_index_s* TRI_EnsureHashIndexSimCollection (TRI_sim_collection_t* coll
                                                       bool unique,
                                                       bool* created);
                                                 
+                                                
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds or returns an existing hash index to a collection
+/// @brief adds or returns an existing priority queue index to a collection
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_EnsurePriorityQueueIndexSimCollection (TRI_sim_collection_t* collection,
+                                                    const TRI_vector_t* attributes,
+                                                    bool unique,
+                                                    bool* created);
+                                                
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds or returns an existing skiplist index to a collection
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_index_s* TRI_EnsureSkiplistIndexSimCollection (TRI_sim_collection_t* collection,

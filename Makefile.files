@@ -135,6 +135,8 @@ avocado_SOURCES = \
 	HttpsServer/HttpsAsyncCommTask.cpp \
 	HttpsServer/HttpsServer.cpp \
 	HttpsServer/HttpsServerImpl.cpp \
+	PriorityQueue/pqueueindex.c \
+	PriorityQueue/priorityqueue.c \
 	QL/ast-query.c \
 	QL/formatter.c \
 	QL/optimize.c \
