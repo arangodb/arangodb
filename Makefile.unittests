@@ -12,24 +12,24 @@ unittests-brief: unittests-boost unittests-shell-server unittests-http-server
 
 unittests-verbose:
 	@echo "################################################################################"
-	@echo "#"
-	@echo "# In order to run the unit-tests you need to either install the JavaScript"
-	@echo "# library files or configure the AvocadoDB in such a way, that it uses a"
-	@echo "# relative path."
-	@echo "#"
-	@echo "# Library Files"
-	@echo "# -------------"
-	@echo "#"
-	@echo "# > ./configure ...."
-	@echo "# > make install"
-	@echo "# > make unittests"
-	@echo "#"
-	@echo "# Relative Paths"
-	@echo "# --------------"
-	@echo "#"
-	@echo "# > ./configure --enable-relative=devel ..."
-	@echo "# > make unittests"
-	@echo "#"
+	@echo "#                                                                              #"
+	@echo "# In order to run the unit-tests you need to either install the JavaScript     #"
+	@echo "# library files or configure the AvocadoDB in such a way, that it uses a       #"
+	@echo "# relative path.                                                               #"
+	@echo "#                                                                              #"
+	@echo "# Library Files                                                                #"
+	@echo "# -------------                                                                #"
+	@echo "#                                                                              #"
+	@echo "#   > ./configure ....                                                         #"
+	@echo "#   > make install                                                             #"
+	@echo "#   > make unittests                                                           #"
+	@echo "#                                                                              #"
+	@echo "# Relative Paths                                                               #"
+	@echo "# --------------                                                               #"
+	@echo "#                                                                              #"
+	@echo "#   > ./configure --enable-relative=devel ...                                  #"
+	@echo "#   > make unittests                                                           #"
+	@echo "#                                                                              #"
 	@echo "################################################################################"
 	@echo
 
@@ -48,7 +48,12 @@ VOCHOST := 127.0.0.1
 .PHONY: start-server
 
 start-server:
-	@echo "starting the server"
+	@echo
+	@echo "================================================================================"
+	@echo "|| STARTING SEREVR                                                            ||"
+	@echo "================================================================================"
+	@echo
+
 	@rm -f "$(PIDFILE)"
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
@@ -75,7 +80,7 @@ if ENABLE_BOOST_TEST
 unittests-boost:
 	@echo
 	@echo "================================================================================"
-	@echo "BOOST TESTS"
+	@echo "|| BOOST TESTS                                                                ||"
 	@echo "================================================================================"
 	@echo
 
@@ -101,7 +106,7 @@ else
 unittests-boost:
 	@echo
 	@echo "================================================================================"
-	@echo "BOOST TESTS"
+	@echo "|| BOOST TESTS                                                                ||"
 	@echo "================================================================================"
 	@echo
 
@@ -123,7 +128,7 @@ OPTION = $(addprefix --unit-tests ,$(SHELL_SERVER))
 unittests-shell-server:
 	@echo
 	@echo "================================================================================"
-	@echo "SHELL SERVER TESTS"
+	@echo "|| SHELL SERVER TESTS                                                         ||"
 	@echo "================================================================================"
 	@echo
 
@@ -145,7 +150,7 @@ unittests-shell-server:
 unittests-http-server: start-server
 	@echo
 	@echo "================================================================================"
-	@echo "HTTP SERVER TESTS"
+	@echo "|| HTTP SERVER TESTS                                                          ||"
 	@echo "================================================================================"
 	@echo
 

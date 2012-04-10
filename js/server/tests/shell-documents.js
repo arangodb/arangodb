@@ -48,7 +48,7 @@ function readCollectionDocumentSuiteErrorHandling () {
 
     setUp : function () {
       db._drop(cn);
-      collection = db._create(cn, false);
+      collection = db._create(cn, { waitForSync : false });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -120,7 +120,7 @@ function readCollectionDocumentSuiteReadDocument () {
 
     setUp : function () {
       db._drop(cn);
-      collection = db._create(cn, false);
+      collection = db._create(cn, { waitForSync: false });
 
       collection.load();
     },
@@ -299,7 +299,7 @@ function readDocumentSuiteErrorHandling () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testErrorHandlingUnknownDocument : function () {
-      var collection = db._create(cn, false);
+      var collection = db._create(cn, { waitForSync : false });
 
       try {
         db._document(collection._id + "/123456");
@@ -331,7 +331,7 @@ function readDocumentSuiteReadDocument () {
 
     setUp : function () {
       db._drop(cn);
-      collection = db._create(cn, false);
+      collection = db._create(cn, { waitForSync : false });
 
       collection.load();
     },
