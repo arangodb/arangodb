@@ -50,9 +50,10 @@ using namespace triagens::avocado;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestActionHandler::RestActionHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
-  : RestVocbaseBaseHandler(request, vocbase),
-    _action(0) {
+RestActionHandler::RestActionHandler (HttpRequest* request, pair<TRI_vocbase_t*, set<string>*>* data)
+  : RestVocbaseBaseHandler(request, data->first),
+    _action(0),
+    _allowedQueues(*data->second) {
   _action = TRI_LookupActionVocBase(request);
 }
 
@@ -100,42 +101,60 @@ HttpHandler::status_e RestActionHandler::execute () {
 
   bool res = false;
 
-  // extract the sub-request type
-  if (_action != 0) {
-    HttpRequest::HttpRequestType type = request->requestType();
-
-    // prepare logging
-    switch (type) {
-      case HttpRequest::HTTP_REQUEST_DELETE: task = &logExecute; break;
-      case HttpRequest::HTTP_REQUEST_GET: task = &logExecute; break;
-      case HttpRequest::HTTP_REQUEST_POST: task = &logExecute; break;
-      case HttpRequest::HTTP_REQUEST_PUT: task = &logExecute; break;
-      case HttpRequest::HTTP_REQUEST_HEAD: task = &logHead; break;
-      case HttpRequest::HTTP_REQUEST_ILLEGAL: task = &logIllegal; break;
-    }
-
-    _timing << *task;
-    LOGGER_REQUEST_IN_START_I(_timing);
-
-    // execute one of the CRUD methods
-    switch (type) {
-      case HttpRequest::HTTP_REQUEST_GET: res = executeAction(); break;
-      case HttpRequest::HTTP_REQUEST_POST: res = executeAction(); break;
-      case HttpRequest::HTTP_REQUEST_PUT: res = executeAction(); break;
-      case HttpRequest::HTTP_REQUEST_DELETE: res = executeAction(); break;
-      case HttpRequest::HTTP_REQUEST_HEAD: res = executeAction(); break;
-
-      default:
-        res = false;
-        generateNotImplemented("METHOD");
-        break;
-    }
-  }
-  else {
+  // need an action
+  if (_action == 0) {
     string n = request->requestPath();
     n += StringUtils::join(request->suffix(), "/");
 
     generateNotImplemented(n);
+  }
+  else {
+
+    // check the permission base on queue name
+    bool allowed = false;
+  
+    for (set<string>::iterator i = _allowedQueues.begin();  i != _allowedQueues.end();  ++i) {
+      if (_action->_queue == *i) {
+        allowed = true;
+        break;
+      }
+    }
+
+    if (! allowed) {
+      generateForbidden();
+    }
+    else {
+
+      // extract the sub-request type
+      HttpRequest::HttpRequestType type = request->requestType();
+    
+      // prepare logging
+      switch (type) {
+        case HttpRequest::HTTP_REQUEST_DELETE: task = &logExecute; break;
+        case HttpRequest::HTTP_REQUEST_GET: task = &logExecute; break;
+        case HttpRequest::HTTP_REQUEST_POST: task = &logExecute; break;
+        case HttpRequest::HTTP_REQUEST_PUT: task = &logExecute; break;
+        case HttpRequest::HTTP_REQUEST_HEAD: task = &logHead; break;
+        case HttpRequest::HTTP_REQUEST_ILLEGAL: task = &logIllegal; break;
+      }
+      
+      _timing << *task;
+      LOGGER_REQUEST_IN_START_I(_timing);
+      
+      // execute one of the CRUD methods
+      switch (type) {
+        case HttpRequest::HTTP_REQUEST_GET: res = executeAction(); break;
+        case HttpRequest::HTTP_REQUEST_POST: res = executeAction(); break;
+        case HttpRequest::HTTP_REQUEST_PUT: res = executeAction(); break;
+        case HttpRequest::HTTP_REQUEST_DELETE: res = executeAction(); break;
+        case HttpRequest::HTTP_REQUEST_HEAD: res = executeAction(); break;
+          
+        default:
+          res = false;
+          generateNotImplemented("METHOD");
+          break;
+      }
+    }
   }
 
   _timingResult = res ? RES_ERR : RES_OK;

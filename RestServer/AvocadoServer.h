@@ -199,7 +199,10 @@ namespace triagens {
 /// @CMDOPT{--server.http-port @CA{port}}
 ///
 /// Specifies the @CA{port} for HTTP requests by clients. This will bind to any
-/// address available.
+/// address available. If you do not specify an admin port, then the http port
+/// will serve both client and administration request. If you have
+/// higher security requirements, you can use a special administration
+/// port.
 ///
 /// @CMDOPT{--server.http-port @CA{address}:@CA{port}}
 ///
