@@ -41,17 +41,17 @@ var API = "_api/collection";
 /// @brief collection representation
 ////////////////////////////////////////////////////////////////////////////////
 
-function CollectionRepresentation (collection, showParameter, showCount, showFigures) {
+function CollectionRepresentation (collection, showProperties, showCount, showFigures) {
   var result = {};
 
   result.id = collection._id;
   result.name = collection.name();
 
-  if (showParameter) {
-    var parameter = collection.parameter();
+  if (showProperties) {
+    var properties = collection.properties();
 
-    result.waitForSync = parameter.waitForSync;
-    result.journalSize = parameter.journalSize;
+    result.waitForSync = properties.waitForSync;
+    result.journalSize = properties.journalSize;
   }
 
   if (showCount) {
@@ -224,11 +224,12 @@ function GET_api_collections (req, res) {
 /// response will contain a field "Location" which contains the correct
 /// location.
 ///
-/// @REST{GET /_api/collection/@FA{collection-identifier}/parameter}
+/// @REST{GET /_api/collection/@FA{collection-identifier}/properties}
+/// DEPRECATED: @REST{GET /_api/collection/@FA{collection-identifier}/parameter}
 ////////////////////////////////////////////////////////////////////
 ///
 /// In addition to the above, the result will always contain the
-/// @LIT{waitForSync} and the @LIT{journalSize} parameters. This is
+/// @LIT{waitForSync} and the @LIT{journalSize} properties. This is
 /// achieved by forcing a load of the underlying collection.
 ///
 /// @LIT{waitForSync}: If @LIT{true} then creating or changing a document will
@@ -342,7 +343,18 @@ function GET_api_collection (req, res) {
         }
         
         // .............................................................................
-        // /_api/collection/<identifier>/parameter
+        // /_api/collection/<identifier>/properties
+        // .............................................................................
+
+        else if (sub == "properties") {
+          var result = CollectionRepresentation(collection, true, false, false);
+          var headers = { location : "/" + API + "/" + collection._id + "/properties" };
+      
+          actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+        }
+        
+        // .............................................................................
+        // /_api/collection/<identifier>/parameter (DEPRECATED)
         // .............................................................................
 
         else if (sub == "parameter") {
@@ -353,7 +365,7 @@ function GET_api_collection (req, res) {
         }
 
         else {
-          actions.resultNotFound(req, res, "expecting one of the resources 'count', 'figures', 'parameter'");
+          actions.resultNotFound(req, res, "expecting one of the resources 'count', 'figures', 'properties', 'parameter'");
         }
       }
       else {
@@ -468,9 +480,10 @@ function PUT_api_collection_truncate (req, res, collection) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief changes a collection
 ///
-/// @REST{PUT /_api/collection/@FA{collection-identifier}/parameter}
+/// @REST{PUT /_api/collection/@FA{collection-identifier}/properties}
+/// DEPRECATED: @REST{PUT /_api/collection/@FA{collection-identifier}/parameter}
 ///
-/// Changes the parameter of a collection. Expects an object with the
+/// Changes the properties of a collection. Expects an object with the
 /// attribute(s)
 ///
 /// @LIT{waitForSync}: If @LIT{true} then creating or changing a document will
@@ -486,10 +499,10 @@ function PUT_api_collection_truncate (req, res, collection) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude api-collection-identifier-parameter-sync
+/// @verbinclude api-collection-identifier-properties-sync
 ////////////////////////////////////////////////////////////////////////////////
 
-function PUT_api_collection_parameter (req, res, collection) {
+function PUT_api_collection_properties (req, res, collection) {
   var body;
 
   try {
@@ -501,7 +514,7 @@ function PUT_api_collection_parameter (req, res, collection) {
   }
 
   try {
-    collection.parameter(body);
+    collection.properties(body);
 
     var result = CollectionRepresentation(collection, true);
     
@@ -595,14 +608,17 @@ function PUT_api_collection (req, res) {
   else if (sub == "truncate") {
     PUT_api_collection_truncate(req, res, collection);
   }
-  else if (sub == "parameter") {
-    PUT_api_collection_parameter(req, res, collection);
+  else if (sub == "properties") {
+    PUT_api_collection_properties(req, res, collection);
+  }
+  else if (sub == "parameter") { /* DEPRECATED */
+    PUT_api_collection_properties(req, res, collection);
   }
   else if (sub == "rename") {
     PUT_api_collection_rename(req, res, collection);
   }
   else {
-    actions.resultNotFound(req, res, "expecting one of the actions 'load', 'unload', 'truncate', 'parameter', 'rename'");
+    actions.resultNotFound(req, res, "expecting one of the actions 'load', 'unload', 'truncate', 'properties', 'parameter', 'rename'");
   }
 }
 

@@ -239,7 +239,9 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	HttpsServer/ApplicationHttpsServerImpl.$(OBJEXT) \
 	HttpsServer/HttpsAsyncCommTask.$(OBJEXT) \
 	HttpsServer/HttpsServer.$(OBJEXT) \
-	HttpsServer/HttpsServerImpl.$(OBJEXT) QL/ast-query.$(OBJEXT) \
+	HttpsServer/HttpsServerImpl.$(OBJEXT) \
+	PriorityQueue/pqueueindex.$(OBJEXT) \
+	PriorityQueue/priorityqueue.$(OBJEXT) QL/ast-query.$(OBJEXT) \
 	QL/formatter.$(OBJEXT) QL/optimize.$(OBJEXT) \
 	QL/parser.$(OBJEXT) QL/tokens.$(OBJEXT) \
 	RestHandler/RestActionHandler.$(OBJEXT) \
@@ -688,6 +690,8 @@ avocado_SOURCES = \
 	HttpsServer/HttpsAsyncCommTask.cpp \
 	HttpsServer/HttpsServer.cpp \
 	HttpsServer/HttpsServerImpl.cpp \
+	PriorityQueue/pqueueindex.c \
+	PriorityQueue/priorityqueue.c \
 	QL/ast-query.c \
 	QL/formatter.c \
 	QL/optimize.c \
@@ -1448,6 +1452,16 @@ HttpsServer/HttpsServer.$(OBJEXT): HttpsServer/$(am__dirstamp) \
 	HttpsServer/$(DEPDIR)/$(am__dirstamp)
 HttpsServer/HttpsServerImpl.$(OBJEXT): HttpsServer/$(am__dirstamp) \
 	HttpsServer/$(DEPDIR)/$(am__dirstamp)
+PriorityQueue/$(am__dirstamp):
+	@$(MKDIR_P) PriorityQueue
+	@: > PriorityQueue/$(am__dirstamp)
+PriorityQueue/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) PriorityQueue/$(DEPDIR)
+	@: > PriorityQueue/$(DEPDIR)/$(am__dirstamp)
+PriorityQueue/pqueueindex.$(OBJEXT): PriorityQueue/$(am__dirstamp) \
+	PriorityQueue/$(DEPDIR)/$(am__dirstamp)
+PriorityQueue/priorityqueue.$(OBJEXT): PriorityQueue/$(am__dirstamp) \
+	PriorityQueue/$(DEPDIR)/$(am__dirstamp)
 QL/$(am__dirstamp):
 	@$(MKDIR_P) QL
 	@: > QL/$(am__dirstamp)
@@ -1744,6 +1758,8 @@ mostlyclean-compile:
 	-rm -f Logger/LoggerInfo.$(OBJEXT)
 	-rm -f Logger/LoggerStream.$(OBJEXT)
 	-rm -f Logger/LoggerTiming.$(OBJEXT)
+	-rm -f PriorityQueue/pqueueindex.$(OBJEXT)
+	-rm -f PriorityQueue/priorityqueue.$(OBJEXT)
 	-rm -f ProgramOptions/program-options.$(OBJEXT)
 	-rm -f QL/ast-query.$(OBJEXT)
 	-rm -f QL/formatter.$(OBJEXT)
@@ -1944,6 +1960,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Logger/$(DEPDIR)/LoggerInfo.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Logger/$(DEPDIR)/LoggerStream.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Logger/$(DEPDIR)/LoggerTiming.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@PriorityQueue/$(DEPDIR)/pqueueindex.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@PriorityQueue/$(DEPDIR)/priorityqueue.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ProgramOptions/$(DEPDIR)/program-options.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@QL/$(DEPDIR)/ast-query.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@QL/$(DEPDIR)/formatter.Po@am__quote@
@@ -2371,6 +2389,8 @@ distclean-generic:
 	-rm -f JsonParserX/$(am__dirstamp)
 	-rm -f Logger/$(DEPDIR)/$(am__dirstamp)
 	-rm -f Logger/$(am__dirstamp)
+	-rm -f PriorityQueue/$(DEPDIR)/$(am__dirstamp)
+	-rm -f PriorityQueue/$(am__dirstamp)
 	-rm -f ProgramOptions/$(DEPDIR)/$(am__dirstamp)
 	-rm -f ProgramOptions/$(am__dirstamp)
 	-rm -f QL/$(DEPDIR)/$(am__dirstamp)
@@ -2419,7 +2439,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-local \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -2467,7 +2487,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

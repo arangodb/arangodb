@@ -206,7 +206,7 @@ static v8::Handle<v8::Value> JS_PagerOutput (v8::Arguments const& argv) {
 /// @brief starts the output pager
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_StartOutputPager (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_StartOutputPager (v8::Arguments const& ) {
   if (usePager) {
     internalPrint("Using pager already.\n");        
   }
@@ -221,7 +221,7 @@ static v8::Handle<v8::Value> JS_StartOutputPager (v8::Arguments const& argv) {
 /// @brief stops the output pager
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_StopOutputPager (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_StopOutputPager (v8::Arguments const& ) {
   if (usePager) {
     internalPrint("Stopping pager.\n");
   }
@@ -421,7 +421,7 @@ enum WRAP_CLASS_TYPES {WRAP_TYPE_CONNECTION = 1};
 /// @brief weak reference callback for queries (call the destructor here)
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_DestructorCallback (v8::Persistent<v8::Value> object, void* parameter) {
+static void ClientConnection_DestructorCallback (v8::Persistent<v8::Value> , void* parameter) {
   V8ClientConnection* client = (V8ClientConnection*) parameter;
   delete(client);
 }
