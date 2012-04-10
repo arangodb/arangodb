@@ -76,7 +76,7 @@ typedef struct TRI_process_info_s {
   int64_t _numberThreads;
   int64_t _residentSize;
   uint64_t _virtualSize;
-
+  uint64_t _scClkTck;
 }
 TRI_process_info_t;
 
