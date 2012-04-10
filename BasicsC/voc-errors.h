@@ -33,8 +33,12 @@ extern "C" {
 ///   Will be raised when hitting an unimplemented feature.
 /// - 10: @CODE{bad parameter}
 ///   Will be raised when the parameter does not fulfill the requirements.
+/// - 11: @CODE{forbidden}
+///   Will be raised when you are missing permission for the operation.
 /// - 400: @CODE{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
+/// - 403: @CODE{forbidden}
+///   Will be raised when the operation is forbidden.
 /// - 404: @CODE{not found}
 ///   Will be raised when an URI is unknown.
 /// - 405: @CODE{method not supported}
@@ -368,6 +372,16 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_BAD_PARAMETER                                           (10)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 11: ERROR_FORBIDDEN
+///
+/// forbidden
+///
+/// Will be raised when you are missing permission for the operation.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_FORBIDDEN                                               (11)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER
 ///
 /// bad parameter
@@ -376,6 +390,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_HTTP_BAD_PARAMETER                                      (400)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 403: ERROR_HTTP_FORBIDDEN
+///
+/// forbidden
+///
+/// Will be raised when the operation is forbidden.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_HTTP_FORBIDDEN                                          (403)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 404: ERROR_HTTP_NOT_FOUND
