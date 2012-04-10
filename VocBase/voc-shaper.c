@@ -574,7 +574,9 @@ static void InitVocShaper (voc_shaper_t* shaper, TRI_blob_collection_t* collecti
 /// @brief creates persistent shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaper_t* TRI_CreateVocShaper (char const* path, char const* name) {
+TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
+                                   char const* path,
+                                   char const* name) {
   voc_shaper_t* shaper;
   TRI_blob_collection_t* collection;
   TRI_col_parameter_t parameter;
@@ -582,7 +584,7 @@ TRI_shaper_t* TRI_CreateVocShaper (char const* path, char const* name) {
 
   TRI_InitParameterCollection(&parameter, name, SHAPER_DATAFILE_SIZE);
 
-  collection = TRI_CreateBlobCollection(path, &parameter);
+  collection = TRI_CreateBlobCollection(vocbase, path, &parameter);
 
   if (collection == NULL) {
     return NULL;
@@ -662,12 +664,13 @@ TRI_blob_collection_t* TRI_CollectionVocShaper (TRI_shaper_t* shaper) {
 /// @brief opens a persistent shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaper_t* TRI_OpenVocShaper (char const* filename) {
+TRI_shaper_t* TRI_OpenVocShaper (TRI_vocbase_t* vocbase,
+                                 char const* filename) {
   voc_shaper_t* shaper;
   TRI_blob_collection_t* collection;
   bool ok;
 
-  collection = TRI_OpenBlobCollection(filename);
+  collection = TRI_OpenBlobCollection(vocbase, filename);
 
   if (collection == NULL) {
     return NULL;

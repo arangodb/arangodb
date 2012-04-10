@@ -331,10 +331,24 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
                   newFilename);
       }
       else {
-        LOG_DEBUG("renamed dropped collection '%s' from '%s' to '%s'",
-                  collection->_name,
-                  collection->_path,
-                  newFilename);
+        if (collection->_vocbase->_removeOnDrop) {
+          LOG_DEBUG("wiping dropped collection '%s' from disk",
+                    collection->_name);
+
+          res = TRI_RemoveDirectory(newFilename);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            LOG_ERROR("cannot wipe dropped collecton '%s' from disk: %s",
+                      collection->_name,
+                      TRI_last_error());
+          }
+        }
+        else {
+          LOG_DEBUG("renamed dropped collection '%s' from '%s' to '%s'",
+                    collection->_name,
+                    collection->_path,
+                    newFilename);
+        }
       }
 
       TRI_FreeString(newFilename);
@@ -659,7 +673,7 @@ static int ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t*
     parameter._type = type;
     parameter._waitForSync = false;
 
-    sim = TRI_CreateSimCollection(vocbase->_path, &parameter, collection->_cid);
+    sim = TRI_CreateSimCollection(vocbase, vocbase->_path, &parameter, collection->_cid);
 
     if (sim == NULL) {
       collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
@@ -775,7 +789,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
     if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
       TRI_sim_collection_t* sim;
 
-      sim = TRI_OpenSimCollection(collection->_path);
+      sim = TRI_OpenSimCollection(vocbase, collection->_path);
 
       if (sim == NULL) {
         collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
@@ -991,25 +1005,11 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   // .............................................................................
 
   vocbase = TRI_Allocate(sizeof(TRI_vocbase_t));
-  if (!vocbase) {
-    TRI_FreeString(lockFile);
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    return NULL;
-  }
 
   vocbase->_cursors = TRI_CreateShadowsQueryCursor();
   vocbase->_functions = TRI_InitialiseQueryFunctions();
   vocbase->_lockFile = lockFile;
   vocbase->_path = TRI_DuplicateString(path);
-
-  if (!vocbase->_path) {
-    TRI_Free(vocbase);
-    TRI_FreeString(lockFile);
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    return NULL;
-  }
 
   TRI_InitVectorPointer(&vocbase->_collections);
   TRI_InitVectorPointer(&vocbase->_deadCollections);
@@ -1048,6 +1048,10 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
     return NULL;
   }
   
+  // defaults for remove
+  vocbase->_removeOnDrop = true;
+  vocbase->_removeOnCompacted = true;
+
   // vocbase is now active
   vocbase->_active = 1;
 
@@ -1250,7 +1254,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase, TRI_col_
   if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
     TRI_sim_collection_t* sim;
 
-    sim = TRI_CreateSimCollection(vocbase->_path, parameter, 0);
+    sim = TRI_CreateSimCollection(vocbase, vocbase->_path, parameter, 0);
 
     if (sim == NULL) {
       TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);

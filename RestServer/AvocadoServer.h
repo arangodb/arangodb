@@ -324,6 +324,32 @@ namespace triagens {
         string _databasePath;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief remove on drop
+///
+/// @CMDOPT{--database.remove-on-drop @CA{flag}}
+///
+/// If @LIT{true} and you drop a collection, then they directory and all
+/// associated datafiles will be removed from disk. If @LIT{false}, then they
+/// collection directory will be renamed to @LIT{deleted-...}, but remains on
+/// hard disk. To restore such a dropped collection, you can simple rename to
+/// the directory to @LIT{collection-...}.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _removeOnDrop;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove on compaction
+///
+/// @CMDOPT{--database.remove-on-compaction @CA{flag}}
+///
+/// Normally the garbage collection will removed compacted datafile. For debug
+/// purposes you can use this option to keep the old datafiles. You should
+/// never set it to @LIT{false} on a live system.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _removeOnCompacted;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief unit tests
 ///
 /// @CMDOPT{--unit-tests @CA{test-file}}
