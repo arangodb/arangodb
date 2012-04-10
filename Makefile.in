@@ -2616,24 +2616,24 @@ unittests-brief: unittests-boost unittests-shell-server unittests-http-server
 
 unittests-verbose:
 	@echo "################################################################################"
-	@echo "#"
-	@echo "# In order to run the unit-tests you need to either install the JavaScript"
-	@echo "# library files or configure the AvocadoDB in such a way, that it uses a"
-	@echo "# relative path."
-	@echo "#"
-	@echo "# Library Files"
-	@echo "# -------------"
-	@echo "#"
-	@echo "# > ./configure ...."
-	@echo "# > make install"
-	@echo "# > make unittests"
-	@echo "#"
-	@echo "# Relative Paths"
-	@echo "# --------------"
-	@echo "#"
-	@echo "# > ./configure --enable-relative=devel ..."
-	@echo "# > make unittests"
-	@echo "#"
+	@echo "#                                                                              #"
+	@echo "# In order to run the unit-tests you need to either install the JavaScript     #"
+	@echo "# library files or configure the AvocadoDB in such a way, that it uses a       #"
+	@echo "# relative path.                                                               #"
+	@echo "#                                                                              #"
+	@echo "# Library Files                                                                #"
+	@echo "# -------------                                                                #"
+	@echo "#                                                                              #"
+	@echo "#   > ./configure ....                                                         #"
+	@echo "#   > make install                                                             #"
+	@echo "#   > make unittests                                                           #"
+	@echo "#                                                                              #"
+	@echo "# Relative Paths                                                               #"
+	@echo "# --------------                                                               #"
+	@echo "#                                                                              #"
+	@echo "#   > ./configure --enable-relative=devel ...                                  #"
+	@echo "#   > make unittests                                                           #"
+	@echo "#                                                                              #"
 	@echo "################################################################################"
 	@echo
 
@@ -2642,7 +2642,12 @@ unittests-verbose:
 .PHONY: start-server
 
 start-server:
-	@echo "starting the server"
+	@echo
+	@echo "================================================================================"
+	@echo "|| STARTING SEREVR                                                            ||"
+	@echo "================================================================================"
+	@echo
+
 	@rm -f "$(PIDFILE)"
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
@@ -2666,7 +2671,7 @@ start-server:
 @ENABLE_BOOST_TEST_TRUE@unittests-boost:
 @ENABLE_BOOST_TEST_TRUE@	@echo
 @ENABLE_BOOST_TEST_TRUE@	@echo "================================================================================"
-@ENABLE_BOOST_TEST_TRUE@	@echo "BOOST TESTS"
+@ENABLE_BOOST_TEST_TRUE@	@echo "|| BOOST TESTS                                                                ||"
 @ENABLE_BOOST_TEST_TRUE@	@echo "================================================================================"
 @ENABLE_BOOST_TEST_TRUE@	@echo
 
@@ -2679,7 +2684,7 @@ start-server:
 @ENABLE_BOOST_TEST_FALSE@unittests-boost:
 @ENABLE_BOOST_TEST_FALSE@	@echo
 @ENABLE_BOOST_TEST_FALSE@	@echo "================================================================================"
-@ENABLE_BOOST_TEST_FALSE@	@echo "BOOST TESTS"
+@ENABLE_BOOST_TEST_FALSE@	@echo "|| BOOST TESTS                                                                ||"
 @ENABLE_BOOST_TEST_FALSE@	@echo "================================================================================"
 @ENABLE_BOOST_TEST_FALSE@	@echo
 
@@ -2692,7 +2697,7 @@ start-server:
 unittests-shell-server:
 	@echo
 	@echo "================================================================================"
-	@echo "SHELL SERVER TESTS"
+	@echo "|| SHELL SERVER TESTS                                                         ||"
 	@echo "================================================================================"
 	@echo
 
@@ -2713,7 +2718,7 @@ unittests-shell-server:
 unittests-http-server: start-server
 	@echo
 	@echo "================================================================================"
-	@echo "HTTP SERVER TESTS"
+	@echo "|| HTTP SERVER TESTS                                                          ||"
 	@echo "================================================================================"
 	@echo
 
