@@ -353,12 +353,14 @@ static bool CloseJournalDocCollection (TRI_doc_collection_t* collection,
   TRI_datafile_t* journal;
   TRI_vector_pointer_t* vector;
   bool ok;
+  int res;
   char* dname;
   char* filename;
   char* number;
 
+  // either use a journal or a compactor
   if (compactor) {
-    vector = &collection->base._journals;
+    vector = &collection->base._compactors;
   }
   else {
     vector = &collection->base._journals;
@@ -372,9 +374,11 @@ static bool CloseJournalDocCollection (TRI_doc_collection_t* collection,
 
   // seal and rename datafile
   journal = vector->_buffer[position];
-  ok = TRI_SealDatafile(journal);
+  res = TRI_SealDatafile(journal);
 
-  if (! ok) {
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("failed to seal datafile '%s': %s", journal->_filename, TRI_last_error());
+
     TRI_RemoveVectorPointer(vector, position);
     TRI_PushBackVectorPointer(&collection->base._datafiles, journal);
 
@@ -382,24 +386,8 @@ static bool CloseJournalDocCollection (TRI_doc_collection_t* collection,
   }
 
   number = TRI_StringUInt32(journal->_fid);
-  if (!number) {
-    return false;
-  }
-
   dname = TRI_Concatenate3String("datafile-", number, ".db");
-  /* TODO FIXME: memory allocation might fail */
-  if (!dname) {
-    TRI_FreeString(number);
-    return false;
-  }
-
   filename = TRI_Concatenate2File(collection->base._directory, dname);
-  /* TODO FIXME: memory allocation might fail */
-  if (!filename) {
-    TRI_FreeString(number);
-    TRI_FreeString(dname);
-    return false;
-  }
 
   TRI_FreeString(dname);
   TRI_FreeString(number);
@@ -407,6 +395,8 @@ static bool CloseJournalDocCollection (TRI_doc_collection_t* collection,
   ok = TRI_RenameDatafile(journal, filename);
 
   if (! ok) {
+    LOG_ERROR("failed to rename datafile '%s' to '%s': %s", journal->_filename, filename, TRI_last_error());
+
     TRI_RemoveVectorPointer(vector, position);
     TRI_PushBackVectorPointer(&collection->base._datafiles, journal);
     TRI_FreeString(filename);

@@ -149,6 +149,7 @@ static bool CloseJournal (TRI_blob_collection_t* collection, TRI_datafile_t* jou
   char* dname;
   char* filename;
   char* number;
+  int res;
   size_t i;
   size_t n;
 
@@ -171,9 +172,9 @@ static bool CloseJournal (TRI_blob_collection_t* collection, TRI_datafile_t* jou
   }
 
   // seal and rename datafile
-  ok = TRI_SealDatafile(journal);
+  res = TRI_SealDatafile(journal);
 
-  if (! ok) {
+  if (res != TRI_ERROR_NO_ERROR) {
     collection->base._state = TRI_COL_STATE_WRITE_ERROR;
     return false;
   }
