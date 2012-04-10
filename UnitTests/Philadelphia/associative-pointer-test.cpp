@@ -112,7 +112,7 @@ BOOST_FIXTURE_TEST_SUITE(CAssociativePointerTest, CAssociativePointerSetup)
 BOOST_AUTO_TEST_CASE (tst_init) {
   INIT_ASSOC
 
-  BOOST_CHECK_EQUAL(0, a1._nrUsed);
+  BOOST_CHECK_EQUAL((size_t) 0, a1._nrUsed);
 
   DESTROY_ASSOC
 }
@@ -128,17 +128,17 @@ BOOST_AUTO_TEST_CASE (tst_insert_key_unique) {
 
   ELEMENT(e1, (char*) "test1", 1, 2, 3)
   BOOST_CHECK_EQUAL(r, TRI_InsertKeyAssociativePointer(&a1, e1.key, &e1, false));
-  BOOST_CHECK_EQUAL(1, a1._nrUsed);
+  BOOST_CHECK_EQUAL((size_t) 1, a1._nrUsed);
   BOOST_CHECK_EQUAL(&e1, TRI_LookupByKeyAssociativePointer(&a1, "test1"));
   
   ELEMENT(e2, (char*) "test2", 2, 3, 4)
   BOOST_CHECK_EQUAL(r, TRI_InsertKeyAssociativePointer(&a1, e2.key, &e2, false));
-  BOOST_CHECK_EQUAL(2, a1._nrUsed);
+  BOOST_CHECK_EQUAL((size_t) 2, a1._nrUsed);
   BOOST_CHECK_EQUAL(&e2, TRI_LookupByKeyAssociativePointer(&a1, "test2"));
   
   ELEMENT(e3, (char*) "test3", 99, 3, 5)
   BOOST_CHECK_EQUAL(r, TRI_InsertKeyAssociativePointer(&a1, e3.key, &e3, false));
-  BOOST_CHECK_EQUAL(3, a1._nrUsed);
+  BOOST_CHECK_EQUAL((size_t) 3, a1._nrUsed);
   BOOST_CHECK_EQUAL(&e3, TRI_LookupByKeyAssociativePointer(&a1, "test3"));
 
   DESTROY_ASSOC
@@ -155,27 +155,27 @@ BOOST_AUTO_TEST_CASE (tst_insert_key_nonunique) {
 
   ELEMENT(e1, (char*) "test1", 1, 2, 3)
   BOOST_CHECK_EQUAL(r, TRI_InsertKeyAssociativePointer(&a1, e1.key, &e1, false));
-  BOOST_CHECK_EQUAL(1, a1._nrUsed);
+  BOOST_CHECK_EQUAL((size_t) 1, a1._nrUsed);
   BOOST_CHECK_EQUAL(&e1, TRI_LookupByKeyAssociativePointer(&a1, "test1"));
   
   ELEMENT(e2, (char*) "test1", 2, 3, 4)
   BOOST_CHECK_EQUAL(&e1, TRI_InsertKeyAssociativePointer(&a1, e2.key, &e2, false));
-  BOOST_CHECK_EQUAL(1, a1._nrUsed);
+  BOOST_CHECK_EQUAL((size_t) 1, a1._nrUsed);
   BOOST_CHECK_EQUAL(&e1, TRI_LookupByKeyAssociativePointer(&a1, "test1"));
   
   ELEMENT(e3, (char*) "test2", 99, 3, 5)
   BOOST_CHECK_EQUAL(r, TRI_InsertKeyAssociativePointer(&a1, e3.key, &e3, false));
-  BOOST_CHECK_EQUAL(2, a1._nrUsed);
+  BOOST_CHECK_EQUAL((size_t) 2, a1._nrUsed);
   BOOST_CHECK_EQUAL(&e3, TRI_LookupByKeyAssociativePointer(&a1, "test2"));
   
   ELEMENT(e4, (char*) "test1", 99, 3, 5)
   BOOST_CHECK_EQUAL(&e1, TRI_InsertKeyAssociativePointer(&a1, e4.key, &e4, false));
-  BOOST_CHECK_EQUAL(2, a1._nrUsed);
+  BOOST_CHECK_EQUAL((size_t) 2, a1._nrUsed);
   BOOST_CHECK_EQUAL(&e1, TRI_LookupByKeyAssociativePointer(&a1, "test1"));
   
   ELEMENT(e5, (char*) "test2", -99, 33, 15)
   BOOST_CHECK_EQUAL(&e3, TRI_InsertKeyAssociativePointer(&a1, e5.key, &e5, false));
-  BOOST_CHECK_EQUAL(2, a1._nrUsed);
+  BOOST_CHECK_EQUAL((size_t) 2, a1._nrUsed);
   BOOST_CHECK_EQUAL(&e3, TRI_LookupByKeyAssociativePointer(&a1, "test2"));
 
   DESTROY_ASSOC
@@ -192,27 +192,27 @@ BOOST_AUTO_TEST_CASE (tst_insert_key_nonunique_overwrite) {
 
   ELEMENT(e1, (char*) "test1", 1, 2, 3)
   BOOST_CHECK_EQUAL(r, TRI_InsertKeyAssociativePointer(&a1, e1.key, &e1, true));
-  BOOST_CHECK_EQUAL(1, a1._nrUsed);
+  BOOST_CHECK_EQUAL((size_t) 1, a1._nrUsed);
   BOOST_CHECK_EQUAL(&e1, TRI_LookupByKeyAssociativePointer(&a1, "test1"));
   
   ELEMENT(e2, (char*) "test1", 2, 3, 4)
   BOOST_CHECK_EQUAL(&e1, TRI_InsertKeyAssociativePointer(&a1, e2.key, &e2, true));
-  BOOST_CHECK_EQUAL(1, a1._nrUsed);
+  BOOST_CHECK_EQUAL((size_t) 1, a1._nrUsed);
   BOOST_CHECK_EQUAL(&e2, TRI_LookupByKeyAssociativePointer(&a1, "test1"));
   
   ELEMENT(e3, (char*) "test2", 99, 3, 5)
   BOOST_CHECK_EQUAL(r, TRI_InsertKeyAssociativePointer(&a1, e3.key, &e3, true));
-  BOOST_CHECK_EQUAL(2, a1._nrUsed);
+  BOOST_CHECK_EQUAL((size_t) 2, a1._nrUsed);
   BOOST_CHECK_EQUAL(&e3, TRI_LookupByKeyAssociativePointer(&a1, "test2"));
   
   ELEMENT(e4, (char*) "test1", 99, 3, 5)
   BOOST_CHECK_EQUAL(&e2, TRI_InsertKeyAssociativePointer(&a1, e4.key, &e4, true));
-  BOOST_CHECK_EQUAL(2, a1._nrUsed);
+  BOOST_CHECK_EQUAL((size_t) 2, a1._nrUsed);
   BOOST_CHECK_EQUAL(&e4, TRI_LookupByKeyAssociativePointer(&a1, "test1"));
   
   ELEMENT(e5, (char*) "test2", -99, 33, 15)
   BOOST_CHECK_EQUAL(&e3, TRI_InsertKeyAssociativePointer(&a1, e5.key, &e5, true));
-  BOOST_CHECK_EQUAL(2, a1._nrUsed);
+  BOOST_CHECK_EQUAL((size_t) 2, a1._nrUsed);
   BOOST_CHECK_EQUAL(&e5, TRI_LookupByKeyAssociativePointer(&a1, "test2"));
 
   DESTROY_ASSOC
@@ -302,7 +302,7 @@ BOOST_AUTO_TEST_CASE (tst_remove_key) {
   BOOST_CHECK_EQUAL(1, r1->a);
   BOOST_CHECK_EQUAL(2, r1->b);
   BOOST_CHECK_EQUAL(3, r1->c);
-  BOOST_CHECK_EQUAL(3, a1._nrUsed);
+  BOOST_CHECK_EQUAL((size_t) 3, a1._nrUsed);
   BOOST_CHECK_EQUAL(r, TRI_LookupByKeyAssociativePointer(&a1, "test1"));
 
   data_container_t* r2 = (data_container_t*) TRI_RemoveKeyAssociativePointer(&a1, "test2");
@@ -311,16 +311,16 @@ BOOST_AUTO_TEST_CASE (tst_remove_key) {
   BOOST_CHECK_EQUAL(2, r2->a);
   BOOST_CHECK_EQUAL(3, r2->b);
   BOOST_CHECK_EQUAL(4, r2->c);
-  BOOST_CHECK_EQUAL(2, a1._nrUsed);
+  BOOST_CHECK_EQUAL((size_t) 2, a1._nrUsed);
   BOOST_CHECK_EQUAL(r, TRI_LookupByKeyAssociativePointer(&a1, "test2"));
 
   data_container_t* rx1 = (data_container_t*) TRI_RemoveKeyAssociativePointer(&a1, "test2");
   BOOST_CHECK_EQUAL(r, rx1);
-  BOOST_CHECK_EQUAL(2, a1._nrUsed);
+  BOOST_CHECK_EQUAL((size_t) 2, a1._nrUsed);
 
   data_container_t* rx2 = (data_container_t*) TRI_RemoveKeyAssociativePointer(&a1, "test0");
   BOOST_CHECK_EQUAL(r, rx2);
-  BOOST_CHECK_EQUAL(2, a1._nrUsed);
+  BOOST_CHECK_EQUAL((size_t) 2, a1._nrUsed);
   
   data_container_t* r3 = (data_container_t*) TRI_RemoveKeyAssociativePointer(&a1, "test3");
   BOOST_CHECK_EQUAL(&e3, r3);
@@ -328,7 +328,7 @@ BOOST_AUTO_TEST_CASE (tst_remove_key) {
   BOOST_CHECK_EQUAL(3, r3->a);
   BOOST_CHECK_EQUAL(4, r3->b);
   BOOST_CHECK_EQUAL(5, r3->c);
-  BOOST_CHECK_EQUAL(1, a1._nrUsed);
+  BOOST_CHECK_EQUAL((size_t) 1, a1._nrUsed);
   BOOST_CHECK_EQUAL(r, TRI_LookupByKeyAssociativePointer(&a1, "test3"));
   
   data_container_t* r4 = (data_container_t*) TRI_RemoveKeyAssociativePointer(&a1, "test4");
@@ -337,7 +337,7 @@ BOOST_AUTO_TEST_CASE (tst_remove_key) {
   BOOST_CHECK_EQUAL(4, r4->a);
   BOOST_CHECK_EQUAL(5, r4->b);
   BOOST_CHECK_EQUAL(6, r4->c);
-  BOOST_CHECK_EQUAL(0, a1._nrUsed);
+  BOOST_CHECK_EQUAL((size_t) 0, a1._nrUsed);
   BOOST_CHECK_EQUAL(r, TRI_LookupByKeyAssociativePointer(&a1, "test4"));
 
   DESTROY_ASSOC
@@ -385,9 +385,9 @@ BOOST_AUTO_TEST_CASE (tst_mass_insert) {
 
     data_container_t* s = (data_container_t*) TRI_LookupByKeyAssociativePointer(&a1, key);
     BOOST_CHECK_EQUAL(e, s);
-    BOOST_CHECK_EQUAL(i, s->a);
-    BOOST_CHECK_EQUAL(i + 1, s->b);
-    BOOST_CHECK_EQUAL(i + 2, s->c);
+    BOOST_CHECK_EQUAL((size_t) i, (size_t) s->a);
+    BOOST_CHECK_EQUAL((size_t) i + 1, (size_t) s->b);
+    BOOST_CHECK_EQUAL((size_t) i + 2, (size_t) s->c);
     BOOST_CHECK_EQUAL(key, s->key);
   }
   
@@ -421,9 +421,9 @@ BOOST_AUTO_TEST_CASE (tst_mass_insert_remove) {
 
     data_container_t* s = (data_container_t*) TRI_LookupByKeyAssociativePointer(&a1, key);
     BOOST_CHECK_EQUAL(e, s);
-    BOOST_CHECK_EQUAL(i, s->a);
-    BOOST_CHECK_EQUAL(i + 1, s->b);
-    BOOST_CHECK_EQUAL(i + 2, s->c);
+    BOOST_CHECK_EQUAL((size_t) i, (size_t) s->a);
+    BOOST_CHECK_EQUAL((size_t) i + 1, (size_t) s->b);
+    BOOST_CHECK_EQUAL((size_t) i + 2, (size_t) s->c);
     BOOST_CHECK_EQUAL(key, s->key);
   }
 
@@ -436,7 +436,7 @@ BOOST_AUTO_TEST_CASE (tst_mass_insert_remove) {
     
     TRI_RemoveKeyAssociativePointer(&a1, key);
   }
-  BOOST_CHECK_EQUAL(500, a1._nrUsed);
+  BOOST_CHECK_EQUAL((size_t) 500, a1._nrUsed);
 
 
   // check remaining elements 
@@ -451,9 +451,9 @@ BOOST_AUTO_TEST_CASE (tst_mass_insert_remove) {
     }
     else {
       BOOST_REQUIRE(s);
-      BOOST_CHECK_EQUAL(i, s->a);
-      BOOST_CHECK_EQUAL(i + 1, s->b);
-      BOOST_CHECK_EQUAL(i + 2, s->c);
+      BOOST_CHECK_EQUAL((size_t) i, (size_t) s->a);
+      BOOST_CHECK_EQUAL((size_t) i + 1, (size_t) s->b);
+      BOOST_CHECK_EQUAL((size_t) i + 2, (size_t) s->c);
       BOOST_CHECK_EQUAL(key, s->key);
     }
   }
