@@ -129,9 +129,9 @@ describe AvocadoDB do
 	AvocadoDB.size_collection(@cid).should eq(0)
       end
 
-      it "creating a new complex document" do
+      it "creating a new umlaut document" do
 	cmd = "/document?collection=#{@cid}"
-	body = "{ \"Hallo\" : \"W\\\"orl\\\"d\", \"str\\\"ange\" : \"\\\"\\\"a\" }"
+	body = "{ \"Hallo\" : \"öäüÖÄÜßあ寿司\" }"
 	doc = AvocadoDB.log_post("#{prefix}-complex", cmd, :body => body)
 
 	doc.code.should eq(201)
@@ -163,7 +163,12 @@ describe AvocadoDB do
 	doc.code.should eq(200)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
-	doc.parsed_response['Hallo'].should eq('W"orl"d')
+	newBody = doc.body()
+	newBody = newBody.sub!(/^.*"Hallo":"([^"]*)".*$/, '\1')
+
+	newBody.should eq("\\u00F6\\u00E4\\u00FC\\u00D6\\u00C4\\u00DC\\u00DF\\u3042\\u5BFF\\u53F8")
+
+	doc.parsed_response['Hallo'].should eq('öäüÖÄÜßあ寿司')
 	doc.parsed_response['str"ange'].should eq('""a')
 
 	AvocadoDB.delete(location)
