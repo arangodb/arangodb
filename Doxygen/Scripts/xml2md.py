@@ -115,6 +115,15 @@ replDict["e_listitem_3"] = "</li>"
 replDict["s_listitem_4"] = "<li>"
 replDict["e_listitem_4"] = "</li>"
 
+replDict["s_xrefsect"] = ""
+replDict["e_xrefsect"] = ""
+
+replDict["s_xreftitle"] = ""
+replDict["e_xreftitle"] = "\n"
+
+replDict["s_xrefdescription"] = ""
+replDict["e_xrefdescription"] = ""
+
 replDict["s_para"] = ""
 replDict["e_para"] = "\n\n"
 
@@ -199,6 +208,10 @@ gencDict["title_4"] = True
 gencDict["ulink"] = True
 
 gencDict["verbatim"] = True
+
+gencDict["xrefsect"] = True
+gencDict["xreftitle"] = True
+gencDict["xrefdescription"] = True
 
 ################################################################################
 #### @brief table entry
