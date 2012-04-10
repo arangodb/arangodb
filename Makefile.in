@@ -202,12 +202,20 @@ am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
 	"$(DESTDIR)$(pkgdatadir)"
 PROGRAMS = $(bin_PROGRAMS) $(noinst_PROGRAMS) $(sbin_PROGRAMS)
 am__UnitTests_test_suite_SOURCES_DIST = UnitTests/Runner.cpp \
+	UnitTests/Philadelphia/associative-pointer-test.cpp \
 	UnitTests/Philadelphia/string-buffer-test.cpp \
+	UnitTests/Philadelphia/string-utf8-test.cpp \
+	UnitTests/Philadelphia/vector-pointer-test.cpp \
+	UnitTests/Philadelphia/vector-test.cpp \
 	UnitTests/Jutland/StringBufferTest.cpp \
 	UnitTests/Jutland/StringUtilsTest.cpp
 @ENABLE_BOOST_TEST_TRUE@am_UnitTests_test_suite_OBJECTS =  \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Runner.$(OBJEXT) \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-buffer-test.$(OBJEXT) \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-utf8-test.$(OBJEXT) \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/vector-pointer-test.$(OBJEXT) \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/vector-test.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringBufferTest.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringUtilsTest.$(OBJEXT)
 UnitTests_test_suite_OBJECTS = $(am_UnitTests_test_suite_OBJECTS)
@@ -890,7 +898,11 @@ VOCHOST := 127.0.0.1
 @ENABLE_BOOST_TEST_TRUE@UnitTests_test_suite_DEPENDENCIES = @top_builddir@/libavocado.a
 @ENABLE_BOOST_TEST_TRUE@UnitTests_test_suite_SOURCES = \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Runner.cpp \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/associative-pointer-test.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-buffer-test.cpp \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-utf8-test.cpp \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/vector-pointer-test.cpp \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/vector-test.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringBufferTest.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringUtilsTest.cpp
 
@@ -1314,7 +1326,19 @@ UnitTests/Philadelphia/$(am__dirstamp):
 UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) UnitTests/Philadelphia/$(DEPDIR)
 	@: > UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT):  \
+	UnitTests/Philadelphia/$(am__dirstamp) \
+	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
 UnitTests/Philadelphia/string-buffer-test.$(OBJEXT):  \
+	UnitTests/Philadelphia/$(am__dirstamp) \
+	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Philadelphia/string-utf8-test.$(OBJEXT):  \
+	UnitTests/Philadelphia/$(am__dirstamp) \
+	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Philadelphia/vector-pointer-test.$(OBJEXT):  \
+	UnitTests/Philadelphia/$(am__dirstamp) \
+	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Philadelphia/vector-test.$(OBJEXT):  \
 	UnitTests/Philadelphia/$(am__dirstamp) \
 	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
 UnitTests/Jutland/$(am__dirstamp):
@@ -1812,7 +1836,11 @@ mostlyclean-compile:
 	-rm -f SkipLists/sl-operator.$(OBJEXT)
 	-rm -f UnitTests/Jutland/StringBufferTest.$(OBJEXT)
 	-rm -f UnitTests/Jutland/StringUtilsTest.$(OBJEXT)
+	-rm -f UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/string-buffer-test.$(OBJEXT)
+	-rm -f UnitTests/Philadelphia/string-utf8-test.$(OBJEXT)
+	-rm -f UnitTests/Philadelphia/vector-pointer-test.$(OBJEXT)
+	-rm -f UnitTests/Philadelphia/vector-test.$(OBJEXT)
 	-rm -f UnitTests/Runner.$(OBJEXT)
 	-rm -f V8/JSLoader.$(OBJEXT)
 	-rm -f V8/v8-actions.$(OBJEXT)
@@ -2015,7 +2043,11 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/$(DEPDIR)/Runner.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Jutland/$(DEPDIR)/StringBufferTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Jutland/$(DEPDIR)/StringUtilsTest.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/associative-pointer-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/string-buffer-test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/string-utf8-test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/vector-pointer-test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/vector-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/JSLoader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-actions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-conv.Po@am__quote@
@@ -2644,7 +2676,7 @@ unittests-verbose:
 start-server:
 	@echo
 	@echo "================================================================================"
-	@echo "|| STARTING SEREVR                                                            ||"
+	@echo "|| STARTING SERVER                                                            ||"
 	@echo "================================================================================"
 	@echo
 
