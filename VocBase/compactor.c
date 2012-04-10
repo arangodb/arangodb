@@ -152,6 +152,7 @@ static void RemoveDatafileCallback (TRI_datafile_t* datafile, void* data) {
   char* name;
   char* number;
   bool ok;
+  int res;
 
   collection = data;
 
@@ -180,6 +181,21 @@ static void RemoveDatafileCallback (TRI_datafile_t* datafile, void* data) {
               datafile->_filename,
               TRI_last_error());
   }
+  else {
+    if (collection->_vocbase->_removeOnCompacted) {
+      LOG_FATAL("wiping compacted datafile from disk");
+
+      res = TRI_UnlinkFile(filename);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        LOG_ERROR("cannot wipe obsolete datafile '%s': %s",
+                  datafile->_filename,
+                  TRI_last_error());
+      }
+    }
+  }
+
+  TRI_FreeString(filename);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

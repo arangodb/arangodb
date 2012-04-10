@@ -1750,7 +1750,8 @@ static bool InitSimCollection (TRI_sim_collection_t* collection,
 /// @brief creates a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_sim_collection_t* TRI_CreateSimCollection (char const* path,
+TRI_sim_collection_t* TRI_CreateSimCollection (TRI_vocbase_t* vocbase,
+                                               char const* path,
                                                TRI_col_parameter_t* parameter,
                                                TRI_voc_cid_t cid) {
   TRI_col_info_t info;
@@ -1774,7 +1775,7 @@ TRI_sim_collection_t* TRI_CreateSimCollection (char const* path,
     return NULL;
   }
 
-  collection = TRI_CreateCollection(&doc->base.base, path, &info);
+  collection = TRI_CreateCollection(vocbase, &doc->base.base, path, &info);
 
   if (collection == NULL) {
     LOG_ERROR("cannot create document collection");
@@ -1784,7 +1785,7 @@ TRI_sim_collection_t* TRI_CreateSimCollection (char const* path,
   }
 
   // then the shape collection
-  shaper = TRI_CreateVocShaper(collection->_directory, "SHAPES");
+  shaper = TRI_CreateVocShaper(vocbase, collection->_directory, "SHAPES");
 
   if (shaper == NULL) {
     LOG_ERROR("cannot create shapes collection");
@@ -1877,7 +1878,7 @@ bool TRI_CloseJournalSimCollection (TRI_sim_collection_t* collection,
 /// @brief opens an existing collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_sim_collection_t* TRI_OpenSimCollection (char const* path) {
+TRI_sim_collection_t* TRI_OpenSimCollection (TRI_vocbase_t* vocbase, char const* path) {
   TRI_collection_t* collection;
   TRI_shaper_t* shaper;
   TRI_sim_collection_t* doc;
@@ -1889,7 +1890,7 @@ TRI_sim_collection_t* TRI_OpenSimCollection (char const* path) {
     return NULL;
   }
 
-  collection = TRI_OpenCollection(&doc->base.base, path);
+  collection = TRI_OpenCollection(vocbase, &doc->base.base, path);
 
   if (collection == NULL) {
     LOG_ERROR("cannot open document collection");
@@ -1907,7 +1908,7 @@ TRI_sim_collection_t* TRI_OpenSimCollection (char const* path) {
     return NULL;
   }
 
-  shaper = TRI_OpenVocShaper(shapes);
+  shaper = TRI_OpenVocShaper(vocbase, shapes);
   TRI_FreeString(shapes);
 
   if (shaper == NULL) {

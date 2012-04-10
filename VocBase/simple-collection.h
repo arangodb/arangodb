@@ -267,7 +267,8 @@ TRI_edge_header_t;
 /// @brief creates a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_sim_collection_t* TRI_CreateSimCollection (char const* path,
+TRI_sim_collection_t* TRI_CreateSimCollection (TRI_vocbase_t*,
+                                               char const* path,
                                                TRI_col_parameter_t* parameter,
                                                TRI_voc_cid_t);
 
@@ -315,7 +316,7 @@ bool TRI_CloseJournalSimCollection (TRI_sim_collection_t* collection,
 /// @brief opens an existing collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_sim_collection_t* TRI_OpenSimCollection (char const* path);
+TRI_sim_collection_t* TRI_OpenSimCollection (TRI_vocbase_t*, char const* path);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes an open collection

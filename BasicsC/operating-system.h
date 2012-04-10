@@ -335,11 +335,12 @@ typedef int socket_t;
 
 #define TRI_CHDIR                       _chdir
 #define TRI_CLOSE                       _close
+#define TRI_CREATE(a,b,c)               _open((a), (b))
 #define TRI_GETCWD                      _getcwd
 #define TRI_MKDIR(a,b)                  _mkdir((a))
-#define TRI_CREATE(a,b,c)               _open((a), (b))
 #define TRI_OPEN(a,b)                   _open((a), (b))
 #define TRI_READ                        _read
+#define TRI_RMDIR                       _rmdir
 #define TRI_UNLINK                      _unlink
 #define TRI_WRITE                       _write
 
@@ -349,13 +350,14 @@ typedef int socket_t;
 
 #define TRI_CHDIR                       chdir
 #define TRI_CLOSE                       close
-#define TRI_MKDIR(a,b)                  mkdir((a), (b))
 #define TRI_CREATE(a,b,c)               open((a), (b), (c))
+#define TRI_GETCWD                      getcwd
+#define TRI_MKDIR(a,b)                  mkdir((a), (b))
 #define TRI_OPEN(a,b)                   open((a), (b))
 #define TRI_READ                        read
+#define TRI_RMDIR                       rmdir
 #define TRI_UNLINK                      unlink
 #define TRI_WRITE                       write
-#define TRI_GETCWD                      getcwd
 
 #define TRI_LAST_ERROR_STR              strerror(errno)
 

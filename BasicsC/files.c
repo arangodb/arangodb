@@ -228,6 +228,66 @@ bool TRI_CreateDirectory (char const* path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief removes an empty directory
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_RemoveEmptyDirectory (char const* filename) {
+  int res;
+
+  res = TRI_RMDIR(filename);
+
+  if (res != 0) {
+    LOG_TRACE("cannot remove directory '%s': %s", filename, TRI_LAST_ERROR_STR);
+    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes a directory recursively
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_RemoveDirectory (char const* filename) {
+  if (TRI_IsDirectory(filename)) {
+    TRI_vector_string_t files;
+    size_t i;
+    int res;
+    int subres;
+
+    res = TRI_ERROR_NO_ERROR;
+    files = TRI_FilesDirectory(filename);
+
+    for (i = 0;  i < files._length;  ++i) {
+      char* full;
+
+      full = TRI_Concatenate2File(filename, files._buffer[i]);
+
+      subres = TRI_RemoveDirectory(full);
+      TRI_FreeString(full);
+
+      if (subres != TRI_ERROR_NO_ERROR) {
+        res = subres;
+      }
+    }
+
+    TRI_DestroyVectorString(&files);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      res = TRI_RemoveEmptyDirectory(filename);
+    }
+
+    return res;
+  }
+  else if (TRI_ExistsFile(filename)) {
+    return TRI_UnlinkFile(filename);
+  }
+  else {
+    return TRI_ERROR_NO_ERROR;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the dirname
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -373,7 +433,8 @@ TRI_vector_string_t TRI_FilesDirectory (char const* path) {
     if (strcmp(fd.name, ".") != 0 && strcmp(fd.name, "..") != 0) {
       TRI_PushBackVectorString(&result, TRI_DuplicateString(fd.name));
     }
-  }while(_findnext(handle, &fd) != -1);
+  }
+  while(_findnext(handle, &fd) != -1);
 
   _findclose(handle);
 
@@ -435,18 +496,17 @@ int TRI_RenameFile (char const* old, char const* filename) {
 /// @brief unlinks a file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_UnlinkFile (char const* filename) {
+int TRI_UnlinkFile (char const* filename) {
   int res;
 
   res = TRI_UNLINK(filename);
 
   if (res != 0) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
     LOG_TRACE("cannot unlink file '%s': %s", filename, TRI_LAST_ERROR_STR);
-    return false;
+    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

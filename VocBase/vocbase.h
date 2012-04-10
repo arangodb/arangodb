@@ -268,6 +268,9 @@ typedef struct TRI_vocbase_s {
   char const* _path;
   char* _lockFile;
 
+  bool _removeOnDrop; // wipe collection from disk after dropping
+  bool _removeOnCompacted; // wipe datafile from disk after compaction
+
   TRI_read_write_lock_t _lock;
 
   TRI_vector_pointer_t _collections;

@@ -91,7 +91,7 @@ bool TRI_RemoveIndexFile (TRI_doc_collection_t* collection, TRI_index_t* idx) {
   char* filename;
   char* name;
   char* number;
-  bool ok;
+  int res;
 
   // construct filename
   number = TRI_StringUInt64(idx->_iid);
@@ -126,10 +126,10 @@ bool TRI_RemoveIndexFile (TRI_doc_collection_t* collection, TRI_index_t* idx) {
   TRI_FreeString(name);
   TRI_FreeString(number);
 
-  ok = TRI_UnlinkFile(filename);
+  res = TRI_UnlinkFile(filename);
   TRI_FreeString(filename);
 
-  if (! ok) {
+  if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("cannot remove index definition: %s", TRI_last_error());
     return false;
   }

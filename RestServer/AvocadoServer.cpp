@@ -169,6 +169,8 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
     _actionThreads(1),
     _gcInterval(1000),
     _databasePath("/var/lib/avocado"),
+    _removeOnDrop(true),
+    _removeOnCompacted(true),
     _vocbase(0) {
   char* p;
 
@@ -350,6 +352,11 @@ void AvocadoServer::buildApplicationServer () {
 
   additional["DATABASE Options:help-admin"]
     ("database.directory", &_databasePath, "path to the database directory (use this option in configuration files instead of passing it via the command line)")
+    ("database.remove-on-drop", &_removeOnDrop, "wipe a collection from disk after dropping")
+  ;
+
+  additional["DATABASE Options:help-devel"]
+    ("database.remove-on-compacted", &_removeOnCompacted, "wipe a datafile from disk after compaction")
   ;
 
   // .............................................................................
@@ -797,10 +804,13 @@ void AvocadoServer::openDatabase () {
 
   if (! _vocbase) {
     LOGGER_FATAL << "cannot open database '" << _databasePath << "'";
-    cerr << "cannot open database '" << _databasePath << "'\n";
     LOGGER_INFO << "please use the '--database.directory' option";
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
+
+  _vocbase->_removeOnDrop = _removeOnDrop;
+  _vocbase->_removeOnCompacted = _removeOnCompacted;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
