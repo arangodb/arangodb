@@ -80,6 +80,7 @@ static void EscapeUtf8Range0080T07FF (char** dst, char const** src) {
     uint16_t i4;
 
     n = ((c & 0x1F) << 6) | (d & 0x3F);
+    assert(n >= 128);
 
     i1 = (n & 0xF000) >> 12;
     i2 = (n & 0x0F00) >>  8;
@@ -125,7 +126,9 @@ static void EscapeUtf8Range0800TFFFF (char** dst, char const** src) {
     uint16_t i3;
     uint16_t i4;
 
-    n = ((c & 0x3f) << 12) | ((d & 0x3f) << 6) | (e & 0x3f);
+    n = ((c & 0x0F) << 12) | ((d & 0x3F) << 6) | (e & 0x3F);
+
+    assert(n >= 2048 && (n < 55296 || n > 57343));
 
     i1 = (n & 0xF000) >> 12;
     i2 = (n & 0x0F00) >>  8;
@@ -176,7 +179,8 @@ static void EscapeUtf8Range10000T10FFFF (char** dst, char const** src) {
     uint16_t i3;
     uint16_t i4;
 
-    n = ((c & 0x08) << 18) | ((d & 0x3F) << 12) | ((e & 0x3F) << 6) | (f & 0x3F);
+    n = ((c & 0x0F) << 18) | ((d & 0x3F) << 12) | ((e & 0x3F) << 6) | (f & 0x3F);
+    assert(n >= 65536 && n <= 1114111);
 
     // construct the surrogate pairs
     n -= 0x10000;

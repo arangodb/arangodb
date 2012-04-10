@@ -37,67 +37,6 @@ var actions = require("actions");
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief loads a collection
-///
-/// @REST{GET /_system/collection/load?collection=@FA{identifier}}
-///
-/// Loads a collection into memory.
-///
-/// @verbinclude restX
-////////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url : "_system/collection/load", // TODO -> api_collection.js
-  context : "admin",
-
-  callback : function (req, res) {
-    try {
-      req.collection.load();
-
-      actions.resultOk(req, res, 204);
-    }
-    catch (err) {
-      actions.resultError(req, res, err);
-    }
-  },
-
-  parameters : {
-    collection : "collection-identifier"
-  }
-});
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns information about all indexes of a collection
-///
-/// @REST{GET /_system/collection/indexes?collection=@FA{identifier}}
-///
-/// Returns information about all indexes of a collection of the database.
-////////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url : "_system/collection/indexes", // TODO api_indexes.js
-  context : "admin",
-
-  callback : function (req, res) {
-    try {
-      result = {};
-      result.name = req.collection.name();
-      result.id = req.collection._id;
-      result.indexes = req.collection.getIndexes();
-
-      actions.resultOk(req, res, 200, result);
-    }
-    catch (err) {
-      actions.resultError(req, res, err);
-    }
-  },
-
-  parameters : {
-    collection : "collection-identifier"
-  }
-});
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information the server
 ///
 /// @REST{GET /_system/status}
