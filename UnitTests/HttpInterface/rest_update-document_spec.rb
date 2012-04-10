@@ -48,7 +48,7 @@ describe AvocadoDB do
 	AvocadoDB.size_collection(@cid).should eq(0)
       end
 
-      it "returns an error if document handle is corrupted" do
+      it "returns an error if document handle is corrupted with empty cid" do
 	cmd = "/document//123456"
 	body = "{}"
         doc = AvocadoDB.log_put("#{prefix}-bad-handle2", cmd, :body => body)

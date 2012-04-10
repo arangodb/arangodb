@@ -762,7 +762,9 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (TRI_vocbase_t* vocbase,
 
   if (shaped == 0) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("<document> cannot be converted into JSON shape")));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_errno(),
+                                           "<data> cannot be converted into JSON shape")));
   }
 
   // check policy
@@ -4358,6 +4360,9 @@ static v8::Handle<v8::Value> JS_UnloadVocbaseCol (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_SaveEdgesCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
@@ -4370,7 +4375,9 @@ static v8::Handle<v8::Value> JS_SaveEdgesCol (v8::Arguments const& argv) {
 
   if (argv.Length() != 3) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("usage: save(<from>, <to>, <document>)")));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                           "usage: save(<from>, <to>, <data>)")));
   }
 
   TRI_sim_edge_t edge;
@@ -4378,28 +4385,51 @@ static v8::Handle<v8::Value> JS_SaveEdgesCol (v8::Arguments const& argv) {
   edge._fromCid = collection->_cid;
   edge._toCid = collection->_cid;
 
-  if (! IsDocumentId(argv[0], edge._fromCid, edge._fromDid)) {
+  v8::Handle<v8::Value> errMsg;
+
+  // extract from
+  TRI_vocbase_col_t const* fromCollection = 0;
+  TRI_voc_rid_t fromRid;
+
+  errMsg = ParseDocumentOrDocumentHandle(collection->_vocbase, fromCollection, edge._fromDid, fromRid, argv[0]);
+
+  if (! errMsg.IsEmpty()) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("<from> is not a document identifier")));
+    return scope.Close(v8::ThrowException(errMsg));
   }
 
-  if (! IsDocumentId(argv[1], edge._toCid, edge._toDid)) {
+  edge._fromCid = fromCollection->_cid;
+
+  // extract to
+  TRI_vocbase_col_t const* toCollection = 0;
+  TRI_voc_rid_t toRid;
+
+  errMsg = ParseDocumentOrDocumentHandle(collection->_vocbase, toCollection, edge._toDid, toRid, argv[1]);
+
+  if (! errMsg.IsEmpty()) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("<from> is not a document identifier")));
+    return scope.Close(v8::ThrowException(errMsg));
   }
 
+  edge._toCid = toCollection->_cid;
+
+  // extract shaped data
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[2], doc->_shaper);
 
   if (shaped == 0) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("<document> cannot be converted into JSON shape")));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_errno(),
+                                           "<data> cannot be converted into JSON shape")));
   }
 
   // .............................................................................
   // inside a write transaction
   // .............................................................................
 
-  TRI_voc_did_t did = doc->createLock(doc, TRI_DOC_MARKER_EDGE, shaped, &edge);
+  collection->_collection->beginWrite(collection->_collection);
+
+  TRI_doc_mptr_t mptr = doc->create(doc, TRI_DOC_MARKER_EDGE, shaped, &edge, true);
 
   // .............................................................................
   // outside a write transaction
@@ -4407,24 +4437,21 @@ static v8::Handle<v8::Value> JS_SaveEdgesCol (v8::Arguments const& argv) {
 
   TRI_FreeShapedJson(shaped);
 
-  if (did == 0) {
-    string err = "cannot save document: ";
-    err += TRI_last_error();
-
+  if (mptr._did == 0) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New(err.c_str())));
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_errno(), 
+                                           "cannot save document")));
   }
 
-  char* cidStr = TRI_StringUInt64(doc->base._cid);
-  char* didStr = TRI_StringUInt64(did);
+  string id = StringUtils::itoa(doc->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + StringUtils::itoa(mptr._did);
 
-  string name = cidStr + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + didStr;
-
-  TRI_FreeString(didStr);
-  TRI_FreeString(cidStr);
+  v8::Handle<v8::Object> result = v8::Object::New();
+  result->Set(v8g->DidKey, v8::String::New(id.c_str()));
+  result->Set(v8g->RevKey, v8::Number::New(mptr._rid));
 
   ReleaseCollection(collection);
-  return scope.Close(v8::String::New(name.c_str()));
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4557,6 +4584,7 @@ static v8::Handle<v8::Value> JS_CollectionsVocBase (v8::Arguments const& argv) {
   TRI_vector_pointer_t colls = TRI_CollectionsVocBase(vocbase);
 
   uint32_t n = (uint32_t) colls._length;
+
   for (uint32_t i = 0;  i < n;  ++i) {
     TRI_vocbase_col_t const* collection = (TRI_vocbase_col_t const*) colls._buffer[i];
 
@@ -4838,6 +4866,7 @@ static v8::Handle<v8::Value> JS_CollectionsEdges (v8::Arguments const& argv) {
   TRI_vector_pointer_t colls = TRI_CollectionsVocBase(vocbase);
  
   uint32_t n = (uint32_t) colls._length;
+
   for (uint32_t i = 0;  i < n;  ++i) {
     TRI_vocbase_col_t const* collection = (TRI_vocbase_col_t const*) colls._buffer[i];
 
