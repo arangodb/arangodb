@@ -171,6 +171,7 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
     _databasePath("/var/lib/avocado"),
     _removeOnDrop(true),
     _removeOnCompacted(true),
+    _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
     _vocbase(0) {
   char* p;
 
@@ -353,6 +354,7 @@ void AvocadoServer::buildApplicationServer () {
   additional["DATABASE Options:help-admin"]
     ("database.directory", &_databasePath, "path to the database directory (use this option in configuration files instead of passing it via the command line)")
     ("database.remove-on-drop", &_removeOnDrop, "wipe a collection from disk after dropping")
+    ("database.maximal-journal-size", &_defaultMaximalSize, "default maximal journal size, can be overwritten when creating a collection")
   ;
 
   additional["DATABASE Options:help-devel"]
@@ -811,6 +813,7 @@ void AvocadoServer::openDatabase () {
 
   _vocbase->_removeOnDrop = _removeOnDrop;
   _vocbase->_removeOnCompacted = _removeOnCompacted;
+  _vocbase->_defaultMaximalSize = _defaultMaximalSize;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

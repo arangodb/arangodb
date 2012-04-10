@@ -668,7 +668,7 @@ static int ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t*
     TRI_sim_collection_t* sim;
     TRI_col_parameter_t parameter;
 
-    TRI_InitParameterCollection(&parameter, collection->_name, DEFAULT_MAXIMAL_SIZE);
+    TRI_InitParameterCollection(&parameter, collection->_name, TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
 
     parameter._type = type;
     parameter._waitForSync = false;
@@ -1048,9 +1048,10 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
     return NULL;
   }
   
-  // defaults for remove
+  // defaults
   vocbase->_removeOnDrop = true;
   vocbase->_removeOnCompacted = true;
+  vocbase->_defaultMaximalSize = TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE;
 
   // vocbase is now active
   vocbase->_active = 1;

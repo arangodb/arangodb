@@ -110,6 +110,10 @@ function CollectionRepresentation (collection, showProperties, showCount, showFi
 /// is synchronised to disk before returning from a create or update of an
 /// document.
 ///
+/// @LIT{journalSize} (optional, default 32MB): The maximal size of a
+/// journal or datafile.  Note that this also limits the maximal size
+/// of a single object. Must be at least 1MB.
+///
 /// @EXAMPLES
 ///
 /// @verbinclude api-collection-create-collection
@@ -133,14 +137,18 @@ function POST_api_collection (req, res) {
   }
 
   var name = body.name;
-  var waitForSync = false;
+  var parameter = { waitForSync : false };
 
   if (body.hasOwnProperty("waitForSync")) {
-    waitForSync = body.waitForSync;
+    parameter.waitForSync = body.waitForSync;
+  }
+
+  if (body.hasOwnProperty("journalSize")) {
+    parameter.waitForSync = body.journalSize;
   }
 
   try {
-    var collection = db._create(name, waitForSync);
+    var collection = db._create(name, parameter);
 
     var result = {};
     var headers = {};
