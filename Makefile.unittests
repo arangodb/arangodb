@@ -50,7 +50,7 @@ VOCHOST := 127.0.0.1
 start-server:
 	@echo
 	@echo "================================================================================"
-	@echo "|| STARTING SEREVR                                                            ||"
+	@echo "|| STARTING SERVER                                                            ||"
 	@echo "================================================================================"
 	@echo
 
@@ -97,7 +97,11 @@ UnitTests_test_suite_DEPENDENCIES = @top_builddir@/libavocado.a
 
 UnitTests_test_suite_SOURCES = \
 	UnitTests/Runner.cpp \
+	UnitTests/Philadelphia/associative-pointer-test.cpp \
 	UnitTests/Philadelphia/string-buffer-test.cpp \
+	UnitTests/Philadelphia/string-utf8-test.cpp \
+	UnitTests/Philadelphia/vector-pointer-test.cpp \
+	UnitTests/Philadelphia/vector-test.cpp \
 	UnitTests/Jutland/StringBufferTest.cpp \
 	UnitTests/Jutland/StringUtilsTest.cpp
 
