@@ -48,7 +48,8 @@
 /// @brief initialises a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void InitCollection (TRI_collection_t* collection,
+static void InitCollection (TRI_vocbase_t* vocbase,
+                            TRI_collection_t* collection,
                             char* directory,
                             TRI_col_info_t* info) {
   assert(collection);
@@ -57,6 +58,7 @@ static void InitCollection (TRI_collection_t* collection,
 
   collection->_version = info->_version;
   collection->_type = info->_type;
+  collection->_vocbase = vocbase;
 
   collection->_state = TRI_COL_STATE_WRITE;
   collection->_lastError = 0;
@@ -379,7 +381,8 @@ void TRI_InitParameterCollection (TRI_col_parameter_t* parameter,
 /// @brief creates a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_collection_t* TRI_CreateCollection (TRI_collection_t* collection,
+TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
+                                        TRI_collection_t* collection,
                                         char const* path,
                                         TRI_col_info_t* parameter) {
   char* filename;
@@ -479,7 +482,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_collection_t* collection,
     /* TODO FIXME: memory allocation might fail */
   }
 
-  InitCollection(collection, filename, parameter);
+  InitCollection(vocbase, collection, filename, parameter);
 
   // return collection
   return collection;
@@ -828,7 +831,9 @@ void TRI_IterateIndexCollection (TRI_collection_t* collection,
 /// @brief opens an existing collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_collection_t* TRI_OpenCollection (TRI_collection_t* collection, char const* path) {
+TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
+                                      TRI_collection_t* collection,
+                                      char const* path) {
   TRI_col_info_t info;
   bool freeCol;
   bool ok;
@@ -859,7 +864,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_collection_t* collection, char const* 
     freeCol = true;
   }
 
-  InitCollection(collection, TRI_DuplicateString(path), &info);
+  InitCollection(vocbase, collection, TRI_DuplicateString(path), &info);
 
   // check for journals and datafiles
   ok = CheckCollection(collection);

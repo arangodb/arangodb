@@ -1169,8 +1169,8 @@ static v8::Handle<v8::Value> JS_ProcessStat (v8::Arguments const& argv) {
 
   result->Set(v8::String::New("minorPageFaults"), v8::Number::New((double) info._minorPageFaults));
   result->Set(v8::String::New("majorPageFaults"), v8::Number::New((double) info._majorPageFaults));
-  result->Set(v8::String::New("userTime"), v8::Number::New((double) info._userTime));
-  result->Set(v8::String::New("systemTime"), v8::Number::New((double) info._systemTime));
+  result->Set(v8::String::New("userTime"), v8::Number::New((double) info._userTime / (double) info._scClkTck));
+  result->Set(v8::String::New("systemTime"), v8::Number::New((double) info._systemTime / (double) info._scClkTck));
   result->Set(v8::String::New("numberThreads"), v8::Number::New((double) info._numberThreads));
   result->Set(v8::String::New("residentSize"), v8::Number::New((double) info._residentSize));
   result->Set(v8::String::New("virtualSize"), v8::Number::New((double) info._virtualSize));

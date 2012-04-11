@@ -12,24 +12,24 @@ unittests-brief: unittests-boost unittests-shell-server unittests-http-server
 
 unittests-verbose:
 	@echo "################################################################################"
-	@echo "#"
-	@echo "# In order to run the unit-tests you need to either install the JavaScript"
-	@echo "# library files or configure the AvocadoDB in such a way, that it uses a"
-	@echo "# relative path."
-	@echo "#"
-	@echo "# Library Files"
-	@echo "# -------------"
-	@echo "#"
-	@echo "# > ./configure ...."
-	@echo "# > make install"
-	@echo "# > make unittests"
-	@echo "#"
-	@echo "# Relative Paths"
-	@echo "# --------------"
-	@echo "#"
-	@echo "# > ./configure --enable-relative=devel ..."
-	@echo "# > make unittests"
-	@echo "#"
+	@echo "#                                                                              #"
+	@echo "# In order to run the unit-tests you need to either install the JavaScript     #"
+	@echo "# library files or configure the AvocadoDB in such a way, that it uses a       #"
+	@echo "# relative path.                                                               #"
+	@echo "#                                                                              #"
+	@echo "# Library Files                                                                #"
+	@echo "# -------------                                                                #"
+	@echo "#                                                                              #"
+	@echo "#   > ./configure ....                                                         #"
+	@echo "#   > make install                                                             #"
+	@echo "#   > make unittests                                                           #"
+	@echo "#                                                                              #"
+	@echo "# Relative Paths                                                               #"
+	@echo "# --------------                                                               #"
+	@echo "#                                                                              #"
+	@echo "#   > ./configure --enable-relative=devel ...                                  #"
+	@echo "#   > make unittests                                                           #"
+	@echo "#                                                                              #"
 	@echo "################################################################################"
 	@echo
 
@@ -48,12 +48,17 @@ VOCHOST := 127.0.0.1
 .PHONY: start-server
 
 start-server:
-	@echo "starting the server"
+	@echo
+	@echo "================================================================================"
+	@echo "|| STARTING SERVER                                                            ||"
+	@echo "================================================================================"
+	@echo
+
 	@rm -f "$(PIDFILE)"
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
-	@builddir@/avocado "$(VOCDIR)" --pid-file $(PIDFILE) --watch-process $(PID) --server.http-port $(VOCHOST):$(VOCPORT) &
+	(@builddir@/avocado "$(VOCDIR)" --pid-file $(PIDFILE) --watch-process $(PID) --server.http-port $(VOCHOST):$(VOCPORT) && rm -rf "$(VOCDIR)") &
 
 	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
 	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
@@ -75,7 +80,7 @@ if ENABLE_BOOST_TEST
 unittests-boost:
 	@echo
 	@echo "================================================================================"
-	@echo "BOOST TESTS"
+	@echo "|| BOOST TESTS                                                                ||"
 	@echo "================================================================================"
 	@echo
 
@@ -92,7 +97,11 @@ UnitTests_test_suite_DEPENDENCIES = @top_builddir@/libavocado.a
 
 UnitTests_test_suite_SOURCES = \
 	UnitTests/Runner.cpp \
+	UnitTests/Philadelphia/associative-pointer-test.cpp \
 	UnitTests/Philadelphia/string-buffer-test.cpp \
+	UnitTests/Philadelphia/string-utf8-test.cpp \
+	UnitTests/Philadelphia/vector-pointer-test.cpp \
+	UnitTests/Philadelphia/vector-test.cpp \
 	UnitTests/Jutland/StringBufferTest.cpp \
 	UnitTests/Jutland/StringUtilsTest.cpp
 
@@ -101,7 +110,7 @@ else
 unittests-boost:
 	@echo
 	@echo "================================================================================"
-	@echo "BOOST TESTS"
+	@echo "|| BOOST TESTS                                                                ||"
 	@echo "================================================================================"
 	@echo
 
@@ -123,7 +132,7 @@ OPTION = $(addprefix --unit-tests ,$(SHELL_SERVER))
 unittests-shell-server:
 	@echo
 	@echo "================================================================================"
-	@echo "SHELL SERVER TESTS"
+	@echo "|| SHELL SERVER TESTS                                                         ||"
 	@echo "================================================================================"
 	@echo
 
@@ -145,7 +154,7 @@ unittests-shell-server:
 unittests-http-server: start-server
 	@echo
 	@echo "================================================================================"
-	@echo "HTTP SERVER TESTS"
+	@echo "|| HTTP SERVER TESTS                                                          ||"
 	@echo "================================================================================"
 	@echo
 

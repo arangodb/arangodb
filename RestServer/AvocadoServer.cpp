@@ -160,7 +160,7 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
     _httpServer(0),
     _adminHttpServer(0),
     _httpPort("127.0.0.1:8529"),
-    _adminPort("127.0.0.1:8530"),
+    _adminPort(),
     _dispatcherThreads(1),
     _startupPath(),
     _startupModules("js/modules"),
@@ -169,6 +169,9 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
     _actionThreads(1),
     _gcInterval(1000),
     _databasePath("/var/lib/avocado"),
+    _removeOnDrop(true),
+    _removeOnCompacted(true),
+    _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
     _vocbase(0) {
   char* p;
 
@@ -350,6 +353,12 @@ void AvocadoServer::buildApplicationServer () {
 
   additional["DATABASE Options:help-admin"]
     ("database.directory", &_databasePath, "path to the database directory (use this option in configuration files instead of passing it via the command line)")
+    ("database.remove-on-drop", &_removeOnDrop, "wipe a collection from disk after dropping")
+    ("database.maximal-journal-size", &_defaultMaximalSize, "default maximal journal size, can be overwritten when creating a collection")
+  ;
+
+  additional["DATABASE Options:help-devel"]
+    ("database.remove-on-compacted", &_removeOnCompacted, "wipe a datafile from disk after compaction")
   ;
 
   // .............................................................................
@@ -553,10 +562,20 @@ int AvocadoServer::startupServer () {
   // create a http server and http handler factory
   // .............................................................................
 
+  bool useHttpPort = ! _httpPort.empty();
+  bool useAdminPort = ! _adminPort.empty() && _adminPort != "-";
+  bool shareAdminPort = useHttpPort && _adminPort.empty();
+
   Scheduler* scheduler = _applicationServer->scheduler();
 
-  if (! _httpPort.empty()) {
+  set<string> allowedQueuesHttp;
+  pair< TRI_vocbase_t*, set<string>* > handlerDataHttp = make_pair(_vocbase, &allowedQueuesHttp);
+
+  if (useHttpPort) {
     HttpHandlerFactory* factory = new HttpHandlerFactory();
+
+    allowedQueuesHttp.insert("STANDARD");
+    allowedQueuesHttp.insert("CLIENT");
 
     vector<AddressPort> ports;
     ports.push_back(AddressPort(_httpPort));
@@ -565,7 +584,15 @@ int AvocadoServer::startupServer () {
 
     factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
     factory->addPrefixHandler(RestVocbaseBaseHandler::EDGE_PATH, RestHandlerCreator<RestEdgeHandler>::createData<TRI_vocbase_t*>, _vocbase);
-    factory->addPrefixHandler("/", RestHandlerCreator<RestActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
+
+    if (shareAdminPort) {
+      _applicationAdminServer->addHandlers(factory, "/_admin");
+      allowedQueuesHttp.insert("SYSTEM");
+    }
+
+    factory->addPrefixHandler("/", 
+                              RestHandlerCreator<RestActionHandler>::createData< pair< TRI_vocbase_t*, set<string>* >* >,
+                              (void*) &handlerDataHttp);
 
     _httpServer = _applicationHttpServer->buildServer(new AvocadoHttpServer(scheduler, dispatcher), factory, ports);
   }
@@ -574,20 +601,29 @@ int AvocadoServer::startupServer () {
   // create a http server and http handler factory
   // .............................................................................
 
-  if (! _adminPort.empty()) {
+  set<string> allowedQueuesAdmin;
+  pair< TRI_vocbase_t*, set<string>* > handlerDataAdmin = make_pair(_vocbase, &allowedQueuesAdmin);
+
+  if (useAdminPort) {
     HttpHandlerFactory* adminFactory = new HttpHandlerFactory();
+
+    allowedQueuesAdmin.insert("STANDARD");
+    allowedQueuesAdmin.insert("CLIENT");
+    allowedQueuesAdmin.insert("SYSTEM");
 
     vector<AddressPort> adminPorts;
     adminPorts.push_back(AddressPort(_adminPort));
 
     _applicationAdminServer->addBasicHandlers(adminFactory);
-    _applicationAdminServer->addHandlers(adminFactory, "/admin");
+    _applicationAdminServer->addHandlers(adminFactory, "/_admin");
 
     adminFactory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
     adminFactory->addPrefixHandler(RestVocbaseBaseHandler::EDGE_PATH, RestHandlerCreator<RestEdgeHandler>::createData<TRI_vocbase_t*>, _vocbase);
-    adminFactory->addPrefixHandler("/", RestHandlerCreator<RestActionHandler>::createData<TRI_vocbase_t*>, _vocbase);
+    adminFactory->addPrefixHandler("/", 
+                                   RestHandlerCreator<RestActionHandler>::createData< pair< TRI_vocbase_t*, set<string>* >* >,
+                                   (void*) &handlerDataAdmin);
 
-    _adminHttpServer = _applicationHttpServer->buildServer(adminFactory, adminPorts);
+    _adminHttpServer = _applicationHttpServer->buildServer(new AvocadoHttpServer(scheduler, dispatcher), adminFactory, adminPorts);
   }
 
   // .............................................................................
@@ -596,18 +632,23 @@ int AvocadoServer::startupServer () {
 
   LOGGER_INFO << "AvocadoDB (version " << TRIAGENS_VERSION << ") is ready for business";
 
-  if (_httpPort.empty()) {
+  if (useHttpPort) {
+    if (shareAdminPort) {
+      LOGGER_INFO << "HTTP client/admin port: " << _httpPort;
+    }
+    else {
+      LOGGER_INFO << "HTTP client port: " << _httpPort;
+    }
+  }
+  else {
     LOGGER_WARNING << "HTTP client port not defined, maybe you want to use the 'server.http-port' option?";
   }
-  else {
-    LOGGER_INFO << "HTTP client port: " << _httpPort;
-  }
 
-  if (_adminPort.empty()) {
-    LOGGER_INFO << "HTTP admin port not defined, maybe you want to use the 'server.admin-port' option?";
-  }
-  else {
+  if (useAdminPort) {
     LOGGER_INFO << "HTTP admin port: " << _adminPort;
+  }
+  else if (! shareAdminPort) {
+    LOGGER_INFO << "HTTP admin port not defined, maybe you want to use the 'server.admin-port' option?";
   }
 
   LOGGER_INFO << "Have Fun!";
@@ -797,10 +838,14 @@ void AvocadoServer::openDatabase () {
 
   if (! _vocbase) {
     LOGGER_FATAL << "cannot open database '" << _databasePath << "'";
-    cerr << "cannot open database '" << _databasePath << "'\n";
     LOGGER_INFO << "please use the '--database.directory' option";
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
+
+  _vocbase->_removeOnDrop = _removeOnDrop;
+  _vocbase->_removeOnCompacted = _removeOnCompacted;
+  _vocbase->_defaultMaximalSize = _defaultMaximalSize;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

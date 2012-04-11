@@ -839,25 +839,22 @@ bool TRI_RenameDatafile (TRI_datafile_t* datafile, char const* filename) {
 /// @brief seals a database, writes a footer, sets it to read-only
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_SealDatafile (TRI_datafile_t* datafile) {
+int TRI_SealDatafile (TRI_datafile_t* datafile) {
   TRI_df_footer_marker_t footer;
   TRI_df_marker_t* position;
   bool ok;
   int res;
 
   if (datafile->_state == TRI_DF_STATE_READ) {
-    TRI_set_errno(TRI_ERROR_AVOCADO_READ_ONLY);
-    return false;
+    return TRI_set_errno(TRI_ERROR_AVOCADO_READ_ONLY);
   }
 
   if (datafile->_state != TRI_DF_STATE_WRITE) {
-    TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_STATE);
-    return false;
+    return TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_STATE);
   }
 
   if (datafile->_isSealed) {
-    TRI_set_errno(TRI_ERROR_AVOCADO_DATAFILE_SEALED);
-    return false;
+    return TRI_set_errno(TRI_ERROR_AVOCADO_DATAFILE_SEALED);
   }
 
   // create the footer
@@ -880,7 +877,7 @@ bool TRI_SealDatafile (TRI_datafile_t* datafile) {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return false;
+    return res;
   }
 
   // sync file
@@ -911,8 +908,9 @@ bool TRI_SealDatafile (TRI_datafile_t* datafile) {
     res = ftruncate(datafile->_fd, datafile->_currentSize);
 
     if (res < 0) {
-      TRI_set_errno(TRI_ERROR_SYS_ERROR);
       LOG_ERROR("cannot truncate datafile '%s': %s", datafile->_filename, TRI_last_error());
+      datafile->_lastError = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      ok = false;
     }
 
     datafile->_isSealed = true;

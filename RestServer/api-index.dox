@@ -41,10 +41,10 @@
 /// @page HttpIndexCallsTOC
 ///
 /// <ol>
-///  <li>@ref HttpIndexRead "GET /_api/index/@FA{collection-identifier}/@FA{index-identifier}"</li>
-///  <li>@ref HttpIndexCreate "POST /_api/index/@FA{collection-identifier}"</li>
-///  <li>@ref HttpIndexDelete "DELETE /_api/index/@FA{collection-identifier}/@FA{index-identifier}"</li>
-///  <li>@ref HttpIndexReadAll "GET /_api/index/@FA{collection-identifier}"</li>
+///  <li>@ref HttpIndexRead "GET /_api/index/collection-identifier/index-identifier"</li>
+///  <li>@ref HttpIndexCreate "POST /_api/index/collection-identifier"</li>
+///  <li>@ref HttpIndexDelete "DELETE /_api/index/collection-identifier/index-identifier"</li>
+///  <li>@ref HttpIndexReadAll "GET /_api/index/collection-identifier"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 

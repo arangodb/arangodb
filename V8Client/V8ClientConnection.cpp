@@ -161,6 +161,11 @@ namespace triagens {
       if (!_httpResult->isComplete()) {
         // not complete
         _lastErrorMessage = _client->getErrorMessage();
+        
+        if (_lastErrorMessage == "") {
+          _lastErrorMessage = "Unknown error";
+        }
+        
         _lastHttpReturnCode = SimpleHttpResult::HTTP_STATUS_SERVER_ERROR;
         
         v8::Handle<v8::Object> result = v8::Object::New();

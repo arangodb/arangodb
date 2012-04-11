@@ -199,7 +199,10 @@ namespace triagens {
 /// @CMDOPT{--server.http-port @CA{port}}
 ///
 /// Specifies the @CA{port} for HTTP requests by clients. This will bind to any
-/// address available.
+/// address available. If you do not specify an admin port, then the http port
+/// will serve both client and administration request. If you have
+/// higher security requirements, you can use a special administration
+/// port.
 ///
 /// @CMDOPT{--server.http-port @CA{address}:@CA{port}}
 ///
@@ -322,6 +325,50 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         string _databasePath;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove on drop
+///
+/// @CMDOPT{--database.remove-on-drop @CA{flag}}
+///
+/// If @LIT{true} and you drop a collection, then they directory and all
+/// associated datafiles will be removed from disk. If @LIT{false}, then they
+/// collection directory will be renamed to @LIT{deleted-...}, but remains on
+/// hard disk. To restore such a dropped collection, you can simple rename to
+/// the directory to @LIT{collection-...}.
+///
+/// The default is @LIT{true}.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _removeOnDrop;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove on compaction
+///
+/// @CMDOPT{--database.remove-on-compaction @CA{flag}}
+///
+/// Normally the garbage collection will removed compacted datafile. For debug
+/// purposes you can use this option to keep the old datafiles. You should
+/// never set it to @LIT{false} on a live system.
+///
+/// The default is @LIT{true}.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _removeOnCompacted;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default journal size
+///
+/// @CMDOPT{--database.maximal-journal-size @CA{size}}
+///
+/// Maximal size of journal in bytes. Can be overwritten when creating a new
+/// collection. Note that this also limits the maximal size of a single
+/// document.
+///
+/// The default is @LIT{32MB}.
+////////////////////////////////////////////////////////////////////////////////
+
+        uint64_t _defaultMaximalSize;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unit tests

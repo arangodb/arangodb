@@ -17,7 +17,9 @@ static string JS_common_bootstrap_errors =
   "  \"ERROR_DEAD_PID\"               : { \"code\" : 8, \"message\" : \"dead process identifier\" }, \n"
   "  \"ERROR_NOT_IMPLEMENTED\"        : { \"code\" : 9, \"message\" : \"not implemented\" }, \n"
   "  \"ERROR_BAD_PARAMETER\"          : { \"code\" : 10, \"message\" : \"bad parameter\" }, \n"
+  "  \"ERROR_FORBIDDEN\"              : { \"code\" : 11, \"message\" : \"forbidden\" }, \n"
   "  \"ERROR_HTTP_BAD_PARAMETER\"     : { \"code\" : 400, \"message\" : \"bad parameter\" }, \n"
+  "  \"ERROR_HTTP_FORBIDDEN\"         : { \"code\" : 403, \"message\" : \"forbidden\" }, \n"
   "  \"ERROR_HTTP_NOT_FOUND\"         : { \"code\" : 404, \"message\" : \"not found\" }, \n"
   "  \"ERROR_HTTP_METHOD_NOT_ALLOWED\" : { \"code\" : 405, \"message\" : \"method not supported\" }, \n"
   "  \"ERROR_HTTP_SERVER_ERROR\"      : { \"code\" : 500, \"message\" : \"internal server error\" }, \n"
@@ -102,6 +104,8 @@ static string JS_common_bootstrap_errors =
   "  \"SIMPLE_CLIENT_COULD_NOT_WRITE\" : { \"code\" : 2002, \"message\" : \"could not write to server\" }, \n"
   "  \"SIMPLE_CLIENT_COULD_NOT_READ\" : { \"code\" : 2003, \"message\" : \"could not read from server\" }, \n"
   "  \"ERROR_AVOCADO_INDEX_PQ_INSERT_FAILED\" : { \"code\" : 3100, \"message\" : \"priority queue insert failure\" }, \n"
+  "  \"ERROR_AVOCADO_INDEX_PQ_REMOVE_FAILED\" : { \"code\" : 3110, \"message\" : \"priority queue remove failure\" }, \n"
+  "  \"ERROR_AVOCADO_INDEX_PQ_REMOVE_ITEM_MISSING\" : { \"code\" : 3111, \"message\" : \"priority queue remove failure - item missing in index\" }, \n"
   "};\n"
   "\n"
 ;

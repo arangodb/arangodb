@@ -189,6 +189,7 @@ TRI_col_info_t;
 typedef struct TRI_collection_s {
   TRI_col_version_t _version;        // collection version, will be set
   TRI_col_type_t _type;              // collection type, will be set
+  TRI_vocbase_t* _vocbase;
 
   TRI_col_state_e _state;            // state of the collection
   int _lastError;                    // last (critical) error
@@ -235,7 +236,8 @@ void TRI_InitParameterCollection (TRI_col_parameter_t*,
 /// @brief creates a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_collection_t* TRI_CreateCollection (TRI_collection_t*,
+TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t*,
+                                        TRI_collection_t*,
                                         char const* path,
                                         TRI_col_info_t* parameter);
 
@@ -323,7 +325,8 @@ void TRI_IterateIndexCollection (TRI_collection_t* collection,
 /// @brief opens an existing collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_collection_t* TRI_OpenCollection (TRI_collection_t*,
+TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t*,
+                                      TRI_collection_t*,
                                       char const* path);
 
 ////////////////////////////////////////////////////////////////////////////////

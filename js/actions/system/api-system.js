@@ -37,74 +37,39 @@ var actions = require("actions");
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief loads a collection
-///
-/// @REST{GET /_system/collection/load?collection=@FA{identifier}}
-///
-/// Loads a collection into memory.
-///
-/// @verbinclude restX
-////////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url : "_system/collection/load", // TODO -> api_collection.js
-  context : "admin",
-
-  callback : function (req, res) {
-    try {
-      req.collection.load();
-
-      actions.resultOk(req, res, 204);
-    }
-    catch (err) {
-      actions.resultError(req, res, err);
-    }
-  },
-
-  parameters : {
-    collection : "collection-identifier"
-  }
-});
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns information about all indexes of a collection
-///
-/// @REST{GET /_system/collection/indexes?collection=@FA{identifier}}
-///
-/// Returns information about all indexes of a collection of the database.
-////////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url : "_system/collection/indexes", // TODO api_indexes.js
-  context : "admin",
-
-  callback : function (req, res) {
-    try {
-      result = {};
-      result.name = req.collection.name();
-      result.id = req.collection._id;
-      result.indexes = req.collection.getIndexes();
-
-      actions.resultOk(req, res, 200, result);
-    }
-    catch (err) {
-      actions.resultError(req, res, err);
-    }
-  },
-
-  parameters : {
-    collection : "collection-identifier"
-  }
-});
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns information the server
+/// @fn JSF_GET_system_status
+/// @brief returns system status information for the server
 ///
 /// @REST{GET /_system/status}
+///
+/// The call returns an object with the following attributes:
+///
+/// @LIT{system.userTime}: Amount of time that this process has been scheduled
+/// in user mode, measured in clock ticks divided by sysconf(_SC_CLK_TCK) aka
+/// seconds.
+///
+/// @LIT{system.systemTime}: mount of time that this process has been scheduled
+/// in kernel mode, measured in clock ticks divided by sysconf(_SC_CLK_TCK) aka
+/// seconds.
+///
+/// @LIT{system.numberOfThreads}: Number of threads in this process.
+///
+/// @LIT{system.residentSize}: Resident Set Size: number of pages the process
+/// has in real memory.  This is just the pages which count toward text, data,
+/// or stack space.  This does not include pages which have not been
+/// demand-loaded in, or which are swapped out.
+///
+/// @LIT{system.virtualSize}: Virtual memory size in bytes.
+///
+/// @LIT{system.minorPageFaults}: The number of minor faults the process has
+/// made which have not required loading a memory page from disk.
+///
+/// @LIT{system.majorPageFaults}: The number of major faults the process has
+/// made which have required loading a memory page from disk.
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : "_system/status", // TODO -> _api/system
+  url : "_system/status",
   context : "admin",
 
   callback : function (req, res) {
