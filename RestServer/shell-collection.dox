@@ -41,11 +41,23 @@
 /// @page ShellCollectionCallsTOC
 ///
 /// <ol>
-///  <li>@ref ShellCollectionRead "db._collection(collection-identifier)"</li>
-///  <li>@ref ShellCollectionCreate "db._create(collection-name, properties)"</li>
-///  <li>@ref ShellCollectionReadAll "db._collections()"</li>
-///  <li>@ref ShellCollectionReadShortCut "db.collection-name"</li>
-///  <li>@ref ShellCollectionProperties "collection.properties()"</li>
+///  <li>Collection Methods
+///   <ol>
+///    <li>@ref ShellCollectionDrop "collection.drop()"</li>
+///    <li>@ref ShellCollectionTruncate "collection.truncate()"</li>
+///    <li>@ref ShellCollectionProperties "collection.properties()"</li>
+///   </ol>
+///  </li>
+///  <li>Database Methods
+///   <ol>
+///    <li>@ref ShellCollectionRead "db._collection(collection-identifier)"</li>
+///    <li>@ref ShellCollectionCreate "db._create(collection-name, properties)"</li>
+///    <li>@ref ShellCollectionReadAll "db._collections()"</li>
+///    <li>@ref ShellCollectionReadShortCut "db.collection-name"</li>
+///    <li>@ref ShellCollectionDropDb "db._drop(collection)"</li>
+///    <li>@ref ShellCollectionTruncateDb "db._truncate(collection)"</li>
+///   </ol>
+///  </li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -106,6 +118,18 @@
 /// @section ShellCollectionShell Working with Collections
 //////////////////////////////////////////////////////////
 ///
+/// @anchor ShellCollectionDrop
+/// @copydetails JS_DropVocbaseCol
+/// <hr>
+///
+/// @anchor ShellCollectionTruncate
+/// @copydetails JSF_AvocadoCollection_prototype_truncate
+/// <hr>
+///
+/// @anchor ShellCollectionProperties
+/// @copydetails JS_PropertiesVocbaseCol
+/// <hr>
+///
 /// @anchor ShellCollectionRead
 /// @copydetails JS_CollectionVocBase
 /// <hr>
@@ -122,8 +146,12 @@
 /// @copydetails MapGetVocBase
 /// <hr>
 ///
-/// @anchor ShellCollectionProperties
-/// @copydetails JS_PropertiesVocbaseCol
+/// @anchor ShellCollectionDropDb
+/// @copydetails JSF_AvocadoDatabase_prototype__drop
+/// <hr>
+///
+/// @anchor ShellCollectionTruncateDb
+/// @copydetails JSF_AvocadoDatabase_prototype__truncate
 /// <hr>
 ///
 ////////////////////////////////////////////////////////////////////////////////

@@ -129,8 +129,6 @@
 ///
 /// @section JSFDatabases Database Functions
 ///
-/// - @ref JS_ParameterVocbaseCol "parameter"
-///
 /// @subsection JSFDocument Database Document Functions
 ///
 /// - @ref JS_DeleteVocbaseCol "delete"
