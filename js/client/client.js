@@ -86,6 +86,7 @@ function TRI_GetIdString (object, typeName) {
   else if (object.data && object.data._id) {
     result += ":" + object.data._id;
   }
+
   result += "]";
 
   return result;
@@ -296,7 +297,7 @@ function AvocadoError (error) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoError.prototype._PRINT = function() {
-  print(this.toString());
+  internal.output(this.toString());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -333,6 +334,131 @@ AvocadoError.prototype.toString = function() {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   AvocadoDatabase
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+function AvocadoDatabase (connection) {
+  this._connection = connection;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return all collections from the database
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._collections = function () {
+  var requestResult = this._connection.get("/_api/collection");
+  
+  TRI_CheckRequestResult(requestResult);
+
+  if (requestResult["collections"] != undefined) {
+    var collections = requestResult["collections"];
+    var result = []
+    
+    // add all collentions to object
+    for (var i = 0;  i < collections.length;  ++i) {
+      var collection = new AvocadoCollection(this, collections[i]);
+
+      this[collection._name] = collection;
+      result.push(collection);
+    }
+      
+    return result;
+  }
+  
+  return undefined;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a single collection, identified by its id or name
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._collection = function (id) {
+  var requestResult = this._connection.get("/_api/collection/" + encodeURIComponent(id));
+  
+  TRI_CheckRequestResult(requestResult);
+
+  var name = requestResult["name"];
+
+  if (name != undefined) {
+    return this[name] = new AvocadoCollection(this, requestResult);
+  }
+  
+  return undefined;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._create = function (name, properties) {
+  var body = {
+    "name" : name
+  };
+
+  if (properties != null) {
+    if (properties.hasOwnProperty("waitForSync")) {
+      body.waitForSync = properties.waitForSync;
+    }
+
+    if (properties.hasOwnProperty("journalSize")) {
+      body.journalSize = properties.journalSize;
+    }
+  }
+
+  var requestResult = this._connection.post("/_api/collection", JSON.stringify(body));
+
+  TRI_CheckRequestResult(requestResult);
+
+  var name = requestResult["name"];
+
+  if (name != undefined) {
+    return this[name] = new AvocadoCollection(this, requestResult);
+  }
+  
+  return undefined;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._drop = function (id) {
+  for (var name in this) {
+    if (this.hasOwnProperty(name)) {
+      var collection = this[name];
+
+      if (collection instanceof AvocadoCollection) {
+        if (collection._id == id || collection._name == id) {
+          return collection.drop();
+        }
+      }
+    }
+  }
+
+  return undefined;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print the help for AvocadoDatabase
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._help = function () {  
+  print(helpAvocadoDatabase);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a string representation of the database object
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype.toString = function () {  
+  return "[object AvocadoDatabase]";
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 AvocadoCollection
 // -----------------------------------------------------------------------------
 
@@ -349,13 +475,189 @@ function AvocadoCollection (database, data) {
   this._database = database;
 
   if (typeof data === "string") {
-    this.name = data;
+    this._name = data;
   }
   else {
-    for (var i in data) {
-      this[i] = data[i];
+    this._id = data.id;
+    this._name = data.name;
+    this._status = data.status;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection is corrupted
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.STATUS_CORRUPTED = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection is new born
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.STATUS_NEW_BORN = 1;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection is unloaded
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.STATUS_UNLOADED = 2;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection is loaded
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.STATUS_LOADED = 3;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection is unloading
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.STATUS_UNLOADING = 4;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection is deleted
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.STATUS_DELETED = 5;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the name of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.name = function () {
+  if (this._name == null) {
+    this.refresh();
+  }
+
+  return this._name;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the status of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.status = function () {
+  if (this._status == null) {
+    this.refresh();
+  }
+
+  return this._status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets or sets the properties of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.properties = function (properties) {
+  var requestResult;
+
+  if (properties == null) {
+    requestResult = this._database._connection.get("/_api/collection/" + encodeURIComponent(this._id) + "/properties");
+
+    TRI_CheckRequestResult(requestResult);
+  }
+  else {
+    var body = {};
+
+    if (properties.hasOwnProperty("waitForSync")) {
+      body.waitForSync = properties.waitForSync;
+    }
+
+    requestResult = this._database._connection.put("/_api/collection/" + encodeURIComponent(this._id) + "/properties", JSON.stringify(body));
+
+    TRI_CheckRequestResult(requestResult);
+  }
+
+  return { 
+    waitForSync : requestResult.waitForSync,
+    journalSize : requestResult.journalSize
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.drop = function () {
+  var requestResult = this._database._connection.delete("/_api/collection/" + encodeURIComponent(this._id));
+
+  TRI_CheckRequestResult(requestResult);
+
+  this._status = AvocadoCollection.STATUS_DELETED;
+
+  var database = this._database;
+
+  for (var name in database) {
+    if (database.hasOwnProperty(name)) {
+      var collection = database[name];
+
+      if (collection instanceof AvocadoCollection) {
+        if (collection._id == this._id) {
+          delete database[name];
+        }
+      }
     }
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief truncates a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.truncate = function () {
+  var requestResult = this._database._connection.put("/_api/collection/" + encodeURIComponent(this._id) + "/truncate", "");
+
+  TRI_CheckRequestResult(requestResult);
+
+  this._status = null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief refreshes a collection status and name
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.refresh = function () {
+  var requestResult = this._database._connection.get("/_api/collection/" + encodeURIComponent(this._id));
+
+  TRI_CheckRequestResult(requestResult);
+
+  this._name = requestResult['name'];
+  this._status = requestResult['status'];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a string representation of the collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.toString = function () {  
+  return TRI_GetIdString(this, "AvocadoCollection");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints the collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype._PRINT = function () {  
+  var status = "unknown";
+
+  switch (this.status()) {
+    case AvocadoCollection.STATUS_NEW_BORN: status = "new born"; break;
+    case AvocadoCollection.STATUS_UNLOADED: status = "unloaded"; break;
+    case AvocadoCollection.STATUS_UNLOADING: status = "unloading"; break;
+    case AvocadoCollection.STATUS_LOADED: status = "loaded"; break;
+    case AvocadoCollection.STATUS_CORRUPTED: status = "corrupted"; break;
+    case AvocadoCollection.STATUS_DELETED: status = "deleted"; break;
+  }
+  
+  internal.output("[AvocadoCollection ", this._id, ", \"", this._name, "\" (status " + status + ")]");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print the help for AvocadoCollection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype._help = function () {  
+  print(helpAvocadoCollection);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -363,7 +665,7 @@ function AvocadoCollection (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.all = function () {
-  var requestResult = this._database._connection.get("/_api/documents/" + encodeURIComponent(this.name));
+  var requestResult = this._database._connection.get("/document?collection=" + encodeURIComponent(this._id));
 
   TRI_CheckRequestResult(requestResult);
 
@@ -387,7 +689,7 @@ AvocadoCollection.prototype.document = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.save = function (data) {    
-  var requestResult = this._database._connection.post("/document?collection=" + encodeURIComponent(this.name), JSON.stringify(data));
+  var requestResult = this._database._connection.post("/document?collection=" + encodeURIComponent(this._id), JSON.stringify(data));
   
   TRI_CheckRequestResult(requestResult);
 
@@ -416,30 +718,6 @@ AvocadoCollection.prototype.update = function (id, data) {
   TRI_CheckRequestResult(requestResult);
 
   return requestResult;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief print the help for AvocadoCollection
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoCollection.prototype._help = function () {  
-  print(helpAvocadoCollection);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a string representation of the collection
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoCollection.prototype.toString = function () {  
-  return TRI_GetIdString(this, "AvocadoCollection");
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints the collection
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoCollection.prototype._PRINT = function () {  
-  SYS_OUTPUT("[AvocadoCollection ", this.id, ", \"", this.name, "]");
 }
 
 // -----------------------------------------------------------------------------
@@ -596,99 +874,6 @@ AvocadoQueryCursor.prototype._help = function () {
 
 AvocadoQueryCursor.prototype.toString = function () {  
   return TRI_GetIdString(this, "AvocadoQueryCursor");
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   AvocadoDatabase
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
-function AvocadoDatabase (connection) {
-  this._connection = connection;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return all collections from the database
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoDatabase.prototype._collections = function () {
-  var requestResult = this._connection.get("/_api/collection");
-  
-  TRI_CheckRequestResult(requestResult);
-
-  if (requestResult["collections"] != undefined) {
-    var collections = requestResult["collections"];
-    
-    // add all collentions to object
-    for (var i = 0;  i < collections.length;  ++i) {
-      var collection = collections[i];
-
-      this[collection.name] = new AvocadoCollection(this, collection);
-    }
-      
-    return collections;
-  }
-  
-  return undefined;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a single collection, identified by its id
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoDatabase.prototype._collection = function (id) {
-  var requestResult = this._connection.get("/_api/collection/" + encodeURIComponent(id));
-  
-  TRI_CheckRequestResult(requestResult);
-
-  var name = requestResult["name"];
-
-  if (name != undefined) {
-    return this[name] = new AvocadoCollection(this, requestResult);
-  }
-  
-  return undefined;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a single collection, identified by its id
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoDatabase.prototype._create = function (name) {
-  var body = {
-    "name" : name
-  };
-
-  var requestResult = this._connection.post("/_api/collection", JSON.stringify(body));
-
-  TRI_CheckRequestResult(requestResult);
-
-  var name = requestResult["name"];
-
-  if (name != undefined) {
-    return this[name] = new AvocadoCollection(this, requestResult);
-  }
-  
-  return undefined;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief print the help for AvocadoDatabase
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoDatabase.prototype._help = function () {  
-  print(helpAvocadoDatabase);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a string representation of the database object
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoDatabase.prototype.toString = function () {  
-  return "[object AvocadoDatabase]";
 }
 
 // -----------------------------------------------------------------------------
@@ -959,18 +1144,23 @@ helpAvocadoCollection =
 TRI_CreateHelpHeadline("AvocadoCollection help") +
 'AvocadoCollection constructor:                                      ' + "\n" +
 ' > col = db.mycoll;                                                 ' + "\n" +
-'Functions:                                                          ' + "\n" +
-'  save(<data>);                   create document and return id     ' + "\n" +
-'  document(<id>);                 get document by id                ' + "\n" +
-'  update(<id>, <new data>);       over writes document by id        ' + "\n" +
-'  delete(<id>);                   deletes document by id            ' + "\n" +
+' > col = db._create("mycoll");                                      ' + "\n" +
+'                                                                    ' + "\n" +
+'Administration Functions:                                           ' + "\n" +
+'  name()                          collection name                   ' + "\n" +
+'  status()                        status of the collection          ' + "\n" +
+'  refresh()                       refreshes the status and name     ' + "\n" +
 '  _help();                        this help                         ' + "\n" +
+'                                                                    ' + "\n" +
+'Document Functions:                                                 ' + "\n" +
+'  save(<data>);                   create document and return handle ' + "\n" +
+'  document(<id>);                 get document by handle            ' + "\n" +
+'  update(<id>, <new data>);       over writes document by handle    ' + "\n" +
+'  delete(<id>);                   deletes document by handle        ' + "\n" +
+'                                                                    ' + "\n" +
 'Attributes:                                                         ' + "\n" +
 '  _database                       database object                   ' + "\n" +
-'  _id                             collection id                     ' + "\n" +
-'  name                            collection name                   ' + "\n" +
-'  status                          status id                         ' + "\n" +
-'  figures                                                           ';
+'  _id                             collection identifier             ';
 
 helpAvocadoQueryCursor = 
 TRI_CreateHelpHeadline("AvocadoQueryCursor help") +

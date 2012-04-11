@@ -145,7 +145,7 @@ function POST_api_collection (req, res) {
   }
 
   if (body.hasOwnProperty("journalSize")) {
-    parameter.waitForSync = body.journalSize;
+    parameter.journalSize = body.journalSize;
   }
 
   try {
