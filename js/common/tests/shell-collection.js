@@ -344,6 +344,77 @@ function collectionSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief truncate new-born
+////////////////////////////////////////////////////////////////////////////////
+
+    testTruncatingNewBorn : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      assertTypeOf("number", c1._id);
+      assertEqual(cn, c1.name());
+      assertTypeOf("number", c1.status());
+
+      c1.truncate();
+
+      assertEqual(AvocadoCollection.STATUS_LOADED, c1.status());
+      assertEqual(0, c1.count());
+
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief truncate loaded
+////////////////////////////////////////////////////////////////////////////////
+
+    testTruncatingLoaded : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      c1.load();
+
+      assertTypeOf("number", c1._id);
+      assertEqual(cn, c1.name());
+      assertTypeOf("number", c1.status());
+
+      c1.truncate();
+
+      assertEqual(AvocadoCollection.STATUS_LOADED, c1.status());
+      assertEqual(0, c1.count());
+
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief truncate unloaded
+////////////////////////////////////////////////////////////////////////////////
+
+    testTruncatingUnloaded : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      c1.load();
+      c1.unload();
+
+      assertTypeOf("number", c1._id);
+      assertEqual(cn, c1.name());
+      assertTypeOf("number", c1.status());
+
+      c1.truncate();
+
+      assertEqual(AvocadoCollection.STATUS_LOADED, c1.status());
+      assertEqual(0, c1.count());
+
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief figures
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -564,77 +635,6 @@ function collectionDbSuite () {
       assertTypeOf("number", c1.status());
 
       db._truncate(cn);
-
-      assertEqual(AvocadoCollection.STATUS_LOADED, c1.status());
-      assertEqual(0, c1.count());
-
-      db._drop(cn);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief truncate new-born (DB)
-////////////////////////////////////////////////////////////////////////////////
-
-    testTruncatingNewBorn : function () {
-      var cn = "example";
-
-      db._drop(cn);
-      var c1 = db._create(cn);
-
-      assertTypeOf("number", c1._id);
-      assertEqual(cn, c1.name());
-      assertTypeOf("number", c1.status());
-
-      c1.truncate();
-
-      assertEqual(AvocadoCollection.STATUS_LOADED, c1.status());
-      assertEqual(0, c1.count());
-
-      db._drop(cn);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief truncate loaded (DB)
-////////////////////////////////////////////////////////////////////////////////
-
-    testTruncatingLoaded : function () {
-      var cn = "example";
-
-      db._drop(cn);
-      var c1 = db._create(cn);
-
-      c1.load();
-
-      assertTypeOf("number", c1._id);
-      assertEqual(cn, c1.name());
-      assertTypeOf("number", c1.status());
-
-      c1.truncate();
-
-      assertEqual(AvocadoCollection.STATUS_LOADED, c1.status());
-      assertEqual(0, c1.count());
-
-      db._drop(cn);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief truncate unloaded (DB)
-////////////////////////////////////////////////////////////////////////////////
-
-    testTruncatingUnloaded : function () {
-      var cn = "example";
-
-      db._drop(cn);
-      var c1 = db._create(cn);
-
-      c1.load();
-      c1.unload();
-
-      assertTypeOf("number", c1._id);
-      assertEqual(cn, c1.name());
-      assertTypeOf("number", c1.status());
-
-      c1.truncate();
 
       assertEqual(AvocadoCollection.STATUS_LOADED, c1.status());
       assertEqual(0, c1.count());
