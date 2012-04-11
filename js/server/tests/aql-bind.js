@@ -25,6 +25,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var jsunity = require("jsunity");
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -32,30 +34,7 @@
 function aqlBindParametersTestSuite () {
   var collection = null;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-  function setUp () {
-    this.collection = db.UnitTestsBind;
-
-    if (this.collection.count() == 0) {
-      for (var i = 0; i <= 10; i++) {
-        for (var j = 0; j <= 10; j++) {
-          this.collection.save({ "value1" : i, "value2" : j, "value3" : "test", "value4" : null, "value5" : -13.5});
-        }
-      }
-    }
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-  function tearDown () {
-  }
-
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a given query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -70,7 +49,7 @@ function aqlBindParametersTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function getQueryResults (query, bindParameters) {
-    var cursor = this.executeQuery(query, bindParameters);
+    var cursor = executeQuery(query, bindParameters);
     if (cursor) {
       var results = [ ];
       while (cursor.hasNext()) {
@@ -87,7 +66,7 @@ function aqlBindParametersTestSuite () {
 
   function executeRsLengthCheckNull (expectedLength, value) {
     var params = { "7" : value };
-    var result = this.getQueryResults("SELECT { value: @7 } FROM " + this.collection.name() + " c " +
+    var result = getQueryResults("SELECT { value: @7 } FROM " + collection.name() + " c " +
                                       "WHERE c.value4 == @7", params);
 
     assertEqual(expectedLength, result.length);
@@ -99,7 +78,7 @@ function aqlBindParametersTestSuite () {
 
   function executeRsLengthCheckString (expectedLength, value) {
     var params = { "0" : value };
-    var result = this.getQueryResults("SELECT { value: @0 } FROM " + this.collection.name() + " c " +
+    var result = getQueryResults("SELECT { value: @0 } FROM " + collection.name() + " c " +
                                       "WHERE c.value3 == @0", params);
 
     assertEqual(expectedLength, result.length);
@@ -111,7 +90,7 @@ function aqlBindParametersTestSuite () {
 
   function executeRsLengthCheck (expectedLength, value) {
     var params = { "value1" : value };
-    var result = this.getQueryResults("SELECT { value: @value1@ } FROM " + this.collection.name() + " c " +
+    var result = getQueryResults("SELECT { value: @value1@ } FROM " + collection.name() + " c " +
                                       "WHERE c.value1 == @value1@", params);
 
     assertEqual(expectedLength, result.length);
@@ -123,87 +102,116 @@ function aqlBindParametersTestSuite () {
 
   function executeRsLengthCheck2 (expectedLength, value1, value2) {
     var params = { "value1" : value1, "value2" : value2 };
-    var result = this.getQueryResults("SELECT { value: @value1@ } FROM " + this.collection.name() + " c " +
+    var result = getQueryResults("SELECT { value: @value1@ } FROM " + collection.name() + " c " +
                                       "WHERE c.value1 == @value1@ && c.value2 == @value2@", params);
 
     assertEqual(expectedLength, result.length);
   }
 
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      collection = db.UnitTestsBind;
+
+      if (collection.count() == 0) {
+        for (var i = 0; i <= 10; i++) {
+          for (var j = 0; j <= 10; j++) {
+            collection.save({ "value1" : i, "value2" : j, "value3" : "test", "value4" : null, "value5" : -13.5});
+          }
+        }
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+    },
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check result sets 
 ////////////////////////////////////////////////////////////////////////////////
 
-  function testRsLengths1 () {
-    this.executeRsLengthCheck(11, 0);
-    this.executeRsLengthCheck(11, 1);
-    this.executeRsLengthCheck(11, 2);
-    this.executeRsLengthCheck(11, 9);
-    this.executeRsLengthCheck(11, 10);
+    testRsLengths1 : function () {
+      executeRsLengthCheck(11, 0);
+      executeRsLengthCheck(11, 1);
+      executeRsLengthCheck(11, 2);
+      executeRsLengthCheck(11, 9);
+      executeRsLengthCheck(11, 10);
 
-    this.executeRsLengthCheck(0, -1);
-    this.executeRsLengthCheck(0, -5);
-    this.executeRsLengthCheck(0, -10);
-    this.executeRsLengthCheck(0, -11);
-  }
+      executeRsLengthCheck(0, -1);
+      executeRsLengthCheck(0, -5);
+      executeRsLengthCheck(0, -10);
+      executeRsLengthCheck(0, -11);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check result sets 
 ////////////////////////////////////////////////////////////////////////////////
   
-  function testRsLengths2 () {
-    this.executeRsLengthCheck2(1, 0, 0);
-    this.executeRsLengthCheck2(1, 0, 1);
-    this.executeRsLengthCheck2(1, 1, 0);
-    this.executeRsLengthCheck2(1, 2, 0);
-    this.executeRsLengthCheck2(1, 2, 1);
-    this.executeRsLengthCheck2(1, 0, 2);
-    this.executeRsLengthCheck2(1, 1, 2);
-    this.executeRsLengthCheck2(1, 10, 0);
-    this.executeRsLengthCheck2(1, 10, 1);
-    this.executeRsLengthCheck2(1, 0, 10);
-    this.executeRsLengthCheck2(1, 1, 10);
-    this.executeRsLengthCheck2(1, 10, 10);
+    testRsLengths2 : function () {
+      executeRsLengthCheck2(1, 0, 0);
+      executeRsLengthCheck2(1, 0, 1);
+      executeRsLengthCheck2(1, 1, 0);
+      executeRsLengthCheck2(1, 2, 0);
+      executeRsLengthCheck2(1, 2, 1);
+      executeRsLengthCheck2(1, 0, 2);
+      executeRsLengthCheck2(1, 1, 2);
+      executeRsLengthCheck2(1, 10, 0);
+      executeRsLengthCheck2(1, 10, 1);
+      executeRsLengthCheck2(1, 0, 10);
+      executeRsLengthCheck2(1, 1, 10);
+      executeRsLengthCheck2(1, 10, 10);
 
-    this.executeRsLengthCheck2(0, 11, 0);
-    this.executeRsLengthCheck2(0, 11, 1);
-    this.executeRsLengthCheck2(0, 0, 11);
-    this.executeRsLengthCheck2(0, 1, 11);
-    this.executeRsLengthCheck2(0, -1, 0);
-    this.executeRsLengthCheck2(0, 1, -1);
-    this.executeRsLengthCheck2(0, 10, -1);
-    this.executeRsLengthCheck2(0, 11, -1);
-    this.executeRsLengthCheck2(0, -10, 1);
-    this.executeRsLengthCheck2(0, -10, 10);
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check result sets 
-////////////////////////////////////////////////////////////////////////////////
-          
-  function testRsLengthsString () {
-    this.executeRsLengthCheckString(121, "test");
-
-    this.executeRsLengthCheckString(0, " test");
-    this.executeRsLengthCheckString(0, " test ");
-    this.executeRsLengthCheckString(0, "test ");
-    this.executeRsLengthCheckString(0, "test ");
-    this.executeRsLengthCheckString(0, "rest");
-    this.executeRsLengthCheckString(0, 15);
-    this.executeRsLengthCheckString(0, 1);
-    this.executeRsLengthCheckString(0, -15);
-    this.executeRsLengthCheckString(0, null);
-  }
+      executeRsLengthCheck2(0, 11, 0);
+      executeRsLengthCheck2(0, 11, 1);
+      executeRsLengthCheck2(0, 0, 11);
+      executeRsLengthCheck2(0, 1, 11);
+      executeRsLengthCheck2(0, -1, 0);
+      executeRsLengthCheck2(0, 1, -1);
+      executeRsLengthCheck2(0, 10, -1);
+      executeRsLengthCheck2(0, 11, -1);
+      executeRsLengthCheck2(0, -10, 1);
+      executeRsLengthCheck2(0, -10, 10);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check result sets 
 ////////////////////////////////////////////////////////////////////////////////
           
-  function testRsLengthsNull () {
-    this.executeRsLengthCheckNull(0, "test");
-    this.executeRsLengthCheckNull(0, "1");
-    this.executeRsLengthCheckNull(0, 1);
-    this.executeRsLengthCheckNull(0, 2);
-  }
+    testRsLengthsString : function () {
+      executeRsLengthCheckString(121, "test");
+
+      executeRsLengthCheckString(0, " test");
+      executeRsLengthCheckString(0, " test ");
+      executeRsLengthCheckString(0, "test ");
+      executeRsLengthCheckString(0, "test ");
+      executeRsLengthCheckString(0, "rest");
+      executeRsLengthCheckString(0, 15);
+      executeRsLengthCheckString(0, 1);
+      executeRsLengthCheckString(0, -15);
+      executeRsLengthCheckString(0, null);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check result sets 
+////////////////////////////////////////////////////////////////////////////////
+          
+    testRsLengthsNull : function () {
+      executeRsLengthCheckNull(0, "test");
+      executeRsLengthCheckNull(0, "1");
+      executeRsLengthCheckNull(0, 1);
+      executeRsLengthCheckNull(0, 2);
+    }
+
+  };
 
 }
 
@@ -211,7 +219,9 @@ function aqlBindParametersTestSuite () {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsUnity.run(aqlBindParametersTestSuite);
+jsunity.run(aqlBindParametersTestSuite);
+
+return jsunity.done();
 
 // Local Variables:
 // mode: outline-minor
