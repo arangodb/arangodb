@@ -3762,6 +3762,16 @@ static v8::Handle<v8::Value> JS_DocumentVocbaseCol (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops a collection
+///
+/// @FUN{@FA{collection}.drop()}
+///
+/// Drops a @FA{collection} and all its indexes.
+///
+/// @EXAMPLES
+///
+/// Drops a collection:
+///
+/// @verbinclude shell_collection-drop
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
@@ -4372,7 +4382,7 @@ static v8::Handle<v8::Value> JS_NameVocbaseCol (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets or sets the properties of a collection
 ///
-/// @FUN{properties()}
+/// @FUN{@FA{collection}.properties()}
 ///
 /// Returns an object containing all collection properties.
 ///
@@ -4381,7 +4391,7 @@ static v8::Handle<v8::Value> JS_NameVocbaseCol (v8::Arguments const& argv) {
 ///
 /// - @LIT{journalSize} : The size of the journal in bytes.
 ///
-/// @FUN{properties(@FA{properties})}
+/// @FUN{@FA{collection}.properties(@FA{properties})}
 ///
 /// Changes the collection properties. @FA{properties} must be a object with
 /// one or more of the following attribute(s):
@@ -5898,6 +5908,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(_CollectionsFuncName, v8::FunctionTemplate::New(JS_CollectionsVocBase));
   rt->Set(_CompletionsFuncName, v8::FunctionTemplate::New(JS_CompletionsVocBase));
   rt->Set(_CreateFuncName, v8::FunctionTemplate::New(JS_CreateVocBase));
+
   rt->Set(_DeleteFuncName, v8::FunctionTemplate::New(JS_DeleteVocbase));
   rt->Set(_DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbase));
   rt->Set(_ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbase));
@@ -5924,7 +5935,10 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(_CollectionsFuncName, v8::FunctionTemplate::New(JS_CollectionsEdges));
   rt->Set(_CompletionsFuncName, v8::FunctionTemplate::New(JS_CompletionsVocBase));
   rt->Set(_CreateFuncName, v8::FunctionTemplate::New(JS_CreateVocBase));
+
+  rt->Set(_DeleteFuncName, v8::FunctionTemplate::New(JS_DeleteVocbase));
   rt->Set(_DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbase));
+  rt->Set(_ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbase));
 
   v8g->EdgesTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
