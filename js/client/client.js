@@ -353,6 +353,9 @@ helpAvocadoDatabase = TRI_CreateHelpHeadline("AvocadoDatabase help") +
 'AvocadoDatabase constructor:                                        ' + "\n" +
 ' > db = new AvocadoDatabase(connection);                            ' + "\n" +
 '                                                                    ' + "\n" +
+'Administration Functions:                                           ' + "\n" +
+'  _help();                       this help                          ' + "\n" +
+'                                                                    ' + "\n" +
 'Collection Functions:                                               ' + "\n" +
 '  _collections()                 list all collections               ' + "\n" +
 '  _collection(<identifier>)      get collection by identifier/name  ' + "\n" +
@@ -362,10 +365,9 @@ helpAvocadoDatabase = TRI_CreateHelpHeadline("AvocadoDatabase help") +
 '                                                                    ' + "\n" +
 'Query Functions:                                                    ' + "\n" +
 '  _createStatement(<data>);      create and return select query     ' + "\n" +
-'                                 returns: AvocadoStatement          ' + "\n" +
-'  _help();                       this help                          ' + "\n" +
+'                                                                    ' + "\n" +
 'Attributes:                                                         ' + "\n" +
-'  <collection names>                                                ';
+'  <collection names>             collection with the given name     ';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return all collections from the database
