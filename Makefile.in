@@ -915,10 +915,12 @@ VOCHOST := 127.0.0.1
 ################################################################################
 SHELL_SERVER = @srcdir@/js/server/tests/shell-document.js \
                @srcdir@/js/server/tests/shell-collection.js \
+               @srcdir@/js/server/tests/aql-simple.js \
                @srcdir@/js/server/tests/aql-keywords.js \
+               @srcdir@/js/server/tests/aql-bind.js \
                @srcdir@/js/server/tests/aql-joins.js \
                @srcdir@/js/server/tests/aql-operators.js \
-               @srcdir@/js/server/tests/aql-bind.js
+               @srcdir@/js/server/tests/aql-indexes.js
 
 OPTION = $(addprefix --unit-tests ,$(SHELL_SERVER))
 @ENABLE_32BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.ia32
