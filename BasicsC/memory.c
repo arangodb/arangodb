@@ -107,7 +107,10 @@ void* TRI_Allocate (uint64_t n) {
 #endif
 
   m = malloc((size_t) n);
-  memset(m, 0, (size_t) n);
+  if (m) {
+    // only clear memory if we were able to allocate it beforehand
+    memset(m, 0, (size_t) n);
+  }
 
   return m;
 }
