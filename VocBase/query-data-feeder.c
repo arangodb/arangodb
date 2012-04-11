@@ -587,7 +587,6 @@ static void InitFeederHashLookup (TRI_data_feeder_t* feeder) {
       else if (range->_valueType == RANGE_TYPE_JSON) {
         doc = TRI_JsonString(range->_minValue._stringValue);
         if (!doc) {
-          // TODO: properly free parameters
           TRI_FreeJson(parameters);
           return;
         }
@@ -595,7 +594,6 @@ static void InitFeederHashLookup (TRI_data_feeder_t* feeder) {
       }
     }
     state->_hashElements = TRI_LookupHashIndex(state->_index, parameters);
-    // TODO: properly free parameters
     TRI_FreeJson(parameters);
   }
 
@@ -765,15 +763,6 @@ TRI_data_feeder_t* TRI_CreateDataFeederHashLookup (TRI_query_instance_t* const i
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free skiplist index elements
-////////////////////////////////////////////////////////////////////////////////
-
-static void FreeSkiplistElements (SkiplistIndexElements* elements) {
-  TRI_Free(elements->_elements);
-  TRI_Free(elements);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief copy a JSON parameter list
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -811,7 +800,6 @@ static TRI_sl_operator_t* CreateSkipListOperation (TRI_data_feeder_t* feeder) {
       // copy previous list
       TRI_json_t* temp = CopyParameters(parameters);
 
-      // TODO FIXME: do something if temp is NULL
       parameters = temp;
     }
 
@@ -990,8 +978,7 @@ static void RewindFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
   
   if (feeder->_accessType == ACCESS_REF) {
     if (state->_skiplistIterator) {
-      // TODO: free skiplist iterator!
-//      FreeSkiplistElements(state->_skiplistElements);
+      TRI_FreeSkiplistIterator(state->_skiplistIterator);
     }
     state->_skiplistIterator = NULL;
 
@@ -1058,8 +1045,7 @@ static void FreeFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
   }
 
   if (state->_skiplistIterator) {
-    // TODO: free iterator!!!!!!
-//    FreeSkiplistElements(state->_skiplistElements);
+    TRI_FreeSkiplistIterator(state->_skiplistIterator);
   }
 
   if (state->_context) {
