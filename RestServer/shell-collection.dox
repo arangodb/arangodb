@@ -46,6 +46,8 @@
 ///    <li>@ref ShellCollectionDrop "collection.drop()"</li>
 ///    <li>@ref ShellCollectionTruncate "collection.truncate()"</li>
 ///    <li>@ref ShellCollectionProperties "collection.properties()"</li>
+///    <li>@ref ShellCollectionLoad "collection.load()"</li>
+///    <li>@ref ShellCollectionUnload "collection.unload()"</li>
 ///   </ol>
 ///  </li>
 ///  <li>Database Methods
@@ -128,6 +130,14 @@
 ///
 /// @anchor ShellCollectionProperties
 /// @copydetails JS_PropertiesVocbaseCol
+/// <hr>
+///
+/// @anchor ShellCollectionLoad
+/// @copydetails JS_LoadVocbaseCol
+/// <hr>
+///
+/// @anchor ShellCollectionUnload
+/// @copydetails JS_UnloadVocbaseCol
 /// <hr>
 ///
 /// @anchor ShellCollectionRead

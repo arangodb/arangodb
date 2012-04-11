@@ -4347,6 +4347,14 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads a collection
+///
+/// @FUN{@FA{collection}.load()}
+///
+/// Loads a collection into memory.
+///
+/// @EXAMPLES
+///
+/// @verbinclude shell_collection-load
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_LoadVocbaseCol (v8::Arguments const& argv) {
@@ -4669,6 +4677,15 @@ static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unloads a collection
+///
+/// @FUN{@FA{collection}.unload()}
+///
+/// Starts unloading a collection into memory. Note that unloading is deferred
+/// until all query have finished.
+///
+/// @EXAMPLES
+///
+/// @verbinclude shell_collection-unload
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_UnloadVocbaseCol (v8::Arguments const& argv) {

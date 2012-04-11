@@ -346,6 +346,28 @@ function AvocadoDatabase (connection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief help for AvocadoDatabase
+////////////////////////////////////////////////////////////////////////////////
+
+helpAvocadoDatabase = TRI_CreateHelpHeadline("AvocadoDatabase help") +
+'AvocadoDatabase constructor:                                        ' + "\n" +
+' > db = new AvocadoDatabase(connection);                            ' + "\n" +
+'                                                                    ' + "\n" +
+'Collection Functions:                                               ' + "\n" +
+'  _collections()                 list all collections               ' + "\n" +
+'  _collection(<identifier>)      get collection by identifier/name  ' + "\n" +
+'  _create(<name>, <props>)       creates a new collection           ' + "\n" +
+'  _truncate(<name>)              delete all documents               ' + "\n" +
+'  _drop(<name>)                  delete a collection                ' + "\n" +
+'                                                                    ' + "\n" +
+'Query Functions:                                                    ' + "\n" +
+'  _createStatement(<data>);      create and return select query     ' + "\n" +
+'                                 returns: AvocadoStatement          ' + "\n" +
+'  _help();                       this help                          ' + "\n" +
+'Attributes:                                                         ' + "\n" +
+'  <collection names>                                                ';
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return all collections from the database
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -379,6 +401,14 @@ AvocadoDatabase.prototype._collections = function () {
 AvocadoDatabase.prototype._collection = function (id) {
   var requestResult = this._connection.get("/_api/collection/" + encodeURIComponent(id));
   
+  // return null in case of not found
+  if (requestResult != null
+      && requestResult.error == true 
+      && requestResult.errorNum == internal.errors.ERROR_AVOCADO_COLLECTION_NOT_FOUND.code) {
+    return null;
+  }
+
+  // check all other errors and throw them
   TRI_CheckRequestResult(requestResult);
 
   var name = requestResult["name"];
@@ -419,6 +449,26 @@ AvocadoDatabase.prototype._create = function (name, properties) {
     return this[name] = new AvocadoCollection(this, requestResult);
   }
   
+  return undefined;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief truncates a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._truncate = function (id) {
+  for (var name in this) {
+    if (this.hasOwnProperty(name)) {
+      var collection = this[name];
+
+      if (collection instanceof AvocadoCollection) {
+        if (collection._id == id || collection._name == id) {
+          return collection.truncate();
+        }
+      }
+    }
+  }
+
   return undefined;
 }
 
@@ -483,6 +533,37 @@ function AvocadoCollection (database, data) {
     this._status = data.status;
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief help for AvocadoCollection
+////////////////////////////////////////////////////////////////////////////////
+
+helpAvocadoCollection = TRI_CreateHelpHeadline("AvocadoCollection help") +
+'AvocadoCollection constructor:                                      ' + "\n" +
+' > col = db.mycoll;                                                 ' + "\n" +
+' > col = db._create("mycoll");                                      ' + "\n" +
+'                                                                    ' + "\n" +
+'Administration Functions:                                           ' + "\n" +
+'  name()                          collection name                   ' + "\n" +
+'  status()                        status of the collection          ' + "\n" +
+'  truncate()                      delete all documents              ' + "\n" +
+'  properties()                    show collection properties        ' + "\n" +
+'  drop()                          delete a collection               ' + "\n" +
+'  load()                          load a collection into memeory    ' + "\n" +
+'  unload()                        unload a collection from memory   ' + "\n" +
+'  refresh()                       refreshes the status and name     ' + "\n" +
+'  _help();                        this help                         ' + "\n" +
+'                                                                    ' + "\n" +
+'Document Functions:                                                 ' + "\n" +
+'  count()                         number of documents               ' + "\n" +
+'  save(<data>)                    create document and return handle ' + "\n" +
+'  document(<id>)                  get document by handle            ' + "\n" +
+'  update(<id>, <data>)            over writes document by handle    ' + "\n" +
+'  delete(<id>)                    deletes document by handle        ' + "\n" +
+'                                                                    ' + "\n" +
+'Attributes:                                                         ' + "\n" +
+'  _database                       database object                   ' + "\n" +
+'  _id                             collection identifier             ';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is corrupted
@@ -613,6 +694,30 @@ AvocadoCollection.prototype.truncate = function () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief loads a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.load = function () {
+  var requestResult = this._database._connection.put("/_api/collection/" + encodeURIComponent(this._id) + "/load", "");
+
+  TRI_CheckRequestResult(requestResult);
+
+  this._status = null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unloads a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.unload = function () {
+  var requestResult = this._database._connection.put("/_api/collection/" + encodeURIComponent(this._id) + "/unload", "");
+
+  TRI_CheckRequestResult(requestResult);
+
+  this._status = null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief refreshes a collection status and name
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -658,6 +763,18 @@ AvocadoCollection.prototype._PRINT = function () {
 
 AvocadoCollection.prototype._help = function () {  
   print(helpAvocadoCollection);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the number of documents
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.count = function () {
+  var requestResult = this._database._connection.get("/_api/collection/" + encodeURIComponent(this._id) + "/count");
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult["count"];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1124,43 +1241,6 @@ TRI_CreateHelpHeadline("Select query help") +
 ' > e = c.elements();                                                ' + "\n" +
 'Or loop over the result set:                                        ' + "\n" +
 ' > while (c.hasNext()) { print( c.next() ); }                       ';
-
-helpAvocadoDatabase = 
-TRI_CreateHelpHeadline("AvocadoDatabase help") +
-'AvocadoDatabase constructor:                                        ' + "\n" +
-' > db2 = new AvocadoDatabase(connection);                           ' + "\n" +
-'Functions:                                                          ' + "\n" +
-'  _collections();                list all collections               ' + "\n" +
-'                                 returns: list of AvocadoCollection ' + "\n" +
-'  _collection(<name>);           get collection by name             ' + "\n" +
-'                                 returns: AvocadoCollection         ' + "\n" +
-'  _createStatement(<data>);      create and return select query     ' + "\n" +
-'                                 returns: AvocadoStatement          ' + "\n" +
-'  _help();                       this help                          ' + "\n" +
-'Attributes:                                                         ' + "\n" +
-'  <collection names>                                                ';
-
-helpAvocadoCollection = 
-TRI_CreateHelpHeadline("AvocadoCollection help") +
-'AvocadoCollection constructor:                                      ' + "\n" +
-' > col = db.mycoll;                                                 ' + "\n" +
-' > col = db._create("mycoll");                                      ' + "\n" +
-'                                                                    ' + "\n" +
-'Administration Functions:                                           ' + "\n" +
-'  name()                          collection name                   ' + "\n" +
-'  status()                        status of the collection          ' + "\n" +
-'  refresh()                       refreshes the status and name     ' + "\n" +
-'  _help();                        this help                         ' + "\n" +
-'                                                                    ' + "\n" +
-'Document Functions:                                                 ' + "\n" +
-'  save(<data>);                   create document and return handle ' + "\n" +
-'  document(<id>);                 get document by handle            ' + "\n" +
-'  update(<id>, <new data>);       over writes document by handle    ' + "\n" +
-'  delete(<id>);                   deletes document by handle        ' + "\n" +
-'                                                                    ' + "\n" +
-'Attributes:                                                         ' + "\n" +
-'  _database                       database object                   ' + "\n" +
-'  _id                             collection identifier             ';
 
 helpAvocadoQueryCursor = 
 TRI_CreateHelpHeadline("AvocadoQueryCursor help") +
