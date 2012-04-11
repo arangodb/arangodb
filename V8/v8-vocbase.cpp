@@ -4378,21 +4378,28 @@ static v8::Handle<v8::Value> JS_NameVocbaseCol (v8::Arguments const& argv) {
 ///
 /// - @LIT{waitForSync}: If @LIT{true} creating a document will only return
 ///   after the data was synced to disk.
+///
 /// - @LIT{journalSize} : The size of the journal in bytes.
 ///
-/// @FUN{properties(@FA{properties-array})}
+/// @FUN{properties(@FA{properties})}
 ///
-/// Changes the collection properties.
+/// Changes the collection properties. @FA{properties} must be a object with
+/// one or more of the following attribute(s):
+///
+/// - @LIT{waitForSync}: If @LIT{true} creating a document will only return
+///   after the data was synced to disk.
+///
+/// Note that it is not possible to change the journal size after creation.
 ///
 /// @EXAMPLES
 ///
 /// Read all properties
 ///
-/// @verbinclude admin1
+/// @verbinclude shell_collection-properties
 ///
 /// Change a property
 ///
-/// @verbinclude admin2
+/// @verbinclude shell_collection-properties-change
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv) {
@@ -4827,6 +4834,16 @@ static v8::Handle<v8::Value> JS_SaveEdgesCol (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects a collection from the vocbase
+///
+/// @FUN{db.@FA{collection-name}}
+///
+/// Returns the collection with the given @FA{collection-name}. If no such
+/// collection exists, create a collection named @FA{collection-name} with the
+/// default properties.
+///
+/// @EXAMPLES
+///
+/// @verbinclude shell_read-collection-short-cut
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
@@ -4843,7 +4860,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   string key = TRI_ObjectToString(name);
 
   if (key == "") {
-    return scope.Close(v8::ThrowException(v8::String::New("name must not be empty")));
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_AVOCADO_ILLEGAL_NAME, "name must not be empty")));
   }
 
   if (   key == "toString"
@@ -4947,6 +4964,14 @@ static v8::Handle<v8::Value> JS_CollectionVocBase (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all collections
+///
+/// @FUN{db._collections()}
+///
+/// Returns all collections of the given database.
+///
+/// @EXAMPLES
+///
+/// @verbinclude shell_read-collection-all
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CollectionsVocBase (v8::Arguments const& argv) {
@@ -5004,6 +5029,34 @@ static v8::Handle<v8::Value> JS_CompletionsVocBase (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new collection
+///
+/// @FUN{db._create(@FA{collection-name})}
+///
+/// Creates a new collection named @FA{collection-name}. If the collection name
+/// already exists, than an error is thrown. The default value for
+/// @LIT{waitForSync} is @LIT{false}.
+///
+/// @FUN{db._create(@FA{collection-name}, @FA{properties})}
+///
+/// @FA{properties} must be an object, with the following attribues:
+///
+/// - @LIT{waitForSync} (optional, default @LIT{false}): If @LIT{true} creating
+///   a document will only return after the data was synced to disk.
+///
+/// - @LIT{journalSize} (optional, default is a @ref CommandLineAvocado
+///   "configuration parameter"):  The maximal size of
+///   a journal or datafile.  Note that this also limits the maximal
+///   size of a single object. Must be at least 1MB.
+///
+/// @EXAMPLES
+///
+/// With defaults:
+///
+/// @verbinclude shell_create-collection
+///
+/// With properties:
+///
+/// @verbinclude shell_create-collection-properties
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CreateVocBase (v8::Arguments const& argv) {
@@ -5019,7 +5072,7 @@ static v8::Handle<v8::Value> JS_CreateVocBase (v8::Arguments const& argv) {
   if (argv.Length() < 1) {
     return scope.Close(v8::ThrowException(
                          CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                           "usage: _create(<name>, <parameters>)")));
+                                           "usage: _create(<name>, <properties>)")));
   }
 
   // extract the name
@@ -5030,7 +5083,7 @@ static v8::Handle<v8::Value> JS_CreateVocBase (v8::Arguments const& argv) {
 
   if (2 <= argv.Length()) {
     if (! argv[1]->IsObject()) {
-      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "<parameters> must be an object")));
+      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "<properties> must be an object")));
     }
 
     v8::Handle<v8::Object> p = argv[1]->ToObject();
@@ -5043,7 +5096,7 @@ static v8::Handle<v8::Value> JS_CreateVocBase (v8::Arguments const& argv) {
       if (s < TRI_JOURNAL_MINIMAL_SIZE) {
         return scope.Close(v8::ThrowException(
                              CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                               "<parameters>.journalSize too small")));
+                                               "<properties>.journalSize too small")));
       }
 
       TRI_InitParameterCollection(&parameter, name.c_str(), (TRI_voc_size_t) s);
@@ -5228,7 +5281,7 @@ static v8::Handle<v8::Value> MapGetEdges (v8::Local<v8::String> name,
   string key = TRI_ObjectToString(name);
 
   if (key == "") {
-    return scope.Close(v8::ThrowException(v8::String::New("name must not be empty")));
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_AVOCADO_ILLEGAL_NAME, "name must not be empty")));
   }
 
   if (   key == "toString"
@@ -5362,7 +5415,7 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
   string key = TRI_ObjectToString(name);
   
   if (key == "") {
-    return scope.Close(v8::ThrowException(v8::String::New("name must not be empty")));
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_AVOCADO_ILLEGAL_NAME, "name must not be empty")));
   }  
   
   if (key[0] == '_') {

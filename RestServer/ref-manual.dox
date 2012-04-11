@@ -44,11 +44,6 @@
 ///  <li>@ref Indexes
 ///   @copydetails IndexesTOC
 ///  </li>
-///  <li>Shell Commands
-///   <ol>
-///      <li>@ref ShellDocument</li>
-///   </ol>
-///  </li>
 ///  <li>@ref OTWP
 ///   <ol>
 ///      <li>@ref RestDocument</li>
@@ -56,6 +51,12 @@
 ///      <li>@ref HttpCollection</li>
 ///      <li>@ref HttpIndex</li>
 ///      <li>@ref HttpSystem</li>
+///   </ol>
+///  </li>
+///  <li>Shell Commands
+///   <ol>
+///      <li>@ref ShellDocument</li>
+///      <li>@ref ShellCollection</li>
 ///   </ol>
 ///  </li>
 /// </ol>

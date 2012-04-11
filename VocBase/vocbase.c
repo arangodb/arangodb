@@ -590,6 +590,13 @@ static TRI_vocbase_col_t* BearCollectionVocBase (TRI_vocbase_t* vocbase, char co
   // create a new one
   // .............................................................................
 
+  if (*name == '\0') {
+    TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+
+    TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_NAME);
+    return NULL;
+  }
+
   // check that the name does not contain any strange characters
   wrong = TRI_IsAllowedCollectionName(name);
 
@@ -1233,6 +1240,13 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase, TRI_col_
     return NULL;
   }
 
+  if (*name == '\0') {
+    TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+
+    TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_NAME);
+    return NULL;
+  }
+
   // check that the name does not contain any strange characters
   wrong = TRI_IsAllowedCollectionName(name);
 
@@ -1482,6 +1496,10 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
   }
 
   // check name conventions
+  if (*newName == '\0') {
+    return TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_NAME);
+  }
+
   wrong = TRI_IsAllowedCollectionName(newName);
 
   if (wrong != 0) {

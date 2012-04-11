@@ -425,6 +425,7 @@ function RunCommandLineTests () {
     }
     catch (err) {
       print("cannot run test file '" + file + "': " + err);
+      print(err.stack);
       result = false;
     }
   }
