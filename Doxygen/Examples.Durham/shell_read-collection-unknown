@@ -1,0 +1,2 @@
+avocado> db._collection("unknown")
+null

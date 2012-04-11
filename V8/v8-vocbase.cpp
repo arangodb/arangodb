@@ -4883,6 +4883,30 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a single collection or null
+///
+/// @FUN{db._collection(@FA{collection-identifier})}
+///
+/// Returns the collection with the given identifier or null if no such
+/// collection exists.
+///
+/// @FUN{db._collection(@FA{collection-name})}
+///
+/// Returns the collection with the given name or null if no such collection
+/// exists.
+///
+/// @EXAMPLES
+///
+/// Get a collection by name:
+///
+/// @verbinclude shell_read-collection-name
+///
+/// Get a collection by id:
+///
+/// @verbinclude shell_read-collection-id
+///
+/// Unknown collection:
+///
+/// @verbinclude shell_read-collection-unknown
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CollectionVocBase (v8::Arguments const& argv) {
