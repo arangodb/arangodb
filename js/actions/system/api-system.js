@@ -44,28 +44,29 @@ var actions = require("actions");
 ///
 /// The call returns an object with the following attributes:
 ///
-/// @LIT{system.userTime}: Amount of time that this process has been scheduled
-/// in user mode, measured in clock ticks divided by sysconf(_SC_CLK_TCK) aka
-/// seconds.
+/// - @LIT{system.userTime}: Amount of time that this process has been
+///   scheduled in user mode, measured in clock ticks divided by
+///   sysconf(_SC_CLK_TCK) aka seconds.
 ///
-/// @LIT{system.systemTime}: mount of time that this process has been scheduled
-/// in kernel mode, measured in clock ticks divided by sysconf(_SC_CLK_TCK) aka
-/// seconds.
+/// - @LIT{system.systemTime}: mount of time that this process has
+///   been scheduled in kernel mode, measured in clock ticks divided by
+///   sysconf(_SC_CLK_TCK) aka seconds.
 ///
-/// @LIT{system.numberOfThreads}: Number of threads in this process.
+/// - @LIT{system.numberOfThreads}: Number of threads in this process.
 ///
-/// @LIT{system.residentSize}: Resident Set Size: number of pages the process
-/// has in real memory.  This is just the pages which count toward text, data,
-/// or stack space.  This does not include pages which have not been
-/// demand-loaded in, or which are swapped out.
+/// - @LIT{system.residentSize}: Resident Set Size: number of pages
+///   the process has in real memory.  This is just the pages which
+///   count toward text, data, or stack space.  This does not include
+///   pages which have not been demand-loaded in, or which are swapped
+///   out.
 ///
-/// @LIT{system.virtualSize}: Virtual memory size in bytes.
+/// - @LIT{system.virtualSize}: Virtual memory size in bytes.
 ///
-/// @LIT{system.minorPageFaults}: The number of minor faults the process has
-/// made which have not required loading a memory page from disk.
+/// - @LIT{system.minorPageFaults}: The number of minor faults the process has
+///   made which have not required loading a memory page from disk.
 ///
-/// @LIT{system.majorPageFaults}: The number of major faults the process has
-/// made which have required loading a memory page from disk.
+/// - @LIT{system.majorPageFaults}: The number of major faults the process has
+///   made which have required loading a memory page from disk.
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({

@@ -313,6 +313,7 @@ WIKI = \
 	HttpCollection \
 	HttpIndex \
 	HttpInterface \
+	HttpSystem \
 	IndexGeo \
 	IndexHash \
 	IndexSkiplist \

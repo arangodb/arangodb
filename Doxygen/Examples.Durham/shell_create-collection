@@ -1,0 +1,4 @@
+avocado> c = db._create("cars");
+[AvocadoCollection 111137, "cars" (status loaded)]
+avocado> c.properties()
+{ "waitForSync" : false, "journalSize" : 33554432 }

@@ -159,7 +159,7 @@ static char* CompletionGenerator (char const* text, int state) {
         v8::String::Utf8Value str(v);
         char const* s = *str;
         
-        if (s != 0) {
+        if (s != 0 && *s) {
           string suffix = (current->Get(v)->IsFunction()) ? "()" : "";
           string name = path + s + suffix;
                   

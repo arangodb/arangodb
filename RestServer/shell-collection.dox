@@ -42,6 +42,10 @@
 ///
 /// <ol>
 ///  <li>@ref ShellCollectionRead "db._collection(collection-identifier)"</li>
+///  <li>@ref ShellCollectionCreate "db._create(collection-name, properties)"</li>
+///  <li>@ref ShellCollectionReadAll "db._collections()"</li>
+///  <li>@ref ShellCollectionReadShortCut "db.collection-name"</li>
+///  <li>@ref ShellCollectionProperties "collection.properties()"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -104,6 +108,22 @@
 ///
 /// @anchor ShellCollectionRead
 /// @copydetails JS_CollectionVocBase
+/// <hr>
+///
+/// @anchor ShellCollectionCreate
+/// @copydetails JS_CreateVocBase
+/// <hr>
+///
+/// @anchor ShellCollectionReadAll
+/// @copydetails JS_CollectionsVocBase
+/// <hr>
+///
+/// @anchor ShellCollectionReadShortCut
+/// @copydetails MapGetVocBase
+/// <hr>
+///
+/// @anchor ShellCollectionProperties
+/// @copydetails JS_PropertiesVocbaseCol
 /// <hr>
 ///
 ////////////////////////////////////////////////////////////////////////////////
