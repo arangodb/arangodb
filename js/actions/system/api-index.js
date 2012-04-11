@@ -101,9 +101,9 @@ function GET_api_indexes (req, res) {
 /// The result is an objects describing the index with the following
 /// attributes:
 ///
-/// @LIT{id}: The identifier of the collection.
+/// - @LIT{id}: The identifier of the collection.
 ///
-/// @LIT{type}: The type of the collection.
+/// - @LIT{type}: The type of the collection.
 ///
 /// All other attributes are type-dependent.
 ///

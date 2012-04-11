@@ -104,15 +104,16 @@ function CollectionRepresentation (collection, showProperties, showCount, showFi
 /// Creates an new collection with a given name. The request must contain an
 /// object with the following attributes.
 ///
-/// @LIT{name}: The name of the collection.
+/// - @LIT{name}: The name of the collection.
 ///
-/// @LIT{waitForSync} (optional, default: false): If @LIT{true} then the data
-/// is synchronised to disk before returning from a create or update of an
-/// document.
+/// - @LIT{waitForSync} (optional, default: false): If @LIT{true} then
+///   the data is synchronised to disk before returning from a create or
+///   update of an document.
 ///
-/// @LIT{journalSize} (optional, default 32MB): The maximal size of a
-/// journal or datafile.  Note that this also limits the maximal size
-/// of a single object. Must be at least 1MB.
+/// - @LIT{journalSize} (optional, default is a @ref
+///   CommandLineAvocado "configuration parameter"): The maximal size of
+///   a journal or datafile.  Note that this also limits the maximal
+///   size of a single object. Must be at least 1MB.
 ///
 /// @EXAMPLES
 ///
@@ -211,17 +212,16 @@ function GET_api_collections (req, res) {
 /// The result is an objects describing the collection with the following
 /// attributes:
 ///
-/// @LIT{id}: The identifier of the collection.
+/// - @LIT{id}: The identifier of the collection.
 ///
-/// @LIT{name}: The name of the collection.
+/// - @LIT{name}: The name of the collection.
 ///
-/// @LIT{status}: The status of the collection as number.
-///
-/// - 1: new born collection
-/// - 2: unloaded
-/// - 3: loaded
-/// - 4: in the process of being unloaded
-/// - 5: deleted
+/// - @LIT{status}: The status of the collection as number.
+///  - 1: new born collection
+///  - 2: unloaded
+///  - 3: loaded
+///  - 4: in the process of being unloaded
+///  - 5: deleted
 ///
 /// Every other status indicates a corrupted collection.
 ///
@@ -242,10 +242,10 @@ function GET_api_collections (req, res) {
 /// @LIT{waitForSync} and the @LIT{journalSize} properties. This is
 /// achieved by forcing a load of the underlying collection.
 ///
-/// @LIT{waitForSync}: If @LIT{true} then creating or changing a document will
-/// wait until the data has been synchronised to disk. 
+/// - @LIT{waitForSync}: If @LIT{true} then creating or changing a
+///   document will wait until the data has been synchronised to disk.
 ///
-/// @LIT{journalSize}: The maximal size of a journal / datafile.
+/// - @LIT{journalSize}: The maximal size of a journal / datafile.
 ///
 /// @REST{GET /_api/collection/@FA{collection-identifier}/count}
 ////////////////////////////////////////////////////////////////
@@ -253,7 +253,7 @@ function GET_api_collections (req, res) {
 /// In addition to the above, the result also contains the number of documents.
 /// Note that this will always load the collection into memory.
 ///
-/// @LIT{count}: The number of documents inside the collection.
+/// - @LIT{count}: The number of documents inside the collection.
 ///
 /// @REST{GET /_api/collection/@FA{collection-identifier}/figures}
 //////////////////////////////////////////////////////////////////
@@ -262,21 +262,21 @@ function GET_api_collections (req, res) {
 /// and additional statistical information about the collection.  Note that this
 /// will always load the collection into memory.
 ///
-/// @LIT{count}: The number of documents inside the collection.
+/// - @LIT{count}: The number of documents inside the collection.
 ///
-/// @LIT{figures.alive.count}: The number of living documents.
+/// - @LIT{figures.alive.count}: The number of living documents.
 ///
-/// @LIT{figures.alive.size}: The total size in bytes used by all living
-/// documents.
+/// - @LIT{figures.alive.size}: The total size in bytes used by all
+///   living documents.
 ///
-/// @LIT{figures.dead.count}: The number of dead documents.
+/// - @LIT{figures.dead.count}: The number of dead documents.
 ///
-/// @LIT{figures.dead.size}: The total size in bytes used by all dead
-/// documents.
+/// - @LIT{figures.dead.size}: The total size in bytes used by all
+///   dead documents.
 ///
-/// @LIT{figures.datafile.count}: The number of active datafiles.
+/// - @LIT{figures.datafile.count}: The number of active datafiles.
 ///
-/// @LIT{journalSize}: The maximal size of the journal in bytes.
+/// - @LIT{journalSize}: The maximal size of the journal in bytes.
 ///
 /// @EXAMPLES
 /////////////
@@ -393,13 +393,13 @@ function GET_api_collection (req, res) {
 ///
 /// Loads a collection into memory.  On success an object with the following
 ///
-/// @LIT{id}: The identifier of the collection.
+/// - @LIT{id}: The identifier of the collection.
 ///
-/// @LIT{name}: The name of the collection.
+/// - @LIT{name}: The name of the collection.
 ///
-/// @LIT{count}: The number of documents inside the collection.
+/// - @LIT{count}: The number of documents inside the collection.
 ///
-/// @LIT{status}: The status of the collection as number.
+/// - @LIT{status}: The status of the collection as number.
 ///
 /// If the @FA{collection-identifier} is missing, then a @LIT{HTTP 400} is
 /// returned.  If the @FA{collection-identifier} is unknown, then a @LIT{HTTP
@@ -434,11 +434,11 @@ function PUT_api_collection_load (req, res, collection) {
 /// You can use the collection afterwards; in which case it will be loaded into
 /// memory, again. On success an object with the following
 ///
-/// @LIT{id}: The identifier of the collection.
+/// - @LIT{id}: The identifier of the collection.
 ///
-/// @LIT{name}: The name of the collection.
+/// - @LIT{name}: The name of the collection.
 ///
-/// @LIT{status}: The status of the collection as number.
+/// - @LIT{status}: The status of the collection as number.
 ///
 /// If the @FA{collection-identifier} is missing, then a @LIT{HTTP 400} is
 /// returned.  If the @FA{collection-identifier} is unknown, then a @LIT{HTTP
@@ -498,16 +498,16 @@ function PUT_api_collection_truncate (req, res, collection) {
 /// Changes the properties of a collection. Expects an object with the
 /// attribute(s)
 ///
-/// @LIT{waitForSync}: If @LIT{true} then creating or changing a document will
-/// wait until the data has been synchronised to disk.
+/// - @LIT{waitForSync}: If @LIT{true} then creating or changing a
+///   document will wait until the data has been synchronised to disk.
 ///
 /// If returns an object with the attributes
 ///
-/// @LIT{id}: The identifier of the collection.
+/// - @LIT{id}: The identifier of the collection.
 ///
-/// @LIT{name}: The name of the collection.
+/// - @LIT{name}: The name of the collection.
 ///
-/// @LIT{waitForSync}: The new value.
+/// - @LIT{waitForSync}: The new value.
 ///
 /// @EXAMPLES
 ///
@@ -544,13 +544,13 @@ function PUT_api_collection_properties (req, res, collection) {
 ///
 /// Renames a collection. Expects an object with the attribute(s)
 ///
-/// @LIT{name}: The new name.
+/// - @LIT{name}: The new name.
 ///
 /// If returns an object with the attributes
 ///
-/// @LIT{id}: The identifier of the collection.
+/// - @LIT{id}: The identifier of the collection.
 ///
-/// @LIT{name}: The new name of the collection.
+/// - @LIT{name}: The new name of the collection.
 ///
 /// @EXAMPLES
 ///
@@ -644,9 +644,9 @@ function PUT_api_collection (req, res) {
 /// If the collection was successfully deleted then, an object is returned with
 /// the following attributes:
 ///
-/// @LIT{error}: @LIT{false}
+/// - @LIT{error}: @LIT{false}
 ///
-/// @LIT{id}: The identifier of the deleted collection.
+/// - @LIT{id}: The identifier of the deleted collection.
 ///
 /// If the @FA{collection-identifier} is missing, then a @LIT{HTTP 400} is
 /// returned.  If the @FA{collection-identifier} is unknown, then a @LIT{HTTP

@@ -35,7 +35,7 @@ var jsunity = require("jsunity");
 /// @brief test suite: error handling
 ////////////////////////////////////////////////////////////////////////////////
 
-function readCollectionDocumentSuiteErrorHandling () {
+function collectionDocumentSuiteErrorHandling () {
   var cn = "UnitTestsCollectionBasics";
   var ERRORS = require("internal").errors;
   var collection = null;
@@ -107,7 +107,7 @@ function readCollectionDocumentSuiteErrorHandling () {
 /// @brief test suite: normal operations
 ////////////////////////////////////////////////////////////////////////////////
 
-function readCollectionDocumentSuiteReadDocument () {
+function collectionDocumentSuiteReadDocument () {
   var cn = "UnitTestsCollectionBasics";
   var ERRORS = require("internal").errors;
   var collection = null;
@@ -274,7 +274,7 @@ function readCollectionDocumentSuiteReadDocument () {
 /// @brief test suite: error handling
 ////////////////////////////////////////////////////////////////////////////////
 
-function readDocumentSuiteErrorHandling () {
+function documentSuiteErrorHandling () {
   var cn = "UnitTestsCollectionBasics";
   var ERRORS = require("internal").errors;
 
@@ -318,7 +318,7 @@ function readDocumentSuiteErrorHandling () {
 /// @brief test suite: normal operations
 ////////////////////////////////////////////////////////////////////////////////
 
-function readDocumentSuiteReadDocument () {
+function documentSuiteReadDocument () {
   var cn = "UnitTestsCollectionBasics";
   var ERRORS = require("internal").errors;
   var collection = null;
@@ -474,11 +474,11 @@ function readDocumentSuiteReadDocument () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(readCollectionDocumentSuiteErrorHandling);
-jsunity.run(readCollectionDocumentSuiteReadDocument);
+jsunity.run(collectionDocumentSuiteErrorHandling);
+jsunity.run(collectionDocumentSuiteReadDocument);
 
-jsunity.run(readDocumentSuiteErrorHandling);
-jsunity.run(readDocumentSuiteReadDocument);
+jsunity.run(documentSuiteErrorHandling);
+jsunity.run(documentSuiteReadDocument);
 
 return jsunity.done();
 

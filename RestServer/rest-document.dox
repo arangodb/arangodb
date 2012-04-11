@@ -41,12 +41,12 @@
 /// @page RestDocumentCallsTOC
 ///
 /// <ol>
-///  <li>@ref RestDocumentRead "GET /document/@FA{document-handle}"</li>
-///  <li>@ref RestDocumentCreate "POST /document?collection=@FA{collection-identifier}"</li>
-///  <li>@ref RestDocumentUpdate "PUT /document/@FA{document-handle}"</li>
-///  <li>@ref RestDocumentDelete "DELETE /document/@FA{document-handle}"</li>
-///  <li>@ref RestDocumentHead "HEAD /document/@FA{document-handle}"</li>
-///  <li>@ref RestDocumentReadAll "GET /document?collection=@FA{collection-identifier}"</li>
+///  <li>@ref RestDocumentRead "GET /document/document-handle"</li>
+///  <li>@ref RestDocumentCreate "POST /document?collection=collection-identifier"</li>
+///  <li>@ref RestDocumentUpdate "PUT /document/document-handle"</li>
+///  <li>@ref RestDocumentDelete "DELETE /document/document-handle"</li>
+///  <li>@ref RestDocumentHead "HEAD /document/document-handle"</li>
+///  <li>@ref RestDocumentReadAll "GET /document?collection=collection-identifier"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -71,7 +71,7 @@
 /// All documents contain two special fields, the document handle in @LIT{_id}
 /// and the etag aka document revision in @LIT{_rev}.
 ///
-/// All examples in the manual assume that you have created some example
+/// Some examples in the manual assume that you have created some example
 /// collections, see @ref ExamplesSetup.
 ///
 /// @copydoc GlossaryDocumentHandle
