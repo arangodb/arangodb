@@ -46,6 +46,7 @@
 ///    <li>@ref ShellCollectionDrop "collection.drop()"</li>
 ///    <li>@ref ShellCollectionTruncate "collection.truncate()"</li>
 ///    <li>@ref ShellCollectionProperties "collection.properties()"</li>
+///    <li>@ref ShellCollectionFigures "collection.figures()"</li>
 ///    <li>@ref ShellCollectionLoad "collection.load()"</li>
 ///    <li>@ref ShellCollectionUnload "collection.unload()"</li>
 ///   </ol>
@@ -130,6 +131,10 @@
 ///
 /// @anchor ShellCollectionProperties
 /// @copydetails JS_PropertiesVocbaseCol
+/// <hr>
+///
+/// @anchor ShellCollectionFigures
+/// @copydetails JS_FiguresVocbaseCol
 /// <hr>
 ///
 /// @anchor ShellCollectionLoad

@@ -4246,6 +4246,28 @@ static v8::Handle<v8::Value> JS_EnsureSkiplistVocbaseCol (v8::Arguments const& a
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the figures of a collection
+///
+/// @FUN{@FA{collection}.figures()}
+///
+/// Returns an object containing all collection figures.
+///
+/// - @LIT{numberAlive}: The number of living documents.
+///
+/// - @LIT{sizeAlive}: The total size in bytes used by all
+///   living documents.
+///
+/// - @LIT{numberDead}: The number of dead documents.
+///
+/// - @LIT{sizeDead}: The total size in bytes used by all
+///   dead documents.
+///
+/// - @LIT{numberDatafile}: The number of active datafiles.
+///
+/// - @LIT{numberDeletion}: The total number of deletion markers.
+///
+/// @EXAMPLES
+///
+/// @verbinclude shell_collection-figures
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {

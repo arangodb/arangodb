@@ -1,5 +1,0 @@
-avocado> db.examples.properties({ waitForSync : true });
-{
- "waitForSync" : true,
- "journalSize" : 134217728
-}

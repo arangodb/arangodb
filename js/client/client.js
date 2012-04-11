@@ -656,6 +656,25 @@ AvocadoCollection.prototype.properties = function (properties) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the figures of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.figures = function () {
+  var requestResult = this._database._connection.get("/_api/collection/" + encodeURIComponent(this._id) + "/figures");
+
+  TRI_CheckRequestResult(requestResult);
+
+  return { 
+    numberDatafiles : requestResult.figures.datafiles.count,
+    numberAlive : requestResult.figures.alive.count,
+    sizeAlive : requestResult.figures.alive.size,
+    numberDead : requestResult.figures.dead.count,
+    sizeDead : requestResult.figures.dead.size,
+    numberDeletion : requestResult.figures.dead.deletion
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief drops a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -817,8 +836,12 @@ AvocadoCollection.prototype.save = function (data) {
 /// @brief delete a document in the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.delete = function (id) {    
-  var requestResult = this._database._connection.delete("/_api/document/" + encodeURIComponent(this.name) + "/" + encodeURIComponent(id));
+AvocadoCollection.prototype.delete = function (id) {
+  if (id.hasOwnProperty("_id")) {
+    id = id._id;
+  }
+
+  var requestResult = this._database._connection.delete("/document/" + id);
 
   TRI_CheckRequestResult(requestResult);
 
@@ -830,7 +853,11 @@ AvocadoCollection.prototype.delete = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.update = function (id, data) {    
-  var requestResult = this._database._connection.put("/_api/document/" + encodeURIComponent(this.name) + "/" + encodeURIComponent(id), JSON.stringify(data));
+  if (id.hasOwnProperty("_id")) {
+    id = id._id;
+  }
+
+  var requestResult = this._database._connection.put("/document/" + id, JSON.stringify(data));
 
   TRI_CheckRequestResult(requestResult);
 

@@ -335,7 +335,13 @@ internal.loadFile = function (path) {
 function CONSOLE_DEBUG () {
   var msg;
 
-  msg = internal.sprintf.apply(internal.sprintf, arguments);
+  try {
+    msg = internal.sprintf.apply(internal.sprintf, arguments);
+  }
+  catch (err) {
+    msg = err + ": " + arguments[0];
+  }
+
   internal.log("debug", msg);
 }
 
@@ -351,7 +357,13 @@ function CONSOLE_DEBUG () {
 function CONSOLE_ERROR () {
   var msg;
 
-  msg = internal.sprintf.apply(internal.sprintf, arguments);
+  try {
+    msg = internal.sprintf.apply(internal.sprintf, arguments);
+  }
+  catch (err) {
+    msg = err + ": " + arguments[0];
+  }
+
   internal.log("error", msg);
 }
 
@@ -367,7 +379,13 @@ function CONSOLE_ERROR () {
 function CONSOLE_INFO () {
   var msg;
 
-  msg = internal.sprintf.apply(internal.sprintf, arguments);
+  try {
+    msg = internal.sprintf.apply(internal.sprintf, arguments);
+  }
+  catch (err) {
+    msg = err + ": " + arguments[0];
+  }
+
   internal.log("info", msg);
 }
 
@@ -383,7 +401,13 @@ function CONSOLE_INFO () {
 function CONSOLE_LOG () {
   var msg;
 
-  msg = internal.sprintf.apply(internal.sprintf, arguments);
+  try {
+    msg = internal.sprintf.apply(internal.sprintf, arguments);
+  }
+  catch (err) {
+    msg = err + ": " + arguments[0];
+  }
+
   internal.log("info", msg);
 }
 
@@ -399,7 +423,13 @@ function CONSOLE_LOG () {
 function CONSOLE_WARN () {
   var msg;
 
-  msg = internal.sprintf.apply(internal.sprintf, arguments);
+  try {
+    msg = internal.sprintf.apply(internal.sprintf, arguments);
+  }
+  catch (err) {
+    msg = err + ": " + arguments[0];
+  }
+
   internal.log("warn", msg);
 }
 

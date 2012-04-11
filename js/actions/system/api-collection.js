@@ -69,7 +69,8 @@ function CollectionRepresentation (collection, showProperties, showCount, showFi
         },
         dead : {
           count : figures.numberDead,
-          size : figures.sizeDead
+          size : figures.sizeDead,
+          deletion : figures.numberDeletion
         },
         datafiles : {
           count : figures.numberDatafiles
@@ -273,6 +274,10 @@ function GET_api_collections (req, res) {
 ///
 /// - @LIT{figures.dead.size}: The total size in bytes used by all
 ///   dead documents.
+///
+/// - @LIT{figures.dead.deletion}: The total number of deletion markers.
+///
+/// - @LIT{journalSize}: The maximal size of the journal in bytes.
 ///
 /// - @LIT{figures.datafile.count}: The number of active datafiles.
 ///

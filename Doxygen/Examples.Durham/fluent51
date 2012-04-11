@@ -1,4 +1,0 @@
-avocado> var x = db.examples.all().nextRef();
-
-avocado> db.examples.document(x);
-{ "age" : 4, "name" : "Name4", "_id" : "148759:2114839" }
