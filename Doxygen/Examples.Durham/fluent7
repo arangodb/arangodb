@@ -1,4 +1,0 @@
-db.geo.save({ name : "London",   loc : [ +51.500000, -0.166666 ] });
-db.geo.save({ name : "Honolulu", loc : [ +21.306111, -157.859722 ] });
-db.geo.save({ name : "Auckland", loc : [ -36.916667, +174.783333 ] });
-db.geo.save({ name : "Jo'burg",  loc : [ -26.166667,  +28.033333 ] });

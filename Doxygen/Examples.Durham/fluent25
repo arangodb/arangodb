@@ -1,6 +1,0 @@
-avocado> cursor.count();
-5
-avocado> db.five.limit(1).count();
-5
-avocado> db.five.limit(1).count(true);
-1

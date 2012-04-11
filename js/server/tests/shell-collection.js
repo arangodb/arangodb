@@ -270,6 +270,163 @@ function collectionSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief drop new-born
+////////////////////////////////////////////////////////////////////////////////
+
+    testDroppingNewBorn : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      assertTypeOf("number", c1._id);
+      assertEqual(cn, c1.name());
+      assertTypeOf("number", c1.status());
+
+      c1.drop();
+
+      assertEqual(AvocadoCollection.STATUS_DELETED, c1.status());
+
+      var c2 = db._collection(cn);
+
+      assertEqual(null, c2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop loaded
+////////////////////////////////////////////////////////////////////////////////
+
+    testDroppingLoaded : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      c1.load();
+
+      assertTypeOf("number", c1._id);
+      assertEqual(cn, c1.name());
+      assertTypeOf("number", c1.status());
+
+      c1.drop();
+
+      assertEqual(AvocadoCollection.STATUS_DELETED, c1.status());
+
+      var c2 = db._collection(cn);
+
+      assertEqual(null, c2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop unloaded
+////////////////////////////////////////////////////////////////////////////////
+
+    testDroppingUnloaded : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      c1.load();
+      c1.unload();
+
+      assertTypeOf("number", c1._id);
+      assertEqual(cn, c1.name());
+      assertTypeOf("number", c1.status());
+
+      c1.drop();
+
+      assertEqual(AvocadoCollection.STATUS_DELETED, c1.status());
+
+      var c2 = db._collection(cn);
+
+      assertEqual(null, c2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief figures
+////////////////////////////////////////////////////////////////////////////////
+
+    testFigures : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      c1.load();
+
+      var f = c1.figures();
+
+      assertEqual(0, f.numberDatafiles);
+      assertEqual(0, f.numberAlive);
+      assertEqual(0, f.sizeAlive);
+      assertEqual(0, f.numberDead);
+      assertEqual(0, f.sizeDead);
+      assertEqual(0, f.numberDeletion);
+
+      var d1 = c1.save({ hallo : 1 });
+
+      f = c1.figures();
+
+      assertEqual(1, f.numberDatafiles);
+      assertEqual(1, f.numberAlive);
+      assertNotEqual(0, f.sizeAlive);
+      assertEqual(0, f.numberDead);
+      assertEqual(0, f.sizeDead);
+      assertEqual(0, f.numberDeletion);
+
+      var d2 = c1.save({ hallo : 2 });
+
+      f = c1.figures();
+
+      assertEqual(1, f.numberDatafiles);
+      assertEqual(2, f.numberAlive);
+      assertNotEqual(0, f.sizeAlive);
+      assertEqual(0, f.numberDead);
+      assertEqual(0, f.sizeDead);
+      assertEqual(0, f.numberDeletion);
+
+      c1.delete(d1);
+
+      f = c1.figures();
+
+      assertEqual(1, f.numberDatafiles);
+      assertEqual(1, f.numberAlive);
+      assertNotEqual(0, f.sizeAlive);
+      assertEqual(1, f.numberDead);
+      assertNotEqual(0, f.sizeDead);
+      assertEqual(1, f.numberDeletion);
+
+      c1.delete(d2);
+
+      f = c1.figures();
+
+      assertEqual(1, f.numberDatafiles);
+      assertEqual(0, f.numberAlive);
+      assertEqual(0, f.sizeAlive);
+      assertEqual(2, f.numberDead);
+      assertNotEqual(0, f.sizeDead);
+      assertEqual(2, f.numberDeletion);
+
+      db._drop(cn);
+    }
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// --SECTION--                                                   vocbase methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: collection
+////////////////////////////////////////////////////////////////////////////////
+
+function collectionDbSuite () {
+  var ERRORS = require("internal").errors;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief drop new-born (DB)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -415,80 +572,6 @@ function collectionSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief drop new-born
-////////////////////////////////////////////////////////////////////////////////
-
-    testDroppingNewBorn : function () {
-      var cn = "example";
-
-      db._drop(cn);
-      var c1 = db._create(cn);
-
-      assertTypeOf("number", c1._id);
-      assertEqual(cn, c1.name());
-      assertTypeOf("number", c1.status());
-
-      c1.drop();
-
-      assertEqual(AvocadoCollection.STATUS_DELETED, c1.status());
-
-      var c2 = db._collection(cn);
-
-      assertEqual(null, c2);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief drop loaded
-////////////////////////////////////////////////////////////////////////////////
-
-    testDroppingLoaded : function () {
-      var cn = "example";
-
-      db._drop(cn);
-      var c1 = db._create(cn);
-
-      c1.load();
-
-      assertTypeOf("number", c1._id);
-      assertEqual(cn, c1.name());
-      assertTypeOf("number", c1.status());
-
-      c1.drop();
-
-      assertEqual(AvocadoCollection.STATUS_DELETED, c1.status());
-
-      var c2 = db._collection(cn);
-
-      assertEqual(null, c2);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief drop unloaded
-////////////////////////////////////////////////////////////////////////////////
-
-    testDroppingUnloaded : function () {
-      var cn = "example";
-
-      db._drop(cn);
-      var c1 = db._create(cn);
-
-      c1.load();
-      c1.unload();
-
-      assertTypeOf("number", c1._id);
-      assertEqual(cn, c1.name());
-      assertTypeOf("number", c1.status());
-
-      c1.drop();
-
-      assertEqual(AvocadoCollection.STATUS_DELETED, c1.status());
-
-      var c2 = db._collection(cn);
-
-      assertEqual(null, c2);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief truncate new-born (DB)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -571,6 +654,7 @@ function collectionSuite () {
 
 jsunity.run(collectionSuiteErrorHandling);
 jsunity.run(collectionSuite);
+jsunity.run(collectionDbSuite);
 
 return jsunity.done();
 

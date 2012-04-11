@@ -6,4 +6,10 @@ find . \
     \( -name "*.c" -o -name "*.cpp" -o -name "*.h" -o -name "*.dox" \) \
     -exec "grep" "^/// @verbinclude" "{}" ";" \
     \
-    | sort | uniq
+    | awk '{print $3}' | sort | uniq > /tmp/verbinclude.used
+
+for file in Durham Fyn AvocadoDB; do
+    (cd Doxygen/Examples.$file && ls -1) | fgrep -v "~"
+done | sort | uniq > /tmp/verbinclude.examples
+
+diff /tmp/verbinclude.used /tmp/verbinclude.examples
