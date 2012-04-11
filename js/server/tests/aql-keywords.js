@@ -25,53 +25,18 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var jsunity = require("jsunity");
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function aqlKeywordsTestSuite () {
   var collection = null;
+  var keywords = [ ];
+  var keywordHash = { };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-  function setUp () {
-    this.keywords = [ "select", "from", "where", "join", "inner", "left", "right", "on", "limit", "order", "by", "near", "within" ];
-
-    this.keywordHash = { };
-    for (var i in this.keywords) {
-      if (!this.keywords.hasOwnProperty(i)) {
-        continue;
-      }
-      this.keywordHash[this.keywords[i]] = this.keywords[i];
-    }
-
-    this.collection = db.UnitTestsKeywords;
-
-    if (this.collection.count() == 0) {
-      for (var i in this.keywords) {
-        if (!this.keywords.hasOwnProperty(i)) {
-          continue;
-        }
-
-        var k = this.keywords[i];
-        var row = { };
-        row[k] = k;
-
-        this.collection.save(row);
-      }
-    }
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-  function tearDown () {
-  }
-
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a given query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -91,7 +56,7 @@ function aqlKeywordsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function getQueryResults (query, expectError) {
-    var cursor = this.executeQuery(query, expectError);
+    var cursor = executeQuery(query, expectError);
     if (cursor) {
       var results = [ ];
       while (cursor.hasNext()) {
@@ -102,147 +67,197 @@ function aqlKeywordsTestSuite () {
     return cursor;
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check keyword names in select
-////////////////////////////////////////////////////////////////////////////////
 
-  function testKeywordNamesSelectInvalid () {
-    for (var i in this.keywords) {
-      if (!this.keywords.hasOwnProperty(i)) {
-        continue;
-      }
-     
-      // this is expected to fail  
-      this.getQueryResults("SELECT { " + this.keywords[i] + " : null } FROM " + this.collection.name() + " c", true); 
-    }
-  }
+  return {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check keyword names in select
+/// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-  function testKeywordNamesSelectValid1 () {
-    for (var i in this.keywords) {
-      if (!this.keywords.hasOwnProperty(i)) {
-        continue;
-      }
-     
-      // this is expected to work 
-      this.getQueryResults("SELECT { \"" + this.keywords[i] + "\" : null } FROM " + this.collection.name() + " c", false); 
-    }
-  }
+    setUp : function () {
+      keywords = [ "select", "from", "where", "join", "inner", "left", "right", "on", "limit", "order", "by", "near", "within" ];
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check keyword names in select
-////////////////////////////////////////////////////////////////////////////////
-
-  function testKeywordNamesSelectValid2 () {
-    for (var i in this.keywords) {
-      if (!this.keywords.hasOwnProperty(i)) {
-        continue;
-      }
-     
-      // this is expected to work 
-      this.getQueryResults("SELECT { value : \"" + this.keywords[i] + "\" } FROM " + this.collection.name() + " c", false); 
-    }
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check keyword names in select
-////////////////////////////////////////////////////////////////////////////////
-
-  function testKeywordNamesSelectValid3 () {
-    for (var i in this.keywords) {
-      if (!this.keywords.hasOwnProperty(i)) {
-        continue;
-      }
-     
-      // this is expected to work 
-      var result = this.getQueryResults("SELECT { value : c.`" + this.keywords[i] + "` } FROM " + this.collection.name() + " c WHERE c.`" + this.keywords[i] + "` == '" + this.keywords[i] + "'", false); 
-      for (var j in result) {
-        if (!result.hasOwnProperty(j)) {
+      keywordHash = { };
+      for (var i in keywords) {
+        if (!keywords.hasOwnProperty(i)) {
           continue;
         }
-        assertEqual(this.keywords[i], result[j]["value"]);
+        keywordHash[keywords[i]] = keywords[i];
       }
-    }
-  }
+
+      collection = db.UnitTestsKeywords;
+
+      if (collection.count() == 0) {
+        for (var i in keywords) {
+          if (!keywords.hasOwnProperty(i)) {
+            continue;
+          }
+
+          var k = keywords[i];
+          var row = { };
+          row[k] = k;
+ 
+          collection.save(row);
+        }
+      }
+    },  
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function() {
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check keyword names in select
+////////////////////////////////////////////////////////////////////////////////
+
+    testKeywordNamesSelectInvalid : function () {
+      for (var i in keywords) {
+        if (!keywords.hasOwnProperty(i)) {
+          continue;
+        }
+     
+        // this is expected to fail  
+        getQueryResults("SELECT { " + keywords[i] + " : null } FROM " + collection.name() + " c", true); 
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check keyword names in select
+////////////////////////////////////////////////////////////////////////////////
+
+    testKeywordNamesSelectValid1 : function () {
+      for (var i in keywords) {
+        if (!keywords.hasOwnProperty(i)) {
+          continue;
+        }
+     
+        // this is expected to work 
+        getQueryResults("SELECT { \"" + keywords[i] + "\" : null } FROM " + collection.name() + " c", false); 
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check keyword names in select
+////////////////////////////////////////////////////////////////////////////////
+
+    testKeywordNamesSelectValid2 : function () {
+      for (var i in keywords) {
+        if (!keywords.hasOwnProperty(i)) {
+          continue;
+        }
+      
+        // this is expected to work 
+        getQueryResults("SELECT { value : \"" + keywords[i] + "\" } FROM " + collection.name() + " c", false); 
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check keyword names in select
+////////////////////////////////////////////////////////////////////////////////
+
+    testKeywordNamesSelectValid3 : function () {
+      for (var i in keywords) {
+        if (!keywords.hasOwnProperty(i)) {
+          continue;
+        }
+      
+        // this is expected to work 
+        var result = getQueryResults("SELECT { value : c.`" + keywords[i] + "` } FROM " + collection.name() + " c WHERE c.`" + keywords[i] + "` == '" + keywords[i] + "'", false); 
+        for (var j in result) {
+          if (!result.hasOwnProperty(j)) {
+            continue;
+          }
+          assertEqual(keywords[i], result[j]["value"]);
+        }
+      }
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check keyword names in from alias
 ////////////////////////////////////////////////////////////////////////////////
 
-  function testKeywordNamesFromInvalid () {
-    for (var i in this.keywords) {
-      if (!this.keywords.hasOwnProperty(i)) {
-        continue;
+    testKeywordNamesFromInvalid : function () {
+      for (var i in keywords) {
+        if (!keywords.hasOwnProperty(i)) {
+          continue;
+        }
+      
+        // this is expected to work 
+        getQueryResults("SELECT { } FROM " + collection.name() + " " + keywords[i], true); 
       }
-     
-      // this is expected to work 
-      this.getQueryResults("SELECT { } FROM " + this.collection.name() + " " + this.keywords[i], true); 
-    }
-  }
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check keyword names in from alias
 ////////////////////////////////////////////////////////////////////////////////
 
-  function testKeywordNamesFromValid () {
-    for (var i in this.keywords) {
-      if (!this.keywords.hasOwnProperty(i)) {
-        continue;
-      }
-     
-      // this is expected to work 
-      var result = this.getQueryResults("SELECT `" + this.keywords[i] + "` FROM " + this.collection.name() + " `" + this.keywords[i] + "`", false); 
-      assertEqual(result.length, this.keywords.length);
-    }
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check keyword names in where
-////////////////////////////////////////////////////////////////////////////////
-
-  function testKeywordNamesWhereInvalid () {
-    for (var i in this.keywords) {
-      if (!this.keywords.hasOwnProperty(i)) {
-        continue;
-      }
-     
-      // this is expected to work 
-      this.getQueryResults("SELECT { } FROM " + this.collection.name() + " c WHERE c." + this.keywords[i] + " == '" + this.keywords[i] + "'", true); 
-    }
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check keyword names in where
-////////////////////////////////////////////////////////////////////////////////
-
-  function testKeywordNamesWhereValid () {
-    for (var i in this.keywords) {
-      if (!this.keywords.hasOwnProperty(i)) {
-        continue;
-      }
-     
-      // this is expected to work 
-      var result = this.getQueryResults("SELECT { \"" + this.keywords[i] + "\" : c.`" + this.keywords[i] + "` } FROM " + this.collection.name() + " c WHERE '" + this.keywords[i] + "' == c.`" + this.keywords[i] + "`", false); 
-      for (var j in result) {
-        if (!result.hasOwnProperty(j)) {
+    testKeywordNamesFromValid : function () {
+      for (var i in keywords) {
+        if (!keywords.hasOwnProperty(i)) {
           continue;
         }
-        
-        assertEqual(this.keywords[i], result[j][this.keywords[i]]);
+      
+        // this is expected to work 
+        var result = getQueryResults("SELECT `" + keywords[i] + "` FROM " + collection.name() + " `" + keywords[i] + "`", false); 
+        assertEqual(result.length, keywords.length);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check keyword names in where
+////////////////////////////////////////////////////////////////////////////////
+
+    testKeywordNamesWhereInvalid : function () {
+      for (var i in keywords) {
+        if (!keywords.hasOwnProperty(i)) {
+          continue;
+        }
+      
+        // this is expected to work 
+        getQueryResults("SELECT { } FROM " + collection.name() + " c WHERE c." + keywords[i] + " == '" + keywords[i] + "'", true); 
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check keyword names in where
+////////////////////////////////////////////////////////////////////////////////
+
+    testKeywordNamesWhereValid : function () {
+      for (var i in keywords) {
+        if (!keywords.hasOwnProperty(i)) {
+          continue;
+        }
+      
+        // this is expected to work 
+        var result = getQueryResults("SELECT { \"" + keywords[i] + "\" : c.`" + keywords[i] + "` } FROM " + collection.name() + " c WHERE '" + keywords[i] + "' == c.`" + keywords[i] + "`", false); 
+        for (var j in result) {
+          if (!result.hasOwnProperty(j)) {
+            continue;
+          }
+          
+          assertEqual(keywords[i], result[j][keywords[i]]);
+        }
       }
     }
-  }
+
+  };
 
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                              main
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsUnity.run(aqlKeywordsTestSuite);
+jsunity.run(aqlKeywordsTestSuite);
+
+return jsunity.done();
 
 // Local Variables:
 // mode: outline-minor

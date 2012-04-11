@@ -496,7 +496,6 @@ static void CleanupSimCollection (TRI_sim_collection_t* sim) {
     TRI_barrier_collection_cb_t* ce;
 
     ce = (TRI_barrier_collection_cb_t*) element;
-
     deleted = ce->callback(ce->_collection, ce->_data);
     TRI_Free(element);
   }
@@ -517,11 +516,11 @@ static void CleanupSimCollection (TRI_sim_collection_t* sim) {
 /// @brief clean up shadows
 ////////////////////////////////////////////////////////////////////////////////
 
-static void CleanupShadows (TRI_vocbase_t* const vocbase) {
+static void CleanupShadows (TRI_vocbase_t* const vocbase, bool force) {
   LOG_TRACE("cleaning shadows");
   
   // clean unused cursors
-  TRI_CleanupShadowData(vocbase->_cursors, SHADOW_CURSOR_MAX_AGE, false);
+  TRI_CleanupShadowData(vocbase->_cursors, SHADOW_CURSOR_MAX_AGE, force);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -555,6 +554,13 @@ void TRI_CompactorVocBase (void* data) {
     TRI_col_type_e type;
     // keep initial _active value as vocbase->_active might change during compaction loop
     int active = vocbase->_active; 
+
+    if (active == 2) {
+      // shadows must be cleaned before collections are handled
+      // otherwise the shadows might still hold barriers on collections 
+      // and collections cannot be closed properly
+      CleanupShadows(vocbase, true);
+    }
 
     // copy all collections
     TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -597,10 +603,10 @@ void TRI_CompactorVocBase (void* data) {
       }
     }
 
-    // clean up unused shadows
-    CleanupShadows(vocbase);
-
     if (vocbase->_active == 1) {
+      // clean up unused shadows
+      CleanupShadows(vocbase, false);
+
       // only sleep while server is still running
       usleep(COMPACTOR_INTERVAL);
     }
