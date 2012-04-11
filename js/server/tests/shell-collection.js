@@ -268,6 +268,296 @@ function collectionSuite () {
 
       db._drop(cn);
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop new-born (DB)
+////////////////////////////////////////////////////////////////////////////////
+
+    testDroppingNewBornDB : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      assertTypeOf("number", c1._id);
+      assertEqual(cn, c1.name());
+      assertTypeOf("number", c1.status());
+
+      db._drop(cn);
+
+      assertEqual(AvocadoCollection.STATUS_DELETED, c1.status());
+
+      var c2 = db._collection(cn);
+
+      assertEqual(null, c2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop loaded (DB)
+////////////////////////////////////////////////////////////////////////////////
+
+    testDroppingLoadedDB : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      c1.load();
+
+      assertTypeOf("number", c1._id);
+      assertEqual(cn, c1.name());
+      assertTypeOf("number", c1.status());
+
+      db._drop(cn);
+
+      assertEqual(AvocadoCollection.STATUS_DELETED, c1.status());
+
+      var c2 = db._collection(cn);
+
+      assertEqual(null, c2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop unloaded (DB)
+////////////////////////////////////////////////////////////////////////////////
+
+    testDroppingUnloadedDB : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      c1.load();
+      c1.unload();
+
+      assertTypeOf("number", c1._id);
+      assertEqual(cn, c1.name());
+      assertTypeOf("number", c1.status());
+
+      db._drop(cn);
+
+      assertEqual(AvocadoCollection.STATUS_DELETED, c1.status());
+
+      var c2 = db._collection(cn);
+
+      assertEqual(null, c2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief truncate new-born (DB)
+////////////////////////////////////////////////////////////////////////////////
+
+    testTruncatingNewBornDB : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      assertTypeOf("number", c1._id);
+      assertEqual(cn, c1.name());
+      assertTypeOf("number", c1.status());
+
+      db._truncate(cn);
+
+      assertEqual(AvocadoCollection.STATUS_LOADED, c1.status());
+      assertEqual(0, c1.count());
+
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief truncate loaded (DB)
+////////////////////////////////////////////////////////////////////////////////
+
+    testTruncatingLoadedDB : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      c1.load();
+
+      assertTypeOf("number", c1._id);
+      assertEqual(cn, c1.name());
+      assertTypeOf("number", c1.status());
+
+      db._truncate(cn);
+
+      assertEqual(AvocadoCollection.STATUS_LOADED, c1.status());
+      assertEqual(0, c1.count());
+
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief truncate unloaded (DB)
+////////////////////////////////////////////////////////////////////////////////
+
+    testTruncatingUnloadedDB : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      c1.load();
+      c1.unload();
+
+      assertTypeOf("number", c1._id);
+      assertEqual(cn, c1.name());
+      assertTypeOf("number", c1.status());
+
+      db._truncate(cn);
+
+      assertEqual(AvocadoCollection.STATUS_LOADED, c1.status());
+      assertEqual(0, c1.count());
+
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop new-born
+////////////////////////////////////////////////////////////////////////////////
+
+    testDroppingNewBorn : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      assertTypeOf("number", c1._id);
+      assertEqual(cn, c1.name());
+      assertTypeOf("number", c1.status());
+
+      c1.drop();
+
+      assertEqual(AvocadoCollection.STATUS_DELETED, c1.status());
+
+      var c2 = db._collection(cn);
+
+      assertEqual(null, c2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop loaded
+////////////////////////////////////////////////////////////////////////////////
+
+    testDroppingLoaded : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      c1.load();
+
+      assertTypeOf("number", c1._id);
+      assertEqual(cn, c1.name());
+      assertTypeOf("number", c1.status());
+
+      c1.drop();
+
+      assertEqual(AvocadoCollection.STATUS_DELETED, c1.status());
+
+      var c2 = db._collection(cn);
+
+      assertEqual(null, c2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop unloaded
+////////////////////////////////////////////////////////////////////////////////
+
+    testDroppingUnloaded : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      c1.load();
+      c1.unload();
+
+      assertTypeOf("number", c1._id);
+      assertEqual(cn, c1.name());
+      assertTypeOf("number", c1.status());
+
+      c1.drop();
+
+      assertEqual(AvocadoCollection.STATUS_DELETED, c1.status());
+
+      var c2 = db._collection(cn);
+
+      assertEqual(null, c2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief truncate new-born (DB)
+////////////////////////////////////////////////////////////////////////////////
+
+    testTruncatingNewBorn : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      assertTypeOf("number", c1._id);
+      assertEqual(cn, c1.name());
+      assertTypeOf("number", c1.status());
+
+      c1.truncate();
+
+      assertEqual(AvocadoCollection.STATUS_LOADED, c1.status());
+      assertEqual(0, c1.count());
+
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief truncate loaded (DB)
+////////////////////////////////////////////////////////////////////////////////
+
+    testTruncatingLoaded : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      c1.load();
+
+      assertTypeOf("number", c1._id);
+      assertEqual(cn, c1.name());
+      assertTypeOf("number", c1.status());
+
+      c1.truncate();
+
+      assertEqual(AvocadoCollection.STATUS_LOADED, c1.status());
+      assertEqual(0, c1.count());
+
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief truncate unloaded (DB)
+////////////////////////////////////////////////////////////////////////////////
+
+    testTruncatingUnloaded : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      c1.load();
+      c1.unload();
+
+      assertTypeOf("number", c1._id);
+      assertEqual(cn, c1.name());
+      assertTypeOf("number", c1.status());
+
+      c1.truncate();
+
+      assertEqual(AvocadoCollection.STATUS_LOADED, c1.status());
+      assertEqual(0, c1.count());
+
+      db._drop(cn);
+    }
   };
 }
 

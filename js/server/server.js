@@ -148,13 +148,31 @@ AvocadoError.prototype.toString = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops a collection
+///
+/// @FUN{db._drop(@FA{collection})}
+///
+/// Drops a @FA{collection} and all its indexes.
+///
+/// @FUN{db._drop(@FA{collection-name})}
+///
+/// Drops a collection named @FA{collection-name} and all its indexes.
+///
+/// @EXAMPLES
+///
+/// Drops a collection:
+///
+/// @verbinclude shell_collection-drop-db
+///
+/// Drops a collection identified by name:
+///
+/// @verbinclude shell_collection-drop-name-db
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoDatabase.prototype._drop = function(name) {
   var collection = name;
 
   if (typeof name === "string") {
-    collection = db[name];
+    collection = db._collection(name);
   }
 
   if (collection == null) {
@@ -168,13 +186,32 @@ AvocadoEdges.prototype._drop = AvocadoDatabase._drop;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncates a collection
+///
+/// @FUN{db._truncate(@FA{collection})}
+///
+/// Truncates a @FA{collection}, removing all documents but keeping all its
+/// indexes.
+///
+/// @FUN{db._truncate(@FA{collection-name})}
+///
+/// Truncates a collection named @FA{collection-name}.
+///
+/// @EXAMPLES
+///
+/// Truncates a collection:
+///
+/// @verbinclude shell_collection-truncate-db
+///
+/// Truncates a collection identified by name:
+///
+/// @verbinclude shell_collection-truncate-name-db
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoDatabase.prototype._truncate = function(name) {
   var collection = name;
 
   if (typeof name === "string") {
-    collection = db[name];
+    collection = db._collection(name);
   }
 
   if (collection == null) {
@@ -273,6 +310,17 @@ AvocadoCollection.prototype.toArray = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncates a collection
+///
+/// @FUN{@FA{collection}.truncate()}
+///
+/// Truncates a @FA{collection}, removing all documents but keeping all its
+/// indexes.
+///
+/// @EXAMPLES
+///
+/// Truncates a collection:
+///
+/// @verbinclude shell_collection-truncate
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.truncate = function() {
