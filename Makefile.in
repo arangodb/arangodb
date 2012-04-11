@@ -914,6 +914,7 @@ VOCHOST := 127.0.0.1
 SHELL_SERVER = @srcdir@/js/server/tests/shell-documents.js \
                @srcdir@/js/server/tests/aql-keywords.js \
                @srcdir@/js/server/tests/aql-joins.js \
+               @srcdir@/js/server/tests/aql-operators.js \
                @srcdir@/js/server/tests/aql-bind.js
 
 OPTION = $(addprefix --unit-tests ,$(SHELL_SERVER))
