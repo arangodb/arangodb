@@ -2303,7 +2303,6 @@ PQIndexElements* TRI_LookupPriorityQueueIndex(TRI_index_t* idx, TRI_json_t* para
 
   TRI_priorityqueue_index_t* pqIndex;
   PQIndexElements* result;
-  TRI_shaper_t*    shaper;
   size_t           j;
   uint64_t         numElements;
   TRI_json_t*      jsonObject;  
@@ -2340,7 +2339,6 @@ PQIndexElements* TRI_LookupPriorityQueueIndex(TRI_index_t* idx, TRI_json_t* para
   }  
   
 
-  shaper      = pqIndex->base._collection->_shaper;
   numElements = 0;  
     
   for (j = 0; j < parameterList->_value._objects._length; ++j) {
