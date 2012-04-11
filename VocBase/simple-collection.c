@@ -323,6 +323,12 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* sim,
 
   // get a new header pointer
   header = sim->_headers->request(sim->_headers);
+  if (!header) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    LOG_ERROR("out of memory");
+    mptr._did = 0;
+    return mptr;
+  }
 
   // generate a new tick
   marker->_rid = marker->_did = marker->base._tick = TRI_NewTickVocBase();
@@ -378,7 +384,7 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* sim,
     if (res != TRI_ERROR_NO_ERROR) {
       int resRollback;
 
-      LOG_DEBUG("encountered index violating during create, deleting newly created document");
+      LOG_DEBUG("encountered index violation during create, deleting newly created document");
 
       // rollback, ignore any additional errors
       resRollback = DeleteShapedJson(&sim->base, header->_did, header->_rid, 0, TRI_DOC_UPDATE_LAST_WRITE, false);
@@ -1680,6 +1686,7 @@ static bool InitSimCollection (TRI_sim_collection_t* collection,
   
   // create primary index
   primary = TRI_Allocate(sizeof(TRI_index_t));
+  /* TODO FIXME: memory allocation might fail */
 
   id = TRI_DuplicateString("_id");
 
@@ -2043,6 +2050,7 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* sim,
 
     // IN
     entry = TRI_Allocate(sizeof(TRI_edge_header_t));
+    /* TODO FIXME: memory allocation might fail */
 
     entry->_mptr = header;
     entry->_direction = TRI_EDGE_IN;
@@ -2053,6 +2061,7 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* sim,
 
     // OUT
     entry = TRI_Allocate(sizeof(TRI_edge_header_t));
+    /* TODO FIXME: memory allocation might fail */
 
     entry->_mptr = header;
     entry->_direction = TRI_EDGE_OUT;
@@ -2063,6 +2072,7 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* sim,
 
     // ANY
     entry = TRI_Allocate(sizeof(TRI_edge_header_t));
+    /* TODO FIXME: memory allocation might fail */
 
     entry->_mptr = header;
     entry->_direction = TRI_EDGE_ANY;
@@ -2073,6 +2083,7 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* sim,
 
     if (edge->_toCid != edge->_fromCid || edge->_toDid != edge->_fromDid) {
       entry = TRI_Allocate(sizeof(TRI_edge_header_t));
+      /* TODO FIXME: memory allocation might fail */
 
       entry->_mptr = header;
       entry->_direction = TRI_EDGE_ANY;

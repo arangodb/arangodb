@@ -90,8 +90,11 @@ static TRI_doc_mptr_t* RequestSimpleHeaders (TRI_headers_t* h) {
 
     begin = TRI_Allocate(NUMBER_HEADERS_PER_BLOCK * headers->_headerSize);
     if (!begin) {
-      // TODO: FIXME
+      // out of memory
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+      return NULL;
     }
+
     ptr = begin + headers->_headerSize * (NUMBER_HEADERS_PER_BLOCK - 1);
 
     header = NULL;
@@ -156,8 +159,10 @@ TRI_headers_t* TRI_CreateSimpleHeaders (size_t headerSize) {
   simple_headers_t* headers = TRI_Allocate(sizeof(simple_headers_t));
 
   if (!headers) {
-    // TODO: FIXME
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    return NULL;
   }
+
   headers->base.request = RequestSimpleHeaders;
   headers->base.verify = VerifySimpleHeaders;
   headers->base.release = ReleaseSimpleHeaders;
