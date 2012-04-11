@@ -56,12 +56,23 @@ static bool CreateJournal (TRI_blob_collection_t* collection) {
   char* number;
 
   number = TRI_StringUInt32(TRI_NewTickVocBase());
+  if (!number) {
+    return false;
+  }
+  
   jname = TRI_Concatenate3String("journal-", number, ".db");
-  /* TODO FIXME: memory allocation might fail */
-  filename = TRI_Concatenate2File(collection->base._directory, jname);
-  /* TODO FIXME: memory allocation might fail */
   TRI_FreeString(number);
+  
+  if (!jname) {
+    return false;
+  }
+
+  filename = TRI_Concatenate2File(collection->base._directory, jname);
   TRI_FreeString(jname);
+
+  if (!filename) {
+    return false;
+  }
 
   journal = TRI_CreateDatafile(filename, collection->base._maximalSize);
 
@@ -81,6 +92,7 @@ static bool CreateJournal (TRI_blob_collection_t* collection) {
 
   // and use the correct name
   number = TRI_StringUInt32(journal->_fid);
+  /* TODO FIXME: memory allocation might fail */
   jname = TRI_Concatenate3String("journal-", number, ".db");
   /* TODO FIXME: memory allocation might fail */
   filename = TRI_Concatenate2File(collection->base._directory, jname);

@@ -375,6 +375,9 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     close(fd);
 
+    // remove empty file
+    TRI_UnlinkFile(filename);
+
     LOG_ERROR("cannot seek in datafile '%s': '%s'", filename, TRI_last_error());
     return NULL;
   }
@@ -385,6 +388,9 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
   if (res < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     close(fd);
+    
+    // remove empty file
+    TRI_UnlinkFile(filename);
 
     LOG_ERROR("cannot create sparse datafile '%s': '%s'", filename, TRI_last_error());
     return NULL;
@@ -396,6 +402,9 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
   if (data == MAP_FAILED) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     close(fd);
+
+    // remove empty file
+    TRI_UnlinkFile(filename);
 
     LOG_ERROR("cannot memory map file '%s': '%s'", filename, TRI_last_error());
     return NULL;
