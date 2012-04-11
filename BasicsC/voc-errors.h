@@ -33,8 +33,12 @@ extern "C" {
 ///   Will be raised when hitting an unimplemented feature.
 /// - 10: @CODE{bad parameter}
 ///   Will be raised when the parameter does not fulfill the requirements.
+/// - 11: @CODE{forbidden}
+///   Will be raised when you are missing permission for the operation.
 /// - 400: @CODE{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
+/// - 403: @CODE{forbidden}
+///   Will be raised when the operation is forbidden.
 /// - 404: @CODE{not found}
 ///   Will be raised when an URI is unknown.
 /// - 405: @CODE{method not supported}
@@ -232,6 +236,12 @@ extern "C" {
 /// - 3100: @CODE{priority queue insert failure}
 ///   Will be raised when an attempt to insert a document into a priority queue
 ///   index fails for some reason.
+/// - 3110: @CODE{priority queue remove failure}
+///   Will be raised when an attempt to remove a document from a priority queue
+///   index fails for some reason.
+/// - 3111: @CODE{priority queue remove failure - item missing in index}
+///   Will be raised when an attempt to remove a document from a priority queue
+///   index fails when document can not be located within the index.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -362,6 +372,16 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_BAD_PARAMETER                                           (10)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 11: ERROR_FORBIDDEN
+///
+/// forbidden
+///
+/// Will be raised when you are missing permission for the operation.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_FORBIDDEN                                               (11)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER
 ///
 /// bad parameter
@@ -370,6 +390,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_HTTP_BAD_PARAMETER                                      (400)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 403: ERROR_HTTP_FORBIDDEN
+///
+/// forbidden
+///
+/// Will be raised when the operation is forbidden.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_HTTP_FORBIDDEN                                          (403)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 404: ERROR_HTTP_NOT_FOUND
@@ -1233,6 +1263,28 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_AVOCADO_INDEX_PQ_INSERT_FAILED                          (3100)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3110: ERROR_AVOCADO_INDEX_PQ_REMOVE_FAILED
+///
+/// priority queue remove failure
+///
+/// Will be raised when an attempt to remove a document from a priority queue
+/// index fails for some reason.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AVOCADO_INDEX_PQ_REMOVE_FAILED                          (3110)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3111: ERROR_AVOCADO_INDEX_PQ_REMOVE_ITEM_MISSING
+///
+/// priority queue remove failure - item missing in index
+///
+/// Will be raised when an attempt to remove a document from a priority queue
+/// index fails when document can not be located within the index.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AVOCADO_INDEX_PQ_REMOVE_ITEM_MISSING                    (3111)
 
 
 ////////////////////////////////////////////////////////////////////////////////

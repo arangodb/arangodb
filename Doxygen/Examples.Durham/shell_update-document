@@ -1,10 +1,4 @@
 avocado> a1 = db.example.save({ a : 1 });
-{ "_id" : "1432124/3706436", "_rev" : 3706436 }
-avocado> a2 = db.example.replace(a1._id, { a : 2 });
-{ "_id" : "1432124/3706436", "_rev" : 3771972, "_oldRev" : 3706436 }
-avocado> a3 = db.example.replace(a1._id, { a : 3 });
-{ "_id" : "1432124/3706436", "_rev" : 3837508, "_oldRev" : 3771972 }
-avocado> a1 = db.example.save({ a : 1 });
 { "_id" : "1432124/3903044", "_rev" : 3903044 }
 avocado> a2 = db.example.replace(a1, { a : 2 });
 { "_id" : "1432124/3903044", "_rev" : 3968580, "_oldRev" : 3903044 }

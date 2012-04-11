@@ -88,7 +88,7 @@ actions.defineHttp({
       collection = db._collection(name);
 
       if (collection == null) {
-        actions.collectionUnknown(req, res, name);
+        actions.collectionNotFound(req, res, name);
       }
       else {
         var result = collection.all();
@@ -187,7 +187,7 @@ actions.defineHttp({
       collection = db._collection(name);
 
       if (collection == null) {
-        actions.collectionUnknown(req, res, name);
+        actions.collectionNotFound(req, res, name);
       }
       else if (latitude == null) {
         actions.badParameter(req, res, "latitude");
@@ -305,7 +305,7 @@ actions.defineHttp({
       collection = db._collection(name);
 
       if (collection == null) {
-        actions.collectionUnknown(req, res, name);
+        actions.collectionNotFound(req, res, name);
       }
       else if (latitude == null) {
         actions.badParameter(req, res, "latitude");
@@ -391,7 +391,7 @@ actions.defineHttp({
       collection = db._collection(name);
 
       if (collection == null) {
-        actions.collectionUnknown(req, res, name);
+        actions.collectionNotFound(req, res, name);
       }
       else if (typeof example !== "object") {
         actions.badParameter(req, res, "example");

@@ -48,7 +48,7 @@ function readCollectionDocumentSuiteErrorHandling () {
 
     setUp : function () {
       db._drop(cn);
-      collection = db._create(cn, false);
+      collection = db._create(cn, { waitForSync : false });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -120,7 +120,7 @@ function readCollectionDocumentSuiteReadDocument () {
 
     setUp : function () {
       db._drop(cn);
-      collection = db._create(cn, false);
+      collection = db._create(cn, { waitForSync: false });
 
       collection.load();
     },
@@ -254,6 +254,14 @@ function readCollectionDocumentSuiteReadDocument () {
       catch (err) {
         assertEqual(ERRORS.ERROR_AVOCADO_CONFLICT.code, err.errorNum);
       }
+
+      var a3 = collection.delete(a1, true);
+
+      assertEqual(a3, true);
+
+      var a4 = collection.delete(a1, true);
+
+      assertEqual(a4, false);
     }
   };
 }
@@ -291,7 +299,7 @@ function readDocumentSuiteErrorHandling () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testErrorHandlingUnknownDocument : function () {
-      var collection = db._create(cn, false);
+      var collection = db._create(cn, { waitForSync : false });
 
       try {
         db._document(collection._id + "/123456");
@@ -323,7 +331,7 @@ function readDocumentSuiteReadDocument () {
 
     setUp : function () {
       db._drop(cn);
-      collection = db._create(cn, false);
+      collection = db._create(cn, { waitForSync : false });
 
       collection.load();
     },
@@ -422,6 +430,38 @@ function readDocumentSuiteReadDocument () {
       assertEqual(a1._id, doc4._id);
       assertEqual(a4._rev, doc4._rev);
       assertEqual(4, doc4.a);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete a document
+////////////////////////////////////////////////////////////////////////////////
+
+    testDeleteDocument : function () {
+      var a1 = collection.save({ a : 1});
+
+      assertTypeOf("string", a1._id);
+      assertTypeOf("number", a1._rev);
+
+      var a2 = db._replace(a1, { a : 2 });
+
+      assertEqual(a1._id, a2._id);
+      assertNotEqual(a1._rev, a2._rev);
+
+      try {
+        db._delete(a1);
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_AVOCADO_CONFLICT.code, err.errorNum);
+      }
+
+      var a3 = db._delete(a1, true);
+
+      assertEqual(a3, true);
+
+      var a4 = db._delete(a1, true);
+
+      assertEqual(a4, false);
     }
   };
 }

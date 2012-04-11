@@ -41,11 +41,11 @@
 /// @page RestEdgeCallsTOC
 ///
 /// <ol>
-///  <li>@ref RestEdgeRead "GET /document/@FA{document-handle}"</li>
-///  <li>@ref RestEdgeCreate "POST /edge?collection=@FA{collection-identifier}&from=@FA{from-handle}&to=@FA{to-handle}"</li>
-///  <li>@ref RestEdgeUpdate "PUT /document/@FA{document-handle}"</li>
-///  <li>@ref RestEdgeDelete "DELETE /document/@FA{document-handle}"</li>
-///  <li>@ref RestEdgeHead "HEAD /document/@FA{document-handle}"</li>
+///  <li>@ref RestEdgeRead "GET /document/document-handle"</li>
+///  <li>@ref RestEdgeCreate "POST /edge?collection=collection-identifier&from=from-handle&to=to-handle"</li>
+///  <li>@ref RestEdgeUpdate "PUT /document/document-handle"</li>
+///  <li>@ref RestEdgeDelete "DELETE /document/document-handle"</li>
+///  <li>@ref RestEdgeHead "HEAD /document/document-handle"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 

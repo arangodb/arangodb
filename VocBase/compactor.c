@@ -73,7 +73,7 @@ static TRI_datafile_t* SelectCompactor (TRI_sim_collection_t* sim,
                                         TRI_voc_size_t size,
                                         TRI_df_marker_t** result) {
   TRI_datafile_t* datafile;
-  bool ok;
+  int res;
   size_t i;
   size_t n;
 
@@ -88,14 +88,14 @@ static TRI_datafile_t* SelectCompactor (TRI_sim_collection_t* sim,
       datafile = sim->base.base._compactors._buffer[i];
 
       // try to reserve space
-      ok = TRI_ReserveElementDatafile(datafile, size, result);
+      res = TRI_ReserveElementDatafile(datafile, size, result);
 
       // in case of full datafile, try next
-      if (ok) {
+      if (res == TRI_ERROR_NO_ERROR) {
         TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
         return datafile;
       }
-      else if (! ok && TRI_errno() != TRI_ERROR_AVOCADO_DATAFILE_FULL) {
+      else if (res != TRI_ERROR_AVOCADO_DATAFILE_FULL) {
         TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
         return NULL;
       }
@@ -152,6 +152,7 @@ static void RemoveDatafileCallback (TRI_datafile_t* datafile, void* data) {
   char* name;
   char* number;
   bool ok;
+  int res;
 
   collection = data;
 
@@ -171,7 +172,7 @@ static void RemoveDatafileCallback (TRI_datafile_t* datafile, void* data) {
               TRI_last_error());
   }
 
-  LOG_INFO("finished compactify datafile '%s'", datafile->_filename);
+  LOG_DEBUG("finished compactifing datafile '%s'", datafile->_filename);
 
   ok = TRI_CloseDatafile(datafile);
 
@@ -180,6 +181,21 @@ static void RemoveDatafileCallback (TRI_datafile_t* datafile, void* data) {
               datafile->_filename,
               TRI_last_error());
   }
+  else {
+    if (collection->_vocbase->_removeOnCompacted) {
+      LOG_DEBUG("wiping compacted datafile from disk");
+
+      res = TRI_UnlinkFile(filename);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        LOG_ERROR("cannot wipe obsolete datafile '%s': %s",
+                  datafile->_filename,
+                  TRI_last_error());
+      }
+    }
+  }
+
+  TRI_FreeString(filename);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -340,7 +356,7 @@ static void CompactifyDatafile (TRI_sim_collection_t* sim, TRI_voc_fid_t fid) {
   }
 
   // now compactify the datafile
-  LOG_INFO("starting to compactify datafile '%s'", df->_filename);
+  LOG_DEBUG("starting to compactify datafile '%s'", df->_filename);
 
   ok = TRI_IterateDatafile(df, Compactifier, sim, false);
 
@@ -349,7 +365,7 @@ static void CompactifyDatafile (TRI_sim_collection_t* sim, TRI_voc_fid_t fid) {
     return;
   }
 
-  // wait for the jounrals to sync
+  // wait for the journals to sync
   WaitCompactSync(sim, df);
 
   // remove the datafile from the list of datafiles

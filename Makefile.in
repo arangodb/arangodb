@@ -202,12 +202,20 @@ am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
 	"$(DESTDIR)$(pkgdatadir)"
 PROGRAMS = $(bin_PROGRAMS) $(noinst_PROGRAMS) $(sbin_PROGRAMS)
 am__UnitTests_test_suite_SOURCES_DIST = UnitTests/Runner.cpp \
+	UnitTests/Philadelphia/associative-pointer-test.cpp \
 	UnitTests/Philadelphia/string-buffer-test.cpp \
+	UnitTests/Philadelphia/string-utf8-test.cpp \
+	UnitTests/Philadelphia/vector-pointer-test.cpp \
+	UnitTests/Philadelphia/vector-test.cpp \
 	UnitTests/Jutland/StringBufferTest.cpp \
 	UnitTests/Jutland/StringUtilsTest.cpp
 @ENABLE_BOOST_TEST_TRUE@am_UnitTests_test_suite_OBJECTS =  \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Runner.$(OBJEXT) \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-buffer-test.$(OBJEXT) \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-utf8-test.$(OBJEXT) \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/vector-pointer-test.$(OBJEXT) \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/vector-test.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringBufferTest.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringUtilsTest.$(OBJEXT)
 UnitTests_test_suite_OBJECTS = $(am_UnitTests_test_suite_OBJECTS)
@@ -239,7 +247,9 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	HttpsServer/ApplicationHttpsServerImpl.$(OBJEXT) \
 	HttpsServer/HttpsAsyncCommTask.$(OBJEXT) \
 	HttpsServer/HttpsServer.$(OBJEXT) \
-	HttpsServer/HttpsServerImpl.$(OBJEXT) QL/ast-query.$(OBJEXT) \
+	HttpsServer/HttpsServerImpl.$(OBJEXT) \
+	PriorityQueue/pqueueindex.$(OBJEXT) \
+	PriorityQueue/priorityqueue.$(OBJEXT) QL/ast-query.$(OBJEXT) \
 	QL/formatter.$(OBJEXT) QL/optimize.$(OBJEXT) \
 	QL/parser.$(OBJEXT) QL/tokens.$(OBJEXT) \
 	RestHandler/RestActionHandler.$(OBJEXT) \
@@ -688,6 +698,8 @@ avocado_SOURCES = \
 	HttpsServer/HttpsAsyncCommTask.cpp \
 	HttpsServer/HttpsServer.cpp \
 	HttpsServer/HttpsServerImpl.cpp \
+	PriorityQueue/pqueueindex.c \
+	PriorityQueue/priorityqueue.c \
 	QL/ast-query.c \
 	QL/formatter.c \
 	QL/optimize.c \
@@ -812,6 +824,7 @@ DOXYGEN = \
 	Doxygen/js/actions/system/api-collection.c \
 	Doxygen/js/actions/system/api-index.c \
 	Doxygen/js/actions/system/api-simple.c \
+	Doxygen/js/actions/system/api-system.c \
 	Doxygen/js/actions/system/collections.c \
 	Doxygen/js/common/bootstrap/modules.c \
 	Doxygen/js/common/bootstrap/print.c \
@@ -867,6 +880,7 @@ WIKI = \
 	RestDocument \
 	RestEdge \
 	RestSystem \
+	ShellDocument \
 	SimpleQueries \
 	UserManualServer \
 	UserManualShell \
@@ -885,7 +899,11 @@ VOCHOST := 127.0.0.1
 @ENABLE_BOOST_TEST_TRUE@UnitTests_test_suite_DEPENDENCIES = @top_builddir@/libavocado.a
 @ENABLE_BOOST_TEST_TRUE@UnitTests_test_suite_SOURCES = \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Runner.cpp \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/associative-pointer-test.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-buffer-test.cpp \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-utf8-test.cpp \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/vector-pointer-test.cpp \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/vector-test.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringBufferTest.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringUtilsTest.cpp
 
@@ -1309,7 +1327,19 @@ UnitTests/Philadelphia/$(am__dirstamp):
 UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) UnitTests/Philadelphia/$(DEPDIR)
 	@: > UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT):  \
+	UnitTests/Philadelphia/$(am__dirstamp) \
+	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
 UnitTests/Philadelphia/string-buffer-test.$(OBJEXT):  \
+	UnitTests/Philadelphia/$(am__dirstamp) \
+	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Philadelphia/string-utf8-test.$(OBJEXT):  \
+	UnitTests/Philadelphia/$(am__dirstamp) \
+	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Philadelphia/vector-pointer-test.$(OBJEXT):  \
+	UnitTests/Philadelphia/$(am__dirstamp) \
+	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Philadelphia/vector-test.$(OBJEXT):  \
 	UnitTests/Philadelphia/$(am__dirstamp) \
 	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
 UnitTests/Jutland/$(am__dirstamp):
@@ -1447,6 +1477,16 @@ HttpsServer/HttpsServer.$(OBJEXT): HttpsServer/$(am__dirstamp) \
 	HttpsServer/$(DEPDIR)/$(am__dirstamp)
 HttpsServer/HttpsServerImpl.$(OBJEXT): HttpsServer/$(am__dirstamp) \
 	HttpsServer/$(DEPDIR)/$(am__dirstamp)
+PriorityQueue/$(am__dirstamp):
+	@$(MKDIR_P) PriorityQueue
+	@: > PriorityQueue/$(am__dirstamp)
+PriorityQueue/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) PriorityQueue/$(DEPDIR)
+	@: > PriorityQueue/$(DEPDIR)/$(am__dirstamp)
+PriorityQueue/pqueueindex.$(OBJEXT): PriorityQueue/$(am__dirstamp) \
+	PriorityQueue/$(DEPDIR)/$(am__dirstamp)
+PriorityQueue/priorityqueue.$(OBJEXT): PriorityQueue/$(am__dirstamp) \
+	PriorityQueue/$(DEPDIR)/$(am__dirstamp)
 QL/$(am__dirstamp):
 	@$(MKDIR_P) QL
 	@: > QL/$(am__dirstamp)
@@ -1743,6 +1783,8 @@ mostlyclean-compile:
 	-rm -f Logger/LoggerInfo.$(OBJEXT)
 	-rm -f Logger/LoggerStream.$(OBJEXT)
 	-rm -f Logger/LoggerTiming.$(OBJEXT)
+	-rm -f PriorityQueue/pqueueindex.$(OBJEXT)
+	-rm -f PriorityQueue/priorityqueue.$(OBJEXT)
 	-rm -f ProgramOptions/program-options.$(OBJEXT)
 	-rm -f QL/ast-query.$(OBJEXT)
 	-rm -f QL/formatter.$(OBJEXT)
@@ -1795,7 +1837,11 @@ mostlyclean-compile:
 	-rm -f SkipLists/sl-operator.$(OBJEXT)
 	-rm -f UnitTests/Jutland/StringBufferTest.$(OBJEXT)
 	-rm -f UnitTests/Jutland/StringUtilsTest.$(OBJEXT)
+	-rm -f UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/string-buffer-test.$(OBJEXT)
+	-rm -f UnitTests/Philadelphia/string-utf8-test.$(OBJEXT)
+	-rm -f UnitTests/Philadelphia/vector-pointer-test.$(OBJEXT)
+	-rm -f UnitTests/Philadelphia/vector-test.$(OBJEXT)
 	-rm -f UnitTests/Runner.$(OBJEXT)
 	-rm -f V8/JSLoader.$(OBJEXT)
 	-rm -f V8/v8-actions.$(OBJEXT)
@@ -1943,6 +1989,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Logger/$(DEPDIR)/LoggerInfo.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Logger/$(DEPDIR)/LoggerStream.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Logger/$(DEPDIR)/LoggerTiming.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@PriorityQueue/$(DEPDIR)/pqueueindex.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@PriorityQueue/$(DEPDIR)/priorityqueue.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ProgramOptions/$(DEPDIR)/program-options.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@QL/$(DEPDIR)/ast-query.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@QL/$(DEPDIR)/formatter.Po@am__quote@
@@ -1996,7 +2044,11 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/$(DEPDIR)/Runner.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Jutland/$(DEPDIR)/StringBufferTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Jutland/$(DEPDIR)/StringUtilsTest.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/associative-pointer-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/string-buffer-test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/string-utf8-test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/vector-pointer-test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/vector-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/JSLoader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-actions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-conv.Po@am__quote@
@@ -2370,6 +2422,8 @@ distclean-generic:
 	-rm -f JsonParserX/$(am__dirstamp)
 	-rm -f Logger/$(DEPDIR)/$(am__dirstamp)
 	-rm -f Logger/$(am__dirstamp)
+	-rm -f PriorityQueue/$(DEPDIR)/$(am__dirstamp)
+	-rm -f PriorityQueue/$(am__dirstamp)
 	-rm -f ProgramOptions/$(DEPDIR)/$(am__dirstamp)
 	-rm -f ProgramOptions/$(am__dirstamp)
 	-rm -f QL/$(DEPDIR)/$(am__dirstamp)
@@ -2418,7 +2472,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-local \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -2466,7 +2520,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -2595,24 +2649,24 @@ unittests-brief: unittests-boost unittests-shell-server unittests-http-server
 
 unittests-verbose:
 	@echo "################################################################################"
-	@echo "#"
-	@echo "# In order to run the unit-tests you need to either install the JavaScript"
-	@echo "# library files or configure the AvocadoDB in such a way, that it uses a"
-	@echo "# relative path."
-	@echo "#"
-	@echo "# Library Files"
-	@echo "# -------------"
-	@echo "#"
-	@echo "# > ./configure ...."
-	@echo "# > make install"
-	@echo "# > make unittests"
-	@echo "#"
-	@echo "# Relative Paths"
-	@echo "# --------------"
-	@echo "#"
-	@echo "# > ./configure --enable-relative=devel ..."
-	@echo "# > make unittests"
-	@echo "#"
+	@echo "#                                                                              #"
+	@echo "# In order to run the unit-tests you need to either install the JavaScript     #"
+	@echo "# library files or configure the AvocadoDB in such a way, that it uses a       #"
+	@echo "# relative path.                                                               #"
+	@echo "#                                                                              #"
+	@echo "# Library Files                                                                #"
+	@echo "# -------------                                                                #"
+	@echo "#                                                                              #"
+	@echo "#   > ./configure ....                                                         #"
+	@echo "#   > make install                                                             #"
+	@echo "#   > make unittests                                                           #"
+	@echo "#                                                                              #"
+	@echo "# Relative Paths                                                               #"
+	@echo "# --------------                                                               #"
+	@echo "#                                                                              #"
+	@echo "#   > ./configure --enable-relative=devel ...                                  #"
+	@echo "#   > make unittests                                                           #"
+	@echo "#                                                                              #"
 	@echo "################################################################################"
 	@echo
 
@@ -2621,12 +2675,17 @@ unittests-verbose:
 .PHONY: start-server
 
 start-server:
-	@echo "starting the server"
+	@echo
+	@echo "================================================================================"
+	@echo "|| STARTING SERVER                                                            ||"
+	@echo "================================================================================"
+	@echo
+
 	@rm -f "$(PIDFILE)"
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
-	@builddir@/avocado "$(VOCDIR)" --pid-file $(PIDFILE) --watch-process $(PID) --server.http-port $(VOCHOST):$(VOCPORT) &
+	(@builddir@/avocado "$(VOCDIR)" --pid-file $(PIDFILE) --watch-process $(PID) --server.http-port $(VOCHOST):$(VOCPORT) && rm -rf "$(VOCDIR)") &
 
 	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
 	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
@@ -2645,7 +2704,7 @@ start-server:
 @ENABLE_BOOST_TEST_TRUE@unittests-boost:
 @ENABLE_BOOST_TEST_TRUE@	@echo
 @ENABLE_BOOST_TEST_TRUE@	@echo "================================================================================"
-@ENABLE_BOOST_TEST_TRUE@	@echo "BOOST TESTS"
+@ENABLE_BOOST_TEST_TRUE@	@echo "|| BOOST TESTS                                                                ||"
 @ENABLE_BOOST_TEST_TRUE@	@echo "================================================================================"
 @ENABLE_BOOST_TEST_TRUE@	@echo
 
@@ -2658,7 +2717,7 @@ start-server:
 @ENABLE_BOOST_TEST_FALSE@unittests-boost:
 @ENABLE_BOOST_TEST_FALSE@	@echo
 @ENABLE_BOOST_TEST_FALSE@	@echo "================================================================================"
-@ENABLE_BOOST_TEST_FALSE@	@echo "BOOST TESTS"
+@ENABLE_BOOST_TEST_FALSE@	@echo "|| BOOST TESTS                                                                ||"
 @ENABLE_BOOST_TEST_FALSE@	@echo "================================================================================"
 @ENABLE_BOOST_TEST_FALSE@	@echo
 
@@ -2671,7 +2730,7 @@ start-server:
 unittests-shell-server:
 	@echo
 	@echo "================================================================================"
-	@echo "SHELL SERVER TESTS"
+	@echo "|| SHELL SERVER TESTS                                                         ||"
 	@echo "================================================================================"
 	@echo
 
@@ -2692,7 +2751,7 @@ unittests-shell-server:
 unittests-http-server: start-server
 	@echo
 	@echo "================================================================================"
-	@echo "HTTP SERVER TESTS"
+	@echo "|| HTTP SERVER TESTS                                                          ||"
 	@echo "================================================================================"
 	@echo
 

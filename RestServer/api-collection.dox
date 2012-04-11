@@ -42,7 +42,7 @@
 ///
 /// <ol>
 ///  <li>@ref HttpCollectionRead "GET /_api/collection/collection-identifier"</li>
-///  <li>@ref HttpCollectionRead "GET /_api/collection/collection-identifier/parameter"</li>
+///  <li>@ref HttpCollectionRead "GET /_api/collection/collection-identifier/properties"</li>
 ///  <li>@ref HttpCollectionRead "GET /_api/collection/collection-identifier/count"</li>
 ///  <li>@ref HttpCollectionRead "GET /_api/collection/collection-identifier/figures"</li>
 ///  <li>@ref HttpCollectionRead "GET /_api/collection/collection-identifier"</li>
@@ -50,7 +50,7 @@
 ///  <li>@ref HttpCollectionLoad "PUT /_api/collection/collection-identifier/load"</li>
 ///  <li>@ref HttpCollectionUnload "PUT /_api/collection/collection-identifier/unload"</li>
 ///  <li>@ref HttpCollectionTruncate "PUT /_api/collection/collection-identifier/truncate"</li>
-///  <li>@ref HttpCollectionParameter "PUT /_api/collection/collection-identifier/parameter"</li>
+///  <li>@ref HttpCollectionProperties "PUT /_api/collection/collection-identifier/properties"</li>
 ///  <li>@ref HttpCollectionRename "PUT /_api/collection/collection-identifier/rename"</li>
 ///  <li>@ref HttpCollectionDelete "DELETE /_api/collection/collection-identifier"</li>
 ///  <li>@ref HttpCollectionReadAll "GET /_api/collection/"</li>
@@ -115,8 +115,8 @@
 /// @copydetails JSF_PUT_api_collection_truncate
 /// <hr>
 ///
-/// @anchor HttpCollectionParameter
-/// @copydetails JSF_PUT_api_collection_parameter
+/// @anchor HttpCollectionProperties
+/// @copydetails JSF_PUT_api_collection_properties
 /// <hr>
 ///
 /// @anchor HttpCollectionRename

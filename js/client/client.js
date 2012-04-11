@@ -296,21 +296,25 @@ function AvocadoError (error) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoError.prototype._PRINT = function() {
+  print(this.toString());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toString function
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoError.prototype.toString = function() {
+  var result = "";
   if (typeof(COLOR_BRIGHT) != "undefined") {
-    internal.output(COLOR_BRIGHT);
-    internal.output("Error: ");
-    internal.output(COLOR_OUTPUT_RESET);
+    result = COLOR_BRIGHT + "Error: " + COLOR_OUTPUT_RESET;
   }
   else  {
-    internal.output("Error: ");      
+    result = "Error: ";
   }
 
-  internal.output("["); 
-  internal.output(this.code); 
-  internal.output(":"); 
-  internal.output(this.errorNum); 
-  internal.output("] "); 
-  print(this.errorMessage);
+  result += "[" + this.code + ":" + this.errorNum + "] " + this.errorMessage;
+  
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1049,7 +1053,7 @@ try {
   print(HELP);
 }
 catch (err) {
-  print(COLOR_RED + "connection failure: " + err + COLOR_BLACK);
+  print(err);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

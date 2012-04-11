@@ -215,9 +215,9 @@ describe AvocadoDB do
       end
 
       # get count
-      it "checks the parameter of a collection" do
-	cmd = api + "/" + String(@cid) + "/parameter"
-        doc = AvocadoDB.log_get("#{prefix}-get-collection-parameter", cmd)
+      it "checks the properties of a collection" do
+	cmd = api + "/" + String(@cid) + "/properties"
+        doc = AvocadoDB.log_get("#{prefix}-get-collection-properties", cmd)
 
 	doc.code.should eq(200)
 	doc.headers['content-type'].should eq("application/json")
@@ -228,7 +228,7 @@ describe AvocadoDB do
 	doc.parsed_response['status'].should eq(3)
 	doc.parsed_response['waitForSync'].should eq(true)
 	doc.parsed_response['journalSize'].should be_kind_of(Integer)
-	doc.headers['location'].should eq(api + "/" + String(@cid) + "/parameter")
+	doc.headers['location'].should eq(api + "/" + String(@cid) + "/properties")
       end
 
       # get figures
@@ -656,11 +656,11 @@ describe AvocadoDB do
     end
 
 ################################################################################
-## parameter a collection
+## properties of a collection
 ################################################################################
 
-    context "parameter:" do
-      it "changing the parameter of a collection by identifier" do
+    context "properties:" do
+      it "changing the properties of a collection by identifier" do
 	cn = "UnitTestsCollectionBasics"
 	AvocadoDB.drop_collection(cn)
 	cid = AvocadoDB.create_collection(cn)
@@ -675,9 +675,9 @@ describe AvocadoDB do
 	AvocadoDB.size_collection(cid).should eq(10)
 	AvocadoDB.size_collection(cn).should eq(10)
 
-	cmd = api + "/" + String(cid) + "/parameter"
+	cmd = api + "/" + String(cid) + "/properties"
 	body = "{ \"waitForSync\" : true }"
-        doc = AvocadoDB.log_put("#{prefix}-identifier-parameter-sync", cmd, :body => body)
+        doc = AvocadoDB.log_put("#{prefix}-identifier-properties-sync", cmd, :body => body)
 
 	doc.code.should eq(200)
 	doc.headers['content-type'].should eq("application/json")
@@ -688,9 +688,9 @@ describe AvocadoDB do
 	doc.parsed_response['status'].should eq(3)
 	doc.parsed_response['waitForSync'].should eq(true)
 
-	cmd = api + "/" + String(cid) + "/parameter"
+	cmd = api + "/" + String(cid) + "/properties"
 	body = "{ \"waitForSync\" : false }"
-        doc = AvocadoDB.log_put("#{prefix}-identifier-parameter-no-sync", cmd, :body => body)
+        doc = AvocadoDB.log_put("#{prefix}-identifier-properties-no-sync", cmd, :body => body)
 
 	doc.code.should eq(200)
 	doc.headers['content-type'].should eq("application/json")
