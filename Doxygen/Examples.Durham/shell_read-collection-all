@@ -1,0 +1,4 @@
+avocado> db.examples.load();
+avocado> var d = db.demo;
+avocado> db._collections();
+[[AvocadoCollection 96393, "examples" (status loaded)], [AvocadoCollection 1407113, "demo" (status new born)]]

@@ -313,6 +313,7 @@ WIKI = \
 	HttpCollection \
 	HttpIndex \
 	HttpInterface \
+	HttpSystem \
 	IndexGeo \
 	IndexHash \
 	IndexSkiplist \
@@ -336,6 +337,7 @@ WIKI = \
 	RestDocument \
 	RestEdge \
 	RestSystem \
+	ShellCollection \
 	ShellDocument \
 	SimpleQueries \
 	UserManualServer \

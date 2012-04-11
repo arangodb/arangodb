@@ -31,7 +31,7 @@
 /// <ol>
 ///  <li>@ref ShellDocumentIntro</li>
 ///  <li>@ref ShellDocumentResource</li>
-///  <li>@ref ShellDocumentHttp
+///  <li>@ref ShellDocumentShell
 ///    @copydetails ShellDocumentCallsTOC
 ///  </li>
 /// </ol>
@@ -80,7 +80,7 @@
 /// All documents contain two special fields, the document handle in @LIT{_id}
 /// and the etag aka document revision in @LIT{_rev}.
 ///
-/// All examples in the manual assume that you have created some example
+/// Some examples in the manual assume that you have created some example
 /// collections, see @ref ExamplesSetup.
 ///
 /// @copydoc GlossaryDocumentHandle
@@ -115,8 +115,8 @@
 /// Each document also has a document revision or etag with is returned
 /// in the @LIT{_rev} field when requesting a document.
 ///
-/// @section ShellDocumentHttp Working with Documents
-/////////////////////////////////////////////////////
+/// @section ShellDocumentShell Working with Documents
+//////////////////////////////////////////////////////
 ///
 /// @anchor ShellDocumentRead
 /// @copydetails JS_DocumentVocbaseCol
