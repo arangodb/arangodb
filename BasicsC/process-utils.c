@@ -152,12 +152,9 @@ TRI_process_info_t TRI_ProcessInfo (TRI_pid_t pid) {
     n = read(fd, str, 1024);
     close(fd);
 
-    // size_t is always >= 0, comparison will never be false
-    /*
-    if (n < 0) {
+    if (n == 0) {
       return result;
     }
-    */
 
     sscanf(str, "%d %s %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %lu %lu %ld %ld %ld %ld %ld %llu %lu %ld",
            &st.pid, (char*) &st.comm, &st.state, &st.ppid, &st.pgrp, &st.session, &st.tty_nr, &st.tpgid,
