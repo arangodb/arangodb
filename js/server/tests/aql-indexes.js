@@ -32,7 +32,7 @@ var jsunity = require("jsunity");
 ////////////////////////////////////////////////////////////////////////////////
 
 function aqlIndexesTestSuite () {
-  var indexes = null;
+  var collection = null;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a given query
@@ -67,14 +67,14 @@ function aqlIndexesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      indexes = db.UnitTestsIndexes;
+      collection = db.UnitTestsIndexes;
 
-      if (indexes.count() == 0) {
-        indexes.save( { "id" : 1, "name" : "fox", "age" : 19 } );
-        indexes.save( { "id" : 2, "name" : "brown", "age" : 25 } );
-        indexes.save( { "id" : 5, "name" : "peter", "age" : 12 } );
-        indexes.save( { "id" : 6, "name" : "hulk", "age" : 9 } );
-        indexes.save( { "id" : 9, "name" : "fred", "age" : 17 } );
+      if (collection.count() == 0) {
+        collection.save( { "id" : 1, "name" : "fox", "age" : 19 } );
+        collection.save( { "id" : 2, "name" : "brown", "age" : 25 } );
+        collection.save( { "id" : 5, "name" : "peter", "age" : 12 } );
+        collection.save( { "id" : 6, "name" : "hulk", "age" : 9 } );
+        collection.save( { "id" : 9, "name" : "fred", "age" : 17 } );
       }
     },
 
@@ -85,16 +85,44 @@ function aqlIndexesTestSuite () {
     tearDown : function () {
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test const access on primary index
+////////////////////////////////////////////////////////////////////////////////
+
+    testPrimaryIndexConstAccess1 : function () {
+      assertTrue(collection.count() > 0);
+
+      var result = getQueryResults("SELECT p1 FROM " + collection.name() + " p1 WHERE p1._id == 'abc/def'");
+      assertEqual(0, result.length);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test inner join results
+/// @brief test const access on primary index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testPrimaryIndexJoin : function () {
-      assertTrue(indexes.count() > 0);
+    testPrimaryIndexConstAccess2 : function () {
+      assertTrue(collection.count() > 0);
 
-//      var result = getQueryResults("SELECT p1 FROM " + collection.name() + " p1 INNER JOIN " + collection.name() + " p2 ON (p1._id == p2._id)");
-//      assertEqual(collection.count(), result.length);
+      var id = db[collection.name()].all().next()._id;
+
+      var result = getQueryResults("SELECT p1 FROM " + collection.name() + " p1 WHERE p1._id == '" + id + "'");
+      assertEqual(1, result.length);
+      assertEqual(id, result[0]._id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ref access on primary index
+////////////////////////////////////////////////////////////////////////////////
+
+    testPrimaryIndexRefAccess : function () {
+      assertTrue(collection.count() > 0);
+
+      var result = getQueryResults("SELECT { p1 : p1._id, p2: p2._id } FROM " + collection.name() + " p1 INNER JOIN " + collection.name() + " p2 ON (p1._id == p2._id)");
+      assertEqual(collection.count(), result.length);
+      for (i = 0; i < result.length; i++) {
+        var row = result[i];
+        assertEqual(row['p1'], row['p2']);
+      }
     }
 
   };
