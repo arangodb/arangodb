@@ -126,6 +126,7 @@ endif
 SHELL_SERVER = @srcdir@/js/server/tests/shell-documents.js \
                @srcdir@/js/server/tests/aql-keywords.js \
                @srcdir@/js/server/tests/aql-joins.js \
+               @srcdir@/js/server/tests/aql-operators.js \
                @srcdir@/js/server/tests/aql-bind.js
 
 .PHONY: unittests-shell-server
