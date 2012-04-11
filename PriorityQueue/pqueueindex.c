@@ -137,7 +137,6 @@ PQIndex* PQueueIndex_new (void) {
 
   PQIndex* idx;
   bool ok;
-  char* hiddenStructure;
   
   // ..........................................................................  
   // Allocate the Priority Que Index
