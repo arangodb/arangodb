@@ -1,0 +1,5 @@
+avocado> col = db.examples;
+[AvocadoCollection 109757, "examples" (status unloaded)]
+avocado> db._drop(col)
+avocado> col;
+[AvocadoCollection 109757, "examples" (status deleted)]
