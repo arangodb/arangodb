@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, indexes
+/// @brief tests for query language, primary indexes
 ///
 /// @file
 ///
@@ -31,7 +31,7 @@ var jsunity = require("jsunity");
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function aqlIndexesTestSuite () {
+function aqlPrimaryIndexTestSuite () {
   var collection = null;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,7 +67,7 @@ function aqlIndexesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      collection = db.UnitTestsIndexes;
+      collection = db.UnitTestsPrimaryIndex;
 
       if (collection.count() == 0) {
         collection.save( { "id" : 1, "name" : "fox", "age" : 19 } );
@@ -133,7 +133,7 @@ function aqlIndexesTestSuite () {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(aqlIndexesTestSuite);
+jsunity.run(aqlPrimaryIndexTestSuite);
 
 return jsunity.done();
 

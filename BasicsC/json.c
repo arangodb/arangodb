@@ -444,6 +444,25 @@ void TRI_PushBack3ListJson (TRI_json_t* list, TRI_json_t* object) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a value in a json list
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_LookupListJson (const TRI_json_t* const object, const size_t pos) {
+  size_t n;
+
+  assert(object->_type == TRI_JSON_LIST);
+
+  n = object->_value._objects._length;
+
+  if (pos >= n) {
+    // out of bounds
+    return NULL;
+  }
+
+  return TRI_AtVector(&object->_value._objects, pos);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new attribute to an object, using copy
 ////////////////////////////////////////////////////////////////////////////////
 
