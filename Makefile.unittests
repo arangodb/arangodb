@@ -123,8 +123,8 @@ endif
 ## SHELL SERVER TESTS
 ################################################################################
 
-SHELL_SERVER = @srcdir@/js/server/tests/shell-document.js \
-               @srcdir@/js/server/tests/shell-collection.js \
+SHELL_SERVER = @srcdir@/js/common/tests/shell-document.js \
+               @srcdir@/js/common/tests/shell-collection.js \
                @srcdir@/js/server/tests/aql-index-primary.js \
                @srcdir@/js/server/tests/aql-index-hash.js \
                @srcdir@/js/server/tests/aql-index-skiplist.js \
