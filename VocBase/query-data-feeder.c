@@ -325,10 +325,11 @@ static void InitFeederPrimaryLookup (TRI_data_feeder_t* feeder) {
     }
     state->_isEmpty = false;
   }
+
   if (range->_valueType == RANGE_TYPE_STRING) {
     // const access
     feeder->_accessType = ACCESS_CONST;
-    parts = TRI_SplitString(range->_minValue._stringValue, ':');
+    parts = TRI_SplitString(range->_minValue._stringValue, '/');
     if (parts._length > 0) {
       if (TRI_UInt64String(parts._buffer[0]) == 
           ((TRI_collection_t*) feeder->_collection)->_cid) {
@@ -379,7 +380,7 @@ static void RewindFeederPrimaryLookup (TRI_data_feeder_t* feeder) {
       }
 
       value = TRI_AtVector(&parameters->_value._objects, 0);
-      parts = TRI_SplitString(value->_value._string.data, ':');
+      parts = TRI_SplitString(value->_value._string.data, '/');
       if (parts._length == 2) {
         if (TRI_UInt64String(parts._buffer[0]) == 
             ((TRI_collection_t*) feeder->_collection)->_cid) {
@@ -778,10 +779,96 @@ static TRI_json_t* CopyParameters (const TRI_json_t* const src) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a skiplist operation (complete instruction)
+/// @brief create a skiplist operation from JSON data
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_sl_operator_t* CreateSkipListOperation (TRI_data_feeder_t* feeder) {
+static TRI_sl_operator_t* CreateRefSkipListOperation (const TRI_data_feeder_t* const feeder,
+                                                      const TRI_json_t* const values) {
+  TRI_json_t* parameters = NULL;
+  TRI_sl_operator_t* lastOp = NULL;
+  TRI_json_t* value = NULL;
+  size_t n = feeder->_ranges->_length;
+  size_t i;
+  
+  for (i = 0; i < n; ++i) {
+    TRI_sl_operator_t* op = NULL;
+    QL_optimize_range_t* range = (QL_optimize_range_t*) feeder->_ranges->_buffer[i];
+    QL_optimize_range_compare_type_e compareType = QLGetCompareTypeRange(range);
+   
+    if (parameters == NULL) {
+      // init list
+      parameters = TRI_CreateListJson();
+    }
+    else {
+      // copy previous list
+      TRI_json_t* temp = CopyParameters(parameters);
+
+      parameters = temp;
+    }
+
+    if (!parameters) {
+      // TODO FIXME: free all operators and parameter lists created
+      return NULL;
+    }
+
+    value = TRI_LookupListJson(values, i);
+    TRI_PushBackListJson(parameters, value);
+  
+    switch (compareType) {
+      case COMPARE_TYPE_LE: {
+        // oo .. x| 
+        op = CreateSLOperator(TRI_SL_LE_OPERATOR, NULL, NULL, parameters, NULL, 1, NULL);
+        break;
+      } 
+
+      case COMPARE_TYPE_LT: {
+        // oo .. |x
+        op = CreateSLOperator(TRI_SL_LT_OPERATOR, NULL, NULL, parameters, NULL, 1, NULL);
+        break;
+      }
+
+      case COMPARE_TYPE_GE: {
+        // |x .. oo
+        op = CreateSLOperator(TRI_SL_GE_OPERATOR, NULL, NULL, parameters, NULL, 1, NULL);
+        break;
+      }
+
+      case COMPARE_TYPE_GT: {
+        // x| .. oo
+        op = CreateSLOperator(TRI_SL_GT_OPERATOR, NULL, NULL, parameters, NULL, 1, NULL);
+        break;
+      }
+
+      case COMPARE_TYPE_EQ: {
+        // x
+        op = CreateSLOperator(TRI_SL_EQ_OPERATOR, NULL, NULL, parameters, NULL, 1, NULL);
+        break;
+      }
+
+      default:
+        break;
+    }
+
+    if (op == NULL) {
+      continue;
+    }
+  
+    if (lastOp != NULL) {
+      lastOp = CreateSLOperator(TRI_SL_AND_OPERATOR, op, lastOp, NULL, NULL, 2, NULL);
+    }
+    else {
+      lastOp = op;
+    }
+  }
+
+  return lastOp;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a skiplist operation from const data 
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_sl_operator_t* CreateConstSkipListOperation (const TRI_data_feeder_t* const feeder) {
   TRI_json_t* parameters = NULL;
   TRI_sl_operator_t* lastOp = NULL;
   size_t n = feeder->_ranges->_length;
@@ -952,7 +1039,7 @@ static void InitFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
   }
   else {
     // const access
-    TRI_sl_operator_t* skiplistOperation = CreateSkipListOperation(feeder);
+    TRI_sl_operator_t* skiplistOperation = CreateConstSkipListOperation(feeder);
     if (!skiplistOperation) {
       return;
     }
@@ -977,10 +1064,15 @@ static void RewindFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
   state->_position = 0;
   
   if (feeder->_accessType == ACCESS_REF) {
+    if (state->_skiplistOperation) {
+      TRI_FreeSLOperator(state->_skiplistOperation);
+      state->_skiplistOperation = NULL;
+    }
+
     if (state->_skiplistIterator) {
       TRI_FreeSkiplistIterator(state->_skiplistIterator);
+      state->_skiplistIterator = NULL;
     }
-    state->_skiplistIterator = NULL;
 
     if (!state->_context) {
       return;
@@ -994,8 +1086,11 @@ static void RewindFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
                                     feeder->_level, 
                                     true);
     if (TRI_ExecuteRefExecutionContext (state->_context, parameters)) {
-      // TODO: fix
-    //  state->_skiplistIterator = TRI_LookupSkiplistIndex(state->_index, parameters);
+      TRI_sl_operator_t* skiplistOperation = CreateRefSkipListOperation(feeder, parameters);
+      if (skiplistOperation) {
+        state->_skiplistOperation = skiplistOperation;
+        state->_skiplistIterator = TRI_LookupSkiplistIndex(state->_index, state->_skiplistOperation); 
+      }
     }
  
     TRI_FreeJson(parameters);

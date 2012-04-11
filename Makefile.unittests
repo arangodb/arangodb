@@ -125,12 +125,14 @@ endif
 
 SHELL_SERVER = @srcdir@/js/server/tests/shell-document.js \
                @srcdir@/js/server/tests/shell-collection.js \
+               @srcdir@/js/server/tests/aql-index-primary.js \
+               @srcdir@/js/server/tests/aql-index-hash.js \
+               @srcdir@/js/server/tests/aql-index-skiplist.js \
                @srcdir@/js/server/tests/aql-simple.js \
                @srcdir@/js/server/tests/aql-keywords.js \
                @srcdir@/js/server/tests/aql-bind.js \
                @srcdir@/js/server/tests/aql-joins.js \
-               @srcdir@/js/server/tests/aql-operators.js \
-               @srcdir@/js/server/tests/aql-indexes.js
+               @srcdir@/js/server/tests/aql-operators.js 
 
 .PHONY: unittests-shell-server
 
