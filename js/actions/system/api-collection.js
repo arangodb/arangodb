@@ -62,20 +62,7 @@ function CollectionRepresentation (collection, showProperties, showCount, showFi
     var figures = collection.figures();
 
     if (figures) {
-      result.figures = {
-        alive : {
-          count : figures.numberAlive,
-          size : figures.sizeAlive
-        },
-        dead : {
-          count : figures.numberDead,
-          size : figures.sizeDead,
-          deletion : figures.numberDeletion
-        },
-        datafiles : {
-          count : figures.numberDatafiles
-        }
-      };
+      result.figures = figures;
     }
   }
 
@@ -277,9 +264,7 @@ function GET_api_collections (req, res) {
 ///
 /// - @LIT{figures.dead.deletion}: The total number of deletion markers.
 ///
-/// - @LIT{journalSize}: The maximal size of the journal in bytes.
-///
-/// - @LIT{figures.datafile.count}: The number of active datafiles.
+/// - @LIT{figures.datafiles.count}: The number of active datafiles.
 ///
 /// - @LIT{journalSize}: The maximal size of the journal in bytes.
 ///

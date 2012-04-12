@@ -805,14 +805,7 @@ AvocadoCollection.prototype.figures = function () {
 
   TRI_CheckRequestResult(requestResult);
 
-  return { 
-    numberDatafiles : requestResult.figures.datafiles.count,
-    numberAlive : requestResult.figures.alive.count,
-    sizeAlive : requestResult.figures.alive.size,
-    numberDead : requestResult.figures.dead.count,
-    sizeDead : requestResult.figures.dead.size,
-    numberDeletion : requestResult.figures.dead.deletion
-  };
+  return requestResult.figures;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -942,11 +935,16 @@ AvocadoCollection.prototype.count = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.all = function () {
-  var requestResult = this._database._connection.get("/document?collection=" + encodeURIComponent(this._id));
+  
+  var data = {
+    collection : this._id
+  }  
+  
+  var requestResult = this._database._connection.put("/_api/simple/all", JSON.stringify(data));
 
   TRI_CheckRequestResult(requestResult);
 
-  return requestResult["documents"];
+  return requestResult;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

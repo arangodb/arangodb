@@ -4253,20 +4253,21 @@ static v8::Handle<v8::Value> JS_EnsureSkiplistVocbaseCol (v8::Arguments const& a
 ///
 /// Returns an object containing all collection figures.
 ///
-/// - @LIT{numberAlive}: The number of living documents.
+/// - @LIT{alive.count}: The number of living documents.
 ///
-/// - @LIT{sizeAlive}: The total size in bytes used by all
+/// - @LIT{alive.size}: The total size in bytes used by all
 ///   living documents.
 ///
-/// - @LIT{numberDead}: The number of dead documents.
+/// - @LIT{dead.count}: The number of dead documents.
 ///
-/// - @LIT{sizeDead}: The total size in bytes used by all
+/// - @LIT{dead.size}: The total size in bytes used by all
 ///   dead documents.
 ///
-/// - @LIT{numberDatafile}: The number of active datafiles.
+/// - @LIT{dead.deletion}: The total number of deletion markers.
 ///
-/// - @LIT{numberDeletion}: The total number of deletion markers.
+/// - @LIT{datafiles.count}: The number of active datafiles.
 ///
+
 /// @EXAMPLES
 ///
 /// @verbinclude shell_collection-figures
@@ -4302,12 +4303,23 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   TRI_doc_collection_info_t* info = doc->figures(doc);
   doc->endRead(doc);
 
-  result->Set(v8::String::New("numberDatafiles"), v8::Number::New(info->_numberDatafiles));
-  result->Set(v8::String::New("numberAlive"), v8::Number::New(info->_numberAlive));
-  result->Set(v8::String::New("numberDead"), v8::Number::New(info->_numberDead));
-  result->Set(v8::String::New("sizeAlive"), v8::Number::New(info->_sizeAlive));
-  result->Set(v8::String::New("sizeDead"), v8::Number::New(info->_sizeDead));
-  result->Set(v8::String::New("numberDeletion"), v8::Number::New(info->_numberDeletion));
+  v8::Handle<v8::Object> alive = v8::Object::New();
+
+  result->Set(v8::String::New("alive"), alive);
+  alive->Set(v8::String::New("count"), v8::Number::New(info->_numberAlive));
+  alive->Set(v8::String::New("size"), v8::Number::New(info->_sizeAlive));
+
+  v8::Handle<v8::Object> dead = v8::Object::New();
+
+  result->Set(v8::String::New("dead"), dead);
+  dead->Set(v8::String::New("count"), v8::Number::New(info->_numberDead));
+  dead->Set(v8::String::New("size"), v8::Number::New(info->_sizeDead));
+  dead->Set(v8::String::New("deletion"), v8::Number::New(info->_numberDeletion));
+
+  v8::Handle<v8::Object> dfs = v8::Object::New();
+
+  result->Set(v8::String::New("datafiles"), dfs);
+  dfs->Set(v8::String::New("count"), v8::Number::New(info->_numberDatafiles));
 
   TRI_Free(info);
 
