@@ -314,9 +314,17 @@ bool RestDocumentHandler::createDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readDocument () {
-  switch (request->suffix().size()) {
+  size_t len = request->suffix().size();
+
+  switch (len) {
     case 0:
       return readAllDocuments();
+
+    case 1:
+      generateError(HttpResponse::BAD, 
+                    TRI_ERROR_AVOCADO_DOCUMENT_HANDLE_BAD,
+                    "expecting GET /document/<document-handle>");
+      return false;
 
     case 2:
       return readSingleDocument(true);
@@ -350,7 +358,8 @@ bool RestDocumentHandler::readDocument () {
 ///
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has the same revision ad the
-/// given etag. Otherwise a @LIT{HTTP 412} is returned.
+/// given etag. Otherwise a @LIT{HTTP 412} is returned. As an alternative
+/// you can supply the etag in an attribute @LIT{rev} in the URL.
 ///
 /// @EXAMPLES
 ///

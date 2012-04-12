@@ -74,6 +74,34 @@ function collectionDocumentSuiteErrorHandling () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief bad handle replace
+////////////////////////////////////////////////////////////////////////////////
+
+    testErrorHandlingBadHandleReplace : function () {
+      try {
+        collection.replace("123456", {});
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief bad handle delete
+////////////////////////////////////////////////////////////////////////////////
+
+    testErrorHandlingBadHandleDelete : function () {
+      try {
+        collection.delete("123456");
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief unknown document identifier
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -91,9 +119,37 @@ function collectionDocumentSuiteErrorHandling () {
 /// @brief cross collection
 ////////////////////////////////////////////////////////////////////////////////
 
-    testErrorHandlingCrossCollection: function () {
+    testErrorHandlingCrossCollection : function () {
       try {
         collection.document("123456/123456");
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_AVOCADO_CROSS_COLLECTION_REQUEST.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cross collection replace
+////////////////////////////////////////////////////////////////////////////////
+
+    testErrorHandlingCrossCollectionReplace : function () {
+      try {
+        collection.replace("123456/123456", {});
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_AVOCADO_CROSS_COLLECTION_REQUEST.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cross collection delete
+////////////////////////////////////////////////////////////////////////////////
+
+    testErrorHandlingCrossCollectionDelete : function () {
+      try {
+        collection.delete("123456/123456");
         fail();
       }
       catch (err) {
@@ -219,7 +275,7 @@ function collectionDocumentSuiteReadDocument () {
       assertEqual(a2._rev, doc2._rev);
       assertEqual(2, doc2.a);
 
-      var a4 = collection.replace(a2, { a : 4 }, true);
+      var a4 = collection.replace(a1, { a : 4 }, true);
 
       assertEqual(a1._id, a4._id);
       assertNotEqual(a1._rev, a4._rev);
@@ -262,6 +318,27 @@ function collectionDocumentSuiteReadDocument () {
       var a4 = collection.delete(a1, true);
 
       assertEqual(a4, false);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete a deleted document
+////////////////////////////////////////////////////////////////////////////////
+
+    testDeleteDeletedDocument : function () {
+      var a1 = collection.save({ a : 1});
+
+      assertTypeOf("string", a1._id);
+      assertTypeOf("number", a1._rev);
+
+      collection.delete(a1);
+
+      try {
+        collection.delete(a1);
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_AVOCADO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+      }
     }
   };
 }
@@ -287,6 +364,34 @@ function documentSuiteErrorHandling () {
     testErrorHandlingBadHandle : function () {
       try {
         db._document("123456");
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief bad handle replace
+////////////////////////////////////////////////////////////////////////////////
+
+    testErrorHandlingBadHandleReplace : function () {
+      try {
+        db._replace("123456", {});
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief bad handle delete
+////////////////////////////////////////////////////////////////////////////////
+
+    testErrorHandlingBadHandleDelete : function () {
+      try {
+        db._delete("123456");
         fail();
       }
       catch (err) {
@@ -419,7 +524,7 @@ function documentSuiteReadDocument () {
       assertEqual(a2._rev, doc2._rev);
       assertEqual(2, doc2.a);
 
-      var a4 = db._replace(a2, { a : 4 }, true);
+      var a4 = db._replace(a1, { a : 4 }, true);
 
       assertEqual(a1._id, a4._id);
       assertNotEqual(a1._rev, a4._rev);
@@ -462,6 +567,27 @@ function documentSuiteReadDocument () {
       var a4 = db._delete(a1, true);
 
       assertEqual(a4, false);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete a deleted document
+////////////////////////////////////////////////////////////////////////////////
+
+    testDeleteDeletedDocument : function () {
+      var a1 = collection.save({ a : 1});
+
+      assertTypeOf("string", a1._id);
+      assertTypeOf("number", a1._rev);
+
+      db._delete(a1);
+
+      try {
+        db._delete(a1);
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_AVOCADO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+      }
     }
   };
 }

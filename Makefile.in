@@ -32,9 +32,6 @@
 
 # -*- mode: Makefile; -*-
 
-################################################################################
-################################################################################
-
 # -*- mode: Makefile; -*-
 
 ################################################################################
@@ -303,7 +300,8 @@ am__DEPENDENCIES_1 =
 avocado_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_1)
 am_avocsh_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
 	SimpleHttpClient/SimpleHttpResult.$(OBJEXT) \
-	V8Client/V8ClientConnection.$(OBJEXT) V8Client/shell.$(OBJEXT)
+	V8Client/V8ClientConnection.$(OBJEXT) \
+	V8Client/avocsh.$(OBJEXT)
 avocsh_OBJECTS = $(am_avocsh_OBJECTS)
 avocsh_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_1)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/config -I$(top_builddir)/BasicsC
@@ -776,7 +774,7 @@ avocsh_SOURCES = \
 	SimpleHttpClient/SimpleHttpClient.cpp \
 	SimpleHttpClient/SimpleHttpResult.cpp \
 	V8Client/V8ClientConnection.cpp \
-	V8Client/shell.cpp
+	V8Client/avocsh.cpp
 
 
 ################################################################################
@@ -890,12 +888,14 @@ WIKI = \
 	UserManualShellStartStop  \
 	jsUnity
 
+FORCE = 0
 
 ################################################################################
 ################################################################################
 PID := $(shell echo $$PPID)
 PIDFILE := /tmp/avocado.$(PID).pid
 VOCDIR := /tmp/vocdir.$(PID)
+VOCDIR2 := /tmp/vocdir2.$(PID)
 VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
 VOCHOST := 127.0.0.1
 @ENABLE_BOOST_TEST_TRUE@UnitTests_test_suite_LDADD = -L@top_builddir@ -lavocado -lboost_unit_test_framework
@@ -924,7 +924,14 @@ SHELL_SERVER = @srcdir@/js/common/tests/shell-document.js \
                @srcdir@/js/server/tests/aql-joins.js \
                @srcdir@/js/server/tests/aql-operators.js 
 
-OPTION = $(addprefix --unit-tests ,$(SHELL_SERVER))
+OPTION_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
+
+################################################################################
+################################################################################
+SHELL_CLIENT = @srcdir@/js/common/tests/shell-document.js \
+               @srcdir@/js/common/tests/shell-collection.js
+
+OPTION_CLIENT = $(addprefix --unit-tests ,$(SHELL_CLIENT))
 @ENABLE_32BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.ia32
 @ENABLE_64BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.x64
 @ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_FALSE@LIBEV_CFLAGS_32 = -O2 -g
@@ -1704,7 +1711,7 @@ V8Client/$(DEPDIR)/$(am__dirstamp):
 	@: > V8Client/$(DEPDIR)/$(am__dirstamp)
 V8Client/V8ClientConnection.$(OBJEXT): V8Client/$(am__dirstamp) \
 	V8Client/$(DEPDIR)/$(am__dirstamp)
-V8Client/shell.$(OBJEXT): V8Client/$(am__dirstamp) \
+V8Client/avocsh.$(OBJEXT): V8Client/$(am__dirstamp) \
 	V8Client/$(DEPDIR)/$(am__dirstamp)
 avocsh$(EXEEXT): $(avocsh_OBJECTS) $(avocsh_DEPENDENCIES) 
 	@rm -f avocsh$(EXEEXT)
@@ -1865,7 +1872,7 @@ mostlyclean-compile:
 	-rm -f V8/v8-utils.$(OBJEXT)
 	-rm -f V8/v8-vocbase.$(OBJEXT)
 	-rm -f V8Client/V8ClientConnection.$(OBJEXT)
-	-rm -f V8Client/shell.$(OBJEXT)
+	-rm -f V8Client/avocsh.$(OBJEXT)
 	-rm -f Variant/VariantArray.$(OBJEXT)
 	-rm -f Variant/VariantBlob.$(OBJEXT)
 	-rm -f Variant/VariantBoolean.$(OBJEXT)
@@ -2071,7 +2078,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-vocbase.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8Client/$(DEPDIR)/V8ClientConnection.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@V8Client/$(DEPDIR)/shell.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@V8Client/$(DEPDIR)/avocsh.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Variant/$(DEPDIR)/VariantArray.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Variant/$(DEPDIR)/VariantBlob.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Variant/$(DEPDIR)/VariantBoolean.Po@am__quote@
@@ -2654,11 +2661,14 @@ js/client/js-%.h: @srcdir@/js/client/%.js .setup-directories
 js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
 	@top_srcdir@/config/js2c.sh $< > $@
 
+################################################################################
+################################################################################
+
 .PHONY: unittests unittests-brief unittests-verbose
 
 unittests: unittests-verbose unittests-brief
 
-unittests-brief: unittests-boost unittests-shell-server unittests-http-server
+unittests-brief: unittests-boost unittests-shell-server unittests-shell-client unittests-http-server
 
 unittests-verbose:
 	@echo "################################################################################"
@@ -2667,15 +2677,15 @@ unittests-verbose:
 	@echo "# library files or configure the AvocadoDB in such a way, that it uses a       #"
 	@echo "# relative path.                                                               #"
 	@echo "#                                                                              #"
-	@echo "# Library Files                                                                #"
-	@echo "# -------------                                                                #"
+	@echo "# Option 1: Library Files                                                      #"
+	@echo "# -----------------------                                                      #"
 	@echo "#                                                                              #"
 	@echo "#   > ./configure ....                                                         #"
 	@echo "#   > make install                                                             #"
 	@echo "#   > make unittests                                                           #"
 	@echo "#                                                                              #"
-	@echo "# Relative Paths                                                               #"
-	@echo "# --------------                                                               #"
+	@echo "# Option 2: Relative Paths                                                     #"
+	@echo "# ------------------------                                                     #"
 	@echo "#                                                                              #"
 	@echo "#   > ./configure --enable-relative=devel ...                                  #"
 	@echo "#   > make unittests                                                           #"
@@ -2721,7 +2731,7 @@ start-server:
 @ENABLE_BOOST_TEST_TRUE@	@echo "================================================================================"
 @ENABLE_BOOST_TEST_TRUE@	@echo
 
-@ENABLE_BOOST_TEST_TRUE@	@builddir@/UnitTests/test_suite --show_progress
+@ENABLE_BOOST_TEST_TRUE@	@builddir@/UnitTests/test_suite --show_progress || test "$(FORCE)" == "1"
 
 @ENABLE_BOOST_TEST_TRUE@	@echo
 
@@ -2747,12 +2757,25 @@ unittests-shell-server:
 	@echo "================================================================================"
 	@echo
 
-	@rm -rf "$(VOCDIR)"
-	@mkdir "$(VOCDIR)"
+	@rm -rf "$(VOCDIR2)"
+	@mkdir "$(VOCDIR2)"
 
-	@builddir@/avocado "$(VOCDIR)" $(OPTION)
+	@builddir@/avocado "$(VOCDIR2)" $(OPTION_SERVER) || test "$(FORCE)" == "1"
 
-	@rm -rf "$(VOCDIR)"
+	@rm -rf "$(VOCDIR2)"
+
+	@echo
+
+.PHONY: unittests-shell-client
+
+unittests-shell-client: start-server
+	@echo
+	@echo "================================================================================"
+	@echo "|| SHELL CLIENT TESTS                                                         ||"
+	@echo "================================================================================"
+	@echo
+
+	@builddir@/avocsh --server $(VOCHOST):$(VOCPORT) "$(VOCDIR)" $(OPTION_CLIENT) || test "$(FORCE)" == "1"
 
 	@echo
 
@@ -2768,7 +2791,7 @@ unittests-http-server: start-server
 	@echo "================================================================================"
 	@echo
 
-	cd @srcdir@/UnitTests/HttpInterface && AVOCADO_SERVER="$(VOCHOST):$(VOCPORT)" ./run_tests
+	cd @srcdir@/UnitTests/HttpInterface && AVOCADO_SERVER="$(VOCHOST):$(VOCPORT)" ./run_tests || test "$(FORCE)" == "1"
 
 	@echo
 

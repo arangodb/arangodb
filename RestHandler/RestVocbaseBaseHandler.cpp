@@ -32,7 +32,13 @@
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/strings.h"
 #include "Rest/HttpRequest.h"
+#include "ResultGenerator/OutputGenerator.h"
 #include "ShapedJson/shaped-json.h"
+#include "Variant/VariantArray.h"
+#include "Variant/VariantBoolean.h"
+#include "Variant/VariantInt32.h"
+#include "Variant/VariantString.h"
+#include "Variant/VariantUInt64.h"
 #include "VocBase/document-collection.h"
 
 using namespace std;
@@ -299,14 +305,27 @@ void RestVocbaseBaseHandler::generateForbidden () {
 
 void RestVocbaseBaseHandler::generatePreconditionFailed (TRI_voc_cid_t cid, TRI_voc_did_t did, TRI_voc_rid_t rid) {
   response = new HttpResponse(HttpResponse::PRECONDITION_FAILED);
-  response->setContentType("application/json; charset=utf-8");
 
-  response->body()
-    .appendText("{\"error\":true,\"_id\":\"")
-    .appendInteger(cid).appendChar(TRI_DOCUMENT_HANDLE_SEPARATOR_CHR).appendInteger(did)
-    .appendText("\",\"_rev\":")
-    .appendInteger(rid)
-    .appendText("}");
+  VariantArray* result = new VariantArray();
+  result->add("error", new VariantBoolean(true));
+  result->add("code", new VariantInt32((int32_t) HttpResponse::PRECONDITION_FAILED));
+  result->add("errorNum", new VariantInt32((int32_t) TRI_ERROR_AVOCADO_CONFLICT));
+  result->add("errorMessage", new VariantString("precondition failed"));
+  result->add("_id", new VariantString(StringUtils::itoa(cid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::itoa(did)));
+  result->add("_rev", new VariantUInt64(rid));
+
+  string contentType;
+  bool ok = OutputGenerator::output(selectResultGenerator(request), response->body(), result, contentType);
+
+  if (ok) {
+    response->setContentType(contentType);
+  }
+  else {
+    delete response;
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "cannot generate response");
+  }
+
+  delete result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

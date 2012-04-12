@@ -46,33 +46,6 @@ using namespace triagens::rest;
 using namespace triagens::admin;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup RestServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief selects an output format
-////////////////////////////////////////////////////////////////////////////////
-
-string SelectResultGenerator (HttpRequest* request) {
-  string format = request->header("accept");
-
-  if (format.empty()) {
-    return "application/json; charset=utf-8";
-  }
-
-  return format;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -167,7 +140,7 @@ void RestBaseHandler::generateResult (VariantObject* result) {
   response = new HttpResponse(HttpResponse::OK);
 
   string contentType;
-  bool ok = OutputGenerator::output(SelectResultGenerator(request), response->body(), result, contentType);
+  bool ok = OutputGenerator::output(selectResultGenerator(request), response->body(), result, contentType);
 
   if (ok) {
     response->setContentType(contentType);
@@ -211,7 +184,7 @@ void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int er
   result->add("errorMessage", new VariantString(message));
 
   string contentType;
-  bool ok = OutputGenerator::output(SelectResultGenerator(request), response->body(), result, contentType);
+  bool ok = OutputGenerator::output(selectResultGenerator(request), response->body(), result, contentType);
 
   if (ok) {
     response->setContentType(contentType);
@@ -246,6 +219,20 @@ bool RestBaseHandler::parseBody (InputParser::ObjectDescription& desc) {
   }
 
   return ok;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects an output format
+////////////////////////////////////////////////////////////////////////////////
+
+string RestBaseHandler::selectResultGenerator (HttpRequest* request) {
+  string format = request->header("accept");
+
+  if (format.empty()) {
+    return "application/json; charset=utf-8";
+  }
+
+  return format;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

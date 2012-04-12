@@ -363,6 +363,11 @@ helpAvocadoDatabase = TRI_CreateHelpHeadline("AvocadoDatabase help") +
 '  _truncate(<name>)              delete all documents               ' + "\n" +
 '  _drop(<name>)                  delete a collection                ' + "\n" +
 '                                                                    ' + "\n" +
+'Document Functions:                                                 ' + "\n" +
+'  _document(<id>)                 get document by handle            ' + "\n" +
+'  _replace(<id>, <data>)          over-writes document              ' + "\n" +
+'  _delete(<id>)                   deletes document                  ' + "\n" +
+'                                                                    ' + "\n" +
 'Query Functions:                                                    ' + "\n" +
 '  _createStatement(<data>);      create and return select query     ' + "\n" +
 '                                                                    ' + "\n" +
@@ -510,6 +515,140 @@ AvocadoDatabase.prototype.toString = function () {
   return "[object AvocadoDatabase]";
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a single document from the collection, identified by its id
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._document = function (id) {
+  var rev = null;
+  var requestResult;
+
+  if (id.hasOwnProperty("_id")) {
+    if (id.hasOwnProperty("_rev")) {
+      rev = id._rev;
+    }
+
+    id = id._id;
+  }
+
+  if (rev == null) {
+    requestResult = this._connection.get("/document/" + id);
+  }
+  else {
+    requestResult = this._connection.get("/document/" + id, {'if-match' : '"' + rev + '"' });
+  }
+
+  if (requestResult != null
+      && requestResult.error == true 
+      && requestResult.errorNum == internal.errors.ERROR_AVOCADO_COLLECTION_NOT_FOUND.code) {
+    var s = id.split("/");
+
+    if (s.length != 2) {
+      requestResult.errorNum = internal.errors.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code;
+    }
+
+    throw new AvocadoError(requestResult);
+  }
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete a document in the collection, identified by its id
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._delete = function (id, overwrite) {
+  var rev = null;
+  var requestResult;
+
+  if (id.hasOwnProperty("_id")) {
+    if (id.hasOwnProperty("_rev")) {
+      rev = id._rev;
+    }
+
+    id = id._id;
+  }
+
+  var policy = "";
+
+  if (overwrite) {
+    policy = "?policy=last";
+  }
+
+  if (rev == null) {
+    requestResult = this._connection.delete("/document/" + id + policy);
+  }
+  else {
+    requestResult = this._connection.delete("/document/" + id + policy, {'if-match' : '"' + rev + '"' });
+  }
+
+  if (requestResult != null && requestResult.error == true) {
+    var s = id.split("/");
+
+    if (s.length != 2) {
+      requestResult.errorNum = internal.errors.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code;
+    }
+
+    if (overwrite) {
+      if (requestResult.errorNum == internal.errors.ERROR_AVOCADO_DOCUMENT_NOT_FOUND.code) {
+        return false;
+      }
+    }
+
+    throw new AvocadoError(requestResult);
+  }
+
+  TRI_CheckRequestResult(requestResult);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a document in the collection, identified by its id
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._replace = function (id, data, overwrite) { 
+  var rev = null;
+  var requestResult;
+
+  if (id.hasOwnProperty("_id")) {
+    if (id.hasOwnProperty("_rev")) {
+      rev = id._rev;
+    }
+
+    id = id._id;
+  }
+
+  var policy = "";
+
+  if (overwrite) {
+    policy = "?policy=last";
+  }
+
+  if (rev == null) {
+    requestResult = this._connection.put("/document/" + id + policy, JSON.stringify(data));
+  }
+  else {
+    requestResult = this._connection.put("/document/" + id + policy, JSON.stringify(data), {'if-match' : '"' + rev + '"' });
+  }
+
+  if (requestResult != null && requestResult.error == true) {
+    var s = id.split("/");
+
+    if (s.length != 2) {
+      requestResult.errorNum = internal.errors.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code;
+    }
+
+    throw new AvocadoError(requestResult);
+  }
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 AvocadoCollection
 // -----------------------------------------------------------------------------
@@ -560,8 +699,8 @@ helpAvocadoCollection = TRI_CreateHelpHeadline("AvocadoCollection help") +
 '  count()                         number of documents               ' + "\n" +
 '  save(<data>)                    create document and return handle ' + "\n" +
 '  document(<id>)                  get document by handle            ' + "\n" +
-'  update(<id>, <data>)            over writes document by handle    ' + "\n" +
-'  delete(<id>)                    deletes document by handle        ' + "\n" +
+'  replace(<id>, <data>)           over-writes document              ' + "\n" +
+'  delete(<id>)                    deletes document                  ' + "\n" +
 '                                                                    ' + "\n" +
 'Attributes:                                                         ' + "\n" +
 '  _database                       database object                   ' + "\n" +
@@ -815,7 +954,38 @@ AvocadoCollection.prototype.all = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.document = function (id) {
-  var requestResult = this._database._connection.get("/document/" + id);
+  var rev = null;
+  var requestResult;
+
+  if (id.hasOwnProperty("_id")) {
+    if (id.hasOwnProperty("_rev")) {
+      rev = id._rev;
+    }
+
+    id = id._id;
+  }
+
+  if (rev == null) {
+    requestResult = this._database._connection.get("/document/" + id);
+  }
+  else {
+    requestResult = this._database._connection.get("/document/" + id, {'if-match' : '"' + rev + '"' });
+  }
+
+  if (requestResult != null
+      && requestResult.error == true 
+      && requestResult.errorNum == internal.errors.ERROR_AVOCADO_COLLECTION_NOT_FOUND.code) {
+    var s = id.split("/");
+
+    if (s.length != 2) {
+      requestResult.errorNum = internal.errors.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code;
+    }
+    else if (s[0] != this._id) {
+      requestResult.errorNum = internal.errors.ERROR_AVOCADO_CROSS_COLLECTION_REQUEST.code;
+    }
+
+    throw new AvocadoError(requestResult);
+  }
 
   TRI_CheckRequestResult(requestResult);
 
@@ -838,28 +1008,96 @@ AvocadoCollection.prototype.save = function (data) {
 /// @brief delete a document in the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.delete = function (id) {
+AvocadoCollection.prototype.delete = function (id, overwrite) {
+  var rev = null;
+  var requestResult;
+
   if (id.hasOwnProperty("_id")) {
+    if (id.hasOwnProperty("_rev")) {
+      rev = id._rev;
+    }
+
     id = id._id;
   }
 
-  var requestResult = this._database._connection.delete("/document/" + id);
+  var policy = "";
+
+  if (overwrite) {
+    policy = "?policy=last";
+  }
+
+  if (rev == null) {
+    requestResult = this._database._connection.delete("/document/" + id + policy);
+  }
+  else {
+    requestResult = this._database._connection.delete("/document/" + id + policy, {'if-match' : '"' + rev + '"' });
+  }
+
+  if (requestResult != null && requestResult.error == true) {
+    var s = id.split("/");
+
+    if (s.length != 2) {
+      requestResult.errorNum = internal.errors.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code;
+    }
+    else if (s[0] != this._id) {
+      requestResult.errorNum = internal.errors.ERROR_AVOCADO_CROSS_COLLECTION_REQUEST.code;
+    }
+
+    if (overwrite) {
+      if (requestResult.errorNum == internal.errors.ERROR_AVOCADO_DOCUMENT_NOT_FOUND.code) {
+        return false;
+      }
+    }
+
+    throw new AvocadoError(requestResult);
+  }
 
   TRI_CheckRequestResult(requestResult);
 
-  return requestResult;
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update a document in the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.update = function (id, data) {    
+AvocadoCollection.prototype.replace = function (id, data, overwrite) { 
+  var rev = null;
+  var requestResult;
+
   if (id.hasOwnProperty("_id")) {
+    if (id.hasOwnProperty("_rev")) {
+      rev = id._rev;
+    }
+
     id = id._id;
   }
 
-  var requestResult = this._database._connection.put("/document/" + id, JSON.stringify(data));
+  var policy = "";
+
+  if (overwrite) {
+    policy = "?policy=last";
+  }
+
+  if (rev == null) {
+    requestResult = this._database._connection.put("/document/" + id + policy, JSON.stringify(data));
+  }
+  else {
+    requestResult = this._database._connection.put("/document/" + id + policy, JSON.stringify(data), {'if-match' : '"' + rev + '"' });
+  }
+
+  if (requestResult != null && requestResult.error == true) {
+    var s = id.split("/");
+
+    if (s.length != 2) {
+      requestResult.errorNum = internal.errors.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code;
+    }
+    else if (s[0] != this._id) {
+      requestResult.errorNum = internal.errors.ERROR_AVOCADO_CROSS_COLLECTION_REQUEST.code;
+    }
+
+    throw new AvocadoError(requestResult);
+  }
 
   TRI_CheckRequestResult(requestResult);
 
