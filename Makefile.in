@@ -895,7 +895,6 @@ FORCE = 0
 PID := $(shell echo $$PPID)
 PIDFILE := /tmp/avocado.$(PID).pid
 VOCDIR := /tmp/vocdir.$(PID)
-VOCDIR2 := /tmp/vocdir2.$(PID)
 VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
 VOCHOST := 127.0.0.1
 @ENABLE_BOOST_TEST_TRUE@UnitTests_test_suite_LDADD = -L@top_builddir@ -lavocado -lboost_unit_test_framework
@@ -2757,18 +2756,20 @@ unittests-shell-server:
 	@echo "================================================================================"
 	@echo
 
-	@rm -rf "$(VOCDIR2)"
-	@mkdir "$(VOCDIR2)"
+	@rm -rf "$(VOCDIR)"
+	@mkdir "$(VOCDIR)"
 
-	@builddir@/avocado "$(VOCDIR2)" $(OPTION_SERVER) || test "$(FORCE)" == "1"
+	@builddir@/avocado "$(VOCDIR)" $(OPTION_SERVER) || test "$(FORCE)" == "1"
 
-	@rm -rf "$(VOCDIR2)"
+	@rm -rf "$(VOCDIR)"
 
 	@echo
 
 .PHONY: unittests-shell-client
 
-unittests-shell-client: start-server
+unittests-shell-client:
+	$(MAKE) start-server PID=$(PID)
+
 	@echo
 	@echo "================================================================================"
 	@echo "|| SHELL CLIENT TESTS                                                         ||"
@@ -2777,6 +2778,11 @@ unittests-shell-client: start-server
 
 	@builddir@/avocsh --server $(VOCHOST):$(VOCPORT) "$(VOCDIR)" $(OPTION_CLIENT) || test "$(FORCE)" == "1"
 
+	kill `cat $(PIDFILE)`
+	while test -f $(PIDFILE); do sleep 1; done
+
+	@rm -rf "$(VOCDIR)"
+
 	@echo
 
 ################################################################################
@@ -2784,7 +2790,9 @@ unittests-shell-client: start-server
 
 .PHONY: unittests-http-server
 
-unittests-http-server: start-server
+unittests-http-server:
+	$(MAKE) start-server PID=$(PID)
+
 	@echo
 	@echo "================================================================================"
 	@echo "|| HTTP SERVER TESTS                                                          ||"
@@ -2792,6 +2800,11 @@ unittests-http-server: start-server
 	@echo
 
 	cd @srcdir@/UnitTests/HttpInterface && AVOCADO_SERVER="$(VOCHOST):$(VOCPORT)" ./run_tests || test "$(FORCE)" == "1"
+
+	kill `cat $(PIDFILE)`
+	while test -f $(PIDFILE); do sleep 1; done
+
+	@rm -rf "$(VOCDIR)"
 
 	@echo
 

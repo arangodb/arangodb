@@ -428,56 +428,56 @@ function collectionSuite () {
 
       var f = c1.figures();
 
-      assertEqual(0, f.numberDatafiles);
-      assertEqual(0, f.numberAlive);
-      assertEqual(0, f.sizeAlive);
-      assertEqual(0, f.numberDead);
-      assertEqual(0, f.sizeDead);
-      assertEqual(0, f.numberDeletion);
+      assertEqual(0, f.datafiles.count);
+      assertEqual(0, f.alive.count);
+      assertEqual(0, f.alive.size);
+      assertEqual(0, f.dead.count);
+      assertEqual(0, f.dead.size);
+      assertEqual(0, f.dead.deletion);
 
       var d1 = c1.save({ hallo : 1 });
 
       f = c1.figures();
 
-      assertEqual(1, f.numberDatafiles);
-      assertEqual(1, f.numberAlive);
-      assertNotEqual(0, f.sizeAlive);
-      assertEqual(0, f.numberDead);
-      assertEqual(0, f.sizeDead);
-      assertEqual(0, f.numberDeletion);
+      assertEqual(1, f.datafiles.count);
+      assertEqual(1, f.alive.count);
+      assertNotEqual(0, f.alive.size);
+      assertEqual(0, f.dead.count);
+      assertEqual(0, f.dead.size);
+      assertEqual(0, f.dead.deletion);
 
       var d2 = c1.save({ hallo : 2 });
 
       f = c1.figures();
 
-      assertEqual(1, f.numberDatafiles);
-      assertEqual(2, f.numberAlive);
-      assertNotEqual(0, f.sizeAlive);
-      assertEqual(0, f.numberDead);
-      assertEqual(0, f.sizeDead);
-      assertEqual(0, f.numberDeletion);
+      assertEqual(1, f.datafiles.count);
+      assertEqual(2, f.alive.count);
+      assertNotEqual(0, f.alive.size);
+      assertEqual(0, f.dead.count);
+      assertEqual(0, f.dead.size);
+      assertEqual(0, f.dead.deletion);
 
       c1.delete(d1);
 
       f = c1.figures();
 
-      assertEqual(1, f.numberDatafiles);
-      assertEqual(1, f.numberAlive);
-      assertNotEqual(0, f.sizeAlive);
-      assertEqual(1, f.numberDead);
-      assertNotEqual(0, f.sizeDead);
-      assertEqual(1, f.numberDeletion);
+      assertEqual(1, f.datafiles.count);
+      assertEqual(1, f.alive.count);
+      assertNotEqual(0, f.alive.size);
+      assertEqual(1, f.dead.count);
+      assertNotEqual(0, f.dead.size);
+      assertEqual(1, f.dead.deletion);
 
       c1.delete(d2);
 
       f = c1.figures();
 
-      assertEqual(1, f.numberDatafiles);
-      assertEqual(0, f.numberAlive);
-      assertEqual(0, f.sizeAlive);
-      assertEqual(2, f.numberDead);
-      assertNotEqual(0, f.sizeDead);
-      assertEqual(2, f.numberDeletion);
+      assertEqual(1, f.datafiles.count);
+      assertEqual(0, f.alive.count);
+      assertEqual(0, f.alive.size);
+      assertEqual(2, f.dead.count);
+      assertNotEqual(0, f.dead.size);
+      assertEqual(2, f.dead.deletion);
 
       db._drop(cn);
     }
