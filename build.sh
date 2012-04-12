@@ -126,3 +126,14 @@ for result in $RESULTS;  do
     echo
   fi
 done
+
+echo
+
+echo
+echo "########################################################"
+echo "unittests:"
+echo "    make unittests"
+echo "########################################################"
+echo
+
+make unittests FORCE=1
