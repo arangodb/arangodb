@@ -3721,6 +3721,8 @@ static v8::Handle<v8::Value> JS_DeleteVocbaseCol (v8::Arguments const& argv) {
 /// An error is thrown if there @LIT{_rev} does not longer match the current
 /// revision of the document.
 ///
+/// An error is thrown if the document does not exists.
+///
 /// The document must be part of the @FA{collection}; otherwise, an error
 /// is thrown.
 ///

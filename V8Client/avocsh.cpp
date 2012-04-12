@@ -151,6 +151,12 @@ static bool prettyPrint = false;
 static bool noAutoComplete = false;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief unit file test cases
+////////////////////////////////////////////////////////////////////////////////
+
+static vector<string> UnitTests;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -339,6 +345,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("pretty-print", "pretty print values")          
     ("no-colors", "deactivate color support")
     ("no-auto-complete", "disable auto completion")
+    ("unit-tests", &UnitTests, "do not start as shell, run unit tests instead")
     (hidden, true)
   ;
 
@@ -461,7 +468,7 @@ static T* UnwrapClass (v8::Handle<v8::Object> obj, int32_t type) {
 /// @brief ClientConnection constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ClientConnection_ConstructorCallback(v8::Arguments const& argv) {
+static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   string server = DEFAULT_SERVER_NAME;
@@ -501,7 +508,7 @@ static v8::Handle<v8::Value> ClientConnection_ConstructorCallback(v8::Arguments 
 /// @brief ClientConnection method "httpGet"
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ClientConnection_httpGet(v8::Arguments const& argv) {
+static v8::Handle<v8::Value> ClientConnection_httpGet (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // get the connection
@@ -531,7 +538,7 @@ static v8::Handle<v8::Value> ClientConnection_httpGet(v8::Arguments const& argv)
 /// @brief ClientConnection method "httpDelete"
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ClientConnection_httpDelete(v8::Arguments const& argv) {
+static v8::Handle<v8::Value> ClientConnection_httpDelete (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // get the connection
@@ -561,7 +568,7 @@ static v8::Handle<v8::Value> ClientConnection_httpDelete(v8::Arguments const& ar
 /// @brief ClientConnection method "httpPost"
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ClientConnection_httpPost(v8::Arguments const& argv) {
+static v8::Handle<v8::Value> ClientConnection_httpPost (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // get the connection
@@ -592,7 +599,7 @@ static v8::Handle<v8::Value> ClientConnection_httpPost(v8::Arguments const& argv
 /// @brief ClientConnection method "httpPut"
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ClientConnection_httpPut(v8::Arguments const& argv) {
+static v8::Handle<v8::Value> ClientConnection_httpPut (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // get the connection
@@ -623,7 +630,7 @@ static v8::Handle<v8::Value> ClientConnection_httpPut(v8::Arguments const& argv)
 /// @brief ClientConnection method "lastError"
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ClientConnection_lastHttpReturnCode(v8::Arguments const& argv) {
+static v8::Handle<v8::Value> ClientConnection_lastHttpReturnCode (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // get the connection
@@ -645,7 +652,7 @@ static v8::Handle<v8::Value> ClientConnection_lastHttpReturnCode(v8::Arguments c
 /// @brief ClientConnection method "lastErrorMessage"
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ClientConnection_lastErrorMessage(v8::Arguments const& argv) {
+static v8::Handle<v8::Value> ClientConnection_lastErrorMessage (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // get the connection
@@ -667,7 +674,7 @@ static v8::Handle<v8::Value> ClientConnection_lastErrorMessage(v8::Arguments con
 /// @brief ClientConnection method "isConnected"
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ClientConnection_isConnected(v8::Arguments const& argv) {
+static v8::Handle<v8::Value> ClientConnection_isConnected (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // get the connection
@@ -688,7 +695,7 @@ static v8::Handle<v8::Value> ClientConnection_isConnected(v8::Arguments const& a
 /// @brief ClientConnection method "isConnected"
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ClientConnection_toString(v8::Arguments const& argv) {
+static v8::Handle<v8::Value> ClientConnection_toString (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // get the connection
@@ -723,7 +730,7 @@ static v8::Handle<v8::Value> ClientConnection_toString(v8::Arguments const& argv
 /// @brief ClientConnection method "isConnected"
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ClientConnection_getVersion(v8::Arguments const& argv) {
+static v8::Handle<v8::Value> ClientConnection_getVersion (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // get the connection
@@ -807,6 +814,43 @@ static void RunShell (v8::Handle<v8::Context> context) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief runs the unit tests
+////////////////////////////////////////////////////////////////////////////////
+
+static bool RunUnitTests (v8::Handle<v8::Context> context) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+  bool ok;
+
+  // set-up unit tests array
+  v8::Handle<v8::Array> sysTestFiles = v8::Array::New();
+
+  for (size_t i = 0;  i < UnitTests.size();  ++i) {
+    sysTestFiles->Set((uint32_t) i, v8::String::New(UnitTests[i].c_str()));
+  }
+
+  context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
+  context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
+
+  // run tests
+  char const* input = "require(\"jsunity\").runCommandLineTests();";
+  v8::Local<v8::String> name(v8::String::New("(avocsh)"));
+  TRI_ExecuteStringVocBase(context, v8::String::New(input), name, true);
+      
+  if (tryCatch.HasCaught()) {
+    cout << TRI_StringifyV8Exception(&tryCatch);
+    ok = false;
+  }
+  else {
+    ok = TRI_ObjectToBoolean(context->Global()->Get(v8::String::New("SYS_UNIT_TESTS_RESULT")));
+  }
+
+  return ok;
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief adding colors for output
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -879,6 +923,7 @@ static void addColors (v8::Handle<v8::Context> context) {
 int main (int argc, char* argv[]) {
   TRIAGENS_C_INITIALISE;
   TRI_InitialiseLogging(false);
+  int ret = EXIT_SUCCESS;
 
   // .............................................................................
   // use relative system paths
@@ -1083,7 +1128,16 @@ int main (int argc, char* argv[]) {
       }
     }
     
-    RunShell(context);
+    if (UnitTests.empty()) {
+      RunShell(context);
+    }
+    else {
+      bool ok = RunUnitTests(context);
+
+      if (! ok) {
+        ret = EXIT_FAILURE;
+      }
+    }
   }
   else {
     printf("Could not connect to server %s:%d\n", DEFAULT_SERVER_NAME.c_str(), DEFAULT_SERVER_PORT);
@@ -1094,7 +1148,7 @@ int main (int argc, char* argv[]) {
   context.Dispose();
   v8::V8::Dispose();
 
-  return 0;
+  return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

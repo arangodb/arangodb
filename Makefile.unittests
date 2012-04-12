@@ -1,5 +1,7 @@
 # -*- mode: Makefile; -*-
 
+FORCE = 0
+
 ################################################################################
 ## unittests target
 ################################################################################
@@ -8,7 +10,7 @@
 
 unittests: unittests-verbose unittests-brief
 
-unittests-brief: unittests-boost unittests-shell-server unittests-http-server
+unittests-brief: unittests-boost unittests-shell-server unittests-shell-client unittests-http-server
 
 unittests-verbose:
 	@echo "################################################################################"
@@ -17,15 +19,15 @@ unittests-verbose:
 	@echo "# library files or configure the AvocadoDB in such a way, that it uses a       #"
 	@echo "# relative path.                                                               #"
 	@echo "#                                                                              #"
-	@echo "# Library Files                                                                #"
-	@echo "# -------------                                                                #"
+	@echo "# Option 1: Library Files                                                      #"
+	@echo "# -----------------------                                                      #"
 	@echo "#                                                                              #"
 	@echo "#   > ./configure ....                                                         #"
 	@echo "#   > make install                                                             #"
 	@echo "#   > make unittests                                                           #"
 	@echo "#                                                                              #"
-	@echo "# Relative Paths                                                               #"
-	@echo "# --------------                                                               #"
+	@echo "# Option 2: Relative Paths                                                     #"
+	@echo "# ------------------------                                                     #"
 	@echo "#                                                                              #"
 	@echo "#   > ./configure --enable-relative=devel ...                                  #"
 	@echo "#   > make unittests                                                           #"
@@ -42,6 +44,7 @@ unittests-verbose:
 PID := $(shell echo $$PPID)
 PIDFILE := /tmp/avocado.$(PID).pid
 VOCDIR := /tmp/vocdir.$(PID)
+VOCDIR2 := /tmp/vocdir2.$(PID)
 VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
 VOCHOST := 127.0.0.1
 
@@ -84,7 +87,7 @@ unittests-boost:
 	@echo "================================================================================"
 	@echo
 
-	@builddir@/UnitTests/test_suite --show_progress
+	@builddir@/UnitTests/test_suite --show_progress || test "$(FORCE)" == "1"
 
 	@echo
 
@@ -136,7 +139,7 @@ SHELL_SERVER = @srcdir@/js/common/tests/shell-document.js \
 
 .PHONY: unittests-shell-server
 
-OPTION = $(addprefix --unit-tests ,$(SHELL_SERVER))
+OPTION_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
 
 unittests-shell-server:
 	@echo
@@ -145,12 +148,34 @@ unittests-shell-server:
 	@echo "================================================================================"
 	@echo
 
-	@rm -rf "$(VOCDIR)"
-	@mkdir "$(VOCDIR)"
+	@rm -rf "$(VOCDIR2)"
+	@mkdir "$(VOCDIR2)"
 
-	@builddir@/avocado "$(VOCDIR)" $(OPTION)
+	@builddir@/avocado "$(VOCDIR2)" $(OPTION_SERVER) || test "$(FORCE)" == "1"
 
-	@rm -rf "$(VOCDIR)"
+	@rm -rf "$(VOCDIR2)"
+
+	@echo
+
+################################################################################
+## SHELL CLIENT TESTS
+################################################################################
+
+SHELL_CLIENT = @srcdir@/js/common/tests/shell-document.js \
+               @srcdir@/js/common/tests/shell-collection.js
+
+.PHONY: unittests-shell-client
+
+OPTION_CLIENT = $(addprefix --unit-tests ,$(SHELL_CLIENT))
+
+unittests-shell-client: start-server
+	@echo
+	@echo "================================================================================"
+	@echo "|| SHELL CLIENT TESTS                                                         ||"
+	@echo "================================================================================"
+	@echo
+
+	@builddir@/avocsh --server $(VOCHOST):$(VOCPORT) "$(VOCDIR)" $(OPTION_CLIENT) || test "$(FORCE)" == "1"
 
 	@echo
 
@@ -167,6 +192,6 @@ unittests-http-server: start-server
 	@echo "================================================================================"
 	@echo
 
-	cd @srcdir@/UnitTests/HttpInterface && AVOCADO_SERVER="$(VOCHOST):$(VOCPORT)" ./run_tests
+	cd @srcdir@/UnitTests/HttpInterface && AVOCADO_SERVER="$(VOCHOST):$(VOCPORT)" ./run_tests || test "$(FORCE)" == "1"
 
 	@echo
