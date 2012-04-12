@@ -9,7 +9,6 @@ avocsh
 BasicsC/local-configuration.h
 build.h
 build.info
-build.sh
 commit.sh
 config/config.h
 config.h
