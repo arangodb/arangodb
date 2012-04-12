@@ -4670,6 +4670,7 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
 
   collection->_collection->beginWrite(collection->_collection);
 
+  // the lock is freed in create
   TRI_doc_mptr_t mptr = doc->create(doc, TRI_DOC_MARKER_DOCUMENT, shaped, 0, true);
 
   // .............................................................................
