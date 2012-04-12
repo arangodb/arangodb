@@ -25,25 +25,25 @@ case $TRI_OS_LONG in
 
   Linux-openSUSE-11.4*)
     echo "Using configuration for openSuSE 11.4"
-    OPTIONS="$(OPTIONS) --enable-all-in-one"
+    OPTIONS="$OPTIONS --enable-all-in-one"
     LDD_INFO="yes"
     ;;
 
   Linux-openSUSE-11*)
     echo "Using configuration for openSuSE 11"
-    OPTIONS="$(OPTIONS) --enable-all-in-one"
+    OPTIONS="$OPTIONS --enable-all-in-one"
     LDD_INFO="yes"
     ;;
 
   Linux-Debian-6*)
     echo "Using configuration for Debian"
-    OPTIONS="$(OPTIONS) --enable-all-in-one"
+    OPTIONS="$OPTIONS --enable-all-in-one"
     LDD_INFO="yes"
     ;;
 
   Linux-Debian*)
     echo "Using configuration for Debian"
-    OPTIONS="$(OPTIONS) --enable-all-in-one"
+    OPTIONS="$OPTIONS --enable-all-in-one"
     LDD_INFO="yes"
     ;;
 
@@ -54,13 +54,13 @@ case $TRI_OS_LONG in
 
   Linux-Ubuntu-11.10*)
     echo "Using configuration for Ubuntu"
-    OPTIONS="$(OPTIONS) --enable-all-in-one"
+    OPTIONS="$OPTIONS --enable-all-in-one"
     LDD_INFO="yes"
     ;;
 
   Linux-Ubuntu-*)
     echo "Using configuration for Ubuntu"
-    OPTIONS="$(OPTIONS) --enable-all-in-one"
+    OPTIONS="$OPTIONS --enable-all-in-one"
     LDD_INFO="yes"
     ;;
 
@@ -68,12 +68,12 @@ case $TRI_OS_LONG in
     echo "Using configuration for DARWIN"
     CPPFLAGS='-isystem /usr/include -isystem /opt/local/include -Wno-deprecated-declarations'
     LDFLAGS='-L/usr/lib -L/opt/local/lib' # need to use OpenSSL from system
-    OPTIONS="$(OPTIONS) --enable-all-in-one"
+    OPTIONS="$OPTIONS --enable-all-in-one"
     ;;
 
   *)
     echo "Using default configuration"
-    OPTIONS="$(OPTIONS) --enable-error-on-warning"
+    OPTIONS="$OPTIONS --enable-error-on-warning"
     ;;
 
 esac
