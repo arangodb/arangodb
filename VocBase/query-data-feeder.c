@@ -578,12 +578,10 @@ static void InitFeederHashLookup (TRI_data_feeder_t* feeder) {
     for (i = 0; i < feeder->_ranges->_length; i++) {
       range = (QL_optimize_range_t*) feeder->_ranges->_buffer[i];
       if (range->_valueType == RANGE_TYPE_STRING) {
-        TRI_PushBack2ListJson(parameters, 
-            TRI_CreateStringCopyJson(range->_minValue._stringValue));
+        TRI_PushBack3ListJson(parameters, TRI_CreateStringCopyJson(range->_minValue._stringValue));
       }
       else if (range->_valueType == RANGE_TYPE_DOUBLE) {
-        TRI_PushBack2ListJson(parameters, 
-            TRI_CreateNumberJson(range->_minValue._doubleValue));
+        TRI_PushBack3ListJson(parameters, TRI_CreateNumberJson(range->_minValue._doubleValue));
       }
       else if (range->_valueType == RANGE_TYPE_JSON) {
         doc = TRI_JsonString(range->_minValue._stringValue);
@@ -817,31 +815,31 @@ static TRI_sl_operator_t* CreateRefSkipListOperation (const TRI_data_feeder_t* c
     switch (compareType) {
       case COMPARE_TYPE_LE: {
         // oo .. x| 
-        op = CreateSLOperator(TRI_SL_LE_OPERATOR, NULL, NULL, parameters, NULL, 1, NULL);
+        op = CreateSLOperator(TRI_SL_LE_OPERATOR, NULL, NULL, parameters, NULL, parameters->_value._objects._length, NULL);
         break;
       } 
 
       case COMPARE_TYPE_LT: {
         // oo .. |x
-        op = CreateSLOperator(TRI_SL_LT_OPERATOR, NULL, NULL, parameters, NULL, 1, NULL);
+        op = CreateSLOperator(TRI_SL_LT_OPERATOR, NULL, NULL, parameters, NULL, parameters->_value._objects._length, NULL);
         break;
       }
 
       case COMPARE_TYPE_GE: {
         // |x .. oo
-        op = CreateSLOperator(TRI_SL_GE_OPERATOR, NULL, NULL, parameters, NULL, 1, NULL);
+        op = CreateSLOperator(TRI_SL_GE_OPERATOR, NULL, NULL, parameters, NULL, parameters->_value._objects._length, NULL);
         break;
       }
 
       case COMPARE_TYPE_GT: {
         // x| .. oo
-        op = CreateSLOperator(TRI_SL_GT_OPERATOR, NULL, NULL, parameters, NULL, 1, NULL);
+        op = CreateSLOperator(TRI_SL_GT_OPERATOR, NULL, NULL, parameters, NULL, parameters->_value._objects._length, NULL);
         break;
       }
 
       case COMPARE_TYPE_EQ: {
         // x
-        op = CreateSLOperator(TRI_SL_EQ_OPERATOR, NULL, NULL, parameters, NULL, 1, NULL);
+        op = CreateSLOperator(TRI_SL_EQ_OPERATOR, NULL, NULL, parameters, NULL, parameters->_value._objects._length, NULL);
         break;
       }
 
@@ -899,35 +897,35 @@ static TRI_sl_operator_t* CreateConstSkipListOperation (const TRI_data_feeder_t*
       case COMPARE_TYPE_LE: {
         // oo .. x| 
         QLOptimizeToJsonListRange(parameters, range, true);
-        op = CreateSLOperator(TRI_SL_LE_OPERATOR, NULL, NULL, parameters, NULL, 1, NULL);
+        op = CreateSLOperator(TRI_SL_LE_OPERATOR, NULL, NULL, parameters, NULL, parameters->_value._objects._length, NULL);
         break;
       } 
 
       case COMPARE_TYPE_LT: {
         // oo .. |x
         QLOptimizeToJsonListRange(parameters, range, true);
-        op = CreateSLOperator(TRI_SL_LT_OPERATOR, NULL, NULL, parameters, NULL, 1, NULL);
+        op = CreateSLOperator(TRI_SL_LT_OPERATOR, NULL, NULL, parameters, NULL, parameters->_value._objects._length, NULL);
         break;
       }
 
       case COMPARE_TYPE_GE: {
         // |x .. oo
         QLOptimizeToJsonListRange(parameters, range, false);
-        op = CreateSLOperator(TRI_SL_GE_OPERATOR, NULL, NULL, parameters, NULL, 1, NULL);
+        op = CreateSLOperator(TRI_SL_GE_OPERATOR, NULL, NULL, parameters, NULL, parameters->_value._objects._length, NULL);
         break;
       }
 
       case COMPARE_TYPE_GT: {
         // x| .. oo
         QLOptimizeToJsonListRange(parameters, range, false);
-        op = CreateSLOperator(TRI_SL_GT_OPERATOR, NULL, NULL, parameters, NULL, 1, NULL);
+        op = CreateSLOperator(TRI_SL_GT_OPERATOR, NULL, NULL, parameters, NULL, parameters->_value._objects._length, NULL);
         break;
       }
 
       case COMPARE_TYPE_EQ: {
         // x
         QLOptimizeToJsonListRange(parameters, range, true);
-        op = CreateSLOperator(TRI_SL_EQ_OPERATOR, NULL, NULL, parameters, NULL, 1, NULL);
+        op = CreateSLOperator(TRI_SL_EQ_OPERATOR, NULL, NULL, parameters, NULL, parameters->_value._objects._length, NULL);
         break;
       }
 
@@ -940,22 +938,22 @@ static TRI_sl_operator_t* CreateConstSkipListOperation (const TRI_data_feeder_t*
         QLOptimizeToJsonListRange(parameters, range, false);
         if (range->_minStatus == RANGE_VALUE_INCLUDED) {
           // >= 
-          op1 = CreateSLOperator(TRI_SL_GE_OPERATOR, NULL, NULL, parameters, NULL, 1, NULL);
+          op1 = CreateSLOperator(TRI_SL_GE_OPERATOR, NULL, NULL, parameters, NULL, parameters->_value._objects._length, NULL);
         } 
         else {
           // >
-          op1 = CreateSLOperator(TRI_SL_GT_OPERATOR, NULL, NULL, parameters, NULL, 1, NULL);
+          op1 = CreateSLOperator(TRI_SL_GT_OPERATOR, NULL, NULL, parameters, NULL, parameters->_value._objects._length, NULL);
         }
         
         // upper bound operator
         QLOptimizeToJsonListRange(temp, range, true);
         if (range->_maxStatus == RANGE_VALUE_INCLUDED) {
           // <=
-          op2 = CreateSLOperator(TRI_SL_LE_OPERATOR, NULL, NULL, temp, NULL, 1, NULL);
+          op2 = CreateSLOperator(TRI_SL_LE_OPERATOR, NULL, NULL, temp, NULL, temp->_value._objects._length, NULL);
         } 
         else {
           // <
-          op2 = CreateSLOperator(TRI_SL_LT_OPERATOR, NULL, NULL, temp, NULL, 1, NULL);
+          op2 = CreateSLOperator(TRI_SL_LT_OPERATOR, NULL, NULL, temp, NULL, temp->_value._objects._length, NULL);
         }
 
         op = CreateSLOperator(TRI_SL_AND_OPERATOR, op1, op2, NULL, NULL, 2, NULL);
@@ -1043,7 +1041,7 @@ static void InitFeederSkiplistLookup (TRI_data_feeder_t* feeder) {
     if (!skiplistOperation) {
       return;
     }
-    
+   
     feeder->_accessType = ACCESS_CONST;
     state->_skiplistOperation = skiplistOperation;
     state->_skiplistIterator = TRI_LookupSkiplistIndex(state->_index, state->_skiplistOperation); 
