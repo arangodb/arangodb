@@ -72,3 +72,5 @@ UnitTests/test_suite
 VC++
 UnitTests/HttpInterface/logs
 Makefile.local
+*.gcno
+*.gcda

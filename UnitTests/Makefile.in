@@ -46,7 +46,9 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
 	$(top_srcdir)/m4/configure.logging \
 	$(top_srcdir)/m4/configure.largefile \
 	$(top_srcdir)/m4/configure.threads \
-	$(top_srcdir)/m4/configure.dot $(top_srcdir)/m4/configure.flex \
+	$(top_srcdir)/m4/configure.dot \
+	$(top_srcdir)/m4/configure.coverage \
+	$(top_srcdir)/m4/configure.flex \
 	$(top_srcdir)/m4/configure.bison \
 	$(top_srcdir)/m4/external.math \
 	$(top_srcdir)/m4/external.ncurses \
@@ -144,6 +146,10 @@ ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
+GCOV_CFLAGS = @GCOV_CFLAGS@
+GCOV_CXXFLAGS = @GCOV_CXXFLAGS@
+GCOV_LDFLAGS = @GCOV_LDFLAGS@
+GCOV_LIBS = @GCOV_LIBS@
 GREP = @GREP@
 HAVE_DOT = @HAVE_DOT@
 INSTALL = @INSTALL@

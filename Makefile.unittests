@@ -32,7 +32,7 @@ VOCDIR := /tmp/vocdir.$(PID)
 VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
 VOCHOST := 127.0.0.1
 SERVER_OPT := --startup.directory ./js --startup.modules-path ./js/server/modules:./js/common/modules --action.system-directory ./js/action/system
-CLIENT_OPT := --startup.directory ./js --startup.modules-path ./js/client/modules:./js/common/modules
+CLIENT_OPT := --startup.directory ./js --startup.modules-path ./js/client/modules:./js/common/modules --no-colors
 
 .PHONY: start-server
 

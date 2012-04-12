@@ -643,6 +643,12 @@ BISON
 LEXLIB
 LEX_OUTPUT_ROOT
 LEX
+GCOV_LIBS
+GCOV_LDFLAGS
+GCOV_CFLAGS
+GCOV_CXXFLAGS
+ENABLE_GCOV_FALSE
+ENABLE_GCOV_TRUE
 HAVE_DOT
 DOT_PATH
 PTHREAD_CFLAGS
@@ -800,6 +806,7 @@ enable_timing
 enable_figures
 enable_largefile
 with_dot
+enable_gcov
 enable_ncurses
 enable_static_ncurses
 enable_readline
@@ -1477,6 +1484,7 @@ Optional Features:
   --enable-timing         enable timing (default: yes)
   --enable-figures        enable figures (default: yes)
   --disable-largefile     omit support for large files
+  --enable-gcov           enables gnu coverage (default: no)
   --enable-curses         enable ncurses support (default:
                           $tr_NCURSES_DEFAULT)
   --enable-static-ncurses using static library 'ncurses' (default: no)
@@ -6522,6 +6530,54 @@ else
 fi
 
 
+
+# Check whether --enable-gcov was given.
+if test "${enable_gcov+set}" = set; then :
+  enableval=$enable_gcov; tr_COVERAGE="${enableval:-yes}"
+else
+  tr_COVERAGE=no
+
+fi
+
+
+if test "x$tr_COVERAGE" = xyes;  then
+  if test "x$GCC" = xyes; then
+    GCOV_CXXFLAGS="-fprofile-arcs -ftest-coverage"
+    GCOV_CFLAGS="-fprofile-arcs -ftest-coverage"
+    GCOV_LDFLAGS=""
+    GCOV_LIBS="-lgcov"
+  else
+    as_fn_error $? "do not how to enable coverage compilation" "$LINENO" 5
+  fi
+fi
+
+ if test "x$tr_COVERAGE" = xyes; then
+  ENABLE_GCOV_TRUE=
+  ENABLE_GCOV_FALSE='#'
+else
+  ENABLE_GCOV_TRUE='#'
+  ENABLE_GCOV_FALSE=
+fi
+
+
+
+
+
+
+
+CFLAGS="${CFLAGS} ${GCOV_CFLAGS}"
+CXXFLAGS="${CXXFLAGS} ${GCOV_CXXFLAGS}"
+LDFLAGS="${LDFLAGS} ${GCOV_LDFLAGS}"
+LIBS="${LIBS} ${GCOV_LIBS} "
+
+
+if test "x$tr_COVERAGE" = xyes;  then
+  FLAG_INFO="$FLAG_INFO|GCOV_CXXFLAGS: ${GCOV_CXXFLAGS}"
+  FLAG_INFO="$FLAG_INFO|GCOV_LDFLAGS:  ${GCOV_LDFLAGS}"
+  FLAG_INFO="$FLAG_INFO|GCOV_LIBS:     ${GCOV_LIBS}"
+fi
+
+
 if test "x$tr_FLEX" = xyes;  then
 
 
@@ -9491,6 +9547,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_FIGURES_TRUE}" && test -z "${ENABLE_FIGURES_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_FIGURES\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_GCOV_TRUE}" && test -z "${ENABLE_GCOV_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_GCOV\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_FLEX_TRUE}" && test -z "${ENABLE_FLEX_FALSE}"; then
