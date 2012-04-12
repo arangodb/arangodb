@@ -480,6 +480,73 @@ function collectionSuite () {
       assertEqual(2, f.dead.deletion);
 
       db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rename loaded collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testRenameLoaded : function () {
+      var cn = "example";
+      var nn = "example2";
+
+      db._drop(cn);
+      db._drop(nn);
+      var c1 = db._create(cn);
+
+      c1.load();
+
+      assertTypeOf("number", c1._id);
+      assertEqual(cn, c1.name());
+      assertTypeOf("number", c1.status());
+
+      var id = c1._id;
+
+      c1.rename(nn);
+
+      assertEqual(id, c1._id);
+      assertEqual(nn, c1.name());
+      assertTypeOf("number", c1.status());
+
+      var c2 = db._collection(cn);
+
+      assertEqual(null, c2);
+
+      db._drop(nn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rename unloaded collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testRenameUnloaded : function () {
+      var cn = "example";
+      var nn = "example2";
+
+      db._drop(cn);
+      db._drop(nn);
+      var c1 = db._create(cn);
+
+      c1.load();
+      c1.unload();
+
+      assertTypeOf("number", c1._id);
+      assertEqual(cn, c1.name());
+      assertTypeOf("number", c1.status());
+
+      var id = c1._id;
+
+      c1.rename(nn);
+
+      assertEqual(id, c1._id);
+      assertEqual(nn, c1.name());
+      assertTypeOf("number", c1.status());
+
+      var c2 = db._collection(cn);
+
+      assertEqual(null, c2);
+
+      db._drop(nn);
     }
   };
 }

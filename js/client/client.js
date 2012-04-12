@@ -692,6 +692,7 @@ helpAvocadoCollection = TRI_CreateHelpHeadline("AvocadoCollection help") +
 '  drop()                          delete a collection               ' + "\n" +
 '  load()                          load a collection into memeory    ' + "\n" +
 '  unload()                        unload a collection from memory   ' + "\n" +
+'  rename(new-name)                renames a collection              ' + "\n" +
 '  refresh()                       refreshes the status and name     ' + "\n" +
 '  _help();                        this help                         ' + "\n" +
 '                                                                    ' + "\n" +
@@ -871,6 +872,23 @@ AvocadoCollection.prototype.unload = function () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief renames a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.rename = function (name) {
+  var body = { name : name };
+  var requestResult = this._database._connection.put("/_api/collection/" + encodeURIComponent(this._id) + "/rename", JSON.stringify(body));
+
+  TRI_CheckRequestResult(requestResult);
+
+  delete this._database[this._name];
+  this._database[name] = this;
+
+  this._status = null;
+  this._name = null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief refreshes a collection status and name
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -907,7 +925,7 @@ AvocadoCollection.prototype._PRINT = function () {
     case AvocadoCollection.STATUS_DELETED: status = "deleted"; break;
   }
   
-  internal.output("[AvocadoCollection ", this._id, ", \"", this._name, "\" (status " + status + ")]");
+  internal.output("[AvocadoCollection ", this._id, ", \"", this.name(), "\" (status " + status + ")]");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

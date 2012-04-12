@@ -49,6 +49,7 @@
 ///    <li>@ref ShellCollectionFigures "collection.figures()"</li>
 ///    <li>@ref ShellCollectionLoad "collection.load()"</li>
 ///    <li>@ref ShellCollectionUnload "collection.unload()"</li>
+///    <li>@ref ShellCollectionUnload "collection.rename(new-name)"</li>
 ///   </ol>
 ///  </li>
 ///  <li>Database Methods
@@ -143,6 +144,10 @@
 ///
 /// @anchor ShellCollectionUnload
 /// @copydetails JS_UnloadVocbaseCol
+/// <hr>
+///
+/// @anchor ShellCollectionRename
+/// @copydetails JS_RenameVocbaseCol
 /// <hr>
 ///
 /// @anchor ShellCollectionRead

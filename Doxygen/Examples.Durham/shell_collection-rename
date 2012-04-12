@@ -1,0 +1,5 @@
+avocado> c = db.example;
+[AvocadoCollection 68519, "example" (status new born)]
+avocado> c.rename("better-example");
+avocado> c;
+[AvocadoCollection 68519, "better-example" (status new born)]
