@@ -158,6 +158,9 @@ replDict["e_ulink"] = "]"
 replDict["s_verbatim"] = ""
 replDict["e_verbatim"] = ""
 
+replDict["s_simplesect"] = ""
+replDict["e_simplesect"] = ""
+
 ################################################################################
 #### @brief generate code for text value
 ################################################################################
@@ -208,6 +211,8 @@ gencDict["title_4"] = True
 gencDict["ulink"] = True
 
 gencDict["verbatim"] = True
+
+gencDict["simplesect"] = True
 
 gencDict["xrefsect"] = True
 gencDict["xreftitle"] = True
