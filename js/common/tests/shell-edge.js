@@ -238,8 +238,7 @@ function collectionEdgeSuite () {
       var f = edge.outEdges(v2);
 
       assertEqual(0, f.length);
-    },
-
+    }
   };
 }
 

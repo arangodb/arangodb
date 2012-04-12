@@ -14,6 +14,7 @@ export CPPFLAGS=""
 export LDFLAGS=""
 export MAKEJ=2
 export LDD_INFO="no"
+export VALGRING_TEST="no"
 
 echo
 echo "########################################################"
@@ -32,6 +33,7 @@ case $TRI_OS_LONG in
   Linux-openSUSE-11*)
     echo "Using configuration for openSuSE 11"
     OPTIONS="$OPTIONS --enable-all-in-one"
+    VALGRING_TEST="yes"
     LDD_INFO="yes"
     ;;
 
@@ -136,4 +138,15 @@ echo "    make unittests"
 echo "########################################################"
 echo
 
-make unittests FORCE=1
+make unittests FORCE=1 || exit 1
+
+if test "x$VALGRING_TEST" = "xyes";  then
+  echo
+  echo "########################################################"
+  echo "unittests with VALGRIND:"
+  echo "    make unittests VALGRIND=valgrind --leak-check=full"
+  echo "########################################################"
+  echo
+
+  make unittests VALGRIND="valgrind --leack-check=full" || exit 1
+fi
