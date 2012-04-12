@@ -4524,10 +4524,14 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a collection
 ///
-/// @FUN{rename(@FA{name})}
+/// @FUN{rename(@FA{new-name})}
 ///
-/// Renames a collection using the new name @FA{name}. The @FA{name} must not
-/// already be used for a different collection.
+/// Renames a collection using the @FA{new-name}. The @FA{new-name} must not
+/// already be used for a different collection. If it is an error is thrown.
+///
+/// @EXAMPLES
+///
+/// @verbinclude shell_collection-rename
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
