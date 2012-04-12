@@ -182,7 +182,7 @@ AvocadoDatabase.prototype._drop = function(name) {
   return collection.drop()
 };
 
-AvocadoEdges.prototype._drop = AvocadoDatabase._drop;
+AvocadoEdges.prototype._drop = AvocadoDatabase.prototype._drop;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncates a collection
@@ -225,7 +225,7 @@ AvocadoDatabase.prototype._truncate = function(name) {
   }
 };
 
-AvocadoEdges.prototype._truncate = AvocadoDatabase._truncate;
+AvocadoEdges.prototype._truncate = AvocadoDatabase.prototype._truncate;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a database

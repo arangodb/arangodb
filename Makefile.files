@@ -339,6 +339,7 @@ WIKI = \
 	RestSystem \
 	ShellCollection \
 	ShellDocument \
+	ShellEdge \
 	SimpleQueries \
 	UserManualServer \
 	UserManualShell \
