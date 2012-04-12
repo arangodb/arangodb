@@ -42,6 +42,8 @@
 ///
 /// @copydoc GlossaryDocumentRevision
 ///
+/// @copydoc GlossaryEdge
+///
 /// @copydoc GlossaryIndex
 ///
 /// @copydoc GlossaryIndexGeo
@@ -112,10 +114,17 @@
 /// @page GlossaryEdge
 //////////////////////
 ///
-/// @GE{Edges}: Edges in AvocadoDB are special documents. In addition to the
+/// @GE{Edge}: Edges in AvocadoDB are special documents. In addition to the
 /// internal attributes @LIT{_id} and @LIT{_rev}, they have two attributes
 /// @LIT{_form} and @LIT{_to}, which contain document handles namely the
 /// start-point and the end-point of the edge.
+///
+/// @page GlossaryEdgeCollection
+////////////////////////////////
+///
+/// @GE{Edge Collection}: Edge collections are special collection where 
+/// edge documents live. Instead of using @LIT{db}, one must use @LIT{edges}
+/// to access the edge collection.
 ///
 /// @page GlossaryIndex
 ///////////////////////

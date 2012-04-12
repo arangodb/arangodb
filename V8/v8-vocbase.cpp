@@ -885,6 +885,115 @@ static v8::Handle<v8::Value> DeleteVocbaseCol (TRI_vocbase_t* vocbase,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new collection
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, bool edge) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+  
+  if (vocbase == 0) {
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_INTERNAL, "corrupted vocbase")));
+  }
+
+  // expecting at least one arguments
+  if (argv.Length() < 1) {
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                           "usage: _create(<name>, <properties>)")));
+  }
+
+  // extract the name
+  string name = TRI_ObjectToString(argv[0]);
+
+  // extract the parameter
+  TRI_col_parameter_t parameter;
+
+  if (2 <= argv.Length()) {
+    if (! argv[1]->IsObject()) {
+      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "<properties> must be an object")));
+    }
+
+    v8::Handle<v8::Object> p = argv[1]->ToObject();
+    v8::Handle<v8::String> waitForSyncKey = v8::String::New("waitForSync");
+    v8::Handle<v8::String> journalSizeKey = v8::String::New("journalSize");
+
+    if (p->Has(journalSizeKey)) {
+      double s = TRI_ObjectToDouble(p->Get(journalSizeKey));
+
+      if (s < TRI_JOURNAL_MINIMAL_SIZE) {
+        return scope.Close(v8::ThrowException(
+                             CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                               "<properties>.journalSize too small")));
+      }
+
+      TRI_InitParameterCollection(&parameter, name.c_str(), (TRI_voc_size_t) s);
+    }
+    else {
+      TRI_InitParameterCollection(&parameter, name.c_str(), vocbase->_defaultMaximalSize);
+    }
+
+    if (p->Has(waitForSyncKey)) {
+      parameter._waitForSync = TRI_ObjectToBoolean(p->Get(waitForSyncKey));
+    }
+
+  }
+  else {
+    TRI_InitParameterCollection(&parameter, name.c_str(), vocbase->_defaultMaximalSize);
+  }
+
+
+  TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase, &parameter);
+
+  if (collection == NULL) {
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_errno(), "cannot create collection")));
+  }
+
+  return scope.Close(edge ? TRI_WrapEdgesCollection(collection) : TRI_WrapCollection(collection));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a single collection or null
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> CollectionVocBase (v8::Arguments const& argv, bool edge) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+  
+  if (vocbase == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+
+  // expecting one argument
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: _collection(<name>|<identifier>)")));
+  }
+
+  v8::Handle<v8::Value> val = argv[0];
+  TRI_vocbase_col_t const* collection = 0;
+
+  // number
+  if (val->IsNumber() || val->IsNumberObject()) {
+    uint64_t id = (uint64_t) TRI_ObjectToDouble(val);
+
+    collection = TRI_LookupCollectionByIdVocBase(vocbase, id);
+  }
+  else {
+    string name = TRI_ObjectToString(val);
+
+    collection = TRI_FindCollectionByNameVocBase(vocbase, name.c_str(), false);
+  }
+
+  if (collection == 0) {
+    return scope.Close(v8::Null());
+  }
+
+  return scope.Close(edge ? TRI_WrapEdgesCollection(collection) : TRI_WrapCollection(collection));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1536,7 +1645,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude simple11
+/// @verbinclude shell_edge-edges
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_EdgesQuery (v8::Arguments const& argv) {
@@ -1553,7 +1662,7 @@ static v8::Handle<v8::Value> JS_EdgesQuery (v8::Arguments const& argv) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude simple11
+/// @verbinclude shell_edge-in-edges
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_InEdgesQuery (v8::Arguments const& argv) {
@@ -1655,7 +1764,7 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude simple13
+/// @verbinclude shell_edge-out-edges
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_OutEdgesQuery (v8::Arguments const& argv) {
@@ -4772,7 +4881,7 @@ static v8::Handle<v8::Value> JS_UnloadVocbaseCol (v8::Arguments const& argv) {
 /// Saves a new edge and returns the document-handle. @FA{from} and @FA{to}
 /// must be documents or document references.
 ///
-/// @verbinclude fluent22
+/// @verbinclude shell_create-edge
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_SaveEdgesCol (v8::Arguments const& argv) {
@@ -4995,39 +5104,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CollectionVocBase (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
-  
-  if (vocbase == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
-  }
-
-  // expecting one argument
-  if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: _collection(<name>|<identifier>)")));
-  }
-
-  v8::Handle<v8::Value> val = argv[0];
-  TRI_vocbase_col_t const* collection = 0;
-
-  // number
-  if (val->IsNumber() || val->IsNumberObject()) {
-    uint64_t id = (uint64_t) TRI_ObjectToDouble(val);
-
-    collection = TRI_LookupCollectionByIdVocBase(vocbase, id);
-  }
-  else {
-    string name = TRI_ObjectToString(val);
-
-    collection = TRI_FindCollectionByNameVocBase(vocbase, name.c_str(), false);
-  }
-
-  if (collection == 0) {
-    return scope.Close(v8::Null());
-  }
-
-  return scope.Close(TRI_WrapCollection(collection));
+  return CollectionVocBase(argv, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5128,68 +5205,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocBase (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CreateVocBase (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
-  
-  if (vocbase == 0) {
-    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_INTERNAL, "corrupted vocbase")));
-  }
-
-  // expecting at least one arguments
-  if (argv.Length() < 1) {
-    return scope.Close(v8::ThrowException(
-                         CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                           "usage: _create(<name>, <properties>)")));
-  }
-
-  // extract the name
-  string name = TRI_ObjectToString(argv[0]);
-
-  // extract the parameter
-  TRI_col_parameter_t parameter;
-
-  if (2 <= argv.Length()) {
-    if (! argv[1]->IsObject()) {
-      return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "<properties> must be an object")));
-    }
-
-    v8::Handle<v8::Object> p = argv[1]->ToObject();
-    v8::Handle<v8::String> waitForSyncKey = v8::String::New("waitForSync");
-    v8::Handle<v8::String> journalSizeKey = v8::String::New("journalSize");
-
-    if (p->Has(journalSizeKey)) {
-      double s = TRI_ObjectToDouble(p->Get(journalSizeKey));
-
-      if (s < TRI_JOURNAL_MINIMAL_SIZE) {
-        return scope.Close(v8::ThrowException(
-                             CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                               "<properties>.journalSize too small")));
-      }
-
-      TRI_InitParameterCollection(&parameter, name.c_str(), (TRI_voc_size_t) s);
-    }
-    else {
-      TRI_InitParameterCollection(&parameter, name.c_str(), vocbase->_defaultMaximalSize);
-    }
-
-    if (p->Has(waitForSyncKey)) {
-      parameter._waitForSync = TRI_ObjectToBoolean(p->Get(waitForSyncKey));
-    }
-
-  }
-  else {
-    TRI_InitParameterCollection(&parameter, name.c_str(), vocbase->_defaultMaximalSize);
-  }
-
-
-  TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase, &parameter);
-
-  if (collection == NULL) {
-    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_errno(), "cannot create collection")));
-  }
-
-  return scope.Close(TRI_WrapCollection(collection));
+  return CreateVocBase(argv, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5384,6 +5400,24 @@ static v8::Handle<v8::Value> MapGetEdges (v8::Local<v8::String> name,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a single collection or null
+///
+/// @FUN{edges._collection(@FA{collection-identifier})}
+///
+/// Returns the collection with the given identifier or null if no such
+/// collection exists.
+///
+/// @FUN{edges._collection(@FA{collection-name})}
+///
+/// Returns the collection with the given name or null if no such collection
+/// exists.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_CollectionEdges (v8::Arguments const& argv) {
+  return CollectionVocBase(argv, true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all collections
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -5410,6 +5444,32 @@ static v8::Handle<v8::Value> JS_CollectionsEdges (v8::Arguments const& argv) {
   TRI_DestroyVectorPointer(&colls);
 
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new edge collection
+///
+/// @FUN{edges._create(@FA{collection-name})}
+///
+/// Creates a new collection named @FA{collection-name}. If the collection name
+/// already exists, than an error is thrown. The default value for
+/// @LIT{waitForSync} is @LIT{false}.
+///
+/// @FUN{edges._create(@FA{collection-name}, @FA{properties})}
+///
+/// @FA{properties} must be an object, with the following attribues:
+///
+/// - @LIT{waitForSync} (optional, default @LIT{false}): If @LIT{true} creating
+///   a document will only return after the data was synced to disk.
+///
+/// - @LIT{journalSize} (optional, default is a @ref CommandLineAvocado
+///   "configuration parameter"):  The maximal size of
+///   a journal or datafile.  Note that this also limits the maximal
+///   size of a single object. Must be at least 1MB.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_CreateEdges (v8::Arguments const& argv) {
+  return CreateVocBase(argv, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5989,10 +6049,10 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
 
   rt->SetNamedPropertyHandler(MapGetEdges);
 
-  rt->Set(_CollectionFuncName, v8::FunctionTemplate::New(JS_CollectionVocBase));
+  rt->Set(_CollectionFuncName, v8::FunctionTemplate::New(JS_CollectionEdges));
   rt->Set(_CollectionsFuncName, v8::FunctionTemplate::New(JS_CollectionsEdges));
   rt->Set(_CompletionsFuncName, v8::FunctionTemplate::New(JS_CompletionsVocBase));
-  rt->Set(_CreateFuncName, v8::FunctionTemplate::New(JS_CreateVocBase));
+  rt->Set(_CreateFuncName, v8::FunctionTemplate::New(JS_CreateEdges));
 
   rt->Set(_DeleteFuncName, v8::FunctionTemplate::New(JS_DeleteVocbase));
   rt->Set(_DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbase));

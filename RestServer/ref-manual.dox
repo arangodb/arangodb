@@ -56,6 +56,7 @@
 ///  <li>Shell Commands
 ///   <ol>
 ///      <li>@ref ShellDocument</li>
+///      <li>@ref ShellEdge</li>
 ///      <li>@ref ShellCollection</li>
 ///   </ol>
 ///  </li>

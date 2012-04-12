@@ -1,0 +1,8 @@
+avocado> v1 = db.vertex.save({ name : "vertex 1" });
+{ "_id" : "86294/1528086", "_rev" : 1528086 }
+avocado> v2 = db.vertex.save({ name : "vertex 2" });
+{ "_id" : "86294/1593622", "_rev" : 1593622 }
+avocado> e1 = edges.relation.save(v1, v2, { label : "knows" });
+{ "_id" : "1659158/3100950", "_rev" : 3100950 }
+avocado> edges._document(e1);
+{ "_id" : "1659158/3100950", "_rev" : 3100950, "_from" : "86294/1528086", "_to" : "86294/1593622", "label" : "knows" }

@@ -238,7 +238,7 @@
 ///
 /// @subsection DBAdminDurability3 Configuration
 ///
-/// @copydetails JS_ParameterVocbaseCol
+/// @copydetails JS_PropertiesVocbaseCol
 ///
 /// @section DBAdminIndex Index Management
 ///

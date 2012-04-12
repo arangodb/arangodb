@@ -149,7 +149,6 @@
 /// @subsection JSFQueryBuilding Query Building Functions
 ///
 /// - @ref JS_AllQuery "all"
-/// - @ref JS_DocumentQuery "document"
 /// - ref JS_SelectQuery "select"
 ///
 /// @section JSFGlobal Global Functions
@@ -173,8 +172,6 @@
 /// @ref MapGetVocBase "db".@FA{database}
 ///
 /// @section JSFDatabases Database Functions
-///
-/// @copydetails JS_ParameterVocbaseCol
 ///
 /// @subsection JSFDocument Database Document Functions
 ///
@@ -204,8 +201,6 @@
 ///
 /// A complete list of the available query building functions can be found @ref
 /// SimpleQueries "here".
-///
-/// @copydetails JS_DocumentQuery
 ///
 /// @subsection JSFQueryExecuting Query Execution Functions
 ///
