@@ -40,10 +40,10 @@
 /// @page ShellEdgeCallsTOC
 ///
 /// <ol>
-///  <li>@ref ShellEdgeCreate "edge-collection.save(from-handle, to-handle, data)"</li>
-///  <li>@ref ShellEdgeEdges "edge-collection.edges(vertex-handle)"</li>
-///  <li>@ref ShellEdgeInEdges "edge-collection.inEdges(vertex-handle)"</li>
-///  <li>@ref ShellEdgeOutEdges "edge-collection.outEdges(vertex-handle)"</li>
+///  <li>@ref ShellEdgeCreate "edge-collection.save(from, to, data)"</li>
+///  <li>@ref ShellEdgeEdges "edge-collection.edges(vertex)"</li>
+///  <li>@ref ShellEdgeInEdges "edge-collection.inEdges(vertex)"</li>
+///  <li>@ref ShellEdgeOutEdges "edge-collection.outEdges(vertex)"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -1638,7 +1638,12 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up all edges for a set of vertices
 ///
-/// @FUN{edges(@FA{vertices})}
+/// @FUN{@FA{edge-collection}.edges(@FA{vertex})}
+///
+/// The @FN{edges} operator finds all edges starting from (outbound) or ending
+/// in (inbound) @FA{vertex}.
+///
+/// @FUN{@FA{edge-collection}.edges(@FA{vertices})}
 ///
 /// The @FN{edges} operator finds all edges starting from (outbound) or ending
 /// in (inbound) a document from @FA{vertices}.
@@ -1655,7 +1660,11 @@ static v8::Handle<v8::Value> JS_EdgesQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up all inbound edges
 ///
-/// @FUN{inEdges(@FA{vertices})}
+/// @FUN{@FA{edge-collection}.inEdges(@FA{vertex})}
+///
+/// The @FN{edges} operator finds all edges ending in (inbound) @FA{vertex}.
+///
+/// @FUN{@FA{edge-collection}.inEdges(@FA{vertices})}
 ///
 /// The @FN{edges} operator finds all edges ending in (inbound) a document from
 /// @FA{vertices}.
@@ -1757,7 +1766,12 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up all outbound edges
 ///
-/// @FUN{outEdges(@FA{vertices})}
+/// @FUN{@FA{edge-collection}.outEdges(@FA{vertex})}
+///
+/// The @FN{edges} operator finds all edges starting from (outbound)
+/// @FA{vertices}.
+///
+/// @FUN{@FA{edge-collection}.outEdges(@FA{vertices})}
 ///
 /// The @FN{edges} operator finds all edges starting from (outbound) a document
 /// from @FA{vertices}.
@@ -4633,7 +4647,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a collection
 ///
-/// @FUN{rename(@FA{new-name})}
+/// @FUN{@FA{collection}.rename(@FA{new-name})}
 ///
 /// Renames a collection using the @FA{new-name}. The @FA{new-name} must not
 /// already be used for a different collection. If it is an error is thrown.
@@ -4876,7 +4890,7 @@ static v8::Handle<v8::Value> JS_UnloadVocbaseCol (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a new document
 ///
-/// @FUN{save(@FA{from}, @FA{to}, @FA{document})}
+/// @FUN{@FA{edge-collection}.save(@FA{from}, @FA{to}, @FA{document})}
 ///
 /// Saves a new edge and returns the document-handle. @FA{from} and @FA{to}
 /// must be documents or document references.

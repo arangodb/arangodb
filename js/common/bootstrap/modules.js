@@ -183,11 +183,11 @@ ModuleCache["/"] = module = new Module("/");
 ///
 /// Assume that your module file is @CODE{test1.js} and contains
 ///
-/// @verbinclude modules1
+/// @verbinclude modules-require-1
 ///
-/// Then you can use require to load the file and access the exports.
+/// Then you can use @FN{require} to load the file and access the exports.
 ///
-/// @verbinclude modules2
+/// @verbinclude modules-require-2
 ///
 /// @FN{require} follows the specification
 /// <a href="http://wiki.commonjs.org/wiki/Modules/1.1.1">Modules/1.1.1</a>.

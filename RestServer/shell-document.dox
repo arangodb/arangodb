@@ -41,7 +41,7 @@
 /// @page ShellDocumentCallsTOC
 ///
 /// <ol>
-///  <li>Collection Methods
+///  <li>@ref ShellDocumentCollectionMethods
 ///   <ol>
 ///    <li>@ref ShellDocumentRead "collection.document(document-handle)"</li>
 ///    <li>@ref ShellDocumentCreate "collection.save(data)"</li>
@@ -49,7 +49,7 @@
 ///    <li>@ref ShellDocumentDelete "collection.delete(document)"</li>
 ///   </ol>
 ///  </li>
-///  <li>Database Methods
+///  <li>@ref ShellDocumentDatabaseMethods
 ///   <ol>
 ///    <li>@ref ShellDocumentDbRead "db._document(document-handle)"</li>
 ///    <li>@ref ShellDocumentDbUpdate "db._replace(document-handle, data)"</li>
@@ -118,6 +118,9 @@
 /// @section ShellDocumentShell Working with Documents
 //////////////////////////////////////////////////////
 ///
+/// @subsection ShellDocumentCollectionMethods Collection Methods
+/////////////////////////////////////////////////////////////////
+///
 /// @anchor ShellDocumentRead
 /// @copydetails JS_DocumentVocbaseCol
 /// <hr>
@@ -133,6 +136,9 @@
 /// @anchor ShellDocumentDelete
 /// @copydetails JS_DeleteVocbaseCol
 /// <hr>
+///
+/// @subsection ShellDocumentDatabaseMethods Database Methods
+/////////////////////////////////////////////////////////////
 ///
 /// @anchor ShellDocumentDbRead
 /// @copydetails JS_DocumentVocbase

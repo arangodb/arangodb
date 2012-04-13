@@ -34,7 +34,7 @@
 ///   <li>@ref JSModuleInternalLog "internal.log"</li>
 ///   <li>@ref JSModuleInternalLogLevel "internal.logLevel"</li>
 ///   <li>@ref JSModuleInternalOutput "internal.output"</li>
-///   <li>JSModuleInternalProcessStat "internal.processStat"</li>
+///   <li>@ref JSModuleInternalProcessStat "internal.processStat"</li>
 ///   <li>@ref JSModuleInternalRead "internal.read"</li>
 ///   <li>@ref JSModuleInternalSPrintF "internal.sprintf"</li>
 ///   <li>@ref JSModuleInternalTime "internal.time"</li>
@@ -52,24 +52,35 @@
 ///
 /// @anchor JSModuleInternalExecute
 /// @copydetails JS_Execute
+/// <hr>
 ///
 /// @anchor JSModuleInternalLoad
 /// @copydetails JS_Load
+/// <hr>
 ///
 /// @anchor JSModuleInternalLog
 /// @copydetails JS_Log
+/// <hr>
 ///
 /// @anchor JSModuleInternalLogLevel
 /// @copydetails JS_LogLevel
+/// <hr>
 ///
 /// @anchor JSModuleInternalOutput
 /// @copydetails JS_Output
+/// <hr>
+///
+/// @anchor JSModuleInternalProcessStat
+/// @copydetails JS_ProcessStat
+/// <hr>
 ///
 /// @anchor JSModuleInternalRead
 /// @copydetails JS_Read
+/// <hr>
 ///
 /// @anchor JSModuleInternalSPrintF
 /// @copydetails JS_SPrintF
+/// <hr>
 ///
 /// @anchor JSModuleInternalTime
 /// @copydetails JS_Time
