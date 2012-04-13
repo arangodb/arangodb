@@ -26,7 +26,7 @@ case $TRI_OS_LONG in
 
   Linux-openSUSE-11.4*)
     echo "Using configuration for openSuSE 11.4"
-    OPTIONS="$OPTIONS --enable-all-in-one"
+    OPTIONS="$OPTIONS --disable-all-in-one --with-boost-test"
     LDD_INFO="yes"
     ;;
 
