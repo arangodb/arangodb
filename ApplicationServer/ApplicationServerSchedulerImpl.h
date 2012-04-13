@@ -36,8 +36,9 @@
 /// @page CommandLineSchedulerTOC
 ///
 /// <ol>
-///  <li>scheduler.backend</li>
-///  <li>scheduler.threads</li>
+///  <li>@ref CommandLineSchedulerThreads "scheduler.threads"</li>
+///  <li>@ref CommandLineSchedulerBackend "scheduler.backend"</li>
+///  <li>@ref CommandLineSchedulerShowIoBackends "show-io-backends"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -48,9 +49,27 @@
 /// @copydoc CommandLineSchedulerTOC
 /// <hr>
 ///
-/// @copydetails triagens::rest::ApplicationServerSchedulerImpl::_backend
-///
+/// @anchor CommandLineSchedulerThreads
+///////////////////////////////////////
 /// @copydetails triagens::rest::ApplicationServerSchedulerImpl::_nrSchedulerThreads
+/// <hr>
+///
+/// @anchor CommandLineSchedulerBackend
+///////////////////////////////////////
+/// @copydetails triagens::rest::ApplicationServerSchedulerImpl::_backend
+/// <hr>
+///
+/// @anchor CommandLineSchedulerShowIoBackends
+//////////////////////////////////////////////
+/// @CMDOPT{--show-io-backends}
+///
+/// If this option is specified, then the server will list available backends
+/// and exit. This option is useful only when used in conjunction with the
+/// option scheduler.backend. An integer is returned (which is platform
+/// dependent) which indicates available backends on your platform. See libev
+/// for further details and for the meaning of the integer returned. This
+/// describes the allowed integers for @CODE{scheduler.backend}, see
+/// @ref CommandLineScheduler "here" for details.
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace triagens {

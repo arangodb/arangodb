@@ -41,7 +41,7 @@
 /// @page ShellCollectionCallsTOC
 ///
 /// <ol>
-///  <li>Collection Methods
+///  <li>@ref ShellCollectionCollectionMethods
 ///   <ol>
 ///    <li>@ref ShellCollectionDrop "collection.drop()"</li>
 ///    <li>@ref ShellCollectionTruncate "collection.truncate()"</li>
@@ -52,7 +52,7 @@
 ///    <li>@ref ShellCollectionUnload "collection.rename(new-name)"</li>
 ///   </ol>
 ///  </li>
-///  <li>Database Methods
+///  <li>@ref ShellCollectionDatabaseMethods
 ///   <ol>
 ///    <li>@ref ShellCollectionRead "db._collection(collection-identifier)"</li>
 ///    <li>@ref ShellCollectionCreate "db._create(collection-name, properties)"</li>
@@ -122,6 +122,9 @@
 /// @section ShellCollectionShell Working with Collections
 //////////////////////////////////////////////////////////
 ///
+/// @subsection ShellCollectionCollectionMethods Collection Methods
+///////////////////////////////////////////////////////////////////
+///
 /// @anchor ShellCollectionDrop
 /// @copydetails JS_DropVocbaseCol
 /// <hr>
@@ -150,6 +153,9 @@
 /// @copydetails JS_RenameVocbaseCol
 /// <hr>
 ///
+/// @subsection ShellCollectionDatabaseMethods Database Methods
+///////////////////////////////////////////////////////////////
+///
 /// @anchor ShellCollectionRead
 /// @copydetails JS_CollectionVocBase
 /// <hr>
@@ -172,8 +178,6 @@
 ///
 /// @anchor ShellCollectionTruncateDb
 /// @copydetails JSF_AvocadoDatabase_prototype__truncate
-/// <hr>
-///
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

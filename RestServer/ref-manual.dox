@@ -78,13 +78,14 @@
 /// @page CommandLineTOC
 ///
 /// <ol>
-///  <li>configuration</li>
-///  <li>daemon</li>
-///  <li>gid</li>
-///  <li>help</li>
-///  <li>pid-file</li>
-///  <li>uid</li>
-///  <li>version</li>
+///  <li>@ref CommandLineHelp "help"</li>
+///  <li>@ref CommandLineVersion "version"</li>
+///  <li>@ref CommandLineConfiguration "configuration"</li>
+///  <li>@ref CommandLineDaemon "daemon"</li>
+///  <li>@ref CommandLineSupervisor "supervisor"</li>
+///  <li>@ref CommandLineUid "uid"</li>
+///  <li>@ref CommandLineGid "gid"</li>
+///  <li>@ref CommandLinePidFile "pid-file"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -96,9 +97,25 @@
 /// <hr>
 ///
 /// @section GeneralOptions General Options
+///////////////////////////////////////////
 ///
+/// @anchor CommandLineHelp
+///////////////////////////
+/// @copydetails triagens::rest::ApplicationServerImpl::options
+/// <hr>
+///
+/// @anchor CommandLineVersion
+//////////////////////////////
+/// @copydetails triagens::rest::ApplicationServerImpl::version
+/// <hr>
+///
+/// @anchor CommandLineConfiguration
+////////////////////////////////////
 /// @copydetails triagens::rest::ApplicationServerImpl::initFile
+/// <hr>
 ///
+/// @anchor CommandLineDaemon
+/////////////////////////////
 /// @CMDOPT{--daemon}
 ///
 /// Runs the server as a daemon (as a background process). This parameter can
@@ -106,22 +123,10 @@
 /// value to the parameter pid-file is given, then the server will report an
 /// error and exit.
 ///
-/// @copydetails triagens::rest::ApplicationServerImpl::gid
+/// <hr>
 ///
-/// @copydetails triagens::rest::ApplicationServerImpl::options
-///
-/// @copydetails triagens::rest::AnyServer::_pidFile
-///
-/// @CMDOPT{--show-io-backends}
-///
-/// If this option is specified, then the server will list available backends
-/// and exit. This option is useful only when used in conjunction with the
-/// option scheduler.backend. An integer is returned (which is platform
-/// dependent) which indicates available backends on your platform. See libev
-/// for further details and for the meaning of the integer returned. This
-/// describes the allowed integers for @CODE{scheduler.backend}, see
-/// @ref CommandLineScheduler "here" for details.
-///
+/// @anchor CommandLineSupervisor
+/////////////////////////////////
 /// @CMDOPT{--supervisor}
 ///
 /// Executes the server in supervisor mode. In the event that the server
@@ -130,12 +135,25 @@
 /// that the server will run as a daemon. Note that, as with the daemon flag,
 /// this flag requires that the pid-file parameter will set.
 ///
-/// @copydetails triagens::rest::ApplicationServerImpl::uid
-///
-/// @copydetails triagens::rest::ApplicationServerImpl::version
-///
 /// <hr>
+///
+/// @anchor CommandLineUid
+//////////////////////////
+/// @copydetails triagens::rest::ApplicationServerImpl::uid
+/// <hr>
+///
+/// @anchor CommandLineGid
+//////////////////////////
+/// @copydetails triagens::rest::ApplicationServerImpl::gid
+/// <hr>
+///
+/// @anchor CommandLinePidFile
+//////////////////////////////
+/// @copydetails triagens::rest::AnyServer::_pidFile
+/// <hr>
+///
 /// Next steps:
+///////////////
 ///
 /// @copydetails CommandLineSubTOC
 ////////////////////////////////////////////////////////////////////////////////
@@ -144,11 +162,11 @@
 /// @page CommandLineAvocadoTOC
 ///
 /// <ol>
-///  <li>database.directory</li>
-///  <li>database.remove-on-drop</li>
-///  <li>database.maximal-journal-size</li>
-///  <li>server.admin-port</li>
-///  <li>server.http-port</li>
+///  <li>@ref CommandLineAvocadoHttpPort "server.http-port"</li>
+///  <li>@ref CommandLineAvocadoAdminPort "server.admin-port"</li>
+///  <li>@ref CommandLineAvocadoDirectory "database.directory"</li>
+///  <li>@ref CommandLineAvocadoMaximalJournalSize "database.maximal-journal-size"</li>
+///  <li>@ref CommandLineAvocadoRemoveOnDrop "database.remove-on-drop"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -159,15 +177,24 @@
 /// @copydoc CommandLineAvocadoTOC
 /// <hr>
 ///
-/// @copydetails triagens::avocado::AvocadoServer::_databasePath
-///
-/// @copydetails triagens::avocado::AvocadoServer::_removeOnDrop
-///
-/// @copydetails triagens::avocado::AvocadoServer::_defaultMaximalSize
-///
-/// @copydetails triagens::avocado::AvocadoServer::_adminPort
-///
+/// @anchor CommandLineAvocadoHttpPort
 /// @copydetails triagens::avocado::AvocadoServer::_httpPort
+/// <hr>
+///
+/// @anchor CommandLineAvocadoAdminPort
+/// @copydetails triagens::avocado::AvocadoServer::_adminPort
+/// <hr>
+///
+/// @anchor CommandLineAvocadoDirectory
+/// @copydetails triagens::avocado::AvocadoServer::_databasePath
+/// <hr>
+///
+/// @anchor CommandLineAvocadoMaximalJournalSize
+/// @copydetails triagens::avocado::AvocadoServer::_defaultMaximalSize
+/// <hr>
+///
+/// @anchor CommandLineAvocadoRemoveOnDrop
+/// @copydetails triagens::avocado::AvocadoServer::_removeOnDrop
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

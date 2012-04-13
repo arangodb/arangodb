@@ -153,9 +153,15 @@ AvocadoError.prototype.toString = function() {
 ///
 /// Drops a @FA{collection} and all its indexes.
 ///
+/// @FUN{db._drop(@FA{collection-identifier})}
+///
+/// Drops a collection identified by @FA{collection-identifier} and all its
+/// indexes. No error is thrown if there is no such collection.
+///
 /// @FUN{db._drop(@FA{collection-name})}
 ///
-/// Drops a collection named @FA{collection-name} and all its indexes.
+/// Drops a collection named @FA{collection-name} and all its indexes. No error
+/// is thrown if there is no such collection.
 ///
 /// @EXAMPLES
 ///
@@ -171,7 +177,7 @@ AvocadoError.prototype.toString = function() {
 AvocadoDatabase.prototype._drop = function(name) {
   var collection = name;
 
-  if (typeof name === "string") {
+  if (! (name instanceof AvocadoCollection || name instanceof AvocadoEdgesCollection)) {
     collection = db._collection(name);
   }
 
@@ -192,9 +198,15 @@ AvocadoEdges.prototype._drop = AvocadoDatabase.prototype._drop;
 /// Truncates a @FA{collection}, removing all documents but keeping all its
 /// indexes.
 ///
+/// @FUN{db._truncate(@FA{collection-identifier})}
+///
+/// Truncates a collection identified by @FA{collection-identified}. No error is
+/// thrown if there is no such collection.
+///
 /// @FUN{db._truncate(@FA{collection-name})}
 ///
-/// Truncates a collection named @FA{collection-name}.
+/// Truncates a collection named @FA{collection-name}. No error is thrown if
+/// there is no such collection.
 ///
 /// @EXAMPLES
 ///
@@ -210,7 +222,7 @@ AvocadoEdges.prototype._drop = AvocadoDatabase.prototype._drop;
 AvocadoDatabase.prototype._truncate = function(name) {
   var collection = name;
 
-  if (typeof name === "string") {
+  if (! (name instanceof AvocadoCollection || name instanceof AvocadoEdgesCollection)) {
     collection = db._collection(name);
   }
 

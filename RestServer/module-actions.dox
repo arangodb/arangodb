@@ -76,6 +76,7 @@
 ///
 /// @anchor JSModuleActionsGetErrorMessage
 /// @copydetails JSF_GetErrorMessage
+/// <hr>
 ///
 /// @section JSModuleActionsHTTP Standard HTTP Result Generators
 ////////////////////////////////////////////////////////////////

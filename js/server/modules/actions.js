@@ -179,7 +179,7 @@ function DefineHttp (options) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get an error message string for an error code
 ///
-/// @FUN{actions.getErrorMessage(@FA{code})
+/// @FUN{actions.getErrorMessage(@FA{code})}
 ///
 /// Returns the error message for an error code.
 ////////////////////////////////////////////////////////////////////////////////
@@ -202,7 +202,7 @@ function GetErrorMessage (code) {
 /// The functions generates an error response. The response body is an array
 /// with an attribute @LIT{errorMessage} containing the error message
 /// @FA{errorMessage}, @LIT{error} containing @LIT{true}, @LIT{code} containing
-/// @FA{code}, @LIT{errorNum} containing @FA{errorNum}, and $LIT{errorMessage}
+/// @FA{code}, @LIT{errorNum} containing @FA{errorNum}, and @LIT{errorMessage}
 /// containing the error message @FA{errorMessage}. @FA{keyvals} are mixed
 /// into the result.
 ////////////////////////////////////////////////////////////////////////////////
