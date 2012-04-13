@@ -896,7 +896,7 @@ WIKI = \
 	jsUnity
 
 FORCE = 0
-VALGRIND = valgrind
+VALGRIND = 
 
 ################################################################################
 ################################################################################
@@ -939,6 +939,7 @@ UNITTESTS_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
 ################################################################################
 ################################################################################
 SHELL_CLIENT = @srcdir@/js/common/tests/shell-document.js \
+               @srcdir@/js/common/tests/shell-edge.js \
                @srcdir@/js/common/tests/shell-collection.js
 
 UNITTESTS_CLIENT = $(addprefix --unit-tests ,$(SHELL_CLIENT))

@@ -1,7 +1,7 @@
 # -*- mode: Makefile; -*-
 
 FORCE = 0
-VALGRIND = valgrind
+VALGRIND =
 
 ################################################################################
 ## unittests target
@@ -154,6 +154,7 @@ unittests-shell-server:
 ################################################################################
 
 SHELL_CLIENT = @srcdir@/js/common/tests/shell-document.js \
+               @srcdir@/js/common/tests/shell-edge.js \
                @srcdir@/js/common/tests/shell-collection.js
 
 .PHONY: unittests-shell-client
