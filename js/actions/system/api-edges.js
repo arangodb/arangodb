@@ -36,17 +36,17 @@ var API = "edges";
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get edges
 ///
-/// @REST{POST /edges/@FA{collection-identifier}?vertex=@FA{vertex-handle}&direction=any}
+/// @REST{GET /edges/@FA{collection-identifier}?vertex=@FA{vertex-handle}&direction=any}
 ///
 /// Returns the list of edges starting or ending in the vertex identified by
 /// @FA{vertex-handle}.
 ///
-/// @REST{POST /edges/@FA{collection-identifier}?vertex=@FA{vertex-handle}&direction=in}
+/// @REST{GET /edges/@FA{collection-identifier}?vertex=@FA{vertex-handle}&direction=in}
 ///
 /// Returns the list of edges ending in the vertex identified by
 /// @FA{vertex-handle}.
 ///
-/// @REST{POST /edges/@FA{collection-identifier}?vertex=@FA{vertex-handle}&direction=out}
+/// @REST{GET /edges/@FA{collection-identifier}?vertex=@FA{vertex-handle}&direction=out}
 ///
 /// Returns the list of edges starting in the vertex identified by
 /// @FA{vertex-handle}.

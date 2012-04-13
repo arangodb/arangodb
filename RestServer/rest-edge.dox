@@ -46,6 +46,7 @@
 ///  <li>@ref RestEdgeUpdate "PUT /edge/document-handle"</li>
 ///  <li>@ref RestEdgeDelete "DELETE /edge/document-handle"</li>
 ///  <li>@ref RestEdgeHead "HEAD /edge/document-handle"</li>
+///  <li>@ref RestEdgeEdges "GET /edges/collection-identifier?vertex=vertex-handle&directory=direction"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -114,6 +115,11 @@
 /// @REST{HEAD /document/@FA{document-handle}}
 ///
 /// See @ref RestDocument for details.
+///
+/// <hr>
+///
+/// @anchor RestEdgeEdges
+/// @copydetails JSF_GET_edges
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

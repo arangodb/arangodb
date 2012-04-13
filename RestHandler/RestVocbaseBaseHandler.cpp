@@ -599,7 +599,7 @@ int RestVocbaseBaseHandler::parseDocumentId (string const& handle,
   split = StringUtils::split(handle, '/');
 
   if (split.size() != 2) {
-    return TRI_set_errno(TRI_ERROR_HTTP_BAD_PARAMETER);
+    return TRI_set_errno(TRI_ERROR_AVOCADO_DOCUMENT_HANDLE_BAD);
   }
 
   cid = TRI_UInt64String(split[0].c_str());
