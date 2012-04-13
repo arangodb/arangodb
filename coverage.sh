@@ -12,7 +12,7 @@ RESULTS="avocado avocsh"
 
 export CPPFLAGS=""
 export LDFLAGS=""
-export MAKEJ=2
+export MAKEJ="-j 2"
 export LDD_INFO="no"
 
 echo
@@ -106,13 +106,11 @@ echo
 echo
 echo "########################################################"
 echo "compile:"
-echo "    make $TARGETS"
+echo "    make $MAKEJ"
 echo "########################################################"
 echo
 
-make -j $MAKEJ || exit 1
-
-echo
+make $MAKEJ || exit 1
 
 echo
 echo "########################################################"
@@ -122,3 +120,30 @@ echo "########################################################"
 echo
 
 make unittests FORCE=1 || exit 1
+
+echo
+echo "########################################################"
+echo "lcov:"
+echo "########################################################"
+echo
+
+rm -rf COVERAGE
+mkdir COVERAGE
+mkdir COVERAGE/html
+
+current=`pwd`
+vprj_folder=`basename $current`
+lcov_folder="${vprj_folder}/COVERAGE/html"
+c_info_file="${vprj_folder}/COVERAGE/coverage.lcov"
+r_info_file="${vprj_folder}/COVERAGE/reduced.lcov"
+
+(
+  cd ..
+  lcov -b ${vprj_folder} -c -d ${vprj_folder} -o ${c_info_file}.1 
+  lcov --remove ${c_info_file}.1 "*3rdParty*" -o ${c_info_file}.2
+  rm ${c_info_file}.1
+  lcov --remove ${c_info_file}.2 "*UnitTests*" -o ${c_info_file}
+  rm ${c_info_file}.2
+  lcov --extract ${c_info_file} "*${vprj_folder}*" -o ${r_info_file}
+  genhtml -o ${lcov_folder} ${r_info_file}
+)

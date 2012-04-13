@@ -6,7 +6,7 @@ echo "########################################################"
 
 . config/detect_distro.sh
 
-OPTIONS="--disable-dependency-tracking --disable-debug --disable-relative"
+OPTIONS="--disable-dependency-tracking --disable-relative"
 PREFIX="--prefix=/usr --sysconfdir=/etc"
 RESULTS="avocado avocsh"
 
@@ -138,7 +138,10 @@ echo "    make unittests"
 echo "########################################################"
 echo
 
-make unittests FORCE=1 || exit 1
+make unittests-boost || exit 1
+make unittests-shell-server || exit 1
+make unittests-http-server || exit 1
+make unittests-shell-client || exit 1
 
 if test "x$VALGRIND_TEST" = "xyes";  then
   echo
