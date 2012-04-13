@@ -35,7 +35,6 @@ m4/component.engine
 m4/component.files
 m4/component.storage
 m4/configure.3rdParty
-m4/configure.coverage
 m4/configure.curl
 m4/configure.cxxtest
 m4/configure.documentation

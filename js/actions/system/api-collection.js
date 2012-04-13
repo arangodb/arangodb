@@ -296,83 +296,83 @@ function GET_api_collection (req, res) {
 
   if (req.suffix.length == 0) {
     GET_api_collections(req, res);
+    return;
+  }
+
+  var name = decodeURIComponent(req.suffix[0]);
+  var id = parseInt(name) || name;
+  var collection = db._collection(id);
+
+  if (collection == null) {
+    actions.collectionNotFound(req, res, name);
+    return;
+  }
+
+  // .............................................................................
+  // /_api/collection/<identifier>
+  // .............................................................................
+
+  if (req.suffix.length == 1) {
+    var result = CollectionRepresentation(collection, false, false, false);
+    var headers = { location : "/" + API + "/" + collection._id };
+
+    actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+  }
+
+  else if (req.suffix.length == 2) {
+    var sub = decodeURIComponent(req.suffix[1]);
+
+    // .............................................................................
+    // /_api/collection/<identifier>/figures
+    // .............................................................................
+
+    if (sub == "figures") {
+      var result = CollectionRepresentation(collection, true, true, true);
+      var headers = { location : "/" + API + "/" + collection._id + "/figures" };
+
+      actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+    }
+
+    // .............................................................................
+    // /_api/collection/<identifier>/count
+    // .............................................................................
+
+    else if (sub == "count") {
+      var result = CollectionRepresentation(collection, true, true, false);
+      var headers = { location : "/" + API + "/" + collection._id + "/count" };
+
+      actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+    }
+
+    // .............................................................................
+    // /_api/collection/<identifier>/properties
+    // .............................................................................
+
+    else if (sub == "properties") {
+      var result = CollectionRepresentation(collection, true, false, false);
+      var headers = { location : "/" + API + "/" + collection._id + "/properties" };
+
+      actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+    }
+
+    // .............................................................................
+    // /_api/collection/<identifier>/parameter (DEPRECATED)
+    // .............................................................................
+
+    else if (sub == "parameter") {
+      var result = CollectionRepresentation(collection, true, false, false);
+      var headers = { location : "/" + API + "/" + collection._id + "/parameter" };
+
+      actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+    }
+
+    else {
+      actions.resultNotFound(req, res, "expecting one of the resources 'count', 'figures', 'properties', 'parameter'");
+    }
   }
   else {
-    var name = decodeURIComponent(req.suffix[0]);
-    var id = parseInt(name) || name;
-    var collection = db._collection(id);
-    
-    if (collection == null) {
-      actions.collectionNotFound(req, res, name);
-    }
-    else {
-      // .............................................................................
-      // /_api/collection/<identifier>
-      // .............................................................................
-
-      if (req.suffix.length == 1) {
-        var result = CollectionRepresentation(collection, false, false, false);
-        var headers = { location : "/" + API + "/" + collection._id };
-
-        actions.resultOk(req, res, actions.HTTP_OK, result, headers);
-      }
-
-      else if (req.suffix.length == 2) {
-        var sub = decodeURIComponent(req.suffix[1]);
-
-        // .............................................................................
-        // /_api/collection/<identifier>/figures
-        // .............................................................................
-
-        if (sub == "figures") {
-          var result = CollectionRepresentation(collection, true, true, true);
-          var headers = { location : "/" + API + "/" + collection._id + "/figures" };
-
-          actions.resultOk(req, res, actions.HTTP_OK, result, headers);
-        }
-
-        // .............................................................................
-        // /_api/collection/<identifier>/count
-        // .............................................................................
-
-        else if (sub == "count") {
-          var result = CollectionRepresentation(collection, true, true, false);
-          var headers = { location : "/" + API + "/" + collection._id + "/count" };
-      
-          actions.resultOk(req, res, actions.HTTP_OK, result, headers);
-        }
-        
-        // .............................................................................
-        // /_api/collection/<identifier>/properties
-        // .............................................................................
-
-        else if (sub == "properties") {
-          var result = CollectionRepresentation(collection, true, false, false);
-          var headers = { location : "/" + API + "/" + collection._id + "/properties" };
-      
-          actions.resultOk(req, res, actions.HTTP_OK, result, headers);
-        }
-        
-        // .............................................................................
-        // /_api/collection/<identifier>/parameter (DEPRECATED)
-        // .............................................................................
-
-        else if (sub == "parameter") {
-          var result = CollectionRepresentation(collection, true, false, false);
-          var headers = { location : "/" + API + "/" + collection._id + "/parameter" };
-      
-          actions.resultOk(req, res, actions.HTTP_OK, result, headers);
-        }
-
-        else {
-          actions.resultNotFound(req, res, "expecting one of the resources 'count', 'figures', 'properties', 'parameter'");
-        }
-      }
-      else {
-        actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                          "expect GET /" + API + "/<collection-identifer>/<method>");
-      }
-    }
+    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+                      "expect GET /" + API + "/<collection-identifer>/<method>");
   }
 }
 
