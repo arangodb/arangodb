@@ -145,6 +145,7 @@ avocado_SOURCES = \
 	RestHandler/RestActionHandler.cpp \
 	RestHandler/RestDocumentHandler.cpp \
 	RestHandler/RestEdgeHandler.cpp \
+	RestHandler/RestImportHandler.cpp \
 	RestHandler/RestVocbaseBaseHandler.cpp \
 	RestServer/ActionDispatcherThread.cpp \
 	RestServer/AvocadoHttpServer.cpp \
