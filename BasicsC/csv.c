@@ -42,8 +42,8 @@
 
 void TRI_InitCsvParser (TRI_csv_parser_t* parser,
                         void (*begin) (TRI_csv_parser_t*, size_t),
-                        void (*add) (TRI_csv_parser_t*, char const*, size_t, size_t),
-                        void (*end) (TRI_csv_parser_t*, char const*, size_t, size_t)) {
+                        void (*add) (TRI_csv_parser_t*, char const*, size_t, size_t, bool),
+                        void (*end) (TRI_csv_parser_t*, char const*, size_t, size_t, bool)) {
   size_t length;
 
   parser->_state = TRI_CSV_PARSER_BOL;
@@ -273,7 +273,7 @@ bool TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t len
             if (*ptr == parser->_separator) {
               *qtr = '\0';
 
-              parser->add(parser, parser->_start, parser->_row, parser->_column);
+              parser->add(parser, parser->_start, parser->_row, parser->_column, false);
 
               ptr++;
               parser->_column++;
@@ -284,7 +284,7 @@ bool TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t len
             else {
               *qtr = '\0';
 
-              parser->end(parser, parser->_start, parser->_row, parser->_column);
+              parser->end(parser, parser->_start, parser->_row, parser->_column, false);
 
               ptr++;
               parser->_row++;
@@ -320,7 +320,7 @@ bool TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t len
             else if (*ptr == parser->_separator) {
               *qtr = '\0';
 
-              parser->add(parser, parser->_start, parser->_row, parser->_column);
+              parser->add(parser, parser->_start, parser->_row, parser->_column, true);
 
               ptr++;
               parser->_column++;
@@ -331,7 +331,7 @@ bool TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t len
             else if (*ptr == parser->_eol) {
               *qtr = '\0';
 
-              parser->end(parser, parser->_start, parser->_row, parser->_column);
+              parser->end(parser, parser->_start, parser->_row, parser->_column, true);
 
               ptr++;
               parser->_row++;
