@@ -926,17 +926,22 @@ CLIENT_OPT := --startup.directory ./js --startup.modules-path ./js/client/module
 ################################################################################
 SHELL_SERVER = @srcdir@/js/common/tests/shell-document.js \
                @srcdir@/js/common/tests/shell-edge.js \
-               @srcdir@/js/common/tests/shell-collection.js \
-               @srcdir@/js/server/tests/aql-index-primary.js \
-               @srcdir@/js/server/tests/aql-index-hash.js \
-               @srcdir@/js/server/tests/aql-index-skiplist.js \
-               @srcdir@/js/server/tests/aql-simple.js \
-               @srcdir@/js/server/tests/aql-keywords.js \
-               @srcdir@/js/server/tests/aql-bind.js \
-               @srcdir@/js/server/tests/aql-joins.js \
-               @srcdir@/js/server/tests/aql-operators.js 
+               @srcdir@/js/common/tests/shell-collection.js
 
 UNITTESTS_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
+
+################################################################################
+################################################################################
+SHELL_SERVER_INDEX = @srcdir@/js/server/tests/aql-index-primary.js \
+		     @srcdir@/js/server/tests/aql-index-hash.js \
+		     @srcdir@/js/server/tests/aql-index-skiplist.js \
+		     @srcdir@/js/server/tests/aql-simple.js \
+		     @srcdir@/js/server/tests/aql-keywords.js \
+		     @srcdir@/js/server/tests/aql-bind.js \
+		     @srcdir@/js/server/tests/aql-joins.js \
+		     @srcdir@/js/server/tests/aql-operators.js 
+
+UNITTESTS_SERVER_INDEX = $(addprefix --unit-tests ,$(SHELL_SERVER_INDEX))
 
 ################################################################################
 ################################################################################
@@ -2685,7 +2690,13 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
 
 unittests: unittests-verbose unittests-brief
 
-unittests-brief: unittests-boost unittests-shell-server unittests-shell-client unittests-http-server
+unittests-brief: \
+	unittests-boost \
+	unittests-shell-server \
+	unittests-http-server \
+	unittests-shell-client \
+	unittests-http-server \
+	unittests-shell-server-index
 
 unittests-verbose:
 	@echo "################################################################################"
@@ -2759,7 +2770,7 @@ start-server:
 unittests-shell-server:
 	@echo
 	@echo "================================================================================"
-	@echo "|| SHELL SERVER TESTS                                                         ||"
+	@echo "|| SHELL SERVER TESTS (BASCIS)                                                ||"
 	@echo "================================================================================"
 	@echo
 
@@ -2767,6 +2778,24 @@ unittests-shell-server:
 	@mkdir "$(VOCDIR)"
 
 	$(VALGRIND) @builddir@/avocado "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "$(FORCE)" == "1"
+
+	@rm -rf "$(VOCDIR)"
+
+	@echo
+
+.PHONY: unittests-shell-server-index
+
+unittests-shell-server-index:
+	@echo
+	@echo "================================================================================"
+	@echo "|| SHELL SERVER TESTS (INDEX & QUERY)                                         ||"
+	@echo "================================================================================"
+	@echo
+
+	@rm -rf "$(VOCDIR)"
+	@mkdir "$(VOCDIR)"
+
+	$(VALGRIND) @builddir@/avocado "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_INDEX) || test "$(FORCE)" == "1"
 
 	@rm -rf "$(VOCDIR)"
 

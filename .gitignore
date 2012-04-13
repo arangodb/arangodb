@@ -73,3 +73,4 @@ UnitTests/HttpInterface/logs
 Makefile.local
 *.gcno
 *.gcda
+COVERAGE
