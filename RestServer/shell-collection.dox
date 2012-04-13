@@ -54,12 +54,12 @@
 ///  </li>
 ///  <li>Database Methods
 ///   <ol>
-///    <li>@ref ShellCollectionCreate "db._create(collection-name, properties)"</li>
 ///    <li>@ref ShellCollectionRead "db._collection(collection-identifier)"</li>
+///    <li>@ref ShellCollectionCreate "db._create(collection-name, properties)"</li>
 ///    <li>@ref ShellCollectionReadAll "db._collections()"</li>
+///    <li>@ref ShellCollectionReadShortCut "db.collection-name"</li>
 ///    <li>@ref ShellCollectionDropDb "db._drop(collection)"</li>
 ///    <li>@ref ShellCollectionTruncateDb "db._truncate(collection)"</li>
-///    <li>@ref ShellCollectionReadShortCut "db.collection-name"</li>
 ///   </ol>
 ///  </li>
 /// </ol>
@@ -150,16 +150,20 @@
 /// @copydetails JS_RenameVocbaseCol
 /// <hr>
 ///
-/// @anchor ShellCollectionCreate
-/// @copydetails JS_CreateVocBase
-/// <hr>
-///
 /// @anchor ShellCollectionRead
 /// @copydetails JS_CollectionVocBase
 /// <hr>
 ///
+/// @anchor ShellCollectionCreate
+/// @copydetails JS_CreateVocBase
+/// <hr>
+///
 /// @anchor ShellCollectionReadAll
 /// @copydetails JS_CollectionsVocBase
+/// <hr>
+///
+/// @anchor ShellCollectionReadShortCut
+/// @copydetails MapGetVocBase
 /// <hr>
 ///
 /// @anchor ShellCollectionDropDb
@@ -170,8 +174,6 @@
 /// @copydetails JSF_AvocadoDatabase_prototype__truncate
 /// <hr>
 ///
-/// @anchor ShellCollectionReadShortCut
-/// @copydetails MapGetVocBase
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
