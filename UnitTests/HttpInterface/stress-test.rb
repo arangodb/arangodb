@@ -1,4 +1,5 @@
 #! ruby -rubygems
+# coding: utf-8
 
 require 'avocadodb'
 

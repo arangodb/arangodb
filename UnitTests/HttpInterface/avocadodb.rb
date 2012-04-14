@@ -1,3 +1,5 @@
+# coding: utf-8
+
 require 'httparty'
 
 $address = ENV['AVOCADO_SERVER'] || '127.0.0.1:8529'
