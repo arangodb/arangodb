@@ -302,7 +302,7 @@ function collectionSuite () {
       db._drop(cn);
       var c1 = db._create(cn);
 
-      c1.load();
+      c1.save({ a : 1 });
 
       assertTypeOf("number", c1._id);
       assertEqual(cn, c1.name());
@@ -327,7 +327,7 @@ function collectionSuite () {
       db._drop(cn);
       var c1 = db._create(cn);
 
-      c1.load();
+      c1.save({ a : 1 });
       c1.unload();
 
       assertTypeOf("number", c1._id);
@@ -375,7 +375,7 @@ function collectionSuite () {
       db._drop(cn);
       var c1 = db._create(cn);
 
-      c1.load();
+      c1.save({ a : 1 });
 
       assertTypeOf("number", c1._id);
       assertEqual(cn, c1.name());
@@ -399,7 +399,7 @@ function collectionSuite () {
       db._drop(cn);
       var c1 = db._create(cn);
 
-      c1.load();
+      c1.save({ a : 1 });
       c1.unload();
 
       assertTypeOf("number", c1._id);
@@ -494,7 +494,7 @@ function collectionSuite () {
       db._drop(nn);
       var c1 = db._create(cn);
 
-      c1.load();
+      c1.save({ a : 1 });
 
       assertTypeOf("number", c1._id);
       assertEqual(cn, c1.name());
@@ -527,7 +527,7 @@ function collectionSuite () {
       db._drop(nn);
       var c1 = db._create(cn);
 
-      c1.load();
+      c1.save({ a : 1 });
       c1.unload();
 
       assertTypeOf("number", c1._id);
@@ -597,7 +597,7 @@ function collectionDbSuite () {
       db._drop(cn);
       var c1 = db._create(cn);
 
-      c1.load();
+      c1.save({ a : 1 });
 
       assertTypeOf("number", c1._id);
       assertEqual(cn, c1.name());
@@ -622,7 +622,7 @@ function collectionDbSuite () {
       db._drop(cn);
       var c1 = db._create(cn);
 
-      c1.load();
+      c1.save({ a : 1 });
       c1.unload();
 
       assertTypeOf("number", c1._id);
@@ -670,7 +670,7 @@ function collectionDbSuite () {
       db._drop(cn);
       var c1 = db._create(cn);
 
-      c1.load();
+      c1.save({ a : 1 });
 
       assertTypeOf("number", c1._id);
       assertEqual(cn, c1.name());
@@ -694,7 +694,7 @@ function collectionDbSuite () {
       db._drop(cn);
       var c1 = db._create(cn);
 
-      c1.load();
+      c1.save({ a : 1 });
       c1.unload();
 
       assertTypeOf("number", c1._id);
