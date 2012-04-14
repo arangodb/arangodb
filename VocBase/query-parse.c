@@ -316,7 +316,11 @@ void TRI_ParseQueryPopIntoRhs (TRI_query_node_t* node,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ParseQueryValidateCollectionName (const char* name) {
-  if (TRI_IsAllowedCollectionName(name) != 0) {
+  TRI_col_parameter_t parameter;
+
+  parameter._isSystem = true;
+
+  if (TRI_IsAllowedCollectionName(&parameter, name) != 0) {
     return false;
   }
 

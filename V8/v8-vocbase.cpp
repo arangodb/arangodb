@@ -918,6 +918,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, bool edge
     v8::Handle<v8::Object> p = argv[1]->ToObject();
     v8::Handle<v8::String> waitForSyncKey = v8::String::New("waitForSync");
     v8::Handle<v8::String> journalSizeKey = v8::String::New("journalSize");
+    v8::Handle<v8::String> isSystemKey = v8::String::New("isSystem");
 
     if (p->Has(journalSizeKey)) {
       double s = TRI_ObjectToDouble(p->Get(journalSizeKey));
@@ -938,6 +939,9 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, bool edge
       parameter._waitForSync = TRI_ObjectToBoolean(p->Get(waitForSyncKey));
     }
 
+    if (p->Has(isSystemKey)) {
+      parameter._isSystem = TRI_ObjectToBoolean(p->Get(isSystemKey));
+    }
   }
   else {
     TRI_InitParameterCollection(&parameter, name.c_str(), vocbase->_defaultMaximalSize);
@@ -1810,7 +1814,7 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
   }
 
-  // expect: NEAR(<index-id>, <latitude>, <longitude>, <limit>)
+  // expect: WITHIN(<index-id>, <latitude>, <longitude>, <limit>)
   if (argv.Length() != 4) {
     ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(

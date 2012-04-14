@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
@@ -32,7 +32,7 @@ var AvocadoCollection = internal.AvocadoCollection;
 var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                              EDGE
+// --SECTION--                                                              Edge
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -58,15 +58,12 @@ function Edge (graph, id) {
 
   // extract the custom identifier, label, edges
   if (props) {
-    this._eid = props.$eid;
-    this._label = props.$label;
-    this._from = props._from;
-    this._to = props._to;
+    this._properties = props;
   }
 
   // deleted
   else {
-    this._id = undefined;
+    throw "accessing a deleted edge";
   }
 }
 
@@ -95,8 +92,8 @@ function Edge (graph, id) {
 /// @verbinclude graph13
 ////////////////////////////////////////////////////////////////////////////////
 
-Edge.prototype.getId = function (name) {
-  return this._eid;
+Edge.prototype.getId = function () {
+  return this._properties.$id;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -112,11 +109,7 @@ Edge.prototype.getId = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getInVertex = function () {
-  if (! this._id) {
-    throw "accessing a deleted edge";
-  }
-
-  return this._graph.constructVertex(this._to);
+  return this._graph.constructVertex(this._properties._to);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,11 +125,7 @@ Edge.prototype.getInVertex = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getLabel = function () {
-  if (! this._id) {
-    throw "accessing a deleted edge";
-  }
-
-  return this._label;
+  return this._properties.$label;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,11 +141,7 @@ Edge.prototype.getLabel = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getOutVertex = function () {
-  if (! this._id) {
-    throw "accessing a deleted edge";
-  }
-
-  return this._graph.constructVertex(this._from);
+  return this._graph.constructVertex(this._properties._from);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -172,11 +157,7 @@ Edge.prototype.getOutVertex = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getProperty = function (name) {
-  if (! this._id) {
-    throw "accessing a deleted edge";
-  }
-
-  return this.properties()[name];
+  return this._properties[name];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -192,11 +173,7 @@ Edge.prototype.getProperty = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getPropertyKeys = function () {
-  if (! this._id) {
-    throw "accessing a deleted edge";
-  }
-
-  return propertyKeys(this.properties());
+  return propertyKeys(this._properties);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -212,27 +189,14 @@ Edge.prototype.getPropertyKeys = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.setProperty = function (name, value) {
-  var props;
-  var shallow;
+  var shallow = shallowCopy(this._properties);
+  shallow[name] = value;
 
-  if (! this._id) {
-    throw "accessing a deleted edge";
-  }
+  // TODO use "update" if this becomes available
+  var id = this._graph._edges.replace(this._properties, shallow);
+  this._properties = this._graph._edges.document(id);
 
-  props = this._graph._edges.document(this._id); // TODO use "update"
-
-  if (props !== undefined) {
-    shallow = shallowCopy(props);
-
-    shallow[name] = value;
-
-    this._graph._edges.replace(this._id, shallow);
-
-    return value;
-  }
-  else {
-    return undefined;
-  }
+  return value;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,20 +212,17 @@ Edge.prototype.setProperty = function (name, value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.properties = function () {
-  var result;
+  var shallow = shallowCopy(this._properties);
 
-  if (! this._id) {
-    throw "accessing a deleted edge";
-  }
+  delete shallow.$id;
+  delete shallow.$label;
 
-  props = this._graph._edges.document(this._id);
+  delete shallow._id;
+  delete shallow._rev;
+  delete shallow._from;
+  delete shallow._to;
 
-  if (! props) {
-    this._id = undefined;
-    throw "accessing a deleted edge";
-  }
-
-  return shallowCopy(props);
+  return shallow;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -285,16 +246,16 @@ Edge.prototype._PRINT = function (seen, path, names) {
   if (! this._id) {
     internal.output("[deleted Edge]");
   }
-  else if (this._eid !== undefined) {
-    if (typeof this._eid === "string") {
-      internal.output("Edge(\"", this._eid, "\")");
+  else if (this._properties.$id !== undefined) {
+    if (typeof this._properties.$id === "string") {
+      internal.output("Edge(\"", this._properties.$id, "\")");
     }
     else {
-      internal.output("Edge(", this._eid, ")");
+      internal.output("Edge(", this._properties.$id, ")");
     }
   }
   else {
-    internal.output("Edge(\"", this._id, "\")");
+    internal.output("Edge(<", this._id, ">)");
   }
 }
 
@@ -329,12 +290,12 @@ function Vertex (graph, id) {
 
   // extract the custom identifier
   if (props) {
-    this._vid = props.$vid;
+    this._properties = props;
   }
 
   // deleted
   else {
-    this._id = undefined;
+    throw "accessing a deleted edge";
   }
 }
 
@@ -379,10 +340,6 @@ function Vertex (graph, id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.addInEdge = function (id, out, label, data) {
-  if (! this._id) {
-    throw "accessing a deleted vertex";
-  }
-
   return this._graph.addEdge(id, out, this, label, data);
 }
 
@@ -414,10 +371,6 @@ Vertex.prototype.addInEdge = function (id, out, label, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.addOutEdge = function (id, ine, label, data) {
-  if (! this._id) {
-    throw "accessing a deleted vertex";
-  }
-
   return this._graph.addEdge(id, this, ine, label, data);
 }
 
@@ -437,10 +390,6 @@ Vertex.prototype.edges = function () {
   var query;
   var result;
   var graph;
-
-  if (! this._id) {
-    throw "accessing a deleted vertex";
-  }
 
   graph = this._graph;
   query = graph._edges.edges(this._id);
@@ -468,7 +417,7 @@ Vertex.prototype.edges = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getId = function (name) {
-  return this._vid;
+  return this._properties.$id;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -488,10 +437,6 @@ Vertex.prototype.getInEdges = function () {
   var labels;
   var result;
   var edge;
-
-  if (! this._id) {
-    throw "accessing a deleted vertex";
-  }
 
   if (arguments.length == 0) {
     return this.inbound();
@@ -534,10 +479,6 @@ Vertex.prototype.getOutEdges = function () {
   var result;
   var edge;
 
-  if (! this._id) {
-    throw "accessing a deleted vertex";
-  }
-
   if (arguments.length == 0) {
     return this.outbound();
   }
@@ -574,11 +515,7 @@ Vertex.prototype.getOutEdges = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getProperty = function (name) {
-  if (! this._id) {
-    throw "accessing a deleted vertex";
-  }
-
-  return this.properties()[name];
+  return this._properties[name];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -594,11 +531,7 @@ Vertex.prototype.getProperty = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getPropertyKeys = function () {
-  if (! this._id) {
-    throw "accessing a deleted vertex";
-  }
-
-  return propertyKeys(this.properties());
+  return propertyKeys(this._properties);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -617,10 +550,6 @@ Vertex.prototype.inbound = function () {
   var query;
   var result;
   var graph;
-
-  if (! this._id) {
-    throw "accessing a deleted vertex";
-  }
 
   graph = this._graph;
   query = graph._edges.inEdges(this._id);
@@ -651,10 +580,6 @@ Vertex.prototype.outbound = function () {
   var result;
   var graph;
 
-  if (! this._id) {
-    throw "accessing a deleted vertex";
-  }
-
   graph = this._graph;
   query = graph._edges.outEdges(this._id);
 
@@ -680,21 +605,14 @@ Vertex.prototype.outbound = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.properties = function () {
-  var props;
-  var result;
+  var shallow = shallowCopy(this._properties);
 
-  if (! this._id) {
-    throw "accessing a deleted vertex";
-  }
+  delete shallow.$id;
 
-  props = this._graph._vertices.document(this._id);
+  delete shallow._id;
+  delete shallow._rev;
 
-  if (! props) {
-    this._id = undefined;
-    throw "accessing a deleted vertex";
-  }
-
-  return shallowCopy(props);
+  return shallow;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -710,29 +628,14 @@ Vertex.prototype.properties = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.setProperty = function (name, value) {
-  var props;
-  var shallow;
+  var shallow = shallowCopy(this._properties);
+  shallow[name] = value;
 
-  if (! this._id) {
-    throw "accessing a deleted vertex";
-  }
+  // TODO use "update" if this becomes available
+  var id = this._graph._vertices.replace(this._id, shallow);
+  this._properties = this._graph._vertices.document(id);
 
-  delete this._properties;
-
-  props = this._graph._vertices.document(this._id); // TODO use "update"
-
-  if (props !== undefined) {
-    shallow = shallowCopy(props);
-
-    shallow[name] = value;
-
-    this._graph._vertices.replace(this._id, shallow);
-
-    return value;
-  }
-  else {
-    return undefined;
-  }
+  return value;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -756,16 +659,16 @@ Vertex.prototype._PRINT = function (seen, path, names) {
   if (! this._id) {
     internal.output("[deleted Vertex]");
   }
-  else if (this._vid !== undefined) {
-    if (typeof this._vid === "string") {
-      internal.output("Vertex(\"", this._vid, "\")");
+  else if (this._properties.$id !== undefined) {
+    if (typeof this._properties.$id === "string") {
+      internal.output("Vertex(\"", this._properties.$id, "\")");
     }
     else {
-      internal.output("Vertex(", this._vid, ")");
+      internal.output("Vertex(", this._properties.$id, ")");
     }
   }
   else {
-    internal.output("Vertex(\"", this._id, "\")");
+    internal.output("Vertex(<", this._id, ">)");
   }
 }
 
@@ -801,27 +704,47 @@ Vertex.prototype._PRINT = function (seen, path, names) {
 /// @verbinclude graph1
 ////////////////////////////////////////////////////////////////////////////////
 
-function Graph (vertices, edg) {
+function Graph (vertices, edge) {
+
+
+  // get the vertices collection
   if (typeof vertices === "string") {
-    vertices = db[vertices];
-    vertices.ensureUniqueConstraint("$vid");
+    var col = db._collection(vertices);
+
+    if (col == null) {
+      col = db._create(vertices);
+    }
+
+    col.ensureUniqueConstraint("$id");
+
+    vertices = col;
   }
 
   if (! vertices instanceof AvocadoCollection) {
     throw "<vertices> must be a document collection";
   }
 
-  if (typeof edg === "string") {
-    edg = edges[edg];
-    edg.ensureUniqueConstraint("$eid");
+  // get the edges collection
+  if (typeof edge === "string") {
+    var col = edges._collection(edge);
+
+    if (col == null) {
+      col = db._create(edge);
+    }
+
+    col.ensureUniqueConstraint("$id");
+    col.ensureUniqueConstraint("$label");
+
+    edge = col;
   }
 
-  if (! edg instanceof AvocadoEdgesCollection) {
+  if (! edge instanceof AvocadoEdgesCollection) {
     throw "<edges> must be an edges collection";
   }
 
+  // and store the collections
   this._vertices = vertices;
-  this._edges = edg;
+  this._edges = edge;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -892,7 +815,7 @@ Graph.prototype.addEdge = function (id, out, ine, label, data) {
 
   shallow = shallowCopy(data);
 
-  shallow.$eid = id || null;
+  shallow.$id = id || null;
   shallow.$label = label || null;
 
   ref = this._edges.save(out._id, ine._id, shallow);
@@ -934,7 +857,7 @@ Graph.prototype.addVertex = function (id, data) {
 
   shallow = shallowCopy(data);
 
-  shallow.$vid = id || null;
+  shallow.$id = id || null;
 
   ref = this._vertices.save(shallow);
 
@@ -956,7 +879,7 @@ Graph.prototype.addVertex = function (id, data) {
 Graph.prototype.getVertex = function (id) {
   var ref;
 
-  ref = this._vertices.select({ $vid : id });
+  ref = this._vertices.select({ $id : id });
 
   if (ref.count() == 1) {
     return this.constructVertex(ref.next()._id);
@@ -1076,7 +999,7 @@ Graph.prototype.removeVertex = function (vertex) {
   }
 
   edges = vertex.edges();
-  result = this._vertices.delete(vertex._id);
+  result = this._vertices.delete(vertex._properties);
 
   if (! result) {
     throw "cannot delete vertex";
@@ -1108,7 +1031,7 @@ Graph.prototype.removeEdge = function (edge) {
     return;
   }
 
-  result = this._edges.delete(edge._id);
+  result = this._edges.delete(edge._properties);
 
   if (! result) {
     throw "cannot delete edge";

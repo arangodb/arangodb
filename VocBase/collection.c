@@ -367,8 +367,9 @@ void TRI_InitParameterCollection (TRI_col_parameter_t* parameter,
   parameter->_type = TRI_COL_TYPE_SIMPLE_DOCUMENT;
 
   parameter->_waitForSync = false;
-
   parameter->_maximalSize = (maximalSize / PageSize) * PageSize;
+
+  parameter->_isSystem = false;
 
   if (parameter->_maximalSize == 0 && maximalSize != 0) {
     parameter->_maximalSize = PageSize;
