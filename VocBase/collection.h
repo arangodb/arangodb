@@ -162,6 +162,8 @@ typedef struct TRI_col_parameter_s {
   TRI_voc_size_t _maximalSize;       // maximal size of memory mapped file
 
   bool _waitForSync;                 // if true, wait for msync
+
+  bool _isSystem;                    // if true, this is a system collection
 }
 TRI_col_parameter_t;
 

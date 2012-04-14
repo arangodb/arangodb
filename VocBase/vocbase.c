@@ -571,6 +571,7 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
 static TRI_vocbase_col_t* BearCollectionVocBase (TRI_vocbase_t* vocbase, char const* name) {
   union { void const* v; TRI_vocbase_col_t* c; } found;
   TRI_vocbase_col_t* collection;
+  TRI_col_parameter_t parameter;
   char wrong;
 
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -598,7 +599,8 @@ static TRI_vocbase_col_t* BearCollectionVocBase (TRI_vocbase_t* vocbase, char co
   }
 
   // check that the name does not contain any strange characters
-  wrong = TRI_IsAllowedCollectionName(name);
+  parameter._isSystem = false;
+  wrong = TRI_IsAllowedCollectionName(&parameter, name);
 
   if (wrong != 0) {
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -866,12 +868,12 @@ size_t PageSize;
 /// Returns 0 for success or the offending character.
 ////////////////////////////////////////////////////////////////////////////////
 
-char TRI_IsAllowedCollectionName (char const* name) {
+char TRI_IsAllowedCollectionName (TRI_col_parameter_t* paramater, char const* name) {
   bool ok;
   char const* ptr;
 
   for (ptr = name;  *ptr;  ++ptr) {
-    if (name < ptr) {
+    if (name < ptr || paramater->_isSystem) {
       ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') || ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
     }
     else {
@@ -1248,7 +1250,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase, TRI_col_
   }
 
   // check that the name does not contain any strange characters
-  wrong = TRI_IsAllowedCollectionName(name);
+  wrong = TRI_IsAllowedCollectionName(parameter, name);
 
   if (wrong != 0) {
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -1484,6 +1486,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
 int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection, char const* newName) {
   union { TRI_vocbase_col_t* v; TRI_vocbase_col_t const* c; } cnv;
   TRI_col_info_t info;
+  TRI_col_parameter_t parameter;
   void const* found;
   char wrong;
   char const* oldName;
@@ -1501,7 +1504,8 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
     return TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_NAME);
   }
 
-  wrong = TRI_IsAllowedCollectionName(newName);
+  parameter._isSystem = (*oldName == '_');
+  wrong = TRI_IsAllowedCollectionName(&parameter, newName);
 
   if (wrong != 0) {
     LOG_DEBUG("found illegal character in name: %c", wrong);
