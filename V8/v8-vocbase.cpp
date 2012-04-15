@@ -1469,7 +1469,7 @@ static v8::Handle<v8::Object> WrapWhere (TRI_qry_where_t* where) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns all elements
+/// @brief selects all elements
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
@@ -1607,6 +1607,121 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   result->Set(v8::String::New("count"), v8::Number::New(count));
 
   ReleaseCollection(collection);
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects elements by example
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract the collection
+  v8::Handle<v8::Object> operand = argv.Holder();
+
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection = UseCollection(operand, &err);
+
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+  
+  // handle various collection types
+  TRI_doc_collection_t* doc = collection->_collection;
+
+  if (doc->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+    ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
+  }
+
+  TRI_sim_collection_t* sim = (TRI_sim_collection_t*) doc;
+  TRI_shaper_t* shaper = sim->base._shaper;
+
+  // extract example
+  if (argv.Length() == 0 || (argv.Length() % 2 == 1)) {
+    ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(
+                         CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                           "usage: document(<path1>, <value1>, ...)")));
+  }
+
+  size_t n = argv.Length() / 2;
+  TRI_shape_pid_t* pids = (TRI_shape_pid_t*) TRI_Allocate(n * sizeof(TRI_shape_pid_t));
+  TRI_shaped_json_t** values = (TRI_shaped_json_t**) TRI_Allocate(n * sizeof(TRI_shaped_json_t*));
+  
+  for (size_t i = 0;  i < n;  ++i) {
+    v8::Handle<v8::Value> key = argv[2 * i];
+    v8::Handle<v8::Value> val = argv[2 * i + 1];
+
+    v8::String::Utf8Value keyStr(key);
+    pids[i] = shaper->findAttributePathByName(shaper, *keyStr);
+    values[i] = TRI_ShapedJsonV8Object(val, shaper);
+
+    if (*keyStr == 0 || values[i] == 0) {
+      for (size_t j = 0;  j < i;  ++j) {
+        TRI_FreeShapedJson(values[i]);
+      }
+
+      TRI_Free(values);
+      TRI_Free(pids);
+
+      ReleaseCollection(collection);
+
+      if (*keyStr == 0) {
+        return scope.Close(v8::ThrowException(
+                             CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                               "cannot convert attribute name to UTF8")));
+      }
+      else if (values[i] == 0) {
+        return scope.Close(v8::ThrowException(
+                             CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
+                                               "cannot convert value to JSON")));
+      }
+
+      assert(false);
+    }
+  }
+
+  // .............................................................................
+  // inside a read transaction
+  // .............................................................................
+
+  collection->_collection->beginRead(collection->_collection);
+  
+  // find documents by example
+  TRI_vector_t filtered = TRI_SelectByExample(sim, n,  pids, values);
+
+  // convert to list of shaped jsons
+  v8::Handle<v8::Array> result = v8::Array::New();
+
+  if (0 < filtered._length) {
+    TRI_barrier_t* barrier = TRI_CreateBarrierElement(&collection->_collection->_barrierList);
+
+    for (size_t j = 0;  j < filtered._length;  ++j) {
+      TRI_doc_mptr_t* mptr = (TRI_doc_mptr_t*) TRI_AtVector(&filtered, j);
+      v8::Handle<v8::Value> document = TRI_WrapShapedJson(collection, mptr, barrier);
+
+      result->Set(j, document);
+    }
+  }
+
+  collection->_collection->endRead(collection->_collection);
+
+  // .............................................................................
+  // outside a write transaction
+  // .............................................................................
+
+  ReleaseCollection(collection);
+
+  // free
+  for (size_t j = 0;  j < n;  ++j) {
+    TRI_FreeShapedJson(values[j]);
+  }
+
+  TRI_Free(values);
+  TRI_Free(pids);
+
   return scope.Close(result);
 }
 
@@ -5902,6 +6017,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   // .............................................................................
 
   v8::Handle<v8::String> AllFuncName = v8::Persistent<v8::String>::New(v8::String::New("ALL"));
+  v8::Handle<v8::String> ByExampleFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE"));
   v8::Handle<v8::String> NearFuncName = v8::Persistent<v8::String>::New(v8::String::New("NEAR"));
   v8::Handle<v8::String> WithinFuncName = v8::Persistent<v8::String>::New(v8::String::New("WITHIN"));
 
@@ -5913,12 +6029,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> DropIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("dropIndex"));
   v8::Handle<v8::String> EdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("edges"));
   v8::Handle<v8::String> EnsureGeoIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureGeoIndex"));
-/*  
-  oreste:
-  v8::Handle<v8::String> EnsureMultiHashIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureMultiHashIndex"));
-  v8::Handle<v8::String> EnsureMultiSkiplistIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureMultiSLIndex"));
-  v8::Handle<v8::String> EnsureSkiplistIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureSLIndex"));
-*/  
   v8::Handle<v8::String> EnsureHashIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureHashIndex"));
   v8::Handle<v8::String> EnsurePriorityQueueIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensurePQIndex"));
   v8::Handle<v8::String> EnsureSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureSkiplist"));
@@ -6096,25 +6206,19 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
   rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
+  rt->Set(ByExampleFuncName, v8::FunctionTemplate::New(JS_ByExampleQuery));
+
   rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountVocbaseCol));
   rt->Set(DeleteFuncName, v8::FunctionTemplate::New(JS_DeleteVocbaseCol));
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbaseCol));
   rt->Set(DropFuncName, v8::FunctionTemplate::New(JS_DropVocbaseCol));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
-  
-  /* oreste:
-  rt->Set(EnsureMultiHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureMultiHashIndexVocbaseCol));
-  rt->Set(EnsureMultiSkiplistIndexFuncName, v8::FunctionTemplate::New(JS_EnsureMultiSkiplistIndexVocbaseCol));
-  rt->Set(EnsureSkiplistIndexFuncName, v8::FunctionTemplate::New(JS_EnsureSkiplistIndexVocbaseCol));
-  */
-  
   rt->Set(EnsureHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureHashIndexVocbaseCol));
   rt->Set(EnsurePriorityQueueIndexFuncName, v8::FunctionTemplate::New(JS_EnsurePriorityQueueIndexVocbaseCol));
   rt->Set(EnsureSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureSkiplistVocbaseCol));
-  rt->Set(EnsureUniqueSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueSkiplistVocbaseCol));
   rt->Set(EnsureUniqueConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueConstraintVocbaseCol));
-  
+  rt->Set(EnsureUniqueSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueSkiplistVocbaseCol));
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
   rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));
@@ -6144,23 +6248,19 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->SetInternalFieldCount(SLOT_END); // FIXME
 
   rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
+  rt->Set(ByExampleFuncName, v8::FunctionTemplate::New(JS_ByExampleQuery));
+
   rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountVocbaseCol));
   rt->Set(DeleteFuncName, v8::FunctionTemplate::New(JS_DeleteVocbaseCol));
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbaseCol));
   rt->Set(DropFuncName, v8::FunctionTemplate::New(JS_DropVocbaseCol));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
   rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
-  /* oreste
-  rt->Set(EnsureMultiHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureMultiHashIndexVocbaseCol));
-  rt->Set(EnsureMultiSkiplistIndexFuncName, v8::FunctionTemplate::New(JS_EnsureMultiSkiplistIndexVocbaseCol));
-  rt->Set(EnsureSkiplistIndexFuncName, v8::FunctionTemplate::New(JS_EnsureSkiplistIndexVocbaseCol));
-  */
   rt->Set(EnsureHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureHashIndexVocbaseCol));
   rt->Set(EnsurePriorityQueueIndexFuncName, v8::FunctionTemplate::New(JS_EnsurePriorityQueueIndexVocbaseCol));
   rt->Set(EnsureSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureSkiplistVocbaseCol));
   rt->Set(EnsureUniqueConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueConstraintVocbaseCol));
   rt->Set(EnsureUniqueSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueSkiplistVocbaseCol));
-
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
   rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));

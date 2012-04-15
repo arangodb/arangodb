@@ -3063,6 +3063,144 @@ static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* coll
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                           SELECT BY EXAMPLE QUERY
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks for match of an example
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IsExampleMatch (TRI_shaper_t* shaper,
+                            TRI_doc_mptr_t const* doc,
+                            size_t len, 
+                            TRI_shape_pid_t* pids,
+                            TRI_shaped_json_t** values) {
+  TRI_shape_access_t const* accessor;
+  TRI_shaped_json_t const* document;
+  TRI_shaped_json_t* example;
+  TRI_shaped_json_t result;
+  bool ok;
+  size_t i;
+
+  document = &doc->_document;
+
+  for (i = 0;  i < len;  ++i) {
+    example = values[i];
+    accessor = TRI_FindAccessorVocShaper(shaper, document->_sid, pids[i]);
+
+    if (accessor == NULL) {
+      LOG_TRACE("failed to get accessor for sid %lu and path %lu",
+                (unsigned long) document->_sid,
+                (unsigned long) pids[i]);
+
+      return false;
+    }
+
+    if (accessor->_shape == NULL) {
+      LOG_TRACE("expecting an array for path %lu",
+                (unsigned long) pids[i]);
+
+      return false;
+    }
+
+    if (accessor->_shape->_sid != example->_sid) {
+      LOG_TRACE("expecting sid %lu for path %lu, got sid %lu",
+                (unsigned long) example->_sid,
+                (unsigned long) pids[i],
+                (unsigned long) accessor->_shape->_sid);
+
+      return false;
+    }
+
+    ok = TRI_ExecuteShapeAccessor(accessor, document, &result);
+
+    if (! ok) {
+      LOG_TRACE("failed to get accessor for sid %lu and path %lu",
+                (unsigned long) document->_sid,
+                (unsigned long) pids[i]);
+
+      return false;
+    }
+
+    if (result._data.length != example->_data.length) {
+      LOG_TRACE("expecting length %lu, got length %lu for path %lu",
+                (unsigned long) result._data.length,
+                (unsigned long) example->_data.length,
+                (unsigned long) pids[i]);
+
+      return false;
+    }
+
+    if (memcmp(result._data.data, example->_data.data, example->_data.length) != 0) {
+      LOG_TRACE("data mismatch at path %lu",
+                (unsigned long) pids[i]);
+      return false;
+    }
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a select-by-example query
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vector_t TRI_SelectByExample (TRI_sim_collection_t* sim,
+                                  size_t length,
+                                  TRI_shape_pid_t* pids,
+                                  TRI_shaped_json_t** values) {
+  TRI_shaper_t* shaper;
+  TRI_doc_mptr_t const** ptr;
+  TRI_doc_mptr_t const** end;
+  TRI_vector_t filtered;
+
+  // use filtered to hold copies of the master pointer
+  TRI_InitVector(&filtered, sizeof(TRI_doc_mptr_t));
+
+  // do a full scan
+  shaper = sim->base._shaper;
+
+  ptr = (TRI_doc_mptr_t const**) (sim->_primaryIndex._table);
+  end = (TRI_doc_mptr_t const**) (sim->_primaryIndex._table + sim->_primaryIndex._nrAlloc);
+
+  for (;  ptr < end;  ++ptr) {
+    if (*ptr) {
+      if (IsExampleMatch(shaper, *ptr, length, pids, values)) {
+        TRI_PushBackVector(&filtered, *ptr);
+      }
+    }
+  }
+
+  return filtered;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
