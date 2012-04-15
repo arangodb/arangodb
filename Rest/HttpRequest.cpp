@@ -116,13 +116,13 @@ namespace triagens {
 
     string HttpRequest::header (string const& key) const {
       string k = StringUtils::tolower(key);
-      char const* const* i = headerFields.lookup(k.c_str());
+      Dictionary<char const*>::KeyValue const* kv = headerFields.lookup(k.c_str());
 
-      if (i == 0) {
+      if (kv == 0) {
         return "";
       }
       else {
-        return *i;
+        return kv->_value;
       }
     }
 
@@ -130,15 +130,15 @@ namespace triagens {
 
     string HttpRequest::header (string const& key, bool& found) const {
       string k = StringUtils::tolower(key);
-      char const* const* i = headerFields.lookup(k.c_str());
+      Dictionary<char const*>::KeyValue const* kv = headerFields.lookup(k.c_str());
 
-      if (i == 0) {
+      if (kv == 0) {
         found = false;
         return "";
       }
       else {
         found = true;
-        return *i;
+        return kv->_value;
       }
     }
 
@@ -178,28 +178,28 @@ namespace triagens {
 
 
     string HttpRequest::value (string const& key) const {
-      char const* const* i = requestFields.lookup(key.c_str());
+      Dictionary<char const*>::KeyValue const* kv = requestFields.lookup(key.c_str());
 
-      if (i == 0) {
+      if (kv == 0) {
         return "";
       }
       else {
-        return *i;
+        return kv->_value;
       }
     }
 
 
 
     string HttpRequest::value (string const& key, bool& found) const {
-      char const* const* i = requestFields.lookup(key.c_str());
+      Dictionary<char const*>::KeyValue const* kv = requestFields.lookup(key.c_str());
 
-      if (i == 0) {
+      if (kv == 0) {
         found = false;
         return "";
       }
       else {
         found = true;
-        return *i;
+        return kv->_value;
       }
     }
 

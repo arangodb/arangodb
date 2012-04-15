@@ -58,18 +58,6 @@ using namespace triagens::basics;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief slot for a type
-////////////////////////////////////////////////////////////////////////////////
-
-static int const SLOT_CLASS_TYPE = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief slot for a "C++ class"
-////////////////////////////////////////////////////////////////////////////////
-
-static int const SLOT_CLASS = 1;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief slot for a "barrier"
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -203,23 +191,6 @@ static v8::Handle<v8::Object> WrapClass (v8::Persistent<v8::ObjectTemplate> clas
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief unwraps a C++ class given a v8::Object
-////////////////////////////////////////////////////////////////////////////////
-
-template<class T>
-static T* UnwrapClass (v8::Handle<v8::Object> obj, int32_t type) {
-  if (obj->InternalFieldCount() <= SLOT_CLASS) {
-    return 0;
-  }
-
-  if (obj->GetInternalField(SLOT_CLASS_TYPE)->Int32Value() != type) {
-    return 0;
-  }
-
-  return static_cast<T*>(v8::Handle<v8::External>::Cast(obj->GetInternalField(SLOT_CLASS))->Value());
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the vocbase pointer from the current V8 context
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -227,7 +198,7 @@ static TRI_vocbase_t* GetContextVocBase () {
   v8::Handle<v8::Context> currentContext = v8::Context::GetCurrent(); 
   v8::Handle<v8::Object> db = currentContext->Global()->Get(v8::String::New("db"))->ToObject();
 
-  return UnwrapClass<TRI_vocbase_t>(db, WRP_VOCBASE_TYPE);
+  return TRI_UnwrapClass<TRI_vocbase_t>(db, WRP_VOCBASE_TYPE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -293,7 +264,7 @@ static v8::Handle<v8::Object> CreateErrorObject (int errorNumber, string const& 
 static TRI_vocbase_col_t const* UseCollection (v8::Handle<v8::Object> collection,
                                                v8::Handle<v8::Object>* err) {
                                                 
-  TRI_vocbase_col_t* col = UnwrapClass<TRI_vocbase_col_t>(collection, WRP_VOCBASE_COL_TYPE);
+  TRI_vocbase_col_t* col = TRI_UnwrapClass<TRI_vocbase_col_t>(collection, WRP_VOCBASE_COL_TYPE);
 
   int res = TRI_UseCollectionVocBase(col->_vocbase, col);
 
@@ -891,7 +862,7 @@ static v8::Handle<v8::Value> DeleteVocbaseCol (TRI_vocbase_t* vocbase,
 static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, bool edge) {
   v8::HandleScope scope;
 
-  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
   
   if (vocbase == 0) {
     return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_INTERNAL, "corrupted vocbase")));
@@ -964,7 +935,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, bool edge
 static v8::Handle<v8::Value> CollectionVocBase (v8::Arguments const& argv, bool edge) {
   v8::HandleScope scope;
 
-  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
   
   if (vocbase == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
@@ -1257,7 +1228,7 @@ static TRI_rc_cursor_t* ExecuteQuery (v8::Handle<v8::Object> queryObject,
                                       v8::Handle<v8::Value>* err) {
   v8::TryCatch tryCatch;
 
-  TRI_query_t* query = UnwrapClass<TRI_query_t>(queryObject, WRP_QUERY_TYPE);
+  TRI_query_t* query = TRI_UnwrapClass<TRI_query_t>(queryObject, WRP_QUERY_TYPE);
   if (query == 0) {
     *err = v8::String::New("corrupted query");
     return 0;
@@ -1363,7 +1334,7 @@ static v8::Handle<v8::Value> WrapQueryCursor (TRI_query_cursor_t* cursor) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_query_cursor_t* UnwrapQueryCursor (v8::Handle<v8::Object> cursorObject) {
-  return UnwrapClass<TRI_query_cursor_t>(cursorObject, WRP_QUERY_CURSOR_TYPE);
+  return TRI_UnwrapClass<TRI_query_cursor_t>(cursorObject, WRP_QUERY_CURSOR_TYPE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1426,7 +1397,7 @@ static v8::Handle<v8::Object> WrapCursor (TRI_rc_cursor_t* cursor) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_rc_cursor_t* UnwrapCursor (v8::Handle<v8::Object> cursorObject) {
-  return UnwrapClass<TRI_rc_cursor_t>(cursorObject, WRP_RC_CURSOR_TYPE);
+  return TRI_UnwrapClass<TRI_rc_cursor_t>(cursorObject, WRP_RC_CURSOR_TYPE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2388,7 +2359,7 @@ static v8::Handle<v8::Value> JS_WhereSkiplistConstAql (const v8::Arguments& argv
   for (int j = 1; j < argv.Length(); ++j) {  
     v8::Handle<v8::Value> parameter = argv[j];
     v8::Handle<v8::Object> operatorObject = parameter->ToObject();
-    TRI_sl_operator_t* op  = UnwrapClass<TRI_sl_operator_t>(operatorObject, WRP_SL_OPERATOR_TYPE);
+    TRI_sl_operator_t* op  = TRI_UnwrapClass<TRI_sl_operator_t>(operatorObject, WRP_SL_OPERATOR_TYPE);
     if (op == 0) {
       if (!haveOperators) {
         continue;
@@ -2412,7 +2383,7 @@ static v8::Handle<v8::Value> JS_WhereSkiplistConstAql (const v8::Arguments& argv
       TRI_sl_operator_t* leftOp = NULL;
       v8::Handle<v8::Value> leftParameter  = argv[1];
       v8::Handle<v8::Object> leftObject    = leftParameter->ToObject();
-      leftOp  = UnwrapClass<TRI_sl_operator_t>(leftObject, WRP_SL_OPERATOR_TYPE);
+      leftOp  = TRI_UnwrapClass<TRI_sl_operator_t>(leftObject, WRP_SL_OPERATOR_TYPE);
       if (leftOp == 0) {
         return scope.Close(v8::ThrowException(v8::String::New("either logical/relational operators or constants allowed, but not both")));
       }
@@ -2420,7 +2391,7 @@ static v8::Handle<v8::Value> JS_WhereSkiplistConstAql (const v8::Arguments& argv
       for (int j = 2; j < argv.Length(); ++j) {  
         v8::Handle<v8::Value> rightParameter = argv[j];
         v8::Handle<v8::Object> rightObject   = rightParameter->ToObject();
-        TRI_sl_operator_t* rightOp = UnwrapClass<TRI_sl_operator_t>(rightObject, WRP_SL_OPERATOR_TYPE);
+        TRI_sl_operator_t* rightOp = TRI_UnwrapClass<TRI_sl_operator_t>(rightObject, WRP_SL_OPERATOR_TYPE);
         if (rightOp == 0) {
           TRI_FreeSLOperator(leftOp); 
           return scope.Close(v8::ThrowException(v8::String::New("either logical/relational operators or constants allowed, but not both")));
@@ -2433,7 +2404,7 @@ static v8::Handle<v8::Value> JS_WhereSkiplistConstAql (const v8::Arguments& argv
     else {
       v8::Handle<v8::Value> parameter = argv[1];
       v8::Handle<v8::Object> operatorObject = parameter->ToObject();
-      TRI_sl_operator_t* op  = UnwrapClass<TRI_sl_operator_t>(operatorObject, WRP_SL_OPERATOR_TYPE);      
+      TRI_sl_operator_t* op  = TRI_UnwrapClass<TRI_sl_operator_t>(operatorObject, WRP_SL_OPERATOR_TYPE);      
       where = TRI_CreateQueryWhereSkiplistConstant(iid, op);
     }
   }
@@ -2556,7 +2527,7 @@ static v8::Handle<v8::Value> JS_HashSelectAql (v8::Arguments const& argv) {
 
   TRI_qry_where_t* where = 0;
   v8::Handle<v8::Object> whereObj = whereArg->ToObject();
-  where = UnwrapClass<TRI_qry_where_t>(whereObj, WRP_QRY_WHERE_TYPE);
+  where = TRI_UnwrapClass<TRI_qry_where_t>(whereObj, WRP_QRY_WHERE_TYPE);
 
   if (where == 0) {
     ReleaseCollection(collection);
@@ -2619,7 +2590,7 @@ static v8::Handle<v8::Value> JS_PQSelectAql (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("expecting a WHERE object as second argument")));
   }
   v8::Handle<v8::Object> whereObj = whereArg->ToObject();
-  where = UnwrapClass<TRI_qry_where_t>(whereObj, WRP_QRY_WHERE_TYPE);
+  where = TRI_UnwrapClass<TRI_qry_where_t>(whereObj, WRP_QRY_WHERE_TYPE);
   if (where == 0) {
     ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(v8::String::New("corrupted WHERE")));
@@ -2727,7 +2698,7 @@ static v8::Handle<v8::Value> JS_SkiplistSelectAql (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("expecting a WHERE object as second argument")));
   }
   v8::Handle<v8::Object> whereObj = whereArg->ToObject();
-  where = UnwrapClass<TRI_qry_where_t>(whereObj, WRP_QRY_WHERE_TYPE);
+  where = TRI_UnwrapClass<TRI_qry_where_t>(whereObj, WRP_QRY_WHERE_TYPE);
   if (where == 0) {
     ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(v8::String::New("corrupted WHERE")));
@@ -2817,7 +2788,7 @@ static v8::Handle<v8::Object> WrapSLOperator (TRI_sl_operator_t* slOperator) {
 
 /* unused
 static TRI_sl_operator_t* UnwrapSLOperator (v8::Handle<v8::Object> operatorObject) {
-  return UnwrapClass<TRI_sl_operator_t>(operatorObject, WRP_SL_OPERATOR_TYPE);
+  return TRI_UnwrapClass<TRI_sl_operator_t>(operatorObject, WRP_SL_OPERATOR_TYPE);
 }
 */
 
@@ -2878,8 +2849,8 @@ static v8::Handle<v8::Value> JS_Operator_AND (v8::Arguments const& argv) {
   // ...........................................................................
   v8::Handle<v8::Object> leftOperatorObject  = leftOperatorArg->ToObject();
   v8::Handle<v8::Object> rightOperatorObject = rightOperatorArg->ToObject();
-  TRI_sl_operator_t* leftOperator  = UnwrapClass<TRI_sl_operator_t>(leftOperatorObject, WRP_SL_OPERATOR_TYPE);
-  TRI_sl_operator_t* rightOperator = UnwrapClass<TRI_sl_operator_t>(rightOperatorObject, WRP_SL_OPERATOR_TYPE);  
+  TRI_sl_operator_t* leftOperator  = TRI_UnwrapClass<TRI_sl_operator_t>(leftOperatorObject, WRP_SL_OPERATOR_TYPE);
+  TRI_sl_operator_t* rightOperator = TRI_UnwrapClass<TRI_sl_operator_t>(rightOperatorObject, WRP_SL_OPERATOR_TYPE);  
   if (leftOperator == 0 || rightOperator == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted AND, possibly invalid parameters")));
   }
@@ -2927,8 +2898,8 @@ static v8::Handle<v8::Value> JS_Operator_OR (v8::Arguments const& argv) {
   
   v8::Handle<v8::Object> leftOperatorObject  = leftOperatorArg->ToObject();
   v8::Handle<v8::Object> rightOperatorObject = rightOperatorArg->ToObject();
-  TRI_sl_operator_t* leftOperator  = UnwrapClass<TRI_sl_operator_t>(leftOperatorObject, WRP_SL_OPERATOR_TYPE);
-  TRI_sl_operator_t* rightOperator = UnwrapClass<TRI_sl_operator_t>(rightOperatorObject, WRP_SL_OPERATOR_TYPE);
+  TRI_sl_operator_t* leftOperator  = TRI_UnwrapClass<TRI_sl_operator_t>(leftOperatorObject, WRP_SL_OPERATOR_TYPE);
+  TRI_sl_operator_t* rightOperator = TRI_UnwrapClass<TRI_sl_operator_t>(rightOperatorObject, WRP_SL_OPERATOR_TYPE);
   
   if (leftOperator == 0 || rightOperator == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted OR, possibly invalid parameters")));
@@ -3132,7 +3103,7 @@ static v8::Handle<v8::Value> JS_SelectAql (v8::Arguments const& argv) {
   }
 
   v8::Handle<v8::Object> dbArg = argv[0]->ToObject();
-  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(dbArg, WRP_VOCBASE_TYPE);
+  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(dbArg, WRP_VOCBASE_TYPE);
 
   if (vocbase == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
@@ -3907,7 +3878,7 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
   int res;
 
-  TRI_vocbase_col_t* collection = UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
     res = TRI_ERROR_INTERNAL;
@@ -4403,7 +4374,7 @@ static v8::Handle<v8::Value> JS_EnsureSkiplistVocbaseCol (v8::Arguments const& a
 static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  TRI_vocbase_col_t* collection = UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
@@ -4541,7 +4512,7 @@ static v8::Handle<v8::Value> JS_LoadVocbaseCol (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_NameVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  TRI_vocbase_col_t const* collection = UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+  TRI_vocbase_col_t const* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
@@ -4674,7 +4645,7 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("<name> must be non-empty")));
   }
 
-  TRI_vocbase_col_t* collection = UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
@@ -4830,7 +4801,7 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  TRI_vocbase_col_t* collection = UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
@@ -4859,7 +4830,7 @@ static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_UnloadVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  TRI_vocbase_col_t* collection = UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
@@ -5045,7 +5016,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
                                             const v8::AccessorInfo& info) {
   v8::HandleScope scope;
 
-  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(info.Holder(), WRP_VOCBASE_TYPE);
+  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(info.Holder(), WRP_VOCBASE_TYPE);
 
   if (vocbase == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
@@ -5140,7 +5111,7 @@ static v8::Handle<v8::Value> JS_CollectionVocBase (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_CollectionsVocBase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
   
   if (vocbase == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
@@ -5170,7 +5141,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocBase (v8::Arguments const& argv) {
   v8::HandleScope scope;
   v8::Handle<v8::Array> result = v8::Array::New();
 
-  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
 
   if (vocbase == 0) {
     return scope.Close(result);
@@ -5235,9 +5206,10 @@ static v8::Handle<v8::Value> JS_CreateVocBase (v8::Arguments const& argv) {
 ///
 /// @FUN{@FA{db}._delete(@FA{document}, true)}
 ///
-/// Deletes a document. If there is revision mismatch, then mismatch is ignored and document is  deleted. The function returns @LIT{true} if the
-/// document existed and was deleted. It returns @LIT{false}, if the document
-/// was already deleted.
+/// Deletes a document. If there is revision mismatch, then mismatch
+/// is ignored and document is deleted. The function returns
+/// @LIT{true} if the document existed and was deleted. It returns
+/// @LIT{false}, if the document was already deleted.
 ///
 /// @FUN{@FA{db}._delete(@FA{document-handle}, @FA{data})}
 ///
@@ -5258,7 +5230,7 @@ static v8::Handle<v8::Value> JS_CreateVocBase (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_DeleteVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
   
   if (vocbase == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
@@ -5296,7 +5268,7 @@ static v8::Handle<v8::Value> JS_DeleteVocbase (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_DocumentVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
   
   if (vocbase == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
@@ -5339,7 +5311,7 @@ static v8::Handle<v8::Value> JS_DocumentVocbase (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_ReplaceVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
   
   if (vocbase == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
@@ -5373,7 +5345,7 @@ static v8::Handle<v8::Value> MapGetEdges (v8::Local<v8::String> name,
                                             const v8::AccessorInfo& info) {
   v8::HandleScope scope;
 
-  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(info.Holder(), WRP_VOCBASE_TYPE);
+  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(info.Holder(), WRP_VOCBASE_TYPE);
 
   if (vocbase == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
@@ -5442,7 +5414,7 @@ static v8::Handle<v8::Value> JS_CollectionEdges (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_CollectionsEdges (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  TRI_vocbase_t* vocbase = UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
 
   if (vocbase == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
@@ -5484,6 +5456,10 @@ static v8::Handle<v8::Value> JS_CollectionsEdges (v8::Arguments const& argv) {
 ///   "configuration parameter"):  The maximal size of
 ///   a journal or datafile.  Note that this also limits the maximal
 ///   size of a single object. Must be at least 1MB.
+///
+/// - @LIT{isSystem} (optional, default is @LIT{false}): If true, create a
+///   system collection. In this case @FA{collection-name} should start with
+///   an underscore.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CreateEdges (v8::Arguments const& argv) {
@@ -5548,7 +5524,7 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
   }
 
   // get shaped json
-  void* marker = UnwrapClass<void*>(self, WRP_SHAPED_JSON_TYPE);
+  void* marker = TRI_UnwrapClass<void*>(self, WRP_SHAPED_JSON_TYPE);
 
   if (marker == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted shaped json")));
@@ -5621,7 +5597,7 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
   }
 
   // get shaped json
-  void* marker = UnwrapClass<void*>(self, WRP_SHAPED_JSON_TYPE);
+  void* marker = TRI_UnwrapClass<void*>(self, WRP_SHAPED_JSON_TYPE);
 
   if (marker == 0) {
     return scope.Close(result);
@@ -5690,7 +5666,7 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
   }
 
   // get shaped json
-  void* marker = UnwrapClass<TRI_shaped_json_t>(self, WRP_SHAPED_JSON_TYPE);
+  void* marker = TRI_UnwrapClass<TRI_shaped_json_t>(self, WRP_SHAPED_JSON_TYPE);
 
   if (marker == 0) {
     return scope.Close(v8::Handle<v8::Integer>());
@@ -6091,7 +6067,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   ft->SetClassName(v8::String::New("ShapedJson"));
 
   rt = ft->InstanceTemplate();
-  rt->SetInternalFieldCount(3);
+  rt->SetInternalFieldCount(3); // TODO check the 3
   
   rt->SetNamedPropertyHandler(MapGetShapedJson,         // NamedPropertyGetter,
                               0,                        // NamedPropertySetter setter = 0
