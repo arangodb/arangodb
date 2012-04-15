@@ -684,12 +684,11 @@ SimpleQueryByExample.prototype.constructor = SimpleQueryByExample;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a query-by-example for a collection
 ///
-/// @FUN{byExample(@FA{example})}
+/// @FUN{@FA{collection}.byExample(@FA{path1}, @FA{value1}, ...)}
 ///
 /// Selects all documents of a collection that match the specified
-/// @FA{example}. The example must be specified as an object, with the object
-/// attributes being the search values. Allowed attribute types for searching
-/// are numbers, strings, and boolean values.
+/// example. The example must be specified as paths and values. Allowed
+/// attribute types for searching are numbers, strings, and boolean values.
 ///
 /// You can use @FN{toArray}, @FN{next}, @FN{nextRef}, or @FN{hasNext} to access
 /// the result. The result can be limited using the @FN{skip} and @FN{limit}
@@ -706,8 +705,8 @@ SimpleQueryByExample.prototype.constructor = SimpleQueryByExample;
 /// @verbinclude simple19
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.byExample = function (example) {
-  return new SimpleQueryByExample(this, example);
+AvocadoCollection.prototype.byExample = function () {
+  return new SimpleQueryByExample(this, arguments);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -749,59 +748,13 @@ SimpleQueryByExample.prototype.execute = function () {
       this._skip = 0;
     }
 
-    var queryString = "SELECT c FROM `" + this._collection.name() + "` c";
+    var documents = this._collection.BY_EXAMPLE.apply(this._collection, this._example);
 
-    if (!(this._example instanceof Object)) {
-      throw "invalid example specification";
-    }
-   
-    var found = false; 
-    for (var i in this._example) {
-      if (!this._example.hasOwnProperty(i)) {
-        continue;
-      }
-
-      var typeString = typeof(this._example[i]);
-      if (typeString !== "number" && typeString !== "string" && typeString !== "boolean") {
-        throw "invalid example specification for key " + i;
-      }
-
-      if (found) {
-        queryString += "&& "; 
-      }
-      else {
-        queryString += " WHERE ";
-        found = true;
-      }
-
-      queryString += "c.`" + i + "` == ";
-      if (typeString == "number") {
-        queryString += this._example[i];
-      }
-      else if (typeString == "string") {
-        queryString += QuoteJSONString(this._example[i]);
-      }
-      else if (typeString == "boolean") {
-        queryString += this._example[i];
-      }
-    }
-
-    var cursor = AQL_STATEMENT(queryString, undefined);  
-    if (cursor instanceof AvocadoQueryError) {
-      throw cursor.message;
-    }
-
-    var documents = { "count" : cursor.count(), "total" : cursor.count(), "documents": [] };
-    while (cursor.hasNext()) {
-      documents.documents.push(cursor.next());
-    }
-    cursor.dispose();
-
-    this._execution = new SimpleQueryArray(documents.documents);
+    this._execution = new SimpleQueryArray(documents);
     this._execution._skip = this._skip;
     this._execution._limit = this._limit;
-    this._countQuery = documents.count;
-    this._countTotal = documents.total;
+    this._countQuery = documents.length;
+    this._countTotal = documents.length;
   }
 }
 
