@@ -25,5 +25,8 @@ mv configure.ac.tmp configure.ac
 
 make configure
 
+git commit -m "release version $VERSION" -a
+git push
+
 git tag "v$VERSION"
 git push --tags
