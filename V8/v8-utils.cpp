@@ -741,7 +741,7 @@ static void WeakDictionaryCallback (v8::Persistent<v8::Value> object, void* para
   dictionary = (WD*) ((wd_key_pair_t*) parameter)->_dictionary;
   key = ((wd_key_pair_t*) parameter)->_key;
 
-  LOG_FATAL("weak-callback for dictionary called");
+  LOG_TRACE("weak-callback for dictionary called");
 
   // dispose and clear the persistent handle
   WD::KeyValue const* kv = dictionary->lookup(key);
@@ -784,6 +784,81 @@ static v8::Handle<v8::Value> WeakDictionaryInvocationCallback (v8::Arguments con
   self->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_WEAK_DIRECTORY_TYPE));
 
   return self;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a property is present
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Integer> PropertyQueryWeakDictionary (v8::Local<v8::String> name,
+                                                            const v8::AccessorInfo& info) {
+  typedef Dictionary< v8::Persistent<v8::Value>* > WD;
+
+  v8::HandleScope scope;
+
+  // sanity check
+  v8::Handle<v8::Object> self = info.Holder();
+
+  // get the dictionary
+  WD* dictionary = TRI_UnwrapClass<WD >(self, WRP_WEAK_DIRECTORY_TYPE);
+
+  if (dictionary == 0) {
+    return scope.Close(v8::Handle<v8::Integer>());
+  }
+
+  // convert the JavaScript string to a string
+  string key = TRI_ObjectToString(name);
+  
+  if (key == "") {
+    return scope.Close(v8::Handle<v8::Integer>());
+  }  
+
+  // check the dictionary
+  WD::KeyValue const* kv = dictionary->lookup(key.c_str());
+
+  if (kv == 0) {
+    return scope.Close(v8::Handle<v8::Integer>());
+  }
+
+  return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::None)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief keys of a dictionary
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Array> KeysOfWeakDictionary (const v8::AccessorInfo& info) {
+  typedef Dictionary< v8::Persistent<v8::Value>* > WD;
+
+  v8::HandleScope scope;
+  v8::Handle<v8::Array> result = v8::Array::New();
+
+  // sanity check
+  v8::Handle<v8::Object> self = info.Holder();
+
+  // get the dictionary
+  WD* dictionary = TRI_UnwrapClass<WD >(self, WRP_WEAK_DIRECTORY_TYPE);
+
+  if (dictionary == 0) {
+    return scope.Close(result);
+  }
+
+  // check the dictionary
+  WD::KeyValue const* begin;
+  WD::KeyValue const* end;
+  WD::KeyValue const* ptr;
+
+  dictionary->range(begin, end);
+
+  size_t count = 0;
+
+  for (ptr = begin;  ptr < end;  ++ptr) {
+    if (ptr->_key != 0) {
+      result->Set(count++, v8::String::New(ptr->_key));
+    }
+  }
+
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1857,9 +1932,9 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
 
   rt->SetNamedPropertyHandler(MapGetWeakDictionary,        // NamedPropertyGetter
                               MapSetWeakDictionary,        // NamedPropertySetter
-                              0, //PropertyQueryWeakDictionary, // NamedPropertyQuery,
+                              PropertyQueryWeakDictionary, // NamedPropertyQuery,
                               0,                           // NamedPropertyDeleter deleter = 0,
-                              0 //KeysOfWeakDictionary         // NamedPropertyEnumerator,
+                              KeysOfWeakDictionary         // NamedPropertyEnumerator,
                                                            // Handle<Value> data = Handle<Value>());
                               );
 
