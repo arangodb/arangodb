@@ -226,12 +226,12 @@ namespace triagens {
 /// @brief looks up a key
 ////////////////////////////////////////////////////////////////////////////////
 
-        ELEMENT const* lookup (char const* key) const {
+        KeyValue const* lookup (char const* key) const {
           KeyValue l(key, strlen(key));
           KeyValue const& f = _array.findElement(l);
 
           if (f._key != 0 && strcmp(f._key, key) == 0) {
-            return &f._value;
+            return &f;
           }
           else {
             return 0;

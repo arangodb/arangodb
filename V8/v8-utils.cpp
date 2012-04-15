@@ -30,6 +30,7 @@
 #include <fstream>
 #include <locale>
 
+#include <Basics/Dictionary.h>
 #include <Basics/StringUtils.h>
 #include <BasicsC/conversions.h>
 #include <BasicsC/csv.h>
@@ -671,11 +672,225 @@ bool TRI_ExecuteOrderExecutionContext (TRI_js_exec_context_t context, int* r) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   WEAK DICTIONARY
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private constants
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Utils
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wrapped class for TRI_vocbase_t
+////////////////////////////////////////////////////////////////////////////////
+
+static int32_t const WRP_WEAK_DIRECTORY_TYPE = 1000;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     private types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Utils
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dictionary / key pair
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct {
+  void* _dictionary;
+  char* _key;
+}
+wd_key_pair_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Utils
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief weak dictionary callback
+////////////////////////////////////////////////////////////////////////////////
+
+static void WeakDictionaryCallback (v8::Persistent<v8::Value> object, void* parameter) {
+  typedef Dictionary< v8::Persistent<v8::Value>* > WD;
+
+  WD* dictionary;
+  char* key;
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  dictionary = (WD*) ((wd_key_pair_t*) parameter)->_dictionary;
+  key = ((wd_key_pair_t*) parameter)->_key;
+
+  LOG_FATAL("weak-callback for dictionary called");
+
+  // dispose and clear the persistent handle
+  WD::KeyValue const* kv = dictionary->lookup(key);
+
+  if (kv != 0) {
+    const_cast<WD::KeyValue*>(kv)->_value->Dispose();
+    const_cast<WD::KeyValue*>(kv)->_value->Clear();
+
+    delete const_cast<WD::KeyValue*>(kv)->_value;
+
+    dictionary->erase(key);
+  }
+
+  TRI_FreeString(key);
+  TRI_Free(parameter);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invocation callback
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> WeakDictionaryInvocationCallback (v8::Arguments const& args) {
+  typedef Dictionary< v8::Persistent<v8::Value>* > WD;
+  static uint64_t MIN_SIZE = 100;
+
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  v8::Handle<v8::Object> self = args.Holder();
+
+  if (self->InternalFieldCount() <= 1) {
+    return v8::ThrowException(v8::String::New("corrupted weak dictionary"));
+  }
+
+  WD* dictionary = new WD(MIN_SIZE);
+  v8::Handle<v8::Value> external = v8::Persistent<v8::Value>::New(v8::External::New(dictionary));
+
+  self->SetInternalField(SLOT_CLASS, external);
+  self->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_WEAK_DIRECTORY_TYPE));
+
+  return self;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets an entry
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> MapGetWeakDictionary (v8::Local<v8::String> name,
+                                                   const v8::AccessorInfo& info) {
+  typedef Dictionary< v8::Persistent<v8::Value>* > WD;
+
+  v8::HandleScope scope;
+
+  // sanity check
+  v8::Handle<v8::Object> self = info.Holder();
+
+  // get the dictionary
+  WD* dictionary = TRI_UnwrapClass<WD >(self, WRP_WEAK_DIRECTORY_TYPE);
+
+  if (dictionary == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted weak dictionary")));
+  }
+
+  // convert the JavaScript string to a string
+  string key = TRI_ObjectToString(name);
+  
+  if (key == "") {
+    return scope.Close(v8::Undefined());
+  }  
+
+  // check the dictionary
+  WD::KeyValue const* kv = dictionary->lookup(key.c_str());
+
+  if (kv == 0) {
+    return scope.Close(v8::Undefined());
+  }
+
+  return scope.Close(*kv->_value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets an entry
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> MapSetWeakDictionary (v8::Local<v8::String> name,
+                                                   v8::Local<v8::Value> value,
+                                                   const v8::AccessorInfo& info) {
+  typedef Dictionary< v8::Persistent<v8::Value>* > WD;
+
+  v8::HandleScope scope;
+
+  // sanity check
+  v8::Handle<v8::Object> self = info.Holder();
+
+  // get the dictionary
+  WD* dictionary = TRI_UnwrapClass<WD >(self, WRP_WEAK_DIRECTORY_TYPE);
+
+  if (dictionary == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted weak dictionary")));
+  }
+
+  // convert the JavaScript string to a string
+  string key = TRI_ObjectToString(name);
+  
+  if (key == "") {
+    return scope.Close(v8::Undefined());
+  }  
+
+  char* ckey = TRI_DuplicateString(key.c_str());
+
+  // create a new weak persistent
+  v8::Persistent<v8::Value>* persistent = new v8::Persistent<v8::Value>();
+  *persistent = v8::Persistent<v8::Value>::New(value);
+
+  // enter a value into the dictionary
+  WD::KeyValue const* kv = dictionary->lookup(ckey);
+
+  if (kv != 0) {
+    kv->_value->Dispose();
+    kv->_value->Clear();
+
+    delete kv->_value;
+
+    const_cast<WD::KeyValue*>(kv)->_value = persistent;
+  }
+  else {
+    dictionary->insert(ckey, persistent);
+  }
+
+  wd_key_pair_t* p = new wd_key_pair_t;
+  p->_dictionary = dictionary;
+  p->_key = ckey;
+
+  persistent->MakeWeak(p, WeakDictionaryCallback);
+
+  return scope.Close(value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                           GENERAL
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      JS functions
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1618,6 +1833,41 @@ bool TRI_ExecuteStringVocBase (v8::Handle<v8::Context> context,
 void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
   v8::HandleScope scope;
 
+  v8::Handle<v8::FunctionTemplate> ft;
+  v8::Handle<v8::ObjectTemplate> rt;
+
+  // check the isolate
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
+
+  if (v8g == 0) {
+    v8g = new TRI_v8_global_t;
+    isolate->SetData(v8g);
+  }
+
+  // .............................................................................
+  // create the Dictionary constructor
+  // .............................................................................
+
+  ft = v8::FunctionTemplate::New(WeakDictionaryInvocationCallback);
+  ft->SetClassName(v8::String::New("WeakDictionary"));
+
+  rt = ft->InstanceTemplate();
+  rt->SetInternalFieldCount(2);    
+
+  rt->SetNamedPropertyHandler(MapGetWeakDictionary,        // NamedPropertyGetter
+                              MapSetWeakDictionary,        // NamedPropertySetter
+                              0, //PropertyQueryWeakDictionary, // NamedPropertyQuery,
+                              0,                           // NamedPropertyDeleter deleter = 0,
+                              0 //KeysOfWeakDictionary         // NamedPropertyEnumerator,
+                                                           // Handle<Value> data = Handle<Value>());
+                              );
+
+  v8g->DictionaryTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+
+  // must come after SetInternalFieldCount
+  context->Global()->Set(v8::String::New("WeakDictionary"), ft->GetFunction());
+                         
   // .............................................................................
   // create the global functions
   // .............................................................................

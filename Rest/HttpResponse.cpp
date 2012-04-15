@@ -204,13 +204,13 @@ namespace triagens {
         return _bodySize;
       }
       else {
-        char const* const* i = _headers.lookup("content-length");
+        Dictionary<char const*>::KeyValue const* kv = _headers.lookup("content-length");
 
-        if (i == 0) {
+        if (kv == 0) {
           return 0;
         }
         
-        return StringUtils::uint32(*i);
+        return StringUtils::uint32(kv->_value);
       }
     }
 
@@ -218,13 +218,13 @@ namespace triagens {
 
     string HttpResponse::header (string const& key) const {
       string k = StringUtils::tolower(key);
-      char const* const* i = _headers.lookup(k.c_str());
+      Dictionary<char const*>::KeyValue const* kv = _headers.lookup(k.c_str());
 
-      if (i == 0) {
+      if (kv == 0) {
         return "";
       }
       else {
-        return *i;
+        return kv->_value;
       }
     }
 
@@ -232,15 +232,15 @@ namespace triagens {
 
     string HttpResponse::header (string const& key, bool& found) const {
       string k = StringUtils::tolower(key);
-      char const* const* i = _headers.lookup(k.c_str());
+      Dictionary<char const*>::KeyValue const* kv = _headers.lookup(k.c_str());
 
-      if (i == 0) {
+      if (kv == 0) {
         found = false;
         return "";
       }
       else {
         found = true;
-        return *i;
+        return kv->_value;
       }
     }
 

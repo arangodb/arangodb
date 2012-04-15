@@ -421,7 +421,6 @@ static void objectToMap (map<string, string>& myMap, v8::Handle<v8::Value> val) 
 /// @brief ClientConnection class
 ////////////////////////////////////////////////////////////////////////////////
 
-enum WRAP_SLOTS {SLOT_CLASS_TYPE = 0, SLOT_CLASS = 1};
 enum WRAP_CLASS_TYPES {WRAP_TYPE_CONNECTION = 1};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -445,23 +444,6 @@ static v8::Handle<v8::Object> wrapV8ClientConnection (V8ClientConnection* connec
   persistent.MakeWeak(connection, ClientConnection_DestructorCallback);
 
   return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unwraps a C++ class given a v8::Object
-////////////////////////////////////////////////////////////////////////////////
-
-template<class T>
-static T* UnwrapClass (v8::Handle<v8::Object> obj, int32_t type) {
-  if (obj->InternalFieldCount() <= SLOT_CLASS) {
-    return 0;
-  }
-
-  if (obj->GetInternalField(SLOT_CLASS_TYPE)->Int32Value() != type) {
-    return 0;
-  }
-
-  return static_cast<T*>(v8::Handle<v8::External>::Cast(obj->GetInternalField(SLOT_CLASS))->Value());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -512,7 +494,7 @@ static v8::Handle<v8::Value> ClientConnection_httpGet (v8::Arguments const& argv
   v8::HandleScope scope;
 
   // get the connection
-  V8ClientConnection* connection = UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
+  V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
   if (connection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
@@ -542,7 +524,7 @@ static v8::Handle<v8::Value> ClientConnection_httpDelete (v8::Arguments const& a
   v8::HandleScope scope;
 
   // get the connection
-  V8ClientConnection* connection = UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
+  V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
   if (connection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
@@ -572,7 +554,7 @@ static v8::Handle<v8::Value> ClientConnection_httpPost (v8::Arguments const& arg
   v8::HandleScope scope;
 
   // get the connection
-  V8ClientConnection* connection = UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
+  V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
   if (connection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
@@ -603,7 +585,7 @@ static v8::Handle<v8::Value> ClientConnection_httpPut (v8::Arguments const& argv
   v8::HandleScope scope;
 
   // get the connection
-  V8ClientConnection* connection = UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
+  V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
   if (connection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
@@ -634,7 +616,7 @@ static v8::Handle<v8::Value> ClientConnection_lastHttpReturnCode (v8::Arguments 
   v8::HandleScope scope;
 
   // get the connection
-  V8ClientConnection* connection = UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
+  V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
   if (connection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
@@ -656,7 +638,7 @@ static v8::Handle<v8::Value> ClientConnection_lastErrorMessage (v8::Arguments co
   v8::HandleScope scope;
 
   // get the connection
-  V8ClientConnection* connection = UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
+  V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
   if (connection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
@@ -678,7 +660,7 @@ static v8::Handle<v8::Value> ClientConnection_isConnected (v8::Arguments const& 
   v8::HandleScope scope;
 
   // get the connection
-  V8ClientConnection* connection = UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
+  V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
   if (connection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
@@ -699,7 +681,7 @@ static v8::Handle<v8::Value> ClientConnection_toString (v8::Arguments const& arg
   v8::HandleScope scope;
 
   // get the connection
-  V8ClientConnection* connection = UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
+  V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
   if (connection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
@@ -734,7 +716,7 @@ static v8::Handle<v8::Value> ClientConnection_getVersion (v8::Arguments const& a
   v8::HandleScope scope;
 
   // get the connection
-  V8ClientConnection* connection = UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
+  V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
   if (connection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));

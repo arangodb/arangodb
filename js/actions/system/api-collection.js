@@ -103,6 +103,10 @@ function CollectionRepresentation (collection, showProperties, showCount, showFi
 ///   a journal or datafile.  Note that this also limits the maximal
 ///   size of a single object. Must be at least 1MB.
 ///
+/// - @LIT{isSystem} (optional, default is @LIT{false}): If true, create a
+///   system collection. In this case @FA{collection-name} should start with
+///   an underscore.
+///
 /// @EXAMPLES
 ///
 /// @verbinclude api-collection-create-collection
@@ -134,6 +138,10 @@ function POST_api_collection (req, res) {
 
   if (body.hasOwnProperty("journalSize")) {
     parameter.journalSize = body.journalSize;
+  }
+
+  if (body.hasOwnProperty("isSystem")) {
+    parameter.isSystem = body.isSystem;
   }
 
   try {

@@ -34,11 +34,19 @@
 ///  </li>
 ///  <li>@ref JSModules
 ///   <ol>
-///    <li>@ref JSModuleActions</li>
-///    <li>@ref JSModuleConsole</li>
-///    <li>@ref JSModuleFs</li>
-///    <li>@ref JSModuleGraph</li>
-///    <li>@ref JSModuleInternal</li>
+///    <li>User Modules
+///     <ol>
+///      <li>@ref JSModuleGraph</li>
+///     </ol>
+///    </li>
+///    <li>System Modules
+///     <ol>
+///      <li>@ref JSModuleActions</li>
+///      <li>@ref JSModuleConsole</li>
+///      <li>@ref JSModuleFs</li>
+///      <li>@ref JSModuleInternal</li>
+///     </ol>
+///    </li>
 ///   </ol>
 ///  </li>
 ///  <li>@ref Indexes
