@@ -745,6 +745,10 @@ function Graph (vertices, edge) {
   // and store the collections
   this._vertices = vertices;
   this._edges = edge;
+
+  // and weak dictionary for vertices and edges
+  this._weakVertices = new WeakDictionary();
+  this._weakEdges = new WeakDictionary();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -820,7 +824,7 @@ Graph.prototype.addEdge = function (id, out, ine, label, data) {
 
   ref = this._edges.save(out._id, ine._id, shallow);
 
-  return this.constructEdge(ref);
+  return this.constructEdge(ref._id);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -861,7 +865,7 @@ Graph.prototype.addVertex = function (id, data) {
 
   ref = this._vertices.save(shallow);
 
-  return this.constructVertex(ref);
+  return this.constructVertex(ref._id);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1058,7 +1062,13 @@ Graph.prototype.removeEdge = function (edge) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.constructVertex = function(id) {
-  return new Vertex(this, id);
+  var vertex = this._weakVertices[id];
+
+  if (vertex == null) {
+    this._weakVertices[id] = vertex = new Vertex(this, id);
+  }
+
+  return vertex;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1066,7 +1076,13 @@ Graph.prototype.constructVertex = function(id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.constructEdge = function(id) {
-  return new Edge(this, id);
+  var edge = this._weakEdges[id];
+
+  if (edge == null) {
+    this._weakEdges[id] = edge = new Edge(this, id);
+  }
+
+  return edge;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
