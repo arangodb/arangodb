@@ -92,6 +92,9 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.all-in-one \
 ################################################################################
 ################################################################################
 @ENABLE_BISON_TRUE@am__append_2 = $(BISON_FILES) $(BISONXX_FILES)
+
+################################################################################
+################################################################################
 @ENABLE_ALL_IN_ONE_TRUE@am__append_3 = @LIBEV_LIBS@ @V8_LIBS@
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -967,12 +970,6 @@ UNITTESTS_CLIENT = $(addprefix --unit-tests ,$(SHELL_CLIENT))
 @ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_TRUE@LIBEV_CFLAGS_32 = -m32 -O2 -g
 @ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_FALSE@LIBEV_LDFLAGS_32 = 
 @ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_TRUE@LIBEV_LDFLAGS_32 = -m32
-@ENABLE_32BIT_TRUE@@ENABLE_64BIT_FALSE@@ENABLE_ALL_IN_ONE_TRUE@@ENABLE_DARWIN_FALSE@V8_BUILD_VERSION = ia32
-@ENABLE_64BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@@ENABLE_DARWIN_FALSE@V8_BUILD_VERSION = x64
-
-################################################################################
-################################################################################
-@ENABLE_ALL_IN_ONE_TRUE@@ENABLE_DARWIN_TRUE@V8_BUILD_VERSION = native
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -2949,7 +2946,7 @@ unittests-http-server:
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 
-@ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/V8 && make library=static snapshot=off $(V8_BUILD_VERSION).release
+@ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/V8 && make library=static snapshot=off native
 
 @ENABLE_ALL_IN_ONE_TRUE@	touch .v8-build
 
