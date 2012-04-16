@@ -95,6 +95,7 @@ namespace triagens {
           LOGGER_TRACE << "HTTP READ FOR " << static_cast<Task*>(this) << ":\n"
                        << string(readBuffer->c_str(), readPosition);
 
+          // check that we know, how to serve this request
           request = server->createRequest(readBuffer->c_str(), readPosition);
 
           if (request == 0) {
@@ -102,12 +103,15 @@ namespace triagens {
             return false;
           }
 
+          // update the connection information, i. e. client and server addresses and ports
           request->setConnectionInfo(connectionInfo);
 
           LOGGER_TRACE << "server port = " << connectionInfo.serverPort << ", client port = " << connectionInfo.clientPort;
 
+          // set body start to current position
           bodyPosition = readPosition;
 
+          // and different methods
           switch (request->requestType()) {
             case HttpRequest::HTTP_REQUEST_GET:
             case HttpRequest::HTTP_REQUEST_DELETE:
@@ -115,7 +119,7 @@ namespace triagens {
               bodyLength = request->contentLength();
 
               if (bodyLength > 0) {
-                LOGGER_DEBUG << "received http GET/DELETE/HEAD request with body length, this should not happen";
+                LOGGER_WARNING << "received http GET/DELETE/HEAD request with body length, this should not happen";
                 readRequestBody = true;
               }
               else {
@@ -138,6 +142,22 @@ namespace triagens {
             default:
               LOGGER_WARNING << "got corrupted HTTP request '" << string(readBuffer->c_str(), (readPosition < 6 ? readPosition : 6)) << "'";
               return false;
+          }
+
+          // check for a 100-continue
+          if (readRequestBody) {
+            bool found;
+            string const& expect = request->header("expect", found);
+
+            if (found && StringUtils::trim(expect) == "100-continue") {
+              LOGGER_TRACE << "received a 100-continue request";
+
+              StringBuffer* buffer = new StringBuffer();
+              buffer->appendText("HTTP/1.1 100 (Continue)\r\n\r\n");
+
+              writeBuffers.push_back(buffer);
+              fillWriteBuffer();
+            }
           }
         }
         else {
