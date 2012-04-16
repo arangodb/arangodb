@@ -8373,7 +8373,7 @@ else
   fi
 fi
 
-TRI_V8_VERSION="3.9.4.0"
+TRI_V8_VERSION="3.10.2"
 
 
 
