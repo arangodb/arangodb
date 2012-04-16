@@ -114,7 +114,62 @@ bool RestAdminLogHandler::isDirect () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief returns the log files (inheritDoc)
+///
+/// @REST{GET /_admin/log}
+///
+/// Returns all fatal, error, warning or info log messages.
+///
+/// The returned object contains the attributes:
+///
+/// - @LIT{lid}: a list of log-entry identifiers. Each log message is uniquely 
+///   identified by its @LIT{lid} and the identifiers are in ascending
+///   order.
+///
+/// - @LIT{level}: a list of the log-level of the log-entry.
+///
+/// - @LIT{timestamp}: a list of the timestamp as seconds since
+///   1970-01-01 of the log-entry.
+///
+/// - @LIT{text}: a list of the text of the log-entry.
+///
+/// - @LIT{totalAmount}: the total amount of log entries before pagination.
+///
+/// @REST{GET /_admin/log?upto=@FA{log-level}}
+///
+/// Returns all log entries upto @FA{log-level}. Note that @FA{log-level} must
+/// be:
+///
+/// - @LIT{fatal} / @LIT{0} 
+/// - @LIT{error} / @LIT{1} 
+/// - @LIT{warning} / @LIT{2} 
+/// - @LIT{info} / @LIT{3} 
+/// - @LIT{debug} / @LIT{4} 
+///
+/// @REST{GET /_admin/log?level=@FA{log-level}}
+///
+/// Returns all log entries of @FA{log-level}. Note that @LIT{level=} and
+/// @LIT{upto=} are mutably exclusive.
+///
+/// @REST{GET /_admin/log?size=@FA{size}&offset=@FA{offset}}
+///
+/// Paginates the result. Skip the first @FA{offset} entries and limit the
+/// number of returned log-entries to @FA{size}.
+///
+/// @REST{GET /_admin/log?start=@FA{lid}}
+///
+/// Returns all log entries such that their log-entry identifier is greater
+/// or equal to @LIT{lid}.
+///
+/// @REST{GET /_admin/log?sort=@FA{direction}}
+///
+/// Sort the log-entries either ascending if @FA{direction} is @LIT{asc}, or
+/// descending if it is @LIT{desc} according to their @LIT{lid}. Note
+/// that the @LIT{lid} imposes a chronological order.
+/// 
+/// @REST{GET /_admin/log?search=@FA{text}}
+///
+/// Only return the log-entries containing the @FA{text} string.
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_e RestAdminLogHandler::execute () {
@@ -123,38 +178,51 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
   // check the maximal log level to report
   // .............................................................................
 
-  bool found;
-  string upto = StringUtils::tolower(request->value("upto", found));
-  TRI_log_level_e ul;
+  bool found1;
+  string upto = StringUtils::tolower(request->value("upto", found1));
+
+  bool found2;
+  string lvl = StringUtils::tolower(request->value("level", found2));
+
+  TRI_log_level_e ul = TRI_LOG_LEVEL_INFO;
+  bool useUpto = true;
+  string logLevel;
   
-  if (found) {
-    if (upto == "fatal" || upto == "0") {
+  // prefer level over upto
+  if (found2) {
+    logLevel = lvl;
+    useUpto = false;
+  }
+  else if (found1) {
+    logLevel = upto;
+    useUpto = true;
+  }
+
+  if (found1 || found2) {
+    if (logLevel == "fatal" || logLevel == "0") {
       ul = TRI_LOG_LEVEL_FATAL;
     }
-    else if (upto == "error" || upto == "1") {
+    else if (logLevel == "error" || logLevel == "1") {
       ul = TRI_LOG_LEVEL_ERROR;
     }
-    else if (upto == "warning" || upto == "2") {
+    else if (logLevel == "warning" || logLevel == "2") {
       ul = TRI_LOG_LEVEL_WARNING;
     }
-    else if (upto == "info" || upto == "3") {
+    else if (logLevel == "info" || logLevel == "3") {
       ul = TRI_LOG_LEVEL_INFO;
     }
-    else if (upto == "debug" || upto == "4") {
+    else if (logLevel == "debug" || logLevel == "4") {
       ul = TRI_LOG_LEVEL_DEBUG;
     }
-    else if (upto == "trace" || upto == "5") {
+    else if (logLevel == "trace" || logLevel == "5") {
       ul = TRI_LOG_LEVEL_TRACE;
     }
     else {
       generateError(HttpResponse::BAD, 
                     TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "unknown 'upto' log level: '" + upto + "'");
+                    string("unknown '") + (found2 ? "level" : "upto") + "' log level: '" + logLevel + "'");
       return HANDLER_DONE;
     }
-  }
-  else {
-    ul = TRI_LOG_LEVEL_INFO;
   }
   
   // .............................................................................
@@ -163,6 +231,7 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
   
   uint64_t start = 0;
   
+  bool found;
   string s = request->value("start", found);
   
   if (found) {
@@ -239,7 +308,7 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
   VariantVector* text = new VariantVector();
   result->add("text", text);
   
-  TRI_vector_t * logs = TRI_BufferLogging(ul, start);
+  TRI_vector_t * logs = TRI_BufferLogging(ul, start, useUpto);
   TRI_vector_t clean;
   
   TRI_InitVector(&clean, sizeof(TRI_log_buffer_t));

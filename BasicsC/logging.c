@@ -1070,26 +1070,32 @@ void TRI_RawLog (TRI_log_level_e level,
 /// @brief returns the last log entries
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_t* TRI_BufferLogging (TRI_log_level_e level, uint64_t start) {
+TRI_vector_t* TRI_BufferLogging (TRI_log_level_e level, uint64_t start, bool useUpto) {
   TRI_log_buffer_t buf;
   TRI_vector_t* result;
   size_t i;
   size_t j;
+  size_t begin;
   size_t pos;
   size_t cur;
 
   result = TRI_Allocate(sizeof(TRI_vector_t));
   TRI_InitVector(result, sizeof(TRI_log_buffer_t));
 
+  begin = 0;
   pos = (size_t) level;
 
   if (pos >= OUTPUT_LOG_LEVELS) {
     pos = OUTPUT_LOG_LEVELS - 1;
   }
 
+  if (! useUpto) {
+    begin = pos;
+  }
+
   TRI_LockMutex(&BufferLock);
 
-  for (i = 0;  i <= pos;  ++i) {
+  for (i = begin;  i <= pos;  ++i) {
     for (j = 0;  j < OUTPUT_BUFFER_SIZE;  ++j) {
       cur = (BufferCurrent[i] + j) % OUTPUT_BUFFER_SIZE;
 
