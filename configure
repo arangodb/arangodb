@@ -8358,20 +8358,7 @@ FLAG_INFO="$FLAG_INFO|."
 
 V8_CPPFLAGS="-I${srcdir}/3rdParty/V8/include"
 V8_LDFLAGS=""
-
-if test "x$tr_DARWIN" == xyes;  then
-  if test "x$tr_BITS" == x64;  then
-    V8_LIBS="${srcdir}/3rdParty/V8/libv8_x64.a"
-  else
-    V8_LIBS="${srcdir}/3rdParty/V8/libv8_ia32.a"
-  fi
-else
-  if test "x$tr_BITS" == x64;  then
-    V8_LIBS="${srcdir}/3rdParty/V8/out/x64.release/obj.target/tools/gyp/libv8_base.a ${srcdir}/3rdParty/V8/out/x64.release/obj.target/tools/gyp/libv8_nosnapshot.a"
-  else
-    V8_LIBS="${srcdir}/3rdParty/V8/out/ia32.release/obj.target/tools/gyp/libv8_base.a ${srcdir}/3rdParty/V8/out/ia32.release/obj.target/tools/gyp/libv8_nosnapshot.a"
-  fi
-fi
+V8_LIBS="${srcdir}/3rdParty/V8/native/libv8_base.a ${srcdir}/3rdParty/V8/out/native/libv8_nosnapshot.a"
 
 TRI_V8_VERSION="3.10.2"
 
