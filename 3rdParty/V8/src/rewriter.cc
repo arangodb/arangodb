@@ -111,7 +111,7 @@ void Processor::VisitBlock(Block* node) {
 
 void Processor::VisitExpressionStatement(ExpressionStatement* node) {
   // Rewrite : <x>; -> .result = <x>;
-  if (!is_set_) {
+  if (!is_set_ && !node->expression()->IsThrow()) {
     node->set_expression(SetResult(node->expression()));
     if (!in_try_) is_set_ = true;
   }
@@ -209,7 +209,15 @@ void Processor::VisitWithStatement(WithStatement* node) {
 
 
 // Do nothing:
-void Processor::VisitDeclaration(Declaration* node) {}
+void Processor::VisitVariableDeclaration(VariableDeclaration* node) {}
+void Processor::VisitFunctionDeclaration(FunctionDeclaration* node) {}
+void Processor::VisitModuleDeclaration(ModuleDeclaration* node) {}
+void Processor::VisitImportDeclaration(ImportDeclaration* node) {}
+void Processor::VisitExportDeclaration(ExportDeclaration* node) {}
+void Processor::VisitModuleLiteral(ModuleLiteral* node) {}
+void Processor::VisitModuleVariable(ModuleVariable* node) {}
+void Processor::VisitModulePath(ModulePath* node) {}
+void Processor::VisitModuleUrl(ModuleUrl* node) {}
 void Processor::VisitEmptyStatement(EmptyStatement* node) {}
 void Processor::VisitReturnStatement(ReturnStatement* node) {}
 void Processor::VisitDebuggerStatement(DebuggerStatement* node) {}

@@ -46,9 +46,9 @@
 #include <sys/stat.h>   // open
 #include <fcntl.h>      // open
 #include <unistd.h>     // sysconf
-#ifdef __GLIBC__
+#if defined(__GLIBC__) && !defined(__UCLIBC__)
 #include <execinfo.h>   // backtrace, backtrace_symbols
-#endif  // def __GLIBC__
+#endif  // defined(__GLIBC__) && !defined(__UCLIBC__)
 #include <strings.h>    // index
 #include <errno.h>
 #include <stdarg.h>
@@ -57,6 +57,7 @@
 
 #include "v8.h"
 
+#include "platform-posix.h"
 #include "platform.h"
 #include "v8threads.h"
 #include "vm-state-inl.h"
@@ -78,30 +79,8 @@ double ceiling(double x) {
 static Mutex* limit_mutex = NULL;
 
 
-void OS::SetUp() {
-  // Seed the random number generator. We preserve microsecond resolution.
-  uint64_t seed = Ticks() ^ (getpid() << 16);
-  srandom(static_cast<unsigned int>(seed));
-  limit_mutex = CreateMutex();
-
-#ifdef __arm__
-  // When running on ARM hardware check that the EABI used by V8 and
-  // by the C code is the same.
-  bool hard_float = OS::ArmUsingHardFloat();
-  if (hard_float) {
-#if !USE_EABI_HARDFLOAT
-    PrintF("ERROR: Binary compiled with -mfloat-abi=hard but without "
-           "-DUSE_EABI_HARDFLOAT\n");
-    exit(1);
-#endif
-  } else {
-#if USE_EABI_HARDFLOAT
-    PrintF("ERROR: Binary not compiled with -mfloat-abi=hard but with "
-           "-DUSE_EABI_HARDFLOAT\n");
-    exit(1);
-#endif
-  }
-#endif
+void OS::PostSetUp() {
+  POSIXPostSetUp();
 }
 
 
@@ -187,15 +166,15 @@ bool OS::ArmCpuHasFeature(CpuFeature feature) {
 // pair r0, r1 is loaded with 0.0. If -mfloat-abi=hard is pased to GCC then
 // calling this will return 1.0 and otherwise 0.0.
 static void ArmUsingHardFloatHelper() {
-  asm("mov r0, #0");
+  asm("mov r0, #0":::"r0");
 #if defined(__VFP_FP__) && !defined(__SOFTFP__)
   // Load 0x3ff00000 into r1 using instructions available in both ARM
   // and Thumb mode.
-  asm("mov r1, #3");
-  asm("mov r2, #255");
-  asm("lsl r1, r1, #8");
-  asm("orr r1, r1, r2");
-  asm("lsl r1, r1, #20");
+  asm("mov r1, #3":::"r1");
+  asm("mov r2, #255":::"r2");
+  asm("lsl r1, r1, #8":::"r1");
+  asm("orr r1, r1, r2":::"r1");
+  asm("lsl r1, r1, #20":::"r1");
   // For vmov d0, r0, r1 use ARM mode.
 #ifdef __thumb__
   asm volatile(
@@ -209,12 +188,12 @@ static void ArmUsingHardFloatHelper() {
     "    adr r3, 2f+1    \n\t"
     "    bx  r3          \n\t"
     "    .THUMB          \n"
-    "2:                  \n\t");
+    "2:                  \n\t":::"r3");
 #else
   asm("vmov d0, r0, r1");
 #endif  // __thumb__
 #endif  // defined(__VFP_FP__) && !defined(__SOFTFP__)
-  asm("mov r1, #0");
+  asm("mov r1, #0":::"r1");
 }
 
 
@@ -388,6 +367,9 @@ void OS::Sleep(int milliseconds) {
 
 void OS::Abort() {
   // Redirect to std abort to signal abnormal program termination.
+  if (FLAG_break_on_abort) {
+    DebugBreak();
+  }
   abort();
 }
 
@@ -553,7 +535,7 @@ void OS::SignalCodeMovingGC() {
 
 int OS::StackWalk(Vector<OS::StackFrame> frames) {
   // backtrace is a glibc extension.
-#ifdef __GLIBC__
+#if defined(__GLIBC__) && !defined(__UCLIBC__)
   int frames_size = frames.length();
   ScopedVector<void*> addresses(frames_size);
 
@@ -578,9 +560,9 @@ int OS::StackWalk(Vector<OS::StackFrame> frames) {
   free(symbols);
 
   return frames_count;
-#else  // ndef __GLIBC__
+#else  // defined(__GLIBC__) && !defined(__UCLIBC__)
   return 0;
-#endif  // ndef __GLIBC__
+#endif  // defined(__GLIBC__) && !defined(__UCLIBC__)
 }
 
 
@@ -663,6 +645,12 @@ bool VirtualMemory::Commit(void* address, size_t size, bool is_executable) {
 
 bool VirtualMemory::Uncommit(void* address, size_t size) {
   return UncommitRegion(address, size);
+}
+
+
+bool VirtualMemory::Guard(void* address) {
+  OS::Guard(address, OS::CommitPageSize());
+  return true;
 }
 
 
@@ -1067,6 +1055,12 @@ class SignalSender : public Thread {
         vm_tgid_(getpid()),
         interval_(interval) {}
 
+  static void SetUp() {
+    if (!mutex_) {
+      mutex_ = OS::CreateMutex();
+    }
+  }
+
   static void InstallSignalHandler() {
     struct sigaction sa;
     sa.sa_sigaction = ProfilerSignalHandler;
@@ -1210,10 +1204,38 @@ class SignalSender : public Thread {
 };
 
 
-Mutex* SignalSender::mutex_ = OS::CreateMutex();
+Mutex* SignalSender::mutex_ = NULL;
 SignalSender* SignalSender::instance_ = NULL;
 struct sigaction SignalSender::old_signal_handler_;
 bool SignalSender::signal_handler_installed_ = false;
+
+
+void OS::SetUp() {
+  // Seed the random number generator. We preserve microsecond resolution.
+  uint64_t seed = Ticks() ^ (getpid() << 16);
+  srandom(static_cast<unsigned int>(seed));
+  limit_mutex = CreateMutex();
+
+#ifdef __arm__
+  // When running on ARM hardware check that the EABI used by V8 and
+  // by the C code is the same.
+  bool hard_float = OS::ArmUsingHardFloat();
+  if (hard_float) {
+#if !USE_EABI_HARDFLOAT
+    PrintF("ERROR: Binary compiled with -mfloat-abi=hard but without "
+           "-DUSE_EABI_HARDFLOAT\n");
+    exit(1);
+#endif
+  } else {
+#if USE_EABI_HARDFLOAT
+    PrintF("ERROR: Binary not compiled with -mfloat-abi=hard but with "
+           "-DUSE_EABI_HARDFLOAT\n");
+    exit(1);
+#endif
+  }
+#endif
+  SignalSender::SetUp();
+}
 
 
 Sampler::Sampler(Isolate* isolate, int interval)
