@@ -164,12 +164,10 @@ Page* Page::Initialize(Heap* heap,
                        Executability executable,
                        PagedSpace* owner) {
   Page* page = reinterpret_cast<Page*>(chunk);
-  ASSERT(chunk->size() == static_cast<size_t>(kPageSize));
+  ASSERT(chunk->size() <= static_cast<size_t>(kPageSize));
   ASSERT(chunk->owner() == owner);
-  owner->IncreaseCapacity(Page::kObjectAreaSize);
-  owner->Free(page->ObjectAreaStart(),
-              static_cast<int>(page->ObjectAreaEnd() -
-                               page->ObjectAreaStart()));
+  owner->IncreaseCapacity(page->area_size());
+  owner->Free(page->area_start(), page->area_size());
 
   heap->incremental_marking()->SetOldSpacePageFlags(chunk);
 

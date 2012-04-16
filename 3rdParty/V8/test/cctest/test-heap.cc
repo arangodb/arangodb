@@ -676,7 +676,7 @@ TEST(JSArray) {
   CHECK(array->HasFastTypeElements());
 
   // array[length] = name.
-  array->SetElement(0, *name, kNonStrictMode, true)->ToObjectChecked();
+  array->SetElement(0, *name, NONE, kNonStrictMode)->ToObjectChecked();
   CHECK_EQ(Smi::FromInt(1), array->length());
   CHECK_EQ(array->GetElement(0), *name);
 
@@ -691,7 +691,7 @@ TEST(JSArray) {
   CHECK(array->HasDictionaryElements());  // Must be in slow mode.
 
   // array[length] = name.
-  array->SetElement(int_length, *name, kNonStrictMode, true)->ToObjectChecked();
+  array->SetElement(int_length, *name, NONE, kNonStrictMode)->ToObjectChecked();
   uint32_t new_int_length = 0;
   CHECK(array->length()->ToArrayIndex(&new_int_length));
   CHECK_EQ(static_cast<double>(int_length), new_int_length - 1);
@@ -718,8 +718,8 @@ TEST(JSObjectCopy) {
   obj->SetProperty(
       *second, Smi::FromInt(2), NONE, kNonStrictMode)->ToObjectChecked();
 
-  obj->SetElement(0, *first, kNonStrictMode, true)->ToObjectChecked();
-  obj->SetElement(1, *second, kNonStrictMode, true)->ToObjectChecked();
+  obj->SetElement(0, *first, NONE, kNonStrictMode)->ToObjectChecked();
+  obj->SetElement(1, *second, NONE, kNonStrictMode)->ToObjectChecked();
 
   // Make the clone.
   Handle<JSObject> clone = Copy(obj);
@@ -737,8 +737,8 @@ TEST(JSObjectCopy) {
   clone->SetProperty(
       *second, Smi::FromInt(1), NONE, kNonStrictMode)->ToObjectChecked();
 
-  clone->SetElement(0, *second, kNonStrictMode, true)->ToObjectChecked();
-  clone->SetElement(1, *first, kNonStrictMode, true)->ToObjectChecked();
+  clone->SetElement(0, *second, NONE, kNonStrictMode)->ToObjectChecked();
+  clone->SetElement(1, *first, NONE, kNonStrictMode)->ToObjectChecked();
 
   CHECK_EQ(obj->GetElement(1), clone->GetElement(0));
   CHECK_EQ(obj->GetElement(0), clone->GetElement(1));
@@ -820,7 +820,7 @@ TEST(Iteration) {
       FACTORY->NewStringFromAscii(CStrVector("abcdefghij"), TENURED);
 
   // Allocate a large string (for large object space).
-  int large_size = HEAP->MaxObjectSizeInPagedSpace() + 1;
+  int large_size = Page::kMaxNonCodeHeapObjectSize + 1;
   char* str = new char[large_size];
   for (int i = 0; i < large_size - 1; ++i) str[i] = 'a';
   str[large_size - 1] = '\0';
@@ -959,17 +959,17 @@ TEST(TestCodeFlushing) {
   CHECK(function->shared()->is_compiled());
 
   // TODO(1609) Currently incremental marker does not support code flushing.
-  HEAP->CollectAllGarbage(Heap::kMakeHeapIterableMask);
-  HEAP->CollectAllGarbage(Heap::kMakeHeapIterableMask);
+  HEAP->CollectAllGarbage(Heap::kAbortIncrementalMarkingMask);
+  HEAP->CollectAllGarbage(Heap::kAbortIncrementalMarkingMask);
 
   CHECK(function->shared()->is_compiled());
 
-  HEAP->CollectAllGarbage(Heap::kMakeHeapIterableMask);
-  HEAP->CollectAllGarbage(Heap::kMakeHeapIterableMask);
-  HEAP->CollectAllGarbage(Heap::kMakeHeapIterableMask);
-  HEAP->CollectAllGarbage(Heap::kMakeHeapIterableMask);
-  HEAP->CollectAllGarbage(Heap::kMakeHeapIterableMask);
-  HEAP->CollectAllGarbage(Heap::kMakeHeapIterableMask);
+  HEAP->CollectAllGarbage(Heap::kAbortIncrementalMarkingMask);
+  HEAP->CollectAllGarbage(Heap::kAbortIncrementalMarkingMask);
+  HEAP->CollectAllGarbage(Heap::kAbortIncrementalMarkingMask);
+  HEAP->CollectAllGarbage(Heap::kAbortIncrementalMarkingMask);
+  HEAP->CollectAllGarbage(Heap::kAbortIncrementalMarkingMask);
+  HEAP->CollectAllGarbage(Heap::kAbortIncrementalMarkingMask);
 
   // foo should no longer be in the compilation cache
   CHECK(!function->shared()->is_compiled() || function->IsOptimized());
@@ -1264,9 +1264,9 @@ static void FillUpNewSpace(NewSpace* new_space) {
   v8::HandleScope scope;
   AlwaysAllocateScope always_allocate;
   intptr_t available = new_space->EffectiveCapacity() - new_space->Size();
-  intptr_t number_of_fillers = (available / FixedArray::SizeFor(1000)) - 10;
+  intptr_t number_of_fillers = (available / FixedArray::SizeFor(32)) - 1;
   for (intptr_t i = 0; i < number_of_fillers; i++) {
-    CHECK(HEAP->InNewSpace(*FACTORY->NewFixedArray(1000, NOT_TENURED)));
+    CHECK(HEAP->InNewSpace(*FACTORY->NewFixedArray(32, NOT_TENURED)));
   }
 }
 
@@ -1326,35 +1326,6 @@ TEST(CollectingAllAvailableGarbageShrinksNewSpace) {
   HEAP->CollectAllAvailableGarbage();
   new_capacity = new_space->Capacity();
   CHECK(old_capacity == new_capacity);
-}
-
-// This just checks the contract of the IdleNotification() function,
-// and does not verify that it does reasonable work.
-TEST(IdleNotificationAdvancesIncrementalMarking) {
-  if (!FLAG_incremental_marking || !FLAG_incremental_marking_steps) return;
-  InitializeVM();
-  v8::HandleScope scope;
-  const char* source = "function binom(n, m) {"
-                       "  var C = [[1]];"
-                       "  for (var i = 1; i <= n; ++i) {"
-                       "    C[i] = [1];"
-                       "    for (var j = 1; j < i; ++j) {"
-                       "      C[i][j] = C[i-1][j-1] + C[i-1][j];"
-                       "    }"
-                       "    C[i][i] = 1;"
-                       "  }"
-                       "  return C[n][m];"
-                       "};"
-                       "binom(1000, 500)";
-  {
-    AlwaysAllocateScope aa_scope;
-    CompileRun(source);
-  }
-  intptr_t old_size = HEAP->SizeOfObjects();
-  bool no_idle_work = v8::V8::IdleNotification(900);
-  while (!v8::V8::IdleNotification(900)) ;
-  intptr_t new_size = HEAP->SizeOfObjects();
-  CHECK(no_idle_work || new_size < old_size);
 }
 
 
@@ -1550,16 +1521,12 @@ TEST(InstanceOfStubWriteBarrier) {
 
   while (!Marking::IsBlack(Marking::MarkBitFrom(f->code())) &&
          !marking->IsStopped()) {
-    marking->Step(MB);
+    // Discard any pending GC requests otherwise we will get GC when we enter
+    // code below.
+    marking->Step(MB, IncrementalMarking::NO_GC_VIA_STACK_GUARD);
   }
 
   CHECK(marking->IsMarking());
-
-  // Discard any pending GC requests otherwise we will get GC when we enter
-  // code below.
-  if (ISOLATE->stack_guard()->IsGCRequest()) {
-    ISOLATE->stack_guard()->Continue(GC_REQUEST);
-  }
 
   {
     v8::HandleScope scope;
@@ -1625,4 +1592,120 @@ TEST(PrototypeTransitionClearing) {
   CHECK(map->GetPrototypeTransition(*prototype)->IsMap());
   HEAP->CollectAllGarbage(Heap::kNoGCFlags);
   CHECK(map->GetPrototypeTransition(*prototype)->IsMap());
+}
+
+
+TEST(ResetSharedFunctionInfoCountersDuringIncrementalMarking) {
+  i::FLAG_allow_natives_syntax = true;
+#ifdef DEBUG
+  i::FLAG_verify_heap = true;
+#endif
+  InitializeVM();
+  if (!i::V8::UseCrankshaft()) return;
+  v8::HandleScope outer_scope;
+
+  {
+    v8::HandleScope scope;
+    CompileRun(
+        "function f () {"
+        "  var s = 0;"
+        "  for (var i = 0; i < 100; i++)  s += i;"
+        "  return s;"
+        "}"
+        "f(); f();"
+        "%OptimizeFunctionOnNextCall(f);"
+        "f();");
+  }
+  Handle<JSFunction> f =
+      v8::Utils::OpenHandle(
+          *v8::Handle<v8::Function>::Cast(
+              v8::Context::GetCurrent()->Global()->Get(v8_str("f"))));
+  CHECK(f->IsOptimized());
+
+  IncrementalMarking* marking = HEAP->incremental_marking();
+  marking->Abort();
+  marking->Start();
+
+  // The following two calls will increment HEAP->global_ic_age().
+  const int kLongIdlePauseInMs = 1000;
+  v8::V8::ContextDisposedNotification();
+  v8::V8::IdleNotification(kLongIdlePauseInMs);
+
+  while (!marking->IsStopped() && !marking->IsComplete()) {
+    marking->Step(1 * MB, IncrementalMarking::NO_GC_VIA_STACK_GUARD);
+  }
+
+  CHECK_EQ(HEAP->global_ic_age(), f->shared()->ic_age());
+  CHECK_EQ(0, f->shared()->opt_count());
+  CHECK_EQ(0, f->shared()->code()->profiler_ticks());
+}
+
+
+TEST(ResetSharedFunctionInfoCountersDuringMarkSweep) {
+  i::FLAG_allow_natives_syntax = true;
+#ifdef DEBUG
+  i::FLAG_verify_heap = true;
+#endif
+  InitializeVM();
+  if (!i::V8::UseCrankshaft()) return;
+  v8::HandleScope outer_scope;
+
+  {
+    v8::HandleScope scope;
+    CompileRun(
+        "function f () {"
+        "  var s = 0;"
+        "  for (var i = 0; i < 100; i++)  s += i;"
+        "  return s;"
+        "}"
+        "f(); f();"
+        "%OptimizeFunctionOnNextCall(f);"
+        "f();");
+  }
+  Handle<JSFunction> f =
+      v8::Utils::OpenHandle(
+          *v8::Handle<v8::Function>::Cast(
+              v8::Context::GetCurrent()->Global()->Get(v8_str("f"))));
+  CHECK(f->IsOptimized());
+
+  HEAP->incremental_marking()->Abort();
+
+  // The following two calls will increment HEAP->global_ic_age().
+  // Since incremental marking is off, IdleNotification will do full GC.
+  const int kLongIdlePauseInMs = 1000;
+  v8::V8::ContextDisposedNotification();
+  v8::V8::IdleNotification(kLongIdlePauseInMs);
+
+  CHECK_EQ(HEAP->global_ic_age(), f->shared()->ic_age());
+  CHECK_EQ(0, f->shared()->opt_count());
+  CHECK_EQ(0, f->shared()->code()->profiler_ticks());
+}
+
+
+// Test that HAllocateObject will always return an object in new-space.
+TEST(OptimizedAllocationAlwaysInNewSpace) {
+  i::FLAG_allow_natives_syntax = true;
+  InitializeVM();
+  if (!i::V8::UseCrankshaft() || i::FLAG_always_opt) return;
+  v8::HandleScope scope;
+
+  FillUpNewSpace(HEAP->new_space());
+  AlwaysAllocateScope always_allocate;
+  v8::Local<v8::Value> res = CompileRun(
+      "function c(x) {"
+      "  this.x = x;"
+      "  for (var i = 0; i < 32; i++) {"
+      "    this['x' + i] = x;"
+      "  }"
+      "}"
+      "function f(x) { return new c(x); };"
+      "f(1); f(2); f(3);"
+      "%OptimizeFunctionOnNextCall(f);"
+      "f(4);");
+  CHECK_EQ(4, res->ToObject()->GetRealNamedProperty(v8_str("x"))->Int32Value());
+
+  Handle<JSObject> o =
+      v8::Utils::OpenHandle(*v8::Handle<v8::Object>::Cast(res));
+
+  CHECK(HEAP->InNewSpace(*o));
 }
