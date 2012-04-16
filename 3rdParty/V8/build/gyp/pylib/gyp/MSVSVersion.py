@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium Authors. All rights reserved.
+# Copyright (c) 2012 Google Inc. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -15,13 +15,15 @@ class VisualStudioVersion(object):
   """Information regarding a version of Visual Studio."""
 
   def __init__(self, short_name, description,
-               solution_version, project_version, flat_sln, uses_vcxproj):
+               solution_version, project_version, flat_sln, uses_vcxproj,
+               path):
     self.short_name = short_name
     self.description = description
     self.solution_version = solution_version
     self.project_version = project_version
     self.flat_sln = flat_sln
     self.uses_vcxproj = uses_vcxproj
+    self.path = path
 
   def ShortName(self):
     return self.short_name
@@ -48,6 +50,10 @@ class VisualStudioVersion(object):
   def ProjectExtension(self):
     """Returns the file extension for the project."""
     return self.uses_vcxproj and '.vcxproj' or '.vcproj'
+
+  def Path(self):
+    """Returns the path to Visual Studio installation."""
+    return self.path
 
 def _RegistryQueryBase(sysdir, key, value):
   """Use reg.exe to read a particular key.
@@ -140,7 +146,7 @@ def _RegistryKeyExists(key):
   return True
 
 
-def _CreateVersion(name):
+def _CreateVersion(name, path):
   """Sets up MSVS project generation.
 
   Setup is based off the GYP_MSVS_VERSION environment variable or whatever is
@@ -153,42 +159,48 @@ def _CreateVersion(name):
                                   solution_version='11.00',
                                   project_version='4.0',
                                   flat_sln=False,
-                                  uses_vcxproj=True),
+                                  uses_vcxproj=True,
+                                  path=path),
       '2010e': VisualStudioVersion('2010e',
                                    'Visual Studio 2010',
                                    solution_version='11.00',
                                    project_version='4.0',
                                    flat_sln=True,
-                                   uses_vcxproj=True),
+                                   uses_vcxproj=True,
+                                   path=path),
       '2008': VisualStudioVersion('2008',
                                   'Visual Studio 2008',
                                   solution_version='10.00',
                                   project_version='9.00',
                                   flat_sln=False,
-                                  uses_vcxproj=False),
+                                  uses_vcxproj=False,
+                                  path=path),
       '2008e': VisualStudioVersion('2008e',
                                    'Visual Studio 2008',
                                    solution_version='10.00',
                                    project_version='9.00',
                                    flat_sln=True,
-                                   uses_vcxproj=False),
+                                   uses_vcxproj=False,
+                                   path=path),
       '2005': VisualStudioVersion('2005',
                                   'Visual Studio 2005',
                                   solution_version='9.00',
                                   project_version='8.00',
                                   flat_sln=False,
-                                  uses_vcxproj=False),
+                                  uses_vcxproj=False,
+                                  path=path),
       '2005e': VisualStudioVersion('2005e',
                                    'Visual Studio 2005',
                                    solution_version='9.00',
                                    project_version='8.00',
                                    flat_sln=True,
-                                   uses_vcxproj=False),
+                                   uses_vcxproj=False,
+                                   path=path),
   }
   return versions[str(name)]
 
 
-def _DetectVisualStudioVersions():
+def _DetectVisualStudioVersions(versions_to_check, force_express):
   """Collect the list of installed visual studio versions.
 
   Returns:
@@ -204,25 +216,10 @@ def _DetectVisualStudioVersions():
   """
   version_to_year = {'8.0': '2005', '9.0': '2008', '10.0': '2010'}
   versions = []
-  # For now, prefer versions before VS2010
-  for version in ('9.0', '8.0', '10.0'):
-    # Check if VS2010 and later is installed as specified by
-    # http://msdn.microsoft.com/en-us/library/bb164659.aspx
-    keys = [r'HKLM\SOFTWARE\Microsoft\DevDiv\VS\Servicing\%s' % version,
-            r'HKLM\SOFTWARE\Wow6432Node\Microsoft\DevDiv\VS\Servicing\%s' % (
-              version)]
-    for index in range(len(keys)):
-      if not _RegistryKeyExists(keys[index]):
-        continue
-      # Check for express
-      if _RegistryKeyExists(keys[index] + '\\expbsln'):
-        # Add this one
-        versions.append(_CreateVersion(version_to_year[version] + 'e'))
-      else:
-        # Add this one
-        versions.append(_CreateVersion(version_to_year[version]))
-
-    # Old (pre-VS2010) method of searching for which VS version is installed
+  for version in versions_to_check:
+    # Old method of searching for which VS version is installed
+    # We don't use the 2010-encouraged-way because we also want to get the
+    # path to the binaries, which it doesn't offer.
     keys = [r'HKLM\Software\Microsoft\VisualStudio\%s' % version,
             r'HKLM\Software\Wow6432Node\Microsoft\VisualStudio\%s' % version,
             r'HKLM\Software\Microsoft\VCExpress\%s' % version,
@@ -232,13 +229,17 @@ def _DetectVisualStudioVersions():
       if not path:
         continue
       # Check for full.
-      if os.path.exists(os.path.join(path, 'devenv.exe')):
+      full_path = os.path.join(path, 'devenv.exe')
+      express_path = os.path.join(path, 'vcexpress.exe')
+      if not force_express and os.path.exists(full_path):
         # Add this one.
-        versions.append(_CreateVersion(version_to_year[version]))
+        versions.append(_CreateVersion(version_to_year[version],
+            os.path.join(path, '..', '..')))
       # Check for express.
-      elif os.path.exists(os.path.join(path, 'vcexpress.exe')):
+      elif os.path.exists(express_path):
         # Add this one.
-        versions.append(_CreateVersion(version_to_year[version] + 'e'))
+        versions.append(_CreateVersion(version_to_year[version] + 'e',
+            os.path.join(path, '..', '..')))
   return versions
 
 
@@ -253,12 +254,22 @@ def SelectVisualStudioVersion(version='auto'):
   # In auto mode, check environment variable for override.
   if version == 'auto':
     version = os.environ.get('GYP_MSVS_VERSION', 'auto')
-  # In auto mode, pick the most preferred version present.
-  if version == 'auto':
-    versions = _DetectVisualStudioVersions()
-    if not versions:
-      # Default to 2005.
-      return _CreateVersion('2005')
-    return versions[0]
-  # Convert version string into a version object.
-  return _CreateVersion(version)
+  version_map = {
+    # For now, prefer versions before VS2010
+    'auto': ('9.0', '8.0', '10.0'),
+    '2005': ('8.0',),
+    '2005e': ('8.0',),
+    '2008': ('9.0',),
+    '2008e': ('9.0',),
+    '2010': ('10.0',),
+    '2010e': ('10.0',),
+  }
+  version = str(version)
+  versions = _DetectVisualStudioVersions(version_map[version], 'e' in version)
+  if not versions:
+    if version == 'auto':
+      # Default to 2005 if we couldn't find anything
+      return _CreateVersion('2005', None)
+    else:
+      return _CreateVersion(version, None)
+  return versions[0]

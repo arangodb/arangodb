@@ -449,6 +449,7 @@ static bool IsWhiteSpace(uc16 c) {
     case 0xA0:
     case 0x2028:
     case 0x2029:
+    case 0xFEFF:
       return true;
     default:
       return unibrow::Space::Is(c);
@@ -503,7 +504,10 @@ static RegExpNode* Compile(const char* input, bool multiline, bool is_ascii) {
     return NULL;
   Handle<String> pattern = isolate->factory()->
       NewStringFromUtf8(CStrVector(input));
-  RegExpEngine::Compile(&compile_data, false, multiline, pattern, is_ascii);
+  Handle<String> sample_subject =
+      isolate->factory()->NewStringFromUtf8(CStrVector(""));
+  RegExpEngine::Compile(
+      &compile_data, false, multiline, pattern, sample_subject, is_ascii);
   return compile_data.node;
 }
 

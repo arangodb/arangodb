@@ -318,6 +318,7 @@ static size_t convertToUint(Local<Value> value_in, TryCatch* try_catch) {
 const char kArrayBufferReferencePropName[] = "_is_array_buffer_";
 const char kArrayBufferMarkerPropName[] = "_array_buffer_ref_";
 
+static const int kExternalArrayAllocationHeaderSize = 2;
 
 Handle<Value> Shell::CreateExternalArray(const Arguments& args,
                                          ExternalArrayType type,
@@ -426,14 +427,26 @@ Handle<Value> Shell::CreateExternalArray(const Arguments& args,
   }
 
   Persistent<Object> persistent_array = Persistent<Object>::New(array);
-  persistent_array.MakeWeak(data, ExternalArrayWeakCallback);
-  persistent_array.MarkIndependent();
   if (data == NULL && length != 0) {
-    data = calloc(length, element_size);
+    // Make sure the total size fits into a (signed) int.
+    static const int kMaxSize = 0x7fffffff;
+    if (length > (kMaxSize - sizeof(size_t)) / element_size) {
+      return ThrowException(String::New("Array exceeds maximum size (2G)"));
+    }
+    // Prepend the size of the allocated chunk to the data itself.
+    int total_size = length * element_size +
+        kExternalArrayAllocationHeaderSize * sizeof(size_t);
+    data = malloc(total_size);
     if (data == NULL) {
       return ThrowException(String::New("Memory allocation failed."));
     }
+    *reinterpret_cast<size_t*>(data) = total_size;
+    data = reinterpret_cast<size_t*>(data) + kExternalArrayAllocationHeaderSize;
+    memset(data, 0, length * element_size);
+    V8::AdjustAmountOfExternalAllocatedMemory(total_size);
   }
+  persistent_array.MakeWeak(data, ExternalArrayWeakCallback);
+  persistent_array.MarkIndependent();
 
   array->SetIndexedPropertiesToExternalArrayData(
       reinterpret_cast<uint8_t*>(data) + offset, type,
@@ -452,6 +465,9 @@ void Shell::ExternalArrayWeakCallback(Persistent<Value> object, void* data) {
   Handle<Object> converted_object = object->ToObject();
   Local<Value> prop_value = converted_object->Get(prop_name);
   if (data != NULL && !prop_value->IsObject()) {
+    data = reinterpret_cast<size_t*>(data) - kExternalArrayAllocationHeaderSize;
+    V8::AdjustAmountOfExternalAllocatedMemory(
+        -static_cast<int>(*reinterpret_cast<size_t*>(data)));
     free(data);
   }
   object.Dispose();
@@ -977,8 +993,8 @@ void Shell::OnExit() {
     printf("+--------------------------------------------+-------------+\n");
     delete [] counters;
   }
-  if (counters_file_ != NULL)
-    delete counters_file_;
+  delete counters_file_;
+  delete counter_map_;
 }
 #endif  // V8_SHARED
 
@@ -1436,6 +1452,13 @@ int Shell::RunMain(int argc, char* argv[]) {
     }
     if (!options.last_run) {
       context.Dispose();
+#if !defined(V8_SHARED)
+      if (i::FLAG_send_idle_notification) {
+        const int kLongIdlePauseInMs = 1000;
+        V8::ContextDisposedNotification();
+        V8::IdleNotification(kLongIdlePauseInMs);
+      }
+#endif  // !V8_SHARED
     }
 
 #ifndef V8_SHARED
@@ -1490,6 +1513,7 @@ int Shell::Main(int argc, char* argv[]) {
     int stress_runs = i::FLAG_stress_runs;
     for (int i = 0; i < stress_runs && result == 0; i++) {
       printf("============ Run %d/%d ============\n", i + 1, stress_runs);
+      options.last_run = (i == stress_runs - 1);
       result = RunMain(argc, argv);
     }
 #endif
