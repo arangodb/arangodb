@@ -33,6 +33,7 @@
 namespace v8 {
 namespace internal {
 
+
 HeapProfiler::HeapProfiler()
     : snapshots_(new HeapSnapshotsCollection()),
       next_snapshot_uid_(1) {
@@ -85,24 +86,6 @@ HeapSnapshot* HeapProfiler::TakeSnapshot(String* name,
 }
 
 
-void HeapProfiler::StartHeapObjectsTracking() {
-  ASSERT(Isolate::Current()->heap_profiler() != NULL);
-  Isolate::Current()->heap_profiler()->StartHeapObjectsTrackingImpl();
-}
-
-
-void HeapProfiler::StopHeapObjectsTracking() {
-  ASSERT(Isolate::Current()->heap_profiler() != NULL);
-  Isolate::Current()->heap_profiler()->StopHeapObjectsTrackingImpl();
-}
-
-
-void HeapProfiler::PushHeapObjectsStats(v8::OutputStream* stream) {
-  ASSERT(Isolate::Current()->heap_profiler() != NULL);
-  return Isolate::Current()->heap_profiler()->PushHeapObjectsStatsImpl(stream);
-}
-
-
 void HeapProfiler::DefineWrapperClass(
     uint16_t class_id, v8::HeapProfiler::WrapperInfoCallback callback) {
   ASSERT(class_id != v8::HeapProfiler::kPersistentHandleNoClassId);
@@ -151,20 +134,6 @@ HeapSnapshot* HeapProfiler::TakeSnapshotImpl(String* name,
                                              int type,
                                              v8::ActivityControl* control) {
   return TakeSnapshotImpl(snapshots_->names()->GetName(name), type, control);
-}
-
-void HeapProfiler::StartHeapObjectsTrackingImpl() {
-  snapshots_->StartHeapObjectsTracking();
-}
-
-
-void HeapProfiler::PushHeapObjectsStatsImpl(OutputStream* stream) {
-  snapshots_->PushHeapObjectsStats(stream);
-}
-
-
-void HeapProfiler::StopHeapObjectsTrackingImpl() {
-  snapshots_->StopHeapObjectsTracking();
 }
 
 

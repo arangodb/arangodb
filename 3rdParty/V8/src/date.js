@@ -516,7 +516,8 @@ function DateSetMilliseconds(ms) {
   var t = LOCAL_DATE_VALUE(this);
   ms = ToNumber(ms);
   var time = MakeTime(LOCAL_HOUR(this), LOCAL_MIN(this), LOCAL_SEC(this), ms);
-  return SET_LOCAL_DATE_VALUE(this, MakeDate(LOCAL_DAYS(this), time));
+  SET_LOCAL_DATE_VALUE(this, MakeDate(LOCAL_DAYS(this), time));
+  return this;
 }
 
 

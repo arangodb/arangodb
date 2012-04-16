@@ -512,16 +512,6 @@ void RegisteredExtension::Register(RegisteredExtension* that) {
 }
 
 
-void RegisteredExtension::UnregisterAll() {
-  RegisteredExtension* re = first_extension_;
-  while (re != NULL) {
-    RegisteredExtension* next = re->next();
-    delete re;
-    re = next;
-  }
-}
-
-
 void RegisterExtension(Extension* that) {
   RegisteredExtension* extension = new RegisteredExtension(that);
   RegisteredExtension::Register(extension);
@@ -5208,7 +5198,7 @@ void V8::AddImplicitReferences(Persistent<Object> parent,
 }
 
 
-intptr_t V8::AdjustAmountOfExternalAllocatedMemory(intptr_t change_in_bytes) {
+int V8::AdjustAmountOfExternalAllocatedMemory(int change_in_bytes) {
   i::Isolate* isolate = i::Isolate::Current();
   if (IsDeadCheck(isolate, "v8::V8::AdjustAmountOfExternalAllocatedMemory()")) {
     return 0;
@@ -6032,7 +6022,7 @@ Handle<String> HeapGraphNode::GetName() const {
 }
 
 
-SnapshotObjectId HeapGraphNode::GetId() const {
+uint64_t HeapGraphNode::GetId() const {
   i::Isolate* isolate = i::Isolate::Current();
   IsDeadCheck(isolate, "v8::HeapGraphNode::GetId");
   return ToInternal(this)->id();
@@ -6147,11 +6137,11 @@ const HeapGraphNode* HeapSnapshot::GetRoot() const {
 }
 
 
-const HeapGraphNode* HeapSnapshot::GetNodeById(SnapshotObjectId id) const {
+const HeapGraphNode* HeapSnapshot::GetNodeById(uint64_t id) const {
   i::Isolate* isolate = i::Isolate::Current();
   IsDeadCheck(isolate, "v8::HeapSnapshot::GetNodeById");
   return reinterpret_cast<const HeapGraphNode*>(
-      ToInternal(this)->GetEntryById(id));
+      ToInternal(this)->GetEntryById(static_cast<i::SnapshotObjectId>(id)));
 }
 
 
@@ -6167,13 +6157,6 @@ const HeapGraphNode* HeapSnapshot::GetNode(int index) const {
   IsDeadCheck(isolate, "v8::HeapSnapshot::GetNode");
   return reinterpret_cast<const HeapGraphNode*>(
       ToInternal(this)->entries()->at(index));
-}
-
-
-SnapshotObjectId HeapSnapshot::GetMaxSnapshotJSObjectId() const {
-  i::Isolate* isolate = i::Isolate::Current();
-  IsDeadCheck(isolate, "v8::HeapSnapshot::GetMaxSnapshotJSObjectId");
-  return ToInternal(this)->max_snapshot_js_object_id();
 }
 
 
@@ -6234,27 +6217,6 @@ const HeapSnapshot* HeapProfiler::TakeSnapshot(Handle<String> title,
   return reinterpret_cast<const HeapSnapshot*>(
       i::HeapProfiler::TakeSnapshot(
           *Utils::OpenHandle(*title), internal_type, control));
-}
-
-
-void HeapProfiler::StartHeapObjectsTracking() {
-  i::Isolate* isolate = i::Isolate::Current();
-  IsDeadCheck(isolate, "v8::HeapProfiler::StartHeapObjectsTracking");
-  i::HeapProfiler::StartHeapObjectsTracking();
-}
-
-
-void HeapProfiler::StopHeapObjectsTracking() {
-  i::Isolate* isolate = i::Isolate::Current();
-  IsDeadCheck(isolate, "v8::HeapProfiler::StopHeapObjectsTracking");
-  i::HeapProfiler::StopHeapObjectsTracking();
-}
-
-
-void HeapProfiler::PushHeapObjectsStats(OutputStream* stream) {
-  i::Isolate* isolate = i::Isolate::Current();
-  IsDeadCheck(isolate, "v8::HeapProfiler::PushHeapObjectsStats");
-  return i::HeapProfiler::PushHeapObjectsStats(stream);
 }
 
 

@@ -344,12 +344,12 @@ TEST(HeapSnapshotInternalReferences) {
 }
 
 
-// Trying to introduce a check helper for uint32_t causes many
+// Trying to introduce a check helper for uint64_t causes many
 // overloading ambiguities, so it seems easier just to cast
 // them to a signed type.
-#define CHECK_EQ_SNAPSHOT_OBJECT_ID(a, b) \
-  CHECK_EQ(static_cast<int32_t>(a), static_cast<int32_t>(b))
-#define CHECK_NE_SNAPSHOT_OBJECT_ID(a, b) \
+#define CHECK_EQ_UINT64_T(a, b) \
+  CHECK_EQ(static_cast<int64_t>(a), static_cast<int64_t>(b))
+#define CHECK_NE_UINT64_T(a, b) \
   CHECK((a) != (b))  // NOLINT
 
 TEST(HeapEntryIdsAndArrayShift) {
@@ -378,8 +378,8 @@ TEST(HeapEntryIdsAndArrayShift) {
 
   const v8::HeapGraphNode* global1 = GetGlobalObject(snapshot1);
   const v8::HeapGraphNode* global2 = GetGlobalObject(snapshot2);
-  CHECK_NE_SNAPSHOT_OBJECT_ID(0, global1->GetId());
-  CHECK_EQ_SNAPSHOT_OBJECT_ID(global1->GetId(), global2->GetId());
+  CHECK_NE_UINT64_T(0, global1->GetId());
+  CHECK_EQ_UINT64_T(global1->GetId(), global2->GetId());
 
   const v8::HeapGraphNode* a1 =
       GetProperty(global1, v8::HeapGraphEdge::kProperty, "a");
@@ -400,9 +400,9 @@ TEST(HeapEntryIdsAndArrayShift) {
       GetProperty(e2, v8::HeapGraphEdge::kInternal, "elements");
   CHECK_NE(NULL, k2);
 
-  CHECK_EQ_SNAPSHOT_OBJECT_ID(a1->GetId(), a2->GetId());
-  CHECK_EQ_SNAPSHOT_OBJECT_ID(e1->GetId(), e2->GetId());
-  CHECK_EQ_SNAPSHOT_OBJECT_ID(k1->GetId(), k2->GetId());
+  CHECK_EQ_UINT64_T(a1->GetId(), a2->GetId());
+  CHECK_EQ_UINT64_T(e1->GetId(), e2->GetId());
+  CHECK_EQ_UINT64_T(k1->GetId(), k2->GetId());
 }
 
 TEST(HeapEntryIdsAndGC) {
@@ -414,56 +414,50 @@ TEST(HeapEntryIdsAndGC) {
       "function B(x) { this.x = x; }\n"
       "var a = new A();\n"
       "var b = new B(a);");
-  v8::Local<v8::String> s1_str = v8_str("s1");
-  v8::Local<v8::String> s2_str = v8_str("s2");
   const v8::HeapSnapshot* snapshot1 =
-      v8::HeapProfiler::TakeSnapshot(s1_str);
+      v8::HeapProfiler::TakeSnapshot(v8_str("s1"));
 
   HEAP->CollectAllGarbage(i::Heap::kNoGCFlags);
 
   const v8::HeapSnapshot* snapshot2 =
-      v8::HeapProfiler::TakeSnapshot(s2_str);
-
-  CHECK_GT(snapshot1->GetMaxSnapshotJSObjectId(), 7000);
-  CHECK(snapshot1->GetMaxSnapshotJSObjectId() <=
-        snapshot2->GetMaxSnapshotJSObjectId());
+      v8::HeapProfiler::TakeSnapshot(v8_str("s2"));
 
   const v8::HeapGraphNode* global1 = GetGlobalObject(snapshot1);
   const v8::HeapGraphNode* global2 = GetGlobalObject(snapshot2);
-  CHECK_NE_SNAPSHOT_OBJECT_ID(0, global1->GetId());
-  CHECK_EQ_SNAPSHOT_OBJECT_ID(global1->GetId(), global2->GetId());
+  CHECK_NE_UINT64_T(0, global1->GetId());
+  CHECK_EQ_UINT64_T(global1->GetId(), global2->GetId());
   const v8::HeapGraphNode* A1 =
       GetProperty(global1, v8::HeapGraphEdge::kProperty, "A");
   CHECK_NE(NULL, A1);
   const v8::HeapGraphNode* A2 =
       GetProperty(global2, v8::HeapGraphEdge::kProperty, "A");
   CHECK_NE(NULL, A2);
-  CHECK_NE_SNAPSHOT_OBJECT_ID(0, A1->GetId());
-  CHECK_EQ_SNAPSHOT_OBJECT_ID(A1->GetId(), A2->GetId());
+  CHECK_NE_UINT64_T(0, A1->GetId());
+  CHECK_EQ_UINT64_T(A1->GetId(), A2->GetId());
   const v8::HeapGraphNode* B1 =
       GetProperty(global1, v8::HeapGraphEdge::kProperty, "B");
   CHECK_NE(NULL, B1);
   const v8::HeapGraphNode* B2 =
       GetProperty(global2, v8::HeapGraphEdge::kProperty, "B");
   CHECK_NE(NULL, B2);
-  CHECK_NE_SNAPSHOT_OBJECT_ID(0, B1->GetId());
-  CHECK_EQ_SNAPSHOT_OBJECT_ID(B1->GetId(), B2->GetId());
+  CHECK_NE_UINT64_T(0, B1->GetId());
+  CHECK_EQ_UINT64_T(B1->GetId(), B2->GetId());
   const v8::HeapGraphNode* a1 =
       GetProperty(global1, v8::HeapGraphEdge::kProperty, "a");
   CHECK_NE(NULL, a1);
   const v8::HeapGraphNode* a2 =
       GetProperty(global2, v8::HeapGraphEdge::kProperty, "a");
   CHECK_NE(NULL, a2);
-  CHECK_NE_SNAPSHOT_OBJECT_ID(0, a1->GetId());
-  CHECK_EQ_SNAPSHOT_OBJECT_ID(a1->GetId(), a2->GetId());
+  CHECK_NE_UINT64_T(0, a1->GetId());
+  CHECK_EQ_UINT64_T(a1->GetId(), a2->GetId());
   const v8::HeapGraphNode* b1 =
       GetProperty(global1, v8::HeapGraphEdge::kProperty, "b");
   CHECK_NE(NULL, b1);
   const v8::HeapGraphNode* b2 =
       GetProperty(global2, v8::HeapGraphEdge::kProperty, "b");
   CHECK_NE(NULL, b2);
-  CHECK_NE_SNAPSHOT_OBJECT_ID(0, b1->GetId());
-  CHECK_EQ_SNAPSHOT_OBJECT_ID(b1->GetId(), b2->GetId());
+  CHECK_NE_UINT64_T(0, b1->GetId());
+  CHECK_EQ_UINT64_T(b1->GetId(), b2->GetId());
 }
 
 
@@ -557,14 +551,9 @@ class TestJSONStream : public v8::OutputStream {
     memcpy(chunk.start(), buffer, chars_written);
     return kContinue;
   }
-  virtual WriteResult WriteUint32Chunk(uint32_t* buffer, int chars_written) {
-    ASSERT(false);
-    return kAbort;
-  }
   void WriteTo(i::Vector<char> dest) { buffer_.WriteTo(dest); }
   int eos_signaled() { return eos_signaled_; }
   int size() { return buffer_.size(); }
-
  private:
   i::Collector<char> buffer_;
   int eos_signaled_;
@@ -696,154 +685,6 @@ TEST(HeapSnapshotJSONSerializationAborting) {
   CHECK_EQ(0, stream.eos_signaled());
 }
 
-namespace {
-
-class TestStatsStream : public v8::OutputStream {
- public:
-  TestStatsStream()
-    : eos_signaled_(0),
-      numbers_written_(0),
-      entries_count_(0),
-      intervals_count_(0),
-      first_interval_index_(-1) { }
-  TestStatsStream(const TestStatsStream& stream)
-    : v8::OutputStream(stream),
-      eos_signaled_(stream.eos_signaled_),
-      numbers_written_(stream.numbers_written_),
-      entries_count_(stream.entries_count_),
-      intervals_count_(stream.intervals_count_),
-      first_interval_index_(stream.first_interval_index_) { }
-  virtual ~TestStatsStream() {}
-  virtual void EndOfStream() { ++eos_signaled_; }
-  virtual WriteResult WriteAsciiChunk(char* buffer, int chars_written) {
-    ASSERT(false);
-    return kAbort;
-  }
-  virtual WriteResult WriteUint32Chunk(uint32_t* buffer, int numbers_written) {
-    ++intervals_count_;
-    ASSERT(numbers_written);
-    numbers_written_ += numbers_written;
-    entries_count_ = 0;
-    if (first_interval_index_ == -1 && numbers_written != 0)
-      first_interval_index_ = buffer[0];
-    for (int i = 1; i < numbers_written; i += 2)
-      entries_count_ += buffer[i];
-
-    return kContinue;
-  }
-  int eos_signaled() { return eos_signaled_; }
-  int numbers_written() { return numbers_written_; }
-  uint32_t entries_count() const { return entries_count_; }
-  int intervals_count() const { return intervals_count_; }
-  int first_interval_index() const { return first_interval_index_; }
-
- private:
-  int eos_signaled_;
-  int numbers_written_;
-  uint32_t entries_count_;
-  int intervals_count_;
-  int first_interval_index_;
-};
-
-}  // namespace
-
-static TestStatsStream GetHeapStatsUpdate() {
-  TestStatsStream stream;
-  v8::HeapProfiler::PushHeapObjectsStats(&stream);
-  CHECK_EQ(1, stream.eos_signaled());
-  return stream;
-}
-
-
-TEST(HeapSnapshotObjectsStats) {
-  v8::HandleScope scope;
-  LocalContext env;
-
-  v8::HeapProfiler::StartHeapObjectsTracking();
-  // We have to call GC 5 times. In other case the garbage will be
-  // the reason of flakiness.
-  for (int i = 0; i < 5; ++i) {
-    HEAP->CollectAllGarbage(i::Heap::kNoGCFlags);
-  }
-
-  {
-    // Single chunk of data expected in update. Initial data.
-    TestStatsStream stats_update = GetHeapStatsUpdate();
-    CHECK_EQ(1, stats_update.intervals_count());
-    CHECK_EQ(2, stats_update.numbers_written());
-    CHECK_EQ(0, stats_update.first_interval_index());
-  }
-
-  // No data expected in update because nothing has happened.
-  CHECK_EQ(0, GetHeapStatsUpdate().numbers_written());
-  {
-    v8::HandleScope inner_scope_1;
-    v8::Local<v8::String> string1 = v8_str("string1");
-    {
-      // Single chunk of data with one new entry expected in update.
-      TestStatsStream stats_update = GetHeapStatsUpdate();
-      CHECK_EQ(1, stats_update.intervals_count());
-      CHECK_EQ(2, stats_update.numbers_written());
-      CHECK_EQ(1, stats_update.entries_count());
-      CHECK_EQ(2, stats_update.first_interval_index());
-    }
-
-    // No data expected in update because nothing happened.
-    CHECK_EQ(0, GetHeapStatsUpdate().numbers_written());
-
-    {
-      v8::HandleScope inner_scope_2;
-      v8::Local<v8::String> string2 = v8_str("string2");
-
-      {
-        v8::HandleScope inner_scope_3;
-        v8::Handle<v8::String> string3 = v8::String::New("string3");
-        v8::Handle<v8::String> string4 = v8::String::New("string4");
-
-        {
-          // Single chunk of data with three new entries expected in update.
-          TestStatsStream stats_update = GetHeapStatsUpdate();
-          CHECK_EQ(1, stats_update.intervals_count());
-          CHECK_EQ(2, stats_update.numbers_written());
-          CHECK_EQ(3, stats_update.entries_count());
-          CHECK_EQ(4, stats_update.first_interval_index());
-        }
-      }
-
-      {
-        // Single chunk of data with two left entries expected in update.
-        TestStatsStream stats_update = GetHeapStatsUpdate();
-        CHECK_EQ(1, stats_update.intervals_count());
-        CHECK_EQ(2, stats_update.numbers_written());
-        CHECK_EQ(1, stats_update.entries_count());
-        // Two strings from forth interval were released.
-        CHECK_EQ(4, stats_update.first_interval_index());
-      }
-    }
-
-    {
-      // Single chunk of data with 0 left entries expected in update.
-      TestStatsStream stats_update = GetHeapStatsUpdate();
-      CHECK_EQ(1, stats_update.intervals_count());
-      CHECK_EQ(2, stats_update.numbers_written());
-      CHECK_EQ(0, stats_update.entries_count());
-      // The last string from forth interval was released.
-      CHECK_EQ(4, stats_update.first_interval_index());
-    }
-  }
-  {
-    // Single chunk of data with 0 left entries expected in update.
-    TestStatsStream stats_update = GetHeapStatsUpdate();
-    CHECK_EQ(1, stats_update.intervals_count());
-    CHECK_EQ(2, stats_update.numbers_written());
-    CHECK_EQ(0, stats_update.entries_count());
-    // The only string from the second interval was released.
-    CHECK_EQ(2, stats_update.first_interval_index());
-  }
-
-  v8::HeapProfiler::StopHeapObjectsTracking();
-}
-
 
 static void CheckChildrenIds(const v8::HeapSnapshot* snapshot,
                              const v8::HeapGraphNode* node,
@@ -854,7 +695,7 @@ static void CheckChildrenIds(const v8::HeapSnapshot* snapshot,
     const v8::HeapGraphEdge* prop = node->GetChild(i);
     const v8::HeapGraphNode* child =
         snapshot->GetNodeById(prop->GetToNode()->GetId());
-    CHECK_EQ_SNAPSHOT_OBJECT_ID(prop->GetToNode()->GetId(), child->GetId());
+    CHECK_EQ_UINT64_T(prop->GetToNode()->GetId(), child->GetId());
     CHECK_EQ(prop->GetToNode(), child);
     CheckChildrenIds(snapshot, child, level + 1, max_level);
   }
