@@ -504,10 +504,7 @@ static RegExpNode* Compile(const char* input, bool multiline, bool is_ascii) {
     return NULL;
   Handle<String> pattern = isolate->factory()->
       NewStringFromUtf8(CStrVector(input));
-  Handle<String> sample_subject =
-      isolate->factory()->NewStringFromUtf8(CStrVector(""));
-  RegExpEngine::Compile(
-      &compile_data, false, multiline, pattern, sample_subject, is_ascii);
+  RegExpEngine::Compile(&compile_data, false, multiline, pattern, is_ascii);
   return compile_data.node;
 }
 

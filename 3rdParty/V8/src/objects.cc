@@ -1390,11 +1390,9 @@ void HeapObject::IterateBody(InstanceType type, int object_size,
     case EXTERNAL_FLOAT_ARRAY_TYPE:
     case EXTERNAL_DOUBLE_ARRAY_TYPE:
       break;
-    case SHARED_FUNCTION_INFO_TYPE: {
-      SharedFunctionInfo* shared = reinterpret_cast<SharedFunctionInfo*>(this);
-      shared->SharedFunctionInfoIterateBody(v);
+    case SHARED_FUNCTION_INFO_TYPE:
+      SharedFunctionInfo::BodyDescriptor::IterateBody(this, v);
       break;
-    }
 
 #define MAKE_STRUCT_CASE(NAME, Name, name) \
         case NAME##_TYPE:
@@ -3753,11 +3751,13 @@ MaybeObject* JSObject::GetHiddenPropertiesDictionary(bool create_if_absent) {
   MaybeObject* dict_alloc = StringDictionary::Allocate(kInitialSize);
   StringDictionary* dictionary;
   if (!dict_alloc->To<StringDictionary>(&dictionary)) return dict_alloc;
-  // Using AddProperty or SetPropertyPostInterceptor here could fail, because
-  // object might be non-extensible.
-  return HasFastProperties()
-      ? AddFastProperty(GetHeap()->hidden_symbol(), dictionary, DONT_ENUM)
-      : AddSlowProperty(GetHeap()->hidden_symbol(), dictionary, DONT_ENUM);
+  MaybeObject* store_result =
+      SetPropertyPostInterceptor(GetHeap()->hidden_symbol(),
+                                 dictionary,
+                                 DONT_ENUM,
+                                 kNonStrictMode);
+  if (store_result->IsFailure()) return store_result;
+  return dictionary;
 }
 
 
@@ -4410,29 +4410,37 @@ MaybeObject* JSObject::DefineElementAccessor(uint32_t index,
 }
 
 
-MaybeObject* JSObject::CreateAccessorPairFor(String* name) {
-  LookupResult result(GetHeap()->isolate());
-  LocalLookupRealNamedProperty(name, &result);
-  if (result.IsProperty() && result.type() == CALLBACKS) {
-    ASSERT(!result.IsDontDelete());
-    Object* obj = result.GetCallbackObject();
-    if (obj->IsAccessorPair()) {
-      return AccessorPair::cast(obj)->CopyWithoutTransitions();
-    }
-  }
-  return GetHeap()->AllocateAccessorPair();
-}
-
-
 MaybeObject* JSObject::DefinePropertyAccessor(String* name,
                                               Object* getter,
                                               Object* setter,
                                               PropertyAttributes attributes) {
+  // Lookup the name.
+  LookupResult result(GetHeap()->isolate());
+  LocalLookupRealNamedProperty(name, &result);
+  if (result.IsFound()) {
+    if (result.type() == CALLBACKS) {
+      ASSERT(!result.IsDontDelete());
+      Object* obj = result.GetCallbackObject();
+      // Need to preserve old getters/setters.
+      if (obj->IsAccessorPair()) {
+        AccessorPair* copy;
+        { MaybeObject* maybe_copy =
+              AccessorPair::cast(obj)->CopyWithoutTransitions();
+          if (!maybe_copy->To(&copy)) return maybe_copy;
+        }
+        copy->SetComponents(getter, setter);
+        // Use set to update attributes.
+        return SetPropertyCallback(name, copy, attributes);
+      }
+    }
+  }
+
   AccessorPair* accessors;
-  { MaybeObject* maybe_accessors = CreateAccessorPairFor(name);
+  { MaybeObject* maybe_accessors = GetHeap()->AllocateAccessorPair();
     if (!maybe_accessors->To(&accessors)) return maybe_accessors;
   }
   accessors->SetComponents(getter, setter);
+
   return SetPropertyCallback(name, accessors, attributes);
 }
 
@@ -7861,22 +7869,6 @@ void SharedFunctionInfo::AttachInitialMap(Map* map) {
 }
 
 
-void SharedFunctionInfo::ResetForNewContext(int new_ic_age) {
-  code()->ClearInlineCaches();
-  set_ic_age(new_ic_age);
-  if (code()->kind() == Code::FUNCTION) {
-    code()->set_profiler_ticks(0);
-    if (optimization_disabled() &&
-        opt_count() >= Compiler::kDefaultMaxOptCount) {
-      // Re-enable optimizations if they were disabled due to opt_count limit.
-      set_optimization_disabled(false);
-      code()->set_optimizable(true);
-    }
-    set_opt_count(0);
-  }
-}
-
-
 static void GetMinInobjectSlack(Map* map, void* data) {
   int slack = map->unused_property_fields();
   if (*reinterpret_cast<int*>(data) > slack) {
@@ -7917,12 +7909,6 @@ void SharedFunctionInfo::CompleteInobjectSlackTracking() {
     ASSERT(expected_nof_properties() >= slack);
     set_expected_nof_properties(expected_nof_properties() - slack);
   }
-}
-
-
-void SharedFunctionInfo::SharedFunctionInfoIterateBody(ObjectVisitor* v) {
-  v->VisitSharedFunctionInfo(this);
-  SharedFunctionInfo::BodyDescriptor::IterateBody(this, v);
 }
 
 
@@ -7982,6 +7968,7 @@ void ObjectVisitor::VisitDebugTarget(RelocInfo* rinfo) {
   VisitPointer(&target);
   CHECK_EQ(target, old_target);  // VisitPointer doesn't change Code* *target.
 }
+
 
 void ObjectVisitor::VisitEmbeddedPointer(RelocInfo* rinfo) {
   ASSERT(rinfo->rmode() == RelocInfo::EMBEDDED_OBJECT);
@@ -8126,21 +8113,6 @@ Map* Code::FindFirstMap() {
     if (object->IsMap()) return Map::cast(object);
   }
   return NULL;
-}
-
-
-void Code::ClearInlineCaches() {
-  int mask = RelocInfo::ModeMask(RelocInfo::CODE_TARGET) |
-             RelocInfo::ModeMask(RelocInfo::CONSTRUCT_CALL) |
-             RelocInfo::ModeMask(RelocInfo::CODE_TARGET_WITH_ID) |
-             RelocInfo::ModeMask(RelocInfo::CODE_TARGET_CONTEXT);
-  for (RelocIterator it(this, mask); !it.done(); it.next()) {
-    RelocInfo* info = it.rinfo();
-    Code* target(Code::GetCodeFromTargetAddress(info->target_address()));
-    if (target->is_inline_cache_stub()) {
-      IC::Clear(info->pc());
-    }
-  }
 }
 
 

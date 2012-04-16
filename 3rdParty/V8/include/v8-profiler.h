@@ -64,7 +64,6 @@
  */
 namespace v8 {
 
-typedef uint32_t SnapshotObjectId;
 
 /**
  * CpuProfileNode represents a node in a call graph.
@@ -275,7 +274,7 @@ class V8EXPORT HeapGraphNode {
    * Returns node id. For the same heap object, the id remains the same
    * across all snapshots.
    */
-  SnapshotObjectId GetId() const;
+  uint64_t GetId() const;
 
   /** Returns node's own size, in bytes. */
   int GetSelfSize() const;
@@ -339,16 +338,13 @@ class V8EXPORT HeapSnapshot {
   const HeapGraphNode* GetRoot() const;
 
   /** Returns a node by its id. */
-  const HeapGraphNode* GetNodeById(SnapshotObjectId id) const;
+  const HeapGraphNode* GetNodeById(uint64_t id) const;
 
   /** Returns total nodes count in the snapshot. */
   int GetNodesCount() const;
 
   /** Returns a node by index. */
   const HeapGraphNode* GetNode(int index) const;
-
-  /** Returns a max seen JS object Id. */
-  SnapshotObjectId GetMaxSnapshotJSObjectId() const;
 
   /**
    * Deletes the snapshot and removes it from HeapProfiler's list.
@@ -416,33 +412,6 @@ class V8EXPORT HeapProfiler {
       Handle<String> title,
       HeapSnapshot::Type type = HeapSnapshot::kFull,
       ActivityControl* control = NULL);
-
-  /**
-   * Starts tracking of heap objects population statistics. After calling
-   * this method, all heap objects relocations done by the garbage collector
-   * are being registered.
-   */
-  static void StartHeapObjectsTracking();
-
-  /**
-   * Adds a new time interval entry to the aggregated statistics array. The
-   * time interval entry contains information on the current heap objects
-   * population size. The method also updates aggregated statistics and
-   * reports updates for all previous time intervals via the OutputStream
-   * object. Updates on each time interval are provided as pairs of time
-   * interval index and updated heap objects count.
-   *
-   * StartHeapObjectsTracking must be called before the first call to this
-   * method.
-   */
-  static void PushHeapObjectsStats(OutputStream* stream);
-
-  /**
-   * Stops tracking of heap objects population statistics, cleans up all
-   * collected data. StartHeapObjectsTracking must be called again prior to
-   * calling PushHeapObjectsStats next time.
-   */
-  static void StopHeapObjectsTracking();
 
   /**
    * Deletes all snapshots taken. All previously returned pointers to
