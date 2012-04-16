@@ -261,7 +261,7 @@ void TRI_RawLog (TRI_log_level_e, TRI_log_severity_e, char const*, size_t);
 /// @brief returns the last log entries
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_t* TRI_BufferLogging (TRI_log_level_e, uint64_t pos);
+TRI_vector_t* TRI_BufferLogging (TRI_log_level_e, uint64_t pos, bool useUpto);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the log buffer

@@ -618,6 +618,7 @@ WARN_LOGFILE           =
 # with spaces.
 
 INPUT                  = \
+	@srcdir@/Admin \
 	@srcdir@/ApplicationServer \
 	@srcdir@/Basics \
 	@srcdir@/BasicsC \

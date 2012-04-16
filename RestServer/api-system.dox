@@ -30,6 +30,7 @@
 ///
 /// <ol>
 ///  <li>@ref HttpSystemStatus</li>
+///  <li>@ref HttpSystemLog</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -45,6 +46,10 @@
 ///
 /// @anchor HttpSystemStatus
 /// @copydetails JSF_GET_system_status
+/// <hr>
+///
+/// @anchor HttpSystemLog
+/// @copydetails triagens::admin::RestAdminLogHandler::execute
 /// <hr>
 ///
 ////////////////////////////////////////////////////////////////////////////////
