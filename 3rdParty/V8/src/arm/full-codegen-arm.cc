@@ -110,6 +110,13 @@ class JumpPatchSite BASE_EMBEDDED {
 };
 
 
+// TODO(jkummerow): Obsolete as soon as x64 is updated. Remove.
+int FullCodeGenerator::self_optimization_header_size() {
+  UNREACHABLE();
+  return 24;
+}
+
+
 // Generate code for a JS function.  On entry to the function the receiver
 // and arguments have been pushed on the stack left to right.  The actual
 // argument count matches the formal parameter count expected by the
@@ -3653,7 +3660,7 @@ void FullCodeGenerator::EmitFastAsciiArrayJoin(CallRuntime* expr) {
   __ ldrb(scratch1, FieldMemOperand(scratch1, Map::kInstanceTypeOffset));
   __ JumpIfInstanceTypeIsNotSequentialAscii(scratch1, scratch2, &bailout);
   __ ldr(scratch1, FieldMemOperand(string, SeqAsciiString::kLengthOffset));
-  __ add(string_length, string_length, Operand(scratch1), SetCC);
+  __ add(string_length, string_length, Operand(scratch1));
   __ b(vs, &bailout);
   __ cmp(element, elements_end);
   __ b(lt, &loop);
@@ -3690,7 +3697,7 @@ void FullCodeGenerator::EmitFastAsciiArrayJoin(CallRuntime* expr) {
   __ b(ne, &bailout);
   __ tst(scratch2, Operand(0x80000000));
   __ b(ne, &bailout);
-  __ add(string_length, string_length, Operand(scratch2), SetCC);
+  __ add(string_length, string_length, Operand(scratch2));
   __ b(vs, &bailout);
   __ SmiUntag(string_length);
 

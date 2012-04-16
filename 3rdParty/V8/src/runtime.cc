@@ -4669,7 +4669,7 @@ RUNTIME_FUNCTION(MaybeObject*, Runtime_StoreArrayLiteralElement) {
   HandleScope scope;
 
   Object* raw_boilerplate_object = literals->get(literal_index);
-  Handle<JSArray> boilerplate(JSArray::cast(raw_boilerplate_object));
+  Handle<JSArray> boilerplate_object(JSArray::cast(raw_boilerplate_object));
 #if DEBUG
   ElementsKind elements_kind = object->GetElementsKind();
 #endif
@@ -4680,23 +4680,19 @@ RUNTIME_FUNCTION(MaybeObject*, Runtime_StoreArrayLiteralElement) {
   if (value->IsNumber()) {
     ASSERT(elements_kind == FAST_SMI_ONLY_ELEMENTS);
     JSObject::TransitionElementsKind(object, FAST_DOUBLE_ELEMENTS);
-    if (IsMoreGeneralElementsKindTransition(boilerplate->GetElementsKind(),
-                                            FAST_DOUBLE_ELEMENTS)) {
-      JSObject::TransitionElementsKind(boilerplate, FAST_DOUBLE_ELEMENTS);
-    }
+    JSObject::TransitionElementsKind(boilerplate_object, FAST_DOUBLE_ELEMENTS);
     ASSERT(object->GetElementsKind() == FAST_DOUBLE_ELEMENTS);
-    FixedDoubleArray* double_array = FixedDoubleArray::cast(object->elements());
+    FixedDoubleArray* double_array =
+        FixedDoubleArray::cast(object->elements());
     HeapNumber* number = HeapNumber::cast(*value);
     double_array->set(store_index, number->Number());
   } else {
     ASSERT(elements_kind == FAST_SMI_ONLY_ELEMENTS ||
            elements_kind == FAST_DOUBLE_ELEMENTS);
     JSObject::TransitionElementsKind(object, FAST_ELEMENTS);
-    if (IsMoreGeneralElementsKindTransition(boilerplate->GetElementsKind(),
-                                            FAST_ELEMENTS)) {
-      JSObject::TransitionElementsKind(boilerplate, FAST_ELEMENTS);
-    }
-    FixedArray* object_array = FixedArray::cast(object->elements());
+    JSObject::TransitionElementsKind(boilerplate_object, FAST_ELEMENTS);
+    FixedArray* object_array =
+        FixedArray::cast(object->elements());
     object_array->set(store_index, *value);
   }
   return *object;
@@ -7586,7 +7582,7 @@ RUNTIME_FUNCTION(MaybeObject*, Runtime_DateSetValue) {
     }
   }
   date->SetValue(value, is_value_nan);
-  return value;
+  return *date;
 }
 
 
@@ -8047,6 +8043,8 @@ RUNTIME_FUNCTION(MaybeObject*, Runtime_LazyRecompile) {
   ASSERT(args.length() == 1);
   Handle<JSFunction> function = args.at<JSFunction>(0);
 
+  function->shared()->set_profiler_ticks(0);
+
   // If the function is not compiled ignore the lazy
   // recompilation. This can happen if the debugger is activated and
   // the function is returned to the not compiled state.
@@ -8069,7 +8067,6 @@ RUNTIME_FUNCTION(MaybeObject*, Runtime_LazyRecompile) {
     function->ReplaceCode(function->shared()->code());
     return function->code();
   }
-  function->shared()->code()->set_profiler_ticks(0);
   if (JSFunction::CompileOptimized(function,
                                    AstNode::kNoNumber,
                                    CLEAR_EXCEPTION)) {
@@ -8126,14 +8123,6 @@ static void MaterializeArgumentsObjectInFrame(Isolate* isolate,
         ASSERT(*arguments != isolate->heap()->undefined_value());
       }
       frame->SetExpression(i, *arguments);
-      if (FLAG_trace_deopt) {
-        PrintF("Materializing arguments object for frame %p - %p: %p ",
-               reinterpret_cast<void*>(frame->sp()),
-               reinterpret_cast<void*>(frame->fp()),
-               reinterpret_cast<void*>(*arguments));
-        arguments->ShortPrint();
-        PrintF("\n");
-      }
     }
   }
 }
@@ -8369,10 +8358,14 @@ RUNTIME_FUNCTION(MaybeObject*, Runtime_CompileForOnStackReplacement) {
     PrintF("]\n");
   }
   Handle<Code> check_code;
+#if defined(V8_TARGET_ARCH_IA32) || \
+    defined(V8_TARGET_ARCH_ARM) || \
+    defined(V8_TARGET_ARCH_MIPS)
   if (FLAG_count_based_interrupts) {
     InterruptStub interrupt_stub;
     check_code = interrupt_stub.GetCode();
   } else  // NOLINT
+#endif
   {  // NOLINT
     StackCheckStub check_stub;
     check_code = check_stub.GetCode();

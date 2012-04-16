@@ -462,8 +462,7 @@ void HValue::PrintChangesTo(StringStream* stream) {
       add_comma = true;                           \
       stream->Add(#type);                         \
     }
-    GVN_TRACKED_FLAG_LIST(PRINT_DO);
-    GVN_UNTRACKED_FLAG_LIST(PRINT_DO);
+    GVN_FLAG_LIST(PRINT_DO);
 #undef PRINT_DO
   }
   stream->Add("]");
@@ -600,9 +599,6 @@ void HInstruction::InsertAfter(HInstruction* previous) {
   SetBlock(block);
   previous->next_ = this;
   if (next != NULL) next->previous_ = this;
-  if (block->last() == previous) {
-    block->set_last(this);
-  }
 }
 
 
@@ -969,13 +965,16 @@ void HCheckInstanceType::GetCheckMaskAndTag(uint8_t* mask, uint8_t* tag) {
 }
 
 
-void HCheckMaps::PrintDataTo(StringStream* stream) {
+void HCheckMap::PrintDataTo(StringStream* stream) {
   value()->PrintNameTo(stream);
-  stream->Add(" [%p", *map_set()->first());
-  for (int i = 1; i < map_set()->length(); ++i) {
-    stream->Add(",%p", *map_set()->at(i));
+  stream->Add(" %p", *map());
+  if (mode() == REQUIRE_EXACT_MAP) {
+    stream->Add(" [EXACT]");
+  } else if (!has_element_transitions_) {
+    stream->Add(" [EXACT*]");
+  } else {
+    stream->Add(" [MATCH ELEMENTS]");
   }
-  stream->Add("]");
 }
 
 
@@ -1737,9 +1736,6 @@ void HStoreNamedField::PrintDataTo(StringStream* stream) {
   stream->Add(" = ");
   value()->PrintNameTo(stream);
   stream->Add(" @%d%s", offset(), is_in_object() ? "[in-object]" : "");
-  if (NeedsWriteBarrier()) {
-    stream->Add(" (write-barrier)");
-  }
   if (!transition().is_null()) {
     stream->Add(" (transition map %p)", *transition());
   }
@@ -1883,7 +1879,7 @@ HType HValue::CalculateInferredType() {
 }
 
 
-HType HCheckMaps::CalculateInferredType() {
+HType HCheckMap::CalculateInferredType() {
   return value()->type();
 }
 
@@ -2090,17 +2086,6 @@ HValue* HAdd::EnsureAndPropagateNotMinusZero(BitVector* visited) {
     return left();
   }
   return NULL;
-}
-
-
-bool HStoreKeyedFastDoubleElement::NeedsCanonicalization() {
-  // If value was loaded from unboxed double backing store or
-  // converted from an integer then we don't have to canonicalize it.
-  if (value()->IsLoadKeyedFastDoubleElement() ||
-      (value()->IsChange() && HChange::cast(value())->from().IsInteger32())) {
-    return false;
-  }
-  return true;
 }
 
 

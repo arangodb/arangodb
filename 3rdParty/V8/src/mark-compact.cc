@@ -337,7 +337,6 @@ void MarkCompactCollector::VerifyMarkbitsAreClean() {
   for (HeapObject* obj = it.Next(); obj != NULL; obj = it.Next()) {
     MarkBit mark_bit = Marking::MarkBitFrom(obj);
     ASSERT(Marking::IsWhite(mark_bit));
-    ASSERT_EQ(0, Page::FromAddress(obj->address())->LiveBytes());
   }
 }
 #endif
@@ -374,7 +373,6 @@ void MarkCompactCollector::ClearMarkbits() {
     MarkBit mark_bit = Marking::MarkBitFrom(obj);
     mark_bit.Clear();
     mark_bit.Next().Clear();
-    Page::FromAddress(obj->address())->ResetLiveBytes();
   }
 }
 
@@ -1407,10 +1405,6 @@ class StaticMarkingVisitor : public StaticVisitorBase {
     SharedFunctionInfo* shared = reinterpret_cast<SharedFunctionInfo*>(object);
 
     if (shared->IsInobjectSlackTrackingInProgress()) shared->DetachInitialMap();
-
-    if (shared->ic_age() != heap->global_ic_age()) {
-      shared->ResetForNewContext(heap->global_ic_age());
-    }
 
     if (!known_flush_code_candidate) {
       known_flush_code_candidate = IsFlushable(heap, shared);
@@ -2592,17 +2586,14 @@ void MarkCompactCollector::ProcessWeakMaps() {
     ASSERT(MarkCompactCollector::IsMarked(HeapObject::cast(weak_map_obj)));
     JSWeakMap* weak_map = reinterpret_cast<JSWeakMap*>(weak_map_obj);
     ObjectHashTable* table = ObjectHashTable::cast(weak_map->table());
-    Object** anchor = reinterpret_cast<Object**>(table->address());
     for (int i = 0; i < table->Capacity(); i++) {
       if (MarkCompactCollector::IsMarked(HeapObject::cast(table->KeyAt(i)))) {
-        Object** key_slot =
-            HeapObject::RawField(table, FixedArray::OffsetOfElementAt(
-                ObjectHashTable::EntryToIndex(i)));
-        RecordSlot(anchor, key_slot, *key_slot);
-        Object** value_slot =
-            HeapObject::RawField(table, FixedArray::OffsetOfElementAt(
-                ObjectHashTable::EntryToValueIndex(i)));
-        StaticMarkingVisitor::MarkObjectByPointer(this, anchor, value_slot);
+        Object* value = table->get(table->EntryToValueIndex(i));
+        StaticMarkingVisitor::VisitPointer(heap(), &value);
+        table->set_unchecked(heap(),
+                             table->EntryToValueIndex(i),
+                             value,
+                             UPDATE_WRITE_BARRIER);
       }
     }
     weak_map_obj = weak_map->next();
