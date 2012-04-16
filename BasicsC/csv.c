@@ -305,7 +305,7 @@ bool TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t len
           while (ptr < parser->_stop && *ptr != parser->_quote) {
             *qtr++ = *ptr++;
           }
-
+          
           // found quote, need at least another quote, a separator, or a eol
           if (ptr + 1 < parser->_stop) {
             ++ptr;
@@ -314,10 +314,16 @@ bool TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t len
             if (*ptr == parser->_quote) {
               *qtr++ = parser->_quote;
               ptr++;
+              break;
+            }
+            
+            // ignore spaces
+            while ((*ptr == ' ' || *ptr == '\t') && (ptr + 1) < parser->_stop) {
+              ++ptr;
             }
 
             // found separator
-            else if (*ptr == parser->_separator) {
+            if (*ptr == parser->_separator) {
               *qtr = '\0';
 
               parser->add(parser, parser->_start, parser->_row, parser->_column, true);
@@ -337,7 +343,7 @@ bool TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t len
               parser->_row++;
               parser->_state = TRI_CSV_PARSER_BOL;
             }
-
+            
             // ups
             else {
               parser->_state = TRI_CSV_PARSER_CORRUPTED;

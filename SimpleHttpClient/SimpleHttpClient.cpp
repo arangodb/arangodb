@@ -313,8 +313,6 @@ namespace triagens {
         l = "/" + location;
       }
 
-      LOGGER_TRACE << "Request: " << _writeBuffer.c_str() << l;
-
       _writeBuffer.appendText(l);
       _writeBuffer.appendText(" HTTP/1.1\r\n");
 
@@ -365,6 +363,8 @@ namespace triagens {
       _writeBuffer.appendInteger(bodyLength);
       _writeBuffer.appendText("\r\n\r\n");
       _writeBuffer.appendText(body, bodyLength);
+
+      LOGGER_TRACE << "Request: " << _writeBuffer.c_str();
 
       //////////////////////////////////////////////////////////////////////////
 

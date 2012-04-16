@@ -31,6 +31,10 @@
 
 #include "build.h"
 
+#include "regex.h"
+
+#include "BasicsC/csv.h"
+
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringUtils.h"
@@ -47,6 +51,11 @@
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
 #include "V8Client/V8ClientConnection.h"
+
+#include "Variant/VariantArray.h"
+#include "Variant/VariantBoolean.h"
+#include "Variant/VariantInt64.h"
+#include "Variant/VariantString.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -157,6 +166,18 @@ static bool noAutoComplete = false;
 static vector<string> UnitTests;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief regex for double values
+////////////////////////////////////////////////////////////////////////////////
+
+regex_t doubleRegex;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief regex for integer values
+////////////////////////////////////////////////////////////////////////////////
+
+regex_t intRegex;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -241,6 +262,285 @@ static v8::Handle<v8::Value> JS_StopOutputPager (v8::Arguments const& ) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          functions for CSV import
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send buffer
+////////////////////////////////////////////////////////////////////////////////
+
+static void sendBuffer (TRI_csv_parser_t* parser) {  
+  StringBuffer* buffer = reinterpret_cast< StringBuffer* >(parser->_dataBegin);  
+  pair<size_t, size_t>* numbers = reinterpret_cast< pair<size_t, size_t>* >(parser->_dataAdd);  
+  string* collection = reinterpret_cast< string* >(parser->_dataEnd);  
+  
+  SimpleHttpClient* client = clientConnection->getHttpClient();
+  
+  map<string, string> headerFields;
+  
+  // internalPrint("Import send: %s\n", buffer->c_str());
+  
+  SimpleHttpResult* result = client->request(SimpleHttpClient::POST, "/import?collection=" + StringUtils::urlEncode(*collection), buffer->c_str(), buffer->length(), headerFields);
+  
+  VariantArray* va = result->getBodyAsVariantArray();
+  
+  if (va) {
+    VariantBoolean* vb = va->lookupBoolean("error");
+    if (vb && vb->getValue()) {
+      // is error
+      
+      VariantString* vs = va->lookupString("errorMessage");
+      if (vs) {
+        internalPrint("Import error: %s\n", vs->getValue().c_str());
+      }
+      else {
+        internalPrint("Import error: unknow error\n");                
+      }      
+    }
+    
+    VariantInt64* vi = va->lookupInt64("created");
+    if (vi && vi->getValue() > 0) {
+      numbers->first += (size_t) vi->getValue();
+    }
+
+    vi = va->lookupInt64("errors");
+    if (vi && vi->getValue() > 0) {
+      numbers->second += (size_t) vi->getValue();
+    }
+    
+    delete va;
+  }
+  else {
+    internalPrint("Import error: unknow error\n");                    
+  }
+  
+  buffer->clear();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start a new csv line
+////////////////////////////////////////////////////////////////////////////////
+
+static void ProcessCsvBegin (TRI_csv_parser_t* , size_t ) {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a new CSV field
+////////////////////////////////////////////////////////////////////////////////
+
+static void ProcessCsvAdd (TRI_csv_parser_t* parser, char const* field, size_t row, size_t column, bool escaped) {
+  StringBuffer* buffer = reinterpret_cast< StringBuffer* >(parser->_dataBegin);  
+  if (column == 0) {    
+    if (row > 0) {
+      buffer->appendChar('\n');
+    }
+    buffer->appendChar('[');
+  } 
+  else {
+    buffer->appendChar(',');    
+  }
+    
+  if (row == 0) {
+    // head line    
+    buffer->appendChar('"');    
+    buffer->appendText(StringUtils::escapeUnicode(field));
+    buffer->appendChar('"');    
+  }
+  else {
+    if (escaped) {
+      buffer->appendChar('"');    
+      buffer->appendText(StringUtils::escapeUnicode(field));
+      buffer->appendChar('"');          
+    }
+    else {
+      string s(field);
+      if (s.length() == 0) {
+        // do nothing
+      }      
+      else if ("true" == s || "false" == s) {
+        buffer->appendText(field);
+      }
+      else {
+        if (regexec(&intRegex, s.c_str(), 0, 0, 0) == 0) {
+          int64_t num = StringUtils::int64(s);
+          buffer->appendInteger(num);
+        }
+        else if (regexec(&doubleRegex, s.c_str(), 0, 0, 0) == 0) {
+          double num = StringUtils::doubleDecimal(s);
+          buffer->appendDecimal(num);
+        }
+        else {
+          buffer->appendChar('"');    
+          buffer->appendText(StringUtils::escapeUnicode(field));
+          buffer->appendChar('"');                    
+        }
+      }
+    }
+  }  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ends a CSV line
+////////////////////////////////////////////////////////////////////////////////
+
+static void ProcessCsvEnd (TRI_csv_parser_t* parser, char const* field, size_t row, size_t column, bool escaped) {
+  if (column == 0) {
+    // test for emtpy line    
+    if (StringUtils::trim(field) == "") {
+      return;
+    }    
+  }
+  
+  ProcessCsvAdd(parser, field, row, column, escaped);  
+
+  StringBuffer* buffer = reinterpret_cast< StringBuffer* >(parser->_dataBegin);  
+  buffer->appendChar(']');
+  
+  if (buffer->length() > 100000) {
+    sendBuffer(parser);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief imports a CSV file
+///
+/// @FUN{importCsvFile(@FA{filename}, @FA{collection})}
+///
+/// Imports data of a CSV file. The data is imported to @FA{collection}.
+////The seperator is @CODE{\,} and the quote is @CODE{"}.
+///
+/// @FUN{importCsvFile(@FA{filename}, @FA{collection}, @FA{options})}
+///
+/// Imports data of a CSV file. The data is imported to @FA{collection}.
+////The seperator is @CODE{\,} and the quote is @CODE{"}.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ImportCsvFile (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() < 2) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: importCsvFile(<filename>, <collection>[, <options>])")));
+  }
+
+  // extract the filename
+  v8::String::Utf8Value filename(argv[0]);
+
+  if (*filename == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("<filename> must be an UTF8 filename")));
+  }
+
+  v8::String::Utf8Value collection(argv[1]);
+
+  if (*collection == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("<collection> must be an UTF8 filename")));
+  }
+
+  // extract the options
+  v8::Handle<v8::String> separatorKey = v8::String::New("separator");
+  v8::Handle<v8::String> quoteKey = v8::String::New("quote");
+
+  char separator = ',';
+  char quote = '"';
+
+  if (3 <= argv.Length()) {
+    v8::Handle<v8::Object> options = argv[2]->ToObject();
+    bool error;
+
+    // separator
+    if (options->Has(separatorKey)) {
+      separator = TRI_ObjectToCharacter(options->Get(separatorKey), error);
+
+      if (error) {
+        return scope.Close(v8::ThrowException(v8::String::New("<options>.separator must be a character")));
+      }
+    }
+
+    // quote
+    if (options->Has(quoteKey)) {
+      quote = TRI_ObjectToCharacter(options->Get(quoteKey), error);
+
+      if (error) {
+        return scope.Close(v8::ThrowException(v8::String::New("<options>.quote must be a character")));
+      }
+    }
+  }
+
+  // read and convert
+  int fd = open(*filename, O_RDONLY);
+
+  if (fd < 0) {
+    return scope.Close(v8::ThrowException(v8::String::New(TRI_LAST_ERROR_STR)));
+  }
+
+  TRI_csv_parser_t parser;
+
+  TRI_InitCsvParser(&parser,
+                    ProcessCsvBegin,
+                    ProcessCsvAdd,
+                    ProcessCsvEnd);
+
+  parser._separator = separator;
+  parser._quote = quote;
+
+  pair<size_t, size_t> numbers;
+  parser._dataAdd = &numbers;
+
+  StringBuffer stringBuffer;  
+  parser._dataBegin = &stringBuffer;
+  
+  string collectionName = TRI_ObjectToString(argv[1]);
+  parser._dataEnd = &collectionName;
+  
+  char buffer[10240];
+
+  while (true) {
+    v8::HandleScope scope;
+
+    ssize_t n = read(fd, buffer, sizeof(buffer));
+
+    if (n < 0) {
+      TRI_DestroyCsvParser(&parser);
+      return scope.Close(v8::ThrowException(v8::String::New(TRI_LAST_ERROR_STR)));
+    }
+    else if (n == 0) {
+      TRI_DestroyCsvParser(&parser);
+      break;
+    }
+
+    TRI_ParseCsvString2(&parser, buffer, n);
+  }
+
+  if (stringBuffer.length() > 0) {
+    sendBuffer(&parser);
+  }
+  
+  
+  //internalPrint("Test:\n%s\n", stringBuffer.c_str());
+  
+  string msg = "Imported '" + StringUtils::itoa(numbers.first) + "' with '" + StringUtils::itoa(numbers.second) + "' errors.";
+  
+  return scope.Close(v8::String::New(msg.c_str()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -907,6 +1207,9 @@ int main (int argc, char* argv[]) {
   TRI_InitialiseLogging(false);
   int ret = EXIT_SUCCESS;
 
+  regcomp(&doubleRegex, "^[-+]?([0-9]+\\.?[0-9]*|\\.[0-9]+)([eE][-+]?[0-8]+)?$", REG_ICASE | REG_EXTENDED);
+  regcomp(&intRegex, "^[-+]?([0-9]+)$", REG_ICASE | REG_EXTENDED);
+  
   // .............................................................................
   // use relative system paths
   // .............................................................................
@@ -1023,8 +1326,11 @@ int main (int argc, char* argv[]) {
   context->Global()->Set(v8::String::New("SYS_STOP_PAGER"),
                          v8::FunctionTemplate::New(JS_StopOutputPager)->GetFunction(),
                          v8::ReadOnly);
-  
 
+  context->Global()->Set(v8::String::New("importCsvFile"),
+                         v8::FunctionTemplate::New(JS_ImportCsvFile)->GetFunction(),
+                         v8::ReadOnly);
+  
   
   // http://www.network-science.de/ascii/   Font: ogre
   if (noColors) {

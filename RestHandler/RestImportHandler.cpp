@@ -180,18 +180,26 @@ bool RestImportHandler::createDocument () {
   string createStr = request->value("createCollection", found);
   bool create = found ? StringUtils::boolean(createStr) : false;
 
-  vector<string> lines = StringUtils::split(request->body(), "\n");
+  size_t start = 0;
+  size_t next = request->body().find('\n', start);
   
-  vector<string>::iterator line = lines.begin();
-
+  if (next == string::npos) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE,
+                  "No JSON string list in first line found");
+    return false;            
+  }
+  
   TRI_json_t* keys = 0;
   
   bool documentMode = false;
   
+  string line = request->body().substr(start, next);
+  
   // get first line
-  if (line != lines.end()) { 
+  if (line != "") { 
     
-    keys = parseJsonLine(*line);
+    keys = parseJsonLine(line);
     
     if (!keys) {
       generateError(HttpResponse::BAD,
@@ -208,7 +216,7 @@ bool RestImportHandler::createDocument () {
                   "No JSON string list in first line found");
         return false;        
       }
-      ++line;
+      start = next+1;
     }
     else if (keys->_type == TRI_JSON_ARRAY) {
       documentMode = true;
@@ -250,8 +258,20 @@ bool RestImportHandler::createDocument () {
 
   _documentCollection->beginWrite(_documentCollection);
 
-  for (; line != lines.end(); ++line) {    
-    TRI_json_t* values = parseJsonLine(*line);
+  while (next != string::npos) {
+    
+    next = request->body().find('\n', start);
+    if (next == string::npos) {
+      line = request->body().substr(start);
+    }
+    else {
+      line = request->body().substr(start, next - start);
+      start = next + 1;
+    }
+    
+    //printf("**** line = %s **********\n" , line.c_str());
+    
+    TRI_json_t* values = parseJsonLine(line);
     TRI_json_t* json = 0;
 
     if (values) {
@@ -278,9 +298,14 @@ bool RestImportHandler::createDocument () {
         }
         TRI_DestroyJson(json);
       }    
+      else {
+        LOGGER_WARNING << "ignored line: " << (line);            
+      }
+    }
+    else {
+      LOGGER_WARNING << "no values in line: " << (line);            
     }
             
-    // LOGGER_INFO << "line: " << (*line);    
   }
   
   if (keys) {
@@ -308,9 +333,9 @@ void RestImportHandler::generateDocumentsCreated (size_t numCreated, size_t numE
   response->setContentType("application/json; charset=utf-8");
 
   response->body()
-    .appendText("{\"error\":false,\"created\":\"")
+    .appendText("{\"error\":false,\"created\":")
     .appendInteger(numCreated)
-    .appendText("\",\"errors\":")
+    .appendText(",\"errors\":")
     .appendInteger(numError)
     .appendText("}");
 }
@@ -341,7 +366,7 @@ TRI_json_t* RestImportHandler::createJsonObject (TRI_json_t* keys, TRI_json_t* v
     TRI_json_t* value = (TRI_json_t*) TRI_AtVector(&values->_value._objects, i);
     
     if (key->_type == TRI_JSON_STRING && value->_type > TRI_JSON_NULL) {
-      TRI_InsertArrayJson (result, key->_value._string.data, value);      
+      TRI_InsertArrayJson(result, key->_value._string.data, value);      
     }
   }  
   
