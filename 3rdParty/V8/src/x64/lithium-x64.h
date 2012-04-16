@@ -71,7 +71,7 @@ class LCodeGen;
   V(CallStub)                                   \
   V(CheckFunction)                              \
   V(CheckInstanceType)                          \
-  V(CheckMaps)                                  \
+  V(CheckMap)                                   \
   V(CheckNonSmi)                                \
   V(CheckPrototypeMaps)                         \
   V(CheckSmi)                                   \
@@ -179,8 +179,7 @@ class LCodeGen;
   V(CheckMapValue)                              \
   V(LoadFieldByIndex)                           \
   V(DateField)                                  \
-  V(WrapReceiver)                               \
-  V(Drop)
+  V(WrapReceiver)
 
 
 #define DECLARE_CONCRETE_INSTRUCTION(type, mnemonic)              \
@@ -536,8 +535,9 @@ class LArgumentsLength: public LTemplateInstruction<1, 1, 0> {
 
 class LArgumentsElements: public LTemplateInstruction<1, 0, 0> {
  public:
+  LArgumentsElements() { }
+
   DECLARE_CONCRETE_INSTRUCTION(ArgumentsElements, "arguments-elements")
-  DECLARE_HYDROGEN_ACCESSOR(ArgumentsElements)
 };
 
 
@@ -1358,19 +1358,6 @@ class LPushArgument: public LTemplateInstruction<0, 1, 0> {
 };
 
 
-class LDrop: public LTemplateInstruction<0, 0, 0> {
- public:
-  explicit LDrop(int count) : count_(count) { }
-
-  int count() const { return count_; }
-
-  DECLARE_CONCRETE_INSTRUCTION(Drop, "drop")
-
- private:
-  int count_;
-};
-
-
 class LThisFunction: public LTemplateInstruction<1, 0, 0> {
  public:
   DECLARE_CONCRETE_INSTRUCTION(ThisFunction, "this-function")
@@ -1720,8 +1707,6 @@ class LStoreKeyedFastDoubleElement: public LTemplateInstruction<0, 3, 0> {
   LOperand* elements() { return inputs_[0]; }
   LOperand* key() { return inputs_[1]; }
   LOperand* value() { return inputs_[2]; }
-
-  bool NeedsCanonicalization() { return hydrogen()->NeedsCanonicalization(); }
 };
 
 
@@ -1872,14 +1857,14 @@ class LCheckInstanceType: public LTemplateInstruction<0, 1, 0> {
 };
 
 
-class LCheckMaps: public LTemplateInstruction<0, 1, 0> {
+class LCheckMap: public LTemplateInstruction<0, 1, 0> {
  public:
-  explicit LCheckMaps(LOperand* value) {
+  explicit LCheckMap(LOperand* value) {
     inputs_[0] = value;
   }
 
-  DECLARE_CONCRETE_INSTRUCTION(CheckMaps, "check-maps")
-  DECLARE_HYDROGEN_ACCESSOR(CheckMaps)
+  DECLARE_CONCRETE_INSTRUCTION(CheckMap, "check-map")
+  DECLARE_HYDROGEN_ACCESSOR(CheckMap)
 };
 
 

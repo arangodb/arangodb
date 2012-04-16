@@ -42,7 +42,6 @@
 #include "natives.h"
 #include "objects-visiting.h"
 #include "objects-visiting-inl.h"
-#include "once.h"
 #include "runtime-profiler.h"
 #include "scopeinfo.h"
 #include "snapshot.h"
@@ -60,6 +59,8 @@
 
 namespace v8 {
 namespace internal {
+
+static LazyMutex gc_initializer_mutex = LAZY_MUTEX_INITIALIZER;
 
 
 Heap::Heap()
@@ -144,6 +145,7 @@ Heap::Heap()
       number_idle_notifications_(0),
       last_idle_notification_gc_count_(0),
       last_idle_notification_gc_count_init_(false),
+      idle_notification_will_schedule_next_gc_(false),
       mark_sweeps_since_idle_round_started_(0),
       ms_count_at_last_idle_notification_(0),
       gc_count_at_last_idle_gc_(0),
@@ -502,17 +504,11 @@ bool Heap::CollectGarbage(AllocationSpace space,
       !incremental_marking()->IsStopped() &&
       !incremental_marking()->should_hurry() &&
       FLAG_incremental_marking_steps) {
-    // Make progress in incremental marking.
-    const intptr_t kStepSizeWhenDelayedByScavenge = 1 * MB;
-    incremental_marking()->Step(kStepSizeWhenDelayedByScavenge,
-                                IncrementalMarking::NO_GC_VIA_STACK_GUARD);
-    if (!incremental_marking()->IsComplete()) {
-      if (FLAG_trace_incremental_marking) {
-        PrintF("[IncrementalMarking] Delaying MarkSweep.\n");
-      }
-      collector = SCAVENGER;
-      collector_reason = "incremental marking delaying mark-sweep";
+    if (FLAG_trace_incremental_marking) {
+      PrintF("[IncrementalMarking] Delaying MarkSweep.\n");
     }
+    collector = SCAVENGER;
+    collector_reason = "incremental marking delaying mark-sweep";
   }
 
   bool next_gc_likely_to_collect_more = false;
@@ -1957,7 +1953,7 @@ MaybeObject* Heap::AllocateTypeFeedbackInfo() {
     if (!maybe_info->To(&info)) return maybe_info;
   }
   info->set_ic_total_count(0);
-  info->set_ic_with_type_info_count(0);
+  info->set_ic_with_typeinfo_count(0);
   info->set_type_feedback_cells(TypeFeedbackCells::cast(empty_fixed_array()),
                                 SKIP_WRITE_BARRIER);
   return info;
@@ -2901,9 +2897,9 @@ MaybeObject* Heap::AllocateSharedFunctionInfo(Object* name) {
   share->set_inferred_name(empty_string(), SKIP_WRITE_BARRIER);
   share->set_initial_map(undefined_value(), SKIP_WRITE_BARRIER);
   share->set_this_property_assignments(undefined_value(), SKIP_WRITE_BARRIER);
-  share->set_ast_node_count(0);
   share->set_deopt_counter(FLAG_deopt_every_n_times);
-  share->set_ic_age(0);
+  share->set_profiler_ticks(0);
+  share->set_ast_node_count(0);
 
   // Set integer fields (smi or int, depending on the architecture).
   share->set_length(0);
@@ -4821,8 +4817,10 @@ void Heap::EnsureHeapIsIterable() {
 
 
 void Heap::AdvanceIdleIncrementalMarking(intptr_t step_size) {
-  incremental_marking()->Step(step_size,
-                              IncrementalMarking::NO_GC_VIA_STACK_GUARD);
+  // This flag prevents incremental marking from requesting GC via stack guard
+  idle_notification_will_schedule_next_gc_ = true;
+  incremental_marking()->Step(step_size);
+  idle_notification_will_schedule_next_gc_ = false;
 
   if (incremental_marking()->IsComplete()) {
     bool uncommit = false;
@@ -5676,7 +5674,7 @@ intptr_t Heap::PromotedSpaceSizeOfObjects() {
 }
 
 
-intptr_t Heap::PromotedExternalMemorySize() {
+int Heap::PromotedExternalMemorySize() {
   if (amount_of_external_allocated_memory_
       <= amount_of_external_allocated_memory_at_last_global_gc_) return 0;
   return amount_of_external_allocated_memory_
@@ -5849,15 +5847,6 @@ class HeapDebugUtils {
 
 #endif
 
-
-V8_DECLARE_ONCE(initialize_gc_once);
-
-static void InitializeGCOnce() {
-  InitializeScavengingVisitorsTables();
-  NewSpaceScavenger::Initialize();
-  MarkCompactCollector::Initialize();
-}
-
 bool Heap::SetUp(bool create_heap_objects) {
 #ifdef DEBUG
   allocation_timeout_ = FLAG_gc_interval;
@@ -5876,7 +5865,15 @@ bool Heap::SetUp(bool create_heap_objects) {
     if (!ConfigureHeapDefault()) return false;
   }
 
-  CallOnce(&initialize_gc_once, &InitializeGCOnce);
+  gc_initializer_mutex.Pointer()->Lock();
+  static bool initialized_gc = false;
+  if (!initialized_gc) {
+      initialized_gc = true;
+      InitializeScavengingVisitorsTables();
+      NewSpaceScavenger::Initialize();
+      MarkCompactCollector::Initialize();
+  }
+  gc_initializer_mutex.Pointer()->Unlock();
 
   MarkMapPointersAsEncoded(false);
 

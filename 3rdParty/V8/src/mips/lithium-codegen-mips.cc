@@ -2651,20 +2651,16 @@ void LCodeGen::DoArgumentsElements(LArgumentsElements* instr) {
   Register temp = scratch1();
   Register result = ToRegister(instr->result());
 
-  if (instr->hydrogen()->from_inlined()) {
-    __ Subu(result, sp, 2 * kPointerSize);
-  } else {
-    // Check if the calling frame is an arguments adaptor frame.
-    Label done, adapted;
-    __ lw(scratch, MemOperand(fp, StandardFrameConstants::kCallerFPOffset));
-    __ lw(result, MemOperand(scratch, StandardFrameConstants::kContextOffset));
-    __ Xor(temp, result, Operand(Smi::FromInt(StackFrame::ARGUMENTS_ADAPTOR)));
+  // Check if the calling frame is an arguments adaptor frame.
+  Label done, adapted;
+  __ lw(scratch, MemOperand(fp, StandardFrameConstants::kCallerFPOffset));
+  __ lw(result, MemOperand(scratch, StandardFrameConstants::kContextOffset));
+  __ Xor(temp, result, Operand(Smi::FromInt(StackFrame::ARGUMENTS_ADAPTOR)));
 
-    // Result is the frame pointer for the frame if not adapted and for the real
-    // frame below the adaptor frame if adapted.
-    __ Movn(result, fp, temp);  // Move only if temp is not equal to zero (ne).
-    __ Movz(result, scratch, temp);  // Move only if temp is equal to zero (eq).
-  }
+  // Result is the frame pointer for the frame if not adapted and for the real
+  // frame below the adaptor frame if adapted.
+  __ Movn(result, fp, temp);  // Move only if temp is not equal to zero (ne).
+  __ Movz(result, scratch, temp);  // Move only if temp is equal to zero (eq).
 }
 
 
@@ -2794,11 +2790,6 @@ void LCodeGen::DoPushArgument(LPushArgument* instr) {
     Register argument_reg = EmitLoadRegister(argument, at);
     __ push(argument_reg);
   }
-}
-
-
-void LCodeGen::DoDrop(LDrop* instr) {
-  __ Drop(instr->count());
 }
 
 
@@ -4246,21 +4237,14 @@ void LCodeGen::DoCheckMapCommon(Register reg,
 }
 
 
-void LCodeGen::DoCheckMaps(LCheckMaps* instr) {
+void LCodeGen::DoCheckMap(LCheckMap* instr) {
   Register scratch = scratch0();
   LOperand* input = instr->InputAt(0);
   ASSERT(input->IsRegister());
   Register reg = ToRegister(input);
-  Label success;
-  SmallMapList* map_set = instr->hydrogen()->map_set();
-  for (int i = 0; i < map_set->length() - 1; i++) {
-    Handle<Map> map = map_set->at(i);
-    __ CompareMapAndBranch(
-        reg, scratch, map, &success, eq, &success, REQUIRE_EXACT_MAP);
-  }
-  Handle<Map> map = map_set->last();
-  DoCheckMapCommon(reg, scratch, map, REQUIRE_EXACT_MAP, instr->environment());
-  __ bind(&success);
+  Handle<Map> map = instr->hydrogen()->map();
+  DoCheckMapCommon(reg, scratch, map, instr->hydrogen()->mode(),
+                   instr->environment());
 }
 
 
@@ -4376,14 +4360,6 @@ void LCodeGen::DoAllocateObject(LAllocateObject* instr) {
                         deferred->entry(),
                         TAG_OBJECT);
 
-  __ bind(deferred->exit());
-  if (FLAG_debug_code) {
-    Label is_in_new_space;
-    __ JumpIfInNewSpace(result, scratch, &is_in_new_space);
-    __ Abort("Allocated object is not in new-space");
-    __ bind(&is_in_new_space);
-  }
-
   // Load the initial map.
   Register map = scratch;
   __ LoadHeapObject(map, constructor);
@@ -4402,14 +4378,14 @@ void LCodeGen::DoAllocateObject(LAllocateObject* instr) {
       __ sw(scratch, FieldMemOperand(result, property_offset));
     }
   }
+
+  __ bind(deferred->exit());
 }
 
 
 void LCodeGen::DoDeferredAllocateObject(LAllocateObject* instr) {
   Register result = ToRegister(instr->result());
   Handle<JSFunction> constructor = instr->hydrogen()->constructor();
-  Handle<Map> initial_map(constructor->initial_map());
-  int instance_size = initial_map->instance_size();
 
   // TODO(3095996): Get rid of this. For now, we need to make the
   // result register contain a valid pointer because it is already
@@ -4417,9 +4393,9 @@ void LCodeGen::DoDeferredAllocateObject(LAllocateObject* instr) {
   __ mov(result, zero_reg);
 
   PushSafepointRegistersScope scope(this, Safepoint::kWithRegisters);
-  __ li(a0, Operand(Smi::FromInt(instance_size)));
+  __ LoadHeapObject(a0, constructor);
   __ push(a0);
-  CallRuntimeFromDeferred(Runtime::kAllocateInNewSpace, 1, instr);
+  CallRuntimeFromDeferred(Runtime::kNewObject, 1, instr);
   __ StoreToSafepointRegisterSlot(v0, result);
 }
 
