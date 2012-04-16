@@ -103,7 +103,7 @@ namespace triagens {
     // -----------------------------------------------------------------------------
 
     size_t HttpRequest::contentLength () const {
-      string const& contentLengthString = StringUtils::trim(header("content-length"));
+      string const contentLengthString = StringUtils::trim(header("content-length"));
 
       if (contentLengthString != "") {
         return StringUtils::uint32(contentLengthString);
