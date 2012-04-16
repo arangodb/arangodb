@@ -178,7 +178,12 @@ class IncrementalMarkingMarkingVisitor : public ObjectVisitor {
 
   void VisitCodeTarget(RelocInfo* rinfo) {
     ASSERT(RelocInfo::IsCodeTarget(rinfo->rmode()));
-    Object* target = Code::GetCodeFromTargetAddress(rinfo->target_address());
+    Code* target = Code::GetCodeFromTargetAddress(rinfo->target_address());
+    if (FLAG_cleanup_code_caches_at_gc && target->is_inline_cache_stub()
+        && (target->ic_age() != heap_->global_ic_age())) {
+      IC::Clear(rinfo->pc());
+      target = Code::GetCodeFromTargetAddress(rinfo->target_address());
+    }
     heap_->mark_compact_collector()->RecordRelocSlot(rinfo, Code::cast(target));
     MarkObject(target);
   }
@@ -198,6 +203,12 @@ class IncrementalMarkingMarkingVisitor : public ObjectVisitor {
     heap_->mark_compact_collector()->
         RecordCodeEntrySlot(entry_address, Code::cast(target));
     MarkObject(target);
+  }
+
+  void VisitSharedFunctionInfo(SharedFunctionInfo* shared) {
+    if (shared->ic_age() != heap_->global_ic_age()) {
+      shared->ResetForNewContext(heap_->global_ic_age());
+    }
   }
 
   void VisitPointer(Object** p) {
@@ -396,7 +407,7 @@ bool IncrementalMarking::WorthActivating() {
   return !FLAG_expose_gc &&
       FLAG_incremental_marking &&
       !Serializer::enabled() &&
-      heap_->PromotedSpaceSize() > kActivationThreshold;
+      heap_->PromotedSpaceSizeOfObjects() > kActivationThreshold;
 }
 
 
@@ -738,7 +749,7 @@ void IncrementalMarking::Finalize() {
 }
 
 
-void IncrementalMarking::MarkingComplete() {
+void IncrementalMarking::MarkingComplete(CompletionAction action) {
   state_ = COMPLETE;
   // We will set the stack guard to request a GC now.  This will mean the rest
   // of the GC gets performed as soon as possible (we can't do a GC here in a
@@ -749,13 +760,14 @@ void IncrementalMarking::MarkingComplete() {
   if (FLAG_trace_incremental_marking) {
     PrintF("[IncrementalMarking] Complete (normal).\n");
   }
-  if (!heap_->idle_notification_will_schedule_next_gc()) {
+  if (action == GC_VIA_STACK_GUARD) {
     heap_->isolate()->stack_guard()->RequestGC();
   }
 }
 
 
-void IncrementalMarking::Step(intptr_t allocated_bytes) {
+void IncrementalMarking::Step(intptr_t allocated_bytes,
+                              CompletionAction action) {
   if (heap_->gc_state() != Heap::NOT_IN_GC ||
       !FLAG_incremental_marking ||
       !FLAG_incremental_marking_steps ||
@@ -795,6 +807,12 @@ void IncrementalMarking::Step(intptr_t allocated_bytes) {
       Map* map = obj->map();
       if (map == filler_map) continue;
 
+      if (obj->IsMap()) {
+        Map* map = Map::cast(obj);
+        heap_->ClearCacheOnMap(map);
+      }
+
+
       int size = obj->SizeFromMap(map);
       bytes_to_process -= size;
       MarkBit map_mark_bit = Marking::MarkBitFrom(map);
@@ -822,7 +840,7 @@ void IncrementalMarking::Step(intptr_t allocated_bytes) {
       Marking::MarkBlack(obj_mark_bit);
       MemoryChunk::IncrementLiveBytesFromGC(obj->address(), size);
     }
-    if (marking_deque_.IsEmpty()) MarkingComplete();
+    if (marking_deque_.IsEmpty()) MarkingComplete(action);
   }
 
   allocated_ = 0;

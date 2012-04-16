@@ -82,7 +82,7 @@
               'outputs': [
                 '<(INTERMEDIATE_DIR)/_always_run_setup_mount.marker',
               ],
-              'action': ['', '<@(_inputs)'],
+              'action': ['<@(_inputs)'],
             },
           ],
         },
