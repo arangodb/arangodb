@@ -429,10 +429,8 @@ void StubCompiler::GenerateStoreField(MacroAssembler* masm,
   // a0 : value.
   Label exit;
   // Check that the map of the object hasn't changed.
-  CompareMapMode mode = transition.is_null() ? ALLOW_ELEMENT_TRANSITION_MAPS
-                                             : REQUIRE_EXACT_MAP;
   __ CheckMap(receiver_reg, scratch, Handle<Map>(object->map()), miss_label,
-              DO_SMI_CHECK, mode);
+              DO_SMI_CHECK, ALLOW_ELEMENT_TRANSITION_MAPS);
 
   // Perform global security token check if needed.
   if (object->IsJSGlobalProxy()) {
@@ -1739,14 +1737,14 @@ Handle<Code> CallStubCompiler::CompileArrayPopCall(
   // expensive shift first, and use an offset later on.
   __ sll(t1, t0, kPointerSizeLog2 - kSmiTagSize);
   __ Addu(elements, elements, t1);
-  __ lw(v0, FieldMemOperand(elements, FixedArray::kHeaderSize));
+  __ lw(v0, MemOperand(elements, FixedArray::kHeaderSize - kHeapObjectTag));
   __ Branch(&call_builtin, eq, v0, Operand(t2));
 
   // Set the array's length.
   __ sw(t0, FieldMemOperand(receiver, JSArray::kLengthOffset));
 
   // Fill with the hole.
-  __ sw(t2, FieldMemOperand(elements, FixedArray::kHeaderSize));
+  __ sw(t2, MemOperand(elements, FixedArray::kHeaderSize - kHeapObjectTag));
   __ Drop(argc + 1);
   __ Ret();
 
@@ -3498,7 +3496,7 @@ void KeyedLoadStubCompiler::GenerateLoadExternalArray(
       CpuFeatures::Scope scope(FPU);
       __ mtc1(value, f0);
       __ cvt_d_w(f0, f0);
-      __ sdc1(f0, FieldMemOperand(v0, HeapNumber::kValueOffset));
+      __ sdc1(f0, MemOperand(v0, HeapNumber::kValueOffset - kHeapObjectTag));
       __ Ret();
     } else {
       Register dst1 = t2;
@@ -3546,7 +3544,7 @@ void KeyedLoadStubCompiler::GenerateLoadExternalArray(
 
       __ Cvt_d_uw(f0, value, f22);
 
-      __ sdc1(f0, FieldMemOperand(v0, HeapNumber::kValueOffset));
+      __ sdc1(f0, MemOperand(v0, HeapNumber::kValueOffset - kHeapObjectTag));
 
       __ Ret();
     } else {
@@ -3600,7 +3598,7 @@ void KeyedLoadStubCompiler::GenerateLoadExternalArray(
       __ AllocateHeapNumber(v0, t3, t5, t6, &slow);
       // The float (single) value is already in fpu reg f0 (if we use float).
       __ cvt_d_s(f0, f0);
-      __ sdc1(f0, FieldMemOperand(v0, HeapNumber::kValueOffset));
+      __ sdc1(f0, MemOperand(v0, HeapNumber::kValueOffset - kHeapObjectTag));
       __ Ret();
     } else {
       // Allocate a HeapNumber for the result. Don't use a0 and a1 as

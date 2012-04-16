@@ -91,10 +91,22 @@ double ceiling(double x) {
 
 
 static Mutex* limit_mutex = NULL;
+void OS::SetUp() {
+  // Seed the random number generator.
+  // Convert the current time to a 64-bit integer first, before converting it
+  // to an unsigned. Going directly will cause an overflow and the seed to be
+  // set to all ones. The seed will be identical for different instances that
+  // call this setup code within the same millisecond.
+  uint64_t seed = static_cast<uint64_t>(TimeCurrentMillis());
+  srandom(static_cast<unsigned int>(seed));
+  limit_mutex = CreateMutex();
+}
 
 
 void OS::PostSetUp() {
-  POSIXPostSetUp();
+  // Math functions depend on CPU features therefore they are initialized after
+  // CPU.
+  MathSetup();
 }
 
 
@@ -712,12 +724,6 @@ class SignalSender : public Thread {
       : Thread(Thread::Options("SignalSender", kSignalSenderStackSize)),
         interval_(interval) {}
 
-  static void SetUp() {
-    if (!mutex_) {
-      mutex_ = OS::CreateMutex();
-    }
-  }
-
   static void InstallSignalHandler() {
     struct sigaction sa;
     sa.sa_sigaction = ProfilerSignalHandler;
@@ -735,7 +741,7 @@ class SignalSender : public Thread {
   }
 
   static void AddActiveSampler(Sampler* sampler) {
-    ScopedLock lock(mutex_);
+    ScopedLock lock(mutex_.Pointer());
     SamplerRegistry::AddActiveSampler(sampler);
     if (instance_ == NULL) {
       // Start a thread that will send SIGPROF signal to VM threads,
@@ -748,7 +754,7 @@ class SignalSender : public Thread {
   }
 
   static void RemoveActiveSampler(Sampler* sampler) {
-    ScopedLock lock(mutex_);
+    ScopedLock lock(mutex_.Pointer());
     SamplerRegistry::RemoveActiveSampler(sampler);
     if (SamplerRegistry::GetState() == SamplerRegistry::HAS_NO_SAMPLERS) {
       RuntimeProfiler::StopRuntimeProfilerThreadBeforeShutdown(instance_);
@@ -842,7 +848,7 @@ class SignalSender : public Thread {
   RuntimeProfilerRateLimiter rate_limiter_;
 
   // Protects the process wide state below.
-  static Mutex* mutex_;
+  static LazyMutex mutex_;
   static SignalSender* instance_;
   static bool signal_handler_installed_;
   static struct sigaction old_signal_handler_;
@@ -851,23 +857,10 @@ class SignalSender : public Thread {
   DISALLOW_COPY_AND_ASSIGN(SignalSender);
 };
 
-Mutex* SignalSender::mutex_ = NULL;
+LazyMutex SignalSender::mutex_ = LAZY_MUTEX_INITIALIZER;
 SignalSender* SignalSender::instance_ = NULL;
 struct sigaction SignalSender::old_signal_handler_;
 bool SignalSender::signal_handler_installed_ = false;
-
-
-void OS::SetUp() {
-  // Seed the random number generator.
-  // Convert the current time to a 64-bit integer first, before converting it
-  // to an unsigned. Going directly will cause an overflow and the seed to be
-  // set to all ones. The seed will be identical for different instances that
-  // call this setup code within the same millisecond.
-  uint64_t seed = static_cast<uint64_t>(TimeCurrentMillis());
-  srandom(static_cast<unsigned int>(seed));
-  limit_mutex = CreateMutex();
-  SignalSender::SetUp();
-}
 
 
 Sampler::Sampler(Isolate* isolate, int interval)

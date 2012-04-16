@@ -120,6 +120,13 @@ class JumpPatchSite BASE_EMBEDDED {
 };
 
 
+// TODO(jkummerow): Obsolete as soon as x64 is updated. Remove.
+int FullCodeGenerator::self_optimization_header_size() {
+  UNREACHABLE();
+  return 10 * Instruction::kInstrSize;
+}
+
+
 // Generate code for a JS function.  On entry to the function the receiver
 // and arguments have been pushed on the stack left to right.  The actual
 // argument count matches the formal parameter count expected by the
@@ -2977,7 +2984,7 @@ void FullCodeGenerator::EmitRandomHeapNumber(CallRuntime* expr) {
     __ Move(f14, zero_reg, a1);
     // Subtract and store the result in the heap number.
     __ sub_d(f0, f12, f14);
-    __ sdc1(f0, FieldMemOperand(s0, HeapNumber::kValueOffset));
+    __ sdc1(f0, MemOperand(s0, HeapNumber::kValueOffset - kHeapObjectTag));
     __ mov(v0, s0);
   } else {
     __ PrepareCallCFunction(2, a0);
