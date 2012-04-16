@@ -6,7 +6,7 @@ dnl ----------------------------------------------------------------------------
 
 V8_CPPFLAGS="-I${srcdir}/3rdParty/V8/include"
 V8_LDFLAGS=""
-V8_LIBS="${srcdir}/3rdParty/V8/native/libv8_base.a ${srcdir}/3rdParty/V8/out/native/libv8_nosnapshot.a"
+V8_LIBS="${srcdir}/3rdParty/V8/out/native/obj.target/tools/gyp/libv8_base.a ${srcdir}/3rdParty/V8/out/native/obj.target/tools/gyp/libv8_nosnapshot.a"
 
 TRI_V8_VERSION="3.10.2"
 
