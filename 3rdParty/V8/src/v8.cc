@@ -27,13 +27,11 @@
 
 #include "v8.h"
 
-#include "assembler.h"
 #include "isolate.h"
 #include "elements.h"
 #include "bootstrapper.h"
 #include "debug.h"
 #include "deoptimizer.h"
-#include "frames.h"
 #include "heap-profiler.h"
 #include "hydrogen.h"
 #include "lithium-allocator.h"
@@ -105,13 +103,7 @@ void V8::TearDown() {
   ASSERT(isolate->IsDefaultIsolate());
 
   if (!has_been_set_up_ || has_been_disposed_) return;
-
-  ElementsAccessor::TearDown();
-  LOperand::TearDownCaches();
-  RegisteredExtension::UnregisterAll();
-
   isolate->TearDown();
-  delete isolate;
 
   is_running_ = false;
   has_been_disposed_ = true;
@@ -264,7 +256,7 @@ void V8::InitializeOncePerProcessImpl() {
 
   OS::PostSetUp();
 
-  RuntimeProfiler::GlobalSetUp();
+  RuntimeProfiler::GlobalSetup();
 
   ElementsAccessor::InitializeOncePerProcess();
 
@@ -275,9 +267,6 @@ void V8::InitializeOncePerProcessImpl() {
   }
 
   LOperand::SetUpCaches();
-  SetUpJSCallerSavedCodeData();
-  SamplerRegistry::SetUp();
-  ExternalReference::SetUp();
 }
 
 void V8::InitializeOncePerProcess() {

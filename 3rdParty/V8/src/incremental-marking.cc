@@ -205,12 +205,6 @@ class IncrementalMarkingMarkingVisitor : public ObjectVisitor {
     MarkObject(target);
   }
 
-  void VisitSharedFunctionInfo(SharedFunctionInfo* shared) {
-    if (shared->ic_age() != heap_->global_ic_age()) {
-      shared->ResetForNewContext(heap_->global_ic_age());
-    }
-  }
-
   void VisitPointer(Object** p) {
     Object* obj = *p;
     if (obj->NonFailureIsHeapObject()) {
@@ -749,7 +743,7 @@ void IncrementalMarking::Finalize() {
 }
 
 
-void IncrementalMarking::MarkingComplete(CompletionAction action) {
+void IncrementalMarking::MarkingComplete() {
   state_ = COMPLETE;
   // We will set the stack guard to request a GC now.  This will mean the rest
   // of the GC gets performed as soon as possible (we can't do a GC here in a
@@ -760,14 +754,13 @@ void IncrementalMarking::MarkingComplete(CompletionAction action) {
   if (FLAG_trace_incremental_marking) {
     PrintF("[IncrementalMarking] Complete (normal).\n");
   }
-  if (action == GC_VIA_STACK_GUARD) {
+  if (!heap_->idle_notification_will_schedule_next_gc()) {
     heap_->isolate()->stack_guard()->RequestGC();
   }
 }
 
 
-void IncrementalMarking::Step(intptr_t allocated_bytes,
-                              CompletionAction action) {
+void IncrementalMarking::Step(intptr_t allocated_bytes) {
   if (heap_->gc_state() != Heap::NOT_IN_GC ||
       !FLAG_incremental_marking ||
       !FLAG_incremental_marking_steps ||
@@ -840,7 +833,7 @@ void IncrementalMarking::Step(intptr_t allocated_bytes,
       Marking::MarkBlack(obj_mark_bit);
       MemoryChunk::IncrementLiveBytesFromGC(obj->address(), size);
     }
-    if (marking_deque_.IsEmpty()) MarkingComplete(action);
+    if (marking_deque_.IsEmpty()) MarkingComplete();
   }
 
   allocated_ = 0;

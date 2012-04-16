@@ -35,6 +35,8 @@
 namespace v8 {
 namespace internal {
 
+typedef uint32_t SnapshotObjectId;
+
 class TokenEnumerator {
  public:
   TokenEnumerator();
@@ -549,8 +551,6 @@ class HeapEntry BASE_EMBEDDED {
   void set_retained_size(int value) { retained_size_ = value; }
   int ordered_index() { return ordered_index_; }
   void set_ordered_index(int value) { ordered_index_ = value; }
-  int entry_index() { return entry_index_; }
-  void set_entry_index(int value) { entry_index_ = value; }
 
   Vector<HeapGraphEdge> children() {
     return Vector<HeapGraphEdge>(children_arr(), children_count_); }
@@ -608,7 +608,6 @@ class HeapEntry BASE_EMBEDDED {
     int ordered_index_;  // Used during dominator tree building.
     int retained_size_;  // At that moment, there is no retained size yet.
   };
-  int entry_index_;
   SnapshotObjectId id_;
   HeapEntry* dominator_;
   HeapSnapshot* snapshot_;
@@ -648,10 +647,6 @@ class HeapSnapshot {
   HeapEntry* gc_subroot(int index) { return gc_subroot_entries_[index]; }
   List<HeapEntry*>* entries() { return &entries_; }
   size_t raw_entries_size() { return raw_entries_size_; }
-  void RememberLastJSObjectId();
-  SnapshotObjectId max_snapshot_js_object_id() const {
-    return max_snapshot_js_object_id_;
-  }
 
   void AllocateEntries(
       int entries_count, int children_count, int retainers_count);
@@ -670,6 +665,8 @@ class HeapSnapshot {
   void ClearPaint();
   HeapEntry* GetEntryById(SnapshotObjectId id);
   List<HeapEntry*>* GetSortedEntriesList();
+  template<class Visitor>
+  void IterateEntries(Visitor* visitor) { entries_.Iterate(visitor); }
   void SetDominatorsToSelf();
 
   void Print(int max_depth);
@@ -688,9 +685,8 @@ class HeapSnapshot {
   HeapEntry* gc_subroot_entries_[VisitorSynchronization::kNumberOfSyncTags];
   char* raw_entries_;
   List<HeapEntry*> entries_;
-  List<HeapEntry*> sorted_entries_;
+  bool entries_sorted_;
   size_t raw_entries_size_;
-  SnapshotObjectId max_snapshot_js_object_id_;
 
   friend class HeapSnapshotTester;
 
@@ -706,12 +702,6 @@ class HeapObjectsMap {
   void SnapshotGenerationFinished();
   SnapshotObjectId FindObject(Address addr);
   void MoveObject(Address from, Address to);
-  SnapshotObjectId last_assigned_id() const {
-    return next_id_ - kObjectIdStep;
-  }
-
-  void StopHeapObjectsTracking();
-  void PushHeapObjectsStats(OutputStream* stream);
 
   static SnapshotObjectId GenerateId(v8::RetainedObjectInfo* info);
   static inline SnapshotObjectId GetNthGcSubrootId(int delta);
@@ -725,24 +715,16 @@ class HeapObjectsMap {
 
  private:
   struct EntryInfo {
-    EntryInfo(SnapshotObjectId id, Address addr)
-      : id(id), addr(addr), accessed(true) { }
-    EntryInfo(SnapshotObjectId id, Address addr, bool accessed)
-      : id(id), addr(addr), accessed(accessed) { }
+    explicit EntryInfo(SnapshotObjectId id) : id(id), accessed(true) { }
+    EntryInfo(SnapshotObjectId id, bool accessed)
+      : id(id),
+        accessed(accessed) { }
     SnapshotObjectId id;
-    Address addr;
     bool accessed;
-  };
-  struct TimeInterval {
-    explicit TimeInterval(SnapshotObjectId id) : id(id), count(0) { }
-    SnapshotObjectId id;
-    uint32_t count;
   };
 
   void AddEntry(Address addr, SnapshotObjectId id);
   SnapshotObjectId FindEntry(Address addr);
-  SnapshotObjectId FindOrAddEntry(Address addr);
-  void UpdateHeapObjectsMap();
   void RemoveDeadEntries();
 
   static bool AddressesMatch(void* key1, void* key2) {
@@ -759,7 +741,6 @@ class HeapObjectsMap {
   SnapshotObjectId next_id_;
   HashMap entries_map_;
   List<EntryInfo>* entries_;
-  List<TimeInterval> time_intervals_;
 
   DISALLOW_COPY_AND_ASSIGN(HeapObjectsMap);
 };
@@ -771,11 +752,6 @@ class HeapSnapshotsCollection {
   ~HeapSnapshotsCollection();
 
   bool is_tracking_objects() { return is_tracking_objects_; }
-  void PushHeapObjectsStats(OutputStream* stream) {
-    return ids_.PushHeapObjectsStats(stream);
-  }
-  void StartHeapObjectsTracking() { is_tracking_objects_ = true; }
-  void StopHeapObjectsTracking() { ids_.StopHeapObjectsTracking(); }
 
   HeapSnapshot* NewSnapshot(
       HeapSnapshot::Type type, const char* name, unsigned uid);
@@ -790,9 +766,6 @@ class HeapSnapshotsCollection {
   SnapshotObjectId GetObjectId(Address addr) { return ids_.FindObject(addr); }
   Handle<HeapObject> FindHeapObjectById(SnapshotObjectId id);
   void ObjectMoveEvent(Address from, Address to) { ids_.MoveObject(from, to); }
-  SnapshotObjectId last_assigned_id() const {
-    return ids_.last_assigned_id();
-  }
 
  private:
   INLINE(static bool HeapSnapshotsMatch(void* key1, void* key2)) {
@@ -833,7 +806,7 @@ class HeapEntriesMap {
   HeapEntriesMap();
   ~HeapEntriesMap();
 
-  void AllocateEntries(HeapThing root_object);
+  void AllocateEntries();
   HeapEntry* Map(HeapThing thing);
   void Pair(HeapThing thing, HeapEntriesAllocator* allocator, HeapEntry* entry);
   void CountReference(HeapThing from, HeapThing to,
@@ -859,8 +832,6 @@ class HeapEntriesMap {
     int children_count;
     int retainers_count;
   };
-
-  static inline void AllocateHeapEntryForMapEntry(HashMap::Entry* map_entry);
 
   static uint32_t Hash(HeapThing thing) {
     return ComputeIntegerHash(
@@ -1142,6 +1113,7 @@ class HeapSnapshotJSONSerializer {
  public:
   explicit HeapSnapshotJSONSerializer(HeapSnapshot* snapshot)
       : snapshot_(snapshot),
+        nodes_(ObjectsMatch),
         strings_(ObjectsMatch),
         next_node_id_(1),
         next_string_id_(1),
@@ -1160,7 +1132,9 @@ class HeapSnapshotJSONSerializer {
         v8::internal::kZeroHashSeed);
   }
 
+  void EnumerateNodes();
   HeapSnapshot* CreateFakeSnapshot();
+  int GetNodeId(HeapEntry* entry);
   int GetStringId(const char* s);
   void SerializeEdge(HeapGraphEdge* edge);
   void SerializeImpl();
@@ -1174,6 +1148,7 @@ class HeapSnapshotJSONSerializer {
   static const int kMaxSerializableSnapshotRawSize;
 
   HeapSnapshot* snapshot_;
+  HashMap nodes_;
   HashMap strings_;
   int next_node_id_;
   int next_string_id_;

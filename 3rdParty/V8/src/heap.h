@@ -1326,8 +1326,7 @@ class Heap {
 
   // Adjusts the amount of registered external memory.
   // Returns the adjusted value.
-  inline intptr_t AdjustAmountOfExternalAllocatedMemory(
-      intptr_t change_in_bytes);
+  inline int AdjustAmountOfExternalAllocatedMemory(int change_in_bytes);
 
   // Allocate uninitialized fixed array.
   MUST_USE_RESULT MaybeObject* AllocateRawFixedArray(int length);
@@ -1570,6 +1569,10 @@ class Heap {
   // The roots that have an index less than this are always in old space.
   static const int kOldSpaceRoots = 0x20;
 
+  bool idle_notification_will_schedule_next_gc() {
+    return idle_notification_will_schedule_next_gc_;
+  }
+
   uint32_t HashSeed() {
     uint32_t seed = static_cast<uint32_t>(hash_seed()->value());
     ASSERT(FLAG_randomize_hashes || seed == 0);
@@ -1647,7 +1650,7 @@ class Heap {
   int gc_post_processing_depth_;
 
   // Returns the amount of external memory registered since last global gc.
-  intptr_t PromotedExternalMemorySize();
+  int PromotedExternalMemorySize();
 
   int ms_count_;  // how many mark-sweep collections happened
   unsigned int gc_count_;  // how many gc happened
@@ -1712,10 +1715,10 @@ class Heap {
 
   // The amount of external memory registered through the API kept alive
   // by global handles
-  intptr_t amount_of_external_allocated_memory_;
+  int amount_of_external_allocated_memory_;
 
   // Caches the amount of external memory registered at the last global gc.
-  intptr_t amount_of_external_allocated_memory_at_last_global_gc_;
+  int amount_of_external_allocated_memory_at_last_global_gc_;
 
   // Indicates that an allocation has failed in the old generation since the
   // last GC.
@@ -2030,6 +2033,7 @@ class Heap {
   unsigned int last_idle_notification_gc_count_;
   bool last_idle_notification_gc_count_init_;
 
+  bool idle_notification_will_schedule_next_gc_;
   int mark_sweeps_since_idle_round_started_;
   int ms_count_at_last_idle_notification_;
   unsigned int gc_count_at_last_idle_gc_;

@@ -2497,28 +2497,24 @@ void LCodeGen::DoLoadKeyedGeneric(LLoadKeyedGeneric* instr) {
 void LCodeGen::DoArgumentsElements(LArgumentsElements* instr) {
   Register result = ToRegister(instr->result());
 
-  if (instr->hydrogen()->from_inlined()) {
-    __ lea(result, Operand(rsp, -2 * kPointerSize));
-  } else {
-    // Check for arguments adapter frame.
-    Label done, adapted;
-    __ movq(result, Operand(rbp, StandardFrameConstants::kCallerFPOffset));
-    __ Cmp(Operand(result, StandardFrameConstants::kContextOffset),
-           Smi::FromInt(StackFrame::ARGUMENTS_ADAPTOR));
-    __ j(equal, &adapted, Label::kNear);
+  // Check for arguments adapter frame.
+  Label done, adapted;
+  __ movq(result, Operand(rbp, StandardFrameConstants::kCallerFPOffset));
+  __ Cmp(Operand(result, StandardFrameConstants::kContextOffset),
+         Smi::FromInt(StackFrame::ARGUMENTS_ADAPTOR));
+  __ j(equal, &adapted, Label::kNear);
 
-    // No arguments adaptor frame.
-    __ movq(result, rbp);
-    __ jmp(&done, Label::kNear);
+  // No arguments adaptor frame.
+  __ movq(result, rbp);
+  __ jmp(&done, Label::kNear);
 
-    // Arguments adaptor frame present.
-    __ bind(&adapted);
-    __ movq(result, Operand(rbp, StandardFrameConstants::kCallerFPOffset));
+  // Arguments adaptor frame present.
+  __ bind(&adapted);
+  __ movq(result, Operand(rbp, StandardFrameConstants::kCallerFPOffset));
 
-    // Result is the frame pointer for the frame if not adapted and for the real
-    // frame below the adaptor frame if adapted.
-    __ bind(&done);
-  }
+  // Result is the frame pointer for the frame if not adapted and for the real
+  // frame below the adaptor frame if adapted.
+  __ bind(&done);
 }
 
 
@@ -2641,11 +2637,6 @@ void LCodeGen::DoApplyArguments(LApplyArguments* instr) {
 void LCodeGen::DoPushArgument(LPushArgument* instr) {
   LOperand* argument = instr->InputAt(0);
   EmitPushTaggedOperand(argument);
-}
-
-
-void LCodeGen::DoDrop(LDrop* instr) {
-  __ Drop(instr->count());
 }
 
 
@@ -3430,20 +3421,16 @@ void LCodeGen::DoStoreKeyedFastElement(LStoreKeyedFastElement* instr) {
 void LCodeGen::DoStoreKeyedFastDoubleElement(
     LStoreKeyedFastDoubleElement* instr) {
   XMMRegister value = ToDoubleRegister(instr->value());
+  Label have_value;
 
-  if (instr->NeedsCanonicalization()) {
-    Label have_value;
+  __ ucomisd(value, value);
+  __ j(parity_odd, &have_value);  // NaN.
 
-    __ ucomisd(value, value);
-    __ j(parity_odd, &have_value);  // NaN.
+  __ Set(kScratchRegister, BitCast<uint64_t>(
+      FixedDoubleArray::canonical_not_the_hole_nan_as_double()));
+  __ movq(value, kScratchRegister);
 
-    __ Set(kScratchRegister, BitCast<uint64_t>(
-        FixedDoubleArray::canonical_not_the_hole_nan_as_double()));
-    __ movq(value, kScratchRegister);
-
-    __ bind(&have_value);
-  }
-
+  __ bind(&have_value);
   Operand double_store_operand = BuildFastArrayOperand(
       instr->elements(), instr->key(), FAST_DOUBLE_ELEMENTS,
       FixedDoubleArray::kHeaderSize - kHeapObjectTag);
@@ -3966,21 +3953,12 @@ void LCodeGen::DoCheckMapCommon(Register reg,
 }
 
 
-void LCodeGen::DoCheckMaps(LCheckMaps* instr) {
+void LCodeGen::DoCheckMap(LCheckMap* instr) {
   LOperand* input = instr->InputAt(0);
   ASSERT(input->IsRegister());
   Register reg = ToRegister(input);
-
-  Label success;
-  SmallMapList* map_set = instr->hydrogen()->map_set();
-  for (int i = 0; i < map_set->length() - 1; i++) {
-    Handle<Map> map = map_set->at(i);
-    __ CompareMap(reg, map, &success, REQUIRE_EXACT_MAP);
-    __ j(equal, &success);
-  }
-  Handle<Map> map = map_set->last();
-  DoCheckMapCommon(reg, map, REQUIRE_EXACT_MAP, instr->environment());
-  __ bind(&success);
+  Handle<Map> map = instr->hydrogen()->map();
+  DoCheckMapCommon(reg, map, instr->hydrogen()->mode(), instr->environment());
 }
 
 
@@ -4093,14 +4071,6 @@ void LCodeGen::DoAllocateObject(LAllocateObject* instr) {
                         deferred->entry(),
                         TAG_OBJECT);
 
-  __ bind(deferred->exit());
-  if (FLAG_debug_code) {
-    Label is_in_new_space;
-    __ JumpIfInNewSpace(result, scratch, &is_in_new_space);
-    __ Abort("Allocated object is not in new-space");
-    __ bind(&is_in_new_space);
-  }
-
   // Load the initial map.
   Register map = scratch;
   __ LoadHeapObject(scratch, constructor);
@@ -4135,14 +4105,14 @@ void LCodeGen::DoAllocateObject(LAllocateObject* instr) {
       __ movq(FieldOperand(result, property_offset), scratch);
     }
   }
+
+  __ bind(deferred->exit());
 }
 
 
 void LCodeGen::DoDeferredAllocateObject(LAllocateObject* instr) {
   Register result = ToRegister(instr->result());
   Handle<JSFunction> constructor = instr->hydrogen()->constructor();
-  Handle<Map> initial_map(constructor->initial_map());
-  int instance_size = initial_map->instance_size();
 
   // TODO(3095996): Get rid of this. For now, we need to make the
   // result register contain a valid pointer because it is already
@@ -4150,8 +4120,8 @@ void LCodeGen::DoDeferredAllocateObject(LAllocateObject* instr) {
   __ Set(result, 0);
 
   PushSafepointRegistersScope scope(this);
-  __ Push(Smi::FromInt(instance_size));
-  CallRuntimeFromDeferred(Runtime::kAllocateInNewSpace, 1, instr);
+  __ PushHeapObject(constructor);
+  CallRuntimeFromDeferred(Runtime::kNewObject, 1, instr);
   __ StoreToSafepointRegisterSlot(result, rax);
 }
 
