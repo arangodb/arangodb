@@ -309,6 +309,8 @@ namespace triagens {
                   
       request_state _state;
       
+      size_t _written;
+      
       uint32_t _nextChunkedSize;
 
       bool _isConnected;

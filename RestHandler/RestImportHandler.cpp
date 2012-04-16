@@ -143,7 +143,7 @@ HttpHandler::status_e RestImportHandler::execute () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates documents
 ///
-/// @REST{POST /import?collection=@FA{collection-identifier}}
+/// @REST{POST /_api/import?collection=@FA{collection-identifier}}
 ///
 /// Creates documents in the collection identified by the
 /// @FA{collection-identifier}.  The JSON representations of the documents must 
@@ -165,7 +165,7 @@ bool RestImportHandler::createDocument () {
     return false;
   }
 
-  // extract the cid
+  // extract the collection name
   bool found;
   string collection = request->value("collection", found);
 
@@ -176,6 +176,16 @@ bool RestImportHandler::createDocument () {
     return false;
   }
 
+  bool documentMode = false;
+  
+  // extract the import type
+  string type = request->value("type", found);
+  if (found && type == "documents") {
+    LOGGER_TRACE << "Import JSON documents";
+    documentMode = true;
+  }
+  
+  
   // shall we create the collection?
   string createStr = request->value("createCollection", found);
   bool create = found ? StringUtils::boolean(createStr) : false;
@@ -191,11 +201,9 @@ bool RestImportHandler::createDocument () {
   }
   
   TRI_json_t* keys = 0;
-  
-  bool documentMode = false;
-  
+    
   string line = request->body().substr(start, next);
-  
+
   // get first line
   if (line != "") { 
     
@@ -208,21 +216,27 @@ bool RestImportHandler::createDocument () {
       return false;      
     }
     
-    if (keys->_type == TRI_JSON_LIST) {
+    if (documentMode) {
+      if (keys->_type != TRI_JSON_ARRAY) {
+        TRI_FreeJson(keys);
+        generateError(HttpResponse::BAD,
+                  TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE,
+                  "No JSON array in first line found");
+        return false;              
+      }
+    }    
+    else if (keys->_type == TRI_JSON_LIST) {
       if (!checkKeys(keys)) {
-        TRI_DestroyJson(keys);
+        TRI_FreeJson(keys);
         generateError(HttpResponse::BAD,
                   TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE,
                   "No JSON string list in first line found");
         return false;        
       }
-      start = next+1;
-    }
-    else if (keys->_type == TRI_JSON_ARRAY) {
-      documentMode = true;
+      start = next + 1;
     }
     else {
-      TRI_DestroyJson(keys);
+      TRI_FreeJson(keys);
       generateError(HttpResponse::BAD,
                   TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE,
                   "Wrong JSON data");
@@ -243,7 +257,7 @@ bool RestImportHandler::createDocument () {
     releaseCollection();
     
     if (keys) {
-      TRI_DestroyJson(keys);
+      TRI_FreeJson(keys);
     }
  
     generateError(HttpResponse::BAD,
@@ -258,7 +272,7 @@ bool RestImportHandler::createDocument () {
 
   _documentCollection->beginWrite(_documentCollection);
 
-  while (next != string::npos) {
+  while (next != string::npos && start < request->body().length()) {
     
     next = request->body().find('\n', start);
     if (next == string::npos) {
@@ -266,10 +280,14 @@ bool RestImportHandler::createDocument () {
     }
     else {
       line = request->body().substr(start, next - start);
-      start = next + 1;
+      start = next + 1;      
+    }
+
+    if (line.length() == 0) {
+      continue;
     }
     
-    //printf("**** line = %s **********\n" , line.c_str());
+    //LOGGER_TRACE << "line = " << line;
     
     TRI_json_t* values = parseJsonLine(line);
     TRI_json_t* json = 0;
@@ -284,32 +302,36 @@ bool RestImportHandler::createDocument () {
       else {
         // build the json object from the list
         json = createJsonObject(keys, values);
-        TRI_DestroyJson(values);
+        TRI_FreeJson(values);
+        
+        if (!json) {
+          LOGGER_WARNING << "no valid JSON data in line: " << (line);            
+          ++numError;          
+          continue;
+        }
+
       }
 
-      if (json) {
-        // now save the document
-        TRI_doc_mptr_t const mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_DOCUMENT, json, 0, false);
-        if (mptr._did != 0) {
-          ++numCreated;
-        }
-        else {
-          ++numError;
-        }
-        TRI_DestroyJson(json);
-      }    
-      else {
-        LOGGER_WARNING << "ignored line: " << (line);            
+      // now save the document
+      TRI_doc_mptr_t const mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_DOCUMENT, json, 0, false);
+      if (mptr._did != 0) {
+        ++numCreated;
       }
+      else {
+        ++numError;
+      }
+      TRI_FreeJson(json);
+      
     }
     else {
-      LOGGER_WARNING << "no values in line: " << (line);            
+      LOGGER_WARNING << "no JSON data in line: " << (line);            
+      ++numError;
     }
             
   }
   
   if (keys) {
-    TRI_DestroyJson(keys);
+    TRI_FreeJson(keys);
   }
 
   _documentCollection->endWrite(_documentCollection);
