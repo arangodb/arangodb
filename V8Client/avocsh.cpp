@@ -28,6 +28,7 @@
 #include <v8.h>
 
 #include <stdio.h>
+#include <fstream>
 
 #include "build.h"
 
@@ -178,6 +179,12 @@ regex_t doubleRegex;
 regex_t intRegex;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief max size body size (used for imports)
+////////////////////////////////////////////////////////////////////////////////
+
+static size_t maxUploadSize = 500000;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -294,7 +301,7 @@ static void sendBuffer (TRI_csv_parser_t* parser) {
   
   // internalPrint("Import send: %s\n", buffer->c_str());
   
-  SimpleHttpResult* result = client->request(SimpleHttpClient::POST, "/import?collection=" + StringUtils::urlEncode(*collection), buffer->c_str(), buffer->length(), headerFields);
+  SimpleHttpResult* result = client->request(SimpleHttpClient::POST, "/_api/import?collection=" + StringUtils::urlEncode(*collection), buffer->c_str(), buffer->length(), headerFields);
   
   VariantArray* va = result->getBodyAsVariantArray();
   
@@ -410,7 +417,7 @@ static void ProcessCsvEnd (TRI_csv_parser_t* parser, char const* field, size_t r
   StringBuffer* buffer = reinterpret_cast< StringBuffer* >(parser->_dataBegin);  
   buffer->appendChar(']');
   
-  if (buffer->length() > 100000) {
+  if (buffer->length() > maxUploadSize) {
     sendBuffer(parser);
   }
 }
@@ -528,12 +535,12 @@ static v8::Handle<v8::Value> JS_ImportCsvFile (v8::Arguments const& argv) {
     sendBuffer(&parser);
   }
   
+  close(fd);
   
-  //internalPrint("Test:\n%s\n", stringBuffer.c_str());
+  string msg = "Imported '" + StringUtils::itoa(numbers.first) + "' lines with '" + StringUtils::itoa(numbers.second) + "' errors.";
   
-  string msg = "Imported '" + StringUtils::itoa(numbers.first) + "' with '" + StringUtils::itoa(numbers.second) + "' errors.";
-  
-  return scope.Close(v8::String::New(msg.c_str()));
+  internalPrint("%s\n", msg.c_str());
+  return scope.Close(v8::Integer::New(numbers.first));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -541,6 +548,146 @@ static v8::Handle<v8::Value> JS_ImportCsvFile (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                             JSON import functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send buffer with JSON data
+////////////////////////////////////////////////////////////////////////////////
+
+static void sendJsonBuffer (const char* str, size_t len, size_t& created, size_t& errors, const string& collection) {    
+  SimpleHttpClient* client = clientConnection->getHttpClient();
+  
+  map<string, string> headerFields;
+  
+  //internalPrint("Import send: %s\n", buffer.c_str());
+  
+  SimpleHttpResult* result = client->request(SimpleHttpClient::POST, "/_api/import?type=documents&collection=" + StringUtils::urlEncode(collection), str, len, headerFields);
+  
+  VariantArray* va = result->getBodyAsVariantArray();
+  
+  if (va) {
+    VariantBoolean* vb = va->lookupBoolean("error");
+    if (vb && vb->getValue()) {
+      // is error
+      
+      VariantString* vs = va->lookupString("errorMessage");
+      if (vs) {
+        internalPrint("Import error: %s\n", vs->getValue().c_str());
+      }
+      else {
+        internalPrint("Import error: unknow error\n");                
+      }      
+    }
+    
+    VariantInt64* vi = va->lookupInt64("created");
+    if (vi && vi->getValue() > 0) {
+      created += (size_t) vi->getValue();
+    }
+
+    vi = va->lookupInt64("errors");
+    if (vi && vi->getValue() > 0) {
+      errors += (size_t) vi->getValue();
+    }
+    
+    delete va;
+  }
+  else {
+    internalPrint("Import error: unknow error\n");                    
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief imports a JSON file
+///
+/// @FUN{importJsonFile(@FA{filename}, @FA{collection})}
+///
+/// Imports data of a CSV file. The data is imported to @FA{collection}.
+///
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ImportJsonFile (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() < 2) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: importJsonFile(<filename>, <collection>)")));
+  }
+
+  // extract the filename
+  v8::String::Utf8Value filename(argv[0]);
+
+  if (*filename == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("<filename> must be an UTF8 filename")));
+  }
+
+  v8::String::Utf8Value collection(argv[1]);
+
+  if (*collection == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("<collection> must be an UTF8 filename")));
+  }
+
+  // read and convert
+  int fd = open(*filename, O_RDONLY);
+
+  if (fd < 0) {
+    return scope.Close(v8::ThrowException(v8::String::New(TRI_LAST_ERROR_STR)));
+  }
+  
+  StringBuffer stringBuffer;  
+  string collectionName = TRI_ObjectToString(argv[1]);
+  size_t created = 0;
+  size_t errors = 0;
+  
+  char buffer[10240];
+
+  while (true) {
+    v8::HandleScope scope;
+
+    ssize_t n = read(fd, buffer, 10239);
+    
+    if (n < 0) {
+      return scope.Close(v8::ThrowException(v8::String::New(TRI_LAST_ERROR_STR)));
+    }
+    else if (n == 0) {
+      break;
+    }
+
+    stringBuffer.appendText(buffer, n);
+    
+    if (stringBuffer.length() > maxUploadSize) {
+      const char* first = stringBuffer.c_str();
+      char* pos = (char*) memrchr(first, '\n', stringBuffer.length());
+      
+      if (pos != 0) {
+        size_t len = pos - first + 1;
+        sendJsonBuffer(first, len, created, errors, collectionName);
+        stringBuffer.erase_front(len);
+      }
+      
+    }
+  }
+
+  if (stringBuffer.length() > 0) {
+    sendJsonBuffer(stringBuffer.c_str(), stringBuffer.length(), created, errors, collectionName);
+  }
+  
+  close(fd);
+  
+  string msg = "Imported '" + StringUtils::itoa(created) + "' objects with '" + StringUtils::itoa(errors) + "' errors.";
+
+  internalPrint("%s\n", msg.c_str());
+  return scope.Close(v8::Integer::New(created));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -646,6 +793,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("no-colors", "deactivate color support")
     ("no-auto-complete", "disable auto completion")
     ("unit-tests", &UnitTests, "do not start as shell, run unit tests instead")
+    ("max-upload-size", &maxUploadSize, "maximum size of import chunks")
     (hidden, true)
   ;
 
@@ -1329,6 +1477,9 @@ int main (int argc, char* argv[]) {
 
   context->Global()->Set(v8::String::New("importCsvFile"),
                          v8::FunctionTemplate::New(JS_ImportCsvFile)->GetFunction(),
+                         v8::ReadOnly);
+  context->Global()->Set(v8::String::New("importJsonFile"),
+                         v8::FunctionTemplate::New(JS_ImportJsonFile)->GetFunction(),
                          v8::ReadOnly);
   
   

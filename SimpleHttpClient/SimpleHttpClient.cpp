@@ -69,7 +69,8 @@ namespace triagens {
       _numConnectRetries = 0;
       _result = 0;
       _errorMessage = "";
-
+      _written = 0;
+      
       // _writeBuffer.clear();
       
       reset();
@@ -198,6 +199,7 @@ namespace triagens {
       if (_isConnected) {
         // can write now
         _state = IN_WRITE;
+        _written = 0;
       }
     }
 
@@ -377,6 +379,7 @@ namespace triagens {
       if (_isConnected) {
         // we are connected start with writing
         _state = IN_WRITE;
+        _written = 0;
       }
       else {
         // connect to server
@@ -404,25 +407,29 @@ namespace triagens {
       if (!checkSocket()) {
         return false;
       }
-
-      //printf("write():\n%s\n", _writeBuffer);
+      
+      //printf("write():\n%s\n", (_writeBuffer.c_str() + _written));
 
 #ifdef __APPLE__
-      int status = ::send(_socket, _writeBuffer.c_str(), _writeBuffer.length(), 0);
+      int status = ::send(_socket, _writeBuffer.c_str() + _written, _writeBuffer.length() - _written, 0);
 #else
-      int status = ::send(_socket, _writeBuffer.c_str(), _writeBuffer.length(), MSG_NOSIGNAL);
+      int status = ::send(_socket, _writeBuffer.c_str() + _written, _writeBuffer.length() - _written, MSG_NOSIGNAL);
 #endif
 
       if (status == -1) {
         _errorMessage = "::send() failed with: " + string(strerror(errno));
-        LOGGER_TRACE << "::send() failed with " << strerror(errno);
+        //LOGGER_ERROR << "::send() failed with " << strerror(errno);
         
         close();
         
         return false;
       }
       
-      _state = IN_READ_HEADER;
+      _written += status;
+      
+      if (_written == _writeBuffer.length())  {
+        _state = IN_READ_HEADER;        
+      }
       return true;
     }
 

@@ -99,7 +99,7 @@ string RestVocbaseBaseHandler::COLLECTION_PATH = "/collection";
 /// @brief documents import path
 ////////////////////////////////////////////////////////////////////////////////
 
-string RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH = "/import";
+string RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH = "/_api/import";
 
 
 ////////////////////////////////////////////////////////////////////////////////
