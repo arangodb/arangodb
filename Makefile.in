@@ -153,19 +153,18 @@ am_libavocado_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 	BasicsC/associative-multi.$(OBJEXT) \
 	BasicsC/associative.$(OBJEXT) BasicsC/conversions.$(OBJEXT) \
 	BasicsC/csv.$(OBJEXT) BasicsC/error.$(OBJEXT) \
-	BasicsC/voc-errors.$(OBJEXT) BasicsC/files.$(OBJEXT) \
-	BasicsC/hashes.$(OBJEXT) BasicsC/init.$(OBJEXT) \
-	BasicsC/json.$(OBJEXT) BasicsC/locks-macos.$(OBJEXT) \
-	BasicsC/locks-posix.$(OBJEXT) BasicsC/logging.$(OBJEXT) \
-	BasicsC/memory.$(OBJEXT) BasicsC/process-utils.$(OBJEXT) \
-	BasicsC/random.$(OBJEXT) BasicsC/socket-utils.$(OBJEXT) \
-	BasicsC/string-buffer.$(OBJEXT) BasicsC/strings.$(OBJEXT) \
-	BasicsC/structures.$(OBJEXT) \
+	BasicsC/files.$(OBJEXT) BasicsC/hashes.$(OBJEXT) \
+	BasicsC/init.$(OBJEXT) BasicsC/json.$(OBJEXT) \
+	BasicsC/locks-macos.$(OBJEXT) BasicsC/locks-posix.$(OBJEXT) \
+	BasicsC/logging.$(OBJEXT) BasicsC/memory.$(OBJEXT) \
+	BasicsC/process-utils.$(OBJEXT) BasicsC/random.$(OBJEXT) \
+	BasicsC/socket-utils.$(OBJEXT) BasicsC/string-buffer.$(OBJEXT) \
+	BasicsC/strings.$(OBJEXT) BasicsC/structures.$(OBJEXT) \
 	BasicsC/system-functions.$(OBJEXT) \
 	BasicsC/terminal-utils-ncurses.$(OBJEXT) \
 	BasicsC/terminal-utils.$(OBJEXT) \
 	BasicsC/threads-posix.$(OBJEXT) BasicsC/vector.$(OBJEXT) \
-	JsonParser/json-parser.$(OBJEXT) \
+	BasicsC/voc-errors.$(OBJEXT) JsonParser/json-parser.$(OBJEXT) \
 	JsonParserX/InputParser.$(OBJEXT) \
 	JsonParserX/JsonParserX.$(OBJEXT) \
 	JsonParserX/JsonParserXDriver.$(OBJEXT) \
@@ -179,7 +178,12 @@ am_libavocado_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 	Rest/SslInterface.$(OBJEXT) Rest/Url.$(OBJEXT) \
 	ShapedJson/json-shaper.$(OBJEXT) \
 	ShapedJson/shape-accessor.$(OBJEXT) \
-	ShapedJson/shaped-json.$(OBJEXT) V8/JSLoader.$(OBJEXT) \
+	ShapedJson/shaped-json.$(OBJEXT) \
+	UserManager/ApplicationUserManager.$(OBJEXT) \
+	UserManager/Role.$(OBJEXT) UserManager/Session.$(OBJEXT) \
+	UserManager/SessionHandler.$(OBJEXT) \
+	UserManager/User.$(OBJEXT) UserManager/UserHandler.$(OBJEXT) \
+	UserManager/UsersHandler.$(OBJEXT) V8/JSLoader.$(OBJEXT) \
 	V8/v8-conv.$(OBJEXT) V8/v8-json.$(OBJEXT) \
 	V8/v8-line-editor.$(OBJEXT) V8/v8-shell.$(OBJEXT) \
 	V8/v8-utils.$(OBJEXT) Variant/VariantArray.$(OBJEXT) \
@@ -599,7 +603,6 @@ libavocado_a_SOURCES = \
 	BasicsC/conversions.c \
 	BasicsC/csv.c \
 	BasicsC/error.c \
-	BasicsC/voc-errors.c \
 	BasicsC/files.c \
 	BasicsC/hashes.c \
 	BasicsC/init.c \
@@ -619,6 +622,7 @@ libavocado_a_SOURCES = \
 	BasicsC/terminal-utils.c \
 	BasicsC/threads-posix.c \
 	BasicsC/vector.c \
+	BasicsC/voc-errors.c \
 	JsonParser/json-parser.c \
 	JsonParserX/InputParser.cpp \
 	JsonParserX/JsonParserX.cpp \
@@ -641,6 +645,13 @@ libavocado_a_SOURCES = \
 	ShapedJson/json-shaper.c \
 	ShapedJson/shape-accessor.c \
 	ShapedJson/shaped-json.c \
+	UserManager/ApplicationUserManager.cpp \
+	UserManager/Role.cpp \
+	UserManager/Session.cpp \
+	UserManager/SessionHandler.cpp \
+	UserManager/User.cpp \
+	UserManager/UserHandler.cpp \
+	UserManager/UsersHandler.cpp \
 	V8/JSLoader.cpp \
 	V8/v8-conv.cpp \
 	V8/v8-json.cpp \
@@ -1090,8 +1101,6 @@ BasicsC/csv.$(OBJEXT): BasicsC/$(am__dirstamp) \
 	BasicsC/$(DEPDIR)/$(am__dirstamp)
 BasicsC/error.$(OBJEXT): BasicsC/$(am__dirstamp) \
 	BasicsC/$(DEPDIR)/$(am__dirstamp)
-BasicsC/voc-errors.$(OBJEXT): BasicsC/$(am__dirstamp) \
-	BasicsC/$(DEPDIR)/$(am__dirstamp)
 BasicsC/files.$(OBJEXT): BasicsC/$(am__dirstamp) \
 	BasicsC/$(DEPDIR)/$(am__dirstamp)
 BasicsC/hashes.$(OBJEXT): BasicsC/$(am__dirstamp) \
@@ -1129,6 +1138,8 @@ BasicsC/terminal-utils.$(OBJEXT): BasicsC/$(am__dirstamp) \
 BasicsC/threads-posix.$(OBJEXT): BasicsC/$(am__dirstamp) \
 	BasicsC/$(DEPDIR)/$(am__dirstamp)
 BasicsC/vector.$(OBJEXT): BasicsC/$(am__dirstamp) \
+	BasicsC/$(DEPDIR)/$(am__dirstamp)
+BasicsC/voc-errors.$(OBJEXT): BasicsC/$(am__dirstamp) \
 	BasicsC/$(DEPDIR)/$(am__dirstamp)
 JsonParser/$(am__dirstamp):
 	@$(MKDIR_P) JsonParser
@@ -1211,6 +1222,27 @@ ShapedJson/shape-accessor.$(OBJEXT): ShapedJson/$(am__dirstamp) \
 	ShapedJson/$(DEPDIR)/$(am__dirstamp)
 ShapedJson/shaped-json.$(OBJEXT): ShapedJson/$(am__dirstamp) \
 	ShapedJson/$(DEPDIR)/$(am__dirstamp)
+UserManager/$(am__dirstamp):
+	@$(MKDIR_P) UserManager
+	@: > UserManager/$(am__dirstamp)
+UserManager/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) UserManager/$(DEPDIR)
+	@: > UserManager/$(DEPDIR)/$(am__dirstamp)
+UserManager/ApplicationUserManager.$(OBJEXT):  \
+	UserManager/$(am__dirstamp) \
+	UserManager/$(DEPDIR)/$(am__dirstamp)
+UserManager/Role.$(OBJEXT): UserManager/$(am__dirstamp) \
+	UserManager/$(DEPDIR)/$(am__dirstamp)
+UserManager/Session.$(OBJEXT): UserManager/$(am__dirstamp) \
+	UserManager/$(DEPDIR)/$(am__dirstamp)
+UserManager/SessionHandler.$(OBJEXT): UserManager/$(am__dirstamp) \
+	UserManager/$(DEPDIR)/$(am__dirstamp)
+UserManager/User.$(OBJEXT): UserManager/$(am__dirstamp) \
+	UserManager/$(DEPDIR)/$(am__dirstamp)
+UserManager/UserHandler.$(OBJEXT): UserManager/$(am__dirstamp) \
+	UserManager/$(DEPDIR)/$(am__dirstamp)
+UserManager/UsersHandler.$(OBJEXT): UserManager/$(am__dirstamp) \
+	UserManager/$(DEPDIR)/$(am__dirstamp)
 V8/$(am__dirstamp):
 	@$(MKDIR_P) V8
 	@: > V8/$(am__dirstamp)
@@ -1884,6 +1916,13 @@ mostlyclean-compile:
 	-rm -f UnitTests/Philadelphia/vector-pointer-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/vector-test.$(OBJEXT)
 	-rm -f UnitTests/Runner.$(OBJEXT)
+	-rm -f UserManager/ApplicationUserManager.$(OBJEXT)
+	-rm -f UserManager/Role.$(OBJEXT)
+	-rm -f UserManager/Session.$(OBJEXT)
+	-rm -f UserManager/SessionHandler.$(OBJEXT)
+	-rm -f UserManager/User.$(OBJEXT)
+	-rm -f UserManager/UserHandler.$(OBJEXT)
+	-rm -f UserManager/UsersHandler.$(OBJEXT)
 	-rm -f V8/JSLoader.$(OBJEXT)
 	-rm -f V8/v8-actions.$(OBJEXT)
 	-rm -f V8/v8-conv.$(OBJEXT)
@@ -2091,6 +2130,13 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/string-utf8-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/vector-pointer-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/vector-test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UserManager/$(DEPDIR)/ApplicationUserManager.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UserManager/$(DEPDIR)/Role.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UserManager/$(DEPDIR)/Session.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UserManager/$(DEPDIR)/SessionHandler.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UserManager/$(DEPDIR)/User.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UserManager/$(DEPDIR)/UserHandler.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UserManager/$(DEPDIR)/UsersHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/JSLoader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-actions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-conv.Po@am__quote@
@@ -2492,6 +2538,8 @@ distclean-generic:
 	-rm -f UnitTests/Jutland/$(am__dirstamp)
 	-rm -f UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
 	-rm -f UnitTests/Philadelphia/$(am__dirstamp)
+	-rm -f UserManager/$(DEPDIR)/$(am__dirstamp)
+	-rm -f UserManager/$(am__dirstamp)
 	-rm -f V8/$(DEPDIR)/$(am__dirstamp)
 	-rm -f V8/$(am__dirstamp)
 	-rm -f V8Client/$(DEPDIR)/$(am__dirstamp)
@@ -2514,7 +2562,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-local \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) UserManager/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -2562,7 +2610,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) UserManager/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

@@ -29,8 +29,14 @@
 /// @page HttpSystemTOC
 ///
 /// <ol>
-///  <li>@ref HttpSystemStatus</li>
 ///  <li>@ref HttpSystemLog</li>
+///  <li>@ref HttpSystemStatus</li>
+///  <li>@ref HttpSystemUsers</li>
+///  <li>@ref HttpSystemUserGet</li>
+///  <li>@ref HttpSystemUserPost</li>
+///  <li>@ref HttpSystemSessionGet</li>
+///  <li>@ref HttpSystemSessionPost</li>
+///  <li>@ref HttpSystemSessionLogin</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -44,12 +50,36 @@
 /// @copydoc HttpSystemTOC
 /// <hr>
 ///
+/// @anchor HttpSystemLog
+/// @copydetails triagens::admin::RestAdminLogHandler::execute
+/// <hr>
+///
 /// @anchor HttpSystemStatus
 /// @copydetails JSF_GET_system_status
 /// <hr>
 ///
-/// @anchor HttpSystemLog
-/// @copydetails triagens::admin::RestAdminLogHandler::execute
+/// @anchor HttpSystemUsers
+/// @copydetails triagens::admin::UsersHandler::execute
+/// <hr>
+///
+/// @anchor HttpSystemUserGet
+/// @copydetails triagens::admin::UserHandler::executeGet
+/// <hr>
+///
+/// @anchor HttpSystemUserPost
+/// @copydetails triagens::admin::UserHandler::executePost
+/// <hr>
+///
+/// @anchor HttpSystemSessionGet
+/// @copydetails triagens::admin::SessionHandler::executeGet
+/// <hr>
+///
+/// @anchor HttpSystemSessionPost
+/// @copydetails triagens::admin::SessionHandler::executePost
+/// <hr>
+///
+/// @anchor HttpSystemSessionLogin
+/// @copydetails triagens::admin::SessionHandler::executeLogin
 /// <hr>
 ///
 ////////////////////////////////////////////////////////////////////////////////
