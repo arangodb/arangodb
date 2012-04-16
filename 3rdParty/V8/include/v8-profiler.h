@@ -64,6 +64,7 @@
  */
 namespace v8 {
 
+typedef uint32_t SnapshotObjectId;
 
 /**
  * CpuProfileNode represents a node in a call graph.
@@ -274,7 +275,7 @@ class V8EXPORT HeapGraphNode {
    * Returns node id. For the same heap object, the id remains the same
    * across all snapshots.
    */
-  uint64_t GetId() const;
+  SnapshotObjectId GetId() const;
 
   /** Returns node's own size, in bytes. */
   int GetSelfSize() const;
@@ -284,14 +285,8 @@ class V8EXPORT HeapGraphNode {
    * the objects that are reachable only from this object. In other
    * words, the size of memory that will be reclaimed having this node
    * collected.
-   *
-   * Exact retained size calculation has O(N) (number of nodes)
-   * computational complexity, while approximate has O(1). It is
-   * assumed that initially heap profiling tools provide approximate
-   * sizes for all nodes, and then exact sizes are calculated for the
-   * most 'interesting' nodes.
    */
-  int GetRetainedSize(bool exact) const;
+  int GetRetainedSize() const;
 
   /** Returns child nodes count of the node. */
   int GetChildrenCount() const;
@@ -344,13 +339,16 @@ class V8EXPORT HeapSnapshot {
   const HeapGraphNode* GetRoot() const;
 
   /** Returns a node by its id. */
-  const HeapGraphNode* GetNodeById(uint64_t id) const;
+  const HeapGraphNode* GetNodeById(SnapshotObjectId id) const;
 
   /** Returns total nodes count in the snapshot. */
   int GetNodesCount() const;
 
   /** Returns a node by index. */
   const HeapGraphNode* GetNode(int index) const;
+
+  /** Returns a max seen JS object Id. */
+  SnapshotObjectId GetMaxSnapshotJSObjectId() const;
 
   /**
    * Deletes the snapshot and removes it from HeapProfiler's list.
@@ -420,6 +418,33 @@ class V8EXPORT HeapProfiler {
       ActivityControl* control = NULL);
 
   /**
+   * Starts tracking of heap objects population statistics. After calling
+   * this method, all heap objects relocations done by the garbage collector
+   * are being registered.
+   */
+  static void StartHeapObjectsTracking();
+
+  /**
+   * Adds a new time interval entry to the aggregated statistics array. The
+   * time interval entry contains information on the current heap objects
+   * population size. The method also updates aggregated statistics and
+   * reports updates for all previous time intervals via the OutputStream
+   * object. Updates on each time interval are provided as pairs of time
+   * interval index and updated heap objects count.
+   *
+   * StartHeapObjectsTracking must be called before the first call to this
+   * method.
+   */
+  static void PushHeapObjectsStats(OutputStream* stream);
+
+  /**
+   * Stops tracking of heap objects population statistics, cleans up all
+   * collected data. StartHeapObjectsTracking must be called again prior to
+   * calling PushHeapObjectsStats next time.
+   */
+  static void StopHeapObjectsTracking();
+
+  /**
    * Deletes all snapshots taken. All previously returned pointers to
    * snapshots and their contents become invalid after this call.
    */
@@ -436,6 +461,9 @@ class V8EXPORT HeapProfiler {
    * handle.
    */
   static const uint16_t kPersistentHandleNoClassId = 0;
+
+  /** Returns the number of currently existing persistent handles. */
+  static int GetPersistentHandleCount();
 };
 
 

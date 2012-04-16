@@ -39,7 +39,7 @@
             '<(PRODUCT_DIR)/dependent'
           ],
           'action': [
-            'touch', '<(PRODUCT_DIR)/dependent', '<(PRODUCT_DIR)/side_effect',
+            'python', 'touch.py', '<(PRODUCT_DIR)/dependent', '<(PRODUCT_DIR)/side_effect',
           ],
         },
       ],

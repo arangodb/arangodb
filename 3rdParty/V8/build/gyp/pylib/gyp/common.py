@@ -349,6 +349,8 @@ def WriteOnDiff(filename):
 def GetFlavor(params):
   """Returns |params.flavor| if it's set, the system's default flavor else."""
   flavors = {
+    'cygwin': 'win',
+    'win32': 'win',
     'darwin': 'mac',
     'sunos5': 'solaris',
     'freebsd7': 'freebsd',
@@ -359,9 +361,9 @@ def GetFlavor(params):
 
 
 def CopyTool(flavor, out_path):
-  """Finds (mac|sun)_tool.gyp in the gyp directory and copies it
+  """Finds (mac|sun|win)_tool.gyp in the gyp directory and copies it
   to |out_path|."""
-  prefix = { 'solaris': 'sun', 'mac': 'mac' }.get(flavor, None)
+  prefix = { 'solaris': 'sun', 'mac': 'mac', 'win': 'win' }.get(flavor, None)
   if not prefix:
     return
 

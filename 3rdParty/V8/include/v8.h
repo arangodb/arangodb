@@ -1,4 +1,4 @@
-// Copyright 2011 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -107,6 +107,7 @@ class Data;
 class AccessorInfo;
 class StackTrace;
 class StackFrame;
+class Isolate;
 
 namespace internal {
 
@@ -1021,6 +1022,14 @@ class String : public Primitive {
   V8EXPORT int Utf8Length() const;
 
   /**
+   * A fast conservative check for non-ASCII characters.  May
+   * return true even for ASCII strings, but if it returns
+   * false you can be sure that all characters are in the range
+   * 0-127.
+   */
+  V8EXPORT bool MayContainNonAscii() const;
+
+  /**
    * Write the contents of the string to an external buffer.
    * If no arguments are given, expects the buffer to be large
    * enough to hold the entire string and NULL terminator. Copies
@@ -1198,7 +1207,7 @@ class String : public Primitive {
    * passed in as parameters.
    */
   V8EXPORT static Local<String> Concat(Handle<String> left,
-                                       Handle<String>right);
+                                       Handle<String> right);
 
   /**
    * Creates a new external string using the data defined in the given
@@ -1228,8 +1237,7 @@ class String : public Primitive {
    * this function should not otherwise delete or modify the resource. Neither
    * should the underlying buffer be deallocated or modified except through the
    * destructor of the external string resource.
-   */
-  V8EXPORT static Local<String> NewExternal(
+   */ V8EXPORT static Local<String> NewExternal(
       ExternalAsciiStringResource* resource);
 
   /**
@@ -1960,10 +1968,13 @@ class Arguments {
   inline Local<Object> Holder() const;
   inline bool IsConstructCall() const;
   inline Local<Value> Data() const;
+  inline Isolate* GetIsolate() const;
+
  private:
-  static const int kDataIndex = 0;
-  static const int kCalleeIndex = -1;
-  static const int kHolderIndex = -2;
+  static const int kIsolateIndex = 0;
+  static const int kDataIndex = -1;
+  static const int kCalleeIndex = -2;
+  static const int kHolderIndex = -3;
 
   friend class ImplementationUtilities;
   inline Arguments(internal::Object** implicit_args,
@@ -1985,9 +1996,11 @@ class V8EXPORT AccessorInfo {
  public:
   inline AccessorInfo(internal::Object** args)
       : args_(args) { }
+  inline Isolate* GetIsolate() const;
   inline Local<Value> Data() const;
   inline Local<Object> This() const;
   inline Local<Object> Holder() const;
+
  private:
   internal::Object** args_;
 };
@@ -2858,6 +2871,20 @@ typedef bool (*EntropySource)(unsigned char* buffer, size_t length);
 
 
 /**
+ * ReturnAddressLocationResolver is used as a callback function when v8 is
+ * resolving the location of a return address on the stack. Profilers that
+ * change the return address on the stack can use this to resolve the stack
+ * location to whereever the profiler stashed the original return address.
+ * When invoked, return_addr_location will point to a location on stack where
+ * a machine return address resides, this function should return either the
+ * same pointer, or a pointer to the profiler's copy of the original return
+ * address.
+ */
+typedef uintptr_t (*ReturnAddressLocationResolver)(
+    uintptr_t return_addr_location);
+
+
+/**
  * Interface for iterating though all external resources in the heap.
  */
 class V8EXPORT ExternalResourceVisitor {  // NOLINT
@@ -3111,6 +3138,13 @@ class V8EXPORT V8 {
   static void SetEntropySource(EntropySource source);
 
   /**
+   * Allows the host application to provide a callback that allows v8 to
+   * cooperate with a profiler that rewrites return addresses on stack.
+   */
+  static void SetReturnAddressLocationResolver(
+      ReturnAddressLocationResolver return_address_resolver);
+
+  /**
    * Adjusts the amount of registered external memory.  Used to give
    * V8 an indication of the amount of externally allocated memory
    * that is kept alive by JavaScript objects.  V8 uses this to decide
@@ -3124,7 +3158,8 @@ class V8EXPORT V8 {
    *   that is kept alive by JavaScript objects.
    * \returns the adjusted value.
    */
-  static int AdjustAmountOfExternalAllocatedMemory(int change_in_bytes);
+  static intptr_t AdjustAmountOfExternalAllocatedMemory(
+      intptr_t change_in_bytes);
 
   /**
    * Suspends recording of tick samples in the profiler.
@@ -3712,7 +3747,8 @@ class V8EXPORT Locker {
 class V8EXPORT OutputStream {  // NOLINT
  public:
   enum OutputEncoding {
-    kAscii = 0  // 7-bit ASCII.
+    kAscii = 0,  // 7-bit ASCII.
+    kUint32 = 1
   };
   enum WriteResult {
     kContinue = 0,
@@ -3731,6 +3767,16 @@ class V8EXPORT OutputStream {  // NOLINT
    * will not be called in case writing was aborted.
    */
   virtual WriteResult WriteAsciiChunk(char* data, int size) = 0;
+  /**
+   * Writes the next chunk of heap stats data into the stream. Writing
+   * can be stopped by returning kAbort as function result. EndOfStream
+   * will not be called in case writing was aborted.
+   */
+  // TODO(loislo): Make this pure virtual when WebKit's V8 bindings
+  // have been updated.
+  virtual WriteResult WriteUint32Chunk(uint32_t* data, int count) {
+    return kAbort;
+  };
 };
 
 
@@ -3850,7 +3896,7 @@ class Internals {
   static const int kFullStringRepresentationMask = 0x07;
   static const int kExternalTwoByteRepresentationTag = 0x02;
 
-  static const int kJSObjectType = 0xa7;
+  static const int kJSObjectType = 0xaa;
   static const int kFirstNonstringType = 0x80;
   static const int kForeignType = 0x85;
 
@@ -4016,6 +4062,11 @@ Local<Object> Arguments::Holder() const {
 
 Local<Value> Arguments::Data() const {
   return Local<Value>(reinterpret_cast<Value*>(&implicit_args_[kDataIndex]));
+}
+
+
+Isolate* Arguments::GetIsolate() const {
+  return *reinterpret_cast<Isolate**>(&implicit_args_[kIsolateIndex]);
 }
 
 
@@ -4251,6 +4302,11 @@ External* External::Cast(v8::Value* value) {
   CheckCast(value);
 #endif
   return static_cast<External*>(value);
+}
+
+
+Isolate* AccessorInfo::GetIsolate() const {
+  return *reinterpret_cast<Isolate**>(&args_[-3]);
 }
 
 
