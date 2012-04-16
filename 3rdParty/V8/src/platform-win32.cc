@@ -32,6 +32,7 @@
 
 #include "v8.h"
 
+#include "codegen.h"
 #include "platform.h"
 #include "vm-state-inl.h"
 
@@ -58,20 +59,17 @@ int localtime_s(tm* out_tm, const time_t* time) {
 }
 
 
-// Not sure this the correct interpretation of _mkgmtime
-time_t _mkgmtime(tm* timeptr) {
-  return mktime(timeptr);
-}
-
-
 int fopen_s(FILE** pFile, const char* filename, const char* mode) {
   *pFile = fopen(filename, mode);
   return *pFile != NULL ? 0 : 1;
 }
 
 
+#ifndef __MINGW64_VERSION_MAJOR
 #define _TRUNCATE 0
 #define STRUNCATE 80
+#endif  // __MINGW64_VERSION_MAJOR
+
 
 int _vsnprintf_s(char* buffer, size_t sizeOfBuffer, size_t count,
                  const char* format, va_list argptr) {
@@ -107,10 +105,15 @@ int strncpy_s(char* dest, size_t dest_size, const char* source, size_t count) {
 }
 
 
+#ifndef __MINGW64_VERSION_MAJOR
+
 inline void MemoryBarrier() {
   int barrier = 0;
   __asm__ __volatile__("xchgl %%eax,%0 ":"=r" (barrier));
 }
+
+#endif  // __MINGW64_VERSION_MAJOR
+
 
 #endif  // __MINGW32__
 
@@ -138,20 +141,11 @@ static Mutex* limit_mutex = NULL;
 
 #if defined(V8_TARGET_ARCH_IA32)
 static OS::MemCopyFunction memcopy_function = NULL;
-static Mutex* memcopy_function_mutex = OS::CreateMutex();
 // Defined in codegen-ia32.cc.
 OS::MemCopyFunction CreateMemCopyFunction();
 
 // Copy memory area to disjoint memory area.
 void OS::MemCopy(void* dest, const void* src, size_t size) {
-  if (memcopy_function == NULL) {
-    ScopedLock lock(memcopy_function_mutex);
-    if (memcopy_function == NULL) {
-      OS::MemCopyFunction temp = CreateMemCopyFunction();
-      MemoryBarrier();
-      memcopy_function = temp;
-    }
-  }
   // Note: here we rely on dependent reads being ordered. This is true
   // on all architectures we currently support.
   (*memcopy_function)(dest, src, size);
@@ -164,19 +158,14 @@ void OS::MemCopy(void* dest, const void* src, size_t size) {
 #ifdef _WIN64
 typedef double (*ModuloFunction)(double, double);
 static ModuloFunction modulo_function = NULL;
-static Mutex* modulo_function_mutex = OS::CreateMutex();
 // Defined in codegen-x64.cc.
 ModuloFunction CreateModuloFunction();
 
+void init_modulo_function() {
+  modulo_function = CreateModuloFunction();
+}
+
 double modulo(double x, double y) {
-  if (modulo_function == NULL) {
-    ScopedLock lock(modulo_function_mutex);
-    if (modulo_function == NULL) {
-      ModuloFunction temp = CreateModuloFunction();
-      MemoryBarrier();
-      modulo_function = temp;
-    }
-  }
   // Note: here we rely on dependent reads being ordered. This is true
   // on all architectures we currently support.
   return (*modulo_function)(x, y);
@@ -195,6 +184,37 @@ double modulo(double x, double y) {
 }
 
 #endif  // _WIN64
+
+
+#define UNARY_MATH_FUNCTION(name, generator)             \
+static UnaryMathFunction fast_##name##_function = NULL;  \
+void init_fast_##name##_function() {                     \
+  fast_##name##_function = generator;                    \
+}                                                        \
+double fast_##name(double x) {                           \
+  return (*fast_##name##_function)(x);                   \
+}
+
+UNARY_MATH_FUNCTION(sin, CreateTranscendentalFunction(TranscendentalCache::SIN))
+UNARY_MATH_FUNCTION(cos, CreateTranscendentalFunction(TranscendentalCache::COS))
+UNARY_MATH_FUNCTION(tan, CreateTranscendentalFunction(TranscendentalCache::TAN))
+UNARY_MATH_FUNCTION(log, CreateTranscendentalFunction(TranscendentalCache::LOG))
+UNARY_MATH_FUNCTION(sqrt, CreateSqrtFunction())
+
+#undef MATH_FUNCTION
+
+
+void MathSetup() {
+#ifdef _WIN64
+  init_modulo_function();
+#endif
+  init_fast_sin_function();
+  init_fast_cos_function();
+  init_fast_tan_function();
+  init_fast_log_function();
+  init_fast_sqrt_function();
+}
+
 
 // ----------------------------------------------------------------------------
 // The Time class represents time on win32. A timestamp is represented as
@@ -440,6 +460,9 @@ void Time::SetToCurrentTime() {
   // Check if we need to resync due to elapsed time.
   needs_resync |= (time_now.t_ - init_time.t_) > kMaxClockElapsedTime;
 
+  // Check if we need to resync due to backwards time change.
+  needs_resync |= time_now.t_ < init_time.t_;
+
   // Resync the clock if necessary.
   if (needs_resync) {
     GetSystemTimeAsFileTime(&init_time.ft_);
@@ -481,11 +504,14 @@ int64_t Time::LocalOffset() {
   // Convert to local time, as struct with fields for day, hour, year, etc.
   tm posix_local_time_struct;
   if (localtime_s(&posix_local_time_struct, &posix_time)) return 0;
-  // Convert local time in struct to POSIX time as if it were a UTC time.
-  time_t local_posix_time = _mkgmtime(&posix_local_time_struct);
-  Time localtime(1000.0 * local_posix_time);
 
-  return localtime.Diff(&rounded_to_second);
+  if (posix_local_time_struct.tm_isdst > 0) {
+    return (tzinfo_.Bias + tzinfo_.DaylightBias) * -kMsPerMinute;
+  } else if (posix_local_time_struct.tm_isdst == 0) {
+    return (tzinfo_.Bias + tzinfo_.StandardBias) * -kMsPerMinute;
+  } else {
+    return tzinfo_.Bias * -kMsPerMinute;
+  }
 }
 
 
@@ -528,15 +554,13 @@ char* Time::LocalTimezone() {
 }
 
 
-void OS::SetUp() {
-  // Seed the random number generator.
-  // Convert the current time to a 64-bit integer first, before converting it
-  // to an unsigned. Going directly can cause an overflow and the seed to be
-  // set to all ones. The seed will be identical for different instances that
-  // call this setup code within the same millisecond.
-  uint64_t seed = static_cast<uint64_t>(TimeCurrentMillis());
-  srand(static_cast<unsigned int>(seed));
-  limit_mutex = CreateMutex();
+void OS::PostSetUp() {
+  // Math functions depend on CPU features therefore they are initialized after
+  // CPU.
+  MathSetup();
+#if defined(V8_TARGET_ARCH_IA32)
+  memcopy_function = CreateMemCopyFunction();
+#endif
 }
 
 
@@ -831,43 +855,62 @@ size_t OS::AllocateAlignment() {
 }
 
 
+static void* GetRandomAddr() {
+  Isolate* isolate = Isolate::UncheckedCurrent();
+  // Note that the current isolate isn't set up in a call path via
+  // CpuFeatures::Probe. We don't care about randomization in this case because
+  // the code page is immediately freed.
+  if (isolate != NULL) {
+    // The address range used to randomize RWX allocations in OS::Allocate
+    // Try not to map pages into the default range that windows loads DLLs
+    // Use a multiple of 64k to prevent committing unused memory.
+    // Note: This does not guarantee RWX regions will be within the
+    // range kAllocationRandomAddressMin to kAllocationRandomAddressMax
+#ifdef V8_HOST_ARCH_64_BIT
+    static const intptr_t kAllocationRandomAddressMin = 0x0000000080000000;
+    static const intptr_t kAllocationRandomAddressMax = 0x000003FFFFFF0000;
+#else
+    static const intptr_t kAllocationRandomAddressMin = 0x04000000;
+    static const intptr_t kAllocationRandomAddressMax = 0x3FFF0000;
+#endif
+    uintptr_t address = (V8::RandomPrivate(isolate) << kPageSizeBits)
+        | kAllocationRandomAddressMin;
+    address &= kAllocationRandomAddressMax;
+    return reinterpret_cast<void *>(address);
+  }
+  return NULL;
+}
+
+
+static void* RandomizedVirtualAlloc(size_t size, int action, int protection) {
+  LPVOID base = NULL;
+
+  if (protection == PAGE_EXECUTE_READWRITE || protection == PAGE_NOACCESS) {
+    // For exectutable pages try and randomize the allocation address
+    for (size_t attempts = 0; base == NULL && attempts < 3; ++attempts) {
+      base = VirtualAlloc(GetRandomAddr(), size, action, protection);
+    }
+  }
+
+  // After three attempts give up and let the OS find an address to use.
+  if (base == NULL) base = VirtualAlloc(NULL, size, action, protection);
+
+  return base;
+}
+
+
 void* OS::Allocate(const size_t requested,
                    size_t* allocated,
                    bool is_executable) {
-  // The address range used to randomize RWX allocations in OS::Allocate
-  // Try not to map pages into the default range that windows loads DLLs
-  // Use a multiple of 64k to prevent committing unused memory.
-  // Note: This does not guarantee RWX regions will be within the
-  // range kAllocationRandomAddressMin to kAllocationRandomAddressMax
-#ifdef V8_HOST_ARCH_64_BIT
-  static const intptr_t kAllocationRandomAddressMin = 0x0000000080000000;
-  static const intptr_t kAllocationRandomAddressMax = 0x000003FFFFFF0000;
-#else
-  static const intptr_t kAllocationRandomAddressMin = 0x04000000;
-  static const intptr_t kAllocationRandomAddressMax = 0x3FFF0000;
-#endif
-
   // VirtualAlloc rounds allocated size to page size automatically.
   size_t msize = RoundUp(requested, static_cast<int>(GetPageSize()));
-  intptr_t address = 0;
 
   // Windows XP SP2 allows Data Excution Prevention (DEP).
   int prot = is_executable ? PAGE_EXECUTE_READWRITE : PAGE_READWRITE;
 
-  // For exectutable pages try and randomize the allocation address
-  if (prot == PAGE_EXECUTE_READWRITE &&
-      msize >= static_cast<size_t>(Page::kPageSize)) {
-    address = (V8::RandomPrivate(Isolate::Current()) << kPageSizeBits)
-      | kAllocationRandomAddressMin;
-    address &= kAllocationRandomAddressMax;
-  }
-
-  LPVOID mbase = VirtualAlloc(reinterpret_cast<void *>(address),
-                              msize,
-                              MEM_COMMIT | MEM_RESERVE,
-                              prot);
-  if (mbase == NULL && address != 0)
-    mbase = VirtualAlloc(NULL, msize, MEM_COMMIT | MEM_RESERVE, prot);
+  LPVOID mbase = RandomizedVirtualAlloc(msize,
+                                        MEM_COMMIT | MEM_RESERVE,
+                                        prot);
 
   if (mbase == NULL) {
     LOG(ISOLATE, StringEvent("OS::Allocate", "VirtualAlloc failed"));
@@ -912,15 +955,11 @@ void OS::Sleep(int milliseconds) {
 
 
 void OS::Abort() {
-  if (!IsDebuggerPresent()) {
-#ifdef _MSC_VER
-    // Make the MSVCRT do a silent abort.
-    _set_abort_behavior(0, _WRITE_ABORT_MSG);
-    _set_abort_behavior(0, _CALL_REPORTFAULT);
-#endif  // _MSC_VER
-    abort();
-  } else {
+  if (IsDebuggerPresent() || FLAG_break_on_abort) {
     DebugBreak();
+  } else {
+    // Make the MSVCRT do a silent abort.
+    raise(SIGABRT);
   }
 }
 
@@ -1471,7 +1510,7 @@ bool VirtualMemory::Uncommit(void* address, size_t size) {
 
 
 void* VirtualMemory::ReserveRegion(size_t size) {
-  return VirtualAlloc(NULL, size, MEM_RESERVE, PAGE_NOACCESS);
+  return RandomizedVirtualAlloc(size, MEM_RESERVE, PAGE_NOACCESS);
 }
 
 
@@ -1486,6 +1525,17 @@ bool VirtualMemory::CommitRegion(void* base, size_t size, bool is_executable) {
 }
 
 
+bool VirtualMemory::Guard(void* address) {
+  if (NULL == VirtualAlloc(address,
+                           OS::CommitPageSize(),
+                           MEM_COMMIT,
+                           PAGE_READONLY | PAGE_GUARD)) {
+    return false;
+  }
+  return true;
+}
+
+
 bool VirtualMemory::UncommitRegion(void* base, size_t size) {
   return VirtualFree(base, size, MEM_DECOMMIT) != 0;
 }
@@ -1494,7 +1544,6 @@ bool VirtualMemory::UncommitRegion(void* base, size_t size) {
 bool VirtualMemory::ReleaseRegion(void* base, size_t size) {
   return VirtualFree(base, 0, MEM_RELEASE) != 0;
 }
-
 
 
 // ----------------------------------------------------------------------------
@@ -1900,6 +1949,12 @@ class SamplerThread : public Thread {
       : Thread(Thread::Options("SamplerThread", kSamplerThreadStackSize)),
         interval_(interval) {}
 
+  static void SetUp() {
+    if (!mutex_) {
+      mutex_ = OS::CreateMutex();
+    }
+  }
+
   static void AddActiveSampler(Sampler* sampler) {
     ScopedLock lock(mutex_);
     SamplerRegistry::AddActiveSampler(sampler);
@@ -2006,8 +2061,21 @@ class SamplerThread : public Thread {
 };
 
 
-Mutex* SamplerThread::mutex_ = OS::CreateMutex();
+Mutex* SamplerThread::mutex_ = NULL;
 SamplerThread* SamplerThread::instance_ = NULL;
+
+
+void OS::SetUp() {
+  // Seed the random number generator.
+  // Convert the current time to a 64-bit integer first, before converting it
+  // to an unsigned. Going directly can cause an overflow and the seed to be
+  // set to all ones. The seed will be identical for different instances that
+  // call this setup code within the same millisecond.
+  uint64_t seed = static_cast<uint64_t>(TimeCurrentMillis());
+  srand(static_cast<unsigned int>(seed));
+  limit_mutex = CreateMutex();
+  SamplerThread::SetUp();
+}
 
 
 Sampler::Sampler(Isolate* isolate, int interval)

@@ -10,6 +10,7 @@ dependent compile steps.
 """
 
 import os
+import sys
 import TestGyp
 
 # This test is Ninja-specific in that:
@@ -18,6 +19,8 @@ import TestGyp
 
 test = TestGyp.TestGyp(formats=['ninja'])
 test.run_gyp('chained-dependency.gyp')
-test.build('chained-dependency.gyp', 'obj/chained.chained.o')
+objext = '.obj' if sys.platform == 'win32' else '.o'
+test.build('chained-dependency.gyp',
+           os.path.join('obj', 'chained.chained' + objext))
 # The test passes if the .o file builds successfully.
 test.pass_test()
