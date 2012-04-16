@@ -28,7 +28,6 @@ libavocado_a_SOURCES = \
 	BasicsC/conversions.c \
 	BasicsC/csv.c \
 	BasicsC/error.c \
-	BasicsC/voc-errors.c \
 	BasicsC/files.c \
 	BasicsC/hashes.c \
 	BasicsC/init.c \
@@ -48,6 +47,7 @@ libavocado_a_SOURCES = \
 	BasicsC/terminal-utils.c \
 	BasicsC/threads-posix.c \
 	BasicsC/vector.c \
+	BasicsC/voc-errors.c \
 	JsonParser/json-parser.c \
 	JsonParserX/InputParser.cpp \
 	JsonParserX/JsonParserX.cpp \
@@ -70,6 +70,13 @@ libavocado_a_SOURCES = \
 	ShapedJson/json-shaper.c \
 	ShapedJson/shape-accessor.c \
 	ShapedJson/shaped-json.c \
+	UserManager/ApplicationUserManager.cpp \
+	UserManager/Role.cpp \
+	UserManager/Session.cpp \
+	UserManager/SessionHandler.cpp \
+	UserManager/User.cpp \
+	UserManager/UserHandler.cpp \
+	UserManager/UsersHandler.cpp \
 	V8/JSLoader.cpp \
 	V8/v8-conv.cpp \
 	V8/v8-json.cpp \

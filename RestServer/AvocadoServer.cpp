@@ -52,6 +52,7 @@
 #include "RestHandler/RestImportHandler.h"
 #include "RestServer/ActionDispatcherThread.h"
 #include "RestServer/AvocadoHttpServer.h"
+#include "UserManager/ApplicationUserManager.h"
 #include "V8/JSLoader.h"
 #include "V8/v8-actions.h"
 #include "V8/v8-conv.h"
@@ -274,6 +275,42 @@ void AvocadoServer::buildApplicationServer () {
   _applicationAdminServer->allowLogViewer();
   _applicationAdminServer->allowVersion("avocado", TRIAGENS_VERSION);
 
+  // .............................................................................
+  // build the application user manager
+  // .............................................................................
+
+  _applicationUserManager = ApplicationUserManager::create(_applicationServer);
+  _applicationServer->addFeature(_applicationUserManager);
+
+  // create manager role
+  vector<right_t> rightsManager;
+  rightsManager.push_back(RIGHT_TO_MANAGE_USER);
+  rightsManager.push_back(RIGHT_TO_MANAGE_ADMIN);
+      
+  _applicationUserManager->createRole("manager", rightsManager, 0);
+      
+  // create admin role
+  vector<right_t> rightsAdmin;
+  rightsAdmin.push_back(RIGHT_TO_MANAGE_USER);
+  rightsAdmin.push_back(RIGHT_TO_BE_DELETED);
+  
+  _applicationUserManager->createRole("admin", rightsAdmin, RIGHT_TO_MANAGE_ADMIN);
+      
+  // create user role
+  vector<right_t> rightsUser;
+  rightsUser.push_back(RIGHT_TO_BE_DELETED);
+      
+  _applicationUserManager->createRole("user", rightsUser, RIGHT_TO_MANAGE_USER);
+      
+  // create a standard user
+  _applicationUserManager->createUser("manager", "manager");
+      
+  // added a anonymous right for session which are not logged in
+  vector<right_t> rightsAnonymous;
+  rightsAnonymous.push_back(RIGHT_TO_LOGIN);
+      
+  _applicationUserManager->setAnonymousRights(rightsAnonymous);
+      
   // .............................................................................
   // use relative system paths
   // .............................................................................
@@ -589,6 +626,7 @@ int AvocadoServer::startupServer () {
 
     if (shareAdminPort) {
       _applicationAdminServer->addHandlers(factory, "/_admin");
+      _applicationUserManager->addHandlers(factory, "/_admin");
       allowedQueuesHttp.insert("SYSTEM");
     }
 
@@ -618,6 +656,7 @@ int AvocadoServer::startupServer () {
 
     _applicationAdminServer->addBasicHandlers(adminFactory);
     _applicationAdminServer->addHandlers(adminFactory, "/_admin");
+    _applicationUserManager->addHandlers(adminFactory, "/_admin");
 
     adminFactory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH, RestHandlerCreator<RestDocumentHandler>::createData<TRI_vocbase_t*>, _vocbase);
     adminFactory->addPrefixHandler(RestVocbaseBaseHandler::EDGE_PATH, RestHandlerCreator<RestEdgeHandler>::createData<TRI_vocbase_t*>, _vocbase);

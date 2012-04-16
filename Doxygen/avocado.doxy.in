@@ -628,6 +628,7 @@ INPUT                  = \
 	@srcdir@/RestHandler \
 	@srcdir@/RestServer \
 	@srcdir@/ShapedJson \
+	@srcdir@/UserManager \
 	@srcdir@/V8 \
 	@srcdir@/VocBase \
 	@srcdir@/QL
