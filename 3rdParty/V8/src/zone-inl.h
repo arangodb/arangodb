@@ -39,7 +39,19 @@ namespace v8 {
 namespace internal {
 
 
+AssertNoZoneAllocation::AssertNoZoneAllocation()
+    : prev_(Isolate::Current()->zone_allow_allocation()) {
+  Isolate::Current()->set_zone_allow_allocation(false);
+}
+
+
+AssertNoZoneAllocation::~AssertNoZoneAllocation() {
+  Isolate::Current()->set_zone_allow_allocation(prev_);
+}
+
+
 inline void* Zone::New(int size) {
+  ASSERT(Isolate::Current()->zone_allow_allocation());
   ASSERT(ZoneScope::nesting() > 0);
   // Round up the requested size to fit the alignment.
   size = RoundUp(size, kAlignment);

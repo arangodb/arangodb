@@ -232,9 +232,7 @@ class JavaScriptMinifier(object):
       # A regexp that matches a regexp literal surrounded by /slashes/.
       # Don't allow a regexp to have a ) before the first ( since that's a
       # syntax error and it's probably just two unrelated slashes.
-      # Also don't allow it to come after anything that can only be the
-      # end of a primary expression.
-      slash_quoted_regexp = r"(?<![\w$'\")\]])/(?:(?=\()|(?:[^()/\\]|\\.)+)(?:\([^/\\]|\\.)*/"
+      slash_quoted_regexp = r"/(?:(?=\()|(?:[^()/\\]|\\.)+)(?:\([^/\\]|\\.)*/"
       # Replace multiple spaces with a single space.
       line = re.sub("|".join([double_quoted_string,
                               single_quoted_string,

@@ -41,7 +41,6 @@
 #include "lithium-allocator.h"
 #include "log.h"
 #include "messages.h"
-#include "platform.h"
 #include "regexp-stack.h"
 #include "runtime-profiler.h"
 #include "scopeinfo.h"
@@ -312,12 +311,33 @@ void Isolate::PreallocatedStorageDelete(void* p) {
   storage->LinkTo(&free_list_);
 }
 
+
 Isolate* Isolate::default_isolate_ = NULL;
 Thread::LocalStorageKey Isolate::isolate_key_;
 Thread::LocalStorageKey Isolate::thread_id_key_;
 Thread::LocalStorageKey Isolate::per_isolate_thread_data_key_;
 Mutex* Isolate::process_wide_mutex_ = OS::CreateMutex();
 Isolate::ThreadDataTable* Isolate::thread_data_table_ = NULL;
+
+
+class IsolateInitializer {
+ public:
+  IsolateInitializer() {
+    Isolate::EnsureDefaultIsolate();
+  }
+};
+
+static IsolateInitializer* EnsureDefaultIsolateAllocated() {
+  // TODO(isolates): Use the system threading API to do this once?
+  static IsolateInitializer static_initializer;
+  return &static_initializer;
+}
+
+// This variable only needed to trigger static intialization.
+static IsolateInitializer* static_initializer = EnsureDefaultIsolateAllocated();
+
+
+
 
 
 Isolate::PerIsolateThreadData* Isolate::AllocatePerIsolateThreadData(
@@ -370,17 +390,12 @@ void Isolate::EnsureDefaultIsolate() {
     default_isolate_ = new Isolate();
   }
   // Can't use SetIsolateThreadLocals(default_isolate_, NULL) here
-  // because a non-null thread data may be already set.
+  // becase a non-null thread data may be already set.
   if (Thread::GetThreadLocal(isolate_key_) == NULL) {
     Thread::SetThreadLocal(isolate_key_, default_isolate_);
   }
 }
 
-struct StaticInitializer {
-  StaticInitializer() {
-    Isolate::EnsureDefaultIsolate();
-  }
-} static_initializer;
 
 #ifdef ENABLE_DEBUGGER_SUPPORT
 Debugger* Isolate::GetDefaultIsolateDebugger() {
@@ -760,12 +775,10 @@ void Isolate::ReportFailedAccessCheck(JSObject* receiver, v8::AccessType type) {
   HandleScope scope;
   Handle<JSObject> receiver_handle(receiver);
   Handle<Object> data(AccessCheckInfo::cast(data_obj)->data());
-  { VMState state(this, EXTERNAL);
-    thread_local_top()->failed_access_check_callback_(
-      v8::Utils::ToLocal(receiver_handle),
-      type,
-      v8::Utils::ToLocal(data));
-  }
+  thread_local_top()->failed_access_check_callback_(
+    v8::Utils::ToLocal(receiver_handle),
+    type,
+    v8::Utils::ToLocal(data));
 }
 
 
@@ -1010,7 +1023,7 @@ bool Isolate::ShouldReportException(bool* can_be_caught_externally,
   // Find the top-most try-catch handler.
   StackHandler* handler =
       StackHandler::FromAddress(Isolate::handler(thread_local_top()));
-  while (handler != NULL && !handler->is_catch()) {
+  while (handler != NULL && !handler->is_try_catch()) {
     handler = handler->next();
   }
 
@@ -1180,8 +1193,8 @@ bool Isolate::IsExternallyCaught() {
   StackHandler* handler =
       StackHandler::FromAddress(Isolate::handler(thread_local_top()));
   while (handler != NULL && handler->address() < external_handler_address) {
-    ASSERT(!handler->is_catch());
-    if (handler->is_finally()) return false;
+    ASSERT(!handler->is_try_catch());
+    if (handler->is_try_finally()) return false;
 
     handler = handler->next();
   }
@@ -1471,7 +1484,6 @@ Isolate::Isolate()
       has_installed_extensions_(false),
       string_tracker_(NULL),
       regexp_stack_(NULL),
-      date_cache_(NULL),
       embedder_data_(NULL),
       context_exit_happened_(false) {
   TRACE_ISOLATE(constructor);
@@ -1603,9 +1615,6 @@ Isolate::~Isolate() {
 
   delete unicode_cache_;
   unicode_cache_ = NULL;
-
-  delete date_cache_;
-  date_cache_ = NULL;
 
   delete regexp_stack_;
   regexp_stack_ = NULL;
@@ -1771,7 +1780,6 @@ bool Isolate::Init(Deserializer* des) {
   stub_cache_ = new StubCache(this);
   regexp_stack_ = new RegExpStack();
   regexp_stack_->isolate_ = this;
-  date_cache_ = new DateCache();
 
   // Enable logging before setting up the heap
   logger_->SetUp();
@@ -1826,12 +1834,13 @@ bool Isolate::Init(Deserializer* des) {
 #ifdef ENABLE_DEBUGGER_SUPPORT
   debug_->SetUp(create_heap_objects);
 #endif
+  stub_cache_->Initialize(create_heap_objects);
 
   // If we are deserializing, read the state into the now-empty heap.
   if (des != NULL) {
     des->Deserialize();
+    stub_cache_->Initialize(true);
   }
-  stub_cache_->Initialize();
 
   // Finish initialization of ThreadLocal after deserialization is done.
   clear_pending_exception();
