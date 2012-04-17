@@ -142,8 +142,10 @@
                   'USE_EABI_HARDFLOAT=1',
                   'CAN_USE_VFP_INSTRUCTIONS',
                 ],
-                'cflags': [
-                  '-mfloat-abi=hard',
+                'target_conditions': [
+                  ['_toolset=="target"', {
+                    'cflags': ['-mfloat-abi=hard',],
+                  }],
                 ],
               }, {
                 'defines': [
@@ -236,6 +238,19 @@
             ],
           }],
         ],
+      }, {  # Section for OS=="mac".
+        'conditions': [
+          ['target_arch=="ia32"', {
+            'xcode_settings': {
+              'ARCHS': ['i386'],
+            }
+          }],
+          ['target_arch=="x64"', {
+            'xcode_settings': {
+              'ARCHS': ['x86_64'],
+            }
+          }],
+        ],
       }],
       ['v8_use_liveobjectlist=="true"', {
         'defines': [
@@ -265,9 +280,13 @@
       ['OS=="linux" or OS=="freebsd" or OS=="openbsd" or OS=="solaris" \
          or OS=="netbsd"', {
         'conditions': [
-          [ 'target_arch=="ia32"', {
-            'cflags': [ '-m32' ],
-            'ldflags': [ '-m32' ],
+          [ 'v8_target_arch!="x64"', {
+            # Pass -m32 to the compiler iff it understands the flag.
+            'variables': {
+              'm32flag': '<!((echo | $(echo ${CXX:-$(which g++)}) -m32 -E - > /dev/null 2>&1) && echo -n "-m32" || true)',
+            },
+            'cflags': [ '<(m32flag)' ],
+            'ldflags': [ '<(m32flag)' ],
           }],
           [ 'v8_no_strict_aliasing==1', {
             'cflags': [ '-fno-strict-aliasing' ],
