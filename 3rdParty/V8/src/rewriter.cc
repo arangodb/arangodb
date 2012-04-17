@@ -209,15 +209,7 @@ void Processor::VisitWithStatement(WithStatement* node) {
 
 
 // Do nothing:
-void Processor::VisitVariableDeclaration(VariableDeclaration* node) {}
-void Processor::VisitFunctionDeclaration(FunctionDeclaration* node) {}
-void Processor::VisitModuleDeclaration(ModuleDeclaration* node) {}
-void Processor::VisitImportDeclaration(ImportDeclaration* node) {}
-void Processor::VisitExportDeclaration(ExportDeclaration* node) {}
-void Processor::VisitModuleLiteral(ModuleLiteral* node) {}
-void Processor::VisitModuleVariable(ModuleVariable* node) {}
-void Processor::VisitModulePath(ModulePath* node) {}
-void Processor::VisitModuleUrl(ModuleUrl* node) {}
+void Processor::VisitDeclaration(Declaration* node) {}
 void Processor::VisitEmptyStatement(EmptyStatement* node) {}
 void Processor::VisitReturnStatement(ReturnStatement* node) {}
 void Processor::VisitDebuggerStatement(DebuggerStatement* node) {}

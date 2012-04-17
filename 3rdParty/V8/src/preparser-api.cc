@@ -46,10 +46,10 @@ namespace v8 {
 namespace internal {
 
 // UTF16Buffer based on a v8::UnicodeInputStream.
-class InputStreamUtf16Buffer : public Utf16CharacterStream {
+class InputStreamUTF16Buffer : public UC16CharacterStream {
  public:
-  /* The InputStreamUtf16Buffer maintains an internal buffer
-   * that is filled in chunks from the Utf16CharacterStream.
+  /* The InputStreamUTF16Buffer maintains an internal buffer
+   * that is filled in chunks from the UC16CharacterStream.
    * It also maintains unlimited pushback capability, but optimized
    * for small pushbacks.
    * The pushback_buffer_ pointer points to the limit of pushbacks
@@ -60,8 +60,8 @@ class InputStreamUtf16Buffer : public Utf16CharacterStream {
    * new buffer. When this buffer is read to the end again, the cursor is
    * switched back to the internal buffer
    */
-  explicit InputStreamUtf16Buffer(v8::UnicodeInputStream* stream)
-      : Utf16CharacterStream(),
+  explicit InputStreamUTF16Buffer(v8::UnicodeInputStream* stream)
+      : UC16CharacterStream(),
         stream_(stream),
         pushback_buffer_(buffer_),
         pushback_buffer_end_cache_(NULL),
@@ -70,7 +70,7 @@ class InputStreamUtf16Buffer : public Utf16CharacterStream {
     buffer_cursor_ = buffer_end_ = buffer_ + kPushBackSize;
   }
 
-  virtual ~InputStreamUtf16Buffer() {
+  virtual ~InputStreamUTF16Buffer() {
     if (pushback_buffer_backing_ != NULL) {
       DeleteArray(pushback_buffer_backing_);
     }
@@ -127,18 +127,12 @@ class InputStreamUtf16Buffer : public Utf16CharacterStream {
     uc16* buffer_start = buffer_ + kPushBackSize;
     buffer_cursor_ = buffer_end_ = buffer_start;
     while ((value = stream_->Next()) >= 0) {
-      if (value >
-          static_cast<int32_t>(unibrow::Utf16::kMaxNonSurrogateCharCode)) {
-        buffer_start[buffer_end_++ - buffer_start] =
-            unibrow::Utf16::LeadSurrogate(value);
-        buffer_start[buffer_end_++ - buffer_start] =
-            unibrow::Utf16::TrailSurrogate(value);
-      } else {
-        // buffer_end_ is a const pointer, but buffer_ is writable.
-        buffer_start[buffer_end_++ - buffer_start] = static_cast<uc16>(value);
+      if (value > static_cast<int32_t>(unibrow::Utf8::kMaxThreeByteChar)) {
+        value = unibrow::Utf8::kBadChar;
       }
-      // Stop one before the end of the buffer in case we get a surrogate pair.
-      if (buffer_end_ <= buffer_ + 1 + kPushBackSize + kBufferSize) break;
+      // buffer_end_ is a const pointer, but buffer_ is writable.
+      buffer_start[buffer_end_++ - buffer_start] = static_cast<uc16>(value);
+      if (buffer_end_ == buffer_ + kPushBackSize + kBufferSize) break;
     }
     return buffer_end_ > buffer_start;
   }
@@ -185,7 +179,7 @@ UnicodeInputStream::~UnicodeInputStream() { }
 
 
 PreParserData Preparse(UnicodeInputStream* input, size_t max_stack) {
-  internal::InputStreamUtf16Buffer buffer(input);
+  internal::InputStreamUTF16Buffer buffer(input);
   uintptr_t stack_limit = reinterpret_cast<uintptr_t>(&buffer) - max_stack;
   internal::UnicodeCache unicode_cache;
   internal::Scanner scanner(&unicode_cache);

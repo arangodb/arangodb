@@ -75,10 +75,6 @@ ifeq ($(vfp3), off)
 else
   GYPFLAGS += -Dv8_can_use_vfp_instructions=true
 endif
-# debuggersupport=off
-ifeq ($(debuggersupport), off)
-  GYPFLAGS += -Dv8_enable_debugger_support=0
-endif
 # soname_version=1.2.3
 ifdef soname_version
   GYPFLAGS += -Dsoname_version=$(soname_version)
@@ -211,37 +207,31 @@ clean: $(addsuffix .clean,$(ARCHES)) native.clean
 
 # GYP file generation targets.
 $(OUTDIR)/Makefile-ia32: $(GYPFILES) $(ENVFILE)
-	GYP_GENERATORS=make \
 	build/gyp/gyp --generator-output="$(OUTDIR)" build/all.gyp \
 	              -Ibuild/standalone.gypi --depth=. -Dtarget_arch=ia32 \
 	              -S-ia32 $(GYPFLAGS)
 
 $(OUTDIR)/Makefile-x64: $(GYPFILES) $(ENVFILE)
-	GYP_GENERATORS=make \
 	build/gyp/gyp --generator-output="$(OUTDIR)" build/all.gyp \
 	              -Ibuild/standalone.gypi --depth=. -Dtarget_arch=x64 \
 	              -S-x64 $(GYPFLAGS)
 
 $(OUTDIR)/Makefile-arm: $(GYPFILES) $(ENVFILE) build/armu.gypi
-	GYP_GENERATORS=make \
 	build/gyp/gyp --generator-output="$(OUTDIR)" build/all.gyp \
 	              -Ibuild/standalone.gypi --depth=. -Ibuild/armu.gypi \
 	              -S-arm $(GYPFLAGS)
 
 $(OUTDIR)/Makefile-mips: $(GYPFILES) $(ENVFILE) build/mipsu.gypi
-	GYP_GENERATORS=make \
 	build/gyp/gyp --generator-output="$(OUTDIR)" build/all.gyp \
 	              -Ibuild/standalone.gypi --depth=. -Ibuild/mipsu.gypi \
 	              -S-mips $(GYPFLAGS)
 
 $(OUTDIR)/Makefile-native: $(GYPFILES) $(ENVFILE)
-	GYP_GENERATORS=make \
 	build/gyp/gyp --generator-output="$(OUTDIR)" build/all.gyp \
 	              -Ibuild/standalone.gypi --depth=. -S-native $(GYPFLAGS)
 
 $(OUTDIR)/Makefile-android: $(GYPFILES) $(ENVFILE) build/android.gypi \
                             must-set-ANDROID_NDK_ROOT
-	GYP_GENERATORS=make \
 	CC="${ANDROID_TOOL_PREFIX}-gcc" \
 	build/gyp/gyp --generator-output="$(OUTDIR)" build/all.gyp \
 	              -Ibuild/standalone.gypi --depth=. -Ibuild/android.gypi \
@@ -261,10 +251,9 @@ $(ENVFILE): $(ENVFILE).new
 
 # Stores current GYPFLAGS in a file.
 $(ENVFILE).new:
-	@mkdir -p $(OUTDIR); echo "GYPFLAGS=$(GYPFLAGS)" > $(ENVFILE).new; \
-	    echo "CXX=$(CXX)" >> $(ENVFILE).new
+	@mkdir -p $(OUTDIR); echo "GYPFLAGS=$(GYPFLAGS)" > $(ENVFILE).new;
 
 # Dependencies.
 dependencies:
 	svn checkout --force http://gyp.googlecode.com/svn/trunk build/gyp \
-	    --revision 1282
+	    --revision 1026

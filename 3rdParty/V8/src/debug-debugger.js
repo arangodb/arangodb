@@ -1,4 +1,4 @@
-// Copyright 2012 the V8 project authors. All rights reserved.
+// Copyright 2006-2008 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -26,14 +26,14 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // Default number of frames to include in the response to backtrace request.
-var kDefaultBacktraceLength = 10;
+const kDefaultBacktraceLength = 10;
 
-var Debug = {};
+const Debug = {};
 
 // Regular expression to skip "crud" at the beginning of a source line which is
 // not really code. Currently the regular expression matches whitespace and
 // comments.
-var sourceLineBeginningSkip = /^(?:\s*(?:\/\*.*?\*\/)*)*/;
+const sourceLineBeginningSkip = /^(?:\s*(?:\/\*.*?\*\/)*)*/;
 
 // Debug events which can occour in the V8 JavaScript engine. These originate
 // from the API include file debug.h.
@@ -478,8 +478,7 @@ ScriptBreakPoint.prototype.clear = function () {
 function UpdateScriptBreakPoints(script) {
   for (var i = 0; i < script_break_points.length; i++) {
     var break_point = script_break_points[i];
-    if ((break_point.type() == Debug.ScriptBreakPointType.ScriptName ||
-         break_point.type() == Debug.ScriptBreakPointType.ScriptRegExp) &&
+    if ((break_point.type() == Debug.ScriptBreakPointType.ScriptName) &&
         break_point.matchesScript(script)) {
       break_point.set(script);
     }
