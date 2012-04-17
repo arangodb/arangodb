@@ -36,8 +36,6 @@
 #include "hydrogen.h"
 #include "lithium-allocator.h"
 #include "log.h"
-#include "once.h"
-#include "platform.h"
 #include "runtime-profiler.h"
 #include "serialize.h"
 #include "store-buffer.h"
@@ -45,7 +43,8 @@
 namespace v8 {
 namespace internal {
 
-V8_DECLARE_ONCE(init_once);
+static Mutex* init_once_mutex = OS::CreateMutex();
+static bool init_once_called = false;
 
 bool V8::is_running_ = false;
 bool V8::has_been_set_up_ = false;
@@ -54,8 +53,7 @@ bool V8::has_fatal_error_ = false;
 bool V8::use_crankshaft_ = true;
 List<CallCompletedCallback>* V8::call_completed_callbacks_ = NULL;
 
-static LazyMutex entropy_mutex = LAZY_MUTEX_INITIALIZER;
-
+static Mutex* entropy_mutex = OS::CreateMutex();
 static EntropySource entropy_source;
 
 
@@ -119,7 +117,7 @@ static void seed_random(uint32_t* state) {
       state[i] = FLAG_random_seed;
     } else if (entropy_source != NULL) {
       uint32_t val;
-      ScopedLock lock(entropy_mutex.Pointer());
+      ScopedLock lock(entropy_mutex);
       entropy_source(reinterpret_cast<unsigned char*>(&val), sizeof(uint32_t));
       state[i] = val;
     } else {
@@ -145,12 +143,6 @@ static uint32_t random_base(uint32_t* state) {
 
 void V8::SetEntropySource(EntropySource source) {
   entropy_source = source;
-}
-
-
-void V8::SetReturnAddressLocationResolver(
-      ReturnAddressLocationResolver resolver) {
-  StackFrame::SetReturnAddressLocationResolver(resolver);
 }
 
 
@@ -225,21 +217,28 @@ typedef union {
 
 Object* V8::FillHeapNumberWithRandom(Object* heap_number,
                                      Context* context) {
-  double_int_union r;
   uint64_t random_bits = Random(context);
+  // Make a double* from address (heap_number + sizeof(double)).
+  double_int_union* r = reinterpret_cast<double_int_union*>(
+      reinterpret_cast<char*>(heap_number) +
+      HeapNumber::kValueOffset - kHeapObjectTag);
   // Convert 32 random bits to 0.(32 random bits) in a double
   // by computing:
   // ( 1.(20 0s)(32 random bits) x 2^20 ) - (1.0 x 2^20)).
-  static const double binary_million = 1048576.0;
-  r.double_value = binary_million;
-  r.uint64_t_value |= random_bits;
-  r.double_value -= binary_million;
+  const double binary_million = 1048576.0;
+  r->double_value = binary_million;
+  r->uint64_t_value |=  random_bits;
+  r->double_value -= binary_million;
 
-  HeapNumber::cast(heap_number)->set_value(r.double_value);
   return heap_number;
 }
 
-void V8::InitializeOncePerProcessImpl() {
+
+void V8::InitializeOncePerProcess() {
+  ScopedLock lock(init_once_mutex);
+  if (init_once_called) return;
+  init_once_called = true;
+
   // Set up the platform OS support.
   OS::SetUp();
 
@@ -254,8 +253,6 @@ void V8::InitializeOncePerProcessImpl() {
     use_crankshaft_ = false;
   }
 
-  OS::PostSetUp();
-
   RuntimeProfiler::GlobalSetup();
 
   ElementsAccessor::InitializeOncePerProcess();
@@ -265,12 +262,6 @@ void V8::InitializeOncePerProcessImpl() {
     FLAG_gc_global = true;
     FLAG_max_new_space_size = (1 << (kPageSizeBits - 10)) * 2;
   }
-
-  LOperand::SetUpCaches();
-}
-
-void V8::InitializeOncePerProcess() {
-  CallOnce(&init_once, &InitializeOncePerProcessImpl);
 }
 
 } }  // namespace v8::internal

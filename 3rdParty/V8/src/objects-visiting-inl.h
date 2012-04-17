@@ -109,7 +109,7 @@ void Code::CodeIterateBody(ObjectVisitor* v) {
   IteratePointer(v, kRelocationInfoOffset);
   IteratePointer(v, kHandlerTableOffset);
   IteratePointer(v, kDeoptimizationDataOffset);
-  IteratePointer(v, kTypeFeedbackInfoOffset);
+  IteratePointer(v, kTypeFeedbackCellsOffset);
 
   RelocIterator it(this, mode_mask);
   for (; !it.done(); it.next()) {
@@ -141,7 +141,7 @@ void Code::CodeIterateBody(Heap* heap) {
       reinterpret_cast<Object**>(this->address() + kDeoptimizationDataOffset));
   StaticVisitor::VisitPointer(
       heap,
-      reinterpret_cast<Object**>(this->address() + kTypeFeedbackInfoOffset));
+      reinterpret_cast<Object**>(this->address() + kTypeFeedbackCellsOffset));
 
   RelocIterator it(this, mode_mask);
   for (; !it.done(); it.next()) {

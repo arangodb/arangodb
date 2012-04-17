@@ -29,7 +29,7 @@
 #define V8_SCOPES_H_
 
 #include "ast.h"
-#include "zone.h"
+#include "hashmap.h"
 
 namespace v8 {
 namespace internal {
@@ -38,7 +38,7 @@ class CompilationInfo;
 
 
 // A hash map to support fast variable declaration and lookup.
-class VariableMap: public ZoneHashMap {
+class VariableMap: public HashMap {
  public:
   VariableMap();
 
@@ -49,8 +49,7 @@ class VariableMap: public ZoneHashMap {
                     VariableMode mode,
                     bool is_valid_lhs,
                     Variable::Kind kind,
-                    InitializationFlag initialization_flag,
-                    Interface* interface = Interface::NewValue());
+                    InitializationFlag initialization_flag);
 
   Variable* Lookup(Handle<String> name);
 };
@@ -146,8 +145,7 @@ class Scope: public ZoneObject {
   // declared before, the previously declared variable is returned.
   Variable* DeclareLocal(Handle<String> name,
                          VariableMode mode,
-                         InitializationFlag init_flag,
-                         Interface* interface = Interface::NewValue());
+                         InitializationFlag init_flag);
 
   // Declare an implicit global variable in this scope which must be a
   // global scope.  The variable was introduced (possibly from an inner
@@ -159,14 +157,12 @@ class Scope: public ZoneObject {
   template<class Visitor>
   VariableProxy* NewUnresolved(AstNodeFactory<Visitor>* factory,
                                Handle<String> name,
-                               int position = RelocInfo::kNoPosition,
-                               Interface* interface = Interface::NewValue()) {
+                               int position = RelocInfo::kNoPosition) {
     // Note that we must not share the unresolved variables with
     // the same name because they may be removed selectively via
     // RemoveUnresolved().
     ASSERT(!already_resolved());
-    VariableProxy* proxy =
-        factory->NewVariableProxy(name, false, position, interface);
+    VariableProxy* proxy = factory->NewVariableProxy(name, false, position);
     unresolved_.Add(proxy);
     return proxy;
   }
@@ -267,7 +263,6 @@ class Scope: public ZoneObject {
   // Specific scope types.
   bool is_eval_scope() const { return type_ == EVAL_SCOPE; }
   bool is_function_scope() const { return type_ == FUNCTION_SCOPE; }
-  bool is_module_scope() const { return type_ == MODULE_SCOPE; }
   bool is_global_scope() const { return type_ == GLOBAL_SCOPE; }
   bool is_catch_scope() const { return type_ == CATCH_SCOPE; }
   bool is_block_scope() const { return type_ == BLOCK_SCOPE; }
@@ -298,6 +293,9 @@ class Scope: public ZoneObject {
   bool inside_with() const { return scope_inside_with_; }
   // Does this scope contain a with statement.
   bool contains_with() const { return scope_contains_with_; }
+
+  // The scope immediately surrounding this scope, or NULL.
+  Scope* outer_scope() const { return outer_scope_; }
 
   // ---------------------------------------------------------------------------
   // Accessors.
@@ -337,12 +335,6 @@ class Scope: public ZoneObject {
   // Inner scope list.
   ZoneList<Scope*>* inner_scopes() { return &inner_scopes_; }
 
-  // The scope immediately surrounding this scope, or NULL.
-  Scope* outer_scope() const { return outer_scope_; }
-
-  // The interface as inferred so far; only for module scopes.
-  Interface* interface() const { return interface_; }
-
   // ---------------------------------------------------------------------------
   // Variable allocation.
 
@@ -351,6 +343,17 @@ class Scope: public ZoneObject {
   // handled separately.
   void CollectStackAndContextLocals(ZoneList<Variable*>* stack_locals,
                                     ZoneList<Variable*>* context_locals);
+
+  // Resolve and fill in the allocation information for all variables
+  // in this scopes. Must be called *after* all scopes have been
+  // processed (parsed) to ensure that unresolved variables can be
+  // resolved properly.
+  //
+  // In the case of code compiled and run using 'eval', the context
+  // parameter is the context in which eval was called.  In all other
+  // cases the context parameter is an empty handle.
+  void AllocateVariables(Scope* global_scope,
+                         AstNodeFactory<AstNullVisitor>* factory);
 
   // Current number of var or const locals.
   int num_var_or_const() { return num_var_or_const_; }
@@ -367,11 +370,6 @@ class Scope: public ZoneObject {
 
   // Determine if we can use lazy compilation for this scope.
   bool AllowsLazyCompilation() const;
-
-  // True if we can lazily recompile functions with this scope.
-  bool allows_lazy_recompilation() const {
-    return !force_eager_compilation_;
-  }
 
   // True if the outer context of this scope is always the global context.
   bool HasTrivialOuterContext() const;
@@ -449,8 +447,6 @@ class Scope: public ZoneObject {
   VariableProxy* function_;
   // Convenience variable; function scopes only.
   Variable* arguments_;
-  // Interface; module scopes only.
-  Interface* interface_;
 
   // Illegal redeclaration.
   Expression* illegal_redecl_;
@@ -546,12 +542,10 @@ class Scope: public ZoneObject {
   Variable* LookupRecursive(Handle<String> name,
                             BindingKind* binding_kind,
                             AstNodeFactory<AstNullVisitor>* factory);
-  MUST_USE_RESULT
-  bool ResolveVariable(CompilationInfo* info,
+  void ResolveVariable(Scope* global_scope,
                        VariableProxy* proxy,
                        AstNodeFactory<AstNullVisitor>* factory);
-  MUST_USE_RESULT
-  bool ResolveVariablesRecursively(CompilationInfo* info,
+  void ResolveVariablesRecursively(Scope* global_scope,
                                    AstNodeFactory<AstNullVisitor>* factory);
 
   // Scope analysis.
@@ -570,18 +564,6 @@ class Scope: public ZoneObject {
   void AllocateNonParameterLocal(Variable* var);
   void AllocateNonParameterLocals();
   void AllocateVariablesRecursively();
-
-  // Resolve and fill in the allocation information for all variables
-  // in this scopes. Must be called *after* all scopes have been
-  // processed (parsed) to ensure that unresolved variables can be
-  // resolved properly.
-  //
-  // In the case of code compiled and run using 'eval', the context
-  // parameter is the context in which eval was called.  In all other
-  // cases the context parameter is an empty handle.
-  MUST_USE_RESULT
-  bool AllocateVariables(CompilationInfo* info,
-                         AstNodeFactory<AstNullVisitor>* factory);
 
  private:
   // Construct a scope based on the scope info.
