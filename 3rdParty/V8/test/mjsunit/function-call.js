@@ -68,7 +68,8 @@ var should_throw_on_null_and_undefined =
      String.prototype.toUpperCase,
      String.prototype.toLocaleUpperCase,
      String.prototype.trim,
-     Number.prototype.toLocaleString];
+     Number.prototype.toLocaleString,
+     Error.prototype.toString];
 
 // Non generic natives do not work on any input other than the specific
 // type, but since this change will allow call to be invoked with undefined
@@ -133,8 +134,7 @@ var non_generic =
      Date.prototype.toJSON,
      RegExp.prototype.exec,
      RegExp.prototype.test,
-     RegExp.prototype.toString,
-     Error.prototype.toString];
+     RegExp.prototype.toString];
 
 
 // Mapping functions.

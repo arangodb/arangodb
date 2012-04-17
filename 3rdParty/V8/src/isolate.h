@@ -36,10 +36,8 @@
 #include "contexts.h"
 #include "execution.h"
 #include "frames.h"
-#include "date.h"
 #include "global-handles.h"
 #include "handles.h"
-#include "hashmap.h"
 #include "heap.h"
 #include "regexp-stack.h"
 #include "runtime-profiler.h"
@@ -282,6 +280,23 @@ class ThreadLocalTop BASE_EMBEDDED {
   Address try_catch_handler_address_;
 };
 
+#if defined(V8_TARGET_ARCH_ARM) || defined(V8_TARGET_ARCH_MIPS)
+
+#define ISOLATE_PLATFORM_INIT_LIST(V)                                          \
+  /* VirtualFrame::SpilledScope state */                                       \
+  V(bool, is_virtual_frame_in_spilled_scope, false)                            \
+  /* CodeGenerator::EmitNamedStore state */                                    \
+  V(int, inlined_write_barrier_size, -1)
+
+#if !defined(__arm__) && !defined(__mips__)
+class HashMap;
+#endif
+
+#else
+
+#define ISOLATE_PLATFORM_INIT_LIST(V)
+
+#endif
 
 #ifdef ENABLE_DEBUGGER_SUPPORT
 
@@ -318,6 +333,8 @@ class ThreadLocalTop BASE_EMBEDDED {
 typedef List<HeapObject*, PreallocatedStorage> DebugObjectCache;
 
 #define ISOLATE_INIT_LIST(V)                                                   \
+  /* AssertNoZoneAllocation state. */                                          \
+  V(bool, zone_allow_allocation, true)                                         \
   /* SerializerDeserializer state. */                                          \
   V(int, serialize_partial_snapshot_cache_length, 0)                           \
   /* Assembler state. */                                                       \
@@ -352,6 +369,7 @@ typedef List<HeapObject*, PreallocatedStorage> DebugObjectCache;
   V(uint64_t, enabled_cpu_features, 0)                                         \
   V(CpuProfiler*, cpu_profiler, NULL)                                          \
   V(HeapProfiler*, heap_profiler, NULL)                                        \
+  ISOLATE_PLATFORM_INIT_LIST(V)                                                \
   ISOLATE_DEBUGGER_INIT_LIST(V)
 
 class Isolate {
@@ -497,8 +515,6 @@ class Isolate {
   static Thread::LocalStorageKey thread_id_key() {
     return thread_id_key_;
   }
-
-  static Thread::LocalStorageKey per_isolate_thread_data_key();
 
   // If a client attempts to create a Locker without specifying an isolate,
   // we assume that the client is using legacy behavior. Set up the current
@@ -927,7 +943,6 @@ class Isolate {
   }
 #endif
 
-  inline bool IsDebuggerActive();
   inline bool DebuggerHasBreakPoints();
 
 #ifdef DEBUG
@@ -1021,22 +1036,8 @@ class Isolate {
     return OS::TimeCurrentMillis() - time_millis_at_init_;
   }
 
-  DateCache* date_cache() {
-    return date_cache_;
-  }
-
-  void set_date_cache(DateCache* date_cache) {
-    if (date_cache != date_cache_) {
-      delete date_cache_;
-    }
-    date_cache_ = date_cache;
-  }
-
  private:
   Isolate();
-
-  friend struct GlobalState;
-  friend struct InitializeGlobalState;
 
   // The per-process lock should be acquired before the ThreadDataTable is
   // modified.
@@ -1111,7 +1112,7 @@ class Isolate {
   // If one does not yet exist, allocate a new one.
   PerIsolateThreadData* FindOrAllocatePerThreadDataForThisThread();
 
-  // PreInits and returns a default isolate. Needed when a new thread tries
+// PreInits and returns a default isolate. Needed when a new thread tries
   // to create a Locker for the first time (the lock itself is in the isolate).
   static Isolate* GetDefaultIsolateForLocking();
 
@@ -1202,9 +1203,6 @@ class Isolate {
   unibrow::Mapping<unibrow::Ecma262Canonicalize>
       regexp_macro_assembler_canonicalize_;
   RegExpStack* regexp_stack_;
-
-  DateCache* date_cache_;
-
   unibrow::Mapping<unibrow::Ecma262Canonicalize> interp_canonicalize_mapping_;
   void* embedder_data_;
 

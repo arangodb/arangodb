@@ -235,9 +235,9 @@ Address RelocInfo::target_address_address() {
 
 int RelocInfo::target_address_size() {
   if (IsCodedSpecially()) {
-    return Assembler::kSpecialTargetSize;
+    return Assembler::kCallTargetSize;
   } else {
-    return kPointerSize;
+    return Assembler::kExternalTargetSize;
   }
 }
 
