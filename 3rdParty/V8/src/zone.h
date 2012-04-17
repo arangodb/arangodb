@@ -30,7 +30,6 @@
 
 #include "allocation.h"
 #include "checks.h"
-#include "hashmap.h"
 #include "globals.h"
 #include "list.h"
 #include "splay-tree.h"
@@ -164,6 +163,15 @@ class ZoneObject {
 };
 
 
+class AssertNoZoneAllocation {
+ public:
+  inline AssertNoZoneAllocation();
+  inline ~AssertNoZoneAllocation();
+ private:
+  bool prev_;
+};
+
+
 // The ZoneListAllocationPolicy is used to specialize the GenericList
 // implementation to allocate ZoneLists and their elements in the
 // Zone.
@@ -239,8 +247,6 @@ class ZoneSplayTree: public SplayTree<Config, ZoneListAllocationPolicy> {
   ~ZoneSplayTree();
 };
 
-
-typedef TemplateHashMapImpl<ZoneListAllocationPolicy> ZoneHashMap;
 
 } }  // namespace v8::internal
 

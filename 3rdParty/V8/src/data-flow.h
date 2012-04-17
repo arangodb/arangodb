@@ -1,4 +1,4 @@
-// Copyright 2012 the V8 project authors. All rights reserved.
+// Copyright 2011 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -85,18 +85,18 @@ class BitVector: public ZoneObject {
     friend class BitVector;
   };
 
-  BitVector(int length, Zone* zone)
+  explicit BitVector(int length)
       : length_(length),
         data_length_(SizeFor(length)),
-        data_(zone->NewArray<uint32_t>(data_length_)) {
+        data_(ZONE->NewArray<uint32_t>(data_length_)) {
     ASSERT(length > 0);
     Clear();
   }
 
-  BitVector(const BitVector& other, Zone* zone)
+  BitVector(const BitVector& other)
       : length_(other.length()),
         data_length_(SizeFor(length_)),
-        data_(zone->NewArray<uint32_t>(data_length_)) {
+        data_(ZONE->NewArray<uint32_t>(data_length_)) {
     CopyFrom(other);
   }
 

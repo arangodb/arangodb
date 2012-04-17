@@ -34,7 +34,6 @@ load('raytrace.js');
 load('earley-boyer.js');
 load('regexp.js');
 load('splay.js');
-load('navier-stokes.js');
 
 var success = true;
 

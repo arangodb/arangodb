@@ -42,7 +42,19 @@ generator_default_variables = {
     'SHARED_INTERMEDIATE_DIR': '$(OutDir)/obj/global_intermediate',
     'OS': 'win',
     'PRODUCT_DIR': '$(OutDir)',
-    'LIB_DIR': '$(OutDir)\\lib',
+
+    # TODO(jeanluc) The way we currently generate libraries makes Visual
+    # Studio 2010 unhappy.  We get a lot of warnings like:
+    #   warning MSB8012: TargetPath(...\Debug\gles2_c_lib.lib) does not match
+    #   the Library's OutputFile property value (...\Debug\lib\gles2_c_lib.lib).
+    #   This may cause your project to build incorrectly. To correct this,
+    #   please make sure that $(OutDir), $(TargetName) and $(TargetExt) property
+    #   values match the value specified in %(Lib.OutputFile).
+    # Despite the warnings, this compile correctly.  It would be nice to get rid
+    # of the warnings.
+
+    # TODO(jeanluc)  I had:  'LIB_DIR': '$(OutDir)lib',
+    'LIB_DIR': '$(OutDir)/lib',
     'RULE_INPUT_ROOT': '$(InputName)',
     'RULE_INPUT_DIRNAME': '$(InputDir)',
     'RULE_INPUT_EXT': '$(InputExt)',
@@ -821,20 +833,6 @@ def _GetGuidOfProject(proj_path, spec):
   return guid
 
 
-def _GetMsbuildToolsetOfProject(proj_path, spec):
-  """Get the platform toolset for the project.
-
-  Arguments:
-    proj_path: Path of the vcproj or vcxproj file to generate.
-    spec: The target dictionary containing the properties of the target.
-  Returns:
-    the platform toolset string or None.
-  """
-  # Pluck out the default configuration.
-  default_config = _GetDefaultConfiguration(spec)
-  return default_config.get('msbuild_toolset')
-
-
 def _GenerateProject(project, options, version, generator_flags):
   """Generates a vcproj file.
 
@@ -1123,6 +1121,9 @@ def _GetOutputFilePathAndTool(spec):
       'executable': ('VCLinkerTool', 'Link', '$(OutDir)\\', '.exe'),
       'shared_library': ('VCLinkerTool', 'Link', '$(OutDir)\\', '.dll'),
       'loadable_module': ('VCLinkerTool', 'Link', '$(OutDir)\\', '.dll'),
+      # TODO(jeanluc) If we want to avoid the MSB8012 warnings in
+      # VisualStudio 2010, we will have to change the value of $(OutDir)
+      # to contain the \lib suffix, rather than doing it as below.
       'static_library': ('VCLibrarianTool', 'Lib', '$(OutDir)\\lib\\', '.lib'),
   }
   output_file_props = output_file_map.get(spec['type'])
@@ -1236,6 +1237,10 @@ def _GetMSVSAttributes(spec, config, config_type):
   prepared_attrs['ConfigurationType'] = config_type
   output_dir = prepared_attrs.get('OutputDirectory',
                                   '$(SolutionDir)$(ConfigurationName)')
+  # TODO(jeanluc) If we want to avoid the MSB8012 warning, we should
+  # add code like the following to place libraries in their own directory.
+  # if config_type == '4':
+  #   output_dir = spec.get('product_dir', output_dir + '\\lib')
   prepared_attrs['OutputDirectory'] = output_dir
   if 'IntermediateDirectory' not in prepared_attrs:
     intermediate = '$(ConfigurationName)\\obj\\$(ProjectName)'
@@ -1633,9 +1638,6 @@ def _CreateProjectObjects(target_list, target_dicts, options, msvs_version):
         build_file=build_file,
         config_platform_overrides=overrides,
         fixpath_prefix=fixpath_prefix)
-    # Set project toolset if any (MS build only)
-    if msvs_version.UsesVcxproj():
-      obj.set_msbuild_toolset(_GetMsbuildToolsetOfProject(proj_path, spec))
     projects[qualified_target] = obj
   # Set all the dependencies
   for project in projects.values():
@@ -2380,6 +2382,7 @@ def _GetMSBuildGlobalProperties(spec, guid, gyp_file_name):
        ['ProjectGuid', guid],
        ['Keyword', 'Win32Proj'],
        ['RootNamespace', namespace],
+       ['TargetName', target_name],
       ]
   ]
 
@@ -2398,66 +2401,24 @@ def _GetMSBuildConfigurationDetails(spec, build_file):
   return _GetMSBuildPropertyGroup(spec, 'Configuration', properties)
 
 
-def _GetMSBuildLocalProperties(msbuild_toolset):
-  # Currently the only local property we support is PlatformToolset
-  properties = {}
-  if msbuild_toolset:
-    properties = [
-        ['PropertyGroup', {'Label': 'Locals'},
-          ['PlatformToolset', msbuild_toolset],
-        ]
-      ]
-  return properties
-
-
 def _GetMSBuildPropertySheets(configurations):
   user_props = r'$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props'
-  additional_props = {}
-  props_specified = False
-  for name, settings in sorted(configurations.iteritems()):
-    configuration = _GetConfigurationCondition(name, settings)
-    if settings.has_key('msbuild_props'):
-      additional_props[configuration] = _FixPaths(settings['msbuild_props'])
-      props_specified = True
-    else:
-     additional_props[configuration] = ''
-
-  if not props_specified:
-    return [
-        ['ImportGroup',
-         {'Label': 'PropertySheets'},
-         ['Import',
-          {'Project': user_props,
-           'Condition': "exists('%s')" % user_props,
-           'Label': 'LocalAppDataPlatform'
-          }
-         ]
-        ]
-    ]
-  else:
-    sheets = []
-    for condition, props in additional_props.iteritems():
-      import_group = [
-        'ImportGroup',
-        {'Label': 'PropertySheets',
-         'Condition': condition
-        },
-        ['Import',
-         {'Project': user_props,
-          'Condition': "exists('%s')" % user_props,
-          'Label': 'LocalAppDataPlatform'
-         }
-        ]
+  return [
+      ['ImportGroup',
+       {'Label': 'PropertySheets'},
+       ['Import',
+        {'Project': user_props,
+         'Condition': "exists('%s')" % user_props,
+         'Label': 'LocalAppDataPlatform'
+        }
+       ]
       ]
-      for props_file in props:
-        import_group.append(['Import', {'Project':props_file}])
-      sheets.append(import_group)
-    return sheets
-
-def _ConvertMSVSBuildAttributes(spec, config, build_file):
+    ]
 
 
-
+def _GetMSBuildAttributes(spec, config, build_file):
+  # Use the MSVS attributes and convert them.  In the future, we may want to
+  # support Gyp files specifying 'msbuild_configuration_attributes' directly.
   config_type = _GetMSVSConfigurationType(spec, build_file)
   msvs_attributes = _GetMSVSAttributes(spec, config, config_type)
   msbuild_attributes = {}
@@ -2468,74 +2429,19 @@ def _ConvertMSVSBuildAttributes(spec, config, build_file):
         directory += '\\'
       msbuild_attributes[a] = directory
     elif a == 'CharacterSet':
-      msbuild_attributes[a] = _ConvertMSVSCharacterSet(msvs_attributes[a])
+      msbuild_attributes[a] = {
+          '0': 'MultiByte',
+          '1': 'Unicode'
+          }[msvs_attributes[a]]
     elif a == 'ConfigurationType':
-      msbuild_attributes[a] = _ConvertMSVSConfigurationType(msvs_attributes[a])
+      msbuild_attributes[a] = {
+          '1': 'Application',
+          '2': 'DynamicLibrary',
+          '4': 'StaticLibrary',
+          '10': 'Utility'
+          }[msvs_attributes[a]]
     else:
       print 'Warning: Do not know how to convert MSVS attribute ' + a
-  return msbuild_attributes
-
-
-def _ConvertMSVSCharacterSet(char_set):
-  if char_set.isdigit():
-    char_set = {
-        '0': 'MultiByte',
-        '1': 'Unicode',
-        '2': 'MultiByte',
-    }[char_set]
-  return char_set
-
-
-def _ConvertMSVSConfigurationType(config_type):
-  if config_type.isdigit():
-    config_type = {
-        '1': 'Application',
-        '2': 'DynamicLibrary',
-        '4': 'StaticLibrary',
-        '10': 'Utility'
-    }[config_type]
-  return config_type
-
-
-def _GetMSBuildAttributes(spec, config, build_file):
-  if 'msbuild_configuration_attributes' not in config:
-    msbuild_attributes = _ConvertMSVSBuildAttributes(spec, config, build_file)
-
-  else:
-    config_type = _GetMSVSConfigurationType(spec, build_file)
-    config_type = _ConvertMSVSConfigurationType(config_type)
-    msbuild_attributes = config.get('msbuild_configuration_attributes', {})
-    msbuild_attributes['ConfigurationType'] = config_type
-    output_dir = msbuild_attributes.get('OutputDirectory',
-                                      '$(SolutionDir)$(Configuration)\\')
-    msbuild_attributes['OutputDirectory'] = output_dir
-    if 'IntermediateDirectory' not in msbuild_attributes:
-      intermediate = '$(Configuration)\\'
-      msbuild_attributes['IntermediateDirectory'] = intermediate
-    if 'CharacterSet' in msbuild_attributes:
-      msbuild_attributes['CharacterSet'] = _ConvertMSVSCharacterSet(
-          msbuild_attributes['CharacterSet'])
-  if 'TargetName' not in msbuild_attributes:
-    prefix = spec.get('product_prefix', '')
-    product_name = spec.get('product_name', '$(ProjectName)')
-    target_name = prefix + product_name
-    msbuild_attributes['TargetName'] = target_name
-
-  # Make sure that 'TargetPath' matches 'Lib.OutputFile' or 'Link.OutputFile'
-  # (depending on the tool used) to avoid MSB8012 warning.
-  msbuild_tool_map = {
-      'executable': 'Link',
-      'shared_library': 'Link',
-      'loadable_module': 'Link',
-      'static_library': 'Lib',
-  }
-  msbuild_tool = msbuild_tool_map.get(spec['type'])
-  if msbuild_tool:
-    msbuild_settings = config['finalized_msbuild_settings']
-    out_file = msbuild_settings[msbuild_tool].get('OutputFile')
-    if out_file:
-      msbuild_attributes['TargetPath'] = out_file
-
   return msbuild_attributes
 
 
@@ -2564,13 +2470,6 @@ def _GetMSBuildConfigurationGlobalProperties(spec, configurations, build_file):
                             attributes['IntermediateDirectory'])
     _AddConditionalProperty(properties, condition, 'OutDir',
                             attributes['OutputDirectory'])
-    _AddConditionalProperty(properties, condition, 'TargetName',
-                            attributes['TargetName'])
-
-    if attributes.get('TargetPath'):
-      _AddConditionalProperty(properties, condition, 'TargetPath',
-                              attributes['TargetPath'])
-
     if new_paths:
       _AddConditionalProperty(properties, condition, 'ExecutablePath',
                               new_paths)
@@ -2935,7 +2834,6 @@ def _GenerateMSBuildProject(project, options, version, generator_flags):
   content += _GetMSBuildGlobalProperties(spec, project.guid, project_file_name)
   content += import_default_section
   content += _GetMSBuildConfigurationDetails(spec, project.build_file)
-  content += _GetMSBuildLocalProperties(project.msbuild_toolset)
   content += import_cpp_props_section
   content += _GetMSBuildExtensions(props_files_of_rules)
   content += _GetMSBuildPropertySheets(configurations)

@@ -1,4 +1,4 @@
-// Copyright 2012 the V8 project authors. All rights reserved.
+// Copyright 2006-2009 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -28,8 +28,8 @@
 
 // This file relies on the fact that the following declaration has been made
 // in runtime.js:
-// var $String = global.String;
-// var $NaN = 0/0;
+// const $String = global.String;
+// const $NaN = 0/0;
 
 
 // Set the String function and constructor.
@@ -554,14 +554,14 @@ function StringSlice(start, end) {
     }
   } else {
     if (start_i > s_len) {
-      return '';
+      start_i = s_len;
     }
   }
 
   if (end_i < 0) {
     end_i += s_len;
     if (end_i < 0) {
-      return '';
+      end_i = 0;
     }
   } else {
     if (end_i > s_len) {
@@ -569,11 +569,12 @@ function StringSlice(start, end) {
     }
   }
 
-  if (end_i <= start_i) {
-    return '';
+  var num_c = end_i - start_i;
+  if (num_c < 0) {
+    num_c = 0;
   }
 
-  return SubString(s, start_i, end_i);
+  return SubString(s, start_i, start_i + num_c);
 }
 
 
@@ -587,8 +588,11 @@ function StringSplit(separator, limit) {
   limit = (IS_UNDEFINED(limit)) ? 0xffffffff : TO_UINT32(limit);
 
   // ECMA-262 says that if separator is undefined, the result should
-  // be an array of size 1 containing the entire string.
-  if (IS_UNDEFINED(separator)) {
+  // be an array of size 1 containing the entire string.  SpiderMonkey
+  // and KJS have this behavior only when no separator is given.  If
+  // undefined is explicitly given, they convert it to a string and
+  // use that.  We do as SpiderMonkey and KJS.
+  if (%_ArgumentsLength() === 0) {
     return [subject];
   }
 
@@ -610,12 +614,6 @@ function StringSplit(separator, limit) {
 
   if (limit === 0) return [];
 
-  // Separator is a regular expression.
-  return StringSplitOnRegExp(subject, separator, limit, length);
-}
-
-
-function StringSplitOnRegExp(subject, separator, limit, length) {
   %_Log('regexp', 'regexp-split,%0S,%1r', [subject, separator]);
 
   if (length === 0) {

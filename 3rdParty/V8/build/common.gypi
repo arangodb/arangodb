@@ -62,9 +62,6 @@
     # Similar to the ARM hard float ABI but on MIPS.
     'v8_use_mips_abi_hardfloat%': 'true',
 
-    # Default arch variant for MIPS.
-    'mips_arch_variant%': 'mips32r2',
-
     'v8_enable_debugger_support%': 1,
 
     'v8_enable_disassembler%': 0,
@@ -142,10 +139,8 @@
                   'USE_EABI_HARDFLOAT=1',
                   'CAN_USE_VFP_INSTRUCTIONS',
                 ],
-                'target_conditions': [
-                  ['_toolset=="target"', {
-                    'cflags': ['-mfloat-abi=hard',],
-                  }],
+                'cflags': [
+                  '-mfloat-abi=hard',
                 ],
               }, {
                 'defines': [
@@ -174,31 +169,6 @@
               'V8_TARGET_ARCH_MIPS',
             ],
             'conditions': [
-              [ 'target_arch=="mips"', {
-                'target_conditions': [
-                  ['_toolset=="target"', {
-                    'cflags': ['-EL'],
-                    'ldflags': ['-EL'],
-                    'conditions': [
-                      [ 'v8_use_mips_abi_hardfloat=="true"', {
-                        'cflags': ['-mhard-float'],
-                        'ldflags': ['-mhard-float'],
-                      }, {
-                        'cflags': ['-msoft-float'],
-                        'ldflags': ['-msoft-float'],
-                      }],
-                      ['mips_arch_variant=="mips32r2"', {
-                        'cflags': ['-mips32r2', '-Wa,-mips32r2'],
-                      }],
-                      ['mips_arch_variant=="loongson"', {
-                        'cflags': ['-mips3', '-Wa,-mips3'],
-                      }, {
-                        'cflags': ['-mips32', '-Wa,-mips32'],
-                      }],
-                    ],
-                  }],
-                ],
-              }],
               [ 'v8_can_use_fpu_instructions=="true"', {
                 'defines': [
                   'CAN_USE_FPU_INSTRUCTIONS',
@@ -213,12 +183,6 @@
                 'defines': [
                   '__mips_soft_float=1'
                 ],
-              }],
-              ['mips_arch_variant=="mips32r2"', {
-                'defines': ['_MIPS_ARCH_MIPS32R2',],
-              }],
-              ['mips_arch_variant=="loongson"', {
-                'defines': ['_MIPS_ARCH_LOONGSON',],
               }],
               # The MIPS assembler assumes the host is 32 bits,
               # so force building 32-bit host tools.
@@ -236,19 +200,6 @@
             'defines': [
               'V8_TARGET_ARCH_X64',
             ],
-          }],
-        ],
-      }, {  # Section for OS=="mac".
-        'conditions': [
-          ['target_arch=="ia32"', {
-            'xcode_settings': {
-              'ARCHS': ['i386'],
-            }
-          }],
-          ['target_arch=="x64"', {
-            'xcode_settings': {
-              'ARCHS': ['x86_64'],
-            }
           }],
         ],
       }],
@@ -280,13 +231,9 @@
       ['OS=="linux" or OS=="freebsd" or OS=="openbsd" or OS=="solaris" \
          or OS=="netbsd"', {
         'conditions': [
-          [ 'v8_target_arch!="x64"', {
-            # Pass -m32 to the compiler iff it understands the flag.
-            'variables': {
-              'm32flag': '<!((echo | $(echo ${CXX:-$(which g++)}) -m32 -E - > /dev/null 2>&1) && echo -n "-m32" || true)',
-            },
-            'cflags': [ '<(m32flag)' ],
-            'ldflags': [ '<(m32flag)' ],
+          [ 'target_arch=="ia32"', {
+            'cflags': [ '-m32' ],
+            'ldflags': [ '-m32' ],
           }],
           [ 'v8_no_strict_aliasing==1', {
             'cflags': [ '-fno-strict-aliasing' ],
@@ -334,7 +281,7 @@
           }],
           ['OS=="linux" or OS=="freebsd" or OS=="openbsd" or OS=="netbsd"', {
             'cflags': [ '-Wall', '<(werror)', '-W', '-Wno-unused-parameter',
-                        '-Wnon-virtual-dtor', '-Woverloaded-virtual' ],
+                        '-Wnon-virtual-dtor' ],
           }],
         ],
       },  # Debug
@@ -350,7 +297,7 @@
               '-fdata-sections',
               '-ffunction-sections',
               '-fomit-frame-pointer',
-              '-O3',
+              '-O2',
             ],
             'conditions': [
               [ 'gcc_version==44 and clang==0', {
@@ -369,7 +316,7 @@
           }],
           ['OS=="mac"', {
             'xcode_settings': {
-              'GCC_OPTIMIZATION_LEVEL': '3',  # -O3
+              'GCC_OPTIMIZATION_LEVEL': '2',  # -O2
 
               # -fstrict-aliasing.  Mainline gcc
               # enables this at -O2 and above,

@@ -58,7 +58,6 @@
 
 #include "v8.h"
 
-#include "platform-posix.h"
 #include "platform.h"
 #include "vm-state-inl.h"
 
@@ -99,13 +98,6 @@ void OS::SetUp() {
   uint64_t seed = Ticks() ^ (getpid() << 16);
   srandom(static_cast<unsigned int>(seed));
   limit_mutex = CreateMutex();
-}
-
-
-void OS::PostSetUp() {
-  // Math functions depend on CPU features therefore they are initialized after
-  // CPU.
-  MathSetup();
 }
 
 
@@ -437,12 +429,6 @@ bool VirtualMemory::Commit(void* address, size_t size, bool is_executable) {
 }
 
 
-bool VirtualMemory::Guard(void* address) {
-  OS::Guard(address, OS::CommitPageSize());
-  return true;
-}
-
-
 bool VirtualMemory::CommitRegion(void* address,
                                  size_t size,
                                  bool is_executable) {
@@ -754,7 +740,7 @@ class SamplerThread : public Thread {
         interval_(interval) {}
 
   static void AddActiveSampler(Sampler* sampler) {
-    ScopedLock lock(mutex_.Pointer());
+    ScopedLock lock(mutex_);
     SamplerRegistry::AddActiveSampler(sampler);
     if (instance_ == NULL) {
       instance_ = new SamplerThread(sampler->interval());
@@ -765,7 +751,7 @@ class SamplerThread : public Thread {
   }
 
   static void RemoveActiveSampler(Sampler* sampler) {
-    ScopedLock lock(mutex_.Pointer());
+    ScopedLock lock(mutex_);
     SamplerRegistry::RemoveActiveSampler(sampler);
     if (SamplerRegistry::GetState() == SamplerRegistry::HAS_NO_SAMPLERS) {
       RuntimeProfiler::StopRuntimeProfilerThreadBeforeShutdown(instance_);
@@ -862,7 +848,7 @@ class SamplerThread : public Thread {
   RuntimeProfilerRateLimiter rate_limiter_;
 
   // Protects the process wide state below.
-  static LazyMutex mutex_;
+  static Mutex* mutex_;
   static SamplerThread* instance_;
 
  private:
@@ -872,7 +858,7 @@ class SamplerThread : public Thread {
 #undef REGISTER_FIELD
 
 
-LazyMutex SamplerThread::mutex_ = LAZY_MUTEX_INITIALIZER;
+Mutex* SamplerThread::mutex_ = OS::CreateMutex();
 SamplerThread* SamplerThread::instance_ = NULL;
 
 

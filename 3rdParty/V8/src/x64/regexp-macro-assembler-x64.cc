@@ -564,7 +564,7 @@ void RegExpMacroAssemblerX64::CheckNotCharacterAfterMinusAnd(
     uc16 minus,
     uc16 mask,
     Label* on_not_equal) {
-  ASSERT(minus < String::kMaxUtf16CodeUnit);
+  ASSERT(minus < String::kMaxUC16CharCode);
   __ lea(rax, Operand(current_character(), -minus));
   __ and_(rax, Immediate(mask));
   __ cmpl(rax, Immediate(c));
@@ -1192,7 +1192,7 @@ int RegExpMacroAssemblerX64::CheckStackGuardState(Address* return_address,
   ASSERT(*return_address <=
       re_code->instruction_start() + re_code->instruction_size());
 
-  MaybeObject* result = Execution::HandleStackGuardInterrupt(isolate);
+  MaybeObject* result = Execution::HandleStackGuardInterrupt();
 
   if (*code_handle != re_code) {  // Return address no longer valid
     intptr_t delta = code_handle->address() - re_code->address();
