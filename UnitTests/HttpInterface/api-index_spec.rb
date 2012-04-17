@@ -733,7 +733,7 @@ describe AvocadoDB do
 	iid = doc.parsed_response['id']
 
 	cmd = api + "/#{@cid}/#{iid}"
-        doc = AvocadoDB.log_delete("#{prefix}-delete-unique-skiplist", cmd, :body => body)
+        doc = AvocadoDB.log_delete("#{prefix}-delete-unique-skiplist", cmd)
 	
 	doc.code.should eq(200)
 	doc.headers['content-type'].should eq("application/json")
