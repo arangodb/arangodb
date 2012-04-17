@@ -10,6 +10,7 @@ import os
 import re
 import shutil
 import stat
+import subprocess
 import sys
 import tempfile
 
@@ -410,7 +411,87 @@ class TestGypMake(TestGypBase):
     return self.workpath(*result)
 
 
-class TestGypNinja(TestGypBase):
+def FindVisualStudioInstallation():
+  """Returns appropriate values for .build_tool and .uses_msbuild fields
+  of TestGypBase for Visual Studio.
+
+  We use the value specified by GYP_MSVS_VERSION.  If not specified, we
+  search %PATH% and %PATHEXT% for a devenv.{exe,bat,...} executable.
+  Failing that, we search for likely deployment paths.
+  """
+  possible_roots = ['C:\\Program Files (x86)', 'C:\\Program Files',
+                    'E:\\Program Files (x86)', 'E:\\Program Files']
+  possible_paths = {
+      '2010': r'Microsoft Visual Studio 10.0\Common7\IDE\devenv.com',
+      '2008': r'Microsoft Visual Studio 9.0\Common7\IDE\devenv.com',
+      '2005': r'Microsoft Visual Studio 8\Common7\IDE\devenv.com'}
+  msvs_version = os.environ.get('GYP_MSVS_VERSION', 'auto')
+  build_tool = None
+  if msvs_version in possible_paths:
+    # Check that the path to the specified GYP_MSVS_VERSION exists.
+    path = possible_paths[msvs_version]
+    for r in possible_roots:
+      bt = os.path.join(r, path)
+      if os.path.exists(bt):
+        build_tool = bt
+        uses_msbuild = msvs_version >= '2010'
+        return build_tool, uses_msbuild
+    else:
+      print ('Warning: Environment variable GYP_MSVS_VERSION specifies "%s" '
+              'but corresponding "%s" was not found.' % (msvs_version, path))
+  if build_tool:
+    # We found 'devenv' on the path, use that and try to guess the version.
+    for version, path in possible_paths.iteritems():
+      if build_tool.find(path) >= 0:
+        uses_msbuild = version >= '2010'
+        return build_tool, uses_msbuild
+    else:
+      # If not, assume not MSBuild.
+      uses_msbuild = False
+    return build_tool, uses_msbuild
+  # Neither GYP_MSVS_VERSION nor the path help us out.  Iterate through
+  # the choices looking for a match.
+  for version, path in possible_paths.iteritems():
+    for r in possible_roots:
+      bt = os.path.join(r, path)
+      if os.path.exists(bt):
+        build_tool = bt
+        uses_msbuild = msvs_version >= '2010'
+        return build_tool, uses_msbuild
+  print 'Error: could not find devenv'
+  sys.exit(1)
+
+class TestGypOnMSToolchain(TestGypBase):
+  """
+  Common subclass for testing generators that target the Microsoft Visual
+  Studio toolchain (cl, link, dumpbin, etc.)
+  """
+  @staticmethod
+  def _ComputeVsvarsPath(devenv_path):
+    devenv_dir = os.path.split(devenv_path)[0]
+    vsvars_path = os.path.join(devenv_path, '../../Tools/vsvars32.bat')
+    return vsvars_path
+
+  def initialize_build_tool(self):
+    super(TestGypOnMSToolchain, self).initialize_build_tool()
+    if sys.platform in ('win32', 'cygwin'):
+      self.devenv_path, self.uses_msbuild = FindVisualStudioInstallation()
+      self.vsvars_path = TestGypOnMSToolchain._ComputeVsvarsPath(
+          self.devenv_path)
+
+  def run_dumpbin(self, *dumpbin_args):
+    """Run the dumpbin tool with the specified arguments, and capturing and
+    returning stdout."""
+    assert sys.platform in ('win32', 'cygwin')
+    cmd = os.environ.get('COMSPEC', 'cmd.exe')
+    arguments = [cmd, '/c', self.vsvars_path, '&&', 'dumpbin']
+    arguments.extend(dumpbin_args)
+    proc = subprocess.Popen(arguments, stdout=subprocess.PIPE)
+    output = proc.communicate()[0]
+    assert not proc.returncode
+    return output
+
+class TestGypNinja(TestGypOnMSToolchain):
   """
   Subclass for testing the GYP Ninja generator.
   """
@@ -418,6 +499,14 @@ class TestGypNinja(TestGypBase):
   build_tool_list = ['ninja']
   ALL = 'all'
   DEFAULT = 'all'
+
+  def initialize_build_tool(self):
+    super(TestGypNinja, self).initialize_build_tool()
+    if sys.platform == 'win32':
+      # Compiler and linker aren't in the path by default on Windows, so we
+      # make our "build tool" be set up + run ninja.
+      self.build_tool = os.environ.get('COMSPEC', 'cmd.exe')
+      self.helper_args = ['/c', self.vsvars_path, '&&', 'ninja']
 
   def run_gyp(self, gyp_file, *args, **kw):
     TestGypBase.run_gyp(self, gyp_file, *args, **kw)
@@ -432,6 +521,9 @@ class TestGypNinja(TestGypBase):
     if target is None:
       target = 'all'
     arguments.append(target)
+
+    if sys.platform == 'win32':
+      arguments = self.helper_args + arguments
 
     kw['arguments'] = arguments
     return self.run(program=self.build_tool, **kw)
@@ -457,7 +549,7 @@ class TestGypNinja(TestGypBase):
       if sys.platform != 'darwin':
         result.append('obj')
     elif type == self.SHARED_LIB:
-      if sys.platform != 'darwin':
+      if sys.platform != 'darwin' and sys.platform != 'win32':
         result.append('lib')
     subdir = kw.get('subdir')
     if subdir:
@@ -475,7 +567,7 @@ class TestGypNinja(TestGypBase):
     return result
 
 
-class TestGypMSVS(TestGypBase):
+class TestGypMSVS(TestGypOnMSToolchain):
   """
   Subclass for testing the GYP Visual Studio generator.
   """
@@ -492,53 +584,9 @@ class TestGypMSVS(TestGypBase):
   build_tool_list = [None, 'devenv.com']
 
   def initialize_build_tool(self):
-    """ Initializes the Visual Studio .build_tool and .uses_msbuild parameters.
-
-    We use the value specified by GYP_MSVS_VERSION.  If not specified, we
-    search %PATH% and %PATHEXT% for a devenv.{exe,bat,...} executable.
-    Failing that, we search for likely deployment paths.
-    """
     super(TestGypMSVS, self).initialize_build_tool()
-    possible_roots = ['C:\\Program Files (x86)', 'C:\\Program Files',
-                      'E:\\Program Files (x86)', 'E:\\Program Files']
-    possible_paths = {
-        '2010': r'Microsoft Visual Studio 10.0\Common7\IDE\devenv.com',
-        '2008': r'Microsoft Visual Studio 9.0\Common7\IDE\devenv.com',
-        '2005': r'Microsoft Visual Studio 8\Common7\IDE\devenv.com'}
-    msvs_version = os.environ.get('GYP_MSVS_VERSION', 'auto')
-    if msvs_version in possible_paths:
-      # Check that the path to the specified GYP_MSVS_VERSION exists.
-      path = possible_paths[msvs_version]
-      for r in possible_roots:
-        bt = os.path.join(r, path)
-        if os.path.exists(bt):
-          self.build_tool = bt
-          self.uses_msbuild = msvs_version >= '2010'
-          return
-      else:
-        print ('Warning: Environment variable GYP_MSVS_VERSION specifies "%s" '
-               'but corresponding "%s" was not found.' % (msvs_version, path))
-    if self.build_tool:
-      # We found 'devenv' on the path, use that and try to guess the version.
-      for version, path in possible_paths.iteritems():
-        if self.build_tool.find(path) >= 0:
-          self.uses_msbuild = version >= '2010'
-          return
-      else:
-        # If not, assume not MSBuild.
-        self.uses_msbuild = False
-      return
-    # Neither GYP_MSVS_VERSION nor the path help us out.  Iterate through
-    # the choices looking for a match.
-    for version, path in possible_paths.iteritems():
-      for r in possible_roots:
-        bt = os.path.join(r, path)
-        if os.path.exists(bt):
-          self.build_tool = bt
-          self.uses_msbuild = msvs_version >= '2010'
-          return
-    print 'Error: could not find devenv'
-    sys.exit(1)
+    self.build_tool = self.devenv_path
+
   def build(self, gyp_file, target=None, rebuild=False, **kw):
     """
     Runs a Visual Studio build using the configuration generated
