@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ "$#" -ne 1 ];  then
-  echo "usage: $0 <major>.<minor>.<pathlevel>"
+  echo "usage: $0 <major>.<minor>.<patchlevel>"
   exit 1
 fi
 
