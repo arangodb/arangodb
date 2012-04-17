@@ -1466,12 +1466,12 @@ class RegExpEngine: public AllStatic {
 
 class OffsetsVector {
  public:
-  inline OffsetsVector(int num_registers, Isolate* isolate)
+  explicit inline OffsetsVector(int num_registers)
       : offsets_vector_length_(num_registers) {
     if (offsets_vector_length_ > Isolate::kJSRegexpStaticOffsetsVectorSize) {
       vector_ = NewArray<int>(offsets_vector_length_);
     } else {
-      vector_ = isolate->jsregexp_static_offsets_vector();
+      vector_ = Isolate::Current()->jsregexp_static_offsets_vector();
     }
   }
   inline ~OffsetsVector() {

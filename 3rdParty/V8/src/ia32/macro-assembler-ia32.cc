@@ -764,7 +764,8 @@ void MacroAssembler::LeaveApiExitFrame() {
 }
 
 
-void MacroAssembler::PushTryHandler(StackHandler::Kind kind,
+void MacroAssembler::PushTryHandler(CodeLocation try_location,
+                                    HandlerType type,
                                     int handler_index) {
   // Adjust this code if not the case.
   STATIC_ASSERT(StackHandlerConstants::kSize == 5 * kPointerSize);
@@ -775,21 +776,25 @@ void MacroAssembler::PushTryHandler(StackHandler::Kind kind,
   STATIC_ASSERT(StackHandlerConstants::kFPOffset == 4 * kPointerSize);
 
   // We will build up the handler from the bottom by pushing on the stack.
-  // First push the frame pointer and context.
-  if (kind == StackHandler::JS_ENTRY) {
+  // First compute the state and push the frame pointer and context.
+  unsigned state = StackHandler::OffsetField::encode(handler_index);
+  if (try_location == IN_JAVASCRIPT) {
+    push(ebp);
+    push(esi);
+    state |= (type == TRY_CATCH_HANDLER)
+        ? StackHandler::KindField::encode(StackHandler::TRY_CATCH)
+        : StackHandler::KindField::encode(StackHandler::TRY_FINALLY);
+  } else {
+    ASSERT(try_location == IN_JS_ENTRY);
     // The frame pointer does not point to a JS frame so we save NULL for
     // ebp. We expect the code throwing an exception to check ebp before
     // dereferencing it to restore the context.
     push(Immediate(0));  // NULL frame pointer.
     push(Immediate(Smi::FromInt(0)));  // No context.
-  } else {
-    push(ebp);
-    push(esi);
+    state |= StackHandler::KindField::encode(StackHandler::ENTRY);
   }
+
   // Push the state and the code object.
-  unsigned state =
-      StackHandler::IndexField::encode(handler_index) |
-      StackHandler::KindField::encode(kind);
   push(Immediate(state));
   Push(CodeObject());
 
@@ -862,7 +867,8 @@ void MacroAssembler::Throw(Register value) {
 }
 
 
-void MacroAssembler::ThrowUncatchable(Register value) {
+void MacroAssembler::ThrowUncatchable(UncatchableExceptionType type,
+                                      Register value) {
   // Adjust this code if not the case.
   STATIC_ASSERT(StackHandlerConstants::kSize == 5 * kPointerSize);
   STATIC_ASSERT(StackHandlerConstants::kNextOffset == 0);
@@ -872,9 +878,21 @@ void MacroAssembler::ThrowUncatchable(Register value) {
   STATIC_ASSERT(StackHandlerConstants::kFPOffset == 4 * kPointerSize);
 
   // The exception is expected in eax.
-  if (!value.is(eax)) {
+  if (type == OUT_OF_MEMORY) {
+    // Set external caught exception to false.
+    ExternalReference external_caught(Isolate::kExternalCaughtExceptionAddress,
+                                      isolate());
+    mov(Operand::StaticVariable(external_caught), Immediate(false));
+
+    // Set pending exception and eax to out of memory exception.
+    ExternalReference pending_exception(Isolate::kPendingExceptionAddress,
+                                        isolate());
+    mov(eax, reinterpret_cast<int32_t>(Failure::OutOfMemoryException()));
+    mov(Operand::StaticVariable(pending_exception), eax);
+  } else if (!value.is(eax)) {
     mov(eax, value);
   }
+
   // Drop the stack pointer to the top of the top stack handler.
   ExternalReference handler_address(Isolate::kHandlerAddress, isolate());
   mov(esp, Operand::StaticVariable(handler_address));
@@ -886,7 +904,7 @@ void MacroAssembler::ThrowUncatchable(Register value) {
   mov(esp, Operand(esp, StackHandlerConstants::kNextOffset));
 
   bind(&check_kind);
-  STATIC_ASSERT(StackHandler::JS_ENTRY == 0);
+  STATIC_ASSERT(StackHandler::ENTRY == 0);
   test(Operand(esp, StackHandlerConstants::kStateOffset),
        Immediate(StackHandler::KindField::kMask));
   j(not_zero, &fetch_next);
@@ -2774,46 +2792,6 @@ void MacroAssembler::EnsureNotWhite(
   }
 
   bind(&done);
-}
-
-
-void MacroAssembler::CheckEnumCache(Label* call_runtime) {
-  Label next;
-  mov(ecx, eax);
-  bind(&next);
-
-  // Check that there are no elements.  Register ecx contains the
-  // current JS object we've reached through the prototype chain.
-  cmp(FieldOperand(ecx, JSObject::kElementsOffset),
-      isolate()->factory()->empty_fixed_array());
-  j(not_equal, call_runtime);
-
-  // Check that instance descriptors are not empty so that we can
-  // check for an enum cache.  Leave the map in ebx for the subsequent
-  // prototype load.
-  mov(ebx, FieldOperand(ecx, HeapObject::kMapOffset));
-  mov(edx, FieldOperand(ebx, Map::kInstanceDescriptorsOrBitField3Offset));
-  JumpIfSmi(edx, call_runtime);
-
-  // Check that there is an enum cache in the non-empty instance
-  // descriptors (edx).  This is the case if the next enumeration
-  // index field does not contain a smi.
-  mov(edx, FieldOperand(edx, DescriptorArray::kEnumerationIndexOffset));
-  JumpIfSmi(edx, call_runtime);
-
-  // For all objects but the receiver, check that the cache is empty.
-  Label check_prototype;
-  cmp(ecx, eax);
-  j(equal, &check_prototype, Label::kNear);
-  mov(edx, FieldOperand(edx, DescriptorArray::kEnumCacheBridgeCacheOffset));
-  cmp(edx, isolate()->factory()->empty_fixed_array());
-  j(not_equal, call_runtime);
-
-  // Load the prototype from the map and loop if non-null.
-  bind(&check_prototype);
-  mov(ecx, FieldOperand(ebx, Map::kPrototypeOffset));
-  cmp(ecx, isolate()->factory()->null_value());
-  j(not_equal, &next);
 }
 
 } }  // namespace v8::internal

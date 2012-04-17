@@ -37,22 +37,6 @@ namespace internal {
 
 #define __ ACCESS_MASM(masm)
 
-UnaryMathFunction CreateTranscendentalFunction(TranscendentalCache::Type type) {
-  switch (type) {
-    case TranscendentalCache::SIN: return &sin;
-    case TranscendentalCache::COS: return &cos;
-    case TranscendentalCache::TAN: return &tan;
-    case TranscendentalCache::LOG: return &log;
-    default: UNIMPLEMENTED();
-  }
-  return NULL;
-}
-
-
-UnaryMathFunction CreateSqrtFunction() {
-  return &sqrt;
-}
-
 // -------------------------------------------------------------------------
 // Platform-specific RuntimeCallHelper functions.
 
@@ -105,18 +89,13 @@ void ElementsTransitionGenerator::GenerateSmiOnlyToDouble(
   //  -- a3    : target map, scratch for subsequent call
   //  -- t0    : scratch (elements)
   // -----------------------------------
-  Label loop, entry, convert_hole, gc_required, only_change_map, done;
+  Label loop, entry, convert_hole, gc_required;
   bool fpu_supported = CpuFeatures::IsSupported(FPU);
+  __ push(ra);
 
   Register scratch = t6;
 
-  // Check for empty arrays, which only require a map transition and no changes
-  // to the backing store.
   __ lw(t0, FieldMemOperand(a2, JSObject::kElementsOffset));
-  __ LoadRoot(at, Heap::kEmptyFixedArrayRootIndex);
-  __ Branch(&only_change_map, eq, at, Operand(t0));
-
-  __ push(ra);
   __ lw(t1, FieldMemOperand(t0, FixedArray::kLengthOffset));
   // t0: source FixedArray
   // t1: number of elements (smi-tagged)
@@ -139,7 +118,7 @@ void ElementsTransitionGenerator::GenerateSmiOnlyToDouble(
                       t5,
                       kRAHasBeenSaved,
                       kDontSaveFPRegs,
-                      OMIT_REMEMBERED_SET,
+                      EMIT_REMEMBERED_SET,
                       OMIT_SMI_CHECK);
   // Replace receiver's backing store with newly created FixedDoubleArray.
   __ Addu(a3, t2, Operand(kHeapObjectTag));
@@ -169,18 +148,6 @@ void ElementsTransitionGenerator::GenerateSmiOnlyToDouble(
   if (!fpu_supported) __ Push(a1, a0);
 
   __ Branch(&entry);
-
-  __ bind(&only_change_map);
-  __ sw(a3, FieldMemOperand(a2, HeapObject::kMapOffset));
-  __ RecordWriteField(a2,
-                      HeapObject::kMapOffset,
-                      a3,
-                      t5,
-                      kRAHasBeenSaved,
-                      kDontSaveFPRegs,
-                      OMIT_REMEMBERED_SET,
-                      OMIT_SMI_CHECK);
-  __ Branch(&done);
 
   // Call into runtime if GC is required.
   __ bind(&gc_required);
@@ -234,7 +201,6 @@ void ElementsTransitionGenerator::GenerateSmiOnlyToDouble(
 
   if (!fpu_supported) __ Pop(a1, a0);
   __ pop(ra);
-  __ bind(&done);
 }
 
 
@@ -248,16 +214,10 @@ void ElementsTransitionGenerator::GenerateDoubleToObject(
   //  -- a3    : target map, scratch for subsequent call
   //  -- t0    : scratch (elements)
   // -----------------------------------
-  Label entry, loop, convert_hole, gc_required, only_change_map;
-
-  // Check for empty arrays, which only require a map transition and no changes
-  // to the backing store.
-  __ lw(t0, FieldMemOperand(a2, JSObject::kElementsOffset));
-  __ LoadRoot(at, Heap::kEmptyFixedArrayRootIndex);
-  __ Branch(&only_change_map, eq, at, Operand(t0));
-
+  Label entry, loop, convert_hole, gc_required;
   __ MultiPush(a0.bit() | a1.bit() | a2.bit() | a3.bit() | ra.bit());
 
+  __ lw(t0, FieldMemOperand(a2, JSObject::kElementsOffset));
   __ lw(t1, FieldMemOperand(t0, FixedArray::kLengthOffset));
   // t0: source FixedArray
   // t1: number of elements (smi-tagged)
@@ -329,6 +289,16 @@ void ElementsTransitionGenerator::GenerateDoubleToObject(
   __ Branch(&loop, lt, a3, Operand(t1));
 
   __ MultiPop(a2.bit() | a3.bit() | a0.bit() | a1.bit());
+  // Update receiver's map.
+  __ sw(a3, FieldMemOperand(a2, HeapObject::kMapOffset));
+  __ RecordWriteField(a2,
+                      HeapObject::kMapOffset,
+                      a3,
+                      t5,
+                      kRAHasBeenSaved,
+                      kDontSaveFPRegs,
+                      EMIT_REMEMBERED_SET,
+                      OMIT_SMI_CHECK);
   // Replace receiver's backing store with newly created and filled FixedArray.
   __ sw(t2, FieldMemOperand(a2, JSObject::kElementsOffset));
   __ RecordWriteField(a2,
@@ -340,18 +310,6 @@ void ElementsTransitionGenerator::GenerateDoubleToObject(
                       EMIT_REMEMBERED_SET,
                       OMIT_SMI_CHECK);
   __ pop(ra);
-
-  __ bind(&only_change_map);
-  // Update receiver's map.
-  __ sw(a3, FieldMemOperand(a2, HeapObject::kMapOffset));
-  __ RecordWriteField(a2,
-                      HeapObject::kMapOffset,
-                      a3,
-                      t5,
-                      kRAHasNotBeenSaved,
-                      kDontSaveFPRegs,
-                      OMIT_REMEMBERED_SET,
-                      OMIT_SMI_CHECK);
 }
 
 
