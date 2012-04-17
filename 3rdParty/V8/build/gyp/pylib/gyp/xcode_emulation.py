@@ -33,6 +33,9 @@ class XcodeSettings(object):
     # Used by _AdjustLibrary to match .a and .dylib entries in libraries.
     self.library_re = re.compile(r'^lib([^/]+)\.(a|dylib)$')
 
+    # Computed lazily by _GetSdkBaseDir().
+    self.sdk_base_dir = None
+
   def _Settings(self):
     assert self.configname
     return self.xcode_settings[self.configname]
@@ -215,11 +218,33 @@ class XcodeSettings(object):
     else:
       return self._GetStandaloneBinaryPath()
 
+  def _GetSdkBaseDir(self):
+    """Returns the root of the 'Developer' directory. On Xcode 4.2 and prior,
+    this is usually just /Developer. Xcode 4.3 moved that folder into the Xcode
+    bundle."""
+    if not self.sdk_base_dir:
+      import subprocess
+      job = subprocess.Popen(['xcode-select', '-print-path'],
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.STDOUT)
+      out, err = job.communicate()
+      if job.returncode != 0:
+        print out
+        raise Exception('Error %d running xcode-select' % job.returncode)
+      # The Developer folder moved in Xcode 4.3.
+      xcode43_sdk_path = os.path.join(
+          out.rstrip(), 'Platforms/MacOSX.platform/Developer/SDKs')
+      if os.path.isdir(xcode43_sdk_path):
+        self.sdk_base_dir = xcode43_sdk_path
+      else:
+        self.sdk_base_dir = os.path.join(out.rstrip(), 'SDKs')
+    return self.sdk_base_dir
+
   def _SdkPath(self):
     sdk_root = self.GetPerTargetSetting('SDKROOT', default='macosx10.5')
     if sdk_root.startswith('macosx'):
       sdk_root = 'MacOSX' + sdk_root[len('macosx'):]
-    return '/Developer/SDKs/%s.sdk' % sdk_root
+    return os.path.join(self._GetSdkBaseDir(), '%s.sdk' % sdk_root)
 
   def GetCflags(self, configname):
     """Returns flags that need to be added to .c, .cc, .m, and .mm
@@ -233,6 +258,9 @@ class XcodeSettings(object):
     sdk_root = self._SdkPath()
     if 'SDKROOT' in self._Settings():
       cflags.append('-isysroot %s' % sdk_root)
+
+    if self._Test('GCC_CHAR_IS_UNSIGNED_CHAR', 'YES', default='NO'):
+      cflags.append('-funsigned-char')
 
     if self._Test('GCC_CW_ASM_SYNTAX', 'YES', default='YES'):
       cflags.append('-fasm-blocks')
@@ -274,7 +302,6 @@ class XcodeSettings(object):
     self._Appendf(cflags, 'MACOSX_DEPLOYMENT_TARGET', '-mmacosx-version-min=%s')
 
     # TODO:
-    self._WarnUnimplemented('ARCHS')
     if self._Test('COPY_PHASE_STRIP', 'YES', default='NO'):
       self._WarnUnimplemented('COPY_PHASE_STRIP')
     self._WarnUnimplemented('GCC_DEBUGGING_SYMBOLS')
@@ -285,10 +312,23 @@ class XcodeSettings(object):
     self._WarnUnimplemented('MACH_O_TYPE')
     self._WarnUnimplemented('PRODUCT_TYPE')
 
-    # TODO: Do not hardcode arch. Supporting fat binaries will be annoying.
-    # Even if self._Settings()['ARCHS'] contains only a single arch, dependent
-    # targets might have been built with a different single arch.
-    cflags.append('-arch i386')
+    archs = self._Settings().get('ARCHS', ['i386'])
+    if len(archs) != 1:
+      # TODO: Supporting fat binaries will be annoying.
+      self._WarnUnimplemented('ARCHS')
+      archs = ['i386']
+    cflags.append('-arch ' + archs[0])
+
+    if archs[0] in ('i386', 'x86_64'):
+      if self._Test('GCC_ENABLE_SSE3_EXTENSIONS', 'YES', default='NO'):
+        cflags.append('-msse3')
+      if self._Test('GCC_ENABLE_SUPPLEMENTAL_SSE3_INSTRUCTIONS', 'YES',
+                    default='NO'):
+        cflags.append('-mssse3')  # Note 3rd 's'.
+      if self._Test('GCC_ENABLE_SSE41_EXTENSIONS', 'YES', default='NO'):
+        cflags.append('-msse4.1')
+      if self._Test('GCC_ENABLE_SSE42_EXTENSIONS', 'YES', default='NO'):
+        cflags.append('-msse4.2')
 
     cflags += self._Settings().get('OTHER_CFLAGS', [])
     cflags += self._Settings().get('WARNING_CFLAGS', [])
@@ -390,8 +430,12 @@ class XcodeSettings(object):
                      '-Wl,' + gyp_to_build_path(
                                   self._Settings()['ORDER_FILE']))
 
-    # TODO: Do not hardcode arch. Supporting fat binaries will be annoying.
-    ldflags.append('-arch i386')
+    archs = self._Settings().get('ARCHS', ['i386'])
+    if len(archs) != 1:
+      # TODO: Supporting fat binaries will be annoying.
+      self._WarnUnimplemented('ARCHS')
+      archs = ['i386']
+    ldflags.append('-arch ' + archs[0])
 
     # Xcode adds the product directory by default.
     ldflags.append('-L' + product_dir)
@@ -476,7 +520,7 @@ class XcodeSettings(object):
       return default
     return result
 
-  def _GetStripPostbuilds(self, configname, output_binary):
+  def _GetStripPostbuilds(self, configname, output_binary, quiet):
     """Returns a list of shell commands that contain the shell commands
     neccessary to strip this target's binary. These should be run as postbuilds
     before the actual postbuilds run."""
@@ -503,13 +547,14 @@ class XcodeSettings(object):
       if explicit_strip_flags:
         strip_flags += ' ' + _NormalizeEnvVarReferences(explicit_strip_flags)
 
-      result.append('echo STRIP\\(%s\\)' % self.spec['target_name'])
+      if not quiet:
+        result.append('echo STRIP\\(%s\\)' % self.spec['target_name'])
       result.append('strip %s %s' % (strip_flags, output_binary))
 
     self.configname = None
     return result
 
-  def _GetDebugInfoPostbuilds(self, configname, output, output_binary):
+  def _GetDebugInfoPostbuilds(self, configname, output, output_binary, quiet):
     """Returns a list of shell commands that contain the shell commands
     neccessary to massage this target's debug information. These should be run
     as postbuilds before the actual postbuilds run."""
@@ -521,18 +566,20 @@ class XcodeSettings(object):
         self._Test(
             'DEBUG_INFORMATION_FORMAT', 'dwarf-with-dsym', default='dwarf') and
         self.spec['type'] != 'static_library'):
-      result.append('echo DSYMUTIL\\(%s\\)' % self.spec['target_name'])
+      if not quiet:
+        result.append('echo DSYMUTIL\\(%s\\)' % self.spec['target_name'])
       result.append('dsymutil %s -o %s' % (output_binary, output + '.dSYM'))
 
     self.configname = None
     return result
 
-  def GetTargetPostbuilds(self, configname, output, output_binary):
+  def GetTargetPostbuilds(self, configname, output, output_binary, quiet=False):
     """Returns a list of shell commands that contain the shell commands
     to run as postbuilds for this target, before the actual postbuilds."""
     # dSYMs need to build before stripping happens.
-    return (self._GetDebugInfoPostbuilds(configname, output, output_binary) +
-            self._GetStripPostbuilds(configname, output_binary))
+    return (
+        self._GetDebugInfoPostbuilds(configname, output, output_binary, quiet) +
+        self._GetStripPostbuilds(configname, output_binary, quiet))
 
   def _AdjustLibrary(self, library):
     if library.endswith('.framework'):
@@ -927,13 +974,14 @@ def TopologicallySortedEnvVarKeys(env):
 
   return sorted_nodes
 
-def GetSpecPostbuildCommands(spec, gyp_path_to_build_path):
+def GetSpecPostbuildCommands(spec, gyp_path_to_build_path, quiet=False):
   """Returns the list of postbuilds explicitly defined on |spec|, in a form
   executable by a shell."""
   postbuilds = []
   for postbuild in spec.get('postbuilds', []):
-    postbuilds.append('echo POSTBUILD\\(%s\\) %s' % (
-          spec['target_name'], postbuild['postbuild_name']))
+    if not quiet:
+      postbuilds.append('echo POSTBUILD\\(%s\\) %s' % (
+            spec['target_name'], postbuild['postbuild_name']))
     shell_list = postbuild['action'][:]
     # The first element is the command. If it's a relative path, it's
     # a script in the source tree relative to the gyp file and needs to be
