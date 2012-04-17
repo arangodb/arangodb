@@ -197,7 +197,7 @@ describe AvocadoDB do
 	end
 
 	cmd = api + "/#{@cid}/#{iid}"
-        doc = AvocadoDB.get(cmd, :body => body)
+        doc = AvocadoDB.get(cmd)
 
 	doc.code.should eq(200)
 	doc.headers['content-type'].should eq("application/json")
