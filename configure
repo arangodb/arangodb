@@ -609,6 +609,7 @@ BUILD_H
 BOOST_LIBS
 BOOST_LDFLAGS
 BOOST_CPPFLAGS
+V8_TARGET
 V8_LIBS
 V8_LDFLAGS
 V8_CPPFLAGS
@@ -5625,7 +5626,7 @@ fi
 
 fi
 
- if test "x$tr_BITS" = x64; then
+ if test "x$tr_BITS" == x64; then
   ENABLE_64BIT_TRUE=
   ENABLE_64BIT_FALSE='#'
 else
@@ -5633,7 +5634,7 @@ else
   ENABLE_64BIT_FALSE=
 fi
 
- if test "x$tr_BITS" = x32; then
+ if test "x$tr_BITS" == x32; then
   ENABLE_32BIT_TRUE=
   ENABLE_32BIT_FALSE='#'
 else
@@ -8357,14 +8358,28 @@ FLAG_INFO="$FLAG_INFO|."
 
 V8_CPPFLAGS="-I${srcdir}/3rdParty/V8/include"
 V8_LDFLAGS=""
+V8_TARGET="native"
 
 if test x$tr_DARWIN == xyes;  then
-  V8_LIBS="${srcdir}/3rdParty/V8/out/native/libv8_base.a ${srcdir}/3rdParty/V8/out/native/libv8_nosnapshot.a"
+  if test "x$tr_BITS" == x64;  then
+    V8_TARGET="x64"
+    V8_LIBS="${srcdir}/3rdParty/V8/out/x64/libv8_base.a ${srcdir}/3rdParty/V8/out/x64/libv8_nosnapshot.a"
+  else
+    V8_TARGET="ia32"
+    V8_LIBS="${srcdir}/3rdParty/V8/out/ia32/libv8_base.a ${srcdir}/3rdParty/V8/out/ia32/libv8_nosnapshot.a"
+  fi
 else
-  V8_LIBS="${srcdir}/3rdParty/V8/out/native/obj.target/tools/gyp/libv8_base.a ${srcdir}/3rdParty/V8/out/native/obj.target/tools/gyp/libv8_nosnapshot.a"
+  if test "x$tr_BITS" == x64;  then
+    V8_TARGET="x64"
+    V8_LIBS="${srcdir}/3rdParty/V8/out/x64/obj.target/tools/gyp/libv8_base.a ${srcdir}/3rdParty/V8/out/x64/obj.target/tools/gyp/libv8_nosnapshot.a"
+  else
+    V8_TARGET="ia32"
+    V8_LIBS="${srcdir}/3rdParty/V8/out/ia32/obj.target/tools/gyp/libv8_base.a ${srcdir}/3rdParty/V8/out/ia32/obj.target/tools/gyp/libv8_nosnapshot.a"
+  fi
 fi
 
 TRI_V8_VERSION="3.9.4"
+
 
 
 
@@ -8376,6 +8391,7 @@ V8_CPPFLAGS="${V8_CPPFLAGS} -DTRI_V8_VERSION='\"${TRI_V8_VERSION}\"'"
 
 LIB_INFO="$LIB_INFO|V8 VERSION: ${TRI_V8_VERSION}"
 
+FLAG_INFO="$FLAG_INFO|V8_TARGET:   ${V8_TARGET}"
 FLAG_INFO="$FLAG_INFO|V8_CPPFLAGS: ${V8_CPPFLAGS}"
 FLAG_INFO="$FLAG_INFO|V8_LDFLAGS:  ${V8_LDFLAGS}"
 FLAG_INFO="$FLAG_INFO|V8_LIBS:     ${V8_LIBS}"
