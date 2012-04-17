@@ -51,7 +51,6 @@
 
 #include "v8.h"
 
-#include "platform-posix.h"
 #include "platform.h"
 #include "v8threads.h"
 #include "vm-state-inl.h"
@@ -105,13 +104,6 @@ void OS::SetUp() {
   uint64_t seed = Ticks() ^ (getpid() << 16);
   srandom(static_cast<unsigned int>(seed));
   limit_mutex = CreateMutex();
-}
-
-
-void OS::PostSetUp() {
-  // Math functions depend on CPU features therefore they are initialized after
-  // CPU.
-  MathSetup();
 }
 
 
@@ -466,12 +458,6 @@ bool VirtualMemory::Uncommit(void* address, size_t size) {
 }
 
 
-bool VirtualMemory::Guard(void* address) {
-  OS::Guard(address, OS::CommitPageSize());
-  return true;
-}
-
-
 void* VirtualMemory::ReserveRegion(size_t size) {
   void* result = mmap(GetRandomMmapAddr(),
                       size,
@@ -820,7 +806,7 @@ class SignalSender : public Thread {
   }
 
   static void AddActiveSampler(Sampler* sampler) {
-    ScopedLock lock(mutex_.Pointer());
+    ScopedLock lock(mutex_);
     SamplerRegistry::AddActiveSampler(sampler);
     if (instance_ == NULL) {
       // Start a thread that will send SIGPROF signal to VM threads,
@@ -833,7 +819,7 @@ class SignalSender : public Thread {
   }
 
   static void RemoveActiveSampler(Sampler* sampler) {
-    ScopedLock lock(mutex_.Pointer());
+    ScopedLock lock(mutex_);
     SamplerRegistry::RemoveActiveSampler(sampler);
     if (SamplerRegistry::GetState() == SamplerRegistry::HAS_NO_SAMPLERS) {
       RuntimeProfiler::StopRuntimeProfilerThreadBeforeShutdown(instance_);
@@ -927,7 +913,7 @@ class SignalSender : public Thread {
   RuntimeProfilerRateLimiter rate_limiter_;
 
   // Protects the process wide state below.
-  static LazyMutex mutex_;
+  static Mutex* mutex_;
   static SignalSender* instance_;
   static bool signal_handler_installed_;
   static struct sigaction old_signal_handler_;
@@ -937,7 +923,7 @@ class SignalSender : public Thread {
 };
 
 
-LazyMutex SignalSender::mutex_ = LAZY_MUTEX_INITIALIZER;
+Mutex* SignalSender::mutex_ = OS::CreateMutex();
 SignalSender* SignalSender::instance_ = NULL;
 struct sigaction SignalSender::old_signal_handler_;
 bool SignalSender::signal_handler_installed_ = false;

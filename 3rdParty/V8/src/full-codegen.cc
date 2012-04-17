@@ -1,4 +1,4 @@
-// Copyright 2012 the V8 project authors. All rights reserved.
+// Copyright 2011 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -51,37 +51,7 @@ void BreakableStatementChecker::Check(Expression* expr) {
 }
 
 
-void BreakableStatementChecker::VisitVariableDeclaration(
-    VariableDeclaration* decl) {
-}
-
-void BreakableStatementChecker::VisitFunctionDeclaration(
-    FunctionDeclaration* decl) {
-}
-
-void BreakableStatementChecker::VisitModuleDeclaration(
-    ModuleDeclaration* decl) {
-}
-
-void BreakableStatementChecker::VisitImportDeclaration(
-    ImportDeclaration* decl) {
-}
-
-void BreakableStatementChecker::VisitExportDeclaration(
-    ExportDeclaration* decl) {
-}
-
-
-void BreakableStatementChecker::VisitModuleLiteral(ModuleLiteral* module) {
-}
-
-void BreakableStatementChecker::VisitModuleVariable(ModuleVariable* module) {
-}
-
-void BreakableStatementChecker::VisitModulePath(ModulePath* module) {
-}
-
-void BreakableStatementChecker::VisitModuleUrl(ModuleUrl* module) {
+void BreakableStatementChecker::VisitDeclaration(Declaration* decl) {
 }
 
 
@@ -303,8 +273,8 @@ bool FullCodeGenerator::MakeCode(CompilationInfo* info) {
   masm.positions_recorder()->StartGDBJITLineInfoRecording();
 #endif
 
-  FullCodeGenerator cgen(&masm, info);
-  cgen.Generate();
+  FullCodeGenerator cgen(&masm);
+  cgen.Generate(info);
   if (cgen.HasStackOverflow()) {
     ASSERT(!isolate->has_pending_exception());
     return false;
@@ -313,11 +283,8 @@ bool FullCodeGenerator::MakeCode(CompilationInfo* info) {
 
   Code::Flags flags = Code::ComputeFlags(Code::FUNCTION);
   Handle<Code> code = CodeGenerator::MakeCodeEpilogue(&masm, flags, info);
-  code->set_optimizable(info->IsOptimizable() &&
-                        !info->function()->flags()->Contains(kDontOptimize));
-  code->set_self_optimization_header(cgen.has_self_optimization_header_);
+  code->set_optimizable(info->IsOptimizable());
   cgen.PopulateDeoptimizationData(code);
-  cgen.PopulateTypeFeedbackInfo(code);
   cgen.PopulateTypeFeedbackCells(code);
   code->set_has_deoptimization_support(info->HasDeoptimizationSupport());
   code->set_handler_table(*cgen.handler_table());
@@ -330,9 +297,6 @@ bool FullCodeGenerator::MakeCode(CompilationInfo* info) {
   code->set_stack_check_table_offset(table_offset);
   CodeGenerator::PrintCode(code, info);
   info->SetCode(code);  // May be an empty handle.
-  if (!code.is_null()) {
-    isolate->runtime_profiler()->NotifyCodeGenerated(code->instruction_size());
-  }
 #ifdef ENABLE_GDB_JIT_INTERFACE
   if (FLAG_gdbjit && !code.is_null()) {
     GDBJITLineInfo* lineinfo =
@@ -376,14 +340,6 @@ void FullCodeGenerator::PopulateDeoptimizationData(Handle<Code> code) {
 }
 
 
-void FullCodeGenerator::PopulateTypeFeedbackInfo(Handle<Code> code) {
-  Handle<TypeFeedbackInfo> info = isolate()->factory()->NewTypeFeedbackInfo();
-  info->set_ic_total_count(ic_total_count_);
-  ASSERT(!isolate()->heap()->InNewSpace(*info));
-  code->set_type_feedback_info(*info);
-}
-
-
 void FullCodeGenerator::PopulateTypeFeedbackCells(Handle<Code> code) {
   if (type_feedback_cells_.is_empty()) return;
   int length = type_feedback_cells_.length();
@@ -394,8 +350,7 @@ void FullCodeGenerator::PopulateTypeFeedbackCells(Handle<Code> code) {
     cache->SetAstId(i, Smi::FromInt(type_feedback_cells_[i].ast_id));
     cache->SetCell(i, *type_feedback_cells_[i].cell);
   }
-  TypeFeedbackInfo::cast(code->type_feedback_info())->set_type_feedback_cells(
-      *cache);
+  code->set_type_feedback_cells(*cache);
 }
 
 
@@ -425,10 +380,9 @@ void FullCodeGenerator::RecordJSReturnSite(Call* call) {
 void FullCodeGenerator::PrepareForBailoutForId(unsigned id, State state) {
   // There's no need to prepare this code for bailouts from already optimized
   // code or code that can't be optimized.
-  if (!info_->HasDeoptimizationSupport()) return;
+  if (!FLAG_deopt || !info_->HasDeoptimizationSupport()) return;
   unsigned pc_and_state =
       StateField::encode(state) | PcField::encode(masm_->pc_offset());
-  ASSERT(Smi::IsValid(pc_and_state));
   BailoutEntry entry = { id, pc_and_state };
 #ifdef DEBUG
   if (FLAG_enable_slow_asserts) {
@@ -571,24 +525,24 @@ void FullCodeGenerator::DoTest(const TestContext* context) {
 
 void FullCodeGenerator::VisitDeclarations(
     ZoneList<Declaration*>* declarations) {
-  int save_global_count = global_count_;
-  global_count_ = 0;
-
-  AstVisitor::VisitDeclarations(declarations);
+  int length = declarations->length();
+  int global_count = 0;
+  for (int i = 0; i < length; i++) {
+    Declaration* decl = declarations->at(i);
+    EmitDeclaration(decl->proxy(), decl->mode(), decl->fun(), &global_count);
+  }
 
   // Batch declare global functions and variables.
-  if (global_count_ > 0) {
+  if (global_count > 0) {
     Handle<FixedArray> array =
-       isolate()->factory()->NewFixedArray(2 * global_count_, TENURED);
-    int length = declarations->length();
+        isolate()->factory()->NewFixedArray(2 * global_count, TENURED);
     for (int j = 0, i = 0; i < length; i++) {
       Declaration* decl = declarations->at(i);
       Variable* var = decl->proxy()->var();
 
       if (var->IsUnallocated()) {
         array->set(j++, *(var->name()));
-        FunctionDeclaration* fun_decl = decl->AsFunctionDeclaration();
-        if (fun_decl == NULL) {
+        if (decl->fun() == NULL) {
           if (var->binding_needs_init()) {
             // In case this binding needs initialization use the hole.
             array->set_the_hole(j++);
@@ -597,7 +551,7 @@ void FullCodeGenerator::VisitDeclarations(
           }
         } else {
           Handle<SharedFunctionInfo> function =
-              Compiler::BuildFunctionInfo(fun_decl->fun(), script());
+              Compiler::BuildFunctionInfo(decl->fun(), script());
           // Check for stack-overflow exception.
           if (function.is_null()) {
             SetStackOverflow();
@@ -611,53 +565,6 @@ void FullCodeGenerator::VisitDeclarations(
     // declaration the global functions and variables.
     DeclareGlobals(array);
   }
-
-  global_count_ = save_global_count;
-}
-
-
-void FullCodeGenerator::VisitVariableDeclaration(VariableDeclaration* decl) {
-  EmitDeclaration(decl->proxy(), decl->mode(), NULL);
-}
-
-
-void FullCodeGenerator::VisitFunctionDeclaration(FunctionDeclaration* decl) {
-  EmitDeclaration(decl->proxy(), decl->mode(), decl->fun());
-}
-
-
-void FullCodeGenerator::VisitModuleDeclaration(ModuleDeclaration* decl) {
-  EmitDeclaration(decl->proxy(), decl->mode(), NULL);
-}
-
-
-void FullCodeGenerator::VisitImportDeclaration(ImportDeclaration* decl) {
-  EmitDeclaration(decl->proxy(), decl->mode(), NULL);
-}
-
-
-void FullCodeGenerator::VisitExportDeclaration(ExportDeclaration* decl) {
-  // TODO(rossberg)
-}
-
-
-void FullCodeGenerator::VisitModuleLiteral(ModuleLiteral* module) {
-  // TODO(rossberg)
-}
-
-
-void FullCodeGenerator::VisitModuleVariable(ModuleVariable* module) {
-  // TODO(rossberg)
-}
-
-
-void FullCodeGenerator::VisitModulePath(ModulePath* module) {
-  // TODO(rossberg)
-}
-
-
-void FullCodeGenerator::VisitModuleUrl(ModuleUrl* decl) {
-  // TODO(rossberg)
 }
 
 
@@ -1112,7 +1019,7 @@ void FullCodeGenerator::VisitDoWhileStatement(DoWhileStatement* stmt) {
   // Check stack before looping.
   PrepareForBailoutForId(stmt->BackEdgeId(), NO_REGISTERS);
   __ bind(&stack_check);
-  EmitStackCheck(stmt, &body);
+  EmitStackCheck(stmt);
   __ jmp(&body);
 
   PrepareForBailoutForId(stmt->ExitId(), NO_REGISTERS);
@@ -1141,7 +1048,7 @@ void FullCodeGenerator::VisitWhileStatement(WhileStatement* stmt) {
   SetStatementPosition(stmt);
 
   // Check stack before looping.
-  EmitStackCheck(stmt, &body);
+  EmitStackCheck(stmt);
 
   __ bind(&test);
   VisitForControl(stmt->cond(),
@@ -1160,10 +1067,6 @@ void FullCodeGenerator::VisitForStatement(ForStatement* stmt) {
   Label test, body;
 
   Iteration loop_statement(this, stmt);
-
-  // Set statement position for a break slot before entering the for-body.
-  SetStatementPosition(stmt);
-
   if (stmt->init() != NULL) {
     Visit(stmt->init());
   }
@@ -1178,6 +1081,7 @@ void FullCodeGenerator::VisitForStatement(ForStatement* stmt) {
 
   PrepareForBailoutForId(stmt->ContinueId(), NO_REGISTERS);
   __ bind(loop_statement.continue_label());
+  SetStatementPosition(stmt);
   if (stmt->next() != NULL) {
     Visit(stmt->next());
   }
@@ -1187,7 +1091,7 @@ void FullCodeGenerator::VisitForStatement(ForStatement* stmt) {
   SetStatementPosition(stmt);
 
   // Check stack before looping.
-  EmitStackCheck(stmt, &body);
+  EmitStackCheck(stmt);
 
   __ bind(&test);
   if (stmt->cond() != NULL) {
@@ -1243,7 +1147,7 @@ void FullCodeGenerator::VisitTryCatchStatement(TryCatchStatement* stmt) {
 
   // Try block code. Sets up the exception handler chain.
   __ bind(&try_entry);
-  __ PushTryHandler(StackHandler::CATCH, stmt->index());
+  __ PushTryHandler(IN_JAVASCRIPT, TRY_CATCH_HANDLER, stmt->index());
   { TryCatch try_body(this);
     Visit(stmt->try_block());
   }
@@ -1300,7 +1204,7 @@ void FullCodeGenerator::VisitTryFinallyStatement(TryFinallyStatement* stmt) {
 
   // Set up try handler.
   __ bind(&try_entry);
-  __ PushTryHandler(StackHandler::FINALLY, stmt->index());
+  __ PushTryHandler(IN_JAVASCRIPT, TRY_FINALLY_HANDLER, stmt->index());
   { TryFinally try_body(this, &finally_entry);
     Visit(stmt->try_block());
   }

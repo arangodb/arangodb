@@ -37,8 +37,8 @@ function CreateDate(time) {
 }
 
 
-var kApiFunctionCache = {};
-var functionCache = kApiFunctionCache;
+const kApiFunctionCache = {};
+const functionCache = kApiFunctionCache;
 
 
 function Instantiate(data, name) {

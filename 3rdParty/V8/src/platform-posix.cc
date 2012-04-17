@@ -29,8 +29,6 @@
 // own but contains the parts which are the same across POSIX platforms Linux,
 // Mac OS, FreeBSD and OpenBSD.
 
-#include "platform-posix.h"
-
 #include <unistd.h>
 #include <errno.h>
 #include <time.h>
@@ -55,7 +53,6 @@
 
 #include "v8.h"
 
-#include "codegen.h"
 #include "platform.h"
 
 namespace v8 {
@@ -126,33 +123,6 @@ void* OS::GetRandomMmapAddr() {
 
 double modulo(double x, double y) {
   return fmod(x, y);
-}
-
-
-#define UNARY_MATH_FUNCTION(name, generator)             \
-static UnaryMathFunction fast_##name##_function = NULL;  \
-void init_fast_##name##_function() {                     \
-  fast_##name##_function = generator;                    \
-}                                                        \
-double fast_##name(double x) {                           \
-  return (*fast_##name##_function)(x);                   \
-}
-
-UNARY_MATH_FUNCTION(sin, CreateTranscendentalFunction(TranscendentalCache::SIN))
-UNARY_MATH_FUNCTION(cos, CreateTranscendentalFunction(TranscendentalCache::COS))
-UNARY_MATH_FUNCTION(tan, CreateTranscendentalFunction(TranscendentalCache::TAN))
-UNARY_MATH_FUNCTION(log, CreateTranscendentalFunction(TranscendentalCache::LOG))
-UNARY_MATH_FUNCTION(sqrt, CreateSqrtFunction())
-
-#undef MATH_FUNCTION
-
-
-void MathSetup() {
-  init_fast_sin_function();
-  init_fast_cos_function();
-  init_fast_tan_function();
-  init_fast_log_function();
-  init_fast_sqrt_function();
 }
 
 
@@ -313,14 +283,14 @@ int OS::VSNPrintF(Vector<char> str,
 
 #if defined(V8_TARGET_ARCH_IA32)
 static OS::MemCopyFunction memcopy_function = NULL;
-static LazyMutex memcopy_function_mutex = LAZY_MUTEX_INITIALIZER;
+static Mutex* memcopy_function_mutex = OS::CreateMutex();
 // Defined in codegen-ia32.cc.
 OS::MemCopyFunction CreateMemCopyFunction();
 
 // Copy memory area to disjoint memory area.
 void OS::MemCopy(void* dest, const void* src, size_t size) {
   if (memcopy_function == NULL) {
-    ScopedLock lock(memcopy_function_mutex.Pointer());
+    ScopedLock lock(memcopy_function_mutex);
     if (memcopy_function == NULL) {
       OS::MemCopyFunction temp = CreateMemCopyFunction();
       MemoryBarrier();
