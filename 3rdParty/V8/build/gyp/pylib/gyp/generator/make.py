@@ -156,7 +156,7 @@ cmd_solink_module = $(LINK.$(TOOLSET)) -shared $(GYP_LDFLAGS) $(LDFLAGS.$(TOOLSE
 
 LINK_COMMANDS_MAC = """\
 quiet_cmd_alink = LIBTOOL-STATIC $@
-cmd_alink = rm -f $@ && libtool -static -o $@ $(filter %.o,$^)
+cmd_alink = rm -f $@ && ./gyp-mac-tool filter-libtool libtool -static -o $@ $(filter %.o,$^)
 
 quiet_cmd_link = LINK($(TOOLSET)) $@
 cmd_link = $(LINK.$(TOOLSET)) $(GYP_LDFLAGS) $(LDFLAGS.$(TOOLSET)) -o "$@" $(LD_INPUTS) $(LIBS)
@@ -1555,7 +1555,8 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
         file_desc = 'executable'
       install_path = self._InstallableTargetInstallPath()
       installable_deps = [self.output]
-      if self.flavor == 'mac' and not 'product_dir' in spec:
+      if (self.flavor == 'mac' and not 'product_dir' in spec and
+          self.toolset == 'target'):
         # On mac, products are created in install_path immediately.
         assert install_path == self.output, '%s != %s' % (
             install_path, self.output)
@@ -1849,7 +1850,8 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
     """Returns the location of the final output for an installable target."""
     # Xcode puts shared_library results into PRODUCT_DIR, and some gyp files
     # rely on this. Emulate this behavior for mac.
-    if self.type == 'shared_library' and self.flavor != 'mac':
+    if (self.type == 'shared_library' and
+        (self.flavor != 'mac' or self.toolset != 'target')):
       # Install all shared libs into a common directory (per toolset) for
       # convenient access with LD_LIBRARY_PATH.
       return '$(builddir)/lib.%s/%s' % (self.toolset, self.alias)

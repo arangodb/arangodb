@@ -34,5 +34,16 @@
         'main.cc',
       ],
     },
+    # This tests that build systems can handle a shared library being build for
+    # both host and target.
+    {
+      'target_name': 'janus',
+      'type': 'shared_library',
+      'toolsets': ['target', 'host'],
+      'sources': [
+        'toolsets.cc',
+      ],
+      'cflags': [ '-fPIC' ],
+    },
   ],
 }
