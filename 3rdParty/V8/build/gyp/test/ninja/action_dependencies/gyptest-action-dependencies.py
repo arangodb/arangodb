@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2011 Google Inc. All rights reserved.
+# Copyright (c) 2012 Google Inc. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -9,6 +9,8 @@ Verify that building an object file correctly depends on running actions in
 dependent targets, but not the targets themselves.
 """
 
+import os
+import sys
 import TestGyp
 
 # NOTE(piman): This test will not work with other generators because:
@@ -25,21 +27,27 @@ test.run_gyp('action_dependencies.gyp', chdir='src')
 chdir = 'relocate/src'
 test.relocate('src', chdir)
 
-test.build('action_dependencies.gyp', 'obj/b.b.o', chdir=chdir)
+objext = '.obj' if sys.platform == 'win32' else '.o'
+
+test.build('action_dependencies.gyp',
+           os.path.join('obj', 'b.b' + objext),
+           chdir=chdir)
 
 # The 'a' actions should be run (letting b.c compile), but the a static library
 # should not be built.
 test.built_file_must_not_exist('a', type=test.STATIC_LIB, chdir=chdir)
 test.built_file_must_not_exist('b', type=test.STATIC_LIB, chdir=chdir)
-test.built_file_must_exist('obj/b.b.o', chdir=chdir)
+test.built_file_must_exist(os.path.join('obj', 'b.b' + objext), chdir=chdir)
 
-test.build('action_dependencies.gyp', 'obj/c.c.o', chdir=chdir)
+test.build('action_dependencies.gyp',
+           os.path.join('obj', 'c.c' + objext),
+           chdir=chdir)
 
 # 'a' and 'b' should be built, so that the 'c' action succeeds, letting c.c
 # compile
 test.built_file_must_exist('a', type=test.STATIC_LIB, chdir=chdir)
 test.built_file_must_exist('b', type=test.EXECUTABLE, chdir=chdir)
-test.built_file_must_exist('obj/c.c.o', chdir=chdir)
+test.built_file_must_exist(os.path.join('obj', 'c.c' + objext), chdir=chdir)
 
 
 test.pass_test()
