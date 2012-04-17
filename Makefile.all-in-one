@@ -58,7 +58,7 @@ BUILT_SOURCES += @V8_LIBS@
 	@echo "--------------------------------------------------------------------------------"
 	@echo
 
-	cd @top_srcdir@/3rdParty/V8 && make library=static snapshot=off native
+	cd @top_srcdir@/3rdParty/V8 && make library=static snapshot=off @V8_TARGET@
 
 	touch .v8-build
 
