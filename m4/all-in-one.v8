@@ -10,20 +10,20 @@ V8_TARGET="native"
 
 if test x$tr_DARWIN == xyes;  then
   if test "x$tr_BITS" == x64;  then
-    V8_TARGET="x64"
-    V8_LIBS="${srcdir}/3rdParty/V8/out/x64/libv8_base.a ${srcdir}/3rdParty/V8/out/x64/libv8_nosnapshot.a"
+    V8_TARGET="x64.release"
   else
-    V8_TARGET="ia32"
-    V8_LIBS="${srcdir}/3rdParty/V8/out/ia32/libv8_base.a ${srcdir}/3rdParty/V8/out/ia32/libv8_nosnapshot.a"
+    V8_TARGET="ia32.release"
   fi
+
+  V8_LIBS="${srcdir}/3rdParty/V8/out/$V8_TARGET/libv8_base.a ${srcdir}/3rdParty/V8/out/$V8_TARGET/libv8_nosnapshot.a"
 else
   if test "x$tr_BITS" == x64;  then
-    V8_TARGET="x64"
-    V8_LIBS="${srcdir}/3rdParty/V8/out/x64/obj.target/tools/gyp/libv8_base.a ${srcdir}/3rdParty/V8/out/x64/obj.target/tools/gyp/libv8_nosnapshot.a"
+    V8_TARGET="x64.release"
   else
-    V8_TARGET="ia32"
-    V8_LIBS="${srcdir}/3rdParty/V8/out/ia32/obj.target/tools/gyp/libv8_base.a ${srcdir}/3rdParty/V8/out/ia32/obj.target/tools/gyp/libv8_nosnapshot.a"
+    V8_TARGET="ia32.release"
   fi
+
+  V8_LIBS="${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/tools/gyp/libv8_base.a ${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/tools/gyp/libv8_nosnapshot.a"
 fi
 
 TRI_V8_VERSION="3.9.4"
