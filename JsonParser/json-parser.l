@@ -216,7 +216,6 @@ static TRI_json_t* ParseList (yyscan_t scanner) {
     }
 
     TRI_PushBack3ListJson(list, sub);
-    TRI_PushBackListJson(list, sub);
 
     c = yylex(scanner);
   }
