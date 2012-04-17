@@ -43,7 +43,6 @@ class LCodeGen;
 #define LITHIUM_CONCRETE_INSTRUCTION_LIST(V)    \
   V(AccessArgumentsAt)                          \
   V(AddI)                                       \
-  V(AllocateObject)                             \
   V(ApplyArguments)                             \
   V(ArgumentsElements)                          \
   V(ArgumentsLength)                            \
@@ -82,13 +81,11 @@ class LCodeGen;
   V(ConstantI)                                  \
   V(ConstantT)                                  \
   V(Context)                                    \
-  V(DeclareGlobals)                             \
   V(DeleteProperty)                             \
   V(Deoptimize)                                 \
   V(DivI)                                       \
   V(DoubleToI)                                  \
   V(ElementsKind)                               \
-  V(FastLiteral)                                \
   V(FixedArrayBaseLength)                       \
   V(FunctionLiteral)                            \
   V(GetCachedArrayIndex)                        \
@@ -132,7 +129,8 @@ class LCodeGen;
   V(NumberTagD)                                 \
   V(NumberTagI)                                 \
   V(NumberUntagD)                               \
-  V(ObjectLiteral)                              \
+  V(ObjectLiteralFast)                          \
+  V(ObjectLiteralGeneric)                       \
   V(OsrEntry)                                   \
   V(OuterContext)                               \
   V(Parameter)                                  \
@@ -168,13 +166,7 @@ class LCodeGen;
   V(TypeofIsAndBranch)                          \
   V(UnaryMathOperation)                         \
   V(UnknownOSRValue)                            \
-  V(ValueOf)                                    \
-  V(ForInPrepareMap)                            \
-  V(ForInCacheArray)                            \
-  V(CheckMapValue)                              \
-  V(LoadFieldByIndex)                           \
-  V(DateField)                                  \
-  V(WrapReceiver)
+  V(ValueOf)
 
 
 #define DECLARE_CONCRETE_INSTRUCTION(type, mnemonic)              \
@@ -457,33 +449,18 @@ class LControlInstruction: public LTemplateInstruction<0, I, T> {
 };
 
 
-class LWrapReceiver: public LTemplateInstruction<1, 2, 1> {
- public:
-  LWrapReceiver(LOperand* receiver,
-                LOperand* function,
-                LOperand* temp) {
-    inputs_[0] = receiver;
-    inputs_[1] = function;
-    temps_[0] = temp;
-  }
-
-  DECLARE_CONCRETE_INSTRUCTION(WrapReceiver, "wrap-receiver")
-
-  LOperand* receiver() { return inputs_[0]; }
-  LOperand* function() { return inputs_[1]; }
-};
-
-
-class LApplyArguments: public LTemplateInstruction<1, 4, 0> {
+class LApplyArguments: public LTemplateInstruction<1, 4, 1> {
  public:
   LApplyArguments(LOperand* function,
                   LOperand* receiver,
                   LOperand* length,
-                  LOperand* elements) {
+                  LOperand* elements,
+                  LOperand* temp) {
     inputs_[0] = function;
     inputs_[1] = receiver;
     inputs_[2] = length;
     inputs_[3] = elements;
+    temps_[0] = temp;
   }
 
   DECLARE_CONCRETE_INSTRUCTION(ApplyArguments, "apply-arguments")
@@ -1019,24 +996,6 @@ class LValueOf: public LTemplateInstruction<1, 1, 1> {
 };
 
 
-class LDateField: public LTemplateInstruction<1, 1, 1> {
- public:
-  LDateField(LOperand* date, LOperand* temp, Smi* index)
-      : index_(index) {
-    inputs_[0] = date;
-    temps_[0] = temp;
-  }
-
-  DECLARE_CONCRETE_INSTRUCTION(DateField, "date-field")
-  DECLARE_HYDROGEN_ACCESSOR(DateField)
-
-  Smi* index() const { return index_; }
-
- private:
-  Smi* index_;
-};
-
-
 class LThrow: public LTemplateInstruction<0, 2, 0> {
  public:
   LThrow(LOperand* context, LOperand* value) {
@@ -1423,17 +1382,6 @@ class LOuterContext: public LTemplateInstruction<1, 1, 0> {
   DECLARE_CONCRETE_INSTRUCTION(OuterContext, "outer-context")
 
   LOperand* context() { return InputAt(0); }
-};
-
-
-class LDeclareGlobals: public LTemplateInstruction<0, 1, 0> {
- public:
-  explicit LDeclareGlobals(LOperand* context) {
-    inputs_[0] = context;
-  }
-
-  DECLARE_CONCRETE_INSTRUCTION(DeclareGlobals, "declare-globals")
-  DECLARE_HYDROGEN_ACCESSOR(DeclareGlobals)
 };
 
 
@@ -2031,33 +1979,6 @@ class LCheckNonSmi: public LTemplateInstruction<0, 1, 0> {
 };
 
 
-class LAllocateObject: public LTemplateInstruction<1, 1, 1> {
- public:
-  LAllocateObject(LOperand* context, LOperand* temp) {
-    inputs_[0] = context;
-    temps_[0] = temp;
-  }
-
-  DECLARE_CONCRETE_INSTRUCTION(AllocateObject, "allocate-object")
-  DECLARE_HYDROGEN_ACCESSOR(AllocateObject)
-
-  LOperand* context() { return inputs_[0]; }
-};
-
-
-class LFastLiteral: public LTemplateInstruction<1, 1, 0> {
- public:
-  explicit LFastLiteral(LOperand* context) {
-    inputs_[0] = context;
-  }
-
-  LOperand* context() { return inputs_[0]; }
-
-  DECLARE_CONCRETE_INSTRUCTION(FastLiteral, "fast-literal")
-  DECLARE_HYDROGEN_ACCESSOR(FastLiteral)
-};
-
-
 class LArrayLiteral: public LTemplateInstruction<1, 1, 0> {
  public:
   explicit LArrayLiteral(LOperand* context) {
@@ -2071,16 +1992,29 @@ class LArrayLiteral: public LTemplateInstruction<1, 1, 0> {
 };
 
 
-class LObjectLiteral: public LTemplateInstruction<1, 1, 0> {
+class LObjectLiteralFast: public LTemplateInstruction<1, 1, 0> {
  public:
-  explicit LObjectLiteral(LOperand* context) {
+  explicit LObjectLiteralFast(LOperand* context) {
     inputs_[0] = context;
   }
 
   LOperand* context() { return inputs_[0]; }
 
-  DECLARE_CONCRETE_INSTRUCTION(ObjectLiteral, "object-literal")
-  DECLARE_HYDROGEN_ACCESSOR(ObjectLiteral)
+  DECLARE_CONCRETE_INSTRUCTION(ObjectLiteralFast, "object-literal-fast")
+  DECLARE_HYDROGEN_ACCESSOR(ObjectLiteralFast)
+};
+
+
+class LObjectLiteralGeneric: public LTemplateInstruction<1, 1, 0> {
+ public:
+  explicit LObjectLiteralGeneric(LOperand* context) {
+    inputs_[0] = context;
+  }
+
+  LOperand* context() { return inputs_[0]; }
+
+  DECLARE_CONCRETE_INSTRUCTION(ObjectLiteralGeneric, "object-literal-generic")
+  DECLARE_HYDROGEN_ACCESSOR(ObjectLiteralGeneric)
 };
 
 
@@ -2222,64 +2156,6 @@ class LIn: public LTemplateInstruction<1, 3, 0> {
 };
 
 
-class LForInPrepareMap: public LTemplateInstruction<1, 2, 0> {
- public:
-  LForInPrepareMap(LOperand* context, LOperand* object) {
-    inputs_[0] = context;
-    inputs_[1] = object;
-  }
-
-  LOperand* context() { return inputs_[0]; }
-  LOperand* object() { return inputs_[1]; }
-
-  DECLARE_CONCRETE_INSTRUCTION(ForInPrepareMap, "for-in-prepare-map")
-};
-
-
-class LForInCacheArray: public LTemplateInstruction<1, 1, 0> {
- public:
-  explicit LForInCacheArray(LOperand* map) {
-    inputs_[0] = map;
-  }
-
-  LOperand* map() { return inputs_[0]; }
-
-  DECLARE_CONCRETE_INSTRUCTION(ForInCacheArray, "for-in-cache-array")
-
-  int idx() {
-    return HForInCacheArray::cast(this->hydrogen_value())->idx();
-  }
-};
-
-
-class LCheckMapValue: public LTemplateInstruction<0, 2, 0> {
- public:
-  LCheckMapValue(LOperand* value, LOperand* map) {
-    inputs_[0] = value;
-    inputs_[1] = map;
-  }
-
-  LOperand* value() { return inputs_[0]; }
-  LOperand* map() { return inputs_[1]; }
-
-  DECLARE_CONCRETE_INSTRUCTION(CheckMapValue, "check-map-value")
-};
-
-
-class LLoadFieldByIndex: public LTemplateInstruction<1, 2, 0> {
- public:
-  LLoadFieldByIndex(LOperand* object, LOperand* index) {
-    inputs_[0] = object;
-    inputs_[1] = index;
-  }
-
-  LOperand* object() { return inputs_[0]; }
-  LOperand* index() { return inputs_[1]; }
-
-  DECLARE_CONCRETE_INSTRUCTION(LoadFieldByIndex, "load-field-by-index")
-};
-
-
 class LChunkBuilder;
 class LChunk: public ZoneObject {
  public:
@@ -2289,6 +2165,7 @@ class LChunk: public ZoneObject {
       graph_(graph),
       instructions_(32),
       pointer_maps_(8),
+      num_double_slots_(0),
       inlined_closures_(1) { }
 
   void AddInstruction(LInstruction* instruction, HBasicBlock* block);
@@ -2302,6 +2179,8 @@ class LChunk: public ZoneObject {
   int ParameterAt(int index);
   int GetParameterStackSlot(int index) const;
   int spill_slot_count() const { return spill_slot_count_; }
+  int num_double_slots() const { return num_double_slots_; }
+
   CompilationInfo* info() const { return info_; }
   HGraph* graph() const { return graph_; }
   const ZoneList<LInstruction*>* instructions() const { return &instructions_; }
@@ -2343,6 +2222,7 @@ class LChunk: public ZoneObject {
   HGraph* const graph_;
   ZoneList<LInstruction*> instructions_;
   ZoneList<LPointerMap*> pointer_maps_;
+  int num_double_slots_;
   ZoneList<Handle<JSFunction> > inlined_closures_;
 };
 
@@ -2353,7 +2233,7 @@ class LChunkBuilder BASE_EMBEDDED {
       : chunk_(NULL),
         info_(info),
         graph_(graph),
-        zone_(graph->isolate()->zone()),
+        isolate_(graph->isolate()),
         status_(UNUSED),
         current_instruction_(NULL),
         current_block_(NULL),
@@ -2383,7 +2263,7 @@ class LChunkBuilder BASE_EMBEDDED {
   LChunk* chunk() const { return chunk_; }
   CompilationInfo* info() const { return info_; }
   HGraph* graph() const { return graph_; }
-  Zone* zone() { return zone_; }
+  Zone* zone() { return isolate_->zone(); }
 
   bool is_unused() const { return status_ == UNUSED; }
   bool is_building() const { return status_ == BUILDING; }
@@ -2492,7 +2372,7 @@ class LChunkBuilder BASE_EMBEDDED {
   LChunk* chunk_;
   CompilationInfo* info_;
   HGraph* const graph_;
-  Zone* zone_;
+  Isolate* isolate_;
   Status status_;
   HInstruction* current_instruction_;
   HBasicBlock* current_block_;

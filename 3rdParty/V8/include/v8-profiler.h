@@ -284,8 +284,14 @@ class V8EXPORT HeapGraphNode {
    * the objects that are reachable only from this object. In other
    * words, the size of memory that will be reclaimed having this node
    * collected.
+   *
+   * Exact retained size calculation has O(N) (number of nodes)
+   * computational complexity, while approximate has O(1). It is
+   * assumed that initially heap profiling tools provide approximate
+   * sizes for all nodes, and then exact sizes are calculated for the
+   * most 'interesting' nodes.
    */
-  int GetRetainedSize() const;
+  int GetRetainedSize(bool exact) const;
 
   /** Returns child nodes count of the node. */
   int GetChildrenCount() const;
@@ -430,9 +436,6 @@ class V8EXPORT HeapProfiler {
    * handle.
    */
   static const uint16_t kPersistentHandleNoClassId = 0;
-
-  /** Returns the number of currently existing persistent handles. */
-  static int GetPersistentHandleCount();
 };
 
 

@@ -88,7 +88,7 @@ static MaybeObject* AllocateAfterFailures() {
   static const int kLargeObjectSpaceFillerLength = 300000;
   static const int kLargeObjectSpaceFillerSize = FixedArray::SizeFor(
       kLargeObjectSpaceFillerLength);
-  ASSERT(kLargeObjectSpaceFillerSize > heap->old_pointer_space()->AreaSize());
+  ASSERT(kLargeObjectSpaceFillerSize > heap->MaxObjectSizeInPagedSpace());
   while (heap->OldGenerationSpaceAvailable() > kLargeObjectSpaceFillerSize) {
     CHECK(!heap->AllocateFixedArray(kLargeObjectSpaceFillerLength, TENURED)->
           IsFailure());
@@ -214,13 +214,11 @@ TEST(CodeRange) {
   while (total_allocated < 5 * code_range_size) {
     if (current_allocated < code_range_size / 10) {
       // Allocate a block.
-      // Geometrically distributed sizes, greater than
-      // Page::kMaxNonCodeHeapObjectSize (which is greater than code page area).
+      // Geometrically distributed sizes, greater than Page::kMaxHeapObjectSize.
       // TODO(gc): instead of using 3 use some contant based on code_range_size
       // kMaxHeapObjectSize.
-      size_t requested =
-          (Page::kMaxNonCodeHeapObjectSize << (Pseudorandom() % 3)) +
-          Pseudorandom() % 5000 + 1;
+      size_t requested = (Page::kMaxHeapObjectSize << (Pseudorandom() % 3)) +
+           Pseudorandom() % 5000 + 1;
       size_t allocated = 0;
       Address base = code_range->AllocateRawMemory(requested, &allocated);
       CHECK(base != NULL);
