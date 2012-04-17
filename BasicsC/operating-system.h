@@ -94,6 +94,7 @@
 #define TRI_HAVE_STRTOULL                   1
 
 #define TRI_OVERLOAD_FUNCS_SIZE_T           1
+#define TRI_MISSING_MEMRCHR                 1
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 #define TRI_HAVE_GETLINE                    1
