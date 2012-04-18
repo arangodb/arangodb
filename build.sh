@@ -15,6 +15,7 @@ export LDFLAGS=""
 export MAKEJ=2
 export LDD_INFO="no"
 export VALGRIND_TEST="no"
+export RSPEC_AVAILABLE="yes"
 
 echo
 echo "########################################################"
@@ -52,6 +53,7 @@ case $TRI_OS_LONG in
   Linux-CentOS-*)
     echo "Using configuration for Centos"
     LDD_INFO="yes"
+    RSPEC_AVAILABLE="no"
     ;;
 
   Linux-Ubuntu-11.10*)
@@ -131,7 +133,11 @@ echo
 
 make unittests-boost || exit 1
 make unittests-shell-server || exit 1
-make unittests-http-server || exit 1
+
+if text "x$RSPEC_AVAILABLE" = "xyes";  then
+  make unittests-http-server || exit 1
+fi
+
 make unittests-shell-client || exit 1
 
 if test "x$VALGRIND_TEST" = "xyes";  then
