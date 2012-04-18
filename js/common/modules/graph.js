@@ -2,7 +2,7 @@
          nomen: true,
          maxlen: 80,
          plusplus: true */
-/*global require, shallowCopy, WeakDictionary */
+/*global require, WeakDictionary, exports */
 (function () {
   "use strict";
 
@@ -37,7 +37,62 @@
     db = internal.db,
     edges = internal.edges,
     AvocadoCollection = internal.AvocadoCollection,
-    AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
+    AvocadoEdgesCollection = internal.AvocadoEdgesCollection,
+    shallowCopy,
+    propertyKeys;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoGraph
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shallow copy properties
+////////////////////////////////////////////////////////////////////////////////
+
+  shallowCopy = function (props) {
+    var shallow,
+      key;
+
+    shallow = {};
+
+    for (key in props) {
+      if (props.hasOwnProperty(key) && key[0] !== '_' && key[0] !== '$') {
+        shallow[key] = props[key];
+      }
+    }
+
+    return shallow;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief property keys
+////////////////////////////////////////////////////////////////////////////////
+
+  propertyKeys = function (props) {
+    var keys,
+      key;
+
+    keys = [];
+
+    for (key in props) {
+      if (props.hasOwnProperty(key) && key[0] !== '_' && key[0] !== '$') {
+        keys.push(key);
+      }
+    }
+
+    return keys;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              Edge
@@ -196,12 +251,13 @@
 
   Edge.prototype.setProperty = function (name, value) {
     var shallow = shallowCopy(this._properties),
-      id = this._graph._edges.replace(this._properties, shallow);
-    shallow['$id'] = this._properties.$id;
-    shallow['$label'] = this._properties.$label;
+      id;
+    shallow.$id = this._properties.$id;
+    shallow.$label = this._properties.$label;
     shallow[name] = value;
 
     // TODO use "update" if this becomes available
+    id = this._graph._edges.replace(this._properties, shallow)
     this._properties = this._graph._edges.document(id);
 
     return value;
@@ -251,6 +307,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   Edge.prototype._PRINT = function (seen, path, names) {
+    // Ignores the standard arguments
+    seen = path = names = null;
+
     if (!this._id) {
       internal.output("[deleted Edge]");
     } else if (this._properties.$id !== undefined) {
@@ -420,7 +479,7 @@
 /// @verbinclude graph8
 ////////////////////////////////////////////////////////////////////////////////
 
-  Vertex.prototype.getId = function (name) {
+  Vertex.prototype.getId = function () {
     return this._properties.$id;
   };
 
@@ -440,11 +499,10 @@
     var edges,
       labels,
       result,
-      i,
-      edge;
+      i;
 
     if (arguments.length === 0) {
-      return this.inbound();
+      result = this.inbound();
     } else {
       labels = {};
 
@@ -456,13 +514,13 @@
       result = [];
 
       for (i = 0;  i < edges.length;  ++i) {
-        if (edges[i].getLabel() in labels) {
+        if (labels.hasOwnProperty(edges[i].getLabel())) {
           result.push(edges[i]);
         }
       }
-
-      return result;
     }
+
+    return result;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -481,11 +539,10 @@
     var edges,
       labels,
       result,
-      i,
-      edge;
+      i;
 
     if (arguments.length === 0) {
-      return this.outbound();
+      result = this.outbound();
     } else {
       labels = {};
 
@@ -497,13 +554,13 @@
       result = [];
 
       for (i = 0;  i < edges.length;  ++i) {
-        if (edges[i].getLabel() in labels) {
+        if (labels.hasOwnProperty(edges[i].getLabel())) {
           result.push(edges[i]);
         }
       }
-
-      return result;
     }
+
+    return result;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -634,12 +691,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   Vertex.prototype.setProperty = function (name, value) {
-    var shallow = shallowCopy(this._properties);
-    shallow['$id'] = this._properties.$id;
+    var shallow = shallowCopy(this._properties),
+      id;
+
+    shallow.$id = this._properties.$id;
     shallow[name] = value;
 
     // TODO use "update" if this becomes available
-    var id = this._graph._vertices.replace(this._id, shallow);
+    id = this._graph._vertices.replace(this._id, shallow)
     this._properties = this._graph._vertices.document(id);
 
     return value;
@@ -663,6 +722,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   Vertex.prototype._PRINT = function (seen, path, names) {
+    // Ignores the standard arguments
+    seen = path = names = null;
+
     if (!this._id) {
       internal.output("[deleted Vertex]");
     } else if (this._properties.$id !== undefined) {
@@ -805,9 +867,7 @@
 
   Graph.prototype.addEdge = function (id, out, ine, label, data) {
     var ref,
-      shallow,
-      key,
-      edge;
+      shallow;
 
     if (typeof label === 'object') {
       data = label;
@@ -865,11 +925,11 @@
     }
 
     shallow = shallowCopy(data);
-    
+
     shallow.$id = id || null;
 
     ref = this._vertices.save(shallow);
-    
+
     return this.constructVertex(ref._id);
   };
 
@@ -886,15 +946,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   Graph.prototype.getVertex = function (id) {
-    var ref;
+    var ref,
+      vertex;
 
     ref = this._vertices.select({ $id : id });
 
     if (ref.count() === 1) {
-      return this.constructVertex(ref.next()._id);
+      vertex = this.constructVertex(ref.next()._id);
     } else {
-      return undefined;
+      vertex = undefined;
     }
+
+    return vertex;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -933,6 +996,9 @@
       };
 
       this._PRINT = function (seen, path, names) {
+        // Ignores the standard arguments
+        seen = path = names = null;
+
         internal.output("[vertex iterator]");
       };
     };
@@ -976,6 +1042,9 @@
       };
 
       this._PRINT = function (seen, path, names) {
+        // Ignores the standard arguments
+        seen = path = names = null;
+
         internal.output("[edge iterator]");
       };
     };
@@ -1062,9 +1131,9 @@
 /// @brief private function to construct a vertex
 ////////////////////////////////////////////////////////////////////////////////
 
-  Graph.prototype.constructVertex = function(id) {
+  Graph.prototype.constructVertex = function (id) {
     var vertex = this._weakVertices[id];
-    
+
     if (vertex === undefined) {
       this._weakVertices[id] = vertex = new Vertex(this, id);
     }
@@ -1091,59 +1160,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   Graph.prototype._PRINT = function (seen, path, names) {
-    internal.output("Graph(\"", this._vertices.name(), "\", \"" + this._edges.name(), "\")");
+    var output;
+    // Ignores the standard arguments
+    seen = path = names = null;
+
+    output = "Graph(\"";
+    output += this._vertices.name();
+    output += "\", \"";
+    output += this._edges.name();
+    output += "\")";
+    internal.output(output);
   };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoGraph
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shallow copy properties
-////////////////////////////////////////////////////////////////////////////////
-
-  function shallowCopy(props) {
-    var shallow,
-      key;
-
-    shallow = {};
-
-    for (key in props) {
-      if (props.hasOwnProperty(key) && key[0] !== '_' && key[0] !== '$') {
-        shallow[key] = props[key];
-      }
-    }
-
-    return shallow;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief property keys
-////////////////////////////////////////////////////////////////////////////////
-
-  function propertyKeys(props) {
-    var keys,
-      key;
-
-    keys = [];
-
-    for (key in props) {
-      if (props.hasOwnProperty(key) && key[0] !== '_' && key[0] !== '$') {
-        keys.push(key);
-      }
-    }
-
-    return keys;
-  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1170,6 +1197,7 @@
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: 
+//   "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
 }());
