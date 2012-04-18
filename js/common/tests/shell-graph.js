@@ -1,5 +1,12 @@
+/*jslint indent: 2,
+         nomen: true,
+         maxlen: 80 */
+/*global require, db, assertEqual */
+(function () {
+  "use strict";
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test the document interface
+/// @brief test the graph class
 ///
 /// @file
 ///
@@ -21,92 +28,83 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Dr. Frank Celler, Lucas Dohmen
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
+  var jsunity = require("jsunity");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                collection methods
 // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: error handling
+/// @brief test suite: Graph Basics
 ////////////////////////////////////////////////////////////////////////////////
 
-function graphBasicsSuite () {
-  var ERRORS = require("internal").errors;
-  var Graph = require("graph").Graph;
+  function graphBasicsSuite() {
+    //var ERRORS = require("internal").errors;
+    var Graph = require("graph").Graph,
+      vertex = "UnitTestsCollectionVertex",
+      edge = "UnitTestsCollectionEdge",
+      graph = null;
 
-  var vertex = "UnitTestsCollectionVertex";
-  var edge = "UnitTestsCollectionEdge";
-  var graph = null;
-
-  return {
+    return {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
-      db._drop(vertex);
-      db._drop(edge);
+      setUp : function () {
+        db._drop(vertex);
+        db._drop(edge);
 
-      graph = new Graph(vertex, edge);
-    },
+        graph = new Graph(vertex, edge);
+      },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
-      db._drop(vertex);
-      db._drop(edge);
-    },
+      tearDown : function () {
+        db._drop(vertex);
+        db._drop(edge);
+      },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief bad handle
+/// @brief create a vertex
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateVertex : function () {
-      var v = graph.addVertex("name1", { age : 23 });
+      testCreateVertex : function () {
+        var v = graph.addVertex("name1", { age : 23 });
 
-      assertEqual("name1", v.getId());
-      assertEqual(23, v.getProperty("age"));
-    },
+        assertEqual("name1", v.getId());
+        assertEqual(23, v.getProperty("age"));
+      },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief bad handle
+/// @brief change a property
 ////////////////////////////////////////////////////////////////////////////////
 
-    testChangeProperty : function () {
-      var v = graph.addVertex("name2", { age : 32 });
+      testChangeProperty : function () {
+        var v = graph.addVertex("name2", { age : 32 });
 
-      assertEqual("name2", v.getId());
-      assertEqual(32, v.getProperty("age"));
+        assertEqual("name2", v.getId());
+        assertEqual(32, v.getProperty("age"));
 
-      v.setProperty("age", 23);
+        v.setProperty("age", 23);
 
-      assertEqual("name2", v.getId());
-      assertEqual(23, v.getProperty("age"));
-    }
-  };
-}
+        assertEqual("name2", v.getId());
+        assertEqual(23, v.getProperty("age"));
+      }
+    };
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(graphBasicsSuite);
+  jsunity.run(graphBasicsSuite);
+  jsunity.done();
 
-return jsunity.done();
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:
+}());
