@@ -46,7 +46,7 @@
 ///    <li>@ref ShellDocumentRead "collection.document(document-handle)"</li>
 ///    <li>@ref ShellDocumentCreate "collection.save(data)"</li>
 ///    <li>@ref ShellDocumentUpdate "collection.replace(document, data)"</li>
-///    <li>@ref ShellDocumentDelete "collection.delete(document)"</li>
+///    <li>@ref ShellDocumentDelete "collection.remove(document)"</li>
 ///   </ol>
 ///  </li>
 ///  <li>@ref ShellDocumentDatabaseMethods

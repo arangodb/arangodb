@@ -406,7 +406,7 @@ helpAvocadoDatabase = TRI_CreateHelpHeadline("AvocadoDatabase help") +
 'Document Functions:                                                 ' + "\n" +
 '  _document(<id>)                 get document by handle            ' + "\n" +
 '  _replace(<id>, <data>)          over-writes document              ' + "\n" +
-'  _delete(<id>)                   deletes document                  ' + "\n" +
+'  _remove(<id>)                   deletes document                  ' + "\n" +
 '                                                                    ' + "\n" +
 'Query Functions:                                                    ' + "\n" +
 '  _createStatement(<data>);      create and return select query     ' + "\n" +
@@ -448,7 +448,7 @@ AvocadoDatabase.prototype.toString = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoDatabase.prototype._collections = function () {
-  var requestResult = this._connection.get("/_api/collection");
+  var requestResult = this._connection.GET("/_api/collection");
   
   TRI_CheckRequestResult(requestResult);
 
@@ -475,7 +475,7 @@ AvocadoDatabase.prototype._collections = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoDatabase.prototype._collection = function (id) {
-  var requestResult = this._connection.get("/_api/collection/" + encodeURIComponent(id));
+  var requestResult = this._connection.GET("/_api/collection/" + encodeURIComponent(id));
   
   // return null in case of not found
   if (requestResult != null
@@ -515,7 +515,7 @@ AvocadoDatabase.prototype._create = function (name, properties) {
     }
   }
 
-  var requestResult = this._connection.post("/_api/collection", JSON.stringify(body));
+  var requestResult = this._connection.POST("/_api/collection", JSON.stringify(body));
 
   TRI_CheckRequestResult(requestResult);
 
@@ -598,10 +598,10 @@ AvocadoDatabase.prototype._document = function (id) {
   }
 
   if (rev == null) {
-    requestResult = this._connection.get("/document/" + id);
+    requestResult = this._connection.GET("/document/" + id);
   }
   else {
-    requestResult = this._connection.get("/document/" + id, {'if-match' : '"' + rev + '"' });
+    requestResult = this._connection.GET("/document/" + id, {'if-match' : '"' + rev + '"' });
   }
 
   if (requestResult != null
@@ -625,7 +625,7 @@ AvocadoDatabase.prototype._document = function (id) {
 /// @brief delete a document in the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoDatabase.prototype._delete = function (id, overwrite) {
+AvocadoDatabase.prototype._remove = function (id, overwrite) {
   var rev = null;
   var requestResult;
 
@@ -644,10 +644,10 @@ AvocadoDatabase.prototype._delete = function (id, overwrite) {
   }
 
   if (rev == null) {
-    requestResult = this._connection.delete("/document/" + id + policy);
+    requestResult = this._connection.DELETE("/document/" + id + policy);
   }
   else {
-    requestResult = this._connection.delete("/document/" + id + policy, {'if-match' : '"' + rev + '"' });
+    requestResult = this._connection.DELETE("/document/" + id + policy, {'if-match' : '"' + rev + '"' });
   }
 
   if (requestResult != null && requestResult.error == true) {
@@ -694,10 +694,10 @@ AvocadoDatabase.prototype._replace = function (id, data, overwrite) {
   }
 
   if (rev == null) {
-    requestResult = this._connection.put("/document/" + id + policy, JSON.stringify(data));
+    requestResult = this._connection.PUT("/document/" + id + policy, JSON.stringify(data));
   }
   else {
-    requestResult = this._connection.put("/document/" + id + policy, JSON.stringify(data), {'if-match' : '"' + rev + '"' });
+    requestResult = this._connection.PUT("/document/" + id + policy, JSON.stringify(data), {'if-match' : '"' + rev + '"' });
   }
 
   if (requestResult != null && requestResult.error == true) {
@@ -1015,7 +1015,7 @@ AvocadoCollection.prototype.properties = function (properties) {
   var requestResult;
 
   if (properties == null) {
-    requestResult = this._database._connection.get("/_api/collection/" + encodeURIComponent(this._id) + "/properties");
+    requestResult = this._database._connection.GET("/_api/collection/" + encodeURIComponent(this._id) + "/properties");
 
     TRI_CheckRequestResult(requestResult);
   }
@@ -1026,7 +1026,7 @@ AvocadoCollection.prototype.properties = function (properties) {
       body.waitForSync = properties.waitForSync;
     }
 
-    requestResult = this._database._connection.put("/_api/collection/" + encodeURIComponent(this._id) + "/properties", JSON.stringify(body));
+    requestResult = this._database._connection.PUT("/_api/collection/" + encodeURIComponent(this._id) + "/properties", JSON.stringify(body));
 
     TRI_CheckRequestResult(requestResult);
   }
@@ -1042,7 +1042,7 @@ AvocadoCollection.prototype.properties = function (properties) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.figures = function () {
-  var requestResult = this._database._connection.get("/_api/collection/" + encodeURIComponent(this._id) + "/figures");
+  var requestResult = this._database._connection.GET("/_api/collection/" + encodeURIComponent(this._id) + "/figures");
 
   TRI_CheckRequestResult(requestResult);
 
@@ -1054,7 +1054,7 @@ AvocadoCollection.prototype.figures = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.drop = function () {
-  var requestResult = this._database._connection.delete("/_api/collection/" + encodeURIComponent(this._id));
+  var requestResult = this._database._connection.DELETE("/_api/collection/" + encodeURIComponent(this._id));
 
   TRI_CheckRequestResult(requestResult);
 
@@ -1080,7 +1080,7 @@ AvocadoCollection.prototype.drop = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.truncate = function () {
-  var requestResult = this._database._connection.put("/_api/collection/" + encodeURIComponent(this._id) + "/truncate", "");
+  var requestResult = this._database._connection.PUT("/_api/collection/" + encodeURIComponent(this._id) + "/truncate", "");
 
   TRI_CheckRequestResult(requestResult);
 
@@ -1092,7 +1092,7 @@ AvocadoCollection.prototype.truncate = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.load = function () {
-  var requestResult = this._database._connection.put("/_api/collection/" + encodeURIComponent(this._id) + "/load", "");
+  var requestResult = this._database._connection.PUT("/_api/collection/" + encodeURIComponent(this._id) + "/load", "");
 
   TRI_CheckRequestResult(requestResult);
 
@@ -1104,7 +1104,7 @@ AvocadoCollection.prototype.load = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.unload = function () {
-  var requestResult = this._database._connection.put("/_api/collection/" + encodeURIComponent(this._id) + "/unload", "");
+  var requestResult = this._database._connection.PUT("/_api/collection/" + encodeURIComponent(this._id) + "/unload", "");
 
   TRI_CheckRequestResult(requestResult);
 
@@ -1117,7 +1117,7 @@ AvocadoCollection.prototype.unload = function () {
 
 AvocadoCollection.prototype.rename = function (name) {
   var body = { name : name };
-  var requestResult = this._database._connection.put("/_api/collection/" + encodeURIComponent(this._id) + "/rename", JSON.stringify(body));
+  var requestResult = this._database._connection.PUT("/_api/collection/" + encodeURIComponent(this._id) + "/rename", JSON.stringify(body));
 
   TRI_CheckRequestResult(requestResult);
 
@@ -1133,7 +1133,7 @@ AvocadoCollection.prototype.rename = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.refresh = function () {
-  var requestResult = this._database._connection.get("/_api/collection/" + encodeURIComponent(this._id));
+  var requestResult = this._database._connection.GET("/_api/collection/" + encodeURIComponent(this._id));
 
   TRI_CheckRequestResult(requestResult);
 
@@ -1159,7 +1159,7 @@ AvocadoCollection.prototype.refresh = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.count = function () {
-  var requestResult = this._database._connection.get("/_api/collection/" + encodeURIComponent(this._id) + "/count");
+  var requestResult = this._database._connection.GET("/_api/collection/" + encodeURIComponent(this._id) + "/count");
 
   TRI_CheckRequestResult(requestResult);
 
@@ -1175,7 +1175,7 @@ AvocadoCollection.prototype.all = function () {
     collection : this._id
   }  
   
-  var requestResult = this._database._connection.put("/_api/simple/all", JSON.stringify(data));
+  var requestResult = this._database._connection.PUT("/_api/simple/all", JSON.stringify(data));
 
   TRI_CheckRequestResult(requestResult);
 
@@ -1199,10 +1199,10 @@ AvocadoCollection.prototype.document = function (id) {
   }
 
   if (rev == null) {
-    requestResult = this._database._connection.get("/document/" + id);
+    requestResult = this._database._connection.GET("/document/" + id);
   }
   else {
-    requestResult = this._database._connection.get("/document/" + id, {'if-match' : '"' + rev + '"' });
+    requestResult = this._database._connection.GET("/document/" + id, {'if-match' : '"' + rev + '"' });
   }
 
   if (requestResult != null
@@ -1230,7 +1230,7 @@ AvocadoCollection.prototype.document = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.save = function (data) {    
-  var requestResult = this._database._connection.post("/document?collection=" + encodeURIComponent(this._id), JSON.stringify(data));
+  var requestResult = this._database._connection.POST("/document?collection=" + encodeURIComponent(this._id), JSON.stringify(data));
   
   TRI_CheckRequestResult(requestResult);
 
@@ -1241,7 +1241,7 @@ AvocadoCollection.prototype.save = function (data) {
 /// @brief delete a document in the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.delete = function (id, overwrite) {
+AvocadoCollection.prototype.remove = function (id, overwrite) {
   var rev = null;
   var requestResult;
 
@@ -1260,10 +1260,10 @@ AvocadoCollection.prototype.delete = function (id, overwrite) {
   }
 
   if (rev == null) {
-    requestResult = this._database._connection.delete("/document/" + id + policy);
+    requestResult = this._database._connection.DELETE("/document/" + id + policy);
   }
   else {
-    requestResult = this._database._connection.delete("/document/" + id + policy, {'if-match' : '"' + rev + '"' });
+    requestResult = this._database._connection.DELETE("/document/" + id + policy, {'if-match' : '"' + rev + '"' });
   }
 
   if (requestResult != null && requestResult.error == true) {
@@ -1313,10 +1313,10 @@ AvocadoCollection.prototype.replace = function (id, data, overwrite) {
   }
 
   if (rev == null) {
-    requestResult = this._database._connection.put("/document/" + id + policy, JSON.stringify(data));
+    requestResult = this._database._connection.PUT("/document/" + id + policy, JSON.stringify(data));
   }
   else {
-    requestResult = this._database._connection.put("/document/" + id + policy, JSON.stringify(data), {'if-match' : '"' + rev + '"' });
+    requestResult = this._database._connection.PUT("/document/" + id + policy, JSON.stringify(data), {'if-match' : '"' + rev + '"' });
   }
 
   if (requestResult != null && requestResult.error == true) {
@@ -1464,7 +1464,7 @@ AvocadoEdgesCollection.prototype.save = function (from, to, data) {
           + "&from=" + encodeURIComponent(from)
           + "&to=" + encodeURIComponent(to);
 
-  var requestResult = this._database._connection.post(url, JSON.stringify(data));
+  var requestResult = this._database._connection.POST(url, JSON.stringify(data));
   
   TRI_CheckRequestResult(requestResult);
 
@@ -1495,7 +1495,7 @@ AvocadoEdgesCollection.prototype.edges = function (vertex) {
   }
 
   // get the edges
-  requestResult = this._database._connection.get("/edges/" + encodeURIComponent(this._id) + "?vertex=" + encodeURIComponent(vertex));
+  requestResult = this._database._connection.GET("/edges/" + encodeURIComponent(this._id) + "?vertex=" + encodeURIComponent(vertex));
   
   TRI_CheckRequestResult(requestResult);
 
@@ -1526,7 +1526,7 @@ AvocadoEdgesCollection.prototype.inEdges = function (vertex) {
   }
 
   // get the edges
-  requestResult = this._database._connection.get("/edges/" + encodeURIComponent(this._id) + "?direction=in&vertex=" + encodeURIComponent(vertex));
+  requestResult = this._database._connection.GET("/edges/" + encodeURIComponent(this._id) + "?direction=in&vertex=" + encodeURIComponent(vertex));
   
   TRI_CheckRequestResult(requestResult);
 
@@ -1557,7 +1557,7 @@ AvocadoEdgesCollection.prototype.outEdges = function (vertex) {
   }
 
   // get the edges
-  requestResult = this._database._connection.get("/edges/" + encodeURIComponent(this._id) + "?direction=out&vertex=" + encodeURIComponent(vertex));
+  requestResult = this._database._connection.GET("/edges/" + encodeURIComponent(this._id) + "?direction=out&vertex=" + encodeURIComponent(vertex));
   
   TRI_CheckRequestResult(requestResult);
 
@@ -1703,7 +1703,7 @@ AvocadoQueryCursor.prototype.next = function () {
       this._hasMore = false;
       
       // load more results      
-      var requestResult = this._database._connection.put("/_api/cursor/"+ encodeURIComponent(this.data._id),  "");
+      var requestResult = this._database._connection.PUT("/_api/cursor/"+ encodeURIComponent(this.data._id),  "");
     
       TRI_CheckRequestResult(requestResult);
       
@@ -1755,7 +1755,7 @@ AvocadoQueryCursor.prototype.dispose = function () {
     return;
   }
 
-  var requestResult = this._database._connection.delete("/_api/cursor/"+ encodeURIComponent(this.data._id), "");
+  var requestResult = this._database._connection.DELETE("/_api/cursor/"+ encodeURIComponent(this.data._id), "");
     
   TRI_CheckRequestResult(requestResult);
 
@@ -2008,7 +2008,7 @@ AvocadoStatement.prototype.parse = function () {
     "query" : this._query,
   }
 
-  var requestResult = this._database._connection.post("/_api/query", JSON.stringify(body));
+  var requestResult = this._database._connection.POST("/_api/query", JSON.stringify(body));
     
   TRI_CheckRequestResult(requestResult);
 
@@ -2034,7 +2034,7 @@ AvocadoStatement.prototype.execute = function () {
     body["batchSize"] = this._batchSize;
   }
 
-  var requestResult = this._database._connection.post("/_api/cursor", JSON.stringify(body));
+  var requestResult = this._database._connection.POST("/_api/cursor", JSON.stringify(body));
     
   TRI_CheckRequestResult(requestResult);
 
@@ -2061,7 +2061,7 @@ HELP = TRI_CreateHelpHeadline("Help") +
 ' > db._collections();                    list all collections       ' + "\n" +
 ' > db.<coll_name>.all();                 list all documents         ' + "\n" +
 ' > id = db.<coll_name>.save({ ... });    save a document            ' + "\n" +
-' > db.<coll_name>.delete(<_id>);         delete a document          ' + "\n" +
+' > db.<coll_name>.remove(<_id>);         delete a document          ' + "\n" +
 ' > db.<coll_name>.document(<_id>);       get a document             ' + "\n" +
 ' > help                                  show help pages            ' + "\n" +
 ' > helpQueries                           query help                 ' + "\n" +

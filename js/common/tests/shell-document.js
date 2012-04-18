@@ -94,7 +94,7 @@ function collectionDocumentSuiteErrorHandling () {
 
     testErrorHandlingBadHandleDelete : function () {
       try {
-        collection.delete("123456");
+        collection.remove("123456");
         fail();
       }
       catch (err) {
@@ -150,7 +150,7 @@ function collectionDocumentSuiteErrorHandling () {
 
     testErrorHandlingCrossCollectionDelete : function () {
       try {
-        collection.delete("123456/123456");
+        collection.remove("123456/123456");
         fail();
       }
       catch (err) {
@@ -306,18 +306,18 @@ function collectionDocumentSuite () {
       assertNotEqual(a1._rev, a2._rev);
 
       try {
-        collection.delete(a1);
+        collection.remove(a1);
         fail();
       }
       catch (err) {
         assertEqual(ERRORS.ERROR_AVOCADO_CONFLICT.code, err.errorNum);
       }
 
-      var a3 = collection.delete(a1, true);
+      var a3 = collection.remove(a1, true);
 
       assertEqual(a3, true);
 
-      var a4 = collection.delete(a1, true);
+      var a4 = collection.remove(a1, true);
 
       assertEqual(a4, false);
     },
@@ -332,10 +332,10 @@ function collectionDocumentSuite () {
       assertTypeOf("string", a1._id);
       assertTypeOf("number", a1._rev);
 
-      collection.delete(a1);
+      collection.remove(a1);
 
       try {
-        collection.delete(a1);
+        collection.remove(a1);
         fail();
       }
       catch (err) {
@@ -393,7 +393,7 @@ function databaseDocumentSuiteErrorHandling () {
 
     testErrorHandlingBadHandleDelete : function () {
       try {
-        db._delete("123456");
+        db._remove("123456");
         fail();
       }
       catch (err) {
@@ -555,18 +555,18 @@ function databaseDocumentSuite () {
       assertNotEqual(a1._rev, a2._rev);
 
       try {
-        db._delete(a1);
+        db._remove(a1);
         fail();
       }
       catch (err) {
         assertEqual(ERRORS.ERROR_AVOCADO_CONFLICT.code, err.errorNum);
       }
 
-      var a3 = db._delete(a1, true);
+      var a3 = db._remove(a1, true);
 
       assertEqual(a3, true);
 
-      var a4 = db._delete(a1, true);
+      var a4 = db._remove(a1, true);
 
       assertEqual(a4, false);
     },
@@ -581,10 +581,10 @@ function databaseDocumentSuite () {
       assertTypeOf("string", a1._id);
       assertTypeOf("number", a1._rev);
 
-      db._delete(a1);
+      db._remove(a1);
 
       try {
-        db._delete(a1);
+        db._remove(a1);
         fail();
       }
       catch (err) {

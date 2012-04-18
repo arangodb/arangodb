@@ -1021,7 +1021,7 @@ Graph.prototype.removeVertex = function (vertex) {
   }
 
   edges = vertex.edges();
-  result = this._vertices.delete(vertex._properties);
+  result = this._vertices.remove(vertex._properties);
 
   if (! result) {
     throw "cannot delete vertex";
@@ -1053,7 +1053,7 @@ Graph.prototype.removeEdge = function (edge) {
     return;
   }
 
-  result = this._edges.delete(edge._properties);
+  result = this._edges.remove(edge._properties);
 
   if (! result) {
     throw "cannot delete edge";

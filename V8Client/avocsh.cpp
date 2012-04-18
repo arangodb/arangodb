@@ -1453,10 +1453,10 @@ int main (int argc, char* argv[]) {
   v8::Handle<v8::FunctionTemplate> connection_templ = v8::FunctionTemplate::New();
   connection_templ->SetClassName(v8::String::New("AvocadoConnection"));
   v8::Handle<v8::ObjectTemplate> connection_proto = connection_templ->PrototypeTemplate();
-  connection_proto->Set("get", v8::FunctionTemplate::New(ClientConnection_httpGet));
-  connection_proto->Set("post", v8::FunctionTemplate::New(ClientConnection_httpPost));
-  connection_proto->Set("delete", v8::FunctionTemplate::New(ClientConnection_httpDelete));
-  connection_proto->Set("put", v8::FunctionTemplate::New(ClientConnection_httpPut));
+  connection_proto->Set("GET", v8::FunctionTemplate::New(ClientConnection_httpGet));
+  connection_proto->Set("POST", v8::FunctionTemplate::New(ClientConnection_httpPost));
+  connection_proto->Set("DELETE", v8::FunctionTemplate::New(ClientConnection_httpDelete));
+  connection_proto->Set("PUT", v8::FunctionTemplate::New(ClientConnection_httpPut));
   connection_proto->Set("lastHttpReturnCode", v8::FunctionTemplate::New(ClientConnection_lastHttpReturnCode));
   connection_proto->Set("lastErrorMessage", v8::FunctionTemplate::New(ClientConnection_lastErrorMessage));
   connection_proto->Set("isConnected", v8::FunctionTemplate::New(ClientConnection_isConnected));
