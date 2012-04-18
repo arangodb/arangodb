@@ -45,6 +45,7 @@
   function graphBasicsSuite() {
     //var ERRORS = require("internal").errors;
     var Graph = require("graph").Graph,
+      graph_name = "UnitTestsCollectionGraph",
       vertex = "UnitTestsCollectionVertex",
       edge = "UnitTestsCollectionEdge",
       graph = null;
@@ -59,7 +60,7 @@
         db._drop(vertex);
         db._drop(edge);
 
-        graph = new Graph(vertex, edge);
+        graph = new Graph(graph_name, vertex, edge);
       },
 
 ////////////////////////////////////////////////////////////////////////////////
