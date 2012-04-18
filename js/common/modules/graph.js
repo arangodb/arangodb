@@ -190,6 +190,8 @@ Edge.prototype.getPropertyKeys = function () {
 
 Edge.prototype.setProperty = function (name, value) {
   var shallow = shallowCopy(this._properties);
+  shallow['$id'] = this._properties.$id;
+  shallow['$label'] = this._properties.$label;
   shallow[name] = value;
 
   // TODO use "update" if this becomes available
@@ -629,6 +631,7 @@ Vertex.prototype.properties = function () {
 
 Vertex.prototype.setProperty = function (name, value) {
   var shallow = shallowCopy(this._properties);
+  shallow['$id'] = this._properties.$id;
   shallow[name] = value;
 
   // TODO use "update" if this becomes available
