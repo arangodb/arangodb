@@ -2,6 +2,8 @@
          nomen: true,
          maxlen: 80 */
 /*global require, db, assertEqual */
+(function () {
+  "use strict";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph class
@@ -30,7 +32,7 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
+  var jsunity = require("jsunity");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                collection methods
@@ -40,68 +42,69 @@ var jsunity = require("jsunity");
 /// @brief test suite: Graph Basics
 ////////////////////////////////////////////////////////////////////////////////
 
-function graphBasicsSuite() {
-  "use strict";
-  //var ERRORS = require("internal").errors;
-  var Graph = require("graph").Graph,
-    vertex = "UnitTestsCollectionVertex",
-    edge = "UnitTestsCollectionEdge",
-    graph = null;
+  function graphBasicsSuite() {
+    //var ERRORS = require("internal").errors;
+    var Graph = require("graph").Graph,
+      vertex = "UnitTestsCollectionVertex",
+      edge = "UnitTestsCollectionEdge",
+      graph = null;
 
-  return {
+    return {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
-      db._drop(vertex);
-      db._drop(edge);
+      setUp : function () {
+        db._drop(vertex);
+        db._drop(edge);
 
-      graph = new Graph(vertex, edge);
-    },
+        graph = new Graph(vertex, edge);
+      },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
-      db._drop(vertex);
-      db._drop(edge);
-    },
+      tearDown : function () {
+        db._drop(vertex);
+        db._drop(edge);
+      },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a vertex
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateVertex : function () {
-      var v = graph.addVertex("name1", { age : 23 });
+      testCreateVertex : function () {
+        var v = graph.addVertex("name1", { age : 23 });
 
-      assertEqual("name1", v.getId());
-      assertEqual(23, v.getProperty("age"));
-    },
+        assertEqual("name1", v.getId());
+        assertEqual(23, v.getProperty("age"));
+      },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief change a property
 ////////////////////////////////////////////////////////////////////////////////
 
-    testChangeProperty : function () {
-      var v = graph.addVertex("name2", { age : 32 });
+      testChangeProperty : function () {
+        var v = graph.addVertex("name2", { age : 32 });
 
-      assertEqual("name2", v.getId());
-      assertEqual(32, v.getProperty("age"));
+        assertEqual("name2", v.getId());
+        assertEqual(32, v.getProperty("age"));
 
-      v.setProperty("age", 23);
+        v.setProperty("age", 23);
 
-      assertEqual("name2", v.getId());
-      assertEqual(23, v.getProperty("age"));
-    }
-  };
-}
+        assertEqual("name2", v.getId());
+        assertEqual(23, v.getProperty("age"));
+      }
+    };
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(graphBasicsSuite);
-jsunity.done();
+  jsunity.run(graphBasicsSuite);
+  jsunity.done();
+
+}());
