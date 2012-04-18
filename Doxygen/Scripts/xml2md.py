@@ -161,6 +161,12 @@ replDict["e_verbatim"] = ""
 replDict["s_simplesect"] = ""
 replDict["e_simplesect"] = ""
 
+replDict["s_htmlonly"] = ""
+replDict["e_htmlonly"] = ""
+
+replDict["s_xmlonly"] = ""
+replDict["e_xmlonly"] = ""
+
 ################################################################################
 #### @brief generate code for text value
 ################################################################################
@@ -217,6 +223,10 @@ gencDict["simplesect"] = True
 gencDict["xrefsect"] = True
 gencDict["xreftitle"] = True
 gencDict["xrefdescription"] = True
+
+gencDict["htmlonly"] = False
+
+gencDict["xmlonly"] = True
 
 ################################################################################
 #### @brief table entry

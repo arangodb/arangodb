@@ -37,12 +37,14 @@
 /// The AvocadoDB consists of a server, a separate shell, which allows you to
 /// administrate the server, and a set of client API for various languages.
 ///
+/// @xmlonly The HTML version of the manual can be found <ulink url="http://www.avocadodb.org/manuals">here</ulink>. @endxmlonly
+///
 /// @warning
 /// AvocadoDB is currently pre-alpha. We want to have a version 1 ready by end
 /// of May 2012, a multi server version is planned for the third quarter of
 /// 2012. The document is far from complete.
 ///
-/// @section AvocadoDBServer AvocadoDB Server
+/// @section AvocadoDBServer AvocadoDB Server (Version @VERSION)
 /// 
 /// <ul>
 ///   <li>@ref InstallManual</li>
