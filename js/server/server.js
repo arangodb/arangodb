@@ -233,7 +233,7 @@ AvocadoDatabase.prototype._truncate = function(name) {
   var all = collection.ALL(null, null).documents;
 
   for (var i = 0;  i < all.length;  ++i) {
-    collection.delete(all[i]._id);
+    collection.remove(all[i]._id);
   }
 };
 

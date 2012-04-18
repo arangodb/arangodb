@@ -457,7 +457,7 @@ function collectionSuite () {
       assertEqual(0, f.dead.size);
       assertEqual(0, f.dead.deletion);
 
-      c1.delete(d1);
+      c1.remove(d1);
 
       f = c1.figures();
 
@@ -468,7 +468,7 @@ function collectionSuite () {
       assertNotEqual(0, f.dead.size);
       assertEqual(1, f.dead.deletion);
 
-      c1.delete(d2);
+      c1.remove(d2);
 
       f = c1.figures();
 

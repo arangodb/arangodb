@@ -244,7 +244,7 @@ function deleteKeyValue(req, res) {
     }
     else {
       var id = s._execution._documents[0]._id;
-      if (db[collection].delete(id)) {            
+      if (db[collection].remove(id)) {            
         actions.resultOk(req, res, actions.HTTP_ACCEPTED, {"removed" : true});                              
       }
       else {

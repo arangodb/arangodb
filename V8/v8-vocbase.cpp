@@ -3881,17 +3881,18 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
 ///
-/// @FUN{@FA{collection}.delete(@FA{document})}
+/// @FUN{@FA{collection}.remove(@FA{document})}
 ///
 /// Deletes a document. If there is revision mismatch, then an error is thrown.
 ///
-/// @FUN{delete(@FA{document}, true)}
+/// @FUN{@FA{collection}.remove(@FA{document}, true)}
 ///
-/// Deletes a document. If there is revision mismatch, then mismatch is ignored and document is  deleted. The function returns @LIT{true} if the
-/// document existed and was deleted. It returns @LIT{false}, if the document
-/// was already deleted.
+/// Deletes a document. If there is revision mismatch, then mismatch
+/// is ignored and document is deleted. The function returns
+/// @LIT{true} if the document existed and was deleted. It returns
+/// @LIT{false}, if the document was already deleted.
 ///
-/// @FUN{@FA{collection}.delete(@FA{document-handle}, @FA{data})}
+/// @FUN{@FA{collection}.remove(@FA{document-handle}, @FA{data})}
 ///
 /// As before. Instead of document a @FA{document-handle} can be passed as
 /// first argument.
@@ -3900,14 +3901,14 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
 ///
 /// Delete a document:
 ///
-/// @verbinclude shell_delete-document
+/// @verbinclude shell_remove-document
 ///
 /// Delete a document with a conflict:
 ///
-/// @verbinclude shell_delete-document-conflict
+/// @verbinclude shell_remove-document-conflict
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_DeleteVocbaseCol (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   v8::Handle<v8::Object> err;
@@ -5315,18 +5316,18 @@ static v8::Handle<v8::Value> JS_CreateVocBase (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
 ///
-/// @FUN{@FA{db}._delete(@FA{document})}
+/// @FUN{@FA{db}._remove(@FA{document})}
 ///
 /// Deletes a document. If there is revision mismatch, then an error is thrown.
 ///
-/// @FUN{@FA{db}._delete(@FA{document}, true)}
+/// @FUN{@FA{db}._remove(@FA{document}, true)}
 ///
 /// Deletes a document. If there is revision mismatch, then mismatch
 /// is ignored and document is deleted. The function returns
 /// @LIT{true} if the document existed and was deleted. It returns
 /// @LIT{false}, if the document was already deleted.
 ///
-/// @FUN{@FA{db}._delete(@FA{document-handle}, @FA{data})}
+/// @FUN{@FA{db}._remove(@FA{document-handle}, @FA{data})}
 ///
 /// As before. Instead of document a @FA{document-handle} can be passed as
 /// first argument.
@@ -5335,14 +5336,14 @@ static v8::Handle<v8::Value> JS_CreateVocBase (v8::Arguments const& argv) {
 ///
 /// Delete a document:
 ///
-/// @verbinclude shell_delete-document-db
+/// @verbinclude shell_remove-document-db
 ///
 /// Delete a document with a conflict:
 ///
-/// @verbinclude shell_delete-document-conflict-db
+/// @verbinclude shell_remove-document-conflict-db
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_DeleteVocbase (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_RemoveVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
@@ -6022,7 +6023,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> WithinFuncName = v8::Persistent<v8::String>::New(v8::String::New("WITHIN"));
 
   v8::Handle<v8::String> CountFuncName = v8::Persistent<v8::String>::New(v8::String::New("count"));
-  v8::Handle<v8::String> DeleteFuncName = v8::Persistent<v8::String>::New(v8::String::New("delete"));
   v8::Handle<v8::String> DisposeFuncName = v8::Persistent<v8::String>::New(v8::String::New("dispose"));
   v8::Handle<v8::String> DocumentFuncName = v8::Persistent<v8::String>::New(v8::String::New("document"));
   v8::Handle<v8::String> DropFuncName = v8::Persistent<v8::String>::New(v8::String::New("drop"));
@@ -6034,7 +6034,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> EnsureSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureSkiplist"));
   v8::Handle<v8::String> EnsureUniqueConstraintFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureUniqueConstraint"));
   v8::Handle<v8::String> EnsureUniqueSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureUniqueSkiplist"));
-
   v8::Handle<v8::String> ExecuteFuncName = v8::Persistent<v8::String>::New(v8::String::New("execute"));
   v8::Handle<v8::String> FiguresFuncName = v8::Persistent<v8::String>::New(v8::String::New("figures"));
   v8::Handle<v8::String> GetBatchSizeFuncName = v8::Persistent<v8::String>::New(v8::String::New("getBatchSize"));
@@ -6051,6 +6050,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> OutEdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("outEdges"));
   v8::Handle<v8::String> PersistFuncName = v8::Persistent<v8::String>::New(v8::String::New("persist"));
   v8::Handle<v8::String> PropertiesFuncName = v8::Persistent<v8::String>::New(v8::String::New("properties"));
+  v8::Handle<v8::String> RemoveFuncName = v8::Persistent<v8::String>::New(v8::String::New("remove"));
   v8::Handle<v8::String> RenameFuncName = v8::Persistent<v8::String>::New(v8::String::New("rename"));
   v8::Handle<v8::String> ReplaceFuncName = v8::Persistent<v8::String>::New(v8::String::New("replace"));
   v8::Handle<v8::String> SaveFuncName = v8::Persistent<v8::String>::New(v8::String::New("save"));
@@ -6062,7 +6062,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8::Handle<v8::String> _CollectionsFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collections"));
   v8::Handle<v8::String> _CompletionsFuncName = v8::Persistent<v8::String>::New(v8::String::New("_COMPLETIONS"));
   v8::Handle<v8::String> _CreateFuncName = v8::Persistent<v8::String>::New(v8::String::New("_create"));
-  v8::Handle<v8::String> _DeleteFuncName = v8::Persistent<v8::String>::New(v8::String::New("_delete"));
+  v8::Handle<v8::String> _RemoveFuncName = v8::Persistent<v8::String>::New(v8::String::New("_remove"));
   v8::Handle<v8::String> _DocumentFuncName = v8::Persistent<v8::String>::New(v8::String::New("_document"));
   v8::Handle<v8::String> _ReplaceFuncName = v8::Persistent<v8::String>::New(v8::String::New("_replace"));
 
@@ -6131,7 +6131,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(_CompletionsFuncName, v8::FunctionTemplate::New(JS_CompletionsVocBase));
   rt->Set(_CreateFuncName, v8::FunctionTemplate::New(JS_CreateVocBase));
 
-  rt->Set(_DeleteFuncName, v8::FunctionTemplate::New(JS_DeleteVocbase));
+  rt->Set(_RemoveFuncName, v8::FunctionTemplate::New(JS_RemoveVocbase));
   rt->Set(_DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbase));
   rt->Set(_ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbase));
 
@@ -6158,7 +6158,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(_CompletionsFuncName, v8::FunctionTemplate::New(JS_CompletionsVocBase));
   rt->Set(_CreateFuncName, v8::FunctionTemplate::New(JS_CreateEdges));
 
-  rt->Set(_DeleteFuncName, v8::FunctionTemplate::New(JS_DeleteVocbase));
+  rt->Set(_RemoveFuncName, v8::FunctionTemplate::New(JS_RemoveVocbase));
   rt->Set(_DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbase));
   rt->Set(_ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbase));
 
@@ -6209,7 +6209,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(ByExampleFuncName, v8::FunctionTemplate::New(JS_ByExampleQuery));
 
   rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountVocbaseCol));
-  rt->Set(DeleteFuncName, v8::FunctionTemplate::New(JS_DeleteVocbaseCol));
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbaseCol));
   rt->Set(DropFuncName, v8::FunctionTemplate::New(JS_DropVocbaseCol));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
@@ -6225,6 +6224,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(NameFuncName, v8::FunctionTemplate::New(JS_NameVocbaseCol));
   rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
   rt->Set(PropertiesFuncName, v8::FunctionTemplate::New(JS_PropertiesVocbaseCol));
+  rt->Set(RemoveFuncName, v8::FunctionTemplate::New(JS_RemoveVocbaseCol));
   rt->Set(RenameFuncName, v8::FunctionTemplate::New(JS_RenameVocbaseCol));
   rt->Set(StatusFuncName, v8::FunctionTemplate::New(JS_StatusVocbaseCol));
   rt->Set(UnloadFuncName, v8::FunctionTemplate::New(JS_UnloadVocbaseCol));
@@ -6251,7 +6251,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(ByExampleFuncName, v8::FunctionTemplate::New(JS_ByExampleQuery));
 
   rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountVocbaseCol));
-  rt->Set(DeleteFuncName, v8::FunctionTemplate::New(JS_DeleteVocbaseCol));
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbaseCol));
   rt->Set(DropFuncName, v8::FunctionTemplate::New(JS_DropVocbaseCol));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
@@ -6267,6 +6266,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   rt->Set(NameFuncName, v8::FunctionTemplate::New(JS_NameVocbaseCol));
   rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
   rt->Set(PropertiesFuncName, v8::FunctionTemplate::New(JS_PropertiesVocbaseCol));
+  rt->Set(RemoveFuncName, v8::FunctionTemplate::New(JS_RemoveVocbaseCol));
   rt->Set(RenameFuncName, v8::FunctionTemplate::New(JS_RenameVocbaseCol));
   rt->Set(ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbaseCol));
   rt->Set(StatusFuncName, v8::FunctionTemplate::New(JS_StatusVocbaseCol));

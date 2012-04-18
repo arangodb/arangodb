@@ -234,7 +234,7 @@ static string JS_server_server =
   "  var all = collection.ALL(null, null).documents;\n"
   "\n"
   "  for (var i = 0;  i < all.length;  ++i) {\n"
-  "    collection.delete(all[i]._id);\n"
+  "    collection.remove(all[i]._id);\n"
   "  }\n"
   "};\n"
   "\n"
