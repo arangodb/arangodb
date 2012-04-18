@@ -1,5 +1,10 @@
+/*jslint indent: 2,
+         nomen: true,
+         maxlen: 80 */
+/*global require, db, assertEqual */
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test the document interface
+/// @brief test the graph class
 ///
 /// @file
 ///
@@ -21,7 +26,7 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Dr. Frank Celler, Lucas Dohmen
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -31,21 +36,17 @@ var jsunity = require("jsunity");
 // --SECTION--                                                collection methods
 // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: error handling
+/// @brief test suite: Graph Basics
 ////////////////////////////////////////////////////////////////////////////////
 
-function graphBasicsSuite () {
-  var ERRORS = require("internal").errors;
-  var Graph = require("graph").Graph;
-
-  var vertex = "UnitTestsCollectionVertex";
-  var edge = "UnitTestsCollectionEdge";
-  var graph = null;
+function graphBasicsSuite() {
+  "use strict";
+  //var ERRORS = require("internal").errors;
+  var Graph = require("graph").Graph,
+    vertex = "UnitTestsCollectionVertex",
+    edge = "UnitTestsCollectionEdge",
+    graph = null;
 
   return {
 
@@ -70,7 +71,7 @@ function graphBasicsSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief bad handle
+/// @brief create a vertex
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateVertex : function () {
@@ -81,7 +82,7 @@ function graphBasicsSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief bad handle
+/// @brief change a property
 ////////////////////////////////////////////////////////////////////////////////
 
     testChangeProperty : function () {
@@ -103,10 +104,4 @@ function graphBasicsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(graphBasicsSuite);
-
-return jsunity.done();
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:
+jsunity.done();
