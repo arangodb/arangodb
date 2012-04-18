@@ -26,8 +26,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
-var db = internal.db;
-var edges = internal.edges;
 var AvocadoCollection = internal.AvocadoCollection;
 var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 
@@ -707,15 +705,21 @@ Vertex.prototype._PRINT = function (seen, path, names) {
 /// @verbinclude graph1
 ////////////////////////////////////////////////////////////////////////////////
 
-function Graph (vertices, edge) {
+function Graph (vertices, edges) {
 
+  // collection
+  var gdb = internal.db._collection("_graph");
+
+  if (gdb == null) {
+    gdb = internal.db._create("_graph", { waitForSync : true, isSystem : true });
+  }
 
   // get the vertices collection
   if (typeof vertices === "string") {
-    var col = db._collection(vertices);
+    var col = internal.db._collection(vertices);
 
     if (col == null) {
-      col = db._create(vertices);
+      col = internal.db._create(vertices);
     }
 
     // col.ensureUniqueConstraint("$id");
@@ -728,25 +732,39 @@ function Graph (vertices, edge) {
   }
 
   // get the edges collection
-  if (typeof edge === "string") {
-    var col = edges._collection(edge);
+  if (typeof edges === "string") {
+    var col = internal.edges._collection(edges);
 
     if (col == null) {
-      col = db._create(edge);
+      col = internal.db._create(edges);
     }
 
     // col.ensureUniqueConstraint("$id");
 
-    edge = col;
+    edges = col;
   }
 
-  if (! edge instanceof AvocadoEdgesCollection) {
+  if (! edges instanceof AvocadoEdgesCollection) {
     throw "<edges> must be an edges collection";
   }
 
+  // check if know that graph
+  var props = gdb.firstExample('vertices', vertices._id, 'edges', edges._id);
+
+  if (props == null) {
+    var d = gdb.save({ 'vertices' : vertices._id, 
+                       'verticesName' : vertices.name(),
+                       'edges' : edges._id,
+                       'edgesName' : edges.name() });
+
+    props = gdb.document(d);
+  }
+
+  this._properties = props;
+
   // and store the collections
   this._vertices = vertices;
-  this._edges = edge;
+  this._edges = edges;
 
   // and weak dictionary for vertices and edges
   this._weakVertices = new WeakDictionary();
@@ -883,12 +901,10 @@ Graph.prototype.addVertex = function (id, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getVertex = function (id) {
-  var ref;
+  var e = this._vertices.firstExample('$id', id);
 
-  ref = this._vertices.select({ $id : id });
-
-  if (ref.count() == 1) {
-    return this.constructVertex(ref.next()._id);
+  if (e !== null) {
+    return this.constructVertex(e._id);
   }
   else {
     return undefined;
