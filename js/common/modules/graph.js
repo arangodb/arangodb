@@ -715,7 +715,7 @@ function Graph (vertices, edge) {
       col = db._create(vertices);
     }
 
-    col.ensureUniqueConstraint("$id");
+    // col.ensureUniqueConstraint("$id");
 
     vertices = col;
   }
@@ -732,8 +732,7 @@ function Graph (vertices, edge) {
       col = db._create(edge);
     }
 
-    col.ensureUniqueConstraint("$id");
-    col.ensureUniqueConstraint("$label");
+    // col.ensureUniqueConstraint("$id");
 
     edge = col;
   }
