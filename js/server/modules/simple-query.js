@@ -235,6 +235,63 @@ AvocadoCollection.prototype.geo = function(loc, order) {
 AvocadoEdgesCollection.prototype.geo = AvocadoCollection.geo;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a query-by-example for a collection
+///
+/// @FUN{@FA{collection}.byExample(@FA{path1}, @FA{value1}, ...)}
+///
+/// Selects all documents of a collection that match the specified
+/// example. The example must be specified as paths and values. Allowed
+/// attribute types for searching are numbers, strings, and boolean values.
+///
+/// You can use @FN{toArray}, @FN{next}, @FN{nextRef}, or @FN{hasNext} to access
+/// the result. The result can be limited using the @FN{skip} and @FN{limit}
+/// operator.
+///
+/// @EXAMPLES
+///
+/// Use @FN{toArray} to get all documents at once:
+///
+/// @verbinclude simple18
+///
+/// Use @FN{next} to loop over all documents:
+///
+/// @verbinclude simple19
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.byExample = function () {
+  return new SimpleQueryByExample(this, arguments);
+}
+
+AvocadoEdgesCollection.prototype.byExample = AvocadoCollection.prototype.byExample;
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a query-by-example for a collection
+///
+/// @FUN{@FA{collection}.firstExample(@FA{path1}, @FA{value1}, ...)}
+///
+/// Returns the first documents of a collection that match the specified example
+/// or @LIT{undefined}. The example must be specified as paths and
+/// values. Allowed attribute types for searching are numbers, strings, and
+/// boolean values.
+///
+/// @EXAMPLES
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.firstExample = function () {
+  var list = this.BY_EXAMPLE.apply(this, arguments);
+
+  if (0 == list.length) {
+    return undefined;
+  }
+  else {
+    return list[0];
+  }
+}
+
+AvocadoEdgesCollection.prototype.firstExample = AvocadoCollection.prototype.firstExample;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -680,34 +737,6 @@ function SimpleQueryByExample (collection, example) {
 
 SimpleQueryByExample.prototype = new SimpleQuery();
 SimpleQueryByExample.prototype.constructor = SimpleQueryByExample;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a query-by-example for a collection
-///
-/// @FUN{@FA{collection}.byExample(@FA{path1}, @FA{value1}, ...)}
-///
-/// Selects all documents of a collection that match the specified
-/// example. The example must be specified as paths and values. Allowed
-/// attribute types for searching are numbers, strings, and boolean values.
-///
-/// You can use @FN{toArray}, @FN{next}, @FN{nextRef}, or @FN{hasNext} to access
-/// the result. The result can be limited using the @FN{skip} and @FN{limit}
-/// operator.
-///
-/// @EXAMPLES
-///
-/// Use @FN{toArray} to get all documents at once:
-///
-/// @verbinclude simple18
-///
-/// Use @FN{next} to loop over all documents:
-///
-/// @verbinclude simple19
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoCollection.prototype.byExample = function () {
-  return new SimpleQueryByExample(this, arguments);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1435,7 +1464,7 @@ SimpleQueryWithin.prototype.distance = function (attribute) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoGraph
+/// @addtogroup SimpleQuery
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
