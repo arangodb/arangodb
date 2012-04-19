@@ -221,8 +221,22 @@ avocsh_LDADD = libavocado.a $(LIBS)
 avocsh_SOURCES = \
 	SimpleHttpClient/SimpleHttpClient.cpp \
 	SimpleHttpClient/SimpleHttpResult.cpp \
+	V8Client/ImportHelper.cpp \
 	V8Client/V8ClientConnection.cpp \
 	V8Client/avocsh.cpp
+
+################################################################################
+## avocado importer
+################################################################################
+
+avocimp_LDADD = libavocado.a $(LIBS)
+
+avocimp_SOURCES = \
+	SimpleHttpClient/SimpleHttpClient.cpp \
+	SimpleHttpClient/SimpleHttpResult.cpp \
+	V8Client/ImportHelper.cpp \
+	V8Client/V8ClientConnection.cpp \
+	V8Client/avocimp.cpp
 
 ################################################################################
 ## JavaScript source code as header

@@ -32,8 +32,6 @@
 
 #include "build.h"
 
-#include "regex.h"
-
 #include "BasicsC/csv.h"
 
 #include "Basics/ProgramOptions.h"
@@ -57,6 +55,8 @@
 #include "Variant/VariantBoolean.h"
 #include "Variant/VariantInt64.h"
 #include "Variant/VariantString.h"
+
+#include "ImportHelper.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -270,157 +270,14 @@ static v8::Handle<v8::Value> JS_StopOutputPager (v8::Arguments const& ) {
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-
-
-
-
-
-
-
 // -----------------------------------------------------------------------------
-// --SECTION--                                          functions for CSV import
+// --SECTION--                                           function for CSV import
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup V8Shell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief send buffer
-////////////////////////////////////////////////////////////////////////////////
-
-static void sendBuffer (TRI_csv_parser_t* parser) {  
-  StringBuffer* buffer = reinterpret_cast< StringBuffer* >(parser->_dataBegin);  
-  pair<size_t, size_t>* numbers = reinterpret_cast< pair<size_t, size_t>* >(parser->_dataAdd);  
-  string* collection = reinterpret_cast< string* >(parser->_dataEnd);  
-  
-  SimpleHttpClient* client = clientConnection->getHttpClient();
-  
-  map<string, string> headerFields;
-  
-  // internalPrint("Import send: %s\n", buffer->c_str());
-  
-  SimpleHttpResult* result = client->request(SimpleHttpClient::POST, "/_api/import?collection=" + StringUtils::urlEncode(*collection), buffer->c_str(), buffer->length(), headerFields);
-  
-  VariantArray* va = result->getBodyAsVariantArray();
-  
-  if (va) {
-    VariantBoolean* vb = va->lookupBoolean("error");
-    if (vb && vb->getValue()) {
-      // is error
-      
-      VariantString* vs = va->lookupString("errorMessage");
-      if (vs) {
-        internalPrint("Import error: %s\n", vs->getValue().c_str());
-      }
-      else {
-        internalPrint("Import error: unknow error\n");                
-      }      
-    }
-    
-    VariantInt64* vi = va->lookupInt64("created");
-    if (vi && vi->getValue() > 0) {
-      numbers->first += (size_t) vi->getValue();
-    }
-
-    vi = va->lookupInt64("errors");
-    if (vi && vi->getValue() > 0) {
-      numbers->second += (size_t) vi->getValue();
-    }
-    
-    delete va;
-  }
-  else {
-    internalPrint("Import error: unknow error\n");                    
-  }
-  
-  buffer->clear();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief start a new csv line
-////////////////////////////////////////////////////////////////////////////////
-
-static void ProcessCsvBegin (TRI_csv_parser_t* , size_t ) {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a new CSV field
-////////////////////////////////////////////////////////////////////////////////
-
-static void ProcessCsvAdd (TRI_csv_parser_t* parser, char const* field, size_t row, size_t column, bool escaped) {
-  StringBuffer* buffer = reinterpret_cast< StringBuffer* >(parser->_dataBegin);  
-  if (column == 0) {    
-    if (row > 0) {
-      buffer->appendChar('\n');
-    }
-    buffer->appendChar('[');
-  } 
-  else {
-    buffer->appendChar(',');    
-  }
-    
-  if (row == 0) {
-    // head line    
-    buffer->appendChar('"');    
-    buffer->appendText(StringUtils::escapeUnicode(field));
-    buffer->appendChar('"');    
-  }
-  else {
-    if (escaped) {
-      buffer->appendChar('"');    
-      buffer->appendText(StringUtils::escapeUnicode(field));
-      buffer->appendChar('"');          
-    }
-    else {
-      string s(field);
-      if (s.length() == 0) {
-        // do nothing
-      }      
-      else if ("true" == s || "false" == s) {
-        buffer->appendText(field);
-      }
-      else {
-        if (regexec(&intRegex, s.c_str(), 0, 0, 0) == 0) {
-          int64_t num = StringUtils::int64(s);
-          buffer->appendInteger(num);
-        }
-        else if (regexec(&doubleRegex, s.c_str(), 0, 0, 0) == 0) {
-          double num = StringUtils::doubleDecimal(s);
-          buffer->appendDecimal(num);
-        }
-        else {
-          buffer->appendChar('"');    
-          buffer->appendText(StringUtils::escapeUnicode(field));
-          buffer->appendChar('"');                    
-        }
-      }
-    }
-  }  
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ends a CSV line
-////////////////////////////////////////////////////////////////////////////////
-
-static void ProcessCsvEnd (TRI_csv_parser_t* parser, char const* field, size_t row, size_t column, bool escaped) {
-  if (column == 0) {
-    // test for emtpy line    
-    if (StringUtils::trim(field) == "") {
-      return;
-    }    
-  }
-  
-  ProcessCsvAdd(parser, field, row, column, escaped);  
-
-  StringBuffer* buffer = reinterpret_cast< StringBuffer* >(parser->_dataBegin);  
-  buffer->appendChar(']');
-  
-  if (buffer->length() > maxUploadSize) {
-    sendBuffer(parser);
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief imports a CSV file
@@ -486,122 +343,37 @@ static v8::Handle<v8::Value> JS_ImportCsvFile (v8::Arguments const& argv) {
     }
   }
 
-  // read and convert
-  int fd = open(*filename, O_RDONLY);
-
-  if (fd < 0) {
-    return scope.Close(v8::ThrowException(v8::String::New(TRI_LAST_ERROR_STR)));
-  }
-
-  TRI_csv_parser_t parser;
-
-  TRI_InitCsvParser(&parser,
-                    ProcessCsvBegin,
-                    ProcessCsvAdd,
-                    ProcessCsvEnd);
-
-  parser._separator = separator;
-  parser._quote = quote;
-
-  pair<size_t, size_t> numbers;
-  parser._dataAdd = &numbers;
-
-  StringBuffer stringBuffer;  
-  parser._dataBegin = &stringBuffer;
+  ImportHelper ih(clientConnection->getHttpClient(), maxUploadSize);
   
+  ih.setQuote(quote);
+  ih.setSeparator(separator);
+
+  string fileName = TRI_ObjectToString(argv[0]);
   string collectionName = TRI_ObjectToString(argv[1]);
-  parser._dataEnd = &collectionName;
-  
-  char buffer[10240];
-
-  while (true) {
-    v8::HandleScope scope;
-
-    ssize_t n = read(fd, buffer, sizeof(buffer));
-
-    if (n < 0) {
-      TRI_DestroyCsvParser(&parser);
-      return scope.Close(v8::ThrowException(v8::String::New(TRI_LAST_ERROR_STR)));
-    }
-    else if (n == 0) {
-      TRI_DestroyCsvParser(&parser);
-      break;
-    }
-
-    TRI_ParseCsvString2(&parser, buffer, n);
-  }
-
-  if (stringBuffer.length() > 0) {
-    sendBuffer(&parser);
+ 
+  if (ih.importCsv(collectionName, fileName)) {
+    v8::Handle<v8::Object> result = v8::Object::New();
+    result->Set(v8::String::New("lines"), v8::Integer::New(ih.getReadLines()));
+    result->Set(v8::String::New("created"), v8::Integer::New(ih.getImportedLines()));
+    result->Set(v8::String::New("errors"), v8::Integer::New(ih.getErrorLines()));
+    return scope.Close(result);
   }
   
-  close(fd);
-  
-  string msg = "Imported '" + StringUtils::itoa(numbers.first) + "' lines with '" + StringUtils::itoa(numbers.second) + "' errors.";
-  
-  internalPrint("%s\n", msg.c_str());
-  return scope.Close(v8::Integer::New(numbers.first));
+  return scope.Close(v8::ThrowException(v8::String::New(ih.getErrorMessage().c_str())));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-
 // -----------------------------------------------------------------------------
-// --SECTION--                                             JSON import functions
+// --SECTION--                                              JSON import function
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup V8Shell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief send buffer with JSON data
-////////////////////////////////////////////////////////////////////////////////
-
-static void sendJsonBuffer (const char* str, size_t len, size_t& created, size_t& errors, const string& collection) {    
-  SimpleHttpClient* client = clientConnection->getHttpClient();
-  
-  map<string, string> headerFields;
-  
-  //internalPrint("Import send: %s\n", buffer.c_str());
-  
-  SimpleHttpResult* result = client->request(SimpleHttpClient::POST, "/_api/import?type=documents&collection=" + StringUtils::urlEncode(collection), str, len, headerFields);
-  
-  VariantArray* va = result->getBodyAsVariantArray();
-  
-  if (va) {
-    VariantBoolean* vb = va->lookupBoolean("error");
-    if (vb && vb->getValue()) {
-      // is error
-      
-      VariantString* vs = va->lookupString("errorMessage");
-      if (vs) {
-        internalPrint("Import error: %s\n", vs->getValue().c_str());
-      }
-      else {
-        internalPrint("Import error: unknow error\n");                
-      }      
-    }
-    
-    VariantInt64* vi = va->lookupInt64("created");
-    if (vi && vi->getValue() > 0) {
-      created += (size_t) vi->getValue();
-    }
-
-    vi = va->lookupInt64("errors");
-    if (vi && vi->getValue() > 0) {
-      errors += (size_t) vi->getValue();
-    }
-    
-    delete va;
-  }
-  else {
-    internalPrint("Import error: unknow error\n");                    
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief imports a JSON file
@@ -632,57 +404,21 @@ static v8::Handle<v8::Value> JS_ImportJsonFile (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("<collection> must be an UTF8 filename")));
   }
 
-  // read and convert
-  int fd = open(*filename, O_RDONLY);
-
-  if (fd < 0) {
-    return scope.Close(v8::ThrowException(v8::String::New(TRI_LAST_ERROR_STR)));
-  }
   
-  StringBuffer stringBuffer;  
+  ImportHelper ih(clientConnection->getHttpClient(), maxUploadSize);
+  
+  string fileName = TRI_ObjectToString(argv[0]);
   string collectionName = TRI_ObjectToString(argv[1]);
-  size_t created = 0;
-  size_t errors = 0;
-  
-  char buffer[10240];
-
-  while (true) {
-    v8::HandleScope scope;
-
-    ssize_t n = read(fd, buffer, 10239);
-    
-    if (n < 0) {
-      return scope.Close(v8::ThrowException(v8::String::New(TRI_LAST_ERROR_STR)));
-    }
-    else if (n == 0) {
-      break;
-    }
-
-    stringBuffer.appendText(buffer, n);
-    
-    if (stringBuffer.length() > maxUploadSize) {
-      const char* first = stringBuffer.c_str();
-      char* pos = (char*) memrchr(first, '\n', stringBuffer.length());
-      
-      if (pos != 0) {
-        size_t len = pos - first + 1;
-        sendJsonBuffer(first, len, created, errors, collectionName);
-        stringBuffer.erase_front(len);
-      }
-      
-    }
-  }
-
-  if (stringBuffer.length() > 0) {
-    sendJsonBuffer(stringBuffer.c_str(), stringBuffer.length(), created, errors, collectionName);
+ 
+  if (ih.importJson(collectionName, fileName)) {
+    v8::Handle<v8::Object> result = v8::Object::New();
+    result->Set(v8::String::New("lines"), v8::Integer::New(ih.getReadLines()));
+    result->Set(v8::String::New("created"), v8::Integer::New(ih.getImportedLines()));
+    result->Set(v8::String::New("errors"), v8::Integer::New(ih.getErrorLines()));
+    return scope.Close(result);
   }
   
-  close(fd);
-  
-  string msg = "Imported '" + StringUtils::itoa(created) + "' objects with '" + StringUtils::itoa(errors) + "' errors.";
-
-  internalPrint("%s\n", msg.c_str());
-  return scope.Close(v8::Integer::New(created));
+  return scope.Close(v8::ThrowException(v8::String::New(ih.getErrorMessage().c_str())));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1355,9 +1091,6 @@ int main (int argc, char* argv[]) {
   TRI_InitialiseLogging(false);
   int ret = EXIT_SUCCESS;
 
-  regcomp(&doubleRegex, "^[-+]?([0-9]+\\.?[0-9]*|\\.[0-9]+)([eE][-+]?[0-8]+)?$", REG_ICASE | REG_EXTENDED);
-  regcomp(&intRegex, "^[-+]?([0-9]+)$", REG_ICASE | REG_EXTENDED);
-  
   // .............................................................................
   // use relative system paths
   // .............................................................................

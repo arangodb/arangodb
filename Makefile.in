@@ -70,7 +70,7 @@ build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
 sbin_PROGRAMS = avocado$(EXEEXT)
-bin_PROGRAMS = avocsh$(EXEEXT)
+bin_PROGRAMS = avocsh$(EXEEXT) avocimp$(EXEEXT)
 DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.all-in-one \
 	$(srcdir)/Makefile.am $(srcdir)/Makefile.bison \
 	$(srcdir)/Makefile.doxygen $(srcdir)/Makefile.files \
@@ -308,8 +308,16 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 avocado_OBJECTS = $(am_avocado_OBJECTS)
 am__DEPENDENCIES_1 =
 avocado_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_1)
+am_avocimp_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
+	SimpleHttpClient/SimpleHttpResult.$(OBJEXT) \
+	V8Client/ImportHelper.$(OBJEXT) \
+	V8Client/V8ClientConnection.$(OBJEXT) \
+	V8Client/avocimp.$(OBJEXT)
+avocimp_OBJECTS = $(am_avocimp_OBJECTS)
+avocimp_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_1)
 am_avocsh_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
 	SimpleHttpClient/SimpleHttpResult.$(OBJEXT) \
+	V8Client/ImportHelper.$(OBJEXT) \
 	V8Client/V8ClientConnection.$(OBJEXT) \
 	V8Client/avocsh.$(OBJEXT)
 avocsh_OBJECTS = $(am_avocsh_OBJECTS)
@@ -343,10 +351,10 @@ AM_V_GEN = $(am__v_GEN_$(V))
 am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
 am__v_GEN_0 = @echo "  GEN   " $@;
 SOURCES = $(libavocado_a_SOURCES) $(UnitTests_test_suite_SOURCES) \
-	$(avocado_SOURCES) $(avocsh_SOURCES)
+	$(avocado_SOURCES) $(avocimp_SOURCES) $(avocsh_SOURCES)
 DIST_SOURCES = $(libavocado_a_SOURCES) \
 	$(am__UnitTests_test_suite_SOURCES_DIST) $(avocado_SOURCES) \
-	$(avocsh_SOURCES)
+	$(avocimp_SOURCES) $(avocsh_SOURCES)
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
@@ -795,8 +803,20 @@ avocsh_LDADD = libavocado.a $(LIBS)
 avocsh_SOURCES = \
 	SimpleHttpClient/SimpleHttpClient.cpp \
 	SimpleHttpClient/SimpleHttpResult.cpp \
+	V8Client/ImportHelper.cpp \
 	V8Client/V8ClientConnection.cpp \
 	V8Client/avocsh.cpp
+
+
+################################################################################
+################################################################################
+avocimp_LDADD = libavocado.a $(LIBS)
+avocimp_SOURCES = \
+	SimpleHttpClient/SimpleHttpClient.cpp \
+	SimpleHttpClient/SimpleHttpResult.cpp \
+	V8Client/ImportHelper.cpp \
+	V8Client/V8ClientConnection.cpp \
+	V8Client/avocimp.cpp
 
 
 ################################################################################
@@ -1759,8 +1779,15 @@ V8Client/$(am__dirstamp):
 V8Client/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) V8Client/$(DEPDIR)
 	@: > V8Client/$(DEPDIR)/$(am__dirstamp)
+V8Client/ImportHelper.$(OBJEXT): V8Client/$(am__dirstamp) \
+	V8Client/$(DEPDIR)/$(am__dirstamp)
 V8Client/V8ClientConnection.$(OBJEXT): V8Client/$(am__dirstamp) \
 	V8Client/$(DEPDIR)/$(am__dirstamp)
+V8Client/avocimp.$(OBJEXT): V8Client/$(am__dirstamp) \
+	V8Client/$(DEPDIR)/$(am__dirstamp)
+avocimp$(EXEEXT): $(avocimp_OBJECTS) $(avocimp_DEPENDENCIES) 
+	@rm -f avocimp$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(avocimp_OBJECTS) $(avocimp_LDADD) $(LIBS)
 V8Client/avocsh.$(OBJEXT): V8Client/$(am__dirstamp) \
 	V8Client/$(DEPDIR)/$(am__dirstamp)
 avocsh$(EXEEXT): $(avocsh_OBJECTS) $(avocsh_DEPENDENCIES) 
@@ -1929,7 +1956,9 @@ mostlyclean-compile:
 	-rm -f V8/v8-shell.$(OBJEXT)
 	-rm -f V8/v8-utils.$(OBJEXT)
 	-rm -f V8/v8-vocbase.$(OBJEXT)
+	-rm -f V8Client/ImportHelper.$(OBJEXT)
 	-rm -f V8Client/V8ClientConnection.$(OBJEXT)
+	-rm -f V8Client/avocimp.$(OBJEXT)
 	-rm -f V8Client/avocsh.$(OBJEXT)
 	-rm -f Variant/VariantArray.$(OBJEXT)
 	-rm -f Variant/VariantBlob.$(OBJEXT)
@@ -2143,7 +2172,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-shell.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-vocbase.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@V8Client/$(DEPDIR)/ImportHelper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8Client/$(DEPDIR)/V8ClientConnection.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@V8Client/$(DEPDIR)/avocimp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8Client/$(DEPDIR)/avocsh.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Variant/$(DEPDIR)/VariantArray.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Variant/$(DEPDIR)/VariantBlob.Po@am__quote@

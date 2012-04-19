@@ -114,7 +114,19 @@ HttpHandler::status_e RestImportHandler::execute () {
   bool res = false;
 
   switch (type) {
-    case HttpRequest::HTTP_REQUEST_POST: res = createDocument(); break;
+    case HttpRequest::HTTP_REQUEST_POST: {
+        // extract the import type
+        bool found;
+        string documentType = request->value("type", found);
+        
+        if (found && documentType == "documents") {
+          res = createByArray();  
+        }
+        else {
+          res = createByList();           
+        }      
+      }
+      break;
     default:
       res = false;
       generateNotImplemented("ILLEGAL " + DOCUMENT_IMPORT_PATH);
@@ -143,6 +155,124 @@ HttpHandler::status_e RestImportHandler::execute () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates documents
 ///
+/// @REST{POST /_api/import?type=documents&collection=@FA{collection-identifier}}
+///
+/// Creates documents in the collection identified by the
+/// @FA{collection-identifier}.  The JSON representations of the documents must 
+/// be passed as the body of the POST request.
+///
+/// If the document was created successfully, then a @LIT{HTTP 201} is returned.
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestImportHandler::createByArray () {
+  size_t numCreated = 0;
+  size_t numError = 0;
+  
+  vector<string> const& suffix = request->suffix();
+
+  if (suffix.size() != 0) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+                  "superfluous suffix, expecting " + DOCUMENT_IMPORT_PATH + "?type=documents&collection=<identifier>");
+    return false;
+  }
+
+  // extract the collection name
+  bool found;
+  string collection = request->value("collection", found);
+
+  if (! found || collection.empty()) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_AVOCADO_COLLECTION_PARAMETER_MISSING,
+                  "'collection' is missing, expecting " + DOCUMENT_IMPORT_PATH + "?collection=<identifier>");
+    return false;
+  }
+  
+  // shall we create the collection?
+  string createStr = request->value("createCollection", found);
+  bool create = found ? StringUtils::boolean(createStr) : false;
+
+  // find and load collection given by name or identifier
+  int res = useCollection(collection, create);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    releaseCollection();
+    
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE,
+                  "Could not use collection");
+    return false;
+  }
+
+  // .............................................................................
+  // inside write transaction
+  // .............................................................................
+
+  _documentCollection->beginWrite(_documentCollection);
+
+  size_t start = 0;
+  size_t next = 0;
+  string line;
+  
+  while (next != string::npos && start < request->body().length()) {
+    
+    next = request->body().find('\n', start);
+    if (next == string::npos) {
+      line = request->body().substr(start);
+    }
+    else {
+      line = request->body().substr(start, next - start);
+      start = next + 1;      
+    }
+
+    if (line.length() == 0) {
+      continue;
+    }
+    
+    //LOGGER_TRACE << "line = " << line;
+    
+    TRI_json_t* values = parseJsonLine(line);
+
+    if (values) {      
+      // now save the document
+      TRI_doc_mptr_t const mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_DOCUMENT, values, 0, false);
+      if (mptr._did != 0) {
+        ++numCreated;
+      }
+      else {
+        ++numError;
+      }
+      TRI_FreeJson(values);
+      
+    }
+    else {
+      LOGGER_WARNING << "no JSON data in line: " << (line);            
+      ++numError;
+    }
+            
+  }
+
+  _documentCollection->endWrite(_documentCollection);
+  
+  // .............................................................................
+  // outside write transaction
+  // .............................................................................
+
+  // release collection and free json
+  releaseCollection();
+
+  // generate result
+  generateDocumentsCreated(numCreated, numError);
+  
+  return true;
+}
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates documents
+///
 /// @REST{POST /_api/import?collection=@FA{collection-identifier}}
 ///
 /// Creates documents in the collection identified by the
@@ -152,7 +282,7 @@ HttpHandler::status_e RestImportHandler::execute () {
 /// If the document was created successfully, then a @LIT{HTTP 201} is returned.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestImportHandler::createDocument () {
+bool RestImportHandler::createByList () {
   size_t numCreated = 0;
   size_t numError = 0;
   
@@ -175,16 +305,6 @@ bool RestImportHandler::createDocument () {
                   "'collection' is missing, expecting " + DOCUMENT_IMPORT_PATH + "?collection=<identifier>");
     return false;
   }
-
-  bool documentMode = false;
-  
-  // extract the import type
-  string type = request->value("type", found);
-  if (found && type == "documents") {
-    LOGGER_TRACE << "Import JSON documents";
-    documentMode = true;
-  }
-  
   
   // shall we create the collection?
   string createStr = request->value("createCollection", found);
@@ -196,7 +316,7 @@ bool RestImportHandler::createDocument () {
   if (next == string::npos) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE,
-                  "No JSON string list in first line found");
+                  "No JSON list in second line found");
     return false;            
   }
   
@@ -210,23 +330,16 @@ bool RestImportHandler::createDocument () {
     keys = parseJsonLine(line);
     
     if (!keys) {
+      LOGGER_WARNING << "No JSON data in first line: " << line;
       generateError(HttpResponse::BAD,
                   TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE,
                   "No JSON data found");
       return false;      
     }
     
-    if (documentMode) {
-      if (keys->_type != TRI_JSON_ARRAY) {
-        TRI_FreeJson(keys);
-        generateError(HttpResponse::BAD,
-                  TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE,
-                  "No JSON array in first line found");
-        return false;              
-      }
-    }    
-    else if (keys->_type == TRI_JSON_LIST) {
+    if (keys->_type == TRI_JSON_LIST) {
       if (!checkKeys(keys)) {
+        LOGGER_WARNING << "No JSON string list in first line found: " << line;
         TRI_FreeJson(keys);
         generateError(HttpResponse::BAD,
                   TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE,
@@ -236,6 +349,7 @@ bool RestImportHandler::createDocument () {
       start = next + 1;
     }
     else {
+      LOGGER_WARNING << "Wrong JSON data in first line: " << line;
       TRI_FreeJson(keys);
       generateError(HttpResponse::BAD,
                   TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE,
@@ -244,6 +358,7 @@ bool RestImportHandler::createDocument () {
     }        
   }
   else {
+    LOGGER_WARNING << "No JSON data in first line: " << line;
     generateError(HttpResponse::BAD,
                   TRI_ERROR_AVOCADO_CORRUPTED_DATAFILE,
                   "No JSON data found");
@@ -295,21 +410,14 @@ bool RestImportHandler::createDocument () {
     if (values) {
       // got a json document or list
       
-      if (documentMode) {
-        // save the document
-        json = values;
-      }
-      else {
-        // build the json object from the list
-        json = createJsonObject(keys, values);
-        TRI_FreeJson(values);
+      // build the json object from the list
+      json = createJsonObject(keys, values);
+      TRI_FreeJson(values);
         
-        if (!json) {
-          LOGGER_WARNING << "no valid JSON data in line: " << (line);            
-          ++numError;          
-          continue;
-        }
-
+      if (!json) {
+        LOGGER_WARNING << "no valid JSON data in line: " << (line);            
+        ++numError;          
+        continue;
       }
 
       // now save the document
@@ -320,8 +428,8 @@ bool RestImportHandler::createDocument () {
       else {
         ++numError;
       }
-      TRI_FreeJson(json);
       
+      TRI_FreeJson(json);      
     }
     else {
       LOGGER_WARNING << "no JSON data in line: " << (line);            
@@ -345,8 +453,11 @@ bool RestImportHandler::createDocument () {
 
   // generate result
   generateDocumentsCreated(numCreated, numError);
+  
   return true;
 }
+
+
 
 void RestImportHandler::generateDocumentsCreated (size_t numCreated, size_t numError) {
 
