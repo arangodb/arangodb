@@ -64,7 +64,7 @@ typedef struct {
 ////////////////////////////////////////////////////////////////////////////////
 static bool  AddPQueue       (TRI_pqueue_t*, void*);
 static bool  CheckPQSize     (TRI_pqueue_t*);
-static bool  CompareIsLess   (TRI_pqueue_t*, void*, void*);
+//static bool  CompareIsLess   (TRI_pqueue_t*, void*, void*);
 static bool  FixPQ           (TRI_pqueue_t*, uint64_t); 
 static char* GetItemAddress  (TRI_pqueue_t*, uint64_t);
 static bool  RemovePQueue    (TRI_pqueue_t*, uint64_t, bool);
@@ -549,13 +549,14 @@ static bool FixPQ(TRI_pqueue_t* pq, uint64_t position) {
 }
 
 
-
+/* currently unused
 static bool CompareIsLess(TRI_pqueue_t* pq, void* leftItem, void* rightItem) {
   if (pq->_base._reverse) {
     return !pq->isLessPQ(pq, leftItem, rightItem); 
   }
   return pq->isLessPQ(pq, leftItem, rightItem); 
 }
+*/
 
 
 ////////////////////////////////////////////////////////////////////////////////

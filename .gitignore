@@ -10,6 +10,7 @@ autom4te.cache
 avocado
 avocadodb
 avocsh
+avocimp
 BasicsC/local-configuration.h
 build.h
 build.info

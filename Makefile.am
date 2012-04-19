@@ -35,7 +35,7 @@ CLEANUP =
 
 noinst_LIBRARIES = libavocado.a
 sbin_PROGRAMS = avocado
-bin_PROGRAMS = avocsh
+bin_PROGRAMS = avocsh avocimp
 
 nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/js/actions/system -name "*.js" -print) \
