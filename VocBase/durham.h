@@ -49,9 +49,7 @@
 ///
 /// The Store Engine groups documents into collections. Each
 /// collection can be accessed using queries. These queries can either
-/// be expressed using a @ref AvocadoScript "fluent interface" (see
-/// @ref JavaScriptFuncIndex "Index of JavaScript Functions"), using
-/// the SQL-select operator find, or using UNQL.
+/// be expressed using a query language or JavaScript.
 ///
 /// @section DataStructures Data Structures
 ///

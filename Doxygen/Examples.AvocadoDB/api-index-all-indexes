@@ -10,17 +10,17 @@ content-type: application/json
       "fields": [
         "_id"
       ],
-      "id": 0,
+      "id": "176836793/0",
       "type": "primary"
     }
   ],
   "error": false,
   "identifiers": {
-    "0": {
+    "176836793/0": {
       "fields": [
         "_id"
       ],
-      "id": 0,
+      "id": "176836793/0",
       "type": "primary"
     }
   }

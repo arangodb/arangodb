@@ -117,6 +117,8 @@ extern "C" {
 ///   Will be raised when an index with a given identifier is unknown.
 /// - 1213: @CODE{cross collection request not allowed}
 ///   Will be raised when a cross-collection is requested.
+/// - 1214: @CODE{illegal index handle}
+///   Will be raised when a index handle is corrupt.
 /// - 1300: @CODE{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1500: @CODE{query killed}
@@ -747,6 +749,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_AVOCADO_CROSS_COLLECTION_REQUEST                        (1213)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1214: ERROR_AVOCADO_INDEX_HANDLE_BAD
+///
+/// illegal index handle
+///
+/// Will be raised when a index handle is corrupt.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AVOCADO_INDEX_HANDLE_BAD                                (1214)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_AVOCADO_DATAFILE_FULL
