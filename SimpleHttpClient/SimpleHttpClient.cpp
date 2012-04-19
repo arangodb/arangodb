@@ -131,7 +131,12 @@ namespace triagens {
         _errorMessage = "Request timeout reached.";
       }
       
-      return getResult();
+      // set result type in getResult()
+      SimpleHttpResult* result = getResult();
+      
+      _result = 0;
+      
+      return result;
     }
 
     // -----------------------------------------------------------------------------
