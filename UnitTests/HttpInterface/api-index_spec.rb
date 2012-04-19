@@ -63,7 +63,7 @@ describe AvocadoDB do
     end
 
       it "returns either 201 for new or 200 for old indexes" do
-	cmd = api + "/#{@cid}"
+	cmd = api + "?collection=#{@cid}"
 	body = "{ \"type\" : \"geo\", \"fields\" : [ \"a\" ] }"
         doc = AvocadoDB.log_post("#{prefix}-create-new-geo", cmd, :body => body)
 	
@@ -91,7 +91,7 @@ describe AvocadoDB do
       end
 
       it "creating geo index with location" do
-	cmd = api + "/#{@cid}"
+	cmd = api + "?collection=#{@cid}"
 	body = "{ \"type\" : \"geo\", \"fields\" : [ \"b\" ] }"
         doc = AvocadoDB.log_post("#{prefix}-create-geo-location", cmd, :body => body)
 	
@@ -107,7 +107,7 @@ describe AvocadoDB do
       end
 
       it "creating geo index with location and geo-json = true" do
-	cmd = api + "/#{@cid}"
+	cmd = api + "?collection=#{@cid}"
 	body = "{ \"type\" : \"geo\", \"fields\" : [ \"c\" ], \"geoJson\" : true }"
         doc = AvocadoDB.log_post("#{prefix}-create-geo-location-geo-json", cmd, :body => body)
 	
@@ -123,7 +123,7 @@ describe AvocadoDB do
       end
 
       it "creating geo index with location and geo-json = false" do
-	cmd = api + "/#{@cid}"
+	cmd = api + "?collection=#{@cid}"
 	body = "{ \"type\" : \"geo\", \"fields\" : [ \"d\" ], \"geoJson\" : false }"
         doc = AvocadoDB.log_post("#{prefix}-create-geo-location-no-geo-json", cmd, :body => body)
 	
@@ -139,7 +139,7 @@ describe AvocadoDB do
       end
 
       it "creating geo index with latitude and longitude" do
-	cmd = api + "/#{@cid}"
+	cmd = api + "?collection=#{@cid}"
 	body = "{ \"type\" : \"geo\", \"fields\" : [ \"e\", \"f\" ] }"
         doc = AvocadoDB.log_post("#{prefix}-create-geo-latitude-longitude", cmd, :body => body)
 	
@@ -170,7 +170,7 @@ describe AvocadoDB do
     end
 
       it "survives unload" do
-	cmd = api + "/#{@cid}"
+	cmd = api + "?collection=#{@cid}"
 	body = "{ \"type\" : \"geo\", \"fields\" : [ \"a\" ] }"
         doc = AvocadoDB.post(cmd, :body => body)
 	
@@ -196,7 +196,7 @@ describe AvocadoDB do
 	  doc.code.should eq(200)
 	end
 
-	cmd = api + "/#{@cid}/#{iid}"
+	cmd = api + "/#{iid}"
         doc = AvocadoDB.get(cmd)
 
 	doc.code.should eq(200)
@@ -226,7 +226,7 @@ describe AvocadoDB do
     end
 
       it "returns either 201 for new or 200 for old indexes" do
-	cmd = api + "/#{@cid}"
+	cmd = api + "?collection=#{@cid}"
 	body = "{ \"type\" : \"hash\", \"unique\" : true, \"fields\" : [ \"a\", \"b\" ] }"
         doc = AvocadoDB.log_post("#{prefix}-create-new-unique-constraint", cmd, :body => body)
 	
@@ -270,7 +270,7 @@ describe AvocadoDB do
     end
 
       it "survives unload" do
-	cmd = api + "/#{@cid}"
+	cmd = api + "?collection=#{@cid}"
 	body = "{ \"type\" : \"hash\", \"unique\" : true, \"fields\" : [ \"a\", \"b\" ] }"
         doc = AvocadoDB.post(cmd, :body => body)
 	
@@ -296,7 +296,7 @@ describe AvocadoDB do
 	  doc.code.should eq(200)
 	end
 
-	cmd = api + "/#{@cid}/#{iid}"
+	cmd = api + "/#{iid}"
         doc = AvocadoDB.get(cmd)
 
 	doc.code.should eq(200)
@@ -326,7 +326,7 @@ describe AvocadoDB do
     end
 
       it "returns either 201 for new or 200 for old indexes" do
-	cmd = api + "/#{@cid}"
+	cmd = api + "?collection=#{@cid}"
 	body = "{ \"type\" : \"hash\", \"unique\" : false, \"fields\" : [ \"a\", \"b\" ] }"
         doc = AvocadoDB.log_post("#{prefix}-create-new-hash-index", cmd, :body => body)
 	
@@ -370,7 +370,7 @@ describe AvocadoDB do
     end
 
       it "survives unload" do
-	cmd = api + "/#{@cid}"
+	cmd = api + "?collection=#{@cid}"
 	body = "{ \"type\" : \"hash\", \"unique\" : false, \"fields\" : [ \"a\", \"b\" ] }"
         doc = AvocadoDB.post(cmd, :body => body)
 	
@@ -396,7 +396,7 @@ describe AvocadoDB do
 	  doc.code.should eq(200)
 	end
 
-	cmd = api + "/#{@cid}/#{iid}"
+	cmd = api + "/#{iid}"
         doc = AvocadoDB.get(cmd)
 
 	doc.code.should eq(200)
@@ -426,7 +426,7 @@ describe AvocadoDB do
     end
 
       it "returns either 201 for new or 200 for old indexes" do
-	cmd = api + "/#{@cid}"
+	cmd = api + "?collection=#{@cid}"
 	body = "{ \"type\" : \"skiplist\", \"unique\" : false, \"fields\" : [ \"a\", \"b\" ] }"
         doc = AvocadoDB.log_post("#{prefix}-create-new-skiplist", cmd, :body => body)
 	
@@ -470,7 +470,7 @@ describe AvocadoDB do
     end
 
       it "survives unload" do
-	cmd = api + "/#{@cid}"
+	cmd = api + "?collection=#{@cid}"
 	body = "{ \"type\" : \"skiplist\", \"unique\" : false, \"fields\" : [ \"a\", \"b\" ] }"
         doc = AvocadoDB.post(cmd, :body => body)
 	
@@ -496,7 +496,7 @@ describe AvocadoDB do
 	  doc.code.should eq(200)
 	end
 
-	cmd = api + "/#{@cid}/#{iid}"
+	cmd = api + "/#{iid}"
         doc = AvocadoDB.get(cmd)
 
 	doc.code.should eq(200)
@@ -526,7 +526,7 @@ describe AvocadoDB do
     end
 
       it "returns either 201 for new or 200 for old indexes" do
-	cmd = api + "/#{@cid}"
+	cmd = api + "?collection=#{@cid}"
 	body = "{ \"type\" : \"skiplist\", \"unique\" : true, \"fields\" : [ \"a\", \"b\" ] }"
         doc = AvocadoDB.log_post("#{prefix}-create-new-unique-skiplist", cmd, :body => body)
 	
@@ -570,7 +570,7 @@ describe AvocadoDB do
     end
 
       it "survives unload" do
-	cmd = api + "/#{@cid}"
+	cmd = api + "?collection=#{@cid}"
 	body = "{ \"type\" : \"skiplist\", \"unique\" : true, \"fields\" : [ \"a\", \"b\" ] }"
         doc = AvocadoDB.post(cmd, :body => body)
 	
@@ -596,7 +596,7 @@ describe AvocadoDB do
 	  doc.code.should eq(200)
 	end
 
-	cmd = api + "/#{@cid}/#{iid}"
+	cmd = api + "/#{iid}"
         doc = AvocadoDB.get(cmd)
 
 	doc.code.should eq(200)
@@ -626,7 +626,7 @@ describe AvocadoDB do
       end
 
       it "returns all index for an collection identifier" do
-	cmd = api + "/#{@cid}"
+	cmd = api + "?collection=#{@cid}"
         doc = AvocadoDB.log_get("#{prefix}-all-indexes", cmd)
 
 	doc.code.should eq(200)
@@ -638,12 +638,12 @@ describe AvocadoDB do
 	identifiers = doc.parsed_response['identifiers']
 
 	for index in indexes do
-	  indexes[index['id']].should eq(index)
+	  identifiers[index['id']].should eq(index)
 	end
       end
 
       it "returns all index for an collection name" do
-	cmd = api + "/#{@cn}"
+	cmd = api + "?collection=#{@cn}"
         doc = AvocadoDB.log_get("#{prefix}-all-indexes-name", cmd)
 
 	doc.code.should eq(200)
@@ -655,7 +655,7 @@ describe AvocadoDB do
 	identifiers = doc.parsed_response['identifiers']
 
 	for index in indexes do
-	  indexes[index['id']].should eq(index)
+	  identifiers[index['id']].should eq(index)
 	end
       end
     end
@@ -683,7 +683,7 @@ describe AvocadoDB do
 	doc.headers['content-type'].should eq("application/json")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(200)
-	doc.parsed_response['id'].should eq(0)
+	doc.parsed_response['id'].should eq("#{@cid}/0")
 	doc.parsed_response['type'].should eq("primary")
       end
 
@@ -695,7 +695,7 @@ describe AvocadoDB do
 	doc.headers['content-type'].should eq("application/json")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(200)
-	doc.parsed_response['id'].should eq(0)
+	doc.parsed_response['id'].should eq("#{@cid}/0")
 	doc.parsed_response['type'].should eq("primary")
       end
     end
@@ -716,7 +716,7 @@ describe AvocadoDB do
     end
 
       it "deleting an index" do
-	cmd = api + "/#{@cid}"
+	cmd = api + "?collection=#{@cid}"
 	body = "{ \"type\" : \"skiplist\", \"unique\" : true, \"fields\" : [ \"a\", \"b\" ] }"
         doc = AvocadoDB.post(cmd, :body => body)
 	
@@ -732,7 +732,7 @@ describe AvocadoDB do
 
 	iid = doc.parsed_response['id']
 
-	cmd = api + "/#{@cid}/#{iid}"
+	cmd = api + "/#{iid}"
         doc = AvocadoDB.log_delete("#{prefix}-delete-unique-skiplist", cmd)
 	
 	doc.code.should eq(200)
@@ -741,7 +741,7 @@ describe AvocadoDB do
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should eq(iid)
 
-	cmd = api + "/#{@cid}/#{iid}"
+	cmd = api + "/#{iid}"
 	doc = AvocadoDB.get(cmd)
 
 	doc.code.should eq(404)

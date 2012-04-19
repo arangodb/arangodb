@@ -240,6 +240,57 @@ AvocadoDatabase.prototype._truncate = function(name) {
 AvocadoEdges.prototype._truncate = AvocadoDatabase.prototype._truncate;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief finds an index
+///
+/// @FUN{db._index(@FA{index-handle})}
+///
+/// Returns the index with @FA{index-handle} or null if no such index exists.
+///
+/// @EXAMPLES
+///
+/// @verbinclude shell_index-read-db
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._index = function(id) {
+  if (id.hasOwnProperty("id")) {
+    id = id.id;
+  }
+
+  var re = /^([0-9]+)\/([0-9]+)/;
+  var pa = re.exec(id);
+
+  if (pa == null) {
+    var err = new AvocadoError();
+    err.errorNum = internal.errors.ERROR_AVOCADO_INDEX_HANDLE_BAD.code;
+    err.errorMessage = internal.errors.ERROR_AVOCADO_INDEX_HANDLE_BAD.message;
+    throw err;
+  }
+
+  var col = this._collection(parseInt(pa[1]));
+
+  if (col == null) {
+    var err = new AvocadoError();
+    err.errorNum = internal.errors.ERROR_AVOCADO_COLLECTION_NOT_FOUND.code;
+    err.errorMessage = internal.errors.ERROR_AVOCADO_COLLECTION_NOT_FOUND.message;
+    throw err;
+  }
+
+  var indexes = col.getIndexes();
+
+  for (var i = 0;  i < indexes.length;  ++i) {
+    var index = indexes[i];
+
+    if (index.id == id) {
+      return index;
+    }
+  }
+
+  return null;
+};
+
+AvocadoEdges.prototype._index = AvocadoDatabase.prototype._index;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a database
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -281,36 +332,42 @@ AvocadoEdges.prototype.toString = function(seen, path, names, level) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.STATUS_CORRUPTED = 0;
+AvocadoEdgesCollection.STATUS_CORRUPTED = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is new born
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.STATUS_NEW_BORN = 1;
+AvocadoEdgesCollection.STATUS_NEW_BORN = 1;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is unloaded
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.STATUS_UNLOADED = 2;
+AvocadoEdgesCollection.STATUS_UNLOADED = 2;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is loaded
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.STATUS_LOADED = 3;
+AvocadoEdgesCollection.STATUS_LOADED = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is unloading
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.STATUS_UNLOADING = 4;
+AvocadoEdgesCollection.STATUS_UNLOADING = 4;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is deleted
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.STATUS_DELETED = 5;
+AvocadoEdgesCollection.STATUS_DELETED = 5;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts collection into an array
@@ -319,6 +376,8 @@ AvocadoCollection.STATUS_DELETED = 5;
 AvocadoCollection.prototype.toArray = function() {
   return this.ALL(null, null).documents;
 };
+
+AvocadoEdgesCollection.prototype.toArray = AvocadoCollection.prototype.toArray;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncates a collection
@@ -339,12 +398,34 @@ AvocadoCollection.prototype.truncate = function() {
   return db._truncate(this);
 };
 
+AvocadoEdgesCollection.prototype.truncate = AvocadoCollection.prototype.truncate;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds an index of a collection
+///
+/// @FUN{@FA{collection}.index(@FA{index-handle})}
+///
+/// Returns the index with @FA{index-handle} or null if no such index exists.
+///
+/// @EXAMPLES
+///
+/// @verbinclude shell_index-read
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.index = function(id) {
   var indexes = this.getIndexes();
+
+  if (typeof id == "string") {
+    var re = /^([0-9]+)\/([0-9]+)/;
+    var pa = re.exec(id);
+
+    if (pa == null) {
+      id = this._id + "/" + id;
+    }
+  }
+  else if (id.hasOwnProperty("id")) {
+    id = id.id;
+  }
 
   for (var i = 0;  i < indexes.length;  ++i) {
     var index = indexes[i];
@@ -356,6 +437,8 @@ AvocadoCollection.prototype.index = function(id) {
 
   return null;
 };
+
+AvocadoEdgesCollection.prototype.index = AvocadoCollection.prototype.index;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a collection
@@ -382,6 +465,46 @@ AvocadoCollection.prototype._PRINT = function() {
 
 AvocadoCollection.prototype.toString = function(seen, path, names, level) {
   return "[AvocadoCollection " + this._id + "]";
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            AvocadoEdgesCollection
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoEdgesCollection.prototype._PRINT = function() {
+  var status = "unknown";
+
+  switch (this.status()) {
+    case AvocadoCollection.STATUS_NEW_BORN: status = "new born"; break;
+    case AvocadoCollection.STATUS_UNLOADED: status = "unloaded"; break;
+    case AvocadoCollection.STATUS_UNLOADING: status = "unloading"; break;
+    case AvocadoCollection.STATUS_LOADED: status = "loaded"; break;
+    case AvocadoCollection.STATUS_CORRUPTED: status = "corrupted"; break;
+    case AvocadoCollection.STATUS_DELETED: status = "deleted"; break;
+  }
+  
+  SYS_OUTPUT("[AvocadoEdgesCollection ", this._id, ", \"", this.name(), "\" (status ", status, ")]");
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief strng representation of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.toString = function(seen, path, names, level) {
+  return "[AvocadoEdgesCollection " + this._id + "]";
 };
 
 ////////////////////////////////////////////////////////////////////////////////
