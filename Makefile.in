@@ -310,6 +310,7 @@ am__DEPENDENCIES_1 =
 avocado_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_1)
 am_avocsh_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
 	SimpleHttpClient/SimpleHttpResult.$(OBJEXT) \
+	V8Client/ImportHelper.$(OBJEXT) \
 	V8Client/V8ClientConnection.$(OBJEXT) \
 	V8Client/avocsh.$(OBJEXT)
 avocsh_OBJECTS = $(am_avocsh_OBJECTS)
@@ -795,6 +796,7 @@ avocsh_LDADD = libavocado.a $(LIBS)
 avocsh_SOURCES = \
 	SimpleHttpClient/SimpleHttpClient.cpp \
 	SimpleHttpClient/SimpleHttpResult.cpp \
+	V8Client/ImportHelper.cpp \
 	V8Client/V8ClientConnection.cpp \
 	V8Client/avocsh.cpp
 
@@ -1759,6 +1761,8 @@ V8Client/$(am__dirstamp):
 V8Client/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) V8Client/$(DEPDIR)
 	@: > V8Client/$(DEPDIR)/$(am__dirstamp)
+V8Client/ImportHelper.$(OBJEXT): V8Client/$(am__dirstamp) \
+	V8Client/$(DEPDIR)/$(am__dirstamp)
 V8Client/V8ClientConnection.$(OBJEXT): V8Client/$(am__dirstamp) \
 	V8Client/$(DEPDIR)/$(am__dirstamp)
 V8Client/avocsh.$(OBJEXT): V8Client/$(am__dirstamp) \
@@ -1929,6 +1933,7 @@ mostlyclean-compile:
 	-rm -f V8/v8-shell.$(OBJEXT)
 	-rm -f V8/v8-utils.$(OBJEXT)
 	-rm -f V8/v8-vocbase.$(OBJEXT)
+	-rm -f V8Client/ImportHelper.$(OBJEXT)
 	-rm -f V8Client/V8ClientConnection.$(OBJEXT)
 	-rm -f V8Client/avocsh.$(OBJEXT)
 	-rm -f Variant/VariantArray.$(OBJEXT)
@@ -2143,6 +2148,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-shell.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-vocbase.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@V8Client/$(DEPDIR)/ImportHelper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8Client/$(DEPDIR)/V8ClientConnection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8Client/$(DEPDIR)/avocsh.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Variant/$(DEPDIR)/VariantArray.Po@am__quote@

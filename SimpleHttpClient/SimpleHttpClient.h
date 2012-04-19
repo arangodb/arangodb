@@ -100,6 +100,7 @@ namespace triagens {
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief make a http request
+      ///        The caller has to delete the result object
       ///
       /// @param int method                           http method
       /// @param string location                      request location
@@ -107,6 +108,7 @@ namespace triagens {
       /// @param size_t bodyLength                    body length
       /// @param map<string, string> headerFields     header fields
       ///
+      /// @return SimpleHttpResult          the request result
       ////////////////////////////////////////////////////////////////////////////////
 
       SimpleHttpResult* request (int method, 
@@ -167,7 +169,7 @@ namespace triagens {
       /// @brief get the Result
       ///        The caller has to delete the result object
       ///
-      /// @return HttpResult          the request result
+      /// @return SimpleHttpResult          the request result
       ////////////////////////////////////////////////////////////////////////////////
 
       SimpleHttpResult* getResult ();
