@@ -150,5 +150,5 @@ if test "x$VALGRIND_TEST" = "xyes";  then
   echo "########################################################"
   echo
 
-  make unittests VALGRIND="valgrind --leack-check=full" || exit 1
+  make unittests VALGRIND="valgrind --leak-check=full" || exit 1
 fi
