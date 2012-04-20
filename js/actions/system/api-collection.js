@@ -145,7 +145,7 @@ function POST_api_collection (req, res) {
   }
 
   try {
-    var collection = db._create(name, parameter);
+    var collection = internal.db._create(name, parameter);
 
     var result = {};
     var headers = {};
@@ -184,7 +184,7 @@ function POST_api_collection (req, res) {
 function GET_api_collections (req, res) {
   var list = [];
   var names = {};
-  var collections = db._collections();
+  var collections = internal.db._collections();
 
   for (var i = 0;  i < collections.length;  ++i) {
     var collection = collections[i];
@@ -309,7 +309,7 @@ function GET_api_collection (req, res) {
 
   var name = decodeURIComponent(req.suffix[0]);
   var id = parseInt(name) || name;
-  var collection = db._collection(id);
+  var collection = internal.db._collection(id);
 
   if (collection == null) {
     actions.collectionNotFound(req, res, name);
@@ -600,7 +600,7 @@ function PUT_api_collection (req, res) {
 
   var name = decodeURIComponent(req.suffix[0]);
   var id = parseInt(name) || name;
-  var collection = db._collection(id);
+  var collection = internal.db._collection(id);
     
   if (collection == null) {
     actions.collectionNotFound(req, res, name);
@@ -671,7 +671,7 @@ function DELETE_api_collection (req, res) {
   else {
     var name = decodeURIComponent(req.suffix[0]);
     var id = parseInt(name) || name;
-    var collection = db._collection(id);
+    var collection = internal.db._collection(id);
     
     if (collection == null) {
       actions.collectionNotFound(req, res, name);
