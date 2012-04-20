@@ -4168,7 +4168,7 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
 ///
 /// @FUN{@FA{collection}.dropIndex(@FA{index-handle})}
 ///
-/// Same as above. Instead of a index an index handle can be given.
+/// Same as above. Instead of an index an index handle can be given.
 ///
 /// @EXAMPLES
 ///

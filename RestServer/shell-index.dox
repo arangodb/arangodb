@@ -132,7 +132,7 @@
 /// <hr>
 ///
 /// @anchor ShellIndexDbDelete
-/// @copydetails JS_RemoveVocbase
+/// @copydetails JSF_AvocadoDatabase_prototype__dropIndex
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
