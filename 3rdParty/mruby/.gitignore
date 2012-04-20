@@ -1,0 +1,18 @@
+# /
+*.bak
+*.dylib
+*.inc
+*.o
+*.orig
+*.rej
+*.sav
+*.swp
+*.d
+*~
+.DS_Store
+.ccmalloc
+.svn
+/.git
+cscope.out
+mruby.exe
+y.tab.c
