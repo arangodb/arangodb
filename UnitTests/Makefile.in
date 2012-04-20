@@ -55,8 +55,10 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
 	$(top_srcdir)/m4/external.readline \
 	$(top_srcdir)/m4/external.openssl \
 	$(top_srcdir)/m4/all-in-one.libev \
-	$(top_srcdir)/m4/all-in-one.v8 $(top_srcdir)/m4/external.libev \
-	$(top_srcdir)/m4/external.v8 $(top_srcdir)/m4/all-in-one.boost \
+	$(top_srcdir)/m4/all-in-one.v8 \
+	$(top_srcdir)/m4/all-in-one.mruby \
+	$(top_srcdir)/m4/external.libev $(top_srcdir)/m4/external.v8 \
+	$(top_srcdir)/m4/all-in-one.boost \
 	$(top_srcdir)/m4/external.boost \
 	$(top_srcdir)/m4/configure.information \
 	$(top_srcdir)/configure.ac
@@ -173,6 +175,9 @@ MATH_CPPFLAGS = @MATH_CPPFLAGS@
 MATH_LDFLAGS = @MATH_LDFLAGS@
 MATH_LIBS = @MATH_LIBS@
 MKDIR_P = @MKDIR_P@
+MRUBY_CPPFLAGS = @MRUBY_CPPFLAGS@
+MRUBY_LDFLAGS = @MRUBY_LDFLAGS@
+MRUBY_LIBS = @MRUBY_LIBS@
 NCURSES_CONFIG = @NCURSES_CONFIG@
 NCURSES_CPPFLAGS = @NCURSES_CPPFLAGS@
 NCURSES_LDFLAGS = @NCURSES_LDFLAGS@

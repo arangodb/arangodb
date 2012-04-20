@@ -76,6 +76,16 @@ using namespace triagens::avocado;
 #include "js/server/js-aql-functions-string.h"
 #include "js/server/js-server.h"
 
+#ifdef TRI_ENABLE_MRUBY
+extern "C" {
+#include "mruby.h"
+#include "mruby/proc.h"
+#include "mruby/data.h"
+#include "compile.h"
+#include "variable.h"
+}
+#endif
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -360,7 +370,10 @@ void AvocadoServer::buildApplicationServer () {
   map<string, ProgramOptionsDescription> additional;
 
   additional[ApplicationServer::OPTIONS_CMDLINE]
-    ("console", "do not start as server, start an emergency console instead")
+    ("console", "do not start as server, start a JavaScript emergency console instead")
+#ifdef TRI_ENABLE_MRUBY
+    ("ruby-console", "do not start as server, start a Ruby emergency console instead")
+#endif
     ("unit-tests", &_unitTests, "do not start as server, run unit tests instead")
   ;
 
@@ -514,6 +527,11 @@ void AvocadoServer::buildApplicationServer () {
 
   if (_applicationServer->programOptions().has("console")) {
     int res = executeShell(false);
+    exit(res);
+  }
+
+  if (_applicationServer->programOptions().has("ruby-console")) {
+    int res = executeRubyShell();
     exit(res);
   }
 
@@ -719,7 +737,7 @@ int AvocadoServer::startupServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the shell
+/// @brief executes the JavaScript emergency console
 ////////////////////////////////////////////////////////////////////////////////
 
 int AvocadoServer::executeShell (bool tests) {
@@ -832,7 +850,7 @@ int AvocadoServer::executeShell (bool tests) {
       char* input = console->prompt("avocado> ");
 
       if (input == 0) {
-        printf("bye...\n");
+        printf("<ctrl-D>\nBye Bye! Auf Wiedersehen!\n");
         TRI_FreeString(input);
         break;
       }
@@ -869,6 +887,93 @@ int AvocadoServer::executeShell (bool tests) {
 
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes the ruby emergency console
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MRUBY
+
+mrb_value MR_AvocadoDatabase_Inialize (mrb_state* mrb, mrb_value exc) {
+  printf("HALLLLO\n");
+  return exc;
+}
+
+static void MR_AvocadoDatabase_Free (mrb_state* mrb, void* p) {
+  printf("DIE DIE DIE\n");
+}
+
+static const struct mrb_data_type MR_AvocadoDatabase_Type = {
+  "AvocadoDatabase", MR_AvocadoDatabase_Free
+};
+
+
+int AvocadoServer::executeRubyShell () {
+  struct mrb_parser_state *p;
+  mrb_state *mrb;
+  int n;
+  string str;
+
+  // only simple logging
+  TRI_ShutdownLogging();
+  TRI_InitialiseLogging(false);
+  TRI_CreateLogAppenderFile("+");
+
+  // open the database
+  openDatabase();
+
+  // create a new ruby shell
+  mrb = mrb_open();
+
+  struct RClass* AvocadoDatabaseClass = mrb_define_class(mrb, "AvocadoDatabase", mrb->object_class);
+  struct RClass* AvocadoEdgesClass = mrb_define_class(mrb, "AvocadoEdges", mrb->object_class);
+  struct RClass* AvocadoCollectionClass = mrb_define_class(mrb, "AvocadoCollection", mrb->object_class);
+  struct RClass* AvocadoEdgesCollectionClass = mrb_define_class(mrb, "AvocadoEdgesCollection", mrb->object_class);
+
+  mrb_define_method(mrb, AvocadoDatabaseClass, "initialize", MR_AvocadoDatabase_Inialize, ARGS_ANY());
+
+  mrb_value db = mrb_obj_value(Data_Wrap_Struct(mrb, AvocadoDatabaseClass, &MR_AvocadoDatabase_Type, (void*) _vocbase));
+
+  mrb_define_const(mrb, "$db", db);
+  
+
+  while (true) {
+    getline(cin, str);
+
+    if (cin.eof()) {
+      cout << "Bye Bye! Auf Wiedersehen! さようなら\n";
+      break;
+    }
+
+    cout << "INPUT: " << str << "\n";
+
+    p = mrb_parse_string(mrb, const_cast<char*>(str.c_str()));
+
+    if (p == 0 || p->tree == 0 || 0 < p->nerr) {
+      cout << "UPPS!\n";
+      continue;
+    }
+
+    n = mrb_generate_code(mrb, p->tree);
+
+    if (n < 0) {
+      cout << "UPPS 2: " << n << "\n";
+      continue;
+    }
+
+    mrb_run(mrb, mrb_proc_new(mrb, mrb->irep[n]), mrb_nil_value());
+
+    if (mrb->exc) {
+      cout << "OUTPUT\n";
+      mrb_funcall(mrb, mrb_nil_value(), "p", 1, mrb_obj_value(mrb->exc));
+      cout << "\nOUTPUT END\n";
+    }
+  }
+
+  return EXIT_SUCCESS;
+}
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens the database
