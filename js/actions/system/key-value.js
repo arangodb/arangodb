@@ -328,19 +328,19 @@ actions.defineHttp({
 
   callback : function (req, res) {
     switch (req.requestType) {
-      case (actions.HTTP_POST) :
+      case (actions.POST) :
         postKeyValue(req, res); 
         break;
 
-      case (actions.HTTP_GET) :
+      case (actions.GET) :
         getKeyValue(req, res); 
         break;
 
-      case (actions.HTTP_PUT) :
+      case (actions.PUT) :
         putKeyValue(req, res); 
         break;
 
-      case (actions.HTTP_DELETE) :
+      case (actions.DELETE) :
         deleteKeyValue(req, res); 
         break;
 
@@ -427,7 +427,7 @@ actions.defineHttp({
 
   callback : function (req, res) {
     switch (req.requestType) {
-      case (actions.HTTP_GET) :
+      case (actions.GET) :
         searchKeyValue(req, res); 
         break;
         
