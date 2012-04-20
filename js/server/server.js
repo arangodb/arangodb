@@ -291,6 +291,53 @@ AvocadoDatabase.prototype._index = function(id) {
 AvocadoEdges.prototype._index = AvocadoDatabase.prototype._index;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief drops an index
+///
+/// @FUN{db._dropIndex(@FA{index})}
+///
+/// Drops the @FA{index}.  If the index does not exists, then @LIT{false} is
+/// returned. If the index existed and was dropped, then @LIT{true} is
+/// returned. Note that you cannot drop the primary index.
+///
+/// @FUN{db._dropIndex(@FA{index-handle})}
+///
+/// Drops the index with @FA{index-handle}.
+///
+/// @EXAMPLES
+///
+/// @verbinclude shell_index-drop-index-db
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._dropIndex = function(id) {
+  if (id.hasOwnProperty("id")) {
+    id = id.id;
+  }
+
+  var re = /^([0-9]+)\/([0-9]+)/;
+  var pa = re.exec(id);
+
+  if (pa == null) {
+    var err = new AvocadoError();
+    err.errorNum = internal.errors.ERROR_AVOCADO_INDEX_HANDLE_BAD.code;
+    err.errorMessage = internal.errors.ERROR_AVOCADO_INDEX_HANDLE_BAD.message;
+    throw err;
+  }
+
+  var col = this._collection(parseInt(pa[1]));
+
+  if (col == null) {
+    var err = new AvocadoError();
+    err.errorNum = internal.errors.ERROR_AVOCADO_COLLECTION_NOT_FOUND.code;
+    err.errorMessage = internal.errors.ERROR_AVOCADO_COLLECTION_NOT_FOUND.message;
+    throw err;
+  }
+
+  return col.dropIndex(id);
+};
+
+AvocadoEdges.prototype._dropIndex = AvocadoDatabase.prototype._dropIndex;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a database
 ////////////////////////////////////////////////////////////////////////////////
 
