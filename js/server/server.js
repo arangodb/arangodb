@@ -178,7 +178,7 @@ AvocadoDatabase.prototype._drop = function(name) {
   var collection = name;
 
   if (! (name instanceof AvocadoCollection || name instanceof AvocadoEdgesCollection)) {
-    collection = db._collection(name);
+    collection = internal.db._collection(name);
   }
 
   if (collection == null) {
@@ -223,7 +223,7 @@ AvocadoDatabase.prototype._truncate = function(name) {
   var collection = name;
 
   if (! (name instanceof AvocadoCollection || name instanceof AvocadoEdgesCollection)) {
-    collection = db._collection(name);
+    collection = internal.db._collection(name);
   }
 
   if (collection == null) {
@@ -442,7 +442,7 @@ AvocadoEdgesCollection.prototype.toArray = AvocadoCollection.prototype.toArray;
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.truncate = function() {
-  return db._truncate(this);
+  return internal.db._truncate(this);
 };
 
 AvocadoEdgesCollection.prototype.truncate = AvocadoCollection.prototype.truncate;

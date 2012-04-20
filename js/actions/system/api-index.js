@@ -70,7 +70,7 @@ var API = "_api/index";
 function GET_api_indexes (req, res) {
   var name = req.parameters.collection;
   var id = parseInt(name) || name;
-  var collection = db._collection(id);
+  var collection = internal.db._collection(id);
 
   if (collection == null) {
     actions.collectionNotFound(req, res, name);
@@ -129,7 +129,7 @@ function GET_api_index (req, res) {
   else if (req.suffix.length == 2) {
     var name = decodeURIComponent(req.suffix[0]);
     var id = parseInt(name) || name;
-    var collection = db._collection(id);
+    var collection = internal.db._collection(id);
     
     if (collection == null) {
       actions.collectionNotFound(req, res, name);
@@ -317,7 +317,7 @@ function POST_api_index (req, res) {
 
   var name = req.parameters.collection;
   var id = parseInt(name) || name;
-  var collection = db._collection(id);
+  var collection = internal.db._collection(id);
 
   if (collection == null) {
     actions.collectionNotFound(req, res, name);
@@ -370,7 +370,7 @@ function DELETE_api_index (req, res) {
 
   var name = decodeURIComponent(req.suffix[0]);
   var id = parseInt(name) || name;
-  var collection = db._collection(id);
+  var collection = internal.db._collection(id);
 
   if (collection == null) {
     actions.collectionNotFound(req, res, name);
