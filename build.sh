@@ -48,10 +48,12 @@ case $TRI_OS_LONG in
     echo "Using configuration for Debian"
     OPTIONS="$OPTIONS --enable-all-in-one"
     LDD_INFO="yes"
+    RSPEC_AVAILABLE="no"
     ;;
 
   Linux-CentOS-*)
     echo "Using configuration for Centos"
+    OPTIONS="$OPTIONS --enable-all-in-one"
     LDD_INFO="yes"
     RSPEC_AVAILABLE="no"
     ;;
@@ -148,5 +150,5 @@ if test "x$VALGRIND_TEST" = "xyes";  then
   echo "########################################################"
   echo
 
-  make unittests VALGRIND="valgrind --leack-check=full" || exit 1
+  make unittests VALGRIND="valgrind --leak-check=full" || exit 1
 fi

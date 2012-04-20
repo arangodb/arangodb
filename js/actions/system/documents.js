@@ -25,7 +25,7 @@ function getDocuments(req, res) {
     }    
 
   try {  
-    var result = db[collection].ALL(skip, limit);
+    var result = internal.db[collection].ALL(skip, limit);
     actions.resultOk(req, res, 200, result);    
   }
   catch (e) {

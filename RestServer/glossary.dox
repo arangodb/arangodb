@@ -32,11 +32,13 @@
 ///
 /// @copydoc GlossaryCollectionIdentifier
 ///
+/// @copydoc GlossaryCollectionName
+///
 /// @copydoc GlossaryDocument
 ///
-/// @copydoc GlossaryDocumentHandle
-///
 /// @copydoc GlossaryDocumentEtag
+///
+/// @copydoc GlossaryDocumentHandle
 ///
 /// @copydoc GlossaryDocumentIdentifier
 ///
@@ -44,11 +46,17 @@
 ///
 /// @copydoc GlossaryEdge
 ///
-/// @copydoc GlossaryIndex
+/// @copydoc GlossaryEdgeCollection
 ///
 /// @copydoc GlossaryIndexGeo
 ///
 /// @copydoc GlossaryIndexHash
+///
+/// @copydoc GlossaryIndex
+///
+/// @copydoc GlossaryIndexHandle
+///
+/// @copydoc GlossaryIndexPrioQueue
 ///
 /// @copydoc GlossaryIndexSkiplist
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,17 +90,17 @@
 /// nested (to any depth) and may contains lists. Each document is unique identified
 /// by its document handle.
 ///
+/// @page GlossaryDocumentEtag
+//////////////////////////////
+///
+/// @GE{Document Etag}: The document revision enclosed in double quotes.
+///
 /// @page GlossaryDocumentHandle
 ////////////////////////////////
 ///
 /// @GE{Document Handle}: A document handle uniquely identifies a document in
 /// the database. It is a string and consists of a collection identifier and a
 /// document identifier separated by @LIT{/}.
-///
-/// @page GlossaryDocumentEtag
-//////////////////////////////
-///
-/// @GE{Document Etag}: The document revision enclosed in double quotes.
 ///
 /// @page GlossaryDocumentIdentifier 
 ////////////////////////////////////
@@ -126,13 +134,6 @@
 /// edge documents live. Instead of using @LIT{db}, one must use @LIT{edges}
 /// to access the edge collection.
 ///
-/// @page GlossaryIndex
-///////////////////////
-///
-/// @GE{Index}: Indexes are used to allow fast access to documents. For each
-/// collection there is always the primary index which is a hash index for
-/// the document identifier.
-///
 /// @page GlossaryIndexGeo
 //////////////////////////
 ///
@@ -143,6 +144,26 @@
 ///////////////////////////
 ///
 /// @GE{Hash Index}: A hash index is used to find documents based on examples.
+///
+/// @page GlossaryIndex
+///////////////////////
+///
+/// @GE{Index}: Indexes are used to allow fast access to documents. For each
+/// collection there is always the primary index which is a hash index for
+/// the document identifier.
+///
+/// @page GlossaryIndexHandle
+/////////////////////////////
+///
+/// @GE{Index Handle}: An index handle uniquely identifies an index in the
+/// database. It is a string and consists of a collection identifier and a
+/// index identifier separated by @LIT{/}.
+///
+/// @page GlossaryIndexPrioQueue
+////////////////////////////////
+///
+/// @GE{Priority Queue}: A priority queue based on an attribute of the
+/// documents.
 ///
 /// @page GlossaryIndexSkiplist
 ///////////////////////////////

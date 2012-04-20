@@ -66,6 +66,7 @@
 ///      <li>@ref ShellDocument</li>
 ///      <li>@ref ShellEdge</li>
 ///      <li>@ref ShellCollection</li>
+///      <li>@ref ShellIndex</li>
 ///   </ol>
 ///  </li>
 /// </ol>

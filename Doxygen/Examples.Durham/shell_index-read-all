@@ -1,0 +1,25 @@
+avocado> db.demo.getIndexes()
+[
+  { "id" : "1439003/0", 
+    "type" : "primary",
+    "fields" : ["_id"]
+  }, 
+  { 
+    "id" : "1439003/2290971", 
+    "unique" : true, 
+    "type" : "hash", 
+    "fields" : ["a"] 
+  }, 
+  { 
+    "id" : "1439003/2946331",
+    "unique" : false, 
+    "type" : "hash", 
+    "fields" : ["b"] 
+  },
+  { 
+    "id" : "1439003/3077403", 
+    "unique" : false, 
+    "type" : "skiplist", 
+    "fields" : ["c"]
+  }
+]
