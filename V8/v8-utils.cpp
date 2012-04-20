@@ -735,9 +735,7 @@ static void WeakDictionaryCallback (v8::Persistent<v8::Value> object, void* para
 
   WD* dictionary;
   char* key;
-  TRI_v8_global_t* v8g;
 
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
   dictionary = (WD*) ((wd_key_pair_t*) parameter)->_dictionary;
   key = ((wd_key_pair_t*) parameter)->_key;
 
@@ -766,10 +764,6 @@ static void WeakDictionaryCallback (v8::Persistent<v8::Value> object, void* para
 static v8::Handle<v8::Value> WeakDictionaryInvocationCallback (v8::Arguments const& args) {
   typedef Dictionary< v8::Persistent<v8::Value>* > WD;
   static uint64_t MIN_SIZE = 100;
-
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> self = args.Holder();
 
