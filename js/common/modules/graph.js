@@ -705,13 +705,14 @@ Vertex.prototype._PRINT = function (seen, path, names) {
 /// @verbinclude graph1
 ////////////////////////////////////////////////////////////////////////////////
 
-function Graph (vertices, edges) {
+function Graph (name, vertices, edges) {
 
   // collection
   var gdb = internal.db._collection("_graph");
 
   if (gdb == null) {
     gdb = internal.db._create("_graph", { waitForSync : true, isSystem : true });
+    gdb.ensureUniqueConstraint("name");
   }
 
   // get the vertices collection
@@ -747,19 +748,105 @@ function Graph (vertices, edges) {
   if (! edges instanceof AvocadoEdgesCollection) {
     throw "<edges> must be an edges collection";
   }
-
-  // check if know that graph
-  var props = gdb.firstExample('vertices', vertices._id, 'edges', edges._id);
-
+  
+  // find graph by name
+  if (typeof name != "string" || name === "") {
+    throw "<name> must be a string";    
+  }
+  
+  var props = gdb.firstExample('name', name);    
   if (props == null) {
-    var d = gdb.save({ 'vertices' : vertices._id, 
+    // name is unknown
+    // 
+    // check if know that graph
+    props = gdb.firstExample('vertices', vertices._id, 'edges', edges._id);
+    if (props == null) {
+      var d = gdb.save({ 'vertices' : vertices._id, 
                        'verticesName' : vertices.name(),
                        'edges' : edges._id,
-                       'edgesName' : edges.name() });
+                       'edgesName' : edges.name(),
+                       'name' : name });
 
-    props = gdb.document(d);
+      props = gdb.document(d);
+    }
+    else {
+      throw "found graph but has different <name>";
+    }
+    
+  }
+  else {
+    if (props.vertices != vertices._id) {
+      throw "found graph but has different <vertices>";      
+    }
+    if (props.edges != edges._id) {
+      throw "found graph but has different <edges>";      
+    }    
+  }
+  
+  this._properties = props;
+
+  // and store the collections
+  this._vertices = vertices;
+  this._edges = edges;
+
+  // and weak dictionary for vertices and edges
+  this._weakVertices = new WeakDictionary();
+  this._weakEdges = new WeakDictionary();
+}
+
+function Graph (name) {
+
+  // collection
+  var gdb = internal.db._collection("_graph");
+
+  if (gdb == null) {
+    gdb = internal.db._create("_graph", { waitForSync : true, isSystem : true });
+    gdb.ensureUniqueConstraint("name");
   }
 
+  
+  var props = gdb.firstExample('name', name);    
+  if (props == null) {
+      throw "graph not found";
+  }
+  
+  var vertices = props.verticesName;
+  var edges = props.edgesName;
+
+  // get the vertices collection
+  if (typeof vertices === "string") {
+    var col = internal.db._collection(vertices);
+
+    if (col == null) {
+      col = internal.db._create(vertices);
+    }
+
+    // col.ensureUniqueConstraint("$id");
+
+    vertices = col;
+  }
+  
+  if (! vertices instanceof AvocadoCollection) {
+    throw "<vertices> must be a document collection";
+  }
+
+  // get the edges collection
+  if (typeof edges === "string") {
+    var col = internal.edges._collection(edges);
+
+    if (col == null) {
+      col = internal.db._create(edges);
+    }
+
+    // col.ensureUniqueConstraint("$id");
+
+    edges = col;
+  }
+
+  if (! edges instanceof AvocadoEdgesCollection) {
+    throw "<edges> must be an edges collection";
+  }
+  
   this._properties = props;
 
   // and store the collections
@@ -903,7 +990,7 @@ Graph.prototype.addVertex = function (id, data) {
 Graph.prototype.getVertex = function (id) {
   var e = this._vertices.firstExample('$id', id);
 
-  if (e !== null) {
+  if (e !== null && e != undefined) {
     return this.constructVertex(e._id);
   }
   else {
@@ -1108,7 +1195,7 @@ Graph.prototype.constructEdge = function(id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._PRINT = function (seen, path, names) {
-  internal.output("Graph(\"", this._vertices.name(), "\", \"" + this._edges.name(), "\")");
+  internal.output("Graph(\"", this._properties.name, "\", \"", this._vertices.name(), "\", \"" + this._edges.name(), "\")");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
