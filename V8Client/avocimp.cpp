@@ -164,6 +164,9 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("max-upload-size", &maxUploadSize, "maximum size of import chunks")
   ;
 
+  vector<string> myargs;
+  description.arguments(&myargs);
+  
   ProgramOptions options;
 
   if (! options.parse(description, argc, argv)) {
@@ -171,6 +174,10 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     exit(EXIT_FAILURE);
   }
 
+  if (FileName == "" && myargs.size() > 0) {
+    FileName = myargs[0];
+  }
+    
   // check for help
   set<string> help = options.needHelp("help");
 

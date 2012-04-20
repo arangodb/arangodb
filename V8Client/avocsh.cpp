@@ -949,6 +949,7 @@ static void RunShell (v8::Handle<v8::Context> context) {
 
     string i = triagens::basics::StringUtils::trim(input);
     if (i == "exit" || i == "quit") {
+      TRI_FreeString(input);
       break;
     }
 
@@ -1318,7 +1319,9 @@ int main (int argc, char* argv[]) {
 
   context->Exit();
   context.Dispose();
-  v8::V8::Dispose();
+
+  // calling dispose in V8 3.10.x causes a segfault. the v8 docs says its not necessary to call it upon program termination
+  // v8::V8::Dispose();
 
   return ret;
 }
