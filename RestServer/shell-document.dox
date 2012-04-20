@@ -53,7 +53,7 @@
 ///   <ol>
 ///    <li>@ref ShellDocumentDbRead "db._document(document-handle)"</li>
 ///    <li>@ref ShellDocumentDbUpdate "db._replace(document-handle, data)"</li>
-///    <li>@ref ShellDocumentDbDelete "db._delete(document-handle)"</li>
+///    <li>@ref ShellDocumentDbDelete "db._remove(document-handle)"</li>
 ///   </ol>
 ///  </li>
 /// </ol>
@@ -102,10 +102,10 @@
 ///
 /// For example: Assume that the document handle, which is stored in
 /// the @LIT{_id} field of the document, is @LIT{7254820/362549736}
-/// and the document lives in a collection named @FA{examples}, then
+/// and the document lives in a collection named @FA{demo}, then
 /// that document can be accessed as:
 ///
-/// @LIT{db.examples.document("7254820/362549736")}
+/// @LIT{db.demo.document("7254820/362549736")}
 ///
 /// Because the document handle is unique within the database, you
 /// can leave out the @FA{collection} and use the shortcut:
@@ -134,7 +134,7 @@
 /// <hr>
 ///
 /// @anchor ShellDocumentDelete
-/// @copydetails JS_DeleteVocbaseCol
+/// @copydetails JS_RemoveVocbaseCol
 /// <hr>
 ///
 /// @subsection ShellDocumentDatabaseMethods Database Methods
@@ -149,7 +149,7 @@
 /// <hr>
 ///
 /// @anchor ShellDocumentDbDelete
-/// @copydetails JS_DeleteVocbase
+/// @copydetails JS_RemoveVocbase
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

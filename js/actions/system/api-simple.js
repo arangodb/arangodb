@@ -85,7 +85,7 @@ actions.defineHttp({
       actions.resultUnsupported(req, res);
     }
     else {
-      collection = db._collection(name);
+      collection = internal.db._collection(name);
 
       if (collection == null) {
         actions.collectionNotFound(req, res, name);
@@ -184,7 +184,7 @@ actions.defineHttp({
       actions.unsupported(req, res);
     }
     else {
-      collection = db._collection(name);
+      collection = internal.db._collection(name);
 
       if (collection == null) {
         actions.collectionNotFound(req, res, name);
@@ -302,7 +302,7 @@ actions.defineHttp({
       actions.unsupported(req, res);
     }
     else {
-      collection = db._collection(name);
+      collection = internal.db._collection(name);
 
       if (collection == null) {
         actions.collectionNotFound(req, res, name);
@@ -388,7 +388,7 @@ actions.defineHttp({
       actions.unsupported(req, res);
     }
     else {
-      collection = db._collection(name);
+      collection = internal.db._collection(name);
 
       if (collection == null) {
         actions.collectionNotFound(req, res, name);

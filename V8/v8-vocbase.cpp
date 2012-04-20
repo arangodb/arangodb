@@ -205,7 +205,7 @@ static TRI_vocbase_t* GetContextVocBase () {
 /// @brief checks if argument is a document identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsDocumentId (v8::Handle<v8::Value> arg, TRI_voc_cid_t& cid, TRI_voc_did_t& did) {
+static bool IsDocumentHandle (v8::Handle<v8::Value> arg, TRI_voc_cid_t& cid, TRI_voc_did_t& did) {
   TRI_v8_global_t* v8g;
 
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
@@ -231,6 +231,42 @@ static bool IsDocumentId (v8::Handle<v8::Value> arg, TRI_voc_cid_t& cid, TRI_voc
   if (regexec(&v8g->DocumentIdRegex, s, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
     cid = TRI_UInt64String2(s + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
     did = TRI_UInt64String2(s + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
+    return true;
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if argument is a document identifier
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IsIndexHandle (v8::Handle<v8::Value> arg, TRI_voc_cid_t& cid, TRI_idx_iid_t& iid) {
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  if (arg->IsNumber()) {
+    iid = (TRI_idx_iid_t) arg->ToNumber()->Value();
+    return true;
+  }
+
+  if (! arg->IsString()) {
+    return false;
+  }
+
+  v8::String::Utf8Value str(arg);
+  char const* s = *str;
+
+  if (s == 0) {
+    return false;
+  }
+
+  regmatch_t matches[3];
+
+  if (regexec(&v8g->IndexIdRegex, s, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
+    cid = TRI_UInt64String2(s + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
+    iid = TRI_UInt64String2(s + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
     return true;
   }
 
@@ -374,6 +410,22 @@ static void StoreGeoResult (TRI_vocbase_col_t const* collection,
   }
 
   TRI_Free(tmp);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the index representation
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> IndexRep (TRI_collection_t* col, TRI_json_t* idx) {
+  v8::HandleScope scope;
+
+  v8::Handle<v8::Object> rep = TRI_ObjectJson(idx)->ToObject();
+
+  string iid = TRI_ObjectToString(rep->Get(v8::String::New("id")));
+  string id = StringUtils::itoa(col->_cid) + string(TRI_INDEX_HANDLE_SEPARATOR_STR) + iid;
+  rep->Set(v8::String::New("id"), v8::String::New(id.c_str()));
+
+  return scope.Close(rep);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -527,19 +579,19 @@ static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
   // .............................................................................
 
   TRI_json_t* json = idx->json(idx, collection->_collection);
+
   if (!json) {
     return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
   }
 
-  v8::Handle<v8::Value> index = TRI_ObjectJson(json);
+  v8::Handle<v8::Value> index = IndexRep(&collection->_collection->base, json);
+  TRI_FreeJson(json);
   
   if (index->IsObject()) {
     index->ToObject()->Set(v8::String::New("isNewlyCreated"), created ? v8::True() : v8::False());
   }
 
   ReleaseCollection(collection);
-  TRI_FreeJson(json);
-
   return scope.Close(index);
 }
 
@@ -563,7 +615,7 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
 
   // extract the document identifier and revision from a string
   if (val->IsString() || val->IsStringObject()) {
-    if (! IsDocumentId(val, cid, did)) {
+    if (! IsDocumentHandle(val, cid, did)) {
       return scope.Close(CreateErrorObject(TRI_ERROR_AVOCADO_DOCUMENT_HANDLE_BAD, 
                                            "<document-handle> must be a document-handle"));
     }
@@ -574,7 +626,7 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
     v8::Handle<v8::Object> obj = val->ToObject();
     v8::Handle<v8::Value> didVal = obj->Get(v8g->DidKey);
 
-    if (! IsDocumentId(didVal, cid, did)) {
+    if (! IsDocumentHandle(didVal, cid, did)) {
       return scope.Close(CreateErrorObject(TRI_ERROR_AVOCADO_DOCUMENT_HANDLE_BAD,
                                            "expecting a document-handle in _id"));
     }
@@ -612,12 +664,109 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
 
   // check cross collection requests
   if (cid != collection->_collection->base._cid) {
-    return scope.Close(CreateErrorObject(TRI_ERROR_AVOCADO_CROSS_COLLECTION_REQUEST,
-                                         "cannot execute cross collection query"));
+    if (cid == 0) {
+      return scope.Close(CreateErrorObject(TRI_ERROR_AVOCADO_COLLECTION_NOT_FOUND, 
+                                           "collection of <document-handle> unknown"));
+    }
+    else {
+      return scope.Close(CreateErrorObject(TRI_ERROR_AVOCADO_CROSS_COLLECTION_REQUEST,
+                                           "cannot execute cross collection query"));
+    }
   }
 
   v8::Handle<v8::Value> empty;
   return scope.Close(empty);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a index identifier
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_index_t* LookupIndexByHandle (TRI_vocbase_t* vocbase,
+                                         TRI_vocbase_col_t const*& collection,
+                                         v8::Handle<v8::Value> val,
+                                         bool ignoreNotFound,
+                                         v8::Handle<v8::Object>* err) {
+  TRI_v8_global_t* v8g;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  // reset the collection identifier and the revision
+  TRI_voc_cid_t cid = 0;
+  TRI_idx_iid_t iid = 0;
+
+  // extract the document identifier and revision from a string
+  if (val->IsString() || val->IsStringObject()) {
+    if (! IsIndexHandle(val, cid, iid)) {
+      *err = CreateErrorObject(TRI_ERROR_AVOCADO_INDEX_HANDLE_BAD,
+                               "<index-handle> must be a index-handle");
+      return 0;
+    }
+  }
+
+  // extract the document identifier and revision from a string
+  else if (val->IsObject()) {
+    v8::Handle<v8::Object> obj = val->ToObject();
+    v8::Handle<v8::Value> iidVal = obj->Get(v8g->IidKey);
+
+    if (! IsIndexHandle(iidVal, cid, iid)) {
+      *err = CreateErrorObject(TRI_ERROR_AVOCADO_INDEX_HANDLE_BAD, 
+                               "expecting a index-handle in id");
+      return 0;
+    }
+  }
+
+  // lockup the collection
+  if (collection == 0) {
+    TRI_vocbase_col_t* vc = TRI_LookupCollectionByIdVocBase(vocbase, cid);
+
+    if (vc == 0) {
+      *err = CreateErrorObject(TRI_ERROR_AVOCADO_COLLECTION_NOT_FOUND, 
+                               "collection of <index-handle> is unknown");
+      return 0;
+    }
+
+    // use the collection
+    int res = TRI_UseCollectionVocBase(vocbase, vc);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      *err = CreateErrorObject(res, "cannot use/load collection");
+      return 0;
+    }
+
+    collection = vc;
+
+    if (collection->_collection == 0) {
+      *err = CreateErrorObject(TRI_ERROR_INTERNAL, "cannot use/load collection");
+      return 0;
+    }
+  }
+
+  // check cross collection requests
+  if (cid != collection->_collection->base._cid) {
+    if (cid == 0) {
+      *err = CreateErrorObject(TRI_ERROR_AVOCADO_COLLECTION_NOT_FOUND,
+                               "collection of <index-handle> unknown");
+      return 0;
+    }
+    else {
+      *err = CreateErrorObject(TRI_ERROR_AVOCADO_CROSS_COLLECTION_REQUEST,
+                               "cannot execute cross collection index");
+      return 0;
+    }
+  }
+
+  TRI_index_t* idx = TRI_LookupIndex(collection->_collection, iid);
+
+  if (idx == 0) {
+    if (! ignoreNotFound) {
+      *err = CreateErrorObject(TRI_ERROR_AVOCADO_INDEX_NOT_FOUND, "index is unknown");
+    }
+
+    return 0;
+  }
+
+  return idx;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1798,16 +1947,15 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
     ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(
                          CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                           "usage: NEAR(<index-id>, <latitude>, <longitude>, <limit>)")));
+                                           "usage: NEAR(<index-handle>, <latitude>, <longitude>, <limit>)")));
   }
 
   // extract the index
-  TRI_idx_iid_t iid = (TRI_idx_iid_t) TRI_ObjectToDouble(argv[0]);
-  TRI_index_t* idx = TRI_LookupIndex(doc, iid);
+  TRI_index_t* idx = LookupIndexByHandle(doc->base._vocbase, collection, argv[0], false, &err);
 
   if (idx == 0) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_AVOCADO_INDEX_NOT_FOUND, "unknown index identifier")));
+    return scope.Close(v8::ThrowException(err));
   }
 
   if (idx->_type != TRI_IDX_TYPE_GEO_INDEX) {
@@ -1900,21 +2048,20 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
   }
 
-  // expect: WITHIN(<index-id>, <latitude>, <longitude>, <limit>)
+  // expect: WITHIN(<index-handle>, <latitude>, <longitude>, <limit>)
   if (argv.Length() != 4) {
     ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(
                          CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
-                                           "usage: WITHIN(<index-id>, <latitude>, <longitude>, <radius>)")));
+                                           "usage: WITHIN(<index-handle>, <latitude>, <longitude>, <radius>)")));
   }
 
   // extract the index
-  TRI_idx_iid_t iid = (TRI_idx_iid_t) TRI_ObjectToDouble(argv[0]);
-  TRI_index_t* idx = TRI_LookupIndex(doc, iid);
+  TRI_index_t* idx = LookupIndexByHandle(doc->base._vocbase, collection, argv[0], false, &err);
 
   if (idx == 0) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_AVOCADO_INDEX_NOT_FOUND, "unknown index identifier")));
+    return scope.Close(v8::ThrowException(err));
   }
 
   if (idx->_type != TRI_IDX_TYPE_GEO_INDEX) {
@@ -2291,7 +2438,7 @@ static v8::Handle<v8::Value> JS_WherePrimaryConstAql (v8::Arguments const& argv)
   // extract the document handle
   TRI_voc_cid_t cid = 0;
   TRI_voc_did_t did = 0;
-  bool ok = IsDocumentId(argv[0], cid, did);
+  bool ok = IsDocumentHandle(argv[0], cid, did);
 
   if (! ok) {
     return scope.Close(v8::ThrowException(v8::String::New("expecting a <document-handle>")));
@@ -4013,12 +4160,19 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an index
 ///
-/// @FUN{dropIndex(@FA{index-identifier})}
+/// @FUN{@FA{collection}.dropIndex(@FA{index})}
 ///
 /// Drops the index. If the index does not exists, then @LIT{false} is
-/// returned. If the index existed and was dropped, then @LIT{true} is returned.
+/// returned. If the index existed and was dropped, then @LIT{true} is
+/// returned. Note that you cannot drop the primary index. 
 ///
-/// @verbinclude fluent17
+/// @FUN{@FA{collection}.dropIndex(@FA{index-handle})}
+///
+/// Same as above. Instead of an index an index handle can be given.
+///
+/// @EXAMPLES
+///
+/// @verbinclude shell_index-drop-index
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) {
@@ -4035,23 +4189,39 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 
   if (doc->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
   }
 
   TRI_sim_collection_t* sim = (TRI_sim_collection_t*) doc;
 
   if (argv.Length() != 1) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("usage: dropIndex(<index-identifier>)")));
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: dropIndex(<index-handle>)")));
   }
 
-  double iid = TRI_ObjectToDouble(argv[0]);
+  TRI_index_t* idx = LookupIndexByHandle(doc->base._vocbase, collection, argv[0], true, &err);
+
+  if (idx == 0) {
+    if (err.IsEmpty()) {
+      ReleaseCollection(collection);
+      return scope.Close(v8::False());
+    }
+    else {
+      ReleaseCollection(collection);
+      return scope.Close(v8::ThrowException(err));
+    }
+  }
+
+  if (idx->_iid == 0) {
+    ReleaseCollection(collection);
+    return scope.Close(v8::False());
+  }
 
   // .............................................................................
   // inside a write transaction
   // .............................................................................
 
-  bool ok = TRI_DropIndexSimCollection(sim, (TRI_idx_iid_t) iid);
+  bool ok = TRI_DropIndexSimCollection(sim, idx->_iid);
 
   // .............................................................................
   // outside a write transaction
@@ -4187,19 +4357,19 @@ static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& a
   }
 
   TRI_json_t* json = idx->json(idx, collection->_collection);
+
   if (!json) {
     return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
   }
 
-  v8::Handle<v8::Value> index = TRI_ObjectJson(json);
+  v8::Handle<v8::Value> index = IndexRep(&collection->_collection->base, json);
+  TRI_FreeJson(json);
   
   if (index->IsObject()) {
     index->ToObject()->Set(v8::String::New("isNewlyCreated"), created ? v8::True() : v8::False());
   }
 
   ReleaseCollection(collection);
-  TRI_FreeJson(json);
-
   return scope.Close(index);
 }
 
@@ -4406,7 +4576,9 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
   // .............................................................................
 
   TRI_json_t* json = idx->json(idx, collection->_collection);
-  v8::Handle<v8::Value> index = TRI_ObjectJson(json);
+
+  v8::Handle<v8::Value> index = IndexRep(&collection->_collection->base, json);
+  TRI_FreeJson(json);
   
   if (index->IsObject()) {
     index->ToObject()->Set(v8::String::New("isNewlyCreated"), created ? v8::True() : v8::False());
@@ -4415,8 +4587,6 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
   ReleaseCollection(collection);
   return scope.Close(index);
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a skiplist index exists
@@ -4548,7 +4718,9 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
 ///
 /// Returns a list of all indexes defined for the collection.
 ///
-/// @verbinclude fluent18
+/// @EXAMPLES
+///
+/// @verbinclude shell_index-read-all
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv) {
@@ -4572,6 +4744,7 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
 
   // get a list of indexes
   TRI_vector_pointer_t* indexes = TRI_IndexesSimCollection(sim);
+
   if (!indexes) {
     return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
   }
@@ -4580,10 +4753,11 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
 
   uint32_t n = (uint32_t) indexes->_length;
 
-  for (uint32_t i = 0;  i < n;  ++i) {
+  for (uint32_t i = 0, j = 0;  i < n;  ++i) {
     TRI_json_t* idx = (TRI_json_t*) indexes->_buffer[i];
+
     if (idx) {
-      result->Set(i, TRI_ObjectJson(idx));
+      result->Set(j++, IndexRep(&doc->base, idx));
       TRI_FreeJson(idx);
     }
   }
@@ -6005,6 +6179,11 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
     exit(EXIT_FAILURE);
   }
 
+  if (regcomp(&v8g->IndexIdRegex, expr.c_str(), REG_ICASE | REG_EXTENDED) != 0) {
+    LOG_FATAL("cannot compile regular expression");
+    exit(EXIT_FAILURE);
+  }
+
   // .............................................................................
   // global function names
   // .............................................................................
@@ -6085,6 +6264,10 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
 
   if (v8g->FromKey.IsEmpty()) {
     v8g->FromKey = v8::Persistent<v8::String>::New(v8::String::New("_from"));
+  }
+
+  if (v8g->IidKey.IsEmpty()) {
+    v8g->IidKey = v8::Persistent<v8::String>::New(v8::String::New("id"));
   }
 
   if (v8g->OldRevKey.IsEmpty()) {

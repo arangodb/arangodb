@@ -41,17 +41,23 @@
 /// @page HttpIndexCallsTOC
 ///
 /// <ol>
-///  <li>@ref HttpIndexRead "GET /_api/index/collection-identifier/index-identifier"</li>
-///  <li>@ref HttpIndexCreate "POST /_api/index/collection-identifier"</li>
-///  <li>@ref HttpIndexDelete "DELETE /_api/index/collection-identifier/index-identifier"</li>
-///  <li>@ref HttpIndexReadAll "GET /_api/index/collection-identifier"</li>
+///  <li>@ref HttpIndexRead "GET /_api/index/index-handle"</li>
+///  <li>@ref HttpIndexCreate "POST /_api/index?collection=collection-identifier"</li>
+///  <li>@ref HttpIndexDelete "DELETE /_api/index/index-handle"</li>
+///  <li>@ref HttpIndexReadAll "GET /_api/index?collection=index-handle"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page HttpIndex HTTP Interface for Indexes
 ///
-/// This is an introduction to AvocadoDB's Http interface for indexes.
+/// This is an introduction to AvocadoDB's Http interface for indexes in
+/// general. There are special section for
+///
+/// - @ref IndexGeo
+/// - @ref IndexSkiplist
+/// - @ref IndexHash
+/// - @ref IndexPrioQueue
 ///
 /// <hr>
 /// @copydoc HttpIndexTOC
@@ -62,11 +68,15 @@
 ///
 /// @copydoc GlossaryIndex
 ///
+/// @copydoc GlossaryIndexHandle
+///
 /// @copydoc GlossaryIndexGeo
 ///
 /// @copydoc GlossaryIndexHash
 ///
 /// @copydoc GlossaryIndexSkiplist
+///
+/// @copydoc GlossaryIndexPrioQueue
 ///
 /// The basic operations (create, read, update, delete) for documents are mapped
 /// to the standard HTTP methods (POST, GET, PUT, DELETE).
@@ -74,16 +84,15 @@
 /// @section HttpIndexResource Address of an Index
 //////////////////////////////////////////////////
 ///
-/// All indexes in AvocadoDB have an unique identifier with a collection. This
-/// index identifier identifies an index and is managed by AvocadoDB. All
-/// indexes are found under the URI
+/// All indexes in AvocadoDB have an unique handle. This index handle identifies
+/// an index and is managed by AvocadoDB. All indexes are found under the URI
 ///
-/// @LIT{http://@FA{server}:@FA{port}/_api/index/@FA{collection-identifier}/@FA{index-identifier}}
+/// @LIT{http://@FA{server}:@FA{port}/_api/index/@FA{index-handle}}
 ///
-/// For example: Assume that the collection identifier is @LIT{7254820}, and the
-/// index identifier is @LIT{63563528} then the URL of that index is:
+/// For example: Assume that the index handle is @LIT{7254820/63563528} then
+/// the URL of that index is:
 ///
-/// @LIT{http://localhost:8529/_api/collection/7254820/63563528}
+/// @LIT{http://localhost:8529/_api/index/7254820/63563528}
 ///
 /// @section HttpIndexHttp Working with Indexes using HTTP
 //////////////////////////////////////////////////////////

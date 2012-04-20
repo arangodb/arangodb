@@ -53,11 +53,11 @@ var API = "_api/index";
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all indexes of an collection
 ///
-/// @REST{GET /_api/index/@FA{collection-identifier}}
+/// @REST{GET /_api/index?collection=@FA{collection-identifier}}
 ///
 /// Returns an object with an attribute @LIT{indexes} containing a list of all
 /// index descriptions for the given collection. The same information is also
-/// available in the @LIT{identifiers} as hash map with the index identifiers as
+/// available in the @LIT{identifiers} as hash map with the index handle as
 /// keys.
 ///
 /// @EXAMPLES
@@ -68,9 +68,9 @@ var API = "_api/index";
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_api_indexes (req, res) {
-  var name = decodeURIComponent(req.suffix[0]);
+  var name = req.parameters.collection;
   var id = parseInt(name) || name;
-  var collection = db._collection(id);
+  var collection = internal.db._collection(id);
 
   if (collection == null) {
     actions.collectionNotFound(req, res, name);
@@ -96,9 +96,9 @@ function GET_api_indexes (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns an index
 ///
-/// @REST{GET /_api/index/@FA{collection-identifier}/@FA{index-identifier}}
+/// @REST{GET /_api/index/@FA{index-handle}}
 ///
-/// The result is an objects describing the index with the following
+/// The result is an objects describing the index. It has at least the following
 /// attributes:
 ///
 /// - @LIT{id}: The identifier of the collection.
@@ -115,10 +115,10 @@ function GET_api_indexes (req, res) {
 function GET_api_index (req, res) {
 
   // .............................................................................
-  // /_api/indexes/<collection-identifier>
+  // /_api/indexes?collection=<collection-identifier>
   // .............................................................................
 
-  if (req.suffix.length == 1) {
+  if (req.suffix.length == 0) {
     GET_api_indexes(req, res);
   }
 
@@ -129,7 +129,7 @@ function GET_api_index (req, res) {
   else if (req.suffix.length == 2) {
     var name = decodeURIComponent(req.suffix[0]);
     var id = parseInt(name) || name;
-    var collection = db._collection(id);
+    var collection = internal.db._collection(id);
     
     if (collection == null) {
       actions.collectionNotFound(req, res, name);
@@ -137,7 +137,7 @@ function GET_api_index (req, res) {
     }
 
     var iid = decodeURIComponent(req.suffix[1]);
-    var index = collection.index(iid);
+    var index = collection.index(collection._id + "/" + iid);
 
     if (index == null) {
       actions.indexNotFound(req, res, collection, iid);
@@ -148,7 +148,7 @@ function GET_api_index (req, res) {
   }
   else {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                      "expect GET /" + API + "/<collection-identifer>/<index-identifier>");
+                      "expect GET /" + API + "/<index-handle>");
   }
 }
 
@@ -267,7 +267,7 @@ function POST_api_index_skiplist (req, res, collection, body) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an index
 ///
-/// @REST{POST /_api/index/@FA{collection-identifier}}
+/// @REST{POST /_api/index?collection=@FA{collection-identifier}}
 ///
 /// Creates a new index in the collection @FA{collection-identifier}. Expects
 /// an object containing the index details.
@@ -309,15 +309,15 @@ function POST_api_index_skiplist (req, res, collection, body) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function POST_api_index (req, res) {
-  if (req.suffix.length != 1) {
+  if (req.suffix.length != 0) {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                      "expect POST /" + API + "/<collection-identifer>");
+                      "expect POST /" + API + "?collection=<collection-identifer>");
     return;
   }
 
-  var name = decodeURIComponent(req.suffix[0]);
+  var name = req.parameters.collection;
   var id = parseInt(name) || name;
-  var collection = db._collection(id);
+  var collection = internal.db._collection(id);
 
   if (collection == null) {
     actions.collectionNotFound(req, res, name);
@@ -352,25 +352,25 @@ function POST_api_index (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an index
 ///
-/// @REST{DELETE /_api/index/@FA{collection-identifier}/@FA{index-identifier}}
+/// @REST{DELETE /_api/index/@FA{index-handle}}
 ///
-/// Deletes an index with identifier @FA{indexn-identifier} in the collection
-/// @FA{collection-identifier}.
+/// Deletes an index with @FA{index-handle}.
 ///
 /// @EXAMPLES
 ///
+/// @verbinclude api-index-delete-unique-skiplist
 ////////////////////////////////////////////////////////////////////////////////
 
 function DELETE_api_index (req, res) {
   if (req.suffix.length != 2) {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                      "expect DELETE /" + API + "/<collection-identifer>/<index-identifer>");
+                      "expect DELETE /" + API + "/<index-handle>");
     return;
   }
 
   var name = decodeURIComponent(req.suffix[0]);
   var id = parseInt(name) || name;
-  var collection = db._collection(id);
+  var collection = internal.db._collection(id);
 
   if (collection == null) {
     actions.collectionNotFound(req, res, name);
@@ -379,13 +379,13 @@ function DELETE_api_index (req, res) {
 
   try {
     var iid = parseInt(decodeURIComponent(req.suffix[1]));
-    var droped = collection.dropIndex(iid);
+    var droped = collection.dropIndex(collection._id + "/" + iid);
 
     if (droped) {
-      actions.resultOk(req, res, actions.HTTP_OK, { id : iid });
+      actions.resultOk(req, res, actions.HTTP_OK, { id : collection._id + "/" + iid });
     }
     else {
-      actions.indexNotFound(req, res, collection, iid);
+      actions.indexNotFound(req, res, collection, collection._id + "/" + iid);
     }
   }
   catch (err) {
