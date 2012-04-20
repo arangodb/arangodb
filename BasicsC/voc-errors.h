@@ -227,6 +227,15 @@ extern "C" {
 ///   Will be raised when updating the value for a key does not work
 /// - 1805: @CODE{key value not removed}
 ///   Will be raised when deleting a key/value pair does not work
+/// - 1901: @CODE{invalid graph}
+///   Will be raised when an invalid name is passed to the server
+/// - 1902: @CODE{could not create graph}
+///   Will be raised when an invalid name, vertices or edges is passed to the
+///   server
+/// - 1903: @CODE{invalid vertex}
+///   Will be raised when an invalid vertex id is passed to the server
+/// - 1904: @CODE{could not create vertex}
+///   Will be raised when the vertex could not be created
 /// - 2000: @CODE{unknown client error}
 ///   This error should not happen.
 /// - 2001: @CODE{could not connect to server}
@@ -1224,6 +1233,47 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_KEYVALUE_KEY_NOT_REMOVED                                (1805)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1901: ERROR_GRAPH_INVALID_GRAPH
+///
+/// invalid graph
+///
+/// Will be raised when an invalid name is passed to the server
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_INVALID_GRAPH                                     (1901)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1902: ERROR_GRAPH_COULD_NOT_CREATE_GRAPH
+///
+/// could not create graph
+///
+/// Will be raised when an invalid name, vertices or edges is passed to the
+/// server
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_COULD_NOT_CREATE_GRAPH                            (1902)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1903: ERROR_GRAPH_INVALID_VERTEX
+///
+/// invalid vertex
+///
+/// Will be raised when an invalid vertex id is passed to the server
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_INVALID_VERTEX                                    (1903)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1904: ERROR_GRAPH_COULD_NOT_CREATE_VERTEX
+///
+/// could not create vertex
+///
+/// Will be raised when the vertex could not be created
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_COULD_NOT_CREATE_VERTEX                           (1904)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 2000: SIMPLE_CLIENT_UNKNOWN_ERROR
