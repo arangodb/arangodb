@@ -69,6 +69,10 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
+@ENABLE_MRUBY_TRUE@am__append_1 = @MRUBY_CPPFLAGS@ @MRUBY_LDFLAGS@
+@ENABLE_MRUBY_TRUE@am__append_2 = \
+@ENABLE_MRUBY_TRUE@	@MRUBY_LIBS@
+
 sbin_PROGRAMS = avocado$(EXEEXT)
 bin_PROGRAMS = avocsh$(EXEEXT) avocimp$(EXEEXT)
 DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.all-in-one \
@@ -87,15 +91,15 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.all-in-one \
 
 ################################################################################
 ################################################################################
-@ENABLE_FLEX_TRUE@am__append_1 = $(FLEX_FILES) $(FLEXXX_FILES)
+@ENABLE_FLEX_TRUE@am__append_3 = $(FLEX_FILES) $(FLEXXX_FILES)
 
 ################################################################################
 ################################################################################
-@ENABLE_BISON_TRUE@am__append_2 = $(BISON_FILES) $(BISONXX_FILES)
+@ENABLE_BISON_TRUE@am__append_4 = $(BISON_FILES) $(BISONXX_FILES)
 
 ################################################################################
 ################################################################################
-@ENABLE_ALL_IN_ONE_TRUE@am__append_3 = @LIBEV_LIBS@ @V8_LIBS@
+@ENABLE_ALL_IN_ONE_TRUE@am__append_5 = @LIBEV_LIBS@ @V8_LIBS@
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
@@ -116,8 +120,10 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
 	$(top_srcdir)/m4/external.readline \
 	$(top_srcdir)/m4/external.openssl \
 	$(top_srcdir)/m4/all-in-one.libev \
-	$(top_srcdir)/m4/all-in-one.v8 $(top_srcdir)/m4/external.libev \
-	$(top_srcdir)/m4/external.v8 $(top_srcdir)/m4/all-in-one.boost \
+	$(top_srcdir)/m4/all-in-one.v8 \
+	$(top_srcdir)/m4/all-in-one.mruby \
+	$(top_srcdir)/m4/external.libev $(top_srcdir)/m4/external.v8 \
+	$(top_srcdir)/m4/all-in-one.boost \
 	$(top_srcdir)/m4/external.boost \
 	$(top_srcdir)/m4/configure.information \
 	$(top_srcdir)/configure.ac
@@ -307,21 +313,22 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	VocBase/vocbase.$(OBJEXT)
 avocado_OBJECTS = $(am_avocado_OBJECTS)
 am__DEPENDENCIES_1 =
-avocado_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_1)
+am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
+avocado_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_2)
 am_avocimp_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
 	SimpleHttpClient/SimpleHttpResult.$(OBJEXT) \
 	V8Client/ImportHelper.$(OBJEXT) \
 	V8Client/V8ClientConnection.$(OBJEXT) \
 	V8Client/avocimp.$(OBJEXT)
 avocimp_OBJECTS = $(am_avocimp_OBJECTS)
-avocimp_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_1)
+avocimp_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_2)
 am_avocsh_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
 	SimpleHttpClient/SimpleHttpResult.$(OBJEXT) \
 	V8Client/ImportHelper.$(OBJEXT) \
 	V8Client/V8ClientConnection.$(OBJEXT) \
 	V8Client/avocsh.$(OBJEXT)
 avocsh_OBJECTS = $(am_avocsh_OBJECTS)
-avocsh_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_1)
+avocsh_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_2)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/config -I$(top_builddir)/BasicsC
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
 am__depfiles_maybe = depfiles
@@ -439,15 +446,8 @@ LIBEV_CPPFLAGS = @LIBEV_CPPFLAGS@
 LIBEV_LDFLAGS = @LIBEV_LDFLAGS@
 LIBEV_LIBS = @LIBEV_LIBS@
 LIBOBJS = @LIBOBJS@
-LIBS = \
-	@BOOST_LIBS@ \
-	@LIBEV_LIBS@ \
-	@MATH_LIBS@ \
-	@NCURSES_LIBS@ \
-	@OPENSSL_LIBS@ \
-	@READLINE_LIBS@ \
-	@V8_LIBS@
-
+LIBS = @BOOST_LIBS@ @LIBEV_LIBS@ @MATH_LIBS@ @NCURSES_LIBS@ \
+	@OPENSSL_LIBS@ @READLINE_LIBS@ @V8_LIBS@ $(am__append_2)
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
@@ -455,6 +455,9 @@ MATH_CPPFLAGS = @MATH_CPPFLAGS@
 MATH_LDFLAGS = @MATH_LDFLAGS@
 MATH_LIBS = @MATH_LIBS@
 MKDIR_P = @MKDIR_P@
+MRUBY_CPPFLAGS = @MRUBY_CPPFLAGS@
+MRUBY_LDFLAGS = @MRUBY_LDFLAGS@
+MRUBY_LIBS = @MRUBY_LIBS@
 NCURSES_CONFIG = @NCURSES_CONFIG@
 NCURSES_CPPFLAGS = @NCURSES_CPPFLAGS@
 NCURSES_LDFLAGS = @NCURSES_LDFLAGS@
@@ -543,18 +546,12 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 ACLOCAL_AMFLAGS = -I m4
-AM_CPPFLAGS = \
-	-D_SYSCONFDIR_='"${sysconfdir}"' \
+AM_CPPFLAGS = -D_SYSCONFDIR_='"${sysconfdir}"' \
 	-D_PKGDATADIR_='"${pkgdatadir}"' \
 	-D_DATABASEDIR_='"${localstatedir}/${PACKAGE_TARNAME}"' \
-	@BOOST_CPPFLAGS@ \
-	@LIBEV_CPPFLAGS@ \
-	@MATH_CPPFLAGS@ \
-	@NCURSES_CPPFLAGS@ \
-	@OPENSSL_CPPFLAGS@ \
-	@READLINE_CPPFLAGS@ \
-	@V8_CPPFLAGS@
-
+	@BOOST_CPPFLAGS@ @LIBEV_CPPFLAGS@ @MATH_CPPFLAGS@ \
+	@NCURSES_CPPFLAGS@ @OPENSSL_CPPFLAGS@ @READLINE_CPPFLAGS@ \
+	@V8_CPPFLAGS@ $(am__append_1)
 AM_LDFLAGS = \
 	@BOOST_LDFLAGS@ \
 	@LIBEV_LDFLAGS@ \
@@ -566,7 +563,7 @@ AM_LDFLAGS = \
 
 BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(FLEX_FILES) \
 	$(FLEXXX_FILES) $(BISON_FILES) $(BISONXX_FILES) \
-	Doxygen/.setup-directories .setup-directories $(am__append_3)
+	Doxygen/.setup-directories .setup-directories $(am__append_5)
 
 ################################################################################
 ################################################################################
@@ -575,8 +572,8 @@ BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(FLEX_FILES) \
 ################################################################################
 CLEANUP = $(DOXYGEN) $(addsuffix .md,$(addprefix \
 	Doxygen/xml/,$(WIKI))) $(addsuffix .md,$(addprefix \
-	Doxygen/wiki/,$(WIKI))) $(JAVASCRIPT_HEADER) $(am__append_1) \
-	$(am__append_2)
+	Doxygen/wiki/,$(WIKI))) $(JAVASCRIPT_HEADER) $(am__append_3) \
+	$(am__append_4)
 noinst_LIBRARIES = libavocado.a
 nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/js/actions/system -name "*.js" -print) \

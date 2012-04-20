@@ -1,0 +1,45 @@
+dnl -*- mode: Autoconf; -*-
+
+dnl -----------------------------------------------------------------------------------------
+dnl option for MRUBY support
+dnl -----------------------------------------------------------------------------------------
+
+ENABLE_MRUBY="yes"
+
+MRUBY_CPPFLAGS="-I${srcdir}/3rdParty/mruby/include"
+MRUBY_LDFLAGS=""
+MRUBY_LIBS="${srcdir}/3rdParty/mruby/lib/ritevm.a"
+
+TRI_MRUBY_VERSION="0.0.0"
+
+AM_CONDITIONAL(ENABLE_MRUBY, true)
+AC_DEFINE_UNQUOTED(TRI_ENABLE_MRUBY, 1, [true if mruby should be used])
+
+dnl -----------------------------------------------------------------------------------------
+dnl add substitutions
+dnl -----------------------------------------------------------------------------------------
+
+AC_SUBST(MRUBY_CPPFLAGS)
+AC_SUBST(MRUBY_LDFLAGS)
+AC_SUBST(MRUBY_LIBS)
+
+MRUBY_CPPFLAGS="${MRUBY_CPPFLAGS} -DTRI_MRUBY_VERSION='\"${TRI_MRUBY_VERSION}\"'"
+
+dnl -----------------------------------------------------------------------------------------
+dnl informational output
+dnl -----------------------------------------------------------------------------------------
+
+BASIC_INFO="$BASIC_INFO|MRUBY: disabled"
+
+LIB_INFO="$LIB_INFO|MRUBY VERSION: ${TRI_MRUBY_VERSION}"
+
+FLAG_INFO="$FLAG_INFO|MRUBY_CPPFLAGS: ${MRUBY_CPPFLAGS}"
+FLAG_INFO="$FLAG_INFO|MRUBY_LDFLAGS:  ${MRUBY_LDFLAGS}"
+FLAG_INFO="$FLAG_INFO|MRUBY_LIBS:     ${MRUBY_LIBS}"
+FLAG_INFO="$FLAG_INFO|."
+
+
+dnl Local Variables:
+dnl mode: outline-minor
+dnl outline-regexp: "^\\(dnl --SECTION--\\)"
+dnl End:
