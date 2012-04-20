@@ -83,7 +83,7 @@ typedef unsigned int GeoFix;
 /* the INDEXDUMP function also prints the data,     */
 /* assumed to be a character string, if DEBUG is    */
 /* set to 2.                                        */
-#define DEBUG 1
+#define TRI_GEO_DEBUG 1
 
 typedef struct
 {
@@ -112,7 +112,7 @@ GeoCoordinates * GeoIndex_PointsWithinRadius(GeoIndex * gi,
 GeoCoordinates * GeoIndex_NearestCountPoints(GeoIndex * gi,
                     GeoCoordinate * c, int count);
 void GeoIndex_CoordinatesFree(GeoCoordinates * clist);
-#ifdef DEBUG
+#ifdef TRI_GEO_DEBUG
 void GeoIndex_INDEXDUMP(GeoIndex * gi, FILE * f);
 int  GeoIndex_INDEXVALID(GeoIndex * gi);
 #endif
