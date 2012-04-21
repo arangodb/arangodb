@@ -283,12 +283,15 @@ static v8::Handle<v8::Object> CreateErrorObject (int errorNumber, string const& 
 
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
-  v8::Handle<v8::Object> errorObject = v8g->ErrorTempl->NewInstance();
-
   string msg = TRI_errno_string(errorNumber) + string(": ") + message;
+  v8::Handle<v8::String> errorMessage = v8::String::New(msg.c_str());
+
+  v8::Handle<v8::Object> errorObject = v8::Exception::Error(errorMessage)->ToObject();
+  v8::Handle<v8::Value> proto = v8g->ErrorTempl->NewInstance();
 
   errorObject->Set(v8::String::New("errorNum"), v8::Number::New(errorNumber));
-  errorObject->Set(v8::String::New("errorMessage"), v8::String::New(msg.c_str()));
+  errorObject->Set(v8::String::New("errorMessage"), errorMessage);
+  errorObject->SetPrototype(proto);
 
   return errorObject;
 }
