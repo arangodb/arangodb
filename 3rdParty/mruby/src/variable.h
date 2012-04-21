@@ -30,6 +30,7 @@ int mrb_const_defined(mrb_state*, mrb_value, mrb_sym);
 mrb_value mrb_obj_iv_get(mrb_state*, struct RObject*, mrb_sym);
 void mrb_obj_iv_set(mrb_state*, struct RObject*, mrb_sym, mrb_value);
 const char * mrb_class2name(mrb_state *mrb, struct RClass* klass);
+void mrb_define_variable(mrb_state *mrb, const char *name, mrb_value *var);
 mrb_value mrb_iv_get(mrb_state *mrb, mrb_value obj, mrb_sym sym);
 void mrb_iv_set(mrb_state *mrb, mrb_value obj, mrb_sym sym, mrb_value v); /* mrb_iv_set */
 void mrb_copy_generic_ivar(mrb_value clone, mrb_value obj);
