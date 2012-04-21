@@ -1,3 +1,10 @@
+/*jslint indent: 2,
+         nomen: true,
+         maxlen: 80,
+         sloppy: true,
+         plusplus: true */
+/*global require, WeakDictionary, exports */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript actions functions
 ///
@@ -25,9 +32,65 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var AvocadoCollection = internal.AvocadoCollection;
-var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
+var internal = require("internal"),
+  db = internal.db,
+  edges = internal.edges,
+  AvocadoCollection = internal.AvocadoCollection,
+  AvocadoEdgesCollection = internal.AvocadoEdgesCollection,
+  shallowCopy,
+  propertyKeys;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoGraph
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shallow copy properties
+////////////////////////////////////////////////////////////////////////////////
+
+shallowCopy = function (props) {
+  var shallow,
+    key;
+
+  shallow = {};
+
+  for (key in props) {
+    if (props.hasOwnProperty(key) && key[0] !== '_' && key[0] !== '$') {
+      shallow[key] = props[key];
+    }
+  }
+
+  return shallow;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief property keys
+////////////////////////////////////////////////////////////////////////////////
+
+propertyKeys = function (props) {
+  var keys,
+    key;
+
+  keys = [];
+
+  for (key in props) {
+    if (props.hasOwnProperty(key) && key[0] !== '_' && key[0] !== '$') {
+      keys.push(key);
+    }
+  }
+
+  return keys;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              Edge
@@ -46,7 +109,7 @@ var AvocadoEdgesCollection = internal.AvocadoEdgesCollection;
 /// @brief constructs a new edge object
 ////////////////////////////////////////////////////////////////////////////////
 
-function Edge (graph, id) {
+function Edge(graph, id) {
   var props;
 
   this._graph = graph;
@@ -54,13 +117,11 @@ function Edge (graph, id) {
 
   props = this._graph._edges.document(this._id);
 
-  // extract the custom identifier, label, edges
   if (props) {
+    // extract the custom identifier, label, edges
     this._properties = props;
-  }
-
-  // deleted
-  else {
+  } else {
+    // deleted
     throw "accessing a deleted edge";
   }
 }
@@ -92,7 +153,7 @@ function Edge (graph, id) {
 
 Edge.prototype.getId = function () {
   return this._properties.$id;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the to vertex
@@ -108,7 +169,7 @@ Edge.prototype.getId = function () {
 
 Edge.prototype.getInVertex = function () {
   return this._graph.constructVertex(this._properties._to);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief label of an edge
@@ -124,7 +185,7 @@ Edge.prototype.getInVertex = function () {
 
 Edge.prototype.getLabel = function () {
   return this._properties.$label;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the from vertex
@@ -140,7 +201,7 @@ Edge.prototype.getLabel = function () {
 
 Edge.prototype.getOutVertex = function () {
   return this._graph.constructVertex(this._properties._from);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a property of an edge
@@ -156,7 +217,7 @@ Edge.prototype.getOutVertex = function () {
 
 Edge.prototype.getProperty = function (name) {
   return this._properties[name];
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets all property names of an edge
@@ -172,7 +233,7 @@ Edge.prototype.getProperty = function (name) {
 
 Edge.prototype.getPropertyKeys = function () {
   return propertyKeys(this._properties);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief changes a property of an edge
@@ -187,17 +248,19 @@ Edge.prototype.getPropertyKeys = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.setProperty = function (name, value) {
-  var shallow = shallowCopy(this._properties);
-  shallow['$id'] = this._properties.$id;
-  shallow['$label'] = this._properties.$label;
+  var shallow = shallowCopy(this._properties),
+    id;
+
+  shallow.$id = this._properties.$id;
+  shallow.$label = this._properties.$label;
   shallow[name] = value;
 
   // TODO use "update" if this becomes available
-  var id = this._graph._edges.replace(this._properties, shallow);
+  id = this._graph._edges.replace(this._properties, shallow);
   this._properties = this._graph._edges.document(id);
 
   return value;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all properties of an edge
@@ -223,7 +286,7 @@ Edge.prototype.properties = function () {
   delete shallow._to;
 
   return shallow;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -243,21 +306,21 @@ Edge.prototype.properties = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype._PRINT = function (seen, path, names) {
-  if (! this._id) {
+  // Ignores the standard arguments
+  seen = path = names = null;
+
+  if (!this._id) {
     internal.output("[deleted Edge]");
-  }
-  else if (this._properties.$id !== undefined) {
+  } else if (this._properties.$id !== undefined) {
     if (typeof this._properties.$id === "string") {
       internal.output("Edge(\"", this._properties.$id, "\")");
-    }
-    else {
+    } else {
       internal.output("Edge(", this._properties.$id, ")");
     }
-  }
-  else {
+  } else {
     internal.output("Edge(<", this._id, ">)");
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -280,7 +343,7 @@ Edge.prototype._PRINT = function (seen, path, names) {
 /// @brief constructs a new vertex object
 ////////////////////////////////////////////////////////////////////////////////
 
-function Vertex (graph, id) {
+function Vertex(graph, id) {
   var props;
 
   this._graph = graph;
@@ -288,13 +351,11 @@ function Vertex (graph, id) {
 
   props = this._graph._vertices.document(this._id);
 
-  // extract the custom identifier
   if (props) {
+    // extract the custom identifier
     this._properties = props;
-  }
-
-  // deleted
-  else {
+  } else {
+    // deleted
     throw "accessing a deleted edge";
   }
 }
@@ -341,7 +402,7 @@ function Vertex (graph, id) {
 
 Vertex.prototype.addInEdge = function (id, out, label, data) {
   return this._graph.addEdge(id, out, this, label, data);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an outbound edge
@@ -372,7 +433,7 @@ Vertex.prototype.addInEdge = function (id, out, label, data) {
 
 Vertex.prototype.addOutEdge = function (id, ine, label, data) {
   return this._graph.addEdge(id, this, ine, label, data);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inbound and outbound edges
@@ -387,21 +448,22 @@ Vertex.prototype.addOutEdge = function (id, ine, label, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.edges = function () {
-  var query;
-  var result;
-  var graph;
+  var query,
+    result,
+    graph,
+    i;
 
   graph = this._graph;
   query = graph._edges.edges(this._id);
 
   result = [];
 
-  for (var i = 0;  i < query.length;  ++i) {
+  for (i = 0;  i < query.length;  ++i) {
     result.push(graph.constructEdge(query[i]._id));
   }
 
   return result;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the identifier of a vertex
@@ -416,9 +478,9 @@ Vertex.prototype.edges = function () {
 /// @verbinclude graph8
 ////////////////////////////////////////////////////////////////////////////////
 
-Vertex.prototype.getId = function (name) {
+Vertex.prototype.getId = function () {
   return this._properties.$id;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inbound edges with given label
@@ -433,33 +495,31 @@ Vertex.prototype.getId = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getInEdges = function () {
-  var edges;
-  var labels;
-  var result;
-  var edge;
+  var labels,
+    result,
+    i;
 
-  if (arguments.length == 0) {
-    return this.inbound();
-  }
-  else {
+  if (arguments.length === 0) {
+    result = this.inbound();
+  } else {
     labels = {};
 
-    for (var i = 0;  i < arguments.length;  ++i) {
+    for (i = 0;  i < arguments.length;  ++i) {
       labels[arguments[i]] = true;
     }
 
     edges = this.inbound();
     result = [];
 
-    for (var i = 0;  i < edges.length;  ++i) {
-      if (edges[i].getLabel() in labels) {
+    for (i = 0;  i < edges.length;  ++i) {
+      if (labels.hasOwnProperty(edges[i].getLabel())) {
         result.push(edges[i]);
       }
     }
-
-    return result;
   }
-}
+
+  return result;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief outbound edges with given label
@@ -474,33 +534,30 @@ Vertex.prototype.getInEdges = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getOutEdges = function () {
-  var edges;
-  var labels;
-  var result;
-  var edge;
+  var labels,
+    result,
+    i;
 
-  if (arguments.length == 0) {
-    return this.outbound();
-  }
-  else {
+  if (arguments.length === 0) {
+    result = this.outbound();
+  } else {
     labels = {};
-
-    for (var i = 0;  i < arguments.length;  ++i) {
+    for (i = 0;  i < arguments.length;  ++i) {
       labels[arguments[i]] = true;
     }
 
     edges = this.outbound();
     result = [];
 
-    for (var i = 0;  i < edges.length;  ++i) {
-      if (edges[i].getLabel() in labels) {
+    for (i = 0;  i < edges.length;  ++i) {
+      if (labels.hasOwnProperty(edges[i].getLabel())) {
         result.push(edges[i]);
       }
     }
-
-    return result;
   }
-}
+
+  return result;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a property of a vertex
@@ -516,7 +573,7 @@ Vertex.prototype.getOutEdges = function () {
 
 Vertex.prototype.getProperty = function (name) {
   return this._properties[name];
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets all property names of a vertex
@@ -532,7 +589,7 @@ Vertex.prototype.getProperty = function (name) {
 
 Vertex.prototype.getPropertyKeys = function () {
   return propertyKeys(this._properties);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inbound edges
@@ -547,21 +604,22 @@ Vertex.prototype.getPropertyKeys = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.inbound = function () {
-  var query;
-  var result;
-  var graph;
+  var query,
+    result,
+    graph,
+    i;
 
   graph = this._graph;
   query = graph._edges.inEdges(this._id);
 
   result = [];
 
-  for (var i = 0;  i < query.length;  ++i) {
+  for (i = 0;  i < query.length;  ++i) {
     result.push(graph.constructEdge(query[i]._id));
   }
 
   return result;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief outbound edges
@@ -576,21 +634,22 @@ Vertex.prototype.inbound = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.outbound = function () {
-  var query;
-  var result;
-  var graph;
+  var query,
+    result,
+    graph,
+    i;
 
   graph = this._graph;
   query = graph._edges.outEdges(this._id);
 
   result = [];
 
-  for (var i = 0;  i < query.length;  ++i) {
+  for (i = 0;  i < query.length;  ++i) {
     result.push(graph.constructEdge(query[i]._id));
   }
 
   return result;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all properties of a vertex
@@ -613,7 +672,7 @@ Vertex.prototype.properties = function () {
   delete shallow._rev;
 
   return shallow;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief changes a property of a vertex
@@ -628,16 +687,18 @@ Vertex.prototype.properties = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.setProperty = function (name, value) {
-  var shallow = shallowCopy(this._properties);
-  shallow['$id'] = this._properties.$id;
+  var shallow = shallowCopy(this._properties),
+    id;
+
+  shallow.$id = this._properties.$id;
   shallow[name] = value;
 
   // TODO use "update" if this becomes available
-  var id = this._graph._vertices.replace(this._id, shallow);
+  id = this._graph._vertices.replace(this._id, shallow);
   this._properties = this._graph._vertices.document(id);
 
   return value;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -657,21 +718,21 @@ Vertex.prototype.setProperty = function (name, value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype._PRINT = function (seen, path, names) {
-  if (! this._id) {
+  // Ignores the standard arguments
+  seen = path = names = null;
+
+  if (!this._id) {
     internal.output("[deleted Vertex]");
-  }
-  else if (this._properties.$id !== undefined) {
+  } else if (this._properties.$id !== undefined) {
     if (typeof this._properties.$id === "string") {
       internal.output("Vertex(\"", this._properties.$id, "\")");
-    }
-    else {
+    } else {
       internal.output("Vertex(", this._properties.$id, ")");
     }
-  }
-  else {
+  } else {
     internal.output("Vertex(<", this._id, ">)");
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -705,21 +766,23 @@ Vertex.prototype._PRINT = function (seen, path, names) {
 /// @verbinclude graph1
 ////////////////////////////////////////////////////////////////////////////////
 
-function Graph (name, vertices, edges) {
+function Graph(name, vertices, edges) {
+  var gdb,
+    col;
 
-  // collection
-  var gdb = internal.db._collection("_graph");
+  gdb = internal.db._collection(name);
+  if (gdb === null) {
+    gdb = internal.db._create(name,
+      { waitForSync : true, isSystem : true });
 
-  if (gdb == null) {
-    gdb = internal.db._create("_graph", { waitForSync : true, isSystem : true });
-    gdb.ensureUniqueConstraint("name");
+    // gdb.ensureUniqueConstraint("name");
   }
 
   // get the vertices collection
   if (typeof vertices === "string") {
-    var col = internal.db._collection(vertices);
+    col = internal.db._collection(vertices);
 
-    if (col == null) {
+    if (col === null) {
       col = internal.db._create(vertices);
     }
 
@@ -728,15 +791,15 @@ function Graph (name, vertices, edges) {
     vertices = col;
   }
 
-  if (! vertices instanceof AvocadoCollection) {
-    throw "<vertices> must be a document collection";
-  }
+  // if (!vertices instanceof AvocadoCollection) {
+  //   throw "<vertices> must be a document collection";
+  // }
 
   // get the edges collection
   if (typeof edges === "string") {
-    var col = internal.edges._collection(edges);
+    col = internal.edges._collection(edges);
 
-    if (col == null) {
+    if (col === null) {
       col = internal.db._create(edges);
     }
 
@@ -745,109 +808,41 @@ function Graph (name, vertices, edges) {
     edges = col;
   }
 
-  if (! edges instanceof AvocadoEdgesCollection) {
-    throw "<edges> must be an edges collection";
-  }
-  
+  // if (!edges instanceof AvocadoEdgesCollection) {
+  //   throw "<edges> must be an edges collection";
+  // }
+
   // find graph by name
-  if (typeof name != "string" || name === "") {
-    throw "<name> must be a string";    
-  }
-  
-  var props = gdb.firstExample('name', name);    
-  if (props == null) {
-    // name is unknown
-    // 
-    // check if know that graph
-    props = gdb.firstExample('vertices', vertices._id, 'edges', edges._id);
-    if (props == null) {
-      var d = gdb.save({ 'vertices' : vertices._id, 
-                       'verticesName' : vertices.name(),
-                       'edges' : edges._id,
-                       'edgesName' : edges.name(),
-                       'name' : name });
+  // if (typeof name !== "string" || name === "") {
+  //   throw "<name> must be a string";
+  // }
 
-      props = gdb.document(d);
-    }
-    else {
-      throw "found graph but has different <name>";
-    }
-    
-  }
-  else {
-    if (props.vertices != vertices._id) {
-      throw "found graph but has different <vertices>";      
-    }
-    if (props.edges != edges._id) {
-      throw "found graph but has different <edges>";      
-    }    
-  }
-  
-  this._properties = props;
-
-  // and store the collections
-  this._vertices = vertices;
-  this._edges = edges;
-
-  // and weak dictionary for vertices and edges
-  this._weakVertices = new WeakDictionary();
-  this._weakEdges = new WeakDictionary();
-}
-
-function Graph (name) {
-
-  // collection
-  var gdb = internal.db._collection("_graph");
-
-  if (gdb == null) {
-    gdb = internal.db._create("_graph", { waitForSync : true, isSystem : true });
-    gdb.ensureUniqueConstraint("name");
-  }
-
-  
-  var props = gdb.firstExample('name', name);    
-  if (props == null) {
-      throw "graph not found";
-  }
-  
-  var vertices = props.verticesName;
-  var edges = props.edgesName;
-
-  // get the vertices collection
-  if (typeof vertices === "string") {
-    var col = internal.db._collection(vertices);
-
-    if (col == null) {
-      col = internal.db._create(vertices);
-    }
-
-    // col.ensureUniqueConstraint("$id");
-
-    vertices = col;
-  }
-  
-  if (! vertices instanceof AvocadoCollection) {
-    throw "<vertices> must be a document collection";
-  }
-
-  // get the edges collection
-  if (typeof edges === "string") {
-    var col = internal.edges._collection(edges);
-
-    if (col == null) {
-      col = internal.db._create(edges);
-    }
-
-    // col.ensureUniqueConstraint("$id");
-
-    edges = col;
-  }
-
-  if (! edges instanceof AvocadoEdgesCollection) {
-    throw "<edges> must be an edges collection";
-  }
-  
-  this._properties = props;
+  // props = gdb.firstExample('name', name);
+  // if (props === null) {
+  //   // name is unknown
+  //   // 
+  //   // check if know that graph
+  //   props = gdb.firstExample('vertices', vertices._id, 'edges', edges._id);
+  //   if (props === null) {
+  //     d = gdb.save({ 'vertices' : vertices._id,
+  //                      'verticesName' : vertices.name(),
+  //                      'edges' : edges._id,
+  //                      'edgesName' : edges.name(),
+  //                      'name' : name });
+  // 
+  //     props = gdb.document(d);
+  //   } else {
+  //     throw "found graph but has different <name>";
+  //   }
+  // } else {
+  //   if (props.vertices !== vertices._id) {
+  //     throw "found graph but has different <vertices>";
+  //   }
+  //   if (props.edges !== edges._id) {
+  //     throw "found graph but has different <edges>";
+  //   }
+  // }
+  //this._properties = props;
 
   // and store the collections
   this._vertices = vertices;
@@ -906,10 +901,8 @@ function Graph (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.addEdge = function (id, out, ine, label, data) {
-  var ref;
-  var shallow;
-  var key;
-  var edge;
+  var ref,
+    shallow;
 
   if (typeof label === 'object') {
     data = label;
@@ -920,7 +913,7 @@ Graph.prototype.addEdge = function (id, out, ine, label, data) {
     label = null;
   }
 
-  if (data == null || typeof data !== "object") {
+  if (data === null || typeof data !== "object") {
     data = {};
   }
 
@@ -932,7 +925,7 @@ Graph.prototype.addEdge = function (id, out, ine, label, data) {
   ref = this._edges.save(out._id, ine._id, shallow);
 
   return this.constructEdge(ref._id);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a vertex to the graph
@@ -959,10 +952,10 @@ Graph.prototype.addEdge = function (id, out, ine, label, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.addVertex = function (id, data) {
-  var ref;
-  var shallow;
+  var ref,
+    shallow;
 
-  if (data == null || typeof data !== "object") {
+  if (data === null || typeof data !== "object") {
     data = {};
   }
 
@@ -973,7 +966,7 @@ Graph.prototype.addVertex = function (id, data) {
   ref = this._vertices.save(shallow);
 
   return this.constructVertex(ref._id);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a vertex given its id
@@ -988,15 +981,19 @@ Graph.prototype.addVertex = function (id, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getVertex = function (id) {
-  var e = this._vertices.firstExample('$id', id);
+  var ref,
+    vertex;
 
-  if (e !== null && e != undefined) {
-    return this.constructVertex(e._id);
+  ref = this._vertices.select({ $id : id });
+
+  if (ref.count() === 1) {
+    vertex = this.constructVertex(ref.next()._id);
+  } else {
+    vertex = undefined;
   }
-  else {
-    return undefined;
-  }
-}
+
+  return vertex;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns an iterator for all vertices
@@ -1012,19 +1009,19 @@ Graph.prototype.getVertex = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getVertices = function () {
-  var that;
-  var all;
+  var that,
+    all,
+    v,
+    Iterator;
 
   that = this;
   all = this._vertices.all();
 
-  iterator = function() {
+  Iterator = function () {
     this.next = function next() {
-      var v;
-
       v = all.next();
 
-      if (v == undefined) {
+      if (v === undefined) {
         return undefined;
       }
 
@@ -1035,13 +1032,16 @@ Graph.prototype.getVertices = function () {
       return all.hasNext();
     };
 
-    this._PRINT = function(seen, path, names) {
+    this._PRINT = function (seen, path, names) {
+      // Ignores the standard arguments
+      seen = path = names = null;
+
       internal.output("[vertex iterator]");
-    }
+    };
   };
 
-  return new iterator();
-}
+  return new Iterator();
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns an iterator for all edges
@@ -1057,19 +1057,19 @@ Graph.prototype.getVertices = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getEdges = function () {
-  var that;
-  var all;
+  var that,
+    all,
+    v,
+    Iterator;
 
   that = this;
   all = this._edges.all();
 
-  iterator = function() {
+  Iterator = function () {
     this.next = function next() {
-      var v;
-
       v = all.next();
 
-      if (v == undefined) {
+      if (v === undefined) {
         return undefined;
       }
 
@@ -1080,13 +1080,16 @@ Graph.prototype.getEdges = function () {
       return all.hasNext();
     };
 
-    this._PRINT = function(seen, path, names) {
+    this._PRINT = function (seen, path, names) {
+      // Ignores the standard arguments
+      seen = path = names = null;
+
       internal.output("[edge iterator]");
-    }
+    };
   };
 
-  return new iterator();
-}
+  return new Iterator();
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a vertex and all in- or out-bound edges
@@ -1101,25 +1104,26 @@ Graph.prototype.getEdges = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.removeVertex = function (vertex) {
-  var result;
+  var result,
+    i;
 
-  if (! vertex._id) {
+  if (!vertex._id) {
     return;
   }
 
   edges = vertex.edges();
   result = this._vertices.remove(vertex._properties);
 
-  if (! result) {
+  if (!result) {
     throw "cannot delete vertex";
   }
 
   vertex._id = undefined;
 
-  for (var i = 0;  i < edges.length;  ++i) {
+  for (i = 0;  i < edges.length;  ++i) {
     this.removeEdge(edges[i]);
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an edge
@@ -1136,18 +1140,18 @@ Graph.prototype.removeVertex = function (vertex) {
 Graph.prototype.removeEdge = function (edge) {
   var result;
 
-  if (! edge._id) {
+  if (!edge._id) {
     return;
   }
 
   result = this._edges.remove(edge._properties);
 
-  if (! result) {
+  if (!result) {
     throw "cannot delete edge";
   }
 
   edge._id = undefined;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1166,86 +1170,46 @@ Graph.prototype.removeEdge = function (edge) {
 /// @brief private function to construct a vertex
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype.constructVertex = function(id) {
+Graph.prototype.constructVertex = function (id) {
   var vertex = this._weakVertices[id];
 
-  if (vertex == null) {
+  if (vertex === undefined) {
     this._weakVertices[id] = vertex = new Vertex(this, id);
   }
 
   return vertex;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief private function to construct an edge
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype.constructEdge = function(id) {
+Graph.prototype.constructEdge = function (id) {
   var edge = this._weakEdges[id];
 
-  if (edge == null) {
+  if (edge === null) {
     this._weakEdges[id] = edge = new Edge(this, id);
   }
 
   return edge;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief graph printing
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._PRINT = function (seen, path, names) {
-  internal.output("Graph(\"", this._properties.name, "\", \"", this._vertices.name(), "\", \"" + this._edges.name(), "\")");
-}
+  var output;
+  // Ignores the standard arguments
+  seen = path = names = null;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup AvocadoGraph
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shallow copy properties
-////////////////////////////////////////////////////////////////////////////////
-
-function shallowCopy (props) {
-  var shallow;
-
-  shallow = {};
-
-  for (var key in props) {
-    if (props.hasOwnProperty(key) && key[0] != '_' && key[0] != '$') {
-      shallow[key] = props[key];
-    }
-  }
-
-  return shallow;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief property keys
-////////////////////////////////////////////////////////////////////////////////
-
-function propertyKeys (props) {
-  var keys;
-
-  keys = [];
-
-  for (var key in props) {
-    if (props.hasOwnProperty(key) && key[0] != '_' && key[0] != '$') {
-      keys.push(key);
-    }
-  }
-
-  return keys;
-}
+  output = "Graph(\"";
+  output += this._vertices.name();
+  output += "\", \"";
+  output += this._edges.name();
+  output += "\")";
+  internal.output(output);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1272,5 +1236,6 @@ exports.Vertex = Vertex;
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: 
+//   "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
