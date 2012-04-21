@@ -44,11 +44,11 @@
 
   function graphBasicsSuite() {
     //var ERRORS = require("internal").errors;
-    var Graph = require("graph").Graph,
-      graph_name = "UnitTestsCollectionGraph",
-      vertex = "UnitTestsCollectionVertex",
-      edge = "UnitTestsCollectionEdge",
-      graph = null;
+    var Graph = require("graph").Graph;
+    var graph_name = "UnitTestsCollectionGraph";
+    var vertex = "UnitTestsCollectionVertex";
+    var edge = "UnitTestsCollectionEdge";
+    var graph = null;
 
     return {
 
@@ -57,10 +57,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 
       setUp : function () {
-        db._drop(vertex);
-        db._drop(edge);
+        try {
+          try {
+            graph = new Graph(graph_name);
+            print("FOUND: ");
+            PRINT_OBJECT(graph);
+            graph.drop();
+          }
+          catch (err) {
+          }
 
-        graph = new Graph(graph_name, vertex, edge);
+          graph = new Graph(graph_name, vertex, edge);
+        }
+        catch (err) {
+          console.error("[FAILED] setup failed:" + err);
+        }
       },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,8 +79,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
       tearDown : function () {
-        db._drop(vertex);
-        db._drop(edge);
+        try {
+          if (graph != null) {
+            graph.drop();
+          }
+        }
+        catch (err) {
+          console.error("[FAILED] tear-down failed:" + err);
+        }
       },
 
 ////////////////////////////////////////////////////////////////////////////////
