@@ -279,7 +279,7 @@ AvocadoEdgesCollection.prototype.byExample = AvocadoCollection.prototype.byExamp
 ////////////////////////////////////////////////////////////////////////////////
 
 AvocadoCollection.prototype.firstExample = function () {
-  var list = this.BY_EXAMPLE.apply(this, arguments);
+  var list = this.byExample.apply(this, arguments);
 
   if (0 == list.length) {
     return undefined;
@@ -777,7 +777,7 @@ SimpleQueryByExample.prototype.execute = function () {
       this._skip = 0;
     }
 
-    var documents = this._collection.BY_EXAMPLE.apply(this._collection, this._example);
+    var documents = this._collection.byExample.apply(this._collection, this._example);
 
     this._execution = new SimpleQueryArray(documents);
     this._execution._skip = this._skip;
