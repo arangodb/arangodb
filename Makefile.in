@@ -925,6 +925,7 @@ WIKI = \
 	ShellCollection \
 	ShellDocument \
 	ShellEdge \
+	ShellIndex \
 	SimpleQueries \
 	UserManualServer \
 	UserManualShell \
