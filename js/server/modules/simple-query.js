@@ -271,7 +271,7 @@ AvocadoEdgesCollection.prototype.byExample = AvocadoCollection.prototype.byExamp
 /// @FUN{@FA{collection}.firstExample(@FA{path1}, @FA{value1}, ...)}
 ///
 /// Returns the first documents of a collection that match the specified example
-/// or @LIT{undefined}. The example must be specified as paths and
+/// or @LIT{null}. The example must be specified as paths and
 /// values. Allowed attribute types for searching are numbers, strings, and
 /// boolean values.
 ///
@@ -282,7 +282,7 @@ AvocadoCollection.prototype.firstExample = function () {
   var list = this.BY_EXAMPLE.apply(this, arguments);
 
   if (0 == list.length) {
-    return undefined;
+    return null;
   }
   else {
     return list[0];

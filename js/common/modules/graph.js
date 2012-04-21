@@ -120,7 +120,8 @@ function Edge(graph, id) {
   if (props) {
     // extract the custom identifier, label, edges
     this._properties = props;
-  } else {
+  }
+  else {
     // deleted
     throw "accessing a deleted edge";
   }
@@ -311,13 +312,16 @@ Edge.prototype._PRINT = function (seen, path, names) {
 
   if (!this._id) {
     internal.output("[deleted Edge]");
-  } else if (this._properties.$id !== undefined) {
+  }
+  else if (this._properties.$id !== undefined) {
     if (typeof this._properties.$id === "string") {
       internal.output("Edge(\"", this._properties.$id, "\")");
-    } else {
+    }
+    else {
       internal.output("Edge(", this._properties.$id, ")");
     }
-  } else {
+  }
+  else {
     internal.output("Edge(<", this._id, ">)");
   }
 };
@@ -354,7 +358,8 @@ function Vertex(graph, id) {
   if (props) {
     // extract the custom identifier
     this._properties = props;
-  } else {
+  }
+  else {
     // deleted
     throw "accessing a deleted edge";
   }
@@ -501,7 +506,8 @@ Vertex.prototype.getInEdges = function () {
 
   if (arguments.length === 0) {
     result = this.inbound();
-  } else {
+  }
+  else {
     labels = {};
 
     for (i = 0;  i < arguments.length;  ++i) {
@@ -540,7 +546,8 @@ Vertex.prototype.getOutEdges = function () {
 
   if (arguments.length === 0) {
     result = this.outbound();
-  } else {
+  }
+  else {
     labels = {};
     for (i = 0;  i < arguments.length;  ++i) {
       labels[arguments[i]] = true;
@@ -723,13 +730,16 @@ Vertex.prototype._PRINT = function (seen, path, names) {
 
   if (!this._id) {
     internal.output("[deleted Vertex]");
-  } else if (this._properties.$id !== undefined) {
+  }
+  else if (this._properties.$id !== undefined) {
     if (typeof this._properties.$id === "string") {
       internal.output("Vertex(\"", this._properties.$id, "\")");
-    } else {
+    }
+    else {
       internal.output("Vertex(", this._properties.$id, ")");
     }
-  } else {
+  }
+  else {
     internal.output("Vertex(<", this._id, ">)");
   }
 };
@@ -754,23 +764,29 @@ Vertex.prototype._PRINT = function (seen, path, names) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new graph object
 ///
-/// @FUN{Graph(@FA{vertices}, @FA{edges})}
+/// @FUN{Graph(@FA{name}, @FA{vertices}, @FA{edges})}
 ///
 /// Constructs a new graph object using the collection @FA{vertices} for all
 /// vertices and the collection @FA{edges} for all edges. Note that it is
 /// possible to construct two graphs with the same vertex set, but different
 /// edge sets.
 ///
+/// @FUN{Graph(@FA{name})}
+///
+/// Returns a known graph.
+///
 /// @EXAMPLES
 ///
 /// @verbinclude graph1
 ////////////////////////////////////////////////////////////////////////////////
 
-function Graph(name, vertices, edges) {
-  var gdb,
-    col;
+function Graph (name, vertices, edges) {
+  var gdb;
+  var col;
+  var props;
 
   gdb = internal.db._collection(name);
+
   if (gdb === null) {
     gdb = internal.db._create(name,
       { waitForSync : true, isSystem : true });
@@ -778,71 +794,90 @@ function Graph(name, vertices, edges) {
     // gdb.ensureUniqueConstraint("name");
   }
 
-  // get the vertices collection
-  if (typeof vertices === "string") {
-    col = internal.db._collection(vertices);
-
-    if (col === null) {
-      col = internal.db._create(vertices);
+  if (vertices === undefined && edges == undefined) {
+    props = gdb.firstExample('name', name);
+    
+    if (props == null) {
+      throw "no graph named '" + name + "' found";
     }
 
-    // col.ensureUniqueConstraint("$id");
-
-    vertices = col;
+    vertices = internal.db._collection(props.vertices);
+    edges = internal.edges._collection(props.edges);
   }
+  else {
 
-  // if (!vertices instanceof AvocadoCollection) {
-  //   throw "<vertices> must be a document collection";
-  // }
+    // get the vertices collection
+    if (typeof vertices === "string") {
+      col = internal.db._collection(vertices);
 
-  // get the edges collection
-  if (typeof edges === "string") {
-    col = internal.edges._collection(edges);
+      if (col === null) {
+        col = internal.db._create(vertices);
+      }
 
-    if (col === null) {
-      col = internal.db._create(edges);
+      // col.ensureUniqueConstraint("$id");
+
+      vertices = col;
     }
 
-    // col.ensureUniqueConstraint("$id");
+    // get the edges collection
+    if (typeof edges === "string") {
+      col = internal.edges._collection(edges);
 
-    edges = col;
+      if (col === null) {
+        col = internal.db._create(edges);
+      }
+
+      // col.ensureUniqueConstraint("$id");
+
+      edges = col;
+    }
+
+    // find graph by name
+    if (typeof name !== "string" || name === "") {
+      throw "<name> must be a string";
+    }
+
+    props = gdb.firstExample('name', name);
+
+    // name is unknown
+    if (props === null) {
+
+      // check if know that graph
+      props = gdb.firstExample('vertices', vertices._id, 'edges', edges._id);
+
+      if (props === null) {
+        d = gdb.save({ 'vertices' : vertices._id,
+                       'verticesName' : vertices.name(),
+                       'edges' : edges._id,
+                       'edgesName' : edges.name(),
+                       'name' : name });
+
+        props = gdb.document(d);
+      }
+      else {
+        throw "found graph but has different <name>";
+      }
+    }
+    else {
+      if (props.vertices !== vertices._id) {
+        throw "found graph but has different <vertices>";
+      }
+
+      if (props.edges !== edges._id) {
+        throw "found graph but has different <edges>";
+      }
+    }
   }
 
-  // if (!edges instanceof AvocadoEdgesCollection) {
-  //   throw "<edges> must be an edges collection";
-  // }
+  if (!vertices instanceof AvocadoCollection) {
+    throw "<vertices> must be a document collection";
+  }
 
-  // find graph by name
-  // if (typeof name !== "string" || name === "") {
-  //   throw "<name> must be a string";
-  // }
+  if (!edges instanceof AvocadoEdgesCollection) {
+    throw "<edges> must be an edges collection";
+  }
 
-  // props = gdb.firstExample('name', name);
-  // if (props === null) {
-  //   // name is unknown
-  //   // 
-  //   // check if know that graph
-  //   props = gdb.firstExample('vertices', vertices._id, 'edges', edges._id);
-  //   if (props === null) {
-  //     d = gdb.save({ 'vertices' : vertices._id,
-  //                      'verticesName' : vertices.name(),
-  //                      'edges' : edges._id,
-  //                      'edgesName' : edges.name(),
-  //                      'name' : name });
-  // 
-  //     props = gdb.document(d);
-  //   } else {
-  //     throw "found graph but has different <name>";
-  //   }
-  // } else {
-  //   if (props.vertices !== vertices._id) {
-  //     throw "found graph but has different <vertices>";
-  //   }
-  //   if (props.edges !== edges._id) {
-  //     throw "found graph but has different <edges>";
-  //   }
-  // }
-  //this._properties = props;
+  this._properties = props;
 
   // and store the collections
   this._vertices = vertices;
@@ -988,7 +1023,8 @@ Graph.prototype.getVertex = function (id) {
 
   if (ref.count() === 1) {
     vertex = this.constructVertex(ref.next()._id);
-  } else {
+  }
+  else {
     vertex = undefined;
   }
 
@@ -1200,13 +1236,12 @@ Graph.prototype.constructEdge = function (id) {
 
 Graph.prototype._PRINT = function (seen, path, names) {
   var output;
+
   // Ignores the standard arguments
   seen = path = names = null;
 
   output = "Graph(\"";
-  output += this._vertices.name();
-  output += "\", \"";
-  output += this._edges.name();
+  output += this._properties.name;
   output += "\")";
   internal.output(output);
 };
