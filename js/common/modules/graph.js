@@ -307,6 +307,7 @@ Edge.prototype.properties = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype._PRINT = function (seen, path, names) {
+
   // Ignores the standard arguments
   seen = path = names = null;
 
@@ -785,11 +786,10 @@ function Graph (name, vertices, edges) {
   var col;
   var props;
 
-  gdb = internal.db._collection(name);
+  gdb = internal.db._collection("_graph");
 
   if (gdb === null) {
-    gdb = internal.db._create(name,
-      { waitForSync : true, isSystem : true });
+    gdb = internal.db._create("_graph", { waitForSync : true, isSystem : true });
 
     // gdb.ensureUniqueConstraint("name");
   }
@@ -797,12 +797,21 @@ function Graph (name, vertices, edges) {
   if (vertices === undefined && edges == undefined) {
     props = gdb.firstExample('name', name);
     
-    if (props == null) {
+    if (props === null) {
       throw "no graph named '" + name + "' found";
     }
 
     vertices = internal.db._collection(props.vertices);
+
+    if (vertices == null) {
+      throw "vertex collection '" + props.vertices + "' has vanished";
+    }
+
     edges = internal.edges._collection(props.edges);
+
+    if (edges == null) {
+      throw "edge collection '" + props.edges + "' has vanished";
+    }
   }
   else {
 
@@ -812,6 +821,10 @@ function Graph (name, vertices, edges) {
 
       if (col === null) {
         col = internal.db._create(vertices);
+      }
+
+      if (col == null) {
+        throw "vertex collection '" + vertices + "' has vanished";
       }
 
       // col.ensureUniqueConstraint("$id");
@@ -824,7 +837,11 @@ function Graph (name, vertices, edges) {
       col = internal.edges._collection(edges);
 
       if (col === null) {
-        col = internal.db._create(edges);
+        col = internal.edges._create(edges);
+      }
+
+      if (col == null) {
+        throw "edge collection '" + edges + "' has vanished";
       }
 
       // col.ensureUniqueConstraint("$id");
@@ -869,11 +886,11 @@ function Graph (name, vertices, edges) {
     }
   }
 
-  if (!vertices instanceof AvocadoCollection) {
+  if (! (vertices instanceof AvocadoCollection)) {
     throw "<vertices> must be a document collection";
   }
 
-  if (!edges instanceof AvocadoEdgesCollection) {
+  if (! (edges instanceof AvocadoEdgesCollection)) {
     throw "<edges> must be an edges collection";
   }
 
@@ -900,6 +917,25 @@ function Graph (name, vertices, edges) {
 /// @addtogroup AvocadoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops the graph, the vertices, and the edges
+///
+/// @FUN{@FA{graph}.drop()}
+///
+/// Drops the graph, the vertices, and the edges. Handle with care.
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.drop = function () {
+  var gdb;
+
+  gdb = internal.db._collection("_graph");
+
+  gdb.remove(this._properties);
+
+  this._vertices.drop();
+  this._edges.drop();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an edge to the graph
@@ -1008,7 +1044,7 @@ Graph.prototype.addVertex = function (id, data) {
 ///
 /// @FUN{@FA{graph}.getVertex(@FA{id})}
 ///
-/// Returns the vertex identified by @FA{id} or undefined.
+/// Returns the vertex identified by @FA{id} or @LIT{null}.
 ///
 /// @EXAMPLES
 ///
@@ -1019,13 +1055,13 @@ Graph.prototype.getVertex = function (id) {
   var ref,
     vertex;
 
-  ref = this._vertices.select({ $id : id });
+  ref = this._vertices.firstExample('$id', id);
 
-  if (ref.count() === 1) {
-    vertex = this.constructVertex(ref.next()._id);
+  if (ref !== null) {
+    vertex = this.constructVertex(ref._id);
   }
   else {
-    vertex = undefined;
+    vertex = null;
   }
 
   return vertex;
@@ -1271,6 +1307,5 @@ exports.Vertex = Vertex;
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: 
-//   "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
