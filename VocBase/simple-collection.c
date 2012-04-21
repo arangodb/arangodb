@@ -3186,7 +3186,7 @@ TRI_vector_t TRI_SelectByExample (TRI_sim_collection_t* sim,
   end = (TRI_doc_mptr_t const**) (sim->_primaryIndex._table + sim->_primaryIndex._nrAlloc);
 
   for (;  ptr < end;  ++ptr) {
-    if (*ptr) {
+    if (*ptr && (*ptr)->_deletion == 0) {
       if (IsExampleMatch(shaper, *ptr, length, pids, values)) {
         TRI_PushBackVector(&filtered, *ptr);
       }
