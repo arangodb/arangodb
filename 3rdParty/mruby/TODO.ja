@@ -1,0 +1,14 @@
+やること(まだできてないこと)
+
+* ヒアドキュメント
+* 特殊変数 ($1,$2..)
+* super in aliased methods
+* BEGIN/END (対応しないんだっけ？)
+* const_missing
+* respond_to_missing
+
+改善すること(できているが直すこと)
+
+* Hash (サイズを減らす。khashを使うか、順序を保存するか)
+* stringEx (encoding削除、CODERANGE削除、UTF-8 or ASCII以外削除)
+* 気づいたら書き加える

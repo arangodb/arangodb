@@ -8,8 +8,8 @@
 ## What's mruby
 
 mruby is the lightweight implementation of the Ruby language complying to
-the [ISO standard](http://www.iso.org/iso/iso_catalogue/catalogue_tc/catalogue_detail.htm?csnumber=59579). 
-mruby can run Ruby code in 'interpreter mode' or 'compile and execute it on a virtual machine' depending on the developer's preference.
+the [ISO standard](http://www.ipa.go.jp/about/press/20120402_2.html). 
+mruby can run Ruby code in 'interpreter mode' or 'compile and execute it on a virtual machine' depending on how the developer's preference.
 
 This achievement was sponsored by the Regional Innovation Creation R&D Programs of
 the Ministry of Economy, Trade and Industry of Japan.
@@ -44,10 +44,10 @@ following command:
 
     $ git clone https://github.com/mruby/mruby.git
 
-There are some other branches under development. Try the following
+There are some other branches under development.  Try the following
 command and see the list of branches:
 
-    $ git branch -r
+    $ git ....
 
 
 ## mruby home-page
@@ -61,7 +61,7 @@ The URL of the mruby home-page will be:
 
 ## Mailing list
 
-To subscribe to the mruby mailing list....[T.B.D.]
+To subscribe the mruby mailing list....[T.B.D.]
 
 
 ## How to compile and install
@@ -69,47 +69,39 @@ To subscribe to the mruby mailing list....[T.B.D.]
 See the INSTALL file.
 
 
-## License
+## Copying
 
-Copyright (c) 2012 mruby developers
+See the COPYING file.
 
-Permission is hereby granted, free of charge, to any person obtaining a 
-copy of this software and associated documentation files (the "Software"), 
-to deal in the Software without restriction, including without limitation 
-the rights to use, copy, modify, merge, publish, distribute, sublicense, 
-and/or sell copies of the Software, and to permit persons to whom the 
-Software is furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in 
-all copies or substantial portions of the Software.
+## About Contribution
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
-DEALINGS IN THE SOFTWARE.
-
-## Note for License
-
+Thank you for considering contributing to mruby.
 mruby has chosen a MIT License due to its permissive license allowing
-developers to target various environments such as embedded systems.
-However, the license requires the display of the copyright notice and license
+developer to target various environments such as embedded systems.
+However, the license requires to display the copyright notice and license
 information in manuals for instance. Doing so for big projects can be 
 complicated or troublesome.
-This is why mruby has decided to display "mruby developers" as the copyright name
+This is why, mruby has decided to display "mruby developers" as copyright name
 to make it simple conventionally.
-In the future, mruby might ask you to distribute your new code
-(that you will commit,) under the MIT License as a member of
+In the future, mruby might ask you to distribute your new codes
+(that you will commit,) under MIT License as a member of
 "mruby developers" but contributors will keep their copyright.
 (We did not intend for contributors to transfer or waive their copyrights,
  Actual copyright holder name (contributors) will be listed in the AUTHORS file.)
 
-Please ask us if you want to distribute your code under another license.
+Please ask us if you want to distribute your code under other license
+or if your code is derived from GPL code.
 
-## How to Contribute
 
-Send pull request to <http://github.com/mruby/mruby>.   We consider you have granted
-non-exclusive right to your contributed code under MIT license.  If you want to be named
-as one of mruby developers, include update to the AUTHORS file in your pull request.
+## The Author
+
+See the file AUTHORS.
+
+
+Feel free to send comments and bug reports to the author.  Here is the
+author's latest mail address:
+
+  devel@mruby.org
+
+
