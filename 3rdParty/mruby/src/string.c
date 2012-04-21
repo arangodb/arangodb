@@ -211,12 +211,38 @@ single_byte_optimizable(mrb_state *mrb, mrb_value str)
 static inline const char *
 search_nonascii(const char *p, const char *e)
 {
-  while (p < e) {
-    if (!ISASCII(*p))
-      return p;
-    p++;
-  }
-  return NULL;
+#if SIZEOF_VALUE == 8
+# define NONASCII_MASK 0x8080808080808080ULL
+#elif SIZEOF_VALUE == 4
+# define NONASCII_MASK 0x80808080UL
+#endif
+#ifdef NONASCII_MASK
+    if ((int)sizeof(intptr_t) * 2 < e - p) {
+        const intptr_t *s, *t;
+        const intptr_t lowbits = sizeof(intptr_t) - 1;
+        s = (const intptr_t*)(~lowbits & ((intptr_t)p + lowbits));
+        while (p < (const char *)s) {
+            if (!ISASCII(*p))
+                return p;
+            p++;
+        }
+        t = (const intptr_t*)(~lowbits & (intptr_t)e);
+        while (s < t) {
+	    if (*s & (intptr_t)NONASCII_MASK) {
+                t = s;
+                break;
+            }
+            s++;
+        }
+        p = (const char *)t;
+    }
+#endif
+    while (p < e) {
+        if (!ISASCII(*p))
+            return p;
+        p++;
+    }
+    return NULL;
 }
 #endif //INCLUDE_ENCODING
 
@@ -1141,6 +1167,63 @@ mrb_str_match(mrb_state *mrb, mrb_value self/* x */)
   }
 }
 /* ---------------------------------- */
+#ifdef INCLUDE_ENCODING
+#ifdef NONASCII_MASK
+#define is_utf8_lead_byte(c) (((c)&0xC0) != 0x80)
+static inline int
+count_utf8_lead_bytes_with_word(const intptr_t *s)
+{
+    int d = *s;
+    d |= ~(d>>1);
+    d >>= 6;
+    d &= NONASCII_MASK >> 7;
+    d += (d>>8);
+    d += (d>>16);
+#if SIZEOF_VALUE == 8
+    d += (d>>32);
+#endif
+    return (d&0xF);
+}
+#endif
+
+#ifdef NONASCII_MASK
+static char *
+str_utf8_nth(const char *p, const char *e, long nth)
+{
+  if ((int)SIZEOF_VALUE < e - p && (int)SIZEOF_VALUE * 2 < nth) {
+    const intptr_t *s, *t;
+    const intptr_t lowbits = sizeof(int) - 1;
+    s = (const intptr_t*)(~lowbits & ((intptr_t)p + lowbits));
+    t = (const intptr_t*)(~lowbits & (intptr_t)e);
+    while (p < (const char *)s) {
+        if (is_utf8_lead_byte(*p)) nth--;
+        p++;
+    }
+    do {
+        nth -= count_utf8_lead_bytes_with_word(s);
+        s++;
+    } while (s < t && (int)sizeof(intptr_t) <= nth);
+    p = (char *)s;
+  }
+  while (p < e) {
+    if (is_utf8_lead_byte(*p)) {
+        if (nth == 0) break;
+        nth--;
+    }
+    p++;
+  }
+  return (char *)p;
+}
+
+static long
+str_utf8_offset(const char *p, const char *e, long nth)
+{
+    const char *pp = str_utf8_nth(p, e, nth);
+    return pp - p;
+}
+#endif
+#endif //INCLUDE_ENCODING
+
 mrb_value
 mrb_str_substr(mrb_state *mrb, mrb_value str, mrb_int beg, int len)
 {
@@ -1200,6 +1283,13 @@ mrb_str_substr(mrb_state *mrb, mrb_value str, mrb_int beg, int len)
   if (len == 0) {
     p = 0;
   }
+#ifdef NONASCII_MASK
+  else if (ENC_CODERANGE(str) == ENC_CODERANGE_VALID &&
+    enc == mrb_utf8_encoding(mrb)) {
+    p = str_utf8_nth(s, e, beg);
+    len = str_utf8_offset(p, e, len);
+  }
+#endif
   else if (mrb_enc_mbmaxlen(enc) == mrb_enc_mbminlen(enc)) {
     int char_sz = mrb_enc_mbmaxlen(enc);
 
@@ -1316,6 +1406,46 @@ mrb_enc_strlen_cr(mrb_state *mrb, const char *p, const char *e, mrb_encoding *en
 
 #ifndef INCLUDE_ENCODING
 static inline long
+mrb_memsearch_ss(const unsigned char *xs, long m, const unsigned char *ys, long n)
+{
+  const unsigned char *x = xs, *xe = xs + m;
+  const unsigned char *y = ys, *ye = ys + n;
+//2011/06/30 #define SIZEOF_VALUE 4
+#ifndef VALUE_MAX
+# if SIZEOF_VALUE == 8
+#  define VALUE_MAX 0xFFFFFFFFFFFFFFFFULL
+# elif SIZEOF_VALUE == 4
+#  define VALUE_MAX 0xFFFFFFFFUL
+# elif SIZEOF_LONG == SIZEOF_VOIDP
+#  define SIZEOF_VALUE 4
+#  define VALUE_MAX 0xFFFFFFFFUL
+# endif
+#endif
+  int hx, hy, mask = VALUE_MAX >> ((SIZEOF_VALUE - m) * CHAR_BIT);
+
+  if (m > SIZEOF_VALUE)
+    mrb_bug("!!too long pattern string!!");
+
+  /* Prepare hash value */
+  for (hx = *x++, hy = *y++; x < xe; ++x, ++y) {
+    hx <<= CHAR_BIT;
+    hy <<= CHAR_BIT;
+    hx |= *x;
+    hy |= *y;
+  }
+  /* Searching */
+  while (hx != hy) {
+    if (y == ye)
+        return -1;
+    hy <<= CHAR_BIT;
+    hy |= *y;
+    hy &= mask;
+    y++;
+  }
+  return y - ys - m;
+}
+
+static inline long
 mrb_memsearch_qs(const unsigned char *xs, long m, const unsigned char *ys, long n)
 {
   const unsigned char *x = xs, *xe = xs + m;
@@ -1334,7 +1464,6 @@ mrb_memsearch_qs(const unsigned char *xs, long m, const unsigned char *ys, long 
   }
   return -1;
 }
-
 int
 mrb_memsearch(const void *x0, int m, const void *y0, int n)
 {
@@ -1355,7 +1484,12 @@ mrb_memsearch(const void *x0, int m, const void *y0, int n)
     }
     return -1;
   }
-  return mrb_memsearch_qs(x0, m, y0, n);
+  else if (m <= SIZEOF_VALUE) {
+    return mrb_memsearch_ss(x0, m, y0, n);
+  }
+  else {
+    return mrb_memsearch_qs(x0, m, y0, n);
+  }
 }
 #endif //INCLUDE_ENCODING
 
@@ -1373,6 +1507,33 @@ str_strlen(mrb_state *mrb, mrb_value str, mrb_encoding *enc)
     p = RSTRING_PTR(str);
     e = RSTRING_END(str);
     cr = ENC_CODERANGE(str);
+#ifdef NONASCII_MASK
+    if (ENC_CODERANGE(str) == ENC_CODERANGE_VALID &&
+        enc == mrb_utf8_encoding(mrb)) {
+
+    int len = 0;
+    if ((int)sizeof(intptr_t) * 2 < e - p) {
+        const intptr_t *s, *t;
+        const intptr_t lowbits = sizeof(int) - 1;
+        s = (const intptr_t*)(~lowbits & ((intptr_t)p + lowbits));
+        t = (const intptr_t*)(~lowbits & (intptr_t)e);
+        while (p < (const char *)s) {
+        if (is_utf8_lead_byte(*p)) len++;
+        p++;
+        }
+        while (s < t) {
+        len += count_utf8_lead_bytes_with_word(s);
+        s++;
+        }
+        p = (const char *)s;
+    }
+    while (p < e) {
+        if (is_utf8_lead_byte(*p)) len++;
+        p++;
+    }
+    return (long)len;
+    }
+#endif
     n = mrb_enc_strlen_cr(mrb, p, e, enc, &cr);
     if (cr) {
         ENC_CODERANGE_SET(str, cr);
@@ -4833,9 +4994,9 @@ mrb_str_buf_cat_escaped_char(mrb_state *mrb, mrb_value result, unsigned int c, i
   char buf[CHAR_ESC_LEN + 1];
   int l;
 
-  if (sizeof(c) > 4) {
-    c &= 0xffffffff;
-  }
+#if SIZEOF_INT > 4
+  c &= 0xffffffff;
+#endif
   if (unicode_p) {
     if (c < 0x7F && ISPRINT(c)) {
         snprintf(buf, CHAR_ESC_LEN, "%c", c);

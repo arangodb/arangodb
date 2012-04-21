@@ -40,7 +40,7 @@ YACC = bison
 
 DEBUG_MODE = 1
 ifeq ($(DEBUG_MODE),1)
-CFLAGS = -g -O3
+CFLAGS = -g
 else
 CFLAGS = -O3
 endif

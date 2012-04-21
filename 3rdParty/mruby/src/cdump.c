@@ -140,7 +140,7 @@ make_cdump_irep(mrb_state *mrb, int irep_no, FILE *f)
           }
         }
         memset(buf, 0, buf_len);
-        SOURCE_CODE("  irep->pool[%d] = mrb_str_new(mrb, \"%s\", %zd);",               n, str_to_format(irep->pool[n], buf), RSTRING_LEN(irep->pool[n])); break;
+        SOURCE_CODE("  irep->pool[%d] = mrb_str_new(mrb, \"%s\", %d);",               n, str_to_format(irep->pool[n], buf), RSTRING_LEN(irep->pool[n])); break;
       /* TODO MRB_TT_REGEX */
       default: break;
       }

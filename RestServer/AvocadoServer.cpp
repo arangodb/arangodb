@@ -894,18 +894,61 @@ int AvocadoServer::executeShell (bool tests) {
 
 #ifdef TRI_ENABLE_MRUBY
 
+struct RClass* AvocadoDatabaseClass;
+struct RClass* AvocadoEdgesClass;
+struct RClass* AvocadoCollectionClass;
+struct RClass* AvocadoEdgesCollectionClass;
+
 mrb_value MR_AvocadoDatabase_Inialize (mrb_state* mrb, mrb_value exc) {
-  printf("HALLLLO\n");
+  printf("initializer of AvocadoDatabase called\n");
   return exc;
 }
 
 static void MR_AvocadoDatabase_Free (mrb_state* mrb, void* p) {
-  printf("DIE DIE DIE\n");
+  printf("free of AvocadoDatabase called\n");
 }
 
 static const struct mrb_data_type MR_AvocadoDatabase_Type = {
   "AvocadoDatabase", MR_AvocadoDatabase_Free
 };
+
+static void MR_AvocadoCollection_Free (mrb_state* mrb, void* p) {
+  printf("free of AvocadoCollection called\n");
+}
+
+static const struct mrb_data_type MR_AvocadoCollection_Type = {
+  "AvocadoDatabase", MR_AvocadoCollection_Free
+};
+
+mrb_value MR_AvocadoDatabase_Collection (mrb_state* mrb, mrb_value exc) {
+  char* name;
+  TRI_vocbase_t* vocbase;
+  TRI_vocbase_col_t* collection;
+  struct RData* rdata;
+
+  // check "class.c" to see how to specify the arguments
+  mrb_get_args(mrb, "s", &name);
+
+  if (name == 0) {
+    return exc;
+  }
+
+  // check 
+
+  printf("using collection '%s'\n", name);
+
+  // looking at "mruby.h" I assume that is the way to unwrap the pointer
+  rdata = (struct RData*) mrb_object(exc);
+  vocbase = (TRI_vocbase_t*) rdata->data;
+  collection = TRI_FindCollectionByNameVocBase(vocbase, name, false);
+
+  if (collection == NULL) {
+    printf("unknown collection (TODO raise error)\n");
+    return exc;
+  }
+  
+  return mrb_obj_value(Data_Wrap_Struct(mrb, AvocadoCollectionClass, &MR_AvocadoCollection_Type, (void*) collection));
+}
 
 
 int AvocadoServer::executeRubyShell () {
@@ -925,17 +968,22 @@ int AvocadoServer::executeRubyShell () {
   // create a new ruby shell
   mrb = mrb_open();
 
-  struct RClass* AvocadoDatabaseClass = mrb_define_class(mrb, "AvocadoDatabase", mrb->object_class);
-  struct RClass* AvocadoEdgesClass = mrb_define_class(mrb, "AvocadoEdges", mrb->object_class);
-  struct RClass* AvocadoCollectionClass = mrb_define_class(mrb, "AvocadoCollection", mrb->object_class);
-  struct RClass* AvocadoEdgesCollectionClass = mrb_define_class(mrb, "AvocadoEdgesCollection", mrb->object_class);
+  // setup the classes
+  AvocadoDatabaseClass = mrb_define_class(mrb, "AvocadoDatabase", mrb->object_class);
+  AvocadoEdgesClass = mrb_define_class(mrb, "AvocadoEdges", mrb->object_class);
+  AvocadoCollectionClass = mrb_define_class(mrb, "AvocadoCollection", mrb->object_class);
+  AvocadoEdgesCollectionClass = mrb_define_class(mrb, "AvocadoEdgesCollection", mrb->object_class);
 
+  // add an initializer (for TESTING only)
   mrb_define_method(mrb, AvocadoDatabaseClass, "initialize", MR_AvocadoDatabase_Inialize, ARGS_ANY());
 
+  // add a method to extract the collection
+  mrb_define_method(mrb, AvocadoDatabaseClass, "_collection", MR_AvocadoDatabase_Collection, ARGS_ANY());
+
+  // create the database variable
   mrb_value db = mrb_obj_value(Data_Wrap_Struct(mrb, AvocadoDatabaseClass, &MR_AvocadoDatabase_Type, (void*) _vocbase));
 
-  mrb_define_const(mrb, "$db", db);
-  
+  mrb_gv_set(mrb, mrb_intern(mrb, "$db"), db);
 
   while (true) {
     getline(cin, str);

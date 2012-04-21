@@ -75,7 +75,7 @@ typedef struct mrb_value {
 #define mrb_test(o)   ((o).tt != MRB_TT_FALSE)
 #define mrb_fixnum(o) (o).value.i
 #define mrb_float(o)  (o).value.f
-#define mrb_symbol(o) (o).value.sym
+#define mrb_symbol(o)  (o).value.sym
 #define mrb_object(o) (o).value.p
 #define FIXNUM_P(o)   ((o).tt == MRB_TT_FIXNUM)
 #define UNDEF_P(o)    ((o).tt == MRB_TT_UNDEF)
@@ -388,10 +388,6 @@ void mrb_write_barrier(mrb_state *, struct RBasic*);
 
 #define MRUBY_VERSION "Rite"
 
-#ifdef DEBUG
-#undef DEBUG
-#endif
-
 #if 0
 #define DEBUG(x) x
 #else
@@ -563,6 +559,60 @@ void mrb_check_type(mrb_state *mrb, mrb_value x, enum mrb_vtype t);
 //int RUBY_SETJMP(mrb_jmpbuf_t env); /* add kusuda */
 #define ruby_setjmp(env) RUBY_SETJMP(env)
 #define ruby_longjmp(env,val) RUBY_LONGJMP(env,val)
+
+#if defined PRIdPTR && !defined PRI_VALUE_PREFIX
+#define PRIdVALUE PRIdPTR
+#define PRIiVALUE PRIiPTR
+#define PRIoVALUE PRIoPTR
+#define PRIuVALUE PRIuPTR
+#define PRIxVALUE PRIxPTR
+#define PRIXVALUE PRIXPTR
+#else
+#define PRIdVALUE PRI_VALUE_PREFIX"d"
+#define PRIiVALUE PRI_VALUE_PREFIX"i"
+#define PRIoVALUE PRI_VALUE_PREFIX"o"
+#define PRIuVALUE PRI_VALUE_PREFIX"u"
+#define PRIxVALUE PRI_VALUE_PREFIX"x"
+#define PRIXVALUE PRI_VALUE_PREFIX"X"
+#endif
+#ifndef PRI_VALUE_PREFIX
+# define PRI_VALUE_PREFIX ""
+#endif
+
+#if defined PRIdPTR
+# define PRI_PTRDIFF_PREFIX "t"
+#elif SIZEOF_PTRDIFF_T == SIZEOF_INT
+# define PRI_PTRDIFF_PREFIX
+#elif SIZEOF_PTRDIFF_T == SIZEOF_LONG
+# define PRI_PTRDIFF_PREFIX "l"
+#elif SIZEOF_PTRDIFF_T == SIZEOF_LONG_LONG
+# define PRI_PTRDIFF_PREFIX "ll"
+#else
+# define PRI_PTRDIFF_PREFIX
+#endif
+#define PRIdPTRDIFF PRI_PTRDIFF_PREFIX"d"
+#define PRIiPTRDIFF PRI_PTRDIFF_PREFIX"i"
+#define PRIoPTRDIFF PRI_PTRDIFF_PREFIX"o"
+#define PRIuPTRDIFF PRI_PTRDIFF_PREFIX"u"
+#define PRIxPTRDIFF PRI_PTRDIFF_PREFIX"x"
+#define PRIXPTRDIFF PRI_PTRDIFF_PREFIX"X"
+
+#if defined PRIdPTR
+# define PRI_SIZE_PREFIX "z"
+#elif SIZEOF_SIZE_T == SIZEOF_INT
+# define PRI_SIZE_PREFIX
+#elif SIZEOF_SIZE_T == SIZEOF_LONG
+# define PRI_SIZE_PREFIX "l"
+#elif SIZEOF_SIZE_T == SIZEOF_LONG_LONG
+# define PRI_SIZE_PREFIX "ll"
+#endif
+#define PRIdSIZE PRI_SIZE_PREFIX"d"
+#define PRIiSIZE PRI_SIZE_PREFIX"i"
+#define PRIoSIZE PRI_SIZE_PREFIX"o"
+#define PRIuSIZE PRI_SIZE_PREFIX"u"
+#define PRIxSIZE PRI_SIZE_PREFIX"x"
+#define PRIXSIZE PRI_SIZE_PREFIX"X"
+#define PRIdPTRDIFF PRI_PTRDIFF_PREFIX"d"
 
 #define KHASH  0
 #define STHASH 1

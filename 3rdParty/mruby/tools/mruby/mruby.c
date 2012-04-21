@@ -22,10 +22,10 @@ usage(const char *name)
 {
   static const char *const usage_msg[] = {
   "switches:",
-  "-b           load and execute RiteBinary (mrb) file",
+  "-b           load and execute RiteBinary(mrb) file",
   "-c           check syntax only",
-  "-v           print version number, then run in verbose mode",
-  "--verbose    run in verbose mode",
+  "-v           print version number, then trun on verbose mode",
+  "--verbose    run at verbose mode",
   "--version    print the version",
   "--copyright  print the copyright",
   NULL

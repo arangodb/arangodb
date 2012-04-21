@@ -1773,7 +1773,11 @@ static int
 pair_byte_cmp(const void *pair1, const void *pair2)
 {
     long diff = ((pair_t*)pair1)->byte_pos - ((pair_t*)pair2)->byte_pos;
+#if SIZEOF_LONG > SIZEOF_INT
     return diff ? diff > 0 ? 1 : -1 : 0;
+#else
+    return (int)diff;
+#endif
 }
 
 static void
@@ -2955,6 +2959,48 @@ mrb_backref_set(mrb_state *mrb, mrb_value val)
 
 #ifdef INCLUDE_ENCODING
 static inline long
+mrb_memsearch_ss(const unsigned char *xs, long m, const unsigned char *ys, long n)
+{
+  const unsigned char *x = xs, *xe = xs + m;
+  const unsigned char *y = ys, *ye = ys + n;
+#define SIZEOF_VOIDP 4
+#define SIZEOF_LONG 4
+
+#ifndef VALUE_MAX
+# if SIZEOF_VALUE == 8
+#  define VALUE_MAX 0xFFFFFFFFFFFFFFFFULL
+# elif SIZEOF_VALUE == 4
+#  define VALUE_MAX 0xFFFFFFFFUL
+# elif SIZEOF_LONG == SIZEOF_VOIDP
+#  define SIZEOF_VALUE 4
+#  define VALUE_MAX 0xFFFFFFFFUL
+# endif
+#endif
+  int hx, hy, mask = VALUE_MAX >> ((SIZEOF_VALUE - m) * CHAR_BIT);
+
+  if (m > SIZEOF_VALUE)
+    mrb_bug("!!too long pattern string!!");
+
+  /* Prepare hash value */
+  for (hx = *x++, hy = *y++; x < xe; ++x, ++y) {
+    hx <<= CHAR_BIT;
+    hy <<= CHAR_BIT;
+    hx |= *x;
+    hy |= *y;
+  }
+  /* Searching */
+  while (hx != hy) {
+    if (y == ye)
+        return -1;
+    hy <<= CHAR_BIT;
+    hy |= *y;
+    hy &= mask;
+    y++;
+  }
+  return y - ys - m;
+}
+
+static inline long
 mrb_memsearch_qs(const unsigned char *xs, long m, const unsigned char *ys, long n)
 {
   const unsigned char *x = xs, *xe = xs + m;
@@ -3047,6 +3093,9 @@ mrb_memsearch(mrb_state *mrb, const void *x0, int m, const void *y0, int n, mrb_
         return y - ys;
     }
     return -1;
+  }
+  else if (m <= SIZEOF_VALUE) {
+    return mrb_memsearch_ss(x0, m, y0, n);
   }
   else if (enc == mrb_utf8_encoding(mrb)) {
     return mrb_memsearch_qs_utf8(x0, m, y0, n);

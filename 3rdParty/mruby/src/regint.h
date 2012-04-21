@@ -246,11 +246,11 @@
 } while(0)
 
 /* sizeof(OnigCodePoint) */
-#define WORD_ALIGNMENT_SIZE     sizeof(uintptr_t)
+#define WORD_ALIGNMENT_SIZE     SIZEOF_LONG
 
 #define GET_ALIGNMENT_PAD_SIZE(addr,pad_size) do {\
   (pad_size) = WORD_ALIGNMENT_SIZE \
-               - ((uintptr_t)(addr) % WORD_ALIGNMENT_SIZE);\
+               - ((uintptr_t )(addr) % WORD_ALIGNMENT_SIZE);\
   if ((pad_size) == WORD_ALIGNMENT_SIZE) (pad_size) = 0;\
 } while (0)
 
