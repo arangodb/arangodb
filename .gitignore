@@ -81,3 +81,6 @@ UnitTests/test_suite
 .v8-build
 VC++
 .DS_Store
+GPATH
+GRTAGS
+GTAGS
