@@ -3042,7 +3042,7 @@ unittests-http-server:
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 
-@ENABLE_MRUBY_TRUE@@LIBEV_LIBS@: .mruby-build
+@ENABLE_MRUBY_TRUE@@MRUBY_LIBS@: .mruby-build
 
 @ENABLE_MRUBY_TRUE@.mruby-build:
 @ENABLE_MRUBY_TRUE@	@echo
