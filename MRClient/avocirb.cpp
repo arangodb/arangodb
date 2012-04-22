@@ -343,7 +343,7 @@ static void RunShell (mrb_state* mrb) {
   console->open(! NoAutoComplete);
 
   while (true) {
-    char* input = console->prompt("avocmrb> ");
+    char* input = console->prompt("avocirb> ");
 
     if (input == 0) {
       printf("\nBye Bye! Auf Wiedersehen! さようなら\n");
