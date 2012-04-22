@@ -12,6 +12,11 @@ AM_CPPFLAGS = \
 	@READLINE_CPPFLAGS@ \
 	@V8_CPPFLAGS@
 
+if ENABLE_MRUBY
+AM_CPPFLAGS += \
+	@MRUBY_CPPFLAGS@
+endif
+
 AM_LDFLAGS = \
 	@BOOST_LDFLAGS@ \
 	@LIBEV_LDFLAGS@ \
@@ -20,6 +25,11 @@ AM_LDFLAGS = \
 	@OPENSSL_LDFLAGS@ \
 	@READLINE_LDFLAGS@ \
 	@V8_LDFLAGS@
+
+if ENABLE_MRUBY
+AM_CPPFLAGS += \
+	@MRUBY_LDFLAGS@
+endif
 
 LIBS = \
 	@BOOST_LIBS@ \
@@ -30,12 +40,17 @@ LIBS = \
 	@READLINE_LIBS@ \
 	@V8_LIBS@
 
+if ENABLE_MRUBY
+LIBS += \
+	@MRUBY_LIBS@
+endif
+
 BUILT_SOURCES = build.h
 CLEANUP =
 
 noinst_LIBRARIES = libavocado.a
 sbin_PROGRAMS = avocado
-bin_PROGRAMS = avocsh avocimp
+bin_PROGRAMS = avocsh avocirb avocimp
 
 nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/js/actions/system -name "*.js" -print) \
@@ -77,7 +92,12 @@ include Makefile.bison
 endif
 
 if ENABLE_ALL_IN_ONE
-include Makefile.all-in-one
+include Makefile.all-in-one-libev
+include Makefile.all-in-one-v8
+endif
+
+if ENABLE_MRUBY
+include Makefile.all-in-one-mruby
 endif
 
 ################################################################################

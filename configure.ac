@@ -44,11 +44,11 @@ AM_CONDITIONAL(ENABLE_FLEX, test "x$tr_FLEX" = xyes)
 dnl ALL-IN-ONE
 AC_ARG_ENABLE(all-in-one,
   AS_HELP_STRING([--enable-all-in-one], [use supplied V8, LIBEV from 3rdParty directory]),
-  [tr_ALL_IN_ONE="${enableval:-yes}"],
-  [tr_ALL_IN_ONE=yes]
+  [ALL_IN_ONE_ENABLE="${enableval:-yes}"],
+  [ALL_IN_ONE_ENABLE=yes]
 )
 
-AM_CONDITIONAL(ENABLE_ALL_IN_ONE, test "x$tr_ALL_IN_ONE" = xyes)
+AM_CONDITIONAL(ENABLE_ALL_IN_ONE, test "x$ALL_IN_ONE_ENABLE" = xyes)
 
 
 
@@ -144,9 +144,10 @@ m4_include([m4/external.ncurses]) # before readline
 m4_include([m4/external.readline])
 m4_include([m4/external.openssl])
 
-if test "x$tr_ALL_IN_ONE" = xyes;  then
+if test "x$ALL_IN_ONE_ENABLE" = xyes;  then
   m4_include([m4/all-in-one.libev])
   m4_include([m4/all-in-one.v8])
+  m4_include([m4/all-in-one.mruby])
   BASIC_INFO="$BASIC_INFO|ALL-IN-ONE: enabled"
 else
   m4_include([m4/external.libev])

@@ -45,12 +45,11 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "V8/JSLoader.h"
+#include "V8/V8LineEditor.h"
 #include "V8/v8-conv.h"
-#include "V8/v8-line-editor.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
 #include "V8Client/V8ClientConnection.h"
-
 #include "Variant/VariantArray.h"
 #include "Variant/VariantBoolean.h"
 #include "Variant/VariantInt64.h"
@@ -1235,14 +1234,16 @@ int main (int argc, char* argv[]) {
   printf("Welcome to avocsh %s. Copyright (c) 2012 triAGENS GmbH.\n", TRIAGENS_VERSION);
 
 #ifdef TRI_V8_VERSION
-  printf("Using Google V8 " TRI_V8_VERSION " JavaScript engine.\n");
+  printf("Using Google V8 %s JavaScript engine.\n", TRI_V8_VERSION);
 #else
   printf("Using Google V8 JavaScript engine.\n\n");
 #endif
   
 #ifdef TRI_READLINE_VERSION
-  printf("Using READLINE " TRI_READLINE_VERSION ".\n\n");
+  printf("Using READLINE %s.\n", TRI_READLINE_VERSION);
 #endif
+
+  printf("\n");
 
   if (clientConnection->isConnected()) {
     printf("Connected to Avocado DB %s:%d Version %s\n", 

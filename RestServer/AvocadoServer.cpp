@@ -45,6 +45,7 @@
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/RedirectHandler.h"
 #include "Logger/Logger.h"
+#include "MRuby/MRLineEditor.h"
 #include "Rest/Initialise.h"
 #include "RestHandler/RestActionHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
@@ -54,10 +55,10 @@
 #include "RestServer/AvocadoHttpServer.h"
 #include "UserManager/ApplicationUserManager.h"
 #include "V8/JSLoader.h"
+#include "V8/V8LineEditor.h"
 #include "V8/v8-actions.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
-#include "V8/v8-line-editor.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vocbase.h"
@@ -75,6 +76,16 @@ using namespace triagens::avocado;
 #include "js/server/js-aql-functions-numeric.h"
 #include "js/server/js-aql-functions-string.h"
 #include "js/server/js-server.h"
+
+#ifdef TRI_ENABLE_MRUBY
+extern "C" {
+#include "mruby.h"
+#include "mruby/proc.h"
+#include "mruby/data.h"
+#include "compile.h"
+#include "variable.h"
+}
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -360,7 +371,10 @@ void AvocadoServer::buildApplicationServer () {
   map<string, ProgramOptionsDescription> additional;
 
   additional[ApplicationServer::OPTIONS_CMDLINE]
-    ("console", "do not start as server, start an emergency console instead")
+    ("console", "do not start as server, start a JavaScript emergency console instead")
+#ifdef TRI_ENABLE_MRUBY
+    ("ruby-console", "do not start as server, start a Ruby emergency console instead")
+#endif
     ("unit-tests", &_unitTests, "do not start as server, run unit tests instead")
   ;
 
@@ -514,6 +528,11 @@ void AvocadoServer::buildApplicationServer () {
 
   if (_applicationServer->programOptions().has("console")) {
     int res = executeShell(false);
+    exit(res);
+  }
+
+  if (_applicationServer->programOptions().has("ruby-console")) {
+    int res = executeRubyShell();
     exit(res);
   }
 
@@ -719,7 +738,7 @@ int AvocadoServer::startupServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the shell
+/// @brief executes the JavaScript emergency console
 ////////////////////////////////////////////////////////////////////////////////
 
 int AvocadoServer::executeShell (bool tests) {
@@ -832,8 +851,7 @@ int AvocadoServer::executeShell (bool tests) {
       char* input = console->prompt("avocado> ");
 
       if (input == 0) {
-        printf("bye...\n");
-        TRI_FreeString(input);
+        printf("<ctrl-D>\nBye Bye! Auf Wiedersehen!\n");
         break;
       }
 
@@ -869,6 +887,155 @@ int AvocadoServer::executeShell (bool tests) {
 
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes the ruby emergency console
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MRUBY
+
+struct RClass* AvocadoDatabaseClass;
+struct RClass* AvocadoEdgesClass;
+struct RClass* AvocadoCollectionClass;
+struct RClass* AvocadoEdgesCollectionClass;
+
+mrb_value MR_AvocadoDatabase_Inialize (mrb_state* mrb, mrb_value exc) {
+  printf("initializer of AvocadoDatabase called\n");
+  return exc;
+}
+
+static void MR_AvocadoDatabase_Free (mrb_state* mrb, void* p) {
+  printf("free of AvocadoDatabase called\n");
+}
+
+static const struct mrb_data_type MR_AvocadoDatabase_Type = {
+  "AvocadoDatabase", MR_AvocadoDatabase_Free
+};
+
+static void MR_AvocadoCollection_Free (mrb_state* mrb, void* p) {
+  printf("free of AvocadoCollection called\n");
+}
+
+static const struct mrb_data_type MR_AvocadoCollection_Type = {
+  "AvocadoDatabase", MR_AvocadoCollection_Free
+};
+
+mrb_value MR_AvocadoDatabase_Collection (mrb_state* mrb, mrb_value exc) {
+  char* name;
+  TRI_vocbase_t* vocbase;
+  TRI_vocbase_col_t* collection;
+  struct RData* rdata;
+
+  // check "class.c" to see how to specify the arguments
+  mrb_get_args(mrb, "s", &name);
+
+  if (name == 0) {
+    return exc;
+  }
+
+  // check 
+
+  printf("using collection '%s'\n", name);
+
+  // looking at "mruby.h" I assume that is the way to unwrap the pointer
+  rdata = (struct RData*) mrb_object(exc);
+  vocbase = (TRI_vocbase_t*) rdata->data;
+  collection = TRI_FindCollectionByNameVocBase(vocbase, name, false);
+
+  if (collection == NULL) {
+    printf("unknown collection (TODO raise error)\n");
+    return exc;
+  }
+  
+  return mrb_obj_value(Data_Wrap_Struct(mrb, AvocadoCollectionClass, &MR_AvocadoCollection_Type, (void*) collection));
+}
+
+
+int AvocadoServer::executeRubyShell () {
+  struct mrb_parser_state* p;
+  mrb_state* mrb;
+  int n;
+
+  // only simple logging
+  TRI_ShutdownLogging();
+  TRI_InitialiseLogging(false);
+  TRI_CreateLogAppenderFile("+");
+
+  // open the database
+  openDatabase();
+
+  // create a new ruby shell
+  mrb = mrb_open();
+
+  // create a line editor
+  MRLineEditor* console = new MRLineEditor(mrb, ".avocado-mrb");
+
+  // setup the classes
+  AvocadoDatabaseClass = mrb_define_class(mrb, "AvocadoDatabase", mrb->object_class);
+  AvocadoEdgesClass = mrb_define_class(mrb, "AvocadoEdges", mrb->object_class);
+  AvocadoCollectionClass = mrb_define_class(mrb, "AvocadoCollection", mrb->object_class);
+  AvocadoEdgesCollectionClass = mrb_define_class(mrb, "AvocadoEdgesCollection", mrb->object_class);
+
+  // add an initializer (for TESTING only)
+  mrb_define_method(mrb, AvocadoDatabaseClass, "initialize", MR_AvocadoDatabase_Inialize, ARGS_ANY());
+
+  // add a method to extract the collection
+  mrb_define_method(mrb, AvocadoDatabaseClass, "_collection", MR_AvocadoDatabase_Collection, ARGS_ANY());
+
+  // create the database variable
+  mrb_value db = mrb_obj_value(Data_Wrap_Struct(mrb, AvocadoDatabaseClass, &MR_AvocadoDatabase_Type, (void*) _vocbase));
+
+  mrb_gv_set(mrb, mrb_intern(mrb, "$db"), db);
+
+  // read-eval-print loop
+  console->open(true);
+
+  while (true) {
+    char* input = console->prompt("avocmrb> ");
+
+    if (input == 0) {
+      printf("\nBye Bye! Auf Wiedersehen! さようなら\n");
+      break;
+    }
+
+    if (*input == '\0') {
+      TRI_FreeString(input);
+      continue;
+    }
+
+    console->addHistory(input);
+
+    p = mrb_parse_string(mrb, input);
+    TRI_FreeString(input);
+
+    if (p == 0 || p->tree == 0 || 0 < p->nerr) {
+      cout << "UPPS!\n";
+      continue;
+    }
+
+    n = mrb_generate_code(mrb, p->tree);
+
+    if (n < 0) {
+      cout << "UPPS 2: " << n << "\n";
+      continue;
+    }
+
+    mrb_value result = mrb_run(mrb, mrb_proc_new(mrb, mrb->irep[n]), mrb_nil_value());
+
+    if (mrb->exc) {
+      cout << "OUTPUT EXCEPTION\n";
+      mrb_funcall(mrb, mrb_nil_value(), "p", 1, mrb_obj_value(mrb->exc));
+      cout << "\nOUTPUT END\n";
+    }
+    else {
+      mrb_funcall(mrb, mrb_nil_value(), "p", 1, result);
+    }
+  }
+
+  return EXIT_SUCCESS;
+}
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens the database
