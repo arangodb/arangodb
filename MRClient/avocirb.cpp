@@ -368,16 +368,16 @@ static void RunShell (mrb_state* mrb) {
     int n = mrb_generate_code(mrb, p->tree);
 
     if (n < 0) {
-      cout << "UPPS 2: " << n << "\n";
+      cout << "UPPS: " << n << " returned by mrb_generate_code\n";
       continue;
     }
 
     mrb_value result = mrb_run(mrb, mrb_proc_new(mrb, mrb->irep[n]), mrb_nil_value());
 
     if (mrb->exc) {
-      cout << "OUTPUT EXCEPTION\n";
+      cout << "Caught exception:\n";
       mrb_funcall(mrb, mrb_nil_value(), "p", 1, mrb_obj_value(mrb->exc));
-      cout << "\nOUTPUT END\n";
+      mrb->exc = 0;
     }
 #if 0
     else {
