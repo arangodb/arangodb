@@ -6,7 +6,7 @@
 
 BUILT_SOURCES += @MRUBY_LIBS@
 
-@LIBEV_LIBS@: .mruby-build
+@MRUBY_LIBS@: .mruby-build
 
 .mruby-build:
 	@echo
