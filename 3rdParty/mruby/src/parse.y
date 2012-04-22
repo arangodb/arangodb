@@ -275,7 +275,7 @@ new_true(parser_state *p)
   return list1((node*)NODE_TRUE);
 }
 
-// (:true)
+// (:false)
 static node*
 new_false(parser_state *p)
 {
@@ -2898,8 +2898,21 @@ none		: /* none */
 static void
 yyerror(parser_state *p, const char *s)
 {
-  fputs(s, stderr);
-  fputs("\n", stderr);
+  char* c;
+  size_t n;
+
+  if (! p->capture_errors) {
+    fputs(s, stderr);
+    fputs("\n", stderr);
+  }
+  else if (p->nerr < sizeof(p->error_buffer) / sizeof(p->error_buffer[0])) {
+    n = strlen(s);
+    c = parser_palloc(p, n + 1);
+    memcpy(c, s, n + 1);
+    p->error_buffer[p->nerr].message = c;
+    p->error_buffer[p->nerr].lineno = p->lineno;
+    p->error_buffer[p->nerr].column = p->column;
+  }
   p->nerr++;
 }
 
@@ -2915,8 +2928,22 @@ yyerror_i(parser_state *p, const char *fmt, int i)
 static void
 yywarn(parser_state *p, const char *s)
 {
-  fputs(s, stderr);
-  fputs("\n", stderr);
+  char* c;
+  size_t n;
+
+  if (! p->capture_errors) {
+    fputs(s, stderr);
+    fputs("\n", stderr);
+  }
+  else if (p->nerr < sizeof(p->warn_buffer) / sizeof(p->warn_buffer[0])) {
+    n = strlen(s);
+    c = parser_palloc(p, n + 1);
+    memcpy(c, s, n + 1);
+    p->error_buffer[p->nwarn].message = c;
+    p->error_buffer[p->nwarn].lineno = p->lineno;
+    p->error_buffer[p->nwarn].column = p->column;
+  }
+  p->nwarn++;
 }
 
 static void
@@ -2976,8 +3003,13 @@ nextc(parser_state *p)
     c = *p->s++;
   }
   if (c == '\n') {
-    p->lineno++;
-    p->column = 0;
+    if (p->column < 0) {
+      p->column++; // pushback caused an underflow
+    }
+    else {
+      p->lineno++;
+      p->column = 0;
+    }
     // must understand heredoc
   }
   else {
@@ -4604,6 +4636,8 @@ parser_new(mrb_state *mrb)
   p->cmd_start = TRUE;
   p->in_def = p->in_single = FALSE;
 
+  p->capture_errors = NULL;
+
   p->lineno = 1;
 #if defined(PARSER_TEST) || defined(PARSER_DEBUG)
   yydebug = 1;
@@ -4636,6 +4670,22 @@ mrb_parse_nstring(mrb_state *mrb, char *s, size_t len)
   p->s = s;
   p->send = s + len;
   p->f = NULL;
+
+  start_parser(p);
+  return p;
+}
+
+parser_state*
+mrb_parse_nstring_ext(mrb_state *mrb, char *s, size_t len)
+{
+  parser_state *p;
+
+  p = parser_new(mrb);
+  if (!p) return 0;
+  p->s = s;
+  p->send = s + len;
+  p->f = NULL;
+  p->capture_errors = 1;
 
   start_parser(p);
   return p;

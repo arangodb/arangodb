@@ -1770,9 +1770,9 @@ mrb_econv_putbackable(mrb_econv_t *ec)
 {
     if (ec->num_trans == 0)
         return 0;
-#if SIZEOF_SIZE_T > SIZEOF_INT
-    if (ec->elems[0].tc->readagain_len > INT_MAX) return INT_MAX;
-#endif
+    if (sizeof(size_t) > sizeof(int)) {
+      if (ec->elems[0].tc->readagain_len > INT_MAX) return INT_MAX;
+    }
     return (int)ec->elems[0].tc->readagain_len;
 }
 
@@ -2625,7 +2625,7 @@ str_transcode0(mrb_state *mrb, int argc, mrb_value *argv, mrb_value *self, int e
 
     transcode_loop(mrb, &fromp, &bp, (sp+slen), (bp+blen), dest, str_transcoding_resize, sname, dname, ecflags, ecopts);
     if (fromp != sp+slen) {
-        mrb_raise(mrb, E_ARGUMENT_ERROR, "not fully converted, %"PRIdPTRDIFF" bytes left", sp+slen-fromp);
+        mrb_raise(mrb, E_ARGUMENT_ERROR, "not fully converted, %td bytes left", sp+slen-fromp);
     }
     buf = (unsigned char *)RSTRING_PTR(dest);
     *bp = '\0';

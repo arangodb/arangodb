@@ -922,6 +922,31 @@ enc_name(mrb_state *mrb, mrb_value self)
     return mrb_usascii_str_new2(mrb, mrb_enc_name((mrb_encoding*)DATA_PTR(self)));
 }
 
+struct fn_arg {
+  mrb_state *mrb;
+  int (*func)(ANYARGS);
+  void *a;
+};
+
+static int
+fn_i(st_data_t key, st_data_t val, st_data_t arg) {
+  struct fn_arg *a = (struct fn_arg*)arg;
+
+  return (*a->func)(a->mrb, key, val, a->a);
+}
+
+static int
+st_foreachNew(mrb_state *mrb, st_table *tbl, int (*func)(ANYARGS), void *a)
+{
+  struct fn_arg arg = {
+    mrb,
+    func,
+    a,
+  };
+
+  return st_foreach(tbl, fn_i, (st_data_t)&arg);
+}
+
 static int
 enc_names_i(mrb_state *mrb, st_data_t name, st_data_t idx, st_data_t args)
 {
