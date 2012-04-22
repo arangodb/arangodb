@@ -74,7 +74,7 @@ target_triplet = @target@
 @ENABLE_MRUBY_TRUE@	@MRUBY_LIBS@
 
 sbin_PROGRAMS = avocado$(EXEEXT)
-bin_PROGRAMS = avocsh$(EXEEXT) avocimp$(EXEEXT)
+bin_PROGRAMS = avocsh$(EXEEXT) avocirb$(EXEEXT) avocimp$(EXEEXT)
 DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.all-in-one \
 	$(srcdir)/Makefile.am $(srcdir)/Makefile.bison \
 	$(srcdir)/Makefile.doxygen $(srcdir)/Makefile.files \
@@ -180,11 +180,13 @@ am_libavocado_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 	JsonParserX/JsonScannerX.$(OBJEXT) Logger/Logger.$(OBJEXT) \
 	Logger/LoggerData.$(OBJEXT) Logger/LoggerInfo.$(OBJEXT) \
 	Logger/LoggerStream.$(OBJEXT) Logger/LoggerTiming.$(OBJEXT) \
+	MRuby/MRLineEditor.$(OBJEXT) \
 	ProgramOptions/program-options.$(OBJEXT) \
 	Rest/AddressPort.$(OBJEXT) Rest/AnyServer.$(OBJEXT) \
 	Rest/HttpRequest.$(OBJEXT) Rest/HttpResponse.$(OBJEXT) \
 	Rest/Initialise.$(OBJEXT) Rest/JsonContainer.$(OBJEXT) \
 	Rest/SslInterface.$(OBJEXT) Rest/Url.$(OBJEXT) \
+	RestServer/LineEditor.$(OBJEXT) \
 	ShapedJson/json-shaper.$(OBJEXT) \
 	ShapedJson/shape-accessor.$(OBJEXT) \
 	ShapedJson/shaped-json.$(OBJEXT) \
@@ -194,7 +196,7 @@ am_libavocado_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 	UserManager/User.$(OBJEXT) UserManager/UserHandler.$(OBJEXT) \
 	UserManager/UsersHandler.$(OBJEXT) V8/JSLoader.$(OBJEXT) \
 	V8/v8-conv.$(OBJEXT) V8/v8-json.$(OBJEXT) \
-	V8/v8-line-editor.$(OBJEXT) V8/v8-shell.$(OBJEXT) \
+	V8/V8LineEditor.$(OBJEXT) V8/v8-shell.$(OBJEXT) \
 	V8/v8-utils.$(OBJEXT) Variant/VariantArray.$(OBJEXT) \
 	Variant/VariantBlob.$(OBJEXT) Variant/VariantBoolean.$(OBJEXT) \
 	Variant/VariantDate.$(OBJEXT) \
@@ -322,6 +324,9 @@ am_avocimp_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
 	V8Client/avocimp.$(OBJEXT)
 avocimp_OBJECTS = $(am_avocimp_OBJECTS)
 avocimp_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_2)
+am_avocirb_OBJECTS = MRClient/avocirb.$(OBJEXT)
+avocirb_OBJECTS = $(am_avocirb_OBJECTS)
+avocirb_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_2)
 am_avocsh_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
 	SimpleHttpClient/SimpleHttpResult.$(OBJEXT) \
 	V8Client/ImportHelper.$(OBJEXT) \
@@ -358,10 +363,11 @@ AM_V_GEN = $(am__v_GEN_$(V))
 am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
 am__v_GEN_0 = @echo "  GEN   " $@;
 SOURCES = $(libavocado_a_SOURCES) $(UnitTests_test_suite_SOURCES) \
-	$(avocado_SOURCES) $(avocimp_SOURCES) $(avocsh_SOURCES)
+	$(avocado_SOURCES) $(avocimp_SOURCES) $(avocirb_SOURCES) \
+	$(avocsh_SOURCES)
 DIST_SOURCES = $(libavocado_a_SOURCES) \
 	$(am__UnitTests_test_suite_SOURCES_DIST) $(avocado_SOURCES) \
-	$(avocimp_SOURCES) $(avocsh_SOURCES)
+	$(avocimp_SOURCES) $(avocirb_SOURCES) $(avocsh_SOURCES)
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
@@ -641,6 +647,7 @@ libavocado_a_SOURCES = \
 	Logger/LoggerInfo.cpp \
 	Logger/LoggerStream.cpp \
 	Logger/LoggerTiming.cpp \
+	MRuby/MRLineEditor.cpp \
 	ProgramOptions/program-options.c \
 	Rest/AddressPort.cpp \
 	Rest/AnyServer.cpp \
@@ -650,6 +657,7 @@ libavocado_a_SOURCES = \
 	Rest/JsonContainer.cpp \
 	Rest/SslInterface.cpp \
 	Rest/Url.cpp \
+	RestServer/LineEditor.cpp \
 	ShapedJson/json-shaper.c \
 	ShapedJson/shape-accessor.c \
 	ShapedJson/shaped-json.c \
@@ -663,7 +671,7 @@ libavocado_a_SOURCES = \
 	V8/JSLoader.cpp \
 	V8/v8-conv.cpp \
 	V8/v8-json.cpp \
-	V8/v8-line-editor.cpp \
+	V8/V8LineEditor.cpp \
 	V8/v8-shell.cpp \
 	V8/v8-utils.cpp \
 	Variant/VariantArray.cpp \
@@ -803,6 +811,13 @@ avocsh_SOURCES = \
 	V8Client/ImportHelper.cpp \
 	V8Client/V8ClientConnection.cpp \
 	V8Client/avocsh.cpp
+
+
+################################################################################
+################################################################################
+avocirb_LDADD = libavocado.a $(LIBS)
+avocirb_SOURCES = \
+	MRClient/avocirb.cpp
 
 
 ################################################################################
@@ -1194,6 +1209,14 @@ Logger/LoggerStream.$(OBJEXT): Logger/$(am__dirstamp) \
 	Logger/$(DEPDIR)/$(am__dirstamp)
 Logger/LoggerTiming.$(OBJEXT): Logger/$(am__dirstamp) \
 	Logger/$(DEPDIR)/$(am__dirstamp)
+MRuby/$(am__dirstamp):
+	@$(MKDIR_P) MRuby
+	@: > MRuby/$(am__dirstamp)
+MRuby/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) MRuby/$(DEPDIR)
+	@: > MRuby/$(DEPDIR)/$(am__dirstamp)
+MRuby/MRLineEditor.$(OBJEXT): MRuby/$(am__dirstamp) \
+	MRuby/$(DEPDIR)/$(am__dirstamp)
 ProgramOptions/$(am__dirstamp):
 	@$(MKDIR_P) ProgramOptions
 	@: > ProgramOptions/$(am__dirstamp)
@@ -1225,6 +1248,14 @@ Rest/SslInterface.$(OBJEXT): Rest/$(am__dirstamp) \
 	Rest/$(DEPDIR)/$(am__dirstamp)
 Rest/Url.$(OBJEXT): Rest/$(am__dirstamp) \
 	Rest/$(DEPDIR)/$(am__dirstamp)
+RestServer/$(am__dirstamp):
+	@$(MKDIR_P) RestServer
+	@: > RestServer/$(am__dirstamp)
+RestServer/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) RestServer/$(DEPDIR)
+	@: > RestServer/$(DEPDIR)/$(am__dirstamp)
+RestServer/LineEditor.$(OBJEXT): RestServer/$(am__dirstamp) \
+	RestServer/$(DEPDIR)/$(am__dirstamp)
 ShapedJson/$(am__dirstamp):
 	@$(MKDIR_P) ShapedJson
 	@: > ShapedJson/$(am__dirstamp)
@@ -1267,7 +1298,7 @@ V8/$(DEPDIR)/$(am__dirstamp):
 V8/JSLoader.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
 V8/v8-conv.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
 V8/v8-json.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
-V8/v8-line-editor.$(OBJEXT): V8/$(am__dirstamp) \
+V8/V8LineEditor.$(OBJEXT): V8/$(am__dirstamp) \
 	V8/$(DEPDIR)/$(am__dirstamp)
 V8/v8-shell.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
 V8/v8-utils.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
@@ -1603,12 +1634,6 @@ RestHandler/RestImportHandler.$(OBJEXT): RestHandler/$(am__dirstamp) \
 RestHandler/RestVocbaseBaseHandler.$(OBJEXT):  \
 	RestHandler/$(am__dirstamp) \
 	RestHandler/$(DEPDIR)/$(am__dirstamp)
-RestServer/$(am__dirstamp):
-	@$(MKDIR_P) RestServer
-	@: > RestServer/$(am__dirstamp)
-RestServer/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) RestServer/$(DEPDIR)
-	@: > RestServer/$(DEPDIR)/$(am__dirstamp)
 RestServer/ActionDispatcherThread.$(OBJEXT):  \
 	RestServer/$(am__dirstamp) \
 	RestServer/$(DEPDIR)/$(am__dirstamp)
@@ -1785,6 +1810,17 @@ V8Client/avocimp.$(OBJEXT): V8Client/$(am__dirstamp) \
 avocimp$(EXEEXT): $(avocimp_OBJECTS) $(avocimp_DEPENDENCIES) 
 	@rm -f avocimp$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(avocimp_OBJECTS) $(avocimp_LDADD) $(LIBS)
+MRClient/$(am__dirstamp):
+	@$(MKDIR_P) MRClient
+	@: > MRClient/$(am__dirstamp)
+MRClient/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) MRClient/$(DEPDIR)
+	@: > MRClient/$(DEPDIR)/$(am__dirstamp)
+MRClient/avocirb.$(OBJEXT): MRClient/$(am__dirstamp) \
+	MRClient/$(DEPDIR)/$(am__dirstamp)
+avocirb$(EXEEXT): $(avocirb_OBJECTS) $(avocirb_DEPENDENCIES) 
+	@rm -f avocirb$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(avocirb_OBJECTS) $(avocirb_LDADD) $(LIBS)
 V8Client/avocsh.$(OBJEXT): V8Client/$(am__dirstamp) \
 	V8Client/$(DEPDIR)/$(am__dirstamp)
 avocsh$(EXEEXT): $(avocsh_OBJECTS) $(avocsh_DEPENDENCIES) 
@@ -1877,6 +1913,8 @@ mostlyclean-compile:
 	-rm -f Logger/LoggerInfo.$(OBJEXT)
 	-rm -f Logger/LoggerStream.$(OBJEXT)
 	-rm -f Logger/LoggerTiming.$(OBJEXT)
+	-rm -f MRClient/avocirb.$(OBJEXT)
+	-rm -f MRuby/MRLineEditor.$(OBJEXT)
 	-rm -f PriorityQueue/pqueueindex.$(OBJEXT)
 	-rm -f PriorityQueue/priorityqueue.$(OBJEXT)
 	-rm -f ProgramOptions/program-options.$(OBJEXT)
@@ -1901,6 +1939,7 @@ mostlyclean-compile:
 	-rm -f RestServer/ActionDispatcherThread.$(OBJEXT)
 	-rm -f RestServer/AvocadoHttpServer.$(OBJEXT)
 	-rm -f RestServer/AvocadoServer.$(OBJEXT)
+	-rm -f RestServer/LineEditor.$(OBJEXT)
 	-rm -f RestServer/avocado.$(OBJEXT)
 	-rm -f ResultGenerator/HtmlResultGenerator.$(OBJEXT)
 	-rm -f ResultGenerator/Initialise.$(OBJEXT)
@@ -1946,10 +1985,10 @@ mostlyclean-compile:
 	-rm -f UserManager/UserHandler.$(OBJEXT)
 	-rm -f UserManager/UsersHandler.$(OBJEXT)
 	-rm -f V8/JSLoader.$(OBJEXT)
+	-rm -f V8/V8LineEditor.$(OBJEXT)
 	-rm -f V8/v8-actions.$(OBJEXT)
 	-rm -f V8/v8-conv.$(OBJEXT)
 	-rm -f V8/v8-json.$(OBJEXT)
-	-rm -f V8/v8-line-editor.$(OBJEXT)
 	-rm -f V8/v8-shell.$(OBJEXT)
 	-rm -f V8/v8-utils.$(OBJEXT)
 	-rm -f V8/v8-vocbase.$(OBJEXT)
@@ -2093,6 +2132,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Logger/$(DEPDIR)/LoggerInfo.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Logger/$(DEPDIR)/LoggerStream.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Logger/$(DEPDIR)/LoggerTiming.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@MRClient/$(DEPDIR)/avocirb.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@MRuby/$(DEPDIR)/MRLineEditor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@PriorityQueue/$(DEPDIR)/pqueueindex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@PriorityQueue/$(DEPDIR)/priorityqueue.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ProgramOptions/$(DEPDIR)/program-options.Po@am__quote@
@@ -2117,6 +2158,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/ActionDispatcherThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/AvocadoHttpServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/AvocadoServer.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/LineEditor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/avocado.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ResultGenerator/$(DEPDIR)/HtmlResultGenerator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ResultGenerator/$(DEPDIR)/Initialise.Po@am__quote@
@@ -2162,10 +2204,10 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@UserManager/$(DEPDIR)/UserHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UserManager/$(DEPDIR)/UsersHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/JSLoader.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/V8LineEditor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-actions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-conv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-json.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-line-editor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-shell.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-vocbase.Po@am__quote@
@@ -2536,6 +2578,10 @@ distclean-generic:
 	-rm -f JsonParserX/$(am__dirstamp)
 	-rm -f Logger/$(DEPDIR)/$(am__dirstamp)
 	-rm -f Logger/$(am__dirstamp)
+	-rm -f MRClient/$(DEPDIR)/$(am__dirstamp)
+	-rm -f MRClient/$(am__dirstamp)
+	-rm -f MRuby/$(DEPDIR)/$(am__dirstamp)
+	-rm -f MRuby/$(am__dirstamp)
 	-rm -f PriorityQueue/$(DEPDIR)/$(am__dirstamp)
 	-rm -f PriorityQueue/$(am__dirstamp)
 	-rm -f ProgramOptions/$(DEPDIR)/$(am__dirstamp)
@@ -2588,7 +2634,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-local \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) UserManager/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) MRClient/$(DEPDIR) MRuby/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) UserManager/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -2636,7 +2682,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) UserManager/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) MRClient/$(DEPDIR) MRuby/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) UserManager/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
