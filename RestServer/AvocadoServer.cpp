@@ -45,6 +45,7 @@
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/RedirectHandler.h"
 #include "Logger/Logger.h"
+#include "MRuby/MRLineEditor.h"
 #include "Rest/Initialise.h"
 #include "RestHandler/RestActionHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
@@ -54,10 +55,10 @@
 #include "RestServer/AvocadoHttpServer.h"
 #include "UserManager/ApplicationUserManager.h"
 #include "V8/JSLoader.h"
+#include "V8/V8LineEditor.h"
 #include "V8/v8-actions.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
-#include "V8/v8-line-editor.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vocbase.h"
@@ -851,7 +852,6 @@ int AvocadoServer::executeShell (bool tests) {
 
       if (input == 0) {
         printf("<ctrl-D>\nBye Bye! Auf Wiedersehen!\n");
-        TRI_FreeString(input);
         break;
       }
 
@@ -952,10 +952,9 @@ mrb_value MR_AvocadoDatabase_Collection (mrb_state* mrb, mrb_value exc) {
 
 
 int AvocadoServer::executeRubyShell () {
-  struct mrb_parser_state *p;
-  mrb_state *mrb;
+  struct mrb_parser_state* p;
+  mrb_state* mrb;
   int n;
-  string str;
 
   // only simple logging
   TRI_ShutdownLogging();
@@ -967,6 +966,9 @@ int AvocadoServer::executeRubyShell () {
 
   // create a new ruby shell
   mrb = mrb_open();
+
+  // create a line editor
+  MRLineEditor* console = new MRLineEditor(mrb, ".avocado-mrb");
 
   // setup the classes
   AvocadoDatabaseClass = mrb_define_class(mrb, "AvocadoDatabase", mrb->object_class);
@@ -985,17 +987,26 @@ int AvocadoServer::executeRubyShell () {
 
   mrb_gv_set(mrb, mrb_intern(mrb, "$db"), db);
 
-  while (true) {
-    getline(cin, str);
+  // read-eval-print loop
+  console->open(true);
 
-    if (cin.eof()) {
-      cout << "Bye Bye! Auf Wiedersehen! さようなら\n";
+  while (true) {
+    char* input = console->prompt("avocmrb> ");
+
+    if (input == 0) {
+      printf("\nBye Bye! Auf Wiedersehen! さようなら\n");
       break;
     }
 
-    cout << "INPUT: " << str << "\n";
+    if (*input == '\0') {
+      TRI_FreeString(input);
+      continue;
+    }
 
-    p = mrb_parse_string(mrb, const_cast<char*>(str.c_str()));
+    console->addHistory(input);
+
+    p = mrb_parse_string(mrb, input);
+    TRI_FreeString(input);
 
     if (p == 0 || p->tree == 0 || 0 < p->nerr) {
       cout << "UPPS!\n";
@@ -1009,12 +1020,15 @@ int AvocadoServer::executeRubyShell () {
       continue;
     }
 
-    mrb_run(mrb, mrb_proc_new(mrb, mrb->irep[n]), mrb_nil_value());
+    mrb_value result = mrb_run(mrb, mrb_proc_new(mrb, mrb->irep[n]), mrb_nil_value());
 
     if (mrb->exc) {
-      cout << "OUTPUT\n";
+      cout << "OUTPUT EXCEPTION\n";
       mrb_funcall(mrb, mrb_nil_value(), "p", 1, mrb_obj_value(mrb->exc));
       cout << "\nOUTPUT END\n";
+    }
+    else {
+      mrb_funcall(mrb, mrb_nil_value(), "p", 1, result);
     }
   }
 

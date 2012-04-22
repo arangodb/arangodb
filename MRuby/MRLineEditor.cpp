@@ -25,7 +25,7 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "v8-line-editor.h"
+#include "MRLineEditor.h"
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -36,10 +36,15 @@
 #define completion_matches rl_completion_matches
 #endif
 
+extern "C" {
+#include "mruby.h"
+#include "compile.h"
+}
+
 using namespace std;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                class V8LineEditor
+// --SECTION--                                                class MRLineEditor
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -47,7 +52,7 @@ using namespace std;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
+/// @addtogroup MRShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -70,7 +75,7 @@ static char WordBreakCharacters[] = {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8LineEditor
+/// @addtogroup MRLineEditor
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -79,6 +84,9 @@ static char WordBreakCharacters[] = {
 ////////////////////////////////////////////////////////////////////////////////
 
 static char* CompletionGenerator (char const* text, int state) {
+  return 0;
+
+#if 0
   static size_t currentIndex;
   static vector<string> result;
   char* prefix;
@@ -182,6 +190,7 @@ static char* CompletionGenerator (char const* text, int state) {
     result.clear();
     return 0;
   }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -210,151 +219,6 @@ static char** AttemptedCompletion (char const* text, int start, int end) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if javascript is missing a closing bracket
-////////////////////////////////////////////////////////////////////////////////
-
-static bool CheckJavaScript (string const& source) {
-  char const* ptr;
-  char const* end;
-  int openParen;
-  int openBrackets;
-  int openBraces;
-
-  enum {
-    NORMAL,             // start
-    NORMAL_1,           // from NORMAL: seen a single /
-    DOUBLE_QUOTE,       // from NORMAL: seen a single "
-    DOUBLE_QUOTE_ESC,   // from DOUBLE_QUOTE: seen a backslash
-    SINGLE_QUOTE,       // from NORMAL: seen a single '
-    SINGLE_QUOTE_ESC,   // from SINGLE_QUOTE: seen a backslash
-    MULTI_COMMENT,      // from NORMAL_1: seen a *
-    MULTI_COMMENT_1,    // from MULTI_COMMENT, seen a *
-    SINGLE_COMMENT      // from NORMAL_1; seen a /
-  }
-  state;
-
-  openParen = 0;
-  openBrackets = 0;
-  openBraces = 0;
-
-  ptr = source.c_str();
-  end = ptr + source.length();
-  state = NORMAL;
-
-  while (ptr < end) {
-    if (state == DOUBLE_QUOTE) {
-      if (*ptr == '\\') {
-        state = DOUBLE_QUOTE_ESC;
-      }
-      else if (*ptr == '"') {
-        state = NORMAL;
-      }
-
-      ++ptr;
-    }
-    else if (state == DOUBLE_QUOTE_ESC) {
-      state = DOUBLE_QUOTE;
-      ptr++;
-    }
-    else if (state == SINGLE_QUOTE) {
-      if (*ptr == '\\') {
-        state = SINGLE_QUOTE_ESC;
-      }
-      else if (*ptr == '\'') {
-        state = NORMAL;
-      }
-
-      ++ptr;
-    }
-    else if (state == SINGLE_QUOTE_ESC) {
-      state = SINGLE_QUOTE;
-      ptr++;
-    }
-    else if (state == MULTI_COMMENT) {
-      if (*ptr == '*') {
-        state = MULTI_COMMENT_1;
-      }
-
-      ++ptr;
-    }
-    else if (state == MULTI_COMMENT_1) {
-      if (*ptr == '/') {
-        state = NORMAL;
-      }
-
-      ++ptr;
-    }
-    else if (state == SINGLE_COMMENT) {
-      ++ptr;
-
-      if (ptr == end) {
-        state = NORMAL;
-      }
-    }
-    else if (state == NORMAL_1) {
-      switch (*ptr) {
-        case '/':
-          state = SINGLE_COMMENT;
-          ++ptr;
-          break;
-
-        case '*':
-          state = MULTI_COMMENT;
-          ++ptr;
-          break;
-
-        default:
-          state = NORMAL; // try again, do not change ptr
-          break;
-      }
-    }
-    else {
-      switch (*ptr) {
-        case '"':
-          state = DOUBLE_QUOTE;
-          break;
-
-        case '\'':
-          state = SINGLE_QUOTE;
-          break;
-
-        case '/':
-          state = NORMAL_1;
-          break;
-
-        case '(':
-          ++openParen;
-          break;
-
-        case ')':
-          --openParen;
-          break;
-
-        case '[':
-          ++openBrackets;
-          break;
-
-        case ']':
-          --openBrackets;
-          break;
-
-        case '{':
-          ++openBraces;
-          break;
-
-        case '}':
-          --openBraces;
-          break;
-      }
-
-      ++ptr;
-    }
-  }
-
-  return openParen <= 0 && openBrackets <= 0 && openBraces <= 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -363,7 +227,7 @@ static bool CheckJavaScript (string const& source) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8LineEditor
+/// @addtogroup MRLineEditor
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -371,8 +235,8 @@ static bool CheckJavaScript (string const& source) {
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8LineEditor::V8LineEditor (v8::Handle<v8::Context> context, string const& history)
-  : _current(), _historyFilename(history), _context(context) {
+MRLineEditor::MRLineEditor (mrb_state* mrb, string const& history)
+  : LineEditor(history), _current(), _mrb(mrb) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -384,7 +248,7 @@ V8LineEditor::V8LineEditor (v8::Handle<v8::Context> context, string const& histo
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8LineEditor
+/// @addtogroup MRLineEditor
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -392,148 +256,52 @@ V8LineEditor::V8LineEditor (v8::Handle<v8::Context> context, string const& histo
 /// @brief line editor open
 ////////////////////////////////////////////////////////////////////////////////
 
-bool V8LineEditor::open (const bool autoComplete) {
-  rl_initialize();
-
-  if (autoComplete) {
-    rl_attempted_completion_function = AttemptedCompletion;
-    rl_completer_word_break_characters = WordBreakCharacters;
-
-    rl_bind_key('\t', rl_complete);
-  }
-
-  using_history();
-  stifle_history(MAX_HISTORY_ENTRIES);
-
-  return read_history(getHistoryPath().c_str()) == 0;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor shutdown
-////////////////////////////////////////////////////////////////////////////////
-
-bool V8LineEditor::close () {
-  bool result = write_history(getHistoryPath().c_str());
-
-  return result;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the history file path
-////////////////////////////////////////////////////////////////////////////////
-
-string V8LineEditor::getHistoryPath () {
-  string path;
-  
-  if (getenv("HOME")) {
-    path.append(getenv("HOME"));
-    path += '/';
-  }
-
-  path.append(_historyFilename); 
-
-  return path;
+bool MRLineEditor::open (const bool autoComplete) {
+  return LineEditor::open(autoComplete);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor prompt
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-char* V8LineEditor::prompt (char const* prompt) {
-  string dotdot;
-  char const* p = prompt;
-  size_t len1 = strlen(prompt);
-  size_t len2 = len1;
-
-  if (len1 < 3) {
-    dotdot = "> ";
-    len2 = 2;
-  }
-  else {
-    dotdot = string(len1 - 2, '.') + "> ";
-  }
-
-  char const* sep = "";
-  char* originalLine = 0; 
-
-  while (true) {
-    char* result = readline(p);
-    originalLine = result;
-    p = dotdot.c_str();
-
-    if (result == 0) {
-      // give up, if the user pressed control-D on the top-most level
-      if (_current.empty()) {
-        return 0;
-      }
-
-      // otherwise clear current content
-      _current.clear();
-      break;
-    }
-
-    _current += sep;
-    sep = "\n";
-
-    bool c1 = strncmp(result, prompt, len1) == 0;
-    bool c2 = strncmp(result, dotdot.c_str(), len2) == 0;
-
-    while (c1 || c2) {
-      if (c1) {
-        result += len1;
-      }
-      else if (c2) {
-        result += len2;
-      }
-
-      c1 = strncmp(result, prompt, len1) == 0;
-      c2 = strncmp(result, dotdot.c_str(), len2) == 0;
-    }
-
-    _current += result;
-    bool ok = CheckJavaScript(_current);
-
-    if (ok) {
-      break;
-    }
-    TRI_Free(originalLine);
-  }
-
-  char* line = TRI_DuplicateString(_current.c_str());
-  _current.clear();
-
-  // avoid memleaks
-  if (originalLine != 0) {
-    TRI_Free(originalLine);
-  }
-
-  return line;
-}
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add to history
+/// @addtogroup LineEditor
+/// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8LineEditor::addHistory (char const* str) {
-  if (*str == '\0') {
-    return;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if line is complete
+////////////////////////////////////////////////////////////////////////////////
+
+bool MRLineEditor::isComplete (string const& source, size_t lineno, size_t column) {
+  char const* msg = "syntax error, unexpected $end";
+  char* text = TRI_DuplicateString(source.c_str());
+
+  struct mrb_parser_state* p = mrb_parse_nstring_ext(_mrb, text, source.size());
+  TRI_FreeString(text);
+
+  // out of memory?
+  if (p == 0) {
+    return true;
   }
 
-  history_set_pos(history_length-1);
+  // no error or strange error
+  if (p->tree != 0) {
+    return true;
+  }
 
-  if (current_history()) {
-    do {
-      if (strcmp(current_history()->line, str) == 0) {
-        remove_history(where_history());
-        break;
-      }
+  // check for end-of-line
+  if (0 < p->nerr) {
+    if (strncmp(p->error_buffer[0].message, msg, strlen(msg)) == 0) {
+      return false;
     }
-    while (previous_history());
   }
 
-  add_history(str);
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

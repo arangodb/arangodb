@@ -58,6 +58,7 @@ libavocado_a_SOURCES = \
 	Logger/LoggerInfo.cpp \
 	Logger/LoggerStream.cpp \
 	Logger/LoggerTiming.cpp \
+	MRuby/MRLineEditor.cpp \
 	ProgramOptions/program-options.c \
 	Rest/AddressPort.cpp \
 	Rest/AnyServer.cpp \
@@ -67,6 +68,7 @@ libavocado_a_SOURCES = \
 	Rest/JsonContainer.cpp \
 	Rest/SslInterface.cpp \
 	Rest/Url.cpp \
+	RestServer/LineEditor.cpp \
 	ShapedJson/json-shaper.c \
 	ShapedJson/shape-accessor.c \
 	ShapedJson/shaped-json.c \
@@ -80,7 +82,7 @@ libavocado_a_SOURCES = \
 	V8/JSLoader.cpp \
 	V8/v8-conv.cpp \
 	V8/v8-json.cpp \
-	V8/v8-line-editor.cpp \
+	V8/V8LineEditor.cpp \
 	V8/v8-shell.cpp \
 	V8/v8-utils.cpp \
 	Variant/VariantArray.cpp \
@@ -224,6 +226,15 @@ avocsh_SOURCES = \
 	V8Client/ImportHelper.cpp \
 	V8Client/V8ClientConnection.cpp \
 	V8Client/avocsh.cpp
+
+################################################################################
+## avocado ruby shell
+################################################################################
+
+avocirb_LDADD = libavocado.a $(LIBS)
+
+avocirb_SOURCES = \
+	MRClient/avocirb.cpp
 
 ################################################################################
 ## avocado importer
