@@ -152,6 +152,7 @@ if test "x$ALL_IN_ONE_ENABLE" = xyes;  then
 else
   m4_include([m4/external.libev])
   m4_include([m4/external.v8])
+  m4_include([m4/all-in-one.mruby])
   BASIC_INFO="$BASIC_INFO|ALL-IN-ONE: disabled"
 fi
 
