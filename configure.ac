@@ -147,14 +147,14 @@ m4_include([m4/external.openssl])
 if test "x$ALL_IN_ONE_ENABLE" = xyes;  then
   m4_include([m4/all-in-one.libev])
   m4_include([m4/all-in-one.v8])
-  m4_include([m4/all-in-one.mruby])
   BASIC_INFO="$BASIC_INFO|ALL-IN-ONE: enabled"
 else
   m4_include([m4/external.libev])
   m4_include([m4/external.v8])
-  m4_include([m4/all-in-one.mruby])
   BASIC_INFO="$BASIC_INFO|ALL-IN-ONE: disabled"
 fi
+
+m4_include([m4/all-in-one.mruby])
 
 if test "x$tr_INCLUDED_BOOST" = xyes;  then
   m4_include([m4/all-in-one.boost])

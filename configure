@@ -8404,49 +8404,6 @@ FLAG_INFO="$FLAG_INFO|."
 
 
 
-
-
-ENABLE_MRUBY="yes"
-
-MRUBY_CPPFLAGS="-I${srcdir}/3rdParty/mruby/include"
-MRUBY_LDFLAGS=""
-MRUBY_LIBS="${srcdir}/3rdParty/mruby/lib/ritevm.a"
-
-TRI_MRUBY_VERSION="0.0.0"
-
- if true; then
-  ENABLE_MRUBY_TRUE=
-  ENABLE_MRUBY_FALSE='#'
-else
-  ENABLE_MRUBY_TRUE='#'
-  ENABLE_MRUBY_FALSE=
-fi
-
-
-cat >>confdefs.h <<_ACEOF
-#define TRI_ENABLE_MRUBY 1
-_ACEOF
-
-
-
-
-
-
-
-MRUBY_CPPFLAGS="${MRUBY_CPPFLAGS} -DTRI_MRUBY_VERSION='\"${TRI_MRUBY_VERSION}\"'"
-
-
-BASIC_INFO="$BASIC_INFO|MRUBY: disabled"
-
-LIB_INFO="$LIB_INFO|MRUBY VERSION: ${TRI_MRUBY_VERSION}"
-
-FLAG_INFO="$FLAG_INFO|MRUBY_CPPFLAGS: ${MRUBY_CPPFLAGS}"
-FLAG_INFO="$FLAG_INFO|MRUBY_LDFLAGS:  ${MRUBY_LDFLAGS}"
-FLAG_INFO="$FLAG_INFO|MRUBY_LIBS:     ${MRUBY_LIBS}"
-FLAG_INFO="$FLAG_INFO|."
-
-
-
   BASIC_INFO="$BASIC_INFO|ALL-IN-ONE: enabled"
 else
 
@@ -8964,6 +8921,50 @@ FLAG_INFO="$FLAG_INFO|."
 
   BASIC_INFO="$BASIC_INFO|ALL-IN-ONE: disabled"
 fi
+
+
+
+ENABLE_MRUBY="yes"
+
+MRUBY_CPPFLAGS="-I${srcdir}/3rdParty/mruby/include"
+MRUBY_LDFLAGS=""
+MRUBY_LIBS="${srcdir}/3rdParty/mruby/lib/ritevm.a"
+
+TRI_MRUBY_VERSION="0.0.0"
+
+ if true; then
+  ENABLE_MRUBY_TRUE=
+  ENABLE_MRUBY_FALSE='#'
+else
+  ENABLE_MRUBY_TRUE='#'
+  ENABLE_MRUBY_FALSE=
+fi
+
+
+cat >>confdefs.h <<_ACEOF
+#define TRI_ENABLE_MRUBY 1
+_ACEOF
+
+
+
+
+
+
+
+MRUBY_CPPFLAGS="${MRUBY_CPPFLAGS} -DTRI_MRUBY_VERSION='\"${TRI_MRUBY_VERSION}\"'"
+
+
+BASIC_INFO="$BASIC_INFO|MRUBY: disabled"
+
+LIB_INFO="$LIB_INFO|MRUBY VERSION: ${TRI_MRUBY_VERSION}"
+
+FLAG_INFO="$FLAG_INFO|MRUBY_CPPFLAGS: ${MRUBY_CPPFLAGS}"
+FLAG_INFO="$FLAG_INFO|MRUBY_LDFLAGS:  ${MRUBY_LDFLAGS}"
+FLAG_INFO="$FLAG_INFO|MRUBY_LIBS:     ${MRUBY_LIBS}"
+FLAG_INFO="$FLAG_INFO|."
+
+
+
 
 if test "x$tr_INCLUDED_BOOST" = xyes;  then
 
@@ -9559,12 +9560,12 @@ if test -z "${ENABLE_LIBEV_TRUE}" && test -z "${ENABLE_LIBEV_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_LIBEV\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
-if test -z "${ENABLE_MRUBY_TRUE}" && test -z "${ENABLE_MRUBY_FALSE}"; then
-  as_fn_error $? "conditional \"ENABLE_MRUBY\" was never defined.
-Usually this means the macro was only invoked conditionally." "$LINENO" 5
-fi
 if test -z "${ENABLE_LIBEV_TRUE}" && test -z "${ENABLE_LIBEV_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_LIBEV\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_MRUBY_TRUE}" && test -z "${ENABLE_MRUBY_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_MRUBY\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 
