@@ -1,0 +1,44 @@
+# -*- mode: Makefile; -*-
+
+################################################################################
+## LIBEV
+################################################################################
+
+if ENABLE_64BIT
+LIBEV_BUILD_VERSION=ARCH.x64
+endif
+
+if ENABLE_32BIT
+LIBEV_BUILD_VERSION=ARCH.ia32
+endif
+
+if ENABLE_FORCE_32BIT
+LIBEV_BUILD_CFLAGS_X=-m32 -O2 -g
+LIBEV_BUILD_LDFLAGS_X=-m32
+else
+LIBEV_BUILD_CFLAGS_X=-O2 -g
+LIBEV_BUILD_LDFLAGS_X=
+endif
+
+BUILT_SOURCES += @LIBEV_LIBS@
+
+@LIBEV_LIBS@: .libev-build
+
+.libev-build:
+	@echo
+	@echo "--------------------------------------------------------------------------------"
+	@echo "BUILDING LIBEV"
+	@echo "--------------------------------------------------------------------------------"
+	@echo
+
+	mkdir @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) || true
+	cd @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) && CFLAGS="$(LIBEV_BUILD_CFLAGS_X)" orig_CFLAGS="$(LIBEV_BUILD_CFLAGS_X)" LDFLAGS="$(LIBEV_BUILD_LDFLAGS_X)" ../configure --disable-shared
+	cd @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) && make
+
+	touch .libev-build
+
+	@echo
+	@echo "--------------------------------------------------------------------------------"
+	@echo "BUILD LIBEV FINISHED"
+	@echo "--------------------------------------------------------------------------------"
+	@echo

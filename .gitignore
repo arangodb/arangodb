@@ -1,6 +1,17 @@
 *~
 3rdParty/libev/ARCH.x64
 3rdParty/libev/libtool
+3rdParty/mruby/bin/mrbc
+3rdParty/mruby/bin/mruby
+3rdParty/mruby/bin/mrubysample
+3rdParty/mruby/GIT
+3rdParty/mruby/GPATH
+3rdParty/mruby/GRTAGS
+3rdParty/mruby/GTAGS
+3rdParty/mruby/lib/ritevm.a
+3rdParty/mruby/mrblib/mrblib.c
+3rdParty/mruby/mrblib/mrblib.ctmp
+3rdParty/mruby/mrblib/mrblib.rbtmp
 3rdParty/ptmalloc3/libptmalloc3.a
 3rdParty/ptmalloc3/tst-independent-alloc
 3rdParty/ptmalloc3/t-test1
@@ -9,8 +20,9 @@ ARCH.*
 autom4te.cache
 avocado
 avocadodb
-avocsh
 avocimp
+avocirb
+avocsh
 BasicsC/local-configuration.h
 build.h
 build.info
@@ -30,8 +42,12 @@ Doxygen/js
 Doxygen/latex/
 Doxygen/wiki/
 Doxygen/xml/
+.DS_Store
 *.gcda
 *.gcno
+GPATH
+GRTAGS
+GTAGS
 JsonParserX/JsonParserX.output
 *.la
 libavocado.a
@@ -58,6 +74,7 @@ m4/external.boost-test
 m4/external.libxml2
 Makefile
 Makefile.local
+.mruby-build
 *.o
 *.old
 out
@@ -80,7 +97,3 @@ UnitTests/Philadelphia/Runner.cpp
 UnitTests/test_suite
 .v8-build
 VC++
-.DS_Store
-GPATH
-GRTAGS
-GTAGS
