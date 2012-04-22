@@ -82,3 +82,15 @@ UnitTests/test_suite
 .v8-build
 VC++
 .DS_Store
+.mruby-build
+3rdParty/mruby/GIT
+3rdParty/mruby/GPATH
+3rdParty/mruby/GRTAGS
+3rdParty/mruby/GTAGS
+3rdParty/mruby/bin/mrbc
+3rdParty/mruby/bin/mruby
+3rdParty/mruby/bin/mrubysample
+3rdParty/mruby/lib/ritevm.a
+3rdParty/mruby/mrblib/mrblib.c
+3rdParty/mruby/mrblib/mrblib.ctmp
+3rdParty/mruby/mrblib/mrblib.rbtmp

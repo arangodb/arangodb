@@ -92,7 +92,12 @@ include Makefile.bison
 endif
 
 if ENABLE_ALL_IN_ONE
-include Makefile.all-in-one
+include Makefile.all-in-one-libev
+include Makefile.all-in-one-v8
+endif
+
+if ENABLE_MRUBY
+include Makefile.all-in-one-mruby
 endif
 
 ################################################################################
