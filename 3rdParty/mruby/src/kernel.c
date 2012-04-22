@@ -31,84 +31,11 @@ KHASH_MAP_INIT_INT(iv, mrb_value);
 #define TRUE    1
 #endif
 
-static mrb_value tst_setconst(mrb_state *mrb, mrb_value obj);
-int kiv_lookup(khash_t(iv) *table, mrb_sym key, mrb_value *value);
-
 struct obj_ivar_tag {
   mrb_value obj;
   int (*func)(mrb_sym key, mrb_value val, void * arg);
   void * arg;
 };
-
-static int
-obj_ivar_i(mrb_sym key, int index, struct obj_ivar_tag *arg)
-{
-  enum st_retval {ST_CONTINUE, ST_STOP, ST_DELETE, ST_CHECK};
-  struct obj_ivar_tag *data = (struct obj_ivar_tag *)arg;
-  if ((long)index < ROBJECT_NUMIV(data->obj)) {
-      mrb_value val = ROBJECT_IVPTR(data->obj)->vals[(long)index];
-      if (val.tt != MRB_TT_FREE) {
-          return (data->func)((mrb_sym)key, val, data->arg);
-      }
-  }
-  return ST_CONTINUE;
-}
-
-void
-mrb_ivar_foreach(mrb_state *mrb, mrb_value obj, int (*func)(ANYARGS), void* arg)
-{
-  struct obj_ivar_tag data;
-  switch (mrb_type(obj)) {
-    case MRB_TT_OBJECT:
-      //obj_ivar_each(mrb, obj, func, arg);
-      if (RCLASS_IV_TBL(obj)) {
-        data.obj = obj;
-        data.func = (int (*)(mrb_sym key, mrb_value val, void * arg))func;
-        data.arg = arg;
-        st_foreach_safe(mrb, RCLASS_IV_TBL(obj), obj_ivar_i, (void *)&data);
-      }
-      break;
-    case MRB_TT_CLASS:
-    case MRB_TT_MODULE:
-      if (RCLASS_IV_TBL(obj)) {
-        st_foreach_safe(mrb, RCLASS_IV_TBL(obj), func, arg);
-      }
-      break;
-    default:
-      if (!ROBJECT_IVPTR(obj)/*generic_iv_tbl*/) break;
-      if (/*FL_TEST(obj, FL_EXIVAR) ||*/ mrb_special_const_p(obj)) {
-        mrb_value *tbl=0;
-        if (kiv_lookup(ROBJECT_IVPTR(obj)/*generic_iv_tbl*/, SYM2ID(obj), tbl)) {
-          st_foreach_safe(mrb, (void *)tbl, func, arg);
-        }
-      }
-      break;
-  }
-}
-
-static int
-inspect_i(mrb_state *mrb, mrb_sym id, mrb_value value, mrb_value str)
-{
-  enum st_retval {ST_CONTINUE, ST_STOP, ST_DELETE, ST_CHECK};
-  mrb_value str2;
-  const char *ivname;
-  /* need not to show internal data */
-  if (RSTRING_PTR(str)[0] == '-') { /* first element */
-    RSTRING_PTR(str)[0] = '#';
-    mrb_str_cat2(mrb, str, " ");
-  }
-  else {
-    mrb_str_cat2(mrb, str, ", ");
-  }
-  ivname = mrb_sym2name(mrb, id);
-  mrb_str_cat2(mrb, str, ivname);
-  mrb_str_cat2(mrb, str, "=");
-  str2 = mrb_inspect(mrb, value);
-  mrb_str_append(mrb, str, str2);
-  //OBJ_INFECT(str, str2);
-
-  return ST_CONTINUE;
-}
 
 static mrb_value
 inspect_obj(mrb_state *mrb, mrb_value obj, mrb_value str, int recur)
@@ -117,11 +44,32 @@ inspect_obj(mrb_state *mrb, mrb_value obj, mrb_value str, int recur)
     mrb_str_cat2(mrb, str, " ...");
   }
   else {
-    mrb_ivar_foreach(mrb, obj, inspect_i, &str);
+    khiter_t k;
+    kh_iv_t *h = RCLASS_IV_TBL(obj);
+
+    if (h) {
+      for (k = kh_begin(h); k != kh_end(h); k++) {
+	if (kh_exist(h, k)){
+	  mrb_sym id = kh_key(h, k);
+	  mrb_value value = kh_value(h, k);
+
+	  /* need not to show internal data */
+	  if (RSTRING_PTR(str)[0] == '-') { /* first element */
+	    RSTRING_PTR(str)[0] = '#';
+	    mrb_str_cat2(mrb, str, " ");
+	  }
+	  else {
+	    mrb_str_cat2(mrb, str, ", ");
+	  }
+	  mrb_str_cat2(mrb, str, mrb_sym2name(mrb, id));
+	  mrb_str_cat2(mrb, str, "=");
+	  mrb_str_append(mrb, str, mrb_inspect(mrb, value));
+	}
+      }
+    }
   }
   mrb_str_cat2(mrb, str, ">");
   RSTRING_PTR(str)[0] = '#';
-  //OBJ_INFECT(str, obj);
 
   return str;
 }
@@ -156,19 +104,9 @@ mrb_value
 mrb_obj_inspect(mrb_state *mrb, mrb_value obj)
 {
   if ((mrb_type(obj) == MRB_TT_OBJECT) && mrb_obj_basic_to_s_p(mrb, obj)) {
-    int has_ivar = 0;
-    mrb_value *ptr = (mrb_value *)ROBJECT_IVPTR(obj);
     long len = ROBJECT_NUMIV(obj);
-    long i;
 
-    for (i = 0; i < len; i++) {
-      if (ptr[i].tt != MRB_TT_FREE) {
-        has_ivar = 1;
-        break;
-      }
-    }
-
-    if (has_ivar) {
+    if (len > 0) {
       mrb_value str;
       const char *c = mrb_obj_classname(mrb, obj);
 
@@ -423,7 +361,6 @@ mrb_singleton_class_clone(mrb_state *mrb, mrb_value obj)
 
       clone->super = klass->super;
       if (klass->iv) {
-          //clone->iv = st_copy(klass->iv);
           clone->iv = klass->iv;
       }
     clone->mt = kh_init(mt, mrb);
@@ -449,11 +386,9 @@ init_copy(mrb_state *mrb, mrb_value dest, mrb_value obj)
       case MRB_TT_CLASS:
       case MRB_TT_MODULE:
         if (ROBJECT(dest)->iv) {
-            //st_free_table(ROBJECT(dest)->iv);
             ROBJECT(dest)->iv = 0;
         }
         if (ROBJECT(obj)->iv) {
-            //ROBJECT(dest)->iv = st_copy((st_table *)ROBJECT(obj)->iv);
             ROBJECT(dest)->iv = ROBJECT(obj)->iv;
         }
     }
@@ -994,7 +929,6 @@ class_instance_method_list(mrb_state *mrb, int argc, mrb_value *argv, struct RCl
 {
   mrb_value ary;
   int recur;
-  //st_table *list;
   struct RClass* oldklass;
 
   if (argc == 0) {
@@ -1006,25 +940,19 @@ class_instance_method_list(mrb_state *mrb, int argc, mrb_value *argv, struct RCl
       recur = mrb_test(r);
   }
 
-  //list = st_init_numtable();
   ary = mrb_ary_new(mrb);
-  //for (; mod; mod = RCLASS_SUPER(mod)) {
   oldklass = 0;
   while (klass && (klass != oldklass)) {
-    //st_foreach(RCLASS_M_TBL(mod), method_entry, (st_data_t)list);
     method_entry_loop(mrb, klass, ary);
     if ((klass->tt == MRB_TT_ICLASS) ||
         (klass->tt == MRB_TT_SCLASS)) {
     }
-    else
-    {
+    else {
       if (!recur) break;
     }
     oldklass = klass;
     klass = klass->super;
   }
-  //st_foreach(list, func, ary);
-  //st_free_table(list);
 
   return ary;
 }
@@ -1033,7 +961,6 @@ mrb_value
 mrb_obj_singleton_methods(mrb_state *mrb, int argc, mrb_value *argv, mrb_value obj)
 {
   mrb_value recur, ary;
-  //st_table *list;
   struct RClass* klass;
 
   if (argc == 0) {
@@ -1044,22 +971,17 @@ mrb_obj_singleton_methods(mrb_state *mrb, int argc, mrb_value *argv, mrb_value o
       recur = argv[0];
   }
   klass = mrb_class(mrb, obj);
-  //list = st_init_numtable();
   ary = mrb_ary_new(mrb);
   if (klass && (klass->tt == MRB_TT_SCLASS)) {
-      //st_foreach(RCLASS_M_TBL(klass), method_entry, (st_data_t)list);
       method_entry_loop(mrb, klass, ary);
       klass = klass->super;
   }
   if (RTEST(recur)) {
       while (klass && ((klass->tt == MRB_TT_SCLASS) || (klass->tt == MRB_TT_ICLASS))) {
-        //st_foreach(RCLASS_M_TBL(klass), method_entry, (st_data_t)list);
         method_entry_loop(mrb, klass, ary);
         klass = klass->super;
       }
   }
-  //st_foreach(list, ins_methods_i, ary);
-  //st_free_table(list);
 
   return ary;
 }
@@ -1326,14 +1248,8 @@ mrb_obj_remove_instance_variable(mrb_state *mrb, mrb_value self)
         }
       }
       break;
-    //default:
-    //    if (mrb_special_const_p(obj)) {
-    //      v = val;
-    //      if (generic_ivar_remove(obj, (st_data_t)id, &v)) {
-    //          return (VALUE)v;
-    //      }
-    //    }
-    //    break;
+    default:
+      break;
   }
   mrb_name_error(mrb, sym, "instance variable %s not defined", mrb_sym2name(mrb, sym));
   return mrb_nil_value();            /* not reached */

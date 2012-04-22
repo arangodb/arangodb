@@ -45,11 +45,11 @@ mrubyは[ISO規格](http://www.ipa.go.jp/about/press/20120402_2.html)に準拠�
 
 開発先端のソースコードは次のコマンドで取得できます。
 
-    $ git ....
+    $ git clone https://github.com/mruby/mruby.git
 
 他に開発中のブランチの一覧は次のコマンドで見られます。
 
-    $ git ....
+    $ git branch -r
 
 
 ## ホームページ
@@ -80,12 +80,28 @@ INSTALL.ja ファイルを参照してください。
 
 ## 配布条件
 
-COPYING.ja ファイルを参照してください。
+Copyright (c) 2012 mruby developers
 
+Permission is hereby granted, free of charge, to any person obtaining a 
+copy of this software and associated documentation files (the "Software"), 
+to deal in the Software without restriction, including without limitation 
+the rights to use, copy, modify, merge, publish, distribute, sublicense, 
+and/or sell copies of the Software, and to permit persons to whom the 
+Software is furnished to do so, subject to the following conditions:
 
-## コントリビュートについて
+The above copyright notice and this permission notice shall be included in 
+all copies or substantial portions of the Software.
 
-mrubyへの貢献の検討をありがとうございます。
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+DEALINGS IN THE SOFTWARE.
+
+## ライセンスについて
+
 mrubyは組込み機器などの様々な環境で利用させることを期待し、ライセンスを
 比較的制限の緩いMITライセンスにすることにいたしました。
 しかしながら、ライセンスの実行条件としてマニュアル等の何らかの形で
@@ -97,19 +113,14 @@ mrubyは組込み機器などの様々な環境で利用させることを期待
 "mruby developers"の一員としてMITライセンスでの配布をお願いしたいと
 考えています。
 (コミットしたコードの著作権を譲渡や放棄をお願いするものではありません。
- 実質の著作者名はAUTHORSファイルに表記いたします。)
+ 希望があれば、著作者名はAUTHORSファイルに表記いたします。)
 
 尚、その他のライセンスでの配布やGPL由来のコードのコミットについては
 別途ご相談ください。
 
+## コントリビュートについて
 
-## 著者
-
-AUTHORS ファイルを参照してください。
-
-
-コメント，バグレポートその他は
-
-  devel@mruby.org
-
-まで。
+<http://github.com/mruby/mruby>にpull requestを送ってください。
+pull requestに含まれるコードについてMITライセンスでの配布を承諾したものとみなします。
+もし、mruby developersとして名前を残したいということであれば、
+pull requestにAUTHORSファイルへの修正を含めてください。

@@ -34,10 +34,8 @@ mrb_value
 mrb_ary_new_capa(mrb_state *mrb, size_t capa)
 {
   struct RArray *a;
+  size_t blen;
 
-  if (capa < 0) {
-    mrb_raise(mrb, E_ARGUMENT_ERROR, "negative ary size (or size too big)");
-  }
 #ifdef LONG_MAX
   if (capa > ARY_MAX_SIZE) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "ary size too big");
@@ -46,10 +44,14 @@ mrb_ary_new_capa(mrb_state *mrb, size_t capa)
   if (capa < ARY_DEFAULT_LEN) {
     capa = ARY_DEFAULT_LEN;
   }
+  blen = capa * sizeof(mrb_value) ;
+  if (blen < capa) {
+    mrb_raise(mrb, E_ARGUMENT_ERROR, "ary size too big");
+  }
 
   a = mrb_obj_alloc(mrb, MRB_TT_ARRAY, mrb->array_class);
-  a->buf = mrb_malloc(mrb, sizeof(mrb_value) * capa);
-  memset(a->buf, 0, sizeof(mrb_value) * capa);
+  a->buf = mrb_malloc(mrb, blen);
+  memset(a->buf, 0, blen);
   a->capa = capa;
   a->len = 0;
 

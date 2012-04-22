@@ -25,6 +25,12 @@ enum mrb_lex_state_enum {
     EXPR_MAX_STATE
 };
 
+struct mrb_parser_message {
+  int lineno;
+  int column;
+  char* message;
+};
+
 struct mrb_parser_state {
   mrb_state *mrb;
   struct mrb_pool *pool;
@@ -55,7 +61,12 @@ struct mrb_parser_state {
   void *ylval;
 
   int nerr;
+  int nwarn;
   mrb_ast_node *tree, *begin_tree;
+
+  int capture_errors;
+  struct mrb_parser_message error_buffer[10];
+  struct mrb_parser_message warn_buffer[10];
 
   jmp_buf jmp;
 };
@@ -63,6 +74,7 @@ struct mrb_parser_state {
 struct mrb_parser_state* mrb_parse_file(mrb_state*,FILE*);
 struct mrb_parser_state* mrb_parse_string(mrb_state*,char*);
 struct mrb_parser_state* mrb_parse_nstring(mrb_state*,char*,size_t);
+struct mrb_parser_state* mrb_parse_nstring_ext(mrb_state*,char*,size_t);
 int mrb_generate_code(mrb_state*, mrb_ast_node*);
 
 int mrb_compile_file(mrb_state*,FILE*);
