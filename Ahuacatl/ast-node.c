@@ -74,7 +74,6 @@ static inline void InitNode (TRI_aql_parse_context_t* const context,
 static void FreeNodeList (TRI_aql_node_t* const node) {
   TRI_aql_node_list_t* _node = (TRI_aql_node_list_t*) node;
 
-  // todo: free values
   TRI_DestroyVectorPointer(&_node->_values);
 }
 
@@ -85,7 +84,6 @@ static void FreeNodeList (TRI_aql_node_t* const node) {
 static void FreeNodeArray (TRI_aql_node_t* const node) {
   TRI_aql_node_array_t* _node = (TRI_aql_node_array_t*) node;
 
-  // todo: free values
   TRI_DestroyAssociativePointer(&_node->_values);
 }
 
@@ -419,8 +417,8 @@ TRI_aql_node_t* TRI_CreateNodeVariableAql (TRI_aql_parse_context_t* const contex
   }
   
   if (!TRI_AddVariableParseContextAql(context, name)) {
-    printf("fail in %lu\n",(unsigned long) __LINE__);
-    TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, name); // TODO: duplicate variable name
+    // duplicate variable name 
+    TRI_SetErrorAql(context, TRI_ERROR_QUERY_VARIABLE_REDECLARED, name); 
     return NULL;
   }
   
@@ -1435,7 +1433,8 @@ bool TRI_PushArrayAql (TRI_aql_parse_context_t* const context,
   }
   
   if (TRI_InsertKeyAssociativePointer(&array->_values, element->_name, (void*) element, false)) {
-    // duplicate element TODO
+    // duplicate element in a document/array, e.g. { "name" : "John", "name" : "Jim" }
+    TRI_SetErrorAql(context, TRI_ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED, name); 
     return false;
   }
 

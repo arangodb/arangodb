@@ -116,6 +116,8 @@ ERROR_QUERY_BIND_PARAMETER_NUMBER_OUT_OF_RANGE,1517,"bind parameter number '%s' 
 ERROR_QUERY_FUNCTION_NAME_UNKNOWN,1518,"usage of unknown function '%s'","Will be raised when an undefined function is called."
 ERROR_QUERY_RUNTIME_ERROR,1520,"runtime error in query","Will be raised when a Javascript runtime error occurs while executing a query."
 ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE,1521,"limit value '%s' is out of range","Will be raised when a limit value in the query is outside the allowed range (e. g. when passing a negative skip value)."
+ERROR_QUERY_VARIABLE_REDECLARED,1522,"variable '%s' is assigned multiple times","Will be raised when a variable gets re-assigned in a query."
+ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED,1523,"document attribute '%s' is assigned multiple times","Will be raised when a document attribute is re-assigned."
 
 ################################################################################
 ## AvocadoDB cursor errors

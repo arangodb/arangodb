@@ -76,6 +76,8 @@ ModuleCache["/internal"].exports.errors = {
   "ERROR_QUERY_FUNCTION_NAME_UNKNOWN" : { "code" : 1518, "message" : "usage of unknown function '%s'" }, 
   "ERROR_QUERY_RUNTIME_ERROR"    : { "code" : 1520, "message" : "runtime error in query" }, 
   "ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE" : { "code" : 1521, "message" : "limit value '%s' is out of range" }, 
+  "ERROR_QUERY_VARIABLE_REDECLARED" : { "code" : 1522, "message" : "variable '%s' is assigned multiple times" }, 
+  "ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED" : { "code" : 1523, "message" : "document attribute '%s' is assigned multiple times" }, 
   "ERROR_CURSOR_NOT_FOUND"       : { "code" : 1600, "message" : "cursor not found" }, 
   "ERROR_SESSION_USERHANDLER_URL_INVALID" : { "code" : 1700, "message" : "expecting <prefix>/user/<username>" }, 
   "ERROR_SESSION_USERHANDLER_CANNOT_CREATE_USER" : { "code" : 1701, "message" : "cannot create user" }, 
