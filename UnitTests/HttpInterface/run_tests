@@ -7,4 +7,5 @@ rspec --format d \
 	rest_create-document_spec.rb \
 	rest_read-document_spec.rb \
 	rest_update-document_spec.rb \
-	rest_delete-document_spec.rb
+	rest_delete-document_spec.rb \
+	rest_edge_spec.rb
