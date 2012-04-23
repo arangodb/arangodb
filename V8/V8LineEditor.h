@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_V8_V8_LINE_EDITOR_H
 #define TRIAGENS_V8_V8_LINE_EDITOR_H
 
-#include "RestServer/LineEditor.h"
+#include "Utilities/LineEditor.h"
 
 #include <v8.h>
 

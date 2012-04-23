@@ -44,6 +44,9 @@
 #include "VocBase/query-execute.h"
 #include "VocBase/simple-collection.h"
 #include "SkipLists/sl-operator.h"
+#include "Ahuacatl/ast-node.h"
+#include "Ahuacatl/ast-codegen-js.h"
+#include "Ahuacatl/parser.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -679,6 +682,68 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
 
   v8::Handle<v8::Value> empty;
   return scope.Close(empty);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert v8 arguments to json_t values
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* ConvertHelper(v8::Handle<v8::Value> parameter) {
+  if (parameter->IsBoolean()) {
+    v8::Handle<v8::Boolean> booleanParameter = parameter->ToBoolean();
+    return TRI_CreateBooleanJson(booleanParameter->Value());
+  }
+
+  if (parameter->IsNull()) {
+    return TRI_CreateNullJson();
+  }
+  
+  if (parameter->IsNumber()) {
+    v8::Handle<v8::Number> numberParameter = parameter->ToNumber();
+    return TRI_CreateNumberJson(numberParameter->Value());
+  }
+
+  if (parameter->IsString()) {
+    v8::Handle<v8::String> stringParameter= parameter->ToString();
+    v8::String::Utf8Value str(stringParameter);
+    return TRI_CreateStringCopyJson(*str);
+  }
+
+  if (parameter->IsArray()) {
+    v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
+    TRI_json_t* listJson = TRI_CreateListJson();
+    if (listJson) {
+      for (uint32_t j = 0; j < arrayParameter->Length(); ++j) {
+        v8::Handle<v8::Value> item = arrayParameter->Get(j);    
+        TRI_json_t* result = ConvertHelper(item);
+        if (result) {
+          TRI_PushBack2ListJson(listJson, result);
+          TRI_Free(result);
+        }
+      }
+    }
+    return listJson;
+  }
+
+  if (parameter->IsObject()) {
+    v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
+    TRI_json_t* arrayJson = TRI_CreateArrayJson();
+    if (arrayJson) {
+      v8::Handle<v8::Array> names = arrayParameter->GetOwnPropertyNames();
+      for (uint32_t j = 0; j < names->Length(); ++j) {
+        v8::Handle<v8::Value> key = names->Get(j);
+        v8::Handle<v8::Value> item = arrayParameter->Get(key);    
+        TRI_json_t* result = ConvertHelper(item);
+        if (result) {
+          TRI_Insert2ArrayJson(arrayJson, TRI_ObjectToString(key).c_str(), result);
+          TRI_Free(result);
+        }
+      }
+    }
+    return arrayJson;
+  }
+  
+  return NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2150,6 +2215,125 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                          AHUACATL
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Create an Ahuacatl error in a javascript object
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Object> CreateErrorObjectAhuacatl (TRI_aql_error_t* error) {
+  TRI_v8_global_t* v8g;
+  v8::HandleScope scope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  char* errorMessage = TRI_GetErrorMessageAql(error);
+
+  v8::Handle<v8::Object> errorObject = v8g->QueryErrorTempl->NewInstance();
+
+  errorObject->Set(v8::String::New("code"), 
+                   v8::Integer::New(TRI_GetErrorCodeAql(error)),
+                   v8::ReadOnly);
+
+  errorObject->Set(v8::String::New("message"), 
+                   v8::String::New(errorMessage),
+                   v8::ReadOnly);
+
+  if (errorMessage) {
+    TRI_Free(errorMessage);
+  }
+
+  return scope.Close(errorObject);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates code for an Ahuacatl query and runs it
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  if (argv.Length() < 1 || argv.Length() > 4) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: AHUACATL_RUN(<querystring>, <bindvalues>, <doCount>, <max>)")));
+  }
+ 
+  TRI_vocbase_t* vocbase = GetContextVocBase(); 
+  if (!vocbase) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+  
+  // get the query string
+  v8::Handle<v8::Value> queryArg = argv[0];
+  if (!queryArg->IsString()) {
+    return scope.Close(v8::ThrowException(v8::String::New("expecting string for <querystring>")));
+  }
+  string queryString = TRI_ObjectToString(queryArg);
+
+  // return number of total records in cursor?
+  bool doCount = false;
+  if (argv.Length() > 0) {
+    doCount = TRI_ObjectToBoolean(argv[2]);
+  }
+
+  // maximum number of results to return at once
+  uint32_t max = 1000;
+  if (argv.Length() > 1) {
+    double maxValue = TRI_ObjectToDouble(argv[3]);
+    if (maxValue >= 1.0) {
+      max = (uint32_t) maxValue;
+    }
+  }
+  
+  v8::Handle<v8::Value> result;
+
+  TRI_json_t* parameters = NULL;
+  TRI_aql_parse_context_t* context;
+  
+  context = TRI_CreateParseContextAql(queryString.c_str());
+  if (!context) {
+    return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
+  }
+  
+  if (Ahuacatlparse(context)) {
+    v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
+    TRI_FreeParseContextAql(context);
+    return scope.Close(errorObject);
+  }
+  
+  if (argv.Length() > 1) {
+    parameters = ConvertHelper(argv[1]);
+  }
+
+  if (context->_first) {
+    char* code = TRI_GenerateCodeAql((TRI_aql_node_t*) context->_first);
+
+    if (code) {
+      result = TRI_ExecuteStringVocBase(v8::Context::GetCurrent(), v8::String::New(code), v8::String::New("query"));
+      TRI_Free(code);
+    }
+  }
+
+  TRI_FreeParseContextAql(context);
+  
+  if (parameters) {
+    TRI_FreeJson(parameters);
+  }
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                            AVOCADO QUERY LANGUAGE
 // -----------------------------------------------------------------------------
 
@@ -2161,67 +2345,6 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new constant where clause for a hash index
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_json_t* ConvertHelper(v8::Handle<v8::Value> parameter) {
-  if (parameter->IsBoolean()) {
-    v8::Handle<v8::Boolean> booleanParameter = parameter->ToBoolean();
-    return TRI_CreateBooleanJson(booleanParameter->Value());
-  }
-
-  if (parameter->IsNull()) {
-    return TRI_CreateNullJson();
-  }
-  
-  if (parameter->IsNumber()) {
-    v8::Handle<v8::Number> numberParameter = parameter->ToNumber();
-    return TRI_CreateNumberJson(numberParameter->Value());
-  }
-
-  if (parameter->IsString()) {
-    v8::Handle<v8::String> stringParameter= parameter->ToString();
-    v8::String::Utf8Value str(stringParameter);
-    return TRI_CreateStringCopyJson(*str);
-  }
-
-  if (parameter->IsArray()) {
-    v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
-    TRI_json_t* listJson = TRI_CreateListJson();
-    if (listJson) {
-      for (uint32_t j = 0; j < arrayParameter->Length(); ++j) {
-        v8::Handle<v8::Value> item = arrayParameter->Get(j);    
-        TRI_json_t* result = ConvertHelper(item);
-        if (result) {
-          TRI_PushBack2ListJson(listJson, result);
-          TRI_Free(result);
-        }
-      }
-    }
-    return listJson;
-  }
-  if (parameter->IsObject()) {
-    v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
-    TRI_json_t* arrayJson = TRI_CreateArrayJson();
-    if (arrayJson) {
-      v8::Handle<v8::Array> names = arrayParameter->GetOwnPropertyNames();
-      for (uint32_t j = 0; j < names->Length(); ++j) {
-        v8::Handle<v8::Value> key = names->Get(j);
-        v8::Handle<v8::Value> item = arrayParameter->Get(key);    
-        TRI_json_t* result = ConvertHelper(item);
-        if (result) {
-          TRI_Insert2ArrayJson(arrayJson, TRI_ObjectToString(key).c_str(), result);
-          TRI_Free(result);
-        }
-      }
-    }
-    return arrayJson;
-  }
-  
-  return NULL;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a query and returns the parse result
@@ -6675,6 +6798,10 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
 
   context->Global()->Set(v8::String::New("AQL_CURSOR"),
                          v8::FunctionTemplate::New(JS_Cursor)->GetFunction(),
+                         v8::ReadOnly);
+  
+  context->Global()->Set(v8::String::New("AHUACATL_RUN"),
+                         v8::FunctionTemplate::New(JS_RunAhuacatl)->GetFunction(),
                          v8::ReadOnly);
   
   // .............................................................................

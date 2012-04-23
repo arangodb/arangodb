@@ -196,7 +196,6 @@ am_libavocado_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 	Rest/HttpRequest.$(OBJEXT) Rest/HttpResponse.$(OBJEXT) \
 	Rest/Initialise.$(OBJEXT) Rest/JsonContainer.$(OBJEXT) \
 	Rest/SslInterface.$(OBJEXT) Rest/Url.$(OBJEXT) \
-	RestServer/LineEditor.$(OBJEXT) \
 	ShapedJson/json-shaper.$(OBJEXT) \
 	ShapedJson/shape-accessor.$(OBJEXT) \
 	ShapedJson/shaped-json.$(OBJEXT) \
@@ -204,7 +203,8 @@ am_libavocado_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 	UserManager/Role.$(OBJEXT) UserManager/Session.$(OBJEXT) \
 	UserManager/SessionHandler.$(OBJEXT) \
 	UserManager/User.$(OBJEXT) UserManager/UserHandler.$(OBJEXT) \
-	UserManager/UsersHandler.$(OBJEXT) V8/JSLoader.$(OBJEXT) \
+	UserManager/UsersHandler.$(OBJEXT) \
+	Utilities/LineEditor.$(OBJEXT) V8/JSLoader.$(OBJEXT) \
 	V8/v8-conv.$(OBJEXT) V8/v8-json.$(OBJEXT) \
 	V8/V8LineEditor.$(OBJEXT) V8/v8-shell.$(OBJEXT) \
 	V8/v8-utils.$(OBJEXT) Variant/VariantArray.$(OBJEXT) \
@@ -273,7 +273,11 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	HttpsServer/HttpsServer.$(OBJEXT) \
 	HttpsServer/HttpsServerImpl.$(OBJEXT) \
 	PriorityQueue/pqueueindex.$(OBJEXT) \
-	PriorityQueue/priorityqueue.$(OBJEXT) QL/ast-query.$(OBJEXT) \
+	PriorityQueue/priorityqueue.$(OBJEXT) \
+	Ahuacatl/ast-codegen-js.$(OBJEXT) Ahuacatl/ast-dump.$(OBJEXT) \
+	Ahuacatl/ast-node.$(OBJEXT) Ahuacatl/error.$(OBJEXT) \
+	Ahuacatl/grammar.$(OBJEXT) Ahuacatl/parser.$(OBJEXT) \
+	Ahuacatl/tokens.$(OBJEXT) QL/ast-query.$(OBJEXT) \
 	QL/formatter.$(OBJEXT) QL/optimize.$(OBJEXT) \
 	QL/parser.$(OBJEXT) QL/tokens.$(OBJEXT) \
 	RestHandler/RestActionHandler.$(OBJEXT) \
@@ -668,7 +672,6 @@ libavocado_a_SOURCES = \
 	Rest/JsonContainer.cpp \
 	Rest/SslInterface.cpp \
 	Rest/Url.cpp \
-	RestServer/LineEditor.cpp \
 	ShapedJson/json-shaper.c \
 	ShapedJson/shape-accessor.c \
 	ShapedJson/shaped-json.c \
@@ -679,6 +682,7 @@ libavocado_a_SOURCES = \
 	UserManager/User.cpp \
 	UserManager/UserHandler.cpp \
 	UserManager/UsersHandler.cpp \
+	Utilities/LineEditor.cpp \
 	V8/JSLoader.cpp \
 	V8/v8-conv.cpp \
 	V8/v8-json.cpp \
@@ -744,6 +748,13 @@ avocado_SOURCES = \
 	HttpsServer/HttpsServerImpl.cpp \
 	PriorityQueue/pqueueindex.c \
 	PriorityQueue/priorityqueue.c \
+	Ahuacatl/ast-codegen-js.c \
+        Ahuacatl/ast-dump.c \
+        Ahuacatl/ast-node.c \
+        Ahuacatl/error.c \
+        Ahuacatl/grammar.c \
+        Ahuacatl/parser.c \
+        Ahuacatl/tokens.c \
 	QL/ast-query.c \
 	QL/formatter.c \
 	QL/optimize.c \
@@ -853,14 +864,16 @@ JAVASCRIPT_HEADER = \
 	js/server/js-aql-operators.h \
 	js/server/js-aql-functions-numeric.h \
 	js/server/js-aql-functions-string.h \
-	js/server/js-server.h
+	js/server/js-server.h \
+	js/server/js-ahuacatl.h
 
 
 ################################################################################
 ################################################################################
 FLEX_FILES = \
 	JsonParser/json-parser.c \
-	QL/tokens.c
+	QL/tokens.c \
+        Ahuacatl/tokens.c
 
 
 ################################################################################
@@ -873,7 +886,8 @@ FLEXXX_FILES = \
 ################################################################################
 ################################################################################
 BISON_FILES = \
-	QL/parser.c
+	QL/parser.c \
+	Ahuacatl/grammar.c
 
 
 ################################################################################
@@ -1260,14 +1274,6 @@ Rest/SslInterface.$(OBJEXT): Rest/$(am__dirstamp) \
 	Rest/$(DEPDIR)/$(am__dirstamp)
 Rest/Url.$(OBJEXT): Rest/$(am__dirstamp) \
 	Rest/$(DEPDIR)/$(am__dirstamp)
-RestServer/$(am__dirstamp):
-	@$(MKDIR_P) RestServer
-	@: > RestServer/$(am__dirstamp)
-RestServer/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) RestServer/$(DEPDIR)
-	@: > RestServer/$(DEPDIR)/$(am__dirstamp)
-RestServer/LineEditor.$(OBJEXT): RestServer/$(am__dirstamp) \
-	RestServer/$(DEPDIR)/$(am__dirstamp)
 ShapedJson/$(am__dirstamp):
 	@$(MKDIR_P) ShapedJson
 	@: > ShapedJson/$(am__dirstamp)
@@ -1301,6 +1307,14 @@ UserManager/UserHandler.$(OBJEXT): UserManager/$(am__dirstamp) \
 	UserManager/$(DEPDIR)/$(am__dirstamp)
 UserManager/UsersHandler.$(OBJEXT): UserManager/$(am__dirstamp) \
 	UserManager/$(DEPDIR)/$(am__dirstamp)
+Utilities/$(am__dirstamp):
+	@$(MKDIR_P) Utilities
+	@: > Utilities/$(am__dirstamp)
+Utilities/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) Utilities/$(DEPDIR)
+	@: > Utilities/$(DEPDIR)/$(am__dirstamp)
+Utilities/LineEditor.$(OBJEXT): Utilities/$(am__dirstamp) \
+	Utilities/$(DEPDIR)/$(am__dirstamp)
 V8/$(am__dirstamp):
 	@$(MKDIR_P) V8
 	@: > V8/$(am__dirstamp)
@@ -1615,6 +1629,26 @@ PriorityQueue/pqueueindex.$(OBJEXT): PriorityQueue/$(am__dirstamp) \
 	PriorityQueue/$(DEPDIR)/$(am__dirstamp)
 PriorityQueue/priorityqueue.$(OBJEXT): PriorityQueue/$(am__dirstamp) \
 	PriorityQueue/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/$(am__dirstamp):
+	@$(MKDIR_P) Ahuacatl
+	@: > Ahuacatl/$(am__dirstamp)
+Ahuacatl/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) Ahuacatl/$(DEPDIR)
+	@: > Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ast-codegen-js.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ast-dump.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ast-node.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/error.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/grammar.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/parser.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/tokens.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 QL/$(am__dirstamp):
 	@$(MKDIR_P) QL
 	@: > QL/$(am__dirstamp)
@@ -1646,6 +1680,12 @@ RestHandler/RestImportHandler.$(OBJEXT): RestHandler/$(am__dirstamp) \
 RestHandler/RestVocbaseBaseHandler.$(OBJEXT):  \
 	RestHandler/$(am__dirstamp) \
 	RestHandler/$(DEPDIR)/$(am__dirstamp)
+RestServer/$(am__dirstamp):
+	@$(MKDIR_P) RestServer
+	@: > RestServer/$(am__dirstamp)
+RestServer/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) RestServer/$(DEPDIR)
+	@: > RestServer/$(DEPDIR)/$(am__dirstamp)
 RestServer/ActionDispatcherThread.$(OBJEXT):  \
 	RestServer/$(am__dirstamp) \
 	RestServer/$(DEPDIR)/$(am__dirstamp)
@@ -1847,6 +1887,13 @@ mostlyclean-compile:
 	-rm -f Admin/RestAdminLogHandler.$(OBJEXT)
 	-rm -f Admin/RestBaseHandler.$(OBJEXT)
 	-rm -f Admin/RestVersionHandler.$(OBJEXT)
+	-rm -f Ahuacatl/ast-codegen-js.$(OBJEXT)
+	-rm -f Ahuacatl/ast-dump.$(OBJEXT)
+	-rm -f Ahuacatl/ast-node.$(OBJEXT)
+	-rm -f Ahuacatl/error.$(OBJEXT)
+	-rm -f Ahuacatl/grammar.$(OBJEXT)
+	-rm -f Ahuacatl/parser.$(OBJEXT)
+	-rm -f Ahuacatl/tokens.$(OBJEXT)
 	-rm -f ApplicationServer/ApplicationServer.$(OBJEXT)
 	-rm -f ApplicationServer/ApplicationServerImpl.$(OBJEXT)
 	-rm -f ApplicationServer/ApplicationServerSchedulerImpl.$(OBJEXT)
@@ -1951,7 +1998,6 @@ mostlyclean-compile:
 	-rm -f RestServer/ActionDispatcherThread.$(OBJEXT)
 	-rm -f RestServer/AvocadoHttpServer.$(OBJEXT)
 	-rm -f RestServer/AvocadoServer.$(OBJEXT)
-	-rm -f RestServer/LineEditor.$(OBJEXT)
 	-rm -f RestServer/avocado.$(OBJEXT)
 	-rm -f ResultGenerator/HtmlResultGenerator.$(OBJEXT)
 	-rm -f ResultGenerator/Initialise.$(OBJEXT)
@@ -1996,6 +2042,7 @@ mostlyclean-compile:
 	-rm -f UserManager/User.$(OBJEXT)
 	-rm -f UserManager/UserHandler.$(OBJEXT)
 	-rm -f UserManager/UsersHandler.$(OBJEXT)
+	-rm -f Utilities/LineEditor.$(OBJEXT)
 	-rm -f V8/JSLoader.$(OBJEXT)
 	-rm -f V8/V8LineEditor.$(OBJEXT)
 	-rm -f V8/v8-actions.$(OBJEXT)
@@ -2066,6 +2113,13 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Admin/$(DEPDIR)/RestAdminLogHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Admin/$(DEPDIR)/RestBaseHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Admin/$(DEPDIR)/RestVersionHandler.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ast-codegen-js.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ast-dump.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ast-node.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/error.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/grammar.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/parser.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/tokens.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ApplicationServer/$(DEPDIR)/ApplicationServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ApplicationServer/$(DEPDIR)/ApplicationServerImpl.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ApplicationServer/$(DEPDIR)/ApplicationServerSchedulerImpl.Po@am__quote@
@@ -2170,7 +2224,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/ActionDispatcherThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/AvocadoHttpServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/AvocadoServer.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/LineEditor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/avocado.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ResultGenerator/$(DEPDIR)/HtmlResultGenerator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ResultGenerator/$(DEPDIR)/Initialise.Po@am__quote@
@@ -2215,6 +2268,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@UserManager/$(DEPDIR)/User.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UserManager/$(DEPDIR)/UserHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UserManager/$(DEPDIR)/UsersHandler.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Utilities/$(DEPDIR)/LineEditor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/JSLoader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/V8LineEditor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-actions.Po@am__quote@
@@ -2566,6 +2620,8 @@ distclean-generic:
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
 	-rm -f Admin/$(DEPDIR)/$(am__dirstamp)
 	-rm -f Admin/$(am__dirstamp)
+	-rm -f Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+	-rm -f Ahuacatl/$(am__dirstamp)
 	-rm -f ApplicationServer/$(DEPDIR)/$(am__dirstamp)
 	-rm -f ApplicationServer/$(am__dirstamp)
 	-rm -f Basics/$(DEPDIR)/$(am__dirstamp)
@@ -2624,6 +2680,8 @@ distclean-generic:
 	-rm -f UnitTests/Philadelphia/$(am__dirstamp)
 	-rm -f UserManager/$(DEPDIR)/$(am__dirstamp)
 	-rm -f UserManager/$(am__dirstamp)
+	-rm -f Utilities/$(DEPDIR)/$(am__dirstamp)
+	-rm -f Utilities/$(am__dirstamp)
 	-rm -f V8/$(DEPDIR)/$(am__dirstamp)
 	-rm -f V8/$(am__dirstamp)
 	-rm -f V8Client/$(DEPDIR)/$(am__dirstamp)
@@ -2646,7 +2704,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-local \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) MRClient/$(DEPDIR) MRuby/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) UserManager/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Admin/$(DEPDIR) Ahuacatl/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) MRClient/$(DEPDIR) MRuby/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) UserManager/$(DEPDIR) Utilities/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -2694,7 +2752,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) MRClient/$(DEPDIR) MRuby/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) UserManager/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Admin/$(DEPDIR) Ahuacatl/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) MRClient/$(DEPDIR) MRuby/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) UserManager/$(DEPDIR) Utilities/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

@@ -68,7 +68,6 @@ libavocado_a_SOURCES = \
 	Rest/JsonContainer.cpp \
 	Rest/SslInterface.cpp \
 	Rest/Url.cpp \
-	RestServer/LineEditor.cpp \
 	ShapedJson/json-shaper.c \
 	ShapedJson/shape-accessor.c \
 	ShapedJson/shaped-json.c \
@@ -79,6 +78,7 @@ libavocado_a_SOURCES = \
 	UserManager/User.cpp \
 	UserManager/UserHandler.cpp \
 	UserManager/UsersHandler.cpp \
+	Utilities/LineEditor.cpp \
 	V8/JSLoader.cpp \
 	V8/v8-conv.cpp \
 	V8/v8-json.cpp \
@@ -146,6 +146,13 @@ avocado_SOURCES = \
 	HttpsServer/HttpsServerImpl.cpp \
 	PriorityQueue/pqueueindex.c \
 	PriorityQueue/priorityqueue.c \
+	Ahuacatl/ast-codegen-js.c \
+        Ahuacatl/ast-dump.c \
+        Ahuacatl/ast-node.c \
+        Ahuacatl/error.c \
+        Ahuacatl/grammar.c \
+        Ahuacatl/parser.c \
+        Ahuacatl/tokens.c \
 	QL/ast-query.c \
 	QL/formatter.c \
 	QL/optimize.c \
@@ -262,7 +269,8 @@ JAVASCRIPT_HEADER = \
 	js/server/js-aql-operators.h \
 	js/server/js-aql-functions-numeric.h \
 	js/server/js-aql-functions-string.h \
-	js/server/js-server.h
+	js/server/js-server.h \
+	js/server/js-ahuacatl.h
 
 BUILT_SOURCES += $(JAVASCRIPT_HEADER)
 
@@ -272,7 +280,8 @@ BUILT_SOURCES += $(JAVASCRIPT_HEADER)
 
 FLEX_FILES = \
 	JsonParser/json-parser.c \
-	QL/tokens.c
+	QL/tokens.c \
+        Ahuacatl/tokens.c
 
 BUILT_SOURCES += $(FLEX_FILES)
 
@@ -291,7 +300,8 @@ BUILT_SOURCES += $(FLEXXX_FILES)
 ################################################################################
 
 BISON_FILES = \
-	QL/parser.c
+	QL/parser.c \
+	Ahuacatl/grammar.c
 
 BUILT_SOURCES += $(BISON_FILES)
 

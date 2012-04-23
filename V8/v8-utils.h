@@ -92,58 +92,66 @@ static T* TRI_UnwrapClass (v8::Handle<v8::Object> obj, int32_t type) {
 /// @brief adds attributes to array
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AugmentObject (v8::Handle<v8::Value> value, TRI_json_t const* json);
+void TRI_AugmentObject (v8::Handle<v8::Value>, TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reports an exception
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string TRI_StringifyV8Exception (v8::TryCatch* tryCatch);
+std::string TRI_StringifyV8Exception (v8::TryCatch*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints an exception and stacktrace
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_LogV8Exception (v8::TryCatch* tryCatch);
+void TRI_LogV8Exception (v8::TryCatch*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a file into the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_LoadJavaScriptFile (v8::Handle<v8::Context> context, char const* filename);
+bool TRI_LoadJavaScriptFile (v8::Handle<v8::Context>, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads all files from a directory into the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_LoadJavaScriptDirectory (v8::Handle<v8::Context> context, char const* path);
+bool TRI_LoadJavaScriptDirectory (v8::Handle<v8::Context>, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a file in the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteJavaScriptFile (v8::Handle<v8::Context> context, char const* filename);
+bool TRI_ExecuteJavaScriptFile (v8::Handle<v8::Context>, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes all files from a directory in the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteJavaScriptDirectory (v8::Handle<v8::Context> context, char const* path);
+bool TRI_ExecuteJavaScriptDirectory (v8::Handle<v8::Context>, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a string within a V8 context
+/// @brief executes a string within a V8 context, optionally print the result
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteStringVocBase (v8::Handle<v8::Context> context,
-                               v8::Handle<v8::String> source,
-                               v8::Handle<v8::Value> name,
+bool TRI_ExecuteStringVocBase (v8::Handle<v8::Context>,
+                               v8::Handle<v8::String>,
+                               v8::Handle<v8::Value>,
                                bool printResult);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a string within a V8 context, return the result
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> TRI_ExecuteStringVocBase (v8::Handle<v8::Context>,
+                                                v8::Handle<v8::String>,
+                                                v8::Handle<v8::Value>);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 utils function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Utils (v8::Handle<v8::Context> context, std::string const& path);
+void TRI_InitV8Utils (v8::Handle<v8::Context>, std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
