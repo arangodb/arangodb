@@ -525,29 +525,40 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
         LOG_DEBUG("ignoring directory '%s' without valid parameter file '%s'", file, TRI_COL_PARAMETER_FILE);
       }
       else if (info._deleted) {
-        char* newFile;
-        char* tmp1;
-        char* tmp2;
+        if (vocbase->_removeOnDrop) {
+          LOG_WARNING("collection '%s' was deleted, wiping it", name);
 
-        char const* first = name + matches[1].rm_so;
-        size_t firstLen = matches[1].rm_eo - matches[1].rm_so;
+          res = TRI_RemoveDirectory(file);
 
-        tmp1 = TRI_DuplicateString2(first, firstLen);
-        tmp2 = TRI_Concatenate2String("deleted-", tmp1);
-        TRI_FreeString(tmp1);
-
-        newFile = TRI_Concatenate2File(path, tmp2);
-        TRI_FreeString(tmp2);
-
-        LOG_WARNING("collection '%s' was deleted, renaming it to '%s'", name, newFile);
-
-        res = TRI_RenameFile(file, newFile);
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          LOG_WARNING("cannot rename deleted collection: %s", TRI_last_error());
+          if (res != TRI_ERROR_NO_ERROR) {
+            LOG_WARNING("cannot wipe deleted collection: %s", TRI_last_error());
+          }
         }
+        else {
+          char* newFile;
+          char* tmp1;
+          char* tmp2;
 
-        TRI_FreeString(newFile);
+          char const* first = name + matches[1].rm_so;
+          size_t firstLen = matches[1].rm_eo - matches[1].rm_so;
+
+          tmp1 = TRI_DuplicateString2(first, firstLen);
+          tmp2 = TRI_Concatenate2String("deleted-", tmp1);
+          TRI_FreeString(tmp1);
+
+          newFile = TRI_Concatenate2File(path, tmp2);
+          TRI_FreeString(tmp2);
+
+          LOG_WARNING("collection '%s' was deleted, renaming it to '%s'", name, newFile);
+
+          res = TRI_RenameFile(file, newFile);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            LOG_WARNING("cannot rename deleted collection: %s", TRI_last_error());
+          }
+
+          TRI_FreeString(newFile);
+        }
       }
       else {
         type = info._type;
@@ -1066,6 +1077,12 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   // scan directory for collections and start helper threads
   // .............................................................................
 
+  // defaults
+  vocbase->_removeOnDrop = true;
+  vocbase->_removeOnCompacted = true;
+  vocbase->_defaultMaximalSize = TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE;
+
+  // scan the database path for collections
   res = ScanPath(vocbase, vocbase->_path);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1082,11 +1099,6 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
     return NULL;
   }
   
-  // defaults
-  vocbase->_removeOnDrop = true;
-  vocbase->_removeOnCompacted = true;
-  vocbase->_defaultMaximalSize = TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE;
-
   // vocbase is now active
   vocbase->_active = 1;
 
