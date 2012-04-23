@@ -442,30 +442,165 @@ function ahuacatlQueryTestSuite () {
       assertEqual([ ], actual);
     },
 
-    /*
-        users.save({ "id" : 200, "name" : "Sophia", "age" : 37, "active" : true, "gender" : "f" });
-        users.save({ "id" : 201, "name" : "Emma", "age" : 36,  "active" : true, "gender" : "f" });
-        users.save({ "id" : 202, "name" : "Olivia", "age" : 35, "active" : false, "gender" : "f" });
-        users.save({ "id" : 203, "name" : "Madison", "age" : 34, "active" : true, "gender": "f" });
-        users.save({ "id" : 204, "name" : "Chloe", "age" : 33, "active" : true, "gender" : "f" });
-        users.save({ "id" : 205, "name" : "Eva", "age" : 32, "active" : false, "gender" : "f" });
-        users.save({ "id" : 206, "name" : "Abigail", "age" : 31, "active" : true, "gender" : "f" });
-        users.save({ "id" : 207, "name" : "Isabella", "age" : 30, "active" : true, "gender" : "f" });
-        users.save({ "id" : 208, "name" : "Mary", "age" : 29, "active" : true, "gender" : "f" });
-        users.save({ "id" : 209, "name" : "Mariah", "age" : 28, "active" : true, "gender" : "f" });
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test equivalent filters
+////////////////////////////////////////////////////////////////////////////////
+    
+    testFilterEquivalents : function () {
+      var expected = [ { "active" : false, "age" : 34, "gender" : "m", "id" : 103, "name" : "Ethan" }, { "active" : false, "age" : 35, "gender" : "m", "id" : 102, "name" : "Jacob" } ];
+      var actual;
+
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.age IN [ 34, 35 ] && u.gender == \"m\" SORT u.id DESC RETURN u", false);
+      assertEqual(expected, actual);
+      
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.gender == \"m\" && u.age IN [ 34, 35 ] SORT u.id DESC RETURN u", false);
+      assertEqual(expected, actual);
+      
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.gender == \"m\" FILTER u.age IN [ 34, 35 ] SORT u.id DESC RETURN u", false);
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.age IN [ 34, 35 ] FILTER u.gender == \"m\" SORT u.id DESC RETURN u", false);
+      assertEqual(expected, actual);
+      
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.age IN [ 34, 35 ] SORT u.id DESC FILTER u.gender == \"m\" RETURN u", false);
+      assertEqual(expected, actual);
+      
+      actual = getQueryResults("FOR u in " + users.name() + " SORT u.id FILTER u.gender == \"m\" SORT u.id DESC FILTER u.age IN [ 34, 35 ] RETURN u", false);
+      assertEqual(expected, actual);
+      
+      actual = getQueryResults("FOR u in " + users.name() + " SORT u.id DESC FILTER u.age IN [ 34, 35 ] FILTER u.gender == \"m\" RETURN u", false);
+      assertEqual(expected, actual);
+      
+      actual9 = getQueryResults("FOR u in " + users.name() + " SORT u.id DESC FILTER u.gender == \"m\" FILTER u.age IN [ 34, 35 ] RETURN u", false);
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("FOR u in " + users.name() + " SORT u.id DESC FILTER u.gender == \"m\" && u.age IN [ 34, 35 ] RETURN u", false);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test impossible filters
+////////////////////////////////////////////////////////////////////////////////
+    
+    testFilterImpossible : function () {
+      var actual;
+
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.age IN [ true, false, null, 26, 27, 38, 39, [ ], { } ] RETURN u", false);
+      assertEqual([ ], actual);
+      
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.gender == \"x\" RETURN u", false);
+      assertEqual([ ], actual);
+      
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER !(u.gender IN [ \"m\", \"f\" ]) RETURN u", false);
+      assertEqual([ ], actual);
+      
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.age < 28 || u.age > 37 RETURN u", false);
+      assertEqual([ ], actual);
+      
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.age <= 27 || u.age >= 38 RETURN u", false);
+      assertEqual([ ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test collect
+////////////////////////////////////////////////////////////////////////////////
+    
+    testCollectSimple : function () {
+      var expected = [ { "gender" : "f", "numUsers" : 10 }, { "gender" : "m", "numUsers" : 10 } ];
+
+      var actual = getQueryResults("FOR u in " + users.name() + " COLLECT gender = u.gender INTO g SORT gender ASC RETURN { \"gender\" : gender, \"numUsers\" : AHUACATL_LENGTH(g) }", false);
+      assertEqual(expected, actual);
+    },
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test collect with filter
+////////////////////////////////////////////////////////////////////////////////
+      
+    testCollectFiltered : function () {
+      var expected = [ { "gender" : "m", "numUsers" : 8 }, { "gender" : "f", "numUsers" : 8 } ];
+
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true COLLECT gender = u.gender INTO g SORT gender DESC RETURN { \"gender\" : gender, \"numUsers\" : AHUACATL_LENGTH(g) }", false);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple collect criteria
+////////////////////////////////////////////////////////////////////////////////
+      
+    testCollectMultipleCriteria : function () {
+      var expected = [ { "active" : false, "gender" : "m", "numUsers" : 2 }, { "active" : true, "gender" : "m", "numUsers" : 8 }, { "active" : false, "gender" : "f", "numUsers" : 2 }, { "active" : true, "gender" : "f", "numUsers" : 8 } ];
+
+      actual = getQueryResults("FOR u in " + users.name() + " COLLECT gender = u.gender, active = u.active INTO g SORT gender DESC, active ASC RETURN { \"gender\" : gender, \"active\" : active, \"numUsers\" : AHUACATL_LENGTH(g) }", false);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple collects
+////////////////////////////////////////////////////////////////////////////////
+      
+    testCollectMultiple : function () {
+      /* TODO: must be fixed 
+      var expected = [ { "gender" : "f", "numUsers" : 10 }, { "gender" : "m", "numUsers" : 10 } ];
+      actual = getQueryResults("FOR u in " + users.name() + " COLLECT gender = u.gender, active = u.active INTO g COLLECT agender = gender, numUsers = AHUACATL_LENGTH(g) RETURN { \"gender\" : agender, \"numUsers\" : numUsers }", false);
+      assertEqual(expected, actual);
+      */
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test relations
+////////////////////////////////////////////////////////////////////////////////
+      
+    testRelations1 : function () {
+      var expected = [ { "name" : "Abigail", "numFriends" : 3 }, { "name" : "Michael", "numFriends" : 2 }, { "name" : "Sophia", "numFriends" : 2 }, { "name" : "Mariah", "numFriends" : 2 } ];
+
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true LET f = ((FOR r IN " + relations.name() + " FILTER r.from == u.id && r.type == \"friend\" RETURN r)) SORT AHUACATL_LENGTH(f) DESC LIMIT 0,4 FILTER AHUACATL_LENGTH(f) > 0 RETURN { \"name\" : u.name, \"numFriends\" : AHUACATL_LENGTH(f) }", false);
+      assertEqual(expected, actual);
+    },
+
+  /*    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test relations
+////////////////////////////////////////////////////////////////////////////////
+    testRelations2 : function () {
+      var expected = [ { "friends" : [102, 106, 108], "name" : "Abigail" }, { "friends" : [100, 108], "name" : "Michael" }, { "friends" : [100, 203], "name" : "Sophia" }, { "friends" : [203, 205], "name" : "Mariah" } ];
+
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true LET f = ((FOR r IN " + relations.name() + " FILTER r.from == u.id && r.type == \"friend\" SORT r.from RETURN r)) SORT AHUACATL_LENGTH(f) DESC LIMIT 0,4 FILTER AHUACATL_LENGTH(f) > 0 RETURN { \"name\" : u.name, \"friends\" : f[*].to }", false);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test relations
+////////////////////////////////////////////////////////////////////////////////
+    
+    testRelations3 : function () {
+      var expected = [ { "friends" : ["Daniel", "Jacob", "Jim"], "name" : "Abigail" }, { "friends" : ["Jim", "John"], "name" : "Michael" }, { "friends" : ["John", "Madison"], "name" : "Sophia" }, { "friends" : ["Eva", "Madison"], "name" : "Mariah" } ];
+
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true LET f = ((FOR r IN " + relations.name() + " FILTER r.from == u.id && r.type == \"friend\" FOR u2 IN " + users.name() + " FILTER r.to == u2.id SORT u2.name RETURN u2.name)) SORT AHUACATL_LENGTH(f) DESC LIMIT 0,4 FILTER AHUACATL_LENGTH(f) > 0 RETURN { \"name\" : u.name, \"friends\" : f }", false);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test relations
+////////////////////////////////////////////////////////////////////////////////
+    
+    testRelations4 : function () {
+      var expected = [ { "friends" : ["Daniel", "Jacob", "Jim"], "name" : "Abigail" }, { "friends" : ["Jim", "John"], "name" : "Michael" }, { "friends" : ["Madison", "John"], "name" : "Sophia" }, { "friends" : ["Eva", "Madison"], "name" : "Mariah" } ];
+
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true LET f = ((FOR r IN " + relations.name() + " FILTER r.from == u.id && r.type == \"friend\" FOR u2 IN " + users.name() + " FILTER r.to == u2.id SORT u2.name RETURN u2)) SORT AHUACATL_LENGTH(f) DESC LIMIT 0,4 FILTER AHUACATL_LENGTH(f) > 0 RETURN { \"name\" : u.name, \"friends\" : f[*].name }", false);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test relations
+////////////////////////////////////////////////////////////////////////////////
+      
+    testRelations5 : function () {
+      var expected = [ { "friendIds" : [ 106, 102, 100 ], "friendNames" : ["Daniel", "Jacob", "Jim"], "name" : "Abigail" }, { "friendIds" : [ 108, 100 ], "friendName" : ["Jim", "John"], "name" : "Michael" }, { "friendIds" : [ 203, 100 ], "friendNames" : ["Madison", "John"], "name" : "Sophia" }, { "friendIds" : [ 205, 203 ], "friendNames" : ["Eva", "Madison"], "name" : "Mariah" } ];
+
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true LET f = ((FOR r IN " + relations.name() + " FILTER r.from == u.id && r.type == \"friend\" FOR u2 IN " + users.name() + " FILTER r.to == u2.id SORT u2.name RETURN u2)) SORT AHUACATL_LENGTH(f) DESC LIMIT 0,4 FILTER AHUACATL_LENGTH(f) > 0 RETURN { \"name\" : u.name, \"friendNames\" : f[*].name, \"friendIds\" : f[*].id }", false);
+      assertEqual(expected, actual);
+    }
 */
-      /*
-        users.save({ "id" : 100, "name" : "John", "age" : 37, "active" : true, "gender" : "m" });
-        users.save({ "id" : 101, "name" : "Fred", "age" : 36, "active" : true, "gender" : "m" });
-        users.save({ "id" : 102, "name" : "Jacob", "age" : 35, "active" : false, "gender" : "m" });
-        users.save({ "id" : 103, "name" : "Ethan", "age" : 34, "active" : false, "gender" : "m" });
-        users.save({ "id" : 104, "name" : "Michael", "age" : 33, "active" : true, "gender" : "m" });
-        users.save({ "id" : 105, "name" : "Alexander", "age" : 32, "active" : true, "gender" : "m" });
-        users.save({ "id" : 106, "name" : "Daniel", "age" : 31, "active" : true, "gender" : "m" });
-        users.save({ "id" : 107, "name" : "Anthony", "age" : 30, "active" : true, "gender", "m" });
-        users.save({ "id" : 108, "name" : "Jim", "age" : 29, "active" : true, "gender", "m" });
-        users.save({ "id" : 109, "name" : "Diego", "age" : 28, "active" : true, "gender", "m" });
-        */
 
   };
 }
