@@ -1850,7 +1850,7 @@ bool TRI_ExecuteJavaScriptDirectory (v8::Handle<v8::Context> context, char const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a string within a V8 context
+/// @brief executes a string within a V8 context, optionally print the result
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ExecuteStringVocBase (v8::Handle<v8::Context> context,
@@ -1893,6 +1893,32 @@ bool TRI_ExecuteStringVocBase (v8::Handle<v8::Context> context,
       return true;
     }
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a string within a V8 context, return the result
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> TRI_ExecuteStringVocBase (v8::Handle<v8::Context> context,
+                                                v8::Handle<v8::String> source,
+                                                v8::Handle<v8::Value> name) {
+  v8::HandleScope scope;
+
+  v8::Handle<v8::Script> script = v8::Script::Compile(source, name);
+
+  // compilation failed, print errors that happened during compilation
+  if (script.IsEmpty()) {
+    return scope.Close(v8::Undefined());
+  }
+
+  // compilation succeeded, run the script
+  v8::Handle<v8::Value> result = script->Run();
+
+  if (result.IsEmpty()) {
+    return scope.Close(v8::Undefined());
+  }
+
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

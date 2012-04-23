@@ -233,6 +233,7 @@ void ActionDispatcherThread::initialise () {
                           "server/aql-operators.js",
                           "server/aql-functions-numeric.js",
                           "server/aql-functions-string.js",
+                          "server/ahuacatl.js",
                           "server/server.js"
   };
   size_t i;
