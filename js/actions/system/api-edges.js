@@ -50,6 +50,20 @@ var API = "edges";
 ///
 /// Returns the list of edges starting in the vertex identified by
 /// @FA{vertex-handle}.
+///
+/// @EXAMPLES
+///
+/// Any direction
+///
+/// @verbinclude rest_edge-read-edges-any
+///
+/// In edges
+///
+/// @verbinclude rest_edge-read-edges-in
+///
+/// Out edges
+///
+/// @verbinclude rest_edge-read-edges-out
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_edges (req, res) {
@@ -72,18 +86,24 @@ function GET_edges (req, res) {
   var direction = req.parameters['direction'];
   var e;
 
-  if (direction == null || direction == "" || direction == "any") {
-    e = collection.edges(vertex);
+  try {
+    if (direction == null || direction == "" || direction == "any") {
+      e = collection.edges(vertex);
+    }
+    else if (direction == "in") {
+      e = collection.inEdges(vertex);
+    }
+    else if (direction == "out") {
+      e = collection.outEdges(vertex);
+    }
+    else {
+      actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+                        "<direction> must be any, in, or out, not: " + JSON.stringify(direction));
+      return;
+    }
   }
-  else if (direction == "in") {
-    e = collection.inEdges(vertex);
-  }
-  else if (direction == "out") {
-    e = collection.outEdges(vertex);
-  }
-  else {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                      "<direction> must be any, in, or out, not: " + JSON.stringify(direction));
+  catch (err) {
+    actions.resultException(req, res, err);
     return;
   }
 

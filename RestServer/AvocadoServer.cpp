@@ -974,10 +974,11 @@ int AvocadoServer::executeRubyShell () {
   MRLineEditor* console = new MRLineEditor(mrb, ".avocado-mrb");
 
   // setup the classes
-  AvocadoDatabaseClass = mrb_define_class(mrb, "AvocadoDatabase", mrb->object_class);
-  AvocadoEdgesClass = mrb_define_class(mrb, "AvocadoEdges", mrb->object_class);
-  AvocadoCollectionClass = mrb_define_class(mrb, "AvocadoCollection", mrb->object_class);
-  AvocadoEdgesCollectionClass = mrb_define_class(mrb, "AvocadoEdgesCollection", mrb->object_class);
+#if 0
+  struct RClass* AvocadoDatabaseClass = mrb_define_class(mrb, "AvocadoDatabase", mrb->object_class);
+  struct RClass* AvocadoEdgesClass = mrb_define_class(mrb, "AvocadoEdges", mrb->object_class);
+  struct RClass* AvocadoCollectionClass = mrb_define_class(mrb, "AvocadoCollection", mrb->object_class);
+  struct RClass* AvocadoEdgesCollectionClass = mrb_define_class(mrb, "AvocadoEdgesCollection", mrb->object_class);
 
   // add an initializer (for TESTING only)
   mrb_define_method(mrb, AvocadoDatabaseClass, "initialize", MR_AvocadoDatabase_Inialize, ARGS_ANY());
@@ -991,8 +992,11 @@ int AvocadoServer::executeRubyShell () {
   mrb_gv_set(mrb, mrb_intern(mrb, "$db"), db);
 
   // read-eval-print loop
-  console->open(true);
+  mrb_define_const(mrb, "$db", db);
+#endif
 
+  console->open(true);
+  
   while (true) {
     char* input = console->prompt("avocmrb> ");
 
