@@ -1371,6 +1371,7 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_parse_context_t* const context,
   TRI_aql_node_fcall_t* node;
   TRI_aql_function_t* function;
   TRI_associative_pointer_t* functions;
+  char* upperName;
 
   assert(context);
   assert(context->_vocbase);
@@ -1383,8 +1384,15 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_parse_context_t* const context,
   functions = context->_vocbase->_functionsAql;
   assert(functions);
 
-  // TODO: normalize function name
-  function = (TRI_aql_function_t*) TRI_LookupByKeyAssociativePointer(functions, (void*) name);
+  // normalize the name by upper-casing it
+  upperName = TRI_UpperAsciiString(name);
+  if (!upperName) {
+    ABORT_OOM
+  }
+
+  function = (TRI_aql_function_t*) TRI_LookupByKeyAssociativePointer(functions, (void*) upperName);
+  TRI_Free(upperName);
+
   if (!function) {
     // function name is unknown
     TRI_SetErrorAql(context, TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, name);

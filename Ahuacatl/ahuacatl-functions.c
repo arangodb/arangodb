@@ -220,7 +220,8 @@ bool TRI_RegisterFunctionAql (TRI_associative_pointer_t* functions,
     return false;
   }
 
-  function->_internalName = TRI_DuplicateString(internalName);
+  // normalize name by upper-casing it
+  function->_internalName = TRI_UpperAsciiString(internalName);
   if (!function->_internalName) {
     TRI_Free(function->_externalName);
     TRI_Free(function);
