@@ -1800,7 +1800,9 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
 
   size_t n = argv.Length() / 2;
   TRI_shape_pid_t* pids = (TRI_shape_pid_t*) TRI_Allocate(n * sizeof(TRI_shape_pid_t));
+  // TODO FIXME: memory allocation might fail
   TRI_shaped_json_t** values = (TRI_shaped_json_t**) TRI_Allocate(n * sizeof(TRI_shaped_json_t*));
+  // TODO FIXME: memory allocation might fail
   
   for (size_t i = 0;  i < n;  ++i) {
     v8::Handle<v8::Value> key = argv[2 * i];
