@@ -45,6 +45,7 @@
 #include "VocBase/simple-collection.h"
 #include "VocBase/synchroniser.h"
 #include "VocBase/query-functions.h"
+#include "Ahuacatl/ahuacatl-functions.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -1052,7 +1053,8 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   vocbase = TRI_Allocate(sizeof(TRI_vocbase_t));
 
   vocbase->_cursors = TRI_CreateShadowsQueryCursor();
-  vocbase->_functions = TRI_InitialiseQueryFunctions();
+  vocbase->_functionsAql = TRI_InitialiseFunctionsAql();
+  vocbase->_functions = TRI_InitialiseQueryFunctions(); // deprecated
   vocbase->_lockFile = lockFile;
   vocbase->_path = TRI_DuplicateString(path);
 
@@ -1159,7 +1161,8 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   TRI_DestroyVectorPointer(&vocbase->_deadCollections);
 
   // free query functions
-  TRI_FreeQueryFunctions(vocbase->_functions);
+  TRI_FreeQueryFunctions(vocbase->_functions); // deprecated
+  TRI_FreeFunctionsAql(vocbase->_functionsAql);
   
   // free the cursors
   TRI_FreeShadowStore(vocbase->_cursors);

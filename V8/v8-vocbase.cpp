@@ -2299,7 +2299,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   TRI_json_t* parameters = NULL;
   TRI_aql_parse_context_t* context;
   
-  context = TRI_CreateParseContextAql(queryString.c_str());
+  context = TRI_CreateParseContextAql(vocbase, queryString.c_str());
   if (!context) {
     return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
   }

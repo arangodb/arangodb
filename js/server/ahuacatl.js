@@ -894,6 +894,39 @@ function AHUACATL_STRING_CONCAT (lhs, rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief cast to null
+///
+/// the operand can have any type, always returns null
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_CAST_NULL (value) {
+  return null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cast to a bool
+///
+/// the operand can have any type, always returns a bool
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_CAST_BOOL (value) {
+  switch (AHUACATL_TYPEWEIGHT(value)) {
+    case AHUACATL_TYPEWEIGHT_NULL:
+      return false;
+    case AHUACATL_TYPEWEIGHT_BOOL:
+      return value;
+    case AHUACATL_TYPEWEIGHT_NUMBER:
+      return (value != 0);
+    case AHUACATL_TYPEWEIGHT_STRING: 
+      return (value != '');
+    case AHUACATL_TYPEWEIGHT_LIST:
+      return (value.length > 0);
+    case AHUACATL_TYPEWEIGHT_DOCUMENT:
+      return (AHUACATL_KEYS(value).length > 0);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief cast to a number
 ///
 /// the operand can have any type, always returns a number
@@ -937,39 +970,6 @@ function AHUACATL_CAST_STRING (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief cast to a bool
-///
-/// the operand can have any type, always returns a bool
-////////////////////////////////////////////////////////////////////////////////
-
-function AHUACATL_CAST_BOOL (value) {
-  switch (AHUACATL_TYPEWEIGHT(value)) {
-    case AHUACATL_TYPEWEIGHT_NULL:
-      return false;
-    case AHUACATL_TYPEWEIGHT_BOOL:
-      return value;
-    case AHUACATL_TYPEWEIGHT_NUMBER:
-      return (value != 0);
-    case AHUACATL_TYPEWEIGHT_STRING: 
-      return (value != '');
-    case AHUACATL_TYPEWEIGHT_LIST:
-      return (value.length > 0);
-    case AHUACATL_TYPEWEIGHT_DOCUMENT:
-      return (AHUACATL_KEYS(value).length > 0);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cast to null
-///
-/// the operand can have any type, always returns null
-////////////////////////////////////////////////////////////////////////////////
-
-function AHUACATL_CAST_NULL (value) {
-  return null;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -983,23 +983,13 @@ function AHUACATL_CAST_NULL (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test if value is of type string
+/// @brief test if value is of type null
 ///
 /// returns a bool
 ////////////////////////////////////////////////////////////////////////////////
 
-function AHUACATL_IS_STRING (value) {
-  return (AHUACATL_TYPEWEIGHT(value) === AHUACATL_TYPEWEIGHT_STRING);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test if value is of type number
-///
-/// returns a bool
-////////////////////////////////////////////////////////////////////////////////
-
-function AHUACATL_IS_NUMBER (value) {
-  return (AHUACATL_TYPEWEIGHT(value) === AHUACATL_TYPEWEIGHT_NUMBER);
+function AHUACATL_IS_NULL (value) {
+  return (AHUACATL_TYPEWEIGHT(value) === AHUACATL_TYPEWEIGHT_NULL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1013,13 +1003,23 @@ function AHUACATL_IS_BOOL (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test if value is of type null
+/// @brief test if value is of type number
 ///
 /// returns a bool
 ////////////////////////////////////////////////////////////////////////////////
 
-function AHUACATL_IS_NULL (value) {
-  return (AHUACATL_TYPEWEIGHT(value) === AHUACATL_TYPEWEIGHT_NULL);
+function AHUACATL_IS_NUMBER (value) {
+  return (AHUACATL_TYPEWEIGHT(value) === AHUACATL_TYPEWEIGHT_NUMBER);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test if value is of type string
+///
+/// returns a bool
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_IS_STRING (value) {
+  return (AHUACATL_TYPEWEIGHT(value) === AHUACATL_TYPEWEIGHT_STRING);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

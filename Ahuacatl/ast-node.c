@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ast-node.h"
+#include "Ahuacatl/ahuacatl-functions.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros
@@ -1368,13 +1369,35 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_parse_context_t* const context,
                                         const char* const name,
                                         const TRI_aql_node_t* const parameters) {
   TRI_aql_node_fcall_t* node;
+  TRI_aql_function_t* function;
+  TRI_associative_pointer_t* functions;
+  char* upperName;
 
   assert(context);
+  assert(context->_vocbase);
+
 
   if (!name || !parameters) {
     ABORT_OOM
   }
-  // TODO: validate func name
+
+  functions = context->_vocbase->_functionsAql;
+  assert(functions);
+
+  // normalize the name by upper-casing it
+  upperName = TRI_UpperAsciiString(name);
+  if (!upperName) {
+    ABORT_OOM
+  }
+
+  function = (TRI_aql_function_t*) TRI_LookupByKeyAssociativePointer(functions, (void*) upperName);
+  TRI_Free(upperName);
+
+  if (!function) {
+    // function name is unknown
+    TRI_SetErrorAql(context, TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, name);
+    return NULL;
+  }
 
   node = (TRI_aql_node_fcall_t*) TRI_Allocate(sizeof(TRI_aql_node_fcall_t));
 
@@ -1384,7 +1407,7 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_parse_context_t* const context,
 
   InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_FCALL);
 
-  node->_name = (char*) name;
+  node->_name = function->_internalName;
   node->_parameters = (TRI_aql_node_t*) parameters;
 
   return (TRI_aql_node_t*) node;

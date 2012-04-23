@@ -98,13 +98,16 @@ static bool EqualVariable (TRI_associative_pointer_t* array,
 /// @brief create and initialize a parse context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_parse_context_t* TRI_CreateParseContextAql (const char* const query) {
+TRI_aql_parse_context_t* TRI_CreateParseContextAql (TRI_vocbase_t* vocbase,
+                                                    const char* const query) {
   TRI_aql_parse_context_t* context;
 
   context = (TRI_aql_parse_context_t*) TRI_Allocate(sizeof(TRI_aql_parse_context_t));
   if (!context) {
     return NULL;
   }
+
+  context->_vocbase = vocbase;
   
   TRI_InitVectorPointer(&context->_stack);
   TRI_InitVectorPointer(&context->_nodes);
