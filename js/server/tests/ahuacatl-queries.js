@@ -551,9 +551,9 @@ function ahuacatlQueryTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
       
     testRelations1 : function () {
-      var expected = [ { "name" : "Abigail", "numFriends" : 3 }, { "name" : "Michael", "numFriends" : 2 }, { "name" : "Sophia", "numFriends" : 2 }, { "name" : "Mariah", "numFriends" : 2 } ];
+      var expected = [ { "name" : "Abigail", "numFriends" : 3 }, { "name" : "Alexander", "numFriends" : 2 }, { "name" : "Isabella", "numFriends" : 2 }, { "name" : "John", "numFriends" : 2 } ];
 
-      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true LET f = ((FOR r IN " + relations.name() + " FILTER r.from == u.id && r.type == \"friend\" RETURN r)) SORT AHUACATL_LENGTH(f) DESC LIMIT 0,4 FILTER AHUACATL_LENGTH(f) > 0 RETURN { \"name\" : u.name, \"numFriends\" : AHUACATL_LENGTH(f) }", false);
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true LET f = ((FOR r IN " + relations.name() + " FILTER r.from == u.id && r.type == \"friend\" RETURN r)) SORT AHUACATL_LENGTH(f) DESC, u.name LIMIT 0,4 FILTER AHUACATL_LENGTH(f) > 0 RETURN { \"name\" : u.name, \"numFriends\" : AHUACATL_LENGTH(f) }", false);
       assertEqual(expected, actual);
     },
 
