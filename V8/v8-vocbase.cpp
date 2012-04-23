@@ -540,6 +540,8 @@ static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
     }    
 
     TRI_DestroyVector(&attributes);
+
+    ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(CreateErrorObject(res, errorString)));
   }  
   
@@ -584,6 +586,7 @@ static v8::Handle<v8::Value> EnsureHashSkipListIndex (string const& cmd,
   TRI_json_t* json = idx->json(idx, collection->_collection);
 
   if (!json) {
+    ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
   }
 
@@ -1259,6 +1262,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
         ReleaseCollection(vertexCollection);
       }
 
+      ReleaseCollection(collection);
       return scope.Close(v8::ThrowException(errMsg));
     }
 
@@ -1866,8 +1870,6 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   // outside a write transaction
   // .............................................................................
 
-  ReleaseCollection(collection);
-
   // free
   for (size_t j = 0;  j < n;  ++j) {
     TRI_FreeShapedJson(values[j]);
@@ -1876,6 +1878,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   TRI_Free(values);
   TRI_Free(pids);
 
+  ReleaseCollection(collection);
   return scope.Close(result);
 }
 
