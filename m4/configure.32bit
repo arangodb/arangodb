@@ -28,8 +28,8 @@ if test "x$tr_BITS" == "x64";  then
   )
 fi
 
-AM_CONDITIONAL(ENABLE_64BIT, test "x$tr_BITS" = x64)
-AM_CONDITIONAL(ENABLE_32BIT, test "x$tr_BITS" = x32)
+AM_CONDITIONAL(ENABLE_64BIT, test "x$tr_BITS" == x64)
+AM_CONDITIONAL(ENABLE_32BIT, test "x$tr_BITS" == x32)
 AM_CONDITIONAL(ENABLE_FORCE_32BIT, test "x$tr_BITS_32" = xyes)
 
 dnl -----------------------------------------------------------------------------------------

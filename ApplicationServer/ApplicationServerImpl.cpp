@@ -50,7 +50,9 @@ namespace triagens {
     // -----------------------------------------------------------------------------
 
     ApplicationServerImpl::ApplicationServerImpl (string const& title, string const& version)
-      : title(title),
+      : _exitOnParentDeath(false),
+        _watchParent(0),
+        title(title),
         version(version),
         initFile(),
         userConfigFile(),
@@ -248,6 +250,10 @@ namespace triagens {
 #ifdef TRI_HAVE_SETGID
         ("gid", &gid, "switch to group-id after reading config files")
 #endif
+#ifdef TRI_HAVE_GETPPID
+        ("exit-on-parent-death", &_exitOnParentDeath, "exit if parent dies")
+#endif
+        ("watch-process", &_watchParent, "exit if process with given PID dies")
       ;
 
 #endif

@@ -375,6 +375,9 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     close(fd);
 
+    // remove empty file
+    TRI_UnlinkFile(filename);
+
     LOG_ERROR("cannot seek in datafile '%s': '%s'", filename, TRI_last_error());
     return NULL;
   }
@@ -385,6 +388,9 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
   if (res < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     close(fd);
+    
+    // remove empty file
+    TRI_UnlinkFile(filename);
 
     LOG_ERROR("cannot create sparse datafile '%s': '%s'", filename, TRI_last_error());
     return NULL;
@@ -396,6 +402,9 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
   if (data == MAP_FAILED) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     close(fd);
+
+    // remove empty file
+    TRI_UnlinkFile(filename);
 
     LOG_ERROR("cannot memory map file '%s': '%s'", filename, TRI_last_error());
     return NULL;
@@ -811,7 +820,7 @@ bool TRI_CloseDatafile (TRI_datafile_t* datafile) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_RenameDatafile (TRI_datafile_t* datafile, char const* filename) {
-  bool ok;
+  int res;
 
   if (TRI_ExistsFile(filename)) {
     LOG_ERROR("cannot overwrite datafile '%s'", filename);
@@ -820,9 +829,9 @@ bool TRI_RenameDatafile (TRI_datafile_t* datafile, char const* filename) {
     return false;
   }
 
-  ok = TRI_RenameFile(datafile->_filename, filename);
+  res = TRI_RenameFile(datafile->_filename, filename);
 
-  if (! ok) {
+  if (res != TRI_ERROR_NO_ERROR) {
     datafile->_state = TRI_DF_STATE_RENAME_ERROR;
     datafile->_lastError = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
@@ -839,25 +848,22 @@ bool TRI_RenameDatafile (TRI_datafile_t* datafile, char const* filename) {
 /// @brief seals a database, writes a footer, sets it to read-only
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_SealDatafile (TRI_datafile_t* datafile) {
+int TRI_SealDatafile (TRI_datafile_t* datafile) {
   TRI_df_footer_marker_t footer;
   TRI_df_marker_t* position;
   bool ok;
   int res;
 
   if (datafile->_state == TRI_DF_STATE_READ) {
-    TRI_set_errno(TRI_ERROR_AVOCADO_READ_ONLY);
-    return false;
+    return TRI_set_errno(TRI_ERROR_AVOCADO_READ_ONLY);
   }
 
   if (datafile->_state != TRI_DF_STATE_WRITE) {
-    TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_STATE);
-    return false;
+    return TRI_set_errno(TRI_ERROR_AVOCADO_ILLEGAL_STATE);
   }
 
   if (datafile->_isSealed) {
-    TRI_set_errno(TRI_ERROR_AVOCADO_DATAFILE_SEALED);
-    return false;
+    return TRI_set_errno(TRI_ERROR_AVOCADO_DATAFILE_SEALED);
   }
 
   // create the footer
@@ -880,7 +886,7 @@ bool TRI_SealDatafile (TRI_datafile_t* datafile) {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return false;
+    return res;
   }
 
   // sync file
@@ -911,8 +917,9 @@ bool TRI_SealDatafile (TRI_datafile_t* datafile) {
     res = ftruncate(datafile->_fd, datafile->_currentSize);
 
     if (res < 0) {
-      TRI_set_errno(TRI_ERROR_SYS_ERROR);
       LOG_ERROR("cannot truncate datafile '%s': %s", datafile->_filename, TRI_last_error());
+      datafile->_lastError = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      ok = false;
     }
 
     datafile->_isSealed = true;

@@ -35,6 +35,16 @@
 #include "VocBase/vocbase.h"
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+
+namespace triagens {
+  namespace admin {
+    class ApplicationUserManager;
+  }
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                               class AvocadoServer
 // -----------------------------------------------------------------------------
 
@@ -119,10 +129,18 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the shell
+/// @brief executes the JavaScript emergency console
 ////////////////////////////////////////////////////////////////////////////////
 
-        void executeShell ();
+        int executeShell (bool tests);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes the ruby emergency console
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MRUBY
+        int executeRubyShell ();
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens the database
@@ -182,6 +200,12 @@ namespace triagens {
         rest::ApplicationHttpServer* _applicationHttpServer;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief constructed user server application
+////////////////////////////////////////////////////////////////////////////////
+
+        admin::ApplicationUserManager* _applicationUserManager;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief constructed http server
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -199,7 +223,10 @@ namespace triagens {
 /// @CMDOPT{--server.http-port @CA{port}}
 ///
 /// Specifies the @CA{port} for HTTP requests by clients. This will bind to any
-/// address available.
+/// address available. If you do not specify an admin port, then the http port
+/// will serve both client and administration request. If you have
+/// higher security requirements, you can use a special administration
+/// port.
 ///
 /// @CMDOPT{--server.http-port @CA{address}:@CA{port}}
 ///
@@ -318,10 +345,67 @@ namespace triagens {
 /// When using the command line version, you can simply supply the database
 /// directory as argument.
 ///
-/// @verbinclude start2
+/// @EXAMPLES
+///
+/// @verbinclude option-database-directory
 ////////////////////////////////////////////////////////////////////////////////
 
         string _databasePath;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove on drop
+///
+/// @CMDOPT{--database.remove-on-drop @CA{flag}}
+///
+/// If @LIT{true} and you drop a collection, then they directory and all
+/// associated datafiles will be removed from disk. If @LIT{false}, then they
+/// collection directory will be renamed to @LIT{deleted-...}, but remains on
+/// hard disk. To restore such a dropped collection, you can rename the
+/// directory back to @LIT{collection-...}, but you must also edit the file
+/// @LIT{parameter.json} inside the directory.
+///
+/// The default is @LIT{true}.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _removeOnDrop;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove on compaction
+///
+/// @CMDOPT{--database.remove-on-compaction @CA{flag}}
+///
+/// Normally the garbage collection will removed compacted datafile. For debug
+/// purposes you can use this option to keep the old datafiles. You should
+/// never set it to @LIT{false} on a live system.
+///
+/// The default is @LIT{true}.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _removeOnCompacted;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default journal size
+///
+/// @CMDOPT{--database.maximal-journal-size @CA{size}}
+///
+/// Maximal size of journal in bytes. Can be overwritten when creating a new
+/// collection. Note that this also limits the maximal size of a single
+/// document.
+///
+/// The default is @LIT{32MB}.
+////////////////////////////////////////////////////////////////////////////////
+
+        uint64_t _defaultMaximalSize;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unit tests
+///
+/// @CMDOPT{--unit-tests @CA{test-file}}
+///
+/// Runs one or more unit tests.
+////////////////////////////////////////////////////////////////////////////////
+
+        vector<string> _unitTests;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief vocbase

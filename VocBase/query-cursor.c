@@ -141,11 +141,13 @@ static uint32_t GetBatchSizeQueryCursor (const TRI_query_cursor_t* const cursor)
 
 void TRI_FreeQueryCursor (TRI_query_cursor_t* cursor) {
   FreeData(cursor);
-  
+
   TRI_DestroyMutex(&cursor->_lock);
   TRI_DestroyVectorPointer(&cursor->_containers);
 
   TRI_Free(cursor);
+
+  LOG_DEBUG("destroyed query cursor");
 }
 
 
@@ -177,6 +179,9 @@ TRI_query_cursor_t* TRI_CreateQueryCursor (TRI_query_instance_t* const instance,
 
   // does cursor produce constant documents?
   cursor->_isConstant = instance->_query._select._isConstant;
+
+  cursor->_locks = NULL;
+
   cursor->_hasCount = doCount;
   cursor->_batchSize = batchSize;
   cursor->_deleted = false;
@@ -193,6 +198,8 @@ TRI_query_cursor_t* TRI_CreateQueryCursor (TRI_query_instance_t* const instance,
   
   TRI_InitMutex(&cursor->_lock);
   TRI_InitVectorPointer(&cursor->_containers);
+  
+  LOG_DEBUG("created query cursor");
 
   return cursor;
 }

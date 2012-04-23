@@ -57,6 +57,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     class ProgramOptions {
+      private:
         ProgramOptions (ProgramOptions const&);
         ProgramOptions& operator= (ProgramOptions const&);
 

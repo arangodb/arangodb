@@ -28,6 +28,9 @@
 #ifndef TRIAGENS_DURHAM_VOC_BASE_QUERY_CURSOR_H
 #define TRIAGENS_DURHAM_VOC_BASE_QUERY_CURSOR_H 1
 
+#include <BasicsC/vector.h>
+#include <BasicsC/logging.h>
+
 #include "VocBase/vocbase.h"
 #include "VocBase/shadow-data.h"
 #include "VocBase/query-base.h"
@@ -59,6 +62,8 @@ typedef struct TRI_query_cursor_s {
   TRI_vector_pointer_t _containers;
   TRI_mutex_t _lock;
   bool _deleted;
+
+  TRI_vector_pointer_t* _locks;
 
   TRI_rc_result_t _result;
   TRI_select_size_t _length;

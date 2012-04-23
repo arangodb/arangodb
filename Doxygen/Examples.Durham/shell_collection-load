@@ -1,0 +1,5 @@
+avocado> col = db.example;
+[AvocadoCollection 164208316, "example" (status unloading)]
+avocado> col.load();
+avocado> col;
+[AvocadoCollection 164208316, "example" (status loaded)]

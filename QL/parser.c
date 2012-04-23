@@ -90,6 +90,7 @@
 #include "VocBase/query-node.h"
 #include "VocBase/query-base.h"
 #include "VocBase/query-parse.h"
+#include "VocBase/query-functions.h"
 
 #define ABORT_IF_OOM(ptr) \
   if (!ptr) { \
@@ -100,7 +101,7 @@
 
 
 /* Line 189 of yacc.c  */
-#line 104 "QL/parser.c"
+#line 105 "QL/parser.c"
 
 /* Enabling traces.  */
 #ifndef YYDEBUG
@@ -181,7 +182,7 @@ typedef union YYSTYPE
 {
 
 /* Line 214 of yacc.c  */
-#line 32 "QL/parser.y"
+#line 33 "QL/parser.y"
 
   TRI_query_node_t* node;
   int intval;
@@ -191,7 +192,7 @@ typedef union YYSTYPE
 
 
 /* Line 214 of yacc.c  */
-#line 195 "QL/parser.c"
+#line 196 "QL/parser.c"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
@@ -215,7 +216,7 @@ typedef struct YYLTYPE
 /* Copy the second part of user declarations.  */
 
 /* Line 264 of yacc.c  */
-#line 40 "QL/parser.y"
+#line 41 "QL/parser.y"
 
 int QLlex (YYSTYPE*, YYLTYPE*, void*);
 
@@ -227,7 +228,7 @@ void QLerror (YYLTYPE* locp, TRI_query_template_t* const template_, const char* 
 
 
 /* Line 264 of yacc.c  */
-#line 231 "QL/parser.c"
+#line 232 "QL/parser.c"
 
 #ifdef short
 # undef short
@@ -564,19 +565,19 @@ static const yytype_int8 yyrhs[] =
 /* YYRLINE[YYN] -- source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
-       0,   129,   129,   131,   135,   137,   142,   148,   161,   169,
-     169,   181,   193,   214,   227,   241,   258,   262,   275,   287,
-     287,   301,   305,   317,   320,   347,   381,   384,   392,   395,
-     395,   407,   411,   418,   429,   434,   439,   447,   449,   462,
-     475,   495,   518,   523,   528,   528,   541,   545,   552,   559,
-     573,   590,   621,   627,   638,   644,   655,   659,   663,   670,
-     677,   681,   688,   692,   696,   700,   707,   711,   715,   719,
-     723,   727,   727,   738,   742,   742,   753,   757,   757,   768,
-     776,   783,   792,   796,   803,   812,   820,   826,   832,   841,
-     849,   857,   865,   873,   881,   889,   897,   905,   913,   921,
-     929,   937,   945,   956,   973,   980,   992,   992,  1010,  1013,
-    1020,  1024,  1024,  1036,  1039,  1046,  1054,  1065,  1069,  1073,
-    1078,  1083,  1097
+       0,   130,   130,   132,   136,   138,   143,   149,   162,   170,
+     170,   182,   194,   215,   228,   242,   259,   263,   276,   288,
+     288,   302,   306,   318,   321,   348,   382,   385,   393,   396,
+     396,   408,   412,   419,   430,   435,   440,   448,   450,   463,
+     476,   496,   519,   524,   529,   529,   542,   546,   553,   560,
+     574,   591,   622,   628,   639,   645,   656,   660,   664,   671,
+     678,   682,   689,   693,   697,   701,   708,   712,   716,   720,
+     724,   728,   728,   739,   743,   743,   754,   758,   758,   769,
+     777,   784,   793,   797,   804,   813,   821,   827,   833,   842,
+     850,   858,   866,   874,   882,   890,   898,   906,   914,   922,
+     930,   938,   946,   957,   974,   981,   998,   998,  1020,  1023,
+    1030,  1034,  1034,  1046,  1049,  1056,  1064,  1075,  1079,  1083,
+    1088,  1093,  1107
 };
 #endif
 
@@ -1689,7 +1690,7 @@ yyreduce:
         case 2:
 
 /* Line 1455 of yacc.c  */
-#line 129 "QL/parser.y"
+#line 130 "QL/parser.y"
     {
     ;}
     break;
@@ -1697,7 +1698,7 @@ yyreduce:
   case 3:
 
 /* Line 1455 of yacc.c  */
-#line 131 "QL/parser.y"
+#line 132 "QL/parser.y"
     {
     ;}
     break;
@@ -1705,7 +1706,7 @@ yyreduce:
   case 5:
 
 /* Line 1455 of yacc.c  */
-#line 137 "QL/parser.y"
+#line 138 "QL/parser.y"
     {
     ;}
     break;
@@ -1713,7 +1714,7 @@ yyreduce:
   case 6:
 
 /* Line 1455 of yacc.c  */
-#line 142 "QL/parser.y"
+#line 143 "QL/parser.y"
     { 
       template_->_query->_type = QUERY_TYPE_EMPTY;
     ;}
@@ -1722,7 +1723,7 @@ yyreduce:
   case 7:
 
 /* Line 1455 of yacc.c  */
-#line 148 "QL/parser.y"
+#line 149 "QL/parser.y"
     {
       // full blown SELECT query
       template_->_query->_type         = QUERY_TYPE_SELECT;
@@ -1736,7 +1737,7 @@ yyreduce:
   case 8:
 
 /* Line 1455 of yacc.c  */
-#line 161 "QL/parser.y"
+#line 162 "QL/parser.y"
     {
       // select part of a SELECT
       (yyval.node) = (yyvsp[(1) - (1)].node);
@@ -1747,7 +1748,7 @@ yyreduce:
   case 9:
 
 /* Line 1455 of yacc.c  */
-#line 169 "QL/parser.y"
+#line 170 "QL/parser.y"
     {
       // from part of a SELECT
       TRI_query_node_t* list = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerList);
@@ -1759,7 +1760,7 @@ yyreduce:
   case 10:
 
 /* Line 1455 of yacc.c  */
-#line 174 "QL/parser.y"
+#line 175 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryContextPop(template_);
       ABORT_IF_OOM((yyval.node));
@@ -1769,7 +1770,7 @@ yyreduce:
   case 11:
 
 /* Line 1455 of yacc.c  */
-#line 181 "QL/parser.y"
+#line 182 "QL/parser.y"
     {
       // single table query
       ABORT_IF_OOM((yyvsp[(1) - (2)].node));
@@ -1787,7 +1788,7 @@ yyreduce:
   case 12:
 
 /* Line 1455 of yacc.c  */
-#line 193 "QL/parser.y"
+#line 194 "QL/parser.y"
     {
       // multi-table query
       ABORT_IF_OOM((yyvsp[(2) - (6)].node));
@@ -1811,7 +1812,7 @@ yyreduce:
   case 13:
 
 /* Line 1455 of yacc.c  */
-#line 214 "QL/parser.y"
+#line 215 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(2) - (5)].node));
       ABORT_IF_OOM((yyvsp[(4) - (5)].node));
@@ -1827,7 +1828,7 @@ yyreduce:
   case 14:
 
 /* Line 1455 of yacc.c  */
-#line 227 "QL/parser.y"
+#line 228 "QL/parser.y"
     {
       double d;
 
@@ -1847,7 +1848,7 @@ yyreduce:
   case 15:
 
 /* Line 1455 of yacc.c  */
-#line 241 "QL/parser.y"
+#line 242 "QL/parser.y"
     { 
       double d;
 
@@ -1867,7 +1868,7 @@ yyreduce:
   case 16:
 
 /* Line 1455 of yacc.c  */
-#line 258 "QL/parser.y"
+#line 259 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       (yyval.node) = (yyvsp[(1) - (1)].node);
@@ -1877,7 +1878,7 @@ yyreduce:
   case 17:
 
 /* Line 1455 of yacc.c  */
-#line 262 "QL/parser.y"
+#line 263 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (3)].node));
       ABORT_IF_OOM((yyvsp[(3) - (3)].node));
@@ -1893,7 +1894,7 @@ yyreduce:
   case 18:
 
 /* Line 1455 of yacc.c  */
-#line 275 "QL/parser.y"
+#line 276 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(2) - (5)].node));
       ABORT_IF_OOM((yyvsp[(4) - (5)].node));
@@ -1908,7 +1909,7 @@ yyreduce:
   case 19:
 
 /* Line 1455 of yacc.c  */
-#line 287 "QL/parser.y"
+#line 288 "QL/parser.y"
     {
       TRI_query_node_t* list = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerList);
       ABORT_IF_OOM(list);
@@ -1919,7 +1920,7 @@ yyreduce:
   case 20:
 
 /* Line 1455 of yacc.c  */
-#line 291 "QL/parser.y"
+#line 292 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerMemberAccess);
       ABORT_IF_OOM((yyval.node));
@@ -1932,7 +1933,7 @@ yyreduce:
   case 21:
 
 /* Line 1455 of yacc.c  */
-#line 301 "QL/parser.y"
+#line 302 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       (yyval.node) = (yyvsp[(1) - (1)].node);
@@ -1942,7 +1943,7 @@ yyreduce:
   case 22:
 
 /* Line 1455 of yacc.c  */
-#line 305 "QL/parser.y"
+#line 306 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (3)].node));
       ABORT_IF_OOM((yyvsp[(3) - (3)].node));
@@ -1957,7 +1958,7 @@ yyreduce:
   case 23:
 
 /* Line 1455 of yacc.c  */
-#line 317 "QL/parser.y"
+#line 318 "QL/parser.y"
     {
       (yyval.node) = 0;
     ;}
@@ -1966,7 +1967,7 @@ yyreduce:
   case 24:
 
 /* Line 1455 of yacc.c  */
-#line 320 "QL/parser.y"
+#line 321 "QL/parser.y"
     {
       TRI_query_node_t* comp;
       double distance;
@@ -1999,7 +2000,7 @@ yyreduce:
   case 25:
 
 /* Line 1455 of yacc.c  */
-#line 347 "QL/parser.y"
+#line 348 "QL/parser.y"
     {
       TRI_query_node_t* comp;
       int64_t num;
@@ -2032,7 +2033,7 @@ yyreduce:
   case 26:
 
 /* Line 1455 of yacc.c  */
-#line 381 "QL/parser.y"
+#line 382 "QL/parser.y"
     {
       (yyval.node) = 0;
     ;}
@@ -2041,7 +2042,7 @@ yyreduce:
   case 27:
 
 /* Line 1455 of yacc.c  */
-#line 384 "QL/parser.y"
+#line 385 "QL/parser.y"
     {
       // where condition set
       ABORT_IF_OOM((yyvsp[(2) - (2)].node));
@@ -2052,7 +2053,7 @@ yyreduce:
   case 28:
 
 /* Line 1455 of yacc.c  */
-#line 392 "QL/parser.y"
+#line 393 "QL/parser.y"
     {
       (yyval.node) = 0;
     ;}
@@ -2061,7 +2062,7 @@ yyreduce:
   case 29:
 
 /* Line 1455 of yacc.c  */
-#line 395 "QL/parser.y"
+#line 396 "QL/parser.y"
     {
       // order by part of a query
       TRI_query_node_t* list = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerList);
@@ -2073,7 +2074,7 @@ yyreduce:
   case 30:
 
 /* Line 1455 of yacc.c  */
-#line 400 "QL/parser.y"
+#line 401 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryContextPop(template_);
       ABORT_IF_OOM((yyval.node));
@@ -2083,7 +2084,7 @@ yyreduce:
   case 31:
 
 /* Line 1455 of yacc.c  */
-#line 407 "QL/parser.y"
+#line 408 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       TRI_ParseQueryContextAddElement(template_, (yyvsp[(1) - (1)].node));
@@ -2093,7 +2094,7 @@ yyreduce:
   case 32:
 
 /* Line 1455 of yacc.c  */
-#line 411 "QL/parser.y"
+#line 412 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(3) - (3)].node));
       TRI_ParseQueryContextAddElement(template_, (yyvsp[(3) - (3)].node));
@@ -2103,7 +2104,7 @@ yyreduce:
   case 33:
 
 /* Line 1455 of yacc.c  */
-#line 418 "QL/parser.y"
+#line 419 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerOrderElement);
       ABORT_IF_OOM((yyval.node));
@@ -2117,7 +2118,7 @@ yyreduce:
   case 34:
 
 /* Line 1455 of yacc.c  */
-#line 429 "QL/parser.y"
+#line 430 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueOrderDirection);
       ABORT_IF_OOM((yyval.node));
@@ -2128,7 +2129,7 @@ yyreduce:
   case 35:
 
 /* Line 1455 of yacc.c  */
-#line 434 "QL/parser.y"
+#line 435 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueOrderDirection);
       ABORT_IF_OOM((yyval.node));
@@ -2139,7 +2140,7 @@ yyreduce:
   case 36:
 
 /* Line 1455 of yacc.c  */
-#line 439 "QL/parser.y"
+#line 440 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueOrderDirection);
       ABORT_IF_OOM((yyval.node));
@@ -2150,7 +2151,7 @@ yyreduce:
   case 37:
 
 /* Line 1455 of yacc.c  */
-#line 447 "QL/parser.y"
+#line 448 "QL/parser.y"
     {
     ;}
     break;
@@ -2158,7 +2159,7 @@ yyreduce:
   case 38:
 
 /* Line 1455 of yacc.c  */
-#line 449 "QL/parser.y"
+#line 450 "QL/parser.y"
     {
       // limit value
       int64_t d = TRI_Int64String((yyvsp[(2) - (2)].strval));
@@ -2177,7 +2178,7 @@ yyreduce:
   case 39:
 
 /* Line 1455 of yacc.c  */
-#line 462 "QL/parser.y"
+#line 463 "QL/parser.y"
     {
       // limit - value
       int64_t d = TRI_Int64String((yyvsp[(3) - (3)].strval));
@@ -2196,7 +2197,7 @@ yyreduce:
   case 40:
 
 /* Line 1455 of yacc.c  */
-#line 475 "QL/parser.y"
+#line 476 "QL/parser.y"
     { 
       // limit value, value
       int64_t d1, d2;
@@ -2222,7 +2223,7 @@ yyreduce:
   case 41:
 
 /* Line 1455 of yacc.c  */
-#line 495 "QL/parser.y"
+#line 496 "QL/parser.y"
     { 
       // limit value, -value
       int64_t d1, d2;
@@ -2248,7 +2249,7 @@ yyreduce:
   case 42:
 
 /* Line 1455 of yacc.c  */
-#line 518 "QL/parser.y"
+#line 519 "QL/parser.y"
     {
       // document is a reference to a collection (by using its alias)
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
@@ -2259,7 +2260,7 @@ yyreduce:
   case 43:
 
 /* Line 1455 of yacc.c  */
-#line 523 "QL/parser.y"
+#line 524 "QL/parser.y"
     {
       // empty document
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueDocument);
@@ -2270,7 +2271,7 @@ yyreduce:
   case 44:
 
 /* Line 1455 of yacc.c  */
-#line 528 "QL/parser.y"
+#line 529 "QL/parser.y"
     {
       // listing of document attributes
       TRI_query_node_t* list = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerList);
@@ -2282,7 +2283,7 @@ yyreduce:
   case 45:
 
 /* Line 1455 of yacc.c  */
-#line 533 "QL/parser.y"
+#line 534 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueDocument);
       ABORT_IF_OOM((yyval.node));
@@ -2293,7 +2294,7 @@ yyreduce:
   case 46:
 
 /* Line 1455 of yacc.c  */
-#line 541 "QL/parser.y"
+#line 542 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       TRI_ParseQueryContextAddElement(template_, (yyvsp[(1) - (1)].node));
@@ -2303,7 +2304,7 @@ yyreduce:
   case 47:
 
 /* Line 1455 of yacc.c  */
-#line 545 "QL/parser.y"
+#line 546 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(3) - (3)].node));
       TRI_ParseQueryContextAddElement(template_, (yyvsp[(3) - (3)].node));
@@ -2313,7 +2314,7 @@ yyreduce:
   case 48:
 
 /* Line 1455 of yacc.c  */
-#line 552 "QL/parser.y"
+#line 553 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       (yyval.node) = (yyvsp[(1) - (1)].node);
@@ -2323,7 +2324,7 @@ yyreduce:
   case 49:
 
 /* Line 1455 of yacc.c  */
-#line 559 "QL/parser.y"
+#line 560 "QL/parser.y"
     {
       size_t outLength;
       TRI_query_node_t* str = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueString);
@@ -2343,7 +2344,7 @@ yyreduce:
   case 50:
 
 /* Line 1455 of yacc.c  */
-#line 573 "QL/parser.y"
+#line 574 "QL/parser.y"
     {
       size_t outLength;
       TRI_query_node_t* str = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueString);
@@ -2363,7 +2364,7 @@ yyreduce:
   case 51:
 
 /* Line 1455 of yacc.c  */
-#line 590 "QL/parser.y"
+#line 591 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (2)].node));
       ABORT_IF_OOM((yyvsp[(1) - (2)].node)->_value._stringValue);
@@ -2397,7 +2398,7 @@ yyreduce:
   case 52:
 
 /* Line 1455 of yacc.c  */
-#line 621 "QL/parser.y"
+#line 622 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
       ABORT_IF_OOM((yyval.node));
@@ -2409,7 +2410,7 @@ yyreduce:
   case 53:
 
 /* Line 1455 of yacc.c  */
-#line 627 "QL/parser.y"
+#line 628 "QL/parser.y"
     {
       size_t outLength;
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
@@ -2423,7 +2424,7 @@ yyreduce:
   case 54:
 
 /* Line 1455 of yacc.c  */
-#line 638 "QL/parser.y"
+#line 639 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeReferenceCollectionAlias);
       ABORT_IF_OOM((yyval.node));
@@ -2435,7 +2436,7 @@ yyreduce:
   case 55:
 
 /* Line 1455 of yacc.c  */
-#line 644 "QL/parser.y"
+#line 645 "QL/parser.y"
     {
       size_t outLength;
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeReferenceCollectionAlias);
@@ -2449,7 +2450,7 @@ yyreduce:
   case 56:
 
 /* Line 1455 of yacc.c  */
-#line 655 "QL/parser.y"
+#line 656 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       (yyval.node) = (yyvsp[(1) - (1)].node);
@@ -2459,7 +2460,7 @@ yyreduce:
   case 57:
 
 /* Line 1455 of yacc.c  */
-#line 659 "QL/parser.y"
+#line 660 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       (yyval.node) = (yyvsp[(1) - (1)].node);
@@ -2469,7 +2470,7 @@ yyreduce:
   case 58:
 
 /* Line 1455 of yacc.c  */
-#line 663 "QL/parser.y"
+#line 664 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       (yyval.node) = (yyvsp[(1) - (1)].node);
@@ -2479,7 +2480,7 @@ yyreduce:
   case 59:
 
 /* Line 1455 of yacc.c  */
-#line 670 "QL/parser.y"
+#line 671 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeJoinList);
       ABORT_IF_OOM((yyval.node));
@@ -2489,7 +2490,7 @@ yyreduce:
   case 60:
 
 /* Line 1455 of yacc.c  */
-#line 677 "QL/parser.y"
+#line 678 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeJoinInner);
       ABORT_IF_OOM((yyval.node));
@@ -2499,7 +2500,7 @@ yyreduce:
   case 61:
 
 /* Line 1455 of yacc.c  */
-#line 681 "QL/parser.y"
+#line 682 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeJoinInner);
       ABORT_IF_OOM((yyval.node));
@@ -2509,7 +2510,7 @@ yyreduce:
   case 62:
 
 /* Line 1455 of yacc.c  */
-#line 688 "QL/parser.y"
+#line 689 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeJoinLeft);
       ABORT_IF_OOM((yyval.node));
@@ -2519,7 +2520,7 @@ yyreduce:
   case 63:
 
 /* Line 1455 of yacc.c  */
-#line 692 "QL/parser.y"
+#line 693 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeJoinLeft);
       ABORT_IF_OOM((yyval.node));
@@ -2529,7 +2530,7 @@ yyreduce:
   case 64:
 
 /* Line 1455 of yacc.c  */
-#line 696 "QL/parser.y"
+#line 697 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeJoinRight);
       ABORT_IF_OOM((yyval.node));
@@ -2539,7 +2540,7 @@ yyreduce:
   case 65:
 
 /* Line 1455 of yacc.c  */
-#line 700 "QL/parser.y"
+#line 701 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeJoinRight);
       ABORT_IF_OOM((yyval.node));
@@ -2549,7 +2550,7 @@ yyreduce:
   case 66:
 
 /* Line 1455 of yacc.c  */
-#line 707 "QL/parser.y"
+#line 708 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(2) - (3)].node));
       (yyval.node) = (yyvsp[(2) - (3)].node);
@@ -2559,7 +2560,7 @@ yyreduce:
   case 67:
 
 /* Line 1455 of yacc.c  */
-#line 711 "QL/parser.y"
+#line 712 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       (yyval.node) = (yyvsp[(1) - (1)].node);
@@ -2569,7 +2570,7 @@ yyreduce:
   case 68:
 
 /* Line 1455 of yacc.c  */
-#line 715 "QL/parser.y"
+#line 716 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       (yyval.node) = (yyvsp[(1) - (1)].node);
@@ -2579,7 +2580,7 @@ yyreduce:
   case 69:
 
 /* Line 1455 of yacc.c  */
-#line 719 "QL/parser.y"
+#line 720 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       (yyval.node) = (yyvsp[(1) - (1)].node);
@@ -2589,7 +2590,7 @@ yyreduce:
   case 70:
 
 /* Line 1455 of yacc.c  */
-#line 723 "QL/parser.y"
+#line 724 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       (yyval.node) = (yyvsp[(1) - (1)].node);
@@ -2599,7 +2600,7 @@ yyreduce:
   case 71:
 
 /* Line 1455 of yacc.c  */
-#line 727 "QL/parser.y"
+#line 728 "QL/parser.y"
     { 
       TRI_query_node_t* list = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerList);
       ABORT_IF_OOM(list);
@@ -2610,7 +2611,7 @@ yyreduce:
   case 72:
 
 /* Line 1455 of yacc.c  */
-#line 731 "QL/parser.y"
+#line 732 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerMemberAccess);
       ABORT_IF_OOM((yyval.node));
@@ -2623,7 +2624,7 @@ yyreduce:
   case 73:
 
 /* Line 1455 of yacc.c  */
-#line 738 "QL/parser.y"
+#line 739 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       (yyval.node) = (yyvsp[(1) - (1)].node);
@@ -2633,7 +2634,7 @@ yyreduce:
   case 74:
 
 /* Line 1455 of yacc.c  */
-#line 742 "QL/parser.y"
+#line 743 "QL/parser.y"
     {
       TRI_query_node_t* list = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerList);
       ABORT_IF_OOM(list);
@@ -2644,7 +2645,7 @@ yyreduce:
   case 75:
 
 /* Line 1455 of yacc.c  */
-#line 746 "QL/parser.y"
+#line 747 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerMemberAccess);
       ABORT_IF_OOM((yyval.node));
@@ -2657,7 +2658,7 @@ yyreduce:
   case 76:
 
 /* Line 1455 of yacc.c  */
-#line 753 "QL/parser.y"
+#line 754 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       (yyval.node) = (yyvsp[(1) - (1)].node);  
@@ -2667,7 +2668,7 @@ yyreduce:
   case 77:
 
 /* Line 1455 of yacc.c  */
-#line 757 "QL/parser.y"
+#line 758 "QL/parser.y"
     {
       TRI_query_node_t* list = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerList);
       ABORT_IF_OOM(list);
@@ -2678,7 +2679,7 @@ yyreduce:
   case 78:
 
 /* Line 1455 of yacc.c  */
-#line 761 "QL/parser.y"
+#line 762 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerMemberAccess);
       ABORT_IF_OOM((yyval.node));
@@ -2691,7 +2692,7 @@ yyreduce:
   case 79:
 
 /* Line 1455 of yacc.c  */
-#line 768 "QL/parser.y"
+#line 769 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       (yyval.node) = (yyvsp[(1) - (1)].node);
@@ -2701,7 +2702,7 @@ yyreduce:
   case 80:
 
 /* Line 1455 of yacc.c  */
-#line 776 "QL/parser.y"
+#line 777 "QL/parser.y"
     {
       TRI_query_node_t* name = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
       ABORT_IF_OOM(name);
@@ -2714,7 +2715,7 @@ yyreduce:
   case 81:
 
 /* Line 1455 of yacc.c  */
-#line 783 "QL/parser.y"
+#line 784 "QL/parser.y"
     {
       TRI_query_node_t* name = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
       size_t outLength;
@@ -2729,7 +2730,7 @@ yyreduce:
   case 82:
 
 /* Line 1455 of yacc.c  */
-#line 792 "QL/parser.y"
+#line 793 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(2) - (2)].node));
       TRI_ParseQueryContextAddElement(template_, (yyvsp[(2) - (2)].node));
@@ -2739,7 +2740,7 @@ yyreduce:
   case 83:
 
 /* Line 1455 of yacc.c  */
-#line 796 "QL/parser.y"
+#line 797 "QL/parser.y"
     {
       TRI_query_node_t* name = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
       ABORT_IF_OOM(name);
@@ -2752,7 +2753,7 @@ yyreduce:
   case 84:
 
 /* Line 1455 of yacc.c  */
-#line 803 "QL/parser.y"
+#line 804 "QL/parser.y"
     {
       TRI_query_node_t* name = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
       size_t outLength;
@@ -2767,7 +2768,7 @@ yyreduce:
   case 85:
 
 /* Line 1455 of yacc.c  */
-#line 812 "QL/parser.y"
+#line 813 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (3)].node));
       ABORT_IF_OOM((yyvsp[(3) - (3)].node));
@@ -2778,7 +2779,7 @@ yyreduce:
   case 86:
 
 /* Line 1455 of yacc.c  */
-#line 820 "QL/parser.y"
+#line 821 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeUnaryOperatorPlus);
       ABORT_IF_OOM((yyval.node));
@@ -2790,7 +2791,7 @@ yyreduce:
   case 87:
 
 /* Line 1455 of yacc.c  */
-#line 826 "QL/parser.y"
+#line 827 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeUnaryOperatorMinus);
       ABORT_IF_OOM((yyval.node));
@@ -2802,7 +2803,7 @@ yyreduce:
   case 88:
 
 /* Line 1455 of yacc.c  */
-#line 832 "QL/parser.y"
+#line 833 "QL/parser.y"
     { 
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeUnaryOperatorNot);
       ABORT_IF_OOM((yyval.node));
@@ -2814,7 +2815,7 @@ yyreduce:
   case 89:
 
 /* Line 1455 of yacc.c  */
-#line 841 "QL/parser.y"
+#line 842 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorOr);
       ABORT_IF_OOM((yyval.node));
@@ -2828,7 +2829,7 @@ yyreduce:
   case 90:
 
 /* Line 1455 of yacc.c  */
-#line 849 "QL/parser.y"
+#line 850 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorAnd);
       ABORT_IF_OOM((yyval.node));
@@ -2842,7 +2843,7 @@ yyreduce:
   case 91:
 
 /* Line 1455 of yacc.c  */
-#line 857 "QL/parser.y"
+#line 858 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorAdd);
       ABORT_IF_OOM((yyval.node));
@@ -2856,7 +2857,7 @@ yyreduce:
   case 92:
 
 /* Line 1455 of yacc.c  */
-#line 865 "QL/parser.y"
+#line 866 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorSubtract);
       ABORT_IF_OOM((yyval.node));
@@ -2870,7 +2871,7 @@ yyreduce:
   case 93:
 
 /* Line 1455 of yacc.c  */
-#line 873 "QL/parser.y"
+#line 874 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorMultiply);
       ABORT_IF_OOM((yyval.node));
@@ -2884,7 +2885,7 @@ yyreduce:
   case 94:
 
 /* Line 1455 of yacc.c  */
-#line 881 "QL/parser.y"
+#line 882 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorDivide);
       ABORT_IF_OOM((yyval.node));
@@ -2898,7 +2899,7 @@ yyreduce:
   case 95:
 
 /* Line 1455 of yacc.c  */
-#line 889 "QL/parser.y"
+#line 890 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorModulus);
       ABORT_IF_OOM((yyval.node));
@@ -2912,7 +2913,7 @@ yyreduce:
   case 96:
 
 /* Line 1455 of yacc.c  */
-#line 897 "QL/parser.y"
+#line 898 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorEqual);
       ABORT_IF_OOM((yyval.node));
@@ -2926,7 +2927,7 @@ yyreduce:
   case 97:
 
 /* Line 1455 of yacc.c  */
-#line 905 "QL/parser.y"
+#line 906 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorUnequal);
       ABORT_IF_OOM((yyval.node));
@@ -2940,7 +2941,7 @@ yyreduce:
   case 98:
 
 /* Line 1455 of yacc.c  */
-#line 913 "QL/parser.y"
+#line 914 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorLess);
       ABORT_IF_OOM((yyval.node));
@@ -2954,7 +2955,7 @@ yyreduce:
   case 99:
 
 /* Line 1455 of yacc.c  */
-#line 921 "QL/parser.y"
+#line 922 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorGreater);
       ABORT_IF_OOM((yyval.node));
@@ -2968,7 +2969,7 @@ yyreduce:
   case 100:
 
 /* Line 1455 of yacc.c  */
-#line 929 "QL/parser.y"
+#line 930 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorLessEqual);
       ABORT_IF_OOM((yyval.node));
@@ -2982,7 +2983,7 @@ yyreduce:
   case 101:
 
 /* Line 1455 of yacc.c  */
-#line 937 "QL/parser.y"
+#line 938 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorGreaterEqual);
       ABORT_IF_OOM((yyval.node));
@@ -2996,7 +2997,7 @@ yyreduce:
   case 102:
 
 /* Line 1455 of yacc.c  */
-#line 945 "QL/parser.y"
+#line 946 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeBinaryOperatorIn);
       ABORT_IF_OOM((yyval.node));
@@ -3010,7 +3011,7 @@ yyreduce:
   case 103:
 
 /* Line 1455 of yacc.c  */
-#line 956 "QL/parser.y"
+#line 957 "QL/parser.y"
     {
       TRI_query_node_t* node = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerTernarySwitch);
       ABORT_IF_OOM(node);
@@ -3030,7 +3031,7 @@ yyreduce:
   case 104:
 
 /* Line 1455 of yacc.c  */
-#line 973 "QL/parser.y"
+#line 974 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(1) - (1)].node));
       (yyval.node) = (yyvsp[(1) - (1)].node);
@@ -3040,12 +3041,17 @@ yyreduce:
   case 105:
 
 /* Line 1455 of yacc.c  */
-#line 980 "QL/parser.y"
+#line 981 "QL/parser.y"
     {
       TRI_query_node_t* name = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
       ABORT_IF_OOM(name);
       ABORT_IF_OOM((yyvsp[(1) - (3)].strval));
-      name->_value._stringValue = (yyvsp[(1) - (3)].strval);
+
+      name->_value._stringValue = TRI_GetInternalNameQueryFunction(template_->_vocbase->_functions, (yyvsp[(1) - (3)].strval));
+      if (!name->_value._stringValue) {
+        TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, (yyvsp[(1) - (3)].strval));
+        YYABORT;
+      }
       
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeControlFunctionCall);
       ABORT_IF_OOM((yyval.node));
@@ -3058,7 +3064,7 @@ yyreduce:
   case 106:
 
 /* Line 1455 of yacc.c  */
-#line 992 "QL/parser.y"
+#line 998 "QL/parser.y"
     {
       TRI_query_node_t* list = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerList);
       ABORT_IF_OOM(list);
@@ -3069,12 +3075,16 @@ yyreduce:
   case 107:
 
 /* Line 1455 of yacc.c  */
-#line 996 "QL/parser.y"
+#line 1002 "QL/parser.y"
     {
       TRI_query_node_t* name = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
       ABORT_IF_OOM(name);
       ABORT_IF_OOM((yyvsp[(1) - (5)].strval));
-      name->_value._stringValue = (yyvsp[(1) - (5)].strval);
+      name->_value._stringValue = TRI_GetInternalNameQueryFunction(template_->_vocbase->_functions, (yyvsp[(1) - (5)].strval));
+      if (!name->_value._stringValue) {
+        TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, (yyvsp[(1) - (5)].strval));
+        YYABORT;
+      }
 
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeControlFunctionCall);
       ABORT_IF_OOM((yyval.node));
@@ -3086,7 +3096,7 @@ yyreduce:
   case 108:
 
 /* Line 1455 of yacc.c  */
-#line 1010 "QL/parser.y"
+#line 1020 "QL/parser.y"
     {
       TRI_ParseQueryContextAddElement(template_, (yyvsp[(1) - (1)].node));
     ;}
@@ -3095,7 +3105,7 @@ yyreduce:
   case 109:
 
 /* Line 1455 of yacc.c  */
-#line 1013 "QL/parser.y"
+#line 1023 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(3) - (3)].node));
       TRI_ParseQueryContextAddElement(template_, (yyvsp[(3) - (3)].node));
@@ -3105,7 +3115,7 @@ yyreduce:
   case 110:
 
 /* Line 1455 of yacc.c  */
-#line 1020 "QL/parser.y"
+#line 1030 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueArray);
       ABORT_IF_OOM((yyval.node));
@@ -3115,7 +3125,7 @@ yyreduce:
   case 111:
 
 /* Line 1455 of yacc.c  */
-#line 1024 "QL/parser.y"
+#line 1034 "QL/parser.y"
     {
       TRI_query_node_t* list = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeContainerList);
       ABORT_IF_OOM(list);
@@ -3126,7 +3136,7 @@ yyreduce:
   case 112:
 
 /* Line 1455 of yacc.c  */
-#line 1028 "QL/parser.y"
+#line 1038 "QL/parser.y"
     { 
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueArray);
       ABORT_IF_OOM((yyval.node));
@@ -3137,7 +3147,7 @@ yyreduce:
   case 113:
 
 /* Line 1455 of yacc.c  */
-#line 1036 "QL/parser.y"
+#line 1046 "QL/parser.y"
     {
       TRI_ParseQueryContextAddElement(template_, (yyvsp[(1) - (1)].node));
     ;}
@@ -3146,7 +3156,7 @@ yyreduce:
   case 114:
 
 /* Line 1455 of yacc.c  */
-#line 1039 "QL/parser.y"
+#line 1049 "QL/parser.y"
     {
       ABORT_IF_OOM((yyvsp[(3) - (3)].node));
       TRI_ParseQueryContextAddElement(template_, (yyvsp[(3) - (3)].node));
@@ -3156,7 +3166,7 @@ yyreduce:
   case 115:
 
 /* Line 1455 of yacc.c  */
-#line 1046 "QL/parser.y"
+#line 1056 "QL/parser.y"
     {
       size_t outLength;
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueString);
@@ -3170,7 +3180,7 @@ yyreduce:
   case 116:
 
 /* Line 1455 of yacc.c  */
-#line 1054 "QL/parser.y"
+#line 1064 "QL/parser.y"
     {
       double d = TRI_DoubleString((yyvsp[(1) - (1)].strval));
       if (TRI_errno() != TRI_ERROR_NO_ERROR && d != 0.0) {
@@ -3187,7 +3197,7 @@ yyreduce:
   case 117:
 
 /* Line 1455 of yacc.c  */
-#line 1065 "QL/parser.y"
+#line 1075 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueNull);
       ABORT_IF_OOM((yyval.node));
@@ -3197,7 +3207,7 @@ yyreduce:
   case 118:
 
 /* Line 1455 of yacc.c  */
-#line 1069 "QL/parser.y"
+#line 1079 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueUndefined); 
       ABORT_IF_OOM((yyval.node));
@@ -3207,7 +3217,7 @@ yyreduce:
   case 119:
 
 /* Line 1455 of yacc.c  */
-#line 1073 "QL/parser.y"
+#line 1083 "QL/parser.y"
     { 
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueBool);
       ABORT_IF_OOM((yyval.node));
@@ -3218,7 +3228,7 @@ yyreduce:
   case 120:
 
 /* Line 1455 of yacc.c  */
-#line 1078 "QL/parser.y"
+#line 1088 "QL/parser.y"
     {
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueBool);
       ABORT_IF_OOM((yyval.node));
@@ -3229,7 +3239,7 @@ yyreduce:
   case 121:
 
 /* Line 1455 of yacc.c  */
-#line 1083 "QL/parser.y"
+#line 1093 "QL/parser.y"
     {
       // numbered parameter
       int64_t d = TRI_Int64String((yyvsp[(1) - (1)].strval));
@@ -3249,7 +3259,7 @@ yyreduce:
   case 122:
 
 /* Line 1455 of yacc.c  */
-#line 1097 "QL/parser.y"
+#line 1107 "QL/parser.y"
     {
       // named parameter
       (yyval.node) = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueParameterNamed);
@@ -3262,7 +3272,7 @@ yyreduce:
 
 
 /* Line 1455 of yacc.c  */
-#line 3266 "QL/parser.c"
+#line 3276 "QL/parser.c"
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
@@ -3481,7 +3491,7 @@ yyreturn:
 
 
 /* Line 1675 of yacc.c  */
-#line 1106 "QL/parser.y"
+#line 1116 "QL/parser.y"
 
 
 

@@ -73,6 +73,33 @@ namespace triagens {
         UNKNOWN
       };
 
+      enum http_status_codes {
+        HTTP_STATUS_OK = 200,
+        HTTP_STATUS_CREATED = 201,
+        HTTP_STATUS_ACCEPTED = 202,
+        HTTP_STATUS_PARTIAL = 203,
+        HTTP_STATUS_NO_RESPONSE = 204,
+
+        HTTP_STATUS_MOVED_PERMANENTLY = 301,
+        HTTP_STATUS_FOUND = 302,
+        HTTP_STATUS_SEE_OTHER = 303,
+        HTTP_STATUS_NOT_MODIFIED = 304,
+        HTTP_STATUS_TEMPORARY_REDIRECT = 307,
+
+        HTTP_STATUS_BAD = 400,
+        HTTP_STATUS_UNAUTHORIZED = 401,
+        HTTP_STATUS_PAYMENT = 402,
+        HTTP_STATUS_FORBIDDEN = 403,
+        HTTP_STATUS_NOT_FOUND = 404,
+        HTTP_STATUS_METHOD_NOT_ALLOWED = 405,
+        HTTP_STATUS_UNPROCESSABLE_ENTITY = 422,
+
+        HTTP_STATUS_SERVER_ERROR = 500,
+        HTTP_STATUS_NOT_IMPLEMENTED = 501,
+        HTTP_STATUS_BAD_GATEWAY = 502,
+        HTTP_STATUS_SERVICE_UNAVAILABLE = 503 // Retry later
+      };
+
 
     public:
       ////////////////////////////////////////////////////////////////////////////////
@@ -114,7 +141,7 @@ namespace triagens {
       /// @brief returns the content length
       ////////////////////////////////////////////////////////////////////////////////
 
-      int getContenLength () {
+      size_t getContentLength () {
         return _contentLength;
       }
 
@@ -122,7 +149,7 @@ namespace triagens {
       /// @brief sets the content length
       ////////////////////////////////////////////////////////////////////////////////
 
-      void setContenLength (int len) {
+      void setContentLength (size_t len) {
         _contentLength = len;
       }
 
@@ -210,14 +237,14 @@ namespace triagens {
       /// @brief get content type header field
       ////////////////////////////////////////////////////////////////////////////////
 
-      const std::string getContentType ();
+      const std::string getContentType (const bool partial);
 
 
     private:
 
       // header informtion
       int _returnCode;
-      int _contentLength;
+      size_t _contentLength;
       bool _chunked;
 
       // body content

@@ -115,6 +115,15 @@ replDict["e_listitem_3"] = "</li>"
 replDict["s_listitem_4"] = "<li>"
 replDict["e_listitem_4"] = "</li>"
 
+replDict["s_xrefsect"] = ""
+replDict["e_xrefsect"] = ""
+
+replDict["s_xreftitle"] = ""
+replDict["e_xreftitle"] = "\n"
+
+replDict["s_xrefdescription"] = ""
+replDict["e_xrefdescription"] = ""
+
 replDict["s_para"] = ""
 replDict["e_para"] = "\n\n"
 
@@ -148,6 +157,15 @@ replDict["e_ulink"] = "]"
 
 replDict["s_verbatim"] = ""
 replDict["e_verbatim"] = ""
+
+replDict["s_simplesect"] = ""
+replDict["e_simplesect"] = ""
+
+replDict["s_htmlonly"] = ""
+replDict["e_htmlonly"] = ""
+
+replDict["s_xmlonly"] = ""
+replDict["e_xmlonly"] = ""
 
 ################################################################################
 #### @brief generate code for text value
@@ -199,6 +217,16 @@ gencDict["title_4"] = True
 gencDict["ulink"] = True
 
 gencDict["verbatim"] = True
+
+gencDict["simplesect"] = True
+
+gencDict["xrefsect"] = True
+gencDict["xreftitle"] = True
+gencDict["xrefdescription"] = True
+
+gencDict["htmlonly"] = False
+
+gencDict["xmlonly"] = True
 
 ################################################################################
 #### @brief table entry

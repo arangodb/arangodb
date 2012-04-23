@@ -197,7 +197,7 @@ ALIASES += FUN{4}="<tt><b>\1, \2, \3, \4</b></tt>"
 ALIASES += FUN{5}="<tt><b>\1, \2, \3, \4, \5</b></tt>"
 ALIASES += FUN{6}="<tt><b>\1, \2, \3, \4, \5, \6</b></tt>"
 ALIASES += FUN{7}="<tt><b>\1, \2, \3, \4, \5, \6, \7</b></tt>"
-ALIASES += FA{1}="<var>\1</var>"
+ALIASES += FA{1}="<em>\1</em>"
 ALIASES += FN{1}="<tt>\1</tt>"
 ALIASES += VAR{1}="<tt>\1</tt>"
 ALIASES += LIT{1}="<tt>\1</tt>"
@@ -205,11 +205,12 @@ ALIASES += CODE{1}="<tt>\1</tt>"
 ALIASES += CODE{2}="<tt>\1, \2</tt>"
 ALIASES += CODE{3}="<tt>\1, \2, \3</tt>"
 ALIASES += CMDOPT{1}="<tt><b>\1</b></tt>"
-ALIASES += CA{1}="<var>\1</var>"
+ALIASES += CA{1}="<em>\1</em>"
 ALIASES += CO{1}="<tt>\1</tt>"
 ALIASES += REST{1}="<tt><b>\1</b></tt>"
 ALIASES += GE{1}="<b>\1</b>"
 ALIASES += EXAMPLES="<b>Examples</b><br>"
+ALIASES += VERSION="@PACKAGE_VERSION@"
 
 # Set the OPTIMIZE_OUTPUT_FOR_C tag to YES if your project consists of C
 # sources only. Doxygen will then generate output that is more tailored for C.
@@ -618,6 +619,7 @@ WARN_LOGFILE           =
 # with spaces.
 
 INPUT                  = \
+	@srcdir@/Admin \
 	@srcdir@/ApplicationServer \
 	@srcdir@/Basics \
 	@srcdir@/BasicsC \
@@ -627,6 +629,7 @@ INPUT                  = \
 	@srcdir@/RestHandler \
 	@srcdir@/RestServer \
 	@srcdir@/ShapedJson \
+	@srcdir@/UserManager \
 	@srcdir@/V8 \
 	@srcdir@/VocBase \
 	@srcdir@/QL
@@ -661,7 +664,8 @@ RECURSIVE              = YES
 
 EXCLUDE                = \
 	@srcdir@/V8/v8-json.h \
-	@srcdir@/V8/v8-json.cpp
+	@srcdir@/V8/v8-json.cpp \
+	@srcdir@/QL/tokens.c
 
 # The EXCLUDE_SYMLINKS tag can be used select whether or not files or
 # directories that are symbolic links (a Unix file system feature) are excluded
@@ -855,13 +859,13 @@ HTML_FILE_EXTENSION    = .html
 # each generated HTML page. If it is left blank doxygen will generate a
 # standard header.
 
-HTML_HEADER            =
+HTML_HEADER            = @srcdir@/Doxygen/Scripts/avocadodb_header.html
 
 # The HTML_FOOTER tag can be used to specify a personal HTML footer for
 # each generated HTML page. If it is left blank doxygen will generate a
 # standard footer.
 
-HTML_FOOTER            =
+HTML_FOOTER            = @srcdir@/Doxygen/Scripts/avocadodb_footer.html
 
 # The HTML_STYLESHEET tag can be used to specify a user-defined cascading
 # style sheet that is used by each HTML page. It can be used to
@@ -870,7 +874,7 @@ HTML_FOOTER            =
 # the style sheet file to the HTML output directory, so don't put your own
 # stylesheet in the HTML output directory as well, or it will be erased!
 
-HTML_STYLESHEET        =
+HTML_STYLESHEET        = @srcdir@/Doxygen/Scripts/avocadodb.css
 
 # The HTML_COLORSTYLE_HUE tag controls the color of the HTML output.
 # Doxygen will adjust the colors in the stylesheet and background images
@@ -880,7 +884,7 @@ HTML_STYLESHEET        =
 # 180 is cyan, 240 is blue, 300 purple, and 360 is red again.
 # The allowed range is 0 to 359.
 
-HTML_COLORSTYLE_HUE    = 220
+HTML_COLORSTYLE_HUE    = 120
 
 # The HTML_COLORSTYLE_SAT tag controls the purity (or saturation) of
 # the colors in the HTML output. For a value of 0 the output will use
@@ -901,7 +905,7 @@ HTML_COLORSTYLE_GAMMA  = 80
 # page will contain the date and time when the page was generated. Setting
 # this to NO can help when comparing the output of multiple runs.
 
-HTML_TIMESTAMP         = NO
+HTML_TIMESTAMP         = YES
 
 # If the HTML_ALIGN_MEMBERS tag is set to YES, the members of classes,
 # files or namespaces will be aligned in HTML using tables. If set to
@@ -1072,7 +1076,7 @@ ECLIPSE_DOC_ID         = org.doxygen.Project
 # top of each HTML page. The value NO (the default) enables the index and
 # the value YES disables it.
 
-DISABLE_INDEX          = NO
+DISABLE_INDEX          = YES
 
 # This tag can be used to set the number of enum values (range [0,1..20])
 # that doxygen will group on one line in the generated HTML documentation.

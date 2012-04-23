@@ -143,7 +143,7 @@ void ActionDispatcherThread::tick (bool idle) {
   _gc += (idle ? 10 : 1);
 
   if (_gc > _gcInterval) {
-    LOG_DEBUG("collecting garbage...");
+    LOG_TRACE("collecting garbage...");
 
     while (!v8::V8::IdleNotification()) {
     }
@@ -231,6 +231,9 @@ void ActionDispatcherThread::initialise () {
                           "common/bootstrap/print.js",
                           "common/bootstrap/errors.js",
                           "server/aql-operators.js",
+                          "server/aql-functions-numeric.js",
+                          "server/aql-functions-string.js",
+                          "server/ahuacatl.js",
                           "server/server.js"
   };
   size_t i;
@@ -244,8 +247,8 @@ void ActionDispatcherThread::initialise () {
 
   if (_context.IsEmpty()) {
     LOGGER_FATAL << "cannot initialize V8 engine";
-    cerr << "cannot initialize V8 engine\n";
     _isolate->Exit();
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 
@@ -263,9 +266,9 @@ void ActionDispatcherThread::initialise () {
 
     if (! ok) {
       LOGGER_FATAL << "cannot load json utilities from file '" << files[i] << "'";
-      cerr << "cannot load json utilities from file '" << files[i] << "'\n";
       _context->Exit();
       _isolate->Exit();
+      TRI_FlushLogging();
       exit(EXIT_FAILURE);
     }
   }

@@ -1,0 +1,17 @@
+> curl --data @- -X POST --dump - http://localhost:8529/_api/index/99886352
+{ "type" : "geo", "fields" : [ "e", "f" ] }
+
+HTTP/1.1 201 Created
+content-type: application/json
+
+{
+  "code": 201,
+  "fields": [
+    "e",
+    "f"
+  ],
+  "id": "164647097/165564601",
+  "type": "geo",
+  "isNewlyCreated": true,
+  "error": false
+}

@@ -1,6 +1,0 @@
-> curl -X DELETE --dump - http://localhost:8529/collection/9496015/13658604
-HTTP/1.1 204 No Content
-content-type: text/plain;charset=utf-8
-connection: Keep-Alive
-server: triagens GmbH High-Performance HTTP Server
-content-length: 0

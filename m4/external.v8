@@ -75,7 +75,7 @@ LDFLAGS="$LDFLAGS ${V8_LDFLAGS}"
 CPPFLAGS="$CPPFLAGS ${V8_CPPFLAGS}"
 
 dnl -----------------------------------------------------------------------------------------
-dnl grep libev version number
+dnl grep V8 version number
 dnl -----------------------------------------------------------------------------------------
 
 if test "$cross_compiling" = yes; then :
@@ -129,7 +129,6 @@ _ACEOF
     AC_MSG_WARN([cannot compute V8 version number, old autoconf version])
   fi
 fi
-
 
 dnl -----------------------------------------------------------------------------------------
 dnl restore flags

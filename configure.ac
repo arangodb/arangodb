@@ -6,7 +6,7 @@ dnl ============================================================================
 dnl PREAMBLE                                     triAGENS GmbH Build Environment
 dnl ============================================================================
 
-AC_INIT([triAGENS AvocadoDB], [0.3.5], [info@triagens.de], [avocado], [http://www.avocadodb.org])
+AC_INIT([triAGENS AvocadoDB], [0.3.12], [info@triagens.de], [avocado], [http://www.avocadodb.org])
 
 dnl ----------------------------------------------------------------------------
 dnl auxillary directory for install-sh and missing
@@ -19,6 +19,7 @@ dnl ============================================================================
 dnl OPTIONS                                        BISON, FLEX, ALL-IN-ONE, PATH
 dnl ============================================================================
 
+dnl BISON
 AC_ARG_ENABLE(bison,
   AS_HELP_STRING([--enable-bison], [enable BISON]),
   [tr_BISON="${enableval:-yes}"],
@@ -29,6 +30,7 @@ AM_CONDITIONAL(ENABLE_BISON, test "x$tr_BISON" = xyes)
 
 
 
+dnl FLEX
 AC_ARG_ENABLE(flex,
   AS_HELP_STRING([--enable-flex], [enable FLEX]),
   [tr_FLEX="${enableval:-yes}"],
@@ -39,16 +41,40 @@ AM_CONDITIONAL(ENABLE_FLEX, test "x$tr_FLEX" = xyes)
 
 
 
+dnl ALL-IN-ONE
 AC_ARG_ENABLE(all-in-one,
-  AS_HELP_STRING([--enable-all-in-one], [enable supplied V8, BOOST, LIBEV]),
-  [tr_ALL_IN_ONE="${enableval:-yes}"],
-  [tr_ALL_IN_ONE=yes]
+  AS_HELP_STRING([--enable-all-in-one], [use supplied V8 and LIBEV from 3rdParty directory]),
+  [ALL_IN_ONE_ENABLE="${enableval:-yes}"],
+  [ALL_IN_ONE_ENABLE=yes]
 )
 
-AM_CONDITIONAL(ENABLE_ALL_IN_ONE, test "x$tr_ALL_IN_ONE" = xyes)
+AM_CONDITIONAL(ENABLE_ALL_IN_ONE, test "x$ALL_IN_ONE_ENABLE" = xyes)
 
 
 
+dnl BOOST
+AC_ARG_ENABLE(3rd-party-boost,
+  AS_HELP_STRING([--enable-3rd-party-boost], [use supplied BOOST from 3rdParty directory]),
+  [tr_3RD_PARTY_BOOST="${enableval:-yes}"],
+  [tr_3RD_PARTY_BOOST=yes]
+)
+
+AM_CONDITIONAL(ENABLE_3RD_PARTY_BOOST, test "x$tr_3RD_PARTY_BOOST" = xyes)
+
+
+
+dnl ERRORS
+AC_ARG_ENABLE(errors-dependency,
+  AS_HELP_STRING([--enable-errors-dependency], [generate dependencies for error files]),
+  [tr_ERRORS_DEPENDENCY="${enableval:-yes}"],
+  [tr_ERRORS_DEPENDENCY=no]
+)
+
+AM_CONDITIONAL(ENABLE_ERRORS_DEPENDENCY, test "x$tr_ERRORS_DEPENDENCY" = xyes)
+
+
+
+dnl INSTALL EMPTY DATABASE
 AC_ARG_ENABLE(install-dbdir,
   AS_HELP_STRING([--enable-install-dbdir], [install an empty database directory]),
   [tr_DBDIR="${enableval:-yes}"],
@@ -59,6 +85,7 @@ AM_CONDITIONAL(ENABLE_INSTALL_DBDIR, test "x$tr_DBDIR" = xyes)
 
 
 
+dnl RELATIVE PATH
 AC_ARG_ENABLE(relative,
   AS_HELP_STRING([--enable-relative], [all path are relative to the binary (yes/no/devel [default])]),
   [tr_RELATIVE="${enableval:-devel}"],
@@ -77,6 +104,7 @@ fi
 
 
 
+dnl BOOST TEST
 AC_ARG_WITH([boost-test],
   AS_HELP_STRING([--with-boost-test], [use boost unit test framework]),
   [tr_BOOST_TEST=yes],
@@ -98,6 +126,7 @@ m4_include([m4/configure.logging])
 m4_include([m4/configure.largefile])
 m4_include([m4/configure.threads])
 m4_include([m4/configure.dot])
+m4_include([m4/configure.coverage])
 
 if test "x$tr_FLEX" = xyes;  then
   m4_include([m4/configure.flex])
@@ -126,16 +155,24 @@ m4_include([m4/external.ncurses]) # before readline
 m4_include([m4/external.readline])
 m4_include([m4/external.openssl])
 
-if test "x$tr_ALL_IN_ONE" = xyes;  then
-  m4_include([m4/all-in-one.boost])
+if test "x$ALL_IN_ONE_ENABLE" = xyes;  then
   m4_include([m4/all-in-one.libev])
   m4_include([m4/all-in-one.v8])
   BASIC_INFO="$BASIC_INFO|ALL-IN-ONE: enabled"
 else
-  m4_include([m4/external.boost])
   m4_include([m4/external.libev])
   m4_include([m4/external.v8])
   BASIC_INFO="$BASIC_INFO|ALL-IN-ONE: disabled"
+fi
+
+m4_include([m4/all-in-one.mruby])
+
+if test "x$tr_3RD_PARTY_BOOST" = xyes;  then
+  m4_include([m4/all-in-one.boost])
+  BASIC_INFO="$BASIC_INFO|3RD-PARTY-BOOST: enabled"
+else
+  m4_include([m4/external.boost])
+  BASIC_INFO="$BASIC_INFO|3RD-PARTY-BOOST: disabled"
 fi
 
 dnl ============================================================================
@@ -145,7 +182,7 @@ dnl ============================================================================
 BUILD_H="\$(top_srcdir)/build.h"
 AC_SUBST(BUILD_H)
 
-AC_CONFIG_FILES([Makefile Doxygen/avocado.doxy])
+AC_CONFIG_FILES([Makefile UnitTests/Makefile Doxygen/avocado.doxy])
 AC_CONFIG_HEADER([config/config.h BasicsC/local-configuration.h])
 AC_OUTPUT
 

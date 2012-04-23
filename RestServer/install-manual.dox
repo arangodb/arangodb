@@ -244,6 +244,8 @@
 /// - the GNU ncurses library in version 5 or 6
 /// - boost header files, at least version 1.33
 ///
+/// To compile Google V8 yourself, you will also need SCons.
+///
 /// Some distributions, for example Centos 5, provide only very out-dated
 /// versions of FLEX, BISON, and the V8 engine. In that case you need to compile
 /// newer versions of the programs and/or libraries.
@@ -252,10 +254,11 @@
 ///
 /// - boost development package (see www.boost.org)
 /// - Google's V8 engine (see code.google.com/p/v8)
+/// - SCons for compiling V8 (see www.scons.org)
 /// - libev (see software.schmorp.de/pkg/libev.html) 
 ///
 /// if neccessary.  Most linux systems already supply RPM or DEP for
-/// there packages. Please note that you have to install the
+/// these packages. Please note that you have to install the
 /// development packages.
 ///
 /// @subsection DownloadSourceDevel Download the Source

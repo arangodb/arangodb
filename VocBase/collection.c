@@ -48,7 +48,8 @@
 /// @brief initialises a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void InitCollection (TRI_collection_t* collection,
+static void InitCollection (TRI_vocbase_t* vocbase,
+                            TRI_collection_t* collection,
                             char* directory,
                             TRI_col_info_t* info) {
   assert(collection);
@@ -57,6 +58,7 @@ static void InitCollection (TRI_collection_t* collection,
 
   collection->_version = info->_version;
   collection->_type = info->_type;
+  collection->_vocbase = vocbase;
 
   collection->_state = TRI_COL_STATE_WRITE;
   collection->_lastError = 0;
@@ -296,6 +298,50 @@ static bool CheckCollection (TRI_collection_t* collection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief free all datafiles in a vector
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeDatafilesVector (TRI_vector_pointer_t* const vector) {
+  size_t i;
+  size_t n;
+
+  assert(vector);
+
+  n = vector->_length;
+  for (i = 0; i < n ; ++i) {
+    TRI_datafile_t* datafile = (TRI_datafile_t*) vector->_buffer[i];
+    
+    LOG_TRACE("freeing collection datafile");
+
+    assert(datafile);
+    TRI_FreeDatafile(datafile);
+  }
+
+  TRI_DestroyVectorPointer(vector);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief closes the datafiles passed in the vector
+////////////////////////////////////////////////////////////////////////////////
+
+static bool CloseDataFiles (const TRI_vector_pointer_t* const files) {
+  TRI_datafile_t* datafile;
+  size_t n = files->_length;
+  size_t i;
+  bool result = true;
+  
+  for (i = 0;  i < n;  ++i) {
+    datafile = files->_buffer[i];
+
+    assert(datafile);
+
+    result &= TRI_CloseDatafile(datafile);
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -320,9 +366,10 @@ void TRI_InitParameterCollection (TRI_col_parameter_t* parameter,
 
   parameter->_type = TRI_COL_TYPE_SIMPLE_DOCUMENT;
 
-  parameter->_waitForSync = true;
-
+  parameter->_waitForSync = false;
   parameter->_maximalSize = (maximalSize / PageSize) * PageSize;
+
+  parameter->_isSystem = false;
 
   if (parameter->_maximalSize == 0 && maximalSize != 0) {
     parameter->_maximalSize = PageSize;
@@ -335,16 +382,14 @@ void TRI_InitParameterCollection (TRI_col_parameter_t* parameter,
 /// @brief creates a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_collection_t* TRI_CreateCollection (TRI_collection_t* collection,
+TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
+                                        TRI_collection_t* collection,
                                         char const* path,
                                         TRI_col_info_t* parameter) {
   char* filename;
   char* tmp1;
   char* tmp2;
   int res;
-
-  // generate a collection identifier
-  parameter->_cid = TRI_NewTickVocBase();
 
   // sanity check
   if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) > parameter->_maximalSize) {
@@ -369,14 +414,17 @@ TRI_collection_t* TRI_CreateCollection (TRI_collection_t* collection,
   // blob collection use the name
   if (parameter->_type == TRI_COL_TYPE_BLOB) {
     filename = TRI_Concatenate2File(path, parameter->_name);
+    /* TODO FIXME: memory allocation might fail */
   }
 
   // simple collection use the collection identifier
   else if (parameter->_type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
     tmp1 = TRI_StringUInt64(parameter->_cid);
     tmp2 = TRI_Concatenate2String("collection-", tmp1);
+    /* TODO FIXME: memory allocation might fail */
 
     filename = TRI_Concatenate2File(path, tmp2);
+    /* TODO FIXME: memory allocation might fail */
 
     TRI_FreeString(tmp2);
     TRI_FreeString(tmp1);
@@ -418,8 +466,8 @@ TRI_collection_t* TRI_CreateCollection (TRI_collection_t* collection,
     return NULL;
   }
 
-  // save the parameter block
-  res = TRI_SaveParameterInfo(filename, parameter);
+  // save the parameter block (within create, no need to lock)
+  res = TRI_SaveParameterInfoCollection(filename, parameter);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeString(filename);
@@ -432,9 +480,10 @@ TRI_collection_t* TRI_CreateCollection (TRI_collection_t* collection,
   // create collection structure
   if (collection == NULL) {
     collection = TRI_Allocate(sizeof(TRI_collection_t));
+    /* TODO FIXME: memory allocation might fail */
   }
 
-  InitCollection(collection, filename, parameter);
+  InitCollection(vocbase, collection, filename, parameter);
 
   // return collection
   return collection;
@@ -448,9 +497,11 @@ TRI_collection_t* TRI_CreateCollection (TRI_collection_t* collection,
 
 void TRI_DestroyCollection (TRI_collection_t* collection) {
   assert(collection);
-  TRI_DestroyVectorPointer(&collection->_datafiles);
-  TRI_DestroyVectorPointer(&collection->_journals);
-  TRI_DestroyVectorPointer(&collection->_compactors);
+
+  FreeDatafilesVector(&collection->_datafiles);
+  FreeDatafilesVector(&collection->_journals);
+  FreeDatafilesVector(&collection->_compactors);
+
   TRI_DestroyVectorString(&collection->_indexFiles);
   TRI_FreeString(collection->_directory);
 }
@@ -480,10 +531,12 @@ void TRI_FreeCollection (TRI_collection_t* collection) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a parameter info block from file
+///
+/// You must hold the @ref TRI_READ_LOCK_STATUS_VOCBASE_COL when calling this
+/// function.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_LoadParameterInfo (char const* path,
-                           TRI_col_info_t* parameter) {
+int TRI_LoadParameterInfoCollection (char const* path, TRI_col_info_t* parameter) {
   TRI_json_t* json;
   char* filename;
   char* error;
@@ -563,10 +616,12 @@ int TRI_LoadParameterInfo (char const* path,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a parameter info block to file
+///
+/// You must hold the @ref TRI_WRITE_LOCK_STATUS_VOCBASE_COL when calling this
+/// function.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveParameterInfo (char const* path,
-                           TRI_col_info_t* info) {
+int TRI_SaveParameterInfoCollection (char const* path, TRI_col_info_t* info) {
   TRI_json_t* json;
   char* filename;
   bool ok;
@@ -601,9 +656,12 @@ int TRI_SaveParameterInfo (char const* path,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates the parameter info block
+///
+/// You must hold the @ref TRI_WRITE_LOCK_STATUS_VOCBASE_COL when calling this
+/// function.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_UpdateParameterInfoCollection (TRI_collection_t* collection) {
+int TRI_UpdateParameterInfoCollection (TRI_collection_t* collection) {
   TRI_col_info_t parameter;
 
   parameter._version = collection->_version;
@@ -613,13 +671,15 @@ bool TRI_UpdateParameterInfoCollection (TRI_collection_t* collection) {
   parameter._maximalSize = collection->_maximalSize;
   parameter._waitForSync = collection->_waitForSync;
   parameter._deleted = collection->_deleted;
-  parameter._size = sizeof(TRI_col_info_t);
 
-  return TRI_SaveParameterInfo(collection->_directory, &parameter) == TRI_ERROR_NO_ERROR;
+  return TRI_SaveParameterInfoCollection(collection->_directory, &parameter);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a collection
+///
+/// You must hold the @ref TRI_WRITE_LOCK_STATUS_VOCBASE_COL when calling this
+/// function.
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RenameCollection (TRI_collection_t* collection, char const* name) {
@@ -633,9 +693,8 @@ int TRI_RenameCollection (TRI_collection_t* collection, char const* name) {
   parameter._maximalSize = collection->_maximalSize;
   parameter._waitForSync = collection->_waitForSync;
   parameter._deleted = collection->_deleted;
-  parameter._size = sizeof(TRI_col_info_t);
 
-  res = TRI_SaveParameterInfo(collection->_directory, &parameter);
+  res = TRI_SaveParameterInfoCollection(collection->_directory, &parameter);
 
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_CopyString(collection->_name, name, sizeof(collection->_name));
@@ -773,7 +832,8 @@ void TRI_IterateIndexCollection (TRI_collection_t* collection,
 /// @brief opens an existing collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_collection_t* TRI_OpenCollection (TRI_collection_t* collection,
+TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
+                                      TRI_collection_t* collection,
                                       char const* path) {
   TRI_col_info_t info;
   bool freeCol;
@@ -790,8 +850,8 @@ TRI_collection_t* TRI_OpenCollection (TRI_collection_t* collection,
     return NULL;
   }
 
-  // read parameter block
-  res = TRI_LoadParameterInfo(path, &info);
+  // read parameter block, no need to lock as we are opening the collection
+  res = TRI_LoadParameterInfoCollection(path, &info);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("cannot save collection parameter '%s': '%s'", path, TRI_last_error());
@@ -801,10 +861,11 @@ TRI_collection_t* TRI_OpenCollection (TRI_collection_t* collection,
   // create collection
   if (collection == NULL) {
     collection = TRI_Allocate(sizeof(TRI_collection_t));
+    /* TODO FIXME: memory allocation might fail */
     freeCol = true;
   }
 
-  InitCollection(collection, TRI_DuplicateString(path), &info);
+  InitCollection(vocbase, collection, TRI_DuplicateString(path), &info);
 
   // check for journals and datafiles
   ok = CheckCollection(collection);
@@ -829,36 +890,15 @@ TRI_collection_t* TRI_OpenCollection (TRI_collection_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_CloseCollection (TRI_collection_t* collection) {
-  TRI_datafile_t* datafile;
-  size_t n;
-  size_t i;
 
   // close compactor files
-  n = collection->_compactors._length;
-
-  for (i = 0;  i < n;  ++i) {
-    datafile = collection->_compactors._buffer[i];
-
-    TRI_CloseDatafile(datafile);
-  }
+  CloseDataFiles(&collection->_compactors);
 
   // close journal files
-  n = collection->_journals._length;
-
-  for (i = 0;  i < n;  ++i) {
-    datafile = collection->_journals._buffer[i];
-
-    TRI_CloseDatafile(datafile);
-  }
+  CloseDataFiles(&collection->_journals);
 
   // close datafiles
-  n = collection->_datafiles._length;
-
-  for (i = 0;  i < n;  ++i) {
-    datafile = collection->_datafiles._buffer[i];
-
-    TRI_CloseDatafile(datafile);
-  }
+  CloseDataFiles(&collection->_datafiles);
 
   return TRI_ERROR_NO_ERROR;
 }

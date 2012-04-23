@@ -1,2 +1,0 @@
-avocado> db.five.all().next();
-{ _id : 159896:1798296, _rev : 1798296, doc : 3 }

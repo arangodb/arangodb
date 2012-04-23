@@ -1,0 +1,91 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief over the wire protocol
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page HttpSystemTOC
+///
+/// <ol>
+///  <li>@ref HttpSystemLog</li>
+///  <li>@ref HttpSystemStatus</li>
+///  <li>@ref HttpSystemUsers</li>
+///  <li>@ref HttpSystemUserGet</li>
+///  <li>@ref HttpSystemUserPost</li>
+///  <li>@ref HttpSystemSessionGet</li>
+///  <li>@ref HttpSystemSessionPost</li>
+///  <li>@ref HttpSystemSessionLogin</li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page HttpSystem HTTP Interface for Administration and Monitoring
+///
+/// This is an introduction to AvocadoDB's Http interface for administration
+/// and monitoring of the server.
+///
+/// <hr>
+/// @copydoc HttpSystemTOC
+/// <hr>
+///
+/// @anchor HttpSystemLog
+/// @copydetails triagens::admin::RestAdminLogHandler::execute
+/// <hr>
+///
+/// @anchor HttpSystemStatus
+/// @copydetails JSF_GET_system_status
+/// <hr>
+///
+/// @anchor HttpSystemUsers
+/// @copydetails triagens::admin::UsersHandler::execute
+/// <hr>
+///
+/// @anchor HttpSystemUserGet
+/// @copydetails triagens::admin::UserHandler::executeGet
+/// <hr>
+///
+/// @anchor HttpSystemUserPost
+/// @copydetails triagens::admin::UserHandler::executePost
+/// <hr>
+///
+/// @anchor HttpSystemSessionGet
+/// @copydetails triagens::admin::SessionHandler::executeGet
+/// <hr>
+///
+/// @anchor HttpSystemSessionPost
+/// @copydetails triagens::admin::SessionHandler::executePost
+/// <hr>
+///
+/// @anchor HttpSystemSessionLogin
+/// @copydetails triagens::admin::SessionHandler::executeLogin
+/// <hr>
+///
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: c++
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// End:

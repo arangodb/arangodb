@@ -28,6 +28,11 @@
 var internal = require("internal");
 var console = require("console");
 
+var TOTAL = 0;
+var PASSED = 0;
+var FAILED = 0;
+var DURATION = 0;
+
 internal.loadFile("jsunity/jsunity");
 jsUnity.log = console;
 
@@ -44,7 +49,7 @@ jsUnity.log = console;
 ///
 /// @verbinclude jsunity1
 ///
-/// Then you can run the test suite using @FN{runTest}
+/// Then you can run the test suite using @FN{jsunity.runTest}
 ///
 /// @verbinclude jsunity2
 ///
@@ -57,14 +62,29 @@ jsUnity.log = console;
 ///
 /// @CODE{node-jscoverage lib lib-cov}
 ///
-/// to create a copy of the JavaScript files with coverage information.
-/// Start the AvocadoDB with these files and use @FN{runCoverage} instead
-/// of @FN{runTest}.
+/// to create a copy of the JavaScript files with coverage information.  Start
+/// the AvocadoDB with these files and use @FN{jsunity.runCoverage} instead of
+/// @FN{jsunity.runTest}.
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pad the given string to the maximum width provided
+///
+/// From: http://www.bennadel.com/blog/1927-Faking-Context-In-Javascript-s-Function-Constructor.htm
+////////////////////////////////////////////////////////////////////////////////
+
+function FunctionContext (func) {
+  var body = "  for (var __i in context) {"
+           + "    eval('var ' + __i + ' = context[__i];');"
+           + "  }"
+           + "  return " + func + ";";
+
+  return new Function("context", body);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup Expresso
@@ -286,10 +306,76 @@ function reportCoverage (cov, files) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief runs a test with context
+////////////////////////////////////////////////////////////////////////////////
+
+function Run (tests) {
+  var suite = jsUnity.compile(tests);
+  var definition = tests();
+
+  var tests = [];
+  var setUp = undefined;
+  var tearDown = undefined;
+
+  if (definition.hasOwnProperty("setUp")) {
+    setUp = definition.setUp;
+  }
+
+  if (definition.hasOwnProperty("tearDown")) {
+    tearDown = definition.tearDown;
+  }
+  
+  var scope = {};
+  scope.setUp = setUp;
+  scope.tearDown = tearDown;
+
+  for (var key in definition) {
+    if (key.indexOf("test") == 0) {
+      var test = { name : key, fn : definition[key] };
+
+      tests.push(test);
+    }
+    else if (key != "tearDown" && key != "setUp") {
+      console.error("unknown function: %s", key);
+    }
+  }
+
+  suite = new jsUnity.TestSuite(suite.suiteName, scope);
+
+  suite.tests = tests;
+  suite.setUp = setUp;
+  suite.tearDown = tearDown;
+  
+  var result = jsUnity.run(suite);
+
+  TOTAL += result.total;
+  PASSED += result.passed;
+  FAILED += result.failed;
+  DURATION += result.duration;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief done with all tests
+////////////////////////////////////////////////////////////////////////////////
+
+function Done () {
+  console.log("%d total, %d passed, %d failed, %d ms", TOTAL, PASSED, FAILED, DURATION);
+
+  var ok = FAILED == 0;
+
+  TOTAL = 0;
+  PASSED = 0;
+  FAILED = 0;
+  DURATION = 0;
+
+  return ok;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief runs a JSUnity test file
 ////////////////////////////////////////////////////////////////////////////////
 
-function runTest (path) {
+function RunTest (path) {
   var content;
   var f;
 
@@ -308,18 +394,43 @@ function runTest (path) {
     throw "cannot create context function";
   }
 
-  f(exports.jsUnity);
+  return f(exports.jsUnity);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief runs a JSUnity test file with coverage
 ////////////////////////////////////////////////////////////////////////////////
 
-function runCoverage (path, files) {
-  runTest(path);
+function RunCoverage (path, files) {
+  RunTest(path);
 
   populateCoverage(_$jscoverage);
   reportCoverage(_$jscoverage, files);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief runs tests from command-line
+////////////////////////////////////////////////////////////////////////////////
+
+function RunCommandLineTests () {
+  var result = true;
+
+  for (var i = 0;  i < SYS_UNIT_TESTS.length;  ++i) {
+    var file = SYS_UNIT_TESTS[i];
+
+    try {
+      var ok = RunTest(file);
+
+      result = result && ok;
+    }
+    catch (err) {
+      print("cannot run test file '" + file + "': " + err);
+      print(err.stack);
+      result = false;
+    }
+  }
+
+  SYS_UNIT_TESTS_RESULT = result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -336,8 +447,11 @@ function runCoverage (path, files) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.jsUnity = jsUnity;
-exports.runTest = runTest; 
-exports.runCoverage = runCoverage; 
+exports.run = Run;
+exports.done = Done;
+exports.runTest = RunTest; 
+exports.runCoverage = RunCoverage; 
+exports.runCommandLineTests = RunCommandLineTests;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

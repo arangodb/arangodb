@@ -83,7 +83,8 @@ TRI_blob_collection_t;
 /// @brief creates a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_blob_collection_t* TRI_CreateBlobCollection (char const* path,
+TRI_blob_collection_t* TRI_CreateBlobCollection (TRI_vocbase_t*,
+                                                 char const* path,
                                                  TRI_col_parameter_t* parameter);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,7 +129,8 @@ int TRI_WriteBlobCollection (TRI_blob_collection_t* collection,
 /// @brief opens an existing collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_blob_collection_t* TRI_OpenBlobCollection (char const* path);
+TRI_blob_collection_t* TRI_OpenBlobCollection (TRI_vocbase_t*,
+                                               char const* path);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes a collection

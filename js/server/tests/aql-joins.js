@@ -25,58 +25,16 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var jsunity = require("jsunity");
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function aqlJoinsTestSuite () {
-  var collection = null;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-  function setUp () {
-    this.persons = db.UnitTestsPersons;
-    this.friends = db.UnitTestsFriends;
-    this.locations = db.UnitTestsLocations;
-
-    if (this.persons.count() == 0) {
-      this.persons.save( { "id" : 1, "name" : "fox" } );
-      this.persons.save( { "id" : 2, "name" : "brown" } );
-      this.persons.save( { "id" : 5, "name" : "peter" } );
-      this.persons.save( { "id" : 6, "name" : "hulk" } );
-      this.persons.save( { "id" : 9, "name" : "fred" } );
-    }
-    
-    if (this.friends.count() == 0) {
-      this.friends.save( { "person1" : 1, "person2" : 2 } );
-      this.friends.save( { "person1" : 9, "person2" : 1 } );
-      this.friends.save( { "person1" : 1, "person2" : 9 } );
-      this.friends.save( { "person1" : 5, "person2" : 6 } );
-      this.friends.save( { "person1" : 6, "person2" : 9 } );
-    }
-    
-    if (this.locations.count() == 0) {
-      this.locations.save( { "person" : 1, "x" : 1, "y": 5 } );
-      this.locations.save( { "person" : 1, "x" : 3, "y": 4 } );
-      this.locations.save( { "person" : 1, "x" : -2, "y": 3 } );
-      this.locations.save( { "person" : 2, "x" : 3, "y": -2 } );
-      this.locations.save( { "person" : 2, "x" : 2, "y": 1 } );
-      this.locations.save( { "person" : 5, "x" : 4, "y": -1 } );
-      this.locations.save( { "person" : 5, "x" : 3, "y": -2 } );
-      this.locations.save( { "person" : 5, "x" : 2, "y": -2 } );
-      this.locations.save( { "person" : 5, "x" : 5, "y": -5 } );
-      this.locations.save( { "person" : 5, "x" : 6, "y": -5 } );
-    }
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-  function tearDown () {
-  }
+  var persons;
+  var friends;
+  var locations;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sanitize a result row, recursively
@@ -163,7 +121,7 @@ function aqlJoinsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function getQueryResults (query) {
-    var cursor = this.executeQuery(query);
+    var cursor = executeQuery(query);
     if (cursor) {
       var results = [ ];
       while (cursor.hasNext()) {
@@ -174,126 +132,177 @@ function aqlJoinsTestSuite () {
     return cursor;
   }
 
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      persons = db.UnitTestsPersons;
+      friends = db.UnitTestsFriends;
+      locations = db.UnitTestsLocations;
+
+      if (persons.count() == 0) {
+        persons.save( { "id" : 1, "name" : "fox" } );
+        persons.save( { "id" : 2, "name" : "brown" } );
+        persons.save( { "id" : 5, "name" : "peter" } );
+        persons.save( { "id" : 6, "name" : "hulk" } );
+        persons.save( { "id" : 9, "name" : "fred" } );
+      }
+      
+      if (friends.count() == 0) {
+        friends.save( { "person1" : 1, "person2" : 2 } );
+        friends.save( { "person1" : 9, "person2" : 1 } );
+        friends.save( { "person1" : 1, "person2" : 9 } );
+        friends.save( { "person1" : 5, "person2" : 6 } );
+        friends.save( { "person1" : 6, "person2" : 9 } );
+      }
+      
+      if (locations.count() == 0) {
+        locations.save( { "person" : 1, "x" : 1, "y": 5 } );
+        locations.save( { "person" : 1, "x" : 3, "y": 4 } );
+        locations.save( { "person" : 1, "x" : -2, "y": 3 } );
+        locations.save( { "person" : 2, "x" : 3, "y": -2 } );
+        locations.save( { "person" : 2, "x" : 2, "y": 1 } );
+        locations.save( { "person" : 5, "x" : 4, "y": -1 } );
+        locations.save( { "person" : 5, "x" : 3, "y": -2 } );
+        locations.save( { "person" : 5, "x" : 2, "y": -2 } );
+        locations.save( { "person" : 5, "x" : 5, "y": -5 } );
+        locations.save( { "person" : 5, "x" : 6, "y": -5 } );
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+    },
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test inner join results
 ////////////////////////////////////////////////////////////////////////////////
 
-  function testInnerJoin1 () {
-    var expected = [{ "id" : 1, "name" : "fox"}, { "id" : 1, "name" : "fox"}, { "id" : 1, "name" : "fox"}, { "id" : 2, "name" : "brown"}, { "id" : 2, "name" : "brown"}, { "id" : 5, "name" : "peter"}, { "id" : 5, "name" : "peter"}, { "id" : 5, "name" : "peter"}, { "id" : 5, "name" : "peter"}, { "id" : 5, "name" : "peter"}];
+    testInnerJoin1 : function () {
+      var expected = [{ "id" : 1, "name" : "fox"}, { "id" : 1, "name" : "fox"}, { "id" : 1, "name" : "fox"}, { "id" : 2, "name" : "brown"}, { "id" : 2, "name" : "brown"}, { "id" : 5, "name" : "peter"}, { "id" : 5, "name" : "peter"}, { "id" : 5, "name" : "peter"}, { "id" : 5, "name" : "peter"}, { "id" : 5, "name" : "peter"}];
 
-    var result = this.getQueryResults("SELECT p FROM " + this.persons._name + " p INNER JOIN " + this.locations._name + " l ON (p.id == l.person) ORDER BY p.id, l.x, l.y");
-    result = normalizeResult(result);
-    assertEqual(10, result.length);
-    assertEqual(expected, result);
-  }
+      var result = getQueryResults("SELECT p FROM " + persons.name() + " p INNER JOIN " + locations.name() + " l ON (p.id == l.person) ORDER BY p.id, l.x, l.y");
+      result = normalizeResult(result);
+      assertEqual(10, result.length);
+      assertEqual(expected, result);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test inner join results
 ////////////////////////////////////////////////////////////////////////////////
 
-  function testInnerJoin2 () {
-    var expected = [{ "p" : { "id" : 1, "name" : "fox"}, "l" : { "person" : 1, "x" : -2, "y" : 3}}, { "p" : { "id" : 1, "name" : "fox"}, "l" : { "person" : 1, "x" : 1, "y" : 5}}, { "p" : { "id" : 1, "name" : "fox"}, "l" : { "person" : 1, "x" : 3, "y" : 4}}, { "p" : { "id" : 2, "name" : "brown"}, "l" : { "person" : 2, "x" : 2, "y" : 1}}, { "p" : { "id" : 2, "name" : "brown"}, "l" : { "person" : 2, "x" : 3, "y" : -2}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 2, "y" : -2}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 3, "y" : -2}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 4, "y" : -1}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 5, "y" : -5}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 6, "y" : -5}}];
+    testInnerJoin2 : function () {
+      var expected = [{ "p" : { "id" : 1, "name" : "fox"}, "l" : { "person" : 1, "x" : -2, "y" : 3}}, { "p" : { "id" : 1, "name" : "fox"}, "l" : { "person" : 1, "x" : 1, "y" : 5}}, { "p" : { "id" : 1, "name" : "fox"}, "l" : { "person" : 1, "x" : 3, "y" : 4}}, { "p" : { "id" : 2, "name" : "brown"}, "l" : { "person" : 2, "x" : 2, "y" : 1}}, { "p" : { "id" : 2, "name" : "brown"}, "l" : { "person" : 2, "x" : 3, "y" : -2}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 2, "y" : -2}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 3, "y" : -2}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 4, "y" : -1}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 5, "y" : -5}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 6, "y" : -5}}];
 
-    var result = this.getQueryResults("SELECT { p : p, l : l } FROM " + this.persons._name + " p INNER JOIN " + this.locations._name + " l ON (p.id == l.person) ORDER BY p.id, l.x, l.y");
-    result = normalizeResult(result);
-    assertEqual(10, result.length);
-    assertEqual(expected, result);
-  }
+      var result = getQueryResults("SELECT { p : p, l : l } FROM " + persons.name() + " p INNER JOIN " + locations.name() + " l ON (p.id == l.person) ORDER BY p.id, l.x, l.y");
+      result = normalizeResult(result);
+      assertEqual(10, result.length);
+      assertEqual(expected, result);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test inner join results with limit
 ////////////////////////////////////////////////////////////////////////////////
 
-  function testInnerJoinLimit1 () {
-    var expected = [{ "id" : 1, "name" : "fox"}, { "id" : 1, "name" : "fox"}, { "id" : 2, "name" : "brown"}];
+    testInnerJoinLimit1 : function () {
+      var expected = [{ "id" : 1, "name" : "fox"}, { "id" : 1, "name" : "fox"}, { "id" : 2, "name" : "brown"}];
 
-    var result = this.getQueryResults("SELECT p FROM " + this.persons._name + " p INNER JOIN " + this.locations._name + " l ON (p.id == l.person) ORDER BY p.id, l.x, l.y LIMIT 1, 3");
-    result = normalizeResult(result);
-    assertEqual(3, result.length);
-    assertEqual(expected, result);
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test left join results
-////////////////////////////////////////////////////////////////////////////////
-
-  function testLeftJoin1 () {
-    var expected = [{ "id" : 1, "name" : "fox"}, { "id" : 1, "name" : "fox"}, { "id" : 1, "name" : "fox"}, { "id" : 2, "name" : "brown"}, { "id" : 2, "name" : "brown"}, { "id" : 5, "name" : "peter"}, { "id" : 5, "name" : "peter"}, { "id" : 5, "name" : "peter"}, { "id" : 5, "name" : "peter"}, { "id" : 5, "name" : "peter"}, { "id" : 6, "name" : "hulk"}, { "id" : 9, "name" : "fred"}];
-
-    var result = this.getQueryResults("SELECT p FROM " + this.persons._name + " p LEFT JOIN " + this.locations._name + " l ON (p.id == l.person) ORDER BY p.id, l.x, l.y");
-    result = normalizeResult(result);
-    assertEqual(12, result.length);
-    assertEqual(expected, result);
-  }
+      var result = getQueryResults("SELECT p FROM " + persons.name() + " p INNER JOIN " + locations.name() + " l ON (p.id == l.person) ORDER BY p.id, l.x, l.y LIMIT 1, 3");
+      result = normalizeResult(result);
+      assertEqual(3, result.length);
+      assertEqual(expected, result);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test left join results
 ////////////////////////////////////////////////////////////////////////////////
 
-  function testLeftJoin2 () {
-    var expected = [{ "p" : { "id" : 1, "name" : "fox"}, "l" : { "person" : 1, "x" : -2, "y" : 3}}, { "p" : { "id" : 1, "name" : "fox"}, "l" : { "person" : 1, "x" : 1, "y" : 5}}, { "p" : { "id" : 1, "name" : "fox"}, "l" : { "person" : 1, "x" : 3, "y" : 4}}, { "p" : { "id" : 2, "name" : "brown"}, "l" : { "person" : 2, "x" : 2, "y" : 1}}, { "p" : { "id" : 2, "name" : "brown"}, "l" : { "person" : 2, "x" : 3, "y" : -2}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 2, "y" : -2}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 3, "y" : -2}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 4, "y" : -1}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 5, "y" : -5}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 6, "y" : -5}}, { "p" : { "id" : 6, "name" : "hulk"}, "l" : null}, { "p" : { "id" : 9, "name" : "fred"}, "l" : null}];
+    testLeftJoin1 : function () {
+      var expected = [{ "id" : 1, "name" : "fox"}, { "id" : 1, "name" : "fox"}, { "id" : 1, "name" : "fox"}, { "id" : 2, "name" : "brown"}, { "id" : 2, "name" : "brown"}, { "id" : 5, "name" : "peter"}, { "id" : 5, "name" : "peter"}, { "id" : 5, "name" : "peter"}, { "id" : 5, "name" : "peter"}, { "id" : 5, "name" : "peter"}, { "id" : 6, "name" : "hulk"}, { "id" : 9, "name" : "fred"}];
 
-    var result = this.getQueryResults("SELECT { p : p, l : l } FROM " + this.persons._name + " p LEFT JOIN " + this.locations._name + " l ON (p.id == l.person) ORDER BY p.id, l.x, l.y");
-    result = normalizeResult(result);
-    assertEqual(12, result.length);
-    assertEqual(expected, result);
-  }
+      var result = getQueryResults("SELECT p FROM " + persons.name() + " p LEFT JOIN " + locations.name() + " l ON (p.id == l.person) ORDER BY p.id, l.x, l.y");
+      result = normalizeResult(result);
+      assertEqual(12, result.length);
+      assertEqual(expected, result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test left join results
+////////////////////////////////////////////////////////////////////////////////
+
+    testLeftJoin2 : function () {
+      var expected = [{ "p" : { "id" : 1, "name" : "fox"}, "l" : { "person" : 1, "x" : -2, "y" : 3}}, { "p" : { "id" : 1, "name" : "fox"}, "l" : { "person" : 1, "x" : 1, "y" : 5}}, { "p" : { "id" : 1, "name" : "fox"}, "l" : { "person" : 1, "x" : 3, "y" : 4}}, { "p" : { "id" : 2, "name" : "brown"}, "l" : { "person" : 2, "x" : 2, "y" : 1}}, { "p" : { "id" : 2, "name" : "brown"}, "l" : { "person" : 2, "x" : 3, "y" : -2}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 2, "y" : -2}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 3, "y" : -2}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 4, "y" : -1}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 5, "y" : -5}}, { "p" : { "id" : 5, "name" : "peter"}, "l" : { "person" : 5, "x" : 6, "y" : -5}}, { "p" : { "id" : 6, "name" : "hulk"}, "l" : null}, { "p" : { "id" : 9, "name" : "fred"}, "l" : null}];
+
+      var result = getQueryResults("SELECT { p : p, l : l } FROM " + persons.name() + " p LEFT JOIN " + locations.name() + " l ON (p.id == l.person) ORDER BY p.id, l.x, l.y");
+      result = normalizeResult(result);
+      assertEqual(12, result.length);
+      assertEqual(expected, result);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test list join results
 ////////////////////////////////////////////////////////////////////////////////
 
-  function testListJoin1 () {
-    var expected = [{ "p" : { "id" : 1, "name" : "fox"}, "l" : [{ "person" : 1, "x" : 1, "y" : 5}, { "person" : 1, "x" : 3, "y" : 4}, { "person" : 1, "x" : -2, "y" : 3}]}, { "p" : { "id" : 2, "name" : "brown"}, "l" : [{ "person" : 2, "x" : 2, "y" : 1}, { "person" : 2, "x" : 3, "y" : -2}]}, { "p" : { "id" : 5, "name" : "peter"}, "l" : [{ "person" : 5, "x" : 5, "y" : -5}, { "person" : 5, "x" : 3, "y" : -2}, { "person" : 5, "x" : 2, "y" : -2}, { "person" : 5, "x" : 6, "y" : -5}, { "person" : 5, "x" : 4, "y" : -1}]}, { "p" : { "id" : 6, "name" : "hulk"}, "l" : [ ]}, { "p" : { "id" : 9, "name" : "fred"}, "l" : [ ]}];
-    expected = normalizeResult(expected, [ 'l' ]);
+    testListJoin1 : function () {
+      var expected = [{ "p" : { "id" : 1, "name" : "fox"}, "l" : [{ "person" : 1, "x" : 1, "y" : 5}, { "person" : 1, "x" : 3, "y" : 4}, { "person" : 1, "x" : -2, "y" : 3}]}, { "p" : { "id" : 2, "name" : "brown"}, "l" : [{ "person" : 2, "x" : 2, "y" : 1}, { "person" : 2, "x" : 3, "y" : -2}]}, { "p" : { "id" : 5, "name" : "peter"}, "l" : [{ "person" : 5, "x" : 5, "y" : -5}, { "person" : 5, "x" : 3, "y" : -2}, { "person" : 5, "x" : 2, "y" : -2}, { "person" : 5, "x" : 6, "y" : -5}, { "person" : 5, "x" : 4, "y" : -1}]}, { "p" : { "id" : 6, "name" : "hulk"}, "l" : [ ]}, { "p" : { "id" : 9, "name" : "fred"}, "l" : [ ]}];
+      expected = normalizeResult(expected, [ 'l' ]);
 
-    var result = this.getQueryResults("SELECT { p : p, l : l } FROM " + this.persons._name + " p LIST JOIN " + this.locations._name + " l ON (p.id == l.person) ORDER BY p.id, l.x, l.y");
-    result = normalizeResult(result, [ 'l' ]);
-    assertEqual(5, result.length);
-    assertEqual(expected, result);
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test list join results
-////////////////////////////////////////////////////////////////////////////////
-
-  function testListJoin2 () {
-    var expected = [{ "p" : { "id" : 1, "name" : "fox"}, "f" : [{ "person1" : 1, "person2" : 9}, { "person1" : 1, "person2" : 2}]}, { "p" : { "id" : 2, "name" : "brown"}, "f" : [ ]}, { "p" : { "id" : 5, "name" : "peter"}, "f" : [{ "person1" : 5, "person2" : 6}]}, { "p" : { "id" : 6, "name" : "hulk"}, "f" : [{ "person1" : 6, "person2" : 9}]}, { "p" : { "id" : 9, "name" : "fred"}, "f" : [{ "person1" : 9, "person2" : 1}]}];
-    expected = normalizeResult(expected, [ 'f' ]);
-
-    var result = this.getQueryResults("SELECT { p : p, f : f } FROM " + this.persons._name + " p LIST JOIN " + this.friends._name + " f ON (p.id == f.person1) ORDER BY p.id");
-    result = normalizeResult(result, [ 'f' ]);
-    assertEqual(5, result.length);
-    assertEqual(expected, result);
-  }
+      var result = getQueryResults("SELECT { p : p, l : l } FROM " + persons.name() + " p LIST JOIN " + locations.name() + " l ON (p.id == l.person) ORDER BY p.id, l.x, l.y");
+      result = normalizeResult(result, [ 'l' ]);
+      assertEqual(5, result.length);
+      assertEqual(expected, result);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test list join results
 ////////////////////////////////////////////////////////////////////////////////
 
-  function testListJoin3 () {
-    var expected = [{ "p" : { "id" : 1, "name" : "fox"}, "f" : [{ "person1" : 9, "person2" : 1}, { "person1" : 1, "person2" : 9}, { "person1" : 1, "person2" : 2}]}, { "p" : { "id" : 2, "name" : "brown"}, "f" : [{ "person1" : 1, "person2" : 2}]}, { "p" : { "id" : 5, "name" : "peter"}, "f" : [{ "person1" : 5, "person2" : 6}]}, { "p" : { "id" : 6, "name" : "hulk"}, "f" : [{ "person1" : 6, "person2" : 9}, { "person1" : 5, "person2" : 6}]}, { "p" : { "id" : 9, "name" : "fred"}, "f" : [{ "person1" : 9, "person2" : 1}, { "person1" : 1, "person2" : 9}, { "person1" : 6, "person2" : 9}]}];
-    expected = normalizeResult(expected, [ 'f' ]);
+    testListJoin2 : function () {
+      var expected = [{ "p" : { "id" : 1, "name" : "fox"}, "f" : [{ "person1" : 1, "person2" : 9}, { "person1" : 1, "person2" : 2}]}, { "p" : { "id" : 2, "name" : "brown"}, "f" : [ ]}, { "p" : { "id" : 5, "name" : "peter"}, "f" : [{ "person1" : 5, "person2" : 6}]}, { "p" : { "id" : 6, "name" : "hulk"}, "f" : [{ "person1" : 6, "person2" : 9}]}, { "p" : { "id" : 9, "name" : "fred"}, "f" : [{ "person1" : 9, "person2" : 1}]}];
+      expected = normalizeResult(expected, [ 'f' ]);
 
-    var result = this.getQueryResults("SELECT { p : p, f : f } FROM " + this.persons._name + " p LIST JOIN " + this.friends._name + " f ON (p.id == f.person1 || p.id == f.person2) ORDER BY p.id");
-    result = normalizeResult(result, [ 'f' ]);
-    assertEqual(5, result.length);
-    assertEqual(expected, result);
-  }
+      var result = getQueryResults("SELECT { p : p, f : f } FROM " + persons.name() + " p LIST JOIN " + friends.name() + " f ON (p.id == f.person1) ORDER BY p.id");
+      result = normalizeResult(result, [ 'f' ]);
+      assertEqual(5, result.length);
+      assertEqual(expected, result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test list join results
+////////////////////////////////////////////////////////////////////////////////
+
+    testListJoin3 : function () {
+      var expected = [{ "p" : { "id" : 1, "name" : "fox"}, "f" : [{ "person1" : 9, "person2" : 1}, { "person1" : 1, "person2" : 9}, { "person1" : 1, "person2" : 2}]}, { "p" : { "id" : 2, "name" : "brown"}, "f" : [{ "person1" : 1, "person2" : 2}]}, { "p" : { "id" : 5, "name" : "peter"}, "f" : [{ "person1" : 5, "person2" : 6}]}, { "p" : { "id" : 6, "name" : "hulk"}, "f" : [{ "person1" : 6, "person2" : 9}, { "person1" : 5, "person2" : 6}]}, { "p" : { "id" : 9, "name" : "fred"}, "f" : [{ "person1" : 9, "person2" : 1}, { "person1" : 1, "person2" : 9}, { "person1" : 6, "person2" : 9}]}];
+      expected = normalizeResult(expected, [ 'f' ]);
+
+      var result = getQueryResults("SELECT { p : p, f : f } FROM " + persons.name() + " p LIST JOIN " + friends.name() + " f ON (p.id == f.person1 || p.id == f.person2) ORDER BY p.id");
+      result = normalizeResult(result, [ 'f' ]);
+      assertEqual(5, result.length);
+      assertEqual(expected, result);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test self join results
 ////////////////////////////////////////////////////////////////////////////////
 
-  function testSelfJoin () {
-    var expected = [{ "id" : 1, "name" : "fox"}, { "id" : 2, "name" : "brown"}, { "id" : 5, "name" : "peter"}, { "id" : 6, "name" : "hulk"}, { "id" : 9, "name" : "fred"}];
-    expected = normalizeResult(expected);
+    testSelfJoin : function () {
+      var expected = [{ "id" : 1, "name" : "fox"}, { "id" : 2, "name" : "brown"}, { "id" : 5, "name" : "peter"}, { "id" : 6, "name" : "hulk"}, { "id" : 9, "name" : "fred"}];
+      expected = normalizeResult(expected);
 
-    var result = this.getQueryResults("SELECT p FROM " + this.persons._name + " p INNER JOIN " + this.persons._name + " p2 ON (p.id == p2.id) ORDER BY p.id");
-    result = normalizeResult(result);
-    assertEqual(5, result.length);
-    assertEqual(expected, result);
-  }
+      var result = getQueryResults("SELECT p FROM " + persons.name() + " p INNER JOIN " + persons.name() + " p2 ON (p.id == p2.id) ORDER BY p.id");
+      result = normalizeResult(result);
+      assertEqual(5, result.length);
+      assertEqual(expected, result);
+    }
+
+  };
 
 }
 
@@ -301,7 +310,9 @@ function aqlJoinsTestSuite () {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsUnity.run(aqlJoinsTestSuite);
+jsunity.run(aqlJoinsTestSuite);
+
+return jsunity.done();
 
 // Local Variables:
 // mode: outline-minor

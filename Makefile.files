@@ -28,7 +28,6 @@ libavocado_a_SOURCES = \
 	BasicsC/conversions.c \
 	BasicsC/csv.c \
 	BasicsC/error.c \
-	BasicsC/voc-errors.c \
 	BasicsC/files.c \
 	BasicsC/hashes.c \
 	BasicsC/init.c \
@@ -48,6 +47,7 @@ libavocado_a_SOURCES = \
 	BasicsC/terminal-utils.c \
 	BasicsC/threads-posix.c \
 	BasicsC/vector.c \
+	BasicsC/voc-errors.c \
 	JsonParser/json-parser.c \
 	JsonParserX/InputParser.cpp \
 	JsonParserX/JsonParserX.cpp \
@@ -58,21 +58,31 @@ libavocado_a_SOURCES = \
 	Logger/LoggerInfo.cpp \
 	Logger/LoggerStream.cpp \
 	Logger/LoggerTiming.cpp \
+	MRuby/MRLineEditor.cpp \
 	ProgramOptions/program-options.c \
 	Rest/AddressPort.cpp \
 	Rest/AnyServer.cpp \
 	Rest/HttpRequest.cpp \
 	Rest/HttpResponse.cpp \
 	Rest/Initialise.cpp \
+	Rest/JsonContainer.cpp \
 	Rest/SslInterface.cpp \
 	Rest/Url.cpp \
 	ShapedJson/json-shaper.c \
 	ShapedJson/shape-accessor.c \
 	ShapedJson/shaped-json.c \
+	UserManager/ApplicationUserManager.cpp \
+	UserManager/Role.cpp \
+	UserManager/Session.cpp \
+	UserManager/SessionHandler.cpp \
+	UserManager/User.cpp \
+	UserManager/UserHandler.cpp \
+	UserManager/UsersHandler.cpp \
+	Utilities/LineEditor.cpp \
 	V8/JSLoader.cpp \
 	V8/v8-conv.cpp \
 	V8/v8-json.cpp \
-	V8/v8-line-editor.cpp \
+	V8/V8LineEditor.cpp \
 	V8/v8-shell.cpp \
 	V8/v8-utils.cpp \
 	Variant/VariantArray.cpp \
@@ -134,6 +144,15 @@ avocado_SOURCES = \
 	HttpsServer/HttpsAsyncCommTask.cpp \
 	HttpsServer/HttpsServer.cpp \
 	HttpsServer/HttpsServerImpl.cpp \
+	PriorityQueue/pqueueindex.c \
+	PriorityQueue/priorityqueue.c \
+	Ahuacatl/ast-codegen-js.c \
+        Ahuacatl/ast-dump.c \
+        Ahuacatl/ast-node.c \
+        Ahuacatl/error.c \
+        Ahuacatl/grammar.c \
+        Ahuacatl/parser.c \
+        Ahuacatl/tokens.c \
 	QL/ast-query.c \
 	QL/formatter.c \
 	QL/optimize.c \
@@ -141,6 +160,8 @@ avocado_SOURCES = \
 	QL/tokens.c \
 	RestHandler/RestActionHandler.cpp \
 	RestHandler/RestDocumentHandler.cpp \
+	RestHandler/RestEdgeHandler.cpp \
+	RestHandler/RestImportHandler.cpp \
 	RestHandler/RestVocbaseBaseHandler.cpp \
 	RestServer/ActionDispatcherThread.cpp \
 	RestServer/AvocadoHttpServer.cpp \
@@ -187,6 +208,7 @@ avocado_SOURCES = \
 	VocBase/query-javascript.c \
 	VocBase/query-join.c \
 	VocBase/query-join-execute.c \
+	VocBase/query-locks.c \
 	VocBase/query-memory.c \
 	VocBase/query-node.c \
 	VocBase/query-order.c \
@@ -207,10 +229,32 @@ avocsh_LDADD = libavocado.a $(LIBS)
 
 avocsh_SOURCES = \
 	SimpleHttpClient/SimpleHttpClient.cpp \
-	SimpleHttpClient/SimpleHttpConnection.cpp \
 	SimpleHttpClient/SimpleHttpResult.cpp \
+	V8Client/ImportHelper.cpp \
 	V8Client/V8ClientConnection.cpp \
-	V8Client/shell.cpp
+	V8Client/avocsh.cpp
+
+################################################################################
+## avocado ruby shell
+################################################################################
+
+avocirb_LDADD = libavocado.a $(LIBS)
+
+avocirb_SOURCES = \
+	MRClient/avocirb.cpp
+
+################################################################################
+## avocado importer
+################################################################################
+
+avocimp_LDADD = libavocado.a $(LIBS)
+
+avocimp_SOURCES = \
+	SimpleHttpClient/SimpleHttpClient.cpp \
+	SimpleHttpClient/SimpleHttpResult.cpp \
+	V8Client/ImportHelper.cpp \
+	V8Client/V8ClientConnection.cpp \
+	V8Client/avocimp.cpp
 
 ################################################################################
 ## JavaScript source code as header
@@ -223,7 +267,10 @@ JAVASCRIPT_HEADER = \
 	js/common/bootstrap/js-errors.h \
 	js/client/js-client.h \
 	js/server/js-aql-operators.h \
-	js/server/js-server.h
+	js/server/js-aql-functions-numeric.h \
+	js/server/js-aql-functions-string.h \
+	js/server/js-server.h \
+	js/server/js-ahuacatl.h
 
 BUILT_SOURCES += $(JAVASCRIPT_HEADER)
 
@@ -233,7 +280,8 @@ BUILT_SOURCES += $(JAVASCRIPT_HEADER)
 
 FLEX_FILES = \
 	JsonParser/json-parser.c \
-	QL/tokens.c
+	QL/tokens.c \
+        Ahuacatl/tokens.c
 
 BUILT_SOURCES += $(FLEX_FILES)
 
@@ -252,7 +300,8 @@ BUILT_SOURCES += $(FLEXXX_FILES)
 ################################################################################
 
 BISON_FILES = \
-	QL/parser.c
+	QL/parser.c \
+	Ahuacatl/grammar.c
 
 BUILT_SOURCES += $(BISON_FILES)
 
@@ -270,79 +319,73 @@ BUILT_SOURCES += $(BISONXX_FILES)
 ################################################################################
 
 DOXYGEN = \
-	Doxygen/js/actions/system/api_database.c \
-	Doxygen/js/actions/system/api_simple.c \
-	Doxygen/js/actions/system/collections.c \
+	Doxygen/js/actions/system/api-collection.c \
+	Doxygen/js/actions/system/api-edges.c \
+	Doxygen/js/actions/system/api-index.c \
+	Doxygen/js/actions/system/api-simple.c \
+	Doxygen/js/actions/system/api-system.c \
 	Doxygen/js/common/bootstrap/modules.c \
 	Doxygen/js/common/bootstrap/print.c \
 	Doxygen/js/common/modules/graph.c \
 	Doxygen/js/common/modules/jsunity.c \
 	Doxygen/js/server/modules/actions.c \
 	Doxygen/js/server/modules/simple-query.c \
-	Doxygen/js/server/server.c \
-        RestServer/cursor.dox \
-        RestServer/examples-setup.dox \
-        RestServer/glossary.dox \
-        RestServer/http-interface.dox \
-        RestServer/install-manual.dox \
-        RestServer/key-value.dox \
-        RestServer/module-actions.dox \
-        RestServer/module-console.dox \
-        RestServer/module-fs.dox \
-        RestServer/module-graph.dox \
-        RestServer/module-internal.dox \
-        RestServer/module-modules.dox \
-        RestServer/otwp.dox \
-        RestServer/ref-manual.dox \
-        RestServer/rest-document.dox \
-        RestServer/rest-system.dox \
-        RestServer/simple-queries.dox \
-        RestServer/user-manual-avocsh.dox \
-        RestServer/user-manual-server.dox 
-
+	Doxygen/js/server/server.c
 
 ################################################################################
 ## wiki
 ################################################################################
 
 WIKI = \
-	Doxygen/xml/Actions.md \
-	Doxygen/xml/AQLBasics.md \
-	Doxygen/xml/AvocadoErrors.md \
-	Doxygen/xml/AvocadoScript.md \
-	Doxygen/xml/CommandLineAvocado.md \
-	Doxygen/xml/CommandLineLogging.md \
-	Doxygen/xml/CommandLine.md \
-	Doxygen/xml/CommandLineRandom.md \
-	Doxygen/xml/CommandLineScheduler.md \
-	Doxygen/xml/Compiling.md \
-	Doxygen/xml/DBAdmin.md \
-	Doxygen/xml/DefineAction.md \
-	Doxygen/xml/ExamplesSetup.md \
-	Doxygen/xml/Glossary.md \
-	Doxygen/xml/Graphs.md \
-	Doxygen/xml/HttpInterface.md \
-	Doxygen/xml/IndexUsage.md \
-	Doxygen/xml/Installing.md \
-	Doxygen/xml/InstallManual.md \
-	Doxygen/xml/JavaScriptFuncIndex.md \
-	Doxygen/xml/JavaScriptFunc.md \
-	Doxygen/xml/JSModuleActions.md \
-	Doxygen/xml/JSModuleConsole.md \
-	Doxygen/xml/JSModuleFs.md \
-	Doxygen/xml/JSModuleGraph.md \
-	Doxygen/xml/JSModuleInternal.md \
-	Doxygen/xml/JSModules.md \
-	Doxygen/xml/jsUnity.md \
-	Doxygen/xml/Key-Value.md \
-	Doxygen/xml/Optimizer.md \
-	Doxygen/xml/OTWP.md \
-	Doxygen/xml/RefManual.md \
-	Doxygen/xml/RestCursor.md \
-	Doxygen/xml/RestDocument.md \
-	Doxygen/xml/RestSystem.md \
-	Doxygen/xml/SimpleQueries.md \
-	Doxygen/xml/UserManualServer.md \
-	Doxygen/xml/UserManualShell.md \
-	Doxygen/xml/UserManualShellStartStop.md 
-
+	AQLBasics \
+	Actions \
+	AvocadoErrors \
+	AvocadoScript \
+	CommandLine \
+	CommandLineAvocado \
+	CommandLineLogging \
+	CommandLineRandom \
+	CommandLineScheduler \
+	Compiling \
+	DBAdmin \
+	DefineAction \
+	ExamplesSetup \
+	Glossary \
+	Graphs \
+	Home \
+	HttpCollection \
+	HttpIndex \
+	HttpInterface \
+	HttpSystem \
+	IndexGeo \
+	IndexHash \
+	IndexSkiplist \
+	IndexUsage \
+	Indexes \
+	InstallManual \
+	Installing \
+	JSModuleActions \
+	JSModuleConsole \
+	JSModuleFs \
+	JSModuleGraph \
+	JSModuleInternal \
+	JSModules \
+	JavaScriptFunc \
+	JavaScriptFuncIndex \
+	Key-Value \
+	OTWP \
+	Optimizer \
+	RefManual \
+	RestCursor \
+	RestDocument \
+	RestEdge \
+	RestSystem \
+	ShellCollection \
+	ShellDocument \
+	ShellEdge \
+	ShellIndex \
+	SimpleQueries \
+	UserManualServer \
+	UserManualShell \
+	UserManualShellStartStop  \
+	jsUnity

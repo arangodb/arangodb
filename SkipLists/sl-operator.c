@@ -76,6 +76,10 @@ TRI_sl_operator_t* CreateSLOperator(TRI_sl_operator_type_e operatorType,
     case TRI_SL_OR_OPERATOR: 
     {
       newLogicalOperator              = (TRI_sl_logical_operator_t*)TRI_Allocate(sizeof(TRI_sl_logical_operator_t));
+      if (!newLogicalOperator) {
+        return NULL;
+      }
+
       newLogicalOperator->_base._type = operatorType;
       newLogicalOperator->_left       = leftOperand;
       newLogicalOperator->_right      = rightOperand;
@@ -91,6 +95,11 @@ TRI_sl_operator_t* CreateSLOperator(TRI_sl_operator_type_e operatorType,
     case TRI_SL_LT_OPERATOR: 
     {
       newRelationOperator              = (TRI_sl_relation_operator_t*)TRI_Allocate(sizeof(TRI_sl_relation_operator_t));
+      if (!newRelationOperator) {
+        return NULL;
+      }
+
+      /* FIXME: memory allocation might fail */
       newRelationOperator->_base._type = operatorType;
       newRelationOperator->_parameters = parameters;
       newRelationOperator->_fields     = fields;
@@ -126,6 +135,8 @@ void ClearSLOperator(TRI_sl_operator_t* slOperator) {
       logicalOperator = (TRI_sl_logical_operator_t*)(slOperator);
       ClearSLOperator(logicalOperator->_left);
       ClearSLOperator(logicalOperator->_right);
+
+      TRI_Free(logicalOperator);
       break;
     }
     
@@ -136,13 +147,22 @@ void ClearSLOperator(TRI_sl_operator_t* slOperator) {
     case TRI_SL_LE_OPERATOR: 
     case TRI_SL_LT_OPERATOR: 
     {
+      size_t i;
+
       relationOperator = (TRI_sl_relation_operator_t*)(slOperator);
       if (relationOperator->_parameters != NULL) {
         TRI_FreeJson(relationOperator->_parameters);
-      }  
-      if (relationOperator->_fields != NULL) {
-        TRI_FreeShapedJson(relationOperator->_fields);
-      }  
+      } 
+     
+      // relationOperator->_fields contains _numFields shapedJson objects
+      for (i = 0; i < relationOperator->_numFields; ++i) {
+        // destroy each individual shapedJson object
+        TRI_shaped_json_t* shaped = relationOperator->_fields + i;
+        TRI_DestroyShapedJson(shaped);
+      }
+      // free the memory pointer
+      TRI_Free(relationOperator->_fields);
+      TRI_Free(relationOperator);
       break;
     }    
   } // end of switch statement
@@ -173,6 +193,7 @@ TRI_sl_operator_t* CopySLOperator(TRI_sl_operator_t* slOperator) {
     {
       oldLogicalOperator              = (TRI_sl_logical_operator_t*)(slOperator);
       newLogicalOperator              = (TRI_sl_logical_operator_t*) (TRI_Allocate( sizeof(TRI_sl_logical_operator_t) ));
+      /* FIXME: memory allocation might fail */
       newLogicalOperator->_base._type = slOperator->_type;
       newLogicalOperator->_left       = CopySLOperator(oldLogicalOperator->_left);
       newLogicalOperator->_right      = CopySLOperator(oldLogicalOperator->_right);
@@ -189,6 +210,7 @@ TRI_sl_operator_t* CopySLOperator(TRI_sl_operator_t* slOperator) {
     {
       oldRelationOperator              = (TRI_sl_relation_operator_t*)(slOperator);
       newRelationOperator              = (TRI_sl_relation_operator_t*) (TRI_Allocate( sizeof(TRI_sl_relation_operator_t) ));
+      /* FIXME: memory allocation might fail */
       newRelationOperator->_base._type = slOperator->_type;
       newRelationOperator->_parameters = TRI_CopyJson(oldRelationOperator->_parameters);
       newRelationOperator->_fields     = TRI_CopyShapedJson(oldRelationOperator->_fields);
@@ -200,6 +222,14 @@ TRI_sl_operator_t* CopySLOperator(TRI_sl_operator_t* slOperator) {
   }
   
   return newOperator;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a skiplist operator with all its linked sub information
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeSLOperator(TRI_sl_operator_t* slOperator) {
+  ClearSLOperator(slOperator);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

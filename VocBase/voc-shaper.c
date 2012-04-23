@@ -76,6 +76,8 @@ typedef struct voc_shaper_s {
 
   TRI_associative_pointer_t _accessors;
 
+  TRI_vector_pointer_t _sortedAttributes;
+  
   TRI_shape_aid_t _nextAid;
   TRI_shape_sid_t _nextSid;
 
@@ -135,6 +137,46 @@ static bool EqualKeyAttributeName (TRI_associative_synced_t* array, void const* 
 /// @brief finds an attribute identifier by name
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
+static int sortedCompareFunction(const TRI_df_attribute_marker_t* leftItem, const TRI_df_attribute_marker_t* rightItem) {
+  const char* leftString;
+  const char* rightString;
+  
+  leftString  = (const char*)(leftItem)  + sizeof(TRI_df_attribute_marker_t);
+  rightString = (const char*)(rightItem) + sizeof(TRI_df_attribute_marker_t);
+  
+  return (strcmp(leftString,rightString));
+}
+*/
+
+/*
+static int64_t sortedIndexOf(voc_shaper_t* shaper, TRI_df_attribute_marker_t* item) {
+  int64_t leftPos;
+  int64_t rightPos;
+  int64_t midPos;
+  int compareResult;
+  
+  leftPos  = 0;
+  rightPos = (shaper->_sortedAttributes._length) - 1;
+  
+  while (leftPos <= rightPos)  {
+    midPos = (leftPos + rightPos) / 2;
+    compareResult = sortedCompareFunction((TRI_df_attribute_marker_t*)(shaper->_sortedAttributes._buffer[midPos]), item);
+    if (compareResult < 0) {
+      leftPos = midPos + 1;
+    }    
+    else if (compareResult > 0) {
+      rightPos = midPos - 1;
+    }
+    else {
+      // should never happen since we do not allow duplicates here
+      return -1;
+    }  
+  }
+  return leftPos; // insert it to the left of this position
+}
+*/
+ 
 static TRI_shape_aid_t FindAttributeName (TRI_shaper_t* shaper, char const* name) {
   TRI_df_attribute_marker_t marker;
   TRI_df_marker_t* result;
@@ -143,7 +185,7 @@ static TRI_shape_aid_t FindAttributeName (TRI_shaper_t* shaper, char const* name
   voc_shaper_t* s;
   void const* p;
   void* f;
-
+  
   s = (voc_shaper_t*) shaper;
   p = TRI_LookupByKeyAssociativeSynced(&s->_attributeNames, name);
 
@@ -174,6 +216,7 @@ static TRI_shape_aid_t FindAttributeName (TRI_shaper_t* shaper, char const* name
   marker._aid = s->_nextAid++;
   marker._size = n;
 
+  
   // write into the shape collection
   res = TRI_WriteBlobCollection(s->_collection, &marker.base, sizeof(TRI_df_attribute_marker_t), name, n, &result);
 
@@ -182,6 +225,7 @@ static TRI_shape_aid_t FindAttributeName (TRI_shaper_t* shaper, char const* name
     return 0;
   }
 
+    
   // enter into the dictionaries
   f = TRI_InsertKeyAssociativeSynced(&s->_attributeNames, name, result);
   assert(f == NULL);
@@ -189,6 +233,18 @@ static TRI_shape_aid_t FindAttributeName (TRI_shaper_t* shaper, char const* name
   f = TRI_InsertKeyAssociativeSynced(&s->_attributeIds, &marker._aid, result);
   assert(f == NULL);
 
+  /* sorted attributes (keys)
+  // add the attribute to the sorted list
+  searchResult = sortedIndexOf(s, (TRI_df_attribute_marker_t*)(result));
+  if (searchResult >= 0 && searchResult <= s->_sortedAttributes._length) {
+    TRI_InsertVectorPointer(&(s->_sortedAttributes),result,searchResult);      
+    printf("%s:%u:##############:%d\n",__FILE__,__LINE__,searchResult);
+  }
+  else {
+    assert(false);
+  }
+  */
+  
   // and release the lock
   TRI_UnlockMutex(&s->_attributeLock);
   return marker._aid;
@@ -518,7 +574,9 @@ static void InitVocShaper (voc_shaper_t* shaper, TRI_blob_collection_t* collecti
 /// @brief creates persistent shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaper_t* TRI_CreateVocShaper (char const* path, char const* name) {
+TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
+                                   char const* path,
+                                   char const* name) {
   voc_shaper_t* shaper;
   TRI_blob_collection_t* collection;
   TRI_col_parameter_t parameter;
@@ -526,7 +584,7 @@ TRI_shaper_t* TRI_CreateVocShaper (char const* path, char const* name) {
 
   TRI_InitParameterCollection(&parameter, name, SHAPER_DATAFILE_SIZE);
 
-  collection = TRI_CreateBlobCollection(path, &parameter);
+  collection = TRI_CreateBlobCollection(vocbase, path, &parameter);
 
   if (collection == NULL) {
     return NULL;
@@ -549,18 +607,22 @@ TRI_shaper_t* TRI_CreateVocShaper (char const* path, char const* name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an persistent shaper, but does not free the pointer
+/// @brief destroys a persistent shaper, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyVocShaper (TRI_shaper_t* s) {
   voc_shaper_t* shaper = (voc_shaper_t*) s;
+  
+  assert(shaper);
+  assert(shaper->_collection);
 
-  TRI_DestroyBlobCollection(shaper->_collection);
+  TRI_FreeBlobCollection(shaper->_collection);
 
   TRI_DestroyAssociativeSynced(&shaper->_attributeNames);
   TRI_DestroyAssociativeSynced(&shaper->_attributeIds);
   TRI_DestroyAssociativeSynced(&shaper->_shapeDictionary);
   TRI_DestroyAssociativeSynced(&shaper->_shapeIds);
+  TRI_DestroyAssociativePointer(&shaper->_accessors);
 
   TRI_DestroyMutex(&shaper->_shapeLock);
   TRI_DestroyMutex(&shaper->_attributeLock);
@@ -569,10 +631,11 @@ void TRI_DestroyVocShaper (TRI_shaper_t* s) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an persistent shaper and frees the pointer
+/// @brief destroys a persistent shaper and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeVocShaper (TRI_shaper_t* shaper) {
+  TRI_DestroyVocShaper(shaper);
   TRI_Free(shaper);
 }
 
@@ -601,12 +664,13 @@ TRI_blob_collection_t* TRI_CollectionVocShaper (TRI_shaper_t* shaper) {
 /// @brief opens a persistent shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaper_t* TRI_OpenVocShaper (char const* filename) {
+TRI_shaper_t* TRI_OpenVocShaper (TRI_vocbase_t* vocbase,
+                                 char const* filename) {
   voc_shaper_t* shaper;
   TRI_blob_collection_t* collection;
   bool ok;
 
-  collection = TRI_OpenBlobCollection(filename);
+  collection = TRI_OpenBlobCollection(vocbase, filename);
 
   if (collection == NULL) {
     return NULL;
@@ -643,10 +707,7 @@ int TRI_CloseVocShaper (TRI_shaper_t* s) {
 
   if (err != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("cannot close blob collection of shaper, error %lu", (unsigned long) err);
-    TRI_FreeBlobCollection(shaper->_collection);
   }
-
-  shaper->_collection = NULL;
 
   return err;
 }

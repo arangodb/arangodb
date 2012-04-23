@@ -20,6 +20,7 @@
 #include "VocBase/query-node.h"
 #include "VocBase/query-base.h"
 #include "VocBase/query-parse.h"
+#include "VocBase/query-functions.h"
 
 #define ABORT_IF_OOM(ptr) \
   if (!ptr) { \
@@ -981,7 +982,12 @@ function_invocation:
       TRI_query_node_t* name = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
       ABORT_IF_OOM(name);
       ABORT_IF_OOM($1);
-      name->_value._stringValue = $1;
+
+      name->_value._stringValue = TRI_GetInternalNameQueryFunction(template_->_vocbase->_functions, $1);
+      if (!name->_value._stringValue) {
+        TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, $1);
+        YYABORT;
+      }
       
       $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeControlFunctionCall);
       ABORT_IF_OOM($$);
@@ -997,7 +1003,11 @@ function_invocation:
       TRI_query_node_t* name = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeValueIdentifier);
       ABORT_IF_OOM(name);
       ABORT_IF_OOM($1);
-      name->_value._stringValue = $1;
+      name->_value._stringValue = TRI_GetInternalNameQueryFunction(template_->_vocbase->_functions, $1);
+      if (!name->_value._stringValue) {
+        TRI_SetQueryError(&template_->_error, TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, $1);
+        YYABORT;
+      }
 
       $$ = TRI_ParseQueryCreateNode(template_, TRI_QueryNodeControlFunctionCall);
       ABORT_IF_OOM($$);

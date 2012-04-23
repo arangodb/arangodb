@@ -1,0 +1,120 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief over the wire protocol
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page HttpIndexTOC
+///
+/// <ol>
+///  <li>@ref HttpIndexIntro</li>
+///  <li>@ref HttpIndexResource</li>
+///  <li>@ref HttpIndexHttp
+///   @copydetails HttpIndexCallsTOC
+///  </li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page HttpIndexCallsTOC
+///
+/// <ol>
+///  <li>@ref HttpIndexRead "GET /_api/index/index-handle"</li>
+///  <li>@ref HttpIndexCreate "POST /_api/index?collection=collection-identifier"</li>
+///  <li>@ref HttpIndexDelete "DELETE /_api/index/index-handle"</li>
+///  <li>@ref HttpIndexReadAll "GET /_api/index?collection=index-handle"</li>
+/// </ol>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page HttpIndex HTTP Interface for Indexes
+///
+/// This is an introduction to AvocadoDB's Http interface for indexes in
+/// general. There are special section for
+///
+/// - @ref IndexGeo
+/// - @ref IndexSkiplist
+/// - @ref IndexHash
+/// - @ref IndexPrioQueue
+///
+/// <hr>
+/// @copydoc HttpIndexTOC
+/// <hr>
+///
+/// @section HttpIndexIntro Indexes
+///////////////////////////////////
+///
+/// @copydoc GlossaryIndex
+///
+/// @copydoc GlossaryIndexHandle
+///
+/// @copydoc GlossaryIndexGeo
+///
+/// @copydoc GlossaryIndexHash
+///
+/// @copydoc GlossaryIndexSkiplist
+///
+/// @copydoc GlossaryIndexPrioQueue
+///
+/// The basic operations (create, read, update, delete) for documents are mapped
+/// to the standard HTTP methods (POST, GET, PUT, DELETE).
+///
+/// @section HttpIndexResource Address of an Index
+//////////////////////////////////////////////////
+///
+/// All indexes in AvocadoDB have an unique handle. This index handle identifies
+/// an index and is managed by AvocadoDB. All indexes are found under the URI
+///
+/// @LIT{http://@FA{server}:@FA{port}/_api/index/@FA{index-handle}}
+///
+/// For example: Assume that the index handle is @LIT{7254820/63563528} then
+/// the URL of that index is:
+///
+/// @LIT{http://localhost:8529/_api/index/7254820/63563528}
+///
+/// @section HttpIndexHttp Working with Indexes using HTTP
+//////////////////////////////////////////////////////////
+///
+/// @anchor HttpIndexRead
+/// @copydetails JSF_GET_api_index
+/// <hr>
+///
+/// @anchor HttpIndexCreate
+/// @copydetails JSF_POST_api_index
+/// <hr>
+///
+/// @anchor HttpIndexDelete
+/// @copydetails JSF_DELETE_api_index
+/// <hr>
+///
+/// @anchor HttpIndexReadAll
+/// @copydetails JSF_GET_api_indexes
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: c++
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// End:

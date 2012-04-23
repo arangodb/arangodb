@@ -40,5 +40,8 @@ if sys.platform == 'darwin':
   # Packaging
   test.built_file_must_exist('Test App Gyp.app/Contents/PkgInfo',
                              chdir='app-bundle')
+  test.built_file_must_match('Test App Gyp.app/Contents/PkgInfo', 'APPLause',
+                             chdir='app-bundle')
+
 
   test.pass_test()

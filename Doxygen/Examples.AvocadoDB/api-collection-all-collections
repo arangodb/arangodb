@@ -1,0 +1,37 @@
+> curl -X GET --dump - http://localhost:8529/_api/collection
+
+HTTP/1.1 200 OK
+content-type: application/json
+
+{
+  "collections": [
+    {
+      "name": "employees",
+      "waitForSync": true,
+      "id": 64091684,
+      "status": 3
+    },
+    {
+      "name": "units",
+      "waitForSync": true,
+      "id": 63043108,
+      "status": 3
+    }
+  ],
+  "code": 200,
+  "names": {
+    "units": {
+      "name": "units",
+      "waitForSync": true,
+      "id": 63043108,
+      "status": 3
+    },
+    "employees": {
+      "name": "employees",
+      "waitForSync": true,
+      "id": 64091684,
+      "status": 3
+    }
+  },
+  "error": false
+}

@@ -435,6 +435,34 @@ void TRI_PushBack2ListJson (TRI_json_t* list, TRI_json_t* object) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a new sub-object, not copying it but freeing the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_PushBack3ListJson (TRI_json_t* list, TRI_json_t* object) {
+  TRI_PushBack2ListJson(list, object);
+  TRI_Free(object);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a value in a json list
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_LookupListJson (const TRI_json_t* const object, const size_t pos) {
+  size_t n;
+
+  assert(object->_type == TRI_JSON_LIST);
+
+  n = object->_value._objects._length;
+
+  if (pos >= n) {
+    // out of bounds
+    return NULL;
+  }
+
+  return TRI_AtVector(&object->_value._objects, pos);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new attribute to an object, using copy
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -489,24 +517,7 @@ void TRI_Insert2ArrayJson (TRI_json_t* object, char const* name, TRI_json_t* sub
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_Insert3ArrayJson (TRI_json_t* object, char const* name, TRI_json_t* subobject) {
-  TRI_json_t copy;
-  size_t length;
-
-  assert(object->_type == TRI_JSON_ARRAY);
-
-  if (subobject == NULL) {
-    return;
-  }
-
-  length = strlen(name);
-
-  copy._type = TRI_JSON_STRING;
-  copy._value._string.length = length + 1;
-  copy._value._string.data = TRI_DuplicateString2(name, length); // including '\0'
-
-  TRI_PushBackVector(&object->_value._objects, &copy);
-  TRI_PushBackVector(&object->_value._objects, subobject);
-
+  TRI_Insert2ArrayJson(object, name, subobject);
   TRI_Free(subobject);
 }
 
@@ -652,14 +663,14 @@ bool TRI_SaveJson (char const* filename, TRI_json_t const* object) {
     return false;
   }
 
-  ok = TRI_RenameFile(tmp, filename);
+  res = TRI_RenameFile(tmp, filename);
 
-  if (! ok) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("cannot rename saved file '%s' to '%s': '%s'", tmp, filename, TRI_LAST_ERROR_STR);
     TRI_UnlinkFile(tmp);
     TRI_FreeString(tmp);
-    return false;
+
+    return res;
   }
 
   TRI_FreeString(tmp);

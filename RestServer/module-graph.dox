@@ -63,6 +63,7 @@
 ///       <li>@ref JSModuleGraphGraphGetVertices "Graph.getVertices"</li>
 ///       <li>@ref JSModuleGraphGraphRemoveEdge "Graph.removeEdge"</li>
 ///       <li>@ref JSModuleGraphGraphRemoveVertex "Graph.removeVertex"</li>
+///       <li>@ref JSModuleGraphGraphDrop "Graph.drop"</li>
 ///     </ol>
 ///   </li>
 ///   <li>@ref JSModuleGraphVertex
@@ -140,6 +141,10 @@
 ///
 /// @anchor JSModuleGraphGraphRemoveEdge
 /// @copydetails JSF_Graph_prototype_removeEdge
+/// <hr>
+///
+/// @anchor JSModuleGraphGraphDrop
+/// @copydetails JSF_Graph_prototype_drop
 ///
 /// @section JSModuleGraphVertex Vertex Methods
 ///////////////////////////////////////////////

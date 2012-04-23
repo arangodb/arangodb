@@ -162,6 +162,8 @@ typedef struct TRI_col_parameter_s {
   TRI_voc_size_t _maximalSize;       // maximal size of memory mapped file
 
   bool _waitForSync;                 // if true, wait for msync
+
+  bool _isSystem;                    // if true, this is a system collection
 }
 TRI_col_parameter_t;
 
@@ -179,8 +181,6 @@ typedef struct TRI_col_info_s {
   bool _waitForSync;                 // if true, wait for msync
 
   bool _deleted;                     // if true, collections has been deleted
-
-  TRI_voc_size_t _size;              // total size of the parameter info block
 }
 TRI_col_info_t;
 
@@ -191,6 +191,7 @@ TRI_col_info_t;
 typedef struct TRI_collection_s {
   TRI_col_version_t _version;        // collection version, will be set
   TRI_col_type_t _type;              // collection type, will be set
+  TRI_vocbase_t* _vocbase;
 
   TRI_col_state_e _state;            // state of the collection
   int _lastError;                    // last (critical) error
@@ -237,7 +238,8 @@ void TRI_InitParameterCollection (TRI_col_parameter_t*,
 /// @brief creates a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_collection_t* TRI_CreateCollection (TRI_collection_t*,
+TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t*,
+                                        TRI_collection_t*,
                                         char const* path,
                                         TRI_col_info_t* parameter);
 
@@ -272,19 +274,19 @@ void TRI_FreeCollection (TRI_collection_t*);
 /// @brief creates a parameter info block from file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_LoadParameterInfo (char const* filename, TRI_col_info_t*);
+int TRI_LoadParameterInfoCollection (char const* filename, TRI_col_info_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a parameter info block to file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveParameterInfo (char const* filename, TRI_col_info_t*);
+int TRI_SaveParameterInfoCollection (char const* filename, TRI_col_info_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates the parameter info block
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_UpdateParameterInfoCollection (TRI_collection_t*);
+int TRI_UpdateParameterInfoCollection (TRI_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a collection
@@ -325,7 +327,8 @@ void TRI_IterateIndexCollection (TRI_collection_t* collection,
 /// @brief opens an existing collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_collection_t* TRI_OpenCollection (TRI_collection_t*,
+TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t*,
+                                      TRI_collection_t*,
                                       char const* path);
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -32,7 +32,7 @@ AC_MSG_NOTICE([-----------------------------------------------------------------
 AC_MSG_NOTICE([CHECKING FOR LIBEV])
 AC_MSG_NOTICE([--------------------------------------------------------------------------------])
 
-AC_LANG(C++)
+AC_LANG(C)
 
 if test "x$LIBEV_CPPFLAGS" != x;  then
   TR_INCLUDE([LIBEV_CPPFLAGS])

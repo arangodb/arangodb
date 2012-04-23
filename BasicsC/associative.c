@@ -27,6 +27,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "associative.h"
+#include "hashes.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 ASSOCIATIVE ARRAY
@@ -82,7 +83,7 @@ static void ResizeAssociativeArray (TRI_associative_array_t* array) {
   array->_nrResizes++;
 
   array->_table = TRI_Allocate(array->_nrAlloc * array->_elementSize);
-  // TODO: handle malloc failures
+  // TODO FIXME: handle malloc failures
 
   for (j = 0; j < array->_nrAlloc; j++) {
     array->clearElement(array, array->_table + j * array->_elementSize);
@@ -136,7 +137,7 @@ void TRI_InitAssociativeArray (TRI_associative_array_t* array,
   array->_nrAlloc = 10;
 
   array->_table = TRI_Allocate(array->_elementSize * array->_nrAlloc);
-  // TODO: handle malloc failures
+  // TODO FIXME: handle malloc failures
 
   p = array->_table;
   e = p + array->_elementSize * array->_nrAlloc;
@@ -530,7 +531,7 @@ static void ResizeAssociativePointer (TRI_associative_pointer_t* array) {
   array->_nrResizes++;
 
   array->_table = TRI_Allocate(array->_nrAlloc * sizeof(void*));
-  // TODO: handle malloc failures
+  // TODO FIXME: handle malloc failures
 
   for (j = 0; j < array->_nrAlloc; j++) {
     array->_table[j] = NULL;
@@ -578,7 +579,7 @@ void TRI_InitAssociativePointer (TRI_associative_pointer_t* array,
   array->_nrAlloc = 10;
 
   array->_table = TRI_Allocate(sizeof(void*) * array->_nrAlloc);
-  // TODO: handle malloc failures
+  // TODO FIXME: handle malloc failures
 
   p = array->_table;
   e = p + array->_nrAlloc;
@@ -627,6 +628,15 @@ void TRI_FreeAssociativePointer (TRI_associative_pointer_t* array) {
 /// @addtogroup Collections
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief General hash function that can be used to hash a key
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t TRI_HashStringKeyAssociativePointer (TRI_associative_pointer_t* array, 
+                                              void const* key) {
+  return TRI_FnvHashString((char const*) key);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given a key
@@ -928,7 +938,7 @@ static void ResizeAssociativeSynced (TRI_associative_synced_t* array) {
   array->_nrResizes++;
 
   array->_table = TRI_Allocate(array->_nrAlloc * sizeof(void*));
-  // TODO: handle malloc failures
+  // TODO FIXME: handle malloc failures
 
   for (j = 0; j < array->_nrAlloc; j++) {
     array->_table[j] = NULL;
@@ -976,7 +986,7 @@ void TRI_InitAssociativeSynced (TRI_associative_synced_t* array,
   array->_nrAlloc = 10;
 
   array->_table = TRI_Allocate(sizeof(void*) * array->_nrAlloc);
-  // TODO: handle malloc failures
+  // TODO FIXME: handle malloc failures
 
   p = array->_table;
   e = p + array->_nrAlloc;

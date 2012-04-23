@@ -28,9 +28,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page Glossary
 ///
+/// @copydoc GlossaryCollection
+///
 /// @copydoc GlossaryCollectionIdentifier
 ///
+/// @copydoc GlossaryCollectionName
+///
 /// @copydoc GlossaryDocument
+///
+/// @copydoc GlossaryDocumentEtag
 ///
 /// @copydoc GlossaryDocumentHandle
 ///
@@ -38,30 +44,73 @@
 ///
 /// @copydoc GlossaryDocumentRevision
 ///
+/// @copydoc GlossaryEdge
+///
+/// @copydoc GlossaryEdgeCollection
+///
+/// @copydoc GlossaryIndexGeo
+///
+/// @copydoc GlossaryIndexHash
+///
+/// @copydoc GlossaryIndex
+///
+/// @copydoc GlossaryIndexHandle
+///
+/// @copydoc GlossaryIndexPrioQueue
+///
+/// @copydoc GlossaryIndexSkiplist
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page GlossaryCollection
+////////////////////////////
+///
+/// @GE{Collection}: A collection consists of documents. It is uniquely identified
+/// by it's collection identifier. It also has a unique name.
+///
 /// @page GlossaryCollectionIdentifier
+//////////////////////////////////////
 ///
 /// @GE{Collection Identifier}: A collection identifier identifies a collection
 /// in a database. It is an integer and is unique within the database.
 ///
+/// @page GlossaryCollectionName
+////////////////////////////////
+///
+/// @GE{Collection Name}: A collection name identifies a collection in a
+/// database. It is an string and is unique within the database. Unlike the
+/// collection identifier it is supplied by the creator of the collection.  The
+/// collection name can consist of letters, digits and the characters @LIT{_} and
+/// @LIT{-}. However, the first character must be a letter.
+///
 /// @page GlossaryDocument
+//////////////////////////
 ///
 /// @GE{Document}: Documents in AvocadoDB are JSON objects. These objects can be
 /// nested (to any depth) and may contains lists. Each document is unique identified
 /// by its document handle.
 ///
+/// @page GlossaryDocumentEtag
+//////////////////////////////
+///
+/// @GE{Document Etag}: The document revision enclosed in double quotes.
+///
 /// @page GlossaryDocumentHandle
+////////////////////////////////
 ///
 /// @GE{Document Handle}: A document handle uniquely identifies a document in
 /// the database. It is a string and consists of a collection identifier and a
 /// document identifier separated by @LIT{/}.
 ///
 /// @page GlossaryDocumentIdentifier 
+////////////////////////////////////
 ///
 /// @GE{Document Identifier}: A document identifier identifies a document in a
 /// given collection. It is an integer and is unique within the collection of the
 /// document.
 ///
 /// @page GlossaryDocumentRevision
+//////////////////////////////////
 ///
 /// @GE{Document Revision}: As AvocaodDB supports MVCC, documents can exist in
 /// more than one revision.  The document revision is the MVCC token used to
@@ -70,9 +119,56 @@
 /// of a document have smaller numbers. In order to find a particular revision
 /// of a document, you need the document handle and the document revision.
 ///
-/// @page GlossaryDocumentEtag 
+/// @page GlossaryEdge
+//////////////////////
 ///
-/// @GE{Document Etag}: The document revision enclosed in double quotes.
+/// @GE{Edge}: Edges in AvocadoDB are special documents. In addition to the
+/// internal attributes @LIT{_id} and @LIT{_rev}, they have two attributes
+/// @LIT{_form} and @LIT{_to}, which contain document handles namely the
+/// start-point and the end-point of the edge.
+///
+/// @page GlossaryEdgeCollection
+////////////////////////////////
+///
+/// @GE{Edge Collection}: Edge collections are special collection where 
+/// edge documents live. Instead of using @LIT{db}, one must use @LIT{edges}
+/// to access the edge collection.
+///
+/// @page GlossaryIndexGeo
+//////////////////////////
+///
+/// @GE{Geo Index}: A geo index is used to find places on the surface of the
+/// earth fast.
+///
+/// @page GlossaryIndexHash
+///////////////////////////
+///
+/// @GE{Hash Index}: A hash index is used to find documents based on examples.
+///
+/// @page GlossaryIndex
+///////////////////////
+///
+/// @GE{Index}: Indexes are used to allow fast access to documents. For each
+/// collection there is always the primary index which is a hash index for
+/// the document identifier.
+///
+/// @page GlossaryIndexHandle
+/////////////////////////////
+///
+/// @GE{Index Handle}: An index handle uniquely identifies an index in the
+/// database. It is a string and consists of a collection identifier and a
+/// index identifier separated by @LIT{/}.
+///
+/// @page GlossaryIndexPrioQueue
+////////////////////////////////
+///
+/// @GE{Priority Queue}: A priority queue based on an attribute of the
+/// documents.
+///
+/// @page GlossaryIndexSkiplist
+///////////////////////////////
+///
+/// @GE{Skiplist Index}: A skiplist is used to find ranges of documents.
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

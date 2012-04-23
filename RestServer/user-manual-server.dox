@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page UserManualServer User Manual for the AvocadoDB Server
+/// @page UserManualServer AvocadoDB User Manual
 ///
 /// <ol>
 ///  <li>@ref UserManualServerBasics
@@ -156,7 +156,7 @@
 /// to access the server using HTTP request on port 8529. See below for a list
 /// of frequently used options, see @ref CommandLine "here" for a complete list.
 ///
-/// @verbinclude start2
+/// @verbinclude option-database-directory
 ///
 /// @section UserManualServerStartStopDebug Starting the Debug Shell
 ///
@@ -238,7 +238,7 @@
 ///
 /// @subsection DBAdminDurability3 Configuration
 ///
-/// @copydetails JS_ParameterVocbaseCol
+/// @copydetails JS_PropertiesVocbaseCol
 ///
 /// @section DBAdminIndex Index Management
 ///

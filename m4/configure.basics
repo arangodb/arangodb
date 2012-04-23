@@ -30,6 +30,34 @@ AM_INIT_AUTOMAKE([foreign subdir-objects])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES(yes)])
 
 dnl -----------------------------------------------------------------------------------------
+dnl checks if the CC compiler supports an option
+dnl
+dnl usage: TRI_TRY_CC_OPTION(flag, action-if-ok, action-if-no-ok)
+dnl -----------------------------------------------------------------------------------------
+
+AC_DEFUN([TRI_TRY_CC_OPTION],
+         [AC_MSG_CHECKING([$1 for $CC])
+          AS_IF([AC_TRY_COMMAND([${CC-cc} $1 -xc /dev/null -S -o /dev/null])],
+                AC_MSG_RESULT([yes])
+                [$2], 
+                AC_MSG_RESULT([no])
+                [$3])])
+
+dnl -----------------------------------------------------------------------------------------
+dnl checks if the C++ compiler supports an option
+dnl
+dnl usage: TRI_TRY_CXX_OPTION(flag, action-if-ok, action-if-no-ok)
+dnl -----------------------------------------------------------------------------------------
+
+AC_DEFUN([TRI_TRY_CXX_OPTION],
+         [AC_MSG_CHECKING([$1] for $CXX)
+          AS_IF([AC_TRY_COMMAND([${CXX-c++} $1 -xc /dev/null -S -o /dev/null])],
+                AC_MSG_RESULT([yes])
+                [$2], 
+                AC_MSG_RESULT([no])
+                [$3])])
+
+dnl -----------------------------------------------------------------------------------------
 dnl checks for compiler and basic settings
 dnl -----------------------------------------------------------------------------------------
 
@@ -94,36 +122,30 @@ if test x$GCC == xyes;  then
   WALLC="${WALL} -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement"
   WALLCXX="${WALL} -Woverloaded-virtual"
 
-  case $CXX in
-    *clang++*)
-      ;;
+  TRI_TRY_CXX_OPTION([-Wstrict-null-sentinel],
+                     [WALLCXX="${WALLCXX} -Wstrict-null-sentinel"])
 
-    *)
-      WALLCXX="${WALLCXX} -Wstrict-null-sentinel"
+  # try to select the correct C standard: gnu90 is nice, because it warns about constructs
+  # the Visual Studio Compiler does not like
 
-      if test x$tr_DARWIN != xyes;  then
-        WALLC="-std=gnu90 ${WALLC}"
-      fi
-      ;;
-  esac
+  GCCSTD=""
 
-  case $CC in
-    *clang*)
-      ;;
+  TRI_TRY_CC_OPTION([-std=gnu90],
+	            [GCCSTD="-std=gnu90"],
+	            [TRI_TRY_CC_OPTION([-std=gnu89],
+                                       [GCCSTD="-std=gnu89"])])
 
-    *)
-      if test x$tr_DARWIN != xyes;  then
-        WALLC="-std=gnu90 ${WALLC}"
-      fi
-      ;;
-  esac
+  GXXSTD=""
+
+  TRI_TRY_CXX_OPTION([-std=c++98],
+	             [GXXSTD="-std=c++98"])
 
   if test x$tr_WEFFCXX == xyes;  then
     WALLCXX="${WALLCXX} -Weffc++"
   fi
 
-  CFLAGS="${CFLAGS} ${WALLC}"
-  CXXFLAGS="${CXXFLAGS} ${WALLCXX}"
+  CFLAGS="${GCCSTD} ${CFLAGS} ${WALLC}"
+  CXXFLAGS="${GXXSTD} ${CXXFLAGS} ${WALLCXX}"
 fi
 
 AC_SEARCH_LIBS([sincos], [m])

@@ -32,6 +32,13 @@
 
 # -*- mode: Makefile; -*-
 
+# -*- mode: Makefile; -*-
+
+################################################################################
+################################################################################
+
+# -*- mode: Makefile; -*-
+
 ################################################################################
 ################################################################################
 
@@ -72,13 +79,20 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
+@ENABLE_MRUBY_TRUE@am__append_1 = @MRUBY_CPPFLAGS@ @MRUBY_LDFLAGS@
+@ENABLE_MRUBY_TRUE@am__append_2 = \
+@ENABLE_MRUBY_TRUE@	@MRUBY_LIBS@
+
 sbin_PROGRAMS = avocado$(EXEEXT)
-bin_PROGRAMS = avocsh$(EXEEXT)
-DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.all-in-one \
-	$(srcdir)/Makefile.am $(srcdir)/Makefile.bison \
-	$(srcdir)/Makefile.doxygen $(srcdir)/Makefile.files \
-	$(srcdir)/Makefile.flex $(srcdir)/Makefile.in \
-	$(srcdir)/Makefile.javascript $(srcdir)/Makefile.unittests \
+bin_PROGRAMS = avocsh$(EXEEXT) avocirb$(EXEEXT) avocimp$(EXEEXT)
+DIST_COMMON = $(am__configure_deps) \
+	$(srcdir)/Makefile.all-in-one-libev \
+	$(srcdir)/Makefile.all-in-one-mruby \
+	$(srcdir)/Makefile.all-in-one-v8 $(srcdir)/Makefile.am \
+	$(srcdir)/Makefile.bison $(srcdir)/Makefile.doxygen \
+	$(srcdir)/Makefile.files $(srcdir)/Makefile.flex \
+	$(srcdir)/Makefile.in $(srcdir)/Makefile.javascript \
+	$(srcdir)/Makefile.unittests \
 	$(top_srcdir)/BasicsC/local-configuration.h.in \
 	$(top_srcdir)/Doxygen/avocado.doxy.in \
 	$(top_srcdir)/config/config.h.in $(top_srcdir)/configure \
@@ -90,12 +104,16 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.all-in-one \
 
 ################################################################################
 ################################################################################
-@ENABLE_FLEX_TRUE@am__append_1 = $(FLEX_FILES) $(FLEXXX_FILES)
+@ENABLE_FLEX_TRUE@am__append_3 = $(FLEX_FILES) $(FLEXXX_FILES)
 
 ################################################################################
 ################################################################################
-@ENABLE_BISON_TRUE@am__append_2 = $(BISON_FILES) $(BISONXX_FILES)
-@ENABLE_ALL_IN_ONE_TRUE@am__append_3 = @LIBEV_LIBS@ @V8_LIBS@
+@ENABLE_BISON_TRUE@am__append_4 = $(BISON_FILES) $(BISONXX_FILES)
+@ENABLE_ERRORS_DEPENDENCY_TRUE@am__append_5 = \
+@ENABLE_ERRORS_DEPENDENCY_TRUE@	errorfiles
+
+@ENABLE_ALL_IN_ONE_TRUE@am__append_6 = @LIBEV_LIBS@ @V8_LIBS@
+@ENABLE_MRUBY_TRUE@am__append_7 = @MRUBY_LIBS@
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
@@ -107,16 +125,19 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
 	$(top_srcdir)/m4/configure.logging \
 	$(top_srcdir)/m4/configure.largefile \
 	$(top_srcdir)/m4/configure.threads \
-	$(top_srcdir)/m4/configure.dot $(top_srcdir)/m4/configure.flex \
+	$(top_srcdir)/m4/configure.dot \
+	$(top_srcdir)/m4/configure.coverage \
+	$(top_srcdir)/m4/configure.flex \
 	$(top_srcdir)/m4/configure.bison \
 	$(top_srcdir)/m4/external.math \
 	$(top_srcdir)/m4/external.ncurses \
 	$(top_srcdir)/m4/external.readline \
 	$(top_srcdir)/m4/external.openssl \
-	$(top_srcdir)/m4/all-in-one.boost \
 	$(top_srcdir)/m4/all-in-one.libev \
-	$(top_srcdir)/m4/all-in-one.v8 $(top_srcdir)/m4/external.boost \
-	$(top_srcdir)/m4/external.libev $(top_srcdir)/m4/external.v8 \
+	$(top_srcdir)/m4/all-in-one.v8 $(top_srcdir)/m4/external.libev \
+	$(top_srcdir)/m4/external.v8 $(top_srcdir)/m4/all-in-one.mruby \
+	$(top_srcdir)/m4/all-in-one.boost \
+	$(top_srcdir)/m4/external.boost \
 	$(top_srcdir)/m4/configure.information \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
@@ -154,34 +175,41 @@ am_libavocado_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 	BasicsC/associative-multi.$(OBJEXT) \
 	BasicsC/associative.$(OBJEXT) BasicsC/conversions.$(OBJEXT) \
 	BasicsC/csv.$(OBJEXT) BasicsC/error.$(OBJEXT) \
-	BasicsC/voc-errors.$(OBJEXT) BasicsC/files.$(OBJEXT) \
-	BasicsC/hashes.$(OBJEXT) BasicsC/init.$(OBJEXT) \
-	BasicsC/json.$(OBJEXT) BasicsC/locks-macos.$(OBJEXT) \
-	BasicsC/locks-posix.$(OBJEXT) BasicsC/logging.$(OBJEXT) \
-	BasicsC/memory.$(OBJEXT) BasicsC/process-utils.$(OBJEXT) \
-	BasicsC/random.$(OBJEXT) BasicsC/socket-utils.$(OBJEXT) \
-	BasicsC/string-buffer.$(OBJEXT) BasicsC/strings.$(OBJEXT) \
-	BasicsC/structures.$(OBJEXT) \
+	BasicsC/files.$(OBJEXT) BasicsC/hashes.$(OBJEXT) \
+	BasicsC/init.$(OBJEXT) BasicsC/json.$(OBJEXT) \
+	BasicsC/locks-macos.$(OBJEXT) BasicsC/locks-posix.$(OBJEXT) \
+	BasicsC/logging.$(OBJEXT) BasicsC/memory.$(OBJEXT) \
+	BasicsC/process-utils.$(OBJEXT) BasicsC/random.$(OBJEXT) \
+	BasicsC/socket-utils.$(OBJEXT) BasicsC/string-buffer.$(OBJEXT) \
+	BasicsC/strings.$(OBJEXT) BasicsC/structures.$(OBJEXT) \
 	BasicsC/system-functions.$(OBJEXT) \
 	BasicsC/terminal-utils-ncurses.$(OBJEXT) \
 	BasicsC/terminal-utils.$(OBJEXT) \
 	BasicsC/threads-posix.$(OBJEXT) BasicsC/vector.$(OBJEXT) \
-	JsonParser/json-parser.$(OBJEXT) \
+	BasicsC/voc-errors.$(OBJEXT) JsonParser/json-parser.$(OBJEXT) \
 	JsonParserX/InputParser.$(OBJEXT) \
 	JsonParserX/JsonParserX.$(OBJEXT) \
 	JsonParserX/JsonParserXDriver.$(OBJEXT) \
 	JsonParserX/JsonScannerX.$(OBJEXT) Logger/Logger.$(OBJEXT) \
 	Logger/LoggerData.$(OBJEXT) Logger/LoggerInfo.$(OBJEXT) \
 	Logger/LoggerStream.$(OBJEXT) Logger/LoggerTiming.$(OBJEXT) \
+	MRuby/MRLineEditor.$(OBJEXT) \
 	ProgramOptions/program-options.$(OBJEXT) \
 	Rest/AddressPort.$(OBJEXT) Rest/AnyServer.$(OBJEXT) \
 	Rest/HttpRequest.$(OBJEXT) Rest/HttpResponse.$(OBJEXT) \
-	Rest/Initialise.$(OBJEXT) Rest/SslInterface.$(OBJEXT) \
-	Rest/Url.$(OBJEXT) ShapedJson/json-shaper.$(OBJEXT) \
+	Rest/Initialise.$(OBJEXT) Rest/JsonContainer.$(OBJEXT) \
+	Rest/SslInterface.$(OBJEXT) Rest/Url.$(OBJEXT) \
+	ShapedJson/json-shaper.$(OBJEXT) \
 	ShapedJson/shape-accessor.$(OBJEXT) \
-	ShapedJson/shaped-json.$(OBJEXT) V8/JSLoader.$(OBJEXT) \
+	ShapedJson/shaped-json.$(OBJEXT) \
+	UserManager/ApplicationUserManager.$(OBJEXT) \
+	UserManager/Role.$(OBJEXT) UserManager/Session.$(OBJEXT) \
+	UserManager/SessionHandler.$(OBJEXT) \
+	UserManager/User.$(OBJEXT) UserManager/UserHandler.$(OBJEXT) \
+	UserManager/UsersHandler.$(OBJEXT) \
+	Utilities/LineEditor.$(OBJEXT) V8/JSLoader.$(OBJEXT) \
 	V8/v8-conv.$(OBJEXT) V8/v8-json.$(OBJEXT) \
-	V8/v8-line-editor.$(OBJEXT) V8/v8-shell.$(OBJEXT) \
+	V8/V8LineEditor.$(OBJEXT) V8/v8-shell.$(OBJEXT) \
 	V8/v8-utils.$(OBJEXT) Variant/VariantArray.$(OBJEXT) \
 	Variant/VariantBlob.$(OBJEXT) Variant/VariantBoolean.$(OBJEXT) \
 	Variant/VariantDate.$(OBJEXT) \
@@ -201,12 +229,20 @@ am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
 	"$(DESTDIR)$(pkgdatadir)"
 PROGRAMS = $(bin_PROGRAMS) $(noinst_PROGRAMS) $(sbin_PROGRAMS)
 am__UnitTests_test_suite_SOURCES_DIST = UnitTests/Runner.cpp \
+	UnitTests/Philadelphia/associative-pointer-test.cpp \
 	UnitTests/Philadelphia/string-buffer-test.cpp \
+	UnitTests/Philadelphia/string-utf8-test.cpp \
+	UnitTests/Philadelphia/vector-pointer-test.cpp \
+	UnitTests/Philadelphia/vector-test.cpp \
 	UnitTests/Jutland/StringBufferTest.cpp \
 	UnitTests/Jutland/StringUtilsTest.cpp
 @ENABLE_BOOST_TEST_TRUE@am_UnitTests_test_suite_OBJECTS =  \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Runner.$(OBJEXT) \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-buffer-test.$(OBJEXT) \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-utf8-test.$(OBJEXT) \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/vector-pointer-test.$(OBJEXT) \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/vector-test.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringBufferTest.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringUtilsTest.$(OBJEXT)
 UnitTests_test_suite_OBJECTS = $(am_UnitTests_test_suite_OBJECTS)
@@ -238,11 +274,19 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	HttpsServer/ApplicationHttpsServerImpl.$(OBJEXT) \
 	HttpsServer/HttpsAsyncCommTask.$(OBJEXT) \
 	HttpsServer/HttpsServer.$(OBJEXT) \
-	HttpsServer/HttpsServerImpl.$(OBJEXT) QL/ast-query.$(OBJEXT) \
+	HttpsServer/HttpsServerImpl.$(OBJEXT) \
+	PriorityQueue/pqueueindex.$(OBJEXT) \
+	PriorityQueue/priorityqueue.$(OBJEXT) \
+	Ahuacatl/ast-codegen-js.$(OBJEXT) Ahuacatl/ast-dump.$(OBJEXT) \
+	Ahuacatl/ast-node.$(OBJEXT) Ahuacatl/error.$(OBJEXT) \
+	Ahuacatl/grammar.$(OBJEXT) Ahuacatl/parser.$(OBJEXT) \
+	Ahuacatl/tokens.$(OBJEXT) QL/ast-query.$(OBJEXT) \
 	QL/formatter.$(OBJEXT) QL/optimize.$(OBJEXT) \
 	QL/parser.$(OBJEXT) QL/tokens.$(OBJEXT) \
 	RestHandler/RestActionHandler.$(OBJEXT) \
 	RestHandler/RestDocumentHandler.$(OBJEXT) \
+	RestHandler/RestEdgeHandler.$(OBJEXT) \
+	RestHandler/RestImportHandler.$(OBJEXT) \
 	RestHandler/RestVocbaseBaseHandler.$(OBJEXT) \
 	RestServer/ActionDispatcherThread.$(OBJEXT) \
 	RestServer/AvocadoHttpServer.$(OBJEXT) \
@@ -279,22 +323,34 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	VocBase/query-javascript.$(OBJEXT) \
 	VocBase/query-join.$(OBJEXT) \
 	VocBase/query-join-execute.$(OBJEXT) \
-	VocBase/query-memory.$(OBJEXT) VocBase/query-node.$(OBJEXT) \
-	VocBase/query-order.$(OBJEXT) VocBase/query-parse.$(OBJEXT) \
-	VocBase/query-result.$(OBJEXT) VocBase/query.$(OBJEXT) \
-	VocBase/shadow-data.$(OBJEXT) \
+	VocBase/query-locks.$(OBJEXT) VocBase/query-memory.$(OBJEXT) \
+	VocBase/query-node.$(OBJEXT) VocBase/query-order.$(OBJEXT) \
+	VocBase/query-parse.$(OBJEXT) VocBase/query-result.$(OBJEXT) \
+	VocBase/query.$(OBJEXT) VocBase/shadow-data.$(OBJEXT) \
 	VocBase/simple-collection.$(OBJEXT) \
 	VocBase/synchroniser.$(OBJEXT) VocBase/voc-shaper.$(OBJEXT) \
 	VocBase/vocbase.$(OBJEXT)
 avocado_OBJECTS = $(am_avocado_OBJECTS)
 am__DEPENDENCIES_1 =
-avocado_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_1)
-am_avocsh_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
-	SimpleHttpClient/SimpleHttpConnection.$(OBJEXT) \
+am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
+avocado_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_2)
+am_avocimp_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
 	SimpleHttpClient/SimpleHttpResult.$(OBJEXT) \
-	V8Client/V8ClientConnection.$(OBJEXT) V8Client/shell.$(OBJEXT)
+	V8Client/ImportHelper.$(OBJEXT) \
+	V8Client/V8ClientConnection.$(OBJEXT) \
+	V8Client/avocimp.$(OBJEXT)
+avocimp_OBJECTS = $(am_avocimp_OBJECTS)
+avocimp_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_2)
+am_avocirb_OBJECTS = MRClient/avocirb.$(OBJEXT)
+avocirb_OBJECTS = $(am_avocirb_OBJECTS)
+avocirb_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_2)
+am_avocsh_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
+	SimpleHttpClient/SimpleHttpResult.$(OBJEXT) \
+	V8Client/ImportHelper.$(OBJEXT) \
+	V8Client/V8ClientConnection.$(OBJEXT) \
+	V8Client/avocsh.$(OBJEXT)
 avocsh_OBJECTS = $(am_avocsh_OBJECTS)
-avocsh_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_1)
+avocsh_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_2)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/config -I$(top_builddir)/BasicsC
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
 am__depfiles_maybe = depfiles
@@ -324,10 +380,11 @@ AM_V_GEN = $(am__v_GEN_$(V))
 am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
 am__v_GEN_0 = @echo "  GEN   " $@;
 SOURCES = $(libavocado_a_SOURCES) $(UnitTests_test_suite_SOURCES) \
-	$(avocado_SOURCES) $(avocsh_SOURCES)
+	$(avocado_SOURCES) $(avocimp_SOURCES) $(avocirb_SOURCES) \
+	$(avocsh_SOURCES)
 DIST_SOURCES = $(libavocado_a_SOURCES) \
 	$(am__UnitTests_test_suite_SOURCES_DIST) $(avocado_SOURCES) \
-	$(avocsh_SOURCES)
+	$(avocimp_SOURCES) $(avocirb_SOURCES) $(avocsh_SOURCES)
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
@@ -393,6 +450,10 @@ ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
+GCOV_CFLAGS = @GCOV_CFLAGS@
+GCOV_CXXFLAGS = @GCOV_CXXFLAGS@
+GCOV_LDFLAGS = @GCOV_LDFLAGS@
+GCOV_LIBS = @GCOV_LIBS@
 GREP = @GREP@
 HAVE_DOT = @HAVE_DOT@
 INSTALL = @INSTALL@
@@ -408,15 +469,8 @@ LIBEV_CPPFLAGS = @LIBEV_CPPFLAGS@
 LIBEV_LDFLAGS = @LIBEV_LDFLAGS@
 LIBEV_LIBS = @LIBEV_LIBS@
 LIBOBJS = @LIBOBJS@
-LIBS = \
-	@BOOST_LIBS@ \
-	@LIBEV_LIBS@ \
-	@MATH_LIBS@ \
-	@NCURSES_LIBS@ \
-	@OPENSSL_LIBS@ \
-	@READLINE_LIBS@ \
-	@V8_LIBS@
-
+LIBS = @BOOST_LIBS@ @LIBEV_LIBS@ @MATH_LIBS@ @NCURSES_LIBS@ \
+	@OPENSSL_LIBS@ @READLINE_LIBS@ @V8_LIBS@ $(am__append_2)
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
@@ -424,6 +478,9 @@ MATH_CPPFLAGS = @MATH_CPPFLAGS@
 MATH_LDFLAGS = @MATH_LDFLAGS@
 MATH_LIBS = @MATH_LIBS@
 MKDIR_P = @MKDIR_P@
+MRUBY_CPPFLAGS = @MRUBY_CPPFLAGS@
+MRUBY_LDFLAGS = @MRUBY_LDFLAGS@
+MRUBY_LIBS = @MRUBY_LIBS@
 NCURSES_CONFIG = @NCURSES_CONFIG@
 NCURSES_CPPFLAGS = @NCURSES_CPPFLAGS@
 NCURSES_LDFLAGS = @NCURSES_LDFLAGS@
@@ -453,6 +510,7 @@ STRIP = @STRIP@
 V8_CPPFLAGS = @V8_CPPFLAGS@
 V8_LDFLAGS = @V8_LDFLAGS@
 V8_LIBS = @V8_LIBS@
+V8_TARGET = @V8_TARGET@
 VERSION = @VERSION@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
@@ -511,18 +569,12 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 ACLOCAL_AMFLAGS = -I m4
-AM_CPPFLAGS = \
-	-D_SYSCONFDIR_='"${sysconfdir}"' \
+AM_CPPFLAGS = -D_SYSCONFDIR_='"${sysconfdir}"' \
 	-D_PKGDATADIR_='"${pkgdatadir}"' \
 	-D_DATABASEDIR_='"${localstatedir}/${PACKAGE_TARNAME}"' \
-	@BOOST_CPPFLAGS@ \
-	@LIBEV_CPPFLAGS@ \
-	@MATH_CPPFLAGS@ \
-	@NCURSES_CPPFLAGS@ \
-	@OPENSSL_CPPFLAGS@ \
-	@READLINE_CPPFLAGS@ \
-	@V8_CPPFLAGS@
-
+	@BOOST_CPPFLAGS@ @LIBEV_CPPFLAGS@ @MATH_CPPFLAGS@ \
+	@NCURSES_CPPFLAGS@ @OPENSSL_CPPFLAGS@ @READLINE_CPPFLAGS@ \
+	@V8_CPPFLAGS@ $(am__append_1)
 AM_LDFLAGS = \
 	@BOOST_LDFLAGS@ \
 	@LIBEV_LDFLAGS@ \
@@ -534,15 +586,18 @@ AM_LDFLAGS = \
 
 BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(FLEX_FILES) \
 	$(FLEXXX_FILES) $(BISON_FILES) $(BISONXX_FILES) \
-	Doxygen/.setup-directories .setup-directories $(am__append_3)
+	Doxygen/.setup-directories .setup-directories $(am__append_5) \
+	$(am__append_6) $(am__append_7)
 
 ################################################################################
 ################################################################################
 
 ################################################################################
 ################################################################################
-CLEANUP = $(DOXYGEN) $(WIKI) $(subst Doxygen/xml,Doxygen/wiki,$(WIKI)) \
-	$(JAVASCRIPT_HEADER) $(am__append_1) $(am__append_2)
+CLEANUP = $(DOXYGEN) $(addsuffix .md,$(addprefix \
+	Doxygen/xml/,$(WIKI))) $(addsuffix .md,$(addprefix \
+	Doxygen/wiki/,$(WIKI))) $(JAVASCRIPT_HEADER) $(am__append_3) \
+	$(am__append_4)
 noinst_LIBRARIES = libavocado.a
 nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/js/actions/system -name "*.js" -print) \
@@ -580,7 +635,6 @@ libavocado_a_SOURCES = \
 	BasicsC/conversions.c \
 	BasicsC/csv.c \
 	BasicsC/error.c \
-	BasicsC/voc-errors.c \
 	BasicsC/files.c \
 	BasicsC/hashes.c \
 	BasicsC/init.c \
@@ -600,6 +654,7 @@ libavocado_a_SOURCES = \
 	BasicsC/terminal-utils.c \
 	BasicsC/threads-posix.c \
 	BasicsC/vector.c \
+	BasicsC/voc-errors.c \
 	JsonParser/json-parser.c \
 	JsonParserX/InputParser.cpp \
 	JsonParserX/JsonParserX.cpp \
@@ -610,21 +665,31 @@ libavocado_a_SOURCES = \
 	Logger/LoggerInfo.cpp \
 	Logger/LoggerStream.cpp \
 	Logger/LoggerTiming.cpp \
+	MRuby/MRLineEditor.cpp \
 	ProgramOptions/program-options.c \
 	Rest/AddressPort.cpp \
 	Rest/AnyServer.cpp \
 	Rest/HttpRequest.cpp \
 	Rest/HttpResponse.cpp \
 	Rest/Initialise.cpp \
+	Rest/JsonContainer.cpp \
 	Rest/SslInterface.cpp \
 	Rest/Url.cpp \
 	ShapedJson/json-shaper.c \
 	ShapedJson/shape-accessor.c \
 	ShapedJson/shaped-json.c \
+	UserManager/ApplicationUserManager.cpp \
+	UserManager/Role.cpp \
+	UserManager/Session.cpp \
+	UserManager/SessionHandler.cpp \
+	UserManager/User.cpp \
+	UserManager/UserHandler.cpp \
+	UserManager/UsersHandler.cpp \
+	Utilities/LineEditor.cpp \
 	V8/JSLoader.cpp \
 	V8/v8-conv.cpp \
 	V8/v8-json.cpp \
-	V8/v8-line-editor.cpp \
+	V8/V8LineEditor.cpp \
 	V8/v8-shell.cpp \
 	V8/v8-utils.cpp \
 	Variant/VariantArray.cpp \
@@ -684,6 +749,15 @@ avocado_SOURCES = \
 	HttpsServer/HttpsAsyncCommTask.cpp \
 	HttpsServer/HttpsServer.cpp \
 	HttpsServer/HttpsServerImpl.cpp \
+	PriorityQueue/pqueueindex.c \
+	PriorityQueue/priorityqueue.c \
+	Ahuacatl/ast-codegen-js.c \
+        Ahuacatl/ast-dump.c \
+        Ahuacatl/ast-node.c \
+        Ahuacatl/error.c \
+        Ahuacatl/grammar.c \
+        Ahuacatl/parser.c \
+        Ahuacatl/tokens.c \
 	QL/ast-query.c \
 	QL/formatter.c \
 	QL/optimize.c \
@@ -691,6 +765,8 @@ avocado_SOURCES = \
 	QL/tokens.c \
 	RestHandler/RestActionHandler.cpp \
 	RestHandler/RestDocumentHandler.cpp \
+	RestHandler/RestEdgeHandler.cpp \
+	RestHandler/RestImportHandler.cpp \
 	RestHandler/RestVocbaseBaseHandler.cpp \
 	RestServer/ActionDispatcherThread.cpp \
 	RestServer/AvocadoHttpServer.cpp \
@@ -737,6 +813,7 @@ avocado_SOURCES = \
 	VocBase/query-javascript.c \
 	VocBase/query-join.c \
 	VocBase/query-join-execute.c \
+	VocBase/query-locks.c \
 	VocBase/query-memory.c \
 	VocBase/query-node.c \
 	VocBase/query-order.c \
@@ -755,10 +832,28 @@ avocado_SOURCES = \
 avocsh_LDADD = libavocado.a $(LIBS)
 avocsh_SOURCES = \
 	SimpleHttpClient/SimpleHttpClient.cpp \
-	SimpleHttpClient/SimpleHttpConnection.cpp \
 	SimpleHttpClient/SimpleHttpResult.cpp \
+	V8Client/ImportHelper.cpp \
 	V8Client/V8ClientConnection.cpp \
-	V8Client/shell.cpp
+	V8Client/avocsh.cpp
+
+
+################################################################################
+################################################################################
+avocirb_LDADD = libavocado.a $(LIBS)
+avocirb_SOURCES = \
+	MRClient/avocirb.cpp
+
+
+################################################################################
+################################################################################
+avocimp_LDADD = libavocado.a $(LIBS)
+avocimp_SOURCES = \
+	SimpleHttpClient/SimpleHttpClient.cpp \
+	SimpleHttpClient/SimpleHttpResult.cpp \
+	V8Client/ImportHelper.cpp \
+	V8Client/V8ClientConnection.cpp \
+	V8Client/avocimp.cpp
 
 
 ################################################################################
@@ -770,14 +865,18 @@ JAVASCRIPT_HEADER = \
 	js/common/bootstrap/js-errors.h \
 	js/client/js-client.h \
 	js/server/js-aql-operators.h \
-	js/server/js-server.h
+	js/server/js-aql-functions-numeric.h \
+	js/server/js-aql-functions-string.h \
+	js/server/js-server.h \
+	js/server/js-ahuacatl.h
 
 
 ################################################################################
 ################################################################################
 FLEX_FILES = \
 	JsonParser/json-parser.c \
-	QL/tokens.c
+	QL/tokens.c \
+        Ahuacatl/tokens.c
 
 
 ################################################################################
@@ -790,7 +889,8 @@ FLEXXX_FILES = \
 ################################################################################
 ################################################################################
 BISON_FILES = \
-	QL/parser.c
+	QL/parser.c \
+	Ahuacatl/grammar.c
 
 
 ################################################################################
@@ -802,99 +902,135 @@ BISONXX_FILES = \
 ################################################################################
 ################################################################################
 DOXYGEN = \
-	Doxygen/js/actions/system/api_database.c \
-	Doxygen/js/actions/system/api_simple.c \
-	Doxygen/js/actions/system/collections.c \
+	Doxygen/js/actions/system/api-collection.c \
+	Doxygen/js/actions/system/api-edges.c \
+	Doxygen/js/actions/system/api-index.c \
+	Doxygen/js/actions/system/api-simple.c \
+	Doxygen/js/actions/system/api-system.c \
 	Doxygen/js/common/bootstrap/modules.c \
 	Doxygen/js/common/bootstrap/print.c \
 	Doxygen/js/common/modules/graph.c \
 	Doxygen/js/common/modules/jsunity.c \
 	Doxygen/js/server/modules/actions.c \
 	Doxygen/js/server/modules/simple-query.c \
-	Doxygen/js/server/server.c \
-        RestServer/cursor.dox \
-        RestServer/examples-setup.dox \
-        RestServer/glossary.dox \
-        RestServer/http-interface.dox \
-        RestServer/install-manual.dox \
-        RestServer/key-value.dox \
-        RestServer/module-actions.dox \
-        RestServer/module-console.dox \
-        RestServer/module-fs.dox \
-        RestServer/module-graph.dox \
-        RestServer/module-internal.dox \
-        RestServer/module-modules.dox \
-        RestServer/otwp.dox \
-        RestServer/ref-manual.dox \
-        RestServer/rest-document.dox \
-        RestServer/rest-system.dox \
-        RestServer/simple-queries.dox \
-        RestServer/user-manual-avocsh.dox \
-        RestServer/user-manual-server.dox 
+	Doxygen/js/server/server.c
 
 
 ################################################################################
 ################################################################################
 WIKI = \
-	Doxygen/xml/Actions.md \
-	Doxygen/xml/AQLBasics.md \
-	Doxygen/xml/AvocadoErrors.md \
-	Doxygen/xml/AvocadoScript.md \
-	Doxygen/xml/CommandLineAvocado.md \
-	Doxygen/xml/CommandLineLogging.md \
-	Doxygen/xml/CommandLine.md \
-	Doxygen/xml/CommandLineRandom.md \
-	Doxygen/xml/CommandLineScheduler.md \
-	Doxygen/xml/Compiling.md \
-	Doxygen/xml/DBAdmin.md \
-	Doxygen/xml/DefineAction.md \
-	Doxygen/xml/ExamplesSetup.md \
-	Doxygen/xml/Glossary.md \
-	Doxygen/xml/Graphs.md \
-	Doxygen/xml/HttpInterface.md \
-	Doxygen/xml/IndexUsage.md \
-	Doxygen/xml/Installing.md \
-	Doxygen/xml/InstallManual.md \
-	Doxygen/xml/JavaScriptFuncIndex.md \
-	Doxygen/xml/JavaScriptFunc.md \
-	Doxygen/xml/JSModuleActions.md \
-	Doxygen/xml/JSModuleConsole.md \
-	Doxygen/xml/JSModuleFs.md \
-	Doxygen/xml/JSModuleGraph.md \
-	Doxygen/xml/JSModuleInternal.md \
-	Doxygen/xml/JSModules.md \
-	Doxygen/xml/jsUnity.md \
-	Doxygen/xml/Key-Value.md \
-	Doxygen/xml/Optimizer.md \
-	Doxygen/xml/OTWP.md \
-	Doxygen/xml/RefManual.md \
-	Doxygen/xml/RestCursor.md \
-	Doxygen/xml/RestDocument.md \
-	Doxygen/xml/RestSystem.md \
-	Doxygen/xml/SimpleQueries.md \
-	Doxygen/xml/UserManualServer.md \
-	Doxygen/xml/UserManualShell.md \
-	Doxygen/xml/UserManualShellStartStop.md 
+	AQLBasics \
+	Actions \
+	AvocadoErrors \
+	AvocadoScript \
+	CommandLine \
+	CommandLineAvocado \
+	CommandLineLogging \
+	CommandLineRandom \
+	CommandLineScheduler \
+	Compiling \
+	DBAdmin \
+	DefineAction \
+	ExamplesSetup \
+	Glossary \
+	Graphs \
+	Home \
+	HttpCollection \
+	HttpIndex \
+	HttpInterface \
+	HttpSystem \
+	IndexGeo \
+	IndexHash \
+	IndexSkiplist \
+	IndexUsage \
+	Indexes \
+	InstallManual \
+	Installing \
+	JSModuleActions \
+	JSModuleConsole \
+	JSModuleFs \
+	JSModuleGraph \
+	JSModuleInternal \
+	JSModules \
+	JavaScriptFunc \
+	JavaScriptFuncIndex \
+	Key-Value \
+	OTWP \
+	Optimizer \
+	RefManual \
+	RestCursor \
+	RestDocument \
+	RestEdge \
+	RestSystem \
+	ShellCollection \
+	ShellDocument \
+	ShellEdge \
+	ShellIndex \
+	SimpleQueries \
+	UserManualServer \
+	UserManualShell \
+	UserManualShellStartStop  \
+	jsUnity
 
+FORCE = 0
+VALGRIND = 
+
+################################################################################
+################################################################################
+PID := $(shell echo $$PPID)
+PIDFILE := /tmp/avocado.$(PID).pid
+VOCDIR := /tmp/vocdir.$(PID)
+VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
+VOCHOST := 127.0.0.1
+SERVER_OPT := --startup.directory ./js --startup.modules-path ./js/server/modules:./js/common/modules --action.system-directory ./js/actions/system
+CLIENT_OPT := --startup.directory ./js --startup.modules-path ./js/client/modules:./js/common/modules --no-colors
 @ENABLE_BOOST_TEST_TRUE@UnitTests_test_suite_LDADD = -L@top_builddir@ -lavocado -lboost_unit_test_framework
 @ENABLE_BOOST_TEST_TRUE@UnitTests_test_suite_DEPENDENCIES = @top_builddir@/libavocado.a
 @ENABLE_BOOST_TEST_TRUE@UnitTests_test_suite_SOURCES = \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Runner.cpp \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/associative-pointer-test.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-buffer-test.cpp \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-utf8-test.cpp \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/vector-pointer-test.cpp \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/vector-test.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringBufferTest.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringUtilsTest.cpp
 
-@ENABLE_32BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.ia32
-@ENABLE_64BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.x64
-@ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_FALSE@LIBEV_CFLAGS_32 = -O2 -g
-@ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_TRUE@LIBEV_CFLAGS_32 = -m32 -O2 -g
-@ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_FALSE@LIBEV_LDFLAGS_32 = 
-@ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_TRUE@LIBEV_LDFLAGS_32 = -m32
-@ENABLE_32BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@V8_BUILD_VERSION = ia32
 
 ################################################################################
 ################################################################################
-@ENABLE_64BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@V8_BUILD_VERSION = x64
+SHELL_SERVER = @srcdir@/js/common/tests/shell-document.js \
+               @srcdir@/js/common/tests/shell-edge.js \
+               @srcdir@/js/common/tests/shell-collection.js
+
+UNITTESTS_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
+
+################################################################################
+################################################################################
+SHELL_SERVER_INDEX = @srcdir@/js/server/tests/aql-index-primary.js \
+		     @srcdir@/js/server/tests/aql-index-hash.js \
+		     @srcdir@/js/server/tests/aql-index-skiplist.js \
+		     @srcdir@/js/server/tests/aql-simple.js \
+		     @srcdir@/js/server/tests/aql-keywords.js \
+		     @srcdir@/js/server/tests/aql-bind.js \
+		     @srcdir@/js/server/tests/aql-joins.js \
+		     @srcdir@/js/server/tests/aql-operators.js 
+
+UNITTESTS_SERVER_INDEX = $(addprefix --unit-tests ,$(SHELL_SERVER_INDEX))
+
+################################################################################
+################################################################################
+SHELL_CLIENT = @srcdir@/js/common/tests/shell-document.js \
+               @srcdir@/js/common/tests/shell-edge.js \
+               @srcdir@/js/common/tests/shell-collection.js
+
+UNITTESTS_CLIENT = $(addprefix --unit-tests ,$(SHELL_CLIENT))
+@ENABLE_32BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.ia32
+@ENABLE_64BIT_TRUE@@ENABLE_ALL_IN_ONE_TRUE@LIBEV_BUILD_VERSION = ARCH.x64
+@ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_FALSE@LIBEV_BUILD_CFLAGS_X = -O2 -g
+@ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_TRUE@LIBEV_BUILD_CFLAGS_X = -m32 -O2 -g
+@ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_FALSE@LIBEV_BUILD_LDFLAGS_X = 
+@ENABLE_ALL_IN_ONE_TRUE@@ENABLE_FORCE_32BIT_TRUE@LIBEV_BUILD_LDFLAGS_X = -m32
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -902,7 +1038,7 @@ all: $(BUILT_SOURCES)
 .SUFFIXES: .c .cpp .o .obj
 am--refresh:
 	@:
-$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/Makefile.doxygen $(srcdir)/Makefile.javascript $(srcdir)/Makefile.unittests $(srcdir)/Makefile.flex $(srcdir)/Makefile.bison $(srcdir)/Makefile.all-in-one $(am__configure_deps)
+$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/Makefile.doxygen $(srcdir)/Makefile.javascript $(srcdir)/Makefile.unittests $(srcdir)/Makefile.flex $(srcdir)/Makefile.bison $(srcdir)/Makefile.all-in-one-libev $(srcdir)/Makefile.all-in-one-v8 $(srcdir)/Makefile.all-in-one-mruby $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -1024,8 +1160,6 @@ BasicsC/csv.$(OBJEXT): BasicsC/$(am__dirstamp) \
 	BasicsC/$(DEPDIR)/$(am__dirstamp)
 BasicsC/error.$(OBJEXT): BasicsC/$(am__dirstamp) \
 	BasicsC/$(DEPDIR)/$(am__dirstamp)
-BasicsC/voc-errors.$(OBJEXT): BasicsC/$(am__dirstamp) \
-	BasicsC/$(DEPDIR)/$(am__dirstamp)
 BasicsC/files.$(OBJEXT): BasicsC/$(am__dirstamp) \
 	BasicsC/$(DEPDIR)/$(am__dirstamp)
 BasicsC/hashes.$(OBJEXT): BasicsC/$(am__dirstamp) \
@@ -1063,6 +1197,8 @@ BasicsC/terminal-utils.$(OBJEXT): BasicsC/$(am__dirstamp) \
 BasicsC/threads-posix.$(OBJEXT): BasicsC/$(am__dirstamp) \
 	BasicsC/$(DEPDIR)/$(am__dirstamp)
 BasicsC/vector.$(OBJEXT): BasicsC/$(am__dirstamp) \
+	BasicsC/$(DEPDIR)/$(am__dirstamp)
+BasicsC/voc-errors.$(OBJEXT): BasicsC/$(am__dirstamp) \
 	BasicsC/$(DEPDIR)/$(am__dirstamp)
 JsonParser/$(am__dirstamp):
 	@$(MKDIR_P) JsonParser
@@ -1102,6 +1238,14 @@ Logger/LoggerStream.$(OBJEXT): Logger/$(am__dirstamp) \
 	Logger/$(DEPDIR)/$(am__dirstamp)
 Logger/LoggerTiming.$(OBJEXT): Logger/$(am__dirstamp) \
 	Logger/$(DEPDIR)/$(am__dirstamp)
+MRuby/$(am__dirstamp):
+	@$(MKDIR_P) MRuby
+	@: > MRuby/$(am__dirstamp)
+MRuby/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) MRuby/$(DEPDIR)
+	@: > MRuby/$(DEPDIR)/$(am__dirstamp)
+MRuby/MRLineEditor.$(OBJEXT): MRuby/$(am__dirstamp) \
+	MRuby/$(DEPDIR)/$(am__dirstamp)
 ProgramOptions/$(am__dirstamp):
 	@$(MKDIR_P) ProgramOptions
 	@: > ProgramOptions/$(am__dirstamp)
@@ -1127,6 +1271,8 @@ Rest/HttpResponse.$(OBJEXT): Rest/$(am__dirstamp) \
 	Rest/$(DEPDIR)/$(am__dirstamp)
 Rest/Initialise.$(OBJEXT): Rest/$(am__dirstamp) \
 	Rest/$(DEPDIR)/$(am__dirstamp)
+Rest/JsonContainer.$(OBJEXT): Rest/$(am__dirstamp) \
+	Rest/$(DEPDIR)/$(am__dirstamp)
 Rest/SslInterface.$(OBJEXT): Rest/$(am__dirstamp) \
 	Rest/$(DEPDIR)/$(am__dirstamp)
 Rest/Url.$(OBJEXT): Rest/$(am__dirstamp) \
@@ -1143,6 +1289,35 @@ ShapedJson/shape-accessor.$(OBJEXT): ShapedJson/$(am__dirstamp) \
 	ShapedJson/$(DEPDIR)/$(am__dirstamp)
 ShapedJson/shaped-json.$(OBJEXT): ShapedJson/$(am__dirstamp) \
 	ShapedJson/$(DEPDIR)/$(am__dirstamp)
+UserManager/$(am__dirstamp):
+	@$(MKDIR_P) UserManager
+	@: > UserManager/$(am__dirstamp)
+UserManager/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) UserManager/$(DEPDIR)
+	@: > UserManager/$(DEPDIR)/$(am__dirstamp)
+UserManager/ApplicationUserManager.$(OBJEXT):  \
+	UserManager/$(am__dirstamp) \
+	UserManager/$(DEPDIR)/$(am__dirstamp)
+UserManager/Role.$(OBJEXT): UserManager/$(am__dirstamp) \
+	UserManager/$(DEPDIR)/$(am__dirstamp)
+UserManager/Session.$(OBJEXT): UserManager/$(am__dirstamp) \
+	UserManager/$(DEPDIR)/$(am__dirstamp)
+UserManager/SessionHandler.$(OBJEXT): UserManager/$(am__dirstamp) \
+	UserManager/$(DEPDIR)/$(am__dirstamp)
+UserManager/User.$(OBJEXT): UserManager/$(am__dirstamp) \
+	UserManager/$(DEPDIR)/$(am__dirstamp)
+UserManager/UserHandler.$(OBJEXT): UserManager/$(am__dirstamp) \
+	UserManager/$(DEPDIR)/$(am__dirstamp)
+UserManager/UsersHandler.$(OBJEXT): UserManager/$(am__dirstamp) \
+	UserManager/$(DEPDIR)/$(am__dirstamp)
+Utilities/$(am__dirstamp):
+	@$(MKDIR_P) Utilities
+	@: > Utilities/$(am__dirstamp)
+Utilities/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) Utilities/$(DEPDIR)
+	@: > Utilities/$(DEPDIR)/$(am__dirstamp)
+Utilities/LineEditor.$(OBJEXT): Utilities/$(am__dirstamp) \
+	Utilities/$(DEPDIR)/$(am__dirstamp)
 V8/$(am__dirstamp):
 	@$(MKDIR_P) V8
 	@: > V8/$(am__dirstamp)
@@ -1152,7 +1327,7 @@ V8/$(DEPDIR)/$(am__dirstamp):
 V8/JSLoader.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
 V8/v8-conv.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
 V8/v8-json.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
-V8/v8-line-editor.$(OBJEXT): V8/$(am__dirstamp) \
+V8/V8LineEditor.$(OBJEXT): V8/$(am__dirstamp) \
 	V8/$(DEPDIR)/$(am__dirstamp)
 V8/v8-shell.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
 V8/v8-utils.$(OBJEXT): V8/$(am__dirstamp) V8/$(DEPDIR)/$(am__dirstamp)
@@ -1297,7 +1472,19 @@ UnitTests/Philadelphia/$(am__dirstamp):
 UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) UnitTests/Philadelphia/$(DEPDIR)
 	@: > UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT):  \
+	UnitTests/Philadelphia/$(am__dirstamp) \
+	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
 UnitTests/Philadelphia/string-buffer-test.$(OBJEXT):  \
+	UnitTests/Philadelphia/$(am__dirstamp) \
+	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Philadelphia/string-utf8-test.$(OBJEXT):  \
+	UnitTests/Philadelphia/$(am__dirstamp) \
+	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Philadelphia/vector-pointer-test.$(OBJEXT):  \
+	UnitTests/Philadelphia/$(am__dirstamp) \
+	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Philadelphia/vector-test.$(OBJEXT):  \
 	UnitTests/Philadelphia/$(am__dirstamp) \
 	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
 UnitTests/Jutland/$(am__dirstamp):
@@ -1435,6 +1622,36 @@ HttpsServer/HttpsServer.$(OBJEXT): HttpsServer/$(am__dirstamp) \
 	HttpsServer/$(DEPDIR)/$(am__dirstamp)
 HttpsServer/HttpsServerImpl.$(OBJEXT): HttpsServer/$(am__dirstamp) \
 	HttpsServer/$(DEPDIR)/$(am__dirstamp)
+PriorityQueue/$(am__dirstamp):
+	@$(MKDIR_P) PriorityQueue
+	@: > PriorityQueue/$(am__dirstamp)
+PriorityQueue/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) PriorityQueue/$(DEPDIR)
+	@: > PriorityQueue/$(DEPDIR)/$(am__dirstamp)
+PriorityQueue/pqueueindex.$(OBJEXT): PriorityQueue/$(am__dirstamp) \
+	PriorityQueue/$(DEPDIR)/$(am__dirstamp)
+PriorityQueue/priorityqueue.$(OBJEXT): PriorityQueue/$(am__dirstamp) \
+	PriorityQueue/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/$(am__dirstamp):
+	@$(MKDIR_P) Ahuacatl
+	@: > Ahuacatl/$(am__dirstamp)
+Ahuacatl/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) Ahuacatl/$(DEPDIR)
+	@: > Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ast-codegen-js.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ast-dump.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ast-node.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/error.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/grammar.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/parser.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/tokens.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 QL/$(am__dirstamp):
 	@$(MKDIR_P) QL
 	@: > QL/$(am__dirstamp)
@@ -1458,6 +1675,10 @@ RestHandler/RestActionHandler.$(OBJEXT): RestHandler/$(am__dirstamp) \
 	RestHandler/$(DEPDIR)/$(am__dirstamp)
 RestHandler/RestDocumentHandler.$(OBJEXT):  \
 	RestHandler/$(am__dirstamp) \
+	RestHandler/$(DEPDIR)/$(am__dirstamp)
+RestHandler/RestEdgeHandler.$(OBJEXT): RestHandler/$(am__dirstamp) \
+	RestHandler/$(DEPDIR)/$(am__dirstamp)
+RestHandler/RestImportHandler.$(OBJEXT): RestHandler/$(am__dirstamp) \
 	RestHandler/$(DEPDIR)/$(am__dirstamp)
 RestHandler/RestVocbaseBaseHandler.$(OBJEXT):  \
 	RestHandler/$(am__dirstamp) \
@@ -1590,6 +1811,8 @@ VocBase/query-join.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/query-join-execute.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
+VocBase/query-locks.$(OBJEXT): VocBase/$(am__dirstamp) \
+	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/query-memory.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/query-node.$(OBJEXT): VocBase/$(am__dirstamp) \
@@ -1624,9 +1847,6 @@ SimpleHttpClient/$(DEPDIR)/$(am__dirstamp):
 SimpleHttpClient/SimpleHttpClient.$(OBJEXT):  \
 	SimpleHttpClient/$(am__dirstamp) \
 	SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
-SimpleHttpClient/SimpleHttpConnection.$(OBJEXT):  \
-	SimpleHttpClient/$(am__dirstamp) \
-	SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
 SimpleHttpClient/SimpleHttpResult.$(OBJEXT):  \
 	SimpleHttpClient/$(am__dirstamp) \
 	SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
@@ -1636,9 +1856,27 @@ V8Client/$(am__dirstamp):
 V8Client/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) V8Client/$(DEPDIR)
 	@: > V8Client/$(DEPDIR)/$(am__dirstamp)
+V8Client/ImportHelper.$(OBJEXT): V8Client/$(am__dirstamp) \
+	V8Client/$(DEPDIR)/$(am__dirstamp)
 V8Client/V8ClientConnection.$(OBJEXT): V8Client/$(am__dirstamp) \
 	V8Client/$(DEPDIR)/$(am__dirstamp)
-V8Client/shell.$(OBJEXT): V8Client/$(am__dirstamp) \
+V8Client/avocimp.$(OBJEXT): V8Client/$(am__dirstamp) \
+	V8Client/$(DEPDIR)/$(am__dirstamp)
+avocimp$(EXEEXT): $(avocimp_OBJECTS) $(avocimp_DEPENDENCIES) 
+	@rm -f avocimp$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(avocimp_OBJECTS) $(avocimp_LDADD) $(LIBS)
+MRClient/$(am__dirstamp):
+	@$(MKDIR_P) MRClient
+	@: > MRClient/$(am__dirstamp)
+MRClient/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) MRClient/$(DEPDIR)
+	@: > MRClient/$(DEPDIR)/$(am__dirstamp)
+MRClient/avocirb.$(OBJEXT): MRClient/$(am__dirstamp) \
+	MRClient/$(DEPDIR)/$(am__dirstamp)
+avocirb$(EXEEXT): $(avocirb_OBJECTS) $(avocirb_DEPENDENCIES) 
+	@rm -f avocirb$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(avocirb_OBJECTS) $(avocirb_LDADD) $(LIBS)
+V8Client/avocsh.$(OBJEXT): V8Client/$(am__dirstamp) \
 	V8Client/$(DEPDIR)/$(am__dirstamp)
 avocsh$(EXEEXT): $(avocsh_OBJECTS) $(avocsh_DEPENDENCIES) 
 	@rm -f avocsh$(EXEEXT)
@@ -1652,6 +1890,13 @@ mostlyclean-compile:
 	-rm -f Admin/RestAdminLogHandler.$(OBJEXT)
 	-rm -f Admin/RestBaseHandler.$(OBJEXT)
 	-rm -f Admin/RestVersionHandler.$(OBJEXT)
+	-rm -f Ahuacatl/ast-codegen-js.$(OBJEXT)
+	-rm -f Ahuacatl/ast-dump.$(OBJEXT)
+	-rm -f Ahuacatl/ast-node.$(OBJEXT)
+	-rm -f Ahuacatl/error.$(OBJEXT)
+	-rm -f Ahuacatl/grammar.$(OBJEXT)
+	-rm -f Ahuacatl/parser.$(OBJEXT)
+	-rm -f Ahuacatl/tokens.$(OBJEXT)
 	-rm -f ApplicationServer/ApplicationServer.$(OBJEXT)
 	-rm -f ApplicationServer/ApplicationServerImpl.$(OBJEXT)
 	-rm -f ApplicationServer/ApplicationServerSchedulerImpl.$(OBJEXT)
@@ -1730,6 +1975,10 @@ mostlyclean-compile:
 	-rm -f Logger/LoggerInfo.$(OBJEXT)
 	-rm -f Logger/LoggerStream.$(OBJEXT)
 	-rm -f Logger/LoggerTiming.$(OBJEXT)
+	-rm -f MRClient/avocirb.$(OBJEXT)
+	-rm -f MRuby/MRLineEditor.$(OBJEXT)
+	-rm -f PriorityQueue/pqueueindex.$(OBJEXT)
+	-rm -f PriorityQueue/priorityqueue.$(OBJEXT)
 	-rm -f ProgramOptions/program-options.$(OBJEXT)
 	-rm -f QL/ast-query.$(OBJEXT)
 	-rm -f QL/formatter.$(OBJEXT)
@@ -1741,10 +1990,13 @@ mostlyclean-compile:
 	-rm -f Rest/HttpRequest.$(OBJEXT)
 	-rm -f Rest/HttpResponse.$(OBJEXT)
 	-rm -f Rest/Initialise.$(OBJEXT)
+	-rm -f Rest/JsonContainer.$(OBJEXT)
 	-rm -f Rest/SslInterface.$(OBJEXT)
 	-rm -f Rest/Url.$(OBJEXT)
 	-rm -f RestHandler/RestActionHandler.$(OBJEXT)
 	-rm -f RestHandler/RestDocumentHandler.$(OBJEXT)
+	-rm -f RestHandler/RestEdgeHandler.$(OBJEXT)
+	-rm -f RestHandler/RestImportHandler.$(OBJEXT)
 	-rm -f RestHandler/RestVocbaseBaseHandler.$(OBJEXT)
 	-rm -f RestServer/ActionDispatcherThread.$(OBJEXT)
 	-rm -f RestServer/AvocadoHttpServer.$(OBJEXT)
@@ -1774,25 +2026,38 @@ mostlyclean-compile:
 	-rm -f ShapedJson/shape-accessor.$(OBJEXT)
 	-rm -f ShapedJson/shaped-json.$(OBJEXT)
 	-rm -f SimpleHttpClient/SimpleHttpClient.$(OBJEXT)
-	-rm -f SimpleHttpClient/SimpleHttpConnection.$(OBJEXT)
 	-rm -f SimpleHttpClient/SimpleHttpResult.$(OBJEXT)
 	-rm -f SkipLists/skiplist.$(OBJEXT)
 	-rm -f SkipLists/skiplistIndex.$(OBJEXT)
 	-rm -f SkipLists/sl-operator.$(OBJEXT)
 	-rm -f UnitTests/Jutland/StringBufferTest.$(OBJEXT)
 	-rm -f UnitTests/Jutland/StringUtilsTest.$(OBJEXT)
+	-rm -f UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/string-buffer-test.$(OBJEXT)
+	-rm -f UnitTests/Philadelphia/string-utf8-test.$(OBJEXT)
+	-rm -f UnitTests/Philadelphia/vector-pointer-test.$(OBJEXT)
+	-rm -f UnitTests/Philadelphia/vector-test.$(OBJEXT)
 	-rm -f UnitTests/Runner.$(OBJEXT)
+	-rm -f UserManager/ApplicationUserManager.$(OBJEXT)
+	-rm -f UserManager/Role.$(OBJEXT)
+	-rm -f UserManager/Session.$(OBJEXT)
+	-rm -f UserManager/SessionHandler.$(OBJEXT)
+	-rm -f UserManager/User.$(OBJEXT)
+	-rm -f UserManager/UserHandler.$(OBJEXT)
+	-rm -f UserManager/UsersHandler.$(OBJEXT)
+	-rm -f Utilities/LineEditor.$(OBJEXT)
 	-rm -f V8/JSLoader.$(OBJEXT)
+	-rm -f V8/V8LineEditor.$(OBJEXT)
 	-rm -f V8/v8-actions.$(OBJEXT)
 	-rm -f V8/v8-conv.$(OBJEXT)
 	-rm -f V8/v8-json.$(OBJEXT)
-	-rm -f V8/v8-line-editor.$(OBJEXT)
 	-rm -f V8/v8-shell.$(OBJEXT)
 	-rm -f V8/v8-utils.$(OBJEXT)
 	-rm -f V8/v8-vocbase.$(OBJEXT)
+	-rm -f V8Client/ImportHelper.$(OBJEXT)
 	-rm -f V8Client/V8ClientConnection.$(OBJEXT)
-	-rm -f V8Client/shell.$(OBJEXT)
+	-rm -f V8Client/avocimp.$(OBJEXT)
+	-rm -f V8Client/avocsh.$(OBJEXT)
 	-rm -f Variant/VariantArray.$(OBJEXT)
 	-rm -f Variant/VariantBlob.$(OBJEXT)
 	-rm -f Variant/VariantBoolean.$(OBJEXT)
@@ -1829,6 +2094,7 @@ mostlyclean-compile:
 	-rm -f VocBase/query-javascript.$(OBJEXT)
 	-rm -f VocBase/query-join-execute.$(OBJEXT)
 	-rm -f VocBase/query-join.$(OBJEXT)
+	-rm -f VocBase/query-locks.$(OBJEXT)
 	-rm -f VocBase/query-memory.$(OBJEXT)
 	-rm -f VocBase/query-node.$(OBJEXT)
 	-rm -f VocBase/query-order.$(OBJEXT)
@@ -1850,6 +2116,13 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Admin/$(DEPDIR)/RestAdminLogHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Admin/$(DEPDIR)/RestBaseHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Admin/$(DEPDIR)/RestVersionHandler.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ast-codegen-js.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ast-dump.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ast-node.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/error.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/grammar.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/parser.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/tokens.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ApplicationServer/$(DEPDIR)/ApplicationServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ApplicationServer/$(DEPDIR)/ApplicationServerImpl.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ApplicationServer/$(DEPDIR)/ApplicationServerSchedulerImpl.Po@am__quote@
@@ -1928,6 +2201,10 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Logger/$(DEPDIR)/LoggerInfo.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Logger/$(DEPDIR)/LoggerStream.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Logger/$(DEPDIR)/LoggerTiming.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@MRClient/$(DEPDIR)/avocirb.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@MRuby/$(DEPDIR)/MRLineEditor.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@PriorityQueue/$(DEPDIR)/pqueueindex.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@PriorityQueue/$(DEPDIR)/priorityqueue.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ProgramOptions/$(DEPDIR)/program-options.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@QL/$(DEPDIR)/ast-query.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@QL/$(DEPDIR)/formatter.Po@am__quote@
@@ -1939,10 +2216,13 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Rest/$(DEPDIR)/HttpRequest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Rest/$(DEPDIR)/HttpResponse.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Rest/$(DEPDIR)/Initialise.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Rest/$(DEPDIR)/JsonContainer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Rest/$(DEPDIR)/SslInterface.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Rest/$(DEPDIR)/Url.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestHandler/$(DEPDIR)/RestActionHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestHandler/$(DEPDIR)/RestDocumentHandler.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@RestHandler/$(DEPDIR)/RestEdgeHandler.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@RestHandler/$(DEPDIR)/RestImportHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestHandler/$(DEPDIR)/RestVocbaseBaseHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/ActionDispatcherThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@RestServer/$(DEPDIR)/AvocadoHttpServer.Po@am__quote@
@@ -1972,7 +2252,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@ShapedJson/$(DEPDIR)/shape-accessor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ShapedJson/$(DEPDIR)/shaped-json.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@SimpleHttpClient/$(DEPDIR)/SimpleHttpClient.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@SimpleHttpClient/$(DEPDIR)/SimpleHttpConnection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@SimpleHttpClient/$(DEPDIR)/SimpleHttpResult.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@SkipLists/$(DEPDIR)/skiplist.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@SkipLists/$(DEPDIR)/skiplistIndex.Po@am__quote@
@@ -1980,17 +2259,31 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/$(DEPDIR)/Runner.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Jutland/$(DEPDIR)/StringBufferTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Jutland/$(DEPDIR)/StringUtilsTest.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/associative-pointer-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/string-buffer-test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/string-utf8-test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/vector-pointer-test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/vector-test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UserManager/$(DEPDIR)/ApplicationUserManager.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UserManager/$(DEPDIR)/Role.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UserManager/$(DEPDIR)/Session.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UserManager/$(DEPDIR)/SessionHandler.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UserManager/$(DEPDIR)/User.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UserManager/$(DEPDIR)/UserHandler.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UserManager/$(DEPDIR)/UsersHandler.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Utilities/$(DEPDIR)/LineEditor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/JSLoader.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/V8LineEditor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-actions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-conv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-json.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-line-editor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-shell.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8/$(DEPDIR)/v8-vocbase.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@V8Client/$(DEPDIR)/ImportHelper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@V8Client/$(DEPDIR)/V8ClientConnection.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@V8Client/$(DEPDIR)/shell.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@V8Client/$(DEPDIR)/avocimp.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@V8Client/$(DEPDIR)/avocsh.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Variant/$(DEPDIR)/VariantArray.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Variant/$(DEPDIR)/VariantBlob.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Variant/$(DEPDIR)/VariantBoolean.Po@am__quote@
@@ -2027,6 +2320,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-javascript.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-join-execute.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-join.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-locks.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-memory.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-node.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-order.Po@am__quote@
@@ -2329,6 +2623,8 @@ distclean-generic:
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
 	-rm -f Admin/$(DEPDIR)/$(am__dirstamp)
 	-rm -f Admin/$(am__dirstamp)
+	-rm -f Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+	-rm -f Ahuacatl/$(am__dirstamp)
 	-rm -f ApplicationServer/$(DEPDIR)/$(am__dirstamp)
 	-rm -f ApplicationServer/$(am__dirstamp)
 	-rm -f Basics/$(DEPDIR)/$(am__dirstamp)
@@ -2353,6 +2649,12 @@ distclean-generic:
 	-rm -f JsonParserX/$(am__dirstamp)
 	-rm -f Logger/$(DEPDIR)/$(am__dirstamp)
 	-rm -f Logger/$(am__dirstamp)
+	-rm -f MRClient/$(DEPDIR)/$(am__dirstamp)
+	-rm -f MRClient/$(am__dirstamp)
+	-rm -f MRuby/$(DEPDIR)/$(am__dirstamp)
+	-rm -f MRuby/$(am__dirstamp)
+	-rm -f PriorityQueue/$(DEPDIR)/$(am__dirstamp)
+	-rm -f PriorityQueue/$(am__dirstamp)
 	-rm -f ProgramOptions/$(DEPDIR)/$(am__dirstamp)
 	-rm -f ProgramOptions/$(am__dirstamp)
 	-rm -f QL/$(DEPDIR)/$(am__dirstamp)
@@ -2379,6 +2681,10 @@ distclean-generic:
 	-rm -f UnitTests/Jutland/$(am__dirstamp)
 	-rm -f UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
 	-rm -f UnitTests/Philadelphia/$(am__dirstamp)
+	-rm -f UserManager/$(DEPDIR)/$(am__dirstamp)
+	-rm -f UserManager/$(am__dirstamp)
+	-rm -f Utilities/$(DEPDIR)/$(am__dirstamp)
+	-rm -f Utilities/$(am__dirstamp)
 	-rm -f V8/$(DEPDIR)/$(am__dirstamp)
 	-rm -f V8/$(am__dirstamp)
 	-rm -f V8Client/$(DEPDIR)/$(am__dirstamp)
@@ -2401,7 +2707,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-local \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Admin/$(DEPDIR) Ahuacatl/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) MRClient/$(DEPDIR) MRuby/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) UserManager/$(DEPDIR) Utilities/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -2449,7 +2755,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf Admin/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
+	-rm -rf Admin/$(DEPDIR) Ahuacatl/$(DEPDIR) ApplicationServer/$(DEPDIR) Basics/$(DEPDIR) BasicsC/$(DEPDIR) Dispatcher/$(DEPDIR) GeneralServer/$(DEPDIR) GeoIndex/$(DEPDIR) HashIndex/$(DEPDIR) HttpServer/$(DEPDIR) HttpsServer/$(DEPDIR) JsonParser/$(DEPDIR) JsonParserX/$(DEPDIR) Logger/$(DEPDIR) MRClient/$(DEPDIR) MRuby/$(DEPDIR) PriorityQueue/$(DEPDIR) ProgramOptions/$(DEPDIR) QL/$(DEPDIR) Rest/$(DEPDIR) RestHandler/$(DEPDIR) RestServer/$(DEPDIR) ResultGenerator/$(DEPDIR) Scheduler/$(DEPDIR) ShapedJson/$(DEPDIR) SimpleHttpClient/$(DEPDIR) SkipLists/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) UserManager/$(DEPDIR) Utilities/$(DEPDIR) V8/$(DEPDIR) V8Client/$(DEPDIR) Variant/$(DEPDIR) VocBase/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -2546,10 +2852,10 @@ doxygen: Doxygen/avocado.doxy $(DOXYGEN)
 
 .PHONY: wiki
 
-wiki: doxygen $(WIKI)
+wiki: doxygen $(addsuffix .md,$(addprefix Doxygen/xml/,$(WIKI)))
 	@test -d Doxygen/wiki || mkdir Doxygen/wiki
-	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/pandoc.sh $$w; done
-	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/md2html.sh `echo $$w | sed -e 's:/xml/:/wiki/:g'`; done
+	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/pandoc.sh Doxygen/xml/$$w.md; done
+	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/md2html.sh Doxygen/wiki/$$w.md; done
 
 .setup-directories:
 	@test -d js || mkdir js
@@ -2570,13 +2876,168 @@ js/client/js-%.h: @srcdir@/js/client/%.js .setup-directories
 js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
 	@top_srcdir@/config/js2c.sh $< > $@
 
-.TARGET: unittests
+################################################################################
+################################################################################
 
-@ENABLE_BOOST_TEST_TRUE@unittests:
-@ENABLE_BOOST_TEST_TRUE@	@builddir@/UnitTests/test_suite --show_progress
+.PHONY: unittests unittests-brief unittests-verbose
 
-@ENABLE_BOOST_TEST_FALSE@unittests:
+unittests: unittests-verbose unittests-brief
+
+unittests-brief: \
+	unittests-boost \
+	unittests-shell-server \
+	unittests-http-server \
+	unittests-shell-client \
+	unittests-http-server \
+	unittests-shell-server-index
+
+unittests-verbose:
+	@echo "################################################################################"
+	@echo "##                                                                            ##"
+	@echo "## AvocadoDB Unit-Tests                                                       ##"
+	@echo "##                                                                            ##"
+	@echo "## > make unittests                                                           ##"
+	@echo "## > make unittests FORCE=1                                                   ##"
+	@echo "## > make unittests VALGRIND=valgrind                                         ##"
+	@echo "##                                                                            ##"
+	@echo "################################################################################"
+	@echo
+
+	@sleep 1
+
+.PHONY: start-server
+
+start-server:
+	@echo
+	@echo "================================================================================"
+	@echo "|| STARTING SERVER                                                            ||"
+	@echo "================================================================================"
+	@echo
+
+	@rm -f "$(PIDFILE)"
+	@rm -rf "$(VOCDIR)"
+	@mkdir "$(VOCDIR)"
+
+	($(VALGRIND) @builddir@/avocado "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) --server.http-port $(VOCHOST):$(VOCPORT) && rm -rf "$(VOCDIR)") &
+
+	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
+	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
+	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
+	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
+
+	curl http://$(VOCHOST):$(VOCPORT)/version
+
+	@echo
+
+################################################################################
+################################################################################
+
+.PHONY: unittests-boost
+
+@ENABLE_BOOST_TEST_TRUE@unittests-boost:
+@ENABLE_BOOST_TEST_TRUE@	@echo
+@ENABLE_BOOST_TEST_TRUE@	@echo "================================================================================"
+@ENABLE_BOOST_TEST_TRUE@	@echo "|| BOOST TESTS                                                                ||"
+@ENABLE_BOOST_TEST_TRUE@	@echo "================================================================================"
+@ENABLE_BOOST_TEST_TRUE@	@echo
+
+@ENABLE_BOOST_TEST_TRUE@	$(VALGRIND) @builddir@/UnitTests/test_suite --show_progress || test "$(FORCE)" == "1"
+
+@ENABLE_BOOST_TEST_TRUE@	@echo
+
+@ENABLE_BOOST_TEST_TRUE@unittests-boost: UnitTests/test_suite
+
+@ENABLE_BOOST_TEST_FALSE@unittests-boost:
+@ENABLE_BOOST_TEST_FALSE@	@echo
+@ENABLE_BOOST_TEST_FALSE@	@echo "================================================================================"
+@ENABLE_BOOST_TEST_FALSE@	@echo "|| BOOST TESTS                                                                ||"
+@ENABLE_BOOST_TEST_FALSE@	@echo "================================================================================"
+@ENABLE_BOOST_TEST_FALSE@	@echo
+
 @ENABLE_BOOST_TEST_FALSE@	@echo "enable unit-testing with 'configure --with-boost-test'"
+
+@ENABLE_BOOST_TEST_FALSE@	@echo
+
+.PHONY: unittests-shell-server
+
+unittests-shell-server:
+	@echo
+	@echo "================================================================================"
+	@echo "|| SHELL SERVER TESTS (BASCIS)                                                ||"
+	@echo "================================================================================"
+	@echo
+
+	@rm -rf "$(VOCDIR)"
+	@mkdir "$(VOCDIR)"
+
+	$(VALGRIND) @builddir@/avocado "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "$(FORCE)" == "1"
+
+	@rm -rf "$(VOCDIR)"
+
+	@echo
+
+.PHONY: unittests-shell-server-index
+
+unittests-shell-server-index:
+	@echo
+	@echo "================================================================================"
+	@echo "|| SHELL SERVER TESTS (INDEX & QUERY)                                         ||"
+	@echo "================================================================================"
+	@echo
+
+	@rm -rf "$(VOCDIR)"
+	@mkdir "$(VOCDIR)"
+
+	$(VALGRIND) @builddir@/avocado "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_INDEX) || test "$(FORCE)" == "1"
+
+	@rm -rf "$(VOCDIR)"
+
+	@echo
+
+.PHONY: unittests-shell-client
+
+unittests-shell-client:
+	$(MAKE) start-server PID=$(PID)
+
+	@echo
+	@echo "================================================================================"
+	@echo "|| SHELL CLIENT TESTS                                                         ||"
+	@echo "================================================================================"
+	@echo
+
+	$(VALGRIND) @builddir@/avocsh $(CLIENT_OPT) --server $(VOCHOST):$(VOCPORT) "$(VOCDIR)" $(UNITTESTS_CLIENT) || test "$(FORCE)" == "1"
+
+	kill `cat $(PIDFILE)`
+	while test -f $(PIDFILE); do sleep 1; done
+
+	@rm -rf "$(VOCDIR)"
+
+	@echo
+
+################################################################################
+################################################################################
+
+.PHONY: unittests-http-server
+
+unittests-http-server:
+	$(MAKE) start-server PID=$(PID)
+
+	@echo
+	@echo "================================================================================"
+	@echo "|| HTTP SERVER TESTS                                                          ||"
+	@echo "================================================================================"
+	@echo
+
+	cd @srcdir@/UnitTests/HttpInterface && AVOCADO_SERVER="$(VOCHOST):$(VOCPORT)" ./run_tests || test "$(FORCE)" == "1"
+
+	kill `cat $(PIDFILE)`
+	while test -f $(PIDFILE); do sleep 1; done
+
+	@rm -rf "$(VOCDIR)"
+
+	@echo
+
+-include Makefile.local
 
 @ENABLE_FLEX_TRUE@JsonParser/%.c: @srcdir@/JsonParser/%.l
 @ENABLE_FLEX_TRUE@	@top_srcdir@/config/flex-c.sh $(LEX) $@ $<
@@ -2602,6 +3063,13 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
 @ENABLE_BISON_TRUE@JsonParserX/%.cpp: @srcdir@/JsonParserX/%.yy
 @ENABLE_BISON_TRUE@	@top_srcdir@/config/bison-c++.sh $(BISON) $@ $<
 
+@ENABLE_ERRORS_DEPENDENCY_TRUE@.PHONY: errorfiles
+
+@ENABLE_ERRORS_DEPENDENCY_TRUE@errorfiles: BasicsC/errors.dat
+@ENABLE_ERRORS_DEPENDENCY_TRUE@	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py BasicsC/errors.dat BasicsC/voc-errors.h
+@ENABLE_ERRORS_DEPENDENCY_TRUE@	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py BasicsC/errors.dat BasicsC/voc-errors.c
+@ENABLE_ERRORS_DEPENDENCY_TRUE@	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py BasicsC/errors.dat js/common/bootstrap/errors.js
+
 @ENABLE_ALL_IN_ONE_TRUE@@LIBEV_LIBS@: .libev-build
 
 @ENABLE_ALL_IN_ONE_TRUE@.libev-build:
@@ -2612,7 +3080,7 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 
 @ENABLE_ALL_IN_ONE_TRUE@	mkdir @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) || true
-@ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) && CFLAGS="$(LIBEV_CFLAGS_32)" orig_CFLAGS="$(LIBEV_CFLAGS_32)" LDFLAGS="$(LIBEV_LDFLAGS_32)" ../configure --disable-shared
+@ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) && CFLAGS="$(LIBEV_BUILD_CFLAGS_X)" orig_CFLAGS="$(LIBEV_BUILD_CFLAGS_X)" LDFLAGS="$(LIBEV_BUILD_LDFLAGS_X)" ../configure --disable-shared
 @ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) && make
 
 @ENABLE_ALL_IN_ONE_TRUE@	touch .libev-build
@@ -2632,9 +3100,7 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 
-@ENABLE_ALL_IN_ONE_TRUE@@ENABLE_DARWIN_TRUE@	cd @top_srcdir@/3rdParty/V8 && scons snapshot=off library=static mode=release arch=$(V8_BUILD_VERSION)
-@ENABLE_ALL_IN_ONE_TRUE@@ENABLE_DARWIN_TRUE@	cd @top_srcdir@/3rdParty/V8 && mv libv8.a libv8_$(V8_BUILD_VERSION).a
-@ENABLE_ALL_IN_ONE_TRUE@@ENABLE_DARWIN_FALSE@	cd @top_srcdir@/3rdParty/V8 && make library=static snapshot=off $(V8_BUILD_VERSION).release
+@ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/V8 && make library=static snapshot=off @V8_TARGET@
 
 @ENABLE_ALL_IN_ONE_TRUE@	touch .v8-build
 
@@ -2643,6 +3109,25 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-directories
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "BUILD V8 FINISHED"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
+
+@ENABLE_MRUBY_TRUE@@MRUBY_LIBS@: .mruby-build
+
+@ENABLE_MRUBY_TRUE@.mruby-build:
+@ENABLE_MRUBY_TRUE@	@echo
+@ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_MRUBY_TRUE@	@echo "BUILDING LIBEV"
+@ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_MRUBY_TRUE@	@echo
+
+@ENABLE_MRUBY_TRUE@	cd @top_srcdir@/3rdParty/mruby && make
+
+@ENABLE_MRUBY_TRUE@	touch .mruby-build
+
+@ENABLE_MRUBY_TRUE@	@echo
+@ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_MRUBY_TRUE@	@echo "BUILD mruby FINISHED"
+@ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
+@ENABLE_MRUBY_TRUE@	@echo
 
 ################################################################################
 ################################################################################
