@@ -710,7 +710,7 @@ int TRI_IntHex (char ch, int errorValue) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief escapes special characters using C escapes
+/// @brief escapes constrol characters using C escapes
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_EscapeCString (char const* in, size_t inLength, size_t* outLength) {
@@ -749,6 +749,68 @@ char* TRI_EscapeCString (char const* in, size_t inLength, size_t* outLength) {
       case '"':
         *qtr++ = '\\';
         *qtr = *ptr;
+        break;
+
+      default:
+        n = (uint8_t)(*ptr);
+
+        if (n < 32 || n > 127) {
+          uint8_t n1 = n >> 4;
+          uint8_t n2 = n & 0x0F;
+
+          *qtr++ = '\\';
+          *qtr++ = 'x';
+          *qtr++ = (n1 < 10) ? ('0' + n1) : ('A' + n1 - 10);
+          *qtr = (n2 < 10) ? ('0' + n2) : ('A' + n2 - 10);
+        }
+        else {
+          *qtr = *ptr;
+        }
+
+        break;
+    }
+  }
+
+  *qtr = '\0';
+  *outLength = qtr - buffer;
+
+  qtr = TRI_Allocate(*outLength + 1);
+  memcpy(qtr, buffer, *outLength + 1);
+
+  TRI_Free(buffer);
+
+  return qtr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief escapes special characters using C escapes
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_EscapeControlsCString (char const* in, size_t inLength, size_t* outLength) {
+  char * buffer;
+  char * qtr;
+  char const * ptr;
+  char const * end;
+
+  buffer = TRI_Allocate(4 * inLength + 1);
+  if (!buffer) {
+    return NULL;
+  }
+
+  qtr = buffer;
+
+  for (ptr = in, end = ptr + inLength;  ptr < end;  ptr++, qtr++) {
+    uint8_t n;
+
+    switch (*ptr) {
+      case '\n':
+        *qtr++ = '\\';
+        *qtr = 'n';
+        break;
+
+      case '\r':
+        *qtr++ = '\\';
+        *qtr = 'r';
         break;
 
       default:

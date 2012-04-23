@@ -1221,7 +1221,7 @@ static void LogAppenderFile_Log (TRI_log_appender_t* appender,
     return;
   }
 
-  escaped = TRI_EscapeCString(msg, length, &escapedLength);
+  escaped = TRI_EscapeControlsCString(msg, length, &escapedLength);
 
   WriteLogFile(fd, escaped, escapedLength);
   WriteLogFile(fd, "\n", 1);
