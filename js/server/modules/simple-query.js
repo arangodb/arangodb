@@ -777,7 +777,17 @@ SimpleQueryByExample.prototype.execute = function () {
       this._skip = 0;
     }
 
-    var documents = this._collection.BY_EXAMPLE.apply(this._collection, this._example);
+    var parameters = [ ];
+    // the actual example is passed in the first argument
+    for (var i in this._example[0]) {
+      if (this._example[0].hasOwnProperty(i)) {
+        // attribute name
+        parameters.push(i);
+        // attribute value
+        parameters.push(this._example[0][i]);
+      }
+    }
+    var documents = this._collection.BY_EXAMPLE.apply(this._collection, parameters);
 
     this._execution = new SimpleQueryArray(documents);
     this._execution._skip = this._skip;
