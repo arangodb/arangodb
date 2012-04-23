@@ -25,6 +25,8 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <BasicsC/logging.h>
+
 #include "Ahuacatl/ast-codegen-js.h"
 
 // -----------------------------------------------------------------------------
@@ -36,7 +38,21 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-static char* GetIndexedFunctionName (const size_t funcIndex) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a function name for later disposal
+////////////////////////////////////////////////////////////////////////////////
+
+static bool RegisterString (TRI_aql_codegen_t* const generator, 
+                                  const char* const name) {
+  assert(generator);
+
+  TRI_PushBackVectorPointer(&generator->_strings, (char*) name);
+
+  return true;
+}
+
+static char* GetIndexedFunctionName (TRI_aql_codegen_t* const generator, 
+                                     const size_t funcIndex) {
   char* numberString;
   char* functionName;
 
@@ -45,7 +61,10 @@ static char* GetIndexedFunctionName (const size_t funcIndex) {
     return NULL;
   }
 
-  functionName = TRI_Concatenate2String("f", numberString);
+  functionName = TRI_Concatenate2String("f", numberString); 
+  if (functionName) {
+    RegisterString(generator, functionName);
+  }
 
   TRI_Free(numberString);
 
@@ -57,7 +76,7 @@ static char* GetNextFunctionName (TRI_aql_codegen_t* const generator) {
 
   assert(generator);
 
-  functionName = GetIndexedFunctionName(++generator->_funcIndex);
+  functionName = GetIndexedFunctionName(generator, ++generator->_funcIndex);
 
   return functionName; 
 }
@@ -65,9 +84,7 @@ static char* GetNextFunctionName (TRI_aql_codegen_t* const generator) {
 static void FreeScope (TRI_aql_codegen_scope_t* const scope) {
   assert(scope);
 
-  if (scope->_funcName) {
-   TRI_Free(scope->_funcName);
-  }
+  // note: scope->_funcName is freed globally
 
   if (scope->_buffer) {
    TRI_FreeStringBuffer(scope->_buffer);
@@ -76,7 +93,9 @@ static void FreeScope (TRI_aql_codegen_scope_t* const scope) {
   TRI_Free(scope);
 }
 
-static TRI_aql_codegen_scope_t* CreateScope (const char* const funcName, const TRI_aql_scope_type_e type) {
+static TRI_aql_codegen_scope_t* CreateScope (TRI_aql_codegen_t* const generator,
+                                             const char* const funcName, 
+                                             const TRI_aql_scope_type_e type) {
   TRI_aql_codegen_scope_t* scope = (TRI_aql_codegen_scope_t*) TRI_Allocate(sizeof(TRI_aql_codegen_scope_t));
 
   if (!scope) {
@@ -84,13 +103,19 @@ static TRI_aql_codegen_scope_t* CreateScope (const char* const funcName, const T
   }
   
   scope->_funcName = TRI_DuplicateString(funcName);
+  if (!scope->_funcName) {
+    FreeScope(scope);
+    return NULL;
+  }
+
+  RegisterString(generator, scope->_funcName);
   scope->_variablePrefix = NULL;
   scope->_indent = 0;
   scope->_forLoops = 0;
   scope->_type = type;
 
   scope->_buffer = TRI_CreateStringBuffer();
-  if (!scope->_funcName || !scope->_buffer) {
+  if (!scope->_buffer) {
     FreeScope(scope);
     return NULL;
   }
@@ -104,7 +129,7 @@ static bool StartScope (TRI_aql_codegen_t* const generator, const TRI_aql_scope_
   assert(generator);
   assert(funcName);
 
-  scope = CreateScope(funcName, type);
+  scope = CreateScope(generator, funcName, type);
 
   if (!scope) {
     return false;
@@ -236,7 +261,7 @@ static char* EndScope (TRI_aql_codegen_t* const generator) {
 
   assert(scope);
 
-  funcName = TRI_DuplicateString(scope->_funcName);
+  funcName = scope->_funcName;
 
   body = TRI_CreateStringBuffer();
   if (!body) {
@@ -638,7 +663,6 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
         AppendCode(generator, "(");
         GenerateCode(generator, ((TRI_aql_node_expand_t*) node)->_expanded);
         AppendCode(generator, ")");
-        TRI_Free(funcName);
         break;
       }
       case AQL_NODE_ASSIGN: 
@@ -661,7 +685,6 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
 
         AppendCode(generator, funcName);
         AppendCode(generator, "($)");
-        TRI_Free(funcName);
         break;
       }
       case AQL_NODE_FILTER:
@@ -686,14 +709,27 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
         break;
       case AQL_NODE_LIMIT: {
         char* previousFunction; 
+        char* value;
 
         AppendIndent(generator);
         AppendCode(generator, "result.push($);\n");
         CloseForLoops(generator);
         AppendCode(generator, "  result = AHUACATL_LIMIT(result, ");
-        AppendCode(generator, TRI_StringInt64(((TRI_aql_node_limit_t*) node)->_offset)); // todo: oom
+
+        value = TRI_StringInt64(((TRI_aql_node_limit_t*) node)->_offset);
+        if (!value) {
+          return; // todo: OOM
+        }
+        RegisterString(generator, value);
+        AppendCode(generator, value); 
         AppendCode(generator, ", ");
-        AppendCode(generator, TRI_StringInt64(((TRI_aql_node_limit_t*) node)->_count)); // todo: oom
+
+        value = TRI_StringInt64(((TRI_aql_node_limit_t*) node)->_count);
+        if (!value) {
+          return; // todo: OOM
+        }
+        RegisterString(generator, value);
+        AppendCode(generator, value); 
         AppendCode(generator, ");\n");
         previousFunction = EndScope(generator);
 
@@ -718,7 +754,7 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
         size_t i;
         size_t n;
 
-        previousFunction = TRI_DuplicateString(scope->_funcName);
+        previousFunction = scope->_funcName;
         // todo: OOM
 
         sortFuncName = GetNextFunctionName(generator);
@@ -1005,13 +1041,15 @@ TRI_aql_codegen_t* TRI_CreateCodegenAql (void) {
   generator->_funcName = NULL;
 
   TRI_InitStringBuffer(&generator->_buffer);
+  
+  TRI_InitVectorPointer(&generator->_strings);
 
   TRI_InitVectorPointer(&generator->_scopes);
   if (!StartScope(generator, AQL_SCOPE_RESULT, GetNextFunctionName(generator))) { 
     TRI_FreeCodegenAql(generator);
     return NULL;
   }
-
+  
   return generator;
 }
 
@@ -1020,10 +1058,22 @@ TRI_aql_codegen_t* TRI_CreateCodegenAql (void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeCodegenAql (TRI_aql_codegen_t* const generator) {
+  size_t i;
+
   assert(generator);
   
   TRI_DestroyStringBuffer(&generator->_buffer);
   TRI_DestroyVectorPointer(&generator->_scopes);
+
+  // free strings
+  i = generator->_strings._length;
+  while (i--) {
+    void* string = generator->_strings._buffer[i];
+    if (string) {
+      TRI_Free(string);
+    }
+  }
+  TRI_DestroyVectorPointer(&generator->_strings);
 
   TRI_Free(generator);
 }
@@ -1065,7 +1115,7 @@ char* TRI_GenerateCodeAql (const void* const data) {
     TRI_AppendStringStringBuffer(&generator->_buffer, "})();\n");
 
     code = TRI_DuplicateString(generator->_buffer._buffer);
-    printf("CODE IS:\n%s\n\n",code);
+    LOG_TRACE("generated code:\n%s\n",code);
   }
 
   TRI_FreeCodegenAql(generator);
