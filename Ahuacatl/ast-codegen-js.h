@@ -73,6 +73,7 @@ typedef struct TRI_aql_codegen_s {
   size_t _funcIndex;
   bool _error;
   char* _funcName;
+  TRI_vector_pointer_t _strings;
 }
 TRI_aql_codegen_t;
 

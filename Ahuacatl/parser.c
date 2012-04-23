@@ -143,27 +143,57 @@ TRI_aql_parse_context_t* TRI_CreateParseContextAql (const char* const query) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeParseContextAql (TRI_aql_parse_context_t* const context) {
+  size_t i;
+
   assert(context);
 
+  // free all remaining scopes
   while (context->_scopes._length) {
     TRI_EndScopeParseContextAql(context);
   }
- 
-  // TODO: Free nodes 
   TRI_DestroyVectorPointer(&context->_scopes);
-  TRI_DestroyVectorPointer(&context->_nodes);
+
+  // free all strings registered
+  i = context->_strings._length;
+  while (i--) {
+    void* string = context->_strings._buffer[i];
+
+    if (string) {
+      TRI_Free(context->_strings._buffer[i]);
+    }
+  }
   TRI_DestroyVectorPointer(&context->_strings);
+ 
+  // free all nodes registered
+  i = context->_nodes._length;
+  while (i--) {
+    TRI_aql_node_t* node = (TRI_aql_node_t*) context->_nodes._buffer[i];
+    if (node) {
+      if (node->free) {
+        // call node's specific free function
+        node->free(node);
+      }
+      // free node itself
+      TRI_Free(node);
+    }
+  }
+  TRI_DestroyVectorPointer(&context->_nodes);
+
+  // free the stack
   TRI_DestroyVectorPointer(&context->_stack);
 
+  // free query string
   if (context->_query) {
     TRI_Free(context->_query);
   }
 
+  // free lexer
   if (context->_parser) {
     Ahuacatllex_destroy(context->_parser->_scanner);
     TRI_Free(context->_parser);
   }
   
+  // free error struct
   TRI_DestroyErrorAql(&context->_error);
 
   TRI_Free(context);
