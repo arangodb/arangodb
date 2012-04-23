@@ -2392,6 +2392,11 @@ static TRI_json_t* ParseList (yyscan_t scanner) {
   int c;
 
   list = TRI_CreateListJson();
+
+  if (list == NULL) {
+    return NULL;
+  }
+
   c = tri_jsp_lex(scanner);
   comma = false;
 
@@ -2422,8 +2427,7 @@ static TRI_json_t* ParseList (yyscan_t scanner) {
       return NULL;
     }
 
-    TRI_PushBackListJson(list, sub);
-    TRI_FreeJson(sub); // TODO remove unnecessary copying
+    TRI_PushBack3ListJson(list, sub);
 
     c = tri_jsp_lex(scanner);
   }
@@ -2504,9 +2508,8 @@ static TRI_json_t* ParseArray (yyscan_t scanner) {
       return NULL;
     }
 
-    TRI_InsertArrayJson(array, name, sub);
+    TRI_Insert3ArrayJson(array, name, sub);
     TRI_FreeString(name);
-    TRI_FreeJson(sub); // TODO remove unnecessary copying
 
     c = tri_jsp_lex(scanner);
   }
@@ -2524,13 +2527,6 @@ static TRI_json_t* ParseArray (yyscan_t scanner) {
 static TRI_json_t* ParseObject (yyscan_t scanner, int c) {
   struct yyguts_t * yyg = (struct yyguts_t*) scanner;
 
-  char buffer[1024];
-
-  char* ep;
-  char* ptr;
-  double d;
-  size_t outLength;
-
   switch (c) {
     case END_OF_FILE:
       yyextra.message = "expecting atom, got end-of-file";
@@ -2545,7 +2541,11 @@ static TRI_json_t* ParseObject (yyscan_t scanner, int c) {
     case NULL_CONSTANT:
       return TRI_CreateNullJson();
 
-    case NUMBER_CONSTANT:
+    case NUMBER_CONSTANT: {
+      char buffer[512];
+      char* ep;
+      double d;
+
       if ((size_t) yyleng >= sizeof(buffer)) {
         yyextra.message = "number too big";
         return NULL;
@@ -2572,11 +2572,16 @@ static TRI_json_t* ParseObject (yyscan_t scanner, int c) {
       }
 
       return TRI_CreateNumberJson(d);
+    }
 
-    case STRING_CONSTANT:
+    case STRING_CONSTANT: {
+      char* ptr;
+      size_t outLength;
+
       ptr = TRI_UnescapeUtf8String(yytext + 1, yyleng - 2, &outLength);
 
       return TRI_CreateString2Json(ptr, outLength);
+    }
 
     case OPEN_BRACE:
       return ParseArray(scanner);
