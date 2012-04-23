@@ -14,6 +14,7 @@ unittests: unittests-verbose unittests-brief
 unittests-brief: \
 	unittests-boost \
 	unittests-shell-server \
+	unittests-shell-server-ahuacatl \
 	unittests-http-server \
 	unittests-shell-client \
 	unittests-http-server \
@@ -143,6 +144,32 @@ unittests-shell-server:
 	@mkdir "$(VOCDIR)"
 
 	$(VALGRIND) @builddir@/avocado "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "$(FORCE)" == "1"
+
+	@rm -rf "$(VOCDIR)"
+
+	@echo
+
+################################################################################
+## SHELL SERVER TESTS (AHUACATL)
+################################################################################
+
+SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-queries.js 
+
+.PHONY: unittests-shell-server-ahuacatl
+
+UNITTESTS_SERVER_AHUACATL = $(addprefix --unit-tests ,$(SHELL_SERVER_AHUACATL))
+
+unittests-shell-server-ahuacatl:
+	@echo
+	@echo "================================================================================"
+	@echo "|| SHELL SERVER TESTS (AHUACATL)                                              ||"
+	@echo "================================================================================"
+	@echo
+
+	@rm -rf "$(VOCDIR)"
+	@mkdir "$(VOCDIR)"
+
+	$(VALGRIND) @builddir@/avocado "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL) || test "$(FORCE)" == "1"
 
 	@rm -rf "$(VOCDIR)"
 
