@@ -45,7 +45,11 @@
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/RedirectHandler.h"
 #include "Logger/Logger.h"
+
+#ifdef TRI_ENABLE_MRUBY
 #include "MRuby/MRLineEditor.h"
+#endif
+
 #include "Rest/Initialise.h"
 #include "RestHandler/RestActionHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
@@ -533,10 +537,12 @@ void AvocadoServer::buildApplicationServer () {
     exit(res);
   }
 
+#ifdef TRI_ENABLE_MRUBY
   if (_applicationServer->programOptions().has("ruby-console")) {
     int res = executeRubyShell();
     exit(res);
   }
+#endif
 
   if (! _unitTests.empty()) {
     int res = executeShell(true);
