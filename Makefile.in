@@ -3087,7 +3087,7 @@ unittests-http-server:
 @ENABLE_BISON_TRUE@JsonParserX/%.cpp: @srcdir@/JsonParserX/%.yy
 @ENABLE_BISON_TRUE@	@top_srcdir@/config/bison-c++.sh $(BISON) $@ $<
 
-@ENABLE_ERRORS_DEPENDENCY_TRUE@.PHONY: errorfiles
+.PHONY: errorfiles
 
 @ENABLE_ERRORS_DEPENDENCY_TRUE@errorfiles: BasicsC/errors.dat
 @ENABLE_ERRORS_DEPENDENCY_TRUE@	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py BasicsC/errors.dat BasicsC/voc-errors.h
