@@ -255,6 +255,8 @@ int TRI_RemoveDirectory (char const* filename) {
     int res;
     int subres;
 
+    LOG_TRACE("removing directory '%s'", filename);
+
     res = TRI_ERROR_NO_ERROR;
     files = TRI_FilesDirectory(filename);
 
@@ -280,9 +282,13 @@ int TRI_RemoveDirectory (char const* filename) {
     return res;
   }
   else if (TRI_ExistsFile(filename)) {
+    LOG_TRACE("removing file '%s'", filename);
+
     return TRI_UnlinkFile(filename);
   }
   else {
+    LOG_TRACE("removing non-existing file '%s'", filename);
+
     return TRI_ERROR_NO_ERROR;
   }
 }
