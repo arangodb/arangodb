@@ -43,7 +43,7 @@ AM_CONDITIONAL(ENABLE_FLEX, test "x$tr_FLEX" = xyes)
 
 dnl ALL-IN-ONE
 AC_ARG_ENABLE(all-in-one,
-  AS_HELP_STRING([--enable-all-in-one], [use supplied V8, LIBEV from 3rdParty directory]),
+  AS_HELP_STRING([--enable-all-in-one], [use supplied V8 and LIBEV from 3rdParty directory]),
   [ALL_IN_ONE_ENABLE="${enableval:-yes}"],
   [ALL_IN_ONE_ENABLE=yes]
 )
@@ -53,13 +53,24 @@ AM_CONDITIONAL(ENABLE_ALL_IN_ONE, test "x$ALL_IN_ONE_ENABLE" = xyes)
 
 
 dnl BOOST
-AC_ARG_ENABLE(included-boost,
-  AS_HELP_STRING([--enable-included-boost], [use supplied BOOST from 3rdParty directory]),
-  [tr_INCLUDED_BOOST="${enableval:-yes}"],
-  [tr_INCLUDED_BOOST=yes]
+AC_ARG_ENABLE(3rd-party-boost,
+  AS_HELP_STRING([--enable-3rd-party-boost], [use supplied BOOST from 3rdParty directory]),
+  [tr_3RD_PARTY_BOOST="${enableval:-yes}"],
+  [tr_3RD_PARTY_BOOST=yes]
 )
 
-AM_CONDITIONAL(ENABLE_INCLUDED_BOOST, test "x$tr_INCLUDED_BOOST" = xyes)
+AM_CONDITIONAL(ENABLE_3RD_PARTY_BOOST, test "x$tr_3RD_PARTY_BOOST" = xyes)
+
+
+
+dnl ERRORS
+AC_ARG_ENABLE(errors-dependency,
+  AS_HELP_STRING([--enable-errors-dependency], [generate dependencies for error files]),
+  [tr_ERRORS_DEPENDENCY="${enableval:-yes}"],
+  [tr_ERRORS_DEPENDENCY=no]
+)
+
+AM_CONDITIONAL(ENABLE_ERRORS_DEPENDENCY, test "x$tr_ERRORS_DEPENDENCY" = xyes)
 
 
 
@@ -156,12 +167,12 @@ fi
 
 m4_include([m4/all-in-one.mruby])
 
-if test "x$tr_INCLUDED_BOOST" = xyes;  then
+if test "x$tr_3RD_PARTY_BOOST" = xyes;  then
   m4_include([m4/all-in-one.boost])
-  BASIC_INFO="$BASIC_INFO|INCLUDED-BOOST: enabled"
+  BASIC_INFO="$BASIC_INFO|3RD-PARTY-BOOST: enabled"
 else
   m4_include([m4/external.boost])
-  BASIC_INFO="$BASIC_INFO|INCLUDED-BOOST: disabled"
+  BASIC_INFO="$BASIC_INFO|3RD-PARTY-BOOST: disabled"
 fi
 
 dnl ============================================================================
