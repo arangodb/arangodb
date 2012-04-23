@@ -39,7 +39,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief register a function name for later disposal
+/// @brief register a function name for easier later disposal
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool RegisterString (TRI_aql_codegen_t* const generator, 
@@ -50,6 +50,10 @@ static bool RegisterString (TRI_aql_codegen_t* const generator,
 
   return true;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a function name using the rule "f" + number
+////////////////////////////////////////////////////////////////////////////////
 
 static char* GetIndexedFunctionName (TRI_aql_codegen_t* const generator, 
                                      const size_t funcIndex) {
@@ -71,6 +75,11 @@ static char* GetIndexedFunctionName (TRI_aql_codegen_t* const generator,
   return functionName; 
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the next function name (using the rule "f" + number, number will
+/// be increased on each call)
+////////////////////////////////////////////////////////////////////////////////
+
 static char* GetNextFunctionName (TRI_aql_codegen_t* const generator) {
   char* functionName;
 
@@ -80,6 +89,10 @@ static char* GetNextFunctionName (TRI_aql_codegen_t* const generator) {
 
   return functionName; 
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free a code scope
+////////////////////////////////////////////////////////////////////////////////
 
 static void FreeScope (TRI_aql_codegen_scope_t* const scope) {
   assert(scope);
@@ -93,10 +106,16 @@ static void FreeScope (TRI_aql_codegen_scope_t* const scope) {
   TRI_Free(scope);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a code scope
+////////////////////////////////////////////////////////////////////////////////
+
 static TRI_aql_codegen_scope_t* CreateScope (TRI_aql_codegen_t* const generator,
                                              const char* const funcName, 
                                              const TRI_aql_scope_type_e type) {
-  TRI_aql_codegen_scope_t* scope = (TRI_aql_codegen_scope_t*) TRI_Allocate(sizeof(TRI_aql_codegen_scope_t));
+  TRI_aql_codegen_scope_t* scope;
+  
+  scope = (TRI_aql_codegen_scope_t*) TRI_Allocate(sizeof(TRI_aql_codegen_scope_t));
 
   if (!scope) {
     return NULL;
@@ -123,7 +142,13 @@ static TRI_aql_codegen_scope_t* CreateScope (TRI_aql_codegen_t* const generator,
   return scope;
 }
 
-static bool StartScope (TRI_aql_codegen_t* const generator, const TRI_aql_scope_type_e type, const char* const funcName) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start a new code scope
+////////////////////////////////////////////////////////////////////////////////
+
+static bool StartScope (TRI_aql_codegen_t* const generator, 
+                        const TRI_aql_scope_type_e type, 
+                        const char* const funcName) {
   TRI_aql_codegen_scope_t* scope;
   
   assert(generator);
@@ -140,6 +165,10 @@ static bool StartScope (TRI_aql_codegen_t* const generator, const TRI_aql_scope_
   return true;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the scope currently used
+////////////////////////////////////////////////////////////////////////////////
+
 static TRI_aql_codegen_scope_t* GetCurrentScope (TRI_aql_codegen_t* const generator) {
   TRI_aql_codegen_scope_t* scope;
   size_t length;
@@ -155,6 +184,10 @@ static TRI_aql_codegen_scope_t* GetCurrentScope (TRI_aql_codegen_t* const genera
   return scope;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief increase the indent level in the current scope
+////////////////////////////////////////////////////////////////////////////////
+
 static void Indent (TRI_aql_codegen_t* const generator) {
   TRI_aql_codegen_scope_t* scope;
   assert(generator);
@@ -164,6 +197,10 @@ static void Indent (TRI_aql_codegen_t* const generator) {
 
   scope->_indent++;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief decrease the indent level in the current scope
+////////////////////////////////////////////////////////////////////////////////
 
 static void Outdent (TRI_aql_codegen_t* const generator) {
   TRI_aql_codegen_scope_t* scope;
@@ -175,6 +212,10 @@ static void Outdent (TRI_aql_codegen_t* const generator) {
 
   --scope->_indent;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add the current indentation to the output buffer in the current scope
+////////////////////////////////////////////////////////////////////////////////
 
 static void AppendIndent (TRI_aql_codegen_t* const generator) {
   TRI_aql_codegen_scope_t* scope;
@@ -189,6 +230,10 @@ static void AppendIndent (TRI_aql_codegen_t* const generator) {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove the current scope from the stack
+////////////////////////////////////////////////////////////////////////////////
+
 static void RemoveCurrentScope (TRI_aql_codegen_t* const generator) {
   TRI_aql_codegen_scope_t* scope;
   size_t length;
@@ -202,6 +247,10 @@ static void RemoveCurrentScope (TRI_aql_codegen_t* const generator) {
   scope = (TRI_aql_codegen_scope_t*) TRI_RemoveVectorPointer(&generator->_scopes, length - 1);
   FreeScope(scope);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief close all for loops in current scope
+////////////////////////////////////////////////////////////////////////////////
 
 static void CloseForLoops (TRI_aql_codegen_t* const generator) {
   TRI_aql_codegen_scope_t* scope;
@@ -223,7 +272,14 @@ static void CloseForLoops (TRI_aql_codegen_t* const generator) {
   }
 }
 
-static bool AppendFunction (TRI_aql_codegen_t* const generator, const TRI_aql_scope_type_e type, const char* const name, const char* const body) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write a function definition to the output buffer
+////////////////////////////////////////////////////////////////////////////////
+
+static bool AppendFunction (TRI_aql_codegen_t* const generator, 
+                            const TRI_aql_scope_type_e type, 
+                            const char* const name, 
+                            const char* const body) {
   assert(generator);
   assert(name);
   assert(body);
@@ -249,6 +305,10 @@ static bool AppendFunction (TRI_aql_codegen_t* const generator, const TRI_aql_sc
   return true;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief end a scope. this will also write the scope's function to the
+/// output buffer
+////////////////////////////////////////////////////////////////////////////////
 
 static char* EndScope (TRI_aql_codegen_t* const generator) {
   TRI_aql_codegen_scope_t* scope;
@@ -288,6 +348,10 @@ static char* EndScope (TRI_aql_codegen_t* const generator) {
 
   return funcName;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief increase the number of for loops in the current scope by one
+////////////////////////////////////////////////////////////////////////////////
   
 static void IncreaseForCount (TRI_aql_codegen_t* const generator) {
   TRI_aql_codegen_scope_t* scope;
@@ -305,6 +369,10 @@ static void IncreaseForCount (TRI_aql_codegen_t* const generator) {
   scope->_forLoops++;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append code the current scope's output buffer
+////////////////////////////////////////////////////////////////////////////////
+
 static void AppendCode (TRI_aql_codegen_t* const generator, const char* const code) {
   TRI_aql_codegen_scope_t* scope;
 
@@ -317,7 +385,12 @@ static void AppendCode (TRI_aql_codegen_t* const generator, const char* const co
   TRI_AppendStringStringBuffer(scope->_buffer, code);
 }
 
-static bool AppendValue (TRI_aql_codegen_t* const generator, const TRI_aql_node_value_t* const node) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append the value of a value node to the current scope's output buffer
+////////////////////////////////////////////////////////////////////////////////
+
+static bool AppendValue (TRI_aql_codegen_t* const generator, 
+                         const TRI_aql_node_value_t* const node) {
   TRI_aql_codegen_scope_t* scope;
 
   assert(generator);
@@ -364,7 +437,12 @@ static bool AppendValue (TRI_aql_codegen_t* const generator, const TRI_aql_node_
   return true;
 }
 
-static void SetVariablePrefix (TRI_aql_codegen_t* const generator, const char* const prefix) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set a variable prefix for all variables to be printed
+////////////////////////////////////////////////////////////////////////////////
+
+static void SetVariablePrefix (TRI_aql_codegen_t* const generator, 
+                               const char* const prefix) {
   TRI_aql_codegen_scope_t* scope;
 
   assert(generator);
@@ -376,7 +454,12 @@ static void SetVariablePrefix (TRI_aql_codegen_t* const generator, const char* c
   scope->_variablePrefix = (char*) prefix; 
 }
 
-static bool AppendVarname (TRI_aql_codegen_t* const generator, const TRI_aql_node_t* const data) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print a variable name in the current scope, enclosed in $['...']
+////////////////////////////////////////////////////////////////////////////////
+
+static bool AppendVarname (TRI_aql_codegen_t* const generator, 
+                           const TRI_aql_node_t* const data) {
   TRI_aql_node_variable_t* node = (TRI_aql_node_variable_t*) data;
   
   AppendCode(generator, "$['");
@@ -386,7 +469,12 @@ static bool AppendVarname (TRI_aql_codegen_t* const generator, const TRI_aql_nod
   return true;
 }
 
-static bool AppendVarname0 (TRI_aql_codegen_t* const generator, const TRI_aql_node_t* const data) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print a variable name in the current scope, without modifications
+////////////////////////////////////////////////////////////////////////////////
+
+static bool AppendVarname0 (TRI_aql_codegen_t* const generator, 
+                            const TRI_aql_node_t* const data) {
   TRI_aql_node_variable_t* node = (TRI_aql_node_variable_t*) data;
 
   AppendCode(generator, node->_name);
@@ -394,7 +482,12 @@ static bool AppendVarname0 (TRI_aql_codegen_t* const generator, const TRI_aql_no
   return true;
 }
 
-static bool AppendVarname1 (TRI_aql_codegen_t* const generator, const TRI_aql_node_t* const data) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print a variable name in the current scope, prepended by "_"
+////////////////////////////////////////////////////////////////////////////////
+
+static bool AppendVarname1 (TRI_aql_codegen_t* const generator, 
+                            const TRI_aql_node_t* const data) {
   TRI_aql_node_variable_t* node = (TRI_aql_node_variable_t*) data;
 
   AppendCode(generator, "_");
@@ -403,7 +496,12 @@ static bool AppendVarname1 (TRI_aql_codegen_t* const generator, const TRI_aql_no
   return true;
 }
 
-static bool AppendVarname2 (TRI_aql_codegen_t* const generator, const TRI_aql_node_t* const data) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print a variable name in the current scope, prepended by "__"
+////////////////////////////////////////////////////////////////////////////////
+
+static bool AppendVarname2 (TRI_aql_codegen_t* const generator, 
+                            const TRI_aql_node_t* const data) {
   TRI_aql_node_variable_t* node = (TRI_aql_node_variable_t*) data;
 
   AppendCode(generator, "__");
@@ -412,7 +510,12 @@ static bool AppendVarname2 (TRI_aql_codegen_t* const generator, const TRI_aql_no
   return true;
 }
 
-static bool AppendOwnPropertyName (TRI_aql_codegen_t* const generator, const char* const name) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print hasOwnProperty(...) if construct in current scope
+////////////////////////////////////////////////////////////////////////////////
+
+static bool AppendOwnPropertyName (TRI_aql_codegen_t* const generator, 
+                                   const char* const name) {
   AppendIndent(generator);
   AppendCode(generator, "if (!__");
   AppendCode(generator, name);
@@ -429,7 +532,12 @@ static bool AppendOwnPropertyName (TRI_aql_codegen_t* const generator, const cha
   return true;
 }
 
-static bool AppendOwnPropertyVar (TRI_aql_codegen_t* const generator, const TRI_aql_node_t* const data) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print hasOwnProperty(...) if construct in current scope
+////////////////////////////////////////////////////////////////////////////////
+
+static bool AppendOwnPropertyVar (TRI_aql_codegen_t* const generator, 
+                                  const TRI_aql_node_t* const data) {
   AppendIndent(generator);
   AppendCode(generator, "if (!");
   AppendVarname2(generator, data);
@@ -445,6 +553,10 @@ static bool AppendOwnPropertyVar (TRI_aql_codegen_t* const generator, const TRI_
 
   return true;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate the code for an individual node and all subnodes
+////////////////////////////////////////////////////////////////////////////////
 
 static void GenerateCode (TRI_aql_codegen_t* const generator, 
                           const TRI_aql_node_t* const data) {
@@ -1030,7 +1142,9 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_codegen_t* TRI_CreateCodegenAql (void) {
-  TRI_aql_codegen_t* generator = (TRI_aql_codegen_t*) TRI_Allocate(sizeof(TRI_aql_codegen_t));
+  TRI_aql_codegen_t* generator;
+  
+  generator = (TRI_aql_codegen_t*) TRI_Allocate(sizeof(TRI_aql_codegen_t));
 
   if (!generator) {
     return NULL;
