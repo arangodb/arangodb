@@ -109,8 +109,11 @@ DIST_COMMON = $(am__configure_deps) \
 ################################################################################
 ################################################################################
 @ENABLE_BISON_TRUE@am__append_4 = $(BISON_FILES) $(BISONXX_FILES)
-@ENABLE_ALL_IN_ONE_TRUE@am__append_5 = @LIBEV_LIBS@ @V8_LIBS@
-@ENABLE_MRUBY_TRUE@am__append_6 = @MRUBY_LIBS@
+@ENABLE_ERRORS_DEPENDENCY_TRUE@am__append_5 = \
+@ENABLE_ERRORS_DEPENDENCY_TRUE@	errorfiles
+
+@ENABLE_ALL_IN_ONE_TRUE@am__append_6 = @LIBEV_LIBS@ @V8_LIBS@
+@ENABLE_MRUBY_TRUE@am__append_7 = @MRUBY_LIBS@
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
@@ -584,7 +587,7 @@ AM_LDFLAGS = \
 BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(FLEX_FILES) \
 	$(FLEXXX_FILES) $(BISON_FILES) $(BISONXX_FILES) \
 	Doxygen/.setup-directories .setup-directories $(am__append_5) \
-	$(am__append_6)
+	$(am__append_6) $(am__append_7)
 
 ################################################################################
 ################################################################################
@@ -3083,6 +3086,13 @@ unittests-http-server:
 
 @ENABLE_BISON_TRUE@JsonParserX/%.cpp: @srcdir@/JsonParserX/%.yy
 @ENABLE_BISON_TRUE@	@top_srcdir@/config/bison-c++.sh $(BISON) $@ $<
+
+@ENABLE_ERRORS_DEPENDENCY_TRUE@.PHONY: errorfiles
+
+@ENABLE_ERRORS_DEPENDENCY_TRUE@errorfiles: BasicsC/errors.dat
+@ENABLE_ERRORS_DEPENDENCY_TRUE@	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py BasicsC/errors.dat BasicsC/voc-errors.h
+@ENABLE_ERRORS_DEPENDENCY_TRUE@	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py BasicsC/errors.dat BasicsC/voc-errors.c
+@ENABLE_ERRORS_DEPENDENCY_TRUE@	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py BasicsC/errors.dat js/common/bootstrap/errors.js
 
 @ENABLE_ALL_IN_ONE_TRUE@@LIBEV_LIBS@: .libev-build
 
