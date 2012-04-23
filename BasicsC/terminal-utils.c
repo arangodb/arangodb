@@ -42,9 +42,9 @@
 /// @brief returns the columns width
 ////////////////////////////////////////////////////////////////////////////////
 
-#if !defined(HAVE_NCURSES) && !defined(TRI_WIN32_CONSOLE)
+#if ! defined(HAVE_NCURSES) && ! defined(TRI_WIN32_CONSOLE)
 
-int TRI_ColumnsWidth () {
+int TRI_ColumnsWidth (void) {
   char* e;
   int c;
 
@@ -61,6 +61,11 @@ int TRI_ColumnsWidth () {
   }
 
   return TRI_DEFAULT_COLUMNS;
+}
+
+#else
+
+void AvoidEmptyWarning1 (void) {
 }
 
 #endif

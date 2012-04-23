@@ -90,7 +90,9 @@ TRI_df_shape_marker_t;
 /// @brief creates persistent shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaper_t* TRI_CreateVocShaper (char const* path, char const* name);
+TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t*,
+                                   char const* path,
+                                   char const* name);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an persistent shaper, but does not free the pointer
@@ -127,7 +129,8 @@ TRI_blob_collection_t* TRI_CollectionVocShaper (TRI_shaper_t*);
 /// @brief opens a persistent shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaper_t* TRI_OpenVocShaper (char const* filename);
+TRI_shaper_t* TRI_OpenVocShaper (TRI_vocbase_t*,
+                                 char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes a persistent shaper
@@ -139,7 +142,9 @@ int TRI_CloseVocShaper (TRI_shaper_t*);
 /// @brief closes a persistent shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shape_access_t const* TRI_FindAccessorVocShaper (TRI_shaper_t*, TRI_shape_sid_t, TRI_shape_pid_t);
+TRI_shape_access_t const* TRI_FindAccessorVocShaper (TRI_shaper_t*,
+                                                     TRI_shape_sid_t, 
+                                                     TRI_shape_pid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

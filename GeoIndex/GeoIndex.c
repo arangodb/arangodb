@@ -2061,7 +2061,7 @@ int GeoIndex_hint(GeoIndex * gi, int hint)
 /* a self-check to see whether the index itself seems  */
 /* to be correct.                                      */
 /* =================================================== */
-#ifdef DEBUG
+#ifdef TRI_GEO_DEBUG
 
 void RecursivePotDump (GeoIx * gix, FILE * f, int pot)
 {
@@ -2085,7 +2085,7 @@ void RecursivePotDump (GeoIx * gix, FILE * f, int pot)
             gc=gix->gc + gp->points[i];
             fprintf(f,"Lat.  %9.4f,  Long. %9.4f",
                 gc->latitude, gc->longitude);
-#if DEBUG==2
+#if TRI_GEO_DEBUG==2
             fprintf(f," %s",(char *) gc->data);
 #endif
             fprintf(f,"\n");

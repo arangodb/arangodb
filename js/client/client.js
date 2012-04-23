@@ -35,10 +35,9 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief change internal.output to shell output
+/// @addtogroup AvocadoShell
+/// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-ModuleCache["/internal"].exports.output = TRI_SYS_OUTPUT;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default collection for saving queries
@@ -59,17 +58,26 @@ var helpAvocadoStoredStatement = "";
 var helpAvocadoStatement = "";
 var helpExtended = "";
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  helper functions
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a formatted type string for object
 /// 
-/// if the object has an id, it will be included in the string
+/// If the object has an id, it will be included in the string.
 ////////////////////////////////////////////////////////////////////////////////
 
-function getIdString (object, typeName) {
+function TRI_GetIdString (object, typeName) {
   var result = "[object " + typeName;
   
   if (object._id) {
@@ -78,16 +86,66 @@ function getIdString (object, typeName) {
   else if (object.data && object.data._id) {
     result += ":" + object.data._id;
   }
+
   result += "]";
 
   return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief handles error results
+/// 
+/// throws an exception in case of an an error
+////////////////////////////////////////////////////////////////////////////////
+
+function TRI_CheckRequestResult (requestResult) {
+  if (requestResult == undefined) {    
+    requestResult = {
+      "error" : true,
+      "code"  : 0,
+      "errorNum" : 0,
+      "errorMessage" : "Unknown error. Request result is empty"
+    }    
+  }
+  
+  if (requestResult["error"] != undefined && requestResult["error"]) {    
+    throw new AvocadoError(requestResult);
+  }  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a formatted headline text 
+////////////////////////////////////////////////////////////////////////////////
+
+function TRI_CreateHelpHeadline (text) {
+  var x = parseInt(Math.abs(78 - text.length) / 2);
+  
+  var p = "";
+  for (var i = 0; i < x; ++i) {
+    p += "-";
+  }
+  
+  return "\n" + p + " " + text + " " + p + "\n";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief turn off pretty printing
 ////////////////////////////////////////////////////////////////////////////////
 
-function printPlain (data) {
+function print_plain (data) {
   var p = PRETTY_PRINT;
   PRETTY_PRINT = false;
   var c;
@@ -113,59 +171,6 @@ function printPlain (data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief handle error results
-/// 
-/// return try if the result contains an error. in this case, the function will
-/// also print the error details
-////////////////////////////////////////////////////////////////////////////////
-
-function isErrorResult (requestResult) {
-  if (requestResult == undefined) {    
-    requestResult = {
-      "error" : true,
-      "code"  : 0,
-      "errorNum" : 0,
-      "errorMessage" : "Unknown error. Request result is empty"
-    }    
-  }
-  
-  if (requestResult["error"] != undefined && requestResult["error"]) {    
-    var code         = requestResult["code"];
-    var errorNum     = requestResult["errorNum"];
-    var errorMessage = requestResult["errorMessage"];
-
-    if ( typeof(COLOR_BRIGHT) != "undefined" ) {
-      internal.output(COLOR_BRIGHT);
-      internal.output("Error: ");
-      internal.output(COLOR_OUTPUT_RESET);
-    }
-    else  {
-      internal.output("Error: ");      
-    }
-
-    internal.output("["); 
-    internal.output(code); 
-    internal.output(":"); 
-    internal.output(errorNum); 
-    internal.output("] "); 
-    print(errorMessage);
-    
-    return true;
-  }  
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stop pretty printing
-////////////////////////////////////////////////////////////////////////////////
-
-function stop_pretty_print () {
-  print("stop pretty printing");
-  PRETTY_PRINT=false;
-  return undefined;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief start pretty printing
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -179,9 +184,9 @@ function start_pretty_print () {
 /// @brief stop pretty printing
 ////////////////////////////////////////////////////////////////////////////////
 
-function stop_color_print () {
-  print("stop color printing");
-  COLOR_OUTPUT = undefined;
+function stop_pretty_print () {
+  print("stop pretty printing");
+  PRETTY_PRINT=false;
   return undefined;
 }
 
@@ -201,18 +206,13 @@ function start_color_print (color) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a formatted headline text 
+/// @brief stop pretty printing
 ////////////////////////////////////////////////////////////////////////////////
 
-function getHeadline (text) {
-  var x = parseInt(Math.abs(78 - text.length) / 2);
-  
-  var p = "";
-  for (var i = 0; i < x; ++i) {
-    p += "-";
-  }
-  
-  return "\n" + p + " " + text + " " + p + "\n";
+function stop_color_print () {
+  print("stop color printing");
+  COLOR_OUTPUT = undefined;
+  return undefined;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -229,6 +229,10 @@ function help () {
   print(helpExtended);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 Module "internal"
 // -----------------------------------------------------------------------------
@@ -237,6 +241,12 @@ function help () {
 /// @addtogroup AvocadoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief change internal.output to shell output
+////////////////////////////////////////////////////////////////////////////////
+
+ModuleCache["/internal"].exports.output = TRI_SYS_OUTPUT;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log function
@@ -263,8 +273,556 @@ ModuleCache["/internal"].exports.stop_pager = SYS_STOP_PAGER;
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                      AvocadoError
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+function AvocadoError (error) {
+  this.error = error.error;
+  this.code = error.code;
+  this.errorNum = error.errorNum;
+  this.errorMessage = error.errorMessage;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints an error
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoError.prototype._PRINT = function() {
+  internal.output(this.toString());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toString function
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoError.prototype.toString = function() {
+  var result = "";
+  if (typeof(COLOR_BRIGHT) != "undefined") {
+    result = COLOR_BRIGHT + "Error: " + COLOR_OUTPUT_RESET;
+  }
+  else  {
+    result = "Error: ";
+  }
+
+  result += "[" + this.code + ":" + this.errorNum + "] " + this.errorMessage;
+  
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints an error
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoError.prototype.toString = function() {
+  var errorNum = this.errorNum;
+  var errorMessage = this.errorMessage;
+
+  return "[AvocadoError " + errorNum + ": " + errorMessage + "]";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   AvocadoDatabase
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+function AvocadoDatabase (connection) {
+  this._connection = connection;
+  this._collectionConstructor = AvocadoCollection;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief help for AvocadoDatabase
+////////////////////////////////////////////////////////////////////////////////
+
+helpAvocadoDatabase = TRI_CreateHelpHeadline("AvocadoDatabase help") +
+'AvocadoDatabase constructor:                                        ' + "\n" +
+' > db = new AvocadoDatabase(connection);                            ' + "\n" +
+'                                                                    ' + "\n" +
+'Administration Functions:                                           ' + "\n" +
+'  _help();                       this help                          ' + "\n" +
+'                                                                    ' + "\n" +
+'Collection Functions:                                               ' + "\n" +
+'  _collections()                 list all collections               ' + "\n" +
+'  _collection(<identifier>)      get collection by identifier/name  ' + "\n" +
+'  _create(<name>, <props>)       creates a new collection           ' + "\n" +
+'  _truncate(<name>)              delete all documents               ' + "\n" +
+'  _drop(<name>)                  delete a collection                ' + "\n" +
+'                                                                    ' + "\n" +
+'Document Functions:                                                 ' + "\n" +
+'  _document(<id>)                 get document by handle            ' + "\n" +
+'  _replace(<id>, <data>)          over-writes document              ' + "\n" +
+'  _remove(<id>)                   deletes document                  ' + "\n" +
+'                                                                    ' + "\n" +
+'Query Functions:                                                    ' + "\n" +
+'  _createStatement(<data>);      create and return select query     ' + "\n" +
+'                                                                    ' + "\n" +
+'Attributes:                                                         ' + "\n" +
+'  <collection names>             collection with the given name     ';
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print the help for AvocadoDatabase
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._help = function () {  
+  print(helpAvocadoDatabase);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a string representation of the database object
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype.toString = function () {  
+  return "[object AvocadoDatabase]";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              collection functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return all collections from the database
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._collections = function () {
+  var requestResult = this._connection.GET("/_api/collection");
+  
+  TRI_CheckRequestResult(requestResult);
+
+  if (requestResult["collections"] != undefined) {
+    var collections = requestResult["collections"];
+    var result = []
+    
+    // add all collentions to object
+    for (var i = 0;  i < collections.length;  ++i) {
+      var collection = new this._collectionConstructor(this, collections[i]);
+
+      this[collection._name] = collection;
+      result.push(collection);
+    }
+      
+    return result;
+  }
+  
+  return undefined;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a single collection, identified by its id or name
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._collection = function (id) {
+  var requestResult = this._connection.GET("/_api/collection/" + encodeURIComponent(id));
+  
+  // return null in case of not found
+  if (requestResult != null
+      && requestResult.error == true 
+      && requestResult.errorNum == internal.errors.ERROR_AVOCADO_COLLECTION_NOT_FOUND.code) {
+    return null;
+  }
+
+  // check all other errors and throw them
+  TRI_CheckRequestResult(requestResult);
+
+  var name = requestResult["name"];
+
+  if (name != undefined) {
+    return this[name] = new this._collectionConstructor(this, requestResult);
+  }
+  
+  return undefined;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._create = function (name, properties) {
+  var body = {
+    "name" : name
+  };
+
+  if (properties != null) {
+    if (properties.hasOwnProperty("waitForSync")) {
+      body.waitForSync = properties.waitForSync;
+    }
+
+    if (properties.hasOwnProperty("journalSize")) {
+      body.journalSize = properties.journalSize;
+    }
+  }
+
+  var requestResult = this._connection.POST("/_api/collection", JSON.stringify(body));
+
+  TRI_CheckRequestResult(requestResult);
+
+  var name = requestResult["name"];
+
+  if (name != undefined) {
+    return this[name] = new this._collectionConstructor(this, requestResult);
+  }
+  
+  return undefined;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief truncates a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._truncate = function (id) {
+  for (var name in this) {
+    if (this.hasOwnProperty(name)) {
+      var collection = this[name];
+
+      if (collection instanceof this._collectionConstructor) {
+        if (collection._id == id || collection._name == id) {
+          return collection.truncate();
+        }
+      }
+    }
+  }
+
+  return undefined;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._drop = function (id) {
+  for (var name in this) {
+    if (this.hasOwnProperty(name)) {
+      var collection = this[name];
+
+      if (collection instanceof this._collectionConstructor) {
+        if (collection._id == id || collection._name == id) {
+          return collection.drop();
+        }
+      }
+    }
+  }
+
+  return undefined;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                document functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a single document from the collection, identified by its id
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._document = function (id) {
+  var rev = null;
+  var requestResult;
+
+  if (id.hasOwnProperty("_id")) {
+    if (id.hasOwnProperty("_rev")) {
+      rev = id._rev;
+    }
+
+    id = id._id;
+  }
+
+  if (rev == null) {
+    requestResult = this._connection.GET("/document/" + id);
+  }
+  else {
+    requestResult = this._connection.GET("/document/" + id, {'if-match' : '"' + rev + '"' });
+  }
+
+  if (requestResult != null
+      && requestResult.error == true 
+      && requestResult.errorNum == internal.errors.ERROR_AVOCADO_COLLECTION_NOT_FOUND.code) {
+    var s = id.split("/");
+
+    if (s.length != 2) {
+      requestResult.errorNum = internal.errors.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code;
+    }
+
+    throw new AvocadoError(requestResult);
+  }
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete a document in the collection, identified by its id
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._remove = function (id, overwrite) {
+  var rev = null;
+  var requestResult;
+
+  if (id.hasOwnProperty("_id")) {
+    if (id.hasOwnProperty("_rev")) {
+      rev = id._rev;
+    }
+
+    id = id._id;
+  }
+
+  var policy = "";
+
+  if (overwrite) {
+    policy = "?policy=last";
+  }
+
+  if (rev == null) {
+    requestResult = this._connection.DELETE("/document/" + id + policy);
+  }
+  else {
+    requestResult = this._connection.DELETE("/document/" + id + policy, {'if-match' : '"' + rev + '"' });
+  }
+
+  if (requestResult != null && requestResult.error == true) {
+    var s = id.split("/");
+
+    if (s.length != 2) {
+      requestResult.errorNum = internal.errors.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code;
+    }
+
+    if (overwrite) {
+      if (requestResult.errorNum == internal.errors.ERROR_AVOCADO_DOCUMENT_NOT_FOUND.code) {
+        return false;
+      }
+    }
+
+    throw new AvocadoError(requestResult);
+  }
+
+  TRI_CheckRequestResult(requestResult);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a document in the collection, identified by its id
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._replace = function (id, data, overwrite) { 
+  var rev = null;
+  var requestResult;
+
+  if (id.hasOwnProperty("_id")) {
+    if (id.hasOwnProperty("_rev")) {
+      rev = id._rev;
+    }
+
+    id = id._id;
+  }
+
+  var policy = "";
+
+  if (overwrite) {
+    policy = "?policy=last";
+  }
+
+  if (rev == null) {
+    requestResult = this._connection.PUT("/document/" + id + policy, JSON.stringify(data));
+  }
+  else {
+    requestResult = this._connection.PUT("/document/" + id + policy, JSON.stringify(data), {'if-match' : '"' + rev + '"' });
+  }
+
+  if (requestResult != null && requestResult.error == true) {
+    var s = id.split("/");
+
+    if (s.length != 2) {
+      requestResult.errorNum = internal.errors.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code;
+    }
+
+    throw new AvocadoError(requestResult);
+  }
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   query functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief factory method to create a new statement
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoDatabase.prototype._createStatement = function (data) {  
+  return new AvocadoStatement(this, data);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      AvocadoEdges
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+function AvocadoEdges (connection) {
+  this._connection = connection;
+  this._collectionConstructor = AvocadoEdgesCollection;
+}
+
+AvocadoEdges.prototype = new AvocadoDatabase();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief help for AvocadoEdges
+////////////////////////////////////////////////////////////////////////////////
+
+helpAvocadoEdges = TRI_CreateHelpHeadline("AvocadoEdges help") +
+'AvocadoEdges constructor:                                           ' + "\n" +
+' > edges = new AvocadoEdges(connection);                            ' + "\n" +
+'                                                                    ' + "\n" +
+'Administration Functions:                                           ' + "\n" +
+'  _help();                       this help                          ' + "\n" +
+'                                                                    ' + "\n" +
+'Attributes:                                                         ' + "\n" +
+'  <collection names>             collection with the given name     ';
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print the help for AvocadoEdges
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoEdges.prototype._help = function () {  
+  print(helpAvocadoEdges);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a string representation of the database object
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoEdges.prototype.toString = function () {  
+  return "[object AvocadoEdges]";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 AvocadoCollection
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -274,75 +832,134 @@ function AvocadoCollection (database, data) {
   this._database = database;
 
   if (typeof data === "string") {
-    this.name = data;
+    this._name = data;
   }
-  else {
-    for (var i in data) {
-      this[i] = data[i];
-    }
+  else if (data != null) {
+    this._id = data.id;
+    this._name = data.name;
+    this._status = data.status;
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return all documents from the collection
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.all = function () {
-  var requestResult = this._database._connection.get("/_api/documents/" + encodeURIComponent(this.name));
-    
-  if (isErrorResult(requestResult)) {
-    return undefined;
-  }
+// -----------------------------------------------------------------------------
+// --SECTION--                                                         constants
+// -----------------------------------------------------------------------------
 
-  return requestResult["documents"];    
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection is corrupted
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.STATUS_CORRUPTED = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection is new born
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.STATUS_NEW_BORN = 1;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection is unloaded
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.STATUS_UNLOADED = 2;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection is loaded
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.STATUS_LOADED = 3;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection is unloading
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.STATUS_UNLOADING = 4;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection is deleted
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.STATUS_DELETED = 5;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief help for AvocadoCollection
+////////////////////////////////////////////////////////////////////////////////
+
+helpAvocadoCollection = TRI_CreateHelpHeadline("AvocadoCollection help") +
+'AvocadoCollection constructor:                                      ' + "\n" +
+' > col = db.mycoll;                                                 ' + "\n" +
+' > col = db._create("mycoll");                                      ' + "\n" +
+'                                                                    ' + "\n" +
+'Administration Functions:                                           ' + "\n" +
+'  name()                          collection name                   ' + "\n" +
+'  status()                        status of the collection          ' + "\n" +
+'  truncate()                      delete all documents              ' + "\n" +
+'  properties()                    show collection properties        ' + "\n" +
+'  drop()                          delete a collection               ' + "\n" +
+'  load()                          load a collection into memeory    ' + "\n" +
+'  unload()                        unload a collection from memory   ' + "\n" +
+'  rename(new-name)                renames a collection              ' + "\n" +
+'  refresh()                       refreshes the status and name     ' + "\n" +
+'  _help();                        this help                         ' + "\n" +
+'                                                                    ' + "\n" +
+'Document Functions:                                                 ' + "\n" +
+'  count()                         number of documents               ' + "\n" +
+'  save(<data>)                    create document and return handle ' + "\n" +
+'  document(<id>)                  get document by handle            ' + "\n" +
+'  replace(<id>, <data>)           over-writes document              ' + "\n" +
+'  delete(<id>)                    deletes document                  ' + "\n" +
+'                                                                    ' + "\n" +
+'Attributes:                                                         ' + "\n" +
+'  _database                       database object                   ' + "\n" +
+'  _id                             collection identifier             ';
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a string representation of the collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.toString = function () {  
+  return TRI_GetIdString(this, "AvocadoCollection");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a single document from the collection, identified by its id
+/// @brief prints the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.document = function (id) {
-  var requestResult = this._database._connection.get("/_api/document/" + encodeURIComponent(this.name) + "/" + encodeURIComponent(id));
+AvocadoCollection.prototype._PRINT = function () {  
+  var status = "unknown";
 
-  if (isErrorResult(requestResult)) {
-    return undefined;
+  switch (this.status()) {
+    case AvocadoCollection.STATUS_NEW_BORN: status = "new born"; break;
+    case AvocadoCollection.STATUS_UNLOADED: status = "unloaded"; break;
+    case AvocadoCollection.STATUS_UNLOADING: status = "unloading"; break;
+    case AvocadoCollection.STATUS_LOADED: status = "loaded"; break;
+    case AvocadoCollection.STATUS_CORRUPTED: status = "corrupted"; break;
+    case AvocadoCollection.STATUS_DELETED: status = "deleted"; break;
   }
-
-  return requestResult["document"];
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief save a document in the collection, return its id
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoCollection.prototype.save = function (data) {    
-  var requestResult = this._database._connection.post("/_api/document/" + encodeURIComponent(this.name), JSON.stringify(data));
   
-  if (isErrorResult(requestResult)) {
-    return undefined;
-  }
-
-  return requestResult["_id"];
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief delete a document in the collection, identified by its id
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoCollection.prototype.delete = function (id) {    
-  var requestResult = this._database._connection.delete("/_api/document/" + encodeURIComponent(this.name) + "/" + encodeURIComponent(id));
-
-  return !isErrorResult(requestResult);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update a document in the collection, identified by its id
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoCollection.prototype.update = function (id, data) {    
-  var requestResult = this._database._connection.put("/_api/document/" + encodeURIComponent(this.name) + "/" + encodeURIComponent(id), JSON.stringify(data));
-
-  return !isErrorResult(requestResult);
+  internal.output("[AvocadoCollection ", this._id, ", \"", this.name(), "\" (status " + status + ")]");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -354,16 +971,615 @@ AvocadoCollection.prototype._help = function () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the name of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.name = function () {
+  if (this._name == null) {
+    this.refresh();
+  }
+
+  return this._name;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the status of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.status = function () {
+  if (this._status == null) {
+    this.refresh();
+  }
+
+  return this._status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets or sets the properties of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.properties = function (properties) {
+  var requestResult;
+
+  if (properties == null) {
+    requestResult = this._database._connection.GET("/_api/collection/" + encodeURIComponent(this._id) + "/properties");
+
+    TRI_CheckRequestResult(requestResult);
+  }
+  else {
+    var body = {};
+
+    if (properties.hasOwnProperty("waitForSync")) {
+      body.waitForSync = properties.waitForSync;
+    }
+
+    requestResult = this._database._connection.PUT("/_api/collection/" + encodeURIComponent(this._id) + "/properties", JSON.stringify(body));
+
+    TRI_CheckRequestResult(requestResult);
+  }
+
+  return { 
+    waitForSync : requestResult.waitForSync,
+    journalSize : requestResult.journalSize
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the figures of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.figures = function () {
+  var requestResult = this._database._connection.GET("/_api/collection/" + encodeURIComponent(this._id) + "/figures");
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult.figures;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.drop = function () {
+  var requestResult = this._database._connection.DELETE("/_api/collection/" + encodeURIComponent(this._id));
+
+  TRI_CheckRequestResult(requestResult);
+
+  this._status = AvocadoCollection.STATUS_DELETED;
+
+  var database = this._database;
+
+  for (var name in database) {
+    if (database.hasOwnProperty(name)) {
+      var collection = database[name];
+
+      if (collection instanceof AvocadoCollection) {
+        if (collection._id == this._id) {
+          delete database[name];
+        }
+      }
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief truncates a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.truncate = function () {
+  var requestResult = this._database._connection.PUT("/_api/collection/" + encodeURIComponent(this._id) + "/truncate", "");
+
+  TRI_CheckRequestResult(requestResult);
+
+  this._status = null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief loads a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.load = function () {
+  var requestResult = this._database._connection.PUT("/_api/collection/" + encodeURIComponent(this._id) + "/load", "");
+
+  TRI_CheckRequestResult(requestResult);
+
+  this._status = null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unloads a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.unload = function () {
+  var requestResult = this._database._connection.PUT("/_api/collection/" + encodeURIComponent(this._id) + "/unload", "");
+
+  TRI_CheckRequestResult(requestResult);
+
+  this._status = null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief renames a collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.rename = function (name) {
+  var body = { name : name };
+  var requestResult = this._database._connection.PUT("/_api/collection/" + encodeURIComponent(this._id) + "/rename", JSON.stringify(body));
+
+  TRI_CheckRequestResult(requestResult);
+
+  delete this._database[this._name];
+  this._database[name] = this;
+
+  this._status = null;
+  this._name = null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief refreshes a collection status and name
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.refresh = function () {
+  var requestResult = this._database._connection.GET("/_api/collection/" + encodeURIComponent(this._id));
+
+  TRI_CheckRequestResult(requestResult);
+
+  this._name = requestResult['name'];
+  this._status = requestResult['status'];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                document functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the number of documents
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.count = function () {
+  var requestResult = this._database._connection.GET("/_api/collection/" + encodeURIComponent(this._id) + "/count");
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult["count"];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return all documents from the collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.all = function () {
+  var data = {
+    collection : this._id
+  }  
+  
+  var requestResult = this._database._connection.PUT("/_api/simple/all", JSON.stringify(data));
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a single document from the collection, identified by its id
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.document = function (id) {
+  var rev = null;
+  var requestResult;
+
+  if (id.hasOwnProperty("_id")) {
+    if (id.hasOwnProperty("_rev")) {
+      rev = id._rev;
+    }
+
+    id = id._id;
+  }
+
+  if (rev == null) {
+    requestResult = this._database._connection.GET("/document/" + id);
+  }
+  else {
+    requestResult = this._database._connection.GET("/document/" + id, {'if-match' : '"' + rev + '"' });
+  }
+
+  if (requestResult != null
+      && requestResult.error == true 
+      && requestResult.errorNum == internal.errors.ERROR_AVOCADO_COLLECTION_NOT_FOUND.code) {
+    var s = id.split("/");
+
+    if (s.length != 2) {
+      requestResult.errorNum = internal.errors.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code;
+    }
+    else if (s[0] != this._id) {
+      requestResult.errorNum = internal.errors.ERROR_AVOCADO_CROSS_COLLECTION_REQUEST.code;
+    }
+
+    throw new AvocadoError(requestResult);
+  }
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief save a document in the collection, return its id
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.save = function (data) {    
+  var requestResult = this._database._connection.POST("/document?collection=" + encodeURIComponent(this._id), JSON.stringify(data));
+  
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete a document in the collection, identified by its id
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.remove = function (id, overwrite) {
+  var rev = null;
+  var requestResult;
+
+  if (id.hasOwnProperty("_id")) {
+    if (id.hasOwnProperty("_rev")) {
+      rev = id._rev;
+    }
+
+    id = id._id;
+  }
+
+  var policy = "";
+
+  if (overwrite) {
+    policy = "?policy=last";
+  }
+
+  if (rev == null) {
+    requestResult = this._database._connection.DELETE("/document/" + id + policy);
+  }
+  else {
+    requestResult = this._database._connection.DELETE("/document/" + id + policy, {'if-match' : '"' + rev + '"' });
+  }
+
+  if (requestResult != null && requestResult.error == true) {
+    var s = id.split("/");
+
+    if (s.length != 2) {
+      requestResult.errorNum = internal.errors.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code;
+    }
+    else if (s[0] != this._id) {
+      requestResult.errorNum = internal.errors.ERROR_AVOCADO_CROSS_COLLECTION_REQUEST.code;
+    }
+
+    if (overwrite) {
+      if (requestResult.errorNum == internal.errors.ERROR_AVOCADO_DOCUMENT_NOT_FOUND.code) {
+        return false;
+      }
+    }
+
+    throw new AvocadoError(requestResult);
+  }
+
+  TRI_CheckRequestResult(requestResult);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a document in the collection, identified by its id
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoCollection.prototype.replace = function (id, data, overwrite) { 
+  var rev = null;
+  var requestResult;
+
+  if (id.hasOwnProperty("_id")) {
+    if (id.hasOwnProperty("_rev")) {
+      rev = id._rev;
+    }
+
+    id = id._id;
+  }
+
+  var policy = "";
+
+  if (overwrite) {
+    policy = "?policy=last";
+  }
+
+  if (rev == null) {
+    requestResult = this._database._connection.PUT("/document/" + id + policy, JSON.stringify(data));
+  }
+  else {
+    requestResult = this._database._connection.PUT("/document/" + id + policy, JSON.stringify(data), {'if-match' : '"' + rev + '"' });
+  }
+
+  if (requestResult != null && requestResult.error == true) {
+    var s = id.split("/");
+
+    if (s.length != 2) {
+      requestResult.errorNum = internal.errors.ERROR_AVOCADO_DOCUMENT_HANDLE_BAD.code;
+    }
+    else if (s[0] != this._id) {
+      requestResult.errorNum = internal.errors.ERROR_AVOCADO_CROSS_COLLECTION_REQUEST.code;
+    }
+
+    throw new AvocadoError(requestResult);
+  }
+
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            AvocadoEdgesCollection
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+function AvocadoEdgesCollection (database, data) {
+  this._database = database;
+
+  if (typeof data === "string") {
+    this._name = data;
+  }
+  else {
+    this._id = data.id;
+    this._name = data.name;
+    this._status = data.status;
+  }
+}
+
+AvocadoEdgesCollection.prototype = new AvocadoCollection();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief help for AvocadoCollection
+////////////////////////////////////////////////////////////////////////////////
+
+helpAvocadoEdgesCollection = TRI_CreateHelpHeadline("AvocadoEdgesCollection help") +
+'AvocadoEdgesCollection constructor:                                 ' + "\n" +
+' > col = edges.mycoll;                                              ' + "\n" +
+' > col = db._create("mycoll");                                      ' + "\n" +
+'                                                                    ' + "\n" +
+'Attributes:                                                         ' + "\n" +
+'  _database                       database object                   ' + "\n" +
+'  _id                             collection identifier             ';
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return a string representation of the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoCollection.prototype.toString = function () {  
-  return getIdString(this, "AvocadoCollection");
+AvocadoEdgesCollection.prototype.toString = function () {  
+  return TRI_GetIdString(this, "AvocadoEdgesCollection");
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints the collection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoEdgesCollection.prototype._PRINT = function () {  
+  var status = "unknown";
+
+  switch (this.status()) {
+    case AvocadoCollection.STATUS_NEW_BORN: status = "new born"; break;
+    case AvocadoCollection.STATUS_UNLOADED: status = "unloaded"; break;
+    case AvocadoCollection.STATUS_UNLOADING: status = "unloading"; break;
+    case AvocadoCollection.STATUS_LOADED: status = "loaded"; break;
+    case AvocadoCollection.STATUS_CORRUPTED: status = "corrupted"; break;
+    case AvocadoCollection.STATUS_DELETED: status = "deleted"; break;
+  }
+  
+  internal.output("[AvocadoEdgesCollection ", this._id, ", \"", this.name(), "\" (status " + status + ")]");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print the help for AvocadoCollection
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoEdgesCollection.prototype._help = function () {  
+  print(helpAvocadoEdgesCollection);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                document functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief save a document in the collection, return its id
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoEdgesCollection.prototype.save = function (from, to, data) {    
+  if (from.hasOwnProperty("_id")) {
+    from = from._id;
+  }
+
+  if (to.hasOwnProperty("_id")) {
+    to = to._id;
+  }
+
+  var url = "/edge?collection=" + encodeURIComponent(this._id)
+          + "&from=" + encodeURIComponent(from)
+          + "&to=" + encodeURIComponent(to);
+
+  var requestResult = this._database._connection.POST(url, JSON.stringify(data));
+  
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the edges starting or ending in a vertex
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoEdgesCollection.prototype.edges = function (vertex) {
+
+  // if vertex is a list, iterator and concat
+  if (vertex instanceof Array) {
+    var edges = [];
+
+    for (var i = 0;  i < vertex.length;  ++i) {
+      var e = this.edges(vertex[i]);
+      
+      edges.push.apply(edges, e);
+    }
+
+    return edges;
+  }
+
+  if (vertex.hasOwnProperty("_id")) {
+    vertex = vertex._id;
+  }
+
+  // get the edges
+  requestResult = this._database._connection.GET("/edges/" + encodeURIComponent(this._id) + "?vertex=" + encodeURIComponent(vertex));
+  
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult['edges'];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the edges ending in a vertex
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoEdgesCollection.prototype.inEdges = function (vertex) {
+
+  // if vertex is a list, iterator and concat
+  if (vertex instanceof Array) {
+    var edges = [];
+
+    for (var i = 0;  i < vertex.length;  ++i) {
+      var e = this.inEdges(vertex[i]);
+      
+      edges.push.apply(edges, e);
+    }
+
+    return edges;
+  }
+
+  if (vertex.hasOwnProperty("_id")) {
+    vertex = vertex._id;
+  }
+
+  // get the edges
+  requestResult = this._database._connection.GET("/edges/" + encodeURIComponent(this._id) + "?direction=in&vertex=" + encodeURIComponent(vertex));
+  
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult['edges'];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the edges starting in a vertex
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoEdgesCollection.prototype.outEdges = function (vertex) {
+
+  // if vertex is a list, iterator and concat
+  if (vertex instanceof Array) {
+    var edges = [];
+
+    for (var i = 0;  i < vertex.length;  ++i) {
+      var e = this.outEdges(vertex[i]);
+      
+      edges.push.apply(edges, e);
+    }
+
+    return edges;
+  }
+
+  if (vertex.hasOwnProperty("_id")) {
+    vertex = vertex._id;
+  }
+
+  // get the edges
+  requestResult = this._database._connection.GET("/edges/" + encodeURIComponent(this._id) + "?direction=out&vertex=" + encodeURIComponent(vertex));
+  
+  TRI_CheckRequestResult(requestResult);
+
+  return requestResult['edges'];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                AvocadoQueryCursor
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -392,6 +1608,70 @@ function AvocadoQueryCursor (database, data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief help for AvocadoQueryCursor
+////////////////////////////////////////////////////////////////////////////////
+
+helpAvocadoQueryCursor = TRI_CreateHelpHeadline("AvocadoQueryCursor help") +
+'AvocadoQueryCursor constructor:                                     ' + "\n" +
+' > cu1 = qi1.execute();                                             ' + "\n" +
+'Functions:                                                          ' + "\n" +
+'  hasMore();                            returns true if there       ' + "\n" +
+'                                        are more results            ' + "\n" +
+'  next();                               returns the next document   ' + "\n" +
+'  elements();                           returns all documents       ' + "\n" +
+'  _help();                              this help                   ' + "\n" +
+'Attributes:                                                         ' + "\n" +
+'  _database                             database object             ' + "\n" +
+'Example:                                                            ' + "\n" +
+' > st = db._createStatement({ "query" : "select a from colA a" });  ' + "\n" +
+' > c = st.execute();                                                ' + "\n" +
+' > documents = c.elements();                                        ' + "\n" +
+' > c = st.execute();                                                ' + "\n" +
+' > while (c.hasNext()) { print( c.next() ); }                       ';
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print the help for the cursor
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoQueryCursor.prototype._help = function () {
+  print(helpAvocadoQueryCursor);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a string representation of the cursor
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoQueryCursor.prototype.toString = function () {  
+  return TRI_GetIdString(this, "AvocadoQueryCursor");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether there are more results available in the cursor
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -414,9 +1694,8 @@ AvocadoQueryCursor.prototype.next = function () {
   var result = this.data.result[this._pos];
   this._pos++;
     
+  // reached last result
   if (this._pos == this._count) {
-    // reached last result
-    
     this._hasNext = false;
     this._pos = 0;
     
@@ -424,11 +1703,9 @@ AvocadoQueryCursor.prototype.next = function () {
       this._hasMore = false;
       
       // load more results      
-      var requestResult = this._database._connection.put("/_api/cursor/"+ encodeURIComponent(this.data._id),  "");
+      var requestResult = this._database._connection.PUT("/_api/cursor/"+ encodeURIComponent(this.data._id),  "");
     
-      if (isErrorResult(requestResult)) {
-        return undefined;
-      }
+      TRI_CheckRequestResult(requestResult);
       
       this.data = requestResult;
       this._count = requestResult.result.length;
@@ -478,11 +1755,11 @@ AvocadoQueryCursor.prototype.dispose = function () {
     return;
   }
 
-  var requestResult = this._database._connection.delete("/_api/cursor/"+ encodeURIComponent(this.data._id), "");
+  var requestResult = this._database._connection.DELETE("/_api/cursor/"+ encodeURIComponent(this.data._id), "");
     
-  if (!isErrorResult(requestResult)) {
-    this.data._id = undefined;
-  }
+  TRI_CheckRequestResult(requestResult);
+
+  this.data._id = undefined;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -504,394 +1781,21 @@ AvocadoQueryCursor.prototype.count = function () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print the help for the cursor
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoQueryCursor.prototype._help = function () {
-  print(helpAvocadoQueryCursor);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a string representation of the cursor
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoQueryCursor.prototype.toString = function () {  
-  return getIdString(this, "AvocadoQueryCursor");
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   AvocadoDatabase
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
-function AvocadoDatabase (connection) {
-  this._connection = connection;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return all collections from the database
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoDatabase.prototype._collections = function () {
-  var requestResult = this._connection.get("/_api/collections");
-  
-  if (isErrorResult(requestResult)) {
-    return undefined;
-  }
-
-  if (requestResult["collections"] != undefined) {
-    
-    // add all collentions to object
-    for (var i in requestResult["collections"]) {
-      this[i] = new AvocadoCollection(this, requestResult["collections"][i]);
-    }
-      
-    return requestResult["collections"];
-  }
-  
-  return undefined;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a single collection, identified by its id
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoDatabase.prototype._collection = function (id) {
-  var requestResult = this._connection.get("/_api/collection/" + encodeURIComponent(id));
-  
-  if (isErrorResult(requestResult)) {
-    return undefined;
-  }
-
-  if (requestResult["name"] != undefined) {
-    
-    this[requestResult["name"]] = new AvocadoCollection(this, requestResult);
-      
-    return requestResult;
-  }
-  
-  return undefined;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a single collection, identified by its id
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoDatabase.prototype._create = function (name) {
-  var body = {
-    "name" : name
-  };
-
-  var str = this._connection.post("/_api/database/collection", JSON.stringify(body));
-
-  print(str);
-  
-  var requestResult = undefined;
-
-  if (str != undefined) {
-    requestResult = JSON.parse(str);
-  }
-  
-  if (isErrorResult(requestResult)) {
-    return undefined;
-  }
-
-  return requestResult;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief print the help for AvocadoDatabase
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoDatabase.prototype._help = function () {  
-  print(helpAvocadoDatabase);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a string representation of the database object
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoDatabase.prototype.toString = function () {  
-  return "[object AvocadoDatabase]";
-}
-/*
-// -----------------------------------------------------------------------------
-// --SECTION--                                            AvocadoStoredStatement
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
-function AvocadoStoredStatement (database, data) {
-  this._database = database;
-  this._doCount = false;
-  this._batchSize = null;
-  this._bindVars = {};
-  this._id = null;
-  this.document = {
-    "queryCollection" : DEFAULT_QUERY_COLLECTION
-  };
-
-  if (!(data instanceof Object)) {
-    throw "AvocadoStoredStatement needs a data attribute";
-  }
-  
-  if (data["name"] != undefined) {
-    this.document.name = data["name"];
-  }
-  
-  if (data["query"] != undefined) {
-    this.document.query = data["query"];
-  }
-
-  if (data["queryCollection"] != undefined) {
-    this.document.queryCollection = data["queryCollection"];
-  }  
-  
-  this._isNew = (data["query"] != undefined);  
-
-  this.validate();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update a stored statement
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoStoredStatement.prototype.update = function (data) {
-  // update query string
-  if (data["query"] != undefined) {
-    this.document.query = data["query"];
-  }
-
-  this.validate();
-
-  var queryCollection = new AvocadoCollection(this._database, this.document.queryCollection);
-  if (!queryCollection) {
-    throw "Could not determine collection for AvocadoStoredStatement";
-  }
-
-  if (this._isNew) {
-    var requestResult = queryCollection.save(this.document);
-    if (requestResult == undefined) {
-      throw "Could not save AvocadoStoredStatement";
-    }
-
-    // document saved
-    this._id = requestResult;
-    this._isNew = false;
-    return true;
-  }
-
-  if (!queryCollection.update(this.document._id, this.document)) {
-    throw "Could not update AvocadoStoredStatement";
-  }
-  
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief save a stored statement
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoStoredStatement.prototype.save = function () {
-  return this.update(this.document);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief validate the data of an AvocadoStoredStatement
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoStoredStatement.prototype.validate = function () {
-  if (this._isNew) {
-    if (this.document.query == undefined || this.document.query == "") {
-      throw "AvocadoStoredStatement needs a valid query";
-    }
-  }
-
-  if (this.document.name == undefined || this.document.name == "") {
-    throw "AvocadoStoredStatement needs a name attribute";
-  }
-  
-  if (this.document.queryCollection == undefined || this.document.queryCollection == "") {
-    throw "AvocadoStoredStatement needs a queryCollection";
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup the data of an AvocadoStoredStatement
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoStoredStatement.prototype.lookup = function () {
-  if (this.isNew) {
-    throw "Cannot lookup a new AvocadoStoredStatement";
-  }
-
-  var data = {
-    "query" : "SELECT c FROM `" + this.document.queryCollection + 
-              "` c WHERE c.name == '" + QuoteJSONString(this.document.name) + "'"
-  } 
-  var statement = new AvocadoStatement(this._database, data);
-  var result = statement.execute();
-  if (result instanceof AvocadoQueryError) {
-    throw result.message;
-  }
-
-  if (!result.hasNext()) {
-    throw "Could not find stored statement for the given parameters";
-  }
-
-  var row = result.next();
-  this._id = row["id"];
-  this._query = row["query"];
-  this._isNew = false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief delete a stored statement
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoStoredStatement.prototype.delete = function () {
-  if (this._isNew) {
-    throw "Cannot delete a new AvocadoStoredStatement";
-  }
-  
-  if (this._id == undefined || this._id == null) {
-    this.lookup();
-  }
-
-  var queryCollection = new AvocadoCollection(this._database, this.document.collection);
-  if (!queryCollection) {
-    throw "Could not determine collection for AvocadoStoredStatement";
-  }
-
-  if (!queryCollection.delete(this.document._id)) {
-    this.document = {};
-    this._isNew = true;
-    this._bindVars = {};
-    this._id = null;
-    return true;
-  }
-  
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief bind a parameter to the statement
-///
-/// This function can be called multiple times, once for each bind parameter.
-/// All bind parameters will be transferred to the server in one go when 
-/// execute() is called.
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoStoredStatement.prototype.bind = function (key, value) {
-  if (typeof(key) != "string") {
-    throw "bind parameter name must be a string";
-  }
-
-  if (this._bindVars[key] != undefined) {
-    throw "redeclaration of bind parameter";
-  }
-
-  this._bindVars[key] = value;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the count flag for the statement
-///
-/// Setting the count flag will make the query instance's cursor return the
-/// total number of result documents. The count flag is not set by default.
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoStoredStatement.prototype.setCount = function (bool) {
-  this._doCount = bool ? true : false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the maximum number of results documents the cursor will return
-/// in a single server roundtrip.
-/// The higher this number is, the less server roundtrips will be made when
-/// iterating over the result documents of a cursor.
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoStoredStatement.prototype.setBatchSize = function (value) {
-  if (parseInt(value) > 0) {
-    this._batchSize = parseInt(value);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute the query
-///
-/// Invoking execute() will transfer the query and all bind parameters to the
-/// server. It will return a cursor with the query results in case of success.
-/// In case of an error, the error will be printed
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoStoredStatement.prototype.execute = function () {
-  if (this._isNew) {
-    this.save();
-  }
-  
-  var body = {
-    "name" : this.document.name,
-    "count" : this._doCount,
-    "bindVars" : this._bindVars,
-    "_id" : this._id
-  }
-
-  if (this._batchSize) {
-    body["batchSize"] = this._batchSize;
-  }
-  
-  var requestResult = this._database._connection.post("/_api/cursor", JSON.stringify(body));
-    
-  if (isErrorResult(requestResult)) {
-    return undefined;
-  }
-
-  return new AvocadoQueryCursor(this._database, requestResult);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief print the help for AvocadoStoredStatement
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoStoredStatement.prototype._help = function () {
-  print(helpAvocadoStoredStatement);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a string representation of the stored statement
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoStoredStatement.prototype.toString = function () {  
-  return getIdString(this, "AvocadoStoredStatement");
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief factory method to create a new stored statement
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoDatabase.prototype._createStoredStatement = function (data) {  
-  return new AvocadoStoredStatement(this, data);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief factory method to retrieve an existing stored statement
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoDatabase.prototype._getStoredStatement = function (data) {  
-  return new AvocadoStoredStatement(this, data);
-}
-
-*/
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  AvocadoStatement
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -919,6 +1823,80 @@ function AvocadoStatement (database, data) {
     this.setBatchSize(data.batchSize);
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief help for AvocadoStatement
+////////////////////////////////////////////////////////////////////////////////
+
+helpAvocadoStatement = TRI_CreateHelpHeadline("AvocadoStatement help") +
+'AvocadoStatement constructor:                                       ' + "\n" +
+' > st = new AvocadoStatement({ "query" : "select..." });            ' + "\n" +
+' > st = db._createStatement({ "query" : "select ...." });           ' + "\n" +
+'Functions:                                                          ' + "\n" +
+'  bind(<key>, <value>);          bind single variable               ' + "\n" +
+'  bind(<values>);                bind multiple variables            ' + "\n" +
+'  setBatchSize(<max>);           set max. number of results         ' + "\n" +
+'                                 to be transferred per roundtrip    ' + "\n" +
+'  setCount(<value>);             set count flag (return number of   ' + "\n" +
+'                                 results in "count" attribute)      ' + "\n" +
+'  getBatchSize();                return max. number of results      ' + "\n" +
+'                                 to be transferred per roundtrip    ' + "\n" +
+'  getCount();                    return count flag (return number of' + "\n" +
+'                                 results in "count" attribute)      ' + "\n" +
+'  getQuery();                    return query string                ' + "\n" +
+'  execute();                     execute query and return cursor    ' + "\n" +
+'  _help();                       this help                          ' + "\n" +
+'Attributes:                                                         ' + "\n" +
+'  _database                      database object                    ' + "\n" +
+'Example:                                                            ' + "\n" +
+' > st = db._createStatement({ "query" : "select a from colA a       ' + "\n" +
+'                              where a.x = @a@ and a.y = @b@" });    ' + "\n" +
+' > st.bind("a", "hello");                                           ' + "\n" +
+' > st.bind("b", "world");                                           ' + "\n" +
+' > c = st.execute();                                                ' + "\n" +
+' > print(c.elements());                                             ';
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print the help for AvocadoStatement
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoStatement.prototype._help = function () {
+  print(helpAvocadoStatement);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a string representation of the statement
+////////////////////////////////////////////////////////////////////////////////
+
+AvocadoStatement.prototype.toString = function () {  
+  return TRI_GetIdString(this, "AvocadoStatement");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup AvocadoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief bind a parameter to the statement
@@ -977,7 +1955,7 @@ AvocadoStatement.prototype.getCount = function () {
 /// in a single server roundtrip.
 ////////////////////////////////////////////////////////////////////////////////
 
-AvocadoStatement.prototype.getMax = function () {
+AvocadoStatement.prototype.getBatchSize = function () {
   return this._batchSize;
 }
 
@@ -1030,11 +2008,9 @@ AvocadoStatement.prototype.parse = function () {
     "query" : this._query,
   }
 
-  var requestResult = this._database._connection.post("/_api/query", JSON.stringify(body));
+  var requestResult = this._database._connection.POST("/_api/query", JSON.stringify(body));
     
-  if (isErrorResult(requestResult)) {
-    return undefined;
-  }
+  TRI_CheckRequestResult(requestResult);
 
   return true;
 }
@@ -1058,49 +2034,26 @@ AvocadoStatement.prototype.execute = function () {
     body["batchSize"] = this._batchSize;
   }
 
-  var requestResult = this._database._connection.post("/_api/cursor", JSON.stringify(body));
+  var requestResult = this._database._connection.POST("/_api/cursor", JSON.stringify(body));
     
-  if (isErrorResult(requestResult)) {
-    return undefined;
-  }
+  TRI_CheckRequestResult(requestResult);
 
   return new AvocadoQueryCursor(this._database, requestResult);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print the help for AvocadoStatement
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-AvocadoStatement.prototype._help = function () {
-  print(helpAvocadoStatement);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a string representation of the statement
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoStatement.prototype.toString = function () {  
-  return getIdString(this, "AvocadoStatement");
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief factory method to create a new statement
-////////////////////////////////////////////////////////////////////////////////
-
-AvocadoDatabase.prototype._createStatement = function (data) {  
-  return new AvocadoStatement(this, data);
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      initialisers
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise help texts
+/// @brief general help
 ////////////////////////////////////////////////////////////////////////////////
 
-HELP = 
-getHeadline("Help") +
+HELP = TRI_CreateHelpHeadline("Help") +
 'Predefined objects:                                                 ' + "\n" +
 '  avocado:                               AvocadoConnection          ' + "\n" +
 '  db:                                    AvocadoDatabase            ' + "\n" +
@@ -1108,15 +2061,17 @@ getHeadline("Help") +
 ' > db._collections();                    list all collections       ' + "\n" +
 ' > db.<coll_name>.all();                 list all documents         ' + "\n" +
 ' > id = db.<coll_name>.save({ ... });    save a document            ' + "\n" +
-' > db.<coll_name>.delete(<_id>);         delete a document          ' + "\n" +
+' > db.<coll_name>.remove(<_id>);         delete a document          ' + "\n" +
 ' > db.<coll_name>.document(<_id>);       get a document             ' + "\n" +
 ' > help                                  show help pages            ' + "\n" +
 ' > helpQueries                           query help                 ' + "\n" +
 ' > exit                                                             ';
 
-helpQueries = 
-getHeadline("Select query help") +
+////////////////////////////////////////////////////////////////////////////////
+/// @brief query help
+////////////////////////////////////////////////////////////////////////////////
 
+helpQueries = TRI_CreateHelpHeadline("Select query help") +
 'Create a select query:                                              ' + "\n" +
 ' > st = new AvocadoStatement(db, { "query" : "select..." });        ' + "\n" +
 ' > st = db._createStatement({ "query" : "select..." });             ' + "\n" +
@@ -1126,7 +2081,7 @@ getHeadline("Select query help") +
 ' > st.setCount(<value>);         set count flag (return number of   ' + "\n" +
 '                                 results in "count" attribute)      ' + "\n" +
 'Get query options:                                                  ' + "\n" +
-' > st.getMax();                  return the max. number of results  ' + "\n" +
+' > st.setBatchSize();            return the max. number of results  ' + "\n" +
 '                                 to be transferred per roundtrip    ' + "\n" +
 ' > st.getCount();                return count flag (return number of' + "\n" +
 '                                 results in "count" attribute)      ' + "\n" +
@@ -1142,113 +2097,11 @@ getHeadline("Select query help") +
 'Or loop over the result set:                                        ' + "\n" +
 ' > while (c.hasNext()) { print( c.next() ); }                       ';
 
-helpAvocadoDatabase = 
-getHeadline("AvocadoDatabase help") +
-'AvocadoDatabase constructor:                                        ' + "\n" +
-' > db2 = new AvocadoDatabase(connection);                           ' + "\n" +
-'Functions:                                                          ' + "\n" +
-'  _collections();                list all collections               ' + "\n" +
-'                                 returns: list of AvocadoCollection ' + "\n" +
-'  _collection(<name>);           get collection by name             ' + "\n" +
-'                                 returns: AvocadoCollection         ' + "\n" +
-'  _createStatement(<data>);      create and return select query     ' + "\n" +
-'                                 returns: AvocadoStatement          ' + "\n" +
-'  _help();                       this help                          ' + "\n" +
-'Attributes:                                                         ' + "\n" +
-'  <collection names>                                                ';
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extended help
+////////////////////////////////////////////////////////////////////////////////
 
-helpAvocadoCollection = 
-getHeadline("AvocadoCollection help") +
-'AvocadoCollection constructor:                                      ' + "\n" +
-' > col = db.mycoll;                                                 ' + "\n" +
-'Functions:                                                          ' + "\n" +
-'  save(<data>);                   create document and return id     ' + "\n" +
-'  document(<id>);                 get document by id                ' + "\n" +
-'  update(<id>, <new data>);       over writes document by id        ' + "\n" +
-'  delete(<id>);                   deletes document by id            ' + "\n" +
-'  _help();                        this help                         ' + "\n" +
-'Attributes:                                                         ' + "\n" +
-'  _database                       database object                   ' + "\n" +
-'  _id                             collection id                     ' + "\n" +
-'  name                            collection name                   ' + "\n" +
-'  status                          status id                         ' + "\n" +
-'  figures                                                           ';
-
-helpAvocadoQueryCursor = 
-getHeadline("AvocadoQueryCursor help") +
-'AvocadoQueryCursor constructor:                                     ' + "\n" +
-' > cu1 = qi1.execute();                                             ' + "\n" +
-'Functions:                                                          ' + "\n" +
-'  hasMore();                            returns true if there       ' + "\n" +
-'                                        are more results            ' + "\n" +
-'  next();                               returns the next document   ' + "\n" +
-'  elements();                           returns all documents       ' + "\n" +
-'  _help();                              this help                   ' + "\n" +
-'Attributes:                                                         ' + "\n" +
-'  _database                             database object             ' + "\n" +
-'Example:                                                            ' + "\n" +
-' > st = db._createStatement({ "query" : "select a from colA a" });  ' + "\n" +
-' > c = st.execute();                                                ' + "\n" +
-' > documents = c.elements();                                        ' + "\n" +
-' > c = st.execute();                                                ' + "\n" +
-' > while (c.hasNext()) { print( c.next() ); }                       ';
-
-helpAvocadoStatement = 
-getHeadline("AvocadoStatement help") +
-'AvocadoStatement constructor:                                       ' + "\n" +
-' > st = new AvocadoStatement({ "query" : "select..." });            ' + "\n" +
-' > st = db._createStatement({ "query" : "select ...." });           ' + "\n" +
-'Functions:                                                          ' + "\n" +
-'  bind(<key>, <value>);          bind single variable               ' + "\n" +
-'  bind(<values>);                bind multiple variables            ' + "\n" +
-'  setBatchSize(<max>);           set max. number of results         ' + "\n" +
-'                                 to be transferred per roundtrip    ' + "\n" +
-'  setCount(<value>);             set count flag (return number of   ' + "\n" +
-'                                 results in "count" attribute)      ' + "\n" +
-'  getMax();                      return max. number of results      ' + "\n" +
-'                                 to be transferred per roundtrip    ' + "\n" +
-'  getCount();                    return count flag (return number of' + "\n" +
-'                                 results in "count" attribute)      ' + "\n" +
-'  getQuery();                    return query string                ' + "\n" +
-'  execute();                     execute query and return cursor    ' + "\n" +
-'  _help();                       this help                          ' + "\n" +
-'Attributes:                                                         ' + "\n" +
-'  _database                      database object                    ' + "\n" +
-'Example:                                                            ' + "\n" +
-' > st = db._createStatement({ "query" : "select a from colA a       ' + "\n" +
-'                              where a.x = @a@ and a.y = @b@" });    ' + "\n" +
-' > st.bind("a", "hello");                                           ' + "\n" +
-' > st.bind("b", "world");                                           ' + "\n" +
-' > c = st.execute();                                                ' + "\n" +
-' > print(c.elements());                                             ';
-/*
-helpAvocadoStoredStatement = 
-getHeadline("AvocadoQueryTemplate help") +
-'AvocadoQueryTemplate constructor:                                   ' + "\n" +
-' > qt1 = db._createQueryTemplate("select ...");    simple query     ' + "\n" +
-' > qt2 = db._createQueryTemplate(                  complex query    ' + "\n" +
-'             {query:"select...",                                    ' + "\n" +
-'              name:"qname",                                         ' + "\n" +
-'              collection:"q"                                        ' + "\n" +
-'              ... }                                                 ' + "\n" +
-'Functions:                                                          ' + "\n" +
-'  update(<new data>);                  update query template        ' + "\n" +
-'  delete(<id>);                        delete query template by id  ' + "\n" +
-'  getInstance();                       get a query instance         ' + "\n" +
-'                                       returns: AvocadoQueryInstance' + "\n" +
-'  _help();                             this help                    ' + "\n" +
-'Attributes:                                                         ' + "\n" +
-'  _database                            database object              ' + "\n" +
-'  _id                                  template id                  ' + "\n" +
-'  name                                 collection name              ' + "\n" +
-'Example:                                                            ' + "\n" +
-' > qt1 = db._getQueryTemplate("4334:2334");                         ' + "\n" +
-' > qt1.update("select a from collA a");                             ' + "\n" +
-' > qi1 = qt1.getInstance();                                         ' + "\n" +
-' > qt1.delete("4334:2334");                                         ';
-*/
-helpExtended = 
-getHeadline("More help") +
+helpExtended = TRI_CreateHelpHeadline("More help") +
 'Pager:                                                              ' + "\n" +
 ' > internal.stop_pager()               stop the pager output        ' + "\n" +
 ' > internal.start_pager()              start the pager              ' + "\n" +
@@ -1261,7 +2114,7 @@ getHeadline("More help") +
 ' > start_color_print(COLOR_BLUE)       set color                    ' + "\n" +
 'Print function:                                                     ' + "\n" +
 ' > print(x)                            std. print function          ' + "\n" +
-' > printPlain(x)                       print without pretty printing' + "\n" +
+' > print_plain(x)                      print without pretty printing' + "\n" +
 '                                       and without colors           ';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1269,18 +2122,23 @@ getHeadline("More help") +
 ////////////////////////////////////////////////////////////////////////////////
 
 try {
-  // default database
+
+  // default databases
   db = new AvocadoDatabase(avocado);
+  edges = new AvocadoEdges(avocado);
 
   // load collection data
   db._collections();
+  edges._collections();
 
+  // export to internal
   ModuleCache["/internal"].exports.db = db;
+  ModuleCache["/internal"].exports.edges = db;
 
   print(HELP);
 }
 catch (err) {
-  print(COLOR_RED + "connection failure: " + err + COLOR_BLACK);
+  print(err);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

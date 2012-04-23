@@ -1,0 +1,11 @@
+> curl -X GET --dump - http://localhost:8529/_api/collection
+
+HTTP/1.1 400 Bad Request
+content-type: application/json
+
+{
+  "errorMessage": "expect GET /_api/collection/<collection-identifer>",
+  "errorNum": 400,
+  "code": 400,
+  "error": true
+}

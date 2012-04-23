@@ -1,28 +1,95 @@
 # -*- mode: Makefile; -*-
 
+FORCE = 0
+VALGRIND =
+
 ################################################################################
 ## unittests target
 ################################################################################
 
-.TARGET: unittests
+.PHONY: unittests unittests-brief unittests-verbose
+
+unittests: unittests-verbose unittests-brief
+
+unittests-brief: \
+	unittests-boost \
+	unittests-shell-server \
+	unittests-http-server \
+	unittests-shell-client \
+	unittests-http-server \
+	unittests-shell-server-index
+
+
+unittests-verbose:
+	@echo "################################################################################"
+	@echo "##                                                                            ##"
+	@echo "## AvocadoDB Unit-Tests                                                       ##"
+	@echo "##                                                                            ##"
+	@echo "## > make unittests                                                           ##"
+	@echo "## > make unittests FORCE=1                                                   ##"
+	@echo "## > make unittests VALGRIND=valgrind                                         ##"
+	@echo "##                                                                            ##"
+	@echo "################################################################################"
+	@echo
+
+	@sleep 1
+
+################################################################################
+## start the avocado server
+################################################################################
+
+PID := $(shell echo $$PPID)
+PIDFILE := /tmp/avocado.$(PID).pid
+VOCDIR := /tmp/vocdir.$(PID)
+VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
+VOCHOST := 127.0.0.1
+SERVER_OPT := --startup.directory ./js --startup.modules-path ./js/server/modules:./js/common/modules --action.system-directory ./js/actions/system
+CLIENT_OPT := --startup.directory ./js --startup.modules-path ./js/client/modules:./js/common/modules --no-colors
+
+.PHONY: start-server
+
+start-server:
+	@echo
+	@echo "================================================================================"
+	@echo "|| STARTING SERVER                                                            ||"
+	@echo "================================================================================"
+	@echo
+
+	@rm -f "$(PIDFILE)"
+	@rm -rf "$(VOCDIR)"
+	@mkdir "$(VOCDIR)"
+
+	($(VALGRIND) @builddir@/avocado "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) --server.http-port $(VOCHOST):$(VOCPORT) && rm -rf "$(VOCDIR)") &
+
+	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
+	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
+	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
+	@curl -s http://$(VOCHOST):$(VOCPORT)/version > /dev/null || sleep 2
+
+	curl http://$(VOCHOST):$(VOCPORT)/version
+
+	@echo
+
+################################################################################
+## BOOST TESTS
+################################################################################
+
+.PHONY: unittests-boost
 
 if ENABLE_BOOST_TEST
 
-unittests:
-	@builddir@/UnitTests/test_suite --show_progress
+unittests-boost:
+	@echo
+	@echo "================================================================================"
+	@echo "|| BOOST TESTS                                                                ||"
+	@echo "================================================================================"
+	@echo
 
-else
+	$(VALGRIND) @builddir@/UnitTests/test_suite --show_progress || test "$(FORCE)" == "1"
 
-unittests:
-	@echo "enable unit-testing with 'configure --with-boost-test'"
+	@echo
 
-endif
-
-################################################################################
-## tests
-################################################################################
-
-if ENABLE_BOOST_TEST
+unittests-boost: UnitTests/test_suite
 
 noinst_PROGRAMS = UnitTests/test_suite
 
@@ -31,8 +98,139 @@ UnitTests_test_suite_DEPENDENCIES = @top_builddir@/libavocado.a
 
 UnitTests_test_suite_SOURCES = \
 	UnitTests/Runner.cpp \
+	UnitTests/Philadelphia/associative-pointer-test.cpp \
 	UnitTests/Philadelphia/string-buffer-test.cpp \
+	UnitTests/Philadelphia/string-utf8-test.cpp \
+	UnitTests/Philadelphia/vector-pointer-test.cpp \
+	UnitTests/Philadelphia/vector-test.cpp \
 	UnitTests/Jutland/StringBufferTest.cpp \
 	UnitTests/Jutland/StringUtilsTest.cpp
+
+else
+
+unittests-boost:
+	@echo
+	@echo "================================================================================"
+	@echo "|| BOOST TESTS                                                                ||"
+	@echo "================================================================================"
+	@echo
+
+	@echo "enable unit-testing with 'configure --with-boost-test'"
+
+	@echo
 endif
 
+################################################################################
+## SHELL SERVER TESTS (BASCIS)
+################################################################################
+
+SHELL_SERVER = @srcdir@/js/common/tests/shell-document.js \
+               @srcdir@/js/common/tests/shell-edge.js \
+               @srcdir@/js/common/tests/shell-collection.js
+
+.PHONY: unittests-shell-server
+
+UNITTESTS_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
+
+unittests-shell-server:
+	@echo
+	@echo "================================================================================"
+	@echo "|| SHELL SERVER TESTS (BASCIS)                                                ||"
+	@echo "================================================================================"
+	@echo
+
+	@rm -rf "$(VOCDIR)"
+	@mkdir "$(VOCDIR)"
+
+	$(VALGRIND) @builddir@/avocado "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "$(FORCE)" == "1"
+
+	@rm -rf "$(VOCDIR)"
+
+	@echo
+
+################################################################################
+## SHELL SERVER TESTS (INDEX)
+################################################################################
+
+SHELL_SERVER_INDEX = @srcdir@/js/server/tests/aql-index-primary.js \
+		     @srcdir@/js/server/tests/aql-index-hash.js \
+		     @srcdir@/js/server/tests/aql-index-skiplist.js \
+		     @srcdir@/js/server/tests/aql-simple.js \
+		     @srcdir@/js/server/tests/aql-keywords.js \
+		     @srcdir@/js/server/tests/aql-bind.js \
+		     @srcdir@/js/server/tests/aql-joins.js \
+		     @srcdir@/js/server/tests/aql-operators.js 
+
+.PHONY: unittests-shell-server-index
+
+UNITTESTS_SERVER_INDEX = $(addprefix --unit-tests ,$(SHELL_SERVER_INDEX))
+
+unittests-shell-server-index:
+	@echo
+	@echo "================================================================================"
+	@echo "|| SHELL SERVER TESTS (INDEX & QUERY)                                         ||"
+	@echo "================================================================================"
+	@echo
+
+	@rm -rf "$(VOCDIR)"
+	@mkdir "$(VOCDIR)"
+
+	$(VALGRIND) @builddir@/avocado "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_INDEX) || test "$(FORCE)" == "1"
+
+	@rm -rf "$(VOCDIR)"
+
+	@echo
+
+################################################################################
+## SHELL CLIENT TESTS
+################################################################################
+
+SHELL_CLIENT = @srcdir@/js/common/tests/shell-document.js \
+               @srcdir@/js/common/tests/shell-edge.js \
+               @srcdir@/js/common/tests/shell-collection.js
+
+.PHONY: unittests-shell-client
+
+UNITTESTS_CLIENT = $(addprefix --unit-tests ,$(SHELL_CLIENT))
+
+unittests-shell-client:
+	$(MAKE) start-server PID=$(PID)
+
+	@echo
+	@echo "================================================================================"
+	@echo "|| SHELL CLIENT TESTS                                                         ||"
+	@echo "================================================================================"
+	@echo
+
+	$(VALGRIND) @builddir@/avocsh $(CLIENT_OPT) --server $(VOCHOST):$(VOCPORT) "$(VOCDIR)" $(UNITTESTS_CLIENT) || test "$(FORCE)" == "1"
+
+	kill `cat $(PIDFILE)`
+	while test -f $(PIDFILE); do sleep 1; done
+
+	@rm -rf "$(VOCDIR)"
+
+	@echo
+
+################################################################################
+## HTTP SERVER TESTS
+################################################################################
+
+.PHONY: unittests-http-server
+
+unittests-http-server:
+	$(MAKE) start-server PID=$(PID)
+
+	@echo
+	@echo "================================================================================"
+	@echo "|| HTTP SERVER TESTS                                                          ||"
+	@echo "================================================================================"
+	@echo
+
+	cd @srcdir@/UnitTests/HttpInterface && AVOCADO_SERVER="$(VOCHOST):$(VOCPORT)" ./run_tests || test "$(FORCE)" == "1"
+
+	kill `cat $(PIDFILE)`
+	while test -f $(PIDFILE); do sleep 1; done
+
+	@rm -rf "$(VOCDIR)"
+
+	@echo

@@ -112,6 +112,10 @@ TRI_vector_t* TRI_CopyVector (TRI_vector_t* vector) {
   TRI_vector_t* copy;
 
   copy = TRI_Allocate(sizeof(TRI_vector_t));
+  if (!copy) {
+    return NULL;
+  }
+
   copy->_elementSize = vector->_elementSize;
 
   if (vector->_capacity == 0) {
@@ -121,6 +125,11 @@ TRI_vector_t* TRI_CopyVector (TRI_vector_t* vector) {
   }
   else {
     copy->_buffer = TRI_Allocate(vector->_length * vector->_elementSize);
+    if (!copy->_buffer) {
+      TRI_Free(copy);
+      return NULL;
+    }
+
     copy->_capacity = vector->_length;
     copy->_length = vector->_length;
 
@@ -156,10 +165,15 @@ void TRI_ResizeVector (TRI_vector_t* vector, size_t n) {
   }
 
   if (vector->_capacity < n) {
-    char * newBuffer;
+    char* newBuffer;
+    size_t newSize = n;
+
+    newBuffer = (char*) TRI_Allocate(newSize * vector->_elementSize);
+    if (!newBuffer) {
+      // TODO FIXME: handle memory allocation failure */
+    }
 
     vector->_capacity = n;
-    newBuffer = (char*) TRI_Allocate(vector->_capacity * vector->_elementSize);
 
     if (vector->_buffer != NULL) {
       memcpy(newBuffer, vector->_buffer, vector->_length * vector->_elementSize);
@@ -178,10 +192,15 @@ void TRI_ResizeVector (TRI_vector_t* vector, size_t n) {
 
 void TRI_PushBackVector (TRI_vector_t* vector, void const* element) {
   if (vector->_length == vector->_capacity) {
-    char * newBuffer;
+    char* newBuffer;
+    size_t newSize = (size_t) (1 + GROW_FACTOR * vector->_capacity);
 
-    vector->_capacity = (size_t)(1 + GROW_FACTOR * vector->_capacity);
-    newBuffer = (char*) TRI_Allocate(vector->_capacity * vector->_elementSize);
+    newBuffer = (char*) TRI_Allocate(newSize * vector->_elementSize);
+    if (!newBuffer) {
+      // TODO FIXME: handle memory allocation failure */
+    }
+
+    vector->_capacity = newSize;
 
     if (vector->_buffer != NULL) {
       memcpy(newBuffer, vector->_buffer, vector->_length * vector->_elementSize);
@@ -192,6 +211,7 @@ void TRI_PushBackVector (TRI_vector_t* vector, void const* element) {
   }
 
   memcpy(vector->_buffer + vector->_length * vector->_elementSize, element, vector->_elementSize);
+
   vector->_length++;
 }
 
@@ -216,7 +236,11 @@ void TRI_RemoveVector (TRI_vector_t* vector, size_t n) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_AtVector (TRI_vector_t const* vector, size_t pos) {
-  return (void*)(vector->_buffer + pos * vector->_elementSize);
+  if (pos >= vector->_length) {
+    return 0;
+  }
+
+  return (void*) (vector->_buffer + pos * vector->_elementSize);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -224,11 +248,13 @@ void* TRI_AtVector (TRI_vector_t const* vector, size_t pos) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SetVector (TRI_vector_t* vector, size_t pos, void const* element) {
-  memcpy((void*)(vector->_buffer + pos * vector->_elementSize), element, vector->_elementSize);
+  if (pos < vector->_length) {
+    memcpy((void*)(vector->_buffer + pos * vector->_elementSize), element, vector->_elementSize);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the begining
+/// @brief returns the beginning
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_BeginVector (TRI_vector_t* vector) {
@@ -236,7 +262,7 @@ void* TRI_BeginVector (TRI_vector_t* vector) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the end
+/// @brief returns the end (pointer after the last element)
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_EndVector (TRI_vector_t* vector) {
@@ -324,6 +350,7 @@ TRI_vector_pointer_t* TRI_CopyVectorPointer (TRI_vector_pointer_t* vector) {
       TRI_Free(copy);
       return NULL;
     }
+
     copy->_capacity = vector->_length;
     copy->_length = vector->_length;
 
@@ -375,9 +402,14 @@ void TRI_ResizeVectorPointer (TRI_vector_pointer_t* vector, size_t n) {
 
   if (vector->_capacity < n) {
     void* newBuffer;
+    size_t newSize = n;
 
-    vector->_capacity = n;
-    newBuffer = TRI_Allocate(vector->_capacity * sizeof(void*));
+    newBuffer = TRI_Allocate(newSize * sizeof(void*));
+    if (!newBuffer) {
+      // TODO FIXME: handle memory allocation failure */
+    }
+
+    vector->_capacity = newSize;
 
     if (vector->_buffer != NULL) {
       memcpy(newBuffer, vector->_buffer, vector->_length * sizeof(void*));
@@ -397,9 +429,14 @@ void TRI_ResizeVectorPointer (TRI_vector_pointer_t* vector, size_t n) {
 void TRI_PushBackVectorPointer (TRI_vector_pointer_t* vector, void* element) {
   if (vector->_length == vector->_capacity) {
     void* newBuffer;
+    size_t newSize = (size_t) (1 + GROW_FACTOR * vector->_capacity);
 
-    vector->_capacity = (size_t)(1 + GROW_FACTOR * vector->_capacity);
-    newBuffer = (char*) TRI_Allocate(vector->_capacity * sizeof(void*));
+    newBuffer = TRI_Allocate(newSize * sizeof(void*));
+    if (!newBuffer) {
+      // TODO FIXME: handle memory allocation failure */
+    }
+
+    vector->_capacity = newSize;
 
     if (vector->_buffer != NULL) {
       memcpy(newBuffer, vector->_buffer, vector->_length * sizeof(void*));
@@ -413,18 +450,24 @@ void TRI_PushBackVectorPointer (TRI_vector_pointer_t* vector, void* element) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts an element at position n
+/// @brief inserts an element at position n, shifting the following elements
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InsertVectorPointer (TRI_vector_pointer_t* vector, void* element, size_t n) {
-  if (n >= vector->_capacity) {
+  if (vector->_length >= vector->_capacity) {
     void* newBuffer;
+    size_t newSize = (size_t) (1 + GROW_FACTOR * vector->_capacity);
 
-    vector->_capacity = (size_t)(1 + GROW_FACTOR * vector->_capacity);
-    if (n >= vector->_capacity) {
-      vector->_capacity = n + 1;
+    if (n >= newSize) {
+      newSize = n + 1;
     }
-    newBuffer = (char**) TRI_Allocate(vector->_capacity * sizeof(void*));
+
+    newBuffer = TRI_Allocate(newSize * sizeof(void*));
+    if (!newBuffer) {
+      // TODO FIXME: handle memory allocation failure */
+    }
+
+    vector->_capacity = newSize;
 
     if (vector->_buffer != NULL) {
       memcpy(newBuffer, vector->_buffer, vector->_length * sizeof(void*));
@@ -434,13 +477,20 @@ void TRI_InsertVectorPointer (TRI_vector_pointer_t* vector, void* element, size_
     vector->_buffer = newBuffer;
   }
 
-  if (n != vector->_length) {
+  if (n < vector->_length) {
     memmove(vector->_buffer + n + 1, 
             vector->_buffer + n, 
             sizeof(void*) * (vector->_length - n));
   }
-  vector->_length++;
+  
   vector->_buffer[n] = element;
+
+  if (n > vector->_length) {
+    vector->_length = n + 1;
+  } 
+  else {
+    ++vector->_length;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -465,6 +515,18 @@ void* TRI_RemoveVectorPointer (TRI_vector_pointer_t* vector, size_t n) {
   }
 
   return old;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the element at a given position
+////////////////////////////////////////////////////////////////////////////////
+
+void* TRI_AtVectorPointer (TRI_vector_pointer_t const* vector, size_t pos) {
+  if (pos >= vector->_length) {
+    return 0;
+  }
+
+  return vector->_buffer[pos];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -545,6 +607,9 @@ TRI_vector_string_t* TRI_CopyVectorString (TRI_vector_string_t* vector) {
   char** qtr;
 
   copy = TRI_Allocate(sizeof(TRI_vector_t));
+  if (!copy) {
+    return NULL;
+  }
 
   if (vector->_capacity == 0) {
     copy->_buffer = NULL;
@@ -553,6 +618,11 @@ TRI_vector_string_t* TRI_CopyVectorString (TRI_vector_string_t* vector) {
   }
   else {
     copy->_buffer = TRI_Allocate(vector->_length * sizeof(char*));
+    if (!copy->_buffer) {
+      TRI_Free(copy);
+      return NULL;
+    }
+
     copy->_capacity = vector->_length;
     copy->_length = vector->_length;
 
@@ -562,6 +632,7 @@ TRI_vector_string_t* TRI_CopyVectorString (TRI_vector_string_t* vector) {
 
     for (;  ptr < end;  ++ptr, ++qtr) {
       *qtr = TRI_DuplicateString(*ptr);
+      // TODO FIXME: handle memory allocation failure
     }
   }
 
@@ -595,9 +666,14 @@ void TRI_ResizeVectorString (TRI_vector_string_t* vector, size_t n) {
 
   if (vector->_capacity < n) {
     void* newBuffer;
+    size_t newSize = n;
+
+    newBuffer = TRI_Allocate(newSize * sizeof(char*));
+    if (!newBuffer) {
+      // TODO FIXME: handle memory allocation failure
+    }
 
     vector->_capacity = n;
-    newBuffer = TRI_Allocate(vector->_capacity * sizeof(char*));
 
     if (vector->_buffer != NULL) {
       memcpy(newBuffer, vector->_buffer, vector->_length * sizeof(char*));
@@ -617,9 +693,13 @@ void TRI_ResizeVectorString (TRI_vector_string_t* vector, size_t n) {
 void TRI_PushBackVectorString (TRI_vector_string_t* vector, char* element) {
   if (vector->_length == vector->_capacity) {
     char** newBuffer;
+    size_t newSize = (size_t) (1 + GROW_FACTOR * vector->_capacity);
 
-    vector->_capacity = (size_t)(1 + GROW_FACTOR * vector->_capacity);
-    newBuffer = (char**) TRI_Allocate(vector->_capacity * sizeof(char*));
+    newBuffer = (char**) TRI_Allocate(newSize * sizeof(char*));
+    if (!newBuffer) {
+      // TODO FIXME: handle memory allocation failure
+    }
+    vector->_capacity = newSize;
 
     if (vector->_buffer != NULL) {
       memcpy(newBuffer, vector->_buffer, vector->_length * sizeof(char*));
@@ -639,12 +719,18 @@ void TRI_PushBackVectorString (TRI_vector_string_t* vector, char* element) {
 void TRI_InsertVectorString (TRI_vector_string_t* vector, char* element, size_t n) {
   if (n >= vector->_capacity) {
     char** newBuffer;
+    size_t newSize = (size_t) (1 + GROW_FACTOR * vector->_capacity);
 
-    vector->_capacity = (size_t)(1 + GROW_FACTOR * vector->_capacity);
-    if (n >= vector->_capacity) {
-      vector->_capacity = n + 1;
+    if (n >= newSize) {
+      newSize = n + 1;
     }
-    newBuffer = (char**) TRI_Allocate(vector->_capacity * sizeof(char*));
+
+    newBuffer = (char**) TRI_Allocate(newSize * sizeof(char*));
+    if (!newBuffer) {
+      // TODO FIXME: handle memory allocation failure
+    }
+
+    vector->_capacity = newSize;
 
     if (vector->_buffer != NULL) {
       memcpy(newBuffer, vector->_buffer, vector->_length * sizeof(char*));

@@ -42,26 +42,29 @@
 /// @page CommandLineLoggingTOC
 ///
 /// <ol>
-///  <li>General Logging Options</li>
+///  <li>@ref CommandLineLoggingGeneral
 ///   <ol>
-///    <li>log.file</li>
-///    <li>log.severity</li>
-///    <li>log.syslog</li>
+///    <li>@ref CommandLineLoggingLogFile "log.file"</li>
+///    <li>@ref CommandLineLoggingLogSeverity "log.severity"</li>
+///    <li>@ref CommandLineLoggingLogSyslog "log.syslog"</li>
 ///   </ol>
-///  <li>Human Readable Logging</li>
+///  </li>
+///  <li>@ref CommandLineLoggingHuman
 ///   <ol>
-///    <li>log.level</li>
-///    <li>log.line-number</li>
-///    <li>log.prefix</li>
-///    <li>log.thread</li>
+///    <li>@ref CommandLineLoggingLogLevel "log.level"</li>
+///    <li>@ref CommandLineLoggingLogLineNumber "log.line-number"</li>
+///    <li>@ref CommandLineLoggingLogPrefix "log.prefix"</li>
+///    <li>@ref CommandLineLoggingLogThread "log.thread"</li>
 ///   </ol>
-///  <li>Machine Readable Logging</li>
+///  </li>
+///  <li>@ref CommandLineLoggingMachine
 ///   <ol>
-///    <li>log.application</li>
-///    <li>log.facility</li>
-///    <li>log.format</li>
-///    <li>log.hostname</li>
+///    <li>@ref CommandLineLoggingLogApplication "log.application"</li>
+///    <li>@ref CommandLineLoggingLogFacility "log.facility"</li>
+///    <li>@ref CommandLineLoggingLogFormat "log.format"</li>
+///    <li>@ref CommandLineLoggingLogHostName "log.hostname"</li>
 ///   </ol>
+///  </li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -78,42 +81,64 @@
 /// @copydoc CommandLineLoggingTOC
 /// <hr>
 ///
-/// @section GeneralLogging General Logging Options
+/// @section CommandLineLoggingGeneral General Logging Options
+//////////////////////////////////////////////////////////////
 ///
+/// @anchor CommandLineLoggingLogFile
 /// @copydetails triagens::rest::ApplicationServerImpl::logFile
+/// <hr>
 ///
+/// @anchor CommandLineLoggingLogSeverity
 /// @copydetails triagens::rest::ApplicationServerImpl::logSeverity
+/// <hr>
 ///
+/// @anchor CommandLineLoggingLogSyslog
 /// @copydetails triagens::rest::ApplicationServerImpl::logSyslog
 ///
-/// @section HumanReadableLogging Human Readable Logging
+/// @section CommandLineLoggingHuman Human Readable Logging
+///////////////////////////////////////////////////////////
 ///
+/// @anchor CommandLineLoggingLogLevel
 /// @copydetails triagens::rest::ApplicationServerImpl::logLevel
+/// <hr>
 ///
+/// @anchor CommandLineLoggingLogLineNumber
 /// @copydetails triagens::rest::ApplicationServerImpl::logLineNumber
+/// <hr>
 ///
+/// @anchor CommandLineLoggingLogPrefix
 /// @copydetails triagens::rest::ApplicationServerImpl::logPrefix
+/// <hr>
 ///
+/// @anchor CommandLineLoggingLogThread
 /// @copydetails triagens::rest::ApplicationServerImpl::logThreadId
+/// <hr>
 ///
-/// @section MaschineReadableLogging Maschine Readable Logging
+/// @section CommandLineLoggingMachine Maschine Readable Logging
+////////////////////////////////////////////////////////////////
 ///
+/// @anchor CommandLineLoggingLogApplication
 /// @copydetails triagens::rest::ApplicationServerImpl::logApplicationName
+/// <hr>
 ///
+/// @anchor CommandLineLoggingLogFacility
 /// @copydetails triagens::rest::ApplicationServerImpl::logFacility
+/// <hr>
 ///
+/// @anchor CommandLineLoggingLogFormat
 /// @copydetails triagens::rest::ApplicationServerImpl::logFormat
+/// <hr>
 ///
+/// @anchor CommandLineLoggingLogHostName
 /// @copydetails triagens::rest::ApplicationServerImpl::logHostName
-///
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page CommandLineRandomTOC
 ///
 /// <ol>
-///  <li>random.generator</li>
-///  <li>random.no-seed</li>
+///  <li>@ref CommandLineRandomGenerator "random.generator"</li>
+///  <li>@ref CommandLineRandomGenerator "random.no-seed"</li>
 /// </ol>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -124,6 +149,7 @@
 /// @copydoc CommandLineRandomTOC
 /// <hr>
 ///
+/// @anchor CommandLineRandomGenerator
 /// @copydetails triagens::rest::ApplicationServerImpl::randomGenerator
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -272,6 +298,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         vector<ApplicationFeature*> features;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief exit on parent death
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _exitOnParentDeath;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief watch parent
+////////////////////////////////////////////////////////////////////////////////
+
+        int _watchParent;
 
       private:
         bool readConfigurationFile ();
@@ -519,7 +557,7 @@ namespace triagens {
 /// @CMDOPT{--log.severity @CA{severity}}
 ///
 /// This parameter provides a set of standard log severities which can be
-/// used. The current arguments accepted are:
+/// used. The currently accepted @CA{severities} are:
 ///
 /// - exception
 /// - technical
@@ -626,6 +664,8 @@ namespace triagens {
 /// number generator using an implication of the Mersenne Twister MT19937
 /// algorithm. Algorithm 4 is a combination of the blocking random number
 /// generator and the Mersenne Twister.
+///
+/// <hr>
 ///
 /// @CMDOPT{--random.no-seed}
 ///

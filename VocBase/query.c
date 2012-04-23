@@ -113,7 +113,7 @@ TRI_qry_select_t* TRI_CreateQuerySelectDocument () {
   TRI_qry_select_direct_t* result;
 
   result = TRI_Allocate(sizeof(TRI_qry_select_direct_t));
-
+  
   result->base._type = TRI_QRY_SELECT_DOCUMENT;
 
   result->base.clone = CloneQuerySelectDocument;
@@ -336,6 +336,45 @@ static bool ToJavaScriptHashDocument (TRI_qry_select_t* s,
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_rc_result_t* NextHashCollectionCursor (TRI_rc_cursor_t* c) {
+  collection_cursor_t* cursor;
+
+  cursor = (collection_cursor_t*) c;
+ 
+  if (cursor->_currentRow == cursor->_length) {
+    return NULL;
+  }  
+
+  cursor->_current = &(cursor->_documents[cursor->_currentRow]);
+  cursor->_result._dataPtr = (TRI_sr_documents_t*) (cursor->_current);
+  ++(cursor->_currentRow);
+ 
+  return &cursor->_result;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+static bool ToJavaScriptPQDocument (TRI_qry_select_t* s,
+                                    TRI_rc_result_t* result,
+                                    void* storage) {
+
+  TRI_doc_mptr_t* document;
+  TRI_doc_collection_t* collection;  
+
+  collection = result->_context->_primary;  
+
+  document = (TRI_doc_mptr_t*) result->_dataPtr;
+  return TRI_ObjectDocumentPointer(collection, document, storage);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_rc_result_t* NextPQCollectionCursor (TRI_rc_cursor_t* c) {
   collection_cursor_t* cursor;
 
   cursor = (collection_cursor_t*) c;
@@ -763,6 +802,18 @@ static TRI_qry_where_t* CloneQueryWhereHashConstant (const TRI_qry_where_t* w) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief clones a query condition - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_qry_where_t* CloneQueryWherePQConstant (const TRI_qry_where_t* w) {
+  TRI_qry_where_priorityqueue_const_t* whereClause;
+
+  whereClause = (TRI_qry_where_priorityqueue_const_t*) w;
+
+  return TRI_CreateQueryWherePQConstant(whereClause->_iid, whereClause->_parameters);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -802,14 +853,24 @@ static void FreeQueryWhereHashConstant (TRI_qry_where_t* w) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief frees a query condition priority queue - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeQueryWherePQConstant (TRI_qry_where_t* w) {
+  TRI_qry_where_priorityqueue_const_t* whereClause;
+  whereClause = (TRI_qry_where_priorityqueue_const_t*) w;
+  TRI_FreeJson(whereClause->_parameters);
+  TRI_Free(whereClause);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeQueryWhereSkiplistConstant (TRI_qry_where_t* w) {
   TRI_qry_where_skiplist_const_t* whereClause;
   whereClause = (TRI_qry_where_skiplist_const_t*) w;
-  ClearSLOperator(whereClause->_operator);
-  TRI_Free(whereClause->_operator);
+  TRI_FreeSLOperator(whereClause->_operator);
 }
 
 static void FreeQueryWhereWithinConstant (TRI_qry_where_t* w) {
@@ -904,7 +965,23 @@ TRI_qry_where_t* TRI_CreateQueryWhereHashConstant (TRI_idx_iid_t iid, TRI_json_t
   result = TRI_Allocate(sizeof(TRI_qry_where_hash_const_t));
   result->base._type  = TRI_QRY_WHERE_HASH_CONSTANT;
   result->base.clone  = CloneQueryWhereHashConstant;
-  result->base.free   =  FreeQueryWhereHashConstant;
+  result->base.free   = FreeQueryWhereHashConstant;
+  result->_iid        = iid;
+  result->_parameters = TRI_CopyJson(parameters);
+  return &result->base;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a query condition for priority queue index - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_qry_where_t* TRI_CreateQueryWherePQConstant (TRI_idx_iid_t iid, TRI_json_t* parameters) {
+  TRI_qry_where_priorityqueue_const_t* result;
+  result = TRI_Allocate(sizeof(TRI_qry_where_priorityqueue_const_t));
+  result->base._type  = TRI_QRY_WHERE_PRIORITY_QUEUE_CONSTANT;
+  result->base.clone  = CloneQueryWherePQConstant;
+  result->base.free   = FreeQueryWherePQConstant;
   result->_iid        = iid;
   result->_parameters = TRI_CopyJson(parameters);
   return &result->base;
@@ -949,8 +1026,7 @@ TRI_qry_where_t* TRI_CreateQueryWhereSkiplistConstant (TRI_idx_iid_t iid, TRI_sl
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool InitCollectionsQuery (TRI_query_t* query) {
-  TRI_join_part_t* part;
-  TRI_vocbase_col_t const* collection;
+  TRI_vocbase_col_t* collection;
   size_t i;
 
 #warning FIX TRI_LoadCollectionVocBase => TRI_UseCollectionByNameVocBase & TRI_ReleaseCollectionVocBase
@@ -959,16 +1035,28 @@ static bool InitCollectionsQuery (TRI_query_t* query) {
   assert(query->_vocbase);
 
   for (i = 0 ; i < query->_joins->_parts._length; i++) {
+    TRI_join_part_t* part;
+
     part = (TRI_join_part_t*) query->_joins->_parts._buffer[i];
     assert(part->_collection == NULL);
     assert(part->_alias);
-    collection = TRI_LoadCollectionVocBase(query->_vocbase, part->_collectionName);
+    collection = TRI_UseCollectionByNameVocBase(query->_vocbase, part->_collectionName);
     if (!collection) {
+      size_t j;
+
+      // unlock collections again
+      for (j = 0; j < i; ++j) {
+        part = (TRI_join_part_t*) query->_joins->_parts._buffer[j];
+        if (part->_collection) {
+          TRI_ReleaseCollectionVocBase(query->_vocbase, part->_collection);
+          part->_collection = NULL; 
+        }
+      }
       return false;
     }
-    part->_collection = (TRI_doc_collection_t*) collection->_collection;
+    part->_collection = collection;
     if (part->_type == JOIN_TYPE_PRIMARY) {
-      query->_primary = part->_collection;
+      query->_primary = collection->_collection;
     }
   }
 #endif
@@ -982,6 +1070,28 @@ static bool InitCollectionsQuery (TRI_query_t* query) {
 
 TRI_query_t* TRI_CreateHashQuery(const TRI_qry_where_t* whereStmt,
                                  TRI_doc_collection_t* collection) {
+  TRI_query_t* query;
+
+  query = TRI_Allocate(sizeof(TRI_query_t));
+  if (!query) {
+    return NULL;
+  }
+  
+  query->_where       = ( whereStmt == NULL ? NULL : whereStmt->clone(whereStmt));
+  query->_skip        = TRI_QRY_NO_SKIP;
+  query->_limit       = TRI_QRY_NO_LIMIT;
+  query->_primary     = collection;
+  query->_joins       = NULL;
+  query->_select      = TRI_CreateQuerySelectDocument();  
+  return query;                               
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a priority queue query - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_query_t* TRI_CreatePriorityQueueQuery(const TRI_qry_where_t* whereStmt,
+                                          TRI_doc_collection_t* collection) {
   TRI_query_t* query;
 
   query = TRI_Allocate(sizeof(TRI_query_t));
@@ -1064,6 +1174,17 @@ void TRI_FreeQuery (TRI_query_t* query) {
     query->_where->free(query->_where);
   }
   if (query->_joins != NULL) {
+    TRI_join_part_t* part;
+    size_t i;
+
+    // unlock collections 
+    for (i = 0; i < query->_joins->_parts._length; ++i) {
+      part = (TRI_join_part_t*) query->_joins->_parts._buffer[i];
+      if (part->_collection) {
+        TRI_ReleaseCollectionVocBase(query->_vocbase, part->_collection);
+      }
+    }
+
     query->_joins->free(query->_joins);
   }
 
@@ -1160,7 +1281,7 @@ void TRI_ReadLockCollectionsQuery (TRI_query_t* query) {
   for (i = 0; i < query->_joins->_parts._length; i++) {
     part = (TRI_join_part_t*) query->_joins->_parts._buffer[i];
     assert(part->_collection);
-    part->_collection->beginRead(part->_collection);
+    part->_collection->_collection->beginRead(part->_collection->_collection);
   }
 }
 
@@ -1183,7 +1304,7 @@ void TRI_ReadUnlockCollectionsQuery (TRI_query_t* query) {
     i--;
     part = (TRI_join_part_t*) query->_joins->_parts._buffer[i];
     assert(part->_collection);
-    part->_collection->endRead(part->_collection);
+    part->_collection->_collection->endRead(part->_collection->_collection);
   }
 }
 
@@ -1207,7 +1328,7 @@ void TRI_AddCollectionsCursor (TRI_rc_cursor_t* cursor, TRI_query_t* query) {
   for (i = 0; i < query->_joins->_parts._length; i++) {
     part = (TRI_join_part_t*) query->_joins->_parts._buffer[i];
     assert(part->_collection);
-    ce = TRI_CreateBarrierElement(&part->_collection->_barrierList);
+    ce = TRI_CreateBarrierElement(&part->_collection->_collection->_barrierList);
     TRI_PushBackVectorPointer(&cursor->_containers, ce);
   }
 }
@@ -1322,6 +1443,105 @@ static void FilterDataHashQuery(collection_cursor_t* cursor,TRI_query_t* query,
     
 }
 
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a query - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+static void FilterDataPQQuery(collection_cursor_t* cursor,TRI_query_t* query, 
+                              TRI_rc_context_t* context) {
+  
+  bool ok;  
+  TRI_index_t* idx;
+  TRI_qry_where_priorityqueue_const_t* where;
+  TRI_sim_collection_t* collection; 
+  PQIndexElements* pqElements;
+  TRI_doc_mptr_t* wtr; 
+  TRI_doc_mptr_t* doc;
+  size_t j;
+  
+  cursor->base._context = context;
+  cursor->base._select  = query->_select->clone(query->_select);
+   
+  cursor->base.next     = NextPQCollectionCursor;
+  cursor->base.hasNext  = HasNextCollectionCursor;
+  cursor->base.free     = FreeCollectionCursor;
+  cursor->_result._selectResult = NULL;
+  
+  cursor->_result._context = context;
+  cursor->_result._dataPtr = NULL;
+   
+  cursor->base._select->toJavaScript = ToJavaScriptPQDocument; 
+
+  TRI_InitVectorPointer(&cursor->base._containers);
+  
+  TRI_ReadLockCollectionsQuery(query);
+
+  TRI_AddCollectionsCursor(&cursor->base, query);
+
+  
+  ok = (query->_primary->base._type == TRI_COL_TYPE_SIMPLE_DOCUMENT);
+  
+  if (ok) {
+    where = (TRI_qry_where_priorityqueue_const_t*)(query->_where);
+    ok = (where->base._type == TRI_QRY_WHERE_PRIORITY_QUEUE_CONSTANT);
+  }
+  
+  if (ok) {
+    collection = (TRI_sim_collection_t*) query->_primary;
+    idx = TRI_IndexSimCollection(collection, where->_iid);
+    ok = (idx != NULL);
+  }  
+
+  if (ok) {
+    pqElements = TRI_LookupPriorityQueueIndex(idx,where->_parameters);
+    ok = (pqElements != NULL);
+  }
+  
+  
+  if (ok) {
+    cursor->_documents = (TRI_doc_mptr_t*) (TRI_Allocate(sizeof(TRI_doc_mptr_t) * pqElements->_numElements));
+
+    wtr                            = cursor->_documents;
+    cursor->_length                = 0;
+    cursor->base._matchedDocuments = 0;
+    cursor->_current               = 0;
+    cursor->_currentRow            = 0;
+    
+    for (j = 0; j < pqElements->_numElements; ++j) {
+      // should not be necessary to check that documents have not been deleted    
+      doc = (TRI_doc_mptr_t*)((pqElements->_elements[j]).data);
+      if (doc->_deletion) {
+        continue;
+      }
+      if (cursor->_current == 0) {
+        cursor->_current = wtr;
+      }
+      ++cursor->base._matchedDocuments;
+      ++cursor->_length;
+      *wtr = *doc;
+      ++wtr;
+    }
+    
+    
+    if (pqElements->_elements != NULL) {
+      TRI_Free(pqElements->_elements);
+      TRI_Free(pqElements);
+    }
+  }
+  
+  TRI_ReadUnlockCollectionsQuery(query);
+  
+  if (!ok) {
+    cursor->_length = 0; 
+    cursor->_currentRow = 0;
+  }
+    
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
@@ -1407,7 +1627,6 @@ TRI_rc_cursor_t* TRI_ExecuteQueryAql (TRI_query_t* query, TRI_rc_context_t* cont
   limit = query->_limit;
   applyPostSkipLimit = false;
 
-
   if (limit < 0) {
     limit = TRI_QRY_NO_LIMIT;
     skip = 0;
@@ -1419,7 +1638,9 @@ TRI_rc_cursor_t* TRI_ExecuteQueryAql (TRI_query_t* query, TRI_rc_context_t* cont
   where = 0;
 
   if (query->_where != NULL) {
+  
     where = query->_where;
+    
     if (where->_type == TRI_QRY_WHERE_BOOLEAN) {
       TRI_qry_where_boolean_t* b;
       b = (TRI_qry_where_boolean_t*) where;
@@ -1428,12 +1649,15 @@ TRI_rc_cursor_t* TRI_ExecuteQueryAql (TRI_query_t* query, TRI_rc_context_t* cont
       }
       where = NULL;
     }
+    
     else if (where->_type == TRI_QRY_WHERE_PRIMARY_CONSTANT) {
       assert(false);
     }
+    
     else if (where->_type == TRI_QRY_WHERE_WITHIN_CONSTANT) {
       assert(false);
     }
+    
     else if (where->_type == TRI_QRY_WHERE_HASH_CONSTANT) {
       cursor = TRI_Allocate(sizeof(collection_cursor_t));
       if (cursor == NULL) {
@@ -1442,6 +1666,16 @@ TRI_rc_cursor_t* TRI_ExecuteQueryAql (TRI_query_t* query, TRI_rc_context_t* cont
       FilterDataHashQuery(cursor,query,context);
       return &cursor->base;
     }
+    
+    else if (where->_type == TRI_QRY_WHERE_PRIORITY_QUEUE_CONSTANT) {
+      cursor = TRI_Allocate(sizeof(collection_cursor_t));
+      if (cursor == NULL) {
+        return NULL;
+      }
+      FilterDataPQQuery(cursor,query,context);
+      return &cursor->base;
+    }
+    
     else if (where->_type == TRI_QRY_WHERE_SKIPLIST_CONSTANT) {
       cursor = TRI_Allocate(sizeof(collection_cursor_t));
       if (cursor == NULL) {

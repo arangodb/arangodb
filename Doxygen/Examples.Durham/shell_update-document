@@ -1,0 +1,10 @@
+avocado> a1 = db.example.save({ a : 1 });
+{ "_id" : "1432124/3903044", "_rev" : 3903044 }
+avocado> a2 = db.example.replace(a1, { a : 2 });
+{ "_id" : "1432124/3903044", "_rev" : 3968580, "_oldRev" : 3903044 }
+avocado> a3 = db.example.replace(a1, { a : 3 });
+JavaScript exception in file '(avocado)' at 1,17: [AvocadoError 1200: conflict: cannot replace document]
+!a3 = db.example.replace(a1, { a : 3 })
+!                ^
+avocado> a4 = db.example.replace(a1, { a : 4 }, true);
+{ "_id" : "1432124/3903044", "_rev" : 4034116, "_oldRev" : 3968580 }

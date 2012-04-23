@@ -197,6 +197,16 @@ namespace triagens {
       ////////////////////////////////////////////////////////////////////////////////
       
       int getPort ();
+      
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief get the simple http client
+      ///
+      /// @return triagens::httpclient::SimpleHttpClient*    then client connection
+      ////////////////////////////////////////////////////////////////////////////////
+            
+      triagens::httpclient::SimpleHttpClient* getHttpClient() {
+        return _client;
+      }
 
     private:
       

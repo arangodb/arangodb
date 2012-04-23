@@ -1,10 +1,11 @@
-> curl -X GET '-H if-match: "13276833"' --dump - http://localhost:8529/document/169634/13276834
+> curl --data @- -X PUT '-H if-match: "30050093"' --dump - http://localhost:8529/document/73482/30050094
+{ "World" : "Hallo" }
 
 HTTP/1.1 412 Precondition Failed
 content-type: application/json; charset=utf-8
 
 {
-  "_rev": 13276834,
-  "_id": "169634/13276834",
+  "_rev": 30050094,
+  "_id": "73482/30050094",
   "error": true
 }

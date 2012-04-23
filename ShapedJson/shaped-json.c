@@ -32,6 +32,7 @@
 #include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/string-buffer.h"
+#include "BasicsC/strings.h"
 #include "BasicsC/vector.h"
 #include "ShapedJson/json-shaper.h"
 
@@ -369,6 +370,7 @@ static bool FillShapeValueBoolean (TRI_shaper_t* shaper, TRI_shape_value_t* dst,
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_boolean_t);
   dst->_value = (char*)(ptr = TRI_Allocate(dst->_size));
+  /* TODO FIXME: memory allocation might fail */
 
   *ptr = json->_value._boolean ? 1 : 0;
 
@@ -387,6 +389,7 @@ static bool FillShapeValueNumber (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_number_t);
   dst->_value = (char*)(ptr = TRI_Allocate(dst->_size));
+  /* TODO FIXME: memory allocation might fail */
 
   *ptr = json->_value._number;
 
@@ -406,6 +409,7 @@ static bool FillShapeValueString (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
     dst->_fixedSized = true;
     dst->_size = sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT;
     dst->_value = (ptr = TRI_Allocate(dst->_size));
+    /* TODO FIXME: memory allocation might fail */
 
     * ((TRI_shape_length_short_string_t*) ptr) = json->_value._string.length;
 
@@ -419,6 +423,7 @@ static bool FillShapeValueString (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
     dst->_fixedSized = false;
     dst->_size = sizeof(TRI_shape_length_long_string_t) + json->_value._string.length;
     dst->_value = (ptr = TRI_Allocate(dst->_size));
+    /* TODO FIXME: memory allocation might fail */
 
     * ((TRI_shape_length_long_string_t*) ptr) = json->_value._string.length;
 
@@ -470,6 +475,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
     dst->_fixedSized = false;
     dst->_size = sizeof(TRI_shape_length_list_t);
     dst->_value = (ptr = TRI_Allocate(dst->_size));
+    /* TODO FIXME: memory allocation might fail */
 
     * (TRI_shape_length_list_t*) ptr = 0;
 
@@ -478,6 +484,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
 
   // convert into TRI_shape_value_t array
   p = (values = TRI_Allocate(sizeof(TRI_shape_value_t) * n));
+  /* TODO FIXME: memory allocation might fail */
   memset(values, 0, sizeof(TRI_shape_value_t) * n);
 
   total = 0;
@@ -526,6 +533,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
     TRI_homogeneous_sized_list_shape_t* shape;
 
     shape = TRI_Allocate(sizeof(TRI_homogeneous_sized_list_shape_t));
+    /* TODO FIXME: memory allocation might fail */
 
     shape->base._size = sizeof(TRI_homogeneous_sized_list_shape_t);
     shape->base._type = TRI_SHAPE_HOMOGENEOUS_SIZED_LIST;
@@ -554,6 +562,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
     dst->_fixedSized = false;
     dst->_size = sizeof(TRI_shape_length_list_t) + total;
     dst->_value = (ptr = TRI_Allocate(dst->_size));
+    /* TODO FIXME: memory allocation might fail */
 
     // copy sub-objects into data space
     * (TRI_shape_length_list_t*) ptr = n;
@@ -570,6 +579,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
     TRI_homogeneous_list_shape_t* shape;
 
     shape = TRI_Allocate(sizeof(TRI_homogeneous_list_shape_t));
+    /* TODO FIXME: memory allocation might fail */
 
     shape->base._size = sizeof(TRI_homogeneous_list_shape_t);
     shape->base._type = TRI_SHAPE_HOMOGENEOUS_LIST;
@@ -599,6 +609,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
     dst->_fixedSized = false;
     dst->_size = offset + total;
     dst->_value = (ptr = TRI_Allocate(dst->_size));
+    /* TODO FIXME: memory allocation might fail */
 
     // copy sub-objects into data space
     * (TRI_shape_length_list_t*) ptr = n;
@@ -631,6 +642,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
     dst->_fixedSized = false;
     dst->_size = offset + total;
     dst->_value = (ptr = TRI_Allocate(dst->_size));
+    /* TODO FIXME: memory allocation might fail */
 
     // copy sub-objects into data space
     * (TRI_shape_length_list_t*) ptr = n;
@@ -703,6 +715,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, T
 
   // convert into TRI_shape_value_t array
   p = (values = TRI_Allocate(n * sizeof(TRI_shape_value_t)));
+  /* TODO FIXME: memory allocation might fail */
   memset(values, 0, n * sizeof(TRI_shape_value_t));
 
   total = 0;
@@ -773,6 +786,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, T
     + (f + 1) * sizeof(TRI_shape_size_t);
 
   a = (TRI_array_shape_t*) (ptr = TRI_Allocate(i));
+  /* TODO FIXME: memory allocation might fail */
   memset(ptr, 0, i);
 
   a->base._type = TRI_SHAPE_ARRAY;
@@ -802,6 +816,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, T
   dst->_fixedSized = true;
   dst->_size = total;
   dst->_value = (ptr = TRI_Allocate(dst->_size));
+  /* TODO FIXME: memory allocation might fail */
 
   // array of offsets for variable part (within the value)
   offsetsV = (TRI_shape_size_t*) ptr;
@@ -1344,12 +1359,18 @@ static bool StringifyJsonShapeDataShortString (TRI_shaper_t* shaper,
                                                char const* data,
                                                uint64_t size) {
   TRI_shape_length_short_string_t l;
+  char* unicoded;
+  size_t out;
 
   l = * (TRI_shape_length_short_string_t const*) data;
   data += sizeof(TRI_shape_length_short_string_t);
 
   TRI_AppendCharStringBuffer(buffer, '"');
-  TRI_AppendString2StringBuffer(buffer, data, l - 1);
+
+  unicoded = TRI_EscapeUtf8String(data, l - 1, true, &out);
+  TRI_AppendString2StringBuffer(buffer, unicoded, out);
+  TRI_FreeString(unicoded);
+
   TRI_AppendCharStringBuffer(buffer, '"');
 
   return true;
@@ -1365,12 +1386,18 @@ static bool StringifyJsonShapeDataLongString (TRI_shaper_t* shaper,
                                               char const* data,
                                               uint64_t size) {
   TRI_shape_length_long_string_t l;
+  char* unicoded;
+  size_t out;
 
   l = * (TRI_shape_length_long_string_t const*) data;
   data += sizeof(TRI_shape_length_long_string_t);
 
   TRI_AppendCharStringBuffer(buffer, '"');
-  TRI_AppendString2StringBuffer(buffer, data, l - 1);
+
+  unicoded = TRI_EscapeUtf8String(data, l - 1, true, &out);
+  TRI_AppendString2StringBuffer(buffer, unicoded, out);
+  TRI_FreeString(unicoded);
+
   TRI_AppendCharStringBuffer(buffer, '"');
 
   return true;
@@ -1385,7 +1412,8 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
                                          TRI_shape_t const* shape,
                                          char const* data,
                                          uint64_t size,
-                                         bool braces) {
+                                         bool braces,
+                                         size_t* num) {
   TRI_array_shape_t const* s;
   TRI_shape_aid_t const* aids;
   TRI_shape_sid_t const* sids;
@@ -1397,12 +1425,18 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
   TRI_shape_size_t v;
   bool first;
   char const* qtr;
+  char* unicoded;
+  size_t out;
 
   s = (TRI_array_shape_t const*) shape;
   f = s->_fixedEntries;
   v = s->_variableEntries;
   n = f + v;
   first = true;
+
+  if (num != NULL) {
+    *num = n;
+  }
 
   qtr = (char const*) shape;
 
@@ -1452,7 +1486,11 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
     }
 
     TRI_AppendCharStringBuffer(buffer, '"');
-    TRI_AppendStringStringBuffer(buffer, name);
+
+    unicoded = TRI_EscapeUtf8String(name, strlen(name), true, &out);
+    TRI_AppendString2StringBuffer(buffer, unicoded, out);
+    TRI_FreeString(unicoded);
+
     TRI_AppendCharStringBuffer(buffer, '"');
     TRI_AppendCharStringBuffer(buffer, ':');
 
@@ -1498,7 +1536,11 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
     }
 
     TRI_AppendCharStringBuffer(buffer, '"');
-    TRI_AppendStringStringBuffer(buffer, name);
+
+    unicoded = TRI_EscapeUtf8String(name, strlen(name), true, &out);
+    TRI_AppendString2StringBuffer(buffer, unicoded, out);
+    TRI_FreeString(unicoded);
+
     TRI_AppendCharStringBuffer(buffer, '"');
     TRI_AppendCharStringBuffer(buffer, ':');
 
@@ -1735,7 +1777,7 @@ static bool StringifyJsonShapeData (TRI_shaper_t* shaper,
       return StringifyJsonShapeDataLongString(shaper, buffer, shape, data, size);
 
     case TRI_SHAPE_ARRAY:
-      return StringifyJsonShapeDataArray(shaper, buffer, shape, data, size, true);
+      return StringifyJsonShapeDataArray(shaper, buffer, shape, data, size, true, NULL);
 
     case TRI_SHAPE_LIST:
       return StringifyJsonShapeDataList(shaper, buffer, shape, data, size);
@@ -1828,6 +1870,7 @@ TRI_shaped_json_t* TRI_ShapedJsonJson (TRI_shaper_t* shaper, TRI_json_t const* j
   TRI_shape_value_t dst;
   bool ok;
 
+  dst._value = 0;
   ok = FillShapeValueJson(shaper, &dst, json);
 
   if (! ok) {
@@ -1842,6 +1885,7 @@ TRI_shaped_json_t* TRI_ShapedJsonJson (TRI_shaper_t* shaper, TRI_json_t const* j
 
   shaped = TRI_Allocate(sizeof(TRI_shaped_json_t));
   if (!shaped) {
+    /* TODO FIXME: must destroy(dst) here?? */
     return NULL;
   }
 
@@ -1897,6 +1941,7 @@ bool TRI_StringifyAugmentedShapedJson (TRI_shaper_t* shaper,
                                        TRI_json_t const* augment) {
   TRI_shape_t const* shape;
   bool ok;
+  size_t num;
 
   shape = shaper->lookupShapeId(shaper, shaped->_sid);
 
@@ -1910,10 +1955,10 @@ bool TRI_StringifyAugmentedShapedJson (TRI_shaper_t* shaper,
 
   TRI_AppendCharStringBuffer(buffer, '{');
 
-  ok = StringifyJsonShapeDataArray(shaper, buffer, shape, shaped->_data.data, shaped->_data.length, false);
+  ok = StringifyJsonShapeDataArray(shaper, buffer, shape, shaped->_data.data, shaped->_data.length, false, &num);
 
-  if (shaped->_data.length != 0) {
-    TRI_AppendStringStringBuffer(buffer, ",");
+  if (0 < num) {
+    TRI_AppendCharStringBuffer(buffer, ',');
   }
 
   if (! ok) {

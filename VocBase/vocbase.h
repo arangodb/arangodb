@@ -40,9 +40,82 @@
 extern "C" {
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+
 struct TRI_doc_collection_s;
 struct TRI_col_parameter_s;
 struct TRI_shadow_store_s;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     public macros
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read locks the collections structure
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_READ_LOCK_COLLECTIONS_VOCBASE(a) \
+  TRI_ReadLockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read unlocks the collections structure
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(a) \
+  TRI_ReadUnlockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write locks the collections structure
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(a) \
+  TRI_WriteLockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write unlocks the collections structure
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(a) \
+  TRI_WriteUnlockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read locks the vocbase collection status
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_READ_LOCK_STATUS_VOCBASE_COL(a) \
+  TRI_ReadLockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read unlocks the vocbase collection status
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_READ_UNLOCK_STATUS_VOCBASE_COL(a) \
+  TRI_ReadUnlockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write locks the vocbase collection status
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WRITE_LOCK_STATUS_VOCBASE_COL(a) \
+  TRI_WriteLockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write unlocks the vocbase collection status
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(a) \
+  TRI_WriteUnlockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
@@ -69,7 +142,13 @@ extern size_t PageSize;
 /// @brief default maximal collection journal size
 ////////////////////////////////////////////////////////////////////////////////
 
-#define DEFAULT_MAXIMAL_SIZE (1024 * 1024 * 128)
+#define TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE (1024 * 1024 * 32)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief minimal collection journal size
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_JOURNAL_MINIMAL_SIZE (1024 * 1024)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document handle separator as character
@@ -82,6 +161,18 @@ extern size_t PageSize;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_DOCUMENT_HANDLE_SEPARATOR_STR "/"
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief index handle separator as character
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_INDEX_HANDLE_SEPARATOR_CHR '/'
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief index handle separator as string
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_INDEX_HANDLE_SEPARATOR_STR "/"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -186,7 +277,7 @@ typedef uint32_t TRI_col_type_t;
 /// unloaded) of the collection. If you want to use a collection, you must call
 /// @ref TRI_UseCollectionVocBase, this will either load or manifest the
 /// collection and a read-lock is held when the functions returns.  You must
-/// call @ref TRI_ReleaseUseCollectionVocBase, when you finished using the
+/// call @ref TRI_ReleaseCollectionVocBase, when you finished using the
 /// collection. The functions that modify the status of collection (load,
 /// unload, manifest) will grab a write-lock.
 ////////////////////////////////////////////////////////////////////////////////
@@ -195,14 +286,19 @@ typedef struct TRI_vocbase_s {
   char const* _path;
   char* _lockFile;
 
+  bool _removeOnDrop; // wipe collection from disk after dropping
+  bool _removeOnCompacted; // wipe datafile from disk after compaction
+  TRI_voc_size_t _defaultMaximalSize;
+
   TRI_read_write_lock_t _lock;
 
   TRI_vector_pointer_t _collections;
+  TRI_vector_pointer_t _deadCollections; // pointers to collections dropped that can be removed later
 
   TRI_associative_pointer_t _collectionsByName;
   TRI_associative_pointer_t _collectionsById;
 
-  sig_atomic_t _active;
+  sig_atomic_t _active; // 0 = inactive, 1 = normal operation, 2 = in shutdown process
   TRI_thread_t _synchroniser;
   TRI_thread_t _compactor;
 
@@ -216,13 +312,12 @@ TRI_vocbase_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_VOC_COL_STATUS_UNKNOWN = 0,
+  TRI_VOC_COL_STATUS_CORRUPTED = 0,
   TRI_VOC_COL_STATUS_NEW_BORN = 1,
   TRI_VOC_COL_STATUS_UNLOADED = 2,
   TRI_VOC_COL_STATUS_LOADED = 3,
-  TRI_VOC_COL_STATUS_CORRUPTED = 4,
-  TRI_VOC_COL_STATUS_DELETED = 5,
-  TRI_VOC_COL_STATUS_UNLOADING = 6
+  TRI_VOC_COL_STATUS_UNLOADING = 4,
+  TRI_VOC_COL_STATUS_DELETED = 5
 }
 TRI_vocbase_col_status_e;
 
@@ -262,7 +357,7 @@ TRI_vocbase_col_t;
 /// @brief checks if a collection is allowed
 ////////////////////////////////////////////////////////////////////////////////
 
-char TRI_IsAllowedCollectionName (char const*);
+char TRI_IsAllowedCollectionName (struct TRI_col_parameter_s*, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new tick
@@ -311,7 +406,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t*);
 /// @brief returns all known collections
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t* vocbase);
+TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a (document) collection by name
@@ -341,13 +436,19 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t*, struct TRI_col_p
 /// @brief unloads a (document) collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UnloadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col);
+int TRI_UnloadCollectionVocBase (TRI_vocbase_t*, TRI_vocbase_col_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops a (document) collection
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_DropCollectionVocBase (TRI_vocbase_t*, TRI_vocbase_col_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a (document) collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col, char const* name);
+int TRI_RenameCollectionVocBase (TRI_vocbase_t*, TRI_vocbase_col_t*, char const* name);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locks a (document) collection for usage, loading or manifesting it
@@ -356,7 +457,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col,
 /// collection lock by yourself.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UseCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col);
+int TRI_UseCollectionVocBase (TRI_vocbase_t*, TRI_vocbase_col_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locks a (document) collection for usage by name
@@ -366,13 +467,13 @@ int TRI_UseCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col);
 /// when you are done with the collection.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase (TRI_vocbase_t* vocbase, char const* name);
+TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase (TRI_vocbase_t*, char const* name);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a (document) collection from usage
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ReleaseCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col);
+void TRI_ReleaseCollectionVocBase (TRI_vocbase_t*, TRI_vocbase_col_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

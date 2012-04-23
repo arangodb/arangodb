@@ -140,7 +140,7 @@ static bool isEqualShapedJsonShapedJson (const TRI_shaped_json_t* left, const TR
   if (left->_data.length != right->_data.length) {
     return false;
   }
-  
+
   return ( memcmp(left->_data.data,right->_data.data, left->_data.length) == 0);   
 }  // end of function isEqualShapedJsonShapedJson
 
@@ -246,13 +246,12 @@ static bool isEmptyElement (struct TRI_associative_array_s* associativeArray, vo
 
 // .............................................................................
 // Determines if two elements of the unique assoc array are equal
-// Two elements are 'equal' if the shaped json content is equal. 
+// Two elements are 'equal' if the document pointer is the same. 
 // .............................................................................
 static bool isEqualElementElement (struct TRI_associative_array_s* associativeArray, 
                                    void* leftElement, void* rightElement) {
   HashIndexElement* hLeftElement  = (HashIndexElement*)(leftElement);
   HashIndexElement* hRightElement = (HashIndexElement*)(rightElement);
-  size_t j;
   
   if (leftElement == NULL || rightElement == NULL) {
     return false;
@@ -262,13 +261,14 @@ static bool isEqualElementElement (struct TRI_associative_array_s* associativeAr
     return false; // should never happen
   }
 
-  for (j = 0; j < hLeftElement->numFields; j++) {
-    if (!isEqualShapedJsonShapedJson((j + hLeftElement->fields), (j + hRightElement->fields))) {
-      return false;
-    }
-  }
+  /*
+  printf("%s:%u:%u:%u\n",__FILE__,__LINE__,
+    (uint64_t)(hLeftElement->data),
+    (uint64_t)(hRightElement->data)
+  );
+  */
   
-  return true;
+  return (hLeftElement->data == hRightElement->data);
 }
 
 
@@ -291,6 +291,14 @@ static bool isEqualKeyElement (struct TRI_associative_array_s* associativeArray,
   }
 
   for (j = 0; j < hLeftElement->numFields; j++) {
+    /*
+    printf("%s:%u:%f:%f,%u:%u\n",__FILE__,__LINE__,
+      *((double*)((j + hLeftElement->fields)->_data.data)),
+      *((double*)((j + hRightElement->fields)->_data.data)),
+      (uint64_t)(hLeftElement->data),
+      (uint64_t)(hRightElement->data)
+    );
+    */
     if (!isEqualShapedJsonShapedJson((j + hLeftElement->fields), (j + hRightElement->fields))) {
       return false;
     }
@@ -367,8 +375,7 @@ HashIndex* HashIndex_new() {
 
 int HashIndex_add(HashIndex* hashIndex, HashIndexElement* element) {
   bool result;
-  result = TRI_InsertElementAssociativeArray(hashIndex->assocArray.uniqueArray, element, false);
-
+  result = TRI_InsertKeyAssociativeArray(hashIndex->assocArray.uniqueArray, element, element, false);
   return result ? TRI_ERROR_NO_ERROR : TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED;
 }
 
@@ -382,6 +389,7 @@ HashIndexElements* HashIndex_find(HashIndex* hashIndex, HashIndexElement* elemen
   HashIndexElements* results;
 
   results = TRI_Allocate(sizeof(HashIndexElements));    
+  /* FIXME: memory allocation might fail */
   
   result = (HashIndexElement*) (TRI_FindByElementAssociativeArray(hashIndex->assocArray.uniqueArray, element)); 
   
@@ -415,6 +423,7 @@ int HashIndex_remove(HashIndex* hashIndex, HashIndexElement* element) {
   bool result;
 
   result = TRI_RemoveElementAssociativeArray(hashIndex->assocArray.uniqueArray, element, NULL); 
+  
   return result ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL;
 }
 
@@ -522,7 +531,6 @@ static uint64_t multiHashElement (struct TRI_multi_array_s* multiArray, void* el
 
   for (j = 0; j < hElement->numFields; j++) {
     hash = hashShapedJson(hash, (j + hElement->fields) );
-    //printf("%s:%u:%u:%f\n",__FILE__,__LINE__,hash, *((double*)((j + hElement->fields)->_data.data)));
   }
   return  hash;
 }
@@ -535,7 +543,6 @@ static uint64_t multiHashKey (struct TRI_multi_array_s* multiArray, void* elemen
 
   for (j = 0; j < hElement->numFields; j++) {
     hash = hashShapedJson(hash, (j + hElement->fields) );
-    //printf("%s:%u:%u:%f\n",__FILE__,__LINE__,hash, *((double*)((j + hElement->fields)->_data.data)));
   }
   return  hash;
 }
@@ -601,6 +608,7 @@ HashIndexElements* MultiHashIndex_find(HashIndex* hashIndex, HashIndexElement* e
   size_t j;
   
   results = TRI_Allocate(sizeof(HashIndexElements));    
+  /* FIXME: memory allocation might fail */
   
   // .............................................................................
   // We can only use the LookupByKey method for non-unique hash indexes, since
@@ -616,6 +624,7 @@ HashIndexElements* MultiHashIndex_find(HashIndex* hashIndex, HashIndexElement* e
   else {  
     results->_numElements = result._length;
     results->_elements = TRI_Allocate(sizeof(HashIndexElement) * result._length); 
+    /* FIXME: memory allocation might fail */
     for (j = 0; j < result._length; ++j) {  
       results->_elements[j] = *((HashIndexElement*)(result._buffer[j]));
     }  

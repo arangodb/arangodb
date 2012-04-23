@@ -59,14 +59,14 @@ static TRI_voc_did_t CreateLock (TRI_doc_collection_t* document,
 /// @brief creates a new document in the collection from json
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t const CreateJson (TRI_doc_collection_t* collection,
-                                        TRI_df_marker_type_e type,
-                                        TRI_json_t const* json,
-                                        void const* data,
-                                        bool release) {
+static TRI_doc_mptr_t CreateJson (TRI_doc_collection_t* collection,
+                                  TRI_df_marker_type_e type,
+                                  TRI_json_t const* json,
+                                  void const* data,
+                                  bool release) {
   TRI_shaped_json_t* shaped;
   TRI_doc_mptr_t result;
-
+  
   shaped = TRI_ShapedJsonJson(collection->_shaper, json);
 
   if (shaped == 0) {
@@ -109,13 +109,13 @@ static int UpdateLock (TRI_doc_collection_t* document,
 /// @brief updates a document in the collection from json
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t const UpdateJson (TRI_doc_collection_t* collection,
-                                        TRI_json_t const* json,
-                                        TRI_voc_did_t did,
-                                        TRI_voc_rid_t rid,
-                                        TRI_voc_rid_t* oldRid,
-                                        TRI_doc_update_policy_e policy,
-                                        bool release) {
+static TRI_doc_mptr_t UpdateJson (TRI_doc_collection_t* collection,
+                                  TRI_json_t const* json,
+                                  TRI_voc_did_t did,
+                                  TRI_voc_rid_t rid,
+                                  TRI_voc_rid_t* oldRid,
+                                  TRI_doc_update_policy_e policy,
+                                  bool release) {
   TRI_shaped_json_t* shaped;
   TRI_doc_mptr_t result;
 
@@ -212,7 +212,7 @@ static bool IsEqualKeyElementDatafile (TRI_associative_pointer_t* array, void co
 /// @brief creates a journal or a compactor journal
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* CreateJournalDocCollection (TRI_doc_collection_t* collection, bool compactor) {
+static TRI_datafile_t* CreateJournalDocCollection (TRI_doc_collection_t* collection, bool compactor) {
   TRI_col_header_marker_t cm;
   TRI_datafile_t* journal;
   TRI_df_marker_t* position;
@@ -231,9 +231,11 @@ TRI_datafile_t* CreateJournalDocCollection (TRI_doc_collection_t* collection, bo
 
   if (compactor) {
     jname = TRI_Concatenate3String("journal-", number, ".db");
+    /* TODO FIXME: memory allocation might fail */
   }
   else {
     jname = TRI_Concatenate3String("compactor-", number, ".db");
+    /* TODO FIXME: memory allocation might fail */
   }
 
   if (jname == NULL) {
@@ -279,6 +281,7 @@ TRI_datafile_t* CreateJournalDocCollection (TRI_doc_collection_t* collection, bo
   }
 
   filename = TRI_Concatenate2File(collection->base._directory, jname);
+  /* TODO FIXME: memory allocation might fail */
   TRI_FreeString(number);
   TRI_FreeString(jname);
 
@@ -344,18 +347,20 @@ TRI_datafile_t* CreateJournalDocCollection (TRI_doc_collection_t* collection, bo
 /// _journals entry.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool CloseJournalDocCollection (TRI_doc_collection_t* collection,
-                                size_t position,
-                                bool compactor) {
+static bool CloseJournalDocCollection (TRI_doc_collection_t* collection,
+                                       size_t position,
+                                       bool compactor) {
   TRI_datafile_t* journal;
   TRI_vector_pointer_t* vector;
   bool ok;
+  int res;
   char* dname;
   char* filename;
   char* number;
 
+  // either use a journal or a compactor
   if (compactor) {
-    vector = &collection->base._journals;
+    vector = &collection->base._compactors;
   }
   else {
     vector = &collection->base._journals;
@@ -369,9 +374,11 @@ bool CloseJournalDocCollection (TRI_doc_collection_t* collection,
 
   // seal and rename datafile
   journal = vector->_buffer[position];
-  ok = TRI_SealDatafile(journal);
+  res = TRI_SealDatafile(journal);
 
-  if (! ok) {
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("failed to seal datafile '%s': %s", journal->_filename, TRI_last_error());
+
     TRI_RemoveVectorPointer(vector, position);
     TRI_PushBackVectorPointer(&collection->base._datafiles, journal);
 
@@ -379,22 +386,8 @@ bool CloseJournalDocCollection (TRI_doc_collection_t* collection,
   }
 
   number = TRI_StringUInt32(journal->_fid);
-  if (!number) {
-    return false;
-  }
-
   dname = TRI_Concatenate3String("datafile-", number, ".db");
-  if (!dname) {
-    TRI_FreeString(number);
-    return false;
-  }
-
   filename = TRI_Concatenate2File(collection->base._directory, dname);
-  if (!filename) {
-    TRI_FreeString(number);
-    TRI_FreeString(dname);
-    return false;
-  }
 
   TRI_FreeString(dname);
   TRI_FreeString(number);
@@ -402,6 +395,8 @@ bool CloseJournalDocCollection (TRI_doc_collection_t* collection,
   ok = TRI_RenameDatafile(journal, filename);
 
   if (! ok) {
+    LOG_ERROR("failed to rename datafile '%s' to '%s': %s", journal->_filename, filename, TRI_last_error());
+
     TRI_RemoveVectorPointer(vector, position);
     TRI_PushBackVectorPointer(&collection->base._datafiles, journal);
     TRI_FreeString(filename);
@@ -416,6 +411,27 @@ bool CloseJournalDocCollection (TRI_doc_collection_t* collection,
   TRI_PushBackVectorPointer(&collection->base._datafiles, journal);
 
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free an assoc array of datafile infos
+////////////////////////////////////////////////////////////////////////////////
+  
+static void FreeDatafileInfo (TRI_associative_pointer_t* const files) {
+  size_t i;
+  size_t n;
+
+  n = files->_nrAlloc;
+  for (i = 0; i < n; ++i) {
+    TRI_doc_datafile_info_t* file = files->_table[i];
+    if (!file) {
+      continue;
+    }
+
+    TRI_Free(file);
+  }
+
+  TRI_DestroyAssociativePointer(files);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -467,7 +483,7 @@ void TRI_DestroyDocCollection (TRI_doc_collection_t* collection) {
     TRI_FreeVocShaper(collection->_shaper);
   }
 
-  TRI_DestroyAssociativePointer(&collection->_datafileInfo);
+  FreeDatafileInfo(&collection->_datafileInfo);
   TRI_DestroyBarrierList(&collection->_barrierList);
 
   TRI_DestroyCollection(&collection->base);

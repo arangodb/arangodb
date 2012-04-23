@@ -152,7 +152,7 @@ TRI_process_info_t TRI_ProcessInfo (TRI_pid_t pid) {
     n = read(fd, str, 1024);
     close(fd);
 
-    if (n < 0) {
+    if (n == 0) {
       return result;
     }
 
@@ -169,6 +169,7 @@ TRI_process_info_t TRI_ProcessInfo (TRI_pid_t pid) {
     result._numberThreads = st.num_threads;
     result._residentSize = st.rss;
     result._virtualSize = st.vsize;
+    result._scClkTck = sysconf(_SC_CLK_TCK);
   }
 
   return result;

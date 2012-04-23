@@ -31,10 +31,20 @@ extern "C" {
 ///   Will be raised when a PID without a living process was found.
 /// - 9: @CODE{not implemented}
 ///   Will be raised when hitting an unimplemented feature.
+/// - 10: @CODE{bad parameter}
+///   Will be raised when the parameter does not fulfill the requirements.
+/// - 11: @CODE{forbidden}
+///   Will be raised when you are missing permission for the operation.
 /// - 400: @CODE{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
+/// - 403: @CODE{forbidden}
+///   Will be raised when the operation is forbidden.
+/// - 404: @CODE{not found}
+///   Will be raised when an URI is unknown.
 /// - 405: @CODE{method not supported}
 ///   Will be raised when an unsupported HTTP method is used for an operation.
+/// - 500: @CODE{internal server error}
+///   Will be raised when an internal server is encountered.
 /// - 600: @CODE{invalid JSON object}
 ///   Will be raised when a string representation an JSON object is corrupt.
 /// - 601: @CODE{superfluous URL suffices}
@@ -97,12 +107,18 @@ extern "C" {
 ///   Will be raised when a name duplicate is detected.
 /// - 1208: @CODE{illegal name}
 ///   Will be raised when an illegal name is detected.
-/// - 1209: @CODE{no index known}
-///   Will be raised when no index is known.
+/// - 1209: @CODE{no suitable index known}
+///   Will be raised when no suitable index for the query is known.
 /// - 1210: @CODE{unique constraint violated}
 ///   Will be raised when there is a unique constraint violation.
 /// - 1211: @CODE{geo index violated}
 ///   Will be raised when a illegale coordinate is used.
+/// - 1212: @CODE{index not found}
+///   Will be raised when an index with a given identifier is unknown.
+/// - 1213: @CODE{cross collection request not allowed}
+///   Will be raised when a cross-collection is requested.
+/// - 1214: @CODE{illegal index handle}
+///   Will be raised when a index handle is corrupt.
 /// - 1300: @CODE{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1500: @CODE{query killed}
@@ -158,6 +174,9 @@ extern "C" {
 ///   is out of the allowed range.
 /// - 1518: @CODE{usage of unknown function '\%s'}
 ///   Will be raised when an undefined function is called.
+/// - 1520: @CODE{runtime error in query}
+///   Will be raised when a Javascript runtime error occurs while executing a
+///   query.
 /// - 1521: @CODE{limit value '\%s' is out of range}
 ///   Will be raised when a limit value in the query is outside the allowed
 ///   range (e. g. when passing a negative skip value).
@@ -196,6 +215,27 @@ extern "C" {
 ///   TODO
 /// - 1715: @CODE{directory server is not configured}
 ///   TODO
+/// - 1800: @CODE{invalid key declaration}
+///   Will be raised when an invalid key specification is passed to the server
+/// - 1801: @CODE{key already exists}
+///   Will be raised when a key is to be created that already exists
+/// - 1802: @CODE{key not found}
+///   Will be raised when the specified key is not found
+/// - 1803: @CODE{key is not unique}
+///   Will be raised when the specified key is not unique
+/// - 1804: @CODE{key value not changed}
+///   Will be raised when updating the value for a key does not work
+/// - 1805: @CODE{key value not removed}
+///   Will be raised when deleting a key/value pair does not work
+/// - 1901: @CODE{invalid graph}
+///   Will be raised when an invalid name is passed to the server
+/// - 1902: @CODE{could not create graph}
+///   Will be raised when an invalid name, vertices or edges is passed to the
+///   server
+/// - 1903: @CODE{invalid vertex}
+///   Will be raised when an invalid vertex id is passed to the server
+/// - 1904: @CODE{could not create vertex}
+///   Will be raised when the vertex could not be created
 /// - 2000: @CODE{unknown client error}
 ///   This error should not happen.
 /// - 2001: @CODE{could not connect to server}
@@ -204,6 +244,15 @@ extern "C" {
 ///   Will be raised when the client could not write data.
 /// - 2003: @CODE{could not read from server}
 ///   Will be raised when the client could not read data.
+/// - 3100: @CODE{priority queue insert failure}
+///   Will be raised when an attempt to insert a document into a priority queue
+///   index fails for some reason.
+/// - 3110: @CODE{priority queue remove failure}
+///   Will be raised when an attempt to remove a document from a priority queue
+///   index fails for some reason.
+/// - 3111: @CODE{priority queue remove failure - item missing in index}
+///   Will be raised when an attempt to remove a document from a priority queue
+///   index fails when document can not be located within the index.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -324,6 +373,26 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_NOT_IMPLEMENTED                                         (9)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 10: ERROR_BAD_PARAMETER
+///
+/// bad parameter
+///
+/// Will be raised when the parameter does not fulfill the requirements.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_BAD_PARAMETER                                           (10)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 11: ERROR_FORBIDDEN
+///
+/// forbidden
+///
+/// Will be raised when you are missing permission for the operation.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_FORBIDDEN                                               (11)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER
 ///
 /// bad parameter
@@ -334,6 +403,26 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_HTTP_BAD_PARAMETER                                      (400)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 403: ERROR_HTTP_FORBIDDEN
+///
+/// forbidden
+///
+/// Will be raised when the operation is forbidden.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_HTTP_FORBIDDEN                                          (403)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 404: ERROR_HTTP_NOT_FOUND
+///
+/// not found
+///
+/// Will be raised when an URI is unknown.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_HTTP_NOT_FOUND                                          (404)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 405: ERROR_HTTP_METHOD_NOT_ALLOWED
 ///
 /// method not supported
@@ -342,6 +431,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_HTTP_METHOD_NOT_ALLOWED                                 (405)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 500: ERROR_HTTP_SERVER_ERROR
+///
+/// internal server error
+///
+/// Will be raised when an internal server is encountered.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_HTTP_SERVER_ERROR                                       (500)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 600: ERROR_HTTP_CORRUPTED_JSON
@@ -613,9 +712,9 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1209: ERROR_AVOCADO_NO_INDEX
 ///
-/// no index known
+/// no suitable index known
 ///
-/// Will be raised when no index is known.
+/// Will be raised when no suitable index for the query is known.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_AVOCADO_NO_INDEX                                        (1209)
@@ -641,54 +740,34 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_AVOCADO_GEO_INDEX_VIOLATED                              (1211)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1207: ERROR_AVOCADO_DUPLICATE_NAME
+/// @brief 1212: ERROR_AVOCADO_INDEX_NOT_FOUND
 ///
-/// duplicate name
+/// index not found
 ///
-/// Will be raised when a name duplicate is detected.
+/// Will be raised when an index with a given identifier is unknown.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_AVOCADO_DUPLICATE_NAME                                  (1207)
+#define TRI_ERROR_AVOCADO_INDEX_NOT_FOUND                                 (1212)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1208: ERROR_AVOCADO_ILLEGAL_NAME
+/// @brief 1213: ERROR_AVOCADO_CROSS_COLLECTION_REQUEST
 ///
-/// illegal name
+/// cross collection request not allowed
 ///
-/// Will be raised when an illegal name is detected.
+/// Will be raised when a cross-collection is requested.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_AVOCADO_ILLEGAL_NAME                                    (1208)
+#define TRI_ERROR_AVOCADO_CROSS_COLLECTION_REQUEST                        (1213)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1209: ERROR_AVOCADO_NO_INDEX
+/// @brief 1214: ERROR_AVOCADO_INDEX_HANDLE_BAD
 ///
-/// no index known
+/// illegal index handle
 ///
-/// Will be raised when no index is known.
+/// Will be raised when a index handle is corrupt.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_AVOCADO_NO_INDEX                                        (1209)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1210: ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED
-///
-/// unique constraint violated
-///
-/// Will be raised when there is a unique constraint violation.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED                      (1210)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1211: ERROR_AVOCADO_GEO_INDEX_VIOLATED
-///
-/// geo index violated
-///
-/// Will be raised when a illegale coordinate is used.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_AVOCADO_GEO_INDEX_VIOLATED                              (1211)
+#define TRI_ERROR_AVOCADO_INDEX_HANDLE_BAD                                (1214)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_AVOCADO_DATAFILE_FULL
@@ -903,6 +982,17 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN                             (1518)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1520: ERROR_QUERY_RUNTIME_ERROR
+///
+/// runtime error in query
+///
+/// Will be raised when a Javascript runtime error occurs while executing a
+/// query.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_RUNTIME_ERROR                                     (1520)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1521: ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE
 ///
 /// limit value '%s' is out of range
@@ -1085,6 +1175,107 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_SESSION_DIRECTORYSERVER_NOT_CONFIGURED                  (1715)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1800: ERROR_KEYVALUE_INVALID_KEY
+///
+/// invalid key declaration
+///
+/// Will be raised when an invalid key specification is passed to the server
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_KEYVALUE_INVALID_KEY                                    (1800)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1801: ERROR_KEYVALUE_KEY_EXISTS
+///
+/// key already exists
+///
+/// Will be raised when a key is to be created that already exists
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_KEYVALUE_KEY_EXISTS                                     (1801)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1802: ERROR_KEYVALUE_KEY_NOT_FOUND
+///
+/// key not found
+///
+/// Will be raised when the specified key is not found
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_KEYVALUE_KEY_NOT_FOUND                                  (1802)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1803: ERROR_KEYVALUE_KEY_NOT_UNIQUE
+///
+/// key is not unique
+///
+/// Will be raised when the specified key is not unique
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_KEYVALUE_KEY_NOT_UNIQUE                                 (1803)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1804: ERROR_KEYVALUE_KEY_NOT_CHANGED
+///
+/// key value not changed
+///
+/// Will be raised when updating the value for a key does not work
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_KEYVALUE_KEY_NOT_CHANGED                                (1804)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1805: ERROR_KEYVALUE_KEY_NOT_REMOVED
+///
+/// key value not removed
+///
+/// Will be raised when deleting a key/value pair does not work
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_KEYVALUE_KEY_NOT_REMOVED                                (1805)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1901: ERROR_GRAPH_INVALID_GRAPH
+///
+/// invalid graph
+///
+/// Will be raised when an invalid name is passed to the server
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_INVALID_GRAPH                                     (1901)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1902: ERROR_GRAPH_COULD_NOT_CREATE_GRAPH
+///
+/// could not create graph
+///
+/// Will be raised when an invalid name, vertices or edges is passed to the
+/// server
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_COULD_NOT_CREATE_GRAPH                            (1902)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1903: ERROR_GRAPH_INVALID_VERTEX
+///
+/// invalid vertex
+///
+/// Will be raised when an invalid vertex id is passed to the server
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_INVALID_VERTEX                                    (1903)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1904: ERROR_GRAPH_COULD_NOT_CREATE_VERTEX
+///
+/// could not create vertex
+///
+/// Will be raised when the vertex could not be created
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_COULD_NOT_CREATE_VERTEX                           (1904)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 2000: SIMPLE_CLIENT_UNKNOWN_ERROR
 ///
 /// unknown client error
@@ -1123,6 +1314,39 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_SIMPLE_CLIENT_COULD_NOT_READ                                  (2003)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3100: ERROR_AVOCADO_INDEX_PQ_INSERT_FAILED
+///
+/// priority queue insert failure
+///
+/// Will be raised when an attempt to insert a document into a priority queue
+/// index fails for some reason.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AVOCADO_INDEX_PQ_INSERT_FAILED                          (3100)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3110: ERROR_AVOCADO_INDEX_PQ_REMOVE_FAILED
+///
+/// priority queue remove failure
+///
+/// Will be raised when an attempt to remove a document from a priority queue
+/// index fails for some reason.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AVOCADO_INDEX_PQ_REMOVE_FAILED                          (3110)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3111: ERROR_AVOCADO_INDEX_PQ_REMOVE_ITEM_MISSING
+///
+/// priority queue remove failure - item missing in index
+///
+/// Will be raised when an attempt to remove a document from a priority queue
+/// index fails when document can not be located within the index.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AVOCADO_INDEX_PQ_REMOVE_ITEM_MISSING                    (3111)
 
 
 ////////////////////////////////////////////////////////////////////////////////

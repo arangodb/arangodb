@@ -1,10 +1,10 @@
-> curl -X GET '-H if-match: "9358920"' --dump - http://localhost:8529/document/183881/9358921
+> curl -X DELETE '-H if-match: "31098669"' --dump - http://localhost:8529/document/73482/31098670
 
 HTTP/1.1 412 Precondition Failed
 content-type: application/json; charset=utf-8
 
 {
-  "_rev": 9358921,
-  "_id": "183881/9358921",
+  "_rev": 31098670,
+  "_id": "73482/31098670",
   "error": true
 }

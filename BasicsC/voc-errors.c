@@ -21,8 +21,13 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ILLEGAL_OPTION, "illegal option");
   REG_ERROR(ERROR_DEAD_PID, "dead process identifier");
   REG_ERROR(ERROR_NOT_IMPLEMENTED, "not implemented");
+  REG_ERROR(ERROR_BAD_PARAMETER, "bad parameter");
+  REG_ERROR(ERROR_FORBIDDEN, "forbidden");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
+  REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");
+  REG_ERROR(ERROR_HTTP_NOT_FOUND, "not found");
   REG_ERROR(ERROR_HTTP_METHOD_NOT_ALLOWED, "method not supported");
+  REG_ERROR(ERROR_HTTP_SERVER_ERROR, "internal server error");
   REG_ERROR(ERROR_HTTP_CORRUPTED_JSON, "invalid JSON object");
   REG_ERROR(ERROR_HTTP_SUPERFLUOUS_SUFFICES, "superfluous URL suffices");
   REG_ERROR(ERROR_AVOCADO_ILLEGAL_STATE, "illegal state");
@@ -49,9 +54,12 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_AVOCADO_MAXIMAL_SIZE_TOO_SMALL, "maixaml size of journal too small");
   REG_ERROR(ERROR_AVOCADO_DUPLICATE_NAME, "duplicate name");
   REG_ERROR(ERROR_AVOCADO_ILLEGAL_NAME, "illegal name");
-  REG_ERROR(ERROR_AVOCADO_NO_INDEX, "no index known");
+  REG_ERROR(ERROR_AVOCADO_NO_INDEX, "no suitable index known");
   REG_ERROR(ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED, "unique constraint violated");
   REG_ERROR(ERROR_AVOCADO_GEO_INDEX_VIOLATED, "geo index violated");
+  REG_ERROR(ERROR_AVOCADO_INDEX_NOT_FOUND, "index not found");
+  REG_ERROR(ERROR_AVOCADO_CROSS_COLLECTION_REQUEST, "cross collection request not allowed");
+  REG_ERROR(ERROR_AVOCADO_INDEX_HANDLE_BAD, "illegal index handle");
   REG_ERROR(ERROR_AVOCADO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "parse error: %s");
@@ -72,6 +80,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_QUERY_BIND_PARAMETER_VALUE_INVALID, "invalid value for bind parameter '%s'");
   REG_ERROR(ERROR_QUERY_BIND_PARAMETER_NUMBER_OUT_OF_RANGE, "bind parameter number '%s' out of range");
   REG_ERROR(ERROR_QUERY_FUNCTION_NAME_UNKNOWN, "usage of unknown function '%s'");
+  REG_ERROR(ERROR_QUERY_RUNTIME_ERROR, "runtime error in query");
   REG_ERROR(ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE, "limit value '%s' is out of range");
   REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
   REG_ERROR(ERROR_SESSION_USERHANDLER_URL_INVALID, "expecting <prefix>/user/<username>");
@@ -90,10 +99,23 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_SESSION_USERSHANDLER_INVALID_URL, "expecting GET <prefix>/users");
   REG_ERROR(ERROR_SESSION_DIRECTORYSERVER_INVALID_URL, "expecting /directory/sessionvoc/<token>");
   REG_ERROR(ERROR_SESSION_DIRECTORYSERVER_NOT_CONFIGURED, "directory server is not configured");
+  REG_ERROR(ERROR_KEYVALUE_INVALID_KEY, "invalid key declaration");
+  REG_ERROR(ERROR_KEYVALUE_KEY_EXISTS, "key already exists");
+  REG_ERROR(ERROR_KEYVALUE_KEY_NOT_FOUND, "key not found");
+  REG_ERROR(ERROR_KEYVALUE_KEY_NOT_UNIQUE, "key is not unique");
+  REG_ERROR(ERROR_KEYVALUE_KEY_NOT_CHANGED, "key value not changed");
+  REG_ERROR(ERROR_KEYVALUE_KEY_NOT_REMOVED, "key value not removed");
+  REG_ERROR(ERROR_GRAPH_INVALID_GRAPH, "invalid graph");
+  REG_ERROR(ERROR_GRAPH_COULD_NOT_CREATE_GRAPH, "could not create graph");
+  REG_ERROR(ERROR_GRAPH_INVALID_VERTEX, "invalid vertex");
+  REG_ERROR(ERROR_GRAPH_COULD_NOT_CREATE_VERTEX, "could not create vertex");
   REG_ERROR(SIMPLE_CLIENT_UNKNOWN_ERROR, "unknown client error");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_CONNECT, "could not connect to server");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_WRITE, "could not write to server");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_READ, "could not read from server");
+  REG_ERROR(ERROR_AVOCADO_INDEX_PQ_INSERT_FAILED, "priority queue insert failure");
+  REG_ERROR(ERROR_AVOCADO_INDEX_PQ_REMOVE_FAILED, "priority queue remove failure");
+  REG_ERROR(ERROR_AVOCADO_INDEX_PQ_REMOVE_ITEM_MISSING, "priority queue remove failure - item missing in index");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

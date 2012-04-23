@@ -56,10 +56,23 @@ static bool CreateJournal (TRI_blob_collection_t* collection) {
   char* number;
 
   number = TRI_StringUInt32(TRI_NewTickVocBase());
+  if (!number) {
+    return false;
+  }
+  
   jname = TRI_Concatenate3String("journal-", number, ".db");
-  filename = TRI_Concatenate2File(collection->base._directory, jname);
   TRI_FreeString(number);
+  
+  if (!jname) {
+    return false;
+  }
+
+  filename = TRI_Concatenate2File(collection->base._directory, jname);
   TRI_FreeString(jname);
+
+  if (!filename) {
+    return false;
+  }
 
   journal = TRI_CreateDatafile(filename, collection->base._maximalSize);
 
@@ -79,8 +92,11 @@ static bool CreateJournal (TRI_blob_collection_t* collection) {
 
   // and use the correct name
   number = TRI_StringUInt32(journal->_fid);
+  /* TODO FIXME: memory allocation might fail */
   jname = TRI_Concatenate3String("journal-", number, ".db");
+  /* TODO FIXME: memory allocation might fail */
   filename = TRI_Concatenate2File(collection->base._directory, jname);
+  /* TODO FIXME: memory allocation might fail */
   TRI_FreeString(number);
   TRI_FreeString(jname);
 
@@ -145,6 +161,7 @@ static bool CloseJournal (TRI_blob_collection_t* collection, TRI_datafile_t* jou
   char* dname;
   char* filename;
   char* number;
+  int res;
   size_t i;
   size_t n;
 
@@ -167,16 +184,18 @@ static bool CloseJournal (TRI_blob_collection_t* collection, TRI_datafile_t* jou
   }
 
   // seal and rename datafile
-  ok = TRI_SealDatafile(journal);
+  res = TRI_SealDatafile(journal);
 
-  if (! ok) {
+  if (res != TRI_ERROR_NO_ERROR) {
     collection->base._state = TRI_COL_STATE_WRITE_ERROR;
     return false;
   }
 
   number = TRI_StringUInt32(journal->_fid);
   dname = TRI_Concatenate3String("datafile-", number, ".db");
+  /* TODO FIXME: memory allocation might fail */
   filename = TRI_Concatenate2File(collection->base._directory, dname);
+  /* TODO FIXME: memory allocation might fail */
   TRI_FreeString(dname);
   TRI_FreeString(number);
 
@@ -292,7 +311,9 @@ static int WriteElement (TRI_blob_collection_t* collection,
 /// @brief creates a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_blob_collection_t* TRI_CreateBlobCollection (char const* path, TRI_col_parameter_t* parameter) {
+TRI_blob_collection_t* TRI_CreateBlobCollection (TRI_vocbase_t* vocbase,
+                                                 char const* path,
+                                                 TRI_col_parameter_t* parameter) {
   TRI_col_info_t info;
   TRI_blob_collection_t* blob;
   TRI_collection_t* collection;
@@ -309,9 +330,8 @@ TRI_blob_collection_t* TRI_CreateBlobCollection (char const* path, TRI_col_param
   info._cid = TRI_NewTickVocBase();
   TRI_CopyString(info._name, parameter->_name, sizeof(info._name));
   info._maximalSize = parameter->_maximalSize;
-  info._size = sizeof(TRI_col_info_t);
 
-  collection = TRI_CreateCollection(&blob->base, path, &info);
+  collection = TRI_CreateCollection(vocbase, &blob->base, path, &info);
 
   if (collection == NULL) {
     TRI_Free(blob);
@@ -330,6 +350,8 @@ TRI_blob_collection_t* TRI_CreateBlobCollection (char const* path, TRI_col_param
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyBlobCollection (TRI_blob_collection_t* collection) {
+  assert(collection);
+
   TRI_DestroyMutex(&collection->_lock);
   TRI_DestroyCollection(&collection->base);
 }
@@ -339,6 +361,8 @@ void TRI_DestroyBlobCollection (TRI_blob_collection_t* collection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeBlobCollection (TRI_blob_collection_t* collection) {
+  assert(collection);
+
   TRI_DestroyBlobCollection(collection);
   TRI_Free(collection);
 }
@@ -409,7 +433,8 @@ int TRI_WriteBlobCollection (TRI_blob_collection_t* collection,
 /// @brief opens an existing collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_blob_collection_t* TRI_OpenBlobCollection (char const* path) {
+TRI_blob_collection_t* TRI_OpenBlobCollection (TRI_vocbase_t* vocbase,
+                                               char const* path) {
   TRI_blob_collection_t* blob;
   TRI_collection_t* collection;
 
@@ -419,7 +444,7 @@ TRI_blob_collection_t* TRI_OpenBlobCollection (char const* path) {
     return NULL;
   }
 
-  collection = TRI_OpenCollection(&blob->base, path);
+  collection = TRI_OpenCollection(vocbase, &blob->base, path);
 
   if (collection == NULL) {
     TRI_Free(blob);

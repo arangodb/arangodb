@@ -502,7 +502,9 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
       continue;
     }
 
+    //printf("%s:%u:%s\n",__FILE__,__LINE__,*keyStr);
     p->_aid = shaper->findAttributeName(shaper, *keyStr);
+    //printf("%s:%u:%s\n",__FILE__,__LINE__,*keyStr);
 
     // convert value
     bool ok;

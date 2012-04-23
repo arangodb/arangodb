@@ -37,7 +37,7 @@
 #include "VocBase/vocbase.h"
 
 #include "v8-actions.h"
-#include "v8-line-editor.h"
+#include "V8/V8LineEditor.h"
 #include "v8-shell.h"
 #include "v8-utils.h"
 #include "v8-vocbase.h"
@@ -214,6 +214,9 @@ int main (int argc, char* argv[]) {
     "js/bootstrap/print.js",
     "js/bootstrap/errors.js",
     "js/server/aql-operators.js",
+    "js/server/aql-functions-numeric.js",
+    "js/server/aql-functions-string.js",
+    "js/server/ahuacatl.js",
     "js/modules/shell.js",
     "js/modules/json.js"
   };

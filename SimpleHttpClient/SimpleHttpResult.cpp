@@ -123,7 +123,7 @@ namespace triagens {
         }
       }
       else if (k == "content-length") {
-        setContenLength(StringUtils::int64(value.c_str()));
+        setContentLength((size_t) StringUtils::int64(value.c_str()));
       }
       else if (k == "transfer-encoding") {
         if (StringUtils::tolower(value) == "chunked") {
@@ -134,12 +134,22 @@ namespace triagens {
       _headerFields[k] = value;
     }
 
-    const string SimpleHttpResult::getContentType () {
-       map<string, string>::const_iterator find = _headerFields.find("content-type");
-       if (find != _headerFields.end()) {
-         return find->second;   
-       }
-       return "";
+    const string SimpleHttpResult::getContentType (const bool partial) {
+      map<string, string>::const_iterator find = _headerFields.find("content-type");
+      if (find != _headerFields.end()) {
+        // header found
+        if (partial) {
+          // return partial match before first semicolon
+          size_t semicolon = find->second.find(";");
+          if (semicolon != string::npos) {
+            // partial match found
+            return find->second.substr(0, semicolon);
+          }
+        }
+        return find->second;   
+      }
+
+      return "";
     }
     
     

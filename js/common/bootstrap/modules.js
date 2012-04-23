@@ -147,6 +147,24 @@ Module.prototype.normalise = function (path) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief unloads module
+////////////////////////////////////////////////////////////////////////////////
+
+Module.prototype.unload = function (path) {
+  if (! path) {
+    return;
+  }
+
+  var norm = module.normalise(path);
+
+  if (norm == "/" || norm == "/internal" || norm == "/console" || norm == "/fs") {
+    return;
+  }
+
+  delete ModuleCache[norm];
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief top-level module
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -165,11 +183,11 @@ ModuleCache["/"] = module = new Module("/");
 ///
 /// Assume that your module file is @CODE{test1.js} and contains
 ///
-/// @verbinclude modules1
+/// @verbinclude modules-require-1
 ///
-/// Then you can use require to load the file and access the exports.
+/// Then you can use @FN{require} to load the file and access the exports.
 ///
-/// @verbinclude modules2
+/// @verbinclude modules-require-2
 ///
 /// @FN{require} follows the specification
 /// <a href="http://wiki.commonjs.org/wiki/Modules/1.1.1">Modules/1.1.1</a>.
@@ -317,7 +335,13 @@ internal.loadFile = function (path) {
 function CONSOLE_DEBUG () {
   var msg;
 
-  msg = internal.sprintf.apply(internal.sprintf, arguments);
+  try {
+    msg = internal.sprintf.apply(internal.sprintf, arguments);
+  }
+  catch (err) {
+    msg = err + ": " + arguments[0];
+  }
+
   internal.log("debug", msg);
 }
 
@@ -333,7 +357,13 @@ function CONSOLE_DEBUG () {
 function CONSOLE_ERROR () {
   var msg;
 
-  msg = internal.sprintf.apply(internal.sprintf, arguments);
+  try {
+    msg = internal.sprintf.apply(internal.sprintf, arguments);
+  }
+  catch (err) {
+    msg = err + ": " + arguments[0];
+  }
+
   internal.log("error", msg);
 }
 
@@ -349,7 +379,13 @@ function CONSOLE_ERROR () {
 function CONSOLE_INFO () {
   var msg;
 
-  msg = internal.sprintf.apply(internal.sprintf, arguments);
+  try {
+    msg = internal.sprintf.apply(internal.sprintf, arguments);
+  }
+  catch (err) {
+    msg = err + ": " + arguments[0];
+  }
+
   internal.log("info", msg);
 }
 
@@ -365,7 +401,13 @@ function CONSOLE_INFO () {
 function CONSOLE_LOG () {
   var msg;
 
-  msg = internal.sprintf.apply(internal.sprintf, arguments);
+  try {
+    msg = internal.sprintf.apply(internal.sprintf, arguments);
+  }
+  catch (err) {
+    msg = err + ": " + arguments[0];
+  }
+
   internal.log("info", msg);
 }
 
@@ -381,7 +423,13 @@ function CONSOLE_LOG () {
 function CONSOLE_WARN () {
   var msg;
 
-  msg = internal.sprintf.apply(internal.sprintf, arguments);
+  try {
+    msg = internal.sprintf.apply(internal.sprintf, arguments);
+  }
+  catch (err) {
+    msg = err + ": " + arguments[0];
+  }
+
   internal.log("warn", msg);
 }
 

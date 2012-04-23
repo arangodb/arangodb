@@ -53,15 +53,16 @@ doxygen: Doxygen/avocado.doxy $(DOXYGEN)
 
 .PHONY: wiki
 
-wiki: doxygen $(WIKI)
+wiki: doxygen $(addsuffix .md,$(addprefix Doxygen/xml/,$(WIKI)))
 	@test -d Doxygen/wiki || mkdir Doxygen/wiki
-	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/pandoc.sh $$w; done
-	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/md2html.sh `echo $$w | sed -e 's:/xml/:/wiki/:g'`; done
+	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/pandoc.sh Doxygen/xml/$$w.md; done
+	@for w in $(WIKI); do @top_srcdir@/Doxygen/Scripts/md2html.sh Doxygen/wiki/$$w.md; done
 
 ################################################################################
 ## CLEANUP
 ################################################################################
 
-CLEANUP += $(DOXYGEN) $(WIKI) $(subst Doxygen/xml,Doxygen/wiki,$(WIKI))
-
-
+CLEANUP += \
+	$(DOXYGEN) \
+	$(addsuffix .md,$(addprefix Doxygen/xml/,$(WIKI))) \
+	$(addsuffix .md,$(addprefix Doxygen/wiki/,$(WIKI)))

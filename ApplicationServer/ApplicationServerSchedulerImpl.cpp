@@ -212,17 +212,46 @@ namespace triagens {
       ApplicationServerImpl::wait();
 
       if (_scheduler != 0) {
+        size_t waits = 0;
+
         _schedulerCond.lock();
 
+        // this loop checks if the parent process has died
+        // this is useful when unittests tests are run
+        // the server can then be killed automatically when the
+        // parent process finishes
         while (_scheduler->isRunning()) {
-          LOGGER_TRACE << "waiting for scheduler to stop";
-          _schedulerCond.wait();
+          if (++waits % 10 == 0) {
+            // log that we are still alive and checking
+            // log only every 10th iteration to avoid log spam
+            LOGGER_TRACE << "waiting for scheduler to stop";
+          }
+
+          // sleep for 1 second. this is enough for this purpose
+          _schedulerCond.wait(1000000); 
+
+#ifdef TRI_HAVE_GETPPID
+          if (_exitOnParentDeath && getppid() == 1) {
+            LOGGER_INFO << "parent has died";
+            break;
+          }
+#endif
+
+          if (_watchParent != 0) {
+            int res = kill(_watchParent, 0);
+
+            if (res != 0) {
+              LOGGER_INFO << "parent " << _watchParent << " has died";
+              break;
+            }
+          }
         }
 
         LOGGER_TRACE << "scheduler has stopped";
 
         _schedulerCond.unlock();
       }
+
     }
 
 

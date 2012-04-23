@@ -6,22 +6,27 @@ dnl ----------------------------------------------------------------------------
 
 V8_CPPFLAGS="-I${srcdir}/3rdParty/V8/include"
 V8_LDFLAGS=""
+V8_TARGET="native"
 
-if test "x$tr_DARWIN" == xyes;  then
+if test x$tr_DARWIN == xyes;  then
   if test "x$tr_BITS" == x64;  then
-    V8_LIBS="${srcdir}/3rdParty/V8/libv8_x64.a"
+    V8_TARGET="x64.release"
   else
-    V8_LIBS="${srcdir}/3rdParty/V8/libv8_ia32.a"
+    V8_TARGET="ia32.release"
   fi
+
+  V8_LIBS="${srcdir}/3rdParty/V8/out/$V8_TARGET/libv8_base.a ${srcdir}/3rdParty/V8/out/$V8_TARGET/libv8_nosnapshot.a"
 else
   if test "x$tr_BITS" == x64;  then
-    V8_LIBS="${srcdir}/3rdParty/V8/out/x64.release/obj.target/tools/gyp/libv8_base.a ${srcdir}/3rdParty/V8/out/x64.release/obj.target/tools/gyp/libv8_nosnapshot.a"
+    V8_TARGET="x64.release"
   else
-    V8_LIBS="${srcdir}/3rdParty/V8/out/ia32.release/obj.target/tools/gyp/libv8_base.a ${srcdir}/3rdParty/V8/out/ia32.release/obj.target/tools/gyp/libv8_nosnapshot.a"
+    V8_TARGET="ia32.release"
   fi
+
+  V8_LIBS="${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/tools/gyp/libv8_base.a ${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/tools/gyp/libv8_nosnapshot.a"
 fi
 
-TRI_V8_VERSION="3.9.4.0"
+TRI_V8_VERSION="3.9.4"
 
 dnl -----------------------------------------------------------------------------------------
 dnl add substitutions
@@ -30,6 +35,7 @@ dnl ----------------------------------------------------------------------------
 AC_SUBST(V8_CPPFLAGS)
 AC_SUBST(V8_LDFLAGS)
 AC_SUBST(V8_LIBS)
+AC_SUBST(V8_TARGET)
 
 V8_CPPFLAGS="${V8_CPPFLAGS} -DTRI_V8_VERSION='\"${TRI_V8_VERSION}\"'"
 
@@ -39,6 +45,7 @@ dnl ----------------------------------------------------------------------------
 
 LIB_INFO="$LIB_INFO|V8 VERSION: ${TRI_V8_VERSION}"
 
+FLAG_INFO="$FLAG_INFO|V8_TARGET:   ${V8_TARGET}"
 FLAG_INFO="$FLAG_INFO|V8_CPPFLAGS: ${V8_CPPFLAGS}"
 FLAG_INFO="$FLAG_INFO|V8_LDFLAGS:  ${V8_LDFLAGS}"
 FLAG_INFO="$FLAG_INFO|V8_LIBS:     ${V8_LIBS}"

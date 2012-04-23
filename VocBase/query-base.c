@@ -30,6 +30,7 @@
 #include "VocBase/query-join.h"
 #include "VocBase/query-base.h"
 #include "VocBase/query-parse.h"
+#include "VocBase/query-locks.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocBase
@@ -39,15 +40,6 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Hash function used to hash bind parameter names
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashBindParameterName (TRI_associative_pointer_t* array, 
-                                       void const* key) {
-  return TRI_FnvHashString((char const*) key);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Hash function used to hash bind parameters
@@ -447,7 +439,7 @@ TRI_query_template_t* TRI_CreateQueryTemplate (const char* queryString,
   TRI_InitQueryError(&template_->_error);
 
   TRI_InitAssociativePointer(&template_->_bindParameters,
-                             HashBindParameterName,
+                             TRI_HashStringKeyAssociativePointer,
                              HashBindParameter,
                              EqualBindParameter,
                              0);
@@ -1124,127 +1116,11 @@ static void FreeJoinsQueryInstance (TRI_query_instance_t* const instance) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Set up the join part of the query
-////////////////////////////////////////////////////////////////////////////////
-
-static bool InitCollectionsQueryInstance (TRI_query_instance_t* const instance) {
-  TRI_vocbase_t* vocbase;
-  size_t i;
-
-#warning FIX TRI_LoadCollectionVocBase => TRI_UseCollectionByNameVocBase & TRI_ReleaseCollectionVocBase
-
-#if 0
-  assert(instance);
-  
-  vocbase = instance->_template->_vocbase;
-  assert(vocbase);
-
-  for (i = 0 ; i < instance->_join._length; i++) {
-    TRI_join_part_t* part;
-    TRI_vocbase_col_t const* collection;
-
-    part = (TRI_join_part_t*) instance->_join._buffer[i];
-    assert(!part->_collection);
-    assert(part->_collectionName);
-    collection = TRI_LoadCollectionVocBase(vocbase, part->_collectionName);
-    if (!collection) {
-      TRI_RegisterErrorQueryInstance(instance, 
-      TRI_ERROR_QUERY_COLLECTION_NOT_FOUND, 
-      part->_collectionName);
-      return false;
-    }
-    part->_collection = (TRI_doc_collection_t*) collection->_collection;
-  }
-#endif
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Set up the locks for the query
-////////////////////////////////////////////////////////////////////////////////
-
-static bool InitLocksQueryInstance (TRI_query_instance_t* const instance) {
-  size_t i;
-
-  assert(instance);
-
-  for (i = 0; i < instance->_join._length; i++) {
-    TRI_join_part_t* part = (TRI_join_part_t*) instance->_join._buffer[i];
-    TRI_query_instance_lock_t* lock;
-    bool insert;
-    size_t j;
-
-    assert(part);
-
-    insert = true;
-    for (j = 0; j < instance->_locks._length; j++) {
-      int compareResult;
-
-      lock = (TRI_query_instance_lock_t*) instance->_locks._buffer[j];
-      assert(lock);
-      assert(lock->_collection);
-      assert(lock->_collectionName);
-
-      compareResult = strcmp(part->_collectionName, lock->_collectionName);
-
-      if (compareResult == 0) {
-        insert = (compareResult > 0);
-        break;
-      }
-    }
-
-    if (insert) {
-      lock = (TRI_query_instance_lock_t*) TRI_Allocate(sizeof(TRI_query_instance_lock_t));
-      if (!lock) {
-        TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
-        return false;
-      }
-
-      lock->_collection = part->_collection;
-      lock->_collectionName = TRI_DuplicateString(part->_collectionName);
-      if (!lock->_collectionName) {
-        TRI_Free(lock);
-        TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
-        return false;
-      }
-      TRI_InsertVectorPointer(&instance->_locks, lock, j);
-    }
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free the locks for the query
-////////////////////////////////////////////////////////////////////////////////
-
-static void FreeLocksQueryInstance (TRI_query_instance_t* const instance) {
-  size_t i;
-  
-  for (i = 0; i < instance->_locks._length; i++) {
-    TRI_query_instance_lock_t* lock = 
-      (TRI_query_instance_lock_t*) instance->_locks._buffer[i];
-
-    assert(lock);
-    assert(lock->_collectionName);
-
-    TRI_Free(lock->_collectionName);
-    TRI_Free(lock);
-  }
-
-  TRI_DestroyVectorPointer(&instance->_locks);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Add bind parameter values
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool AddBindParameterValues (TRI_query_instance_t* const instance, 
                                     const TRI_json_t* parameters) {
-  TRI_bind_parameter_t* parameter;
-  void* nameParameter;
-  void* valueParameter;
   size_t i;
 
   assert(parameters);
@@ -1257,6 +1133,10 @@ static bool AddBindParameterValues (TRI_query_instance_t* const instance,
   }
     
   for (i = 0; i < parameters->_value._objects._length; i += 2) {
+    void* nameParameter;
+    void* valueParameter;
+    TRI_bind_parameter_t* parameter;
+
     nameParameter = TRI_AtVector(&parameters->_value._objects, i);
     valueParameter = TRI_AtVector(&parameters->_value._objects, i + 1);
 
@@ -1302,7 +1182,6 @@ static bool AddBindParameterValues (TRI_query_instance_t* const instance,
 static bool ValidateBindParameters (TRI_query_instance_t* const instance) {
   TRI_associative_pointer_t* templateParameters;
   TRI_associative_pointer_t* instanceParameters;
-  TRI_bind_parameter_t* parameter;
   size_t i;
 
   templateParameters = &instance->_template->_bindParameters;
@@ -1310,6 +1189,8 @@ static bool ValidateBindParameters (TRI_query_instance_t* const instance) {
 
   // enumerate all template bind parameters....
   for (i = 0; i < templateParameters->_nrAlloc; i++) {
+    TRI_bind_parameter_t* parameter;
+
     parameter = (TRI_bind_parameter_t*) templateParameters->_table[i];
     if (!parameter) {
       continue;
@@ -1389,9 +1270,15 @@ void TRI_FreeQueryInstance (TRI_query_instance_t* const instance) {
   }
 
   FreeJoinsQueryInstance(instance);
-  FreeLocksQueryInstance(instance);
+
+  if (instance->_locks) {
+    // might be a NULL pointer if the locks where handed over to the result cursor
+    TRI_FreeLocksQueryInstance(instance->_template->_vocbase, instance->_locks);
+  }
 
   TRI_Free(instance);
+  
+  LOG_DEBUG("destroyed query instance");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1403,9 +1290,16 @@ TRI_query_instance_t* TRI_CreateQueryInstance (const TRI_query_template_t* const
   TRI_query_instance_t* instance;
 
   assert(template_);
-
+  
   instance = (TRI_query_instance_t*) TRI_Allocate(sizeof(TRI_query_instance_t));
   if (!instance) {
+    return NULL;
+  }
+
+  // init lock struct
+  instance->_locks = TRI_InitLocksQueryInstance();
+  if (!instance->_locks) {
+    TRI_Free(instance);
     return NULL;
   }
 
@@ -1421,16 +1315,15 @@ TRI_query_instance_t* TRI_CreateQueryInstance (const TRI_query_template_t* const
   TRI_InitVectorPointer(&instance->_memory._strings);
   
   TRI_InitVectorPointer(&instance->_join);
-  TRI_InitVectorPointer(&instance->_locks);
 
   TRI_InitAssociativePointer(&instance->_bindParameters,
-                             HashBindParameterName,
+                             TRI_HashStringKeyAssociativePointer,
                              HashBindParameter,
                              EqualBindParameter,
                              0);
   
   TRI_InitAssociativePointer(&instance->_query._from._collections,
-                             QLHashKey,
+                             TRI_HashStringKeyAssociativePointer,
                              QLHashCollectionElement,
                              QLEqualCollectionKeyElement,
                              0);
@@ -1456,13 +1349,13 @@ TRI_query_instance_t* TRI_CreateQueryInstance (const TRI_query_template_t* const
     return instance;
   }
 
-  if (!InitCollectionsQueryInstance(instance)) {
+  if (!TRI_LockCollectionsQueryInstance(instance->_template->_vocbase, 
+                                        instance,
+                                        instance->_locks)) {
     return instance;
   }
-
-  if (!InitLocksQueryInstance(instance)) {
-    return instance;
-  }
+  
+  LOG_DEBUG("created query instance");
 
   return instance;
 }

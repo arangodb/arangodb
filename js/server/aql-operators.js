@@ -25,13 +25,13 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var AQL_TYPEWEIGHT_UNDEFINED = 0;
-var AQL_TYPEWEIGHT_NULL      = 1;
-var AQL_TYPEWEIGHT_BOOL      = 2;
-var AQL_TYPEWEIGHT_NUMBER    = 3;
-var AQL_TYPEWEIGHT_STRING    = 4;
-var AQL_TYPEWEIGHT_ARRAY     = 5;
-var AQL_TYPEWEIGHT_OBJECT    = 6;
+var AQL_TYPEWEIGHT_UNDEFINED = 1;
+var AQL_TYPEWEIGHT_NULL      = 2;
+var AQL_TYPEWEIGHT_BOOL      = 4;
+var AQL_TYPEWEIGHT_NUMBER    = 8;
+var AQL_TYPEWEIGHT_STRING    = 16;
+var AQL_TYPEWEIGHT_ARRAY     = 32;
+var AQL_TYPEWEIGHT_OBJECT    = 64;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the numeric value or undefined if it is out of range
@@ -110,6 +110,18 @@ function AQL_KEYS (lhs) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief access a member of an object
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_ACCESS_MEMBER (lhs, rhs) {
+  if (AQL_TYPEWEIGHT(lhs) !== AQL_TYPEWEIGHT_OBJECT) {
+    return undefined;
+  }
+
+  return lhs[rhs];
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief perform logical and
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -120,7 +132,11 @@ function AQL_LOGICAL_AND (lhs, rhs) {
     return undefined; 
   }
 
-  return (lhs && rhs);
+  if (!lhs) {
+    return false;
+  }
+
+  return rhs;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -133,8 +149,12 @@ function AQL_LOGICAL_OR (lhs, rhs) {
       AQL_TYPEWEIGHT(rhs) !== AQL_TYPEWEIGHT_BOOL) {
     return undefined; 
   }
+  
+  if (lhs) {
+    return true;
+  }
 
-  return (lhs || rhs);
+  return rhs;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,0 +1,14 @@
+> curl -X GET --dump - http://localhost:8529/_api/collection/73482
+
+HTTP/1.1 200 OK
+content-type: application/json
+location: /_api/collection/73482
+
+{
+  "name": "UnitTestsCollectionBasics",
+  "code": 200,
+  "waitForSync": true,
+  "id": 73482,
+  "status": 3,
+  "error": false
+}

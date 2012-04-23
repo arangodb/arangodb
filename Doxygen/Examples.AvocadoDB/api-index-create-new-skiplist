@@ -1,0 +1,18 @@
+> curl --data @- -X POST --dump - http://localhost:8529/_api/index/109061392
+{ "type" : "skiplist", "unique" : false, "fields" : [ "a", "b" ] }
+
+HTTP/1.1 201 Created
+content-type: application/json
+
+{
+  "code": 201,
+  "fields": [
+    "a",
+    "b"
+  ],
+  "id": "172249273/173166777",
+  "type": "skiplist",
+  "isNewlyCreated": true,
+  "unique": false,
+  "error": false
+}

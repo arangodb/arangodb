@@ -1,10 +1,11 @@
-> curl -X GET  --dump - http://localhost:8529/document/183881/8900169?rev=8900168
+> curl --data @- -X PUT --dump - http://localhost:8529/document/73482/30443310?rev=30443309
+{ "World" : "Hallo" }
 
 HTTP/1.1 412 Precondition Failed
 content-type: application/json; charset=utf-8
 
 {
-  "_rev": 8900169,
-  "_id": "183881/8900169",
+  "_rev": 30443310,
+  "_id": "73482/30443310",
   "error": true
 }

@@ -40,6 +40,141 @@ extern "C" {
 #endif
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                     public macros
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read locks the journal files and the parameter file
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_READ_LOCK_DATAFILES_SIM_COLLECTION(a) \
+  TRI_ReadLockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read unlocks the journal files and the parameter file
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_READ_UNLOCK_DATAFILES_SIM_COLLECTION(a) \
+  TRI_ReadUnlockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write locks the journal files and the parameter file
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WRITE_LOCK_DATAFILES_SIM_COLLECTION(a) \
+  TRI_WriteLockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write unlocks the journal files and the parameter file
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WRITE_UNLOCK_DATAFILES_SIM_COLLECTION(a) \
+  TRI_WriteUnlockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read locks the documents and indexes
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(a) \
+  TRI_ReadLockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read unlocks the documents and indexes
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(a) \
+  TRI_ReadUnlockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write locks the documents and indexes
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(a) \
+  TRI_WriteLockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write unlocks the documents and indexes
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(a) \
+  TRI_WriteUnlockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locks the journal entries
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(a) \
+  TRI_LockCondition(&(a)->_journalsCondition)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unlocks the journal entries
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(a) \
+  TRI_UnlockCondition(&(a)->_journalsCondition)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief waits for the journal entries
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WAIT_JOURNAL_ENTRIES_SIM_COLLECTION(a) \
+  TRI_WaitCondition(&(a)->_journalsCondition)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief signals the journal entries
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_BROADCAST_JOURNAL_ENTRIES_SIM_COLLECTION(a) \
+  TRI_BroadcastCondition(&(a)->_journalsCondition)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the shape identifier pointer from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(dst, src)                                     \
+  do {                                                                                    \
+    if (((TRI_df_marker_t const*) (src))->_type == TRI_DOC_MARKER_DOCUMENT) {             \
+      (dst) = ((TRI_doc_document_marker_t*) (src))->_shape;                               \
+    }                                                                                     \
+    else if (((TRI_df_marker_t const*) (src))->_type == TRI_DOC_MARKER_EDGE) {            \
+      (dst) = ((TRI_doc_edge_marker_t*) (src))->base._shape;                              \
+    }                                                                                     \
+    else {                                                                                \
+      (dst) = 0;                                                                          \
+    }                                                                                     \
+  } while (false)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the shaped JSON pointer from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_EXTRACT_SHAPED_JSON_MARKER(dst, src)                                                     \
+  do {                                                                                               \
+    if (((TRI_df_marker_t const*) (src))->_type == TRI_DOC_MARKER_DOCUMENT) {                        \
+      (dst)._sid = ((TRI_doc_document_marker_t*) (src))->_shape;                                     \
+      (dst)._data.length = ((TRI_df_marker_t*) (src))->_size - sizeof(TRI_doc_document_marker_t);    \
+      (dst)._data.data = (((char*) (src)) + sizeof(TRI_doc_document_marker_t));                      \
+    }                                                                                                \
+    else if (((TRI_df_marker_t const*) (src))->_type == TRI_DOC_MARKER_EDGE) {                       \
+      (dst)._sid = ((TRI_doc_document_marker_t*) (src))->_shape;                                     \
+      (dst)._data.length = ((TRI_df_marker_t*) (src))->_size - sizeof(TRI_doc_edge_marker_t);        \
+      (dst)._data.data = (((char*) (src)) + sizeof(TRI_doc_edge_marker_t));                          \
+    }                                                                                                \
+    else {                                                                                           \
+      (dst)._sid = 0;                                                                                \
+    }                                                                                                \
+  } while (false)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
@@ -132,7 +267,8 @@ TRI_edge_header_t;
 /// @brief creates a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_sim_collection_t* TRI_CreateSimCollection (char const* path,
+TRI_sim_collection_t* TRI_CreateSimCollection (TRI_vocbase_t*,
+                                               char const* path,
                                                TRI_col_parameter_t* parameter,
                                                TRI_voc_cid_t);
 
@@ -180,7 +316,7 @@ bool TRI_CloseJournalSimCollection (TRI_sim_collection_t* collection,
 /// @brief opens an existing collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_sim_collection_t* TRI_OpenSimCollection (char const* path);
+TRI_sim_collection_t* TRI_OpenSimCollection (TRI_vocbase_t*, char const* path);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes an open collection
@@ -292,51 +428,97 @@ struct TRI_index_s* TRI_LookupGeoIndex2SimCollection (TRI_sim_collection_t* coll
 /// Note that the caller must hold at least a read-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t*, const TRI_vector_t*);
+struct TRI_index_s* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t*,
+                                                      TRI_vector_t const*);
 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a priority queue index
+///
+/// Note that the caller must hold at least a read-lock.
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_LookupPriorityQueueIndexSimCollection (TRI_sim_collection_t*,
+                                                               TRI_vector_t const*);
+                                                               
+                                                               
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a skiplist index
 ///
 /// Note that the caller must hold at least a read-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s* TRI_LookupSkiplistIndexSimCollection (TRI_sim_collection_t*, const TRI_vector_t*);
+struct TRI_index_s* TRI_LookupSkiplistIndexSimCollection (TRI_sim_collection_t*,
+                                                          TRI_vector_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_idx_iid_t TRI_EnsureGeoIndexSimCollection (TRI_sim_collection_t* collection,
-                                               char const* location,
-                                               bool geoJson);
+struct TRI_index_s* TRI_EnsureGeoIndexSimCollection (TRI_sim_collection_t* collection,
+                                                     char const* location,
+                                                     bool geoJson,
+                                                     bool* created);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a geo index to a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_idx_iid_t TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* collection,
-                                                char const* latitude,
-                                                char const* longitude);
-                                                
-                                                
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds or returns an existing hash index to a collection
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_idx_iid_t TRI_EnsureHashIndexSimCollection (TRI_sim_collection_t* collection,
-                                                const TRI_vector_t* attributes,
-                                                bool unique);
-
+struct TRI_index_s* TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* collection,
+                                                       char const* latitude,
+                                                       char const* longitude,
+                                                       bool* created);
                                                 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds or returns an existing hash index to a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_idx_iid_t TRI_EnsureSkiplistIndexSimCollection (TRI_sim_collection_t* collection,
+struct TRI_index_s* TRI_EnsureHashIndexSimCollection (TRI_sim_collection_t* collection,
+                                                      const TRI_vector_t* attributes,
+                                                      bool unique,
+                                                      bool* created);
+                                                
+                                                
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds or returns an existing priority queue index to a collection
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_EnsurePriorityQueueIndexSimCollection (TRI_sim_collection_t* collection,
                                                     const TRI_vector_t* attributes,
-                                                    bool unique);
+                                                    bool unique,
+                                                    bool* created);
+                                                
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds or returns an existing skiplist index to a collection
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_EnsureSkiplistIndexSimCollection (TRI_sim_collection_t* collection,
+                                                          const TRI_vector_t* attributes,
+                                                          bool unique,
+                                                          bool* created);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                           SELECT BY EXAMPLE QUERY
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a select-by-example query
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vector_t TRI_SelectByExample (TRI_sim_collection_t* sim,
+                                  size_t length,
+                                  TRI_shape_pid_t* pids,
+                                  TRI_shaped_json_t** values);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

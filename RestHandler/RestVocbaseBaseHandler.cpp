@@ -28,10 +28,17 @@
 #include "RestVocbaseBaseHandler.h"
 
 #include "Basics/StringUtils.h"
+#include "BasicsC/conversions.h"
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/strings.h"
 #include "Rest/HttpRequest.h"
+#include "ResultGenerator/OutputGenerator.h"
 #include "ShapedJson/shaped-json.h"
+#include "Variant/VariantArray.h"
+#include "Variant/VariantBoolean.h"
+#include "Variant/VariantInt32.h"
+#include "Variant/VariantString.h"
+#include "Variant/VariantUInt64.h"
 #include "VocBase/document-collection.h"
 
 using namespace std;
@@ -77,10 +84,23 @@ LoggerData::Extra const RestVocbaseBaseHandler::RES_FAIL;
 string RestVocbaseBaseHandler::DOCUMENT_PATH = "/document";
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief document path
+////////////////////////////////////////////////////////////////////////////////
+
+string RestVocbaseBaseHandler::EDGE_PATH = "/edge";
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief collection path
 ////////////////////////////////////////////////////////////////////////////////
 
 string RestVocbaseBaseHandler::COLLECTION_PATH = "/collection";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief documents import path
+////////////////////////////////////////////////////////////////////////////////
+
+string RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH = "/_api/import";
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -248,10 +268,12 @@ void RestVocbaseBaseHandler::generateCollectionNotFound (string const& cid) {
 /// @brief generates document not found error message
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateDocumentNotFound (string const& handle) {
+void RestVocbaseBaseHandler::generateDocumentNotFound (TRI_voc_cid_t cid, string const& did) {
+  string location = DOCUMENT_PATH + "/" + StringUtils::itoa(cid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + did;
+
   generateError(HttpResponse::NOT_FOUND,
                 TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND,
-                "document " + DOCUMENT_PATH + "/" + handle + " not found");
+                "document " + location + " not found");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -275,19 +297,42 @@ void RestVocbaseBaseHandler::generateNotImplemented (string const& path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generates forbidden
+////////////////////////////////////////////////////////////////////////////////
+
+void RestVocbaseBaseHandler::generateForbidden () {
+  generateError(HttpResponse::FORBIDDEN, 
+                TRI_ERROR_FORBIDDEN,
+                "operation forbidden");
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generates precondition failed
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generatePreconditionFailed (TRI_voc_cid_t cid, TRI_voc_did_t did, TRI_voc_rid_t rid) {
   response = new HttpResponse(HttpResponse::PRECONDITION_FAILED);
-  response->setContentType("application/json; charset=utf-8");
 
-  response->body()
-    .appendText("{\"error\":true,\"_id\":\"")
-    .appendInteger(cid).appendChar(TRI_DOCUMENT_HANDLE_SEPARATOR_CHR).appendInteger(did)
-    .appendText("\",\"_rev\":")
-    .appendInteger(rid)
-    .appendText("}");
+  VariantArray* result = new VariantArray();
+  result->add("error", new VariantBoolean(true));
+  result->add("code", new VariantInt32((int32_t) HttpResponse::PRECONDITION_FAILED));
+  result->add("errorNum", new VariantInt32((int32_t) TRI_ERROR_AVOCADO_CONFLICT));
+  result->add("errorMessage", new VariantString("precondition failed"));
+  result->add("_id", new VariantString(StringUtils::itoa(cid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::itoa(did)));
+  result->add("_rev", new VariantUInt64(rid));
+
+  string contentType;
+  bool ok = OutputGenerator::output(selectResultGenerator(request), response->body(), result, contentType);
+
+  if (ok) {
+    response->setContentType(contentType);
+  }
+  else {
+    delete response;
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "cannot generate response");
+  }
+
+  delete result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -331,6 +376,17 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
 
   if (_rev) {
     TRI_Insert2ArrayJson(&augmented, "_rev", _rev);
+  }
+
+  TRI_df_marker_type_t type = ((TRI_df_marker_t*) document->_data)->_type;
+
+  if (type == TRI_DOC_MARKER_EDGE) {
+    TRI_doc_edge_marker_t* marker = (TRI_doc_edge_marker_t*) document->_data;
+    string from = StringUtils::itoa(marker->_fromCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::itoa(marker->_fromDid);
+    string to = StringUtils::itoa(marker->_toCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::itoa(marker->_toDid);
+
+    TRI_Insert3ArrayJson(&augmented, "_from", TRI_CreateStringCopyJson(from.c_str()));
+    TRI_Insert3ArrayJson(&augmented, "_to", TRI_CreateStringCopyJson(to.c_str()));
   }
 
   // convert object to string
@@ -432,7 +488,7 @@ int RestVocbaseBaseHandler::useCollection (string const& name, bool create) {
     generateError(HttpResponse::BAD, 
                   TRI_ERROR_HTTP_CORRUPTED_JSON,
                   "collection identifier is empty");
-    return false;
+    return TRI_set_errno(TRI_ERROR_HTTP_CORRUPTED_JSON);
   }
 
   // try to find the collection
@@ -451,7 +507,14 @@ int RestVocbaseBaseHandler::useCollection (string const& name, bool create) {
   }
 
   // and use the collection
-  return TRI_UseCollectionVocBase(_vocbase, const_cast<TRI_vocbase_col_s*>(_collection));
+  int res = TRI_UseCollectionVocBase(_vocbase, const_cast<TRI_vocbase_col_s*>(_collection));
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    _documentCollection = _collection->_collection;
+    assert(_documentCollection != 0);
+  }
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -506,7 +569,7 @@ TRI_doc_mptr_t const RestVocbaseBaseHandler::findDocument (string const& doc) {
     return document;
   }
 
-  uint32_t id = StringUtils::uint32(doc);
+  TRI_voc_did_t id = StringUtils::uint64(doc);
 
   // .............................................................................
   // inside read transaction
@@ -528,6 +591,34 @@ TRI_doc_mptr_t const RestVocbaseBaseHandler::findDocument (string const& doc) {
   // .............................................................................
 
   return document;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parses a document handle
+////////////////////////////////////////////////////////////////////////////////
+
+int RestVocbaseBaseHandler::parseDocumentId (string const& handle,
+                                             TRI_voc_cid_t& cid,
+                                             TRI_voc_did_t& did) {
+  vector<string> split;
+  int res;
+
+  split = StringUtils::split(handle, '/');
+
+  if (split.size() != 2) {
+    return TRI_set_errno(TRI_ERROR_AVOCADO_DOCUMENT_HANDLE_BAD);
+  }
+
+  cid = TRI_UInt64String(split[0].c_str());
+  res = TRI_errno();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  did = TRI_UInt64String(split[1].c_str());
+
+  return TRI_errno();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

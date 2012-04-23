@@ -30,6 +30,7 @@
 #include "Basics/StringUtils.h"
 #include "BasicsC/string-buffer.h"
 #include "Rest/HttpRequest.h"
+#include "Rest/JsonContainer.h"
 #include "VocBase/simple-collection.h"
 #include "VocBase/vocbase.h"
 
@@ -144,7 +145,7 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
+// --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -205,7 +206,7 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ///
 /// Create a document in a new, named collection
 ///
-/// @verbinclude rest_create-document-new-named-collection
+/// @verbinclude rest_create-document-create-collection
 ///
 /// Unknown collection identifier:
 ///
@@ -241,17 +242,19 @@ bool RestDocumentHandler::createDocument () {
   string createStr = request->value("createCollection", found);
   bool create = found ? StringUtils::boolean(createStr) : false;
 
-  // parse document
-  TRI_json_t* json = parseJsonBody();
+  // auto-ptr that will free JSON data when scope is left
+  JsonContainer container(parseJsonBody());
+  TRI_json_t* json = container.ptr();
 
   if (json == 0) {
     return false;
   }
 
-  // find and load collection given by name oder identifier
+  // find and load collection given by name or identifier
   int res = useCollection(collection, create);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    releaseCollection();
     return false;
   }
 
@@ -273,7 +276,6 @@ bool RestDocumentHandler::createDocument () {
 
   // release collection and free json
   releaseCollection();
-  TRI_FreeJson(json);
 
   // generate result
   if (mptr._did != 0) {
@@ -287,10 +289,13 @@ bool RestDocumentHandler::createDocument () {
     return true;
   }
   else {
-    if (TRI_errno() == TRI_ERROR_AVOCADO_READ_ONLY) {
-      generateError(HttpResponse::FORBIDDEN, 
-                    TRI_ERROR_AVOCADO_READ_ONLY,
-                    "collection is read-only");
+    int res = TRI_errno();
+
+    if (res == TRI_ERROR_AVOCADO_READ_ONLY) {
+      generateError(HttpResponse::FORBIDDEN, res, "collection is read-only");
+    }
+    else if (res == TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED) {
+      generateError(HttpResponse::CONFLICT, res, "cannot create document, unique constraint violated");
     }
     else {
       generateError(HttpResponse::SERVER_ERROR,
@@ -309,9 +314,17 @@ bool RestDocumentHandler::createDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readDocument () {
-  switch (request->suffix().size()) {
+  size_t len = request->suffix().size();
+
+  switch (len) {
     case 0:
       return readAllDocuments();
+
+    case 1:
+      generateError(HttpResponse::BAD, 
+                    TRI_ERROR_AVOCADO_DOCUMENT_HANDLE_BAD,
+                    "expecting GET /document/<document-handle>");
+      return false;
 
     case 2:
       return readSingleDocument(true);
@@ -345,7 +358,8 @@ bool RestDocumentHandler::readDocument () {
 ///
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has the same revision ad the
-/// given etag. Otherwise a @LIT{HTTP 412} is returned.
+/// given etag. Otherwise a @LIT{HTTP 412} is returned. As an alternative
+/// you can supply the etag in an attribute @LIT{rev} in the URL.
 ///
 /// @EXAMPLES
 ///
@@ -377,6 +391,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   int res = useCollection(collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    releaseCollection();
     return false;
   }
 
@@ -400,7 +415,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 
   // generate result
   if (document._did == 0) {
-    generateDocumentNotFound(cid + TRI_DOCUMENT_HANDLE_SEPARATOR_STR +  did);
+    generateDocumentNotFound(cid,  did);
     return false;
   }
 
@@ -468,6 +483,7 @@ bool RestDocumentHandler::readAllDocuments () {
   int res = useCollection(collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    releaseCollection();
     return false;
   }
 
@@ -649,9 +665,9 @@ bool RestDocumentHandler::updateDocument () {
   string collection = suffix[0];
   string didStr = suffix[1];
 
-  // parse document
-  TRI_json_t* json = parseJsonBody();
-
+  // auto-ptr that will free JSON data when scope is left
+  JsonContainer container(parseJsonBody());
+  TRI_json_t* json = container.ptr();
   if (json == 0) {
     return false;
   }
@@ -669,6 +685,7 @@ bool RestDocumentHandler::updateDocument () {
   int res = useCollection(collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    releaseCollection();
     return false;
   }
 
@@ -691,7 +708,7 @@ bool RestDocumentHandler::updateDocument () {
 
   // release collection
   releaseCollection();
-
+  
   // generate result
   if (mptr._did != 0) {
     generateUpdated(cid, did, mptr._rid);
@@ -706,7 +723,11 @@ bool RestDocumentHandler::updateDocument () {
         return false;
 
       case TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND:
-        generateDocumentNotFound(cid + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + didStr);
+        generateDocumentNotFound(cid, didStr);
+        return false;
+
+      case TRI_ERROR_AVOCADO_UNIQUE_CONSTRAINT_VIOLATED:
+        generateError(HttpResponse::CONFLICT, res, "cannot create document, unique constraint violated");
         return false;
 
       case TRI_ERROR_AVOCADO_CONFLICT:
@@ -803,6 +824,7 @@ bool RestDocumentHandler::deleteDocument () {
   int res = useCollection(collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    releaseCollection();
     return false;
   }
 
@@ -839,7 +861,7 @@ bool RestDocumentHandler::deleteDocument () {
         return false;
 
       case TRI_ERROR_AVOCADO_DOCUMENT_NOT_FOUND:
-        generateDocumentNotFound(cid + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + didStr);
+        generateDocumentNotFound(cid, didStr);
         return false;
 
       case TRI_ERROR_AVOCADO_CONFLICT:

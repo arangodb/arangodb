@@ -84,7 +84,6 @@
 /////////////////////////////////////////
 ///
 /// @anchor SimpleQueryDocument
-/// @copydetails JS_DocumentQuery
 /// <hr>
 ///
 /// @anchor SimpleQueryAll
