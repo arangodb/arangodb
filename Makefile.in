@@ -2924,7 +2924,7 @@ unittests-verbose:
 start-server:
 	@echo
 	@echo "================================================================================"
-	@echo "|| STARTING SERVER                                                            ||"
+	@echo "<< STARTING SERVER                                                            >>"
 	@echo "================================================================================"
 	@echo
 
@@ -2951,7 +2951,7 @@ start-server:
 @ENABLE_BOOST_TEST_TRUE@unittests-boost:
 @ENABLE_BOOST_TEST_TRUE@	@echo
 @ENABLE_BOOST_TEST_TRUE@	@echo "================================================================================"
-@ENABLE_BOOST_TEST_TRUE@	@echo "|| BOOST TESTS                                                                ||"
+@ENABLE_BOOST_TEST_TRUE@	@echo "<< BOOST TESTS                                                                >>"
 @ENABLE_BOOST_TEST_TRUE@	@echo "================================================================================"
 @ENABLE_BOOST_TEST_TRUE@	@echo
 
@@ -2964,7 +2964,7 @@ start-server:
 @ENABLE_BOOST_TEST_FALSE@unittests-boost:
 @ENABLE_BOOST_TEST_FALSE@	@echo
 @ENABLE_BOOST_TEST_FALSE@	@echo "================================================================================"
-@ENABLE_BOOST_TEST_FALSE@	@echo "|| BOOST TESTS                                                                ||"
+@ENABLE_BOOST_TEST_FALSE@	@echo "<< BOOST TESTS                                                                >>"
 @ENABLE_BOOST_TEST_FALSE@	@echo "================================================================================"
 @ENABLE_BOOST_TEST_FALSE@	@echo
 
@@ -2977,7 +2977,7 @@ start-server:
 unittests-shell-server:
 	@echo
 	@echo "================================================================================"
-	@echo "|| SHELL SERVER TESTS (BASCIS)                                                ||"
+	@echo "<< SHELL SERVER TESTS (BASCIS)                                                >>"
 	@echo "================================================================================"
 	@echo
 
@@ -2995,7 +2995,7 @@ unittests-shell-server:
 unittests-shell-server-ahuacatl:
 	@echo
 	@echo "================================================================================"
-	@echo "|| SHELL SERVER TESTS (AHUACATL)                                              ||"
+	@echo "<< SHELL SERVER TESTS (AHUACATL)                                              >>"
 	@echo "================================================================================"
 	@echo
 
@@ -3013,7 +3013,7 @@ unittests-shell-server-ahuacatl:
 unittests-shell-server-index:
 	@echo
 	@echo "================================================================================"
-	@echo "|| SHELL SERVER TESTS (INDEX & QUERY)                                         ||"
+	@echo "<< SHELL SERVER TESTS (INDEX & QUERY)                                         >>"
 	@echo "================================================================================"
 	@echo
 
@@ -3033,7 +3033,7 @@ unittests-shell-client:
 
 	@echo
 	@echo "================================================================================"
-	@echo "|| SHELL CLIENT TESTS                                                         ||"
+	@echo "<< SHELL CLIENT TESTS                                                         >>"
 	@echo "================================================================================"
 	@echo
 
@@ -3056,7 +3056,7 @@ unittests-http-server:
 
 	@echo
 	@echo "================================================================================"
-	@echo "|| HTTP SERVER TESTS                                                          ||"
+	@echo "<< HTTP SERVER TESTS                                                          >>"
 	@echo "================================================================================"
 	@echo
 

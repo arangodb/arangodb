@@ -52,7 +52,7 @@ CLIENT_OPT := --startup.directory ./js --startup.modules-path ./js/client/module
 start-server:
 	@echo
 	@echo "================================================================================"
-	@echo "|| STARTING SERVER                                                            ||"
+	@echo "<< STARTING SERVER                                                            >>"
 	@echo "================================================================================"
 	@echo
 
@@ -82,7 +82,7 @@ if ENABLE_BOOST_TEST
 unittests-boost:
 	@echo
 	@echo "================================================================================"
-	@echo "|| BOOST TESTS                                                                ||"
+	@echo "<< BOOST TESTS                                                                >>"
 	@echo "================================================================================"
 	@echo
 
@@ -112,7 +112,7 @@ else
 unittests-boost:
 	@echo
 	@echo "================================================================================"
-	@echo "|| BOOST TESTS                                                                ||"
+	@echo "<< BOOST TESTS                                                                >>"
 	@echo "================================================================================"
 	@echo
 
@@ -136,7 +136,7 @@ UNITTESTS_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
 unittests-shell-server:
 	@echo
 	@echo "================================================================================"
-	@echo "|| SHELL SERVER TESTS (BASCIS)                                                ||"
+	@echo "<< SHELL SERVER TESTS (BASCIS)                                                >>"
 	@echo "================================================================================"
 	@echo
 
@@ -164,7 +164,7 @@ UNITTESTS_SERVER_AHUACATL = $(addprefix --unit-tests ,$(SHELL_SERVER_AHUACATL))
 unittests-shell-server-ahuacatl:
 	@echo
 	@echo "================================================================================"
-	@echo "|| SHELL SERVER TESTS (AHUACATL)                                              ||"
+	@echo "<< SHELL SERVER TESTS (AHUACATL)                                              >>"
 	@echo "================================================================================"
 	@echo
 
@@ -197,7 +197,7 @@ UNITTESTS_SERVER_INDEX = $(addprefix --unit-tests ,$(SHELL_SERVER_INDEX))
 unittests-shell-server-index:
 	@echo
 	@echo "================================================================================"
-	@echo "|| SHELL SERVER TESTS (INDEX & QUERY)                                         ||"
+	@echo "<< SHELL SERVER TESTS (INDEX & QUERY)                                         >>"
 	@echo "================================================================================"
 	@echo
 
@@ -227,7 +227,7 @@ unittests-shell-client:
 
 	@echo
 	@echo "================================================================================"
-	@echo "|| SHELL CLIENT TESTS                                                         ||"
+	@echo "<< SHELL CLIENT TESTS                                                         >>"
 	@echo "================================================================================"
 	@echo
 
@@ -251,7 +251,7 @@ unittests-http-server:
 
 	@echo
 	@echo "================================================================================"
-	@echo "|| HTTP SERVER TESTS                                                          ||"
+	@echo "<< HTTP SERVER TESTS                                                          >>"
 	@echo "================================================================================"
 	@echo
 
