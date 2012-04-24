@@ -317,8 +317,8 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
     TRI_log_buffer_t* buf = (TRI_log_buffer_t*) TRI_AtVector(logs, i);
     
     if (search) {
-      string text = buf->_text;
-      
+      string text = StringUtils::tolower(buf->_text);
+     
       if (text.find(searchString) == string::npos) {
         continue;
       }
@@ -356,7 +356,7 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
   }
   
   for (size_t i = 0;  i < length;  ++i) {
-    TRI_log_buffer_t* buf = (TRI_log_buffer_t*) TRI_AtVector(logs, offset + i);
+    TRI_log_buffer_t* buf = (TRI_log_buffer_t*) TRI_AtVector(&clean, offset + i);
     uint32_t l = 0;
     
     switch (buf->_level) {
