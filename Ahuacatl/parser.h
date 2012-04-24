@@ -33,6 +33,7 @@
 #include <BasicsC/hashes.h>
 #include <BasicsC/vector.h>
 #include <BasicsC/associative.h>
+#include <BasicsC/json.h>
 
 #include "VocBase/vocbase.h"
 #include "VocBase/collection.h"
@@ -95,6 +96,8 @@ typedef struct TRI_aql_parse_context_s {
   TRI_vector_pointer_t _stack;
   TRI_aql_error_t _error;
   TRI_vocbase_t* _vocbase;
+  TRI_associative_pointer_t _parameterValues;
+  TRI_associative_pointer_t _parameterNames;
   void* _first;
   char* _query;
 }
@@ -118,13 +121,26 @@ TRI_aql_parse_context_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_parse_context_t* TRI_CreateParseContextAql (TRI_vocbase_t*, 
-                                                    const char* const);
+                                                    const char* const); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a parse context
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeParseContextAql (TRI_aql_parse_context_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add bind parameters to the context
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_AddBindParametersAql (TRI_aql_parse_context_t* const, 
+                               const TRI_json_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parse & validate the query string
+////////////////////////////////////////////////////////////////////////////////
+  
+bool TRI_ParseQueryAql (TRI_aql_parse_context_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new variable scope

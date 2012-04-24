@@ -810,13 +810,7 @@ value_literal:
 
 bind_parameter:
     T_PARAMETER {
-      TRI_aql_node_t* node; 
-      
-      if (!$1) {
-        YYABORT;
-      }
-
-      node = TRI_CreateNodeParameterAql(context, $1);
+      TRI_aql_node_t* node = TRI_CreateNodeParameterAql(context, $1);
       if (!node) {
         YYABORT;
       }
