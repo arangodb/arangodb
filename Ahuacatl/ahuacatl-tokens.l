@@ -12,8 +12,8 @@
 #include <BasicsC/strings.h>
 
 #include "Ahuacatl/ast-node.h"
-#include "Ahuacatl/parser.h"
-#include "Ahuacatl/grammar.h"
+#include "Ahuacatl/ahuacatl-parser.h"
+#include "Ahuacatl/ahuacatl-grammar.h"
 
 #define YY_EXTRA_TYPE TRI_aql_parse_context_t*
 

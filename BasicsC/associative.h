@@ -299,7 +299,13 @@ void TRI_FreeAssociativePointer (TRI_associative_pointer_t*);
 /// @brief General hash function that can be used to hash a string key
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_HashStringKeyAssociativePointer (TRI_associative_pointer_t*, void const* key);
+uint64_t TRI_HashStringKeyAssociativePointer (TRI_associative_pointer_t*, void const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief General function to determine equality of two string values
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_EqualStringKeyAssociativePointer (TRI_associative_pointer_t*, void const*, void const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given a key

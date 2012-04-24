@@ -860,7 +860,7 @@ int AvocadoServer::executeShell (bool tests) {
       char* input = console->prompt("avocado> ");
 
       if (input == 0) {
-        printf("<ctrl-D>\nBye Bye! Auf Wiedersehen!\n");
+        printf("<ctrl-D>\nBye Bye! Auf Wiedersehen! さようなら\n");
         break;
       }
 
