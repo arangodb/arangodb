@@ -68,7 +68,7 @@
         assertEqual(graph_name, graph._properties.name);
         assertTrue(graph._vertices instanceof AvocadoCollection);
         assertTrue(graph._edges instanceof AvocadoEdgesCollection);
-        
+
         graph.drop();
       },
 
@@ -86,11 +86,11 @@
 
         graph1 = new Graph(graph_name, vertex, edge);
         graph2 = new Graph(graph_name);
-        
+
         assertEqual(graph1._properties.name, graph2._properties.name);
         assertEqual(graph1._vertices, graph2._vertices);
         assertEqual(graph1._edges, graph2._edges);
-        
+
         graph1.drop();
       }
     };
@@ -311,12 +311,89 @@
     };
   }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: Vertex
+////////////////////////////////////////////////////////////////////////////////
+
+  function vertexSuite() {
+    var Graph = require("graph").Graph,
+      graph_name = "UnitTestsCollectionGraph",
+      vertex = "UnitTestsCollectionVertex",
+      edge = "UnitTestsCollectionEdge",
+      graph = null;
+
+    return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+      setUp : function () {
+        try {
+          try {
+            graph = new Graph(graph_name);
+            print("FOUND: ");
+            PRINT_OBJECT(graph);
+            graph.drop();
+          } catch (err1) {
+          }
+
+          graph = new Graph(graph_name, vertex, edge);
+        } catch (err2) {
+          console.error("[FAILED] setup failed:" + err2);
+        }
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+      tearDown : function () {
+        try {
+          if (graph !== null) {
+            graph.drop();
+          }
+        } catch (err) {
+          console.error("[FAILED] tear-down failed:" + err);
+        }
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add edges
+////////////////////////////////////////////////////////////////////////////////
+
+      testAddEdges : function () {
+        var v1,
+          v2,
+          v3,
+          edge1,
+          edge2;
+
+        v1 = graph.addVertex(graph);
+        v2 = graph.addVertex(graph);
+        v3 = graph.addVertex(graph);
+
+		edge1 = v1.addInEdge(v2);
+		edge2 = v1.addOutEdge(v3);
+		
+		assertEqual(v1.getId(), edge1.getInVertex().getId());
+		assertEqual(v2.getId(), edge1.getOutVertex().getId());
+		assertEqual(v3.getId(), edge2.getInVertex().getId());
+		assertEqual(v1.getId(), edge2.getOutVertex().getId());
+      }
+
+
+    };
+  }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-  jsunity.run(graphCreationSuite);
-  jsunity.run(graphBasicsSuite);
+  //jsunity.run(graphCreationSuite);
+  //jsunity.run(graphBasicsSuite);
+  jsunity.run(vertexSuite);
   jsunity.done();
 
 }());

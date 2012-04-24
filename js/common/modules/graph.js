@@ -419,17 +419,17 @@ function Vertex(graph, id) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an inbound edge
 ///
-/// @FUN{@FA{vertex}.addInEdge(@FA{id}, @FA{peer})}
+/// @FUN{@FA{vertex}.addInEdge(@FA{peer}, @FA{id})}
 ///
 /// Creates a new edge from @FA{peer} to @FA{vertex} and returns the edge
 /// object. The identifier @FA{id} must be a unique identifier or null.
 ///
-/// @FUN{@FA{vertex}.addInEdge(@FA{id}, @FA{peer}, @FA{label})}
+/// @FUN{@FA{vertex}.addInEdge(@FA{peer}, @FA{id}, @FA{label})}
 ///
 /// Creates a new edge from @FA{peer} to @FA{vertex} with given label and
 /// returns the edge object.
 ///
-/// @FUN{@FA{vertex}.addInEdge(@FA{id}, @FA{peer}, @FA{label}, @FA{data})}
+/// @FUN{@FA{vertex}.addInEdge(@FA{peer}, @FA{id}, @FA{label}, @FA{data})}
 ///
 /// Creates a new edge from @FA{peer} to @FA{vertex} with given label and
 /// properties defined in @FA{data}. Returns the edge object.
@@ -443,8 +443,8 @@ function Vertex(graph, id) {
 /// @verbinclude graph24
 ////////////////////////////////////////////////////////////////////////////////
 
-Vertex.prototype.addInEdge = function (id, out, label, data) {
-  return this._graph.addEdge(id, out, this, label, data);
+Vertex.prototype.addInEdge = function (out, id, label, data) {
+  return this._graph.addEdge(out, this, id, label, data);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -474,8 +474,8 @@ Vertex.prototype.addInEdge = function (id, out, label, data) {
 /// @verbinclude graph28
 ////////////////////////////////////////////////////////////////////////////////
 
-Vertex.prototype.addOutEdge = function (id, ine, label, data) {
-  return this._graph.addEdge(id, this, ine, label, data);
+Vertex.prototype.addOutEdge = function (ine, id, label, data) {
+  return this._graph.addEdge(this, ine, id, label, data);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
