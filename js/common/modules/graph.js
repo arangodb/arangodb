@@ -852,13 +852,6 @@ function Graph(name, vertices, edges) {
     if (edges === null) {
       throw "edge collection '" + graphProperties.edges + "' has vanished";
     }
-    if (typeof vertices !== "string" || vertices === "") {
-      throw "<vertices> must be a string or null";
-    }
-
-    if (typeof edges !== "string" || edges === "") {
-      throw "<edges> must be a string or null";
-    }
   } else if (typeof vertices !== "string" || vertices === "") {
     throw "<vertices> must be a string or null";
   } else if (typeof edges !== "string" || edges === "") {
