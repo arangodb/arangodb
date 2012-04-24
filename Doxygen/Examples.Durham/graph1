@@ -1,7 +1,7 @@
 avocado> var Graph = require("graph").Graph;
 
-avocado> new Graph(db.vertices, edges.edges);
+avocado> new Graph("graph", db.vertices, edges.edges);
 Graph("vertices", "edges")
 
-avocado> new Graph("vertices", "edges");
+avocado> new Graph("graph", "vertices", "edges");
 Graph("vertices", "edges")
