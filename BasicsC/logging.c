@@ -331,7 +331,7 @@ static void StoreOutput (TRI_log_level_e level, time_t timestamp, char const* te
   buf = &BufferOutput[pos][cur];
 
   if (buf->_text) {
-    TRI_FreeString(buf->_text);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, buf->_text);
   }
 
   buf->_lid = BufferLID++;
@@ -339,7 +339,7 @@ static void StoreOutput (TRI_log_level_e level, time_t timestamp, char const* te
   buf->_timestamp = timestamp;
 
   if (length > OUTPUT_MAX_LENGTH) {
-    buf->_text = TRI_Allocate(OUTPUT_MAX_LENGTH + 1);
+    buf->_text = TRI_Allocate(TRI_CORE_MEM_ZONE, OUTPUT_MAX_LENGTH + 1);
 
     memcpy(buf->_text, text, OUTPUT_MAX_LENGTH - 4);
     memcpy(buf->_text + OUTPUT_MAX_LENGTH - 4, " ...", 4);
@@ -531,7 +531,7 @@ static void OutputMessage (TRI_log_level_e level,
 
   if (! LoggingActive) {
     if (! copy) {
-      TRI_FreeString(message);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, message);
     }
 
     return;
@@ -566,7 +566,7 @@ static void OutputMessage (TRI_log_level_e level,
     TRI_UnlockSpin(&AppendersLock);
 
     if (! copy) {
-      TRI_FreeString(message);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, message);
     }
   }
 }
@@ -581,7 +581,7 @@ static void MessageQueueWorker (void* data) {
 
   TRI_vector_t buffer;
 
-  TRI_InitVector(&buffer, sizeof(log_message_t));
+  TRI_InitVector(&buffer, TRI_CORE_MEM_ZONE, sizeof(log_message_t));
 
   sl = 100;
   LoggingThreadActive = 1;
@@ -630,7 +630,7 @@ static void MessageQueueWorker (void* data) {
 
         TRI_UnlockSpin(&AppendersLock);
 
-        TRI_FreeString(msg->_message);
+        TRI_FreeString(TRI_CORE_MEM_ZONE, msg->_message);
       }
 
       TRI_ClearVector(&buffer);
@@ -662,7 +662,7 @@ static void MessageQueueWorker (void* data) {
     log_message_t* msg;
 
     msg = TRI_AtVector(&LogMessageQueue, j);
-    TRI_FreeString(msg->_message);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, msg->_message);
   }
 
   TRI_ClearVector(&LogMessageQueue);
@@ -706,7 +706,7 @@ static void LogThread (char const* func,
       int m;
       char* p;
 
-      p = TRI_Allocate(n);
+      p = TRI_Allocate(TRI_CORE_MEM_ZONE, n);
 
       if (p == NULL) {
         TRI_Log(func, file, line, TRI_LOG_LEVEL_ERROR, TRI_LOG_SEVERITY_HUMAN, "log message is too large (%d bytes)", n);
@@ -718,7 +718,7 @@ static void LogThread (char const* func,
         va_end(ap2);
 
         if (m == -1) {
-          TRI_Free(p);
+          TRI_Free(TRI_CORE_MEM_ZONE, p);
           TRI_Log(func, file, line, TRI_LOG_LEVEL_WARNING, TRI_LOG_SEVERITY_HUMAN, "format string is corrupt");
           return;
         }
@@ -886,7 +886,7 @@ void TRI_SetPrefixLogging (char const* prefix) {
   TRI_LockSpin(&OutputPrefixLock);
 
   if (OutputPrefix) {
-    TRI_FreeString(OutputPrefix);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, OutputPrefix);
   }
 
   OutputPrefix = TRI_DuplicateString(prefix);
@@ -1079,8 +1079,8 @@ TRI_vector_t* TRI_BufferLogging (TRI_log_level_e level, uint64_t start, bool use
   size_t pos;
   size_t cur;
 
-  result = TRI_Allocate(sizeof(TRI_vector_t));
-  TRI_InitVector(result, sizeof(TRI_log_buffer_t));
+  result = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_vector_t));
+  TRI_InitVector(result, TRI_CORE_MEM_ZONE, sizeof(TRI_log_buffer_t));
 
   begin = 0;
   pos = (size_t) level;
@@ -1127,7 +1127,7 @@ void TRI_FreeBufferLogging (TRI_vector_t* buffer) {
   for (i = 0;  i < buffer->_length;  ++i) {
     buf = TRI_AtVector(buffer, i);
 
-    TRI_FreeString(buf->_text);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, buf->_text);
   }
 
   TRI_FreeVector(buffer);
@@ -1226,7 +1226,7 @@ static void LogAppenderFile_Log (TRI_log_appender_t* appender,
   WriteLogFile(fd, escaped, escapedLength);
   WriteLogFile(fd, "\n", 1);
 
-  TRI_FreeString(escaped);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, escaped);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1260,11 +1260,11 @@ static void LogAppenderFile_Reopen (TRI_log_appender_t* appender) {
 
   if (fd < 0) {
     TRI_RenameFile(backup, self->_filename);
-    TRI_FreeString(backup);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, backup);
     return;
   }
 
-  TRI_FreeString(backup);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, backup);
 
   TRI_SetCloseOnExecFile(fd);
 
@@ -1304,12 +1304,12 @@ static void LogAppenderFile_Close (TRI_log_appender_t* appender) {
   self->_fd = -1;
 
   if (self->_filename != NULL) {
-    TRI_FreeString(self->_filename);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, self->_filename);
   }
 
   TRI_DestroySpin(&self->_lock);
 
-  TRI_Free(self);
+  TRI_Free(TRI_CORE_MEM_ZONE, self);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1338,7 +1338,7 @@ TRI_log_appender_t* TRI_CreateLogAppenderFile (char const* filename) {
   }
 
   // allocate space
-  appender = TRI_Allocate(sizeof(log_appender_file_t));
+  appender = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(log_appender_file_t));
 
   // logging to stdout
   if (TRI_EqualString(filename, "+")) {
@@ -1357,7 +1357,7 @@ TRI_log_appender_t* TRI_CreateLogAppenderFile (char const* filename) {
     appender->_fd = TRI_CREATE(filename, O_APPEND | O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP);
 
     if (appender->_fd < 0) {
-      TRI_Free(appender);
+      TRI_Free(TRI_CORE_MEM_ZONE, appender);
       return NULL;
     }
 
@@ -1497,7 +1497,7 @@ static void LogAppenderSyslog_Close (TRI_log_appender_t* appender) {
 
   self = (log_appender_syslog_t*) appender;
   closelog();
-  TRI_Free(self);
+  TRI_Free(TRI_CORE_MEM_ZONE, self);
 }
 
 #endif
@@ -1531,7 +1531,7 @@ TRI_log_appender_t* TRI_CreateLogAppenderSyslog (char const* name, char const* f
   }
 
   // allocate space
-  appender = (log_appender_syslog_t*) TRI_Allocate(sizeof(log_appender_syslog_t));
+  appender = (log_appender_syslog_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(log_appender_syslog_t));
 
   // set methods
   appender->base.log = LogAppenderSyslog_Log;
@@ -1642,7 +1642,7 @@ void TRI_InitialiseLogging (bool threaded) {
   UseFileBasedLogging = false;
   memset(FilesToLog, 0, sizeof(FilesToLog));
 
-  TRI_InitVectorPointer(&Appenders);
+  TRI_InitVectorPointer(&Appenders, TRI_CORE_MEM_ZONE);
   TRI_InitMutex(&BufferLock);
   TRI_InitSpin(&OutputPrefixLock);
   TRI_InitSpin(&AppendersLock);
@@ -1656,7 +1656,7 @@ void TRI_InitialiseLogging (bool threaded) {
   if (threaded) {
     TRI_InitMutex(&LogMessageQueueLock);
 
-    TRI_InitVector(&LogMessageQueue, sizeof(log_message_t));
+    TRI_InitVector(&LogMessageQueue, TRI_CORE_MEM_ZONE, sizeof(log_message_t));
 
     TRI_InitThread(&LoggingThread);
     TRI_StartThread(&LoggingThread, MessageQueueWorker, 0);
@@ -1767,7 +1767,7 @@ bool TRI_ShutdownLogging () {
   TRI_LockSpin(&OutputPrefixLock);
 
   if (OutputPrefix) {
-    TRI_FreeString(OutputPrefix);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, OutputPrefix);
     OutputPrefix = NULL;
   }
 

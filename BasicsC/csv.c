@@ -41,6 +41,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitCsvParser (TRI_csv_parser_t* parser,
+                        TRI_memory_zone_t* zone,
                         void (*begin) (TRI_csv_parser_t*, size_t),
                         void (*add) (TRI_csv_parser_t*, char const*, size_t, size_t, bool),
                         void (*end) (TRI_csv_parser_t*, char const*, size_t, size_t, bool)) {
@@ -57,7 +58,14 @@ void TRI_InitCsvParser (TRI_csv_parser_t* parser,
   parser->_row = 0;
   parser->_column = 0;
 
-  parser->_begin = TRI_Allocate(length);
+  parser->_memoryZone = zone;
+
+  parser->_begin = TRI_Allocate(zone, length);
+
+  if (parser->_begin == NULL) {
+    length = 0;
+  }
+
   parser->_start = parser->_begin;
   parser->_written = parser->_begin;
   parser->_current = parser->_begin;
@@ -83,7 +91,7 @@ void TRI_InitCsvParser (TRI_csv_parser_t* parser,
 
 void TRI_DestroyCsvParser (TRI_csv_parser_t* parser) {
   if (parser->_begin != NULL) {
-    TRI_Free(parser->_begin);
+    TRI_Free(parser->_memoryZone, parser->_begin);
   }
 }
 
@@ -104,7 +112,7 @@ void TRI_DestroyCsvParser (TRI_csv_parser_t* parser) {
 /// @brief parses a CSV line
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ParseCsvString (TRI_csv_parser_t* parser, char const* line) {
+int TRI_ParseCsvString (TRI_csv_parser_t* parser, char const* line) {
   return TRI_ParseCsvString2(parser, line, strlen(line));
 }
 
@@ -112,7 +120,7 @@ bool TRI_ParseCsvString (TRI_csv_parser_t* parser, char const* line) {
 /// @brief parses a CSV line
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t length) {
+int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t length) {
   char* ptr;
   char* qtr;
 
@@ -165,10 +173,15 @@ bool TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t len
         l4 = parser->_written - parser->_start;
         l5 = parser->_current - parser->_start;
 
-        ptr = TRI_Allocate(l3);
+        ptr = TRI_Allocate(parser->_memoryZone, l3);
+
+        if (ptr == NULL) {
+          return TRI_ERROR_OUT_OF_MEMORY;
+        }
+
         memcpy(ptr, parser->_start, l2);
         memcpy(ptr + l2, line, length);
-        TRI_Free(parser->_begin);
+        TRI_Free(parser->_memoryZone, parser->_begin);
 
         parser->_begin = ptr;
         parser->_start = ptr;
@@ -204,14 +217,14 @@ bool TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t len
           if (ptr == parser->_stop) {
             parser->_written = ptr;
             parser->_current = ptr;
-            return false;
+            return TRI_ERROR_CORRUPTED_CSV;
           }
 
           if (*ptr == parser->_quote) {
             if (ptr + 1 == parser->_stop) {
               parser->_written = qtr;
               parser->_current = ptr;
-              return false;
+              return TRI_ERROR_CORRUPTED_CSV;
             }
 
             parser->_state = TRI_CSV_PARSER_WITHIN_QUOTED_FIELD;
@@ -256,7 +269,7 @@ bool TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t len
           else {
             parser->_written = qtr;
             parser->_current = ptr;
-            return true;
+            return TRI_ERROR_NO_ERROR;
           }
 
           break;
@@ -296,7 +309,7 @@ bool TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t len
           else {
             parser->_written = qtr;
             parser->_current = ptr;
-            return true;
+            return TRI_ERROR_NO_ERROR;
           }
 
           break;
@@ -362,7 +375,7 @@ bool TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t len
     }
   }
 
-  return false;
+  return TRI_ERROR_CORRUPTED_CSV;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

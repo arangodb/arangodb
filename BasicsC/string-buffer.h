@@ -48,6 +48,7 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_string_buffer_s {
+  TRI_memory_zone_t* _memoryZone;
   char* _buffer;
   char* _current;
   size_t _len;
@@ -71,7 +72,7 @@ TRI_string_buffer_t;
 /// @brief create a new string buffer and initialise it
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_string_buffer_t* TRI_CreateStringBuffer (void);
+TRI_string_buffer_t* TRI_CreateStringBuffer (TRI_memory_zone_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises the string buffer
@@ -79,7 +80,7 @@ TRI_string_buffer_t* TRI_CreateStringBuffer (void);
 /// @warning You must call initialise before using the string buffer.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitStringBuffer (TRI_string_buffer_t *);
+void TRI_InitStringBuffer (TRI_string_buffer_t *, TRI_memory_zone_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the string buffer
@@ -101,7 +102,7 @@ void TRI_AnnihilateStringBuffer (TRI_string_buffer_t *);
 /// @brief frees the string buffer and the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeStringBuffer (TRI_string_buffer_t *);
+void TRI_FreeStringBuffer (TRI_memory_zone_t*, TRI_string_buffer_t *);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -197,19 +198,19 @@ void TRI_ReplaceStringBufferStringBuffer (TRI_string_buffer_t * self, TRI_string
 /// @brief appends character
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AppendCharStringBuffer (TRI_string_buffer_t * self, char chr);
+int TRI_AppendCharStringBuffer (TRI_string_buffer_t * self, char chr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends characters
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AppendStringStringBuffer (TRI_string_buffer_t * self, char const * str);
+int TRI_AppendStringStringBuffer (TRI_string_buffer_t * self, char const * str);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends characters
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AppendString2StringBuffer (TRI_string_buffer_t * self, char const * str, size_t len);
+int TRI_AppendString2StringBuffer (TRI_string_buffer_t * self, char const * str, size_t len);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends a string buffer

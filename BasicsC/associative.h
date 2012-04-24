@@ -38,6 +38,10 @@ extern "C" {
 #endif
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 ASSOCIATIVE ARRAY
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
@@ -63,90 +67,28 @@ typedef struct TRI_associative_array_s {
 
   uint32_t _elementSize;
 
-  uint32_t _nrAlloc; // the size of the table
-  uint32_t _nrUsed; // the number of used entries
+  uint32_t _nrAlloc;     // the size of the table
+  uint32_t _nrUsed;      // the number of used entries
 
-  char* _table; // the table itself
+  char* _table;          // the table itself
 
-  uint64_t _nrFinds; // statistics: number of lookup calls
-  uint64_t _nrAdds; // statistics: number of insert calls
-  uint64_t _nrRems; // statistics: number of remove calls
-  uint64_t _nrResizes; // statistics: number of resizes
+  uint64_t _nrFinds;     // statistics: number of lookup calls
+  uint64_t _nrAdds;      // statistics: number of insert calls
+  uint64_t _nrRems;      // statistics: number of remove calls
+  uint64_t _nrResizes;   // statistics: number of resizes
 
-  uint64_t _nrProbesF; // statistics: number of misses while looking up
-  uint64_t _nrProbesA; // statistics: number of misses while inserting
-  uint64_t _nrProbesD; // statistics: number of misses while removing
-  uint64_t _nrProbesR; // statistics: number of misses while adding
+  uint64_t _nrProbesF;   // statistics: number of misses while looking up
+  uint64_t _nrProbesA;   // statistics: number of misses while inserting
+  uint64_t _nrProbesD;   // statistics: number of misses while removing
+  uint64_t _nrProbesR;   // statistics: number of misses while adding
+
+  TRI_memory_zone_t* _memoryZone;
 }
 TRI_associative_array_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief associative array of pointers
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_associative_pointer_s {
-  uint64_t (*hashKey) (struct TRI_associative_pointer_s*, void const*);
-  uint64_t (*hashElement) (struct TRI_associative_pointer_s*, void const*);
-
-  bool (*isEqualKeyElement) (struct TRI_associative_pointer_s*, void const*, void const*);
-  bool (*isEqualElementElement) (struct TRI_associative_pointer_s*, void const*, void const*);
-
-  uint32_t _nrAlloc; // the size of the table
-  uint32_t _nrUsed; // the number of used entries
-
-  void** _table; // the table itself
-
-  uint64_t _nrFinds; // statistics: number of lookup calls
-  uint64_t _nrAdds; // statistics: number of insert calls
-  uint64_t _nrRems; // statistics: number of remove calls
-  uint64_t _nrResizes; // statistics: number of resizes
-
-  uint64_t _nrProbesF; // statistics: number of misses while looking up
-  uint64_t _nrProbesA; // statistics: number of misses while inserting
-  uint64_t _nrProbesD; // statistics: number of misses while removing
-  uint64_t _nrProbesR; // statistics: number of misses while adding
-}
-TRI_associative_pointer_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief associative array of pointers
-///
-/// Note that lookup, insert, and remove are proctected using a read-write lock.
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_associative_synced_s {
-  uint64_t (*hashKey) (struct TRI_associative_synced_s*, void const*);
-  uint64_t (*hashElement) (struct TRI_associative_synced_s*, void const*);
-
-  bool (*isEqualKeyElement) (struct TRI_associative_synced_s*, void const*, void const*);
-  bool (*isEqualElementElement) (struct TRI_associative_synced_s*, void const*, void const*);
-
-  uint32_t _nrAlloc; // the size of the table
-  uint32_t _nrUsed; // the number of used entries
-
-  void** _table; // the table itself
-
-  TRI_read_write_lock_t _lock;
-
-  uint64_t _nrFinds; // statistics: number of lookup calls
-  uint64_t _nrAdds; // statistics: number of insert calls
-  uint64_t _nrRems; // statistics: number of remove calls
-  uint64_t _nrResizes; // statistics: number of resizes
-
-  uint64_t _nrProbesF; // statistics: number of misses while looking up
-  uint64_t _nrProbesA; // statistics: number of misses while inserting
-  uint64_t _nrProbesD; // statistics: number of misses while removing
-  uint64_t _nrProbesR; // statistics: number of misses while adding
-}
-TRI_associative_synced_t;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 ASSOCIATIVE ARRAY
-// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -162,6 +104,7 @@ TRI_associative_synced_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitAssociativeArray (TRI_associative_array_t*,
+                               TRI_memory_zone_t*,
                                size_t elementSize,
                                uint64_t (*hashKey) (TRI_associative_array_t*, void*),
                                uint64_t (*hashElement) (TRI_associative_array_t*, void*),
@@ -180,7 +123,7 @@ void TRI_DestroyAssociativeArray (TRI_associative_array_t*);
 /// @brief destroys an array and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeAssociativeArray (TRI_associative_array_t*);
+void TRI_FreeAssociativeArray (TRI_memory_zone_t*, TRI_associative_array_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -252,6 +195,49 @@ bool TRI_RemoveKeyAssociativeArray (TRI_associative_array_t*, void* key, void* o
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Collections
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief associative array of pointers
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_associative_pointer_s {
+  uint64_t (*hashKey) (struct TRI_associative_pointer_s*, void const*);
+  uint64_t (*hashElement) (struct TRI_associative_pointer_s*, void const*);
+
+  bool (*isEqualKeyElement) (struct TRI_associative_pointer_s*, void const*, void const*);
+  bool (*isEqualElementElement) (struct TRI_associative_pointer_s*, void const*, void const*);
+
+  uint32_t _nrAlloc;     // the size of the table
+  uint32_t _nrUsed;      // the number of used entries
+
+  void** _table;         // the table itself
+
+  uint64_t _nrFinds;     // statistics: number of lookup calls
+  uint64_t _nrAdds;      // statistics: number of insert calls
+  uint64_t _nrRems;      // statistics: number of remove calls
+  uint64_t _nrResizes;   // statistics: number of resizes
+
+  uint64_t _nrProbesF;   // statistics: number of misses while looking up
+  uint64_t _nrProbesA;   // statistics: number of misses while inserting
+  uint64_t _nrProbesD;   // statistics: number of misses while removing
+  uint64_t _nrProbesR;   // statistics: number of misses while adding
+
+  TRI_memory_zone_t* _memoryZone;
+}
+TRI_associative_pointer_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -265,6 +251,7 @@ bool TRI_RemoveKeyAssociativeArray (TRI_associative_array_t*, void* key, void* o
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitAssociativePointer (TRI_associative_pointer_t* array,
+                                 TRI_memory_zone_t*,
                                  uint64_t (*hashKey) (TRI_associative_pointer_t*, void const*),
                                  uint64_t (*hashElement) (TRI_associative_pointer_t*, void const*),
                                  bool (*isEqualKeyElement) (TRI_associative_pointer_t*, void const*, void const*),
@@ -280,7 +267,7 @@ void TRI_DestroyAssociativePointer (TRI_associative_pointer_t*);
 /// @brief destroys an array and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeAssociativePointer (TRI_associative_pointer_t*);
+void TRI_FreeAssociativePointer (TRI_memory_zone_t*, TRI_associative_pointer_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -346,6 +333,53 @@ void* TRI_RemoveKeyAssociativePointer (TRI_associative_pointer_t*, void const* k
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Collections
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief associative array of synced pointers
+///
+/// Note that lookup, insert, and remove are proctected using a read-write lock.
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_associative_synced_s {
+  uint64_t (*hashKey) (struct TRI_associative_synced_s*, void const*);
+  uint64_t (*hashElement) (struct TRI_associative_synced_s*, void const*);
+
+  bool (*isEqualKeyElement) (struct TRI_associative_synced_s*, void const*, void const*);
+  bool (*isEqualElementElement) (struct TRI_associative_synced_s*, void const*, void const*);
+
+  uint32_t _nrAlloc;     // the size of the table
+  uint32_t _nrUsed;      // the number of used entries
+
+  void** _table;         // the table itself
+
+  TRI_read_write_lock_t _lock;
+
+  uint64_t _nrFinds;     // statistics: number of lookup calls
+  uint64_t _nrAdds;      // statistics: number of insert calls
+  uint64_t _nrRems;      // statistics: number of remove calls
+  uint64_t _nrResizes;   // statistics: number of resizes
+
+  uint64_t _nrProbesF;   // statistics: number of misses while looking up
+  uint64_t _nrProbesA;   // statistics: number of misses while inserting
+  uint64_t _nrProbesD;   // statistics: number of misses while removing
+  uint64_t _nrProbesR;   // statistics: number of misses while adding
+
+  TRI_memory_zone_t* _memoryZone;
+}
+TRI_associative_synced_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -359,6 +393,7 @@ void* TRI_RemoveKeyAssociativePointer (TRI_associative_pointer_t*, void const* k
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitAssociativeSynced (TRI_associative_synced_t* array,
+                                TRI_memory_zone_t*,
                                 uint64_t (*hashKey) (TRI_associative_synced_t*, void const*),
                                 uint64_t (*hashElement) (TRI_associative_synced_t*, void const*),
                                 bool (*isEqualKeyElement) (TRI_associative_synced_t*, void const*, void const*),
@@ -374,7 +409,7 @@ void TRI_DestroyAssociativeSynced (TRI_associative_synced_t*);
 /// @brief destroys an array and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeAssociativeSynced (TRI_associative_synced_t*);
+void TRI_FreeAssociativeSynced (TRI_memory_zone_t*, TRI_associative_synced_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -312,7 +312,7 @@ void TRI_InitCondition (TRI_condition_t* cond) {
   pthread_cond_init(&cond->_cond, 0);
 
   cond->_ownMutex = true;
-  cond->_mutex = TRI_Allocate(sizeof(pthread_mutex_t));
+  cond->_mutex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(pthread_mutex_t));
 
   pthread_mutex_init(cond->_mutex, 0);
 }
@@ -337,7 +337,7 @@ void TRI_DestroyCondition (TRI_condition_t* cond) {
 
   if (cond->_ownMutex) {
     pthread_mutex_destroy(cond->_mutex);
-    TRI_Free(cond->_mutex);
+    TRI_Free(TRI_CORE_MEM_ZONE, cond->_mutex);
   }
 }
 

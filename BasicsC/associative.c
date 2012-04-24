@@ -79,11 +79,18 @@ static void ResizeAssociativeArray (TRI_associative_array_t* array) {
   oldAlloc = array->_nrAlloc;
 
   array->_nrAlloc = 2 * array->_nrAlloc + 1;
-  array->_nrUsed = 0;
   array->_nrResizes++;
 
-  array->_table = TRI_Allocate(array->_nrAlloc * array->_elementSize);
-  // TODO FIXME: handle malloc failures
+  array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * array->_elementSize);
+
+  if (array->_table == NULL) {
+    array->_nrAlloc = oldAlloc;
+    array->_table = oldTable;
+
+    return;
+  }
+
+  array->_nrUsed = 0;
 
   for (j = 0; j < array->_nrAlloc; j++) {
     array->clearElement(array, array->_table + j * array->_elementSize);
@@ -95,7 +102,7 @@ static void ResizeAssociativeArray (TRI_associative_array_t* array) {
     }
   }
 
-  TRI_Free(oldTable);
+  TRI_Free(array->_memoryZone, oldTable);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -116,6 +123,7 @@ static void ResizeAssociativeArray (TRI_associative_array_t* array) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitAssociativeArray (TRI_associative_array_t* array,
+                               TRI_memory_zone_t* zone,
                                size_t elementSize,
                                uint64_t (*hashKey) (TRI_associative_array_t*, void*),
                                uint64_t (*hashElement) (TRI_associative_array_t*, void*),
@@ -133,17 +141,23 @@ void TRI_InitAssociativeArray (TRI_associative_array_t* array,
   array->isEqualKeyElement = isEqualKeyElement;
   array->isEqualElementElement = isEqualElementElement;
 
+  array->_memoryZone = zone;
   array->_elementSize = elementSize;
   array->_nrAlloc = 10;
 
-  array->_table = TRI_Allocate(array->_elementSize * array->_nrAlloc);
-  // TODO FIXME: handle malloc failures
+  array->_table = TRI_Allocate(zone, array->_elementSize * array->_nrAlloc);
 
   p = array->_table;
-  e = p + array->_elementSize * array->_nrAlloc;
 
-  for (;  p < e;  p += array->_elementSize) {
-    array->clearElement(array, p);
+  if (p == NULL) {
+    array->_nrAlloc = 0;
+  }
+  else {
+    e = p + array->_elementSize * array->_nrAlloc;
+
+    for (;  p < e;  p += array->_elementSize) {
+      array->clearElement(array, p);
+    }
   }
 
   array->_nrUsed = 0;
@@ -162,16 +176,16 @@ void TRI_InitAssociativeArray (TRI_associative_array_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyAssociativeArray (TRI_associative_array_t* array) {
-  TRI_Free(array->_table);
+  TRI_Free(array->_memoryZone, array->_table);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an array and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeAssociativeArray (TRI_associative_array_t* array) {
+void TRI_FreeAssociativeArray (TRI_memory_zone_t* zone, TRI_associative_array_t* array) {
   TRI_DestroyAssociativeArray(array);
-  TRI_Free(array);
+  TRI_Free(zone, array);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -279,6 +293,11 @@ bool TRI_InsertElementAssociativeArray (TRI_associative_array_t* array, void* el
   uint64_t hash;
   uint64_t i;
 
+  // check for out-of-memory
+  if (array->_nrAlloc == array->_nrUsed) {
+    return false;
+  }
+
   // compute the hash
   hash = array->hashElement(array, element);
   i = hash % array->_nrAlloc;
@@ -321,6 +340,11 @@ bool TRI_InsertElementAssociativeArray (TRI_associative_array_t* array, void* el
 bool TRI_InsertKeyAssociativeArray (TRI_associative_array_t* array, void* key, void* element, bool overwrite) {
   uint64_t hash;
   uint64_t i;
+
+  // check for out-of-memory
+  if (array->_nrAlloc == array->_nrUsed) {
+    return false;
+  }
 
   // compute the hash
   hash = array->hashKey(array, key);
@@ -527,11 +551,18 @@ static void ResizeAssociativePointer (TRI_associative_pointer_t* array) {
   oldAlloc = array->_nrAlloc;
 
   array->_nrAlloc = 2 * array->_nrAlloc + 1;
-  array->_nrUsed = 0;
   array->_nrResizes++;
 
-  array->_table = TRI_Allocate(array->_nrAlloc * sizeof(void*));
-  // TODO FIXME: handle malloc failures
+  array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * sizeof(void*));
+
+  if (array->_table == NULL) {
+    array->_nrAlloc = oldAlloc;
+    array->_table = oldTable;
+
+    return;
+  }
+
+  array->_nrUsed = 0;
 
   for (j = 0; j < array->_nrAlloc; j++) {
     array->_table[j] = NULL;
@@ -543,7 +574,7 @@ static void ResizeAssociativePointer (TRI_associative_pointer_t* array) {
     }
   }
 
-  TRI_Free(oldTable);
+  TRI_Free(array->_memoryZone, oldTable);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -564,6 +595,7 @@ static void ResizeAssociativePointer (TRI_associative_pointer_t* array) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitAssociativePointer (TRI_associative_pointer_t* array,
+                                 TRI_memory_zone_t* zone,
                                  uint64_t (*hashKey) (TRI_associative_pointer_t*, void const*),
                                  uint64_t (*hashElement) (TRI_associative_pointer_t*, void const*),
                                  bool (*isEqualKeyElement) (TRI_associative_pointer_t*, void const*, void const*),
@@ -576,16 +608,22 @@ void TRI_InitAssociativePointer (TRI_associative_pointer_t* array,
   array->isEqualKeyElement = isEqualKeyElement;
   array->isEqualElementElement = isEqualElementElement;
 
+  array->_memoryZone = zone;
   array->_nrAlloc = 10;
 
-  array->_table = TRI_Allocate(sizeof(void*) * array->_nrAlloc);
-  // TODO FIXME: handle malloc failures
+  array->_table = TRI_Allocate(zone, sizeof(void*) * array->_nrAlloc);
 
   p = array->_table;
-  e = p + array->_nrAlloc;
 
-  for (;  p < e;  ++p) {
-    *p = NULL;
+  if (p == NULL) {
+    array->_nrAlloc = 0;
+  }
+  else {
+    e = p + array->_nrAlloc;
+
+    for (;  p < e;  ++p) {
+      *p = NULL;
+    }
   }
 
   array->_nrUsed = 0;
@@ -604,16 +642,16 @@ void TRI_InitAssociativePointer (TRI_associative_pointer_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyAssociativePointer (TRI_associative_pointer_t* array) {
-  TRI_Free(array->_table);
+  TRI_Free(array->_memoryZone, array->_table);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an array and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeAssociativePointer (TRI_associative_pointer_t* array) {
+void TRI_FreeAssociativePointer (TRI_memory_zone_t* zone, TRI_associative_pointer_t* array) {
   TRI_DestroyAssociativePointer(array);
-  TRI_Free(array);
+  TRI_Free(zone, array);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -642,7 +680,8 @@ uint64_t TRI_HashStringKeyAssociativePointer (TRI_associative_pointer_t* array,
 /// @brief lookups an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-void const* TRI_LookupByKeyAssociativePointer (TRI_associative_pointer_t* array, void const* key) {
+void const* TRI_LookupByKeyAssociativePointer (TRI_associative_pointer_t* array,
+                                               void const* key) {
   uint64_t hash;
   uint64_t i;
 
@@ -667,7 +706,8 @@ void const* TRI_LookupByKeyAssociativePointer (TRI_associative_pointer_t* array,
 /// @brief lookups an element given an element
 ////////////////////////////////////////////////////////////////////////////////
 
-void const* TRI_LookupByElementAssociativePointer (TRI_associative_pointer_t* array, void const* element) {
+void const* TRI_LookupByElementAssociativePointer (TRI_associative_pointer_t* array,
+                                                   void const* element) {
   uint64_t hash;
   uint64_t i;
 
@@ -692,10 +732,17 @@ void const* TRI_LookupByElementAssociativePointer (TRI_associative_pointer_t* ar
 /// @brief adds an element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_InsertElementAssociativePointer (TRI_associative_pointer_t* array, void* element, bool overwrite) {
+void* TRI_InsertElementAssociativePointer (TRI_associative_pointer_t* array,
+                                           void* element,
+                                           bool overwrite) {
   uint64_t hash;
   uint64_t i;
   void* old;
+
+  // check for out-of-memory
+  if (array->_nrAlloc == array->_nrUsed) {
+    return false;
+  }
 
   // compute the hash
   hash = array->hashElement(array, element);
@@ -737,10 +784,18 @@ void* TRI_InsertElementAssociativePointer (TRI_associative_pointer_t* array, voi
 /// @brief adds an key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_InsertKeyAssociativePointer (TRI_associative_pointer_t* array, void const* key, void* element, bool overwrite) {
+void* TRI_InsertKeyAssociativePointer (TRI_associative_pointer_t* array,
+                                       void const* key,
+                                       void* element, 
+                                       bool overwrite) {
   uint64_t hash;
   uint64_t i;
   void* old;
+
+  // check for out-of-memory
+  if (array->_nrAlloc == array->_nrUsed) {
+    return false;
+  }
 
   // compute the hash
   hash = array->hashKey(array, key);
@@ -782,7 +837,8 @@ void* TRI_InsertKeyAssociativePointer (TRI_associative_pointer_t* array, void co
 /// @brief removes an element from the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_RemoveElementAssociativePointer (TRI_associative_pointer_t* array, void const* element) {
+void* TRI_RemoveElementAssociativePointer (TRI_associative_pointer_t* array,
+                                           void const* element) {
   uint64_t hash;
   uint64_t i;
   uint64_t k;
@@ -833,7 +889,8 @@ void* TRI_RemoveElementAssociativePointer (TRI_associative_pointer_t* array, voi
 /// @brief removes an key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_RemoveKeyAssociativePointer (TRI_associative_pointer_t* array, void const* key) {
+void* TRI_RemoveKeyAssociativePointer (TRI_associative_pointer_t* array, 
+                                       void const* key) {
   uint64_t hash;
   uint64_t i;
   uint64_t k;
@@ -934,11 +991,18 @@ static void ResizeAssociativeSynced (TRI_associative_synced_t* array) {
   oldAlloc = array->_nrAlloc;
 
   array->_nrAlloc = 2 * array->_nrAlloc + 1;
-  array->_nrUsed = 0;
   array->_nrResizes++;
 
-  array->_table = TRI_Allocate(array->_nrAlloc * sizeof(void*));
-  // TODO FIXME: handle malloc failures
+  array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * sizeof(void*));
+
+  if (array->_table == NULL) {
+    array->_nrAlloc = oldAlloc;
+    array->_table = oldTable;
+
+    return;
+  }
+
+  array->_nrUsed = 0;
 
   for (j = 0; j < array->_nrAlloc; j++) {
     array->_table[j] = NULL;
@@ -950,7 +1014,7 @@ static void ResizeAssociativeSynced (TRI_associative_synced_t* array) {
     }
   }
 
-  TRI_Free(oldTable);
+  TRI_Free(array->_memoryZone, oldTable);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -971,10 +1035,11 @@ static void ResizeAssociativeSynced (TRI_associative_synced_t* array) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitAssociativeSynced (TRI_associative_synced_t* array,
-                                 uint64_t (*hashKey) (TRI_associative_synced_t*, void const*),
-                                 uint64_t (*hashElement) (TRI_associative_synced_t*, void const*),
-                                 bool (*isEqualKeyElement) (TRI_associative_synced_t*, void const*, void const*),
-                                 bool (*isEqualElementElement) (TRI_associative_synced_t*, void const*, void const*)) {
+                                TRI_memory_zone_t* zone,
+                                uint64_t (*hashKey) (TRI_associative_synced_t*, void const*),
+                                uint64_t (*hashElement) (TRI_associative_synced_t*, void const*),
+                                bool (*isEqualKeyElement) (TRI_associative_synced_t*, void const*, void const*),
+                                bool (*isEqualElementElement) (TRI_associative_synced_t*, void const*, void const*)) {
   void** p;
   void** e;
 
@@ -983,16 +1048,22 @@ void TRI_InitAssociativeSynced (TRI_associative_synced_t* array,
   array->isEqualKeyElement = isEqualKeyElement;
   array->isEqualElementElement = isEqualElementElement;
 
+  array->_memoryZone = zone;
   array->_nrAlloc = 10;
 
-  array->_table = TRI_Allocate(sizeof(void*) * array->_nrAlloc);
-  // TODO FIXME: handle malloc failures
+  array->_table = TRI_Allocate(zone, sizeof(void*) * array->_nrAlloc);
 
   p = array->_table;
-  e = p + array->_nrAlloc;
 
-  for (;  p < e;  ++p) {
-    *p = NULL;
+  if (p == NULL) {
+    array->_nrAlloc = 0;
+  }
+  else {
+    e = p + array->_nrAlloc;
+
+    for (;  p < e;  ++p) {
+      *p = NULL;
+    }
   }
 
   array->_nrUsed = 0;
@@ -1013,7 +1084,7 @@ void TRI_InitAssociativeSynced (TRI_associative_synced_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyAssociativeSynced (TRI_associative_synced_t* array) {
-  TRI_Free(array->_table);
+  TRI_Free(array->_memoryZone, array->_table);
   TRI_DestroyReadWriteLock(&array->_lock);
 }
 
@@ -1021,9 +1092,9 @@ void TRI_DestroyAssociativeSynced (TRI_associative_synced_t* array) {
 /// @brief destroys an array and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeAssociativeSynced (TRI_associative_synced_t* array) {
+void TRI_FreeAssociativeSynced (TRI_memory_zone_t* zone, TRI_associative_synced_t* array) {
   TRI_DestroyAssociativeSynced(array);
-  TRI_Free(array);
+  TRI_Free(zone, array);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1043,7 +1114,8 @@ void TRI_FreeAssociativeSynced (TRI_associative_synced_t* array) {
 /// @brief lookups an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-void const* TRI_LookupByKeyAssociativeSynced (TRI_associative_synced_t* array, void const* key) {
+void const* TRI_LookupByKeyAssociativeSynced (TRI_associative_synced_t* array,
+                                              void const* key) {
   uint64_t hash;
   uint64_t i;
   void const* result;
@@ -1075,7 +1147,8 @@ void const* TRI_LookupByKeyAssociativeSynced (TRI_associative_synced_t* array, v
 /// @brief lookups an element given an element
 ////////////////////////////////////////////////////////////////////////////////
 
-void const* TRI_LookupByElementAssociativeSynced (TRI_associative_synced_t* array, void const* element) {
+void const* TRI_LookupByElementAssociativeSynced (TRI_associative_synced_t* array,
+                                                  void const* element) {
   uint64_t hash;
   uint64_t i;
   void const* result;
@@ -1107,10 +1180,16 @@ void const* TRI_LookupByElementAssociativeSynced (TRI_associative_synced_t* arra
 /// @brief adds an element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_InsertElementAssociativeSynced (TRI_associative_synced_t* array, void* element) {
+void* TRI_InsertElementAssociativeSynced (TRI_associative_synced_t* array,
+                                          void* element) {
   uint64_t hash;
   uint64_t i;
-  union { void const* c; void* v; } old;
+  void* old;
+
+  // check for out-of-memory
+  if (array->_nrAlloc == array->_nrUsed) {
+    return false;
+  }
 
   // compute the hash
   hash = array->hashElement(array, element);
@@ -1127,12 +1206,12 @@ void* TRI_InsertElementAssociativeSynced (TRI_associative_synced_t* array, void*
     array->_nrProbesA++;
   }
 
-  old.c = array->_table[i];
+  old = array->_table[i];
 
   // if we found an element, return
-  if (old.c != NULL) {
+  if (old != NULL) {
     TRI_WriteUnlockReadWriteLock(&array->_lock);
-    return old.v;
+    return old;
   }
 
   // add a new element to the associative array
@@ -1152,10 +1231,17 @@ void* TRI_InsertElementAssociativeSynced (TRI_associative_synced_t* array, void*
 /// @brief adds an key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_InsertKeyAssociativeSynced (TRI_associative_synced_t* array, void const* key, void* element) {
+void* TRI_InsertKeyAssociativeSynced (TRI_associative_synced_t* array,
+                                      void const* key,
+                                      void* element) {
   uint64_t hash;
   uint64_t i;
-  union { void const* c; void* v; } old;
+  void* old;
+
+  // check for out-of-memory
+  if (array->_nrAlloc == array->_nrUsed) {
+    return false;
+  }
 
   // compute the hash
   hash = array->hashKey(array, key);
@@ -1172,12 +1258,12 @@ void* TRI_InsertKeyAssociativeSynced (TRI_associative_synced_t* array, void cons
     array->_nrProbesA++;
   }
 
-  old.c = array->_table[i];
+  old = array->_table[i];
 
   // if we found an element, return
-  if (old.c != NULL) {
+  if (old != NULL) {
     TRI_WriteUnlockReadWriteLock(&array->_lock);
-    return old.v;
+    return old;
   }
 
   // add a new element to the associative array
@@ -1197,11 +1283,12 @@ void* TRI_InsertKeyAssociativeSynced (TRI_associative_synced_t* array, void cons
 /// @brief removes an element from the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_RemoveElementAssociativeSynced (TRI_associative_synced_t* array, void const* element) {
+void* TRI_RemoveElementAssociativeSynced (TRI_associative_synced_t* array,
+                                          void const* element) {
   uint64_t hash;
   uint64_t i;
   uint64_t k;
-  union { void const* c; void* v; } old;
+  void* old;
 
   hash = array->hashElement(array, element);
   i = hash % array->_nrAlloc;
@@ -1224,7 +1311,7 @@ void* TRI_RemoveElementAssociativeSynced (TRI_associative_synced_t* array, void 
   }
 
   // remove item
-  old.c = array->_table[i];
+  old = array->_table[i];
   array->_table[i] = NULL;
   array->_nrUsed--;
 
@@ -1245,18 +1332,19 @@ void* TRI_RemoveElementAssociativeSynced (TRI_associative_synced_t* array, void 
 
   // return success
   TRI_WriteUnlockReadWriteLock(&array->_lock);
-  return old.v;
+  return old;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_RemoveKeyAssociativeSynced (TRI_associative_synced_t* array, void const* key) {
+void* TRI_RemoveKeyAssociativeSynced (TRI_associative_synced_t* array,
+                                      void const* key) {
   uint64_t hash;
   uint64_t i;
   uint64_t k;
-  union { void const* c; void* v; } old;
+  void* old;
 
   hash = array->hashKey(array, key);
   i = hash % array->_nrAlloc;
@@ -1279,7 +1367,7 @@ void* TRI_RemoveKeyAssociativeSynced (TRI_associative_synced_t* array, void cons
   }
 
   // remove item
-  old.c = array->_table[i];
+  old = array->_table[i];
   array->_table[i] = NULL;
   array->_nrUsed--;
 
@@ -1300,7 +1388,7 @@ void* TRI_RemoveKeyAssociativeSynced (TRI_associative_synced_t* array, void cons
 
   // return success
   TRI_WriteUnlockReadWriteLock(&array->_lock);
-  return old.v;
+  return old;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
