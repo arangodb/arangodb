@@ -401,6 +401,8 @@
         assertEqual(edge.getId(), v2.getInEdges()[0].getId());
         assertEqual([], v1.getInEdges());
         assertEqual([], v2.getOutEdges());
+        assertEqual(edge.getId(), v1.edges()[0].getId());
+        assertEqual(edge.getId(), v2.edges()[0].getId());
       },
 
 ////////////////////////////////////////////////////////////////////////////////
