@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, simple queries
+/// @brief tests for query language, simple collection-based queries
 ///
 /// @file
 ///
@@ -31,7 +31,7 @@ var jsunity = require("jsunity");
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function ahuacatlQueryTestSuite () {
+function ahuacatlQueryCollectionTestSuite () {
   var users = null;
   var relations = null;
 
@@ -508,7 +508,7 @@ function ahuacatlQueryTestSuite () {
     testCollectSimple : function () {
       var expected = [ { "gender" : "f", "numUsers" : 10 }, { "gender" : "m", "numUsers" : 10 } ];
 
-      var actual = getQueryResults("FOR u in " + users.name() + " COLLECT gender = u.gender INTO g SORT gender ASC RETURN { \"gender\" : gender, \"numUsers\" : AHUACATL_LENGTH(g) }", false);
+      var actual = getQueryResults("FOR u in " + users.name() + " COLLECT gender = u.gender INTO g SORT gender ASC RETURN { \"gender\" : gender, \"numUsers\" : LENGTH(g) }", false);
       assertEqual(expected, actual);
     },
     
@@ -519,7 +519,7 @@ function ahuacatlQueryTestSuite () {
     testCollectFiltered : function () {
       var expected = [ { "gender" : "m", "numUsers" : 8 }, { "gender" : "f", "numUsers" : 8 } ];
 
-      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true COLLECT gender = u.gender INTO g SORT gender DESC RETURN { \"gender\" : gender, \"numUsers\" : AHUACATL_LENGTH(g) }", false);
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true COLLECT gender = u.gender INTO g SORT gender DESC RETURN { \"gender\" : gender, \"numUsers\" : LENGTH(g) }", false);
       assertEqual(expected, actual);
     },
 
@@ -530,7 +530,7 @@ function ahuacatlQueryTestSuite () {
     testCollectMultipleCriteria : function () {
       var expected = [ { "active" : false, "gender" : "m", "numUsers" : 2 }, { "active" : true, "gender" : "m", "numUsers" : 8 }, { "active" : false, "gender" : "f", "numUsers" : 2 }, { "active" : true, "gender" : "f", "numUsers" : 8 } ];
 
-      actual = getQueryResults("FOR u in " + users.name() + " COLLECT gender = u.gender, active = u.active INTO g SORT gender DESC, active ASC RETURN { \"gender\" : gender, \"active\" : active, \"numUsers\" : AHUACATL_LENGTH(g) }", false);
+      actual = getQueryResults("FOR u in " + users.name() + " COLLECT gender = u.gender, active = u.active INTO g SORT gender DESC, active ASC RETURN { \"gender\" : gender, \"active\" : active, \"numUsers\" : LENGTH(g) }", false);
       assertEqual(expected, actual);
     },
 
@@ -541,7 +541,7 @@ function ahuacatlQueryTestSuite () {
     testCollectMultiple : function () {
       /* TODO: must be fixed 
       var expected = [ { "gender" : "f", "numUsers" : 10 }, { "gender" : "m", "numUsers" : 10 } ];
-      actual = getQueryResults("FOR u in " + users.name() + " COLLECT gender = u.gender, active = u.active INTO g COLLECT agender = gender, numUsers = AHUACATL_LENGTH(g) RETURN { \"gender\" : agender, \"numUsers\" : numUsers }", false);
+      actual = getQueryResults("FOR u in " + users.name() + " COLLECT gender = u.gender, active = u.active INTO g COLLECT agender = gender, numUsers = LENGTH(g) RETURN { \"gender\" : agender, \"numUsers\" : numUsers }", false);
       assertEqual(expected, actual);
       */
     },
@@ -553,7 +553,7 @@ function ahuacatlQueryTestSuite () {
     testRelations1 : function () {
       var expected = [ { "name" : "Abigail", "numFriends" : 3 }, { "name" : "Alexander", "numFriends" : 2 }, { "name" : "Isabella", "numFriends" : 2 }, { "name" : "John", "numFriends" : 2 } ];
 
-      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true LET f = ((FOR r IN " + relations.name() + " FILTER r.from == u.id && r.type == \"friend\" RETURN r)) SORT AHUACATL_LENGTH(f) DESC, u.name LIMIT 0,4 FILTER AHUACATL_LENGTH(f) > 0 RETURN { \"name\" : u.name, \"numFriends\" : AHUACATL_LENGTH(f) }", false);
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true LET f = ((FOR r IN " + relations.name() + " FILTER r.from == u.id && r.type == \"friend\" RETURN r)) SORT LENGTH(f) DESC, u.name LIMIT 0,4 FILTER LENGTH(f) > 0 RETURN { \"name\" : u.name, \"numFriends\" : LENGTH(f) }", false);
       assertEqual(expected, actual);
     },
 
@@ -564,7 +564,7 @@ function ahuacatlQueryTestSuite () {
     testRelations2 : function () {
       var expected = [ { "friends" : [102, 106, 108], "name" : "Abigail" }, { "friends" : [100, 108], "name" : "Michael" }, { "friends" : [100, 203], "name" : "Sophia" }, { "friends" : [203, 205], "name" : "Mariah" } ];
 
-      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true LET f = ((FOR r IN " + relations.name() + " FILTER r.from == u.id && r.type == \"friend\" SORT r.from RETURN r)) SORT AHUACATL_LENGTH(f) DESC LIMIT 0,4 FILTER AHUACATL_LENGTH(f) > 0 RETURN { \"name\" : u.name, \"friends\" : f[*].to }", false);
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true LET f = ((FOR r IN " + relations.name() + " FILTER r.from == u.id && r.type == \"friend\" SORT r.from RETURN r)) SORT LENGTH(f) DESC LIMIT 0,4 FILTER LENGTH(f) > 0 RETURN { \"name\" : u.name, \"friends\" : f[*].to }", false);
       assertEqual(expected, actual);
     },
 
@@ -575,7 +575,7 @@ function ahuacatlQueryTestSuite () {
     testRelations3 : function () {
       var expected = [ { "friends" : ["Daniel", "Jacob", "Jim"], "name" : "Abigail" }, { "friends" : ["Jim", "John"], "name" : "Michael" }, { "friends" : ["John", "Madison"], "name" : "Sophia" }, { "friends" : ["Eva", "Madison"], "name" : "Mariah" } ];
 
-      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true LET f = ((FOR r IN " + relations.name() + " FILTER r.from == u.id && r.type == \"friend\" FOR u2 IN " + users.name() + " FILTER r.to == u2.id SORT u2.name RETURN u2.name)) SORT AHUACATL_LENGTH(f) DESC LIMIT 0,4 FILTER AHUACATL_LENGTH(f) > 0 RETURN { \"name\" : u.name, \"friends\" : f }", false);
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true LET f = ((FOR r IN " + relations.name() + " FILTER r.from == u.id && r.type == \"friend\" FOR u2 IN " + users.name() + " FILTER r.to == u2.id SORT u2.name RETURN u2.name)) SORT LENGTH(f) DESC LIMIT 0,4 FILTER LENGTH(f) > 0 RETURN { \"name\" : u.name, \"friends\" : f }", false);
       assertEqual(expected, actual);
     },
 
@@ -586,7 +586,7 @@ function ahuacatlQueryTestSuite () {
     testRelations4 : function () {
       var expected = [ { "friends" : ["Daniel", "Jacob", "Jim"], "name" : "Abigail" }, { "friends" : ["Jim", "John"], "name" : "Michael" }, { "friends" : ["Madison", "John"], "name" : "Sophia" }, { "friends" : ["Eva", "Madison"], "name" : "Mariah" } ];
 
-      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true LET f = ((FOR r IN " + relations.name() + " FILTER r.from == u.id && r.type == \"friend\" FOR u2 IN " + users.name() + " FILTER r.to == u2.id SORT u2.name RETURN u2)) SORT AHUACATL_LENGTH(f) DESC LIMIT 0,4 FILTER AHUACATL_LENGTH(f) > 0 RETURN { \"name\" : u.name, \"friends\" : f[*].name }", false);
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true LET f = ((FOR r IN " + relations.name() + " FILTER r.from == u.id && r.type == \"friend\" FOR u2 IN " + users.name() + " FILTER r.to == u2.id SORT u2.name RETURN u2)) SORT LENGTH(f) DESC LIMIT 0,4 FILTER LENGTH(f) > 0 RETURN { \"name\" : u.name, \"friends\" : f[*].name }", false);
       assertEqual(expected, actual);
     },
 
@@ -597,7 +597,7 @@ function ahuacatlQueryTestSuite () {
     testRelations5 : function () {
       var expected = [ { "friendIds" : [ 106, 102, 100 ], "friendNames" : ["Daniel", "Jacob", "Jim"], "name" : "Abigail" }, { "friendIds" : [ 108, 100 ], "friendName" : ["Jim", "John"], "name" : "Michael" }, { "friendIds" : [ 203, 100 ], "friendNames" : ["Madison", "John"], "name" : "Sophia" }, { "friendIds" : [ 205, 203 ], "friendNames" : ["Eva", "Madison"], "name" : "Mariah" } ];
 
-      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true LET f = ((FOR r IN " + relations.name() + " FILTER r.from == u.id && r.type == \"friend\" FOR u2 IN " + users.name() + " FILTER r.to == u2.id SORT u2.name RETURN u2)) SORT AHUACATL_LENGTH(f) DESC LIMIT 0,4 FILTER AHUACATL_LENGTH(f) > 0 RETURN { \"name\" : u.name, \"friendNames\" : f[*].name, \"friendIds\" : f[*].id }", false);
+      actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true LET f = ((FOR r IN " + relations.name() + " FILTER r.from == u.id && r.type == \"friend\" FOR u2 IN " + users.name() + " FILTER r.to == u2.id SORT u2.name RETURN u2)) SORT LENGTH(f) DESC LIMIT 0,4 FILTER LENGTH(f) > 0 RETURN { \"name\" : u.name, \"friendNames\" : f[*].name, \"friendIds\" : f[*].id }", false);
       assertEqual(expected, actual);
     }
 */
@@ -609,7 +609,7 @@ function ahuacatlQueryTestSuite () {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(ahuacatlQueryTestSuite);
+jsunity.run(ahuacatlQueryCollectionTestSuite);
 
 return jsunity.done();
 
