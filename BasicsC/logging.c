@@ -1130,7 +1130,7 @@ void TRI_FreeBufferLogging (TRI_vector_t* buffer) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, buf->_text);
   }
 
-  TRI_FreeVector(buffer);
+  TRI_FreeVector(TRI_CORE_MEM_ZONE, buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
