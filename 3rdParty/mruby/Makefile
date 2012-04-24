@@ -113,8 +113,10 @@ $(OBJM) : $(MSRC)
 .PHONY : clean
 clean :
 	$(MAKE) clean -C src $(MAKE_FLAGS)
+	$(MAKE) clean -C tools/mrbc $(MAKE_FLAGS)
 	$(MAKE) clean -C tools/mruby $(MAKE_FLAGS)
 	-rm -f $(EXE) $(OBJM)
 	-rm -f $(OBJM:.o=.d)
+	-rm -f $(patsubst %.c,%.o,$(EXCEPT1)) $(patsubst %.c,%.d,$(EXCEPT1))
 	-rm -f $(IOSLIB) $(IOSSIMLIB) $(IOSDEVLIB)
 	@echo "make: removing targets, objects and depend files of `pwd`"

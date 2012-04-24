@@ -1,3 +1,9 @@
+/*
+** kernel.c - Kernel module
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #include "mruby.h"
 #include "mruby/string.h"
 #include <string.h>
@@ -10,8 +16,8 @@
 #include "mruby/hash.h"
 #include "mruby/class.h"
 #include "mruby/struct.h"
-#include "variable.h"
-#include "ritehash.h"
+#include "mruby/variable.h"
+#include "mruby/khash.h"
 #include "error.h"
 #include "method.h"
 
@@ -402,7 +408,7 @@ init_copy(mrb_state *mrb, mrb_value dest, mrb_value obj)
  *
  *  Produces a shallow copy of <i>obj</i>---the instance variables of
  *  <i>obj</i> are copied, but not the objects they reference. Copies
- *  the frozen and tainted state of <i>obj</i>. See also the discussion
+ *  the frozen state of <i>obj</i>. See also the discussion
  *  under <code>Object#dup</code>.
  *
  *     class Klass
@@ -431,7 +437,6 @@ mrb_obj_clone(mrb_state *mrb, mrb_value self)
   }
   clone = mrb_obj_alloc(mrb, self.tt, mrb_obj_class(mrb, self));
   clone->c = mrb_singleton_class_clone(mrb, self);
-  //RBASIC(clone)->flags = (RBASIC(obj)->flags | FL_TEST(clone, FL_TAINT) | FL_TEST(clone, FL_UNTRUSTED)) & ~(FL_FREEZE|FL_FINALIZE);
   init_copy(mrb, mrb_obj_value(clone), self);
   //1-9-2 no bug mrb_funcall(mrb, clone, "initialize_clone", 1, self);
   //RBASIC(clone)->flags |= RBASIC(obj)->flags & FL_FREEZE;
@@ -446,7 +451,7 @@ mrb_obj_clone(mrb_state *mrb, mrb_value self)
  *
  *  Produces a shallow copy of <i>obj</i>---the instance variables of
  *  <i>obj</i> are copied, but not the objects they reference.
- *  <code>dup</code> copies the tainted state of <i>obj</i>. See also
+ *  <code>dup</code> copies the frozen state of <i>obj</i>. See also
  *  the discussion under <code>Object#clone</code>. In general,
  *  <code>clone</code> and <code>dup</code> may have different semantics
  *  in descendant classes. While <code>clone</code> is used to duplicate

@@ -86,5 +86,6 @@ clean :
 	$(MAKE) clean -C ../mrblib $(MAKE_FLAGS)
 	-rm -f $(LIB) $(OBJS) $(OBJY) $(YC)
 	-rm -f $(OBJS:.o=.d) $(OBJY:.o=.d)
+	-rm -f $(patsubst %.c,%.o,$(EXCEPT1)) $(patsubst %.c,%.d,$(EXCEPT1))
 	@echo "make: removing targets, objects and depend files of `pwd`"
 

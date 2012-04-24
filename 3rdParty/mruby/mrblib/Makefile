@@ -59,5 +59,7 @@ $(RLIB) : $(MRBS)
 .PHONY : clean
 clean :
 	-rm -f $(MRBC) $(MLIB) $(CLIB) $(RLIB) $(DLIB)
+	-rm -f $(patsubst %.c,%.d,$(CLIB))
+	-rm -f $(patsubst %.c,%.o,$(EXCEPT1)) $(patsubst %.c,%.d,$(EXCEPT1))
 	@echo "make: removing targets, objects and depend files of `pwd`"
 

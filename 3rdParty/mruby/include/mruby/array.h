@@ -1,3 +1,9 @@
+/*
+** array.h - Array class
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #ifndef MRUBY_ARRAY_H
 #define MRUBY_ARRAY_H
 

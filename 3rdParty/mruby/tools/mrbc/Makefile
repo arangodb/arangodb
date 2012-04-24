@@ -69,5 +69,6 @@ $(YC) : $(YSRC)
 clean :
 	-rm -f $(EXE) $(OBJS) $(OBJY) $(YC)
 	-rm -f $(OBJS:.o=.d) $(OBJY:.o=.d)
+	-rm -f $(patsubst %.c,%.o,$(EXCEPT1)) $(patsubst %.c,%.d,$(EXCEPT1))
 	@echo "make: removing targets, objects and depend files of `pwd`"
 

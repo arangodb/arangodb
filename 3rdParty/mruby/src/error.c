@@ -1,3 +1,9 @@
+/*
+** error.c - Exception class
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #include "mruby.h"
 #include <stdarg.h>
 #include <string.h>
@@ -5,10 +11,10 @@
 #include <setjmp.h>
 #include "error.h"
 #include "opcode.h"
-#include "irep.h"
+#include "mruby/irep.h"
 #include "mruby/proc.h"
 #include "mruby/numeric.h"
-#include "variable.h"
+#include "mruby/variable.h"
 #include "mruby/string.h"
 #include "eval_intern.h"
 #include "mruby/class.h"
@@ -419,7 +425,7 @@ mrb_exc_exception(mrb_state *mrb, mrb_value exc)
   mrb_get_args(mrb, "*", &argv, &argc);
   if (argc == 0) return exc;
   exclass = mrb_obj_value(mrb_class(mrb, exc));
-  return mrb_funcall(mrb, exclass, mrb_intern(mrb, "exception"), argc, argv);
+  return mrb_funcall(mrb, exclass, "exception", argc, argv);
 }
 
 void

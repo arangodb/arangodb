@@ -1,3 +1,9 @@
+/*
+** class.h - Class class
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #ifndef MRUBY_CLASS_H
 #define MRUBY_CLASS_H
 

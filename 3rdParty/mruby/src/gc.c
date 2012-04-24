@@ -1,3 +1,9 @@
+/*
+** gc.c - garbage collector for RiteVM
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #include "mruby.h"
 #include "mruby/object.h"
 #include "mruby/class.h"
@@ -5,7 +11,7 @@
 #include "mruby/string.h"
 #include "mruby/hash.h"
 #include "mruby/range.h"
-#include "ritehash.h"
+#include "mruby/khash.h"
 #include <string.h>
 #include <stdio.h>
 #include "mruby/struct.h"
@@ -401,8 +407,8 @@ obj_free(mrb_state *mrb, struct RBasic *obj)
       struct REnv *e = (struct REnv *)obj;
 
       if (e->cioff < 0) {
-	mrb_free(mrb, e->stack);
-	e->stack = 0;
+        mrb_free(mrb, e->stack);
+        e->stack = 0;
       }
     }
     break;
@@ -426,6 +432,14 @@ obj_free(mrb_state *mrb, struct RBasic *obj)
   case MRB_TT_STRUCT:
   case MRB_TT_EXCEPTION:
     break;
+  case MRB_TT_DATA:
+    {
+      struct RData *d = (struct RData *)obj;
+      if (d->type->dfree) {
+        d->type->dfree(mrb, d->data);
+      }
+    }
+	break;
   }
   obj->tt = MRB_TT_FREE;
 }
