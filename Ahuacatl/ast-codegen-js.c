@@ -1047,14 +1047,14 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
         AppendCode(generator, ")");
         break;
       case AQL_NODE_OPERATOR_BINARY_DIV:
-        AppendCode(generator, "AHUACATL_ARITHMETIC_DIV(");
+        AppendCode(generator, "AHUACATL_ARITHMETIC_DIVIDE(");
         GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_lhs);
         AppendCode(generator, ", ");
         GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_rhs);
         AppendCode(generator, ")");
         break;
       case AQL_NODE_OPERATOR_BINARY_MOD:
-        AppendCode(generator, "AHUACATL_ARITHMETIC_MOD(");
+        AppendCode(generator, "AHUACATL_ARITHMETIC_MODULUS(");
         GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_lhs);
         AppendCode(generator, ", ");
         GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_rhs);

@@ -350,6 +350,13 @@ function AHUACATL_RELATIONAL_EQUAL (lhs, rhs) {
   }
 
   // primitive type
+  if (AHUACATL_TYPEWEIGHT(lhs) === AHUACATL_TYPEWEIGHT_NULL) {
+    lhs = null;
+  }
+  if (AHUACATL_TYPEWEIGHT(rhs) === AHUACATL_TYPEWEIGHT_NULL) {
+    rhs = null;
+  }
+
   return (lhs === rhs);
 }
 
@@ -397,6 +404,13 @@ function AHUACATL_RELATIONAL_UNEQUAL (lhs, rhs) {
   }
 
   // primitive type
+  if (AHUACATL_TYPEWEIGHT(lhs) === AHUACATL_TYPEWEIGHT_NULL) {
+    lhs = null;
+  }
+  if (AHUACATL_TYPEWEIGHT(rhs) === AHUACATL_TYPEWEIGHT_NULL) {
+    rhs = null;
+  }
+
   return (lhs !== rhs);
 }
 
@@ -453,6 +467,13 @@ function AHUACATL_RELATIONAL_GREATER_REC (lhs, rhs) {
   }
 
   // primitive type
+  if (AHUACATL_TYPEWEIGHT(lhs) === AHUACATL_TYPEWEIGHT_NULL) {
+    lhs = null;
+  }
+  if (AHUACATL_TYPEWEIGHT(rhs) === AHUACATL_TYPEWEIGHT_NULL) {
+    rhs = null;
+  }
+
   if (lhs === rhs) {
     return null;
   }
@@ -528,6 +549,13 @@ function AHUACATL_RELATIONAL_GREATEREQUAL_REC (lhs, rhs) {
   }
 
   // primitive type
+  if (AHUACATL_TYPEWEIGHT(lhs) === AHUACATL_TYPEWEIGHT_NULL) {
+    lhs = null;
+  }
+  if (AHUACATL_TYPEWEIGHT(rhs) === AHUACATL_TYPEWEIGHT_NULL) {
+    rhs = null;
+  }
+
   if (lhs === rhs) {
     return null;
   }
@@ -604,6 +632,13 @@ function AHUACATL_RELATIONAL_LESS_REC (lhs, rhs) {
   }
 
   // primitive type
+  if (AHUACATL_TYPEWEIGHT(lhs) === AHUACATL_TYPEWEIGHT_NULL) {
+    lhs = null;
+  }
+  if (AHUACATL_TYPEWEIGHT(rhs) === AHUACATL_TYPEWEIGHT_NULL) {
+    rhs = null;
+  }
+
   if (lhs === rhs) {
     return null;
   }
@@ -677,11 +712,18 @@ function AHUACATL_RELATIONAL_LESSEQUAL_REC (lhs, rhs) {
     return null;
   }
   
+  // primitive type
+  if (AHUACATL_TYPEWEIGHT(lhs) === AHUACATL_TYPEWEIGHT_NULL) {
+    lhs = null;
+  }
+  if (AHUACATL_TYPEWEIGHT(rhs) === AHUACATL_TYPEWEIGHT_NULL) {
+    rhs = null;
+  }
+  
   if (lhs === rhs) {
     return null;
   }
 
-  // primitive type
   return (lhs <= rhs);
 }
 
@@ -752,7 +794,11 @@ function AHUACATL_UNARY_PLUS (value) {
     throw "expecting number for unary plus";
   }
 
-  return AHUACATL_NUMERIC_VALUE(value);
+  var result = AHUACATL_NUMERIC_VALUE(value);
+  if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
+    throw "number out of range";
+  }
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -766,7 +812,11 @@ function AHUACATL_UNARY_MINUS (value) {
     throw "expecting number for unary minus";
   }
 
-  return AHUACATL_NUMERIC_VALUE(-value);
+  var result = AHUACATL_NUMERIC_VALUE(-value);
+  if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
+    throw "number out of range";
+  }
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -781,7 +831,11 @@ function AHUACATL_ARITHMETIC_PLUS (lhs, rhs) {
     throw "expecting numbers for plus";
   }
 
-  return AHUACATL_NUMERIC_VALUE(lhs + rhs);
+  var result = AHUACATL_NUMERIC_VALUE(lhs + rhs);
+  if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
+    throw "number out of range";
+  }
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -796,7 +850,11 @@ function AHUACATL_ARITHMETIC_MINUS (lhs, rhs) {
     throw "expecting numbers for minus";
   }
 
-  return AHUACATL_NUMERIC_VALUE(lhs - rhs);
+  var result = AHUACATL_NUMERIC_VALUE(lhs - rhs);
+  if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
+    throw "number out of range";
+  }
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -811,7 +869,11 @@ function AHUACATL_ARITHMETIC_TIMES (lhs, rhs) {
     throw "expecting numbers for times";
   }
 
-  return AHUACATL_NUMERIC_VALUE(lhs * rhs);
+  var result = AHUACATL_NUMERIC_VALUE(lhs * rhs);
+  if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
+    throw "number out of range";
+  }
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -830,7 +892,11 @@ function AHUACATL_ARITHMETIC_DIVIDE (lhs, rhs) {
     throw "division by zero";
   }
 
-  return AHUACATL_NUMERIC_VALUE(lhs / rhs);
+  var result = AHUACATL_NUMERIC_VALUE(lhs / rhs);
+  if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
+    throw "number out of range";
+  }
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -849,7 +915,11 @@ function AHUACATL_ARITHMETIC_MODULUS (lhs, rhs) {
     throw "division by zero";
   }
 
-  return AHUACATL_NUMERIC_VALUE(lhs % rhs);
+  var result  = AHUACATL_NUMERIC_VALUE(lhs % rhs);
+  if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
+    throw "number out of range";
+  }
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
