@@ -153,7 +153,6 @@
           v2);
 
         assertEqual(null, edge.getId());
-        // assertEqual("edge1", edge.getId());
       },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -199,8 +198,58 @@
           { testProperty: "testValue" });
 
         edge2 = graph.getEdges().next();
+        assertEqual(true, graph.getEdges().hasNext());
         assertEqual(edge1.getId(), edge2.getId());
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove an edge
+////////////////////////////////////////////////////////////////////////////////
+
+      testRemoveEdges : function () {
+        var v1,
+          v2,
+          edge;
+
+        v1 = graph.addVertex("vertex1");
+        v2 = graph.addVertex("vertex2");
+
+        edge = graph.addEdge(v1,
+          v2,
+          "edge1",
+          "label",
+          { testProperty: "testValue" });
+
+        graph.removeEdge(edge);
+        assertEqual(false, graph.getEdges().hasNext());
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a vertex
+////////////////////////////////////////////////////////////////////////////////
+
+      testRemoveVertex : function () {
+        var v1,
+          v1_id,
+          v2,
+          edge;
+
+        v1 = graph.addVertex("vertex1");
+        v1_id = v1.getId();
+        v2 = graph.addVertex("vertex2");
+
+        edge = graph.addEdge(v1,
+          v2,
+          "edge1",
+          "label",
+          { testProperty: "testValue" });
+
+        graph.removeVertex(v1);
+        
+        assertEqual(null, graph.getVertex(v1_id));
+        assertEqual(false, graph.getEdges().hasNext());
       }
+
 
     };
   }
