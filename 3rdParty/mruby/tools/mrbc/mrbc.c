@@ -1,11 +1,11 @@
 #include "mruby.h"
 #include "mruby/proc.h"
+#include "mruby/dump.h"
+#include "mruby/cdump.h"
 #include "compile.h"
-#include "dump.h"
-#include "cdump.h"
-#include "stdio.h"
-#include "memory.h"
-#include "stdlib.h"
+#include <stdio.h>
+#include <memory.h>
+#include <stdlib.h>
 
 #define RITEBIN_EXT ".mrb"
 #define C_EXT       ".c"

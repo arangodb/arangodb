@@ -1,6 +1,6 @@
 #include "mruby.h"
-#include "irep.h"
-#include "dump.h"
+#include "mruby/irep.h"
+#include "mruby/dump.h"
 #include "mruby/string.h"
 #include "mruby/proc.h"
 

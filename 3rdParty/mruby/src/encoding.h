@@ -1,13 +1,8 @@
-/**********************************************************************
-
-  encoding.h -
-
-  $Author: matz $
-  created at: Thu May 24 11:49:41 JST 2007
-
-  Copyright (C) 2007 Yukihiro Matsumoto
-
-**********************************************************************/
+/*
+** encoding.h - Encoding class
+** 
+** See Copyright Notice in mruby.h
+*/
 
 #ifndef RUBY_ENCODING_H
 #define RUBY_ENCODING_H 1

@@ -1,3 +1,9 @@
+/*
+** hash.h - Hash class
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #ifndef MRUBY_HASH_H
 #define MRUBY_HASH_H
 

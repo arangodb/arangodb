@@ -1,3 +1,9 @@
+/*
+** irep.h - mrb_irep structure
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #ifndef MRUBY_IREP_H
 #define MRUBY_IREP_H
 

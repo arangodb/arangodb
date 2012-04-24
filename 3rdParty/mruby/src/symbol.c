@@ -1,5 +1,11 @@
+/*
+** symbol.c - Symbol class
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #include "mruby.h"
-#include "ritehash.h"
+#include "mruby/khash.h"
 #include <string.h>
 
 #include <stdarg.h>
@@ -7,7 +13,7 @@
 #include "mruby/string.h"
 #include <ctype.h>
 #include "mruby/class.h"
-#include "variable.h"
+#include "mruby/variable.h"
 #include <stdio.h>
 
 #ifdef INCLUDE_REGEXP

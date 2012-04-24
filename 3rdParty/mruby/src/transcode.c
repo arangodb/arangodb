@@ -16,7 +16,7 @@
 #include "transcode_data.h"
 #include <ctype.h>
 #include "st.h"
-#include "variable.h"
+#include "mruby/variable.h"
 #include <string.h>
 #include "mruby/string.h"
 #include "mruby/array.h"
