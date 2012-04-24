@@ -401,7 +401,28 @@
         assertEqual(edge.getId(), v2.getInEdges()[0].getId());
         assertEqual([], v1.getInEdges());
         assertEqual([], v2.getOutEdges());
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get edges
+////////////////////////////////////////////////////////////////////////////////
+
+      testGetEdgesWithLabels : function () {
+        var v1,
+          v2,
+          edge1,
+          edge2;
+
+        v1 = graph.addVertex(graph);
+        v2 = graph.addVertex(graph);
+
+        edge1 = graph.addEdge(v1, v2, null, "label_1");
+        edge2 = graph.addEdge(v1, v2, null, "label_2");
+
+        assertEqual(edge2.getId(), v1.getOutEdges("label_2")[0].getId());
+        assertEqual(1, v2.getInEdges("label_2").length);
       }
+
     };
   }
 
