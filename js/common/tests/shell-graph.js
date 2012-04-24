@@ -1,7 +1,7 @@
 /*jslint indent: 2,
          nomen: true,
          maxlen: 80 */
-/*global require, db, assertEqual */
+/*global require, db, assertEqual, print, PRINT_OBJECT, console */
 (function () {
   "use strict";
 
@@ -44,11 +44,11 @@
 
   function graphBasicsSuite() {
     //var ERRORS = require("internal").errors;
-    var Graph = require("graph").Graph;
-    var graph_name = "UnitTestsCollectionGraph";
-    var vertex = "UnitTestsCollectionVertex";
-    var edge = "UnitTestsCollectionEdge";
-    var graph = null;
+    var Graph = require("graph").Graph,
+      graph_name = "UnitTestsCollectionGraph",
+      vertex = "UnitTestsCollectionVertex",
+      edge = "UnitTestsCollectionEdge",
+      graph = null;
 
     return {
 
@@ -63,14 +63,12 @@
             print("FOUND: ");
             PRINT_OBJECT(graph);
             graph.drop();
-          }
-          catch (err) {
+          } catch (err1) {
           }
 
           graph = new Graph(graph_name, vertex, edge);
-        }
-        catch (err) {
-          console.error("[FAILED] setup failed:" + err);
+        } catch (err2) {
+          console.error("[FAILED] setup failed:" + err2);
         }
       },
 
@@ -80,11 +78,10 @@
 
       tearDown : function () {
         try {
-          if (graph != null) {
+          if (graph !== null) {
             graph.drop();
           }
-        }
-        catch (err) {
+        } catch (err) {
           console.error("[FAILED] tear-down failed:" + err);
         }
       },
@@ -138,7 +135,73 @@
 
         assertEqual("name2", v.getId());
         assertEqual(23, v.getProperty("age"));
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief change a property
+////////////////////////////////////////////////////////////////////////////////
+
+      testAddEdgeWithoutInfo : function () {
+        var v1,
+          v2,
+          edge;
+
+        v1 = graph.addVertex("vertex1");
+        v2 = graph.addVertex("vertex2");
+
+        edge = graph.addEdge(v1,
+          v2);
+
+        assertEqual(null, edge.getId());
+        // assertEqual("edge1", edge.getId());
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief change a property
+////////////////////////////////////////////////////////////////////////////////
+
+      testAddEdge : function () {
+        var v1,
+          v2,
+          edge;
+
+        v1 = graph.addVertex("vertex1");
+        v2 = graph.addVertex("vertex2");
+
+        edge = graph.addEdge(v1,
+          v2,
+          "edge1",
+          "label",
+          { testProperty: "testValue" });
+
+        assertEqual("edge1", edge.getId());
+        assertEqual("label", edge.getLabel());
+        assertEqual("testValue", edge.getProperty("testProperty"));
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief change a property
+////////////////////////////////////////////////////////////////////////////////
+
+      testGetEdges : function () {
+        var v1,
+          v2,
+          edge1,
+          edge2;
+
+        v1 = graph.addVertex("vertex1");
+        v2 = graph.addVertex("vertex2");
+
+        edge1 = graph.addEdge(v1,
+          v2,
+          "edge1",
+          "label",
+          { testProperty: "testValue" });
+
+        edge2 = graph.getEdges().next();
+        assertEqual(edge1.getId(), edge2.getId());
       }
+
     };
   }
 
