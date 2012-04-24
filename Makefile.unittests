@@ -13,8 +13,8 @@ unittests: unittests-verbose unittests-brief
 
 unittests-brief: \
 	unittests-boost \
-	unittests-shell-server \
 	unittests-shell-server-ahuacatl \
+	unittests-shell-server \
 	unittests-http-server \
 	unittests-shell-client \
 	unittests-http-server \
@@ -153,7 +153,9 @@ unittests-shell-server:
 ## SHELL SERVER TESTS (AHUACATL)
 ################################################################################
 
-SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-queries.js 
+SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-queries-collection.js \
+		     @srcdir@/js/server/tests/ahuacatl-queries-noncollection.js 
+ 
 
 .PHONY: unittests-shell-server-ahuacatl
 

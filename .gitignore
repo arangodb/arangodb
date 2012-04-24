@@ -86,6 +86,7 @@ stamp-h*
 .svn
 *.swp
 tags
+Ahuacatl/grammar.output
 UnitTests/HttpInterface/logs
 UnitTests/Jutland/CsvReaderTest.cpp
 UnitTests/Jutland/Makefile.am
@@ -97,3 +98,4 @@ UnitTests/Philadelphia/Runner.cpp
 UnitTests/test_suite
 .v8-build
 VC++
+/nbproject/private/
