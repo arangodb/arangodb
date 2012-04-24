@@ -23,6 +23,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_NOT_IMPLEMENTED, "not implemented");
   REG_ERROR(ERROR_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_FORBIDDEN, "forbidden");
+  REG_ERROR(ERROR_OUT_OF_MEMORY_MMAP, "out of memory in mmap");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");
   REG_ERROR(ERROR_HTTP_NOT_FOUND, "not found");

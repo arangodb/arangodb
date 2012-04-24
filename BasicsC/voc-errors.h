@@ -35,6 +35,8 @@ extern "C" {
 ///   Will be raised when the parameter does not fulfill the requirements.
 /// - 11: @CODE{forbidden}
 ///   Will be raised when you are missing permission for the operation.
+/// - 12: @CODE{out of memory in mmap}
+///   Weill be raised when there is a memory shortage.
 /// - 400: @CODE{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 403: @CODE{forbidden}
@@ -395,6 +397,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_FORBIDDEN                                               (11)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 12: ERROR_OUT_OF_MEMORY_MMAP
+///
+/// out of memory in mmap
+///
+/// Weill be raised when there is a memory shortage.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_OUT_OF_MEMORY_MMAP                                      (12)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER
