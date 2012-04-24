@@ -78,6 +78,7 @@ ModuleCache["/internal"].exports.errors = {
   "ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE" : { "code" : 1521, "message" : "limit value '%s' is out of range" }, 
   "ERROR_QUERY_VARIABLE_REDECLARED" : { "code" : 1522, "message" : "variable '%s' is assigned multiple times" }, 
   "ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED" : { "code" : 1523, "message" : "document attribute '%s' is assigned multiple times" }, 
+  "ERROR_QUERY_VARIABLE_NAME_INVALID" : { "code" : 1524, "message" : "variable name '%s' has an invalid format" }, 
   "ERROR_CURSOR_NOT_FOUND"       : { "code" : 1600, "message" : "cursor not found" }, 
   "ERROR_SESSION_USERHANDLER_URL_INVALID" : { "code" : 1700, "message" : "expecting <prefix>/user/<username>" }, 
   "ERROR_SESSION_USERHANDLER_CANNOT_CREATE_USER" : { "code" : 1701, "message" : "cannot create user" }, 
