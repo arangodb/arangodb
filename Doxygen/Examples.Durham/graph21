@@ -1,7 +1,7 @@
 avocado> v1 = g.addVertex(1);
 Vertex(1)
 
-avocado> e = g.addEdge(2, v, v, "self");
+avocado> e = g.addEdge(v, v, 2, "self");
 Edge(2)
 
 avocado> e.getInVertex();
