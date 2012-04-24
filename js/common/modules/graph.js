@@ -793,7 +793,8 @@ function Graph (name, vertices, edges) {
 
     // gdb.ensureUniqueConstraint("name");
   }
-
+  
+  // @FUN{Graph(@FA{name})}
   if (vertices === undefined && edges == undefined) {
     props = gdb.firstExample('name', name);
     
@@ -813,6 +814,8 @@ function Graph (name, vertices, edges) {
       throw "edge collection '" + props.edges + "' has vanished";
     }
   }
+
+  // @FUN{Graph(@FA{name}, @FA{vertices}, @FA{edges})}
   else {
 
     // get the vertices collection
