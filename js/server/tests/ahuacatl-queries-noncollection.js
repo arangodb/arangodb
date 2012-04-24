@@ -105,10 +105,97 @@ function ahuacatlQueryNonCollectionTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a single value as part of a document
+/// @brief return a single value from a list
 ////////////////////////////////////////////////////////////////////////////////
 
-    testFilterSingleReturnDoc : function () {
+    testListValueQuery : function () {
+      var expected = [ 2010, 2011, 2012 ];
+
+      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] return year", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return two values from a list
+////////////////////////////////////////////////////////////////////////////////
+
+    testListDocumentQuery : function () {
+      var expected = [ { "days" : 365, "year" : 2010 }, { "days" : 365, "year" : 2011 }, { "days" : 366, "year" : 2012 } ];
+
+      var actual = getQueryResults("FOR year IN [ { \"year\" : 2010, \"days\" : 365 } , { \"year\" : 2011, \"days\" : 365 }, { \"year\" : 2012, \"days\" : 366 } ] return year", false);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a single value from a sorted list
+////////////////////////////////////////////////////////////////////////////////
+    
+    testListValueQuerySort : function () {
+      var expected = [ 2015, 2014, 2013, 2012, 2011, 2010 ];
+
+      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012, 2013, 2014, 2015 ] SORT year DESC return year", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a single value from a sorted limited list
+////////////////////////////////////////////////////////////////////////////////
+
+    testListValueQuerySortLimit : function () {
+      var expected = [ 2013, 2012, 2011 ];
+
+      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012, 2013, 2014, 2015 ] SORT year DESC LIMIT 2,3 return year", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a calculated from a list
+////////////////////////////////////////////////////////////////////////////////
+
+    testListCalculated : function () {
+      var expected = [ { "anno" : 2010, "isLeapYear" : false }, { "anno" : 2011, "isLeapYear" : false }, { "anno" : 2012, "isLeapYear" : true }, { "anno" : 2013, "isLeapYear" : false }, { "anno" : 2014, "isLeapYear" : false } ];
+      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012, 2013, 2014 ] return { \"anno\" : year, \"isLeapYear\" : (year%4==0 && year%100!=0 || year%400==1) }", false);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return values from nested for loops
+////////////////////////////////////////////////////////////////////////////////
+
+    testNestedFor1 : function () {
+      var expected = [ { "q" : 1, "y": 2010 }, { "q" : 1, "y": 2011 }, { "q" : 1, "y": 2012 }, { "q" : 2, "y": 2010 }, { "q" : 2, "y": 2011 }, { "q" : 2, "y": 2012 }, { "q" : 3, "y": 2010 }, { "q" : 3, "y": 2011 }, { "q" : 3, "y": 2012 }, { "q" : 4, "y": 2010 }, { "q" : 4, "y": 2011 }, { "q" : 4, "y": 2012 } ];
+      var actual = getQueryResults("FOR quarter IN [ 1, 2, 3, 4 ] FOR year IN [ 2010, 2011, 2012 ] return { \"q\" : quarter, \"y\" : year }", false);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return values from nested for loops
+////////////////////////////////////////////////////////////////////////////////
+
+    testNestedFor2 : function () {
+      var expected = [ { "q" : 1, "y": 2010 }, { "q" : 2, "y": 2010 }, { "q" : 3, "y": 2010 }, { "q" : 4, "y": 2010 }, { "q" : 1, "y": 2011 }, { "q" : 2, "y": 2011 }, { "q" : 3, "y": 2011 }, { "q" : 4, "y": 2011 }, { "q" : 1, "y": 2012 }, { "q" : 2, "y": 2012 }, { "q" : 3, "y": 2012 }, { "q" : 4, "y": 2012 } ];
+      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] for quarter IN [ 1, 2, 3, 4 ] return { \"q\" : quarter, \"y\" : year }", false);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return values with let
+////////////////////////////////////////////////////////////////////////////////
+
+    testNestedLet1 : function () {
+      var expected = [ 2010, 2011, 2012 ];
+      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] let quarters = ((for quarter IN [ 1, 2, 3, 4 ] return quarter)) RETURN year", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return values from let
+////////////////////////////////////////////////////////////////////////////////
+
+    testNestedLet2 : function () {
+      var expected = [ [ 1, 2, 3, 4 ], [ 1, 2, 3, 4 ], [ 1, 2, 3, 4 ] ];
+      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] let quarters = ((for quarter IN [ 1, 2, 3, 4 ] return quarter)) RETURN quarters", true);
+      assertEqual(expected, actual);
     },
 
   };
