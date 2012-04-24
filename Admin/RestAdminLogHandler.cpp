@@ -338,10 +338,12 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
   else if (offset > 0) {
     length -= offset;
   }
-  else if (length > size) {
+
+  // restrict to at most <size> elements
+  if (length > size) {
     length = size;
   }
-  
+
   if (sortAscending) {
     qsort(((char*) TRI_BeginVector(&clean)) + offset * sizeof(TRI_log_buffer_t),
           length,
