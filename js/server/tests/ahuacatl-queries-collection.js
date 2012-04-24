@@ -507,18 +507,16 @@ function ahuacatlQueryCollectionTestSuite () {
     
     testCollectSimple : function () {
       var expected = [ { "gender" : "f", "numUsers" : 10 }, { "gender" : "m", "numUsers" : 10 } ];
-
       var actual = getQueryResults("FOR u in " + users.name() + " COLLECT gender = u.gender INTO g SORT gender ASC RETURN { \"gender\" : gender, \"numUsers\" : LENGTH(g) }", false);
       assertEqual(expected, actual);
     },
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test collect with filter
 ////////////////////////////////////////////////////////////////////////////////
       
     testCollectFiltered : function () {
       var expected = [ { "gender" : "m", "numUsers" : 8 }, { "gender" : "f", "numUsers" : 8 } ];
-
       actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true COLLECT gender = u.gender INTO g SORT gender DESC RETURN { \"gender\" : gender, \"numUsers\" : LENGTH(g) }", false);
       assertEqual(expected, actual);
     },
@@ -529,7 +527,6 @@ function ahuacatlQueryCollectionTestSuite () {
       
     testCollectMultipleCriteria : function () {
       var expected = [ { "active" : false, "gender" : "m", "numUsers" : 2 }, { "active" : true, "gender" : "m", "numUsers" : 8 }, { "active" : false, "gender" : "f", "numUsers" : 2 }, { "active" : true, "gender" : "f", "numUsers" : 8 } ];
-
       actual = getQueryResults("FOR u in " + users.name() + " COLLECT gender = u.gender, active = u.active INTO g SORT gender DESC, active ASC RETURN { \"gender\" : gender, \"active\" : active, \"numUsers\" : LENGTH(g) }", false);
       assertEqual(expected, actual);
     },

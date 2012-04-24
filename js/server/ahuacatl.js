@@ -79,7 +79,7 @@ function AHUACATL_CLONE (obj) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_FCALL(name, parameters) {
-  return name(parameters);
+  return name.apply(null, parameters);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -941,13 +941,24 @@ function AHUACATL_ARITHMETIC_MODULUS (lhs, rhs) {
 /// both operands must be strings or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
-function AHUACATL_STRING_CONCAT (lhs, rhs) {
-  if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_STRING ||
-      AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_STRING) {
-    throw "expecting strings for string concatenation";
+function AHUACATL_STRING_CONCAT () {
+  var result = '';
+
+  for (var i in arguments) {
+    var element = arguments[i];
+
+    if (AHUACATL_TYPEWEIGHT(element) === AHUACATL_TYPEWEIGHT_NULL) {
+      continue;
+    }
+    
+    if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_STRING) {
+      throw "expecting strings for string concatenation";
+    }
+
+    result += element;
   }
 
-  return (lhs + rhs);
+  return result; 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1205,12 +1216,39 @@ function AHUACATL_LIMIT (value, offset, count) {
 /// @brief get the length of a list
 ////////////////////////////////////////////////////////////////////////////////
 
-function AHUACATL_LENGTH (args) {
-  var value = args[0];
+function AHUACATL_LENGTH () {
+  var value = arguments[0];
 
   AHUACATL_LIST(value);
 
   return value.length;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merge all arguments
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_MERGE () {
+  var result = { };
+
+  for (var i in arguments) {
+    var element = arguments[i];
+
+    if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_DOCUMENT) {
+      print(element);
+      throw "expecting documents for merge";
+    }
+
+    for (var k in element) {
+      if (!element.hasOwnProperty(k)) {
+        continue;
+      }
+
+      result[k] = element[k];
+    }
+  }
+
+  return result; 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
