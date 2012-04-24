@@ -139,6 +139,11 @@ TRI_aql_node_t* TRI_CreateNodeForAql (TRI_aql_parse_context_t* const context,
   if (!name || !expression) {
     ABORT_OOM
   }
+
+  if (!TRI_IsValidVariableNameAql(name)) { 
+    TRI_SetErrorAql(context, TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name); 
+    return NULL;
+  }
   
   node = (TRI_aql_node_for_t*) TRI_Allocate(sizeof(TRI_aql_node_for_t));
 
@@ -509,7 +514,10 @@ TRI_aql_node_t* TRI_CreateNodeParameterAql (TRI_aql_parse_context_t* const conte
   if (!name) {
     ABORT_OOM
   }
-  
+
+  // save name of bind parameter for later
+  TRI_InsertKeyAssociativePointer(&context->_parameterNames, name, (void*) name, true);
+
   node = (TRI_aql_node_parameter_t*) TRI_Allocate(sizeof(TRI_aql_node_parameter_t));
 
   if (!node) {
@@ -1318,9 +1326,9 @@ TRI_aql_node_t* TRI_CreateNodeArrayAql (TRI_aql_parse_context_t* const context) 
   InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_ARRAY);
   
   TRI_InitAssociativePointer(&node->_values,
-                             TRI_HashStringKeyAssociativePointer,
-                             HashArrayElement, 
-                             EqualArrayElement,
+                             &TRI_HashStringKeyAssociativePointer,
+                             &HashArrayElement, 
+                             &EqualArrayElement,
                              0);
 
   node->_base.free = &FreeNodeArray;

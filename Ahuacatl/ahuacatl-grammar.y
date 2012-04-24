@@ -17,8 +17,8 @@
 #include <BasicsC/strings.h>
 
 #include "Ahuacatl/ast-node.h"
-#include "Ahuacatl/parser.h"
-#include "Ahuacatl/error.h"
+#include "Ahuacatl/ahuacatl-parser.h"
+#include "Ahuacatl/ahuacatl-error.h"
 
 %}
 
@@ -33,7 +33,7 @@
 %{
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief forward for lexer function defined in tokens.l
+/// @brief forward for lexer function defined in ahuacatl-tokens.l
 ////////////////////////////////////////////////////////////////////////////////
 
 int Ahuacatllex (YYSTYPE*, YYLTYPE*, void*);
@@ -810,13 +810,7 @@ value_literal:
 
 bind_parameter:
     T_PARAMETER {
-      TRI_aql_node_t* node; 
-      
-      if (!$1) {
-        YYABORT;
-      }
-
-      node = TRI_CreateNodeParameterAql(context, $1);
+      TRI_aql_node_t* node = TRI_CreateNodeParameterAql(context, $1);
       if (!node) {
         YYABORT;
       }
