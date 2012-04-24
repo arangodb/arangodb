@@ -52,7 +52,7 @@ JsonParserX/JsonParserX.output
 *.la
 libavocado.a
 libavocadodb.a
-.libev-build
+.libev-build-*
 .libs
 *.lo
 m4/component.engine
@@ -74,7 +74,7 @@ m4/external.boost-test
 m4/external.libxml2
 Makefile
 Makefile.local
-.mruby-build
+.mruby-build-*
 *.o
 *.old
 out
@@ -96,6 +96,6 @@ UnitTests/Philadelphia/Makefile.am
 UnitTests/Philadelphia/Makefile.py
 UnitTests/Philadelphia/Runner.cpp
 UnitTests/test_suite
-.v8-build
+.v8-build-*
 VC++
 /nbproject/private/
