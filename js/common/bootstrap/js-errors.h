@@ -19,6 +19,7 @@ static string JS_common_bootstrap_errors =
   "  \"ERROR_BAD_PARAMETER\"          : { \"code\" : 10, \"message\" : \"bad parameter\" }, \n"
   "  \"ERROR_FORBIDDEN\"              : { \"code\" : 11, \"message\" : \"forbidden\" }, \n"
   "  \"ERROR_OUT_OF_MEMORY_MMAP\"     : { \"code\" : 12, \"message\" : \"out of memory in mmap\" }, \n"
+  "  \"ERROR_CORRUPTED_CSV\"          : { \"code\" : 13, \"message\" : \"csv is corrupt\" }, \n"
   "  \"ERROR_HTTP_BAD_PARAMETER\"     : { \"code\" : 400, \"message\" : \"bad parameter\" }, \n"
   "  \"ERROR_HTTP_FORBIDDEN\"         : { \"code\" : 403, \"message\" : \"forbidden\" }, \n"
   "  \"ERROR_HTTP_NOT_FOUND\"         : { \"code\" : 404, \"message\" : \"not found\" }, \n"

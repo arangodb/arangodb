@@ -92,7 +92,7 @@ void TRI_DeactiveMemFailures (void) {
 /// @brief basic memory management for allocate
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_Allocate (uint64_t n) {
+void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n) {
   char* m;
 
 #ifdef TRI_ENABLE_MEMFAIL
@@ -119,7 +119,7 @@ void* TRI_Allocate (uint64_t n) {
 /// @brief basic memory management for reallocate
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_Reallocate (void* m, uint64_t n) {
+void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
   return realloc(m, n);
 }
 
@@ -127,7 +127,7 @@ void* TRI_Reallocate (void* m, uint64_t n) {
 /// @brief basic memory management for deallocate
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_Free (void* m) {
+void TRI_Free (TRI_memory_zone_t* zone, void* m) {
   free(m);
 }
 

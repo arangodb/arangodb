@@ -36,7 +36,9 @@ extern "C" {
 /// - 11: @CODE{forbidden}
 ///   Will be raised when you are missing permission for the operation.
 /// - 12: @CODE{out of memory in mmap}
-///   Weill be raised when there is a memory shortage.
+///   Will be raised when there is a memory shortage.
+/// - 13: @CODE{csv is corrupt}
+///   Will be raised when encountering a corrupt csv line.
 /// - 400: @CODE{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 403: @CODE{forbidden}
@@ -405,10 +407,20 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// out of memory in mmap
 ///
-/// Weill be raised when there is a memory shortage.
+/// Will be raised when there is a memory shortage.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_OUT_OF_MEMORY_MMAP                                      (12)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 13: ERROR_CORRUPTED_CSV
+///
+/// csv is corrupt
+///
+/// Will be raised when encountering a corrupt csv line.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CORRUPTED_CSV                                           (13)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER

@@ -101,7 +101,7 @@ TRI_vector_string_t;
 /// @brief initialises a vector
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitVector (TRI_vector_t*, size_t elementSize);
+void TRI_InitVector (TRI_vector_t*, TRI_memory_zone_t*, size_t elementSize);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a vector, but does not free the pointer
@@ -150,7 +150,7 @@ void TRI_ClearVector (TRI_vector_t*);
 /// @brief resizes the vector
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ResizeVector (TRI_vector_t*, size_t n);
+int TRI_ResizeVector (TRI_vector_t*, size_t n);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds and element at the end
@@ -209,7 +209,7 @@ void* TRI_EndVector (TRI_vector_t*);
 /// @brief initialises a vector
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitVectorPointer (TRI_vector_pointer_t*);
+void TRI_InitVectorPointer (TRI_vector_pointer_t*, TRI_memory_zone_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a vector, but does not free the pointer
@@ -311,7 +311,7 @@ void* TRI_AtVectorPointer (TRI_vector_pointer_t const*, size_t);
 /// @brief initialises a vector
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitVectorString (TRI_vector_string_t*);
+void TRI_InitVectorString (TRI_memory_zone_t*, TRI_vector_string_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a vector and all strings, but does not free the pointer

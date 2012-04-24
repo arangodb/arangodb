@@ -67,7 +67,7 @@ static void Reserve (TRI_string_buffer_t * self, size_t size) {
     off = self->_current - self->_buffer;
 
     self->_len = (size_t)(1.2 * (self->_len + size));
-    self->_buffer = TRI_Reallocate(self->_buffer, self->_len + 1);
+    self->_buffer = TRI_Reallocate(self->_memoryZone, self->_buffer, self->_len + 1);
 
 #if I_CARE_ABOUT_MALLOC_FAILURES
     if (NULL == self->_buffer) {
@@ -97,14 +97,14 @@ static void Reserve (TRI_string_buffer_t * self, size_t size) {
 /// @brief create a new string buffer and initialise it
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_string_buffer_t* TRI_CreateStringBuffer (void) {
-  TRI_string_buffer_t* self = (TRI_string_buffer_t*) TRI_Allocate(sizeof(TRI_string_buffer_t));
+TRI_string_buffer_t* TRI_CreateStringBuffer (TRI_memory_zone_t* zone) {
+  TRI_string_buffer_t* self = (TRI_string_buffer_t*) TRI_Allocate(zone, sizeof(TRI_string_buffer_t));
 
-  if (!self) {
+  if (self == NULL) {
     return NULL;
   }
 
-  TRI_InitStringBuffer(self);
+  TRI_InitStringBuffer(self, zone);
 
   return self;
 }
@@ -115,8 +115,9 @@ TRI_string_buffer_t* TRI_CreateStringBuffer (void) {
 /// @warning You must call initialise before using the string buffer.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitStringBuffer (TRI_string_buffer_t * self) {
+void TRI_InitStringBuffer (TRI_string_buffer_t * self, TRI_memory_zone_t* zone) {
   memset(self, 0, sizeof(TRI_string_buffer_t));
+  self->_memoryZone = zone;
   Reserve(self, 1);
 }
 
@@ -128,9 +129,7 @@ void TRI_InitStringBuffer (TRI_string_buffer_t * self) {
 
 void  TRI_DestroyStringBuffer (TRI_string_buffer_t * self) {
   if (self->_buffer != NULL) {
-    TRI_Free(self->_buffer);
-    
-    memset(self, 0, sizeof(TRI_string_buffer_t));
+    TRI_Free(self->_memoryZone, self->_buffer);
   }
 }
 
@@ -145,9 +144,7 @@ void TRI_AnnihilateStringBuffer (TRI_string_buffer_t * self) {
 
     // somewhat paranoid? don't ask me
     memset(self->_buffer, 0, self->_len);
-    TRI_Free(self->_buffer);
-
-    memset(self, 0, sizeof(TRI_string_buffer_t));
+    TRI_Free(self->_memoryZone, self->_buffer);
   }
 }
 
@@ -155,12 +152,9 @@ void TRI_AnnihilateStringBuffer (TRI_string_buffer_t * self) {
 /// @brief frees the string buffer and the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void  TRI_FreeStringBuffer (TRI_string_buffer_t * self) {
-  if (self->_buffer != NULL) {
-    TRI_Free(self->_buffer);
-  }
-
-  TRI_Free(self);
+void  TRI_FreeStringBuffer (TRI_memory_zone_t* zone, TRI_string_buffer_t * self) {
+  TRI_DestroyStringBuffer(self);
+  TRI_Free(zone, self);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -181,17 +175,20 @@ void  TRI_FreeStringBuffer (TRI_string_buffer_t * self) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SwapStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t * other) {
-  char * otherBuffer  = other->_buffer;
-  char * otherCurrent = other->_current;
-  size_t otherLen     = other->_len;
+  char * otherBuffer           = other->_buffer;
+  char * otherCurrent          = other->_current;
+  size_t otherLen              = other->_len;
+  TRI_memory_zone_t* otherZone = other->_memoryZone;
 
   other->_buffer      = self->_buffer;
   other->_current     = self->_current;
   other->_len         = self->_len;
+  other->_memoryZone  = self->_memoryZone;
 
   self->_buffer       = otherBuffer;
   self->_current      = otherCurrent;
   self->_len          = otherLen;
+  self->_memoryZone   = otherZone;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
