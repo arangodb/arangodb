@@ -3913,39 +3913,26 @@ function ahuacatlOperatorsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testStringConcatUndefined : function () {
-      assertException(function() { AHUACATL_STRING_CONCAT(undefined, undefined); });
-      assertException(function() { AHUACATL_STRING_CONCAT(undefined, null); });
       assertException(function() { AHUACATL_STRING_CONCAT(undefined, false); });
       assertException(function() { AHUACATL_STRING_CONCAT(undefined, true); });
       assertException(function() { AHUACATL_STRING_CONCAT(undefined, 0); });
       assertException(function() { AHUACATL_STRING_CONCAT(undefined, 1); });
       assertException(function() { AHUACATL_STRING_CONCAT(undefined, 2); });
       assertException(function() { AHUACATL_STRING_CONCAT(undefined, -1); });
-      assertException(function() { AHUACATL_STRING_CONCAT(undefined, ''); });
-      assertException(function() { AHUACATL_STRING_CONCAT(undefined, '0'); });
-      assertException(function() { AHUACATL_STRING_CONCAT(undefined, ' '); });
-      assertException(function() { AHUACATL_STRING_CONCAT(undefined, 'a'); });
       assertException(function() { AHUACATL_STRING_CONCAT(undefined, [ ]); });
       assertException(function() { AHUACATL_STRING_CONCAT(undefined, [ 1 ]); });
       assertException(function() { AHUACATL_STRING_CONCAT(undefined, { }); });
       assertException(function() { AHUACATL_STRING_CONCAT(undefined, { 'a' : 0 }); });
-      assertException(function() { AHUACATL_STRING_CONCAT(undefined, NaN); });
-      assertException(function() { AHUACATL_STRING_CONCAT(null, undefined); });
       assertException(function() { AHUACATL_STRING_CONCAT(false, undefined); });
       assertException(function() { AHUACATL_STRING_CONCAT(true, undefined); });
       assertException(function() { AHUACATL_STRING_CONCAT(0, undefined); });
       assertException(function() { AHUACATL_STRING_CONCAT(1, undefined); });
       assertException(function() { AHUACATL_STRING_CONCAT(2, undefined); });
       assertException(function() { AHUACATL_STRING_CONCAT(-1, undefined); });
-      assertException(function() { AHUACATL_STRING_CONCAT('', undefined); });
-      assertException(function() { AHUACATL_STRING_CONCAT('0', undefined); });
-      assertException(function() { AHUACATL_STRING_CONCAT(' ', undefined); });
-      assertException(function() { AHUACATL_STRING_CONCAT('a', undefined); });
       assertException(function() { AHUACATL_STRING_CONCAT([ ], undefined); });
       assertException(function() { AHUACATL_STRING_CONCAT([ 1 ], undefined); });
       assertException(function() { AHUACATL_STRING_CONCAT({ }, undefined); });
       assertException(function() { AHUACATL_STRING_CONCAT({ 'a' : 0 }, undefined); });
-      assertException(function() { AHUACATL_STRING_CONCAT(NaN, undefined); });
       assertException(function() { AHUACATL_STRING_CONCAT(1, NaN); });
       assertException(function() { AHUACATL_STRING_CONCAT(1, null); });
       assertException(function() { AHUACATL_STRING_CONCAT(1, false); });
@@ -3977,12 +3964,10 @@ function ahuacatlOperatorsTestSuite () {
       assertException(function() { AHUACATL_STRING_CONCAT(-1, 0); });
       assertException(function() { AHUACATL_STRING_CONCAT(-100, 0); });
       assertException(function() { AHUACATL_STRING_CONCAT(0, 0); });
-      assertException(function() { AHUACATL_STRING_CONCAT('', null); });
       assertException(function() { AHUACATL_STRING_CONCAT('', false); });
       assertException(function() { AHUACATL_STRING_CONCAT('', true); });
       assertException(function() { AHUACATL_STRING_CONCAT('', [ ]); });
       assertException(function() { AHUACATL_STRING_CONCAT('', { }); });
-      assertException(function() { AHUACATL_STRING_CONCAT('a', null); });
       assertException(function() { AHUACATL_STRING_CONCAT('a', false); });
       assertException(function() { AHUACATL_STRING_CONCAT('a', true); });
       assertException(function() { AHUACATL_STRING_CONCAT('a', [ ]); });
@@ -3994,6 +3979,23 @@ function ahuacatlOperatorsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testStringConcatValue : function () {
+      assertEqual('', AHUACATL_STRING_CONCAT());
+      assertEqual('', AHUACATL_STRING_CONCAT(''));
+      assertEqual('a', AHUACATL_STRING_CONCAT('a'));
+      assertEqual('a', AHUACATL_STRING_CONCAT('a', null));
+      assertEqual('', AHUACATL_STRING_CONCAT('', null));
+      assertEqual('', AHUACATL_STRING_CONCAT(undefined, ''));
+      assertEqual('0', AHUACATL_STRING_CONCAT(undefined, '0'));
+      assertEqual(' ', AHUACATL_STRING_CONCAT(undefined, ' '));
+      assertEqual('a', AHUACATL_STRING_CONCAT(undefined, 'a'));
+      assertEqual('', AHUACATL_STRING_CONCAT('', undefined));
+      assertEqual('0', AHUACATL_STRING_CONCAT('0', undefined));
+      assertEqual(' ', AHUACATL_STRING_CONCAT(' ', undefined));
+      assertEqual('a', AHUACATL_STRING_CONCAT('a', undefined));
+      assertEqual('', AHUACATL_STRING_CONCAT(undefined, NaN));
+      assertEqual('', AHUACATL_STRING_CONCAT(null, undefined));
+      assertEqual('', AHUACATL_STRING_CONCAT(NaN, undefined));
+
       assertEqual('', AHUACATL_STRING_CONCAT('', ''));
       assertEqual(' ', AHUACATL_STRING_CONCAT(' ', ''));
       assertEqual(' ', AHUACATL_STRING_CONCAT('', ' '));
@@ -4013,6 +4015,9 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual('0.00', AHUACATL_STRING_CONCAT('0.00', ''));
       assertEqual('abc', AHUACATL_STRING_CONCAT('a', AHUACATL_STRING_CONCAT('b', 'c')));
       assertEqual('', AHUACATL_STRING_CONCAT('', AHUACATL_STRING_CONCAT('', '')));
+      assertEqual('fux', AHUACATL_STRING_CONCAT('f', 'u', 'x'));
+      assertEqual('fux', AHUACATL_STRING_CONCAT('f', 'u', null, 'x'));
+      assertEqual('fux', AHUACATL_STRING_CONCAT(null, 'f', null, 'u', null, 'x', null));
     }
   };
 }

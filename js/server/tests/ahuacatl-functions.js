@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, simple non-collection-based queries
+/// @brief tests for query language, functions
 ///
 /// @file
 ///
@@ -31,7 +31,7 @@ var jsunity = require("jsunity");
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function ahuacatlQueryNonCollectionTestSuite () {
+function ahuacatlFunctionsTestSuite () {
 
   ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a given query
@@ -103,99 +103,64 @@ function ahuacatlQueryNonCollectionTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a single value from a list
+/// @brief test length function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testListValueQuery : function () {
-      var expected = [ 2010, 2011, 2012 ];
-
-      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] return year", true);
+    testLength : function () {
+      var expected = [ 4, 4, 4 ];
+      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] return q)) return LENGTH(quarters)", true);
       assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return two values from a list
-////////////////////////////////////////////////////////////////////////////////
-
-    testListDocumentQuery : function () {
-      var expected = [ { "days" : 365, "year" : 2010 }, { "days" : 365, "year" : 2011 }, { "days" : 366, "year" : 2012 } ];
-
-      var actual = getQueryResults("FOR year IN [ { \"year\" : 2010, \"days\" : 365 } , { \"year\" : 2011, \"days\" : 365 }, { \"year\" : 2012, \"days\" : 366 } ] return year", false);
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a single value from a sorted list
+/// @brief test concat function
 ////////////////////////////////////////////////////////////////////////////////
     
-    testListValueQuerySort : function () {
-      var expected = [ 2015, 2014, 2013, 2012, 2011, 2010 ];
-
-      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012, 2013, 2014, 2015 ] SORT year DESC return year", true);
+    testConcat : function () {
+      var expected = [ "theQuickBrownFoxJumps" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT('the', 'Quick', null, 'Brown', null, 'Fox', 'Jumps')", true);
       assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a single value from a sorted limited list
+/// @brief test merge function
 ////////////////////////////////////////////////////////////////////////////////
-
-    testListValueQuerySortLimit : function () {
-      var expected = [ 2013, 2012, 2011 ];
-
-      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012, 2013, 2014, 2015 ] SORT year DESC LIMIT 2,3 return year", true);
+    
+    testMerge1 : function () {
+      var expected = [ { "quarter" : 1, "year" : 2010 }, { "quarter" : 2, "year" : 2010 }, { "quarter" : 3, "year" : 2010 }, { "quarter" : 4, "year" : 2010 }, { "quarter" : 1, "year" : 2011 }, { "quarter" : 2, "year" : 2011 }, { "quarter" : 3, "year" : 2011 }, { "quarter" : 4, "year" : 2011 }, { "quarter" : 1, "year" : 2012 }, { "quarter" : 2, "year" : 2012 }, { "quarter" : 3, "year" : 2012 }, { "quarter" : 4, "year" : 2012 } ]; 
+      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] FOR quarter IN [ 1, 2, 3, 4 ] return MERGE({ \"year\" : year }, { \"quarter\" : quarter })", false);
       assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a calculated from a list
+/// @brief test merge function
 ////////////////////////////////////////////////////////////////////////////////
-
-    testListCalculated : function () {
-      var expected = [ { "anno" : 2010, "isLeapYear" : false }, { "anno" : 2011, "isLeapYear" : false }, { "anno" : 2012, "isLeapYear" : true }, { "anno" : 2013, "isLeapYear" : false }, { "anno" : 2014, "isLeapYear" : false } ];
-      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012, 2013, 2014 ] return { \"anno\" : year, \"isLeapYear\" : (year%4==0 && year%100!=0 || year%400==1) }", false);
+    
+    testMerge2 : function () {
+      var expected = [ { "age" : 15, "isAbove18" : false, "name" : "John" }, { "age" : 19, "isAbove18" : true, "name" : "Corey" } ];
+      var actual = getQueryResults("FOR u IN [ { \"name\" : \"John\", \"age\" : 15 }, { \"name\" : \"Corey\", \"age\" : 19 } ] return MERGE(u, { \"isAbove18\" : u.age >= 18 })", false);
       assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return values from nested for loops
+/// @brief test merge function
 ////////////////////////////////////////////////////////////////////////////////
-
-    testNestedFor1 : function () {
-      var expected = [ { "q" : 1, "y": 2010 }, { "q" : 1, "y": 2011 }, { "q" : 1, "y": 2012 }, { "q" : 2, "y": 2010 }, { "q" : 2, "y": 2011 }, { "q" : 2, "y": 2012 }, { "q" : 3, "y": 2010 }, { "q" : 3, "y": 2011 }, { "q" : 3, "y": 2012 }, { "q" : 4, "y": 2010 }, { "q" : 4, "y": 2011 }, { "q" : 4, "y": 2012 } ];
-      var actual = getQueryResults("FOR quarter IN [ 1, 2, 3, 4 ] FOR year IN [ 2010, 2011, 2012 ] return { \"q\" : quarter, \"y\" : year }", false);
+    
+    testMerge3 : function () {
+      var expected = [ { "age" : 15, "id" : 9, "name" : "John" }, { "age" : 19, "id" : 9, "name" : "Corey" } ];
+      var actual = getQueryResults("FOR u IN [ { \"id\" : 100, \"name\" : \"John\", \"age\" : 15 }, { \"id\" : 101, \"name\" : \"Corey\", \"age\" : 19 } ] return MERGE(u, { \"id\" : 9 })", false);
       assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return values from nested for loops
+/// @brief test merge function
 ////////////////////////////////////////////////////////////////////////////////
-
-    testNestedFor2 : function () {
-      var expected = [ { "q" : 1, "y": 2010 }, { "q" : 2, "y": 2010 }, { "q" : 3, "y": 2010 }, { "q" : 4, "y": 2010 }, { "q" : 1, "y": 2011 }, { "q" : 2, "y": 2011 }, { "q" : 3, "y": 2011 }, { "q" : 4, "y": 2011 }, { "q" : 1, "y": 2012 }, { "q" : 2, "y": 2012 }, { "q" : 3, "y": 2012 }, { "q" : 4, "y": 2012 } ];
-      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] for quarter IN [ 1, 2, 3, 4 ] return { \"q\" : quarter, \"y\" : year }", false);
+    
+    testMerge4 : function () {
+      var expected = [ { "age" : 15, "id" : 33, "name" : "foo" }, { "age" : 19, "id" : 33, "name" : "foo" } ];
+      var actual = getQueryResults("FOR u IN [ { \"id\" : 100, \"name\" : \"John\", \"age\" : 15 }, { \"id\" : 101, \"name\" : \"Corey\", \"age\" : 19 } ] return MERGE(u, { \"id\" : 9 }, { \"name\" : \"foo\", \"id\" : 33 })", false);
       assertEqual(expected, actual);
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return values with let
-////////////////////////////////////////////////////////////////////////////////
-
-    testNestedLet1 : function () {
-      var expected = [ 2010, 2011, 2012 ];
-      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] let quarters = ((for quarter IN [ 1, 2, 3, 4 ] return quarter)) RETURN year", true);
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return values from let
-////////////////////////////////////////////////////////////////////////////////
-
-    testNestedLet2 : function () {
-      var expected = [ [ 1, 2, 3, 4 ], [ 1, 2, 3, 4 ], [ 1, 2, 3, 4 ] ];
-      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] let quarters = ((for quarter IN [ 1, 2, 3, 4 ] return quarter)) RETURN quarters", true);
-      assertEqual(expected, actual);
-    },
-
   };
 }
 
@@ -203,7 +168,7 @@ function ahuacatlQueryNonCollectionTestSuite () {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(ahuacatlQueryNonCollectionTestSuite);
+jsunity.run(ahuacatlFunctionsTestSuite);
 
 return jsunity.done();
 
