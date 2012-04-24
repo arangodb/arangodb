@@ -346,8 +346,6 @@ namespace triagens {
       SimpleHttpResult* result = _client->request(SimpleHttpClient::POST, "/_api/import?type=documents&collection=" + StringUtils::urlEncode(_collectionName), str, len, headerFields);
 
       handleResult(result);
-
-      _outputBuffer.clear();
     }
 
     void ImportHelper::handleResult (SimpleHttpResult* result) {
