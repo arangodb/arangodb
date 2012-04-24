@@ -1235,7 +1235,6 @@ function AHUACATL_MERGE () {
     var element = arguments[i];
 
     if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_DOCUMENT) {
-      print(element);
       throw "expecting documents for merge";
     }
 
@@ -1245,6 +1244,32 @@ function AHUACATL_MERGE () {
       }
 
       result[k] = element[k];
+    }
+  }
+
+  return result; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the union (all) of all arguments
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_UNION () {
+  var result = [ ];
+
+  for (var i in arguments) {
+    var element = arguments[i];
+
+    if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_LIST) {
+      throw "expecting lists for union";
+    }
+
+    for (var k in element) {
+      if (!element.hasOwnProperty(k)) {
+        continue;
+      }
+
+      result.push(element[k]);
     }
   }
 

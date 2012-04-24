@@ -161,6 +161,37 @@ function ahuacatlFunctionsTestSuite () {
       var actual = getQueryResults("FOR u IN [ { \"id\" : 100, \"name\" : \"John\", \"age\" : 15 }, { \"id\" : 101, \"name\" : \"Corey\", \"age\" : 19 } ] return MERGE(u, { \"id\" : 9 }, { \"name\" : \"foo\", \"id\" : 33 })", false);
       assertEqual(expected, actual);
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnion1 : function () {
+      var expected = [ [ 1, 2, 3, 1, 2, 3 ], [ 1, 2, 3, 1, 2, 3 ] ];
+      var actual = getQueryResults("FOR u IN [ 1, 2 ] return UNION([ 1, 2, 3 ], [ 1, 2, 3 ])", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnion2 : function () {
+      var expected = [ [ 1, 2, 3, 3, 2, 1 ], [ 1, 2, 3, 3, 2, 1 ] ];
+      var actual = getQueryResults("FOR u IN [ 1, 2 ] return UNION([ 1, 2, 3 ], [ 3, 2, 1 ])", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnion3 : function () {
+      var expected = [ "Fred", "John", "John", "Amy" ];
+      var actual = getQueryResults("FOR u IN UNION([ \"Fred\", \"John\" ], [ \"John\", \"Amy\"]) return u", true);
+      assertEqual(expected, actual);
+    },
+
   };
 }
 
