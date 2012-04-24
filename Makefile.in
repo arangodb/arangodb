@@ -85,14 +85,14 @@ target_triplet = @target@
 
 sbin_PROGRAMS = avocado$(EXEEXT)
 bin_PROGRAMS = avocsh$(EXEEXT) avocirb$(EXEEXT) avocimp$(EXEEXT)
-DIST_COMMON = $(am__configure_deps) \
-	$(srcdir)/Makefile.all-in-one-libev \
-	$(srcdir)/Makefile.all-in-one-mruby \
-	$(srcdir)/Makefile.all-in-one-v8 $(srcdir)/Makefile.am \
+DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.bison $(srcdir)/Makefile.doxygen \
 	$(srcdir)/Makefile.files $(srcdir)/Makefile.flex \
 	$(srcdir)/Makefile.in $(srcdir)/Makefile.javascript \
 	$(srcdir)/Makefile.unittests \
+	$(srcdir)/m4/Makefile.all-in-one-libev \
+	$(srcdir)/m4/Makefile.all-in-one-mruby \
+	$(srcdir)/m4/Makefile.all-in-one-v8 \
 	$(top_srcdir)/BasicsC/local-configuration.h.in \
 	$(top_srcdir)/Doxygen/avocado.doxy.in \
 	$(top_srcdir)/config/config.h.in $(top_srcdir)/configure \
@@ -508,6 +508,7 @@ READLINE_LIBS = @READLINE_LIBS@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STRIP = @STRIP@
+TRI_BITS = @TRI_BITS@
 V8_CPPFLAGS = @V8_CPPFLAGS@
 V8_LDFLAGS = @V8_LDFLAGS@
 V8_LIBS = @V8_LIBS@
@@ -1048,7 +1049,7 @@ all: $(BUILT_SOURCES)
 .SUFFIXES: .c .cpp .o .obj
 am--refresh:
 	@:
-$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/Makefile.doxygen $(srcdir)/Makefile.javascript $(srcdir)/Makefile.unittests $(srcdir)/Makefile.flex $(srcdir)/Makefile.bison $(srcdir)/Makefile.all-in-one-libev $(srcdir)/Makefile.all-in-one-v8 $(srcdir)/Makefile.all-in-one-mruby $(am__configure_deps)
+$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/Makefile.doxygen $(srcdir)/Makefile.javascript $(srcdir)/Makefile.unittests $(srcdir)/Makefile.flex $(srcdir)/Makefile.bison $(srcdir)/m4/Makefile.all-in-one-libev $(srcdir)/m4/Makefile.all-in-one-v8 $(srcdir)/m4/Makefile.all-in-one-mruby $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -3109,9 +3110,9 @@ unittests-http-server:
 @ENABLE_ERRORS_DEPENDENCY_TRUE@	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py BasicsC/errors.dat BasicsC/voc-errors.c
 @ENABLE_ERRORS_DEPENDENCY_TRUE@	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py BasicsC/errors.dat js/common/bootstrap/errors.js
 
-@ENABLE_ALL_IN_ONE_TRUE@@LIBEV_LIBS@: .libev-build
+@ENABLE_ALL_IN_ONE_TRUE@@LIBEV_LIBS@: .libev-build-@TRI_BITS@
 
-@ENABLE_ALL_IN_ONE_TRUE@.libev-build:
+@ENABLE_ALL_IN_ONE_TRUE@.libev-build-@TRI_BITS@:
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "BUILDING LIBEV"
@@ -3120,9 +3121,9 @@ unittests-http-server:
 
 @ENABLE_ALL_IN_ONE_TRUE@	mkdir @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) || true
 @ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) && CFLAGS="$(LIBEV_BUILD_CFLAGS_X)" orig_CFLAGS="$(LIBEV_BUILD_CFLAGS_X)" LDFLAGS="$(LIBEV_BUILD_LDFLAGS_X)" ../configure --disable-shared
-@ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) && make
+@ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/libev/$(LIBEV_BUILD_VERSION) && $(MAKE)
 
-@ENABLE_ALL_IN_ONE_TRUE@	touch .libev-build
+@ENABLE_ALL_IN_ONE_TRUE@	touch .libev-build-@TRI_BITS@
 
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
@@ -3130,18 +3131,18 @@ unittests-http-server:
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 
-@ENABLE_ALL_IN_ONE_TRUE@@V8_LIBS@: .v8-build
+@ENABLE_ALL_IN_ONE_TRUE@@V8_LIBS@: .v8-build-@TRI_BITS@
 
-@ENABLE_ALL_IN_ONE_TRUE@.v8-build:
+@ENABLE_ALL_IN_ONE_TRUE@.v8-build-@TRI_BITS@:
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "BUILDING V8"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 
-@ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/V8 && make library=static snapshot=off @V8_TARGET@
+@ENABLE_ALL_IN_ONE_TRUE@	cd @top_srcdir@/3rdParty/V8 && $(MAKE) library=static snapshot=off @V8_TARGET@
 
-@ENABLE_ALL_IN_ONE_TRUE@	touch .v8-build
+@ENABLE_ALL_IN_ONE_TRUE@	touch .v8-build-@TRI_BITS@
 
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
@@ -3149,18 +3150,18 @@ unittests-http-server:
 @ENABLE_ALL_IN_ONE_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_TRUE@	@echo
 
-@ENABLE_MRUBY_TRUE@@MRUBY_LIBS@: .mruby-build
+@ENABLE_MRUBY_TRUE@@MRUBY_LIBS@: .mruby-build-@TRI_BITS@
 
-@ENABLE_MRUBY_TRUE@.mruby-build:
+@ENABLE_MRUBY_TRUE@.mruby-build-@TRI_BITS@:
 @ENABLE_MRUBY_TRUE@	@echo
 @ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_MRUBY_TRUE@	@echo "BUILDING LIBEV"
 @ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_MRUBY_TRUE@	@echo
 
-@ENABLE_MRUBY_TRUE@	cd @top_srcdir@/3rdParty/mruby && make
+@ENABLE_MRUBY_TRUE@	cd @top_srcdir@/3rdParty/mruby && $(MAKE)
 
-@ENABLE_MRUBY_TRUE@	touch .mruby-build
+@ENABLE_MRUBY_TRUE@	touch .mruby-build-@TRI_BITS@
 
 @ENABLE_MRUBY_TRUE@	@echo
 @ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
