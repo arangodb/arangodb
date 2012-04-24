@@ -78,8 +78,14 @@ static bool CreateJournal (TRI_blob_collection_t* collection) {
 
   // check that a journal was created
   if (journal == NULL) {
-    collection->base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
-    collection->base._state = TRI_COL_STATE_WRITE_ERROR;
+    if (TRI_errno() == TRI_ERROR_OUT_OF_MEMORY_MMAP) {
+      collection->base._lastError = TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY_MMAP);
+      collection->base._state = TRI_COL_STATE_READ;
+    }
+    else {
+      collection->base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
+      collection->base._state = TRI_COL_STATE_WRITE_ERROR;
+    }
 
     LOG_ERROR("cannot create new journal '%s': %s", filename, TRI_last_error());
 

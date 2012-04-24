@@ -142,6 +142,10 @@ static bool CheckJournalSimCollection (TRI_sim_collection_t* sim) {
   worked = false;
   base = &sim->base.base;
 
+  if (sim->base.base._state != TRI_COL_STATE_WRITE) {
+    return false;
+  }
+
   // .............................................................................
   // the only thread MODIFYING the _journals variable is this thread,
   // therefore no locking is required to access the _journals
