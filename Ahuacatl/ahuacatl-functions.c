@@ -127,13 +127,15 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("ISDOCUMENT", "IS_DOCUMENT", true, 1, 1);
   
   // string concat
-  REGISTER_FUNCTION("CONCAT", "STRING_CONCAT", true, 2, 2);
+  REGISTER_FUNCTION("CONCAT", "STRING_CONCAT", true, 2, 256); 
   
   // numeric functions
   
   // string functions
   
   // misc functions
+  REGISTER_FUNCTION("MERGE", "MERGE", true, 2, 256);
+  REGISTER_FUNCTION("UNION", "UNION", true, 2, 256);
   REGISTER_FUNCTION("LENGTH", "LENGTH", true, 1, 1);
 
   if (!result) {

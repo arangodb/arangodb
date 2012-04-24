@@ -277,13 +277,13 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	HttpsServer/HttpsServerImpl.$(OBJEXT) \
 	PriorityQueue/pqueueindex.$(OBJEXT) \
 	PriorityQueue/priorityqueue.$(OBJEXT) \
+	Ahuacatl/ahuacatl-error.$(OBJEXT) \
 	Ahuacatl/ahuacatl-functions.$(OBJEXT) \
 	Ahuacatl/ast-codegen-js.$(OBJEXT) Ahuacatl/ast-dump.$(OBJEXT) \
-	Ahuacatl/ast-node.$(OBJEXT) Ahuacatl/error.$(OBJEXT) \
-	Ahuacatl/grammar.$(OBJEXT) Ahuacatl/parser.$(OBJEXT) \
-	Ahuacatl/tokens.$(OBJEXT) QL/ast-query.$(OBJEXT) \
-	QL/formatter.$(OBJEXT) QL/optimize.$(OBJEXT) \
-	QL/parser.$(OBJEXT) QL/tokens.$(OBJEXT) \
+	Ahuacatl/ast-node.$(OBJEXT) Ahuacatl/grammar.$(OBJEXT) \
+	Ahuacatl/parser.$(OBJEXT) Ahuacatl/tokens.$(OBJEXT) \
+	QL/ast-query.$(OBJEXT) QL/formatter.$(OBJEXT) \
+	QL/optimize.$(OBJEXT) QL/parser.$(OBJEXT) QL/tokens.$(OBJEXT) \
 	RestHandler/RestActionHandler.$(OBJEXT) \
 	RestHandler/RestDocumentHandler.$(OBJEXT) \
 	RestHandler/RestEdgeHandler.$(OBJEXT) \
@@ -753,11 +753,11 @@ avocado_SOURCES = \
 	HttpsServer/HttpsServerImpl.cpp \
 	PriorityQueue/pqueueindex.c \
 	PriorityQueue/priorityqueue.c \
+        Ahuacatl/ahuacatl-error.c \
 	Ahuacatl/ahuacatl-functions.c \
 	Ahuacatl/ast-codegen-js.c \
         Ahuacatl/ast-dump.c \
         Ahuacatl/ast-node.c \
-        Ahuacatl/error.c \
         Ahuacatl/grammar.c \
         Ahuacatl/parser.c \
         Ahuacatl/tokens.c \
@@ -1011,6 +1011,8 @@ UNITTESTS_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
 ################################################################################
 ################################################################################
 SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-operators.js \
+		     @srcdir@/js/server/tests/ahuacatl-escaping.js \
+		     @srcdir@/js/server/tests/ahuacatl-functions.js \
 		     @srcdir@/js/server/tests/ahuacatl-queries-collection.js \
 		     @srcdir@/js/server/tests/ahuacatl-queries-noncollection.js 
 
@@ -1649,6 +1651,8 @@ Ahuacatl/$(am__dirstamp):
 Ahuacatl/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) Ahuacatl/$(DEPDIR)
 	@: > Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-error.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-functions.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ast-codegen-js.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
@@ -1656,8 +1660,6 @@ Ahuacatl/ast-codegen-js.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 Ahuacatl/ast-dump.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ast-node.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/error.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/grammar.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
@@ -1903,11 +1905,11 @@ mostlyclean-compile:
 	-rm -f Admin/RestAdminLogHandler.$(OBJEXT)
 	-rm -f Admin/RestBaseHandler.$(OBJEXT)
 	-rm -f Admin/RestVersionHandler.$(OBJEXT)
+	-rm -f Ahuacatl/ahuacatl-error.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-functions.$(OBJEXT)
 	-rm -f Ahuacatl/ast-codegen-js.$(OBJEXT)
 	-rm -f Ahuacatl/ast-dump.$(OBJEXT)
 	-rm -f Ahuacatl/ast-node.$(OBJEXT)
-	-rm -f Ahuacatl/error.$(OBJEXT)
 	-rm -f Ahuacatl/grammar.$(OBJEXT)
 	-rm -f Ahuacatl/parser.$(OBJEXT)
 	-rm -f Ahuacatl/tokens.$(OBJEXT)
@@ -2130,11 +2132,11 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Admin/$(DEPDIR)/RestAdminLogHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Admin/$(DEPDIR)/RestBaseHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Admin/$(DEPDIR)/RestVersionHandler.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-error.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-functions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ast-codegen-js.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ast-dump.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ast-node.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/error.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/grammar.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/parser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/tokens.Po@am__quote@

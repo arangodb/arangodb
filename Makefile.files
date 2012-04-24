@@ -146,11 +146,11 @@ avocado_SOURCES = \
 	HttpsServer/HttpsServerImpl.cpp \
 	PriorityQueue/pqueueindex.c \
 	PriorityQueue/priorityqueue.c \
+        Ahuacatl/ahuacatl-error.c \
 	Ahuacatl/ahuacatl-functions.c \
 	Ahuacatl/ast-codegen-js.c \
         Ahuacatl/ast-dump.c \
         Ahuacatl/ast-node.c \
-        Ahuacatl/error.c \
         Ahuacatl/grammar.c \
         Ahuacatl/parser.c \
         Ahuacatl/tokens.c \

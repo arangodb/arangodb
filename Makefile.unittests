@@ -122,7 +122,7 @@ unittests-boost:
 endif
 
 ################################################################################
-## SHELL SERVER TESTS (BASCIS)
+## SHELL SERVER TESTS (BASICS)
 ################################################################################
 
 SHELL_SERVER = @srcdir@/js/common/tests/shell-document.js \
@@ -154,6 +154,8 @@ unittests-shell-server:
 ################################################################################
 
 SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-operators.js \
+		     @srcdir@/js/server/tests/ahuacatl-escaping.js \
+		     @srcdir@/js/server/tests/ahuacatl-functions.js \
 		     @srcdir@/js/server/tests/ahuacatl-queries-collection.js \
 		     @srcdir@/js/server/tests/ahuacatl-queries-noncollection.js 
  

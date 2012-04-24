@@ -1222,14 +1222,20 @@ char* TRI_GenerateCodeAql (const void* const data) {
   if (!generator->_error) {
     char* funcName = generator->_funcName;
 
-    TRI_AppendStringStringBuffer(&generator->_buffer, "return ");
+    TRI_AppendStringStringBuffer(&generator->_buffer, "try {\n");
+    TRI_AppendStringStringBuffer(&generator->_buffer, "  return ");
     TRI_AppendStringStringBuffer(&generator->_buffer, funcName);
     TRI_AppendStringStringBuffer(&generator->_buffer, "( { } );\n");
+    TRI_AppendStringStringBuffer(&generator->_buffer, "}\n");
+    TRI_AppendStringStringBuffer(&generator->_buffer, "catch (e) {\n");
+    TRI_AppendStringStringBuffer(&generator->_buffer, "print(e);\n");
+    TRI_AppendStringStringBuffer(&generator->_buffer, "}\n");
 
     TRI_AppendStringStringBuffer(&generator->_buffer, "})();\n");
 
     code = TRI_DuplicateString(generator->_buffer._buffer);
     LOG_TRACE("generated code:\n%s\n",code);
+    //printf("generated code:\n%s\n",code);
   }
 
   TRI_FreeCodegenAql(generator);
