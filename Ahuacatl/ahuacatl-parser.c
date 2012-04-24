@@ -204,6 +204,7 @@ void TRI_FreeParseContextAql (TRI_aql_parse_context_t* const context) {
   TRI_DestroyAssociativePointer(&context->_parameterNames);
   
   // free parameter values
+  TRI_FreeBindParametersAql(context);
   TRI_DestroyAssociativePointer(&context->_parameterValues);
 
   // free query string

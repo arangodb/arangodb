@@ -101,6 +101,34 @@ bool TRI_EqualBindParameterAql (TRI_associative_pointer_t* array,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief free bind parameters
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeBindParametersAql (TRI_aql_parse_context_t* const context) {
+  size_t i;
+  size_t n;
+
+  // iterate thru all parameters allocated
+  n = context->_parameterValues._nrAlloc;
+  for (i = 0; i < n; ++i) {
+    TRI_aql_bind_parameter_t* parameter;
+
+    parameter = (TRI_aql_bind_parameter_t*) context->_parameterValues._table[i];
+
+    if (!parameter) {
+      continue;
+    }
+
+    assert(parameter->_name);
+    assert(parameter->_value);
+
+    TRI_FreeString(parameter->_name);
+    TRI_FreeJson(parameter->_value);
+    TRI_Free(parameter);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief add bind parameters
 ////////////////////////////////////////////////////////////////////////////////
 
