@@ -141,7 +141,7 @@ TRI_aql_node_t* TRI_CreateNodeForAql (TRI_aql_parse_context_t* const context,
   }
 
   if (!TRI_IsValidVariableNameAql(name)) { 
-    TRI_SetErrorAql(context, TRI_ERROR_QUERY_VARIABLE_REDECLARED, name); 
+    TRI_SetErrorAql(context, TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name); 
     return NULL;
   }
   
