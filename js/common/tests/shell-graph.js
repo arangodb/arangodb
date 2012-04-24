@@ -374,16 +374,34 @@
         v2 = graph.addVertex(graph);
         v3 = graph.addVertex(graph);
 
-		edge1 = v1.addInEdge(v2);
-		edge2 = v1.addOutEdge(v3);
-		
-		assertEqual(v1.getId(), edge1.getInVertex().getId());
-		assertEqual(v2.getId(), edge1.getOutVertex().getId());
-		assertEqual(v3.getId(), edge2.getInVertex().getId());
-		assertEqual(v1.getId(), edge2.getOutVertex().getId());
+        edge1 = v1.addInEdge(v2);
+        edge2 = v1.addOutEdge(v3);
+
+        assertEqual(v1.getId(), edge1.getInVertex().getId());
+        assertEqual(v2.getId(), edge1.getOutVertex().getId());
+        assertEqual(v3.getId(), edge2.getInVertex().getId());
+        assertEqual(v1.getId(), edge2.getOutVertex().getId());
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get edges
+////////////////////////////////////////////////////////////////////////////////
+
+      testGetEdges : function () {
+        var v1,
+          v2,
+          edge;
+
+        v1 = graph.addVertex(graph);
+        v2 = graph.addVertex(graph);
+
+        edge = graph.addEdge(v1, v2);
+
+        assertEqual(edge.getId(), v1.getOutEdges()[0].getId());
+        assertEqual(edge.getId(), v2.getInEdges()[0].getId());
+        assertEqual([], v1.getInEdges());
+        assertEqual([], v2.getOutEdges());
       }
-
-
     };
   }
 
