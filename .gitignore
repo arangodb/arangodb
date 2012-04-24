@@ -97,3 +97,4 @@ UnitTests/Philadelphia/Runner.cpp
 UnitTests/test_suite
 .v8-build
 VC++
+/nbproject/private/
