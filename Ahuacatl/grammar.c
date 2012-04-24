@@ -88,7 +88,7 @@
 
 #include "Ahuacatl/ast-node.h"
 #include "Ahuacatl/parser.h"
-#include "Ahuacatl/error.h"
+#include "Ahuacatl/ahuacatl-error.h"
 
 
 

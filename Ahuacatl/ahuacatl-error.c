@@ -25,7 +25,7 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Ahuacatl/error.h"
+#include "Ahuacatl/ahuacatl-error.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           defines
