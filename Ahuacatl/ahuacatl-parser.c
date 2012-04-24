@@ -648,14 +648,19 @@ bool TRI_VariableExistsAql (TRI_aql_parse_context_t* const context,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsValidVariableNameAql (const char* const name) {
-  TRI_col_parameter_t parameter;
+  assert(name);
 
-  parameter._isSystem = true;
-
-  if (TRI_IsAllowedCollectionName(&parameter, name) != 0) {
+  if (strlen(name) == 0) {
+    // name must be at least one char long
     return false;
   }
 
+  if (*name == '_') {
+    // name must not start with an underscore
+    return false;
+  }
+
+  // everything else is allowed
   return true;
 }
 
