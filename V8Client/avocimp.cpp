@@ -41,7 +41,6 @@
 #include "Logger/Logger.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-
 #include "ImportHelper.h"
 #include "V8ClientConnection.h"
 

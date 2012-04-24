@@ -71,6 +71,7 @@ namespace triagens {
       _separator = ',';
       regcomp(&_doubleRegex, "^[-+]?([0-9]+\\.?[0-9]*|\\.[0-9]+)([eE][-+]?[0-8]+)?$", REG_ICASE | REG_EXTENDED);
       regcomp(&_intRegex, "^[-+]?([0-9]+)$", REG_ICASE | REG_EXTENDED);
+      _hasError = false;
     }
 
     ImportHelper::~ImportHelper () {
@@ -89,6 +90,7 @@ namespace triagens {
       _outputBuffer.clear();
       _lineBuffer.clear();
       _errorMessage = "";
+      _hasError = false;
 
       // read and convert
       int fd;
@@ -118,7 +120,7 @@ namespace triagens {
 
       char buffer[10240];
 
-      while (true) {
+      while (!_hasError) {
         v8::HandleScope scope;
 
         ssize_t n = read(fd, buffer, sizeof (buffer));
@@ -145,7 +147,8 @@ namespace triagens {
         close(fd);
       }      
 
-      return true;
+      _outputBuffer.clear();
+      return !_hasError;
     }
 
     bool ImportHelper::importJson (const string& collectionName, const string& fileName) {
@@ -156,6 +159,7 @@ namespace triagens {
       _numberError = 0;
       _outputBuffer.clear();
       _errorMessage = "";
+      _hasError = false;
 
       // read and convert
       int fd;
@@ -174,7 +178,7 @@ namespace triagens {
 
       char buffer[10240];
 
-      while (true) {
+      while (!_hasError) {
         ssize_t n = read(fd, buffer, sizeof(buffer));
 
         if (n < 0) {
@@ -212,7 +216,8 @@ namespace triagens {
         close(fd);
       }      
 
-      return true;
+      _outputBuffer.clear();
+      return !_hasError;
     }
 
 
@@ -351,6 +356,10 @@ namespace triagens {
     }
 
     void ImportHelper::sendCsvBuffer () {
+      if (_hasError) {
+        return;
+      }
+
       map<string, string> headerFields;
       SimpleHttpResult* result = _client->request(SimpleHttpClient::POST, "/_api/import?collection=" + StringUtils::urlEncode(_collectionName), _outputBuffer.c_str(), _outputBuffer.length(), headerFields);
 
@@ -360,6 +369,10 @@ namespace triagens {
     }
 
     void ImportHelper::sendJsonBuffer (char const* str, size_t len) {
+      if (_hasError) {
+        return;
+      }
+      
       map<string, string> headerFields;
       SimpleHttpResult* result = _client->request(SimpleHttpClient::POST, "/_api/import?type=documents&collection=" + StringUtils::urlEncode(_collectionName), str, len, headerFields);
 
@@ -377,7 +390,11 @@ namespace triagens {
         VariantBoolean* vb = va->lookupBoolean("error");
         if (vb && vb->getValue()) {
           // is error
-
+          _hasError = true;
+          VariantString* vs = va->lookupString("errorMessage");
+          if (vs) {
+            _errorMessage = vs->getValue();
+          }
         }
 
         VariantInt64* vi = va->lookupInt64("created");
