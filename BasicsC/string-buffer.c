@@ -56,28 +56,31 @@ static size_t Remaining (TRI_string_buffer_t * self) {
 /// @brief reserve space
 ////////////////////////////////////////////////////////////////////////////////
 
-static void Reserve (TRI_string_buffer_t * self, size_t size) {
+static int Reserve (TRI_string_buffer_t * self, size_t size) {
+  size_t len;
+
   if (size < 1) {
-    return;
+    return TRI_ERROR_NO_ERROR;
   }
 
   if (size > Remaining(self)) {
     ptrdiff_t off;
 
     off = self->_current - self->_buffer;
+    len = (size_t)(1.2 * (self->_len + size));
 
-    self->_len = (size_t)(1.2 * (self->_len + size));
     self->_buffer = TRI_Reallocate(self->_memoryZone, self->_buffer, self->_len + 1);
 
-#if I_CARE_ABOUT_MALLOC_FAILURES
-    if (NULL == self->_buffer) {
-      abort();
+    if (self->_buffer == NULL) {
+      return TRI_ERROR_OUT_OF_MEMORY;
     }
-#endif
-    self->_current = self->_buffer + off;
 
+    self->_len = len;
+    self->_current = self->_buffer + off;
     memset(self->_current, 0, Remaining(self) + 1);
   }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -118,6 +121,7 @@ TRI_string_buffer_t* TRI_CreateStringBuffer (TRI_memory_zone_t* zone) {
 void TRI_InitStringBuffer (TRI_string_buffer_t * self, TRI_memory_zone_t* zone) {
   memset(self, 0, sizeof(TRI_string_buffer_t));
   self->_memoryZone = zone;
+
   Reserve(self, 1);
 }
 
@@ -236,8 +240,8 @@ void TRI_ClearStringBuffer (TRI_string_buffer_t * self) {
 /// @brief copies the string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CopyStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t const * source) {
-  TRI_ReplaceStringStringBuffer(self, source->_buffer, source->_current - source->_buffer);
+int TRI_CopyStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t const * source) {
+  return TRI_ReplaceStringStringBuffer(self, source->_buffer, source->_current - source->_buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -261,20 +265,20 @@ void TRI_EraseFrontStringBuffer (TRI_string_buffer_t * self, size_t len) {
 /// @brief replaces characters
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ReplaceStringStringBuffer (TRI_string_buffer_t * self, char const * str, size_t len) {
+int TRI_ReplaceStringStringBuffer (TRI_string_buffer_t * self, char const * str, size_t len) {
   self->_current = self->_buffer;
 
-  TRI_AppendString2StringBuffer(self, str, len);
+  return TRI_AppendString2StringBuffer(self, str, len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces characters
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ReplaceStringBufferStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t const * text) {
+int TRI_ReplaceStringBufferStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t const * text) {
   self->_current = self->_buffer;
 
-  TRI_AppendString2StringBuffer(self, text->_buffer, text->_current - text->_buffer);
+  return TRI_AppendString2StringBuffer(self, text->_buffer, text->_current - text->_buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -298,62 +302,81 @@ void TRI_ReplaceStringBufferStringBuffer (TRI_string_buffer_t * self, TRI_string
 /// @brief appends character
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AppendCharStringBuffer (TRI_string_buffer_t * self, char chr) {
-  Reserve(self, 1);
+int TRI_AppendCharStringBuffer (TRI_string_buffer_t * self, char chr) {
+  int res;
+
+  res = Reserve(self, 1);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
 
   AppendChar(self, chr);
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends characters
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AppendStringStringBuffer (TRI_string_buffer_t * self, char const * str) {
+int TRI_AppendStringStringBuffer (TRI_string_buffer_t * self, char const * str) {
   size_t len = strlen(str);
+  int res;
 
-  Reserve(self, len);
+  res = Reserve(self, len);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
 
   memcpy(self->_current, str, len);
   self->_current += len;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends characters
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AppendString2StringBuffer (TRI_string_buffer_t * self, char const * str, size_t len) {
-  if (len == 0) {
-    return;
-  }
-  else {
-    Reserve(self, len);
+int TRI_AppendString2StringBuffer (TRI_string_buffer_t * self, char const * str, size_t len) {
+  int res;
+
+  if (0 < len) {
+    res = Reserve(self, len);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
     memcpy(self->_current, str, len);
     self->_current += len;
   }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AppendStringBufferStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t const * text) {
-  TRI_AppendString2StringBuffer(self, text->_buffer, text->_current - text->_buffer);
+int TRI_AppendStringBufferStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t const * text) {
+  return TRI_AppendString2StringBuffer(self, text->_buffer, text->_current - text->_buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends a blob
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AppendBlobStringBuffer (TRI_string_buffer_t * self, TRI_blob_t const * text) {
-  TRI_AppendString2StringBuffer(self, text->data, text->length);
+int TRI_AppendBlobStringBuffer (TRI_string_buffer_t * self, TRI_blob_t const * text) {
+  return TRI_AppendString2StringBuffer(self, text->data, text->length);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends eol character
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AppendEolStringBuffer (TRI_string_buffer_t * self) {
-  TRI_AppendCharStringBuffer(self, '\n');
+int TRI_AppendEolStringBuffer (TRI_string_buffer_t * self) {
+  return TRI_AppendCharStringBuffer(self, '\n');
 }
 
 ////////////////////////////////////////////////////////////////////////////////

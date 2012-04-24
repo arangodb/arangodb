@@ -157,7 +157,7 @@ void TRI_ClearStringBuffer (TRI_string_buffer_t * self);
 /// @brief copies the string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CopyStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t const * source);
+int TRI_CopyStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t const * source);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes the first characters
@@ -169,13 +169,13 @@ void TRI_EraseFrontStringBuffer (TRI_string_buffer_t * self, size_t len);
 /// @brief replaces characters
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ReplaceStringStringBuffer (TRI_string_buffer_t * self, char const * str, size_t len);
+int TRI_ReplaceStringStringBuffer (TRI_string_buffer_t * self, char const * str, size_t len);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces characters
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ReplaceStringBufferStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t const * text);
+int TRI_ReplaceStringBufferStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t const * text);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -216,19 +216,19 @@ int TRI_AppendString2StringBuffer (TRI_string_buffer_t * self, char const * str,
 /// @brief appends a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AppendStringBufferStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t const * text);
+int TRI_AppendStringBufferStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t const * text);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends a blob
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AppendBlobStringBuffer (TRI_string_buffer_t * self, TRI_blob_t const * text);
+int TRI_AppendBlobStringBuffer (TRI_string_buffer_t * self, TRI_blob_t const * text);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends eol character
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AppendEolStringBuffer (TRI_string_buffer_t * self);
+int TRI_AppendEolStringBuffer (TRI_string_buffer_t * self);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

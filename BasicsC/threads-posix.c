@@ -82,7 +82,7 @@ static void* ThreadStarter (void* data) {
   d->starter(d->_data);
 
   if (d) {
-    TRI_Free(d);
+    TRI_Free(TRI_CORE_MEM_ZONE, d);
     d = NULL;
   }
   return 0;
@@ -158,23 +158,18 @@ bool TRI_StartThread (TRI_thread_t* thread, void (*starter)(void*), void* data) 
   thread_data_t* d;
   int rc;
 
-  d = TRI_Allocate(sizeof(thread_data_t));
-  if (!d) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_ERROR("could not start thread: %s ", strerror(errno));
-    return false;
-  }
+  d = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(thread_data_t));
 
   d->starter = starter;
   d->_data = data;
 
   rc = pthread_create(thread, 0, &ThreadStarter, d);
+
   if (rc != 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     LOG_ERROR("could not start thread: %s ", strerror(errno));
-    if (d) {
-      TRI_Free(d);
-    }
+
+    TRI_Free(TRI_CORE_MEM_ZONE, d);
     return false;
   }
 

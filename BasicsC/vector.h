@@ -35,6 +35,10 @@ extern "C" {
 #endif
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                       POD VECTORS
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
@@ -48,6 +52,7 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_vector_s {
+  TRI_memory_zone_t* _memoryZone;
   size_t _elementSize;
   char * _buffer;
   size_t _length;
@@ -56,37 +61,8 @@ typedef struct TRI_vector_s {
 TRI_vector_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief pointer vector
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_vector_pointer_s {
-  void** _buffer;
-  size_t _length;
-  size_t _capacity;
-}
-TRI_vector_pointer_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief string vector
-///
-/// Destroying a string vector will also free all strings stored inside the
-/// vector.
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_vector_string_s {
-  char** _buffer;
-  size_t _length;
-  size_t _capacity;
-}
-TRI_vector_string_t;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       POD VECTORS
-// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -113,7 +89,7 @@ void TRI_DestroyVector (TRI_vector_t*);
 /// @brief destroys a vector and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeVector (TRI_vector_t*);
+void TRI_FreeVector (TRI_memory_zone_t* zone, TRI_vector_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -132,7 +108,7 @@ void TRI_FreeVector (TRI_vector_t*);
 /// @brief copies a vector
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_t* TRI_CopyVector (TRI_vector_t*);
+TRI_vector_t* TRI_CopyVector (TRI_memory_zone_t*, TRI_vector_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true if the vector is empty
@@ -156,7 +132,7 @@ int TRI_ResizeVector (TRI_vector_t*, size_t n);
 /// @brief adds and element at the end
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PushBackVector (TRI_vector_t*, void const* element);
+int TRI_PushBackVector (TRI_vector_t*, void const* element);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an element
@@ -197,6 +173,31 @@ void* TRI_EndVector (TRI_vector_t*);
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Collections
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pointer vector
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_vector_pointer_s {
+  TRI_memory_zone_t* _memoryZone;
+  void** _buffer;
+  size_t _length;
+  size_t _capacity;
+}
+TRI_vector_pointer_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -221,7 +222,7 @@ void TRI_DestroyVectorPointer (TRI_vector_pointer_t*);
 /// @brief destroys a vector and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeVectorPointer (TRI_vector_pointer_t*);
+void TRI_FreeVectorPointer (TRI_memory_zone_t*, TRI_vector_pointer_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -240,13 +241,13 @@ void TRI_FreeVectorPointer (TRI_vector_pointer_t*);
 /// @brief copies a vector
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* TRI_CopyVectorPointer (TRI_vector_pointer_t*);
+TRI_vector_pointer_t* TRI_CopyVectorPointer (TRI_memory_zone_t*, TRI_vector_pointer_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies all pointers from a vector
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CopyDataVectorPointer (TRI_vector_pointer_t*, TRI_vector_pointer_t*);
+int TRI_CopyDataVectorPointer (TRI_vector_pointer_t*, TRI_vector_pointer_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true if the vector is empty
@@ -264,7 +265,7 @@ void TRI_ClearVectorPointer (TRI_vector_pointer_t*);
 /// @brief resizes the vector
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ResizeVectorPointer (TRI_vector_pointer_t*, size_t);
+int TRI_ResizeVectorPointer (TRI_vector_pointer_t*, size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an element at the end
@@ -297,6 +298,34 @@ void* TRI_AtVectorPointer (TRI_vector_pointer_t const*, size_t);
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    STRING VECTORS
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Collections
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief string vector
+///
+/// Destroying a string vector will also free all strings stored inside the
+/// vector.
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_vector_string_s {
+  TRI_memory_zone_t* _memoryZone;
+  char** _buffer;
+  size_t _length;
+  size_t _capacity;
+}
+TRI_vector_string_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
