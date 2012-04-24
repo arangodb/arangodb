@@ -145,7 +145,7 @@ static TRI_datafile_t* SelectJournal (TRI_sim_collection_t* sim,
 
   TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
-  while (true) {
+  while (sim->base.base._state == TRI_COL_STATE_WRITE) {
     n = sim->base.base._journals._length;
 
     for (i = 0;  i < n;  ++i) {
@@ -171,6 +171,7 @@ static TRI_datafile_t* SelectJournal (TRI_sim_collection_t* sim,
   }
 
   TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+  return NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -323,12 +324,6 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* sim,
 
   // get a new header pointer
   header = sim->_headers->request(sim->_headers);
-  if (!header) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    LOG_ERROR("out of memory");
-    mptr._did = 0;
-    return mptr;
-  }
 
   // generate a new tick
   marker->_rid = marker->_did = marker->base._tick = TRI_NewTickVocBase();
@@ -338,8 +333,6 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* sim,
   journal = SelectJournal(sim, total, result);
 
   if (journal == NULL) {
-    sim->base.base._lastError = TRI_set_errno(TRI_ERROR_AVOCADO_NO_JOURNAL);
-
     if (release) {
       sim->base.endWrite(&sim->base);
     }

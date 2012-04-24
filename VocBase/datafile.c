@@ -293,7 +293,13 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
   data = mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
 
   if (data == MAP_FAILED) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    if (errno == ENOMEM) {
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY_MMAP);
+    }
+    else {
+      TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    }
+
     close(fd);
 
     LOG_ERROR("cannot memory map file '%s': '%s'", filename, TRI_last_error());
@@ -400,7 +406,13 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
   data = mmap(0, maximalSize, PROT_WRITE | PROT_READ, MAP_SHARED, fd, 0);
 
   if (data == MAP_FAILED) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    if (errno == ENOMEM) {
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY_MMAP);
+    }
+    else {
+      TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    }
+
     close(fd);
 
     // remove empty file
