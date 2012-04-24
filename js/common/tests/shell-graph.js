@@ -404,7 +404,7 @@
       },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get edges
+/// @brief get edges with labels
 ////////////////////////////////////////////////////////////////////////////////
 
       testGetEdgesWithLabels : function () {
@@ -421,7 +421,24 @@
 
         assertEqual(edge2.getId(), v1.getOutEdges("label_2")[0].getId());
         assertEqual(1, v2.getInEdges("label_2").length);
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief properties
+////////////////////////////////////////////////////////////////////////////////
+
+      testProperties : function () {
+        var v1;
+
+        v1 = graph.addVertex(graph);
+
+        v1.setProperty("myProperty", "myValue");
+        assertEqual("myValue", v1.getProperty("myProperty"));
+        assertEqual("myProperty", v1.getPropertyKeys()[0]);
+        assertEqual(1, v1.getPropertyKeys().length);
+        assertEqual({myProperty: "myValue"}, v1.properties());
       }
+
 
     };
   }
