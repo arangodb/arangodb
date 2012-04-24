@@ -1009,7 +1009,8 @@ UNITTESTS_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
 
 ################################################################################
 ################################################################################
-SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-queries-collection.js \
+SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-operators.js \
+		     @srcdir@/js/server/tests/ahuacatl-queries-collection.js \
 		     @srcdir@/js/server/tests/ahuacatl-queries-noncollection.js 
 
 UNITTESTS_SERVER_AHUACATL = $(addprefix --unit-tests ,$(SHELL_SERVER_AHUACATL))
@@ -3077,6 +3078,9 @@ unittests-http-server:
 @ENABLE_FLEX_TRUE@QL/%.c: @srcdir@/QL/%.l
 @ENABLE_FLEX_TRUE@	@top_srcdir@/config/flex-c.sh $(LEX) $@ $<
 
+@ENABLE_FLEX_TRUE@Ahuacatl/%.c: @srcdir@/Ahuacatl/%.l
+@ENABLE_FLEX_TRUE@	@top_srcdir@/config/flex-c.sh $(LEX) $@ $<
+
 ################################################################################
 ################################################################################
 
@@ -3087,6 +3091,9 @@ unittests-http-server:
 @ENABLE_FLEX_TRUE@	@top_srcdir@/config/flex-c++.sh $(LEX) $@ $<
 
 @ENABLE_BISON_TRUE@QL/%.c: @srcdir@/QL/%.y
+@ENABLE_BISON_TRUE@	@top_srcdir@/config/bison-c.sh $(BISON) $@ $<
+
+@ENABLE_BISON_TRUE@Ahuacatl/%.c: @srcdir@/Ahuacatl/%.y
 @ENABLE_BISON_TRUE@	@top_srcdir@/config/bison-c.sh $(BISON) $@ $<
 
 ################################################################################
