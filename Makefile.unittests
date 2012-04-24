@@ -153,7 +153,8 @@ unittests-shell-server:
 ## SHELL SERVER TESTS (AHUACATL)
 ################################################################################
 
-SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-queries-collection.js \
+SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-operators.js \
+		     @srcdir@/js/server/tests/ahuacatl-queries-collection.js \
 		     @srcdir@/js/server/tests/ahuacatl-queries-noncollection.js 
  
 
