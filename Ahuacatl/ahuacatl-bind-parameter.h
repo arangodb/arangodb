@@ -35,7 +35,7 @@
 #include <BasicsC/associative.h>
 #include <BasicsC/json.h>
 
-#include "Ahuacatl/parser.h"
+#include "Ahuacatl/ahuacatl-parser.h"
 
 #ifdef __cplusplus
 extern "C" {

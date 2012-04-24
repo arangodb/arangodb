@@ -46,7 +46,7 @@
 #include "SkipLists/sl-operator.h"
 #include "Ahuacatl/ast-node.h"
 #include "Ahuacatl/ast-codegen-js.h"
-#include "Ahuacatl/parser.h"
+#include "Ahuacatl/ahuacatl-parser.h"
 
 using namespace std;
 using namespace triagens::basics;

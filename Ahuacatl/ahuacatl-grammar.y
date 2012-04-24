@@ -17,7 +17,7 @@
 #include <BasicsC/strings.h>
 
 #include "Ahuacatl/ast-node.h"
-#include "Ahuacatl/parser.h"
+#include "Ahuacatl/ahuacatl-parser.h"
 #include "Ahuacatl/ahuacatl-error.h"
 
 %}
@@ -33,7 +33,7 @@
 %{
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief forward for lexer function defined in tokens.l
+/// @brief forward for lexer function defined in ahuacatl-tokens.l
 ////////////////////////////////////////////////////////////////////////////////
 
 int Ahuacatllex (YYSTYPE*, YYLTYPE*, void*);
