@@ -398,10 +398,10 @@ namespace triagens {
     // -----------------------------------------------------------------------------
 
     bool SimpleHttpClient::close () {
-      if (_isConnected) {
+      if (_socket != -1) {
         ::close(_socket);
-        _isConnected = false;
       }
+      _isConnected = false;
 
       reset();
 
