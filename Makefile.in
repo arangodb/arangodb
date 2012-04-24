@@ -1009,7 +1009,8 @@ UNITTESTS_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
 
 ################################################################################
 ################################################################################
-SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-queries-collection.js \
+SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-operators.js \
+		     @srcdir@/js/server/tests/ahuacatl-queries-collection.js \
 		     @srcdir@/js/server/tests/ahuacatl-queries-noncollection.js 
 
 UNITTESTS_SERVER_AHUACATL = $(addprefix --unit-tests ,$(SHELL_SERVER_AHUACATL))
