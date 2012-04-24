@@ -91,7 +91,14 @@ namespace triagens {
       _errorMessage = "";
 
       // read and convert
-      int fd = open(fileName.c_str(), O_RDONLY);
+      int fd;
+      
+      if (fileName == "-") {
+        fd = STDIN_FILENO;
+      }
+      else {
+        fd = open(fileName.c_str(), O_RDONLY);        
+      }      
 
       if (fd < 0) {
         _errorMessage = TRI_LAST_ERROR_STR;
@@ -134,7 +141,9 @@ namespace triagens {
 
       TRI_DestroyCsvParser(&parser);
 
-      close(fd);
+      if (fileName != "-") {
+        close(fd);
+      }      
 
       return true;
     }
@@ -149,7 +158,14 @@ namespace triagens {
       _errorMessage = "";
 
       // read and convert
-      int fd = open(fileName.c_str(), O_RDONLY);
+      int fd;
+      
+      if (fileName == "-") {
+        fd = STDIN_FILENO;
+      }
+      else {
+        fd = open(fileName.c_str(), O_RDONLY);        
+      }      
 
       if (fd < 0) {
         _errorMessage = TRI_LAST_ERROR_STR;
@@ -192,7 +208,9 @@ namespace triagens {
 
       _numberLines = _numberError + _numberOk;
       
-      close(fd);
+      if (fileName != "-") {
+        close(fd);
+      }      
 
       return true;
     }
