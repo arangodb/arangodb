@@ -1,7 +1,13 @@
 /*jslint indent: 2,
          nomen: true,
          maxlen: 80 */
-/*global require, db, assertEqual, print, PRINT_OBJECT, console */
+/*global require,
+    db,
+    assertEqual, assertTrue,
+    print,
+    PRINT_OBJECT,
+    console,
+    AvocadoCollection, AvocadoEdgesCollection */
 (function () {
   "use strict";
 
@@ -37,6 +43,58 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                                collection methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: Graph Creation
+////////////////////////////////////////////////////////////////////////////////
+
+  function graphCreationSuite() {
+
+    return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: Graph Creation
+////////////////////////////////////////////////////////////////////////////////
+
+      testCreation: function () {
+        var Graph = require("graph").Graph,
+          graph_name = "UnitTestsCollectionGraph",
+          vertex = "UnitTestsCollectionVertex",
+          edge = "UnitTestsCollectionEdge",
+          graph = null;
+
+        graph = new Graph(graph_name, vertex, edge);
+
+        assertEqual(graph_name, graph._properties.name);
+        assertTrue(graph._vertices instanceof AvocadoCollection);
+        assertTrue(graph._edges instanceof AvocadoEdgesCollection);
+        
+        graph.drop();
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: Find Graph
+////////////////////////////////////////////////////////////////////////////////
+
+      testFindGraph: function () {
+        var Graph = require("graph").Graph,
+          graph_name = "UnitTestsCollectionGraph",
+          vertex = "UnitTestsCollectionVertex",
+          edge = "UnitTestsCollectionEdge",
+          graph1 = null,
+          graph2 = null;
+
+        graph1 = new Graph(graph_name, vertex, edge);
+        graph2 = new Graph(graph_name);
+        
+        assertEqual(graph1._properties.name, graph2._properties.name);
+        assertEqual(graph1._vertices, graph2._vertices);
+        assertEqual(graph1._edges, graph2._edges);
+        
+        graph1.drop();
+      }
+    };
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: Graph Basics
@@ -245,11 +303,10 @@
           { testProperty: "testValue" });
 
         graph.removeVertex(v1);
-        
+
         assertEqual(null, graph.getVertex(v1_id));
         assertEqual(false, graph.getEdges().hasNext());
       }
-
 
     };
   }
@@ -258,6 +315,7 @@
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
+  jsunity.run(graphCreationSuite);
   jsunity.run(graphBasicsSuite);
   jsunity.done();
 
