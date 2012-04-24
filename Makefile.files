@@ -146,14 +146,15 @@ avocado_SOURCES = \
 	HttpsServer/HttpsServerImpl.cpp \
 	PriorityQueue/pqueueindex.c \
 	PriorityQueue/priorityqueue.c \
+        Ahuacatl/ahuacatl-bind-parameter.c \
         Ahuacatl/ahuacatl-error.c \
 	Ahuacatl/ahuacatl-functions.c \
+        Ahuacatl/ahuacatl-grammar.c \
+        Ahuacatl/ahuacatl-parser.c \
+        Ahuacatl/ahuacatl-tokens.c \
 	Ahuacatl/ast-codegen-js.c \
         Ahuacatl/ast-dump.c \
         Ahuacatl/ast-node.c \
-        Ahuacatl/grammar.c \
-        Ahuacatl/parser.c \
-        Ahuacatl/tokens.c \
 	QL/ast-query.c \
 	QL/formatter.c \
 	QL/optimize.c \
@@ -302,7 +303,7 @@ BUILT_SOURCES += $(FLEXXX_FILES)
 
 BISON_FILES = \
 	QL/parser.c \
-	Ahuacatl/grammar.c
+	Ahuacatl/ahuacatl-grammar.c
 
 BUILT_SOURCES += $(BISON_FILES)
 

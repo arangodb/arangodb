@@ -28,6 +28,7 @@
 
 #include "associative.h"
 #include "hashes.h"
+#include "strings.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 ASSOCIATIVE ARRAY
@@ -674,6 +675,16 @@ void TRI_FreeAssociativePointer (TRI_memory_zone_t* zone, TRI_associative_pointe
 uint64_t TRI_HashStringKeyAssociativePointer (TRI_associative_pointer_t* array, 
                                               void const* key) {
   return TRI_FnvHashString((char const*) key);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief General function to determine equality of two string values
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_EqualStringKeyAssociativePointer (TRI_associative_pointer_t* array, 
+                                           void const* key, 
+                                           void const* element) {
+  return TRI_EqualString((char*) key, (char*) element);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

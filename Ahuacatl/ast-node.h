@@ -34,7 +34,7 @@
 #include <BasicsC/vector.h>
 #include <BasicsC/associative.h>
 
-#include "Ahuacatl/parser.h"
+#include "Ahuacatl/ahuacatl-parser.h"
 
 #ifdef __cplusplus
 extern "C" {

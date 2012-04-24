@@ -86,7 +86,7 @@ stamp-h*
 .svn
 *.swp
 tags
-Ahuacatl/grammar.output
+Ahuacatl/ahuacatl-grammar.output
 UnitTests/HttpInterface/logs
 UnitTests/Jutland/CsvReaderTest.cpp
 UnitTests/Jutland/Makefile.am
