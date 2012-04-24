@@ -280,11 +280,13 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Ahuacatl/ahuacatl-bind-parameter.$(OBJEXT) \
 	Ahuacatl/ahuacatl-error.$(OBJEXT) \
 	Ahuacatl/ahuacatl-functions.$(OBJEXT) \
+	Ahuacatl/ahuacatl-grammar.$(OBJEXT) \
+	Ahuacatl/ahuacatl-parser.$(OBJEXT) \
+	Ahuacatl/ahuacatl-tokens.$(OBJEXT) \
 	Ahuacatl/ast-codegen-js.$(OBJEXT) Ahuacatl/ast-dump.$(OBJEXT) \
-	Ahuacatl/ast-node.$(OBJEXT) Ahuacatl/grammar.$(OBJEXT) \
-	Ahuacatl/parser.$(OBJEXT) Ahuacatl/tokens.$(OBJEXT) \
-	QL/ast-query.$(OBJEXT) QL/formatter.$(OBJEXT) \
-	QL/optimize.$(OBJEXT) QL/parser.$(OBJEXT) QL/tokens.$(OBJEXT) \
+	Ahuacatl/ast-node.$(OBJEXT) QL/ast-query.$(OBJEXT) \
+	QL/formatter.$(OBJEXT) QL/optimize.$(OBJEXT) \
+	QL/parser.$(OBJEXT) QL/tokens.$(OBJEXT) \
 	RestHandler/RestActionHandler.$(OBJEXT) \
 	RestHandler/RestDocumentHandler.$(OBJEXT) \
 	RestHandler/RestEdgeHandler.$(OBJEXT) \
@@ -756,12 +758,12 @@ avocado_SOURCES = \
         Ahuacatl/ahuacatl-bind-parameter.c \
         Ahuacatl/ahuacatl-error.c \
 	Ahuacatl/ahuacatl-functions.c \
+        Ahuacatl/ahuacatl-grammar.c \
+        Ahuacatl/ahuacatl-parser.c \
+        Ahuacatl/ahuacatl-tokens.c \
 	Ahuacatl/ast-codegen-js.c \
         Ahuacatl/ast-dump.c \
         Ahuacatl/ast-node.c \
-        Ahuacatl/grammar.c \
-        Ahuacatl/parser.c \
-        Ahuacatl/tokens.c \
 	QL/ast-query.c \
 	QL/formatter.c \
 	QL/optimize.c \
@@ -894,7 +896,7 @@ FLEXXX_FILES = \
 ################################################################################
 BISON_FILES = \
 	QL/parser.c \
-	Ahuacatl/grammar.c
+	Ahuacatl/ahuacatl-grammar.c
 
 
 ################################################################################
@@ -1658,17 +1660,17 @@ Ahuacatl/ahuacatl-error.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-functions.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-grammar.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-parser.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-tokens.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ast-codegen-js.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ast-dump.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ast-node.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/grammar.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/parser.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/tokens.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 QL/$(am__dirstamp):
 	@$(MKDIR_P) QL
@@ -1911,12 +1913,12 @@ mostlyclean-compile:
 	-rm -f Ahuacatl/ahuacatl-bind-parameter.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-error.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-functions.$(OBJEXT)
+	-rm -f Ahuacatl/ahuacatl-grammar.$(OBJEXT)
+	-rm -f Ahuacatl/ahuacatl-parser.$(OBJEXT)
+	-rm -f Ahuacatl/ahuacatl-tokens.$(OBJEXT)
 	-rm -f Ahuacatl/ast-codegen-js.$(OBJEXT)
 	-rm -f Ahuacatl/ast-dump.$(OBJEXT)
 	-rm -f Ahuacatl/ast-node.$(OBJEXT)
-	-rm -f Ahuacatl/grammar.$(OBJEXT)
-	-rm -f Ahuacatl/parser.$(OBJEXT)
-	-rm -f Ahuacatl/tokens.$(OBJEXT)
 	-rm -f ApplicationServer/ApplicationServer.$(OBJEXT)
 	-rm -f ApplicationServer/ApplicationServerImpl.$(OBJEXT)
 	-rm -f ApplicationServer/ApplicationServerSchedulerImpl.$(OBJEXT)
@@ -2139,12 +2141,12 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-bind-parameter.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-error.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-functions.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-grammar.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-parser.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-tokens.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ast-codegen-js.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ast-dump.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ast-node.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/grammar.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/parser.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/tokens.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ApplicationServer/$(DEPDIR)/ApplicationServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ApplicationServer/$(DEPDIR)/ApplicationServerImpl.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ApplicationServer/$(DEPDIR)/ApplicationServerSchedulerImpl.Po@am__quote@
