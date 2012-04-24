@@ -186,6 +186,9 @@ extern "C" {
 ///   Will be raised when a document attribute is re-assigned.
 /// - 1524: @CODE{variable name '\%s' has an invalid format}
 ///   Will be raised when an invalid variable name is used.
+/// - 1525: @CODE{invalid structure of bind parameters}
+///   Will be raised when the structure of bind parameters passed has an
+///   unexpected format.
 /// - 1600: @CODE{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
@@ -1038,6 +1041,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_VARIABLE_NAME_INVALID                             (1524)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1525: ERROR_QUERY_BIND_PARAMETERS_INVALID
+///
+/// invalid structure of bind parameters
+///
+/// Will be raised when the structure of bind parameters passed has an
+/// unexpected format.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID                           (1525)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1600: ERROR_CURSOR_NOT_FOUND
