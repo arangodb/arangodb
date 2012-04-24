@@ -35,7 +35,8 @@
 #include <BasicsC/associative.h>
 
 #include "VocBase/vocbase.h"
-#include "Ahuacatl/error.h"
+#include "VocBase/collection.h"
+#include "Ahuacatl/ahuacatl-error.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -240,6 +241,12 @@ char* TRI_RegisterStringAql (TRI_aql_parse_context_t* const,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_VariableExistsAql (TRI_aql_parse_context_t* const, const char* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a variable name follows the required naming convention 
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsValidVariableNameAql (const char* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

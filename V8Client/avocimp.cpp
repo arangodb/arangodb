@@ -33,6 +33,7 @@
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringUtils.h"
+#include "Basics/FileUtils.h"
 #include "BasicsC/files.h"
 #include "BasicsC/init.h"
 #include "BasicsC/logging.h"
@@ -156,7 +157,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("help,h", "help message")
     ("log.level,l", &level,  "log level")
     ("server", &ServerAddress, "server address and port")
-    ("file", &FileName, "file name")
+    ("file", &FileName, "file name (\"-\" for STDIN)")
     ("collection", &CollectionName, "collection name")
     ("type", &TypeImport, "type of file (\"csv\" or \"json\")")
     ("quote", &QuoteChar, "quote character")
@@ -270,6 +271,11 @@ int main (int argc, char* argv[]) {
     if (FileName == "") {
       cout << "file name is missing." << endl;
       return EXIT_FAILURE;
+    }
+
+    if (FileName != "-" && !FileUtils::isRegularFile(FileName)) {
+      cout << "file '" << FileName << "' is not a regular file." << endl;
+      return EXIT_FAILURE;      
     }
     
     bool ok;

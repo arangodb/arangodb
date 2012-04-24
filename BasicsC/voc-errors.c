@@ -85,6 +85,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE, "limit value '%s' is out of range");
   REG_ERROR(ERROR_QUERY_VARIABLE_REDECLARED, "variable '%s' is assigned multiple times");
   REG_ERROR(ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED, "document attribute '%s' is assigned multiple times");
+  REG_ERROR(ERROR_QUERY_VARIABLE_NAME_INVALID, "variable name '%s' has an invalid format");
   REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
   REG_ERROR(ERROR_SESSION_USERHANDLER_URL_INVALID, "expecting <prefix>/user/<username>");
   REG_ERROR(ERROR_SESSION_USERHANDLER_CANNOT_CREATE_USER, "cannot create user");

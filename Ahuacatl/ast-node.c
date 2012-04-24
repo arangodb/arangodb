@@ -139,6 +139,11 @@ TRI_aql_node_t* TRI_CreateNodeForAql (TRI_aql_parse_context_t* const context,
   if (!name || !expression) {
     ABORT_OOM
   }
+
+  if (!TRI_IsValidVariableNameAql(name)) { 
+    TRI_SetErrorAql(context, TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name); 
+    return NULL;
+  }
   
   node = (TRI_aql_node_for_t*) TRI_Allocate(sizeof(TRI_aql_node_for_t));
 

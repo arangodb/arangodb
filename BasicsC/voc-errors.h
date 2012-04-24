@@ -186,6 +186,8 @@ extern "C" {
 ///   Will be raised when a variable gets re-assigned in a query.
 /// - 1523: @CODE{document attribute '\%s' is assigned multiple times}
 ///   Will be raised when a document attribute is re-assigned.
+/// - 1524: @CODE{variable name '\%s' has an invalid format}
+///   Will be raised when an invalid variable name is used.
 /// - 1600: @CODE{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
@@ -1038,6 +1040,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED                     (1523)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1524: ERROR_QUERY_VARIABLE_NAME_INVALID
+///
+/// variable name '%s' has an invalid format
+///
+/// Will be raised when an invalid variable name is used.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_VARIABLE_NAME_INVALID                             (1524)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1600: ERROR_CURSOR_NOT_FOUND
