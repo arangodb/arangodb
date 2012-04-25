@@ -84,11 +84,11 @@ using namespace triagens::avocado;
 
 #ifdef TRI_ENABLE_MRUBY
 extern "C" {
-#include "mruby.h"
-#include "mruby/proc.h"
-#include "mruby/data.h"
 #include "compile.h"
-#include "variable.h"
+#include "mruby.h"
+#include "mruby/data.h"
+#include "mruby/proc.h"
+#include "mruby/variable.h"
 }
 #endif
 
