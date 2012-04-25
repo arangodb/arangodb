@@ -28,6 +28,8 @@ build.h
 build.info
 commit.sh
 config/config.h
+config/config.guess
+config/config.sub
 config.h
 config.log
 config/revision.sh
