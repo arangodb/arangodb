@@ -257,7 +257,7 @@ function getVertex(req, res) {
     var v = g.getVertex(id);
 
     if (v == undefined || v._properties == undefined) {
-      throw "no vertex found";
+      throw "no vertex found for: " + id;
     }
     
     actions.resultOk(req, res, actions.HTTP_OK, { "vertex" : v._properties} );
@@ -296,7 +296,7 @@ function deleteVertex(req, res) {
     var v = g.getVertex(id);
 
     if (v == undefined || v._properties == undefined) {
-      throw "no vertex found";
+      throw "no vertex found for: " + id;
     }
     
     g.removeVertex(v);
@@ -483,10 +483,11 @@ function getEdge(req, res) {
       id += "/" + req.suffix[1];
     }
     
-    var e = g.getVertex(id);
+    
+    var e = new graph.Edge(g, id);
 
     if (e == undefined || e._properties == undefined) {
-      throw "no edge found";
+      throw "no edge found for: " + id + " " + e;
     }
     
     actions.resultOk(req, res, actions.HTTP_OK, { "edge" : e._properties} );
