@@ -58,8 +58,6 @@ libavocado_a_SOURCES = \
 	Logger/LoggerInfo.cpp \
 	Logger/LoggerStream.cpp \
 	Logger/LoggerTiming.cpp \
-	MRuby/MRLineEditor.cpp \
-	MRuby/mr-utils.cpp \
 	ProgramOptions/program-options.c \
 	Rest/AddressPort.cpp \
 	Rest/AnyServer.cpp \
@@ -106,6 +104,12 @@ libavocado_a_SOURCES = \
 	Variant/VariantUInt64.cpp \
 	Variant/VariantUInt8.cpp \
 	Variant/VariantVector.cpp
+
+if ENABLE_MRUBY
+libavocado_a_SOURCES += \
+	MRuby/MRLineEditor.cpp \
+	MRuby/mr-utils.cpp
+endif
 
 ################################################################################
 ## avocado server
@@ -241,10 +245,14 @@ avocsh_SOURCES = \
 ## avocado ruby shell
 ################################################################################
 
+if ENABLE_MRUBY
+
 avocirb_LDADD = libavocado.a $(LIBS)
 
 avocirb_SOURCES = \
 	MRClient/avocirb.cpp
+
+endif
 
 ################################################################################
 ## avocado importer

@@ -4,16 +4,23 @@ dnl ----------------------------------------------------------------------------
 dnl option for MRUBY support
 dnl -----------------------------------------------------------------------------------------
 
-ENABLE_MRUBY="yes"
+AC_ARG_ENABLE(mruby,
+  AS_HELP_STRING([--enable-mruby], [enable MRUBY]),
+  [tr_MRUBY="${enableval:-yes}"],
+  [tr_MRUBY=yes]
+)
 
-MRUBY_CPPFLAGS="-I${srcdir}/3rdParty/mruby/include"
-MRUBY_LDFLAGS=""
-MRUBY_LIBS="${srcdir}/3rdParty/mruby/lib/ritevm.a"
+if test "x$tr_MRUBY" = "xyes";  then
+  MRUBY_CPPFLAGS="-I${srcdir}/3rdParty/mruby/include"
+  MRUBY_LDFLAGS=""
+  MRUBY_LIBS="${srcdir}/3rdParty/mruby/lib/ritevm.a"
 
-TRI_MRUBY_VERSION="0.0.0"
+  TRI_MRUBY_VERSION="0.0.0"
 
-AM_CONDITIONAL(ENABLE_MRUBY, true)
-AC_DEFINE_UNQUOTED(TRI_ENABLE_MRUBY, 1, [true if mruby should be used])
+  AC_DEFINE_UNQUOTED(TRI_ENABLE_MRUBY, 1, [true if mruby should be used])
+fi
+
+AM_CONDITIONAL(ENABLE_MRUBY, test "x$tr_MRUBY" = "xyes")
 
 dnl -----------------------------------------------------------------------------------------
 dnl add substitutions
@@ -29,14 +36,18 @@ dnl ----------------------------------------------------------------------------
 dnl informational output
 dnl -----------------------------------------------------------------------------------------
 
-BASIC_INFO="$BASIC_INFO|MRUBY: disabled"
+if test "x$tr_MRUBY" = "xyes";  then
+  BASIC_INFO="$BASIC_INFO|MRUBY: enabled"
 
-LIB_INFO="$LIB_INFO|MRUBY VERSION: ${TRI_MRUBY_VERSION}"
+  LIB_INFO="$LIB_INFO|MRUBY VERSION: ${TRI_MRUBY_VERSION}"
 
-FLAG_INFO="$FLAG_INFO|MRUBY_CPPFLAGS: ${MRUBY_CPPFLAGS}"
-FLAG_INFO="$FLAG_INFO|MRUBY_LDFLAGS:  ${MRUBY_LDFLAGS}"
-FLAG_INFO="$FLAG_INFO|MRUBY_LIBS:     ${MRUBY_LIBS}"
-FLAG_INFO="$FLAG_INFO|."
+  FLAG_INFO="$FLAG_INFO|MRUBY_CPPFLAGS: ${MRUBY_CPPFLAGS}"
+  FLAG_INFO="$FLAG_INFO|MRUBY_LDFLAGS:  ${MRUBY_LDFLAGS}"
+  FLAG_INFO="$FLAG_INFO|MRUBY_LIBS:     ${MRUBY_LIBS}"
+  FLAG_INFO="$FLAG_INFO|."
+else
+  BASIC_INFO="$BASIC_INFO|MRUBY: disabled"
+fi
 
 
 dnl Local Variables:
