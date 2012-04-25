@@ -79,7 +79,7 @@ function AHUACATL_CLONE (obj) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_FCALL(name, parameters) {
-  return name(parameters);
+  return name.apply(null, parameters);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -350,6 +350,13 @@ function AHUACATL_RELATIONAL_EQUAL (lhs, rhs) {
   }
 
   // primitive type
+  if (AHUACATL_TYPEWEIGHT(lhs) === AHUACATL_TYPEWEIGHT_NULL) {
+    lhs = null;
+  }
+  if (AHUACATL_TYPEWEIGHT(rhs) === AHUACATL_TYPEWEIGHT_NULL) {
+    rhs = null;
+  }
+
   return (lhs === rhs);
 }
 
@@ -397,6 +404,13 @@ function AHUACATL_RELATIONAL_UNEQUAL (lhs, rhs) {
   }
 
   // primitive type
+  if (AHUACATL_TYPEWEIGHT(lhs) === AHUACATL_TYPEWEIGHT_NULL) {
+    lhs = null;
+  }
+  if (AHUACATL_TYPEWEIGHT(rhs) === AHUACATL_TYPEWEIGHT_NULL) {
+    rhs = null;
+  }
+
   return (lhs !== rhs);
 }
 
@@ -453,6 +467,13 @@ function AHUACATL_RELATIONAL_GREATER_REC (lhs, rhs) {
   }
 
   // primitive type
+  if (AHUACATL_TYPEWEIGHT(lhs) === AHUACATL_TYPEWEIGHT_NULL) {
+    lhs = null;
+  }
+  if (AHUACATL_TYPEWEIGHT(rhs) === AHUACATL_TYPEWEIGHT_NULL) {
+    rhs = null;
+  }
+
   if (lhs === rhs) {
     return null;
   }
@@ -528,6 +549,13 @@ function AHUACATL_RELATIONAL_GREATEREQUAL_REC (lhs, rhs) {
   }
 
   // primitive type
+  if (AHUACATL_TYPEWEIGHT(lhs) === AHUACATL_TYPEWEIGHT_NULL) {
+    lhs = null;
+  }
+  if (AHUACATL_TYPEWEIGHT(rhs) === AHUACATL_TYPEWEIGHT_NULL) {
+    rhs = null;
+  }
+
   if (lhs === rhs) {
     return null;
   }
@@ -604,6 +632,13 @@ function AHUACATL_RELATIONAL_LESS_REC (lhs, rhs) {
   }
 
   // primitive type
+  if (AHUACATL_TYPEWEIGHT(lhs) === AHUACATL_TYPEWEIGHT_NULL) {
+    lhs = null;
+  }
+  if (AHUACATL_TYPEWEIGHT(rhs) === AHUACATL_TYPEWEIGHT_NULL) {
+    rhs = null;
+  }
+
   if (lhs === rhs) {
     return null;
   }
@@ -677,11 +712,18 @@ function AHUACATL_RELATIONAL_LESSEQUAL_REC (lhs, rhs) {
     return null;
   }
   
+  // primitive type
+  if (AHUACATL_TYPEWEIGHT(lhs) === AHUACATL_TYPEWEIGHT_NULL) {
+    lhs = null;
+  }
+  if (AHUACATL_TYPEWEIGHT(rhs) === AHUACATL_TYPEWEIGHT_NULL) {
+    rhs = null;
+  }
+  
   if (lhs === rhs) {
     return null;
   }
 
-  // primitive type
   return (lhs <= rhs);
 }
 
@@ -752,7 +794,11 @@ function AHUACATL_UNARY_PLUS (value) {
     throw "expecting number for unary plus";
   }
 
-  return AHUACATL_NUMERIC_VALUE(value);
+  var result = AHUACATL_NUMERIC_VALUE(value);
+  if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
+    throw "number out of range";
+  }
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -766,7 +812,11 @@ function AHUACATL_UNARY_MINUS (value) {
     throw "expecting number for unary minus";
   }
 
-  return AHUACATL_NUMERIC_VALUE(-value);
+  var result = AHUACATL_NUMERIC_VALUE(-value);
+  if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
+    throw "number out of range";
+  }
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -781,7 +831,11 @@ function AHUACATL_ARITHMETIC_PLUS (lhs, rhs) {
     throw "expecting numbers for plus";
   }
 
-  return AHUACATL_NUMERIC_VALUE(lhs + rhs);
+  var result = AHUACATL_NUMERIC_VALUE(lhs + rhs);
+  if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
+    throw "number out of range";
+  }
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -796,7 +850,11 @@ function AHUACATL_ARITHMETIC_MINUS (lhs, rhs) {
     throw "expecting numbers for minus";
   }
 
-  return AHUACATL_NUMERIC_VALUE(lhs - rhs);
+  var result = AHUACATL_NUMERIC_VALUE(lhs - rhs);
+  if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
+    throw "number out of range";
+  }
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -811,7 +869,11 @@ function AHUACATL_ARITHMETIC_TIMES (lhs, rhs) {
     throw "expecting numbers for times";
   }
 
-  return AHUACATL_NUMERIC_VALUE(lhs * rhs);
+  var result = AHUACATL_NUMERIC_VALUE(lhs * rhs);
+  if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
+    throw "number out of range";
+  }
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -830,7 +892,11 @@ function AHUACATL_ARITHMETIC_DIVIDE (lhs, rhs) {
     throw "division by zero";
   }
 
-  return AHUACATL_NUMERIC_VALUE(lhs / rhs);
+  var result = AHUACATL_NUMERIC_VALUE(lhs / rhs);
+  if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
+    throw "number out of range";
+  }
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -849,7 +915,11 @@ function AHUACATL_ARITHMETIC_MODULUS (lhs, rhs) {
     throw "division by zero";
   }
 
-  return AHUACATL_NUMERIC_VALUE(lhs % rhs);
+  var result  = AHUACATL_NUMERIC_VALUE(lhs % rhs);
+  if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
+    throw "number out of range";
+  }
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -871,13 +941,24 @@ function AHUACATL_ARITHMETIC_MODULUS (lhs, rhs) {
 /// both operands must be strings or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
-function AHUACATL_STRING_CONCAT (lhs, rhs) {
-  if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_STRING ||
-      AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_STRING) {
-    throw "expecting strings for string concatenation";
+function AHUACATL_STRING_CONCAT () {
+  var result = '';
+
+  for (var i in arguments) {
+    var element = arguments[i];
+
+    if (AHUACATL_TYPEWEIGHT(element) === AHUACATL_TYPEWEIGHT_NULL) {
+      continue;
+    }
+    
+    if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_STRING) {
+      throw "expecting strings for string concatenation";
+    }
+
+    result += element;
   }
 
-  return (lhs + rhs);
+  return result; 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1135,12 +1216,64 @@ function AHUACATL_LIMIT (value, offset, count) {
 /// @brief get the length of a list
 ////////////////////////////////////////////////////////////////////////////////
 
-function AHUACATL_LENGTH (args) {
-  var value = args[0];
+function AHUACATL_LENGTH () {
+  var value = arguments[0];
 
   AHUACATL_LIST(value);
 
   return value.length;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merge all arguments
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_MERGE () {
+  var result = { };
+
+  for (var i in arguments) {
+    var element = arguments[i];
+
+    if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_DOCUMENT) {
+      throw "expecting documents for merge";
+    }
+
+    for (var k in element) {
+      if (!element.hasOwnProperty(k)) {
+        continue;
+      }
+
+      result[k] = element[k];
+    }
+  }
+
+  return result; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the union (all) of all arguments
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_UNION () {
+  var result = [ ];
+
+  for (var i in arguments) {
+    var element = arguments[i];
+
+    if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_LIST) {
+      throw "expecting lists for union";
+    }
+
+    for (var k in element) {
+      if (!element.hasOwnProperty(k)) {
+        continue;
+      }
+
+      result.push(element[k]);
+    }
+  }
+
+  return result; 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
