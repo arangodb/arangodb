@@ -98,7 +98,8 @@ findOrCreateCollectionByName = function (name) {
 
   if (col === null) {
     col = internal.db._create(name);
-  } else if (!(col instanceof AvocadoCollection)) {
+  } 
+  else if (!(col instanceof AvocadoCollection)) {
     throw "<" + name + "> must be a document collection";
   }
 
@@ -118,7 +119,8 @@ findOrCreateEdgeCollectionByName = function (name) {
 
   if (col === null) {
     col = internal.edges._create(name);
-  } else if (!(col instanceof AvocadoEdgesCollection)) {
+  } 
+  else if (!(col instanceof AvocadoEdgesCollection)) {
     throw "<" + name + "> must be a document collection";
   }
 
@@ -162,7 +164,8 @@ function Edge(graph, id) {
   if (props) {
     // extract the custom identifier, label, edges
     this._properties = props;
-  } else {
+  } 
+  else {
     // deleted
     throw "accessing a deleted edge";
   }
@@ -354,13 +357,16 @@ Edge.prototype._PRINT = function (seen, path, names) {
 
   if (!this._id) {
     internal.output("[deleted Edge]");
-  } else if (this._properties.$id !== undefined) {
+  } 
+  else if (this._properties.$id !== undefined) {
     if (typeof this._properties.$id === "string") {
       internal.output("Edge(\"", this._properties.$id, "\")");
-    } else {
+    } 
+    else {
       internal.output("Edge(", this._properties.$id, ")");
     }
-  } else {
+  } 
+  else {
     internal.output("Edge(<", this._id, ">)");
   }
 };
@@ -397,7 +403,8 @@ function Vertex(graph, id) {
   if (props) {
     // extract the custom identifier
     this._properties = props;
-  } else {
+  } 
+  else {
     // deleted
     throw "accessing a deleted edge";
   }
@@ -544,7 +551,8 @@ Vertex.prototype.getInEdges = function () {
 
   if (arguments.length === 0) {
     result = this.inbound();
-  } else {
+  } 
+  else {
     labels = {};
 
     for (i = 0;  i < arguments.length;  ++i) {
@@ -583,7 +591,8 @@ Vertex.prototype.getOutEdges = function () {
 
   if (arguments.length === 0) {
     result = this.outbound();
-  } else {
+  } 
+  else {
     labels = {};
     for (i = 0;  i < arguments.length;  ++i) {
       labels[arguments[i]] = true;
@@ -766,13 +775,16 @@ Vertex.prototype._PRINT = function (seen, path, names) {
 
   if (!this._id) {
     internal.output("[deleted Vertex]");
-  } else if (this._properties.$id !== undefined) {
+  } 
+  else if (this._properties.$id !== undefined) {
     if (typeof this._properties.$id === "string") {
       internal.output("Vertex(\"", this._properties.$id, "\")");
-    } else {
+    } 
+    else {
       internal.output("Vertex(", this._properties.$id, ")");
     }
-  } else {
+  } 
+  else {
     internal.output("Vertex(<", this._id, ">)");
   }
 };
@@ -862,11 +874,14 @@ function Graph(name, vertices, edges) {
     if (edges === null) {
       throw "edge collection '" + graphProperties.edges + "' has vanished";
     }
-  } else if (typeof vertices !== "string" || vertices === "") {
+  } 
+  else if (typeof vertices !== "string" || vertices === "") {
     throw "<vertices> must be a string or null";
-  } else if (typeof edges !== "string" || edges === "") {
+  } 
+  else if (typeof edges !== "string" || edges === "") {
     throw "<edges> must be a string or null";
-  } else {
+  } 
+  else {
     // Create a new graph or get an existing graph
     vertices = findOrCreateCollectionByName(vertices);
     edges = findOrCreateEdgeCollectionByName(edges);
@@ -895,10 +910,12 @@ function Graph(name, vertices, edges) {
                        'name' : name });
 
         graphProperties = gdb.document(graphPropertiesId);
-      } else {
+      } 
+      else {
         throw "found graph but has different <name>";
       }
-    } else {
+    } 
+    else {
       if (graphProperties.vertices !== vertices._id) {
         throw "found graph but has different <vertices>";
       }
@@ -1074,7 +1091,8 @@ Graph.prototype.getVertex = function (id) {
 
   if (ref !== null) {
     vertex = this.constructVertex(ref._id);
-  } else {
+  } 
+  else {
     vertex = null;
   }
 
@@ -1321,6 +1339,5 @@ exports.Vertex = Vertex;
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: 
-//  "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
