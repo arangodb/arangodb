@@ -838,6 +838,16 @@ function Graph(name, vertices, edges) {
     graphProperties = gdb.firstExample('name', name);
 
     if (graphProperties === null) {
+      try {
+        graphProperties = gdb.document(name);
+      }
+      catch (e) {
+        throw "no graph named '" + name + "' found";
+      }
+      
+      if (graphProperties === null) {
+        throw "no graph named '" + name + "' found";
+      }
       throw "no graph named '" + name + "' found";
     }
 
