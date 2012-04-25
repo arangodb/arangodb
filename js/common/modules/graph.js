@@ -1099,9 +1099,6 @@ Graph.prototype.getVertex = function (id) {
       vertex = null;
     }
   } 
-  else {
-    vertex = null;
-  }
 
   return vertex;
 };
