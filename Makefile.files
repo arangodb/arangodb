@@ -152,13 +152,15 @@ avocado_SOURCES = \
 	PriorityQueue/pqueueindex.c \
 	PriorityQueue/priorityqueue.c \
         Ahuacatl/ahuacatl-bind-parameter.c \
+        Ahuacatl/ahuacatl-constant-folder.c \
         Ahuacatl/ahuacatl-error.c \
 	Ahuacatl/ahuacatl-functions.c \
         Ahuacatl/ahuacatl-grammar.c \
         Ahuacatl/ahuacatl-parser.c \
         Ahuacatl/ahuacatl-tokens.c \
+        Ahuacatl/ahuacatl-tree-dump.c \
+        Ahuacatl/ahuacatl-tree-walker.c \
 	Ahuacatl/ast-codegen-js.c \
-        Ahuacatl/ast-dump.c \
         Ahuacatl/ast-node.c \
 	QL/ast-query.c \
 	QL/formatter.c \

@@ -364,7 +364,7 @@ sort_direction:
 
 limit_statement: 
     T_LIMIT signed_number {
-      TRI_aql_node_t* node = TRI_CreateNodeLimitAql(context, 0, $2);
+      TRI_aql_node_t* node = TRI_CreateNodeLimitAql(context, TRI_CreateNodeValueIntAql(context, 0), TRI_CreateNodeValueIntAql(context, $2));
       if (!node) {
         YYABORT;
       }
@@ -372,7 +372,7 @@ limit_statement:
       $$ = node;
     }
   | T_LIMIT signed_number T_COMMA signed_number {
-      TRI_aql_node_t* node = TRI_CreateNodeLimitAql(context, $2, $4);
+      TRI_aql_node_t* node = TRI_CreateNodeLimitAql(context, TRI_CreateNodeValueIntAql(context, $2), TRI_CreateNodeValueIntAql(context, $4));
       if (!node) {
         YYABORT;
       }
@@ -696,7 +696,15 @@ array_element:
 reference:
     T_STRING {
       // variable or collection
-      TRI_aql_node_t* node = TRI_CreateNodeReferenceAql(context, $1, !TRI_VariableExistsAql(context, $1));
+      TRI_aql_node_t* node;
+     
+      if (TRI_VariableExistsAql(context, $1)) {
+        node = TRI_CreateNodeReferenceAql(context, $1);
+      }
+      else {
+        node = TRI_CreateNodeCollectionAql(context, $1);
+      }
+
       if (!node) {
         YYABORT;
       }

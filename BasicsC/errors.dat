@@ -59,9 +59,9 @@ ERROR_AVOCADO_CORRUPTED_COLLECTION,1102,"corrupted collection","Will be raised w
 ERROR_AVOCADO_MMAP_FAILED,1103,"mmap failed","Will be raised when the system call mmap failed."
 ERROR_AVOCADO_FILESYSTEM_FULL,1104,"filesystem full","Will be raised when the filesystem is full."
 ERROR_AVOCADO_NO_JOURNAL,1105,"no journal","Will be raised when a journal cannot be created."
-ERROR_AVOCADO_DATAFILE_ALREADY_EXISTS,1106,"cannot create/rename datafile because it ready exists","Will be raised when the datafile cannot be created or renamed because a file of the same name already exists."
+ERROR_AVOCADO_DATAFILE_ALREADY_EXISTS,1106,"cannot create/rename datafile because it already exists","Will be raised when the datafile cannot be created or renamed because a file of the same name already exists."
 ERROR_AVOCADO_DATABASE_LOCKED,1107,"database is locked","Will be raised when the database is locked by a different process."
-ERROR_AVOCADO_COLLECTION_DIRECTORY_ALREADY_EXISTS,1108,"cannot create/rename collection because directory ready exists","Will be raised when the collection cannot be created because a directory of the same name already exists."
+ERROR_AVOCADO_COLLECTION_DIRECTORY_ALREADY_EXISTS,1108,"cannot create/rename collection because directory already exists","Will be raised when the collection cannot be created because a directory of the same name already exists."
 
 ################################################################################
 ## AvocadoDB storage errors
@@ -169,6 +169,8 @@ ERROR_GRAPH_INVALID_GRAPH,1901,"invalid graph","Will be raised when an invalid n
 ERROR_GRAPH_COULD_NOT_CREATE_GRAPH,1902,"could not create graph","Will be raised when an invalid name, vertices or edges is passed to the server"
 ERROR_GRAPH_INVALID_VERTEX,1903,"invalid vertex","Will be raised when an invalid vertex id is passed to the server"
 ERROR_GRAPH_COULD_NOT_CREATE_VERTEX,1904,"could not create vertex","Will be raised when the vertex could not be created"
+ERROR_GRAPH_INVALID_EDGE,1905,"invalid edge","Will be raised when an invalid edge id is passed to the server"
+ERROR_GRAPH_COULD_NOT_CREATE_EDGE,1906,"could not create edge","Will be raised when the edge could not be created"
 
 ################################################################################
 ## Simple Client

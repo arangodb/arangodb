@@ -28,6 +28,8 @@
 #include "Ahuacatl/ahuacatl-parser.h"
 #include "Ahuacatl/ast-node.h"
 #include "Ahuacatl/ahuacatl-bind-parameter.h"
+#include "Ahuacatl/ahuacatl-constant-folder.h"
+#include "Ahuacatl/ahuacatl-tree-dump.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros
@@ -187,10 +189,7 @@ void TRI_FreeParseContextAql (TRI_aql_parse_context_t* const context) {
   while (i--) {
     TRI_aql_node_t* node = (TRI_aql_node_t*) context->_nodes._buffer[i];
     if (node) {
-      if (node->free) {
-        // call node's specific free function
-        node->free(node);
-      }
+      TRI_DestroyVectorPointer(&node->_subNodes);
       // free node itself
       TRI_Free(node);
     }
@@ -247,6 +246,19 @@ bool TRI_ParseQueryAql (TRI_aql_parse_context_t* const context) {
     // invalid bind parameters
     return false;
   }
+  
+
+  if (!TRI_InjectBindParametersAql(context, (TRI_aql_node_t*) context->_first)) {
+    // bind parameter injection failed
+    return false;
+  }
+  
+  if (!TRI_FoldConstantsAql(context, (TRI_aql_node_t*) context->_first)) {
+    // constant folding failed
+    return false;
+  }
+
+  // TRI_DumpTreeAql((TRI_aql_node_t*) context->_first);
 
   return true;
 }
@@ -539,7 +551,6 @@ bool TRI_AddVariableParseContextAql (TRI_aql_parse_context_t* const context, con
     return false;
   }
 
-//printf("ADDING VARIABLE %s\n", name);
   variable = TRI_CreateVariableAql(name);
   if (!variable) {
     return false;
@@ -622,6 +633,7 @@ bool TRI_VariableExistsAql (TRI_aql_parse_context_t* const context,
   size_t current = context->_scopes._length;
 
   if (!name) {
+    TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return false;
   }
 

@@ -41,9 +41,33 @@
 /// @brief shortcut macro for signalling out of memory
 ////////////////////////////////////////////////////////////////////////////////
 
-#define ABORT_OOM \
-  TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL); \
+#define ABORT_OOM                                                                \
+  TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);                       \
   return NULL;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut macro to create a new node or fail in case of OOM
+////////////////////////////////////////////////////////////////////////////////
+
+#define CREATE_NODE(type)                                                        \
+  TRI_aql_node_t* node = (TRI_aql_node_t*) TRI_Allocate(sizeof(TRI_aql_node_t)); \
+  if (!node) {                                                                   \
+    ABORT_OOM                                                                    \
+  }                                                                              \
+                                                                                 \
+  assert(context);                                                               \
+  InitNode(context, node, type); 
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a sub node to a node
+////////////////////////////////////////////////////////////////////////////////
+
+#define SUB_NODE_MANDATORY(subNode)                                              \
+  if (!subNode) {                                                                \
+    ABORT_OOM                                                                    \
+  }                                                                              \
+                                                                                 \
+  TRI_PushBackVectorPointer(&node->_subNodes, (void*) subNode);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -63,52 +87,9 @@ static inline void InitNode (TRI_aql_parse_context_t* const context,
                              const TRI_aql_node_type_e type) {
   node->_type = type;
   node->_next = NULL;
-  node->free = NULL;
  
+  TRI_InitVectorPointer(&node->_subNodes);
   TRI_RegisterNodeParseContextAql(context, node);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free a list node
-////////////////////////////////////////////////////////////////////////////////
-
-static void FreeNodeList (TRI_aql_node_t* const node) {
-  TRI_aql_node_list_t* _node = (TRI_aql_node_list_t*) node;
-
-  TRI_DestroyVectorPointer(&_node->_values);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free an array node
-////////////////////////////////////////////////////////////////////////////////
-
-static void FreeNodeArray (TRI_aql_node_t* const node) {
-  TRI_aql_node_array_t* _node = (TRI_aql_node_array_t*) node;
-
-  TRI_DestroyAssociativePointer(&_node->_values);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hash array element 
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashArrayElement (TRI_associative_pointer_t* array, 
-                                  void const* element) {
-  TRI_aql_node_array_element_t* e = (TRI_aql_node_array_element_t*) element;
-
-  return TRI_FnvHashString(e->_name);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief comparison function used to determine array element equality
-////////////////////////////////////////////////////////////////////////////////
-
-static bool EqualArrayElement (TRI_associative_pointer_t* array, 
-                               void const* key, 
-                               void const* element) {
-  TRI_aql_node_array_element_t* e = (TRI_aql_node_array_element_t*) element;
-
-  return TRI_EqualString(key, e->_name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,12 +112,9 @@ static bool EqualArrayElement (TRI_associative_pointer_t* array,
 TRI_aql_node_t* TRI_CreateNodeForAql (TRI_aql_parse_context_t* const context,
                                       const char* const name,
                                       const TRI_aql_node_t* const expression) {
-  TRI_aql_node_for_t* node;
-  TRI_aql_node_t* variableNode;
-  
-  assert(context);
-  
-  if (!name || !expression) {
+  CREATE_NODE(AQL_NODE_FOR)
+
+  if (!name) {
     ABORT_OOM
   }
 
@@ -145,23 +123,13 @@ TRI_aql_node_t* TRI_CreateNodeForAql (TRI_aql_parse_context_t* const context,
     return NULL;
   }
   
-  node = (TRI_aql_node_for_t*) TRI_Allocate(sizeof(TRI_aql_node_for_t));
-
-  if (!node) {
-    ABORT_OOM
+  {
+    TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, name);
+    SUB_NODE_MANDATORY(variable);
+    SUB_NODE_MANDATORY(expression)
   }
 
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_FOR);
-
-  variableNode = TRI_CreateNodeVariableAql(context, name);
-  if (!variableNode) {
-    return NULL;
-  }
-
-  node->_variable = variableNode;
-  node->_expression = (TRI_aql_node_t*) expression;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 /*
 ////////////////////////////////////////////////////////////////////////////////
@@ -206,25 +174,11 @@ TRI_aql_node_t* TRI_CreateNodeLetAql (TRI_aql_parse_context_t* const context,
 
 TRI_aql_node_t* TRI_CreateNodeFilterAql (TRI_aql_parse_context_t* const context,
                                          const TRI_aql_node_t* const expression) {
-  TRI_aql_node_filter_t* node;
+  CREATE_NODE(AQL_NODE_FILTER) 
   
-  assert(context);
-  
-  if (!expression) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_filter_t*) TRI_Allocate(sizeof(TRI_aql_node_filter_t));
+  SUB_NODE_MANDATORY(expression)
 
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_FILTER);
-
-  node->_expression = (TRI_aql_node_t*) expression;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -233,25 +187,11 @@ TRI_aql_node_t* TRI_CreateNodeFilterAql (TRI_aql_parse_context_t* const context,
 
 TRI_aql_node_t* TRI_CreateNodeReturnAql (TRI_aql_parse_context_t* const context,
                                          const TRI_aql_node_t* const expression) {
-  TRI_aql_node_return_t* node;
+  CREATE_NODE(AQL_NODE_RETURN) 
   
-  assert(context);
-  
-  if (!expression) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_return_t*) TRI_Allocate(sizeof(TRI_aql_node_return_t));
+  SUB_NODE_MANDATORY(expression)
 
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_RETURN);
-
-  node->_expression = (TRI_aql_node_t*) expression;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -261,35 +201,15 @@ TRI_aql_node_t* TRI_CreateNodeReturnAql (TRI_aql_parse_context_t* const context,
 TRI_aql_node_t* TRI_CreateNodeCollectAql (TRI_aql_parse_context_t* const context,
                                           const TRI_aql_node_t* const list,
                                           const char* const name) {
-  TRI_aql_node_collect_t* node;
-  TRI_aql_node_t* variableNode;
-  
-  assert(context);
-  
-  if (!list) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_collect_t*) TRI_Allocate(sizeof(TRI_aql_node_collect_t));
+  CREATE_NODE(AQL_NODE_COLLECT)
 
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_COLLECT);
-  
-  node->_list = (TRI_aql_node_t*) list;
-
-  node->_into = NULL;
+  SUB_NODE_MANDATORY(list)
   if (name) {
-    variableNode = TRI_CreateNodeVariableAql(context, name);
-    if (!variableNode) {
-      return NULL;
-    }
-    node->_into = variableNode;
+    TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, name);
+    SUB_NODE_MANDATORY(variable)
   }
 
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -298,25 +218,11 @@ TRI_aql_node_t* TRI_CreateNodeCollectAql (TRI_aql_parse_context_t* const context
 
 TRI_aql_node_t* TRI_CreateNodeSortAql (TRI_aql_parse_context_t* const context,
                                        const TRI_aql_node_t* const list) {
-  TRI_aql_node_sort_t* node;
+  CREATE_NODE(AQL_NODE_SORT)
   
-  assert(context);
-  
-  if (!list) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_sort_t*) TRI_Allocate(sizeof(TRI_aql_node_sort_t));
+  SUB_NODE_MANDATORY(list)
 
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_SORT);
-
-  node->_list = (TRI_aql_node_t*) list;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -326,26 +232,12 @@ TRI_aql_node_t* TRI_CreateNodeSortAql (TRI_aql_parse_context_t* const context,
 TRI_aql_node_t* TRI_CreateNodeSortElementAql (TRI_aql_parse_context_t* const context,
                                               const TRI_aql_node_t* const expression, 
                                               const bool ascending) {
-  TRI_aql_node_sort_element_t* node;
-  
-  assert(context);
-  
-  if (!expression) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_sort_element_t*) TRI_Allocate(sizeof(TRI_aql_node_sort_element_t));
+  CREATE_NODE(AQL_NODE_SORT_ELEMENT)
 
-  if (!node) {
-    ABORT_OOM
-  }
+  SUB_NODE_MANDATORY(expression)
+  TRI_AQL_NODE_BOOL(node) = ascending;
 
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_SORT_ELEMENT);
-  
-  node->_expression = (TRI_aql_node_t*) expression;
-  node->_ascending = ascending;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -353,24 +245,14 @@ TRI_aql_node_t* TRI_CreateNodeSortElementAql (TRI_aql_parse_context_t* const con
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeLimitAql (TRI_aql_parse_context_t* const context,
-                                        const int64_t offset, 
-                                        const int64_t count) {
-  TRI_aql_node_limit_t* node;
-  
-  assert(context);
-  
-  node = (TRI_aql_node_limit_t*) TRI_Allocate(sizeof(TRI_aql_node_limit_t));
+                                        const TRI_aql_node_t* const offset, 
+                                        const TRI_aql_node_t* const count) {
+  CREATE_NODE(AQL_NODE_LIMIT)
 
-  if (!node) {
-    ABORT_OOM
-  }
+  SUB_NODE_MANDATORY(offset)
+  SUB_NODE_MANDATORY(count)
 
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_LIMIT);
-  
-  node->_offset = offset;
-  node->_count = count;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -380,32 +262,15 @@ TRI_aql_node_t* TRI_CreateNodeLimitAql (TRI_aql_parse_context_t* const context,
 TRI_aql_node_t* TRI_CreateNodeAssignAql (TRI_aql_parse_context_t* const context,
                                          const char* const name,
                                          const TRI_aql_node_t* const expression) {
-  TRI_aql_node_assign_t* node;
-  TRI_aql_node_t* variableNode;
-  
-  assert(context);
-  
-  if (!name || !expression) {
-    ABORT_OOM
+  CREATE_NODE(AQL_NODE_ASSIGN)
+ 
+  {
+    TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, name);
+    SUB_NODE_MANDATORY(variable)
+    SUB_NODE_MANDATORY(expression)
   }
   
-  node = (TRI_aql_node_assign_t*) TRI_Allocate(sizeof(TRI_aql_node_assign_t));
-
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_ASSIGN);
-
-  variableNode = TRI_CreateNodeVariableAql(context, name);
-  if (!variableNode) {
-    return NULL;
-  }
-
-  node->_variable = variableNode;
-  node->_expression = (TRI_aql_node_t*) expression;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -414,10 +279,8 @@ TRI_aql_node_t* TRI_CreateNodeAssignAql (TRI_aql_parse_context_t* const context,
 
 TRI_aql_node_t* TRI_CreateNodeVariableAql (TRI_aql_parse_context_t* const context,
                                            const char* const name) {
-  TRI_aql_node_variable_t* node;
-  
-  assert(context);
-
+  CREATE_NODE(AQL_NODE_VARIABLE)
+   
   if (!name) {
     ABORT_OOM
   }
@@ -428,21 +291,26 @@ TRI_aql_node_t* TRI_CreateNodeVariableAql (TRI_aql_parse_context_t* const contex
     return NULL;
   }
   
-  node = (TRI_aql_node_variable_t*) TRI_Allocate(sizeof(TRI_aql_node_variable_t));
+  TRI_AQL_NODE_STRING(node) = (char*) name;
 
-  if (!node) {
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST collection node
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_aql_node_t* TRI_CreateNodeCollectionAql (TRI_aql_parse_context_t* const context,
+                                             const char* const name) {
+  CREATE_NODE(AQL_NODE_COLLECTION)
+
+  if (!name) {
     ABORT_OOM
   }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_VARIABLE);
   
-  node->_name = (char*) name;
+  TRI_AQL_NODE_STRING(node) = (char*) name;
 
-  if (!node->_name) {
-    ABORT_OOM
-  }
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -450,28 +318,16 @@ TRI_aql_node_t* TRI_CreateNodeVariableAql (TRI_aql_parse_context_t* const contex
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeReferenceAql (TRI_aql_parse_context_t* const context,
-                                            const char* const name,
-                                            const bool isCollection) {
-  TRI_aql_node_reference_t* node;
-  
-  assert(context);
+                                            const char* const name) {
+  CREATE_NODE(AQL_NODE_REFERENCE)
 
   if (!name) {
     ABORT_OOM
   }
   
-  node = (TRI_aql_node_reference_t*) TRI_Allocate(sizeof(TRI_aql_node_reference_t));
+  TRI_AQL_NODE_STRING(node) = (char*) name;
 
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_REFERENCE);
-  
-  node->_name = (char*) name;
-  node->_isCollection = isCollection;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -480,25 +336,15 @@ TRI_aql_node_t* TRI_CreateNodeReferenceAql (TRI_aql_parse_context_t* const conte
 
 TRI_aql_node_t* TRI_CreateNodeAttributeAql (TRI_aql_parse_context_t* const context,
                                             const char* const name) {
-  TRI_aql_node_attribute_t* node;
-  
-  assert(context);
+  CREATE_NODE(AQL_NODE_ATTRIBUTE)
 
   if (!name) {
     ABORT_OOM
   }
   
-  node = (TRI_aql_node_attribute_t*) TRI_Allocate(sizeof(TRI_aql_node_attribute_t));
+  TRI_AQL_NODE_STRING(node) = (char*) name;
 
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_ATTRIBUTE);
-  
-  node->_name = (char*) name;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -507,9 +353,7 @@ TRI_aql_node_t* TRI_CreateNodeAttributeAql (TRI_aql_parse_context_t* const conte
 
 TRI_aql_node_t* TRI_CreateNodeParameterAql (TRI_aql_parse_context_t* const context,
                                             const char* const name) {
-  TRI_aql_node_parameter_t* node;
-  
-  assert(context);
+  CREATE_NODE(AQL_NODE_PARAMETER)
 
   if (!name) {
     ABORT_OOM
@@ -518,17 +362,9 @@ TRI_aql_node_t* TRI_CreateNodeParameterAql (TRI_aql_parse_context_t* const conte
   // save name of bind parameter for later
   TRI_InsertKeyAssociativePointer(&context->_parameterNames, name, (void*) name, true);
 
-  node = (TRI_aql_node_parameter_t*) TRI_Allocate(sizeof(TRI_aql_node_parameter_t));
+  TRI_AQL_NODE_STRING(node) = (char*) name;
 
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_PARAMETER);
-  
-  node->_name = (char*) name;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -537,25 +373,11 @@ TRI_aql_node_t* TRI_CreateNodeParameterAql (TRI_aql_parse_context_t* const conte
 
 TRI_aql_node_t* TRI_CreateNodeOperatorUnaryPlusAql (TRI_aql_parse_context_t* const context,
                                                     const TRI_aql_node_t* const operand) {
-  TRI_aql_node_operator_unary_t* node;
-  
-  assert(context);
+  CREATE_NODE(AQL_NODE_OPERATOR_UNARY_PLUS)
+ 
+  SUB_NODE_MANDATORY(operand)
 
-  if (!operand) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_operator_unary_t*) TRI_Allocate(sizeof(TRI_aql_node_operator_unary_t));
-
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_OPERATOR_UNARY_PLUS);
-  
-  node->_operand = (TRI_aql_node_t*) operand;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -564,25 +386,11 @@ TRI_aql_node_t* TRI_CreateNodeOperatorUnaryPlusAql (TRI_aql_parse_context_t* con
 
 TRI_aql_node_t* TRI_CreateNodeOperatorUnaryMinusAql (TRI_aql_parse_context_t* const context,
                                                      const TRI_aql_node_t* const operand) {
-  TRI_aql_node_operator_unary_t* node;
+  CREATE_NODE(AQL_NODE_OPERATOR_UNARY_MINUS)
   
-  assert(context);
+  SUB_NODE_MANDATORY(operand)
 
-  if (!operand) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_operator_unary_t*) TRI_Allocate(sizeof(TRI_aql_node_operator_unary_t));
-
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_OPERATOR_UNARY_MINUS);
-  
-  node->_operand = (TRI_aql_node_t*) operand;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -591,25 +399,11 @@ TRI_aql_node_t* TRI_CreateNodeOperatorUnaryMinusAql (TRI_aql_parse_context_t* co
 
 TRI_aql_node_t* TRI_CreateNodeOperatorUnaryNotAql (TRI_aql_parse_context_t* const context,
                                                    const TRI_aql_node_t* const operand) {
-  TRI_aql_node_operator_unary_t* node;
+  CREATE_NODE(AQL_NODE_OPERATOR_UNARY_NOT)
   
-  assert(context);
+  SUB_NODE_MANDATORY(operand)
 
-  if (!operand) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_operator_unary_t*) TRI_Allocate(sizeof(TRI_aql_node_operator_unary_t));
-
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_OPERATOR_UNARY_NOT);
-  
-  node->_operand = (TRI_aql_node_t*) operand;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -619,26 +413,12 @@ TRI_aql_node_t* TRI_CreateNodeOperatorUnaryNotAql (TRI_aql_parse_context_t* cons
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryAndAql (TRI_aql_parse_context_t* const context,
                                                     const TRI_aql_node_t* const lhs,
                                                     const TRI_aql_node_t* const rhs) {
-  TRI_aql_node_operator_binary_t* node;
+  CREATE_NODE(AQL_NODE_OPERATOR_BINARY_AND)
   
-  assert(context);
+  SUB_NODE_MANDATORY(lhs)
+  SUB_NODE_MANDATORY(rhs)
 
-  if (!lhs || !rhs) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_operator_binary_t*) TRI_Allocate(sizeof(TRI_aql_node_operator_binary_t));
-
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_OPERATOR_BINARY_AND);
-  
-  node->_lhs = (TRI_aql_node_t*) lhs;
-  node->_rhs = (TRI_aql_node_t*) rhs;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -648,26 +428,12 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryAndAql (TRI_aql_parse_context_t* con
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryOrAql (TRI_aql_parse_context_t* const context,
                                                    const TRI_aql_node_t* const lhs,
                                                    const TRI_aql_node_t* const rhs) {
-  TRI_aql_node_operator_binary_t* node;
+  CREATE_NODE(AQL_NODE_OPERATOR_BINARY_OR)
   
-  assert(context);
+  SUB_NODE_MANDATORY(lhs)
+  SUB_NODE_MANDATORY(rhs)
 
-  if (!lhs || !rhs) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_operator_binary_t*) TRI_Allocate(sizeof(TRI_aql_node_operator_binary_t));
-
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_OPERATOR_BINARY_OR);
-  
-  node->_lhs = (TRI_aql_node_t*) lhs;
-  node->_rhs = (TRI_aql_node_t*) rhs;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -677,26 +443,12 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryOrAql (TRI_aql_parse_context_t* cons
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryEqAql (TRI_aql_parse_context_t* const context,
                                                    const TRI_aql_node_t* const lhs,
                                                    const TRI_aql_node_t* const rhs) {
-  TRI_aql_node_operator_binary_t* node;
+  CREATE_NODE(AQL_NODE_OPERATOR_BINARY_EQ)
   
-  assert(context);
+  SUB_NODE_MANDATORY(lhs)
+  SUB_NODE_MANDATORY(rhs)
 
-  if (!lhs || !rhs) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_operator_binary_t*) TRI_Allocate(sizeof(TRI_aql_node_operator_binary_t));
-
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_OPERATOR_BINARY_EQ);
-  
-  node->_lhs = (TRI_aql_node_t*) lhs;
-  node->_rhs = (TRI_aql_node_t*) rhs;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -706,26 +458,12 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryEqAql (TRI_aql_parse_context_t* cons
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryNeAql (TRI_aql_parse_context_t* const context,
                                                    const TRI_aql_node_t* const lhs,
                                                    const TRI_aql_node_t* const rhs) {
-  TRI_aql_node_operator_binary_t* node;
+  CREATE_NODE(AQL_NODE_OPERATOR_BINARY_NE)
   
-  assert(context);
+  SUB_NODE_MANDATORY(lhs)
+  SUB_NODE_MANDATORY(rhs)
 
-  if (!lhs || !rhs) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_operator_binary_t*) TRI_Allocate(sizeof(TRI_aql_node_operator_binary_t));
-
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_OPERATOR_BINARY_NE);
-  
-  node->_lhs = (TRI_aql_node_t*) lhs;
-  node->_rhs = (TRI_aql_node_t*) rhs;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -735,26 +473,12 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryNeAql (TRI_aql_parse_context_t* cons
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryLtAql (TRI_aql_parse_context_t* const context,
                                                    const TRI_aql_node_t* const lhs,
                                                    const TRI_aql_node_t* const rhs) {
-  TRI_aql_node_operator_binary_t* node;
+  CREATE_NODE(AQL_NODE_OPERATOR_BINARY_LT)
   
-  assert(context);
+  SUB_NODE_MANDATORY(lhs)
+  SUB_NODE_MANDATORY(rhs)
 
-  if (!lhs || !rhs) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_operator_binary_t*) TRI_Allocate(sizeof(TRI_aql_node_operator_binary_t));
-
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_OPERATOR_BINARY_LT);
-  
-  node->_lhs = (TRI_aql_node_t*) lhs;
-  node->_rhs = (TRI_aql_node_t*) rhs;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -764,26 +488,12 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryLtAql (TRI_aql_parse_context_t* cons
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryLeAql (TRI_aql_parse_context_t* const context,
                                                    const TRI_aql_node_t* const lhs,
                                                    const TRI_aql_node_t* const rhs) {
-  TRI_aql_node_operator_binary_t* node;
+  CREATE_NODE(AQL_NODE_OPERATOR_BINARY_LE)
   
-  assert(context);
+  SUB_NODE_MANDATORY(lhs)
+  SUB_NODE_MANDATORY(rhs)
 
-  if (!lhs || !rhs) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_operator_binary_t*) TRI_Allocate(sizeof(TRI_aql_node_operator_binary_t));
-
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_OPERATOR_BINARY_LE);
-  
-  node->_lhs = (TRI_aql_node_t*) lhs;
-  node->_rhs = (TRI_aql_node_t*) rhs;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -793,26 +503,12 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryLeAql (TRI_aql_parse_context_t* cons
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryGtAql (TRI_aql_parse_context_t* const context,
                                                    const TRI_aql_node_t* const lhs,
                                                    const TRI_aql_node_t* const rhs) {
-  TRI_aql_node_operator_binary_t* node;
+  CREATE_NODE(AQL_NODE_OPERATOR_BINARY_GT)
   
-  assert(context);
+  SUB_NODE_MANDATORY(lhs)
+  SUB_NODE_MANDATORY(rhs)
 
-  if (!lhs || !rhs) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_operator_binary_t*) TRI_Allocate(sizeof(TRI_aql_node_operator_binary_t));
-
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_OPERATOR_BINARY_GT);
-  
-  node->_lhs = (TRI_aql_node_t*) lhs;
-  node->_rhs = (TRI_aql_node_t*) rhs;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -822,26 +518,12 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryGtAql (TRI_aql_parse_context_t* cons
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryGeAql (TRI_aql_parse_context_t* const context,
                                                    const TRI_aql_node_t* const lhs,
                                                    const TRI_aql_node_t* const rhs) {
-  TRI_aql_node_operator_binary_t* node;
+  CREATE_NODE(AQL_NODE_OPERATOR_BINARY_GE)
   
-  assert(context);
+  SUB_NODE_MANDATORY(lhs)
+  SUB_NODE_MANDATORY(rhs)
 
-  if (!lhs || !rhs) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_operator_binary_t*) TRI_Allocate(sizeof(TRI_aql_node_operator_binary_t));
-
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_OPERATOR_BINARY_GE);
-  
-  node->_lhs = (TRI_aql_node_t*) lhs;
-  node->_rhs = (TRI_aql_node_t*) rhs;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -851,26 +533,12 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryGeAql (TRI_aql_parse_context_t* cons
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryInAql (TRI_aql_parse_context_t* const context,
                                                    const TRI_aql_node_t* const lhs,
                                                    const TRI_aql_node_t* const rhs) {
-  TRI_aql_node_operator_binary_t* node;
+  CREATE_NODE(AQL_NODE_OPERATOR_BINARY_IN)
   
-  assert(context);
+  SUB_NODE_MANDATORY(lhs)
+  SUB_NODE_MANDATORY(rhs)
 
-  if (!lhs || !rhs) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_operator_binary_t*) TRI_Allocate(sizeof(TRI_aql_node_operator_binary_t));
-
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_OPERATOR_BINARY_IN);
-  
-  node->_lhs = (TRI_aql_node_t*) lhs;
-  node->_rhs = (TRI_aql_node_t*) rhs;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -880,26 +548,12 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryInAql (TRI_aql_parse_context_t* cons
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryPlusAql (TRI_aql_parse_context_t* const context,
                                                      const TRI_aql_node_t* const lhs,
                                                      const TRI_aql_node_t* const rhs) {
-  TRI_aql_node_operator_binary_t* node;
+  CREATE_NODE(AQL_NODE_OPERATOR_BINARY_PLUS)
   
-  assert(context);
+  SUB_NODE_MANDATORY(lhs)
+  SUB_NODE_MANDATORY(rhs)
 
-  if (!lhs || !rhs) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_operator_binary_t*) TRI_Allocate(sizeof(TRI_aql_node_operator_binary_t));
-
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_OPERATOR_BINARY_PLUS);
-  
-  node->_lhs = (TRI_aql_node_t*) lhs;
-  node->_rhs = (TRI_aql_node_t*) rhs;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -909,26 +563,12 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryPlusAql (TRI_aql_parse_context_t* co
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryMinusAql (TRI_aql_parse_context_t* const context,
                                                       const TRI_aql_node_t* const lhs,
                                                       const TRI_aql_node_t* const rhs) {
-  TRI_aql_node_operator_binary_t* node;
+  CREATE_NODE(AQL_NODE_OPERATOR_BINARY_MINUS)
   
-  assert(context);
+  SUB_NODE_MANDATORY(lhs)
+  SUB_NODE_MANDATORY(rhs)
 
-  if (!lhs || !rhs) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_operator_binary_t*) TRI_Allocate(sizeof(TRI_aql_node_operator_binary_t));
-
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_OPERATOR_BINARY_MINUS);
-  
-  node->_lhs = (TRI_aql_node_t*) lhs;
-  node->_rhs = (TRI_aql_node_t*) rhs;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -938,26 +578,12 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryMinusAql (TRI_aql_parse_context_t* c
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryTimesAql (TRI_aql_parse_context_t* const context,
                                                       const TRI_aql_node_t* const lhs,
                                                       const TRI_aql_node_t* const rhs) {
-  TRI_aql_node_operator_binary_t* node;
+  CREATE_NODE(AQL_NODE_OPERATOR_BINARY_TIMES)
   
-  assert(context);
+  SUB_NODE_MANDATORY(lhs)
+  SUB_NODE_MANDATORY(rhs)
 
-  if (!lhs || !rhs) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_operator_binary_t*) TRI_Allocate(sizeof(TRI_aql_node_operator_binary_t));
-
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_OPERATOR_BINARY_TIMES);
-  
-  node->_lhs = (TRI_aql_node_t*) lhs;
-  node->_rhs = (TRI_aql_node_t*) rhs;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -967,26 +593,12 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryTimesAql (TRI_aql_parse_context_t* c
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryDivAql (TRI_aql_parse_context_t* const context,
                                                     const TRI_aql_node_t* const lhs,
                                                     const TRI_aql_node_t* const rhs) {
-  TRI_aql_node_operator_binary_t* node;
+  CREATE_NODE(AQL_NODE_OPERATOR_BINARY_DIV)
   
-  assert(context);
+  SUB_NODE_MANDATORY(lhs)
+  SUB_NODE_MANDATORY(rhs)
 
-  if (!lhs || !rhs) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_operator_binary_t*) TRI_Allocate(sizeof(TRI_aql_node_operator_binary_t));
-
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_OPERATOR_BINARY_DIV);
-  
-  node->_lhs = (TRI_aql_node_t*) lhs;
-  node->_rhs = (TRI_aql_node_t*) rhs;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -996,26 +608,12 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryDivAql (TRI_aql_parse_context_t* con
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryModAql (TRI_aql_parse_context_t* const context,
                                                     const TRI_aql_node_t* const lhs,
                                                     const TRI_aql_node_t* const rhs) {
-  TRI_aql_node_operator_binary_t* node;
+  CREATE_NODE(AQL_NODE_OPERATOR_BINARY_MOD)
   
-  assert(context);
+  SUB_NODE_MANDATORY(lhs)
+  SUB_NODE_MANDATORY(rhs)
 
-  if (!lhs || !rhs) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_operator_binary_t*) TRI_Allocate(sizeof(TRI_aql_node_operator_binary_t));
-
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_OPERATOR_BINARY_MOD);
-  
-  node->_lhs = (TRI_aql_node_t*) lhs;
-  node->_rhs = (TRI_aql_node_t*) rhs;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1026,27 +624,13 @@ TRI_aql_node_t* TRI_CreateNodeOperatorTernaryAql (TRI_aql_parse_context_t* const
                                                   const TRI_aql_node_t* const condition,
                                                   const TRI_aql_node_t* const truePart,
                                                   const TRI_aql_node_t* const falsePart) {
-  TRI_aql_node_operator_ternary_t* node;
+  CREATE_NODE(AQL_NODE_OPERATOR_TERNARY)
   
-  assert(context);
+  SUB_NODE_MANDATORY(condition)
+  SUB_NODE_MANDATORY(truePart)
+  SUB_NODE_MANDATORY(falsePart)
 
-  if (!condition || !truePart || !falsePart) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_operator_ternary_t*) TRI_Allocate(sizeof(TRI_aql_node_operator_ternary_t));
-
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_OPERATOR_TERNARY);
-  
-  node->_condition = (TRI_aql_node_t*) condition;
-  node->_truePart = (TRI_aql_node_t*) truePart;
-  node->_falsePart = (TRI_aql_node_t*) falsePart;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1055,25 +639,11 @@ TRI_aql_node_t* TRI_CreateNodeOperatorTernaryAql (TRI_aql_parse_context_t* const
 
 TRI_aql_node_t* TRI_CreateNodeSubqueryAql (TRI_aql_parse_context_t* const context,
                                            const TRI_aql_node_t* const query) {
-  TRI_aql_node_subquery_t* node;
+  CREATE_NODE(AQL_NODE_SUBQUERY)
   
-  assert(context);
+  SUB_NODE_MANDATORY(query)
 
-  if (!query) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_subquery_t*) TRI_Allocate(sizeof(TRI_aql_node_subquery_t));
-
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_SUBQUERY);
-  
-  node->_query = (TRI_aql_node_t*) query;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1083,26 +653,16 @@ TRI_aql_node_t* TRI_CreateNodeSubqueryAql (TRI_aql_parse_context_t* const contex
 TRI_aql_node_t* TRI_CreateNodeAttributeAccessAql (TRI_aql_parse_context_t* const context, 
                                                   const TRI_aql_node_t* const accessed,
                                                   const char* const name) { 
-  TRI_aql_node_attribute_access_t* node;
-  
-  assert(context);
+  CREATE_NODE(AQL_NODE_ATTRIBUTE_ACCESS)
 
-  if (!accessed || !name) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_attribute_access_t*) TRI_Allocate(sizeof(TRI_aql_node_attribute_access_t));
-
-  if (!node) {
+  if (!name) {
     ABORT_OOM
   }
 
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_ATTRIBUTE_ACCESS);
-  
-  node->_accessed = (TRI_aql_node_t*) accessed;
-  node->_name = (char*) name;
+  SUB_NODE_MANDATORY(accessed)
+  TRI_AQL_NODE_STRING(node) = (char*) name;  
 
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1112,26 +672,12 @@ TRI_aql_node_t* TRI_CreateNodeAttributeAccessAql (TRI_aql_parse_context_t* const
 TRI_aql_node_t* TRI_CreateNodeIndexedAql (TRI_aql_parse_context_t* const context,
                                           const TRI_aql_node_t* const accessed, 
                                           const TRI_aql_node_t* const indexValue) {
-  TRI_aql_node_indexed_t* node;
-  
-  assert(context);
+  CREATE_NODE(AQL_NODE_INDEXED)
 
-  if (!accessed || !indexValue) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_indexed_t*) TRI_Allocate(sizeof(TRI_aql_node_indexed_t));
+  SUB_NODE_MANDATORY(accessed)
+  SUB_NODE_MANDATORY(indexValue)
 
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_INDEXED);
-  
-  node->_accessed = (TRI_aql_node_t*) accessed;
-  node->_index = (TRI_aql_node_t*) indexValue;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1141,26 +687,12 @@ TRI_aql_node_t* TRI_CreateNodeIndexedAql (TRI_aql_parse_context_t* const context
 TRI_aql_node_t* TRI_CreateNodeExpandAql (TRI_aql_parse_context_t* const context,
                                          const TRI_aql_node_t* const expanded,
                                          const TRI_aql_node_t* const expansion) {
-  TRI_aql_node_expand_t* node;
-  
-  assert(context);
+  CREATE_NODE(AQL_NODE_EXPAND)
 
-  if (!expanded || !expansion) {
-    ABORT_OOM
-  }
-  
-  node = (TRI_aql_node_expand_t*) TRI_Allocate(sizeof(TRI_aql_node_expand_t));
+  SUB_NODE_MANDATORY(expanded)
+  SUB_NODE_MANDATORY(expansion)
 
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_EXPAND);
-  
-  node->_expanded = (TRI_aql_node_t*) expanded;
-  node->_expansion = (TRI_aql_node_t*) expansion;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1168,21 +700,11 @@ TRI_aql_node_t* TRI_CreateNodeExpandAql (TRI_aql_parse_context_t* const context,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeValueNullAql (TRI_aql_parse_context_t* const context) {
-  TRI_aql_node_value_t* node;
-  
-  assert(context);
+  CREATE_NODE(AQL_NODE_VALUE)
 
-  node = (TRI_aql_node_value_t*) TRI_Allocate(sizeof(TRI_aql_node_value_t));
+  TRI_AQL_NODE_TYPE(node) = AQL_TYPE_NULL;
 
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_VALUE);
-
-  node->_value._type = AQL_TYPE_NULL;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1191,22 +713,12 @@ TRI_aql_node_t* TRI_CreateNodeValueNullAql (TRI_aql_parse_context_t* const conte
 
 TRI_aql_node_t* TRI_CreateNodeValueIntAql (TRI_aql_parse_context_t* const context,
                                            const int64_t value) { 
-  TRI_aql_node_value_t* node;
-  
-  assert(context);
+  CREATE_NODE(AQL_NODE_VALUE)
 
-  node = (TRI_aql_node_value_t*) TRI_Allocate(sizeof(TRI_aql_node_value_t));
+  TRI_AQL_NODE_TYPE(node) = AQL_TYPE_INT;
+  TRI_AQL_NODE_INT(node) = value;
 
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_VALUE);
-
-  node->_value._type = AQL_TYPE_INT;
-  node->_value._value._int = value;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1215,22 +727,12 @@ TRI_aql_node_t* TRI_CreateNodeValueIntAql (TRI_aql_parse_context_t* const contex
 
 TRI_aql_node_t* TRI_CreateNodeValueDoubleAql (TRI_aql_parse_context_t* const context,
                                               const double value) { 
-  TRI_aql_node_value_t* node;
-  
-  assert(context);
+  CREATE_NODE(AQL_NODE_VALUE)
 
-  node = (TRI_aql_node_value_t*) TRI_Allocate(sizeof(TRI_aql_node_value_t));
+  TRI_AQL_NODE_TYPE(node) = AQL_TYPE_DOUBLE;
+  TRI_AQL_NODE_DOUBLE(node) = value;
 
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_VALUE);
-
-  node->_value._type = AQL_TYPE_DOUBLE;
-  node->_value._value._double = value;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1239,22 +741,12 @@ TRI_aql_node_t* TRI_CreateNodeValueDoubleAql (TRI_aql_parse_context_t* const con
 
 TRI_aql_node_t* TRI_CreateNodeValueBoolAql (TRI_aql_parse_context_t* const context,
                                             const bool value) { 
-  TRI_aql_node_value_t* node;
-  
-  assert(context);
+  CREATE_NODE(AQL_NODE_VALUE)
 
-  node = (TRI_aql_node_value_t*) TRI_Allocate(sizeof(TRI_aql_node_value_t));
+  TRI_AQL_NODE_TYPE(node) = AQL_TYPE_BOOL;
+  TRI_AQL_NODE_BOOL(node) = value;
 
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_VALUE);
-
-  node->_value._type = AQL_TYPE_BOOL;
-  node->_value._value._bool = value;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1263,26 +755,16 @@ TRI_aql_node_t* TRI_CreateNodeValueBoolAql (TRI_aql_parse_context_t* const conte
 
 TRI_aql_node_t* TRI_CreateNodeValueStringAql (TRI_aql_parse_context_t* const context,
                                               const char* const value) { 
-  TRI_aql_node_value_t* node;
-  
-  assert(context);
+  CREATE_NODE(AQL_NODE_VALUE)
 
   if (!value) {
     ABORT_OOM
   }
+  
+  TRI_AQL_NODE_TYPE(node) = AQL_TYPE_STRING;
+  TRI_AQL_NODE_STRING(node) = (char*) value;
 
-  node = (TRI_aql_node_value_t*) TRI_Allocate(sizeof(TRI_aql_node_value_t));
-
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_VALUE);
-
-  node->_value._type = AQL_TYPE_STRING;
-  node->_value._value._string = (char*) value;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1290,22 +772,9 @@ TRI_aql_node_t* TRI_CreateNodeValueStringAql (TRI_aql_parse_context_t* const con
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeListAql (TRI_aql_parse_context_t* const context) {
-  TRI_aql_node_list_t* node;
+  CREATE_NODE(AQL_NODE_LIST)
 
-  assert(context);
-
-  node = (TRI_aql_node_list_t*) TRI_Allocate(sizeof(TRI_aql_node_list_t));
-
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_LIST);
-
-  TRI_InitVectorPointer(&node->_values);
-  node->_base.free = &FreeNodeList;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1313,27 +782,9 @@ TRI_aql_node_t* TRI_CreateNodeListAql (TRI_aql_parse_context_t* const context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeArrayAql (TRI_aql_parse_context_t* const context) {
-  TRI_aql_node_array_t* node;
+  CREATE_NODE(AQL_NODE_ARRAY)
 
-  assert(context);
-
-  node = (TRI_aql_node_array_t*) TRI_Allocate(sizeof(TRI_aql_node_array_t));
-
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_ARRAY);
-  
-  TRI_InitAssociativePointer(&node->_values,
-                             &TRI_HashStringKeyAssociativePointer,
-                             &HashArrayElement, 
-                             &EqualArrayElement,
-                             0);
-
-  node->_base.free = &FreeNodeArray;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1343,30 +794,16 @@ TRI_aql_node_t* TRI_CreateNodeArrayAql (TRI_aql_parse_context_t* const context) 
 TRI_aql_node_t* TRI_CreateNodeArrayElementAql (TRI_aql_parse_context_t* const context,
                                                const char* const name,
                                                const TRI_aql_node_t* const value) {
-  TRI_aql_node_array_element_t* node;
+  CREATE_NODE(AQL_NODE_ARRAY_ELEMENT)
 
-  assert(context);
-
-  if (!value) {
+  if (!name) {
     ABORT_OOM
   }
 
-  node = (TRI_aql_node_array_element_t*) TRI_Allocate(sizeof(TRI_aql_node_array_element_t));
+  TRI_AQL_NODE_STRING(node) = (char*) name;
+  SUB_NODE_MANDATORY(value)
 
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_ARRAY_ELEMENT);
- 
-  node->_name = (char*) name;
-  node->_value = (TRI_aql_node_t*) value;
-  
-  if (!node->_name) {
-    ABORT_OOM
-  }   
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1376,49 +813,41 @@ TRI_aql_node_t* TRI_CreateNodeArrayElementAql (TRI_aql_parse_context_t* const co
 TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_parse_context_t* const context,
                                         const char* const name,
                                         const TRI_aql_node_t* const parameters) {
-  TRI_aql_node_fcall_t* node;
-  TRI_aql_function_t* function;
-  TRI_associative_pointer_t* functions;
-  char* upperName;
+  CREATE_NODE(AQL_NODE_FCALL)
 
-  assert(context);
-  assert(context->_vocbase);
-
-
-  if (!name || !parameters) {
+  if (!name) {
     ABORT_OOM
   }
+  
+  {
+    TRI_aql_function_t* function;
+    TRI_associative_pointer_t* functions;
+    char* upperName;
 
-  functions = context->_vocbase->_functionsAql;
-  assert(functions);
+    assert(context->_vocbase);
+    functions = context->_vocbase->_functionsAql;
+    assert(functions);
 
-  // normalize the name by upper-casing it
-  upperName = TRI_UpperAsciiString(name);
-  if (!upperName) {
-    ABORT_OOM
+    // normalize the name by upper-casing it
+    upperName = TRI_UpperAsciiString(name);
+    if (!upperName) {
+      ABORT_OOM
+    }
+
+    function = (TRI_aql_function_t*) TRI_LookupByKeyAssociativePointer(functions, (void*) upperName);
+    TRI_Free(upperName);
+
+    if (!function) {
+      // function name is unknown
+      TRI_SetErrorAql(context, TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, name);
+      return NULL;
+    }
+
+    SUB_NODE_MANDATORY(parameters);
+    TRI_AQL_NODE_STRING(node) = function->_internalName;
   }
 
-  function = (TRI_aql_function_t*) TRI_LookupByKeyAssociativePointer(functions, (void*) upperName);
-  TRI_Free(upperName);
-
-  if (!function) {
-    // function name is unknown
-    TRI_SetErrorAql(context, TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, name);
-    return NULL;
-  }
-
-  node = (TRI_aql_node_fcall_t*) TRI_Allocate(sizeof(TRI_aql_node_fcall_t));
-
-  if (!node) {
-    ABORT_OOM
-  }
-
-  InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_FCALL);
-
-  node->_name = function->_internalName;
-  node->_parameters = (TRI_aql_node_t*) parameters;
-
-  return (TRI_aql_node_t*) node;
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1427,16 +856,11 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_parse_context_t* const context,
 
 bool TRI_PushListAql (TRI_aql_parse_context_t* const context, 
                       const TRI_aql_node_t* const value) {
-  TRI_aql_node_list_t* list = (TRI_aql_node_list_t*) TRI_PeekStackAql(context);
+  TRI_aql_node_t* node = TRI_PeekStackAql(context);
 
-  assert(context);
-  assert(list);
-  
-  if (!value) {
-    ABORT_OOM
-  }
-
-  TRI_PushBackVectorPointer(&list->_values, (void*) value);
+  assert(node);
+ 
+  SUB_NODE_MANDATORY(value); 
 
   return true;
 }
@@ -1448,28 +872,105 @@ bool TRI_PushListAql (TRI_aql_parse_context_t* const context,
 bool TRI_PushArrayAql (TRI_aql_parse_context_t* const context, 
                        const char* const name,
                        const TRI_aql_node_t* const value) {
-  TRI_aql_node_array_t* array = (TRI_aql_node_array_t*) TRI_PeekStackAql(context);
-  TRI_aql_node_array_element_t* element;
+  TRI_aql_node_t* node = TRI_PeekStackAql(context);
+  TRI_aql_node_t* element;
 
-  assert(context);
-  assert(array);
+  assert(node);
   
-  if (!value) {
-    ABORT_OOM
-  }
-
-  element = (TRI_aql_node_array_element_t*) TRI_CreateNodeArrayElementAql(context, name, value);
+  element = TRI_CreateNodeArrayElementAql(context, name, value);
   if (!element) {
     ABORT_OOM
   }
-  
-  if (TRI_InsertKeyAssociativePointer(&array->_values, element->_name, (void*) element, false)) {
-    // duplicate element in a document/array, e.g. { "name" : "John", "name" : "Jim" }
-    TRI_SetErrorAql(context, TRI_ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED, name); 
+
+  SUB_NODE_MANDATORY(element);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a node is a constant
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsConstantValueNodeAql (const TRI_aql_node_t* const node) {
+  assert(node);
+
+  if (node->_type != AQL_NODE_VALUE && 
+      node->_type != AQL_NODE_LIST &&
+      node->_type != AQL_NODE_ARRAY) {
     return false;
   }
 
+  if (node->_type == AQL_NODE_LIST || node->_type == AQL_NODE_ARRAY) {
+    size_t i;
+    size_t n = node->_subNodes._length;
+
+    for (i = 0; i < n; ++i) {
+      TRI_aql_node_t* subNode = (TRI_aql_node_t*) node->_subNodes._buffer[i];
+
+      if (!TRI_IsConstantValueNodeAql(subNode)) {
+        return false;
+      }
+    }
+  }
+
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a node value is numeric
+////////////////////////////////////////////////////////////////////////////////
+
+inline bool TRI_IsNumericValueNodeAql (const TRI_aql_node_t* const node) {
+  assert(node);
+
+  if (node->_type != AQL_NODE_VALUE) {
+    return false;
+  }
+
+  return (node->_value._type == AQL_TYPE_INT ||
+          node->_value._type == AQL_TYPE_DOUBLE); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a node value is boolean
+////////////////////////////////////////////////////////////////////////////////
+
+inline bool TRI_IsBooleanValueNodeAql (const TRI_aql_node_t* const node) {
+  assert(node);
+  
+  return (node->_type == AQL_NODE_VALUE && node->_value._type == AQL_TYPE_BOOL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the boolean value of a node
+////////////////////////////////////////////////////////////////////////////////
+
+inline bool TRI_GetBooleanNodeValueAql (const TRI_aql_node_t* const node) {
+  assert(node);
+  assert(node->_type == AQL_NODE_VALUE);
+    
+  return TRI_AQL_NODE_BOOL(node);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the numeric value of a node
+////////////////////////////////////////////////////////////////////////////////
+
+double TRI_GetNumericNodeValueAql (const TRI_aql_node_t* const node) {
+  assert(node);
+  assert(node->_type == AQL_NODE_VALUE);
+
+  if (node->_value._type == AQL_TYPE_INT) {
+    return (double) TRI_AQL_NODE_INT(node);
+  }
+  if (node->_value._type == AQL_TYPE_DOUBLE) {
+    return TRI_AQL_NODE_DOUBLE(node);
+  }
+  if (node->_value._type == AQL_TYPE_BOOL) {
+    return TRI_AQL_NODE_BOOL(node) ? 1.0 : 0.0;
+  }
+
+  return 0.0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

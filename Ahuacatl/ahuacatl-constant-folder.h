@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Ahuacatl, AST dump functionality
+/// @brief Ahuacatl, constant folding
 ///
 /// @file
 ///
@@ -25,8 +25,8 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_AHUACATL_AST_DUMP_H
-#define TRIAGENS_DURHAM_AHUACATL_AST_DUMP_H 1
+#ifndef TRIAGENS_DURHAM_AHUACATL_CONSTANT_FOLDER_H
+#define TRIAGENS_DURHAM_AHUACATL_CONSTANT_FOLDER_H 1
 
 #include <BasicsC/common.h>
 #include <BasicsC/strings.h>
@@ -34,31 +34,12 @@
 #include <BasicsC/vector.h>
 #include <BasicsC/associative.h>
 
+#include "Ahuacatl/ast-node.h"
+#include "Ahuacatl/ahuacatl-tree-walker.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief internal state of dumper
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_aql_dump_s {
-  int64_t _indent;
-}
-TRI_aql_dump_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -70,10 +51,11 @@ TRI_aql_dump_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dump AST nodes recursively
+/// @brief fold constants recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DumpAql (const void* const);
+TRI_aql_node_t* TRI_FoldConstantsAql (TRI_aql_parse_context_t* const, 
+                                      TRI_aql_node_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
