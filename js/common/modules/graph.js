@@ -1091,10 +1091,14 @@ Graph.prototype.getVertex = function (id) {
 
   if (ref !== null) {
     vertex = this.constructVertex(ref._id);
+  } else {    
+    try {
+      vertex = this.constructVertex(id);
+    }
+    catch (e) {
+      vertex = null;
+    }
   } 
-  else {
-    vertex = null;
-  }
 
   return vertex;
 };
