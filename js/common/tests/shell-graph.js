@@ -1,7 +1,13 @@
 /*jslint indent: 2,
          nomen: true,
          maxlen: 80 */
-/*global require, db, assertEqual */
+/*global require,
+    db,
+    assertEqual, assertTrue,
+    print,
+    PRINT_OBJECT,
+    console,
+    AvocadoCollection, AvocadoEdgesCollection */
 (function () {
   "use strict";
 
@@ -39,16 +45,68 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: Graph Creation
+////////////////////////////////////////////////////////////////////////////////
+
+  function graphCreationSuite() {
+
+    return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: Graph Creation
+////////////////////////////////////////////////////////////////////////////////
+
+      testCreation: function () {
+        var Graph = require("graph").Graph,
+          graph_name = "UnitTestsCollectionGraph",
+          vertex = "UnitTestsCollectionVertex",
+          edge = "UnitTestsCollectionEdge",
+          graph = null;
+
+        graph = new Graph(graph_name, vertex, edge);
+
+        assertEqual(graph_name, graph._properties.name);
+        assertTrue(graph._vertices instanceof AvocadoCollection);
+        assertTrue(graph._edges instanceof AvocadoEdgesCollection);
+
+        graph.drop();
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: Find Graph
+////////////////////////////////////////////////////////////////////////////////
+
+      testFindGraph: function () {
+        var Graph = require("graph").Graph,
+          graph_name = "UnitTestsCollectionGraph",
+          vertex = "UnitTestsCollectionVertex",
+          edge = "UnitTestsCollectionEdge",
+          graph1 = null,
+          graph2 = null;
+
+        graph1 = new Graph(graph_name, vertex, edge);
+        graph2 = new Graph(graph_name);
+
+        assertEqual(graph1._properties.name, graph2._properties.name);
+        assertEqual(graph1._vertices, graph2._vertices);
+        assertEqual(graph1._edges, graph2._edges);
+
+        graph1.drop();
+      }
+    };
+  }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: Graph Basics
 ////////////////////////////////////////////////////////////////////////////////
 
   function graphBasicsSuite() {
     //var ERRORS = require("internal").errors;
-    var Graph = require("graph").Graph;
-    var graph_name = "UnitTestsCollectionGraph";
-    var vertex = "UnitTestsCollectionVertex";
-    var edge = "UnitTestsCollectionEdge";
-    var graph = null;
+    var Graph = require("graph").Graph,
+      graph_name = "UnitTestsCollectionGraph",
+      vertex = "UnitTestsCollectionVertex",
+      edge = "UnitTestsCollectionEdge",
+      graph = null;
 
     return {
 
@@ -63,14 +121,12 @@
             print("FOUND: ");
             PRINT_OBJECT(graph);
             graph.drop();
-          }
-          catch (err) {
+          } catch (err1) {
           }
 
           graph = new Graph(graph_name, vertex, edge);
-        }
-        catch (err) {
-          console.error("[FAILED] setup failed:" + err);
+        } catch (err2) {
+          console.error("[FAILED] setup failed:" + err2);
         }
       },
 
@@ -80,11 +136,10 @@
 
       tearDown : function () {
         try {
-          if (graph != null) {
+          if (graph !== null) {
             graph.drop();
           }
-        }
-        catch (err) {
+        } catch (err) {
           console.error("[FAILED] tear-down failed:" + err);
         }
       },
@@ -138,15 +193,371 @@
 
         assertEqual("name2", v.getId());
         assertEqual(23, v.getProperty("age"));
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief change a property
+////////////////////////////////////////////////////////////////////////////////
+
+      testAddEdgeWithoutInfo : function () {
+        var v1,
+          v2,
+          edge;
+
+        v1 = graph.addVertex("vertex1");
+        v2 = graph.addVertex("vertex2");
+
+        edge = graph.addEdge(v1,
+          v2);
+
+        assertEqual(null, edge.getId());
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief change a property
+////////////////////////////////////////////////////////////////////////////////
+
+      testAddEdge : function () {
+        var v1,
+          v2,
+          edge;
+
+        v1 = graph.addVertex("vertex1");
+        v2 = graph.addVertex("vertex2");
+
+        edge = graph.addEdge(v1,
+          v2,
+          "edge1",
+          "label",
+          { testProperty: "testValue" });
+
+        assertEqual("edge1", edge.getId());
+        assertEqual("label", edge.getLabel());
+        assertEqual("testValue", edge.getProperty("testProperty"));
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief change a property
+////////////////////////////////////////////////////////////////////////////////
+
+      testGetEdges : function () {
+        var v1,
+          v2,
+          edge1,
+          edge2;
+
+        v1 = graph.addVertex("vertex1");
+        v2 = graph.addVertex("vertex2");
+
+        edge1 = graph.addEdge(v1,
+          v2,
+          "edge1",
+          "label",
+          { testProperty: "testValue" });
+
+        edge2 = graph.getEdges().next();
+        assertEqual(true, graph.getEdges().hasNext());
+        assertEqual(edge1.getId(), edge2.getId());
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove an edge
+////////////////////////////////////////////////////////////////////////////////
+
+      testRemoveEdges : function () {
+        var v1,
+          v2,
+          edge;
+
+        v1 = graph.addVertex("vertex1");
+        v2 = graph.addVertex("vertex2");
+
+        edge = graph.addEdge(v1,
+          v2,
+          "edge1",
+          "label",
+          { testProperty: "testValue" });
+
+        graph.removeEdge(edge);
+        assertEqual(false, graph.getEdges().hasNext());
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a vertex
+////////////////////////////////////////////////////////////////////////////////
+
+      testRemoveVertex : function () {
+        var v1,
+          v1_id,
+          v2,
+          edge;
+
+        v1 = graph.addVertex("vertex1");
+        v1_id = v1.getId();
+        v2 = graph.addVertex("vertex2");
+
+        edge = graph.addEdge(v1,
+          v2,
+          "edge1",
+          "label",
+          { testProperty: "testValue" });
+
+        graph.removeVertex(v1);
+
+        assertEqual(null, graph.getVertex(v1_id));
+        assertEqual(false, graph.getEdges().hasNext());
       }
+
+    };
+  }
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: Vertex
+////////////////////////////////////////////////////////////////////////////////
+
+  function vertexSuite() {
+    var Graph = require("graph").Graph,
+      graph_name = "UnitTestsCollectionGraph",
+      vertex = "UnitTestsCollectionVertex",
+      edge = "UnitTestsCollectionEdge",
+      graph = null;
+
+    return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+      setUp : function () {
+        try {
+          try {
+            graph = new Graph(graph_name);
+            print("FOUND: ");
+            PRINT_OBJECT(graph);
+            graph.drop();
+          } catch (err1) {
+          }
+
+          graph = new Graph(graph_name, vertex, edge);
+        } catch (err2) {
+          console.error("[FAILED] setup failed:" + err2);
+        }
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+      tearDown : function () {
+        try {
+          if (graph !== null) {
+            graph.drop();
+          }
+        } catch (err) {
+          console.error("[FAILED] tear-down failed:" + err);
+        }
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add edges
+////////////////////////////////////////////////////////////////////////////////
+
+      testAddEdges : function () {
+        var v1,
+          v2,
+          v3,
+          edge1,
+          edge2;
+
+        v1 = graph.addVertex(graph);
+        v2 = graph.addVertex(graph);
+        v3 = graph.addVertex(graph);
+
+        edge1 = v1.addInEdge(v2);
+        edge2 = v1.addOutEdge(v3);
+
+        assertEqual(v1.getId(), edge1.getInVertex().getId());
+        assertEqual(v2.getId(), edge1.getOutVertex().getId());
+        assertEqual(v3.getId(), edge2.getInVertex().getId());
+        assertEqual(v1.getId(), edge2.getOutVertex().getId());
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get edges
+////////////////////////////////////////////////////////////////////////////////
+
+      testGetEdges : function () {
+        var v1,
+          v2,
+          edge;
+
+        v1 = graph.addVertex(graph);
+        v2 = graph.addVertex(graph);
+
+        edge = graph.addEdge(v1, v2);
+
+        assertEqual(edge.getId(), v1.getOutEdges()[0].getId());
+        assertEqual(edge.getId(), v2.getInEdges()[0].getId());
+        assertEqual([], v1.getInEdges());
+        assertEqual([], v2.getOutEdges());
+        assertEqual(edge.getId(), v1.edges()[0].getId());
+        assertEqual(edge.getId(), v2.edges()[0].getId());
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get edges with labels
+////////////////////////////////////////////////////////////////////////////////
+
+      testGetEdgesWithLabels : function () {
+        var v1,
+          v2,
+          edge1,
+          edge2;
+
+        v1 = graph.addVertex(graph);
+        v2 = graph.addVertex(graph);
+
+        edge1 = graph.addEdge(v1, v2, null, "label_1");
+        edge2 = graph.addEdge(v1, v2, null, "label_2");
+
+        assertEqual(edge2.getId(), v1.getOutEdges("label_2")[0].getId());
+        assertEqual(1, v2.getInEdges("label_2").length);
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief properties
+////////////////////////////////////////////////////////////////////////////////
+
+      testProperties : function () {
+        var v1;
+
+        v1 = graph.addVertex(graph);
+
+        v1.setProperty("myProperty", "myValue");
+        assertEqual("myValue", v1.getProperty("myProperty"));
+        assertEqual("myProperty", v1.getPropertyKeys()[0]);
+        assertEqual(1, v1.getPropertyKeys().length);
+        assertEqual({myProperty: "myValue"}, v1.properties());
+      }
+
+
     };
   }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: Edges
+////////////////////////////////////////////////////////////////////////////////
+
+  function edgeSuite() {
+    var Graph = require("graph").Graph,
+      graph_name = "UnitTestsCollectionGraph",
+      vertex = "UnitTestsCollectionVertex",
+      edge = "UnitTestsCollectionEdge",
+      graph = null;
+
+    return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+      setUp : function () {
+        try {
+          try {
+            graph = new Graph(graph_name);
+            print("FOUND: ");
+            PRINT_OBJECT(graph);
+            graph.drop();
+          } catch (err1) {
+          }
+
+          graph = new Graph(graph_name, vertex, edge);
+        } catch (err2) {
+          console.error("[FAILED] setup failed:" + err2);
+        }
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+      tearDown : function () {
+        try {
+          if (graph !== null) {
+            graph.drop();
+          }
+        } catch (err) {
+          console.error("[FAILED] tear-down failed:" + err);
+        }
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get Vertices
+////////////////////////////////////////////////////////////////////////////////
+
+      testGetVertices : function () {
+        var v1,
+          v2,
+          edge;
+
+        v1 = graph.addVertex();
+        v2 = graph.addVertex();
+        edge = graph.addEdge(v1, v2);
+
+        assertEqual(v1.getId(), edge.getInVertex().getId());
+        assertEqual(v2.getId(), edge.getOutVertex().getId());
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get Vertices
+////////////////////////////////////////////////////////////////////////////////
+
+      testGetLabel : function () {
+        var v1,
+          v2,
+          edge;
+
+        v1 = graph.addVertex();
+        v2 = graph.addVertex();
+        edge = graph.addEdge(v1, v2, null, "my_label");
+
+        assertEqual("my_label", edge.getLabel());
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Properties
+////////////////////////////////////////////////////////////////////////////////
+
+      testProperties : function () {
+        var v1,
+          v2,
+          edge,
+          properties;
+
+        v1 = graph.addVertex();
+        v2 = graph.addVertex();
+        properties = { myProperty: "myValue"};
+        edge = graph.addEdge(v1, v2, null, "my_label", properties);
+
+        assertEqual(properties, edge.properties());
+        assertEqual("myValue", edge.getProperty("myProperty"));
+        edge.setProperty("foo", "bar");
+        assertEqual("bar", edge.getProperty("foo"));
+        assertEqual(["foo", "myProperty"], edge.getPropertyKeys());
+      }
+
+
+    };
+  }
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
+  jsunity.run(graphCreationSuite);
   jsunity.run(graphBasicsSuite);
+  jsunity.run(vertexSuite);
+  jsunity.run(edgeSuite);
   jsunity.done();
 
 }());

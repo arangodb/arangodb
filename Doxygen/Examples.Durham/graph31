@@ -1,4 +1,4 @@
-avocado> e = g.addEdge(v1, v2, { name : "Emil");
+avocado> e = g.addEdge(v1, v2, null, "", { name : "Emil");
 Edge(<graph>, "3999653:5570857")
 
 avocado> e.getProperty("name");

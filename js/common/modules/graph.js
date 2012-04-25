@@ -38,7 +38,9 @@ var internal = require("internal"),
   AvocadoCollection = internal.AvocadoCollection,
   AvocadoEdgesCollection = internal.AvocadoEdgesCollection,
   shallowCopy,
-  propertyKeys;
+  propertyKeys,
+  findOrCreateCollectionByName,
+  findOrCreateEdgeCollectionByName;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -88,6 +90,46 @@ propertyKeys = function (props) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief find or create a collection by name
+////////////////////////////////////////////////////////////////////////////////
+
+findOrCreateCollectionByName = function (name) {
+  var col = internal.db._collection(name);
+
+  if (col === null) {
+    col = internal.db._create(name);
+  } else if (!(col instanceof AvocadoCollection)) {
+    throw "<" + name + "> must be a document collection";
+  }
+
+  if (col === null) {
+    throw "collection '" + name + "' has vanished";
+  }
+
+  return col;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find or create an edge collection by name
+////////////////////////////////////////////////////////////////////////////////
+
+findOrCreateEdgeCollectionByName = function (name) {
+  var col = internal.edges._collection(name);
+
+  if (col === null) {
+    col = internal.edges._create(name);
+  } else if (!(col instanceof AvocadoEdgesCollection)) {
+    throw "<" + name + "> must be a document collection";
+  }
+
+  if (col === null) {
+    throw "collection '" + name + "' has vanished";
+  }
+
+  return col;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -120,8 +162,7 @@ function Edge(graph, id) {
   if (props) {
     // extract the custom identifier, label, edges
     this._properties = props;
-  }
-  else {
+  } else {
     // deleted
     throw "accessing a deleted edge";
   }
@@ -313,16 +354,13 @@ Edge.prototype._PRINT = function (seen, path, names) {
 
   if (!this._id) {
     internal.output("[deleted Edge]");
-  }
-  else if (this._properties.$id !== undefined) {
+  } else if (this._properties.$id !== undefined) {
     if (typeof this._properties.$id === "string") {
       internal.output("Edge(\"", this._properties.$id, "\")");
-    }
-    else {
+    } else {
       internal.output("Edge(", this._properties.$id, ")");
     }
-  }
-  else {
+  } else {
     internal.output("Edge(<", this._id, ">)");
   }
 };
@@ -359,8 +397,7 @@ function Vertex(graph, id) {
   if (props) {
     // extract the custom identifier
     this._properties = props;
-  }
-  else {
+  } else {
     // deleted
     throw "accessing a deleted edge";
   }
@@ -382,17 +419,17 @@ function Vertex(graph, id) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an inbound edge
 ///
-/// @FUN{@FA{vertex}.addInEdge(@FA{id}, @FA{peer})}
+/// @FUN{@FA{vertex}.addInEdge(@FA{peer}, @FA{id})}
 ///
 /// Creates a new edge from @FA{peer} to @FA{vertex} and returns the edge
 /// object. The identifier @FA{id} must be a unique identifier or null.
 ///
-/// @FUN{@FA{vertex}.addInEdge(@FA{id}, @FA{peer}, @FA{label})}
+/// @FUN{@FA{vertex}.addInEdge(@FA{peer}, @FA{id}, @FA{label})}
 ///
 /// Creates a new edge from @FA{peer} to @FA{vertex} with given label and
 /// returns the edge object.
 ///
-/// @FUN{@FA{vertex}.addInEdge(@FA{id}, @FA{peer}, @FA{label}, @FA{data})}
+/// @FUN{@FA{vertex}.addInEdge(@FA{peer}, @FA{id}, @FA{label}, @FA{data})}
 ///
 /// Creates a new edge from @FA{peer} to @FA{vertex} with given label and
 /// properties defined in @FA{data}. Returns the edge object.
@@ -406,8 +443,8 @@ function Vertex(graph, id) {
 /// @verbinclude graph24
 ////////////////////////////////////////////////////////////////////////////////
 
-Vertex.prototype.addInEdge = function (id, out, label, data) {
-  return this._graph.addEdge(id, out, this, label, data);
+Vertex.prototype.addInEdge = function (out, id, label, data) {
+  return this._graph.addEdge(out, this, id, label, data);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -437,8 +474,8 @@ Vertex.prototype.addInEdge = function (id, out, label, data) {
 /// @verbinclude graph28
 ////////////////////////////////////////////////////////////////////////////////
 
-Vertex.prototype.addOutEdge = function (id, ine, label, data) {
-  return this._graph.addEdge(id, this, ine, label, data);
+Vertex.prototype.addOutEdge = function (ine, id, label, data) {
+  return this._graph.addEdge(this, ine, id, label, data);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -507,8 +544,7 @@ Vertex.prototype.getInEdges = function () {
 
   if (arguments.length === 0) {
     result = this.inbound();
-  }
-  else {
+  } else {
     labels = {};
 
     for (i = 0;  i < arguments.length;  ++i) {
@@ -547,8 +583,7 @@ Vertex.prototype.getOutEdges = function () {
 
   if (arguments.length === 0) {
     result = this.outbound();
-  }
-  else {
+  } else {
     labels = {};
     for (i = 0;  i < arguments.length;  ++i) {
       labels[arguments[i]] = true;
@@ -731,16 +766,13 @@ Vertex.prototype._PRINT = function (seen, path, names) {
 
   if (!this._id) {
     internal.output("[deleted Vertex]");
-  }
-  else if (this._properties.$id !== undefined) {
+  } else if (this._properties.$id !== undefined) {
     if (typeof this._properties.$id === "string") {
       internal.output("Vertex(\"", this._properties.$id, "\")");
-    }
-    else {
+    } else {
       internal.output("Vertex(", this._properties.$id, ")");
     }
-  }
-  else {
+  } else {
     internal.output("Vertex(<", this._id, ">)");
   }
 };
@@ -781,129 +813,103 @@ Vertex.prototype._PRINT = function (seen, path, names) {
 /// @verbinclude graph1
 ////////////////////////////////////////////////////////////////////////////////
 
-function Graph (name, vertices, edges) {
-  var gdb;
-  var col;
-  var props;
+function Graph(name, vertices, edges) {
+  var gdb,
+    graphProperties,
+    graphPropertiesId,
+    optionsForGraphCreation;
 
   gdb = internal.db._collection("_graph");
 
   if (gdb === null) {
-    gdb = internal.db._create("_graph", { waitForSync : true, isSystem : true });
+    optionsForGraphCreation = { waitForSync : true, isSystem : true };
+    gdb = internal.db._create("_graph", optionsForGraphCreation);
 
     // gdb.ensureUniqueConstraint("name");
   }
 
-  if (vertices === undefined && edges == undefined) {
-    props = gdb.firstExample('name', name);    
-    
-    if (props === null) {
+  if (typeof name !== "string" || name === "") {
+    throw "<name> must be a string";
+  }
+
+  if (vertices === undefined && edges === undefined) {
+    // Find an existing graph
+
+    graphProperties = gdb.firstExample('name', name);
+
+    if (graphProperties === null) {
       try {
-        props = gdb.document(name);
+        graphProperties = gdb.document(name);
       }
       catch (e) {
         throw "no graph named '" + name + "' found";
       }
       
-      if (props === null) {
+      if (graphProperties === null) {
         throw "no graph named '" + name + "' found";
       }
+      throw "no graph named '" + name + "' found";
     }
 
-    vertices = internal.db._collection(props.vertices);
+    vertices = internal.db._collection(graphProperties.vertices);
 
-    if (vertices == null) {
-      throw "vertex collection '" + props.vertices + "' has vanished";
+    if (vertices === null) {
+      throw "vertex collection '" + graphProperties.vertices + "' has vanished";
     }
 
-    edges = internal.edges._collection(props.edges);
+    edges = internal.edges._collection(graphProperties.edges);
 
-    if (edges == null) {
-      throw "edge collection '" + props.edges + "' has vanished";
+    if (edges === null) {
+      throw "edge collection '" + graphProperties.edges + "' has vanished";
     }
-  }
-  else {
+  } else if (typeof vertices !== "string" || vertices === "") {
+    throw "<vertices> must be a string or null";
+  } else if (typeof edges !== "string" || edges === "") {
+    throw "<edges> must be a string or null";
+  } else {
+    // Create a new graph or get an existing graph
+    vertices = findOrCreateCollectionByName(vertices);
+    edges = findOrCreateEdgeCollectionByName(edges);
 
-    // get the vertices collection
-    if (typeof vertices === "string") {
-      col = internal.db._collection(vertices);
+    // Currently buggy:
+    // edges.ensureUniqueConstraint("$id");
+    // vertices.ensureUniqueConstraint("$id");
 
-      if (col === null) {
-        col = internal.db._create(vertices);
-      }
+    graphProperties = gdb.firstExample('name', name);
 
-      if (col == null) {
-        throw "vertex collection '" + vertices + "' has vanished";
-      }
-
-      // col.ensureUniqueConstraint("$id");
-
-      vertices = col;
-    }
-
-    // get the edges collection
-    if (typeof edges === "string") {
-      col = internal.edges._collection(edges);
-
-      if (col === null) {
-        col = internal.edges._create(edges);
-      }
-
-      if (col == null) {
-        throw "edge collection '" + edges + "' has vanished";
-      }
-
-      // col.ensureUniqueConstraint("$id");
-
-      edges = col;
-    }
-
-    // find graph by name
-    if (typeof name !== "string" || name === "") {
-      throw "<name> must be a string";
-    }
-
-    props = gdb.firstExample('name', name);
-
-    // name is unknown
-    if (props === null) {
+    if (graphProperties === null) {
+      // Graph doesn't exist yet
 
       // check if know that graph
-      props = gdb.firstExample('vertices', vertices._id, 'edges', edges._id);
+      graphProperties = gdb.firstExample('vertices',
+        vertices._id,
+        'edges',
+        edges._id
+        );
 
-      if (props === null) {
-        d = gdb.save({ 'vertices' : vertices._id,
+      if (graphProperties === null) {
+        graphPropertiesId = gdb.save({ 'vertices' : vertices._id,
                        'verticesName' : vertices.name(),
                        'edges' : edges._id,
                        'edgesName' : edges.name(),
                        'name' : name });
 
-        props = gdb.document(d);
-      }
-      else {
+        graphProperties = gdb.document(graphPropertiesId);
+      } else {
         throw "found graph but has different <name>";
       }
-    }
-    else {
-      if (props.vertices !== vertices._id) {
+    } else {
+      if (graphProperties.vertices !== vertices._id) {
         throw "found graph but has different <vertices>";
       }
 
-      if (props.edges !== edges._id) {
+      if (graphProperties.edges !== edges._id) {
         throw "found graph but has different <edges>";
       }
     }
   }
 
-  if (! (vertices instanceof AvocadoCollection)) {
-    throw "<vertices> must be a document collection";
-  }
-
-  if (! (edges instanceof AvocadoEdgesCollection)) {
-    throw "<edges> must be an edges collection";
-  }
-
-  this._properties = props;
+  this._properties = graphProperties;
 
   // and store the collections
   this._vertices = vertices;
@@ -944,27 +950,27 @@ Graph.prototype.drop = function () {
 
   this._vertices.drop();
   this._edges.drop();
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an edge to the graph
 ///
-/// @FUN{@FA{graph}.addEdge(@FA{id}, @FA{out}, @FA{in})}
+/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{id})}
 ///
 /// Creates a new edge from @FA{out} to @FA{in} and returns the edge object. The
 /// identifier @FA{id} must be a unique identifier or null.
 ///
-/// @FUN{@FA{graph}.addEdge(@FA{id}, @FA{out}, @FA{in}, @FA{label})}
+/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{id}, @FA{label})}
 ///
 /// Creates a new edge from @FA{out} to @FA{in} with @FA{label} and returns the
 /// edge object.
 ///
-/// @FUN{@FA{graph}.addEdge(@FA{id}, @FA{out}, @FA{in}, @FA{data})}
+/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{id}, @FA{data})}
 ///
 /// Creates a new edge and returns the edge object. The edge contains the
 /// properties defined in @FA{data}.
 ///
-/// @FUN{@FA{graph}.addEdge(@FA{id}, @FA{out}, @FA{in}, @FA{label}, @FA{data})}
+/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{id}, @FA{label}, @FA{data})}
 ///
 /// Creates a new edge and returns the edge object. The edge has the
 /// label @FA{label} and contains the properties defined in @FA{data}.
@@ -980,7 +986,7 @@ Graph.prototype.drop = function () {
 /// @verbinclude graph10
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype.addEdge = function (id, out, ine, label, data) {
+Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data) {
   var ref,
     shallow;
 
@@ -1002,7 +1008,7 @@ Graph.prototype.addEdge = function (id, out, ine, label, data) {
   shallow.$id = id || null;
   shallow.$label = label || null;
 
-  ref = this._edges.save(out._id, ine._id, shallow);
+  ref = this._edges.save(out_vertex._id, in_vertex._id, shallow);
 
   return this.constructEdge(ref._id);
 };
@@ -1068,8 +1074,7 @@ Graph.prototype.getVertex = function (id) {
 
   if (ref !== null) {
     vertex = this.constructVertex(ref._id);
-  }
-  else {
+  } else {
     vertex = null;
   }
 
@@ -1268,7 +1273,7 @@ Graph.prototype.constructVertex = function (id) {
 Graph.prototype.constructEdge = function (id) {
   var edge = this._weakEdges[id];
 
-  if (edge === null) {
+  if (edge === undefined) {
     this._weakEdges[id] = edge = new Edge(this, id);
   }
 
@@ -1316,5 +1321,6 @@ exports.Vertex = Vertex;
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: 
+//  "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:

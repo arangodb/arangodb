@@ -1165,41 +1165,52 @@ int main (int argc, char* argv[]) {
   
   TRI_InitV8Shell(context);
 
-  // processComandLineArguments(argc, argv);
-  if (! splitServerAdress(ServerAddress, DEFAULT_SERVER_NAME, DEFAULT_SERVER_PORT)) {
-    if (ServerAddress.length()) {
-      printf("Could not split %s.\n", ServerAddress.c_str());                  
+  // check if we want to connect to a server
+  bool useServer = (ServerAddress != "none");
+
+  if (useServer) {
+    if (! splitServerAdress(ServerAddress, DEFAULT_SERVER_NAME, DEFAULT_SERVER_PORT)) {
+      if (ServerAddress.length()) {
+        printf("Could not split %s.\n", ServerAddress.c_str());                  
+      }
     }
-  }
         
-  
-  clientConnection = new V8ClientConnection(
-          DEFAULT_SERVER_NAME, 
-          DEFAULT_SERVER_PORT, 
-          DEFAULT_REQUEST_TIMEOUT, 
-          DEFAULT_RETRIES, 
-          DEFAULT_CONNECTION_TIMEOUT);
+    
+    clientConnection = new V8ClientConnection(
+      DEFAULT_SERVER_NAME, 
+      DEFAULT_SERVER_PORT, 
+      DEFAULT_REQUEST_TIMEOUT, 
+      DEFAULT_RETRIES, 
+      DEFAULT_CONNECTION_TIMEOUT);
+  }
   
   // .............................................................................
   // define AvocadoConnection class
   // .............................................................................  
-  v8::Handle<v8::FunctionTemplate> connection_templ = v8::FunctionTemplate::New();
-  connection_templ->SetClassName(v8::String::New("AvocadoConnection"));
-  v8::Handle<v8::ObjectTemplate> connection_proto = connection_templ->PrototypeTemplate();
-  connection_proto->Set("GET", v8::FunctionTemplate::New(ClientConnection_httpGet));
-  connection_proto->Set("POST", v8::FunctionTemplate::New(ClientConnection_httpPost));
-  connection_proto->Set("DELETE", v8::FunctionTemplate::New(ClientConnection_httpDelete));
-  connection_proto->Set("PUT", v8::FunctionTemplate::New(ClientConnection_httpPut));
-  connection_proto->Set("lastHttpReturnCode", v8::FunctionTemplate::New(ClientConnection_lastHttpReturnCode));
-  connection_proto->Set("lastErrorMessage", v8::FunctionTemplate::New(ClientConnection_lastErrorMessage));
-  connection_proto->Set("isConnected", v8::FunctionTemplate::New(ClientConnection_isConnected));
-  connection_proto->Set("toString", v8::FunctionTemplate::New(ClientConnection_toString));
-  connection_proto->Set("getVersion", v8::FunctionTemplate::New(ClientConnection_getVersion));
-  connection_proto->SetCallAsFunctionHandler(ClientConnection_ConstructorCallback);    
-  v8::Handle<v8::ObjectTemplate> connection_inst = connection_templ->InstanceTemplate();
-  connection_inst->SetInternalFieldCount(2);    
-  context->Global()->Set(v8::String::New("AvocadoConnection"), connection_proto->NewInstance());    
-  ConnectionTempl = v8::Persistent<v8::ObjectTemplate>::New(connection_inst);
+
+  if (useServer) {
+    v8::Handle<v8::FunctionTemplate> connection_templ = v8::FunctionTemplate::New();
+    connection_templ->SetClassName(v8::String::New("AvocadoConnection"));
+
+    v8::Handle<v8::ObjectTemplate> connection_proto = connection_templ->PrototypeTemplate();
+    
+    connection_proto->Set("GET", v8::FunctionTemplate::New(ClientConnection_httpGet));
+    connection_proto->Set("POST", v8::FunctionTemplate::New(ClientConnection_httpPost));
+    connection_proto->Set("DELETE", v8::FunctionTemplate::New(ClientConnection_httpDelete));
+    connection_proto->Set("PUT", v8::FunctionTemplate::New(ClientConnection_httpPut));
+    connection_proto->Set("lastHttpReturnCode", v8::FunctionTemplate::New(ClientConnection_lastHttpReturnCode));
+    connection_proto->Set("lastErrorMessage", v8::FunctionTemplate::New(ClientConnection_lastErrorMessage));
+    connection_proto->Set("isConnected", v8::FunctionTemplate::New(ClientConnection_isConnected));
+    connection_proto->Set("toString", v8::FunctionTemplate::New(ClientConnection_toString));
+    connection_proto->Set("getVersion", v8::FunctionTemplate::New(ClientConnection_getVersion));
+    connection_proto->SetCallAsFunctionHandler(ClientConnection_ConstructorCallback);    
+    
+    v8::Handle<v8::ObjectTemplate> connection_inst = connection_templ->InstanceTemplate();
+    connection_inst->SetInternalFieldCount(2);    
+    
+    context->Global()->Set(v8::String::New("AvocadoConnection"), connection_proto->NewInstance());    
+    ConnectionTempl = v8::Persistent<v8::ObjectTemplate>::New(connection_inst);
+  }
     
   context->Global()->Set(v8::String::New("SYS_START_PAGER"),
                          v8::FunctionTemplate::New(JS_StartOutputPager)->GetFunction(),
@@ -1245,77 +1256,81 @@ int main (int argc, char* argv[]) {
 
   printf("\n");
 
-  if (clientConnection->isConnected()) {
-    printf("Connected to Avocado DB %s:%d Version %s\n", 
-            clientConnection->getHostname().c_str(), 
-            clientConnection->getPort(), 
-            clientConnection->getVersion().c_str());
-    
-    if (usePager) {
-      printf("Using pager '%s' for output buffering.\n", OutputPager.c_str());    
-    }
- 
-    // add the client connection to the context:
-    context->Global()->Set(v8::String::New("avocado"), 
-                         wrapV8ClientConnection(clientConnection),
-                         v8::ReadOnly);
-    
-    if (prettyPrint) {
-      printf("Pretty print values.\n");    
-    }
+  // set up output
+  if (usePager) {
+    printf("Using pager '%s' for output buffering.\n", OutputPager.c_str());    
+  }
 
-    // set pretty print default: (used in print.js)
-    context->Global()->Set(v8::String::New("PRETTY_PRINT"), v8::Boolean::New(prettyPrint));
+  if (prettyPrint) {
+    printf("Pretty print values.\n");    
+  }
 
-    // add colors for print.js
-    addColors(context);
-    
-    // load java script from js/bootstrap/*.h files
-    if (StartupPath.empty()) {
-      StartupLoader.defineScript("common/bootstrap/modules.js", JS_common_bootstrap_modules);
-      StartupLoader.defineScript("common/bootstrap/print.js", JS_common_bootstrap_print);
-      StartupLoader.defineScript("common/bootstrap/errors.js", JS_common_bootstrap_errors);
-      StartupLoader.defineScript("client/client.js", JS_client_client);
+  // set pretty print default: (used in print.js)
+  context->Global()->Set(v8::String::New("PRETTY_PRINT"), v8::Boolean::New(prettyPrint));
+  
+  // add colors for print.js
+  addColors(context);
+
+  // set up connection
+  if (useServer) {
+    if (clientConnection->isConnected()) {
+      printf("Connected to Avocado DB %s:%d Version %s\n", 
+              clientConnection->getHostname().c_str(), 
+              clientConnection->getPort(), 
+              clientConnection->getVersion().c_str());
+
+      // add the client connection to the context:
+      context->Global()->Set(v8::String::New("avocado"), 
+                           wrapV8ClientConnection(clientConnection),
+                           v8::ReadOnly);
     }
     else {
-      LOGGER_DEBUG << "using JavaScript startup files at '" << StartupPath << "'";
-      StartupLoader.setDirectory(StartupPath);
-    }
-
-    // load all init files
-    char const* files[] = {
-      "common/bootstrap/modules.js",
-      "common/bootstrap/print.js",
-      "common/bootstrap/errors.js",
-      "client/client.js"
-    };
-
-    for (size_t i = 0;  i < sizeof(files) / sizeof(files[0]);  ++i) {
-      bool ok = StartupLoader.loadScript(context, files[i]);
-      
-      if (ok) {
-        LOGGER_TRACE << "loaded json file '" << files[i] << "'";
-      }
-      else {
-        LOGGER_ERROR << "cannot load json file '" << files[i] << "'";
-        exit(EXIT_FAILURE);
-      }
-    }
-    
-    if (UnitTests.empty()) {
-      RunShell(context);
-    }
-    else {
-      bool ok = RunUnitTests(context);
-
-      if (! ok) {
-        ret = EXIT_FAILURE;
-      }
+      printf("Could not connect to server %s:%d\n", DEFAULT_SERVER_NAME.c_str(), DEFAULT_SERVER_PORT);
+      printf("Error message '%s'\n", clientConnection->getErrorMessage().c_str());
     }
   }
+
+  // load java script from js/bootstrap/*.h files
+  if (StartupPath.empty()) {
+    StartupLoader.defineScript("common/bootstrap/modules.js", JS_common_bootstrap_modules);
+    StartupLoader.defineScript("common/bootstrap/print.js", JS_common_bootstrap_print);
+    StartupLoader.defineScript("common/bootstrap/errors.js", JS_common_bootstrap_errors);
+    StartupLoader.defineScript("client/client.js", JS_client_client);
+  }
   else {
-    printf("Could not connect to server %s:%d\n", DEFAULT_SERVER_NAME.c_str(), DEFAULT_SERVER_PORT);
-    printf("Error message '%s'\n", clientConnection->getErrorMessage().c_str());
+    LOGGER_DEBUG << "using JavaScript startup files at '" << StartupPath << "'";
+    StartupLoader.setDirectory(StartupPath);
+  }
+
+  // load all init files
+  char const* files[] = {
+    "common/bootstrap/modules.js",
+    "common/bootstrap/print.js",
+    "common/bootstrap/errors.js",
+    "client/client.js"
+  };
+  
+  for (size_t i = 0;  i < sizeof(files) / sizeof(files[0]);  ++i) {
+    bool ok = StartupLoader.loadScript(context, files[i]);
+    
+    if (ok) {
+      LOGGER_TRACE << "loaded json file '" << files[i] << "'";
+    }
+    else {
+      LOGGER_ERROR << "cannot load json file '" << files[i] << "'";
+      exit(EXIT_FAILURE);
+    }
+  }
+  
+  if (UnitTests.empty()) {
+    RunShell(context);
+  }
+  else {
+    bool ok = RunUnitTests(context);
+    
+    if (! ok) {
+      ret = EXIT_FAILURE;
+    }
   }
 
   context->Exit();

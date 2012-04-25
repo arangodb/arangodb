@@ -1,3 +1,9 @@
+/*
+** mrbconf.h - mruby core configuration
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #ifndef MRUBYCONF_H
 #define MRUBYCONF_H
 

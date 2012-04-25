@@ -1,7 +1,13 @@
+/*
+** vm.c - virtual machine for mruby (RiteVM)
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #include "mruby.h"
 #include "opcode.h"
-#include "irep.h"
-#include "variable.h"
+#include "mruby/irep.h"
+#include "mruby/variable.h"
 #include "mruby/proc.h"
 #include "mruby/array.h"
 #include "mruby/string.h"

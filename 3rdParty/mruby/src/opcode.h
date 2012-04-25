@@ -1,3 +1,9 @@
+/*
+** opcode.h - RiteVM operation codes
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #ifndef OPCODE_H
 #define OPCODE_H
 

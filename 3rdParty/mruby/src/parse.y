@@ -1,3 +1,9 @@
+/*
+** parse.y - mruby parser
+** 
+** See Copyright Notice in mruby.h
+*/
+
 %{
 #undef PARSER_TEST
 #undef PARSER_DEBUG
@@ -2575,6 +2581,7 @@ superclass	: term
 		| '<'
 		    {
 		      p->lstate = EXPR_BEG;
+		      p->cmd_start = TRUE;
 		    }
 		  expr_value term
 		    {
@@ -3119,10 +3126,11 @@ enum string_type {
     str_dsym   = (STR_FUNC_SYMBOL|STR_FUNC_EXPAND)
 };
 
-static void
+static int
 newtok(parser_state *p)
 {
   p->bidx = 0;
+  return p->column - 1;
 }
 
 static void
@@ -3339,8 +3347,9 @@ parse_string(parser_state *p, int term)
       c = nextc(p);
       if (c == '{') {
 	tokfix(p);
-	p->lstate = EXPR_END;
+	p->lstate = EXPR_BEG;
 	p->sterm = term;
+	p->cmd_start = TRUE;
 	yylval.node = new_str(p, tok(p), toklen(p));
 	return tSTRING_PART;
       }
@@ -3414,6 +3423,7 @@ parser_yylex(parser_state *p)
   int space_seen = 0;
   int cmd_state;
   enum mrb_lex_state_enum last_state;
+  int token_column;
 
   if (p->sterm) {
     return parse_string(p, p->sterm);
@@ -3469,6 +3479,7 @@ parser_yylex(parser_state *p)
       }
     }
   normal_newline:
+    p->cmd_start = TRUE;
     p->lstate = EXPR_BEG;
     return '\n';
 
@@ -3574,6 +3585,8 @@ parser_yylex(parser_state *p)
     switch (p->lstate) {
     case EXPR_FNAME: case EXPR_DOT:
       p->lstate = EXPR_ARG; break;
+    case EXPR_CLASS:
+      p->cmd_start = TRUE;
     default:
       p->lstate = EXPR_BEG; break;
     }
@@ -3669,7 +3682,7 @@ parser_yylex(parser_state *p)
       p->lstate = EXPR_VALUE;
       return '?';
     }
-    newtok(p);
+    token_column = newtok(p);
     // need support UTF-8 if configured
     if ((isalnum(c) || c == '_')) {
       int c2 = nextc(p);
@@ -3842,7 +3855,7 @@ parser_yylex(parser_state *p)
       
       is_float = seen_point = seen_e = nondigit = 0;
       p->lstate = EXPR_END;
-      newtok(p);
+      token_column = newtok(p);
       if (c == '-' || c == '+') {
 	tokadd(p, c);
 	c = nextc(p);
@@ -4331,7 +4344,7 @@ parser_yylex(parser_state *p)
 
   case '$':
     p->lstate = EXPR_END;
-    newtok(p);
+    token_column = newtok(p);
     c = nextc(p);
     switch (c) {
     case '_':		     /* $_: last read line string */
@@ -4409,7 +4422,7 @@ parser_yylex(parser_state *p)
 
   case '@':
     c = nextc(p);
-    newtok(p);
+    token_column = newtok(p);
     tokadd(p, '@');
     if (c == '@') {
       tokadd(p, '@');
@@ -4431,7 +4444,7 @@ parser_yylex(parser_state *p)
     break;
 
   case '_':
-    newtok(p);
+    token_column = newtok(p);
     break;
 
   default:
@@ -4440,7 +4453,7 @@ parser_yylex(parser_state *p)
       goto retry;
     }
 
-    newtok(p);
+    token_column = newtok(p);
     break;
   }
 
@@ -4449,6 +4462,9 @@ parser_yylex(parser_state *p)
     c = nextc(p);
     if (c < 0) break;
   } while (identchar(c));
+  if (token_column == 0 && toklen(p) == 7 && (c < 0 || c == '\n') &&
+      strncmp(tok(p), "__END__", toklen(p)) == 0)
+    return -1;
 
   switch (tok(p)[0]) {
   case '@': case '$':
@@ -4524,6 +4540,9 @@ parser_yylex(parser_state *p)
 	  if (state == EXPR_FNAME) {
 	    yylval.id = intern(kw->name);
 	    return kw->id[0];
+	  }
+	  if (p->lstate == EXPR_BEG) {
+	    p->cmd_start = TRUE;
 	  }
 	  if (kw->id[0] == keyword_do) {
 	    if (p->lpar_beg && p->lpar_beg == p->paren_nest) {

@@ -16,11 +16,11 @@ MRBS := $(MRB1)
 # C compiler (gcc)
 CC = gcc
 LL = gcc
-DEBUG_MODE = 1
+DEBUG_MODE = 0
 ifeq ($(DEBUG_MODE),1)
 CFLAGS = -g
 else
-CFLAGS = -O3
+CFLAGS = -O2
 endif
 INCLUDES = -I../src -I../include
 ALL_CFLAGS = -Wall -Werror-implicit-function-declaration $(CFLAGS)
@@ -59,5 +59,7 @@ $(RLIB) : $(MRBS)
 .PHONY : clean
 clean :
 	-rm -f $(MRBC) $(MLIB) $(CLIB) $(RLIB) $(DLIB)
+	-rm -f $(patsubst %.c,%.d,$(CLIB))
+	-rm -f $(patsubst %.c,%.o,$(EXCEPT1)) $(patsubst %.c,%.d,$(EXCEPT1))
 	@echo "make: removing targets, objects and depend files of `pwd`"
 

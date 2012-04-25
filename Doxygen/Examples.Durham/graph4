@@ -1,9 +1,9 @@
 avocado> var Graph = require("graph").Graph;
 
-avocado> g = new Graph("vertices", "edges");
+avocado> g = new Graph("graph", "vertices", "edges");
 Graph("vertices", "edges")
 
-avocado> v = g.addVertex({ name : "Hugo" });
+avocado> v = g.addVertex(null, { name : "Hugo" });
 Vertex(<graph>, "153246:2310672")
 
 avocado> v.properties();
