@@ -46,7 +46,7 @@
 #include "SkipLists/sl-operator.h"
 #include "Ahuacatl/ast-node.h"
 #include "Ahuacatl/ast-codegen-js.h"
-#include "Ahuacatl/parser.h"
+#include "Ahuacatl/ahuacatl-parser.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -2279,6 +2279,8 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   }
   string queryString = TRI_ObjectToString(queryArg);
 
+  /* currently unused, causes compile warnings
+
   // return number of total records in cursor?
   bool doCount = false;
   if (argv.Length() > 0) {
@@ -2293,25 +2295,37 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
       max = (uint32_t) maxValue;
     }
   }
+
+  */
   
   v8::Handle<v8::Value> result;
 
   TRI_json_t* parameters = NULL;
+
   TRI_aql_parse_context_t* context;
-  
-  context = TRI_CreateParseContextAql(queryString.c_str());
+  context = TRI_CreateParseContextAql(vocbase, queryString.c_str()); 
   if (!context) {
     return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
   }
+
+  if (argv.Length() > 1) {
+    parameters = ConvertHelper(argv[1]);
+    if (!TRI_AddBindParametersAql(context, parameters)) {
+      v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
+      TRI_FreeJson(parameters);
+      TRI_FreeParseContextAql(context);
+      return scope.Close(errorObject);
+    }
+  }
   
-  if (Ahuacatlparse(context)) {
+  if (parameters) {
+    TRI_FreeJson(parameters);
+  }
+  
+  if (!TRI_ParseQueryAql(context)) {
     v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
     TRI_FreeParseContextAql(context);
     return scope.Close(errorObject);
-  }
-  
-  if (argv.Length() > 1) {
-    parameters = ConvertHelper(argv[1]);
   }
 
   if (context->_first) {
@@ -2324,10 +2338,6 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   }
 
   TRI_FreeParseContextAql(context);
-  
-  if (parameters) {
-    TRI_FreeJson(parameters);
-  }
 
   return scope.Close(result);
 }

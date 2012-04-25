@@ -1,640 +1,384 @@
 <html>
+
   <head>
-    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
-    <link rel="shortcut icon" type="image/ico" href="favicon.ico" />
-    <title>Avocado DB - Table Example</title>
-    <style type="text/css" title="screen">
-      @import "css/demo_table_jui.css";
-      @import "css/jquery-ui-1.8.17.custom.css";
+    <title>WebAdmin</title>
+    <style type="text/css" title="screen"> 
       @import "css/layout.css";
-      @import "css/jquery.qtip.css";
+      @import "css/jquery-ui-1.8.19.custom.css";
+      @import "css/jquery.dataTables_themeroller.css";  
     </style>
-    <script type="text/javascript" language="javascript" src="script/jquery.js"></script>
-    <script type="text/javascript" language="javascript" src="script/jquery.dataTables.js"></script>
-    <script type="text/javascript" language="javascript" src="script/jquery.layout-latest.js"></script>
-    <script type="text/javascript" language="javascript" src="script/jquery.qtip.js"></script>
-    <script type="text/javascript" language="javascript" src="script/jquery.jeditable.js"></script>
+    <script type="text/javascript" language="javascript" src="js/jquery-1.7.2.js"></script>
+    <script type="text/javascript" language="javascript" src="js/json2.js"></script>
+    <script type="text/javascript" language="javascript" src="js/jquery.sha256.js"></script>
+    <script type="text/javascript" language="javascript" src="js/jquery.layout-latest.js"></script>
+    <script type="text/javascript" language="javascript" src="js/jquery.address-1.4.js"></script>
+    <script type="text/javascript" language="javascript" src="js/jquery.dataTables.js"></script>
+    <script type="text/javascript" language="javascript" src="js/jquery-ui-1.8.18.custom.min.js"></script>
+    <script type="text/javascript" language="javascript" src="js/jquery.dataTables.editable.js"></script>
+    <script type="text/javascript" language="javascript" src="js/jquery.jeditable.js"></script>
+    <script type="text/javascript" language="javascript" src="js/master.js"></script>
+    <script type="text/javascript" language="javascript" src="js/avocsh1.js"></script>
+    <script type="text/javascript" language="javascript" src="js/client.js"></script>
+    <script type="text/javascript" language="javascript" src="js/jsunity.js"></script>
+    <script type="text/javascript" language="javascript" src="js/test.js"></script>
+    
+    <style>
+      a:link {color: #9EAF5A; text-decoration: none;}  
+      a:visited {color: #9EAF5A; text-decoration: none;}
+    </style>
+
   </head>
- 
+
   <body>
-    <script> 
 
-    function dialogue(content, title) {
-      $(this).qtip(
-      {
-        content: {
-          text: content,
-          title: title
-        },
-        position: {
-          my: 'center', at: 'center',
-          target: $(window) 
-        },
-        show: {
-          ready: true, 
-          modal: {
-            on: true, 
-            blur: false 
-          }
-        },
-        hide: false,
-        style: 'ui-tooltip-green ui-tooltip-rounded ui-tooltip-dialogue', 
-        events: {
-          render: function(event, api) {
-            $('button', api.elements.content).click(api.hide);
-          },
-          hide: function(event, api) { api.destroy(); }
-        }
-      });
-    }
+  <div id="header" class="ui-layout-north">
+    <div id="menue" class="ui-layout-north">
 
-    function Confirm(question, callback) {
-      var message = $('<p />', { text: question }),
-        ok = $('<button />', { 
-          text: 'Ok',
-          click: function() { callback(true); }
-        }),
-        cancel = $('<button />', { 
-          text: 'Cancel',
-          click: function() { callback(false); }
-        });
-      dialogue( message.add(ok).add(cancel), 'Do you agree?' );
-    }
-
-    var oCache = {
-      iCacheLower: -1
-    };
- 
-    function fnSetKey( aoData, sKey, mValue )  {
-      for ( var i=0, iLen=aoData.length ; i<iLen ; i++ ) {
-        if ( aoData[i].name == sKey ) {
-          aoData[i].value = mValue;
-        }
-      }
-    }
- 
-    function fnGetKey( aoData, sKey ) {
-      for ( var i=0, iLen=aoData.length ; i<iLen ; i++ )  {
-        if ( aoData[i].name == sKey ) {
-          return aoData[i].value;
-        }
-      }
-      return null;
-    }
- 
-    function fnDataTablesPipeline ( sSource, aoData, fnCallback ) {
-      var iPipe = 5; /* Ajust the pipe size */
-      var bNeedServer = false;
-      var sEcho = fnGetKey(aoData, "sEcho");
-      var iRequestStart = fnGetKey(aoData, "iDisplayStart");
-      var iRequestLength = fnGetKey(aoData, "iDisplayLength");
-      var iRequestEnd = iRequestStart + iRequestLength;
-      oCache.iDisplayStart = iRequestStart;
-     
-       if ( oCache.iCacheLower < 0 || iRequestStart < oCache.iCacheLower || iRequestEnd > oCache.iCacheUpper ) {
-         bNeedServer = true;
-       }
-     
-       if ( oCache.lastRequest && !bNeedServer ) {
-         for( var i=0, iLen=aoData.length ; i<iLen ; i++ ) {
-            if ( aoData[i].name != "iDisplayStart" && aoData[i].name != "iDisplayLength" && aoData[i].name != "sEcho" ) {
-              if ( aoData[i].value != oCache.lastRequest[i].value ) {
-                bNeedServer = true;
-                break;
-              }
-            }
-          }
-        }
-     
-        oCache.lastRequest = aoData.slice();
-        if ( bNeedServer ) {
-          if ( iRequestStart < oCache.iCacheLower ) {
-            iRequestStart = iRequestStart - (iRequestLength*(iPipe-1));
-            if ( iRequestStart < 0 ) {
-              iRequestStart = 0;
-            }
-          }
-         
-          oCache.iCacheLower = iRequestStart;
-          oCache.iCacheUpper = iRequestStart + (iRequestLength * iPipe);
-          oCache.iDisplayLength = fnGetKey( aoData, "iDisplayLength" );
-          fnSetKey( aoData, "iDisplayStart", iRequestStart );
-          fnSetKey( aoData, "iDisplayLength", iRequestLength*iPipe );
-         
-          $.getJSON( sSource, aoData, function (json) {
-            oCache.lastJson = jQuery.extend(true, {}, json);
-             
-            if ( oCache.iCacheLower != oCache.iDisplayStart ) {
-              json.aaData.splice( 0, oCache.iDisplayStart-oCache.iCacheLower );
-            }
-            json.aaData.splice( oCache.iDisplayLength, json.aaData.length );
-            fnCallback(json)
-          });
-        }
-        else {
-          json = jQuery.extend(true, {}, oCache.lastJson);
-          json.sEcho = sEcho; /* Update the echo for each response */
-          json.aaData.splice( 0, iRequestStart-oCache.iCacheLower );
-          json.aaData.splice( iRequestLength, json.aaData.length );
-          fnCallback(json);
-          return;
-        }
-    }
- 
-    $(document).ready(function() {
-
-      document.getElementById("save_doc").disabled=true;
-      
-      //alert(document.location.href);
-      //jQuery Layout init
-      $('body').layout({
-        closable: false,
-        resizable: false,
-        applyDefaultStyles: false,
-        north__spacing_open:2,
-        north__spacing_closed: 2,
-        east__spacing_open: 0,
-        east__spacing_closed: 0,
-      });
-      
-      var xTable;
-      var lastClickedID;
-      var nCloneTh = document.createElement( 'th' );
-      var nCloneTd = document.createElement( 'td' );
-      var nCloneTh2 = document.createElement( 'th' );
-      var nCloneTd2 = document.createElement( 'td' );
-
-      $('#example thead tr').each(function () {
-        this.insertBefore(nCloneTh, this.childNodes[0]);
-      } );
-     
-      $('#example tbody tr').each(function () {
-        this.insertBefore(nCloneTd.cloneNode(true), this.childNodes[0] );
-      });
-
-      $('#subTable thead tr').each(function () {
-        this.insertBefore(nCloneTh2, this.childNodes[0]);
-      } );
-     
-      $('#subTable tbody tr').each(function () {
-        this.insertBefore(nCloneTd2.cloneNode(true), this.childNodes[0] );
-      });
-
-      $.getJSON("/_system/collections", function(data) {
-        var items=[];
-        document.getElementById('ueberschrift').innerHTML="Database Directory:  " + data.path;
-	
-        $.each(data.collections, function(key, val) {
-          var temp_status=val.status;
-          
-          if (temp_status == 1) {
-            temp_status = "new born";
-            items.push(["", val.id, val.name, temp_status, "", ""]);
-          }
-
-          if (temp_status == 2) {
-            temp_status = "unloaded";
-            items.push(["<button class=\"ui-button ui-button-text-only ui-widget ui-state-default ui-corner-all\" id=" + val.id + ">load</button>",
-            val.id, val.name, temp_status, "0", "0"]);
-          }
-  
-          if (temp_status == 3) {
-            temp_status = "loaded";
-            items.push([
-              "<img src=images/edit.gif id=" + val.id + " class=" + val.name + "></img>", 
-              val.id, 
-              '<a class="' + val.id + '">' + val.name + '</a>',
-              temp_status, 
-              val.figures.numberDatafiles, 
-              val.figures.sizeAlive, 
-              val.figures.numberAlive, 
-              val.figures.numberDead, 
-              val.figures.sizeDead, 
-              val.figures.numberDeletion
-            ]);
-          }
-         
-          if (temp_status == 4) {
-            temp_statsu = "corrupted";
-            items.push(["", val.id, val.name, temp_status, "", ""]);
-            }
-          });
-
-        var oTable = $('#example').dataTable( {
-          "bProcessing": true,
-          "fnServerData": fnDataTablesPipeline,
-          "bJQueryUI": true,
-          "aaSorting": [[1, 'asc']],
-          "aaData": items,
-          "sEmptyTable": "No matching data available",
-          "aoColumns": [{ "sClass": "center", "bSortable": false, "sWidth": "100px" },
-            null,
-            null,
-            null,
-            { "sClass": "center" },
-            { "sClass": "center" }
-          ]
-        });
-        
-        $('#example tbody td').live('mouseover', function(event) {
-          
-          var aPos = oTable.fnGetPosition( this );
-          var aData = oTable.fnGetData( this.parentNode );
-
-          if (aData[3] == "loaded") {
-            var sOut = '<table cellpadding="3" cellspacing="0" border="0" >';
-            sOut += '<tr><td>#Datafiles: </td><td>'+aData[4]+' </td></tr>';
-            sOut += '<tr><td>#Alive: </td><td>'+aData[6]+' </td></tr>';
-            sOut += '<tr><td>#Dead: </td><td>'+aData[7]+' </td></tr>';
-            sOut += '<tr><td>#Size Alive: </td><td>'+aData[5]+' </td></tr>';
-            sOut += '<tr><td>#Size Dead: </td><td>'+aData[8]+' </td></tr>';
-            sOut += '<tr><td>#numberDeletion: </td><td>'+aData[9]+' </td></tr>';
-            sOut += '</table>';
-            
-            $(this).qtip({
-              overwrite: false, 
-              content: {
-                text: sOut, 
-                title: '<b>Name: ' + aData[2] + '<br>ID: ' + aData[1],
-              },
-              show: {
-                event: event.type, 
-                ready: true 
-              },
-              position: {
-                my: 'top left',
-                target: 'mouse',
-                viewport: $(window), 
-                adjust: { 
-                  x: 10, y: 10
-                }
-              },
-              style: {
-                classes: 'ui-tooltip-green ui-tooltip-rounded ui-tooltip-shadow'
-              },
-              hide: {
-                fixed: true
-              },
-            }, event); 
-          }
-        })
-        
- 
-        .each(function(i) {
-        $.attr(this, 'oldtitle', $.attr(this, 'title'));
-        this.removeAttribute('title');
-        });
-
-        $('#example tbody td img ').live('click', function () {
-          if ( this.src.match('edit') ) {
-
-            var collection_sub_id = this.id;
-            $.getJSON("/_system/documents?collection=" + collection_sub_id, function(data) {
-            var sub_items=[];
-            var i = 0;
-            $.each(data.references, function(val) {
-              sub_items.push(["<img src=images/edit.gif id=" + data.references[i] +  "></img><img src=images/delete.png id=" + data.references[i] + "></img>", 
-              data.references[i]]);
-            i = i + 1;
-            });
-
-            xTable = $('#subTable').dataTable( {
-              "fnServerData": fnDataTablesPipeline,
-              "bDestroy": true,
-              "bProcessing": true,
-              "bJQueryUI": true,
-              "aaData": sub_items,
-              "sEmptyTable": "No matching data available",
-              "aoColumns": [ {"bSortable":false, "sClass":"center", "sWidth":"100px"} , {"sClass":"center"}]
-            });
-          });
-
-            $('#detail_view').show();
-            $('#tableWindow').hide();
-            document.getElementById('database_header2').innerHTML=" > " + this.id;
-          }
-        });
-
-        $('#subTable tbody td img ').live('click', function () {
-          if (this.src.match('delete')) {
-            var getJSON_sub = "../_document/" + this.id; 
-            Confirm('Really delete this document?', function(yes) {
-              $.ajax({
-                type: 'DELETE',
-                contentType: "application/json",
-                url: getJSON_sub,
-              });
-            });
-            Confirm('Really delete this document?', function(no) {
-              });
-          }
-
-          if (this.src.match('edit')) {
-            document.getElementById('database_header3').innerHTML=" > " + this.id
-            var doc_items = [];
-            lastClickedID = this.id;
-            var getJSON_sub = "/_document/" + this.id;
-            $.ajax({
-              type: "GET",
-              url: getJSON_sub,
-              contentType: "application/json",
-              success: function(data) {
-                $.each(data, function(key, val) {
-                  doc_items.push([key, val]);
-                  $('#edit_view').show();
-                  $('#new_document_view').hide();
-                  $('#detail_view').hide();
-                });
-                yTable = $('#docTable').dataTable( {
-                "bDestroy": true,
-                "bProcessing": true,
-                "aoColumns": [ {"sClass":"center"}, {"sClass":"center"} ],
-                "bJQueryUI": true,
-                "aaData": doc_items,
-                "sEmptyTable": "No matching data available",
-                });
-                $('td', yTable.fnGetNodes()).editable(function(value, settings) {
-                  var aPos = yTable.fnGetPosition(this); 
-                  yTable.fnUpdate(value, aPos[0], aPos[1]);
-                  var obj  = yTable.fnGetData();
-
-                  var dummymann = { };
-                  for (var key in obj) {
-                    var element = obj[key];
-                    var namex = new String(obj[key][0]);
-                    if (!namex.match(/^[a-zA-Z_][a-zA-Z0-9_]*$/)) {
-                      alert("Musse fix "+namex);
-                      return 0;
-                    }
-                    if (! isNaN(obj[key][1])) {
-                      dummymann[namex] = Number(obj[key][1]);
-                      $('#save_doc').removeClass('ui-state-disabled');  
-                      document.getElementById("save_doc").disabled=false;   
-                      return value;
-                    }
-                    else {
-                      dummymann[namex] = obj[key][1]; 
-                      $('#save_doc').removeClass('ui-state-disabled');  
-                      document.getElementById("save_doc").disabled=false;  
-                      return value; 
-                    }
-                  } 
-                },{
-                  type: 'textarea', 
-                  submit: 'Ok',
-                  cancel: 'Cancel',
-                  indicator: 'img/indicator.gif'
-                });
-              },
-              error: function() {
-                alert("Error");
-                return 0;
-              }
-            });
-          }
-        });
-
-        $("button").click(function() {
-          var button_id = this.id;
-          var getJSON_sub = lastClickedID;
-
-          if (button_id == "add_row") {
-            $('#docTable').dataTable().fnAddData( ["key", "val"] );
-            
-              $('td', yTable.fnGetNodes()).editable(function(value, settings) {
-                var aPos = yTable.fnGetPosition(this); 
-                yTable.fnUpdate(value, aPos[0], aPos[1]);
-                var obj  = yTable.fnGetData();
-                var dummymann = { };
-                for (var key in obj) {
-                  var element = obj[key];
-                  var namex = new String(obj[key][0]);
-                  if (!namex.match(/^[a-zA-Z_][a-zA-Z0-9_]*$/)) {
-                    alert("Musse fix "+namex);
-                  }
-                  if (! isNaN(obj[key][1])) {
-                    dummymann[namex] = Number(obj[key][1]);
-                    document.getElementById("save_doc").disabled=false;
-                    $('#save_doc').removeClass('ui-state-disabled');
-                    return value;
-                  }
-                  else {
-                    dummymann[namex] = obj[key][1];
-                    document.getElementById("save_doc").disabled=false;
-                    $('#save_doc').removeClass('ui-state-disabled');
-                    return value;
-                  }
-                } 
-                },{
-                  type: 'textarea', 
-                  submit: 'Ok',
-                  cancel: 'Cancel',
-                  indicator: 'img/indicator.gif'
-                });
-            return 0;
-          } 
-          
-          if (button_id == "back_entry") {
-            xTable.fnClearTable();
-            $('#new_document_view').hide();
-            $('#edit_view').hide();
-            $('#detail_view').hide();
-            $('#tableWindow').show();
-            document.getElementById('database_header2').innerHTML="";
-            return 0;
-          }
-
-          if (button_id == "back_entry2") {
-            $('#edit_view').hide();
-            $('#detail_view').show();
-            return 0;
-          }
-
-          if (button_id == "save_doc") {
-        
-            var obj  = yTable.fnGetData();          
-              alert("obj: " + JSON.stringify(obj));    
-                var dummymann = { };
-                for (var key in obj) {
-                  var element = obj[key];
-                  var namex = new String(obj[key][0]);
-                  if (!namex.match(/^[a-zA-Z_][a-zA-Z0-9_]*$/)) {
-                    alert("Musse fix "+namex);
-                  }
-                  if (! isNaN(obj[key][1])) {
-                    dummymann[namex] = Number(obj[key][1]);
-                  }
-                  else {
-                    dummymann[namex] = obj[key][1];
-                  }
-                }
-
-            var getJSON_sub_url = "/_document/" + lastClickedID;
-            $.ajax({
-              type: "PUT",
-              url: getJSON_sub_url,
-              contentType: "application/json",
-              data: JSON.stringify(dummymann),
-              statusCode: {
-                204: function() {
-                alert("Done!");
-                $('#save_doc').addClass('ui-state-disabled');  
-                document.getElementById("save_doc").disabled=true;
-                },
-                400: function() {
-                alert("Error! - Wrong Syntax?!");
-                }
-              }
-            });
-
-          return 0;
-          }
-         
-          if (button_id == "new_document") {
-            $('#edit_view').hide();
-            $('#new_document_view').show();
-            return 0;
-          }
-  
-          if (button_id == "add_json") {
-            var json_input_data = document.getElementById('json_new_document').value; 
-            var json_input_url = "/_document/" + document.getElementById('database_header2').innerHTML;
-            $.ajax({
-              type: "POST",
-              url: json_input_url,
-              contentType: "application/json",
-              data: json_input_data,
-              statusCode: {
-                204: function() {
-                  var collection_sub_id = document.getElementById('database_header2').innerHTML;;
-                  $.getJSON("/_system/documents?collection=" + collection_sub_id, function(data) {
-                    var sub_items=[];
-                    var i = 0;
-                    $.each(data.references, function(val) {
-                      sub_items.push(["<img src=images/edit.gif id=" + data.references[i] +  "></img><img src=images/delete.png></img>", 
-                      data.references[i]]);
-                      i = i + 1;
-                    });
-
-                    xTable = $('#subTable').dataTable( {
-                      "bDestroy": true,
-                      "bProcessing": true,
-                      "bJQueryUI": true,
-                      "aaData": sub_items,
-                      "sEmptyTable": "No matching data available",
-                      "aoColumns": [ {"bSortable":false, "sClass":"center"} , {"sClass":"center"}]
-                    });
-                  });
-                  alert("Done!");
-                },
-                201: function() {
-                  var collection_sub_id = document.getElementById('database_header2').innerHTML;;
-                  $.getJSON("/_system/documents?collection=" + collection_sub_id, function(data) {
-                    var sub_items=[];
-                    var i = 0;
-                    $.each(data.references, function(val) {
-                      sub_items.push(["<img src=images/edit.gif id=" + data.references[i] +  "></img><img src=images/delete.png></img>", 
-                      data.references[i]]);
-                      i = i + 1;
-                    });
-
-                    xTable = $('#subTable').dataTable({
-                      "bDestroy": true,
-                      "bProcessing": true,
-                      "bJQueryUI": true,
-                      "aaData": sub_items,
-                      "sEmptyTable": "No matching data available",
-                      "aoColumns": [ {"bSortable":false, "sClass":"center"} , {"sClass":"center"}]
-                    });
-                  });
-                  alert("Done!");
-                },
-                400: function() {
-                  alert("Error!");
-                }
-              }
-            });
-            return 0;
-          }
-          
-          else {
-            $.ajax({
-              url: "/_system/collection/load?collection=" + button_id, 
-              success: function() {
-                alert('Document: \"' + button_id + '\" loaded');
-                location.reload();
-              },
-              error: function(){
-                alert(button_id + ' error' );
-              }
-            });
-          }
-	});
-      });
-    });
-     
-    </script>
-
-    <div class="ui-layout-north">
-    <b><a href="/admin/index.html" id="database_header1" style="text-decoration: none; color:white">Home</b></a>
-      <b><a href=# id="database_header2" style="color:white; text-decoration:none"></a></b>
-      <b><a href=# id="database_header3" style="color:white; text-decoration:none"></a></b> 
-    </div>
-
-    <div class="ui-layout-east" bgcolor=grey>
-      <a href="/admin/index.html"><img src="/admin/images/avocado.png" style="width: 100%"></img></a><br>
-      <div id = navigation>
-        <ul>
-          <a href="#test">Aberdeen</a><br>
-          <a href="#">Adamsville</a><br>
-          <a href="#">Addyston</a><br>
-          <a href="#">Adelphi</a><br>
-        </ul>
+      <div id="menue-left">
+        <a href="/_admin/html/index.html"><img src="../html/media/images/avocadodb_logo.png"></a>
       </div>
+
+      <div id="menue-center">
+      </div>
+
+      <div id="menue-right">
+        <button class="minimal" id="Collections">Collections</button>
+        <button class="minimal" id="Status">Status</button>
+        <button class="minimal" id="Logs">Logs</button>
+        <button class="minimal" id="Configuration">Configuration</button>
+        <button class="minimal" id="Query">Query</button>
+        <button class="minimal" id="AvocSH">AvocSH</button>
+      </div>
+
     </div>
-	
-    <div class="ui-layout-center">
-      <div class="tabelle" id="tableWindow">
-        <i id="ueberschrift" style="color:black">Database Directory:</i>
-        <table cellpadding="0" cellspacing="0" border="0" class="display" id="example">
+    <div id="brotkruemelnavi" class="ui-layout-south">
+      <a id="nav1"></a>
+      <a id="nav2"></a>
+      <a id="nav3"></a>
+      <a id="nav4"></a>
+    </div>
+  </div>
+  
+  <div id="centerView" class="ui-layout-center" class="ui-layout-content">
+    <div id="collectionsView">
+      <button class="toolbar" id="createCollection">
+        <img src="/_admin/html/media/icons/round_plus_icon16.png" width="16" height="16">
+        <a>New Collection</a>
+      </button>
+      <button class="toolbar" id="refreshCollections">
+        <img src="/_admin/html/media/icons/refresh_icon16.png" width="16" height="16">
+        <a>Refresh</a>
+      </button>
+      <table cellpadding="0" cellspacing="0" border="0" class="display" id="collectionsTableID" width="100%">
+        <thead>
+          <tr>
+            <th></th>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Size Documents</th>
+            <th>Alive</th>
+          </tr>
+        </thead>
+      </table>       
+    </div>
+
+    <div id="subCenterView">
+
+      <div id="createCollectionView" style="display: none">
+      <button class="minimal" id="saveNewCollection">
+        <img src="/_admin/html/media/icons/save_icon16.png" width="16" height="16">
+        <a>Save Collection</a>
+      </button>
+      <button class="minimal" id="cancelNewCollection">
+        <img src="/_admin/html/media/icons/cancel_icon16.png" width="16" height="16">
+        <a>Cancel</a>
+      </button>
+        <table cellpadding="0" cellspacing="0" border="0" class="display" id="createCollectionTableID" width="100%">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Name</th>
-              <th>Status</th>
-              <th>Datafiles</th>
-              <th>Size Documents</th>
-            </tr> 
+              <th></th>
+              <th>Key</th>
+              <th>Value</th>
+            </tr>
           </thead>
-        </table>
+        </table>       
       </div>
 
-      <div id="detail_view" style="display:none">
-        <button class="ui-button ui-button-text-only ui-widget ui-state-default ui-corner-all" id="back_entry">Back</button>
-        <button class="ui-button ui-button-text-only ui-widget ui-state-default ui-corner-all" id="new_document">Add Document</button><br></br>
-        <table cellpadding="0" cellspacing="0" border="0" class="display" id="subTable">
+      <div id="editCollectionView" style="display: none">
+      <button class="minimal" id="saveEditedCollection">
+        <img src="/_admin/html/media/icons/doc_plus_icon16.png" width="16" height="16">
+        <a>Save Collection</a>
+      </button>
+        <table cellpadding="0" cellspacing="0" border="0" class="display" id="editCollectionTableID" width="100%">
           <thead>
             <tr>
-              <th>ID</th>
+              <th></th>
+              <th>Key</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+        </table>       
+      </div>
+
+      <div id="documentsView" style="display: none">
+      <button class="minimal" id="addDocumentButton">
+        <img src="/_admin/html/media/icons/doc_plus_icon16.png" width="16" height="16">
+        <a>Add Document</a>
+      </button>
+        <table cellpadding="0" cellspacing="0" border="0" class="display" id="documentsTableID" width="100%">
+          <thead>
+            <tr>
+              <th></th>
+              <th>_id</th>
+              <th>_rev</th>
+              <th>Content</th>
             </tr>
           </thead>
         </table>
       </div>
 
-      <div id="edit_view" style="display:none">
-        <button class="ui-button ui-button-text-only ui-widget ui-state-default ui-corner-all" id="back_entry2"> Back </button>
-        <button class="ui-button ui-button-text-only ui-widget ui-state-default ui-corner-all" id="add_row"> Add Line </button>
-        <button class="ui-button ui-button-text-only ui-widget ui-state-default ui-corner-all ui-state-disabled" id="save_doc"> Save Document </button><br></br>
-        <table cellpadding="0" cellspacing="0" border="0" class="display" id="docTable">
-          <thead>
-            <tr>
-              <th>Fields</th>
-              <th>Value</th>
-          <thead>
-        </table>
-      </div>      
+      <div id="documentEditView" style="display: none">
+       <button class="minimal" id="saveEditedDocButton">
+         <img src="/_admin/html/media/icons/save_icon16.png" width="16" height="16">
+         <a>Save Document</a>
+         </button>
+       <button class="minimal" id="addEditedDocRowButton">
+         <img src="/_admin/html/media/icons/round_plus_icon16.png" width="16" height="16">
+         <a>Add row</a>
+         </button>
+       <button class="minimal" id="toggleEditedDocButton">
+         <a>Source</a>
+         <img src="/_admin/html/media/icons/off_icon16.png" width="16" height="16">
+         </button>
+        <div id="documentEditTableView">
+          <table cellpadding="0" cellspacing="0" border="0" class="display" id="documentEditTableID" width="100%">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Key</th>
+                <th>Value</th>
+                <th>type</th>
+              </tr>
+            </thead>
+          </table>
+        </div>
+
+        <div id="documentEditSourceView" style="display: none">
+          <textarea id="documentEditSourceBox" class="editBox"></textarea>
+        </div>
+ 
+      </div>
+
+      <div id="newDocumentView" style="display: none">
+
+        <div id="newDocumentTableView">
+          <button class="minimal" id="saveNewDocButton">
+            <img src="/_admin/html/media/icons/save_icon16.png" width="16" height="16">
+            <a>Save Document</a>
+          </button>
+          <button class="minimal" id="addNewDocButton">
+            <img src="/_admin/html/media/icons/round_plus_icon16.png" width="16" height="16">
+            <a>Add row</a>
+          </button>
+          <button class="minimal" id="toggleNewDocButton">
+            <a>Source</a>
+            <img src="/_admin/html/media/icons/off_icon16.png" width="16" height="16">
+          </button>
+          <div id="NewDocumentTableView">
+            <table cellpadding="0" cellspacing="0" border="0" class="display" id="NewDocumentTableID" width="100%">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Key</th>
+                  <th>Value</th>
+                  <th>type</th>
+                </tr> 
+              </thead>
+            </table>
+          </div>
+        </div>
+
+        <div id="NewDocumentSourceView" style="display:none">
+          <textarea id="NewDocumentSourceBox" class="editBox"></textarea>
+        </div>
+
+      </div>
+
+      <div id="logView" style="display: none">
+        
+        <div id="tabs">
+          <ul>
+            <li><a href="#All">All</a><li>
+            <li><a id="logCritTab" href="#Critical">Critical</a><li>
+            <li><a id="logWarnTab" href=#Warning">Warning</a><li>
+            <li><a id="logInfoTab" href="#Info">Info</a><li>
+            <li><a id="logDebuTab" href="#Debug">Debug</a><li>
+          </ul>
+        
+          <div id="All">
+            <table cellpadding="0" cellspacing="0" border="0" class="display" id="logTableID" width="100%">
+              <thead>
+                <tr>
+                  <th>Loglevel</th>
+                  <th>Info</th>
+                </tr> 
+              </thead>
+            </table>
+            <div id="logToolbar">
+                <button id="logTableID_prev">Prev</button>
+                <button id="logTableID_next">Next</button>
+            </div>
+          </div>
+
+          <div id="Critical">
+            <table cellpadding="0" cellspacing="0" border="0" class="display" id="critLogTableID" width="100%">
+              <thead>
+                <tr>
+                  <th>Loglevel</th>
+                  <th>Info</th>
+                </tr> 
+              </thead>
+            </table>
+            <div id="logToolbar">
+              <button id="critLogTableID_prev">Prev</button>
+              <button id="critLogTableID_next">Next</button>
+            </div>
+          </div>
+        
+          <div id="Warning">
+            <table cellpadding="0" cellspacing="0" border="0" class="display" id="warnLogTableID" width="100%">
+              <thead>
+                <tr>
+                  <th>Loglevel</th>
+                  <th>Info</th>
+                </tr> 
+              </thead>
+            </table>
+            <div id="logToolbar">
+              <button id="warnLogTableID_prev">Prev</button>
+              <button id="warnLogTableID_next">Next</button>
+            </div>
+          </div>
+
+          <div id="Info">
+            <table cellpadding="0" cellspacing="0" border="0" class="display" id="infoLogTableID" width="100%">
+              <thead>
+                <tr>
+                  <th>Loglevel</th>
+                  <th>Info</th>
+                </tr> 
+              </thead>
+            </table>
+            <div id="logToolbar">
+              <button id="infoLogTableID_prev">Prev</button>
+              <button id="infoLogTableID_next">Next</button>
+            </div> 
+          </div>
+
+          <div id="Debug">
+            <table cellpadding="0" cellspacing="0" border="0" class="display" id="debugLogTableID" width="100%">
+              <thead>
+                <tr>
+                  <th>Loglevel</th>
+                  <th>Info</th>
+                </tr> 
+              </thead>
+            </table>
+            <div id="logToolbar">
+              <button id="debugLogTableID_prev">Prev</button>
+              <button id="debugLogTableID_next">Next</button>
+            </div>
+          </div>
+          
+        </div>
+ 
+      </div>
+ 
+      <div id="statusView" style="display: none">
+      </div>
+
+      <div id="configView" style="display: none">
+      </div>
+
+      <div id="avocshView" style="display: none">
+        <div class="editBox" id="avocshWindow">
+        </div>
+      
+        <form>
+          <input type="text" class="editBox" id="avocshContent"></input><button class="minimal" id="submitAvoc">Ok</button>
+        </form>
+ 
+      </div>
+
+      <div id="queryView" style="display: none">
+        <form id="queryForm" method="post" onsubmit="return false">
+          <textarea class="editBox" id="queryContent"></textarea><br><button class="minimal" id="submitQuery">Post</button>
+        </form>   
+
+        <div id="queryOutput">
+        </div>
+      </div>
+
+    </div> 
+ 
+    <div id="footerSlideContainer" class="ui-layout-south" class="footer-ui">
+      <div id="footerSlideButton"></div>
+	<div id="footerSlideContent"> 
+          <div id="footerSlideText">
+
+            <div id="footerLeft"> 
+              <a>Welcome </a><a id="activeUser" class="loggedout">Guest!</a>
+              <button class="minimal" id="movetologinButton">Login</button><button class="minimal" id="logoutButton">Logout</button>
+              <form class="login-form" id="loginWindow" action="#">
+              <input type="text" name="username" id="usernameField" placeholder="username"> 
+              <input type="password" name="password" id="passwordField" placeholder="password">
+              <button class="minimal" value="log in" id="loginButton">Login</button>
+              </form>
+            
+            </div>
+            
+            <div id="footerCenter">
+              &copy; AvocadoDB 2012 <br></br>
+              <div id="footerCenterContent">
+                <a> Stay in touch: </a>
+                <a href="http://twitter.com/avocadodb">
+                  <img src="/_admin/html/media/icons/twitter.png" width="32" height="32">
+                  Twitter
+                </a>
+                <a href="http://github.com/triAGENS/AvocadoDB">
+                  <img src="/_admin/html/media/icons/git.png" width="32" height="32">
+                  GitHub
+                </a>
+                <a href="http://avocadodb.org">
+                  <img src="/_admin/html/media/icons/avocadodb32.png" width="32" height="32">
+                  AvocadoDB.org
+                </a>
+                <a href="http://groups.google.com/group/avocadodb">
+                  <img src="/_admin/html/media/icons/google.png" width="32" height="32">
+                  GoogleGroup
+                </a>
+              </div>
+            </div>
+
+            <div id="footerRight">
+            </div>
+
+          </div>
+	</div>
+       </div>
+      </div>
+    
 
     </div>
+
+  </div> 
+
+  <div id="dialog-deleteCollection" title="Really delete collection?">
+    <p><span class="ui-icon ui-icon-alert" style="float:left; margin:0 7px 20px 0;"></span>
+    The collection will be permanently deleted and cannot be recovered.</p>
+  </div>
+
 
   </body>
 </html>

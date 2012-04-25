@@ -10,6 +10,9 @@ JsonParser/%.c: @srcdir@/JsonParser/%.l
 QL/%.c: @srcdir@/QL/%.l
 	@top_srcdir@/config/flex-c.sh $(LEX) $@ $<
 
+Ahuacatl/%.c: @srcdir@/Ahuacatl/%.l
+	@top_srcdir@/config/flex-c.sh $(LEX) $@ $<
+
 ################################################################################
 ## FLEX++
 ################################################################################

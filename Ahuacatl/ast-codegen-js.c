@@ -1047,14 +1047,14 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
         AppendCode(generator, ")");
         break;
       case AQL_NODE_OPERATOR_BINARY_DIV:
-        AppendCode(generator, "AHUACATL_ARITHMETIC_DIV(");
+        AppendCode(generator, "AHUACATL_ARITHMETIC_DIVIDE(");
         GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_lhs);
         AppendCode(generator, ", ");
         GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_rhs);
         AppendCode(generator, ")");
         break;
       case AQL_NODE_OPERATOR_BINARY_MOD:
-        AppendCode(generator, "AHUACATL_ARITHMETIC_MOD(");
+        AppendCode(generator, "AHUACATL_ARITHMETIC_MODULUS(");
         GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_lhs);
         AppendCode(generator, ", ");
         GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_rhs);
@@ -1222,14 +1222,20 @@ char* TRI_GenerateCodeAql (const void* const data) {
   if (!generator->_error) {
     char* funcName = generator->_funcName;
 
-    TRI_AppendStringStringBuffer(&generator->_buffer, "return ");
+    TRI_AppendStringStringBuffer(&generator->_buffer, "try {\n");
+    TRI_AppendStringStringBuffer(&generator->_buffer, "  return ");
     TRI_AppendStringStringBuffer(&generator->_buffer, funcName);
     TRI_AppendStringStringBuffer(&generator->_buffer, "( { } );\n");
+    TRI_AppendStringStringBuffer(&generator->_buffer, "}\n");
+    TRI_AppendStringStringBuffer(&generator->_buffer, "catch (e) {\n");
+    TRI_AppendStringStringBuffer(&generator->_buffer, "print(e);\n");
+    TRI_AppendStringStringBuffer(&generator->_buffer, "}\n");
 
     TRI_AppendStringStringBuffer(&generator->_buffer, "})();\n");
 
     code = TRI_DuplicateString(generator->_buffer._buffer);
     LOG_TRACE("generated code:\n%s\n",code);
+    //printf("generated code:\n%s\n",code);
   }
 
   TRI_FreeCodegenAql(generator);

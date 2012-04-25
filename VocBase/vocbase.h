@@ -303,7 +303,8 @@ typedef struct TRI_vocbase_s {
   TRI_thread_t _compactor;
 
   struct TRI_shadow_store_s* _cursors;
-  TRI_associative_pointer_t* _functions;
+  TRI_associative_pointer_t* _functions; // deprecated
+  TRI_associative_pointer_t* _functionsAql;
 }
 TRI_vocbase_t;
 

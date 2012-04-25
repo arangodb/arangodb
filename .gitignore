@@ -28,6 +28,8 @@ build.h
 build.info
 commit.sh
 config/config.h
+config/config.guess
+config/config.sub
 config.h
 config.log
 config/revision.sh
@@ -86,6 +88,7 @@ stamp-h*
 .svn
 *.swp
 tags
+Ahuacatl/ahuacatl-grammar.output
 UnitTests/HttpInterface/logs
 UnitTests/Jutland/CsvReaderTest.cpp
 UnitTests/Jutland/Makefile.am
@@ -97,3 +100,4 @@ UnitTests/Philadelphia/Runner.cpp
 UnitTests/test_suite
 .v8-build
 VC++
+/nbproject/private/

@@ -88,7 +88,7 @@
 
 #include "Ahuacatl/ast-node.h"
 #include "Ahuacatl/parser.h"
-#include "Ahuacatl/error.h"
+#include "Ahuacatl/ahuacatl-error.h"
 
 
 
@@ -216,7 +216,7 @@ typedef struct YYLTYPE
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief forward for lexer function defined in tokens.l
+/// @brief forward for lexer function defined in ahuacatl-tokens.l
 ////////////////////////////////////////////////////////////////////////////////
 
 int Ahuacatllex (YYSTYPE*, YYLTYPE*, void*);
@@ -569,8 +569,8 @@ static const yytype_uint16 yyrline[] =
      574,   582,   593,   604,   606,   611,   614,   620,   623,   629,
      629,   642,   644,   649,   654,   662,   662,   675,   677,   682,
      684,   689,   697,   706,   713,   720,   730,   737,   744,   754,
-     757,   763,   771,   785,   793,   801,   812,   829,   836,   845,
-     851,   858
+     757,   763,   771,   785,   793,   801,   812,   823,   830,   839,
+     845,   852
 };
 #endif
 
@@ -2792,13 +2792,7 @@ yyreduce:
 /* Line 1455 of yacc.c  */
 #line 812 "Ahuacatl/grammar.y"
     {
-      TRI_aql_node_t* node; 
-      
-      if (!(yyvsp[(1) - (1)].strval)) {
-        YYABORT;
-      }
-
-      node = TRI_CreateNodeParameterAql(context, (yyvsp[(1) - (1)].strval));
+      TRI_aql_node_t* node = TRI_CreateNodeParameterAql(context, (yyvsp[(1) - (1)].strval));
       if (!node) {
         YYABORT;
       }
@@ -2810,7 +2804,7 @@ yyreduce:
   case 97:
 
 /* Line 1455 of yacc.c  */
-#line 829 "Ahuacatl/grammar.y"
+#line 823 "Ahuacatl/grammar.y"
     {
       if (!(yyvsp[(1) - (1)].strval)) {
         YYABORT;
@@ -2823,7 +2817,7 @@ yyreduce:
   case 98:
 
 /* Line 1455 of yacc.c  */
-#line 836 "Ahuacatl/grammar.y"
+#line 830 "Ahuacatl/grammar.y"
     {
       if (!(yyvsp[(1) - (1)].strval)) {
         YYABORT;
@@ -2836,7 +2830,7 @@ yyreduce:
   case 99:
 
 /* Line 1455 of yacc.c  */
-#line 845 "Ahuacatl/grammar.y"
+#line 839 "Ahuacatl/grammar.y"
     {
       (yyval.strval) = (yyvsp[(1) - (1)].strval);
     ;}
@@ -2845,7 +2839,7 @@ yyreduce:
   case 100:
 
 /* Line 1455 of yacc.c  */
-#line 851 "Ahuacatl/grammar.y"
+#line 845 "Ahuacatl/grammar.y"
     {
       if (!(yyvsp[(1) - (1)].strval)) {
         YYABORT;
@@ -2858,7 +2852,7 @@ yyreduce:
   case 101:
 
 /* Line 1455 of yacc.c  */
-#line 858 "Ahuacatl/grammar.y"
+#line 852 "Ahuacatl/grammar.y"
     {
       if (!(yyvsp[(2) - (2)].strval)) {
         YYABORT;
@@ -2871,7 +2865,7 @@ yyreduce:
 
 
 /* Line 1455 of yacc.c  */
-#line 2875 "Ahuacatl/grammar.c"
+#line 2869 "Ahuacatl/grammar.c"
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
