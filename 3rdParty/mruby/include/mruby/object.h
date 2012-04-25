@@ -1,3 +1,9 @@
+/*
+** object.h - Object, NilClass, TrueClass, FalseClass class
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #ifndef MRUBY_OBJECT_H
 #define MRUBY_OBJECT_H
 

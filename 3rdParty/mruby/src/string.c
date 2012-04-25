@@ -1,3 +1,9 @@
+/*
+** string.c - String class
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #include "mruby.h"
 
 #include <stdarg.h>
@@ -8,10 +14,9 @@
 #include <ctype.h>
 #include "mruby/array.h"
 #include "mruby/class.h"
-#include "variable.h"
+#include "mruby/variable.h"
 #include "mruby/hash.h"
 #include <stdio.h>
-#include "variable.h"
 #include "re.h"
 #ifdef INCLUDE_REGEXP
 #include "regex.h"
@@ -75,14 +80,6 @@ mrb_str_set_len(mrb_state *mrb, mrb_value str, long len)
 static mrb_value mrb_enc_cr_str_buf_cat(mrb_state *mrb, mrb_value str, const char *ptr, long len,
                                        int ptr_encindex, int ptr_cr, int *ptr_cr_ret);
 #endif //INCLUDE_ENCODING
-mrb_value
-mrb_tainted_str_new(mrb_state *mrb, const char *ptr, long len)
-{
-    mrb_value str = mrb_str_new(mrb, ptr, len);
-
-    //OBJ_TAINT(str);
-    return str;
-}
 
 #ifdef INCLUDE_ENCODING
 mrb_value
@@ -98,7 +95,7 @@ mrb_external_str_new_with_enc(mrb_state *mrb, const char *ptr, long len, mrb_enc
 {
   mrb_value str;
 
-  str = mrb_tainted_str_new(mrb, ptr, len);
+  str = mrb_str_new(mrb, ptr, len);
   if (eenc == mrb_usascii_encoding(mrb) &&
     mrb_enc_str_coderange(mrb, str) != ENC_CODERANGE_7BIT) {
     mrb_enc_associate(mrb, str, mrb_ascii8bit_encoding(mrb));
@@ -791,8 +788,6 @@ mrb_str_plus_m(mrb_state *mrb, mrb_value self)
              RSTRING_PTR(str2), RSTRING_LEN(str2));
   RSTRING_PTR(str3)[RSTRING_LEN(str3)] = '\0';
 #ifdef INCLUDE_ENCODING
-  //if (OBJ_TAINTED(str1) || OBJ_TAINTED(str2))
-  //  OBJ_TAINT(str3);
   ENCODING_CODERANGE_SET(mrb, str3, mrb_enc_to_index(enc),
      ENC_CODERANGE_AND(ENC_CODERANGE(self), ENC_CODERANGE(str2)));
 #endif //INCLUDE_ENCODING
@@ -883,7 +878,6 @@ mrb_str_times(mrb_state *mrb, mrb_value self)
   }
   ptr2[RSTRING_LEN(str2)] = '\0';
 
-  //OBJ_INFECT(str2, str);
   mrb_enc_cr_str_copy_for_substr(mrb, str2, self);
 
   return str2;
@@ -1498,7 +1492,6 @@ num_index:
             return mrb_nil_value();
           default:
             tmp = mrb_str_substr(mrb, str, beg, len);
-            /*OBJ_INFECT(tmp, indx);*/
             return tmp;
         }
       }
@@ -2100,7 +2093,6 @@ mrb_str_each_line(mrb_state *mrb, mrb_value str)
        (rslen <= 1 ||
         memcmp(prs->buf, p-rslen, rslen) == 0)) {
       line = mrb_str_new5(mrb, str, s, p - s);
-      /*OBJ_INFECT(line, str);*/
       mrb_yield(mrb, b, line);
       str_mod_check(mrb, str, ptr, len);
       s = p;
@@ -2110,7 +2102,6 @@ mrb_str_each_line(mrb_state *mrb, mrb_value str)
   if (s != pend) {
     if (p > pend) p = pend;
     line = mrb_str_new5(mrb, str, s, p - s);
-    /*OBJ_INFECT(line, str);*/
     mrb_yield(mrb, b, line);
   }
 
@@ -2218,7 +2209,6 @@ mrb_str_new_shared(mrb_state *mrb, mrb_value str)
 {
     mrb_value str2 = str_new3(mrb, mrb_obj_class(mrb, str), str);
 
-    //OBJ_INFECT(str2, str);
     return str2;
 }
 
@@ -2405,7 +2395,6 @@ mrb_str_buf_append(mrb_state *mrb, mrb_value str, mrb_value str2)
     mrb_enc_cr_str_buf_cat(mrb, str, RSTRING_PTR(str2), RSTRING_LEN(str2),
         ENCODING_GET(mrb, str2), str2_cr, &str2_cr);
 
-    //OBJ_INFECT(str, str2);
     ENC_CODERANGE_SET(str2, str2_cr);
 
     return str;
@@ -2468,7 +2457,6 @@ str_gsub(mrb_state *mrb, mrb_value str, mrb_int bang)
   mrb_int offset, blen, slen, len, last;
   int iter = 0;
   char *sp, *cp;
-  //int tainted = 0;
   mrb_encoding *str_enc;
 
   mrb_get_args(mrb, "*", &argv, &argc);
@@ -2480,7 +2468,6 @@ str_gsub(mrb_state *mrb, mrb_value str, mrb_int bang)
     case 2:
       repl = argv[1];
       mrb_string_value(mrb, &repl);
-      /*if (OBJ_TAINTED(repl)) tainted = 1;*/
       break;
     default:
       mrb_raise(mrb, E_ARGUMENT_ERROR, "wrong number of arguments (%d for 2)", argc);
@@ -2571,9 +2558,6 @@ str_gsub(mrb_state *mrb, mrb_value str, mrb_int bang)
  *  variables such as <code>$1</code>, <code>$2</code>, <code>$`</code>,
  *  <code>$&</code>, and <code>$'</code> will be set appropriately. The value
  *  returned by the block will be substituted for the match on each call.
- *
- *  The result inherits any tainting in the original string or any supplied
- *  replacement string.
  *
  *  When neither a block nor a second argument is supplied, an
  *  <code>Enumerator</code> is returned.
@@ -2811,9 +2795,6 @@ str_replace(mrb_state *mrb, mrb_value str, mrb_value str2)
 /*
  *  call-seq:
  *     str.replace(other_str)   => str
- *
- *  Replaces the contents and taintedness of <i>str</i> with the corresponding
- *  values in <i>other_str</i>.
  *
  *     s = "hello"         #=> "hello"
  *     s.replace "world"   #=> "world"
@@ -3769,8 +3750,6 @@ mrb_str_sub_bang(mrb_state *mrb, mrb_value str)
     }
     mrb_str_modify(mrb, str);
     mrb_enc_associate(mrb, str, enc);
-    //if (OBJ_TAINTED(repl)) tainted = 1;
-    //if (OBJ_UNTRUSTED(repl)) untrusted = 1;
     if (ENC_CODERANGE_UNKNOWN < cr && cr < ENC_CODERANGE_BROKEN) {
       int cr2 = ENC_CODERANGE(repl);
       if (cr2 == ENC_CODERANGE_BROKEN ||
@@ -3831,9 +3810,6 @@ mrb_str_sub_bang(mrb_state *mrb, mrb_value str)
  *  and variables such as <code>$1</code>, <code>$2</code>, <code>$`</code>,
  *  <code>$&</code>, and <code>$'</code> will be set appropriately. The value
  *  returned by the block will be substituted for the match on each call.
- *
- *  The result inherits any tainting in the original string or any supplied
- *  replacement string.
  *
  *     "hello".sub(/[aeiou]/, '*')                  #=> "h*llo"
  *     "hello".sub(/([aeiou])/, '<\1>')             #=> "h<e>llo"
@@ -4697,7 +4673,6 @@ mrb_str_dump(mrb_state *mrb, mrb_value str)
       snprintf(q, qend-q, ".force_encoding(\"%s\")", enc->name);
       enc = mrb_ascii8bit_encoding(mrb);
     }
-    //OBJ_INFECT(result, str);
     /* result from dump is ASCII */
     mrb_enc_associate(mrb, result, enc);
     ENC_CODERANGE_SET(result, ENC_CODERANGE_7BIT);
@@ -4786,7 +4761,7 @@ mrb_str_append(mrb_state *mrb, mrb_value str, mrb_value str2)
       RSTRING(str)->len = len;
       mrb_enc_associate(mrb, str, enc);
       ENC_CODERANGE_SET(str, cr);
-      //OBJ_INFECT(str, str2);
+
       return str;
   }
 #ifdef INCLUDE_ENCODING
@@ -4983,7 +4958,6 @@ mrb_str_inspect(mrb_state *mrb, mrb_value str)
     if (p > prev) mrb_str_buf_cat(mrb, result, prev, p - prev);
     mrb_str_buf_cat(mrb, result, "\"", strlen("\"")); //str_buf_cat2(result, "\"");
 
-    //OBJ_INFECT(result, str);
     return result;
 }
 

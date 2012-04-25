@@ -1,13 +1,8 @@
-/**********************************************************************
-
-  struct.c -
-
-  $Author: marcandre $
-  created at: Tue Mar 22 18:44:30 JST 1995
-
-  Copyright (C) 1993-2007 Yukihiro Matsumoto
-
-**********************************************************************/
+/*
+** struct.c - Struct class
+** 
+** See Copyright Notice in mruby.h
+*/
 
 #include "mruby.h"
 #include <string.h>
@@ -29,7 +24,7 @@ mrb_value mrb_exec_recursive_paired(mrb_state *mrb, mrb_value (*func) (mrb_state
 #include "mruby/hash.h"
 #include "mruby/string.h"
 #include "mruby/class.h"
-#include "variable.h"
+#include "mruby/variable.h"
 #include "mruby/range.h"
 #include "error.h"
 //#include "defines.h"
@@ -517,7 +512,6 @@ inspect_struct(mrb_state *mrb, mrb_value s, mrb_value dummy, int recur)
       mrb_str_append(mrb, str, mrb_inspect(mrb, ptr[i]));
     }
     mrb_str_cat2(mrb, str, ">");
-    //OBJ_INFECT(str, s);
 
     return str;
 }

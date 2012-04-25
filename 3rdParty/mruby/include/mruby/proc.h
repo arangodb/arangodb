@@ -1,3 +1,9 @@
+/*
+** proc.h - Proc class
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #ifndef MRUBY_PROC_H
 #define MRUBY_PROC_H
 

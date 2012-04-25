@@ -1,3 +1,9 @@
+/*
+** print.c - Kernel.#p
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #include "mruby.h"
 #include "mruby/string.h"
 #include <stdio.h>

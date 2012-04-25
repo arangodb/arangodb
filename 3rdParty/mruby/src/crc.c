@@ -1,3 +1,9 @@
+/*
+** crc.c - calculate CRC
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #include <limits.h>
 #include <stdint.h>
 // Calculate CRC (CRC-16-CCITT)

@@ -1,7 +1,14 @@
+/*
+** variable.c - mruby variables
+** 
+** See Copyright Notice in mruby.h
+*/
+
+#include <stdio.h>
 #include "mruby.h"
 #include "mruby/class.h"
-#include "ritehash.h"
-#include "variable.h"
+#include "mruby/khash.h"
+#include "mruby/variable.h"
 #include "mruby/string.h"
 #include "mruby/range.h"
 #include "error.h"

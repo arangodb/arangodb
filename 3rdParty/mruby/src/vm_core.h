@@ -1,13 +1,8 @@
-/**********************************************************************
-
-  vm_core.h -
-
-  $Author: yugui $
-  created at: 04/01/01 19:41:38 JST
-
-  Copyright (C) 2004-2007 Koichi Sasada
-
-**********************************************************************/
+/*
+** vm_core.h - RiteVM core
+** 
+** See Copyright Notice in mruby.h
+*/
 
 #ifndef RUBY_VM_CORE_H
 #define RUBY_VM_CORE_H

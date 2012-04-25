@@ -1,9 +1,9 @@
 #include "mruby.h"
 #include "mruby/proc.h"
 #include "compile.h"
-#include "dump.h"
-#include "stdio.h"
-#include "string.h"
+#include "mruby/dump.h"
+#include <stdio.h>
+#include <string.h>
 
 void ruby_show_version(mrb_state *);
 void ruby_show_copyright(mrb_state *);

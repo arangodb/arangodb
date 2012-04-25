@@ -1,3 +1,9 @@
+/*
+** node.h - nodes of abstract syntax tree
+** 
+** See Copyright Notice in mruby.h
+*/
+
 enum node_type {
     NODE_METHOD,
     NODE_FBODY,

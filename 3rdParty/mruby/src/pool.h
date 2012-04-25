@@ -1,3 +1,9 @@
+/*
+** pool.h - memory pool
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #include "mruby.h"
 #include <stddef.h>
 
