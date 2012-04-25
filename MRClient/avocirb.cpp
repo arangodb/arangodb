@@ -43,6 +43,7 @@
 #include "BasicsC/strings.h"
 #include "Logger/Logger.h"
 #include "MRuby/MRLineEditor.h"
+#include "MRuby/mr-utils.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
@@ -50,8 +51,8 @@ extern "C" {
 #include "mruby.h"
 #include "mruby/proc.h"
 #include "mruby/data.h"
+#include "mruby/variable.h"
 #include "compile.h"
-#include "variable.h"
 }
 
 using namespace std;
@@ -451,6 +452,8 @@ int main (int argc, char* argv[]) {
 
   // create a new ruby shell
   mrb_state* mrb = mrb_open();
+
+  TRI_InitMRUtils(mrb);
 
   RunShell(mrb);
 
