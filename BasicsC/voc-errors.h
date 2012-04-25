@@ -180,6 +180,15 @@ extern "C" {
 /// - 1521: @CODE{limit value '\%s' is out of range}
 ///   Will be raised when a limit value in the query is outside the allowed
 ///   range (e. g. when passing a negative skip value).
+/// - 1522: @CODE{variable '\%s' is assigned multiple times}
+///   Will be raised when a variable gets re-assigned in a query.
+/// - 1523: @CODE{document attribute '\%s' is assigned multiple times}
+///   Will be raised when a document attribute is re-assigned.
+/// - 1524: @CODE{variable name '\%s' has an invalid format}
+///   Will be raised when an invalid variable name is used.
+/// - 1525: @CODE{invalid structure of bind parameters}
+///   Will be raised when the structure of bind parameters passed has an
+///   unexpected format.
 /// - 1600: @CODE{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
@@ -1002,6 +1011,47 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_LIMIT_VALUE_OUT_OF_RANGE                          (1521)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1522: ERROR_QUERY_VARIABLE_REDECLARED
+///
+/// variable '%s' is assigned multiple times
+///
+/// Will be raised when a variable gets re-assigned in a query.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_VARIABLE_REDECLARED                               (1522)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1523: ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED
+///
+/// document attribute '%s' is assigned multiple times
+///
+/// Will be raised when a document attribute is re-assigned.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED                     (1523)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1524: ERROR_QUERY_VARIABLE_NAME_INVALID
+///
+/// variable name '%s' has an invalid format
+///
+/// Will be raised when an invalid variable name is used.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_VARIABLE_NAME_INVALID                             (1524)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1525: ERROR_QUERY_BIND_PARAMETERS_INVALID
+///
+/// invalid structure of bind parameters
+///
+/// Will be raised when the structure of bind parameters passed has an
+/// unexpected format.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID                           (1525)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1600: ERROR_CURSOR_NOT_FOUND

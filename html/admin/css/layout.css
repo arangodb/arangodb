@@ -1,79 +1,424 @@
-.ui-layout-center {
-    padding-right:10px;
-    padding-top:10px;
-    padding-left: 10px;
-    border-bottom-width: 2px !important;
-    border-color: #333333 !important;
+#logView .fg-toolbar{display: none;}
+
+html {
+  font-family: Verdana,Arial,sans-serif; 
+  font-size: 1em;
+  min-width: 1024px;
+}
+tr {
+  font-size: 0.9em; 
+}
+th {
+  font-size: 1.1em; 
 }
 
-.ui-layout-north {
-    padding-left: 10px;
-    padding-top: 6px;
-    height: 30px !important; 
-    background-color: #333333;
+#logToolbar {
+  height:24px; 
+  border: 1px solid #AAAAAA;
+  padding-left: 3px; 
+  padding-top: 4px; 
+  border-top-left-radius: 2px;
+  border-top-right-radius: 2px;
+  border-bottom-left-radius: 2px;
+  border-bottom-right-radius: 2px;
+  background: url("images/ui-bg_flat_75_e6e6e6_40x100.png") repeat-x scroll 50% 50% #E6E6E6;
 }
 
-.ui-layout-east {
-    width:250px !important;
+.dataTables_info{
+  font-size: 1.1em; 
 }
 
-.ui-layout-resizer-west {
-    background-color: #333333 !important;
+.DataTables_sort_wrapper {
+  font-size: 0.8em; 
 }
 
-.ui-layout-resizer-north {
-    background-color: #61FE59 !important;
+.ui-button-text { 
+  line-height: 0.8em;
+  font-size: 0.8em;  
 }
 
-.ui-tooltip-dialogue{
-   max-width: 420px;
-   min-width: 210px;
- 
-   -moz-box-shadow: 0 0 10px 1px rgba(0,0,0,.5);
-   -webkit-box-shadow: 0 0 10px 1px rgba(0,0,0,.5);
-   box-shadow: 0 0 10px 1px rgba(0,0,0,.5);
-}
- 
-.ui-tooltip-dialogue .ui-tooltip-content{
-   padding: 10px;
-}
- 
-.ui-tooltip-dialogue button{
-   float: left;
-   width: 47%;
-   margin-right: 10px;
-   padding: 3px 0;
- 
-   text-align: center;
-   font-size: 10.5px;
-}
- 
-.ui-tooltip-dialogue button + button{
-   float: right;
-   margin-right: 0;
-}
- 
-.ui-tooltip-dialogue input{
-   width: 95%;
-   padding: 3px 0 3px 5px;
-   margin-bottom: 7px;
- 
-   font-size: 10.5px;
-}
- 
-.ui-tooltip-dialogue button.full{
-   float: none;
-   width: 100%;
+.ui-widget-content {
+  font-size:0.8em; 
 }
 
-#navigation {
-   text-align: center;
-   text-decoration: none;
-   font-size: 20px;
-   font-family: "Arial","Helvetica","Verdana","sans-serif";
+.ui-widget-header {
+  font-size: 1em;  
 }
 
-body {
-   font-family: "Arial","Helvetica","Verdana","sans-serif";
+#header {
+  height:78px;
 }
+
+#menue {
+  height:55px;
+  vertical-align: middle;
+  text-align: center;  
+  background-color: white; 
+}
+
+#brotkruemelnavi {
+  font-size: 1.1em;
+  height:30px;
+  line-height: 30px;
+  vertical-align: middle;
+  padding-left: 5px; 
+  //background-color: #7E9246; 
+  background-color: #F3F1EE; 
+  color: #9EAF5A;
+  font-weight: bold; 
+  text-decoration: none;
+  border-top: 1px dashed #7E9246;
+  border-bottom: 1px dashed #7E9246;
+}
+
+#brotkruemelnavi a {
+  margin-left:10px; 
+}
+
+.ui-tabs-nav {
+  font-size: 0.8em !important; 
+  height: 35px;  
+}
+
+.ui-tabs, .ui-tabs-panel {
+  padding: 0px !important;
+}
+
+#tabs {
+  background: #F3F1EE;
+  border: 0; 
+}
+#tab_right {
+  margin-top: -18px;  
+}
+#refreshLogButton {
+  margin-top: 6px; 
+}
+#logSearchField {
+  font-size: 0.8em;
+  height:20px;  
+}
+
+#queryContent {
+  width: 100%;
+  height: 60%;  
+}
+
+#avocshWindow {
+  background-color: white;  
+  height: 300px; 
+  overflow-y: auto; 
+  width:100%; 
+}
+
+#avocshContent {
+  width: 100%;
+  text-align:center;   
+  height: 40px; 
+} 
+
+.avocshSuccess {
+  background-color: #9EAF5A;
+  color: black;  
+}
+
+.avocshError {
+  background-color: red;  
+  color: white; 
+}
+
+#centerView {
+  //background: #f1eee0 url(../media/images/bg.jpg);
+  background-color: white;
+  overflow-y: auto; 
+}
+
+.dataTables_wrapper .ui-corner-tl { 
+  display: none; 
+ }
+
+#subCenterView, #collectionsView {
+  border: 7px solid #F3F1EE;
+  background-color: #F3F1EE;  
+  margin-top: 10px; 
+  margin-left: 10px; 
+  margin-right: 10px; 
+  margin-bottom: 40px;  
+}
+
+.editBox {
+  width:100%; 
+  color:#666;
+  font-size:14px;
+  -moz-border-radius: 2px; -webkit-border-radius: 2px;
+  margin:5px 0px 10px 0px;
+  height:75px;
+  border:#999 1px solid;
+  font-family:"Lucida Sans Unicode", "Lucida Grande", sans-serif;
+  transition: all 0.25s ease-in-out;
+  -webkit-transition: all 0.25s ease-in-out;
+  -moz-transition: all 0.25s ease-in-out;
+  box-shadow: 0 0 5px rgba(81, 203, 238, 0);
+  -webkit-box-shadow: 0 0 5px rgba(81, 203, 238, 0);
+  -moz-box-shadow: 0 0 5px rgba(81, 203, 238, 0);
+  height: 300px;  
+}
+
+.editBox:focus {
+  color:#000;
+  outline:none;
+  border:#88CF4F 1px solid;
+  font-family:"Lucida Sans Unicode", "Lucida Grande", sans-serif;
+  box-shadow: 0 0 5px rgba(136, 207, 79, 1);
+  -webkit-box-shadow: 0 0 5px rgba(136, 207, 79, 1);
+  -moz-box-shadow: 0 0 5px rgba(136, 207, 79, 1);
+}
+
+#menue-left {
+  margin-top: 3px;
+  margin-left: 10px; 
+  height:48px; 
+  width:auto; 
+  float:left;
+  text-align:left;  
+}
+
+#menue-right {
+  padding-top:11px;
+  padding-right:10px;   
+  height:40px; 
+  width:auto; 
+  float:right;
+  text-align:right;  
+}
+
+
+#footerSlideContainer {
+	position: fixed;
+	bottom:-1;
+	width: 100%;
+}
+#footerSlideButton {
+	background: url(../media/images/sliderButton.png) top left no-repeat transparent;
+	position: absolute;
+	top: -25px;
+	right: 10px;
+	width:50px;
+	height:50px;
+	border: none;
+	cursor: pointer;
+}
+#footerSlideContent {
+	width: 100%;
+        border-top: 1px dashed #7E9246;
+	height: 25px;
+	background: #F3F1EE;
+	color: #525252;
+	font-size: 0.9em;
+	font-family: DejaVuSansBook, Sans-Serif;
+}
+#footerSlideText {
+	padding: 1px 1px 1px 10px;
+}
+
+#footerLeft {
+  line-height: 20px;
+  height:100%; 
+  float:left; 
+  width:33%; 
+}
+#footerCenter {
+  height:100%; 
+  line-height: 20px;
+  float:left; 
+  width:33%;
+  text-align:center;  
+}
+#footerCenterContent {
+  margin-left: auto;  
+  margin-right: auto; 
+}
+#footerCenterContent img {
+  vertical-align:middle;
+}
+#footerCenterContent a {
+  color: #525252 !important; 
+}
+#footerRight {
+  line-height: 20px;
+  height:100%; 
+  float:left; 
+  width:34%;
+}
+
+.login-form,
+.login-form h1,
+.login-form span,
+.login-form input,
+.login-form label {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	outline: 0;
+}
+
+.login-form {
+  overflow:hidden;
+  position: relative;
+  width: 250px;
+  height: 65px;
+  padding: 15px 25px 0 25px;
+  margin-top:5px;
+  cursor: default;
+  background-color: #E4E9D2;
+  border: 1px dashed #7E9246;
+  -webkit-border-radius: 2px;
+  -moz-border-radius: 2px;
+  border-radius: 2px;
+}
+
+#logoutButton {
+  margin-left:10px;
+}
+
+.login-form input[type=text], .login-form input[type=password] {
+	line-height: 10px;
+	margin: 0px 0;
+	padding: 2px 15px;
+        border: 1px dashed #7E9246;
+	font-size: 10px;
+	-webkit-border-radius: 2px;
+	-moz-border-radius: 2px;
+	border-radius: 2px;
+
+}
+
+.login-form input[type=text],
+.login-form input[type=password],
+.js .login-form span {
+	color: #686868;
+	width: 170px;
+        border: 1px dashed #7E9246;
+}
+
+#logTableID_info {
+}
+
+.ui-dialog {
+  height:100px; 
+  font-size: 0.8em;  
+}
+
+.fg-toolbar {
+  font-size: 0.7em; 
+  border: 1px solid #D3D3D3 !important; 
+}
+
+/*
+##############################################################################
+### Menue buttons
+##############################################################################
+*/
+#menue button.minimal{
+  background: #e3e3e3;
+  border: 1px solid #bbb;
+  -webkit-border-radius: 3px;
+  -moz-border-radius: 3px;
+  border-radius: 3px;
+  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  box-shadow: inset 0 0 1px 1px #f6f6f6;
+  color: #333;
+  font: 0.7em Verdana,Arial,sans-serif;
+  line-height: 1;
+  padding: 8px 0 9px;
+  text-align: center;
+  text-shadow: 0 1px 0 #fff;
+  width: 80px;
+}
+#menue button.minimal:hover {
+    background: #d9d9d9;
+    -webkit-box-shadow: inset 0 0 1px 1px #eaeaea;
+    -moz-box-shadow: inset 0 0 1px 1px #eaeaea;
+    box-shadow: inset 0 0 1px 1px #eaeaea;
+    color: #222;
+    cursor: pointer; }
+#menue  button.minimal:active {
+    background: #d0d0d0;
+    -webkit-box-shadow: inset 0 0 1px 1px #e3e3e3;
+    -moz-box-shadow: inset 0 0 1px 1px #e3e3e3;
+    box-shadow: inset 0 0 1px 1px #e3e3e3;
+    color: #000; }
+/*
+##############################################################################
+### CollectionView subView Buttons
+##############################################################################
+*/
+#collectionsView button.toolbar {
+  border: medium none; 
+  background-color: transparent;
+  font: 12px "helvetica neue", helvetica, arial, sans-serif;
+  width: auto;
+}
+
+#collectionsView button a {
+  vertical-align:middle;
+  text-align:center;
+  padding-bottom:8px; 
+  padding-left: 4px;  
+}
+
+#collectionsTableID_wrapper button {
+  background-color:transparent; 
+  border: medium none; 
+}
+
+#subCenterView button a {
+  vertical-align:middle;
+  text-align:center;
+  padding-bottom:8px; 
+  padding-left: 4px;  
+}
+
+#subCenterView button {
+  background-color:transparent; 
+  border: medium none; 
+}
+
+/*
+##############################################################################
+### small buttons
+##############################################################################
+*/
+
+#avocshView button, #queryView button, #tab_right button, #footerSlideContent button, form.jediTextarea > button, #logToolbar button {
+  background: #e3e3e3;
+  border: 1px solid #bbb;
+  -webkit-border-radius: 3px;
+  -moz-border-radius: 3px;
+  border-radius: 3px;
+  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  box-shadow: inset 0 0 1px 1px #f6f6f6;
+  color: #333;
+  font: 12px "helvetica neue", helvetica, arial, sans-serif;
+  text-align: center;
+  text-shadow: 0 1px 0 #fff;
+  width: auto; 
+  height: 20px;     
+  text-align: center;  
+}
+
+#avocshView button:hover, #queryView button:hover, #tab_right button:hover, #footerSlideContent button:hover, form.jediTextarea > button:hover {
+    background: #d9d9d9;
+    -webkit-box-shadow: inset 0 0 1px 1px #eaeaea;
+    -moz-box-shadow: inset 0 0 1px 1px #eaeaea;
+    box-shadow: inset 0 0 1px 1px #eaeaea;
+    color: #222;
+    cursor: pointer; }
+#avocshView button:active, #queryView button:active, #tab_right button:active, #footerSlideContent button:active, form.jediTextarea > button:active {
+    background: #d0d0d0;
+    -webkit-box-shadow: inset 0 0 1px 1px #e3e3e3;
+    -moz-box-shadow: inset 0 0 1px 1px #e3e3e3;
+    box-shadow: inset 0 0 1px 1px #e3e3e3;
 

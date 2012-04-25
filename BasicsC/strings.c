@@ -323,6 +323,86 @@ static void DecodeSurrogatePair (char** dst, char const* src1, char const* src2)
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a string to lower case
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_LowerAsciiString (const char const* value) {
+  size_t length;
+  char* buffer;
+  char* p;
+  char* out;
+  char c;
+
+  if (value == NULL) {
+    return NULL;
+  }
+
+  length = strlen(value);
+
+  buffer = TRI_Allocate((sizeof(char) * length) + 1);
+  if (!buffer) {
+    // out of memory
+    return NULL;
+  }
+  
+  p = (char*) value;
+  out = buffer;
+
+  while ((c = *p++)) {
+    if (c >= 'A' && c <= 'Z') {
+      *out++ = c + 32;
+    }
+    else {
+      *out++ = c;
+    }
+  }
+  
+  *out = '\0';
+
+  return buffer;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a string to upper case
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_UpperAsciiString (const char const* value) {
+  size_t length;
+  char* buffer;
+  char* p;
+  char* out;
+  char c;
+
+  if (value == NULL) {
+    return NULL;
+  }
+
+  length = strlen(value);
+
+  buffer = TRI_Allocate((sizeof(char) * length) + 1);
+  if (!buffer) {
+    // out of memory
+    return NULL;
+  }
+  
+  p = (char*) value;
+  out = buffer;
+
+  while ((c = *p++)) {
+    if (c >= 'a' && c <= 'z') {
+      *out++ = c - 32;
+    }
+    else {
+      *out++ = c;
+    }
+  }
+  
+  *out = '\0';
+
+  return buffer;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief tests if strings are equal
 ////////////////////////////////////////////////////////////////////////////////
 

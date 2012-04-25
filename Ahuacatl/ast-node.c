@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ast-node.h"
+#include "Ahuacatl/ahuacatl-functions.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros
@@ -74,7 +75,6 @@ static inline void InitNode (TRI_aql_parse_context_t* const context,
 static void FreeNodeList (TRI_aql_node_t* const node) {
   TRI_aql_node_list_t* _node = (TRI_aql_node_list_t*) node;
 
-  // todo: free values
   TRI_DestroyVectorPointer(&_node->_values);
 }
 
@@ -85,7 +85,6 @@ static void FreeNodeList (TRI_aql_node_t* const node) {
 static void FreeNodeArray (TRI_aql_node_t* const node) {
   TRI_aql_node_array_t* _node = (TRI_aql_node_array_t*) node;
 
-  // todo: free values
   TRI_DestroyAssociativePointer(&_node->_values);
 }
 
@@ -139,6 +138,11 @@ TRI_aql_node_t* TRI_CreateNodeForAql (TRI_aql_parse_context_t* const context,
   
   if (!name || !expression) {
     ABORT_OOM
+  }
+
+  if (!TRI_IsValidVariableNameAql(name)) { 
+    TRI_SetErrorAql(context, TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name); 
+    return NULL;
   }
   
   node = (TRI_aql_node_for_t*) TRI_Allocate(sizeof(TRI_aql_node_for_t));
@@ -419,8 +423,8 @@ TRI_aql_node_t* TRI_CreateNodeVariableAql (TRI_aql_parse_context_t* const contex
   }
   
   if (!TRI_AddVariableParseContextAql(context, name)) {
-    printf("fail in %lu\n",(unsigned long) __LINE__);
-    TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, name); // TODO: duplicate variable name
+    // duplicate variable name 
+    TRI_SetErrorAql(context, TRI_ERROR_QUERY_VARIABLE_REDECLARED, name); 
     return NULL;
   }
   
@@ -510,7 +514,10 @@ TRI_aql_node_t* TRI_CreateNodeParameterAql (TRI_aql_parse_context_t* const conte
   if (!name) {
     ABORT_OOM
   }
-  
+
+  // save name of bind parameter for later
+  TRI_InsertKeyAssociativePointer(&context->_parameterNames, name, (void*) name, true);
+
   node = (TRI_aql_node_parameter_t*) TRI_Allocate(sizeof(TRI_aql_node_parameter_t));
 
   if (!node) {
@@ -1319,9 +1326,9 @@ TRI_aql_node_t* TRI_CreateNodeArrayAql (TRI_aql_parse_context_t* const context) 
   InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_ARRAY);
   
   TRI_InitAssociativePointer(&node->_values,
-                             TRI_HashStringKeyAssociativePointer,
-                             HashArrayElement, 
-                             EqualArrayElement,
+                             &TRI_HashStringKeyAssociativePointer,
+                             &HashArrayElement, 
+                             &EqualArrayElement,
                              0);
 
   node->_base.free = &FreeNodeArray;
@@ -1370,13 +1377,35 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_parse_context_t* const context,
                                         const char* const name,
                                         const TRI_aql_node_t* const parameters) {
   TRI_aql_node_fcall_t* node;
+  TRI_aql_function_t* function;
+  TRI_associative_pointer_t* functions;
+  char* upperName;
 
   assert(context);
+  assert(context->_vocbase);
+
 
   if (!name || !parameters) {
     ABORT_OOM
   }
-  // TODO: validate func name
+
+  functions = context->_vocbase->_functionsAql;
+  assert(functions);
+
+  // normalize the name by upper-casing it
+  upperName = TRI_UpperAsciiString(name);
+  if (!upperName) {
+    ABORT_OOM
+  }
+
+  function = (TRI_aql_function_t*) TRI_LookupByKeyAssociativePointer(functions, (void*) upperName);
+  TRI_Free(upperName);
+
+  if (!function) {
+    // function name is unknown
+    TRI_SetErrorAql(context, TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, name);
+    return NULL;
+  }
 
   node = (TRI_aql_node_fcall_t*) TRI_Allocate(sizeof(TRI_aql_node_fcall_t));
 
@@ -1386,7 +1415,7 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_parse_context_t* const context,
 
   InitNode(context, (TRI_aql_node_t*) node, AQL_NODE_FCALL);
 
-  node->_name = (char*) name;
+  node->_name = function->_internalName;
   node->_parameters = (TRI_aql_node_t*) parameters;
 
   return (TRI_aql_node_t*) node;
@@ -1435,7 +1464,8 @@ bool TRI_PushArrayAql (TRI_aql_parse_context_t* const context,
   }
   
   if (TRI_InsertKeyAssociativePointer(&array->_values, element->_name, (void*) element, false)) {
-    // duplicate element TODO
+    // duplicate element in a document/array, e.g. { "name" : "John", "name" : "Jim" }
+    TRI_SetErrorAql(context, TRI_ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED, name); 
     return false;
   }
 

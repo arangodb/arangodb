@@ -200,6 +200,7 @@ namespace triagens {
       regex_t _doubleRegex;
       regex_t _intRegex;
       
+      bool _hasError;
       string _errorMessage;
     };
   }

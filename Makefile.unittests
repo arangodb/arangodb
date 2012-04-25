@@ -13,8 +13,8 @@ unittests: unittests-verbose unittests-brief
 
 unittests-brief: \
 	unittests-boost \
-	unittests-shell-server \
 	unittests-shell-server-ahuacatl \
+	unittests-shell-server \
 	unittests-http-server \
 	unittests-shell-client \
 	unittests-http-server \
@@ -122,7 +122,7 @@ unittests-boost:
 endif
 
 ################################################################################
-## SHELL SERVER TESTS (BASCIS)
+## SHELL SERVER TESTS (BASICS)
 ################################################################################
 
 SHELL_SERVER = @srcdir@/js/common/tests/shell-document.js \
@@ -136,7 +136,7 @@ UNITTESTS_SERVER = $(addprefix --unit-tests ,$(SHELL_SERVER))
 unittests-shell-server:
 	@echo
 	@echo "================================================================================"
-	@echo "|| SHELL SERVER TESTS (BASCIS)                                                ||"
+	@echo "|| SHELL SERVER TESTS (BASICS)                                                ||"
 	@echo "================================================================================"
 	@echo
 
@@ -153,7 +153,12 @@ unittests-shell-server:
 ## SHELL SERVER TESTS (AHUACATL)
 ################################################################################
 
-SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-queries.js 
+SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-operators.js \
+		     @srcdir@/js/server/tests/ahuacatl-escaping.js \
+		     @srcdir@/js/server/tests/ahuacatl-functions.js \
+		     @srcdir@/js/server/tests/ahuacatl-queries-collection.js \
+		     @srcdir@/js/server/tests/ahuacatl-queries-noncollection.js 
+ 
 
 .PHONY: unittests-shell-server-ahuacatl
 
