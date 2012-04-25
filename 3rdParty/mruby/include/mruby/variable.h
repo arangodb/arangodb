@@ -1,3 +1,9 @@
+/*
+** variable.h - mruby variables
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #ifndef MRUBY_VARIABLE_H
 #define MRUBY_VARIABLE_H
 

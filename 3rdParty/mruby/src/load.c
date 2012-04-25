@@ -1,11 +1,17 @@
+/*
+** load.c - mruby binary loader
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #include <string.h>
-#include "dump.h"
+#include "mruby/dump.h"
 
 #include "mruby/string.h"
 #ifdef INCLUDE_REGEXP
 #include "re.h"
 #endif
-#include "irep.h"
+#include "mruby/irep.h"
 
 #ifndef FALSE
 #define FALSE   0

@@ -1,11 +1,8 @@
-/**********************************************************************
-
-  data.h -
-
-
-  Copyright (C) 2007 Yukihiro Matsumoto
-
-**********************************************************************/
+/*
+** data.h - Data class
+** 
+** See Copyright Notice in mruby.h
+*/
 
 #ifndef RUBY_DATA_H
 #define RUBY_DATA_H 1

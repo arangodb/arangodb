@@ -1,3 +1,9 @@
+/*
+** init.c - initialize mruby core
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #include "mruby.h"
 
 void mrb_init_class(mrb_state*);

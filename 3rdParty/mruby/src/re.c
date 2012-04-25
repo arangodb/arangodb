@@ -1,8 +1,13 @@
-/* re.c for RegExp Class */
+/*
+** re.c - Regexp class
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #include "mruby.h"
 #include <string.h>
 #include "mruby/string.h"
-#include "ritehash.h"
+#include "mruby/khash.h"
 #include "encoding.h"
 #include "re.h"
 #include "mruby/numeric.h"
@@ -11,7 +16,7 @@
 #include "regint.h"
 #include "mruby/class.h"
 #include "mruby/hash.h"
-#include "variable.h"
+#include "mruby/variable.h"
 #include "error.h"
 #ifdef INCLUDE_REGEXP
 
@@ -184,7 +189,7 @@ meta_found:
     t += mrb_enc_mbcput(c, t, enc);
   }
   mrb_str_resize(mrb, tmp, t - RSTRING_PTR(tmp));
-  /*OBJ_INFECT(tmp, str);*/
+
   return tmp;
 }
 
@@ -258,7 +263,7 @@ mrb_reg_nth_match(mrb_state *mrb, mrb_int nth, mrb_value match)
   end = m->rmatch->regs.end[nth];
   len = end - start;
   str = mrb_str_substr(mrb, m->str, start, len);
-  /*OBJ_INFECT(str, match);*/
+
   return str;
 }
 
@@ -453,7 +458,7 @@ mrb_reg_desc(mrb_state *mrb, const char *s, long len, mrb_value re)
     if (RBASIC(re)->flags & REG_ENCODING_NONE)
         mrb_str_buf_cat(mrb, str, "n", strlen("n"));//mrb_str_buf_cat2(str, "n");
   }
-  /*OBJ_INFECT(str, re);*/
+
   return str;
 }
 static void
@@ -575,20 +580,11 @@ mrb_reg_search(mrb_state *mrb, mrb_value re, mrb_value str, mrb_int pos, mrb_int
     onig_region_copy(RMATCH_REGS(match), regs);
     onig_region_free(regs, 0);
   }
-  /*else {
-    if (mrb_safe_level() >= 3)
-        OBJ_TAINT(match);
-    else
-        FL_UNSET(match, FL_TAINT);
-  }*/
 
   RMATCH(match)->str = str_new4(mrb, str.tt, str);
   RMATCH(match)->regexp = re;
   RMATCH(match)->rmatch->char_offset_updated = 0;
   mrb_backref_set(mrb, match);
-
-  //OBJ_INFECT(match, re);
-  //OBJ_INFECT(match, str);
 
   return result;
 }
@@ -1243,8 +1239,7 @@ mrb_reg_initialize_str(mrb_state *mrb, mrb_value obj, mrb_value str, int options
 
   ret = mrb_reg_initialize(mrb, obj, RSTRING_PTR(str), RSTRING_LEN(str), enc,
         options, err, sourcefile, sourceline);
-  /*OBJ_INFECT(obj, str);
-    RB_GC_GUARD(str);*/
+
   return ret;
 }
 
@@ -1637,7 +1632,6 @@ mrb_reg_source(mrb_state *mrb, mrb_value re)
 
     mrb_reg_check(mrb, re);
     str = mrb_enc_str_new(mrb, RREGEXP_SRC_PTR(re),RREGEXP_SRC_LEN(re), mrb_enc_get(mrb, re));
-    /*if (OBJ_TAINTED(re)) OBJ_TAINT(str);*/
     return str;
 }
 
@@ -1897,7 +1891,6 @@ match_array(mrb_state *mrb, mrb_value match, int start)
   mrb_value ary;
   mrb_value target;
   int i;
-  /*int taint = OBJ_TAINTED(match);*/
 
   match_check(mrb, match);
   regs = RMATCH_REGS(match);
@@ -1910,7 +1903,6 @@ match_array(mrb_state *mrb, mrb_value match, int start)
     }
     else {
       mrb_value str = mrb_str_subseq(mrb, target, regs->beg[i], regs->end[i]-regs->beg[i]);
-      /*if (taint) OBJ_TAINT(str);*/
       mrb_ary_push(mrb, ary, str);
     }
   }
@@ -2106,7 +2098,7 @@ mrb_reg_match_post(mrb_state *mrb, mrb_value match)
   str = RMATCH(match)->str;
   pos = END(0);
   str = mrb_str_subseq(mrb, str, pos, RSTRING_LEN(str) - pos);
-  /*if (OBJ_TAINTED(match)) OBJ_TAINT(str);*/
+
   return str;
 }
 
@@ -2133,7 +2125,7 @@ mrb_reg_match_pre(mrb_state *mrb, mrb_value match)
   regs = RMATCH_REGS(match);
   if (BEG(0) == -1) return mrb_nil_value();
   str = mrb_str_subseq(mrb, RMATCH(match)->str, 0, BEG(0));
-  /*if (OBJ_TAINTED(match)) OBJ_TAINT(str);*/
+
   return str;
 }
 
@@ -2202,8 +2194,7 @@ mrb_match_to_s(mrb_state *mrb, mrb_value match)
 
     match_check(mrb, match);
     if (mrb_nil_p(str)) str = mrb_str_new(mrb, 0, 0);//mrb_str_new(0,0);
-    /*if (OBJ_TAINTED(match)) OBJ_TAINT(str); */
-    /*if (OBJ_TAINTED(RMATCH(match)->str)) OBJ_TAINT(str); */
+
     return str;
 }
 
@@ -2431,7 +2422,6 @@ again:
   mrb_str_buf_cat(mrb, str, ")", strlen(")"));
   mrb_enc_copy(mrb, str, re);
 
-  /*OBJ_INFECT(str, re);*/
   return str;
 }
 

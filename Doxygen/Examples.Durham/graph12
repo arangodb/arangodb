@@ -1,7 +1,7 @@
 avocado> v = g.addVertex(1);
 Vertex(1)
 
-avocado> e = g.addEdge(2, v, v, "self", { "weight" : 10 });
+avocado> e = g.addEdge(v, v, 2, "self", { "weight" : 10 });
 Edge(2)
 
 avocado> e.getProperty("weight");

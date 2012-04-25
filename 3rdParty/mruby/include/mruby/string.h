@@ -1,3 +1,9 @@
+/*
+** string.h - String class
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #ifndef MRUBY_STRING_H
 #define MRUBY_STRING_H
 
@@ -20,7 +26,7 @@ extern const char ruby_digitmap[];
 
 struct RString {
   MRUBY_OBJECT_HEADER;
-  size_t len;
+  long len;
   union {
     size_t capa;
     mrb_value shared;
@@ -42,11 +48,6 @@ struct RVarmap {
     struct RVarmap *next;
 };
 extern struct RVarmap *ruby_dyna_vars;
-
-//struct st_hash_type {
-//    int (*compare)();
-//    int (*hash)();
-//};
 
 #define mrb_str_ptr(s)    ((struct RString*)((s).value.p))
 #define RSTRING(s)        ((struct RString*)((s).value.p))

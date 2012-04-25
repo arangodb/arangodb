@@ -1,3 +1,9 @@
+/*
+** version.h - version information
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #define RUBY_VERSION "1.8.7"
 #define RUBY_RELEASE_DATE "2010-08-16"
 #define RUBY_VERSION_CODE 187
