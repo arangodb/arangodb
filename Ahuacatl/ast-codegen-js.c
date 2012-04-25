@@ -43,7 +43,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool RegisterString (TRI_aql_codegen_t* const generator, 
-                                  const char* const name) {
+                            const char* const name) {
   assert(generator);
 
   TRI_PushBackVectorPointer(&generator->_strings, (char*) name);
@@ -390,7 +390,7 @@ static void AppendCode (TRI_aql_codegen_t* const generator, const char* const co
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool AppendValue (TRI_aql_codegen_t* const generator, 
-                         const TRI_aql_node_value_t* const node) {
+                         const TRI_aql_node_t* const node) {
   TRI_aql_codegen_scope_t* scope;
 
   assert(generator);
@@ -459,11 +459,9 @@ static void SetVariablePrefix (TRI_aql_codegen_t* const generator,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool AppendVarname (TRI_aql_codegen_t* const generator, 
-                           const TRI_aql_node_t* const data) {
-  TRI_aql_node_variable_t* node = (TRI_aql_node_variable_t*) data;
-  
+                           const TRI_aql_node_t* const node) {
   AppendCode(generator, "$['");
-  AppendCode(generator, node->_name);
+  AppendCode(generator, TRI_AQL_NODE_STRING(node));
   AppendCode(generator, "']");
 
   return true;
@@ -474,10 +472,8 @@ static bool AppendVarname (TRI_aql_codegen_t* const generator,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool AppendVarname0 (TRI_aql_codegen_t* const generator, 
-                            const TRI_aql_node_t* const data) {
-  TRI_aql_node_variable_t* node = (TRI_aql_node_variable_t*) data;
-
-  AppendCode(generator, node->_name);
+                            const TRI_aql_node_t* const node) {
+  AppendCode(generator, TRI_AQL_NODE_STRING(node));
   
   return true;
 }
@@ -487,11 +483,9 @@ static bool AppendVarname0 (TRI_aql_codegen_t* const generator,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool AppendVarname1 (TRI_aql_codegen_t* const generator, 
-                            const TRI_aql_node_t* const data) {
-  TRI_aql_node_variable_t* node = (TRI_aql_node_variable_t*) data;
-
+                            const TRI_aql_node_t* const node) {
   AppendCode(generator, "_");
-  AppendCode(generator, node->_name);
+  AppendCode(generator, TRI_AQL_NODE_STRING(node));
   
   return true;
 }
@@ -501,11 +495,9 @@ static bool AppendVarname1 (TRI_aql_codegen_t* const generator,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool AppendVarname2 (TRI_aql_codegen_t* const generator, 
-                            const TRI_aql_node_t* const data) {
-  TRI_aql_node_variable_t* node = (TRI_aql_node_variable_t*) data;
-
+                            const TRI_aql_node_t* const node) {
   AppendCode(generator, "__");
-  AppendCode(generator, node->_name);
+  AppendCode(generator, TRI_AQL_NODE_STRING(node));
   
   return true;
 }
@@ -571,83 +563,75 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
   while (node) {
     switch (node->_type) {
       case AQL_NODE_VALUE:
-        AppendValue(generator, (TRI_aql_node_value_t*) node);
+        AppendValue(generator, node);
         break;
       case AQL_NODE_LIST: {
-        TRI_vector_pointer_t* values = (TRI_vector_pointer_t*) &((TRI_aql_node_list_t*) node)->_values;
         size_t i, n;
 
         AppendCode(generator, "[ ");
-
-        n = values->_length;
+        n = node->_subNodes._length;
         for (i = 0; i < n; ++i) {
           if (i > 0) {
             AppendCode(generator, ", ");
           }
-          GenerateCode(generator, (TRI_aql_node_t*) values->_buffer[i]); 
+          GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, i));
         }
         AppendCode(generator, " ]");
         break;
       }
       case AQL_NODE_ARRAY: {
-        TRI_associative_pointer_t* values = (TRI_associative_pointer_t*) &((TRI_aql_node_array_t*) node)->_values;
         size_t i, n;
-        bool found = false;
 
         AppendCode(generator, "{ ");
-
-        n = values->_nrAlloc;
+        n = node->_subNodes._length;
         for (i = 0; i < n; ++i) {
-          TRI_aql_node_array_element_t* element = (TRI_aql_node_array_element_t*) values->_table[i];
-          if (!element) {
-            continue;
-          }
-          
-          if (found) {
+          if (i > 0) {
             AppendCode(generator, ", ");
           }
-          found = true;
-          AppendCode(generator, "'");
-          AppendCode(generator, element->_name);
-          AppendCode(generator, "': ");
-          GenerateCode(generator, (TRI_aql_node_t*) element->_value);
+          GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, i));
         }
         AppendCode(generator, " }");
+        break;
+      }
+      case AQL_NODE_ARRAY_ELEMENT: {
+        AppendCode(generator, "'");
+        AppendCode(generator, TRI_AQL_NODE_STRING(node));
+        AppendCode(generator, "' : ");
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         break;
       }
       case AQL_NODE_FOR:
         AppendIndent(generator);
         AppendCode(generator, "var ");
-        AppendVarname2(generator, ((TRI_aql_node_for_t*) node)->_variable);
+        AppendVarname2(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, " = AHUACATL_LIST(");
-        GenerateCode(generator, ((TRI_aql_node_for_t*) node)->_expression);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 1));
         AppendCode(generator, ");\n");
 
         AppendIndent(generator);
         AppendCode(generator, "for (var ");
-        AppendVarname1(generator, ((TRI_aql_node_for_t*) node)->_variable);
+        AppendVarname1(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, " in ");
-        AppendVarname2(generator, ((TRI_aql_node_for_t*) node)->_variable);
+        AppendVarname2(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, ") {\n");
 
         IncreaseForCount(generator);
-        AppendOwnPropertyVar(generator, ((TRI_aql_node_for_t*) node)->_variable);
+        AppendOwnPropertyVar(generator, TRI_AQL_NODE_SUBNODE(node, 0));
 
         AppendIndent(generator);
-        AppendVarname(generator, ((TRI_aql_node_for_t*) node)->_variable);
+        AppendVarname(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, " = ");
-        AppendVarname2(generator, ((TRI_aql_node_for_t*) node)->_variable);
+        AppendVarname2(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, "[");
-        AppendVarname1(generator, ((TRI_aql_node_for_t*) node)->_variable);
+        AppendVarname1(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, "];\n");
         break;
       case AQL_NODE_COLLECT: {
-        TRI_aql_node_list_t* list = (TRI_aql_node_list_t*) (((TRI_aql_node_collect_t*) node)->_list);
-        TRI_vector_pointer_t* values = (TRI_vector_pointer_t*) &list->_values;
         char* previousFunction; 
         char* sortFuncName;
         char* groupFuncName;
         size_t i, n;
+        TRI_aql_node_t* list;
 
         sortFuncName = GetNextFunctionName(generator);
 
@@ -655,20 +639,21 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
         AppendIndent(generator);
         AppendCode(generator, "var lhs, rhs;\n");
 
-        n = list->_values._length;
+        list = TRI_AQL_NODE_SUBNODE(node, 0);
+        n = list->_subNodes._length;
         for (i = 0; i < n; ++i) {
-          TRI_aql_node_assign_t* element = (TRI_aql_node_assign_t*) values->_buffer[i];
+          TRI_aql_node_t* element = TRI_AQL_NODE_SUBNODE(list, i);
 
           AppendIndent(generator);
           AppendCode(generator, "lhs = ");
           SetVariablePrefix(generator, "l");
-          GenerateCode(generator, element->_expression);
+          GenerateCode(generator, TRI_AQL_NODE_SUBNODE(element, 1));
           AppendCode(generator, ";\n");
           
           AppendIndent(generator);
           AppendCode(generator, "rhs = ");
           SetVariablePrefix(generator, "r");
-          GenerateCode(generator, element->_expression);
+          GenerateCode(generator, TRI_AQL_NODE_SUBNODE(element, 1));
           AppendCode(generator, ";\n");
           SetVariablePrefix(generator, NULL);
 
@@ -702,16 +687,17 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
 
         AppendCode(generator, "return { ");
 
-        n = values->_length;
+        n = list->_subNodes._length;
         for (i = 0; i < n; ++i) {
-          TRI_aql_node_assign_t* element = (TRI_aql_node_assign_t*) values->_buffer[i];
+          TRI_aql_node_t* element = TRI_AQL_NODE_SUBNODE(list, i);
+          TRI_aql_node_t* varNode = TRI_AQL_NODE_SUBNODE(element, 0);
           if (i > 0) {
             AppendCode(generator, ", ");
           }
           AppendCode(generator, "'");
-          AppendCode(generator, ((TRI_aql_node_variable_t*) element->_variable)->_name);
+          AppendCode(generator, TRI_AQL_NODE_STRING(varNode));
           AppendCode(generator, "' : ");
-          GenerateCode(generator, element->_expression);
+          GenerateCode(generator, TRI_AQL_NODE_SUBNODE(element, 1));
         }
         AppendCode(generator, " };\n");
         EndScope(generator);
@@ -724,9 +710,9 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
         AppendCode(generator, ", ");
         AppendCode(generator, groupFuncName);
 
-        if (((TRI_aql_node_collect_t*) node)->_into) {
+        if (TRI_AQL_NODE_SUBNODE(node, 1)) {
           AppendCode(generator, ", '");
-          AppendVarname0(generator, ((TRI_aql_node_collect_t*) node)->_into);
+          AppendVarname0(generator, TRI_AQL_NODE_SUBNODE(node, 1));
           AppendCode(generator, "'");
         }
         AppendCode(generator, ");\n");
@@ -764,7 +750,7 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
 
         AppendIndent(generator);
         AppendCode(generator, "result.push(");
-        GenerateCode(generator, ((TRI_aql_node_expand_t*) node)->_expansion);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 1));
         AppendCode(generator, ");\n");
         Outdent(generator);
         AppendIndent(generator);
@@ -773,15 +759,15 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
         
         AppendCode(generator, funcName);
         AppendCode(generator, "(");
-        GenerateCode(generator, ((TRI_aql_node_expand_t*) node)->_expanded);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, ")");
         break;
       }
       case AQL_NODE_ASSIGN: 
         AppendIndent(generator);
-        AppendVarname(generator, ((TRI_aql_node_assign_t*) node)->_variable);
+        AppendVarname(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, " = ");
-        GenerateCode(generator, ((TRI_aql_node_assign_t*) node)->_expression);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 1));
         AppendCode(generator, ";\n");
         break;
       case AQL_NODE_SUBQUERY: {
@@ -793,7 +779,7 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
         }
 
         StartScope(generator, AQL_SCOPE_RESULT, funcName);
-        GenerateCode(generator, ((TRI_aql_node_subquery_t*) node)->_query);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 0));
 
         AppendCode(generator, funcName);
         AppendCode(generator, "($)");
@@ -802,7 +788,7 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
       case AQL_NODE_FILTER:
         AppendIndent(generator);
         AppendCode(generator, "if (!(");
-        GenerateCode(generator, ((TRI_aql_node_filter_t*) node)->_expression);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, ")) {\n");
         Indent(generator);
         AppendIndent(generator);
@@ -814,34 +800,22 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
       case AQL_NODE_RETURN:
         AppendIndent(generator);
         AppendCode(generator, "result.push(");
-        GenerateCode(generator, ((TRI_aql_node_return_t*) node)->_expression);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, ");\n");
         CloseForLoops(generator);
         EndScope(generator);
         break;
       case AQL_NODE_LIMIT: {
         char* previousFunction; 
-        char* value;
 
         AppendIndent(generator);
         AppendCode(generator, "result.push($);\n");
         CloseForLoops(generator);
         AppendCode(generator, "  result = AHUACATL_LIMIT(result, ");
 
-        value = TRI_StringInt64(((TRI_aql_node_limit_t*) node)->_offset);
-        if (!value) {
-          return; // todo: OOM
-        }
-        RegisterString(generator, value);
-        AppendCode(generator, value); 
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, ", ");
-
-        value = TRI_StringInt64(((TRI_aql_node_limit_t*) node)->_count);
-        if (!value) {
-          return; // todo: OOM
-        }
-        RegisterString(generator, value);
-        AppendCode(generator, value); 
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 1));
         AppendCode(generator, ");\n");
         previousFunction = EndScope(generator);
 
@@ -860,7 +834,7 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
       }
       case AQL_NODE_SORT: {
         TRI_aql_codegen_scope_t* scope = GetCurrentScope(generator);
-        TRI_aql_node_list_t* list = (TRI_aql_node_list_t*) (((TRI_aql_node_sort_t*) node)->_list);
+        TRI_aql_node_t* list;
         char* previousFunction; 
         char* sortFuncName;
         size_t i;
@@ -875,20 +849,21 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
         AppendIndent(generator);
         AppendCode(generator, "var lhs, rhs;\n");
 
-        n = list->_values._length;
+        list = TRI_AQL_NODE_SUBNODE(node, 0);
+        n = list->_subNodes._length;
         for (i = 0; i < n; ++i) {
-          TRI_aql_node_sort_element_t* element = (TRI_aql_node_sort_element_t*) list->_values._buffer[i];
+          TRI_aql_node_t* element = TRI_AQL_NODE_SUBNODE(list, i);
 
           AppendIndent(generator);
           AppendCode(generator, "lhs = ");
           SetVariablePrefix(generator, "l");
-          GenerateCode(generator, element->_expression);
+          GenerateCode(generator, TRI_AQL_NODE_SUBNODE(element, 0));
           AppendCode(generator, ";\n");
           
           AppendIndent(generator);
           AppendCode(generator, "rhs = ");
           SetVariablePrefix(generator, "r");
-          GenerateCode(generator, element->_expression);
+          GenerateCode(generator, TRI_AQL_NODE_SUBNODE(element, 0));
           AppendCode(generator, ";\n");
           SetVariablePrefix(generator, NULL);
 
@@ -896,7 +871,7 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
           AppendCode(generator, "if (AHUACATL_RELATIONAL_LESS(lhs, rhs)) {\n");
           Indent(generator);
           AppendIndent(generator);
-          if (element->_ascending) {
+          if (TRI_AQL_NODE_BOOL(element)) {
             AppendCode(generator, "return -1;\n");
           } 
           else {
@@ -909,7 +884,7 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
           AppendCode(generator, "if (AHUACATL_RELATIONAL_GREATER(lhs, rhs)) {\n");
           Indent(generator);
           AppendIndent(generator);
-          if (element->_ascending) {
+          if (TRI_AQL_NODE_BOOL(element)) {
             AppendCode(generator, "return 1;\n");
           }
           else {
@@ -950,170 +925,169 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
       case AQL_NODE_VARIABLE:
         AppendVarname(generator, node);
         break;
-      case AQL_NODE_REFERENCE:
-        if (((TRI_aql_node_reference_t*) node)->_isCollection) {
-          AppendCode(generator, "AHUACATL_GET_DOCUMENTS('");
-          AppendCode(generator, ((TRI_aql_node_reference_t*) node)->_name);
-          AppendCode(generator, "')");
-        } 
-        else {
-          TRI_aql_codegen_scope_t* scope= GetCurrentScope(generator);
+      case AQL_NODE_COLLECTION:
+        AppendCode(generator, "AHUACATL_GET_DOCUMENTS('");
+        AppendCode(generator, TRI_AQL_NODE_STRING(node));
+        AppendCode(generator, "')");
+        break;
+      case AQL_NODE_REFERENCE: {
+        TRI_aql_codegen_scope_t* scope= GetCurrentScope(generator);
   
-          if (scope->_variablePrefix) {
-            AppendCode(generator, scope->_variablePrefix);
-            AppendCode(generator, "['");
-            AppendCode(generator, ((TRI_aql_node_reference_t*) node)->_name);
-            AppendCode(generator, "']");
-          }
-          else {
-            AppendCode(generator, "$['");
-            AppendCode(generator, ((TRI_aql_node_reference_t*) node)->_name);
-            AppendCode(generator, "']");
-          }
+        if (scope->_variablePrefix) {
+          AppendCode(generator, scope->_variablePrefix);
+          AppendCode(generator, "['");
+          AppendCode(generator, TRI_AQL_NODE_STRING(node));
+          AppendCode(generator, "']");
+        }
+        else {
+          AppendCode(generator, "$['");
+          AppendCode(generator, TRI_AQL_NODE_STRING(node));
+          AppendCode(generator, "']");
         }
         break;
+      }
       case AQL_NODE_PARAMETER:
         AppendCode(generator, "AHUACATL_GET_PARAMETER('");
-        AppendCode(generator, ((TRI_aql_node_parameter_t*) node)->_name);
+        AppendCode(generator, TRI_AQL_NODE_STRING(node));
         AppendCode(generator, "')");
         break;
       case AQL_NODE_ATTRIBUTE_ACCESS:
         AppendCode(generator, "AHUACATL_DOCUMENT_MEMBER(");
-        GenerateCode(generator, ((TRI_aql_node_attribute_access_t*) node)->_accessed);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, ", '");
-        AppendCode(generator, ((TRI_aql_node_attribute_access_t*) node)->_name);
+        AppendCode(generator, TRI_AQL_NODE_STRING(node));
         AppendCode(generator, "')");
         break;
       case AQL_NODE_INDEXED:
         AppendCode(generator, "AHUACATL_GET_INDEX(");
-        GenerateCode(generator, ((TRI_aql_node_indexed_t*) node)->_accessed);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, ", ");
-        GenerateCode(generator, ((TRI_aql_node_indexed_t*) node)->_index);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 1));
         AppendCode(generator, ")");
         break;
       case AQL_NODE_ATTRIBUTE:
         AppendCode(generator, "AHUACATL_DOCUMENT_MEMBER(__e[_e], '");
-        AppendCode(generator, ((TRI_aql_node_attribute_t*) node)->_name);
+        AppendCode(generator, TRI_AQL_NODE_STRING(node));
         AppendCode(generator, "')");
         break;
       case AQL_NODE_OPERATOR_UNARY_NOT:
         AppendCode(generator, "AHUACATL_LOGICAL_NOT(");
-        GenerateCode(generator, ((TRI_aql_node_operator_unary_t*) node)->_operand);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, ")");
         break;
       case AQL_NODE_OPERATOR_UNARY_PLUS:
         AppendCode(generator, "AHUACATL_UNARY_PLUS(");
-        GenerateCode(generator, ((TRI_aql_node_operator_unary_t*) node)->_operand);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, ")");
         break;
       case AQL_NODE_OPERATOR_UNARY_MINUS:
         AppendCode(generator, "AHUACATL_UNARY_MINUS(");
-        GenerateCode(generator, ((TRI_aql_node_operator_unary_t*) node)->_operand);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, ")");
         break;
       case AQL_NODE_OPERATOR_BINARY_AND:
         AppendCode(generator, "AHUACATL_LOGICAL_AND(");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_lhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, ", ");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_rhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 1));
         AppendCode(generator, ")");
         break;
       case AQL_NODE_OPERATOR_BINARY_OR:
         AppendCode(generator, "AHUACATL_LOGICAL_OR(");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_lhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, ", ");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_rhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 1));
         AppendCode(generator, ")");
         break;
       case AQL_NODE_OPERATOR_BINARY_PLUS:
         AppendCode(generator, "AHUACATL_ARITHMETIC_PLUS(");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_lhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, ", ");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_rhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 1));
         AppendCode(generator, ")");
         break;
       case AQL_NODE_OPERATOR_BINARY_MINUS:
         AppendCode(generator, "AHUACATL_ARITHMETIC_MINUS(");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_lhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, ", ");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_rhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 1));
         AppendCode(generator, ")");
         break;
       case AQL_NODE_OPERATOR_BINARY_TIMES:
         AppendCode(generator, "AHUACATL_ARITHMETIC_TIMES(");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_lhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, ", ");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_rhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 1));
         AppendCode(generator, ")");
         break;
       case AQL_NODE_OPERATOR_BINARY_DIV:
         AppendCode(generator, "AHUACATL_ARITHMETIC_DIVIDE(");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_lhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, ", ");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_rhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 1));
         AppendCode(generator, ")");
         break;
       case AQL_NODE_OPERATOR_BINARY_MOD:
         AppendCode(generator, "AHUACATL_ARITHMETIC_MODULUS(");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_lhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, ", ");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_rhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 1));
         AppendCode(generator, ")");
         break;
       case AQL_NODE_OPERATOR_BINARY_EQ:
         AppendCode(generator, "AHUACATL_RELATIONAL_EQUAL(");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_lhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, ", ");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_rhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 1));
         AppendCode(generator, ")");
         break;
       case AQL_NODE_OPERATOR_BINARY_NE:
         AppendCode(generator, "AHUACATL_RELATIONAL_UNEQUAL(");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_lhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, ", ");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_rhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 1));
         AppendCode(generator, ")");
         break;
       case AQL_NODE_OPERATOR_BINARY_LT:
         AppendCode(generator, "AHUACATL_RELATIONAL_LESS(");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_lhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, ", ");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_rhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 1));
         AppendCode(generator, ")");
         break;
       case AQL_NODE_OPERATOR_BINARY_LE:
         AppendCode(generator, "AHUACATL_RELATIONAL_LESSEQUAL(");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_lhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, ", ");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_rhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 1));
         AppendCode(generator, ")");
         break;
       case AQL_NODE_OPERATOR_BINARY_GT:
         AppendCode(generator, "AHUACATL_RELATIONAL_GREATER(");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_lhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, ", ");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_rhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 1));
         AppendCode(generator, ")");
         break;
       case AQL_NODE_OPERATOR_BINARY_GE:
         AppendCode(generator, "AHUACATL_RELATIONAL_GREATEREQUAL(");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_lhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, ", ");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_rhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 1));
         AppendCode(generator, ")");
         break;
       case AQL_NODE_OPERATOR_BINARY_IN:
         AppendCode(generator, "AHUACATL_RELATIONAL_IN(");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_lhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, ", ");
-        GenerateCode(generator, ((TRI_aql_node_operator_binary_t*) node)->_rhs);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 1));
         AppendCode(generator, ")");
         break;
       case AQL_NODE_FCALL: {
         AppendCode(generator, "AHUACATL_FCALL(");
-        AppendCode(generator, ((TRI_aql_node_fcall_t*) node)->_name);
+        AppendCode(generator, TRI_AQL_NODE_STRING(node));
         AppendCode(generator, ", ");
-        GenerateCode(generator, ((TRI_aql_node_fcall_t*) node)->_parameters);
+        GenerateCode(generator, TRI_AQL_NODE_SUBNODE(node, 0));
         AppendCode(generator, ")");
       }
       default:
@@ -1123,7 +1097,7 @@ static void GenerateCode (TRI_aql_codegen_t* const generator,
     node = node->_next;
   }
 }
-      
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @} 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1159,6 +1133,7 @@ TRI_aql_codegen_t* TRI_CreateCodegenAql (void) {
   TRI_InitVectorPointer(&generator->_strings);
 
   TRI_InitVectorPointer(&generator->_scopes);
+  
   if (!StartScope(generator, AQL_SCOPE_RESULT, GetNextFunctionName(generator))) { 
     TRI_FreeCodegenAql(generator);
     return NULL;
@@ -1235,7 +1210,7 @@ char* TRI_GenerateCodeAql (const void* const data) {
 
     code = TRI_DuplicateString(generator->_buffer._buffer);
     LOG_TRACE("generated code:\n%s\n",code);
-    //printf("generated code:\n%s\n",code);
+    // printf("generated code:\n%s\n",code);
   }
 
   TRI_FreeCodegenAql(generator);

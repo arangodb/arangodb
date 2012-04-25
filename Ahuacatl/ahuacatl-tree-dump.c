@@ -25,8 +25,7 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Ahuacatl/ast-dump.h"
-#include "Ahuacatl/ast-node.h"
+#include "Ahuacatl/ahuacatl-tree-dump.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -64,6 +63,8 @@ static char* GetTypeName (const TRI_aql_node_type_e type) {
       return "limit";
     case AQL_NODE_VARIABLE:
       return "variable";
+    case AQL_NODE_COLLECTION:
+      return "collection";
     case AQL_NODE_REFERENCE:
       return "reference";
     case AQL_NODE_ATTRIBUTE:
@@ -136,7 +137,7 @@ static char* GetTypeName (const TRI_aql_node_type_e type) {
 /// @brief print some indentation
 ////////////////////////////////////////////////////////////////////////////////
 
-static void Indent (TRI_aql_dump_t* const state) {
+static void PrintIndent (TRI_aql_dump_t* const state) {
   size_t i;
   
   for (i = 0; i < state->_indent; ++i) {
@@ -149,32 +150,26 @@ static void Indent (TRI_aql_dump_t* const state) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void PrintType (TRI_aql_dump_t* const state, const TRI_aql_node_type_e type) {
-  Indent(state);
+  PrintIndent(state);
   printf("%s\n", GetTypeName(type));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief increase the indent level by one
+/// @brief dump a string value from a node
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void IndentState (TRI_aql_dump_t* const state) {
-  ++state->_indent;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief decrease the indent level by one
-////////////////////////////////////////////////////////////////////////////////
-
-static inline void OutdentState (TRI_aql_dump_t* const state) {
-  assert(state->_indent > 0);
-  --state->_indent;
+static void DumpString (TRI_aql_dump_t* const state, const TRI_aql_node_t* const node) {
+  PrintIndent(state);
+  printf("name: %s\n", TRI_AQL_NODE_STRING(node));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump an AST value node's value
 ////////////////////////////////////////////////////////////////////////////////
 
-static void DumpValue (TRI_aql_dump_t* const state, TRI_aql_node_value_t* node) {
+static void DumpValue (TRI_aql_dump_t* const state, const TRI_aql_node_t* const node) {
+  PrintIndent(state);
+
   switch (node->_value._type) {
     case AQL_TYPE_FAIL:
       printf("fail\n");
@@ -183,179 +178,83 @@ static void DumpValue (TRI_aql_dump_t* const state, TRI_aql_node_value_t* node) 
       printf("null\n");
       break;
     case AQL_TYPE_BOOL:
-      printf("bool (%lu)\n", (unsigned long) node->_value._value._bool);
+      printf("bool (%lu)\n", (unsigned long) TRI_AQL_NODE_BOOL(node));
       break;
     case AQL_TYPE_INT:
-      printf("int (%ld)\n", (long) node->_value._value._int);
+      printf("int (%ld)\n", (long) TRI_AQL_NODE_INT(node));
       break;
     case AQL_TYPE_DOUBLE:
-      printf("double (%f)\n", node->_value._value._double);
+      printf("double (%f)\n", TRI_AQL_NODE_DOUBLE(node));
       break;
     case AQL_TYPE_STRING:
-      printf("string (%s)\n", node->_value._value._string);
+      printf("string (%s)\n", TRI_AQL_NODE_STRING(node));
       break;
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dump an AST node with all subnodes
+/// @brief increase the indent level by one
 ////////////////////////////////////////////////////////////////////////////////
 
-static void DumpNode (TRI_aql_dump_t* const state, TRI_aql_node_t* const data) { 
-  TRI_aql_node_t* node;
+static void Indent (void* data) {
+  TRI_aql_dump_t* state = (TRI_aql_dump_t*) data;
 
-  if (!data) {
+  ++state->_indent;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief decrease the indent level by one
+////////////////////////////////////////////////////////////////////////////////
+
+static void Outdent (void* data) {
+  TRI_aql_dump_t* state = (TRI_aql_dump_t*) data;
+
+  assert(state->_indent > 0);
+  --state->_indent;
+}
+        
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump an AST node
+////////////////////////////////////////////////////////////////////////////////
+
+static void DumpNode (void* data, const TRI_aql_node_t* const node) {
+  TRI_aql_dump_t* state = (TRI_aql_dump_t*) data;
+
+  if (!node) {
     return;
   }
 
-  node = data;
+  PrintType(state, node->_type);
+  Indent(state);
 
-  while (node) {
-    PrintType(state, node->_type);
-    IndentState(state);
+  switch (node->_type) {
+    case AQL_NODE_VALUE: 
+      DumpValue(state, node);
+      break;
 
-    switch (node->_type) {
-      case AQL_NODE_FOR:
-        DumpNode(state, ((TRI_aql_node_for_t*) node)->_variable);
-        DumpNode(state, ((TRI_aql_node_for_t*) node)->_expression);
-        break;
-      case AQL_NODE_ASSIGN:
-        DumpNode(state, ((TRI_aql_node_assign_t*) node)->_variable);
-        DumpNode(state, ((TRI_aql_node_assign_t*) node)->_expression);
-        break;
-      case AQL_NODE_FILTER:
-        DumpNode(state, ((TRI_aql_node_filter_t*) node)->_expression);
-        break;
-      case AQL_NODE_COLLECT:
-        DumpNode(state, ((TRI_aql_node_sort_t*) node)->_list);
-        if (((TRI_aql_node_collect_t*) node)->_into) {
-          Indent(state);
-          printf("into\n");
-          DumpNode(state, ((TRI_aql_node_collect_t*) node)->_into);
-        }
-        break;
-      case AQL_NODE_RETURN:
-        DumpNode(state, ((TRI_aql_node_return_t*) node)->_expression);
-        break;
-      case AQL_NODE_SORT:
-        DumpNode(state, ((TRI_aql_node_sort_t*) node)->_list);
-        break;
-      case AQL_NODE_SORT_ELEMENT:
-        DumpNode(state, ((TRI_aql_node_sort_element_t*) node)->_expression);
-        Indent(state);
-        printf("asc/desc: %lu\n", (unsigned long) ((TRI_aql_node_sort_element_t*) node)->_ascending);
-        break;
-      case AQL_NODE_LIMIT:
-        Indent(state);
-        printf("offset: %ld\n", (long) ((TRI_aql_node_limit_t*) node)->_offset);
-        Indent(state);
-        printf("count: %ld\n", (long) ((TRI_aql_node_limit_t*) node)->_count);
-        break;
-      case AQL_NODE_VARIABLE:
-        Indent(state);
-        printf("name: %s\n", ((TRI_aql_node_variable_t*) node)->_name);
-        break;
-      case AQL_NODE_REFERENCE:
-        Indent(state);
-        printf("name: %s\n", ((TRI_aql_node_reference_t*) node)->_name);
-        Indent(state);
-        printf("is collection: %ld\n", (long) ((TRI_aql_node_reference_t*) node)->_isCollection);
-        break;
-      case AQL_NODE_ATTRIBUTE:
-        Indent(state);
-        printf("name: %s\n", ((TRI_aql_node_attribute_t*) node)->_name);
-        break;
-      case AQL_NODE_PARAMETER:
-        Indent(state);
-        printf("name: %s\n", ((TRI_aql_node_parameter_t*) node)->_name);
-        break;
-      case AQL_NODE_ATTRIBUTE_ACCESS:
-        DumpNode(state, ((TRI_aql_node_attribute_access_t*) node)->_accessed);
-        Indent(state);
-        printf("name: %s\n", ((TRI_aql_node_attribute_access_t*) node)->_name);
-        break;
-      case AQL_NODE_INDEXED:
-        DumpNode(state, ((TRI_aql_node_indexed_t*) node)->_accessed);
-        DumpNode(state, ((TRI_aql_node_indexed_t*) node)->_index);
-        break;
-      case AQL_NODE_EXPAND:
-        DumpNode(state, ((TRI_aql_node_expand_t*) node)->_expanded);
-        DumpNode(state, ((TRI_aql_node_expand_t*) node)->_expansion);
-        break;
-      case AQL_NODE_OPERATOR_UNARY_PLUS:
-      case AQL_NODE_OPERATOR_UNARY_MINUS:
-      case AQL_NODE_OPERATOR_UNARY_NOT:
-        DumpNode(state, ((TRI_aql_node_operator_unary_t*) node)->_operand);
-        break;
-      case AQL_NODE_OPERATOR_BINARY_AND:
-      case AQL_NODE_OPERATOR_BINARY_OR:
-      case AQL_NODE_OPERATOR_BINARY_EQ:
-      case AQL_NODE_OPERATOR_BINARY_NE:
-      case AQL_NODE_OPERATOR_BINARY_LT:
-      case AQL_NODE_OPERATOR_BINARY_LE:
-      case AQL_NODE_OPERATOR_BINARY_GT:
-      case AQL_NODE_OPERATOR_BINARY_GE:
-      case AQL_NODE_OPERATOR_BINARY_IN:
-      case AQL_NODE_OPERATOR_BINARY_PLUS:
-      case AQL_NODE_OPERATOR_BINARY_MINUS:
-      case AQL_NODE_OPERATOR_BINARY_TIMES:
-      case AQL_NODE_OPERATOR_BINARY_DIV:
-      case AQL_NODE_OPERATOR_BINARY_MOD:
-        DumpNode(state, ((TRI_aql_node_operator_binary_t*) node)->_lhs);
-        DumpNode(state, ((TRI_aql_node_operator_binary_t*) node)->_rhs);
-        break;
-      case AQL_NODE_OPERATOR_TERNARY:
-        DumpNode(state, ((TRI_aql_node_operator_ternary_t*) node)->_condition);
-        DumpNode(state, ((TRI_aql_node_operator_ternary_t*) node)->_truePart);
-        DumpNode(state, ((TRI_aql_node_operator_ternary_t*) node)->_falsePart);
-        break;
-      case AQL_NODE_SUBQUERY:
-        DumpNode(state, ((TRI_aql_node_subquery_t*) node)->_query);
-        break;
-      case AQL_NODE_VALUE: 
-        Indent(state);
-        DumpValue(state, (TRI_aql_node_value_t*) node);
-        break;
-      case AQL_NODE_LIST: { 
-        TRI_vector_pointer_t* values = (TRI_vector_pointer_t*) &((TRI_aql_node_list_t*) node)->_values;
-        size_t i, n;
+    case AQL_NODE_VARIABLE:
+    case AQL_NODE_ATTRIBUTE:
+    case AQL_NODE_COLLECTION:
+    case AQL_NODE_REFERENCE:
+    case AQL_NODE_PARAMETER:
+    case AQL_NODE_ARRAY_ELEMENT:
+    case AQL_NODE_ATTRIBUTE_ACCESS:
+    case AQL_NODE_FCALL:
+      DumpString(state, node);
+      break;
 
-        n = values->_length;
-        for (i = 0; i < n; ++i) {
-          DumpNode(state, (TRI_aql_node_t*) values->_buffer[i]); 
-        }
-        break;
-      }
-      case AQL_NODE_ARRAY: { 
-        TRI_associative_pointer_t* values = (TRI_associative_pointer_t*) &((TRI_aql_node_array_t*) node)->_values;
-        size_t i, n;
-
-        n = values->_nrAlloc;
-        for (i = 0; i < n; ++i) {
-          TRI_aql_node_array_element_t* element = (TRI_aql_node_array_element_t*) values->_table[i];
-          if (!element) {
-            continue;
-          }
-          Indent(state);
-          printf("name: %s\n", element->_name);
-          DumpNode(state, (TRI_aql_node_t*) element->_value);
-        }
-        break;
-      }
-      case AQL_NODE_FCALL: { 
-        Indent(state);
-        printf("name: %s\n", ((TRI_aql_node_fcall_t*) node)->_name);
-        DumpNode(state, ((TRI_aql_node_fcall_t*) node)->_parameters);
-        break;
-      }
-      default:
-        break;
+    case AQL_NODE_SORT_ELEMENT:
+      PrintIndent(state);
+      printf("asc/desc: %lu\n", (unsigned long) TRI_AQL_NODE_BOOL(node));
+      break;
+    
+    default: {
+      // nada
     }
-    
-    OutdentState(state);
-    
-    node = node->_next;
   }
+
+  Outdent(state);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -375,12 +274,20 @@ static void DumpNode (TRI_aql_dump_t* const state, TRI_aql_node_t* const data) {
 /// @brief dump AST nodes recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DumpAql (const void* const data) {
+void TRI_DumpTreeAql (const TRI_aql_node_t* const node) {
+  TRI_aql_const_tree_walker_t* walker;
   TRI_aql_dump_t state;
 
   state._indent = 0;
 
-  DumpNode(&state, (TRI_aql_node_t*) data);
+  walker = TRI_CreateConstTreeWalkerAql((void*) &state, &DumpNode, NULL, &Indent, &Outdent); 
+  if (!walker) {
+    return;
+  }
+
+  TRI_ConstWalkTreeAql(walker, node); 
+
+  TRI_FreeConstTreeWalkerAql(walker);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

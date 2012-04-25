@@ -81,12 +81,12 @@ extern "C" {
 ///   Will be raised when the filesystem is full.
 /// - 1105: @CODE{no journal}
 ///   Will be raised when a journal cannot be created.
-/// - 1106: @CODE{cannot create/rename datafile because it ready exists}
+/// - 1106: @CODE{cannot create/rename datafile because it already exists}
 ///   Will be raised when the datafile cannot be created or renamed because a
 ///   file of the same name already exists.
 /// - 1107: @CODE{database is locked}
 ///   Will be raised when the database is locked by a different process.
-/// - 1108: @CODE{cannot create/rename collection because directory ready exists}
+/// - 1108: @CODE{cannot create/rename collection because directory already exists}
 ///   Will be raised when the collection cannot be created because a directory
 ///   of the same name already exists.
 /// - 1200: @CODE{conflict}
@@ -249,6 +249,10 @@ extern "C" {
 ///   Will be raised when an invalid vertex id is passed to the server
 /// - 1904: @CODE{could not create vertex}
 ///   Will be raised when the vertex could not be created
+/// - 1905: @CODE{invalid edge}
+///   Will be raised when an invalid edge id is passed to the server
+/// - 1906: @CODE{could not create edge}
+///   Will be raised when the edge could not be created
 /// - 2000: @CODE{unknown client error}
 ///   This error should not happen.
 /// - 2001: @CODE{could not connect to server}
@@ -621,7 +625,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1106: ERROR_AVOCADO_DATAFILE_ALREADY_EXISTS
 ///
-/// cannot create/rename datafile because it ready exists
+/// cannot create/rename datafile because it already exists
 ///
 /// Will be raised when the datafile cannot be created or renamed because a
 /// file of the same name already exists.
@@ -642,7 +646,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1108: ERROR_AVOCADO_COLLECTION_DIRECTORY_ALREADY_EXISTS
 ///
-/// cannot create/rename collection because directory ready exists
+/// cannot create/rename collection because directory already exists
 ///
 /// Will be raised when the collection cannot be created because a directory of
 /// the same name already exists.
@@ -1348,6 +1352,26 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_COULD_NOT_CREATE_VERTEX                           (1904)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1905: ERROR_GRAPH_INVALID_EDGE
+///
+/// invalid edge
+///
+/// Will be raised when an invalid edge id is passed to the server
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_INVALID_EDGE                                      (1905)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1906: ERROR_GRAPH_COULD_NOT_CREATE_EDGE
+///
+/// could not create edge
+///
+/// Will be raised when the edge could not be created
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_COULD_NOT_CREATE_EDGE                             (1906)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 2000: SIMPLE_CLIENT_UNKNOWN_ERROR

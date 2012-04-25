@@ -44,9 +44,9 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_AVOCADO_MMAP_FAILED, "mmap failed");
   REG_ERROR(ERROR_AVOCADO_FILESYSTEM_FULL, "filesystem full");
   REG_ERROR(ERROR_AVOCADO_NO_JOURNAL, "no journal");
-  REG_ERROR(ERROR_AVOCADO_DATAFILE_ALREADY_EXISTS, "cannot create/rename datafile because it ready exists");
+  REG_ERROR(ERROR_AVOCADO_DATAFILE_ALREADY_EXISTS, "cannot create/rename datafile because it already exists");
   REG_ERROR(ERROR_AVOCADO_DATABASE_LOCKED, "database is locked");
-  REG_ERROR(ERROR_AVOCADO_COLLECTION_DIRECTORY_ALREADY_EXISTS, "cannot create/rename collection because directory ready exists");
+  REG_ERROR(ERROR_AVOCADO_COLLECTION_DIRECTORY_ALREADY_EXISTS, "cannot create/rename collection because directory already exists");
   REG_ERROR(ERROR_AVOCADO_CONFLICT, "conflict");
   REG_ERROR(ERROR_AVOCADO_WRONG_VOCBASE_PATH, "wrong path for database");
   REG_ERROR(ERROR_AVOCADO_DOCUMENT_NOT_FOUND, "document not found");
@@ -115,6 +115,8 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_GRAPH_COULD_NOT_CREATE_GRAPH, "could not create graph");
   REG_ERROR(ERROR_GRAPH_INVALID_VERTEX, "invalid vertex");
   REG_ERROR(ERROR_GRAPH_COULD_NOT_CREATE_VERTEX, "could not create vertex");
+  REG_ERROR(ERROR_GRAPH_INVALID_EDGE, "invalid edge");
+  REG_ERROR(ERROR_GRAPH_COULD_NOT_CREATE_EDGE, "could not create edge");
   REG_ERROR(SIMPLE_CLIENT_UNKNOWN_ERROR, "unknown client error");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_CONNECT, "could not connect to server");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_WRITE, "could not write to server");
