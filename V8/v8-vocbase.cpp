@@ -47,6 +47,7 @@
 #include "Ahuacatl/ast-node.h"
 #include "Ahuacatl/ast-codegen-js.h"
 #include "Ahuacatl/ahuacatl-parser.h"
+#include "Ahuacatl/ahuacatl-tree-dump.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -2330,7 +2331,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
 
   if (context->_first) {
     char* code = TRI_GenerateCodeAql((TRI_aql_node_t*) context->_first);
-
+    
     if (code) {
       result = TRI_ExecuteStringVocBase(v8::Context::GetCurrent(), v8::String::New(code), v8::String::New("query"));
       TRI_Free(code);
