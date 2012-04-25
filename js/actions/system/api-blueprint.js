@@ -435,7 +435,7 @@ function postEdge(req, res) {
     var json = JSON.parse(req.requestBody);
       
     if (!json || !(json instanceof Object)) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_VERTEX, "missing request body");
+      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_EDGE, "missing request body");
       return;
     }
     
@@ -453,7 +453,7 @@ function postEdge(req, res) {
     actions.resultOk(req, res, actions.HTTP_OK, { "edge" : e._properties } );
   }
   catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_VERTEX, err);
+    actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_EDGE, err);
   }
 }
 
@@ -466,7 +466,7 @@ function postEdge(req, res) {
 
 function getEdge(req, res) {
   if (req.suffix.length < 1) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, "edge not found");
+    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_EDGE, "edge not found");
     return;
   }
 
@@ -482,18 +482,17 @@ function getEdge(req, res) {
     if (req.suffix.length > 1) {
       id += "/" + req.suffix[1];
     }
-    
-    
+        
     var e = new graph.Edge(g, id);
 
     if (e == undefined || e._properties == undefined) {
-      throw "no edge found for: " + id + " " + e;
+      throw "no edge found for: " + id;
     }
     
     actions.resultOk(req, res, actions.HTTP_OK, { "edge" : e._properties} );
   }
   catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
+    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_EDGE, err);
   }
 }
 
@@ -506,7 +505,7 @@ function getEdge(req, res) {
 
 function deleteEdge(req, res) {
   if (req.suffix.length < 1) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, "edge not found");
+    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_EDGE, "edge not found");
     return;
   }
 
@@ -523,10 +522,10 @@ function deleteEdge(req, res) {
       id += "/" + req.suffix[1];
     }
     
-    var e = g.getVertex(id);
+    var e = new graph.Edge(g, id);
 
     if (e == undefined || e._properties == undefined) {
-      throw "no edge found";
+      throw "no edge found for: " + id;
     }
     
     g.removeEdge(e);
@@ -534,7 +533,7 @@ function deleteEdge(req, res) {
     actions.resultOk(req, res, actions.HTTP_OK, { "deleted" : true} );
   }
   catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
+    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_EDGE, err);
   }
 }
 
