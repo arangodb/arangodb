@@ -5,7 +5,7 @@
 
 $(document).ready(function() {       
 
-
+showCursor();
 ///////////////////////////////////////////////////////////////////////////////
 /// global variables 
 ///////////////////////////////////////////////////////////////////////////////
@@ -95,7 +95,7 @@ var collectionTable = $('#collectionsTableID').dataTable({
     "bFilter": false,
     "bLengthChange": false, 
     "bDeferRender": true, 
-    "bAutoWidth": true, 
+    "bAutoWidth": false, 
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
     "aoColumns": [{"sWidth":"150px", "bSortable":false}, null, null, null, null, null ],
@@ -1384,26 +1384,31 @@ function drawCollectionsTable () {
       if (tempStatus == 1) {
         tempStatus = "new born collection";
       }
-      if (tempStatus == 2) {
+      else if (tempStatus == 2) {
         tempStatus = "unloaded";
-        items.push(['<button id="delete"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button><button id="load"><img src="/_admin/html/media/icons/connect_icon16.png" width="16" height="16"></button>', 
+        items.push(['<button id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16"></button><button id="load"><img src="/_admin/html/media/icons/connect_icon16.png" width="16" height="16"></button>', 
         val.id, val.name, tempStatus, "", ""]);
        }
-      if (tempStatus == 3) {
+      else if (tempStatus == 3) {
         tempStatus = "loaded";
-        items.push(['<button id="delete"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button><button id="unload"><img src="/_admin/html/media/icons/not_connected_icon16.png" width="16" height="16"></button><button id="showdocs"><img src="/_admin/html/media/icons/zoom_icon16.png" width="16" height="16" title="Show Documents"></button><button id="edit"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', 
+        items.push(['<button id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16"></button><button id="unload"><img src="/_admin/html/media/icons/not_connected_icon16.png" width="16" height="16"></button><button id="showdocs"><img src="/_admin/html/media/icons/zoom_icon16.png" width="16" height="16" title="Show Documents"></button><button id="edit"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', 
         val.id, val.name, tempStatus, "", ""]);
       }
-      if (tempStatus == 4) {
+      else if (tempStatus == 4) {
         tempStatus = "in the process of being unloaded"; 
         items.push(["", val.id, val.name, tempStatus, "", ""]);
       }
-      if (tempStatus == 5) {
+      else if (tempStatus == 5) {
         tempStatus = "deleted"; 
         items.push(["", val.id, val.name, tempStatus, "", ""]);
       }
+/*      else {
+        tempStatus = "corrupted"; 
+        items.push(["", "<font color=red>"+ val.id + "</font>", "<font color=red>"+ val.name + "</font>", "<font color=red>" + tempStatus + "</font>", "", ""]);
+      }*/
     });
   $('#collectionsTableID').dataTable().fnAddData(items);
+  showCursor();
   });
 }
 
@@ -1670,4 +1675,8 @@ function createNextPagination() {
   });
 }
     
-
+function showCursor() {
+  $(':button').mouseover(function () {
+    $(this).css('cursor', 'pointer');
+  });
+}
