@@ -117,11 +117,6 @@ string const& JSLoader::findScript (string const& name) {
 
     for (size_t i = 0; i < parts.size(); i++) {
       char* filename = TRI_Concatenate2File(parts.at(i).c_str(), name.c_str());
-      if (!filename) {
-        LOGGER_ERROR << "out-of-memory";
-        return empty;
-      }
-
       char* result = TRI_SlurpFile(filename);
 
       if (result == 0 && (i == parts.size() - 1)) {
@@ -154,6 +149,7 @@ bool JSLoader::loadScript (v8::Persistent<v8::Context> context, string const& na
   map<string, string>::iterator i = _scripts.find(name);
 
   if (i == _scripts.end()) {
+    LOGGER_ERROR << "unknown script '" << name << "'";
     return false;
   }
 
