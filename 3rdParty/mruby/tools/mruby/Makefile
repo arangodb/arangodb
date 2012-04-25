@@ -38,11 +38,11 @@ INCLUDES = -I$(BASEDIR) -I$(BASEDIR)/../include
 CC = gcc
 LL = gcc
 YACC = bison
-DEBUG_MODE = 1
+DEBUG_MODE = 0
 ifeq ($(DEBUG_MODE),1)
 CFLAGS = -g
 else
-CFLAGS = -O3
+CFLAGS = -O2 -g
 endif
 ALL_CFLAGS = -Wall -Werror-implicit-function-declaration $(CFLAGS)
 MAKE_FLAGS = --no-print-directory CC=$(CC) LL=$(LL)
@@ -86,4 +86,5 @@ clean :
 	$(MAKE) clean -C ../../mrblib $(MAKE_FLAGS)
 	-rm -f $(EXE) $(OBJS) $(OBJY) $(YC) $(EXTS)
 	-rm -f $(OBJS:.o=.d) $(OBJY:.o=.d) $(EXTS:.o=.d)
+	-rm -f $(patsubst %.c,%.o,$(EXCEPT1)) $(patsubst %.c,%.d,$(EXCEPT1))
 	@echo "make: removing targets, objects and depend files of `pwd`"

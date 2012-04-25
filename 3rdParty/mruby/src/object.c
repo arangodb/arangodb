@@ -1,3 +1,9 @@
+/*
+** object.c - Object, NilClass, TrueClass, FalseClass class
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #include "mruby.h"
 #include <string.h>
 #include "mruby/string.h"
@@ -472,7 +478,6 @@ mrb_any_to_s(mrb_state *mrb, mrb_value obj)
   //  snprintf(RSTRING(str)->ptr, len+1, "#<%s:0x%lx>", cname, obj);
   sprintf(s->buf, "#<%s:0x%lx>", cname, (unsigned long)(obj.value.p));
   s->len = strlen(s->buf);
-  /*if (OBJ_TAINTED(obj)) OBJ_TAINT(str);*/
 
   return str;
 }

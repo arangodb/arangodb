@@ -1,13 +1,8 @@
-/**********************************************************************
-
-  enum.c -
-
-  $Author: yugui $
-  created at: Fri Oct  1 15:15:19 JST 1993
-
-  Copyright (C) 1993-2007 Yukihiro Matsumoto
-
-**********************************************************************/
+/*
+** enum.c - Enumerable module
+** 
+** See Copyright Notice in mruby.h
+*/
 
 #include "mruby.h"
 
@@ -418,7 +413,6 @@ enum_to_a(mrb_state *mrb, int argc, mrb_value *argv, mrb_value obj)
     mrb_value ary = mrb_ary_new(mrb);
 
     mrb_block_call(mrb, obj, id_each, argc, argv, collect_all, &ary);
-    //OBJ_INFECT(ary, obj);
 
     return ary;
 }

@@ -1,3 +1,9 @@
+/*
+** struct.h - Struct class
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #ifndef MSTRUCT_H
 #define MSTRUCT_H
 

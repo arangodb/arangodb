@@ -1,8 +1,9 @@
 /*
- * Rite Hash
- *
- *
- */
+** ritehash.c - Rite Hash for mruby
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>

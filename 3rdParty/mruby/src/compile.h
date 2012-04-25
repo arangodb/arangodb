@@ -1,3 +1,9 @@
+/*
+** compile.h - mruby parser
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #include "mruby.h"
 #include <stdio.h>
 #include <setjmp.h>
