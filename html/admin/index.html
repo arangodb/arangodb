@@ -207,10 +207,10 @@
         <div id="tabs">
           <ul>
             <li><a href="#All">All</a><li>
-            <li><a href="#Critical">Critical</a><li>
-            <li><a href="#Warning">Warning</a><li>
-            <li><a href="#Info">Info</a><li>
-            <li><a href="#Debug">Debug</a><li>
+            <li><a id="logCritTab" href="#Critical">Critical</a><li>
+            <li><a id="logWarnTab" href=#Warning">Warning</a><li>
+            <li><a id="logInfoTab" href="#Info">Info</a><li>
+            <li><a id="logDebuTab" href="#Debug">Debug</a><li>
           </ul>
         
           <div id="All">
@@ -222,6 +222,10 @@
                 </tr> 
               </thead>
             </table>
+            <div id="logTable_toolbar" class="ui-widget-header">
+                <button id="logTableID_prev">Prev</button>
+                <button id="logTableID_next">Next</button>
+            </div>
           </div>
 
           <div id="Critical">
@@ -233,6 +237,8 @@
                 </tr> 
               </thead>
             </table>
+            <button id="critLogTableID_prev">Prev</button>
+            <button id="critLogTableID_next">Next</button>
           </div>
         
           <div id="Warning">
@@ -244,6 +250,8 @@
                 </tr> 
               </thead>
             </table>
+              <button id="warnLogTableID_prev">Prev</button>
+              <button id="warnLogTableID_next">Next</button>
           </div>
 
           <div id="Info">
@@ -255,6 +263,8 @@
                 </tr> 
               </thead>
             </table>
+              <button id="infoLogTableID_prev">Prev</button>
+              <button id="infoLogTableID_next">Next</button>
           </div>
 
           <div id="Debug">
@@ -266,6 +276,8 @@
                 </tr> 
               </thead>
             </table>
+              <button id="debugLogTableID_prev">Prev</button>
+              <button id="debugLogTableID_next">Next</button>
           </div>
           
         </div>
