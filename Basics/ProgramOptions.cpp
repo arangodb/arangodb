@@ -299,7 +299,7 @@ ProgramOptions::~ProgramOptions () {
   }
 
   for (map<string, TRI_vector_string_t*>::iterator i = _valuesVector.begin();  i != _valuesVector.end();  ++i) {
-    TRI_FreeVectorString(i->second);
+    TRI_FreeVectorString(TRI_CORE_MEM_ZONE, i->second);
   }
 
   for (map<string, bool*>::iterator i = _valuesBool.begin();  i != _valuesBool.end();  ++i) {
@@ -538,7 +538,7 @@ void ProgramOptions::setupSubDescription (ProgramOptionsDescription const& descr
 
           if (wtr == 0) {
             wtr = _valuesVector[option] = (TRI_vector_string_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_vector_string_t));
-            TRI_InitVectorString(TRI_CORE_MEM_ZONE, wtr);
+            TRI_InitVectorString(wtr, TRI_CORE_MEM_ZONE);
           }
 
           TRI_AddVectorStringPODescription(desc, option.c_str(), shortOption, help.c_str(), wtr);
