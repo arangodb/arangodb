@@ -1,8 +1,14 @@
+/*
+** codegen.c - mruby code generator
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #undef CODEGEN_TEST
 #define CODEGEN_DUMP
 
 #include "mruby.h"
-#include "irep.h"
+#include "mruby/irep.h"
 #include "compile.h"
 #include "mruby/proc.h"
 #include "opcode.h"

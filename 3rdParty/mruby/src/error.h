@@ -1,3 +1,9 @@
+/*
+** error.h - Exception class
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #ifndef MRUBY_ERROR_H
 #define MRUBY_ERROR_H
 

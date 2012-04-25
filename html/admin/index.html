@@ -35,19 +35,19 @@
     <div id="menue" class="ui-layout-north">
 
       <div id="menue-left">
-        <a href="/_admin/html/index.html"><img width=60% height=100% src="../html/media/images/avocado.png"></a>
+        <a href="/_admin/html/index.html"><img src="../html/media/images/avocadodb_logo.png"></a>
       </div>
 
       <div id="menue-center">
       </div>
 
       <div id="menue-right">
-          <button class="minimal" id="Collections">Collections</button>
-          <button class="minimal" id="Status">Status</button>
-          <button class="minimal" id="Logs">Logs</button>
-          <button class="minimal" id="Configuration">Configuration</button>
-          <button class="minimal" id="Query">Query</button>
-          <button class="minimal" id="AvocSH">AvocSH</button>
+        <button class="minimal" id="Collections">Collections</button>
+        <button class="minimal" id="Status">Status</button>
+        <button class="minimal" id="Logs">Logs</button>
+        <button class="minimal" id="Configuration">Configuration</button>
+        <button class="minimal" id="Query">Query</button>
+        <button class="minimal" id="AvocSH">AvocSH</button>
       </div>
 
     </div>
@@ -90,7 +90,10 @@
         <img src="/_admin/html/media/icons/save_icon16.png" width="16" height="16">
         <a>Save Collection</a>
       </button>
-      <button class="minimal" id="cancelNewCollection">Cancel</button>
+      <button class="minimal" id="cancelNewCollection">
+        <img src="/_admin/html/media/icons/cancel_icon16.png" width="16" height="16">
+        <a>Cancel</a>
+      </button>
         <table cellpadding="0" cellspacing="0" border="0" class="display" id="createCollectionTableID" width="100%">
           <thead>
             <tr>
@@ -207,10 +210,10 @@
         <div id="tabs">
           <ul>
             <li><a href="#All">All</a><li>
-            <li><a href="#Critical">Critical</a><li>
-            <li><a href="#Warning">Warning</a><li>
-            <li><a href="#Info">Info</a><li>
-            <li><a href="#Debug">Debug</a><li>
+            <li><a id="logCritTab" href="#Critical">Critical</a><li>
+            <li><a id="logWarnTab" href=#Warning">Warning</a><li>
+            <li><a id="logInfoTab" href="#Info">Info</a><li>
+            <li><a id="logDebuTab" href="#Debug">Debug</a><li>
           </ul>
         
           <div id="All">
@@ -222,6 +225,10 @@
                 </tr> 
               </thead>
             </table>
+            <div id="logToolbar">
+                <button id="logTableID_prev">Prev</button>
+                <button id="logTableID_next">Next</button>
+            </div>
           </div>
 
           <div id="Critical">
@@ -233,6 +240,10 @@
                 </tr> 
               </thead>
             </table>
+            <div id="logToolbar">
+              <button id="critLogTableID_prev">Prev</button>
+              <button id="critLogTableID_next">Next</button>
+            </div>
           </div>
         
           <div id="Warning">
@@ -244,6 +255,10 @@
                 </tr> 
               </thead>
             </table>
+            <div id="logToolbar">
+              <button id="warnLogTableID_prev">Prev</button>
+              <button id="warnLogTableID_next">Next</button>
+            </div>
           </div>
 
           <div id="Info">
@@ -255,6 +270,10 @@
                 </tr> 
               </thead>
             </table>
+            <div id="logToolbar">
+              <button id="infoLogTableID_prev">Prev</button>
+              <button id="infoLogTableID_next">Next</button>
+            </div> 
           </div>
 
           <div id="Debug">
@@ -266,6 +285,10 @@
                 </tr> 
               </thead>
             </table>
+            <div id="logToolbar">
+              <button id="debugLogTableID_prev">Prev</button>
+              <button id="debugLogTableID_next">Next</button>
+            </div>
           </div>
           
         </div>

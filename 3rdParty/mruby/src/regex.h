@@ -1,12 +1,8 @@
-/**********************************************************************
-
-  regex.h -
-
-  $Author: akr $
-
-  Copyright (C) 1993-2007 Yukihiro Matsumoto
-
-**********************************************************************/
+/*
+** regex.h - Regexp class
+** 
+** See Copyright Notice in mruby.h
+*/
 
 #ifndef ONIGURUMA_REGEX_H
 #define ONIGURUMA_REGEX_H 1

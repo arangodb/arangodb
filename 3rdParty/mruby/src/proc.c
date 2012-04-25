@@ -1,3 +1,9 @@
+/*
+** proc.c - Proc class
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #include "mruby.h"
 #include "mruby/proc.h"
 #include "mruby/array.h"
@@ -50,6 +56,22 @@ mrb_proc_new_cfunc(mrb_state *mrb, mrb_func_t func)
   return p;
 }
 
+static mrb_value
+mrb_proc_initialize(mrb_state *mrb, mrb_value self)
+{
+  mrb_value blk = mrb->stack[mrb->ci->argc+1];
+
+  if (!mrb_nil_p(blk)) {
+    *mrb_proc_ptr(self) = *mrb_proc_ptr(blk);
+  }
+  else {
+    /* Calling Proc.new without a block is not implemented yet */
+    mrb_raise(mrb, E_ARGUMENT_ERROR, "tried to create Proc object without a block");
+  }
+
+  return self;
+}
+
 int
 mrb_proc_cfunc_p(struct RProc *p)
 {
@@ -85,6 +107,8 @@ mrb_init_proc(mrb_state *mrb)
   call_irep->ilen = 1;
 
   mrb->proc_class = mrb_define_class(mrb, "Proc", mrb->object_class);
+
+  mrb_define_method(mrb, mrb->proc_class, "initialize", mrb_proc_initialize, ARGS_NONE());
 
   m = mrb_proc_new(mrb, call_irep);
   mrb_define_method_raw(mrb, mrb->proc_class, mrb_intern(mrb, "call"), m);

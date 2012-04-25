@@ -1,13 +1,9 @@
-/**********************************************************************
+/*
+** method.h - method structures and functions
+** 
+** See Copyright Notice in mruby.h
+*/
 
-  method.h -
-
-  $Author: ko1 $
-  created at: Wed Jul 15 20:02:33 2009
-
-  Copyright (C) 2009 Koichi Sasada
-
-**********************************************************************/
 #ifndef METHOD_H
 #define METHOD_H
 

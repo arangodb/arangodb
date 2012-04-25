@@ -1,3 +1,9 @@
+/*
+** class.c - Class class
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #include "mruby.h"
 #include <stdarg.h>
 #include <stdio.h>
@@ -5,11 +11,11 @@
 #include "mruby/proc.h"
 #include "mruby/string.h"
 #include "mruby/numeric.h"
-#include "variable.h"
+#include "mruby/variable.h"
 #include "mruby/array.h"
 #include "error.h"
 
-#include "ritehash.h"
+#include "mruby/khash.h"
 
 #ifdef INCLUDE_REGEXP
   #define mrb_usascii_str_new2 mrb_usascii_str_new_cstr
@@ -105,7 +111,12 @@ make_metaclass(mrb_state *mrb, struct RClass *c)
   }
   sc = mrb_obj_alloc(mrb, MRB_TT_SCLASS, mrb->class_class);
   sc->mt = 0;
-  sc->super = c->c;
+  if (!c->super) {
+    sc->super = mrb->class_class;
+  }
+  else {
+    sc->super = c->super->c;
+  }
   c->c = sc;
   mrb_field_write_barrier(mrb, (struct RBasic*)c, (struct RBasic*)sc);
   mrb_field_write_barrier(mrb, (struct RBasic*)sc, (struct RBasic*)sc->super);
@@ -202,6 +213,7 @@ mrb_vm_define_class(mrb_state *mrb, mrb_value outer, mrb_value super, mrb_sym id
   if (!c) {
     struct RClass *s = 0;
 
+    mrb_check_type(mrb, super, MRB_TT_CLASS);
     if (!mrb_nil_p(super)) s = mrb_class_ptr(super);
     c = mrb_class_new(mrb, s);
     setup_class(mrb, outer, c, id);
@@ -829,7 +841,6 @@ mrb_class_new(mrb_state *mrb, struct RClass *super)
   struct RClass *c;
 
   if (super) {
-//    mrb_check_type(mrb, super, MRB_TT_CLASS);
     mrb_check_inheritable(mrb, super);
   }
   c = boot_defclass(mrb, super);
@@ -845,7 +856,6 @@ struct RClass *
 mrb_module_new(mrb_state *mrb)
 {
   struct RClass *m = mrb_obj_alloc(mrb, MRB_TT_MODULE, mrb->module_class);
-  make_metaclass(mrb, m);
 
   return m;
 }

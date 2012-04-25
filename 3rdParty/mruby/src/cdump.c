@@ -1,8 +1,14 @@
-#include "cdump.h"
+/*
+** cdump.c - mruby binary dumper (C source format)
+** 
+** See Copyright Notice in mruby.h
+*/
+
+#include "mruby/cdump.h"
 
 #include <string.h>
 
-#include "irep.h"
+#include "mruby/irep.h"
 #include "mruby/string.h"
 #include "re.h"
 
@@ -140,7 +146,7 @@ make_cdump_irep(mrb_state *mrb, int irep_no, FILE *f)
           }
         }
         memset(buf, 0, buf_len);
-        SOURCE_CODE("  irep->pool[%d] = mrb_str_new(mrb, \"%s\", %zd);",               n, str_to_format(irep->pool[n], buf), RSTRING_LEN(irep->pool[n])); break;
+        SOURCE_CODE("  irep->pool[%d] = mrb_str_new(mrb, \"%s\", %ld);",               n, str_to_format(irep->pool[n], buf), RSTRING_LEN(irep->pool[n])); break;
       /* TODO MRB_TT_REGEX */
       default: break;
       }
@@ -163,7 +169,7 @@ mrb_cdump_irep(mrb_state *mrb, int n, FILE *f,const char *initname)
   irep_num = mrb->irep_len - n;
 
   SOURCE_CODE0("#include \"mruby.h\"");
-  SOURCE_CODE0("#include \"irep.h\"");
+  SOURCE_CODE0("#include \"mruby/irep.h\"");
   SOURCE_CODE0("#include \"mruby/string.h\"");
   SOURCE_CODE0("#include \"mruby/proc.h\"");
   SOURCE_CODE0("");

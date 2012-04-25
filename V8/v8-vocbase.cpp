@@ -1897,7 +1897,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
                              CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
                                                "cannot convert attribute name to UTF8")));
       }
-      else if (values[i] == 0) {
+      else {
         return scope.Close(v8::ThrowException(
                              CreateErrorObject(TRI_ERROR_BAD_PARAMETER, 
                                                "cannot convert value to JSON")));

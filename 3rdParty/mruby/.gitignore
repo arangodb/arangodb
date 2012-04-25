@@ -3,6 +3,7 @@
 *.dylib
 *.inc
 *.o
+*.a
 *.orig
 *.rej
 *.sav
@@ -14,5 +15,7 @@
 .svn
 /.git
 cscope.out
-mruby.exe
-y.tab.c
+/src/y.tab.c
+/bin
+/mrblib/mrblib.c
+/mrblib/*.*tmp

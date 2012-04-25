@@ -1,3 +1,9 @@
+/*
+** array.c - Array class
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #include "mruby.h"
 #include "mruby/array.h"
 #include <string.h>
@@ -995,24 +1001,19 @@ inspect_ary(mrb_state *mrb, mrb_value ary, mrb_value list)
 static mrb_value
 inspect_ary_r(mrb_state *mrb, mrb_value ary, mrb_value dummy, int recur)
 {
-  //int tainted = OBJ_TAINTED(ary);
-  //int untrust = OBJ_UNTRUSTED(ary);
   long i;
   mrb_value s, arystr;
-  //if (recur) return mrb_tainted_str_new2("[...]");
+
   arystr = mrb_str_buf_new(mrb, 128);
   mrb_str_buf_cat(mrb, arystr, "[", strlen("[")); /* for capa */
   //arystr = mrb_str_new_cstr(mrb, "[");//mrb_str_buf_new2("[");
   for (i=0; i<RARRAY_LEN(ary); i++) {
     s = mrb_inspect(mrb, RARRAY_PTR(ary)[i]);//mrb_inspect(RARRAY_PTR(ary)[i]);
-    //if (OBJ_TAINTED(s)) tainted = TRUE;
-    //if (OBJ_UNTRUSTED(s)) untrust = TRUE;
     if (i > 0) mrb_str_buf_cat(mrb, arystr, ", ", strlen(", "));//mrb_str_buf_cat2(str, ", ");
     mrb_str_buf_append(mrb, arystr, s);
   }
   mrb_str_buf_cat(mrb, arystr, "]", strlen("]"));// mrb_str_buf_cat2(str, "]");
-  //if (tainted) OBJ_TAINT(str);
-  //if (untrust) OBJ_UNTRUST(str);
+
   return arystr;
 }
 #endif
@@ -1132,8 +1133,6 @@ ary_join_0(mrb_state *mrb, mrb_value ary, mrb_value sep, long max, mrb_value res
     if (i > 0 && !mrb_nil_p(sep))
         mrb_str_buf_append(mrb, result, sep);
     mrb_str_buf_append(mrb, result, val);
-    //if (OBJ_TAINTED(val)) OBJ_TAINT(result);
-    //if (OBJ_UNTRUSTED(val)) OBJ_TAINT(result);
   }
 }
 
@@ -1199,13 +1198,9 @@ mrb_value
 mrb_ary_join(mrb_state *mrb, mrb_value ary, mrb_value sep)
 {
   long len = 1, i;
-  //int taint = FALSE;
-  //int untrust = FALSE;
   mrb_value val, tmp, result;
 
   if (RARRAY_LEN(ary) == 0) return mrb_str_new2(mrb, "");
-  //if (OBJ_TAINTED(ary) || OBJ_TAINTED(sep)) taint = TRUE;
-  //if (OBJ_UNTRUSTED(ary) || OBJ_UNTRUSTED(sep)) untrust = TRUE;
 
   if (!mrb_nil_p(sep)) {
     //StringValue(sep);
@@ -1221,8 +1216,6 @@ mrb_ary_join(mrb_state *mrb, mrb_value ary, mrb_value sep)
       mrb_value first;
 
       result = mrb_str_buf_new(mrb, len + (RARRAY_LEN(ary)-i)*10);
-      //if (taint) OBJ_TAINT(result);
-      //if (untrust) OBJ_UNTRUST(result);
       first = (i == 0)? mrb_true_value(): mrb_false_value();
 mrb_realloc(mrb, RSTRING(result)->buf, ++(RSTRING(result)->capa));
       ary_join_0(mrb, ary, sep, i, result);
@@ -1236,8 +1229,6 @@ mrb_realloc(mrb, RSTRING(result)->buf, ++(RSTRING(result)->capa));
   }
 
   result = mrb_str_buf_new(mrb, len);
-  //if (taint) OBJ_TAINT(result);
-  //if (untrust) OBJ_UNTRUST(result);
   ary_join_0(mrb, ary, sep, RARRAY_LEN(ary), result);
 
   return result;
