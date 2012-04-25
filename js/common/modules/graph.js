@@ -795,10 +795,19 @@ function Graph (name, vertices, edges) {
   }
 
   if (vertices === undefined && edges == undefined) {
-    props = gdb.firstExample('name', name);
+    props = gdb.firstExample('name', name);    
     
     if (props === null) {
-      throw "no graph named '" + name + "' found";
+      try {
+        props = gdb.document(name);
+      }
+      catch (e) {
+        throw "no graph named '" + name + "' found";
+      }
+      
+      if (props === null) {
+        throw "no graph named '" + name + "' found";
+      }
     }
 
     vertices = internal.db._collection(props.vertices);
