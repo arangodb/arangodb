@@ -193,7 +193,7 @@ am_libavocado_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 	JsonParserX/JsonScannerX.$(OBJEXT) Logger/Logger.$(OBJEXT) \
 	Logger/LoggerData.$(OBJEXT) Logger/LoggerInfo.$(OBJEXT) \
 	Logger/LoggerStream.$(OBJEXT) Logger/LoggerTiming.$(OBJEXT) \
-	MRuby/MRLineEditor.$(OBJEXT) \
+	MRuby/MRLineEditor.$(OBJEXT) MRuby/mr-utils.$(OBJEXT) \
 	ProgramOptions/program-options.$(OBJEXT) \
 	Rest/AddressPort.$(OBJEXT) Rest/AnyServer.$(OBJEXT) \
 	Rest/HttpRequest.$(OBJEXT) Rest/HttpResponse.$(OBJEXT) \
@@ -666,6 +666,7 @@ libavocado_a_SOURCES = \
 	Logger/LoggerStream.cpp \
 	Logger/LoggerTiming.cpp \
 	MRuby/MRLineEditor.cpp \
+	MRuby/mr-utils.cpp \
 	ProgramOptions/program-options.c \
 	Rest/AddressPort.cpp \
 	Rest/AnyServer.cpp \
@@ -1250,6 +1251,8 @@ MRuby/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) MRuby/$(DEPDIR)
 	@: > MRuby/$(DEPDIR)/$(am__dirstamp)
 MRuby/MRLineEditor.$(OBJEXT): MRuby/$(am__dirstamp) \
+	MRuby/$(DEPDIR)/$(am__dirstamp)
+MRuby/mr-utils.$(OBJEXT): MRuby/$(am__dirstamp) \
 	MRuby/$(DEPDIR)/$(am__dirstamp)
 ProgramOptions/$(am__dirstamp):
 	@$(MKDIR_P) ProgramOptions
@@ -1982,6 +1985,7 @@ mostlyclean-compile:
 	-rm -f Logger/LoggerTiming.$(OBJEXT)
 	-rm -f MRClient/avocirb.$(OBJEXT)
 	-rm -f MRuby/MRLineEditor.$(OBJEXT)
+	-rm -f MRuby/mr-utils.$(OBJEXT)
 	-rm -f PriorityQueue/pqueueindex.$(OBJEXT)
 	-rm -f PriorityQueue/priorityqueue.$(OBJEXT)
 	-rm -f ProgramOptions/program-options.$(OBJEXT)
@@ -2208,6 +2212,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Logger/$(DEPDIR)/LoggerTiming.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@MRClient/$(DEPDIR)/avocirb.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@MRuby/$(DEPDIR)/MRLineEditor.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@MRuby/$(DEPDIR)/mr-utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@PriorityQueue/$(DEPDIR)/pqueueindex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@PriorityQueue/$(DEPDIR)/priorityqueue.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ProgramOptions/$(DEPDIR)/program-options.Po@am__quote@
@@ -3087,7 +3092,7 @@ unittests-http-server:
 @ENABLE_BISON_TRUE@JsonParserX/%.cpp: @srcdir@/JsonParserX/%.yy
 @ENABLE_BISON_TRUE@	@top_srcdir@/config/bison-c++.sh $(BISON) $@ $<
 
-@ENABLE_ERRORS_DEPENDENCY_TRUE@.PHONY: errorfiles
+.PHONY: errorfiles
 
 @ENABLE_ERRORS_DEPENDENCY_TRUE@errorfiles: BasicsC/errors.dat
 @ENABLE_ERRORS_DEPENDENCY_TRUE@	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py BasicsC/errors.dat BasicsC/voc-errors.h

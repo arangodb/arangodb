@@ -59,6 +59,7 @@ libavocado_a_SOURCES = \
 	Logger/LoggerStream.cpp \
 	Logger/LoggerTiming.cpp \
 	MRuby/MRLineEditor.cpp \
+	MRuby/mr-utils.cpp \
 	ProgramOptions/program-options.c \
 	Rest/AddressPort.cpp \
 	Rest/AnyServer.cpp \
