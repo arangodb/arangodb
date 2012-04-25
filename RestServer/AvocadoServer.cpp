@@ -196,7 +196,7 @@ AvocadoServer::AvocadoServer (int argc, char** argv)
   p = TRI_LocateBinaryPath(argv[0]);
   _binaryPath = p;
 
-  TRI_FreeString(p);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, p);
 
   // .............................................................................
   // use relative system paths
