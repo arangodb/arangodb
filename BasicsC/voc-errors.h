@@ -77,12 +77,12 @@ extern "C" {
 ///   Will be raised when the filesystem is full.
 /// - 1105: @CODE{no journal}
 ///   Will be raised when a journal cannot be created.
-/// - 1106: @CODE{cannot create/rename datafile because it ready exists}
+/// - 1106: @CODE{cannot create/rename datafile because it already exists}
 ///   Will be raised when the datafile cannot be created or renamed because a
 ///   file of the same name already exists.
 /// - 1107: @CODE{database is locked}
 ///   Will be raised when the database is locked by a different process.
-/// - 1108: @CODE{cannot create/rename collection because directory ready exists}
+/// - 1108: @CODE{cannot create/rename collection because directory already exists}
 ///   Will be raised when the collection cannot be created because a directory
 ///   of the same name already exists.
 /// - 1200: @CODE{conflict}
@@ -597,7 +597,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1106: ERROR_AVOCADO_DATAFILE_ALREADY_EXISTS
 ///
-/// cannot create/rename datafile because it ready exists
+/// cannot create/rename datafile because it already exists
 ///
 /// Will be raised when the datafile cannot be created or renamed because a
 /// file of the same name already exists.
@@ -618,7 +618,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1108: ERROR_AVOCADO_COLLECTION_DIRECTORY_ALREADY_EXISTS
 ///
-/// cannot create/rename collection because directory ready exists
+/// cannot create/rename collection because directory already exists
 ///
 /// Will be raised when the collection cannot be created because a directory of
 /// the same name already exists.
