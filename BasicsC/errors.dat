@@ -167,6 +167,8 @@ ERROR_GRAPH_INVALID_GRAPH,1901,"invalid graph","Will be raised when an invalid n
 ERROR_GRAPH_COULD_NOT_CREATE_GRAPH,1902,"could not create graph","Will be raised when an invalid name, vertices or edges is passed to the server"
 ERROR_GRAPH_INVALID_VERTEX,1903,"invalid vertex","Will be raised when an invalid vertex id is passed to the server"
 ERROR_GRAPH_COULD_NOT_CREATE_VERTEX,1904,"could not create vertex","Will be raised when the vertex could not be created"
+ERROR_GRAPH_INVALID_EDGE,1905,"invalid edge","Will be raised when an invalid edge id is passed to the server"
+ERROR_GRAPH_COULD_NOT_CREATE_EDGE,1906,"could not create edge","Will be raised when the edge could not be created"
 
 ################################################################################
 ## Simple Client

@@ -245,6 +245,10 @@ extern "C" {
 ///   Will be raised when an invalid vertex id is passed to the server
 /// - 1904: @CODE{could not create vertex}
 ///   Will be raised when the vertex could not be created
+/// - 1905: @CODE{invalid edge}
+///   Will be raised when an invalid edge id is passed to the server
+/// - 1906: @CODE{could not create edge}
+///   Will be raised when the edge could not be created
 /// - 2000: @CODE{unknown client error}
 ///   This error should not happen.
 /// - 2001: @CODE{could not connect to server}
@@ -1324,6 +1328,26 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_COULD_NOT_CREATE_VERTEX                           (1904)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1905: ERROR_GRAPH_INVALID_EDGE
+///
+/// invalid edge
+///
+/// Will be raised when an invalid edge id is passed to the server
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_INVALID_EDGE                                      (1905)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1906: ERROR_GRAPH_COULD_NOT_CREATE_EDGE
+///
+/// could not create edge
+///
+/// Will be raised when the edge could not be created
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_COULD_NOT_CREATE_EDGE                             (1906)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 2000: SIMPLE_CLIENT_UNKNOWN_ERROR
