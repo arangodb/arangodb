@@ -1,7 +1,7 @@
 avocado> v = g.addVertex();
 Vertex(<graph>, "153246:2310672")
 
-avocado> e = g.addEdge(1, v, v, "self");
+avocado> e = g.addEdge(v, v, 1, "self");
 Edge(1)
 
 avocado> e.getId();

@@ -1,6 +1,6 @@
 avocado> var Graph = require("graph").Graph;
 
-avocado> g = new Graph("vertices", "edges");
+avocado> g = new Graph("graph", "vertices", "edges");
 
 avocado> v1 = g.addVertex();
 Vertex(<graph>, "153246:2310672")
