@@ -1,12 +1,27 @@
+#logView .fg-toolbar{display: none;}
+
 html {
   font-family: Verdana,Arial,sans-serif; 
   font-size: 1em;
+  min-width: 1024px;
 }
 tr {
   font-size: 0.9em; 
 }
 th {
-  font-size: 1.3em; 
+  font-size: 1.1em; 
+}
+
+#logToolbar {
+  height:24px; 
+  border: 1px solid #AAAAAA;
+  padding-left: 3px; 
+  padding-top: 4px; 
+  border-top-left-radius: 2px;
+  border-top-right-radius: 2px;
+  border-bottom-left-radius: 2px;
+  border-bottom-right-radius: 2px;
+  background: url("images/ui-bg_flat_75_e6e6e6_40x100.png") repeat-x scroll 50% 50% #E6E6E6;
 }
 
 .dataTables_info{
@@ -35,20 +50,18 @@ th {
 }
 
 #menue {
-  height:48px;
-  line-height: 30px;
+  height:55px;
   vertical-align: middle;
   text-align: center;  
   background-color: white; 
-  text-shadow: -1px 0 white, 0 1px white, 1px 0 white, 0 -1px white; 
 }
 
 #brotkruemelnavi {
-  font-size: 1.2em;
+  font-size: 1.1em;
   height:30px;
   line-height: 30px;
   vertical-align: middle;
-  padding-left: 10px; 
+  padding-left: 5px; 
   //background-color: #7E9246; 
   background-color: #F3F1EE; 
   color: #9EAF5A;
@@ -93,7 +106,7 @@ th {
 
 #avocshWindow {
   background-color: white;  
-  height: 400px; 
+  height: 300px; 
   overflow-y: auto; 
   width:100%; 
 }
@@ -148,7 +161,7 @@ th {
   box-shadow: 0 0 5px rgba(81, 203, 238, 0);
   -webkit-box-shadow: 0 0 5px rgba(81, 203, 238, 0);
   -moz-box-shadow: 0 0 5px rgba(81, 203, 238, 0);
-  height: 400px;  
+  height: 300px;  
 }
 
 .editBox:focus {
@@ -162,17 +175,19 @@ th {
 }
 
 #menue-left {
+  margin-top: 3px;
+  margin-left: 10px; 
   height:48px; 
-  width:500px; 
+  width:auto; 
   float:left;
   text-align:left;  
 }
 
 #menue-right {
-  padding-top:8px;
-  padding-right:4px;   
+  padding-top:11px;
+  padding-right:10px;   
   height:40px; 
-  width:100% - 400px; 
+  width:auto; 
   float:right;
   text-align:right;  
 }
@@ -295,7 +310,8 @@ th {
 }
 
 .fg-toolbar {
-  font-size: 0.8em; 
+  font-size: 0.7em; 
+  border: 1px solid #D3D3D3 !important; 
 }
 
 /*
@@ -313,12 +329,12 @@ th {
   -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
   box-shadow: inset 0 0 1px 1px #f6f6f6;
   color: #333;
-  font: 0.9em "helvetica neue", helvetica, arial, sans-serif;
+  font: 0.7em Verdana,Arial,sans-serif;
   line-height: 1;
   padding: 8px 0 9px;
   text-align: center;
   text-shadow: 0 1px 0 #fff;
-  width: 90px; 
+  width: 80px;
 }
 #menue button.minimal:hover {
     background: #d9d9d9;
@@ -375,7 +391,7 @@ th {
 ##############################################################################
 */
 
-#avocshView button, #queryView button, #tab_right button, #logTableID_info button, #footerSlideContent button, form.jediTextarea > button {
+#avocshView button, #queryView button, #tab_right button, #footerSlideContent button, form.jediTextarea > button, #logToolbar button {
   background: #e3e3e3;
   border: 1px solid #bbb;
   -webkit-border-radius: 3px;
@@ -393,14 +409,14 @@ th {
   text-align: center;  
 }
 
-#avocshView button:hover, #queryView button:hover, #tab_right button:hover, #logTableID_info button:hover, #footerSlideContent button:hover, form.jediTextarea > button:hover {
+#avocshView button:hover, #queryView button:hover, #tab_right button:hover, #footerSlideContent button:hover, form.jediTextarea > button:hover {
     background: #d9d9d9;
     -webkit-box-shadow: inset 0 0 1px 1px #eaeaea;
     -moz-box-shadow: inset 0 0 1px 1px #eaeaea;
     box-shadow: inset 0 0 1px 1px #eaeaea;
     color: #222;
     cursor: pointer; }
-#avocshView button:active, #queryView button:active, #tab_right button:active, #logTable_ID_info button:active, #footerSlideContent button:active, form.jediTextarea > button:active {
+#avocshView button:active, #queryView button:active, #tab_right button:active, #footerSlideContent button:active, form.jediTextarea > button:active {
     background: #d0d0d0;
     -webkit-box-shadow: inset 0 0 1px 1px #e3e3e3;
     -moz-box-shadow: inset 0 0 1px 1px #e3e3e3;

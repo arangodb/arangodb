@@ -2279,6 +2279,8 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   }
   string queryString = TRI_ObjectToString(queryArg);
 
+  /* currently unused, causes compile warnings
+
   // return number of total records in cursor?
   bool doCount = false;
   if (argv.Length() > 0) {
@@ -2293,6 +2295,8 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
       max = (uint32_t) maxValue;
     }
   }
+
+  */
   
   v8::Handle<v8::Value> result;
 

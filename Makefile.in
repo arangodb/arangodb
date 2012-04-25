@@ -79,12 +79,11 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
-@ENABLE_MRUBY_TRUE@am__append_1 = @MRUBY_CPPFLAGS@ @MRUBY_LDFLAGS@
-@ENABLE_MRUBY_TRUE@am__append_2 = \
-@ENABLE_MRUBY_TRUE@	@MRUBY_LIBS@
-
 sbin_PROGRAMS = avocado$(EXEEXT)
-bin_PROGRAMS = avocsh$(EXEEXT) avocirb$(EXEEXT) avocimp$(EXEEXT)
+bin_PROGRAMS = avocsh$(EXEEXT) avocimp$(EXEEXT) $(am__EXEEXT_1)
+@ENABLE_MRUBY_TRUE@am__append_1 = @MRUBY_CPPFLAGS@ @MRUBY_LDFLAGS@
+@ENABLE_MRUBY_TRUE@am__append_2 = @MRUBY_LIBS@
+@ENABLE_MRUBY_TRUE@am__append_3 = avocirb
 DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.bison $(srcdir)/Makefile.doxygen \
 	$(srcdir)/Makefile.files $(srcdir)/Makefile.flex \
@@ -98,22 +97,26 @@ DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(top_srcdir)/config/config.h.in $(top_srcdir)/configure \
 	config/compile config/config.guess config/config.sub \
 	config/depcomp config/install-sh config/missing
+@ENABLE_MRUBY_TRUE@am__append_4 = \
+@ENABLE_MRUBY_TRUE@	MRuby/MRLineEditor.cpp \
+@ENABLE_MRUBY_TRUE@	MRuby/mr-utils.cpp
+
 @ENABLE_BOOST_TEST_TRUE@noinst_PROGRAMS =  \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/test_suite$(EXEEXT)
 @ENABLE_BOOST_TEST_FALSE@UnitTests_test_suite_DEPENDENCIES =
 
 ################################################################################
 ################################################################################
-@ENABLE_FLEX_TRUE@am__append_3 = $(FLEX_FILES) $(FLEXXX_FILES)
+@ENABLE_FLEX_TRUE@am__append_5 = $(FLEX_FILES) $(FLEXXX_FILES)
 
 ################################################################################
 ################################################################################
-@ENABLE_BISON_TRUE@am__append_4 = $(BISON_FILES) $(BISONXX_FILES)
-@ENABLE_ERRORS_DEPENDENCY_TRUE@am__append_5 = \
+@ENABLE_BISON_TRUE@am__append_6 = $(BISON_FILES) $(BISONXX_FILES)
+@ENABLE_ERRORS_DEPENDENCY_TRUE@am__append_7 = \
 @ENABLE_ERRORS_DEPENDENCY_TRUE@	errorfiles
 
-@ENABLE_ALL_IN_ONE_TRUE@am__append_6 = @LIBEV_LIBS@ @V8_LIBS@
-@ENABLE_MRUBY_TRUE@am__append_7 = @MRUBY_LIBS@
+@ENABLE_ALL_IN_ONE_TRUE@am__append_8 = @LIBEV_LIBS@ @V8_LIBS@
+@ENABLE_MRUBY_TRUE@am__append_9 = @MRUBY_LIBS@
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
@@ -160,7 +163,54 @@ am__v_at_ = $(am__v_at_$(AM_DEFAULT_VERBOSITY))
 am__v_at_0 = @
 libavocado_a_AR = $(AR) $(ARFLAGS)
 libavocado_a_LIBADD =
+am__libavocado_a_SOURCES_DIST = Basics/ConditionLocker.cpp \
+	Basics/ConditionVariable.cpp Basics/FileUtils.cpp \
+	Basics/Initialise.cpp Basics/LibraryLoader.cpp \
+	Basics/Mutex.cpp Basics/MutexLocker.cpp \
+	Basics/ProgramOptions.cpp Basics/ProgramOptionsDescription.cpp \
+	Basics/Random.cpp Basics/ReadLocker.cpp \
+	Basics/ReadUnlocker.cpp Basics/ReadWriteLock.cpp \
+	Basics/StringUtils.cpp Basics/Thread.cpp Basics/Timing.cpp \
+	Basics/WriteLocker.cpp Basics/WriteUnlocker.cpp \
+	BasicsC/associative-multi.c BasicsC/associative.c \
+	BasicsC/conversions.c BasicsC/csv.c BasicsC/error.c \
+	BasicsC/files.c BasicsC/hashes.c BasicsC/init.c BasicsC/json.c \
+	BasicsC/locks-macos.c BasicsC/locks-posix.c BasicsC/logging.c \
+	BasicsC/memory.c BasicsC/process-utils.c BasicsC/random.c \
+	BasicsC/socket-utils.c BasicsC/string-buffer.c \
+	BasicsC/strings.c BasicsC/structures.c \
+	BasicsC/system-functions.c BasicsC/terminal-utils-ncurses.c \
+	BasicsC/terminal-utils.c BasicsC/threads-posix.c \
+	BasicsC/vector.c BasicsC/voc-errors.c JsonParser/json-parser.c \
+	JsonParserX/InputParser.cpp JsonParserX/JsonParserX.cpp \
+	JsonParserX/JsonParserXDriver.cpp JsonParserX/JsonScannerX.cpp \
+	Logger/Logger.cpp Logger/LoggerData.cpp Logger/LoggerInfo.cpp \
+	Logger/LoggerStream.cpp Logger/LoggerTiming.cpp \
+	ProgramOptions/program-options.c Rest/AddressPort.cpp \
+	Rest/AnyServer.cpp Rest/HttpRequest.cpp Rest/HttpResponse.cpp \
+	Rest/Initialise.cpp Rest/JsonContainer.cpp \
+	Rest/SslInterface.cpp Rest/Url.cpp ShapedJson/json-shaper.c \
+	ShapedJson/shape-accessor.c ShapedJson/shaped-json.c \
+	UserManager/ApplicationUserManager.cpp UserManager/Role.cpp \
+	UserManager/Session.cpp UserManager/SessionHandler.cpp \
+	UserManager/User.cpp UserManager/UserHandler.cpp \
+	UserManager/UsersHandler.cpp Utilities/LineEditor.cpp \
+	V8/JSLoader.cpp V8/v8-conv.cpp V8/v8-json.cpp \
+	V8/V8LineEditor.cpp V8/v8-shell.cpp V8/v8-utils.cpp \
+	Variant/VariantArray.cpp Variant/VariantBlob.cpp \
+	Variant/VariantBoolean.cpp Variant/VariantDate.cpp \
+	Variant/VariantDatetime.cpp Variant/VariantDouble.cpp \
+	Variant/VariantFloat.cpp Variant/VariantInt16.cpp \
+	Variant/VariantInt32.cpp Variant/VariantInt64.cpp \
+	Variant/VariantInt8.cpp Variant/VariantMatrix2.cpp \
+	Variant/VariantNull.cpp Variant/VariantObject.cpp \
+	Variant/VariantString.cpp Variant/VariantUInt16.cpp \
+	Variant/VariantUInt32.cpp Variant/VariantUInt64.cpp \
+	Variant/VariantUInt8.cpp Variant/VariantVector.cpp \
+	MRuby/MRLineEditor.cpp MRuby/mr-utils.cpp
 am__dirstamp = $(am__leading_dot)dirstamp
+@ENABLE_MRUBY_TRUE@am__objects_1 = MRuby/MRLineEditor.$(OBJEXT) \
+@ENABLE_MRUBY_TRUE@	MRuby/mr-utils.$(OBJEXT)
 am_libavocado_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 	Basics/ConditionVariable.$(OBJEXT) Basics/FileUtils.$(OBJEXT) \
 	Basics/Initialise.$(OBJEXT) Basics/LibraryLoader.$(OBJEXT) \
@@ -193,7 +243,6 @@ am_libavocado_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 	JsonParserX/JsonScannerX.$(OBJEXT) Logger/Logger.$(OBJEXT) \
 	Logger/LoggerData.$(OBJEXT) Logger/LoggerInfo.$(OBJEXT) \
 	Logger/LoggerStream.$(OBJEXT) Logger/LoggerTiming.$(OBJEXT) \
-	MRuby/MRLineEditor.$(OBJEXT) \
 	ProgramOptions/program-options.$(OBJEXT) \
 	Rest/AddressPort.$(OBJEXT) Rest/AnyServer.$(OBJEXT) \
 	Rest/HttpRequest.$(OBJEXT) Rest/HttpResponse.$(OBJEXT) \
@@ -223,8 +272,9 @@ am_libavocado_a_OBJECTS = Basics/ConditionLocker.$(OBJEXT) \
 	Variant/VariantUInt16.$(OBJEXT) \
 	Variant/VariantUInt32.$(OBJEXT) \
 	Variant/VariantUInt64.$(OBJEXT) Variant/VariantUInt8.$(OBJEXT) \
-	Variant/VariantVector.$(OBJEXT)
+	Variant/VariantVector.$(OBJEXT) $(am__objects_1)
 libavocado_a_OBJECTS = $(am_libavocado_a_OBJECTS)
+@ENABLE_MRUBY_TRUE@am__EXEEXT_1 = avocirb$(EXEEXT)
 am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
 	"$(DESTDIR)$(pkgdatadir)"
 PROGRAMS = $(bin_PROGRAMS) $(noinst_PROGRAMS) $(sbin_PROGRAMS)
@@ -345,9 +395,11 @@ am_avocimp_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
 	V8Client/avocimp.$(OBJEXT)
 avocimp_OBJECTS = $(am_avocimp_OBJECTS)
 avocimp_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_2)
-am_avocirb_OBJECTS = MRClient/avocirb.$(OBJEXT)
+am__avocirb_SOURCES_DIST = MRClient/avocirb.cpp
+@ENABLE_MRUBY_TRUE@am_avocirb_OBJECTS = MRClient/avocirb.$(OBJEXT)
 avocirb_OBJECTS = $(am_avocirb_OBJECTS)
-avocirb_DEPENDENCIES = libavocado.a $(am__DEPENDENCIES_2)
+@ENABLE_MRUBY_TRUE@avocirb_DEPENDENCIES = libavocado.a \
+@ENABLE_MRUBY_TRUE@	$(am__DEPENDENCIES_2)
 am_avocsh_OBJECTS = SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
 	SimpleHttpClient/SimpleHttpResult.$(OBJEXT) \
 	V8Client/ImportHelper.$(OBJEXT) \
@@ -386,9 +438,10 @@ am__v_GEN_0 = @echo "  GEN   " $@;
 SOURCES = $(libavocado_a_SOURCES) $(UnitTests_test_suite_SOURCES) \
 	$(avocado_SOURCES) $(avocimp_SOURCES) $(avocirb_SOURCES) \
 	$(avocsh_SOURCES)
-DIST_SOURCES = $(libavocado_a_SOURCES) \
+DIST_SOURCES = $(am__libavocado_a_SOURCES_DIST) \
 	$(am__UnitTests_test_suite_SOURCES_DIST) $(avocado_SOURCES) \
-	$(avocimp_SOURCES) $(avocirb_SOURCES) $(avocsh_SOURCES)
+	$(avocimp_SOURCES) $(am__avocirb_SOURCES_DIST) \
+	$(avocsh_SOURCES)
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
@@ -591,8 +644,8 @@ AM_LDFLAGS = \
 
 BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(FLEX_FILES) \
 	$(FLEXXX_FILES) $(BISON_FILES) $(BISONXX_FILES) \
-	Doxygen/.setup-directories .setup-directories $(am__append_5) \
-	$(am__append_6) $(am__append_7)
+	Doxygen/.setup-directories .setup-directories $(am__append_7) \
+	$(am__append_8) $(am__append_9)
 
 ################################################################################
 ################################################################################
@@ -601,8 +654,8 @@ BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(FLEX_FILES) \
 ################################################################################
 CLEANUP = $(DOXYGEN) $(addsuffix .md,$(addprefix \
 	Doxygen/xml/,$(WIKI))) $(addsuffix .md,$(addprefix \
-	Doxygen/wiki/,$(WIKI))) $(JAVASCRIPT_HEADER) $(am__append_3) \
-	$(am__append_4)
+	Doxygen/wiki/,$(WIKI))) $(JAVASCRIPT_HEADER) $(am__append_5) \
+	$(am__append_6)
 noinst_LIBRARIES = libavocado.a
 nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/js/actions/system -name "*.js" -print) \
@@ -616,108 +669,51 @@ nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/html -name "*.js" -print) \
 	$(shell find @srcdir@/html -name "*.png" -print)
 
-libavocado_a_SOURCES = \
-	Basics/ConditionLocker.cpp \
-	Basics/ConditionVariable.cpp \
-	Basics/FileUtils.cpp \
-	Basics/Initialise.cpp \
-	Basics/LibraryLoader.cpp \
-	Basics/Mutex.cpp \
-	Basics/MutexLocker.cpp \
-	Basics/ProgramOptions.cpp \
-	Basics/ProgramOptionsDescription.cpp \
-	Basics/Random.cpp \
-	Basics/ReadLocker.cpp \
-	Basics/ReadUnlocker.cpp \
-	Basics/ReadWriteLock.cpp \
-	Basics/StringUtils.cpp \
-	Basics/Thread.cpp \
-	Basics/Timing.cpp \
-	Basics/WriteLocker.cpp \
-	Basics/WriteUnlocker.cpp \
-	BasicsC/associative-multi.c \
-	BasicsC/associative.c \
-	BasicsC/conversions.c \
-	BasicsC/csv.c \
-	BasicsC/error.c \
-	BasicsC/files.c \
-	BasicsC/hashes.c \
-	BasicsC/init.c \
-	BasicsC/json.c \
-	BasicsC/locks-macos.c \
-	BasicsC/locks-posix.c \
-	BasicsC/logging.c \
-	BasicsC/memory.c \
-	BasicsC/process-utils.c \
-	BasicsC/random.c \
-	BasicsC/socket-utils.c \
-	BasicsC/string-buffer.c \
-	BasicsC/strings.c \
-	BasicsC/structures.c \
-	BasicsC/system-functions.c \
-	BasicsC/terminal-utils-ncurses.c \
-	BasicsC/terminal-utils.c \
-	BasicsC/threads-posix.c \
-	BasicsC/vector.c \
-	BasicsC/voc-errors.c \
-	JsonParser/json-parser.c \
-	JsonParserX/InputParser.cpp \
-	JsonParserX/JsonParserX.cpp \
-	JsonParserX/JsonParserXDriver.cpp \
-	JsonParserX/JsonScannerX.cpp \
-	Logger/Logger.cpp \
-	Logger/LoggerData.cpp \
-	Logger/LoggerInfo.cpp \
-	Logger/LoggerStream.cpp \
-	Logger/LoggerTiming.cpp \
-	MRuby/MRLineEditor.cpp \
-	ProgramOptions/program-options.c \
-	Rest/AddressPort.cpp \
-	Rest/AnyServer.cpp \
-	Rest/HttpRequest.cpp \
-	Rest/HttpResponse.cpp \
-	Rest/Initialise.cpp \
-	Rest/JsonContainer.cpp \
-	Rest/SslInterface.cpp \
-	Rest/Url.cpp \
-	ShapedJson/json-shaper.c \
-	ShapedJson/shape-accessor.c \
-	ShapedJson/shaped-json.c \
-	UserManager/ApplicationUserManager.cpp \
-	UserManager/Role.cpp \
-	UserManager/Session.cpp \
-	UserManager/SessionHandler.cpp \
-	UserManager/User.cpp \
-	UserManager/UserHandler.cpp \
-	UserManager/UsersHandler.cpp \
-	Utilities/LineEditor.cpp \
-	V8/JSLoader.cpp \
-	V8/v8-conv.cpp \
-	V8/v8-json.cpp \
-	V8/V8LineEditor.cpp \
-	V8/v8-shell.cpp \
-	V8/v8-utils.cpp \
-	Variant/VariantArray.cpp \
-	Variant/VariantBlob.cpp \
-	Variant/VariantBoolean.cpp \
-	Variant/VariantDate.cpp \
-	Variant/VariantDatetime.cpp \
-	Variant/VariantDouble.cpp \
-	Variant/VariantFloat.cpp \
-	Variant/VariantInt16.cpp \
-	Variant/VariantInt32.cpp \
-	Variant/VariantInt64.cpp \
-	Variant/VariantInt8.cpp \
-	Variant/VariantMatrix2.cpp \
-	Variant/VariantNull.cpp \
-	Variant/VariantObject.cpp \
-	Variant/VariantString.cpp \
-	Variant/VariantUInt16.cpp \
-	Variant/VariantUInt32.cpp \
-	Variant/VariantUInt64.cpp \
-	Variant/VariantUInt8.cpp \
-	Variant/VariantVector.cpp
-
+libavocado_a_SOURCES = Basics/ConditionLocker.cpp \
+	Basics/ConditionVariable.cpp Basics/FileUtils.cpp \
+	Basics/Initialise.cpp Basics/LibraryLoader.cpp \
+	Basics/Mutex.cpp Basics/MutexLocker.cpp \
+	Basics/ProgramOptions.cpp Basics/ProgramOptionsDescription.cpp \
+	Basics/Random.cpp Basics/ReadLocker.cpp \
+	Basics/ReadUnlocker.cpp Basics/ReadWriteLock.cpp \
+	Basics/StringUtils.cpp Basics/Thread.cpp Basics/Timing.cpp \
+	Basics/WriteLocker.cpp Basics/WriteUnlocker.cpp \
+	BasicsC/associative-multi.c BasicsC/associative.c \
+	BasicsC/conversions.c BasicsC/csv.c BasicsC/error.c \
+	BasicsC/files.c BasicsC/hashes.c BasicsC/init.c BasicsC/json.c \
+	BasicsC/locks-macos.c BasicsC/locks-posix.c BasicsC/logging.c \
+	BasicsC/memory.c BasicsC/process-utils.c BasicsC/random.c \
+	BasicsC/socket-utils.c BasicsC/string-buffer.c \
+	BasicsC/strings.c BasicsC/structures.c \
+	BasicsC/system-functions.c BasicsC/terminal-utils-ncurses.c \
+	BasicsC/terminal-utils.c BasicsC/threads-posix.c \
+	BasicsC/vector.c BasicsC/voc-errors.c JsonParser/json-parser.c \
+	JsonParserX/InputParser.cpp JsonParserX/JsonParserX.cpp \
+	JsonParserX/JsonParserXDriver.cpp JsonParserX/JsonScannerX.cpp \
+	Logger/Logger.cpp Logger/LoggerData.cpp Logger/LoggerInfo.cpp \
+	Logger/LoggerStream.cpp Logger/LoggerTiming.cpp \
+	ProgramOptions/program-options.c Rest/AddressPort.cpp \
+	Rest/AnyServer.cpp Rest/HttpRequest.cpp Rest/HttpResponse.cpp \
+	Rest/Initialise.cpp Rest/JsonContainer.cpp \
+	Rest/SslInterface.cpp Rest/Url.cpp ShapedJson/json-shaper.c \
+	ShapedJson/shape-accessor.c ShapedJson/shaped-json.c \
+	UserManager/ApplicationUserManager.cpp UserManager/Role.cpp \
+	UserManager/Session.cpp UserManager/SessionHandler.cpp \
+	UserManager/User.cpp UserManager/UserHandler.cpp \
+	UserManager/UsersHandler.cpp Utilities/LineEditor.cpp \
+	V8/JSLoader.cpp V8/v8-conv.cpp V8/v8-json.cpp \
+	V8/V8LineEditor.cpp V8/v8-shell.cpp V8/v8-utils.cpp \
+	Variant/VariantArray.cpp Variant/VariantBlob.cpp \
+	Variant/VariantBoolean.cpp Variant/VariantDate.cpp \
+	Variant/VariantDatetime.cpp Variant/VariantDouble.cpp \
+	Variant/VariantFloat.cpp Variant/VariantInt16.cpp \
+	Variant/VariantInt32.cpp Variant/VariantInt64.cpp \
+	Variant/VariantInt8.cpp Variant/VariantMatrix2.cpp \
+	Variant/VariantNull.cpp Variant/VariantObject.cpp \
+	Variant/VariantString.cpp Variant/VariantUInt16.cpp \
+	Variant/VariantUInt32.cpp Variant/VariantUInt64.cpp \
+	Variant/VariantUInt8.cpp Variant/VariantVector.cpp \
+	$(am__append_4)
 
 ################################################################################
 ################################################################################
@@ -847,9 +843,9 @@ avocsh_SOURCES = \
 
 ################################################################################
 ################################################################################
-avocirb_LDADD = libavocado.a $(LIBS)
-avocirb_SOURCES = \
-	MRClient/avocirb.cpp
+@ENABLE_MRUBY_TRUE@avocirb_LDADD = libavocado.a $(LIBS)
+@ENABLE_MRUBY_TRUE@avocirb_SOURCES = \
+@ENABLE_MRUBY_TRUE@	MRClient/avocirb.cpp
 
 
 ################################################################################
@@ -1255,14 +1251,6 @@ Logger/LoggerStream.$(OBJEXT): Logger/$(am__dirstamp) \
 	Logger/$(DEPDIR)/$(am__dirstamp)
 Logger/LoggerTiming.$(OBJEXT): Logger/$(am__dirstamp) \
 	Logger/$(DEPDIR)/$(am__dirstamp)
-MRuby/$(am__dirstamp):
-	@$(MKDIR_P) MRuby
-	@: > MRuby/$(am__dirstamp)
-MRuby/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) MRuby/$(DEPDIR)
-	@: > MRuby/$(DEPDIR)/$(am__dirstamp)
-MRuby/MRLineEditor.$(OBJEXT): MRuby/$(am__dirstamp) \
-	MRuby/$(DEPDIR)/$(am__dirstamp)
 ProgramOptions/$(am__dirstamp):
 	@$(MKDIR_P) ProgramOptions
 	@: > ProgramOptions/$(am__dirstamp)
@@ -1394,6 +1382,16 @@ Variant/VariantUInt8.$(OBJEXT): Variant/$(am__dirstamp) \
 	Variant/$(DEPDIR)/$(am__dirstamp)
 Variant/VariantVector.$(OBJEXT): Variant/$(am__dirstamp) \
 	Variant/$(DEPDIR)/$(am__dirstamp)
+MRuby/$(am__dirstamp):
+	@$(MKDIR_P) MRuby
+	@: > MRuby/$(am__dirstamp)
+MRuby/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) MRuby/$(DEPDIR)
+	@: > MRuby/$(DEPDIR)/$(am__dirstamp)
+MRuby/MRLineEditor.$(OBJEXT): MRuby/$(am__dirstamp) \
+	MRuby/$(DEPDIR)/$(am__dirstamp)
+MRuby/mr-utils.$(OBJEXT): MRuby/$(am__dirstamp) \
+	MRuby/$(DEPDIR)/$(am__dirstamp)
 libavocado.a: $(libavocado_a_OBJECTS) $(libavocado_a_DEPENDENCIES) 
 	$(AM_V_at)-rm -f libavocado.a
 	$(AM_V_AR)$(libavocado_a_AR) libavocado.a $(libavocado_a_OBJECTS) $(libavocado_a_LIBADD)
@@ -2000,6 +1998,7 @@ mostlyclean-compile:
 	-rm -f Logger/LoggerTiming.$(OBJEXT)
 	-rm -f MRClient/avocirb.$(OBJEXT)
 	-rm -f MRuby/MRLineEditor.$(OBJEXT)
+	-rm -f MRuby/mr-utils.$(OBJEXT)
 	-rm -f PriorityQueue/pqueueindex.$(OBJEXT)
 	-rm -f PriorityQueue/priorityqueue.$(OBJEXT)
 	-rm -f ProgramOptions/program-options.$(OBJEXT)
@@ -2228,6 +2227,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Logger/$(DEPDIR)/LoggerTiming.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@MRClient/$(DEPDIR)/avocirb.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@MRuby/$(DEPDIR)/MRLineEditor.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@MRuby/$(DEPDIR)/mr-utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@PriorityQueue/$(DEPDIR)/pqueueindex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@PriorityQueue/$(DEPDIR)/priorityqueue.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ProgramOptions/$(DEPDIR)/program-options.Po@am__quote@

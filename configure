@@ -833,6 +833,7 @@ enable_static_libev
 with_v8
 with_v8_lib
 enable_static_v8
+enable_mruby
 with_boost
 with_boost_libdir
 '
@@ -1508,6 +1509,7 @@ Optional Features:
   --enable-libev          enable libev support (default: yes)
   --enable-static-libev   using static library 'libev' (default: no)
   --enable-static-v8      using static library 'v8' (default: no)
+  --enable-mruby          enable MRUBY
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -8954,26 +8956,36 @@ fi
 
 
 
-ENABLE_MRUBY="yes"
+# Check whether --enable-mruby was given.
+if test "${enable_mruby+set}" = set; then :
+  enableval=$enable_mruby; tr_MRUBY="${enableval:-yes}"
+else
+  tr_MRUBY=yes
 
-MRUBY_CPPFLAGS="-I${srcdir}/3rdParty/mruby/include"
-MRUBY_LDFLAGS=""
-MRUBY_LIBS="${srcdir}/3rdParty/mruby/lib/ritevm.a"
+fi
 
-TRI_MRUBY_VERSION="0.0.0"
 
- if true; then
+if test "x$tr_MRUBY" = "xyes";  then
+  MRUBY_CPPFLAGS="-I${srcdir}/3rdParty/mruby/include"
+  MRUBY_LDFLAGS=""
+  MRUBY_LIBS="${srcdir}/3rdParty/mruby/lib/ritevm.a"
+
+  TRI_MRUBY_VERSION="0.0.0"
+
+
+cat >>confdefs.h <<_ACEOF
+#define TRI_ENABLE_MRUBY 1
+_ACEOF
+
+fi
+
+ if test "x$tr_MRUBY" = "xyes"; then
   ENABLE_MRUBY_TRUE=
   ENABLE_MRUBY_FALSE='#'
 else
   ENABLE_MRUBY_TRUE='#'
   ENABLE_MRUBY_FALSE=
 fi
-
-
-cat >>confdefs.h <<_ACEOF
-#define TRI_ENABLE_MRUBY 1
-_ACEOF
 
 
 
@@ -8984,14 +8996,18 @@ _ACEOF
 MRUBY_CPPFLAGS="${MRUBY_CPPFLAGS} -DTRI_MRUBY_VERSION='\"${TRI_MRUBY_VERSION}\"'"
 
 
-BASIC_INFO="$BASIC_INFO|MRUBY: disabled"
+if test "x$tr_MRUBY" = "xyes";  then
+  BASIC_INFO="$BASIC_INFO|MRUBY: enabled"
 
-LIB_INFO="$LIB_INFO|MRUBY VERSION: ${TRI_MRUBY_VERSION}"
+  LIB_INFO="$LIB_INFO|MRUBY VERSION: ${TRI_MRUBY_VERSION}"
 
-FLAG_INFO="$FLAG_INFO|MRUBY_CPPFLAGS: ${MRUBY_CPPFLAGS}"
-FLAG_INFO="$FLAG_INFO|MRUBY_LDFLAGS:  ${MRUBY_LDFLAGS}"
-FLAG_INFO="$FLAG_INFO|MRUBY_LIBS:     ${MRUBY_LIBS}"
-FLAG_INFO="$FLAG_INFO|."
+  FLAG_INFO="$FLAG_INFO|MRUBY_CPPFLAGS: ${MRUBY_CPPFLAGS}"
+  FLAG_INFO="$FLAG_INFO|MRUBY_LDFLAGS:  ${MRUBY_LDFLAGS}"
+  FLAG_INFO="$FLAG_INFO|MRUBY_LIBS:     ${MRUBY_LIBS}"
+  FLAG_INFO="$FLAG_INFO|."
+else
+  BASIC_INFO="$BASIC_INFO|MRUBY: disabled"
+fi
 
 
 
