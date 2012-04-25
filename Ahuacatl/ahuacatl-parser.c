@@ -25,8 +25,9 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Ahuacatl/parser.h"
+#include "Ahuacatl/ahuacatl-parser.h"
 #include "Ahuacatl/ast-node.h"
+#include "Ahuacatl/ahuacatl-bind-parameter.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros
@@ -109,6 +110,20 @@ TRI_aql_parse_context_t* TRI_CreateParseContextAql (TRI_vocbase_t* vocbase,
 
   context->_vocbase = vocbase;
   
+  // actual bind parameter values
+  TRI_InitAssociativePointer(&context->_parameterValues,
+                             &TRI_HashStringKeyAssociativePointer,
+                             &TRI_HashBindParameterAql,
+                             &TRI_EqualBindParameterAql,
+                             0);
+
+  // bind parameter names used in the query
+  TRI_InitAssociativePointer(&context->_parameterNames,
+                             &TRI_HashStringKeyAssociativePointer,
+                             &TRI_HashStringKeyAssociativePointer,
+                             &TRI_EqualStringKeyAssociativePointer,
+                             0);
+  
   TRI_InitVectorPointer(&context->_stack);
   TRI_InitVectorPointer(&context->_nodes);
   TRI_InitVectorPointer(&context->_strings);
@@ -185,6 +200,13 @@ void TRI_FreeParseContextAql (TRI_aql_parse_context_t* const context) {
   // free the stack
   TRI_DestroyVectorPointer(&context->_stack);
 
+  // free parameter names hash
+  TRI_DestroyAssociativePointer(&context->_parameterNames);
+  
+  // free parameter values
+  TRI_FreeBindParametersAql(context);
+  TRI_DestroyAssociativePointer(&context->_parameterValues);
+
   // free query string
   if (context->_query) {
     TRI_Free(context->_query);
@@ -200,6 +222,33 @@ void TRI_FreeParseContextAql (TRI_aql_parse_context_t* const context) {
   TRI_DestroyErrorAql(&context->_error);
 
   TRI_Free(context);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add bind parameters to the context
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_AddBindParametersAql (TRI_aql_parse_context_t* const context, 
+                               const TRI_json_t* const parameters) {
+  return TRI_AddParameterValuesAql(context, parameters);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parse & validate the query string
+////////////////////////////////////////////////////////////////////////////////
+  
+bool TRI_ParseQueryAql (TRI_aql_parse_context_t* const context) {
+  if (Ahuacatlparse(context)) {
+    // lexing/parsing failed
+    return false;
+  }
+
+  if (!TRI_ValidateBindParametersAql(context)) {
+    // invalid bind parameters
+    return false;
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -592,6 +641,27 @@ bool TRI_VariableExistsAql (TRI_aql_parse_context_t* const context,
   }
 
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a variable name follows the required naming convention 
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsValidVariableNameAql (const char* const name) {
+  assert(name);
+
+  if (strlen(name) == 0) {
+    // name must be at least one char long
+    return false;
+  }
+
+  if (*name == '_') {
+    // name must not start with an underscore
+    return false;
+  }
+
+  // everything else is allowed
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
