@@ -347,7 +347,6 @@ static void RunShell (mrb_state* mrb) {
     char* input = console->prompt("avocirb> ");
 
     if (input == 0) {
-      printf("\nBye Bye! Auf Wiedersehen! さようなら\n");
       break;
     }
 
@@ -386,6 +385,9 @@ static void RunShell (mrb_state* mrb) {
     }
 #endif
   }
+
+  console->close();
+  printf("\nBye Bye! Auf Wiedersehen! さようなら\n");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
