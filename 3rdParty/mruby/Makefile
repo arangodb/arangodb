@@ -49,11 +49,11 @@ IOSDEVCC := xcrun -sdk iphoneos llvm-gcc-4.2 -arch armv7 -isysroot "/Developer/P
 CC = gcc
 LL = gcc
 YACC = bison
-DEBUG_MODE = 1
+DEBUG_MODE = 0
 ifeq ($(DEBUG_MODE),1)
 CFLAGS = -g
 else
-CFLAGS = -O3
+CFLAGS = -O2 -g
 endif
 ALL_CFLAGS = -Wall -Werror-implicit-function-declaration $(CFLAGS)
 MAKE_FLAGS = --no-print-directory CC=$(CC) LL=$(LL)
@@ -113,8 +113,10 @@ $(OBJM) : $(MSRC)
 .PHONY : clean
 clean :
 	$(MAKE) clean -C src $(MAKE_FLAGS)
+	$(MAKE) clean -C tools/mrbc $(MAKE_FLAGS)
 	$(MAKE) clean -C tools/mruby $(MAKE_FLAGS)
 	-rm -f $(EXE) $(OBJM)
 	-rm -f $(OBJM:.o=.d)
+	-rm -f $(patsubst %.c,%.o,$(EXCEPT1)) $(patsubst %.c,%.d,$(EXCEPT1))
 	-rm -f $(IOSLIB) $(IOSSIMLIB) $(IOSDEVLIB)
 	@echo "make: removing targets, objects and depend files of `pwd`"

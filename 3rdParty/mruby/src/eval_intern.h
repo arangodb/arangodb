@@ -1,3 +1,9 @@
+/*
+** eval_intern.h - 
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #ifndef RUBY_EVAL_INTERN_H
 #define RUBY_EVAL_INTERN_H
 

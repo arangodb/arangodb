@@ -1,3 +1,9 @@
+/*
+** range.h - Range class
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #ifndef MRUBY_RANGE_H
 #define MRUBY_RANGE_H
 

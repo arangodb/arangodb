@@ -1,4 +1,4 @@
-avocado> v1.addInEdge("K", v2, "knows");
+avocado> v1.addInEdge(v2, "K", "knows");
 Edge("K")
 
 avocado> v1.getInEdges();

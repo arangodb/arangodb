@@ -1,4 +1,4 @@
-avocado> e = g.addEdge(v1, v2, "knows");
+avocado> e = g.addEdge(v1, v2, null, "knows");
 Edge(<graph>, "3999653:5570857")
 
 avocado> e.getLabel();

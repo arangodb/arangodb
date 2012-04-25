@@ -2123,19 +2123,22 @@ helpExtended = TRI_CreateHelpHeadline("More help") +
 
 try {
 
-  // default databases
-  db = new AvocadoDatabase(avocado);
-  edges = new AvocadoEdges(avocado);
+  if (typeof avocado !== 'undefined') {
 
-  // load collection data
-  db._collections();
-  edges._collections();
+    // default databases
+    db = new AvocadoDatabase(avocado);
+    edges = new AvocadoEdges(avocado);
 
-  // export to internal
-  ModuleCache["/internal"].exports.db = db;
-  ModuleCache["/internal"].exports.edges = db;
+    // load collection data
+    db._collections();
+    edges._collections();
 
-  print(HELP);
+    // export to internal
+    ModuleCache["/internal"].exports.db = db;
+    ModuleCache["/internal"].exports.edges = db;
+
+    print(HELP);
+  }
 }
 catch (err) {
   print(err);

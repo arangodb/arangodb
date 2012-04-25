@@ -1,3 +1,9 @@
+/*
+** numeric.h - Numeric, Integer, Float, Fixnum class
+** 
+** See Copyright Notice in mruby.h
+*/
+
 #ifndef MRUBY_NUMERIC_H
 #define MRUBY_NUMERIC_H
 
