@@ -121,7 +121,7 @@ namespace triagens {
     HttpResponse::HttpResponse ()
       : _code(NOT_IMPLEMENTED),
         _headers(5),
-        _body(),
+        _body(TRI_UNKNOWN_MEM_ZONE),
         _isHeadResponse(false),
         _bodySize(0),
         _freeables() {
@@ -132,7 +132,7 @@ namespace triagens {
     HttpResponse::HttpResponse (string const& header)
       : _code(NOT_IMPLEMENTED),
         _headers(5),
-        _body(),
+        _body(TRI_UNKNOWN_MEM_ZONE),
         _isHeadResponse(false),
         _bodySize(0),
         _freeables() {
@@ -144,7 +144,7 @@ namespace triagens {
     HttpResponse::HttpResponse (HttpResponseCode code)
       : _code(code),
         _headers(5),
-        _body(),
+        _body(TRI_UNKNOWN_MEM_ZONE),
         _isHeadResponse(false),
         _bodySize(0),
         _freeables() {

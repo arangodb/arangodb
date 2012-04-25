@@ -590,8 +590,8 @@ static yyconst flex_int16_t yy_chk[130] =
 
 static yyconst flex_int16_t yy_rule_linenum[14] =
     {   0,
-       85,   89,   93,  101,  109,  117,  121,  125,  129,  133,
-      137,  146,  149
+       86,   90,   94,  102,  110,  118,  122,  126,  130,  134,
+      138,  147,  150
     } ;
 
 /* The intent behind this definition is that it'll catch
@@ -617,7 +617,8 @@ static yyconst flex_int16_t yy_rule_linenum[14] =
 #define UNQUOTED_STRING 12
 
 struct jsonData {
-  char const* message;
+  char const* _message;
+  TRI_memory_zone_t* _memoryZone;
 };
 
 #define YY_FATAL_ERROR(a) \
@@ -2391,9 +2392,10 @@ static TRI_json_t* ParseList (yyscan_t scanner) {
   bool comma;
   int c;
 
-  list = TRI_CreateListJson();
+  list = TRI_CreateListJson(yyextra._memoryZone);
 
   if (list == NULL) {
+    yyextra._message = "out-of-memory";
     return NULL;
   }
 
@@ -2409,8 +2411,8 @@ static TRI_json_t* ParseList (yyscan_t scanner) {
 
     if (comma) {
       if (c != COMMA) {
-        TRI_FreeJson(list);
-        yyextra.message = "expecting comma";
+        TRI_FreeJson(yyextra._memoryZone, list);
+        yyextra._message = "expecting comma";
         return NULL;
       }
 
@@ -2423,17 +2425,17 @@ static TRI_json_t* ParseList (yyscan_t scanner) {
     sub = ParseObject(scanner, c);
 
     if (sub == NULL) {
-      TRI_FreeJson(list);
+      TRI_FreeJson(yyextra._memoryZone, list);
       return NULL;
     }
 
-    TRI_PushBack3ListJson(list, sub);
+    TRI_PushBack3ListJson(yyextra._memoryZone, list, sub);
 
     c = tri_jsp_lex(scanner);
   }
 
-  TRI_FreeJson(list);
-  yyextra.message = "expecting a list element, got end-of-file";
+  TRI_FreeJson(yyextra._memoryZone, list);
+  yyextra._message = "expecting a list element, got end-of-file";
 
   return NULL;
 }
@@ -2455,7 +2457,11 @@ static TRI_json_t* ParseArray (yyscan_t scanner) {
   size_t outLength;
 
   comma = false;
-  array = TRI_CreateArrayJson();
+  array = TRI_CreateArrayJson(yyextra._memoryZone);
+
+  if (array == NULL) {
+    yyextra._message = "out-of-memory";
+  }
 
   c = tri_jsp_lex(scanner);
 
@@ -2466,8 +2472,8 @@ static TRI_json_t* ParseArray (yyscan_t scanner) {
 
     if (comma) {
       if (c != COMMA) {
-        TRI_FreeJson(array);
-        yyextra.message = "expecting comma";
+        TRI_FreeJson(yyextra._memoryZone, array);
+        yyextra._message = "expecting comma";
         return NULL;
       }
 
@@ -2479,22 +2485,22 @@ static TRI_json_t* ParseArray (yyscan_t scanner) {
 
     // attribute name
     if (c != STRING_CONSTANT) {
-      TRI_FreeJson(array);
-      yyextra.message = "expecting attribute name";
+      TRI_FreeJson(yyextra._memoryZone, array);
+      yyextra._message = "expecting attribute name";
       return NULL;
     }
 
     ptr = yytext;
     len = yyleng;
-    name = TRI_UnescapeUtf8String(ptr + 1, len - 2, &outLength);
+    name = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, ptr + 1, len - 2, &outLength);
 
     // followed by a colon
     c = tri_jsp_lex(scanner);
 
     if (c != COLON) {
-      TRI_FreeString(name);
-      TRI_FreeJson(array);
-      yyextra.message = "expecting colon";
+      TRI_FreeString(yyextra._memoryZone, name);
+      TRI_FreeJson(yyextra._memoryZone, array);
+      yyextra._message = "expecting colon";
       return NULL;
     }
 
@@ -2503,19 +2509,19 @@ static TRI_json_t* ParseArray (yyscan_t scanner) {
     sub = ParseObject(scanner, c);
 
     if (sub == NULL) {
-      TRI_FreeString(name);
-      TRI_FreeJson(array);
+      TRI_FreeString(yyextra._memoryZone, name);
+      TRI_FreeJson(yyextra._memoryZone, array);
       return NULL;
     }
 
-    TRI_Insert3ArrayJson(array, name, sub);
-    TRI_FreeString(name);
+    TRI_Insert3ArrayJson(yyextra._memoryZone, array, name, sub);
+    TRI_FreeString(yyextra._memoryZone, name);
 
     c = tri_jsp_lex(scanner);
   }
 
-  TRI_FreeJson(array);
-  yyextra.message = "expecting a object attribute name or element, got end-of-file";
+  TRI_FreeJson(yyextra._memoryZone, array);
+  yyextra._message = "expecting a object attribute name or element, got end-of-file";
 
   return NULL;
 }
@@ -2526,20 +2532,39 @@ static TRI_json_t* ParseArray (yyscan_t scanner) {
 
 static TRI_json_t* ParseObject (yyscan_t scanner, int c) {
   struct yyguts_t * yyg = (struct yyguts_t*) scanner;
+  TRI_json_t* result;
 
   switch (c) {
     case END_OF_FILE:
-      yyextra.message = "expecting atom, got end-of-file";
+      yyextra._message = "expecting atom, got end-of-file";
       return NULL;
 
     case FALSE_CONSTANT:
-      return TRI_CreateBooleanJson(false);
+      result = TRI_CreateBooleanJson(yyextra._memoryZone, false);
+
+      if (result == NULL) {
+        yyextra._message = "out-of-memory";
+      }
+
+      return result;
 
     case TRUE_CONSTANT:
-      return TRI_CreateBooleanJson(true);
+      result = TRI_CreateBooleanJson(yyextra._memoryZone, true);
+
+      if (result == NULL) {
+        yyextra._message = "out-of-memory";
+      }
+
+      return result;
 
     case NULL_CONSTANT:
-      return TRI_CreateNullJson();
+      result = TRI_CreateNullJson(yyextra._memoryZone);
+
+      if (result == NULL) {
+        yyextra._message = "out-of-memory";
+      }
+
+      return result;
 
     case NUMBER_CONSTANT: {
       char buffer[512];
@@ -2547,7 +2572,7 @@ static TRI_json_t* ParseObject (yyscan_t scanner, int c) {
       double d;
 
       if ((size_t) yyleng >= sizeof(buffer)) {
-        yyextra.message = "number too big";
+        yyextra._message = "number too big";
         return NULL;
       }
 
@@ -2557,60 +2582,71 @@ static TRI_json_t* ParseObject (yyscan_t scanner, int c) {
       d = strtod(buffer, &ep);
 
       if (d == HUGE_VAL && errno == ERANGE) {
-        yyextra.message = "number too big";
+        yyextra._message = "number too big";
         return NULL;
       }
 
       if (d == 0 && errno == ERANGE) {
-        yyextra.message = "number too small";
+        yyextra._message = "number too small";
         return NULL;
       }
 
       if (ep != buffer + yyleng) {
-        yyextra.message = "cannot parse number";
+        yyextra._message = "cannot parse number";
         return NULL;
       }
 
-      return TRI_CreateNumberJson(d);
+      result = TRI_CreateNumberJson(yyextra._memoryZone, d);
+
+      if (result == NULL) {
+        yyextra._message = "out-of-memory";
+      }
+
+      return result;
     }
 
     case STRING_CONSTANT: {
       char* ptr;
       size_t outLength;
 
-      ptr = TRI_UnescapeUtf8String(yytext + 1, yyleng - 2, &outLength);
+      ptr = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
+      result = TRI_CreateString2Json(yyextra._memoryZone, ptr, outLength);
 
-      return TRI_CreateString2Json(ptr, outLength);
+      if (result == NULL) {
+        yyextra._message = "out-of-memory";
+      }
+
+      return result;
     }
 
     case OPEN_BRACE:
       return ParseArray(scanner);
 
     case CLOSE_BRACE:
-      yyextra.message = "expected object, got '}'";
+      yyextra._message = "expected object, got '}'";
       return NULL;
 
     case OPEN_BRACKET:
       return ParseList(scanner);
 
     case CLOSE_BRACKET:
-      yyextra.message = "expected object, got ']'";
+      yyextra._message = "expected object, got ']'";
       return NULL;
 
     case COMMA:
-      yyextra.message = "expected object, got ','";
+      yyextra._message = "expected object, got ','";
       return NULL;
 
     case COLON:
-      yyextra.message = "expected object, got ':'";
+      yyextra._message = "expected object, got ':'";
       return NULL;
 
     case UNQUOTED_STRING:
-      yyextra.message = "expected object, got unquoted string";
+      yyextra._message = "expected object, got unquoted string";
       return NULL;
   }
 
-  yyextra.message = "unknown atom";
+  yyextra._message = "unknown atom";
   return NULL;
 }
 
@@ -2631,7 +2667,7 @@ static TRI_json_t* ParseObject (yyscan_t scanner, int c) {
 /// @brief parses a json string
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_Json2String (char const* text, char** error) {
+TRI_json_t* TRI_Json2String (TRI_memory_zone_t* zone, char const* text, char** error) {
   TRI_json_t* object;
   YY_BUFFER_STATE buf;
   int c;
@@ -2643,13 +2679,15 @@ TRI_json_t* TRI_Json2String (char const* text, char** error) {
   tri_jsp_lex_init(&scanner);
   yyg = (struct yyguts_t*) scanner;
 
+  yyextra._memoryZone = zone;
+
   buf = tri_jsp__scan_string((char yyconst*) text,scanner);
 
   c = tri_jsp_lex(scanner);
   object = ParseObject(scanner, c);
 
   if (object == NULL) {
-    LOG_DEBUG("failed to parse json object: '%s'", yyextra.message);
+    LOG_DEBUG("failed to parse json object: '%s'", yyextra._message);
   }
   else {
     c = tri_jsp_lex(scanner);
@@ -2661,8 +2699,8 @@ TRI_json_t* TRI_Json2String (char const* text, char** error) {
   }
 
   if (error != NULL) {
-    if (yyextra.message != 0) {
-      *error = TRI_DuplicateString(yyextra.message);
+    if (yyextra._message != 0) {
+      *error = TRI_DuplicateString(yyextra._message);
     }
     else {
       *error = NULL;
@@ -2679,15 +2717,15 @@ TRI_json_t* TRI_Json2String (char const* text, char** error) {
 /// @brief parses a json string
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_JsonString (char const* text) {
-  return TRI_Json2String(text, 0);
+TRI_json_t* TRI_JsonString (TRI_memory_zone_t* zone, char const* text) {
+  return TRI_Json2String(zone, text, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a json file
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_JsonFile (char const* path, char** error) {
+TRI_json_t* TRI_JsonFile (TRI_memory_zone_t* zone, char const* path, char** error) {
   FILE* in;
   TRI_json_t* object;
   int c;
@@ -2705,13 +2743,14 @@ TRI_json_t* TRI_JsonFile (char const* path, char** error) {
   tri_jsp_lex_init(&scanner);
   yyg = (struct yyguts_t*) scanner;
 
+  yyextra._memoryZone = zone;
   yyin = in;
 
   c = tri_jsp_lex(scanner);
   object = ParseObject(scanner, c);
 
   if (object == NULL) {
-    LOG_DEBUG("failed to parse json object: '%s'", yyextra.message);
+    LOG_DEBUG("failed to parse json object: '%s'", yyextra._message);
   }
   else {
     c = tri_jsp_lex(scanner);
@@ -2723,8 +2762,8 @@ TRI_json_t* TRI_JsonFile (char const* path, char** error) {
   }
 
   if (error != NULL) {
-    if (yyextra.message != NULL) {
-      *error = TRI_DuplicateString(yyextra.message);
+    if (yyextra._message != NULL) {
+      *error = TRI_DuplicateString(yyextra._message);
     }
     else {
       *error = NULL;

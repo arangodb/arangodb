@@ -271,13 +271,13 @@ int TRI_ResizeVectorPointer (TRI_vector_pointer_t*, size_t);
 /// @brief adds an element at the end
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PushBackVectorPointer (TRI_vector_pointer_t*, void*);
+int TRI_PushBackVectorPointer (TRI_vector_pointer_t*, void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an element at position n
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InsertVectorPointer (TRI_vector_pointer_t*, void*, size_t);
+int TRI_InsertVectorPointer (TRI_vector_pointer_t*, void*, size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an element, returns this element
@@ -340,7 +340,7 @@ TRI_vector_string_t;
 /// @brief initialises a vector
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitVectorString (TRI_memory_zone_t*, TRI_vector_string_t*);
+void TRI_InitVectorString (TRI_vector_string_t*, TRI_memory_zone_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a vector and all strings, but does not free the pointer
@@ -352,7 +352,7 @@ void TRI_DestroyVectorString (TRI_vector_string_t*);
 /// @brief destroys a vector and frees the string
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeVectorString (TRI_vector_string_t*);
+void TRI_FreeVectorString (TRI_memory_zone_t*, TRI_vector_string_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -371,7 +371,7 @@ void TRI_FreeVectorString (TRI_vector_string_t*);
 /// @brief copies a vector and all its strings
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_string_t* TRI_CopyVectorString (TRI_vector_string_t*);
+TRI_vector_string_t* TRI_CopyVectorString (TRI_memory_zone_t*, TRI_vector_string_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true if the vector is empty
@@ -389,7 +389,7 @@ void TRI_ClearVectorString (TRI_vector_string_t*);
 /// @brief resizes the vector
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ResizeVectorString (TRI_vector_string_t*, size_t n);
+int TRI_ResizeVectorString (TRI_vector_string_t*, size_t n);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an element at the end
@@ -397,7 +397,7 @@ void TRI_ResizeVectorString (TRI_vector_string_t*, size_t n);
 /// Note that the vector claims owenship of element.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PushBackVectorString (TRI_vector_string_t*, char* element);
+int TRI_PushBackVectorString (TRI_vector_string_t*, char* element);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an element at position n
@@ -405,7 +405,7 @@ void TRI_PushBackVectorString (TRI_vector_string_t*, char* element);
 /// Note that the vector claims owenship of element.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InsertVectorString (TRI_vector_string_t*, char* element, size_t n);
+int TRI_InsertVectorString (TRI_vector_string_t*, char* element, size_t n);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an element, frees this element

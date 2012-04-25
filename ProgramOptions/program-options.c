@@ -174,13 +174,13 @@ struct option * InitOptionStructure (struct option * option,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeOption (TRI_PO_desc_t* desc, void const * input, void * output) {
-  TRI_FreeString(desc->_name);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, desc->_name);
 
   if (desc->_desc != NULL) {
-    TRI_FreeString(desc->_desc);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, desc->_desc);
   }
 
-  TRI_Free(desc);
+  TRI_Free(TRI_CORE_MEM_ZONE, desc);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -440,7 +440,7 @@ static void ParseStringArg (char const * userarg, void * value) {
   desc = (TRI_PO_string_t*) value;
 
   if (*desc->_value != NULL) {
-    TRI_Free(*desc->_value);
+    TRI_Free(TRI_CORE_MEM_ZONE, *desc->_value);
   }
 
   *desc->_value = TRI_DuplicateString(userarg);
@@ -736,7 +736,7 @@ static bool HandleOption (TRI_program_options_t * options,
     item = TRI_AtVector(&options->_items, i);
 
     if (TRI_EqualString(full, item->_desc->_name)) {
-      TRI_FreeString(full);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, full);
 
       item->parse(value, item->_desc);
       item->_used = true;
@@ -745,7 +745,7 @@ static bool HandleOption (TRI_program_options_t * options,
     }
   }
 
-  TRI_FreeString(full);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, full);
 
   return false;
 }
@@ -930,13 +930,13 @@ static void UsageVectorStringNode (TRI_PO_vector_string_t * desc, void const * i
 TRI_PO_section_t* TRI_CreatePODescription (char const *description) {
   TRI_PO_section_t * desc;
 
-  desc = TRI_Allocate(sizeof(TRI_PO_section_t));
+  desc = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_PO_section_t));
 
   desc->base._type = TRI_PO_SECTION;
   desc->base._name = TRI_DuplicateString("Program Options");
   desc->base._desc = (description != NULL) ? TRI_DuplicateString(description) : NULL;
 
-  TRI_InitVectorPointer(&desc->_children);
+  TRI_InitVectorPointer(&desc->_children, TRI_CORE_MEM_ZONE);
 
   return desc;
 }
@@ -973,10 +973,10 @@ TRI_program_options_t * TRI_CreateProgramOptions (TRI_PO_section_t * desc) {
   po_visit_functions_t optionBuilders;
   struct option nullOpt;
 
-  po = TRI_Allocate(sizeof(TRI_program_options_t));
+  po = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_program_options_t));
 
-  TRI_InitVector(&po->_longopts, sizeof(struct option));
-  TRI_InitVector(&po->_items, sizeof(TRI_PO_item_t));
+  TRI_InitVector(&po->_longopts, TRI_CORE_MEM_ZONE, sizeof(struct option));
+  TRI_InitVector(&po->_items, TRI_CORE_MEM_ZONE, sizeof(TRI_PO_item_t));
 
   optionBuilders.visitDoubleNode = CreateDoubleOption;
   optionBuilders.visitFlagNode = CreateFlagOption;
@@ -998,7 +998,7 @@ TRI_program_options_t * TRI_CreateProgramOptions (TRI_PO_section_t * desc) {
   TRI_PushBackVector(&po->_longopts, &nullOpt);
 
   // setup argument vector
-  TRI_InitVectorString(&po->_arguments);
+  TRI_InitVectorString(&po->_arguments, TRI_CORE_MEM_ZONE);
 
   return po;
 }
@@ -1019,7 +1019,7 @@ void TRI_DestroyProgramOptions (TRI_program_options_t * options) {
 
 void TRI_FreeProgramOptions (TRI_program_options_t * options) {
   TRI_DestroyProgramOptions(options);
-  TRI_Free(options);
+  TRI_Free(TRI_CORE_MEM_ZONE, options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1049,7 +1049,7 @@ void TRI_AddDoublePODescription (TRI_PO_section_t * desc,
   assert(name != NULL);
   assert(variable != NULL);
 
-  res = TRI_Allocate(sizeof(po_double_t));
+  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_double_t));
 
   res->base._type  = TRI_PO_DOUBLE;
   res->base._name  = TRI_DuplicateString(name);
@@ -1074,7 +1074,7 @@ void TRI_AddFlagPODescription (TRI_PO_section_t * desc,
 
   assert(name != NULL);
 
-  res = TRI_Allocate(sizeof(po_flag_t));
+  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_flag_t));
 
   res->base._type  = TRI_PO_FLAG;
   res->base._name  = TRI_DuplicateString(name);
@@ -1101,7 +1101,7 @@ void TRI_AddInt16PODescription (TRI_PO_section_t * desc,
   assert(variable != NULL);
   assert(name != NULL);
 
-  res = TRI_Allocate(sizeof(po_int16_t));
+  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_int16_t));
 
   res->base._type  = TRI_PO_INT16;
   res->base._name  = TRI_DuplicateString(name);
@@ -1128,7 +1128,7 @@ void TRI_AddInt32PODescription (TRI_PO_section_t * desc,
   assert(variable != NULL);
   assert(name != NULL);
 
-  res = TRI_Allocate(sizeof(po_int32_t));
+  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_int32_t));
 
   res->base._type  = TRI_PO_INT32;
   res->base._name  = TRI_DuplicateString(name);
@@ -1155,7 +1155,7 @@ void TRI_AddInt64PODescription (TRI_PO_section_t * desc,
   assert(variable != NULL);
   assert(name != NULL);
 
-  res = TRI_Allocate(sizeof(po_int64_t));
+  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_int64_t));
 
   res->base._type  = TRI_PO_INT64;
   res->base._name  = TRI_DuplicateString(name);
@@ -1181,7 +1181,7 @@ void TRI_AddStringPODescription (TRI_PO_section_t * desc,
   assert(variable != NULL);
   assert(name != NULL);
 
-  res = TRI_Allocate(sizeof(TRI_PO_string_t));
+  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_PO_string_t));
 
   res->base._type  = TRI_PO_STRING;
   res->base._name  = TRI_DuplicateString(name);
@@ -1208,7 +1208,7 @@ void TRI_AddUInt16PODescription (TRI_PO_section_t * desc,
   assert(variable != NULL);
   assert(name != NULL);
 
-  res = TRI_Allocate(sizeof(po_uint16_t));
+  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_uint16_t));
 
   res->base._type  = TRI_PO_UINT16;
   res->base._name  = TRI_DuplicateString(name);
@@ -1235,7 +1235,7 @@ void TRI_AddUInt32PODescription (TRI_PO_section_t * desc,
   assert(variable != NULL);
   assert(name != NULL);
 
-  res = TRI_Allocate(sizeof(po_uint32_t));
+  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_uint32_t));
 
   res->base._type  = TRI_PO_UINT32;
   res->base._name  = TRI_DuplicateString(name);
@@ -1262,7 +1262,7 @@ void TRI_AddUInt64PODescription (TRI_PO_section_t * desc,
   assert(variable != NULL);
   assert(name != NULL);
 
-  res = TRI_Allocate(sizeof(po_uint64_t));
+  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_uint64_t));
 
   res->base._type  = TRI_PO_UINT64;
   res->base._name  = TRI_DuplicateString(name);
@@ -1289,7 +1289,7 @@ void TRI_AddVectorStringPODescription (TRI_PO_section_t * desc,
   assert(variable != NULL);
   assert(name != NULL);
 
-  res = TRI_Allocate(sizeof(TRI_PO_vector_string_t));
+  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_PO_vector_string_t));
 
   res->base._type  = TRI_PO_VECTOR_STRING;
   res->base._name  = TRI_DuplicateString(name);
@@ -1333,7 +1333,7 @@ char * TRI_UsagePODescription (TRI_PO_section_t * desc) {
   visitors.visitUInt64Node = UsageUInt64Node;
   visitors.visitVectorStringNode = UsageVectorStringNode;
 
-  TRI_InitStringBuffer(&buffer);
+  TRI_InitStringBuffer(&buffer, TRI_CORE_MEM_ZONE);
   VisitProgramOptions(&desc->base, &visitors, NULL, &buffer);
 
   // the caller has to free this buffer
@@ -1360,7 +1360,7 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
 
   TRI_set_errno(TRI_ERROR_NO_ERROR);
 
-  TRI_InitStringBuffer(&buffer);
+  TRI_InitStringBuffer(&buffer, TRI_CORE_MEM_ZONE);
 
   for (i = 0;  i < options->_items._length;  ++i) {
     item = TRI_AtVector(&options->_items, i);
@@ -1511,7 +1511,7 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
     res = regexec(&re1, buffer, 0, 0, 0);
 
     if (res == 0) {
-      TRI_FreeString(buffer);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, buffer);
       buffer = NULL;
       continue;
     }
@@ -1520,10 +1520,10 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
     res = regexec(&re2, buffer, sizeof(matches) / sizeof(matches[0]), matches, 0);
 
     if (res == 0) {
-      TRI_FreeString(section);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, section);
 
       section = TRI_DuplicateString2(buffer + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
-      TRI_FreeString(buffer);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, buffer);
       buffer = NULL;
 
       continue;
@@ -1536,12 +1536,12 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
       option = TRI_DuplicateString2(buffer + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
       value = TRI_DuplicateString2(buffer + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
 
-      TRI_FreeString(buffer);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, buffer);
       buffer = NULL;
 
       ok = HandleOption(options, section, option, value);
 
-      TRI_FreeString(value);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, value);
 
       if (! ok) {
         TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
@@ -1553,11 +1553,11 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
           fprintf(stderr, "%s: unrecognized option '%s'\n", programName, option);
         }
 
-        TRI_FreeString(option);
+        TRI_FreeString(TRI_CORE_MEM_ZONE, option);
         break;
       }
 
-      TRI_FreeString(option);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, option);
       continue;
     }
 
@@ -1567,7 +1567,7 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
     if (res == 0) {
       option = TRI_DuplicateString2(buffer + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
 
-      TRI_FreeString(buffer);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, buffer);
       buffer = NULL;
 
       ok = HandleOption(options, section, option, "");
@@ -1582,11 +1582,11 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
           fprintf(stderr, "%s: unrecognized option '%s'\n", programName, option);
         }
 
-        TRI_FreeString(option);
+        TRI_FreeString(TRI_CORE_MEM_ZONE, option);
         break;
       }
 
-      TRI_FreeString(option);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, option);
       continue;
     }
 
@@ -1598,24 +1598,24 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
       option = TRI_DuplicateString2(buffer + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
       value = TRI_DuplicateString2(buffer + matches[3].rm_so, matches[3].rm_eo - matches[3].rm_so);
 
-      TRI_FreeString(buffer);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, buffer);
       buffer = NULL;
 
       ok = HandleOption(options, tmpSection, option, value);
 
-      TRI_FreeString(value);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, value);
 
       if (! ok) {
         TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
         fprintf(stderr, "%s: unrecognized option '%s.%s'\n", programName, tmpSection, option);
 
-        TRI_FreeString(tmpSection);
-        TRI_FreeString(option);
+        TRI_FreeString(TRI_CORE_MEM_ZONE, tmpSection);
+        TRI_FreeString(TRI_CORE_MEM_ZONE, option);
         break;
       }
 
-      TRI_FreeString(tmpSection);
-      TRI_FreeString(option);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, tmpSection);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, option);
       continue;
     }
 
@@ -1626,7 +1626,7 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
       tmpSection = TRI_DuplicateString2(buffer + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
       option = TRI_DuplicateString2(buffer + matches[2].rm_so, matches[2].rm_eo - matches[1].rm_so);
 
-      TRI_FreeString(buffer);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, buffer);
       buffer = NULL;
 
       ok = HandleOption(options, tmpSection, option, "");
@@ -1635,29 +1635,29 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
         TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
         fprintf(stderr, "%s: unrecognized option '%s.%s'\n", programName, tmpSection, option);
 
-        TRI_FreeString(tmpSection);
-        TRI_FreeString(option);
+        TRI_FreeString(TRI_CORE_MEM_ZONE, tmpSection);
+        TRI_FreeString(TRI_CORE_MEM_ZONE, option);
         break;
       }
 
-      TRI_FreeString(tmpSection);
-      TRI_FreeString(option);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, tmpSection);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, option);
       continue;
     }
 
     TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
     fprintf(stderr, "%s: unrecognized entry '%s'\n", programName, buffer);
 
-    TRI_FreeString(buffer);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, buffer);
     buffer = NULL;
     break;
   }
 
   if (buffer != NULL) {
-    TRI_FreeString(buffer);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, buffer);
   }
 
-  TRI_FreeString(section);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, section);
 
   regfree(&re1);
   regfree(&re2);
