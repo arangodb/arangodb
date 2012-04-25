@@ -5,27 +5,52 @@
 
 $(document).ready(function() {       
 
+
 ///////////////////////////////////////////////////////////////////////////////
 /// global variables 
 ///////////////////////////////////////////////////////////////////////////////
-
 var userScreenSize = $(window).width();  
 var open = false;
 var tableView = true;
 var sid = ($.cookie("sid")); 
 var currentUser; 
+//logtable vars
+var currentPage = 1; 
+var currentAmount; 
+var currentTableID = "#logTableID"; 
+var currentLoglevel = 5;   
+//live click for all log tables 
+var tables = ["#logTableID", "#critLogTableID", "#warnLogTableID", "#infoLogTableID", "#debugLogTableID"];
+
+$.each(tables, function(v, i ) {
+  $(i + '_next').live('click', function () {
+    createNextPagination();  
+  });
+  $(i + '_prev').live('click', function () {
+    createPrevPagination();  
+  });
+});
 
 ///////////////////////////////////////////////////////////////////////////////
 /// html customizations  
 ///////////////////////////////////////////////////////////////////////////////
-
 $('#logView ul').append('<button id="refreshLogButton"><img src="/_admin/html/media/icons/refresh_icon16.png" width=16 height=16></button><div id=tab_right align=right><form><input type="text" id="logSearchField"></input><button id="submitLogSearch">Search</button></form></div>');
 
 ///////////////////////////////////////////////////////////////////////////////
 /// initialize jquery tabs 
 ///////////////////////////////////////////////////////////////////////////////
 
-$("#tabs").tabs();
+$("#tabs").tabs({
+  select: function(event, ui) {
+    if (ui.index == 0) {
+      createLogTable(5); 
+    }
+    else {
+      createLogTable(ui.index); 
+    }
+  }    
+});
+
 
 ///////////////////////////////////////////////////////////////////////////////
 /// checks for a login user cookie, creates new sessions if null  
@@ -533,7 +558,7 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
     else if (location.hash == "#logs") {
-      refreshLogTables();
+      createLogTable(5); 
       hideAllSubDivs(); 
       $('#collectionsView').hide();
       $('#logView').show();
@@ -723,7 +748,6 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
   $('#refreshLogButton').live('click', function () {
-    refreshLogTables();
   });
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -827,7 +851,6 @@ var logTable = $('#logTableID').dataTable({
         for (row in content) {
           var row_data = content[row];
           result[row_data[1]] = row_data[3];
-          //console.log(row_data[0] + ":" + row_data[1] + ":" + row_data[2] + ":" + row_data[3]); 
         }
         $('#documentEditSourceBox').val(JSON.stringify(result));  
         $('#documentEditTableView').toggle();
@@ -1270,6 +1293,9 @@ var logTable = $('#logTableID').dataTable({
     });
   }
 
+
+
+
 ///////////////////////////////////////////////////////////////////////////////
 /// jump to edit collection view
 ///////////////////////////////////////////////////////////////////////////////
@@ -1380,51 +1406,6 @@ function drawCollectionsTable () {
   $('#collectionsTableID').dataTable().fnAddData(items);
   });
 }
-
-///////////////////////////////////////////////////////////////////////////////
-/// draw and fill logtable
-///////////////////////////////////////////////////////////////////////////////
-
-function refreshLogTables () {
-
-  $('#logTableID').dataTable().fnClearTable();
-  $.getJSON("/_admin/log?upto=5&size=10", function(data) { 
-    var items=[];
-    var i=0; 
-    var totalAmount = data.totalAmount; 
-
-    $.each(data.lid, function () {
-    $('#logTableID').dataTable().fnAddData([data.level[i], data.text[i]]);
-      $('#debugLogTableID').dataTable().fnAddData([data.level[i], data.text[i]]);
-      i++;
-    });
-  createLogPagination("#logTableID", totalAmount, 1);
-
-  });
-}
-
-$('#submitLogSearch').live('click', function () {
-  var content = $('#logSearchField').val(); 
-  
-  if (content == '' || content == null) {
-    return false; 
-  }
-  else {
-    $('#logTableID').dataTable().fnClearTable();
-    $.getJSON("/_admin/log?search=" + content, function(data) {
-      var totalAmount = data.totalAmount; 
-      var items=[];
-      var i=0; 
-    
-      $.each(data.lid, function () {
-        $('#logTableID').dataTable().fnAddData([data.level[i], data.text[i]]);
-        i++;
-      });
-      deleteLogPagination("#logTableID", content); 
-    });
-  }
-  return false; 
-});
 
 ///////////////////////////////////////////////////////////////////////////////
 /// short function to enable edit mode for a table 
@@ -1590,108 +1571,103 @@ function createnav (menue) {
 
 $(function() {
   var open = false;  
-	$('#footerSlideButton').click(function() {
-		if(open === false) {
-			$('#footerSlideContent').animate({ height: '120px' });
-			$(this).css('backgroundPosition', 'bottom left');
-			open = true;
-                        $('#movetologinButton').text("Hide");
-		} else {
-			$('#footerSlideContent').animate({ height: '25px' });
-			$(this).css('backgroundPosition', 'top left');
-			open = false;
-                        $('#movetologinButton').text("Login");
-		}
-	});
-	$('#movetologinButton').click(function() {
-		if(open === false) {
-                        $('#movetologinButton').text("Hide");
-			$('#footerSlideContent').animate({ height: '120px' });
-			$('#footerSlideButton').css('backgroundPosition', 'bottom left');
-			open = true;
-		} else {
-                        $('#movetologinButton').text("Login");
-			$('#footerSlideContent').animate({ height: '25px' });
-			$('#footerSlideButton').css('backgroundPosition', 'top left');
-			open = false;
-		}
-        });
+  $('#footerSlideButton').click(function() {
+    if(open === false) {
+      $('#footerSlideContent').animate({ height: '120px' });
+      $(this).css('backgroundPosition', 'bottom left');
+      open = true;
+      $('#movetologinButton').text("Hide");
+    } 
+    else {
+      $('#footerSlideContent').animate({ height: '25px' });
+      $(this).css('backgroundPosition', 'top left');
+      open = false;
+      $('#movetologinButton').text("Login");
+    }
+  });
+
+  $('#movetologinButton').click(function() {
+    if(open === false) {
+      $('#movetologinButton').text("Hide");
+      $('#footerSlideContent').animate({ height: '120px' });
+      $('#footerSlideButton').css('backgroundPosition', 'bottom left');
+      open = true;
+    } 
+    else {
+      $('#movetologinButton').text("Login");
+      $('#footerSlideContent').animate({ height: '25px' });
+      $('#footerSlideButton').css('backgroundPosition', 'top left');
+      open = false;
+    }
+  });
 });
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Log tables pagination  
 ///////////////////////////////////////////////////////////////////////////////
 
-function createLogPagination (tableID, totalAmount, currentPage) {
-  var totalPages = Math.ceil(totalAmount / 10);
-
-  $(tableID + "_info").empty();
-  $(tableID + "_info").append('Showing Page <a id="currentPage">'+currentPage+'</a> of <a id="totalPages">'+totalPages+'</a> '); 
-  $(tableID + "_info").append('<button id="prevEntries">Previous</button>'); 
-  $(tableID + "_info").append('<button id="nextEntries">Next</button>');  
-}
-
-function deleteLogPagination (tableID, content) {
-  $(tableID + "_info").empty();
-  $(tableID + "_info").append('Showing entries containing: "' + content + '"'); 
-}
-
-function createNextPagination (tableID, currentPage, loglevel) {
-
-  var totalPages = $('#totalPages').text(); 
-  if (currentPage == totalPages) {
-    return 0; 
-  }
-
-  var nextPage = JSON.parse(currentPage) + 1;  
-  
-  $.getJSON("/_admin/log?upto=4&size=1", function(data) {
-    var totalAmount = data.totalAmount; 
-    var offset = currentPage * 10;
-    
-    $.getJSON("/_admin/log?size=10&upto="+loglevel+"&offset=" + offset, function(data) {
-      $('#logTableID').dataTable().fnClearTable();
-      
-      var i = 0; 
-      $.each(data.level, function() {
-        $('#logTableID').dataTable().fnAddData([data.level[i], data.text[i]]);
-        i++;
-      });
-    createLogPagination (tableID, totalAmount, nextPage);
-    }); 
-  });
-}
-
-function createPrevPagination (tableID, currentPage, loglevel) {
-
-if (currentPage == 1) {
-  return 0; 
-}
-
-  var prevPage = JSON.parse(currentPage) - 1;
-  var offset = prevPage * 10 - 10;     
-
-  $.getJSON("/_admin/log?upto=4&size=1", function(data) {
-    var totalAmount = data.totalAmount;
-
-    $.getJSON("/_admin/log?size=10&upto="+loglevel+"&offset=" + offset, function(data) {
-      $('#logTableID').dataTable().fnClearTable();
-      
-      var i = 0; 
-      $.each(data.level, function() {
-        $('#logTableID').dataTable().fnAddData([data.level[i], data.text[i]]);
-        i++;
-      });
-    createLogPagination (tableID, totalAmount, prevPage);
+function createLogTable(loglevel) {
+  currentPage = 1;  
+  currentLoglevel = loglevel;  
+//set tableid  
+  if (loglevel == 1) {currentTableID = "#critLogTableID";} 
+  else if (loglevel == 2) {currentTableID = "#warnLogTableID";} 
+  else if (loglevel == 3) {currentTableID = "#infoLogTableID";} 
+  else if (loglevel == 4) {currentTableID = "#debugLogTableID";} 
+  else if (loglevel == 5) {currentTableID = "#logTableID";} 
+//get first rows 
+  $.getJSON("/_admin/log?level="+loglevel+"&size=10", function(data) { 
+    var items=[];
+    var i=0; 
+    currentAmount = data.totalAmount; 
+//clear table   
+    $(currentTableID).dataTable().fnClearTable();
+//draw first 10 rows
+    $.each(data.lid, function () {
+      $(currentTableID).dataTable().fnAddData([data.level[i], data.text[i]]);
+      i++;
     });
   });
 }
 
-$('#prevEntries').live('click', function () {
-  createPrevPagination("#logTableID", $('#currentPage').text(), 4); 
-});
+function createPrevPagination() {
+  if (currentPage == 1) {
+    return 0; 
+  }
+  
+  var prevPage = JSON.parse(currentPage) - 1; 
+  var offset = prevPage * 10 - 10; 
 
-$('#nextEntries').live('click', function () {
-  createNextPagination("#logTableID", $('#currentPage').text(), 4); 
-});
+  $.getJSON("/_admin/log?level="+currentLoglevel+"&size=10&offset="+offset, function(data) {
+    $(currentTableID).dataTable().fnClearTable(); 
+
+    var i = 0; 
+    $.each(data.level, function() {
+      $(currentTableID).dataTable().fnAddData([data.level[i], data.text[i]]); 
+      i++; 
+    });
+  currentPage = JSON.parse(currentPage) - 1; 
+  }); 
+}
+
+function createNextPagination() { 
+  var totalPages = Math.ceil(currentAmount / 10); 
+  var offset = currentPage * 10; 
+
+  if (currentPage == totalPages) {
+    return 0; 
+  }
+
+  $.getJSON("/_admin/log?level="+currentLoglevel+"&size=10&offset="+offset, function(data) {
+    $(currentTableID).dataTable().fnClearTable();
+
+    var i = 0; 
+    $.each(data.level, function() {
+      $(currentTableID).dataTable().fnAddData([data.level[i], data.text[i]]); 
+      i++
+    });
+    currentPage = JSON.parse(currentPage) + 1; 
+  });
+}
+    
 

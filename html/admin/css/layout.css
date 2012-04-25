@@ -1,3 +1,6 @@
+#logView .fg-toolbar{display: none;}
+
+
 html {
   font-family: Verdana,Arial,sans-serif; 
   font-size: 1em;
@@ -93,7 +96,7 @@ th {
 
 #avocshWindow {
   background-color: white;  
-  height: 400px; 
+  height: 300px; 
   overflow-y: auto; 
   width:100%; 
 }
@@ -148,7 +151,7 @@ th {
   box-shadow: 0 0 5px rgba(81, 203, 238, 0);
   -webkit-box-shadow: 0 0 5px rgba(81, 203, 238, 0);
   -moz-box-shadow: 0 0 5px rgba(81, 203, 238, 0);
-  height: 400px;  
+  height: 300px;  
 }
 
 .editBox:focus {
@@ -375,7 +378,7 @@ th {
 ##############################################################################
 */
 
-#avocshView button, #queryView button, #tab_right button, #logTableID_info button, #footerSlideContent button, form.jediTextarea > button {
+#avocshView button, #queryView button, #tab_right button, #logTableID_info button, #critLogTableID_info button, #warnLogTableID_info button, #infoLogTableID_info button, #debugLogTableID_info button, #footerSlideContent button, form.jediTextarea > button {
   background: #e3e3e3;
   border: 1px solid #bbb;
   -webkit-border-radius: 3px;
