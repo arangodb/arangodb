@@ -11,11 +11,11 @@
 #include <BasicsC/common.h>
 #include <BasicsC/strings.h>
 
-#include "Ahuacatl/ast-node.h"
-#include "Ahuacatl/ahuacatl-parser.h"
+#include "Ahuacatl/ahuacatl-ast-node.h"
+#include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-grammar.h"
 
-#define YY_EXTRA_TYPE TRI_aql_parse_context_t*
+#define YY_EXTRA_TYPE TRI_aql_context_t*
 
 #define YY_USER_ACTION yylloc->first_line = yylineno; yylloc->first_column = yycolumn; yylloc->last_column = yycolumn + yyleng - 1; yycolumn += yyleng;
 

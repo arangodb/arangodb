@@ -86,31 +86,37 @@
     <div id="subCenterView">
 
       <div id="createCollectionView" style="display: none">
-      <button class="minimal" id="saveNewCollection">
-        <img src="/_admin/html/media/icons/save_icon16.png" width="16" height="16">
-        <a>Save Collection</a>
-      </button>
-      <button class="minimal" id="cancelNewCollection">
-        <img src="/_admin/html/media/icons/cancel_icon16.png" width="16" height="16">
-        <a>Cancel</a>
-      </button>
-        <table cellpadding="0" cellspacing="0" border="0" class="display" id="createCollectionTableID" width="100%">
-          <thead>
-            <tr>
-              <th></th>
-              <th>Key</th>
-              <th>Value</th>
-            </tr>
-          </thead>
-        </table>       
+        <button class="minimal" id="saveNewCollection">
+          <img src="/_admin/html/media/icons/save_icon16.png" width="16" height="16">
+          <a>Save Collection</a>
+        </button>
+        <button class="minimal" id="cancelNewCollection">
+          <img src="/_admin/html/media/icons/cancel_icon16.png" width="16" height="16">
+          <a>Cancel</a>
+        </button>
+        <br></br>
+        <div id="newCollection_left">
+          <a>Name:</a><br></br>
+          <a>waitForSync:</a>
+        </div>
+        <div id="newCollection_right">
+          <input type="text" class="smallInput" id="createCollName"></input>
+          <form action="#" id="waitForSyncForm">
+            <input type="radio" name="waitForSync" value=true checked>yes</input>
+            <input type="radio" name="waitForSync" value=false>no</input>
+          </form>
+        </div>
+          
+
+
       </div>
 
       <div id="editCollectionView" style="display: none">
-      <button class="minimal" id="saveEditedCollection">
-        <img src="/_admin/html/media/icons/doc_plus_icon16.png" width="16" height="16">
-        <a>Save Collection</a>
-      </button>
-        <table cellpadding="0" cellspacing="0" border="0" class="display" id="editCollectionTableID" width="100%">
+        <button class="minimal" id="saveEditedCollection">
+          <img src="/_admin/html/media/icons/doc_plus_icon16.png" width="16" height="16">
+          <a>Save Collection</a>
+        </button>
+          <table cellpadding="0" cellspacing="0" border="0" class="display" id="editCollectionTableID" width="100%">
           <thead>
             <tr>
               <th></th>
@@ -122,10 +128,10 @@
       </div>
 
       <div id="documentsView" style="display: none">
-      <button class="minimal" id="addDocumentButton">
-        <img src="/_admin/html/media/icons/doc_plus_icon16.png" width="16" height="16">
-        <a>Add Document</a>
-      </button>
+        <button class="minimal" id="addDocumentButton">
+          <img src="/_admin/html/media/icons/doc_plus_icon16.png" width="16" height="16">
+          <a>Add Document</a>
+        </button>
         <table cellpadding="0" cellspacing="0" border="0" class="display" id="documentsTableID" width="100%">
           <thead>
             <tr>
@@ -139,18 +145,18 @@
       </div>
 
       <div id="documentEditView" style="display: none">
-       <button class="minimal" id="saveEditedDocButton">
-         <img src="/_admin/html/media/icons/save_icon16.png" width="16" height="16">
-         <a>Save Document</a>
-         </button>
-       <button class="minimal" id="addEditedDocRowButton">
-         <img src="/_admin/html/media/icons/round_plus_icon16.png" width="16" height="16">
-         <a>Add row</a>
-         </button>
-       <button class="minimal" id="toggleEditedDocButton">
-         <a>Source</a>
-         <img src="/_admin/html/media/icons/off_icon16.png" width="16" height="16">
-         </button>
+        <button class="minimal" id="saveEditedDocButton">
+            <img src="/_admin/html/media/icons/save_icon16.png" width="16" height="16">
+            <a>Save Document</a>
+          </button>
+        <button class="minimal" id="addEditedDocRowButton">
+            <img src="/_admin/html/media/icons/round_plus_icon16.png" width="16" height="16">
+            <a>Add row</a>
+          </button>
+        <button class="minimal" id="toggleEditedDocButton">
+            <a>Source</a>
+            <img src="/_admin/html/media/icons/off_icon16.png" width="16" height="16">
+          </button>
         <div id="documentEditTableView">
           <table cellpadding="0" cellspacing="0" border="0" class="display" id="documentEditTableID" width="100%">
             <thead>

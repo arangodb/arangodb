@@ -35,9 +35,9 @@
 #include <BasicsC/associative.h>
 #include <BasicsC/json.h>
 
-#include "Ahuacatl/ahuacatl-parser.h"
+#include "Ahuacatl/ahuacatl-ast-node.h"
+#include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-tree-walker.h"
-#include "Ahuacatl/ast-node.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -93,26 +93,26 @@ bool TRI_EqualBindParameterAql (TRI_associative_pointer_t*,
 /// @brief free bind parameters
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeBindParametersAql (TRI_aql_parse_context_t* const);
+void TRI_FreeBindParametersAql (TRI_aql_context_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add bind parameters
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddParameterValuesAql (TRI_aql_parse_context_t* const, 
+bool TRI_AddParameterValuesAql (TRI_aql_context_t* const, 
                                 const TRI_json_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate bind parameters passed
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ValidateBindParametersAql (TRI_aql_parse_context_t* const);
+bool TRI_ValidateBindParametersAql (TRI_aql_context_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inject values of bind parameters into query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InjectBindParametersAql (TRI_aql_parse_context_t* const,
+bool TRI_InjectBindParametersAql (TRI_aql_context_t* const,
                                   TRI_aql_node_t* node);
 
 ////////////////////////////////////////////////////////////////////////////////

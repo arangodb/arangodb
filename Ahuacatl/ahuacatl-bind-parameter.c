@@ -40,7 +40,7 @@
 /// @brief create a value node from a bind parameter
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* CreateNodeFromJson (TRI_aql_parse_context_t* const context,
+static TRI_aql_node_t* CreateNodeFromJson (TRI_aql_context_t* const context,
                                            TRI_json_t* json) {
   TRI_aql_node_t* node = NULL;
 
@@ -148,7 +148,7 @@ static TRI_aql_node_t* ModifyNode (void* data,
                                    TRI_aql_node_t* node) {
   TRI_aql_bind_parameter_t* bind;
   TRI_associative_pointer_t* bindValues;
-  TRI_aql_parse_context_t* context;
+  TRI_aql_context_t* context;
   char* name;
 
   if (!node || node->_type != AQL_NODE_PARAMETER) {
@@ -156,7 +156,7 @@ static TRI_aql_node_t* ModifyNode (void* data,
   }
   
   // we found a parameter node
-  context = (TRI_aql_parse_context_t*) data;
+  context = (TRI_aql_context_t*) data;
   assert(context);
 
   bindValues = (TRI_associative_pointer_t*) &context->_parameterValues;
@@ -245,7 +245,7 @@ bool TRI_EqualBindParameterAql (TRI_associative_pointer_t* array,
 /// @brief free bind parameters
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeBindParametersAql (TRI_aql_parse_context_t* const context) {
+void TRI_FreeBindParametersAql (TRI_aql_context_t* const context) {
   size_t i;
   size_t n;
 
@@ -273,7 +273,7 @@ void TRI_FreeBindParametersAql (TRI_aql_parse_context_t* const context) {
 /// @brief add bind parameters
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddParameterValuesAql (TRI_aql_parse_context_t* const context,
+bool TRI_AddParameterValuesAql (TRI_aql_context_t* const context,
                                 const TRI_json_t* const parameters) {
   size_t i;
   size_t n;
@@ -281,7 +281,7 @@ bool TRI_AddParameterValuesAql (TRI_aql_parse_context_t* const context,
   assert(context);
 
   if (parameters == NULL) {
-    // no bind parameters
+    // no bind parameters, direclty return
     return true;
   }
 
@@ -322,7 +322,7 @@ bool TRI_AddParameterValuesAql (TRI_aql_parse_context_t* const context,
 /// @brief validate bind parameters passed
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ValidateBindParametersAql (TRI_aql_parse_context_t* const context) {
+bool TRI_ValidateBindParametersAql (TRI_aql_context_t* const context) {
   size_t i;
   size_t n;
 
@@ -367,7 +367,7 @@ bool TRI_ValidateBindParametersAql (TRI_aql_parse_context_t* const context) {
 /// @brief inject values of bind parameters into query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InjectBindParametersAql (TRI_aql_parse_context_t* const context, 
+bool TRI_InjectBindParametersAql (TRI_aql_context_t* const context, 
                                   TRI_aql_node_t* node) {
   TRI_aql_modify_tree_walker_t* walker;
 
