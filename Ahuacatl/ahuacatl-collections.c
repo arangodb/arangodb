@@ -63,6 +63,7 @@ static TRI_aql_collection_t* CreateCollectionContainer (const char* const name) 
 
   collection->_name = (char*) name;
   collection->_collection = NULL;
+  collection->_locked = false;
 
   return collection;
 }
@@ -126,7 +127,7 @@ bool OpenCollections (TRI_aql_parse_context_t* const context) {
     assert(collection->_name);
     assert(!collection->_collection);
 
-    LOG_TRACE("locking collection %s", collection->_name);
+    LOG_TRACE("locking collection '%s'", collection->_name);
 
     name = collection->_name;
     collection->_collection = TRI_UseCollectionByNameVocBase(context->_vocbase, name);
@@ -172,7 +173,7 @@ void TRI_UnlockCollectionsAql (TRI_aql_parse_context_t* const context) {
       continue;
     }
   
-    LOG_TRACE("unlocking collection %s", collection->_name);
+    LOG_TRACE("unlocking collection '%s'", collection->_name);
     
     TRI_ReleaseCollectionVocBase(context->_vocbase, collection->_collection);
 
@@ -195,6 +196,84 @@ bool TRI_LockCollectionsAql (TRI_aql_parse_context_t* const context) {
   }
 
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read-locks all collections used in a query
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ReadLockCollectionsAql (TRI_aql_parse_context_t* const context) {
+  size_t i;
+  size_t n;
+  bool result = true;
+
+  // lock in forward order
+  n = context->_collections._length;
+  for (i = 0; i < n; ++i) {
+    int lockResult;
+
+    TRI_aql_collection_t* collection = (TRI_aql_collection_t*) context->_collections._buffer[i];
+    TRI_doc_collection_t* documentCollection;
+
+    assert(collection);
+    assert(collection->_name);
+    assert(collection->_collection);
+    assert(collection->_collection->_collection);
+
+    documentCollection = (TRI_doc_collection_t*) collection->_collection->_collection;
+
+    LOG_TRACE("read-locking collection '%s'", collection->_name);
+
+    lockResult = documentCollection->beginRead(documentCollection);
+    if (lockResult != TRI_ERROR_NO_ERROR) {
+      // couldn't acquire the read lock
+      result = false;
+      TRI_SetErrorAql(context, TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED, collection->_name);
+      break;
+    }
+    else {
+      collection->_locked = true;
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read-unlocks all collections used in a query
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ReadUnlockCollectionsAql (TRI_aql_parse_context_t* const context) {
+  size_t i;
+
+  // unlock in reverse order
+  i = context->_collections._length;
+  while (i--) {
+    TRI_aql_collection_t* collection = (TRI_aql_collection_t*) context->_collections._buffer[i];
+    TRI_doc_collection_t* documentCollection;
+
+    assert(collection);
+    assert(collection->_name);
+
+    if (!collection->_collection) {
+      // don't unlock collections we weren't able to lock at all
+      continue;
+    }
+
+    if (!collection->_locked) {
+      // don't unlock non-read-locked collections
+      continue;
+    }
+    
+    assert(collection->_collection->_collection);
+
+    documentCollection = (TRI_doc_collection_t*) collection->_collection->_collection;
+
+    LOG_TRACE("read-unlocking collection '%s'", collection->_name);
+
+    documentCollection->endRead(documentCollection);
+    collection->_locked = false;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

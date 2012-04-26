@@ -176,6 +176,10 @@ void TRI_FreeParseContextAql (TRI_aql_parse_context_t* const context) {
 
   assert(context);
 
+  // read-unlock all collections used
+  TRI_ReadUnlockCollectionsAql(context);
+
+  // release all collections used
   TRI_UnlockCollectionsAql(context);
 
   // free all remaining scopes
@@ -261,31 +265,39 @@ bool TRI_AddBindParametersAql (TRI_aql_parse_context_t* const context,
 ////////////////////////////////////////////////////////////////////////////////
   
 bool TRI_ParseQueryAql (TRI_aql_parse_context_t* const context) {
+  // parse the query
   if (Ahuacatlparse(context)) {
     // lexing/parsing failed
     return false;
   }
 
+  // validate the bind parameters used/passed
   if (!TRI_ValidateBindParametersAql(context)) {
     // invalid bind parameters
     return false;
   }
   
-
+  // inject the bind parameter values into the query
   if (!TRI_InjectBindParametersAql(context, (TRI_aql_node_t*) context->_first)) {
     // bind parameter injection failed
     return false;
   }
 
+  // do some basic optimisations in the AST
   if (!TRI_FoldConstantsAql(context, (TRI_aql_node_t*) context->_first)) {
     // constant folding failed
     return false;
   }
-  
+
+  // mark all used collections as being used
   if (!TRI_LockCollectionsAql(context)) {
     return false;
   }
 
+  // acquire read locks on all collections used
+  if (!TRI_ReadLockCollectionsAql(context)) {
+    return false;
+  }
   // TRI_DumpTreeAql((TRI_aql_node_t*) context->_first);
 
   return true;
