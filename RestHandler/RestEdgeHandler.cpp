@@ -144,7 +144,7 @@ bool RestEdgeHandler::createDocument () {
   bool create = found ? StringUtils::boolean(createStr) : false;
 
   // auto-ptr that will free JSON data when scope is left
-  JsonContainer container(parseJsonBody());
+  JsonContainer container(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
   TRI_json_t* json = container.ptr();
 
   if (json == 0) {

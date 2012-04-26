@@ -87,7 +87,9 @@ TRI_memory_zone_t* TRI_CORE_MEM_ZONE = &TriCoreMemZone;
 /// @brief unknown memory zone
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef TRI_ENABLE_ZONE_DEBUG
 TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE = &TriUnknownMemZone;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -126,6 +128,20 @@ void TRI_DeactiveMemFailures (void) {
 #endif 
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generates an error message
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_ZONE_DEBUG
+TRI_memory_zone_t* TRI_UnknownMemZoneZ (char const* file, int line) {
+  printf("MEMORY ZONE: using unknown memory zone at (%s,%d)\n",
+         file,
+         line);
+
+  return &TriUnknownMemZone;
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief basic memory management for allocate
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -150,12 +166,6 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n) {
 #endif
 
 #ifdef TRI_ENABLE_ZONE_DEBUG
-  if (zone->_zid == TriUnknownMemZone._zid) {
-    printf("MEMORY ZONE: using unknown memory zone in TRI_Allocate(%s,%d)\n",
-           file,
-           line);
-  }
-
   m = malloc((size_t) n + sizeof(intptr_t));
 #else
   m = malloc((size_t) n);
@@ -224,11 +234,6 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
            (int) * (intptr_t*) p,
            (int) zone->_zid);
   }
-  else if (zone->_zid == TriUnknownMemZone._zid) {
-    printf("MEMORY ZONE: using unknown memory zone in TRI_Reallocate(%s,%d)\n",
-           file,
-           line);
-  }
 
   p = realloc(p, (size_t) n + sizeof(intptr_t));
   p = p + sizeof(intptr_t);
@@ -269,11 +274,6 @@ void TRI_Free (TRI_memory_zone_t* zone, void* m) {
            line,
            (int) * (intptr_t*) p,
            (int) zone->_zid);
-  }
-  else if (zone->_zid == TriUnknownMemZone._zid) {
-    printf("MEMORY ZONE: using unknown memory zone in TRI_Free(%s,%d)\n",
-           file,
-           line);
   }
 #endif
 

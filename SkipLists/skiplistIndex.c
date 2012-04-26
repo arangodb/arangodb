@@ -841,7 +841,7 @@ void TRI_FreeSkiplistIterator (TRI_skiplist_iterator_t* const iterator) {
   assert(iterator);
 
   TRI_DestroyVector(&iterator->_intervals);
-  TRI_Free(iterator);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, iterator);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -873,7 +873,7 @@ void SkiplistIndexFree(SkiplistIndex* slIndex) {
     return;
   }  
   SkiplistIndexDestroy(slIndex);
-  TRI_Free(slIndex);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, slIndex);
 }
 
 
@@ -1096,15 +1096,15 @@ static int CompareKeyElement (struct TRI_skiplist_s* skiplist, void* leftElement
 SkiplistIndex* SkiplistIndex_new() {
   SkiplistIndex* skiplistIndex;
 
-  skiplistIndex = TRI_Allocate(sizeof(SkiplistIndex));
+  skiplistIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(SkiplistIndex));
   if (skiplistIndex == NULL) {
     return NULL;
   }
 
   skiplistIndex->unique = true;
-  skiplistIndex->skiplist.uniqueSkiplist = TRI_Allocate(sizeof(TRI_skiplist_t));
+  skiplistIndex->skiplist.uniqueSkiplist = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_t));
   if (skiplistIndex->skiplist.uniqueSkiplist == NULL) {
-    TRI_Free(skiplistIndex);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistIndex);
     return NULL;
   }    
     
@@ -1288,8 +1288,8 @@ static void SkiplistIndex_findHelper(SkiplistIndex* skiplistIndex,
   size_t j;
   size_t i;
   
-  TRI_InitVector(&(leftResult), sizeof(TRI_skiplist_iterator_interval_t));
-  TRI_InitVector(&(rightResult), sizeof(TRI_skiplist_iterator_interval_t));
+  TRI_InitVector(&(leftResult), TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_interval_t));
+  TRI_InitVector(&(rightResult), TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_interval_t));
   
   relationOperator  = (TRI_sl_relation_operator_t*)(slOperator);
   logicalOperator   = (TRI_sl_logical_operator_t*)(slOperator);
@@ -1429,12 +1429,12 @@ static void SkiplistIndex_findHelper(SkiplistIndex* skiplistIndex,
 TRI_skiplist_iterator_t* SkiplistIndex_find(SkiplistIndex* skiplistIndex, TRI_vector_t* shapeList, TRI_sl_operator_t* slOperator) {
   TRI_skiplist_iterator_t*         results;
  
-  results = TRI_Allocate(sizeof(TRI_skiplist_iterator_t));    
+  results = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_t));    
   if (results == NULL) {
     return NULL; // calling procedure needs to care when the iterator is null
   }  
   results->_index = skiplistIndex;
-  TRI_InitVector(&(results->_intervals), sizeof(TRI_skiplist_iterator_interval_t));
+  TRI_InitVector(&(results->_intervals), TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_interval_t));
   results->_currentInterval = 0;
   results->_cursor          = NULL;
   results->_hasNext         = SkiplistHasNextIterationCallback;
@@ -1663,15 +1663,15 @@ static bool MultiEqualElementElement (TRI_skiplist_multi_t* multiSkiplist, void*
 SkiplistIndex* MultiSkiplistIndex_new() {
   SkiplistIndex* skiplistIndex;
 
-  skiplistIndex = TRI_Allocate(sizeof(SkiplistIndex));
+  skiplistIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(SkiplistIndex));
   if (skiplistIndex == NULL) {
     return NULL;
   }
 
   skiplistIndex->unique = false;
-  skiplistIndex->skiplist.nonUniqueSkiplist = TRI_Allocate(sizeof(TRI_skiplist_multi_t));
+  skiplistIndex->skiplist.nonUniqueSkiplist = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_multi_t));
   if (skiplistIndex->skiplist.nonUniqueSkiplist == NULL) {
-    TRI_Free(skiplistIndex);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistIndex);
     return NULL;
   }    
     
@@ -1855,8 +1855,8 @@ static void MultiSkiplistIndex_findHelper(SkiplistIndex* skiplistIndex,
   size_t j;
   size_t i;
   
-  TRI_InitVector(&(leftResult), sizeof(TRI_skiplist_iterator_interval_t));
-  TRI_InitVector(&(rightResult), sizeof(TRI_skiplist_iterator_interval_t));
+  TRI_InitVector(&(leftResult), TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_interval_t));
+  TRI_InitVector(&(rightResult), TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_interval_t));
   
   logicalOperator   = (TRI_sl_logical_operator_t*)(slOperator);
   relationOperator  = (TRI_sl_relation_operator_t*)(slOperator);
@@ -1971,12 +1971,12 @@ static void MultiSkiplistIndex_findHelper(SkiplistIndex* skiplistIndex,
 TRI_skiplist_iterator_t* MultiSkiplistIndex_find(SkiplistIndex* skiplistIndex, TRI_vector_t* shapeList, TRI_sl_operator_t* slOperator) {
   TRI_skiplist_iterator_t* results;
  
-  results = TRI_Allocate(sizeof(TRI_skiplist_iterator_t));    
+  results = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_t));    
   if (results == NULL) {
     return NULL;
   }  
   results->_index = skiplistIndex;
-  TRI_InitVector(&(results->_intervals), sizeof(TRI_skiplist_iterator_interval_t));
+  TRI_InitVector(&(results->_intervals), TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_interval_t));
   results->_currentInterval = 0;
   results->_cursor          = NULL;
   results->_hasNext         = SkiplistHasNextIterationCallback;

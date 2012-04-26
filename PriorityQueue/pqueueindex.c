@@ -111,7 +111,7 @@ void PQueueIndex_destroy(PQIndex* idx) {
     return;
   }
   TRI_FreePQueue(idx->_pq);
-  TRI_FreeAssociativeArray(idx->_aa);
+  TRI_FreeAssociativeArray(TRI_UNKNOWN_MEM_ZONE, idx->_aa);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -123,7 +123,7 @@ void PQueueIndex_free(PQIndex* idx) {
     return;
   }
   PQueueIndex_destroy(idx); 
-  TRI_Free(idx);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
 }
 
 
@@ -142,7 +142,7 @@ PQIndex* PQueueIndex_new (void) {
   // Allocate the Priority Que Index
   // ..........................................................................  
   
-  idx = TRI_Allocate(sizeof(PQIndex));
+  idx = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(PQIndex));
   if (idx == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     LOG_ERROR("out of memory when creating priority queue index");
@@ -155,9 +155,9 @@ PQIndex* PQueueIndex_new (void) {
   // Remember to add any additional structure you need
   // ..........................................................................  
   
-  idx->_pq = TRI_Allocate(sizeof(TRI_pqueue_t) + sizeof(void*));
+  idx->_pq = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_pqueue_t) + sizeof(void*));
   if (idx->_pq == NULL) {
-    TRI_Free(idx);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     LOG_ERROR("out of memory when creating priority queue index");
     return NULL;
@@ -168,10 +168,10 @@ PQIndex* PQueueIndex_new (void) {
   // Allocate the associative array
   // ..........................................................................  
   
-  idx->_aa = TRI_Allocate(sizeof(TRI_associative_array_t));
+  idx->_aa = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_associative_array_t));
   if (idx->_aa == NULL) {
-    TRI_Free(idx);
-    TRI_Free(idx->_pq);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx->_pq);
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     LOG_ERROR("out of memory when creating priority queue index");
     return NULL;
@@ -188,9 +188,9 @@ PQIndex* PQueueIndex_new (void) {
                       IsLessPQIndex, 
                       UpdateStoragePQIndex);
   if (! ok) {
-    TRI_Free(idx);
-    TRI_Free(idx->_pq);
-    TRI_Free(idx->_aa);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx->_pq);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx->_aa);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
     return NULL;    
   }
 
@@ -200,6 +200,7 @@ PQIndex* PQueueIndex_new (void) {
   // ..........................................................................  
 
   TRI_InitAssociativeArray(idx->_aa, sizeof(PQIndexElement), 
+                           TRI_UNKNOWN_MEM_ZONE, 
                            HashKeyPQIndex, HashElementPQIndex,
                            ClearElementPQIndex,
                            IsEmptyElementPQIndex,
@@ -370,14 +371,14 @@ PQIndexElements* PQIndex_top(PQIndex* idx, uint64_t numElements) {
   // .............................................................................  
   
   if (numElements == 1) {
-    result = TRI_Allocate(sizeof(PQIndexElements));
+    result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(PQIndexElements));
     if (result == NULL) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
       return NULL;
     }
-    result->_elements = TRI_Allocate(sizeof(PQIndexElement) * numElements);
+    result->_elements = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(PQIndexElement) * numElements);
     if (result->_elements == NULL) {
-      TRI_Free(result);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
       return NULL;
     }     
@@ -392,7 +393,7 @@ PQIndexElements* PQIndex_top(PQIndex* idx, uint64_t numElements) {
   // Two or more elements are 'topped'
   // .............................................................................  
   
-  tempResult._elements = TRI_Allocate(sizeof(PQIndexElement) * numElements);
+  tempResult._elements = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(PQIndexElement) * numElements);
   if (tempResult._elements == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return NULL;
@@ -416,17 +417,17 @@ PQIndexElements* PQIndex_top(PQIndex* idx, uint64_t numElements) {
   }
 
 
-  result = TRI_Allocate(sizeof(PQIndexElements));
+  result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(PQIndexElements));
   if (result == NULL) {
-    TRI_Free(tempResult._elements);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, tempResult._elements);
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return NULL;
   }
 
-  result->_elements = TRI_Allocate(sizeof(PQIndexElement) * numCopied);
+  result->_elements = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(PQIndexElement) * numCopied);
   if (result->_elements == NULL) {
-    TRI_Free(tempResult._elements);
-    TRI_Free(result);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, tempResult._elements);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return NULL;
   }
@@ -439,7 +440,7 @@ PQIndexElements* PQIndex_top(PQIndex* idx, uint64_t numElements) {
     idx->_pq->add(idx->_pq, &(result->_elements[j])); 
   }
 
-  TRI_Free(tempResult._elements);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, tempResult._elements);
     
   return result;
 } 
@@ -484,7 +485,7 @@ static void ClearStoragePQIndex(TRI_pqueue_t* pq, void* item) {
   if (element == 0) {
     return;
   }
-  TRI_Free(element->fields);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, element->fields);
   return;
 }
 

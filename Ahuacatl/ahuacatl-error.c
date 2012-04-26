@@ -118,7 +118,7 @@ void TRI_DestroyErrorAql (TRI_aql_error_t* const error) {
   assert(error);
   
   if (error->_data) {
-    TRI_Free(error->_data);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, error->_data);
   }
 }
 
@@ -130,7 +130,7 @@ void TRI_FreeErrorAql (TRI_aql_error_t* const error) {
   assert(error);
 
   TRI_DestroyErrorAql(error);
-  TRI_Free(error);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, error);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

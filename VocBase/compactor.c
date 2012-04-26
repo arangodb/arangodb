@@ -159,8 +159,9 @@ static void RemoveDatafileCallback (TRI_datafile_t* datafile, void* data) {
   number = TRI_StringUInt32(datafile->_fid);
   name = TRI_Concatenate3String("deleted-", number, ".db");
   filename = TRI_Concatenate2File(collection->_directory, name);
-  TRI_FreeString(number);
-  TRI_FreeString(name);
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, number);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, name);
 
   old = datafile->_filename;
   ok = TRI_RenameDatafile(datafile, filename);
@@ -195,7 +196,7 @@ static void RemoveDatafileCallback (TRI_datafile_t* datafile, void* data) {
     }
   }
 
-  TRI_FreeString(filename);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -402,7 +403,7 @@ static void CompactifySimCollection (TRI_sim_collection_t* sim) {
   size_t n;
   size_t i;
 
-  TRI_InitVector(&vector, sizeof(TRI_doc_datafile_info_t));
+  TRI_InitVector(&vector, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_datafile_info_t));
 
   // copy datafile information
   TRI_READ_LOCK_DATAFILES_SIM_COLLECTION(sim);
@@ -490,18 +491,18 @@ static void CleanupSimCollection (TRI_sim_collection_t* sim) {
     de = (TRI_barrier_datafile_cb_t*) element;
 
     de->callback(de->_datafile, de->_data);
-    TRI_Free(element);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
   }
   else if (element->_type == TRI_BARRIER_COLLECTION_CALLBACK) {
     TRI_barrier_collection_cb_t* ce;
 
     ce = (TRI_barrier_collection_cb_t*) element;
     deleted = ce->callback(ce->_collection, ce->_data);
-    TRI_Free(element);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
   }
   else {
     LOG_FATAL("unknown barrier type '%d'", (int) element->_type);
-    TRI_Free(element);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
   }
 
   // try again
@@ -546,7 +547,7 @@ void TRI_CompactorVocBase (void* data) {
   
   assert(vocbase->_active);
 
-  TRI_InitVectorPointer(&collections);
+  TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
 
   while (true) {
     size_t n;
