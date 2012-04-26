@@ -176,6 +176,9 @@ void TRI_FreeParseContextAql (TRI_aql_parse_context_t* const context) {
 
   assert(context);
 
+  // remove barriers for all collections used
+  TRI_RemoveBarrierCollectionsAql(context);
+
   // read-unlock all collections used
   TRI_ReadUnlockCollectionsAql(context);
 
@@ -298,6 +301,12 @@ bool TRI_ParseQueryAql (TRI_aql_parse_context_t* const context) {
   if (!TRI_ReadLockCollectionsAql(context)) {
     return false;
   }
+  
+  // add barriers for all collections used
+  if (!TRI_AddBarrierCollectionsAql(context)) {
+    return false;
+  }
+
   // TRI_DumpTreeAql((TRI_aql_node_t*) context->_first);
 
   return true;

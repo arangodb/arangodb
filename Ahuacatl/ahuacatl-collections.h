@@ -34,6 +34,7 @@
 
 #include "Ahuacatl/ahuacatl-parser.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/barrier.h"
 #include "VocBase/document-collection.h"
 
 #ifdef __cplusplus
@@ -54,9 +55,10 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_aql_collection_s {
-  TRI_vocbase_col_t* _collection;
   char* _name;
-  bool _locked;
+  bool _readLocked;
+  TRI_vocbase_col_t* _collection;
+  TRI_barrier_t* _barrier;
 }
 TRI_aql_collection_t;
 
@@ -96,6 +98,18 @@ bool TRI_ReadLockCollectionsAql (TRI_aql_parse_context_t* const);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ReadUnlockCollectionsAql (TRI_aql_parse_context_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a gc marker for all collections used in a query
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_AddBarrierCollectionsAql (TRI_aql_parse_context_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes the gc markers for all collections used in a query
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_RemoveBarrierCollectionsAql (TRI_aql_parse_context_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

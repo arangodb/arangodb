@@ -63,7 +63,8 @@ static TRI_aql_collection_t* CreateCollectionContainer (const char* const name) 
 
   collection->_name = (char*) name;
   collection->_collection = NULL;
-  collection->_locked = false;
+  collection->_barrier = NULL; 
+  collection->_readLocked = false;
 
   return collection;
 }
@@ -126,6 +127,8 @@ bool OpenCollections (TRI_aql_parse_context_t* const context) {
     assert(collection);
     assert(collection->_name);
     assert(!collection->_collection);
+    assert(!collection->_barrier);
+    assert(!collection->_readLocked);
 
     LOG_TRACE("locking collection '%s'", collection->_name);
 
@@ -219,6 +222,8 @@ bool TRI_ReadLockCollectionsAql (TRI_aql_parse_context_t* const context) {
     assert(collection->_name);
     assert(collection->_collection);
     assert(collection->_collection->_collection);
+    assert(!collection->_readLocked);
+    assert(!collection->_barrier);
 
     documentCollection = (TRI_doc_collection_t*) collection->_collection->_collection;
 
@@ -232,7 +237,7 @@ bool TRI_ReadLockCollectionsAql (TRI_aql_parse_context_t* const context) {
       break;
     }
     else {
-      collection->_locked = true;
+      collection->_readLocked = true;
     }
   }
 
@@ -260,19 +265,97 @@ void TRI_ReadUnlockCollectionsAql (TRI_aql_parse_context_t* const context) {
       continue;
     }
 
-    if (!collection->_locked) {
+    if (!collection->_readLocked) {
       // don't unlock non-read-locked collections
       continue;
     }
     
     assert(collection->_collection->_collection);
+    assert(!collection->_barrier);
 
     documentCollection = (TRI_doc_collection_t*) collection->_collection->_collection;
 
     LOG_TRACE("read-unlocking collection '%s'", collection->_name);
 
     documentCollection->endRead(documentCollection);
-    collection->_locked = false;
+    collection->_readLocked = false;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a gc marker for all collections used in a query
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_AddBarrierCollectionsAql (TRI_aql_parse_context_t* const context) {
+  size_t i;
+  size_t n;
+  bool result = true;
+
+  // iterate in forward order
+  n = context->_collections._length;
+  for (i = 0; i < n; ++i) {
+    TRI_barrier_t* ce;
+
+    TRI_aql_collection_t* collection = (TRI_aql_collection_t*) context->_collections._buffer[i];
+    TRI_doc_collection_t* documentCollection;
+
+    assert(collection);
+    assert(collection->_name);
+    assert(collection->_collection);
+    assert(collection->_readLocked);
+    assert(collection->_collection->_collection);
+    assert(!collection->_barrier);
+
+    documentCollection = (TRI_doc_collection_t*) collection->_collection->_collection;
+
+    LOG_TRACE("adding barrier for collection '%s'", collection->_name);
+
+    ce = TRI_CreateBarrierElement(&documentCollection->_barrierList);
+    if (!ce) {
+      // couldn't create the barrier
+      result = false;
+      TRI_SetErrorAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      break;
+    }
+    else {
+      collection->_barrier = ce;
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes the gc markers for all collections used in a query
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_RemoveBarrierCollectionsAql (TRI_aql_parse_context_t* const context) {
+  size_t i;
+
+  // iterate in reverse order
+  i = context->_collections._length;
+  while (i--) {
+    TRI_aql_collection_t* collection = (TRI_aql_collection_t*) context->_collections._buffer[i];
+    TRI_doc_collection_t* documentCollection;
+
+    assert(collection);
+    assert(collection->_name);
+
+    if (!collection->_collection || !collection->_readLocked || !collection->_barrier) {
+      // don't process collections we weren't able to lock at all
+      continue;
+    }
+
+    assert(collection->_readLocked);
+    assert(collection->_barrier);
+    assert(collection->_collection->_collection);
+
+    documentCollection = (TRI_doc_collection_t*) collection->_collection->_collection;
+
+    LOG_TRACE("removing barrier for collection '%s'", collection->_name);
+
+    TRI_FreeBarrier(collection->_barrier);
+    collection->_barrier = NULL;
   }
 }
 
