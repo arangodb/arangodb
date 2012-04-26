@@ -3783,6 +3783,173 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts a cursor from a javascript object - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_rc_cursor_t* UnwrapCursor (v8::Handle<v8::Object> cursorObject) {
+  return TRI_UnwrapClass<TRI_rc_cursor_t>(cursorObject, WRP_RC_CURSOR_TYPE);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the next document - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_CountCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: count()")));
+  }
+
+  v8::Handle<v8::Object> self = argv.Holder();
+  TRI_rc_cursor_t* cursor = UnwrapCursor(self);
+
+  if (cursor == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
+  }
+
+  
+  return scope.Close(v8::Number::New(cursor->_matchedDocuments));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the next document - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_NextCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: next()")));
+  }
+
+  v8::Handle<v8::Object> self = argv.Holder();
+  TRI_rc_cursor_t* cursor = UnwrapCursor(self);
+
+  if (cursor == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
+  }
+
+  TRI_rc_result_t* next = cursor->next(cursor);
+
+  if (next == 0) {
+    return scope.Close(v8::Undefined());
+  }
+
+  v8::Handle<v8::Value> value;
+  bool ok;
+
+  TRI_qry_select_t* select = cursor->_select;
+  if (select) {
+    ok = select->toJavaScript(select, next, (void*) &value);
+  }
+  else {
+    TRI_DefineSelectExecutionContext(cursor->_selectContext, next);
+    ok = TRI_ExecuteExecutionContext(cursor->_selectContext, (void*) &value);
+  }
+
+  if (! ok) {
+    if (tryCatch.HasCaught()) {
+      return scope.Close(v8::ThrowException(tryCatch.Exception()));
+    }
+    else {
+      return scope.Close(v8::ThrowException(v8::String::New("cannot convert to JavaScript")));
+    }
+  }
+
+  return scope.Close(value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the next document reference - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_NextRefCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: nextRef()")));
+  }
+
+  v8::Handle<v8::Object> self = argv.Holder();
+  TRI_rc_cursor_t* cursor = UnwrapCursor(self);
+
+  if (cursor == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
+  }
+
+  TRI_rc_result_t* next = cursor->next(cursor);
+
+  if (next == 0) {
+    return scope.Close(v8::Undefined());
+  }
+
+  // always use the primary collection
+  TRI_voc_cid_t cid = cursor->_context->_primary->base._cid;
+  TRI_voc_did_t did = next->_primary->_did;
+  string ref = StringUtils::itoa(cid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::itoa(did);
+
+  return scope.Close(v8::String::New(ref.c_str()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uses the next document - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_UseNextCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: nextRef()")));
+  }
+
+  v8::Handle<v8::Object> self = argv.Holder();
+  TRI_rc_cursor_t* cursor = UnwrapCursor(self);
+
+  if (cursor == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
+  }
+
+  TRI_rc_result_t* next = cursor->next(cursor);
+
+  if (next == 0) {
+    return scope.Close(v8::Undefined());
+  }
+
+  return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if the cursor is exhausted - DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_HasNextCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: hasNext()")));
+  }
+
+  v8::Handle<v8::Object> self = argv.Holder();
+  TRI_rc_cursor_t* cursor = UnwrapCursor(self);
+
+  if (cursor == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted cursor")));
+  }
+
+  if (cursor->hasNext(cursor)) {
+    return scope.Close(v8::True());
+  }
+  else {
+    return scope.Close(v8::False());
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -6305,13 +6472,35 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   
 
 /* DEPRECATED START */
+  
+  // .............................................................................
+  // generate the cursor template - DEPRECATED
+  // .............................................................................
+
+  ft = v8::FunctionTemplate::New();
+  ft->SetClassName(v8::String::New("AvocadoDeprecatedCursor"));
+
+  rt = ft->InstanceTemplate();
+  rt->SetInternalFieldCount(2);
+
+  rt->Set(HasNextFuncName, v8::FunctionTemplate::New(JS_HasNextCursor));
+  rt->Set(NextFuncName, v8::FunctionTemplate::New(JS_NextCursor));
+  rt->Set(NextRefFuncName, v8::FunctionTemplate::New(JS_NextRefCursor));
+  rt->Set(UseNextFuncName, v8::FunctionTemplate::New(JS_UseNextCursor));
+  rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountCursor));
+
+  v8g->CursorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+
+  // must come after SetInternalFieldCount
+  context->Global()->Set(v8::String::New("AvocadoDeprecatedCursor"),
+                         ft->GetFunction());
 
   // .............................................................................
   // generate the query template
   // .............................................................................
 
   ft = v8::FunctionTemplate::New();
-  ft->SetClassName(v8::String::New("AvocadoQuery"));
+  ft->SetClassName(v8::String::New("AvocadoDeprecatedQuery"));
 
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(2);
@@ -6321,7 +6510,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbas
   v8g->QueryTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
   // must come after SetInternalFieldCount
-  context->Global()->Set(v8::String::New("AvocadoQuery"),
+  context->Global()->Set(v8::String::New("AvocadoDeprecatedQuery"),
                          ft->GetFunction());
 
   // .............................................................................

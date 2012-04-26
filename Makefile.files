@@ -282,9 +282,6 @@ JAVASCRIPT_HEADER = \
 	js/common/bootstrap/js-print.h \
 	js/common/bootstrap/js-errors.h \
 	js/client/js-client.h \
-	js/server/js-aql-operators.h \
-	js/server/js-aql-functions-numeric.h \
-	js/server/js-aql-functions-string.h \
 	js/server/js-server.h \
 	js/server/js-ahuacatl.h
 
