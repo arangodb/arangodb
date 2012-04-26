@@ -54,9 +54,9 @@ function postQuery(req, res) {
       return;
     }
 
-    var result = AQL_PARSE(json.query);
-    if (result instanceof AvocadoQueryError) {
-      actions.resultBad(req, res, result.code, result.message);
+    var result = AHUACATL_PARSE(json.query);
+    if (result instanceof AvocadoError) {
+      actions.resultBad(req, res, result.errorNum, result.errorMessage);
       return;
     }
 

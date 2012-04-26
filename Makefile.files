@@ -159,6 +159,7 @@ avocado_SOURCES = \
         Ahuacatl/ahuacatl-error.c \
 	Ahuacatl/ahuacatl-functions.c \
         Ahuacatl/ahuacatl-grammar.c \
+        Ahuacatl/ahuacatl-result.c \
         Ahuacatl/ahuacatl-tokens.c \
         Ahuacatl/ahuacatl-tree-dump.c \
         Ahuacatl/ahuacatl-tree-walker.c \
@@ -208,6 +209,7 @@ avocado_SOURCES = \
 	VocBase/compactor.c \
 	VocBase/datafile.c \
 	VocBase/document-collection.c \
+	VocBase/general-cursor.c \
 	VocBase/headers.c \
 	VocBase/index.c \
 	VocBase/query-base.c \
@@ -280,9 +282,6 @@ JAVASCRIPT_HEADER = \
 	js/common/bootstrap/js-print.h \
 	js/common/bootstrap/js-errors.h \
 	js/client/js-client.h \
-	js/server/js-aql-operators.h \
-	js/server/js-aql-functions-numeric.h \
-	js/server/js-aql-functions-string.h \
 	js/server/js-server.h \
 	js/server/js-ahuacatl.h
 

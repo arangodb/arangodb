@@ -17,8 +17,7 @@ unittests-brief: \
 	unittests-shell-server \
 	unittests-http-server \
 	unittests-shell-client \
-	unittests-http-server \
-	unittests-shell-server-index
+	unittests-http-server 
 
 
 unittests-verbose:
@@ -175,39 +174,6 @@ unittests-shell-server-ahuacatl:
 	@mkdir "$(VOCDIR)"
 
 	$(VALGRIND) @builddir@/avocado "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL) || test "$(FORCE)" == "1"
-
-	@rm -rf "$(VOCDIR)"
-
-	@echo
-
-################################################################################
-## SHELL SERVER TESTS (INDEX)
-################################################################################
-
-SHELL_SERVER_INDEX = @srcdir@/js/server/tests/aql-index-primary.js \
-		     @srcdir@/js/server/tests/aql-index-hash.js \
-		     @srcdir@/js/server/tests/aql-index-skiplist.js \
-		     @srcdir@/js/server/tests/aql-simple.js \
-		     @srcdir@/js/server/tests/aql-keywords.js \
-		     @srcdir@/js/server/tests/aql-bind.js \
-		     @srcdir@/js/server/tests/aql-joins.js \
-		     @srcdir@/js/server/tests/aql-operators.js 
-
-.PHONY: unittests-shell-server-index
-
-UNITTESTS_SERVER_INDEX = $(addprefix --unit-tests ,$(SHELL_SERVER_INDEX))
-
-unittests-shell-server-index:
-	@echo
-	@echo "================================================================================"
-	@echo "<< SHELL SERVER TESTS (INDEX & QUERY)                                         >>"
-	@echo "================================================================================"
-	@echo
-
-	@rm -rf "$(VOCDIR)"
-	@mkdir "$(VOCDIR)"
-
-	$(VALGRIND) @builddir@/avocado "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_INDEX) || test "$(FORCE)" == "1"
 
 	@rm -rf "$(VOCDIR)"
 

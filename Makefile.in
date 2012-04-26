@@ -336,6 +336,7 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	Ahuacatl/ahuacatl-error.$(OBJEXT) \
 	Ahuacatl/ahuacatl-functions.$(OBJEXT) \
 	Ahuacatl/ahuacatl-grammar.$(OBJEXT) \
+	Ahuacatl/ahuacatl-result.$(OBJEXT) \
 	Ahuacatl/ahuacatl-tokens.$(OBJEXT) \
 	Ahuacatl/ahuacatl-tree-dump.$(OBJEXT) \
 	Ahuacatl/ahuacatl-tree-walker.$(OBJEXT) \
@@ -374,8 +375,9 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	VocBase/collection.$(OBJEXT) VocBase/compactor.$(OBJEXT) \
 	VocBase/datafile.$(OBJEXT) \
 	VocBase/document-collection.$(OBJEXT) \
-	VocBase/headers.$(OBJEXT) VocBase/index.$(OBJEXT) \
-	VocBase/query-base.$(OBJEXT) VocBase/query-cursor.$(OBJEXT) \
+	VocBase/general-cursor.$(OBJEXT) VocBase/headers.$(OBJEXT) \
+	VocBase/index.$(OBJEXT) VocBase/query-base.$(OBJEXT) \
+	VocBase/query-cursor.$(OBJEXT) \
 	VocBase/query-data-feeder.$(OBJEXT) \
 	VocBase/query-execute.$(OBJEXT) \
 	VocBase/query-functions.$(OBJEXT) \
@@ -765,6 +767,7 @@ avocado_SOURCES = \
         Ahuacatl/ahuacatl-error.c \
 	Ahuacatl/ahuacatl-functions.c \
         Ahuacatl/ahuacatl-grammar.c \
+        Ahuacatl/ahuacatl-result.c \
         Ahuacatl/ahuacatl-tokens.c \
         Ahuacatl/ahuacatl-tree-dump.c \
         Ahuacatl/ahuacatl-tree-walker.c \
@@ -814,6 +817,7 @@ avocado_SOURCES = \
 	VocBase/compactor.c \
 	VocBase/datafile.c \
 	VocBase/document-collection.c \
+	VocBase/general-cursor.c \
 	VocBase/headers.c \
 	VocBase/index.c \
 	VocBase/query-base.c \
@@ -875,9 +879,6 @@ JAVASCRIPT_HEADER = \
 	js/common/bootstrap/js-print.h \
 	js/common/bootstrap/js-errors.h \
 	js/client/js-client.h \
-	js/server/js-aql-operators.h \
-	js/server/js-aql-functions-numeric.h \
-	js/server/js-aql-functions-string.h \
 	js/server/js-server.h \
 	js/server/js-ahuacatl.h
 
@@ -1025,19 +1026,6 @@ SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-operators.js \
 		     @srcdir@/js/server/tests/ahuacatl-queries-noncollection.js 
 
 UNITTESTS_SERVER_AHUACATL = $(addprefix --unit-tests ,$(SHELL_SERVER_AHUACATL))
-
-################################################################################
-################################################################################
-SHELL_SERVER_INDEX = @srcdir@/js/server/tests/aql-index-primary.js \
-		     @srcdir@/js/server/tests/aql-index-hash.js \
-		     @srcdir@/js/server/tests/aql-index-skiplist.js \
-		     @srcdir@/js/server/tests/aql-simple.js \
-		     @srcdir@/js/server/tests/aql-keywords.js \
-		     @srcdir@/js/server/tests/aql-bind.js \
-		     @srcdir@/js/server/tests/aql-joins.js \
-		     @srcdir@/js/server/tests/aql-operators.js 
-
-UNITTESTS_SERVER_INDEX = $(addprefix --unit-tests ,$(SHELL_SERVER_INDEX))
 
 ################################################################################
 ################################################################################
@@ -1677,6 +1665,8 @@ Ahuacatl/ahuacatl-functions.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-grammar.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-result.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-tokens.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-tree-dump.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
@@ -1824,6 +1814,8 @@ VocBase/datafile.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/document-collection.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
+VocBase/general-cursor.$(OBJEXT): VocBase/$(am__dirstamp) \
+	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/headers.$(OBJEXT): VocBase/$(am__dirstamp) \
 	VocBase/$(DEPDIR)/$(am__dirstamp)
 VocBase/index.$(OBJEXT): VocBase/$(am__dirstamp) \
@@ -1931,6 +1923,7 @@ mostlyclean-compile:
 	-rm -f Ahuacatl/ahuacatl-error.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-functions.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-grammar.$(OBJEXT)
+	-rm -f Ahuacatl/ahuacatl-result.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-tokens.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-tree-dump.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-tree-walker.$(OBJEXT)
@@ -2123,6 +2116,7 @@ mostlyclean-compile:
 	-rm -f VocBase/compactor.$(OBJEXT)
 	-rm -f VocBase/datafile.$(OBJEXT)
 	-rm -f VocBase/document-collection.$(OBJEXT)
+	-rm -f VocBase/general-cursor.$(OBJEXT)
 	-rm -f VocBase/headers.$(OBJEXT)
 	-rm -f VocBase/index.$(OBJEXT)
 	-rm -f VocBase/query-base.$(OBJEXT)
@@ -2163,6 +2157,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-error.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-functions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-grammar.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-result.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-tokens.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-tree-dump.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-tree-walker.Po@am__quote@
@@ -2355,6 +2350,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/compactor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/datafile.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/document-collection.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/general-cursor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/headers.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/index.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@VocBase/$(DEPDIR)/query-base.Po@am__quote@
@@ -2934,8 +2930,7 @@ unittests-brief: \
 	unittests-shell-server \
 	unittests-http-server \
 	unittests-shell-client \
-	unittests-http-server \
-	unittests-shell-server-index
+	unittests-http-server 
 
 unittests-verbose:
 	@echo "################################################################################"
@@ -3040,6 +3035,7 @@ unittests-shell-server-ahuacatl:
 
 	@echo
 
+<<<<<<< HEAD
 .PHONY: unittests-shell-server-index
 
 unittests-shell-server-index:
@@ -3058,6 +3054,8 @@ unittests-shell-server-index:
 
 	@echo
 
+=======
+>>>>>>> 724531f5550bc3441e50592396f6189698a27c0e
 .PHONY: unittests-shell-client
 
 unittests-shell-client:
