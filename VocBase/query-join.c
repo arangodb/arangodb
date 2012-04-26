@@ -54,7 +54,7 @@ static size_t GetExtraDataSizeGeo (TRI_join_part_t* part) {
 
 static void FreePart (TRI_join_part_t* part) {
   if (part->_alias) {
-    TRI_Free(part->_alias);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, part->_alias);
   }
 
   if (part->_ranges) {
@@ -62,7 +62,7 @@ static void FreePart (TRI_join_part_t* part) {
   }
 
   if (part->_collectionName) {
-    TRI_Free(part->_collectionName);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, part->_collectionName);
   }
   
   if (part->_feeder) {
@@ -77,7 +77,7 @@ static void FreePart (TRI_join_part_t* part) {
     TRI_DestroyVectorPointer(&part->_listDocuments);
   }
 
-  TRI_Free(part);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, part);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,7 +94,7 @@ static void FreeSelectJoin (TRI_select_join_t* join) {
   }
 
   TRI_DestroyVectorPointer(&join->_parts);
-  TRI_Free(join);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, join);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,14 +111,14 @@ bool TRI_AddPartSelectJoinX (TRI_select_join_t* join,
   TRI_join_part_t* part;
   
   assert(join != NULL);
-  part = (TRI_join_part_t*) TRI_Allocate(sizeof(TRI_join_part_t));
+  part = (TRI_join_part_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_join_part_t));
 
   if (!part) {
     return false;
   }
 
   // initialize vector for list joins
-  TRI_InitVectorPointer(&part->_listDocuments);
+  TRI_InitVectorPointer(&part->_listDocuments, TRI_UNKNOWN_MEM_ZONE);
   part->_context = NULL;
   part->_singleDocument = NULL;
   part->_feeder = NULL; 
@@ -151,12 +151,12 @@ bool TRI_AddPartSelectJoinX (TRI_select_join_t* join,
 TRI_select_join_t* TRI_CreateSelectJoin (void) {
   TRI_select_join_t* join;
 
-  join = (TRI_select_join_t*) TRI_Allocate(sizeof(TRI_select_join_t));
+  join = (TRI_select_join_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_select_join_t));
   if (!join) {
     return NULL;
   }
 
-  TRI_InitVectorPointer(&join->_parts);
+  TRI_InitVectorPointer(&join->_parts, TRI_UNKNOWN_MEM_ZONE);
   join->free = FreeSelectJoin;
 
   return join;

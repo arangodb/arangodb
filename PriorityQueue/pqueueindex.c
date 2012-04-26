@@ -199,9 +199,11 @@ PQIndex* PQueueIndex_new (void) {
   // Initialise the associative array
   // ..........................................................................  
 
-  TRI_InitAssociativeArray(idx->_aa, sizeof(PQIndexElement), 
+  TRI_InitAssociativeArray(idx->_aa,
                            TRI_UNKNOWN_MEM_ZONE, 
-                           HashKeyPQIndex, HashElementPQIndex,
+                           sizeof(PQIndexElement), 
+                           HashKeyPQIndex,
+                           HashElementPQIndex,
                            ClearElementPQIndex,
                            IsEmptyElementPQIndex,
                            IsEqualKeyElementPQIndex,
