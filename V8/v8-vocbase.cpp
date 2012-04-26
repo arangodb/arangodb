@@ -38,17 +38,13 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "VocBase/query.h"
-#include "VocBase/query-base.h"
-#include "VocBase/query-cursor.h"
-#include "VocBase/query-parse.h"
-#include "VocBase/query-execute.h"
 #include "VocBase/simple-collection.h"
+#include "VocBase/general-cursor.h"
 #include "SkipLists/sl-operator.h"
 #include "Ahuacatl/ast-codegen-js.h"
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-result.h"
-#include "VocBase/general-cursor.h"
 
 using namespace std;
 using namespace triagens::basics;
