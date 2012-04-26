@@ -131,7 +131,7 @@ void QLAstQueryFreeCollections (TRI_associative_pointer_t* const array) {
   for (i = 0; i < array->_nrAlloc; i++) {
     collection = (QL_ast_query_collection_t*) array->_table[i];
     if (collection) {
-      TRI_Free(collection);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
     }
   }
   // destroy collection array itself
@@ -165,12 +165,14 @@ void QLAstQueryInit (QL_ast_query_t* const query) {
   query->_isEmpty                    = false;
 
   TRI_InitAssociativePointer(&query->_from._collections,
+                             TRI_UNKNOWN_MEM_ZONE, 
                              TRI_HashStringKeyAssociativePointer,
                              QLHashCollectionElement,
                              QLEqualCollectionKeyElement,
                              0);
   
   TRI_InitAssociativePointer(&query->_geo._restrictions,
+                             TRI_UNKNOWN_MEM_ZONE, 
                              TRI_HashStringKeyAssociativePointer,
                              HashRestrictionElement,
                              EqualRestrictionKeyElement,
@@ -342,7 +344,7 @@ bool QLAstQueryAddCollection (QL_ast_query_t* query,
   }
 
   collection = (QL_ast_query_collection_t*) 
-    TRI_Allocate(sizeof(QL_ast_query_collection_t));
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(QL_ast_query_collection_t));
   if (!collection) { 
     return false;
   }
@@ -399,7 +401,7 @@ QL_ast_query_geo_restriction_t* QLAstQueryCreateRestriction (void) {
   QL_ast_query_geo_restriction_t* restriction;
   
   restriction = (QL_ast_query_geo_restriction_t*) 
-    TRI_Allocate(sizeof(QL_ast_query_geo_restriction_t));
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(QL_ast_query_geo_restriction_t));
   if (!restriction) {
     return NULL;
   }
@@ -448,18 +450,18 @@ QL_ast_query_geo_restriction_t* QLAstQueryCloneRestriction
       
 void QLAstQueryFreeRestriction (QL_ast_query_geo_restriction_t* restriction) {
   if (restriction->_compareLat._collection) {
-    TRI_Free(restriction->_compareLat._collection);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, restriction->_compareLat._collection);
   }
   if (restriction->_compareLat._field) {
-    TRI_Free(restriction->_compareLat._field);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, restriction->_compareLat._field);
   }
   if (restriction->_compareLon._collection) {
-    TRI_Free(restriction->_compareLon._collection);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, restriction->_compareLon._collection);
   }
   if (restriction->_compareLon._field) {
-    TRI_Free(restriction->_compareLon._field);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, restriction->_compareLon._field);
   }
-  TRI_Free(restriction);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, restriction);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -539,7 +541,7 @@ bool QLAstQueryAddGeoRestriction (QL_ast_query_t* query,
     restriction->_compareLat._collection = 
       TRI_DuplicateString(valueNode->_lhs->_value._stringValue);
     restriction->_compareLat._field = TRI_DuplicateString(fieldName->_buffer);
-    TRI_FreeStringBuffer(fieldName);
+    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, fieldName);
   }
   else {
     QLAstQueryFreeRestriction(restriction);
@@ -560,7 +562,7 @@ bool QLAstQueryAddGeoRestriction (QL_ast_query_t* query,
     restriction->_compareLon._collection = 
       TRI_DuplicateString(valueNode->_lhs->_value._stringValue);
     restriction->_compareLon._field = TRI_DuplicateString(fieldName->_buffer);
-    TRI_FreeStringBuffer(fieldName);
+    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, fieldName);
   } 
   else {
     QLAstQueryFreeRestriction(restriction);
@@ -601,7 +603,7 @@ TRI_string_buffer_t* QLAstQueryGetMemberNameString (TRI_query_node_t* node,
   TRI_query_node_t *lhs, *rhs;
   TRI_string_buffer_t* buffer;
 
-  buffer = TRI_CreateStringBuffer();
+  buffer = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
   if (!buffer) {
     return NULL;
   }

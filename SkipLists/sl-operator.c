@@ -63,6 +63,7 @@ TRI_sl_operator_t* CreateSLOperator(TRI_sl_operator_type_e operatorType,
                                     TRI_sl_operator_t* leftOperand,
                                     TRI_sl_operator_t* rightOperand,
                                     TRI_json_t* parameters,
+                                    TRI_shaper_t* shaper,
                                     TRI_shaped_json_t* fields,
                                     size_t numFields, void* collection) {
 
@@ -75,14 +76,16 @@ TRI_sl_operator_t* CreateSLOperator(TRI_sl_operator_type_e operatorType,
     case TRI_SL_NOT_OPERATOR:
     case TRI_SL_OR_OPERATOR: 
     {
-      newLogicalOperator              = (TRI_sl_logical_operator_t*)TRI_Allocate(sizeof(TRI_sl_logical_operator_t));
+      newLogicalOperator = (TRI_sl_logical_operator_t*)TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sl_logical_operator_t));
+
       if (!newLogicalOperator) {
         return NULL;
       }
 
-      newLogicalOperator->_base._type = operatorType;
-      newLogicalOperator->_left       = leftOperand;
-      newLogicalOperator->_right      = rightOperand;
+      newLogicalOperator->_base._type   = operatorType;
+      newLogicalOperator->_base._shaper = shaper;
+      newLogicalOperator->_left         = leftOperand;
+      newLogicalOperator->_right        = rightOperand;
       newOperator = &(newLogicalOperator->_base);
       break;
     }
@@ -94,13 +97,15 @@ TRI_sl_operator_t* CreateSLOperator(TRI_sl_operator_type_e operatorType,
     case TRI_SL_LE_OPERATOR: 
     case TRI_SL_LT_OPERATOR: 
     {
-      newRelationOperator              = (TRI_sl_relation_operator_t*)TRI_Allocate(sizeof(TRI_sl_relation_operator_t));
+      newRelationOperator = (TRI_sl_relation_operator_t*)TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sl_relation_operator_t));
+
       if (!newRelationOperator) {
         return NULL;
       }
 
       /* FIXME: memory allocation might fail */
       newRelationOperator->_base._type = operatorType;
+      newLogicalOperator->_base._shaper = shaper;
       newRelationOperator->_parameters = parameters;
       newRelationOperator->_fields     = fields;
       newRelationOperator->_numFields  = numFields;
@@ -136,7 +141,7 @@ void ClearSLOperator(TRI_sl_operator_t* slOperator) {
       ClearSLOperator(logicalOperator->_left);
       ClearSLOperator(logicalOperator->_right);
 
-      TRI_Free(logicalOperator);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, logicalOperator);
       break;
     }
     
@@ -151,18 +156,18 @@ void ClearSLOperator(TRI_sl_operator_t* slOperator) {
 
       relationOperator = (TRI_sl_relation_operator_t*)(slOperator);
       if (relationOperator->_parameters != NULL) {
-        TRI_FreeJson(relationOperator->_parameters);
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, relationOperator->_parameters);
       } 
      
       // relationOperator->_fields contains _numFields shapedJson objects
       for (i = 0; i < relationOperator->_numFields; ++i) {
         // destroy each individual shapedJson object
         TRI_shaped_json_t* shaped = relationOperator->_fields + i;
-        TRI_DestroyShapedJson(shaped);
+        TRI_DestroyShapedJson(relationOperator->_base._shaper, shaped);
       }
       // free the memory pointer
-      TRI_Free(relationOperator->_fields);
-      TRI_Free(relationOperator);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, relationOperator->_fields);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, relationOperator);
       break;
     }    
   } // end of switch statement
@@ -191,8 +196,8 @@ TRI_sl_operator_t* CopySLOperator(TRI_sl_operator_t* slOperator) {
     case TRI_SL_NOT_OPERATOR:
     case TRI_SL_OR_OPERATOR: 
     {
-      oldLogicalOperator              = (TRI_sl_logical_operator_t*)(slOperator);
-      newLogicalOperator              = (TRI_sl_logical_operator_t*) (TRI_Allocate( sizeof(TRI_sl_logical_operator_t) ));
+      oldLogicalOperator              = (TRI_sl_logical_operator_t*)(TRI_UNKNOWN_MEM_ZONE, slOperator);
+      newLogicalOperator              = (TRI_sl_logical_operator_t*) (TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sl_logical_operator_t)));
       /* FIXME: memory allocation might fail */
       newLogicalOperator->_base._type = slOperator->_type;
       newLogicalOperator->_left       = CopySLOperator(oldLogicalOperator->_left);
@@ -209,11 +214,11 @@ TRI_sl_operator_t* CopySLOperator(TRI_sl_operator_t* slOperator) {
     case TRI_SL_LT_OPERATOR: 
     {
       oldRelationOperator              = (TRI_sl_relation_operator_t*)(slOperator);
-      newRelationOperator              = (TRI_sl_relation_operator_t*) (TRI_Allocate( sizeof(TRI_sl_relation_operator_t) ));
+      newRelationOperator              = (TRI_sl_relation_operator_t*) (TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sl_relation_operator_t) ));
       /* FIXME: memory allocation might fail */
       newRelationOperator->_base._type = slOperator->_type;
-      newRelationOperator->_parameters = TRI_CopyJson(oldRelationOperator->_parameters);
-      newRelationOperator->_fields     = TRI_CopyShapedJson(oldRelationOperator->_fields);
+      newRelationOperator->_parameters = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, oldRelationOperator->_parameters);
+      newRelationOperator->_fields     = TRI_CopyShapedJson(oldRelationOperator->_base._shaper, oldRelationOperator->_fields);
       newRelationOperator->_numFields  = oldRelationOperator->_numFields;
       newRelationOperator->_collection = oldRelationOperator->_collection;
       newOperator = &(newRelationOperator->_base);      

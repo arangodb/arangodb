@@ -54,7 +54,7 @@ SocketTask::SocketTask (socket_t fd)
     writeBuffer(0),
     ownBuffer(true),
     writeLength(0) {
-  readBuffer = new StringBuffer();
+  readBuffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
   tmpReadBuffer = new char[READ_BLOCK_SIZE];
 }
 
@@ -295,7 +295,7 @@ void SocketTask::appendWriteBuffer (StringBuffer* buffer) {
     if (writeBuffer == 0) {
       writeLength = 0;
 
-      writeBuffer = new StringBuffer();
+      writeBuffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
 
       newBuffer = true;
     }

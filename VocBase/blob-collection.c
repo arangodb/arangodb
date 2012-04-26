@@ -61,18 +61,10 @@ static bool CreateJournal (TRI_blob_collection_t* collection) {
   }
   
   jname = TRI_Concatenate3String("journal-", number, ".db");
-  TRI_FreeString(number);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, number);
   
-  if (!jname) {
-    return false;
-  }
-
   filename = TRI_Concatenate2File(collection->base._directory, jname);
-  TRI_FreeString(jname);
-
-  if (!filename) {
-    return false;
-  }
+  TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
 
   journal = TRI_CreateDatafile(filename, collection->base._maximalSize);
 
@@ -89,22 +81,20 @@ static bool CreateJournal (TRI_blob_collection_t* collection) {
 
     LOG_ERROR("cannot create new journal '%s': %s", filename, TRI_last_error());
 
-    TRI_FreeString(filename);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     return false;
   }
 
-  TRI_FreeString(filename);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   LOG_TRACE("created a new journal '%s'", journal->_filename);
 
   // and use the correct name
   number = TRI_StringUInt32(journal->_fid);
-  /* TODO FIXME: memory allocation might fail */
   jname = TRI_Concatenate3String("journal-", number, ".db");
-  /* TODO FIXME: memory allocation might fail */
   filename = TRI_Concatenate2File(collection->base._directory, jname);
-  /* TODO FIXME: memory allocation might fail */
-  TRI_FreeString(number);
-  TRI_FreeString(jname);
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, number);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
 
   ok = TRI_RenameDatafile(journal, filename);
 
@@ -115,7 +105,7 @@ static bool CreateJournal (TRI_blob_collection_t* collection) {
     LOG_TRACE("renamed journal to '%s'", filename);
   }
 
-  TRI_FreeString(filename);
+  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, filename);
 
   // create a collection header
   res = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position);
@@ -199,11 +189,10 @@ static bool CloseJournal (TRI_blob_collection_t* collection, TRI_datafile_t* jou
 
   number = TRI_StringUInt32(journal->_fid);
   dname = TRI_Concatenate3String("datafile-", number, ".db");
-  /* TODO FIXME: memory allocation might fail */
   filename = TRI_Concatenate2File(collection->base._directory, dname);
-  /* TODO FIXME: memory allocation might fail */
-  TRI_FreeString(dname);
-  TRI_FreeString(number);
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, number);
 
   ok = TRI_RenameDatafile(journal, filename);
 
@@ -324,7 +313,7 @@ TRI_blob_collection_t* TRI_CreateBlobCollection (TRI_vocbase_t* vocbase,
   TRI_blob_collection_t* blob;
   TRI_collection_t* collection;
 
-  blob = TRI_Allocate(sizeof(TRI_blob_collection_t));
+  blob = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_blob_collection_t));
 
   if (blob == NULL) {
     return NULL;
@@ -340,7 +329,7 @@ TRI_blob_collection_t* TRI_CreateBlobCollection (TRI_vocbase_t* vocbase,
   collection = TRI_CreateCollection(vocbase, &blob->base, path, &info);
 
   if (collection == NULL) {
-    TRI_Free(blob);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, blob);
     return NULL;
   }
 
@@ -370,7 +359,7 @@ void TRI_FreeBlobCollection (TRI_blob_collection_t* collection) {
   assert(collection);
 
   TRI_DestroyBlobCollection(collection);
-  TRI_Free(collection);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -444,7 +433,7 @@ TRI_blob_collection_t* TRI_OpenBlobCollection (TRI_vocbase_t* vocbase,
   TRI_blob_collection_t* blob;
   TRI_collection_t* collection;
 
-  blob = TRI_Allocate(sizeof(TRI_blob_collection_t));
+  blob = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_blob_collection_t));
 
   if (blob == NULL) {
     return NULL;
@@ -453,7 +442,7 @@ TRI_blob_collection_t* TRI_OpenBlobCollection (TRI_vocbase_t* vocbase,
   collection = TRI_OpenCollection(vocbase, &blob->base, path);
 
   if (collection == NULL) {
-    TRI_Free(blob);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, blob);
     return NULL;
   }
 

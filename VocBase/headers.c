@@ -88,7 +88,7 @@ static TRI_doc_mptr_t* RequestSimpleHeaders (TRI_headers_t* h) {
     char* begin;
     char* ptr;
 
-    begin = TRI_Allocate(NUMBER_HEADERS_PER_BLOCK * headers->_headerSize);
+    begin = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, NUMBER_HEADERS_PER_BLOCK * headers->_headerSize);
     if (!begin) {
       // out of memory
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -156,7 +156,7 @@ static void ReleaseSimpleHeaders (TRI_headers_t* h, TRI_doc_mptr_t* header) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_headers_t* TRI_CreateSimpleHeaders (size_t headerSize) {
-  simple_headers_t* headers = TRI_Allocate(sizeof(simple_headers_t));
+  simple_headers_t* headers = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(simple_headers_t));
 
   if (!headers) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -170,7 +170,7 @@ TRI_headers_t* TRI_CreateSimpleHeaders (size_t headerSize) {
   headers->_freelist = NULL;
   headers->_headerSize = headerSize;
 
-  TRI_InitVectorPointer(&headers->_blocks);
+  TRI_InitVectorPointer(&headers->_blocks, TRI_UNKNOWN_MEM_ZONE);
 
   return &headers->base;
 }
@@ -184,7 +184,7 @@ void TRI_DestroySimpleHeaders (TRI_headers_t* h) {
   size_t i;
 
   for (i = 0;  i < headers->_blocks._length;  ++i) {
-    TRI_Free(headers->_blocks._buffer[i]);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, headers->_blocks._buffer[i]);
   }
 
   TRI_DestroyVectorPointer(&headers->_blocks);
@@ -196,7 +196,7 @@ void TRI_DestroySimpleHeaders (TRI_headers_t* h) {
 
 void TRI_FreeSimpleHeaders (TRI_headers_t* headers) {
   TRI_DestroySimpleHeaders(headers);
-  TRI_Free(headers);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, headers);
 }
 
 // -----------------------------------------------------------------------------

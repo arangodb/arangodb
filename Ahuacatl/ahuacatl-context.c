@@ -106,7 +106,7 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
                                                     const char* const query) {
   TRI_aql_context_t* context;
 
-  context = (TRI_aql_context_t*) TRI_Allocate(sizeof(TRI_aql_context_t));
+  context = (TRI_aql_context_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_context_t));
   if (!context) {
     return NULL;
   }
@@ -115,6 +115,7 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
   
   // actual bind parameter values
   TRI_InitAssociativePointer(&context->_parameterValues,
+                             TRI_UNKNOWN_MEM_ZONE, 
                              &TRI_HashStringKeyAssociativePointer,
                              &TRI_HashBindParameterAql,
                              &TRI_EqualBindParameterAql,
@@ -122,6 +123,7 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
 
   // bind parameter names used in the query
   TRI_InitAssociativePointer(&context->_parameterNames,
+                             TRI_UNKNOWN_MEM_ZONE, 
                              &TRI_HashStringKeyAssociativePointer,
                              &TRI_HashStringKeyAssociativePointer,
                              &TRI_EqualStringKeyAssociativePointer,
@@ -129,16 +131,17 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
   
   // collections
   TRI_InitAssociativePointer(&context->_collectionNames,
+                             TRI_UNKNOWN_MEM_ZONE, 
                              &TRI_HashStringKeyAssociativePointer,
                              &TRI_HashStringKeyAssociativePointer,
                              &TRI_EqualStringKeyAssociativePointer,
                              0);
   
-  TRI_InitVectorPointer(&context->_stack);
-  TRI_InitVectorPointer(&context->_nodes);
-  TRI_InitVectorPointer(&context->_strings);
-  TRI_InitVectorPointer(&context->_scopes);
-  TRI_InitVectorPointer(&context->_collections);
+  TRI_InitVectorPointer(&context->_stack, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorPointer(&context->_nodes, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorPointer(&context->_strings, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorPointer(&context->_scopes, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorPointer(&context->_collections, TRI_UNKNOWN_MEM_ZONE);
 
   TRI_InitErrorAql(&context->_error);
 
@@ -152,7 +155,7 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  context->_parser = (TRI_aql_parser_t*) TRI_Allocate(sizeof(TRI_aql_parser_t));
+  context->_parser = (TRI_aql_parser_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_parser_t));
   if (!context->_parser) {
     TRI_FreeContextAql(context);
     return NULL;
@@ -197,7 +200,7 @@ void TRI_FreeContextAql (TRI_aql_context_t* const context) {
     void* string = context->_strings._buffer[i];
 
     if (string) {
-      TRI_Free(context->_strings._buffer[i]);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, context->_strings._buffer[i]);
     }
   }
   TRI_DestroyVectorPointer(&context->_strings);
@@ -209,7 +212,7 @@ void TRI_FreeContextAql (TRI_aql_context_t* const context) {
     if (node) {
       TRI_DestroyVectorPointer(&node->_subNodes);
       // free node itself
-      TRI_Free(node);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, node);
     }
   }
   TRI_DestroyVectorPointer(&context->_nodes);
@@ -228,7 +231,7 @@ void TRI_FreeContextAql (TRI_aql_context_t* const context) {
   while (i--) {
     TRI_aql_collection_t* collection = (TRI_aql_collection_t*) context->_collections._buffer[i];
     if (collection) {
-      TRI_Free(collection);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
     }
   }
   TRI_DestroyVectorPointer(&context->_collections);
@@ -239,19 +242,19 @@ void TRI_FreeContextAql (TRI_aql_context_t* const context) {
 
   // free query string
   if (context->_query) {
-    TRI_Free(context->_query);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, context->_query);
   }
 
   // free lexer
   if (context->_parser) {
     Ahuacatllex_destroy(context->_parser->_scanner);
-    TRI_Free(context->_parser);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, context->_parser);
   }
   
   // free error struct
   TRI_DestroyErrorAql(&context->_error);
 
-  TRI_Free(context);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, context);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -342,12 +345,13 @@ bool TRI_LockQueryContextAql (TRI_aql_context_t* const context) {
 TRI_aql_scope_t* TRI_CreateScopeAql (void) {
   TRI_aql_scope_t* scope;
 
-  scope = (TRI_aql_scope_t*) TRI_Allocate(sizeof(TRI_aql_scope_t));
+  scope = (TRI_aql_scope_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_scope_t));
   if (!scope) {
     return NULL;
   }
 
   TRI_InitAssociativePointer(&scope->_variables, 
+                             TRI_UNKNOWN_MEM_ZONE, 
                              TRI_HashStringKeyAssociativePointer,
                              HashVariable,
                              EqualVariable, 
@@ -380,7 +384,7 @@ void TRI_FreeScopeAql (TRI_aql_scope_t* const scope) {
 
   TRI_DestroyAssociativePointer(&scope->_variables);
 
-  TRI_Free(scope);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, scope);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -644,7 +648,7 @@ bool TRI_AddVariableContextAql (TRI_aql_context_t* const context, const char* na
 TRI_aql_variable_t* TRI_CreateVariableAql (const char* const name) {
   TRI_aql_variable_t* variable;
 
-  variable = (TRI_aql_variable_t*) TRI_Allocate(sizeof(TRI_aql_variable_t));
+  variable = (TRI_aql_variable_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_variable_t));
   if (!variable) {
     return NULL;
   }
@@ -666,10 +670,10 @@ void TRI_FreeVariableAql (TRI_aql_variable_t* const variable) {
   assert(variable);
 
   if (variable->_name) {
-    TRI_Free(variable->_name);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, variable->_name);
   }
 
-  TRI_Free(variable);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, variable);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

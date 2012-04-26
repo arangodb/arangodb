@@ -80,7 +80,12 @@ extern TRI_memory_zone_t* TRI_CORE_MEM_ZONE;
 /// @brief unknown memory zone
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_ZONE_DEBUG
+#define TRI_UNKNOWN_MEM_ZONE TRI_UnknownMemZoneZ(__FILE__,__LINE__)
+TRI_memory_zone_t* TRI_UnknownMemZoneZ (char const* file, int line);
+#else
 extern TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

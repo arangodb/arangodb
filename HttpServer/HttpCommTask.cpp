@@ -152,7 +152,7 @@ namespace triagens {
             if (found && StringUtils::trim(expect) == "100-continue") {
               LOGGER_TRACE << "received a 100-continue request";
 
-              StringBuffer* buffer = new StringBuffer();
+              StringBuffer* buffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
               buffer->appendText("HTTP/1.1 100 (Continue)\r\n\r\n");
 
               writeBuffers.push_back(buffer);
@@ -242,7 +242,7 @@ namespace triagens {
       StringBuffer * buffer;
 
       // save header
-      buffer = new StringBuffer();
+      buffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
       response->writeHeader(buffer);
       buffer->appendText(response->body());
 
