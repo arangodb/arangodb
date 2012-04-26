@@ -196,7 +196,7 @@ char* LineEditor::prompt (char const* prompt) {
       break;
     }
 
-    TRI_Free(originalLine);
+    TRI_Free(TRI_CORE_MEM_ZONE, originalLine);
   }
 
   char* line = TRI_DuplicateString(_current.c_str());
@@ -204,7 +204,7 @@ char* LineEditor::prompt (char const* prompt) {
 
   // avoid memleaks
   if (originalLine != 0) {
-    TRI_Free(originalLine);
+    TRI_Free(TRI_CORE_MEM_ZONE, originalLine);
   }
 
   return line;

@@ -222,6 +222,12 @@ char* TRI_EscapeCString (char const* in, size_t inLength, size_t* outLength);
 char* TRI_EscapeUtf8String (char const* in, size_t inLength, bool escapeSlash, size_t* outLength);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief escapes special characters using unicode escapes
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_EscapeUtf8StringZ (TRI_memory_zone_t*, char const* in, size_t inLength, bool escapeSlash, size_t* outLength);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief unescapes unicode escape sequences
 ///
 /// This method decodes a UTF-8 character string by replacing the \\uXXXX

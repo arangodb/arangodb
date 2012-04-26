@@ -282,7 +282,7 @@ bool MRLineEditor::isComplete (string const& source, size_t lineno, size_t colum
   char* text = TRI_DuplicateString(source.c_str());
 
   struct mrb_parser_state* p = mrb_parse_nstring_ext(_mrb, text, source.size());
-  TRI_FreeString(text);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, text);
 
   // out of memory?
   if (p == 0) {
@@ -296,7 +296,7 @@ bool MRLineEditor::isComplete (string const& source, size_t lineno, size_t colum
 
   // check for end-of-line
   if (0 < p->nerr) {
-    if (strncmp(p->error_buffer[0].message, msg, strlen(msg)) == 0) {
+    if (TRI_EqualString2(p->error_buffer[0].message, msg, strlen(msg))) {
       return false;
     }
   }

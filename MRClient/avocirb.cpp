@@ -94,7 +94,7 @@ static string OutputPager = "less -X -R -F -L";
 /// @brief the pager FILE 
 ////////////////////////////////////////////////////////////////////////////////
 
-static FILE* PAGER = stdout;
+// static FILE* PAGER = stdout;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief use pager
@@ -352,14 +352,14 @@ static void RunShell (mrb_state* mrb) {
     }
 
     if (*input == '\0') {
-      TRI_FreeString(input);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, input);
       continue;
     }
 
     console->addHistory(input);
 
     struct mrb_parser_state* p = mrb_parse_nstring(mrb, input, strlen(input));
-    TRI_FreeString(input);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, input);
 
     if (p == 0 || p->tree == 0 || 0 < p->nerr) {
       cout << "UPPS!\n";

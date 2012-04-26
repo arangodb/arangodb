@@ -202,13 +202,13 @@ void TRI_PushBackListJson (TRI_memory_zone_t*, TRI_json_t* list, TRI_json_t* obj
 /// @brief adds a new sub-object to a list object, not copying it
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PushBack2ListJson (TRI_json_t* list, TRI_json_t* object);
+int TRI_PushBack2ListJson (TRI_json_t* list, TRI_json_t* object);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new sub-object, not copying it but freeing the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PushBack3ListJson (TRI_memory_zone_t*, TRI_json_t* list, TRI_json_t* object);
+int TRI_PushBack3ListJson (TRI_memory_zone_t*, TRI_json_t* list, TRI_json_t* object);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a value in a json list
@@ -244,13 +244,13 @@ TRI_json_t* TRI_LookupArrayJson (TRI_json_t* object, char const* name);
 /// @brief stringifies a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_StringifyJson (struct TRI_string_buffer_s*, TRI_json_t const* object);
+int TRI_StringifyJson (struct TRI_string_buffer_s*, TRI_json_t const* object);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stringifies a json object skiping the outer braces
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_Stringify2Json (struct TRI_string_buffer_s*, TRI_json_t const* object);
+int TRI_Stringify2Json (struct TRI_string_buffer_s*, TRI_json_t const* object);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a json object

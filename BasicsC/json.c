@@ -31,6 +31,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/strings.h"
+#include "BasicsC/strings.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              JSON
@@ -49,86 +50,173 @@
 /// @brief prints a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static void StringifyJson (TRI_string_buffer_t* buffer, TRI_json_t const* object, bool braces) {
+static int StringifyJson (TRI_memory_zone_t* zone,
+                          TRI_string_buffer_t* buffer, 
+                          TRI_json_t const* object,
+                          bool braces) {
   size_t n;
   size_t i;
   size_t outLength;
-  char const* ptr;
+  char* ptr;
+  int res;
 
   switch (object->_type) {
     case TRI_JSON_UNUSED:
       break;
 
     case TRI_JSON_NULL:
-      TRI_AppendStringStringBuffer(buffer, "null");
+      res = TRI_AppendStringStringBuffer(buffer, "null");
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+
       break;
 
     case TRI_JSON_BOOLEAN:
       if (object->_value._boolean) {
-        TRI_AppendStringStringBuffer(buffer, "true");
+        res = TRI_AppendStringStringBuffer(buffer, "true");
       }
       else {
-        TRI_AppendStringStringBuffer(buffer, "false");
+        res = TRI_AppendStringStringBuffer(buffer, "false");
+      }
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
       }
 
       break;
 
     case TRI_JSON_NUMBER:
-      TRI_AppendDoubleStringBuffer(buffer, object->_value._number);
+      res = TRI_AppendDoubleStringBuffer(buffer, object->_value._number);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+
       break;
 
     case TRI_JSON_STRING:
-      TRI_AppendStringStringBuffer(buffer, "\"");
-      ptr = TRI_EscapeUtf8String(object->_value._string.data, object->_value._string.length - 1, false, &outLength);
-      TRI_AppendString2StringBuffer(buffer, ptr, outLength);
-      TRI_Free(TRI_CORE_MEM_ZONE, (char*) ptr);
-      TRI_AppendStringStringBuffer(buffer, "\"");
+      res = TRI_AppendStringStringBuffer(buffer, "\"");
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+
+      ptr = TRI_EscapeUtf8StringZ(zone, 
+                                  object->_value._string.data,
+                                  object->_value._string.length - 1, 
+                                  false,
+                                  &outLength);
+
+      if (ptr == NULL) {
+        return TRI_ERROR_OUT_OF_MEMORY;
+      }
+
+      res = TRI_AppendString2StringBuffer(buffer, ptr, outLength);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+
+      TRI_Free(zone, ptr);
+
+      res = TRI_AppendStringStringBuffer(buffer, "\"");
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+
       break;
 
     case TRI_JSON_ARRAY:
       if (braces) {
-        TRI_AppendStringStringBuffer(buffer, "{");
+        res = TRI_AppendStringStringBuffer(buffer, "{");
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          return res;
+        }
       }
 
       n = object->_value._objects._length;
 
       for (i = 0;  i < n;  i += 2) {
         if (0 < i) {
-          TRI_AppendStringStringBuffer(buffer, ",");
+          res = TRI_AppendStringStringBuffer(buffer, ",");
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
         }
 
-        StringifyJson(buffer, TRI_AtVector(&object->_value._objects, i), true);
-        TRI_AppendCharStringBuffer(buffer, ':');
-        StringifyJson(buffer, TRI_AtVector(&object->_value._objects, i + 1), true);
+        res = StringifyJson(zone, buffer, TRI_AtVector(&object->_value._objects, i), true);
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          return res;
+        }
+
+        res = TRI_AppendCharStringBuffer(buffer, ':');
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          return res;
+        }
+
+        res = StringifyJson(zone, buffer, TRI_AtVector(&object->_value._objects, i + 1), true);
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          return res;
+        }
       }
 
       if (braces) {
-        TRI_AppendStringStringBuffer(buffer, "}");
+        res = TRI_AppendStringStringBuffer(buffer, "}");
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          return res;
+        }
       }
 
       break;
 
     case TRI_JSON_LIST:
       if (braces) {
-        TRI_AppendStringStringBuffer(buffer, "[");
+        res = TRI_AppendStringStringBuffer(buffer, "[");
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          return res;
+        }
       }
 
       n = object->_value._objects._length;
 
       for (i = 0;  i < n;  ++i) {
         if (0 < i) {
-          TRI_AppendStringStringBuffer(buffer, ",");
+          res = TRI_AppendStringStringBuffer(buffer, ",");
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
         }
 
-        StringifyJson(buffer, TRI_AtVector(&object->_value._objects, i), true);
+        res = StringifyJson(zone, buffer, TRI_AtVector(&object->_value._objects, i), true);
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          return res;
+        }
       }
 
       if (braces) {
-        TRI_AppendStringStringBuffer(buffer, "]");
+        res = TRI_AppendStringStringBuffer(buffer, "]");
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          return res;
+        }
       }
 
       break;
   }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -425,20 +513,24 @@ void TRI_PushBackListJson (TRI_memory_zone_t* zone, TRI_json_t* list, TRI_json_t
 /// @brief adds a new sub-object to a list object, not copying it
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PushBack2ListJson (TRI_json_t* list, TRI_json_t* object) {
+int TRI_PushBack2ListJson (TRI_json_t* list, TRI_json_t* object) {
   assert(list->_type == TRI_JSON_LIST);
-
   assert(object);
-  TRI_PushBackVector(&list->_value._objects, object);
+
+  return TRI_PushBackVector(&list->_value._objects, object);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new sub-object, not copying it but freeing the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PushBack3ListJson (TRI_memory_zone_t* zone, TRI_json_t* list, TRI_json_t* object) {
-  TRI_PushBack2ListJson(list, object);
+int TRI_PushBack3ListJson (TRI_memory_zone_t* zone, TRI_json_t* list, TRI_json_t* object) {
+  int res;
+
+  res = TRI_PushBack2ListJson(list, object);
   TRI_Free(zone, object);
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -558,16 +650,16 @@ TRI_json_t* TRI_LookupArrayJson (TRI_json_t* object, char const* name) {
 /// @brief stringifies a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_StringifyJson (TRI_string_buffer_t* buffer, TRI_json_t const* object) {
-  StringifyJson(buffer, object, true);
+int TRI_StringifyJson (TRI_string_buffer_t* buffer, TRI_json_t const* object) {
+  return StringifyJson(buffer->_memoryZone, buffer, object, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stringifies a json object skiping the outer braces
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_Stringify2Json (TRI_string_buffer_t* buffer, TRI_json_t const* object) {
-  StringifyJson(buffer, object, false);
+int TRI_Stringify2Json (TRI_string_buffer_t* buffer, TRI_json_t const* object) {
+  return StringifyJson(buffer->_memoryZone, buffer, object, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -579,8 +671,8 @@ bool TRI_PrintJson (int fd, TRI_json_t const* object) {
   char const* p;
   size_t n;
 
-  TRI_InitStringBuffer(&buffer, TRI_CORE_MEM_ZONE);
-  StringifyJson(&buffer, object, true);
+  TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
+  StringifyJson(buffer._memoryZone, &buffer, object, true);
 
   p = TRI_BeginStringBuffer(&buffer);
   n = TRI_LengthStringBuffer(&buffer);

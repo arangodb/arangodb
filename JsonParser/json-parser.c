@@ -2382,7 +2382,7 @@ static TRI_json_t* ParseObject (yyscan_t scanner, int c);
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parse a list
+/// @brief parses a list
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_json_t* ParseList (yyscan_t scanner) {
@@ -2493,6 +2493,12 @@ static TRI_json_t* ParseArray (yyscan_t scanner) {
     ptr = yytext;
     len = yyleng;
     name = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, ptr + 1, len - 2, &outLength);
+
+    if (name == NULL) {
+      TRI_FreeJson(yyextra._memoryZone, array);
+      yyextra._message = "out-of-memory";
+      return NULL;
+    }
 
     // followed by a colon
     c = tri_jsp_lex(scanner);
@@ -2610,6 +2616,12 @@ static TRI_json_t* ParseObject (yyscan_t scanner, int c) {
       size_t outLength;
 
       ptr = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
+
+      if (ptr == NULL) {
+        yyextra._message = "out-of-memory";
+        return NULL;
+      }
+
       result = TRI_CreateString2Json(yyextra._memoryZone, ptr, outLength);
 
       if (result == NULL) {
