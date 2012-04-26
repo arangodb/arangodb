@@ -151,17 +151,18 @@ avocado_SOURCES = \
 	HttpsServer/HttpsServerImpl.cpp \
 	PriorityQueue/pqueueindex.c \
 	PriorityQueue/priorityqueue.c \
+        Ahuacatl/ahuacatl-ast-node.c \
         Ahuacatl/ahuacatl-bind-parameter.c \
+        Ahuacatl/ahuacatl-collections.c \
         Ahuacatl/ahuacatl-constant-folder.c \
+        Ahuacatl/ahuacatl-context.c \
         Ahuacatl/ahuacatl-error.c \
 	Ahuacatl/ahuacatl-functions.c \
         Ahuacatl/ahuacatl-grammar.c \
-        Ahuacatl/ahuacatl-parser.c \
         Ahuacatl/ahuacatl-tokens.c \
         Ahuacatl/ahuacatl-tree-dump.c \
         Ahuacatl/ahuacatl-tree-walker.c \
 	Ahuacatl/ast-codegen-js.c \
-        Ahuacatl/ast-node.c \
 	QL/ast-query.c \
 	QL/formatter.c \
 	QL/optimize.c \
@@ -294,7 +295,7 @@ BUILT_SOURCES += $(JAVASCRIPT_HEADER)
 FLEX_FILES = \
 	JsonParser/json-parser.c \
 	QL/tokens.c \
-        Ahuacatl/tokens.c
+        Ahuacatl/ahuacatl-tokens.c
 
 BUILT_SOURCES += $(FLEX_FILES)
 

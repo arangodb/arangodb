@@ -34,7 +34,7 @@
 #include <BasicsC/vector.h>
 #include <BasicsC/associative.h>
 
-#include "Ahuacatl/ast-node.h"
+#include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-tree-walker.h"
 
 #ifdef __cplusplus
@@ -54,7 +54,7 @@ extern "C" {
 /// @brief fold constants recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_FoldConstantsAql (TRI_aql_parse_context_t* const, 
+TRI_aql_node_t* TRI_FoldConstantsAql (TRI_aql_context_t* const, 
                                       TRI_aql_node_t*);
 
 ////////////////////////////////////////////////////////////////////////////////

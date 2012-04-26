@@ -3,7 +3,7 @@
 %name-prefix="Ahuacatl"
 %locations 
 %defines
-%parse-param { TRI_aql_parse_context_t* const context }
+%parse-param { TRI_aql_context_t* const context }
 %lex-param { void* scanner } 
 %error-verbose
 
@@ -16,12 +16,11 @@
 #include <BasicsC/conversions.h>
 #include <BasicsC/strings.h>
 
-#include "Ahuacatl/ast-node.h"
-#include "Ahuacatl/ahuacatl-parser.h"
+#include "Ahuacatl/ahuacatl-ast-node.h"
+#include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-error.h"
 
 %}
-
 
 %union {
   TRI_aql_node_t* node;
@@ -42,7 +41,7 @@ int Ahuacatllex (YYSTYPE*, YYLTYPE*, void*);
 /// @brief register parse error
 ////////////////////////////////////////////////////////////////////////////////
 
-void Ahuacatlerror (YYLTYPE* locp, TRI_aql_parse_context_t* const context, const char* err) {
+void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char* err) {
   TRI_SetParseErrorAql(context, err, locp->first_line, locp->first_column);
 }
 
@@ -172,7 +171,7 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_parse_context_t* const context, const
 query: 
     {
       // a query or a sub-query always starts a new scope
-      if (!TRI_StartScopeParseContextAql(context)) {
+      if (!TRI_StartScopeContextAql(context)) {
         YYABORT;
       }
     } optional_statement_block_statements return_statement {
@@ -181,7 +180,7 @@ query:
       
       $$ = (TRI_aql_node_t*) TRI_GetFirstStatementAql(context);
 
-      TRI_EndScopeParseContextAql(context);
+      TRI_EndScopeContextAql(context);
     }
   ;
 
@@ -236,13 +235,13 @@ filter_statement:
 
 let_statement:
     T_LET variable_name {
-      if (!TRI_PushStackAql(context, $2) || !TRI_StartScopeParseContextAql(context)) {
+      if (!TRI_PushStackAql(context, $2) || !TRI_StartScopeContextAql(context)) {
         YYABORT;
       }
     } T_ASSIGN T_OPEN expression T_CLOSE {
       TRI_aql_node_t* node;
 
-      TRI_EndScopeParseContextAql(context);
+      TRI_EndScopeContextAql(context);
 
       node = TRI_CreateNodeAssignAql(context, TRI_PopStackAql(context), $6);
       if (!node) {
