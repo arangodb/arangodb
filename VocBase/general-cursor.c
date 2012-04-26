@@ -53,6 +53,10 @@ TRI_general_cursor_result_t* TRI_CreateCursorResult (void* data,
 
   TRI_general_cursor_result_t* result;
 
+  if (!data) {
+    return NULL;
+  }
+
   result = (TRI_general_cursor_result_t*) TRI_Allocate(sizeof(TRI_general_cursor_result_t));
   if (!result) {
     return NULL;
@@ -86,8 +90,10 @@ void TRI_DestroyCursorResult (TRI_general_cursor_result_t* const result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeCursorResult (TRI_general_cursor_result_t* const result) {
-  TRI_DestroyCursorResult(result);
-  TRI_FreeCursorResult(result);
+  if (result) {
+    TRI_DestroyCursorResult(result);
+    TRI_Free(result);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -116,7 +122,10 @@ static inline TRI_general_cursor_row_t NextGeneralCursor (TRI_general_cursor_t* 
     return cursor->_result->getAt(cursor->_result, cursor->_currentRow++);
   }
 
-  cursor->_result->freeData(cursor->_result);
+  if (!cursor->_result->_freed) {
+    cursor->_result->_freed = true;
+    cursor->_result->freeData(cursor->_result);
+  }
 
   return NULL;
 }
@@ -169,8 +178,7 @@ void TRI_FreeGeneralCursor (TRI_general_cursor_t* cursor) {
 
   cursor->_deleted = true;
 
-  TRI_DestroyCursorResult(cursor->_result);
-  TRI_Free(cursor->_result);
+  TRI_FreeCursorResult(cursor->_result);
   
   TRI_DestroyMutex(&cursor->_lock);
   TRI_Free(cursor);

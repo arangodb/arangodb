@@ -828,7 +828,7 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_context_t* const context,
     char* upperName;
 
     assert(context->_vocbase);
-    functions = context->_vocbase->_functionsAql;
+    functions = context->_vocbase->_functions;
     assert(functions);
 
     // normalize the name by upper-casing it

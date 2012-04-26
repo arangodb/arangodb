@@ -30,18 +30,24 @@
 static void FreeData (TRI_general_cursor_result_t* result) {
   TRI_json_t* json = (TRI_json_t*) result->_data;
 
+  assert(json);
+
   TRI_FreeJson(json);
 }
 
 static TRI_general_cursor_row_t GetAt (TRI_general_cursor_result_t* result, 
                                        const TRI_general_cursor_length_t n) {
   TRI_json_t* json = (TRI_json_t*) result->_data;
+  
+  assert(json);
 
   return (TRI_general_cursor_row_t*) TRI_AtVector(&json->_value._objects, (size_t) n);
 }
 
 static TRI_general_cursor_length_t GetLength (TRI_general_cursor_result_t* result) {
   TRI_json_t* json = (TRI_json_t*) result->_data;
+  
+  assert(json);
 
   return (TRI_general_cursor_length_t) json->_value._objects._length;
 }
@@ -60,7 +66,7 @@ static TRI_general_cursor_length_t GetLength (TRI_general_cursor_result_t* resul
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_general_cursor_result_t* TRI_CreateResultAql (TRI_json_t* data) {
-  if (data->_type != TRI_JSON_LIST) {
+  if (!data || data->_type != TRI_JSON_LIST) {
     return NULL;
   } 
 

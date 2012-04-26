@@ -404,7 +404,7 @@ function searchKeyValue(req, res) {
     // TODO: build a query which selects the keys
     //
     
-    var cursor = internal.db._collection(collection).all()
+    var cursor = internal.db._collection(collection).all();
     
     result = [];
     
