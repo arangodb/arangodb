@@ -188,7 +188,7 @@ static void MemberAccess (TRI_query_javascript_converter_t* converter,
   size_t length;
   size_t i;
 
-  buffer = TRI_CreateStringBuffer();
+  buffer = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
   if (!buffer) {
     return;
   }
@@ -201,7 +201,7 @@ static void MemberAccess (TRI_query_javascript_converter_t* converter,
   TRI_ConvertQueryJavascript(converter, node->_lhs, bindParameters);
   TRI_AppendStringStringBuffer(converter->_buffer, buffer->_buffer);
 
-  TRI_FreeStringBuffer(buffer);
+  TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -244,7 +244,7 @@ TRI_query_javascript_converter_t* TRI_InitQueryJavascript (void) {
   TRI_query_javascript_converter_t* converter;
 
   converter = (TRI_query_javascript_converter_t*) 
-    TRI_Allocate(sizeof(TRI_query_javascript_converter_t));
+    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_query_javascript_converter_t));
 
   if (!converter) { 
     return NULL;
@@ -254,9 +254,9 @@ TRI_query_javascript_converter_t* TRI_InitQueryJavascript (void) {
   converter->_buffer = NULL;
   converter->_prefix = NULL;
 
-  buffer = TRI_CreateStringBuffer();
+  buffer = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
   if (!buffer) {
-    TRI_Free(converter);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, converter);
     return NULL;
   }
 
@@ -273,8 +273,8 @@ void TRI_FreeQueryJavascript (TRI_query_javascript_converter_t* converter) {
   assert(converter);
   assert(converter->_buffer);
   
-  TRI_FreeStringBuffer(converter->_buffer);
-  TRI_Free(converter);
+  TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, converter->_buffer);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, converter);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -320,7 +320,7 @@ void TRI_ConvertQueryJavascript (TRI_query_javascript_converter_t* converter,
       );
       if (escapedString) {
         TRI_AppendStringStringBuffer(converter->_buffer, escapedString);
-        TRI_Free(escapedString); 
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, escapedString); 
       }
       TRI_AppendCharStringBuffer(converter->_buffer, '"');
       return;

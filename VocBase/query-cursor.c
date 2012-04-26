@@ -173,7 +173,7 @@ TRI_query_cursor_t* TRI_CreateQueryCursor (TRI_query_instance_t* const instance,
   cursor->_functionCode = TRI_DuplicateString(instance->_query._select._functionCode);
   if (!cursor->_functionCode) {
     TRI_RegisterErrorQueryInstance(instance, TRI_ERROR_OUT_OF_MEMORY, NULL);
-    TRI_Free(cursor);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursor);
     return NULL;
   }
 
@@ -197,7 +197,7 @@ TRI_query_cursor_t* TRI_CreateQueryCursor (TRI_query_instance_t* const instance,
   cursor->free = TRI_FreeQueryCursor;
   
   TRI_InitMutex(&cursor->_lock);
-  TRI_InitVectorPointer(&cursor->_containers);
+  TRI_InitVectorPointer(&cursor->_containers, TRI_UNKNOWN_MEM_ZONE);
   
   LOG_DEBUG("created query cursor");
 
