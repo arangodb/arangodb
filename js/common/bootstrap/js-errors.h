@@ -107,6 +107,7 @@ static string JS_common_bootstrap_errors =
   "  \"ERROR_KEYVALUE_KEY_NOT_UNIQUE\" : { \"code\" : 1803, \"message\" : \"key is not unique\" }, \n"
   "  \"ERROR_KEYVALUE_KEY_NOT_CHANGED\" : { \"code\" : 1804, \"message\" : \"key value not changed\" }, \n"
   "  \"ERROR_KEYVALUE_KEY_NOT_REMOVED\" : { \"code\" : 1805, \"message\" : \"key value not removed\" }, \n"
+  "  \"ERROR_KEYVALUE_NO_VALUE\"      : { \"code\" : 1806, \"message\" : \"missing value\" }, \n"
   "  \"ERROR_GRAPH_INVALID_GRAPH\"    : { \"code\" : 1901, \"message\" : \"invalid graph\" }, \n"
   "  \"ERROR_GRAPH_COULD_NOT_CREATE_GRAPH\" : { \"code\" : 1902, \"message\" : \"could not create graph\" }, \n"
   "  \"ERROR_GRAPH_INVALID_VERTEX\"   : { \"code\" : 1903, \"message\" : \"invalid vertex\" }, \n"
