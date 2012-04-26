@@ -82,14 +82,14 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void InitNode (TRI_aql_parse_context_t* const context,
+static inline void InitNode (TRI_aql_context_t* const context,
                              TRI_aql_node_t* const node, 
                              const TRI_aql_node_type_e type) {
   node->_type = type;
   node->_next = NULL;
  
   TRI_InitVectorPointer(&node->_subNodes);
-  TRI_RegisterNodeParseContextAql(context, node);
+  TRI_RegisterNodeContextAql(context, node);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,7 +109,7 @@ static inline void InitNode (TRI_aql_parse_context_t* const context,
 /// @brief create an AST for node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeForAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeForAql (TRI_aql_context_t* const context,
                                       const char* const name,
                                       const TRI_aql_node_t* const expression) {
   CREATE_NODE(AQL_NODE_FOR)
@@ -136,7 +136,7 @@ TRI_aql_node_t* TRI_CreateNodeForAql (TRI_aql_parse_context_t* const context,
 /// @brief create an AST let node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeLetAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeLetAql (TRI_aql_context_t* const context,
                                       const char* const name,
                                       const TRI_aql_node_t* const expression) {
   TRI_aql_node_let_t* node;
@@ -172,7 +172,7 @@ TRI_aql_node_t* TRI_CreateNodeLetAql (TRI_aql_parse_context_t* const context,
 /// @brief create an AST filter node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeFilterAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeFilterAql (TRI_aql_context_t* const context,
                                          const TRI_aql_node_t* const expression) {
   CREATE_NODE(AQL_NODE_FILTER) 
   
@@ -185,7 +185,7 @@ TRI_aql_node_t* TRI_CreateNodeFilterAql (TRI_aql_parse_context_t* const context,
 /// @brief create an AST return node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeReturnAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeReturnAql (TRI_aql_context_t* const context,
                                          const TRI_aql_node_t* const expression) {
   CREATE_NODE(AQL_NODE_RETURN) 
   
@@ -198,7 +198,7 @@ TRI_aql_node_t* TRI_CreateNodeReturnAql (TRI_aql_parse_context_t* const context,
 /// @brief create an AST collect node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeCollectAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeCollectAql (TRI_aql_context_t* const context,
                                           const TRI_aql_node_t* const list,
                                           const char* const name) {
   CREATE_NODE(AQL_NODE_COLLECT)
@@ -216,7 +216,7 @@ TRI_aql_node_t* TRI_CreateNodeCollectAql (TRI_aql_parse_context_t* const context
 /// @brief create an AST sort node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeSortAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeSortAql (TRI_aql_context_t* const context,
                                        const TRI_aql_node_t* const list) {
   CREATE_NODE(AQL_NODE_SORT)
   
@@ -229,7 +229,7 @@ TRI_aql_node_t* TRI_CreateNodeSortAql (TRI_aql_parse_context_t* const context,
 /// @brief create an AST sort element node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeSortElementAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeSortElementAql (TRI_aql_context_t* const context,
                                               const TRI_aql_node_t* const expression, 
                                               const bool ascending) {
   CREATE_NODE(AQL_NODE_SORT_ELEMENT)
@@ -244,7 +244,7 @@ TRI_aql_node_t* TRI_CreateNodeSortElementAql (TRI_aql_parse_context_t* const con
 /// @brief create an AST limit node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeLimitAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeLimitAql (TRI_aql_context_t* const context,
                                         const TRI_aql_node_t* const offset, 
                                         const TRI_aql_node_t* const count) {
   CREATE_NODE(AQL_NODE_LIMIT)
@@ -259,7 +259,7 @@ TRI_aql_node_t* TRI_CreateNodeLimitAql (TRI_aql_parse_context_t* const context,
 /// @brief create an AST assign node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeAssignAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeAssignAql (TRI_aql_context_t* const context,
                                          const char* const name,
                                          const TRI_aql_node_t* const expression) {
   CREATE_NODE(AQL_NODE_ASSIGN)
@@ -277,7 +277,7 @@ TRI_aql_node_t* TRI_CreateNodeAssignAql (TRI_aql_parse_context_t* const context,
 /// @brief create an AST variable node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeVariableAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeVariableAql (TRI_aql_context_t* const context,
                                            const char* const name) {
   CREATE_NODE(AQL_NODE_VARIABLE)
    
@@ -285,7 +285,7 @@ TRI_aql_node_t* TRI_CreateNodeVariableAql (TRI_aql_parse_context_t* const contex
     ABORT_OOM
   }
   
-  if (!TRI_AddVariableParseContextAql(context, name)) {
+  if (!TRI_AddVariableContextAql(context, name)) {
     // duplicate variable name 
     TRI_SetErrorAql(context, TRI_ERROR_QUERY_VARIABLE_REDECLARED, name); 
     return NULL;
@@ -300,7 +300,7 @@ TRI_aql_node_t* TRI_CreateNodeVariableAql (TRI_aql_parse_context_t* const contex
 /// @brief create an AST collection node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeCollectionAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeCollectionAql (TRI_aql_context_t* const context,
                                              const char* const name) {
   CREATE_NODE(AQL_NODE_COLLECTION)
 
@@ -320,7 +320,7 @@ TRI_aql_node_t* TRI_CreateNodeCollectionAql (TRI_aql_parse_context_t* const cont
 /// @brief create an AST reference node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeReferenceAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeReferenceAql (TRI_aql_context_t* const context,
                                             const char* const name) {
   CREATE_NODE(AQL_NODE_REFERENCE)
 
@@ -337,7 +337,7 @@ TRI_aql_node_t* TRI_CreateNodeReferenceAql (TRI_aql_parse_context_t* const conte
 /// @brief create an AST attribute node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeAttributeAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeAttributeAql (TRI_aql_context_t* const context,
                                             const char* const name) {
   CREATE_NODE(AQL_NODE_ATTRIBUTE)
 
@@ -354,7 +354,7 @@ TRI_aql_node_t* TRI_CreateNodeAttributeAql (TRI_aql_parse_context_t* const conte
 /// @brief create an AST parameter node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeParameterAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeParameterAql (TRI_aql_context_t* const context,
                                             const char* const name) {
   CREATE_NODE(AQL_NODE_PARAMETER)
 
@@ -374,7 +374,7 @@ TRI_aql_node_t* TRI_CreateNodeParameterAql (TRI_aql_parse_context_t* const conte
 /// @brief create an AST unary plus node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeOperatorUnaryPlusAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeOperatorUnaryPlusAql (TRI_aql_context_t* const context,
                                                     const TRI_aql_node_t* const operand) {
   CREATE_NODE(AQL_NODE_OPERATOR_UNARY_PLUS)
  
@@ -387,7 +387,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorUnaryPlusAql (TRI_aql_parse_context_t* con
 /// @brief create an AST unary minus node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeOperatorUnaryMinusAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeOperatorUnaryMinusAql (TRI_aql_context_t* const context,
                                                      const TRI_aql_node_t* const operand) {
   CREATE_NODE(AQL_NODE_OPERATOR_UNARY_MINUS)
   
@@ -400,7 +400,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorUnaryMinusAql (TRI_aql_parse_context_t* co
 /// @brief create an AST unary not node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeOperatorUnaryNotAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeOperatorUnaryNotAql (TRI_aql_context_t* const context,
                                                    const TRI_aql_node_t* const operand) {
   CREATE_NODE(AQL_NODE_OPERATOR_UNARY_NOT)
   
@@ -413,7 +413,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorUnaryNotAql (TRI_aql_parse_context_t* cons
 /// @brief create an AST binary and node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeOperatorBinaryAndAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeOperatorBinaryAndAql (TRI_aql_context_t* const context,
                                                     const TRI_aql_node_t* const lhs,
                                                     const TRI_aql_node_t* const rhs) {
   CREATE_NODE(AQL_NODE_OPERATOR_BINARY_AND)
@@ -428,7 +428,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryAndAql (TRI_aql_parse_context_t* con
 /// @brief create an AST binary or node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeOperatorBinaryOrAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeOperatorBinaryOrAql (TRI_aql_context_t* const context,
                                                    const TRI_aql_node_t* const lhs,
                                                    const TRI_aql_node_t* const rhs) {
   CREATE_NODE(AQL_NODE_OPERATOR_BINARY_OR)
@@ -443,7 +443,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryOrAql (TRI_aql_parse_context_t* cons
 /// @brief create an AST binary eq node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeOperatorBinaryEqAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeOperatorBinaryEqAql (TRI_aql_context_t* const context,
                                                    const TRI_aql_node_t* const lhs,
                                                    const TRI_aql_node_t* const rhs) {
   CREATE_NODE(AQL_NODE_OPERATOR_BINARY_EQ)
@@ -458,7 +458,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryEqAql (TRI_aql_parse_context_t* cons
 /// @brief create an AST binary ne node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeOperatorBinaryNeAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeOperatorBinaryNeAql (TRI_aql_context_t* const context,
                                                    const TRI_aql_node_t* const lhs,
                                                    const TRI_aql_node_t* const rhs) {
   CREATE_NODE(AQL_NODE_OPERATOR_BINARY_NE)
@@ -473,7 +473,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryNeAql (TRI_aql_parse_context_t* cons
 /// @brief create an AST binary lt node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeOperatorBinaryLtAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeOperatorBinaryLtAql (TRI_aql_context_t* const context,
                                                    const TRI_aql_node_t* const lhs,
                                                    const TRI_aql_node_t* const rhs) {
   CREATE_NODE(AQL_NODE_OPERATOR_BINARY_LT)
@@ -488,7 +488,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryLtAql (TRI_aql_parse_context_t* cons
 /// @brief create an AST binary le node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeOperatorBinaryLeAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeOperatorBinaryLeAql (TRI_aql_context_t* const context,
                                                    const TRI_aql_node_t* const lhs,
                                                    const TRI_aql_node_t* const rhs) {
   CREATE_NODE(AQL_NODE_OPERATOR_BINARY_LE)
@@ -503,7 +503,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryLeAql (TRI_aql_parse_context_t* cons
 /// @brief create an AST binary gt node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeOperatorBinaryGtAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeOperatorBinaryGtAql (TRI_aql_context_t* const context,
                                                    const TRI_aql_node_t* const lhs,
                                                    const TRI_aql_node_t* const rhs) {
   CREATE_NODE(AQL_NODE_OPERATOR_BINARY_GT)
@@ -518,7 +518,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryGtAql (TRI_aql_parse_context_t* cons
 /// @brief create an AST binary ge node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeOperatorBinaryGeAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeOperatorBinaryGeAql (TRI_aql_context_t* const context,
                                                    const TRI_aql_node_t* const lhs,
                                                    const TRI_aql_node_t* const rhs) {
   CREATE_NODE(AQL_NODE_OPERATOR_BINARY_GE)
@@ -533,7 +533,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryGeAql (TRI_aql_parse_context_t* cons
 /// @brief create an AST binary in node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeOperatorBinaryInAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeOperatorBinaryInAql (TRI_aql_context_t* const context,
                                                    const TRI_aql_node_t* const lhs,
                                                    const TRI_aql_node_t* const rhs) {
   CREATE_NODE(AQL_NODE_OPERATOR_BINARY_IN)
@@ -548,7 +548,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryInAql (TRI_aql_parse_context_t* cons
 /// @brief create an AST binary plus node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeOperatorBinaryPlusAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeOperatorBinaryPlusAql (TRI_aql_context_t* const context,
                                                      const TRI_aql_node_t* const lhs,
                                                      const TRI_aql_node_t* const rhs) {
   CREATE_NODE(AQL_NODE_OPERATOR_BINARY_PLUS)
@@ -563,7 +563,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryPlusAql (TRI_aql_parse_context_t* co
 /// @brief create an AST binary minus node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeOperatorBinaryMinusAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeOperatorBinaryMinusAql (TRI_aql_context_t* const context,
                                                       const TRI_aql_node_t* const lhs,
                                                       const TRI_aql_node_t* const rhs) {
   CREATE_NODE(AQL_NODE_OPERATOR_BINARY_MINUS)
@@ -578,7 +578,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryMinusAql (TRI_aql_parse_context_t* c
 /// @brief create an AST binary times node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeOperatorBinaryTimesAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeOperatorBinaryTimesAql (TRI_aql_context_t* const context,
                                                       const TRI_aql_node_t* const lhs,
                                                       const TRI_aql_node_t* const rhs) {
   CREATE_NODE(AQL_NODE_OPERATOR_BINARY_TIMES)
@@ -593,7 +593,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryTimesAql (TRI_aql_parse_context_t* c
 /// @brief create an AST binary div node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeOperatorBinaryDivAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeOperatorBinaryDivAql (TRI_aql_context_t* const context,
                                                     const TRI_aql_node_t* const lhs,
                                                     const TRI_aql_node_t* const rhs) {
   CREATE_NODE(AQL_NODE_OPERATOR_BINARY_DIV)
@@ -608,7 +608,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryDivAql (TRI_aql_parse_context_t* con
 /// @brief create an AST binary mod node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeOperatorBinaryModAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeOperatorBinaryModAql (TRI_aql_context_t* const context,
                                                     const TRI_aql_node_t* const lhs,
                                                     const TRI_aql_node_t* const rhs) {
   CREATE_NODE(AQL_NODE_OPERATOR_BINARY_MOD)
@@ -623,7 +623,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryModAql (TRI_aql_parse_context_t* con
 /// @brief create an AST ternary operator node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeOperatorTernaryAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeOperatorTernaryAql (TRI_aql_context_t* const context,
                                                   const TRI_aql_node_t* const condition,
                                                   const TRI_aql_node_t* const truePart,
                                                   const TRI_aql_node_t* const falsePart) {
@@ -640,7 +640,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorTernaryAql (TRI_aql_parse_context_t* const
 /// @brief create an AST subquery node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeSubqueryAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeSubqueryAql (TRI_aql_context_t* const context,
                                            const TRI_aql_node_t* const query) {
   CREATE_NODE(AQL_NODE_SUBQUERY)
   
@@ -653,7 +653,7 @@ TRI_aql_node_t* TRI_CreateNodeSubqueryAql (TRI_aql_parse_context_t* const contex
 /// @brief create an AST attribute access node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeAttributeAccessAql (TRI_aql_parse_context_t* const context, 
+TRI_aql_node_t* TRI_CreateNodeAttributeAccessAql (TRI_aql_context_t* const context, 
                                                   const TRI_aql_node_t* const accessed,
                                                   const char* const name) { 
   CREATE_NODE(AQL_NODE_ATTRIBUTE_ACCESS)
@@ -672,7 +672,7 @@ TRI_aql_node_t* TRI_CreateNodeAttributeAccessAql (TRI_aql_parse_context_t* const
 /// @brief create an AST index access node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeIndexedAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeIndexedAql (TRI_aql_context_t* const context,
                                           const TRI_aql_node_t* const accessed, 
                                           const TRI_aql_node_t* const indexValue) {
   CREATE_NODE(AQL_NODE_INDEXED)
@@ -687,7 +687,7 @@ TRI_aql_node_t* TRI_CreateNodeIndexedAql (TRI_aql_parse_context_t* const context
 /// @brief create an AST expand node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeExpandAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeExpandAql (TRI_aql_context_t* const context,
                                          const TRI_aql_node_t* const expanded,
                                          const TRI_aql_node_t* const expansion) {
   CREATE_NODE(AQL_NODE_EXPAND)
@@ -702,7 +702,7 @@ TRI_aql_node_t* TRI_CreateNodeExpandAql (TRI_aql_parse_context_t* const context,
 /// @brief create an AST null value node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeValueNullAql (TRI_aql_parse_context_t* const context) {
+TRI_aql_node_t* TRI_CreateNodeValueNullAql (TRI_aql_context_t* const context) {
   CREATE_NODE(AQL_NODE_VALUE)
 
   TRI_AQL_NODE_TYPE(node) = AQL_TYPE_NULL;
@@ -714,7 +714,7 @@ TRI_aql_node_t* TRI_CreateNodeValueNullAql (TRI_aql_parse_context_t* const conte
 /// @brief create an AST int value node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeValueIntAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeValueIntAql (TRI_aql_context_t* const context,
                                            const int64_t value) { 
   CREATE_NODE(AQL_NODE_VALUE)
 
@@ -728,7 +728,7 @@ TRI_aql_node_t* TRI_CreateNodeValueIntAql (TRI_aql_parse_context_t* const contex
 /// @brief create an AST double value node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeValueDoubleAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeValueDoubleAql (TRI_aql_context_t* const context,
                                               const double value) { 
   CREATE_NODE(AQL_NODE_VALUE)
 
@@ -742,7 +742,7 @@ TRI_aql_node_t* TRI_CreateNodeValueDoubleAql (TRI_aql_parse_context_t* const con
 /// @brief create an AST bool value node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeValueBoolAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeValueBoolAql (TRI_aql_context_t* const context,
                                             const bool value) { 
   CREATE_NODE(AQL_NODE_VALUE)
 
@@ -756,7 +756,7 @@ TRI_aql_node_t* TRI_CreateNodeValueBoolAql (TRI_aql_parse_context_t* const conte
 /// @brief create an AST string value node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeValueStringAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeValueStringAql (TRI_aql_context_t* const context,
                                               const char* const value) { 
   CREATE_NODE(AQL_NODE_VALUE)
 
@@ -774,7 +774,7 @@ TRI_aql_node_t* TRI_CreateNodeValueStringAql (TRI_aql_parse_context_t* const con
 /// @brief create an AST list node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeListAql (TRI_aql_parse_context_t* const context) {
+TRI_aql_node_t* TRI_CreateNodeListAql (TRI_aql_context_t* const context) {
   CREATE_NODE(AQL_NODE_LIST)
 
   return node;
@@ -784,7 +784,7 @@ TRI_aql_node_t* TRI_CreateNodeListAql (TRI_aql_parse_context_t* const context) {
 /// @brief create an AST array node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeArrayAql (TRI_aql_parse_context_t* const context) {
+TRI_aql_node_t* TRI_CreateNodeArrayAql (TRI_aql_context_t* const context) {
   CREATE_NODE(AQL_NODE_ARRAY)
 
   return node;
@@ -794,7 +794,7 @@ TRI_aql_node_t* TRI_CreateNodeArrayAql (TRI_aql_parse_context_t* const context) 
 /// @brief create an AST array element node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeArrayElementAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeArrayElementAql (TRI_aql_context_t* const context,
                                                const char* const name,
                                                const TRI_aql_node_t* const value) {
   CREATE_NODE(AQL_NODE_ARRAY_ELEMENT)
@@ -813,7 +813,7 @@ TRI_aql_node_t* TRI_CreateNodeArrayElementAql (TRI_aql_parse_context_t* const co
 /// @brief create an AST function call node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_context_t* const context,
                                         const char* const name,
                                         const TRI_aql_node_t* const parameters) {
   CREATE_NODE(AQL_NODE_FCALL)
@@ -857,7 +857,7 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_parse_context_t* const context,
 /// @brief add a value to the end of a list
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_PushListAql (TRI_aql_parse_context_t* const context, 
+bool TRI_PushListAql (TRI_aql_context_t* const context, 
                       const TRI_aql_node_t* const value) {
   TRI_aql_node_t* node = TRI_PeekStackAql(context);
 
@@ -872,7 +872,7 @@ bool TRI_PushListAql (TRI_aql_parse_context_t* const context,
 /// @brief add a value to the end of an array
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_PushArrayAql (TRI_aql_parse_context_t* const context, 
+bool TRI_PushArrayAql (TRI_aql_context_t* const context, 
                        const char* const name,
                        const TRI_aql_node_t* const value) {
   TRI_aql_node_t* node = TRI_PeekStackAql(context);

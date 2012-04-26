@@ -102,11 +102,11 @@ static bool EqualVariable (TRI_associative_pointer_t* array,
 /// @brief create and initialize a parse context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_parse_context_t* TRI_CreateParseContextAql (TRI_vocbase_t* vocbase,
+TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
                                                     const char* const query) {
-  TRI_aql_parse_context_t* context;
+  TRI_aql_context_t* context;
 
-  context = (TRI_aql_parse_context_t*) TRI_Allocate(sizeof(TRI_aql_parse_context_t));
+  context = (TRI_aql_context_t*) TRI_Allocate(sizeof(TRI_aql_context_t));
   if (!context) {
     return NULL;
   }
@@ -148,13 +148,13 @@ TRI_aql_parse_context_t* TRI_CreateParseContextAql (TRI_vocbase_t* vocbase,
 
   context->_query = TRI_DuplicateString(query);
   if (!context->_query) {
-    TRI_FreeParseContextAql(context);
+    TRI_FreeContextAql(context);
     return NULL;
   }
 
   context->_parser = (TRI_aql_parser_t*) TRI_Allocate(sizeof(TRI_aql_parser_t));
   if (!context->_parser) {
-    TRI_FreeParseContextAql(context);
+    TRI_FreeContextAql(context);
     return NULL;
   }
 
@@ -171,7 +171,7 @@ TRI_aql_parse_context_t* TRI_CreateParseContextAql (TRI_vocbase_t* vocbase,
 /// @brief free a parse context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeParseContextAql (TRI_aql_parse_context_t* const context) {
+void TRI_FreeContextAql (TRI_aql_context_t* const context) {
   size_t i;
 
   assert(context);
@@ -187,7 +187,7 @@ void TRI_FreeParseContextAql (TRI_aql_parse_context_t* const context) {
 
   // free all remaining scopes
   while (context->_scopes._length) {
-    TRI_EndScopeParseContextAql(context);
+    TRI_EndScopeContextAql(context);
   }
   TRI_DestroyVectorPointer(&context->_scopes);
 
@@ -258,7 +258,7 @@ void TRI_FreeParseContextAql (TRI_aql_parse_context_t* const context) {
 /// @brief add bind parameters to the context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddBindParametersAql (TRI_aql_parse_context_t* const context, 
+bool TRI_AddBindParametersAql (TRI_aql_context_t* const context, 
                                const TRI_json_t* const parameters) {
   return TRI_AddParameterValuesAql(context, parameters);
 }
@@ -267,7 +267,7 @@ bool TRI_AddBindParametersAql (TRI_aql_parse_context_t* const context,
 /// @brief parse & validate the query string
 ////////////////////////////////////////////////////////////////////////////////
   
-bool TRI_ParseQueryAql (TRI_aql_parse_context_t* const context) {
+bool TRI_ParseQueryAql (TRI_aql_context_t* const context) {
   // parse the query
   if (Ahuacatlparse(context)) {
     // lexing/parsing failed
@@ -364,7 +364,7 @@ void TRI_FreeScopeAql (TRI_aql_scope_t* const scope) {
 /// @brief register a node
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RegisterNodeParseContextAql (TRI_aql_parse_context_t* const context,
+bool TRI_RegisterNodeContextAql (TRI_aql_context_t* const context,
                                       void* const node) {
   assert(context);
   assert(node);
@@ -378,7 +378,7 @@ bool TRI_RegisterNodeParseContextAql (TRI_aql_parse_context_t* const context,
 /// @brief register an error
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetErrorAql (TRI_aql_parse_context_t* const context, 
+void TRI_SetErrorAql (TRI_aql_context_t* const context, 
                       const int code,
                       const char* const data) {
 
@@ -400,7 +400,7 @@ void TRI_SetErrorAql (TRI_aql_parse_context_t* const context,
 /// @brief register a parse error
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetParseErrorAql (TRI_aql_parse_context_t* const context,
+void TRI_SetParseErrorAql (TRI_aql_context_t* const context,
                            const char* const message,
                            const int line,
                            const int column) {
@@ -421,7 +421,7 @@ void TRI_SetParseErrorAql (TRI_aql_parse_context_t* const context,
 /// @brief push something on the stack
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_PushStackAql (TRI_aql_parse_context_t* const context, 
+bool TRI_PushStackAql (TRI_aql_context_t* const context, 
                        const void* const value) {
   assert(context);
 
@@ -438,7 +438,7 @@ bool TRI_PushStackAql (TRI_aql_parse_context_t* const context,
 /// @brief pop something from the stack
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_PopStackAql (TRI_aql_parse_context_t* const context) {
+void* TRI_PopStackAql (TRI_aql_context_t* const context) {
   assert(context);
   assert(context->_stack._length > 0);
 
@@ -449,7 +449,7 @@ void* TRI_PopStackAql (TRI_aql_parse_context_t* const context) {
 /// @brief peek at the end of the stack
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_PeekStackAql (TRI_aql_parse_context_t* const context) {
+void* TRI_PeekStackAql (TRI_aql_context_t* const context) {
   assert(context);
   assert(context->_stack._length > 0);
 
@@ -460,7 +460,7 @@ void* TRI_PeekStackAql (TRI_aql_parse_context_t* const context) {
 /// @brief get first statement in the current scope
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_GetFirstStatementAql (TRI_aql_parse_context_t* const context) {
+void* TRI_GetFirstStatementAql (TRI_aql_context_t* const context) {
   TRI_aql_scope_t* scope;
   size_t length;
 
@@ -480,7 +480,7 @@ void* TRI_GetFirstStatementAql (TRI_aql_parse_context_t* const context) {
 /// @brief add a statement to the current scope
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddStatementAql (TRI_aql_parse_context_t* const context, 
+bool TRI_AddStatementAql (TRI_aql_context_t* const context, 
                           const void* const statement) {
   TRI_aql_scope_t* scope;
   size_t length;
@@ -516,7 +516,7 @@ bool TRI_AddStatementAql (TRI_aql_parse_context_t* const context,
 /// @brief create a new variable scope and stack it in the parser context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_scope_t* TRI_StartScopeParseContextAql (TRI_aql_parse_context_t* const context) {
+TRI_aql_scope_t* TRI_StartScopeContextAql (TRI_aql_context_t* const context) {
   TRI_aql_scope_t* scope;
 
   assert(context);
@@ -534,7 +534,7 @@ TRI_aql_scope_t* TRI_StartScopeParseContextAql (TRI_aql_parse_context_t* const c
 /// @brief remove a variable scope from parser context scopes stack
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_EndScopeParseContextAql (TRI_aql_parse_context_t* const context) {
+void TRI_EndScopeContextAql (TRI_aql_context_t* const context) {
   TRI_aql_scope_t* scope;
   size_t length;
 //size_t i;
@@ -562,7 +562,7 @@ for (i = 0; i < scope->_variables._nrAlloc; i++) {
 /// @brief move the contents of the outermost variable scope into the previous 
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExchangeScopeParseContextAql (TRI_aql_parse_context_t* const context) {
+bool TRI_ExchangeScopeContextAql (TRI_aql_context_t* const context) {
   TRI_aql_scope_t* scope;
   size_t length;
 
@@ -588,7 +588,7 @@ printf("EXCHANGING SCOPE\n");
 /// @brief push a variable into the current scope context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddVariableParseContextAql (TRI_aql_parse_context_t* const context, const char* name) {
+bool TRI_AddVariableContextAql (TRI_aql_context_t* const context, const char* name) {
   TRI_aql_variable_t* variable;
   TRI_aql_scope_t* scope;
   size_t current;
@@ -653,7 +653,7 @@ void TRI_FreeVariableAql (TRI_aql_variable_t* const variable) {
 /// @brief register a string
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_RegisterStringAql (TRI_aql_parse_context_t* const context, 
+char* TRI_RegisterStringAql (TRI_aql_context_t* const context, 
                              const char* const value, 
                              const size_t length) {
   char* copy;
@@ -677,7 +677,7 @@ char* TRI_RegisterStringAql (TRI_aql_parse_context_t* const context,
 /// @brief checks if a variable is defined in the current scope or above
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_VariableExistsAql (TRI_aql_parse_context_t* const context, 
+bool TRI_VariableExistsAql (TRI_aql_context_t* const context, 
                             const char* const name) {
   size_t current = context->_scopes._length;
 

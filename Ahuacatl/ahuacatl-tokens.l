@@ -15,7 +15,7 @@
 #include "Ahuacatl/ahuacatl-parser.h"
 #include "Ahuacatl/ahuacatl-grammar.h"
 
-#define YY_EXTRA_TYPE TRI_aql_parse_context_t*
+#define YY_EXTRA_TYPE TRI_aql_context_t*
 
 #define YY_USER_ACTION yylloc->first_line = yylineno; yylloc->first_column = yycolumn; yylloc->last_column = yycolumn + yyleng - 1; yycolumn += yyleng;
 

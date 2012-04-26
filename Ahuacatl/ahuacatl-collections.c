@@ -73,7 +73,7 @@ static TRI_aql_collection_t* CreateCollectionContainer (const char* const name) 
 /// @brief set up the collection names vector and order it
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SetupCollections (TRI_aql_parse_context_t* const context) {
+bool SetupCollections (TRI_aql_context_t* const context) {
   size_t i;
   size_t n;
   bool result = true;
@@ -115,7 +115,7 @@ bool SetupCollections (TRI_aql_parse_context_t* const context) {
 /// @brief open all collections used
 ////////////////////////////////////////////////////////////////////////////////
 
-bool OpenCollections (TRI_aql_parse_context_t* const context) {
+bool OpenCollections (TRI_aql_context_t* const context) {
   size_t i;
   size_t n;
 
@@ -160,7 +160,7 @@ bool OpenCollections (TRI_aql_parse_context_t* const context) {
 /// @brief unlock all collections used
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_UnlockCollectionsAql (TRI_aql_parse_context_t* const context) {
+void TRI_UnlockCollectionsAql (TRI_aql_context_t* const context) {
   size_t i;
   
   // unlock in reverse order
@@ -188,7 +188,7 @@ void TRI_UnlockCollectionsAql (TRI_aql_parse_context_t* const context) {
 /// @brief lock all collections used
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_LockCollectionsAql (TRI_aql_parse_context_t* const context) {
+bool TRI_LockCollectionsAql (TRI_aql_context_t* const context) {
   if (!SetupCollections(context)) {
     return false;
   }
@@ -205,7 +205,7 @@ bool TRI_LockCollectionsAql (TRI_aql_parse_context_t* const context) {
 /// @brief read-locks all collections used in a query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ReadLockCollectionsAql (TRI_aql_parse_context_t* const context) {
+bool TRI_ReadLockCollectionsAql (TRI_aql_context_t* const context) {
   size_t i;
   size_t n;
   bool result = true;
@@ -248,7 +248,7 @@ bool TRI_ReadLockCollectionsAql (TRI_aql_parse_context_t* const context) {
 /// @brief read-unlocks all collections used in a query
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ReadUnlockCollectionsAql (TRI_aql_parse_context_t* const context) {
+void TRI_ReadUnlockCollectionsAql (TRI_aql_context_t* const context) {
   size_t i;
 
   // unlock in reverse order
@@ -286,7 +286,7 @@ void TRI_ReadUnlockCollectionsAql (TRI_aql_parse_context_t* const context) {
 /// @brief adds a gc marker for all collections used in a query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddBarrierCollectionsAql (TRI_aql_parse_context_t* const context) {
+bool TRI_AddBarrierCollectionsAql (TRI_aql_context_t* const context) {
   size_t i;
   size_t n;
   bool result = true;
@@ -329,7 +329,7 @@ bool TRI_AddBarrierCollectionsAql (TRI_aql_parse_context_t* const context) {
 /// @brief removes the gc markers for all collections used in a query
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_RemoveBarrierCollectionsAql (TRI_aql_parse_context_t* const context) {
+void TRI_RemoveBarrierCollectionsAql (TRI_aql_context_t* const context) {
   size_t i;
 
   // iterate in reverse order
