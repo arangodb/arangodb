@@ -110,6 +110,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_KEYVALUE_KEY_NOT_UNIQUE, "key is not unique");
   REG_ERROR(ERROR_KEYVALUE_KEY_NOT_CHANGED, "key value not changed");
   REG_ERROR(ERROR_KEYVALUE_KEY_NOT_REMOVED, "key value not removed");
+  REG_ERROR(ERROR_KEYVALUE_NO_VALUE, "missing value");
   REG_ERROR(ERROR_GRAPH_INVALID_GRAPH, "invalid graph");
   REG_ERROR(ERROR_GRAPH_COULD_NOT_CREATE_GRAPH, "could not create graph");
   REG_ERROR(ERROR_GRAPH_INVALID_VERTEX, "invalid vertex");

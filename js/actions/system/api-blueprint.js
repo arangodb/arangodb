@@ -332,7 +332,7 @@ function deleteVertex(req, res) {
 
 function putVertex(req, res) {
   if (req.suffix.length < 1) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, "vertex not found");
+    actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, "vertex not found");
     return;
   }
 
@@ -358,7 +358,7 @@ function putVertex(req, res) {
     var json = JSON.parse(req.requestBody);
       
     if (!json || !(json instanceof Object)) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_VERTEX, "missing request body");
+      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, "missing request body");
       return;
     }
 
@@ -371,7 +371,7 @@ function putVertex(req, res) {
     actions.resultOk(req, res, actions.HTTP_OK, { "vertex" : result} );
   }
   catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
+    actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, err);
   }
 }
 
@@ -614,7 +614,7 @@ function deleteEdge(req, res) {
 
 function putEdge(req, res) {
   if (req.suffix.length < 1) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_EDGE, "edge not found");
+    actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, "edge not found");
     return;
   }
 
@@ -640,7 +640,7 @@ function putEdge(req, res) {
     var json = JSON.parse(req.requestBody);
       
     if (!json || !(json instanceof Object)) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_EDGE, "missing request body");
+      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, "missing request body");
       return;
     }
 
@@ -654,7 +654,7 @@ function putEdge(req, res) {
     actions.resultOk(req, res, actions.HTTP_OK, { "edge" : result} );
   }
   catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_EDGE, err);
+    actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, err);
   }
 }
 
