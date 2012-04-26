@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Ahuacatl, bind parameters
+/// @brief Ahuacatl, collections
 ///
 /// @file
 ///
@@ -25,19 +25,18 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_AHUACATL_BIND_PARAMETER_H
-#define TRIAGENS_DURHAM_AHUACATL_BIND_PARAMETER_H 1
+#ifndef TRIAGENS_DURHAM_AHUACATL_COLLECTIONS_H
+#define TRIAGENS_DURHAM_AHUACATL_COLLECTIONS_H 1
 
 #include <BasicsC/common.h>
-#include <BasicsC/strings.h>
-#include <BasicsC/hashes.h>
 #include <BasicsC/vector.h>
-#include <BasicsC/associative.h>
-#include <BasicsC/json.h>
+#include <BasicsC/logging.h>
 
-#include "Ahuacatl/ahuacatl-ast-node.h"
+#include "VocBase/vocbase.h"
+#include "VocBase/barrier.h"
+#include "VocBase/document-collection.h"
+
 #include "Ahuacatl/ahuacatl-context.h"
-#include "Ahuacatl/ahuacatl-tree-walker.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -53,14 +52,16 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief bind parameter container
+/// @brief a collection container
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_aql_bind_parameter_s {
+typedef struct TRI_aql_collection_s {
   char* _name;
-  TRI_json_t* _value;
+  bool _readLocked;
+  TRI_vocbase_col_t* _collection;
+  TRI_barrier_t* _barrier;
 }
-TRI_aql_bind_parameter_t;
+TRI_aql_collection_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -76,44 +77,40 @@ TRI_aql_bind_parameter_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hash bind parameter
+/// @brief unlock all collections used
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_HashBindParameterAql (TRI_associative_pointer_t*, void const*);
+void TRI_UnlockCollectionsAql (TRI_aql_context_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief comparison function used to determine bind parameter equality
+/// @brief lock all collections used
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_EqualBindParameterAql (TRI_associative_pointer_t*,
-                                void const*, 
-                                void const*);
+bool TRI_LockCollectionsAql (TRI_aql_context_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free bind parameters
+/// @brief lock all collections used
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeBindParametersAql (TRI_aql_context_t* const);
+bool TRI_ReadLockCollectionsAql (TRI_aql_context_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add bind parameters
+/// @brief read-unlocks all collections used in a query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddParameterValuesAql (TRI_aql_context_t* const, 
-                                const TRI_json_t* const);
+void TRI_ReadUnlockCollectionsAql (TRI_aql_context_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief validate bind parameters passed
+/// @brief adds a gc marker for all collections used in a query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ValidateBindParametersAql (TRI_aql_context_t* const);
+bool TRI_AddBarrierCollectionsAql (TRI_aql_context_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inject values of bind parameters into query
+/// @brief removes the gc markers for all collections used in a query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InjectBindParametersAql (TRI_aql_context_t* const,
-                                  TRI_aql_node_t* node);
+void TRI_RemoveBarrierCollectionsAql (TRI_aql_context_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

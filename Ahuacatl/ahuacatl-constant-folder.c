@@ -40,7 +40,7 @@
 /// @brief optimise an arithmetic operation with one operand
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* OptimiseUnaryArithmeticOperation (TRI_aql_parse_context_t* const context,
+static TRI_aql_node_t* OptimiseUnaryArithmeticOperation (TRI_aql_context_t* const context,
                                                       TRI_aql_node_t* node) {
   TRI_aql_node_t* operand = (TRI_aql_node_t*) node->_subNodes._buffer[0];
 
@@ -77,7 +77,7 @@ static TRI_aql_node_t* OptimiseUnaryArithmeticOperation (TRI_aql_parse_context_t
 /// @brief optimise a boolean operation with one operand
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* OptimiseUnaryLogicalOperation (TRI_aql_parse_context_t* const context,
+static TRI_aql_node_t* OptimiseUnaryLogicalOperation (TRI_aql_context_t* const context,
                                                       TRI_aql_node_t* node) {
   TRI_aql_node_t* operand = (TRI_aql_node_t*) node->_subNodes._buffer[0];
 
@@ -108,7 +108,7 @@ static TRI_aql_node_t* OptimiseUnaryLogicalOperation (TRI_aql_parse_context_t* c
 /// @brief optimise a boolean operation with two operands
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* OptimiseBinaryLogicalOperation (TRI_aql_parse_context_t* const context,
+static TRI_aql_node_t* OptimiseBinaryLogicalOperation (TRI_aql_context_t* const context,
                                                        TRI_aql_node_t* node) {
   TRI_aql_node_t* lhs = (TRI_aql_node_t*) node->_subNodes._buffer[0];
   TRI_aql_node_t* rhs = (TRI_aql_node_t*) node->_subNodes._buffer[1];
@@ -172,7 +172,7 @@ static TRI_aql_node_t* OptimiseBinaryLogicalOperation (TRI_aql_parse_context_t* 
 /// @brief optimise an arithmetic operation with two operands
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_parse_context_t* const context,
+static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* const context,
                                                           TRI_aql_node_t* node) {
   TRI_aql_node_t* lhs = (TRI_aql_node_t*) node->_subNodes._buffer[0];
   TRI_aql_node_t* rhs = (TRI_aql_node_t*) node->_subNodes._buffer[1];
@@ -255,7 +255,7 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_parse_context_
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_aql_node_t* ModifyNode (void* data, TRI_aql_node_t* node) {
-  TRI_aql_parse_context_t* context = (TRI_aql_parse_context_t*) data;
+  TRI_aql_context_t* context = (TRI_aql_context_t*) data;
 
   if (!node) {
     return NULL;
@@ -300,7 +300,7 @@ static TRI_aql_node_t* ModifyNode (void* data, TRI_aql_node_t* node) {
 /// @brief fold constants recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_FoldConstantsAql (TRI_aql_parse_context_t* const context,
+TRI_aql_node_t* TRI_FoldConstantsAql (TRI_aql_context_t* const context,
                                       TRI_aql_node_t* node) {
   TRI_aql_modify_tree_walker_t* walker;
 

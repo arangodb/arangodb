@@ -329,11 +329,12 @@ am_avocado_OBJECTS = Admin/ApplicationAdminServer.$(OBJEXT) \
 	PriorityQueue/priorityqueue.$(OBJEXT) \
 	Ahuacatl/ahuacatl-ast-node.$(OBJEXT) \
 	Ahuacatl/ahuacatl-bind-parameter.$(OBJEXT) \
+	Ahuacatl/ahuacatl-collections.$(OBJEXT) \
 	Ahuacatl/ahuacatl-constant-folder.$(OBJEXT) \
+	Ahuacatl/ahuacatl-context.$(OBJEXT) \
 	Ahuacatl/ahuacatl-error.$(OBJEXT) \
 	Ahuacatl/ahuacatl-functions.$(OBJEXT) \
 	Ahuacatl/ahuacatl-grammar.$(OBJEXT) \
-	Ahuacatl/ahuacatl-parser.$(OBJEXT) \
 	Ahuacatl/ahuacatl-tokens.$(OBJEXT) \
 	Ahuacatl/ahuacatl-tree-dump.$(OBJEXT) \
 	Ahuacatl/ahuacatl-tree-walker.$(OBJEXT) \
@@ -756,11 +757,12 @@ avocado_SOURCES = \
 	PriorityQueue/priorityqueue.c \
         Ahuacatl/ahuacatl-ast-node.c \
         Ahuacatl/ahuacatl-bind-parameter.c \
+        Ahuacatl/ahuacatl-collections.c \
         Ahuacatl/ahuacatl-constant-folder.c \
+        Ahuacatl/ahuacatl-context.c \
         Ahuacatl/ahuacatl-error.c \
 	Ahuacatl/ahuacatl-functions.c \
         Ahuacatl/ahuacatl-grammar.c \
-        Ahuacatl/ahuacatl-parser.c \
         Ahuacatl/ahuacatl-tokens.c \
         Ahuacatl/ahuacatl-tree-dump.c \
         Ahuacatl/ahuacatl-tree-walker.c \
@@ -883,7 +885,7 @@ JAVASCRIPT_HEADER = \
 FLEX_FILES = \
 	JsonParser/json-parser.c \
 	QL/tokens.c \
-        Ahuacatl/tokens.c
+        Ahuacatl/ahuacatl-tokens.c
 
 
 ################################################################################
@@ -1661,15 +1663,17 @@ Ahuacatl/ahuacatl-ast-node.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-bind-parameter.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-collections.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-constant-folder.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
+	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+Ahuacatl/ahuacatl-context.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-error.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-functions.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-grammar.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
-	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-Ahuacatl/ahuacatl-parser.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 Ahuacatl/ahuacatl-tokens.$(OBJEXT): Ahuacatl/$(am__dirstamp) \
 	Ahuacatl/$(DEPDIR)/$(am__dirstamp)
@@ -1919,11 +1923,12 @@ mostlyclean-compile:
 	-rm -f Admin/RestVersionHandler.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-ast-node.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-bind-parameter.$(OBJEXT)
+	-rm -f Ahuacatl/ahuacatl-collections.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-constant-folder.$(OBJEXT)
+	-rm -f Ahuacatl/ahuacatl-context.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-error.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-functions.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-grammar.$(OBJEXT)
-	-rm -f Ahuacatl/ahuacatl-parser.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-tokens.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-tree-dump.$(OBJEXT)
 	-rm -f Ahuacatl/ahuacatl-tree-walker.$(OBJEXT)
@@ -2150,11 +2155,12 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@Admin/$(DEPDIR)/RestVersionHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-ast-node.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-bind-parameter.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-collections.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-constant-folder.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-context.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-error.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-functions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-grammar.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-parser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-tokens.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-tree-dump.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@Ahuacatl/$(DEPDIR)/ahuacatl-tree-walker.Po@am__quote@
