@@ -189,6 +189,8 @@ extern "C" {
 /// - 1525: @CODE{invalid structure of bind parameters}
 ///   Will be raised when the structure of bind parameters passed has an
 ///   unexpected format.
+/// - 1526: @CODE{unable to read-lock collection \%s}
+///   Will be raised when a read lock on the collection cannot be acquired.
 /// - 1600: @CODE{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
@@ -1056,6 +1058,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID                           (1525)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1526: ERROR_QUERY_COLLECTION_LOCK_FAILED
+///
+/// unable to read-lock collection %s
+///
+/// Will be raised when a read lock on the collection cannot be acquired.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED                            (1526)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1600: ERROR_CURSOR_NOT_FOUND
