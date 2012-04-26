@@ -11,7 +11,7 @@
 #include <BasicsC/common.h>
 #include <BasicsC/strings.h>
 
-#include "Ahuacatl/ast-node.h"
+#include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-parser.h"
 #include "Ahuacatl/ahuacatl-grammar.h"
 

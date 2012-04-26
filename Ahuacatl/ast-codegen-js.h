@@ -35,7 +35,7 @@
 #include <BasicsC/conversions.h>
 #include <BasicsC/associative.h>
 
-#include "Ahuacatl/ast-node.h"
+#include "Ahuacatl/ahuacatl-ast-node.h"
 
 #ifdef __cplusplus
 extern "C" {
