@@ -3035,27 +3035,6 @@ unittests-shell-server-ahuacatl:
 
 	@echo
 
-<<<<<<< HEAD
-.PHONY: unittests-shell-server-index
-
-unittests-shell-server-index:
-	@echo
-	@echo "================================================================================"
-	@echo "<< SHELL SERVER TESTS (INDEX & QUERY)                                         >>"
-	@echo "================================================================================"
-	@echo
-
-	@rm -rf "$(VOCDIR)"
-	@mkdir "$(VOCDIR)"
-
-	$(VALGRIND) @builddir@/avocado "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_INDEX) || test "$(FORCE)" == "1"
-
-	@rm -rf "$(VOCDIR)"
-
-	@echo
-
-=======
->>>>>>> 724531f5550bc3441e50592396f6189698a27c0e
 .PHONY: unittests-shell-client
 
 unittests-shell-client:
