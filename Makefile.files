@@ -151,6 +151,7 @@ avocado_SOURCES = \
 	HttpsServer/HttpsServerImpl.cpp \
 	PriorityQueue/pqueueindex.c \
 	PriorityQueue/priorityqueue.c \
+        Ahuacatl/ahuacatl-ast-node.c \
         Ahuacatl/ahuacatl-bind-parameter.c \
         Ahuacatl/ahuacatl-constant-folder.c \
         Ahuacatl/ahuacatl-error.c \
@@ -161,7 +162,6 @@ avocado_SOURCES = \
         Ahuacatl/ahuacatl-tree-dump.c \
         Ahuacatl/ahuacatl-tree-walker.c \
 	Ahuacatl/ast-codegen-js.c \
-        Ahuacatl/ast-node.c \
 	QL/ast-query.c \
 	QL/formatter.c \
 	QL/optimize.c \
