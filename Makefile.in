@@ -885,7 +885,7 @@ JAVASCRIPT_HEADER = \
 FLEX_FILES = \
 	JsonParser/json-parser.c \
 	QL/tokens.c \
-        Ahuacatl/tokens.c
+        Ahuacatl/ahuacatl-tokens.c
 
 
 ################################################################################
