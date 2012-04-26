@@ -46,7 +46,7 @@ var msg;
 }
 
 
-AvocadoConnection.prototype.post = function (url, obj) {
+AvocadoConnection.prototype.post = function (url, body, obj) {
 var msg; 
   $.ajax({
     async: false, 
@@ -66,7 +66,7 @@ var msg;
 }
 
 
-AvocadoConnection.prototype.put = function (url) {
+AvocadoConnection.prototype.put = function (url, body, obj) {
 var msg; 
   $.ajax({
     async: false, 
