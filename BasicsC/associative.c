@@ -760,7 +760,7 @@ void* TRI_InsertElementAssociativePointer (TRI_associative_pointer_t* array,
 
   // check for out-of-memory
   if (array->_nrAlloc == array->_nrUsed) {
-    return false;
+    return NULL;
   }
 
   // compute the hash

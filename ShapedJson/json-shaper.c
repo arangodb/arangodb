@@ -219,10 +219,19 @@ static TRI_shape_pid_t FindNameAttributePath (TRI_shaper_t* shaper, char const* 
 
   // split path into attribute pieces
   count = 0;
-  aids = TRI_Allocate(len * sizeof(TRI_shape_aid_t));
-  /* TODO FIXME: memory allocation might fail */
+  aids = TRI_Allocate(shaper->_memoryZone, len * sizeof(TRI_shape_aid_t));
 
-  buffer = ptr = TRI_DuplicateString2(name, len);
+  if (aids == NULL) {
+    return 0;
+  }
+
+  buffer = ptr = TRI_DuplicateString2Z(shaper->_memoryZone, name, len);
+
+  if (buffer == NULL) {
+    TRI_Free(shaper->_memoryZone, aids);
+    return 0;
+  }
+
   end = buffer + len + 1;
   prev = buffer;
 
@@ -238,12 +247,15 @@ static TRI_shape_pid_t FindNameAttributePath (TRI_shaper_t* shaper, char const* 
     }
   }
 
-  TRI_FreeString(buffer);
+  TRI_FreeString(shaper->_memoryZone, buffer);
 
   // create element
   total = sizeof(TRI_shape_path_t) + (len + 1) + (count * sizeof(TRI_shape_aid_t));
-  result = TRI_Allocate(total);
-  /* TODO FIXME: memory allocation might fail */
+  result = TRI_Allocate(shaper->_memoryZone, total);
+
+  if (result == NULL) {
+    return 0;
+  }
 
   result->_pid = shaper->_nextPid++;
   result->_nameLength = len + 1;
@@ -252,7 +264,7 @@ static TRI_shape_pid_t FindNameAttributePath (TRI_shaper_t* shaper, char const* 
   memcpy(((char*) result) + sizeof(TRI_shape_path_t), aids, count * sizeof(TRI_shape_aid_t));
   memcpy(((char*) result) + sizeof(TRI_shape_path_t) + count * sizeof(TRI_shape_aid_t), name, len + 1);
 
-  TRI_Free(aids);
+  TRI_Free(shaper->_memoryZone, aids);
 
   f = TRI_InsertKeyAssociativeSynced(&shaper->_attributePathsByName, name, result);
   assert(f == NULL);
@@ -333,19 +345,33 @@ static TRI_shape_aid_t FindAttributeNameArrayShaper (TRI_shaper_t* shaper, char 
     size_t n;
     attribute_2_id_t* a2i;
     void* f;
+    int res;
 
     n = strlen(name) + 1;
-    a2i = TRI_Allocate(sizeof(attribute_2_id_t) + n);
-    /* TODO FIXME: memory allocation might fail */
+    a2i = TRI_Allocate(shaper->_memoryZone, sizeof(attribute_2_id_t) + n);
+
+    if (a2i == NULL) {
+      return 0;
+    }
 
     a2i->_aid = 1 + s->_attributes._length;
     a2i->_size = n;
     memcpy(((char*) a2i) + sizeof(attribute_2_id_t), name, n);
 
     f = TRI_InsertKeyAssociativePointer(&s->_attributeNames, name, a2i, false);
-    assert(f == NULL);
 
-    TRI_PushBackVectorPointer(&s->_attributes, a2i);
+    if (f == NULL) {
+      TRI_Free(shaper->_memoryZone, a2i);
+      return 0;
+    }
+
+    res = TRI_PushBackVectorPointer(&s->_attributes, a2i);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_RemoveKeyAssociativePointer(&s->_attributeNames, name);
+      TRI_Free(shaper->_memoryZone, a2i);
+      return 0;
+    }
 
     return a2i->_aid;
   }
@@ -430,18 +456,32 @@ static bool EqualElementShape (TRI_associative_pointer_t* array, void const* lef
 static TRI_shape_t const* FindShapeShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
   TRI_shape_t const* l;
   array_shaper_t* s;
+  int res;
 
   s = (array_shaper_t*) shaper;
   l = TRI_LookupByElementAssociativePointer(&s->_shapeDictionary, shape);
 
   if (l != NULL) {
-    TRI_Free(shape);
+    TRI_Free(shaper->_memoryZone, shape);
     return l;
   }
 
   shape->_sid = s->_shapes._length + 1;
+
   TRI_InsertElementAssociativePointer(&s->_shapeDictionary, shape, false);
-  TRI_PushBackVectorPointer(&s->_shapes, shape);
+
+  if (s->base._memoryZone->_failed) {
+    TRI_Free(shaper->_memoryZone, shape);
+    return NULL;
+  }
+
+  res = TRI_PushBackVectorPointer(&s->_shapes, shape);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_RemoveElementAssociativePointer(&s->_shapeDictionary, shape);
+    TRI_Free(shaper->_memoryZone, shape);
+    return NULL;
+  }
 
   return shape;
 }
@@ -479,35 +519,40 @@ static TRI_shape_t const* LookupShapeId (TRI_shaper_t* shaper, TRI_shape_sid_t s
 /// @brief creates a simple, array-based shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaper_t* TRI_CreateArrayShaper () {
+TRI_shaper_t* TRI_CreateArrayShaper (TRI_memory_zone_t* zone) {
   array_shaper_t* shaper;
   bool ok;
 
   // create the shaper
-  shaper = TRI_Allocate(sizeof(array_shaper_t));
-  /* TODO FIXME: memory allocation might fail */
+  shaper = TRI_Allocate(zone, sizeof(array_shaper_t));
 
-  TRI_InitShaper(&shaper->base);
+  if (shaper == NULL) {
+    return NULL;
+  }
+
+  TRI_InitShaper(&shaper->base, zone);
 
   // create the attribute dictionary
   TRI_InitAssociativePointer(&shaper->_attributeNames,
+                             zone,
                              HashKeyAttributeName,
                              HashElementAttributeName,
                              EqualKeyAttributeName,
                              0);
 
   // create the attributes vector
-  TRI_InitVectorPointer(&shaper->_attributes);
+  TRI_InitVectorPointer(&shaper->_attributes, zone);
 
   // create the shape dictionary
   TRI_InitAssociativePointer(&shaper->_shapeDictionary,
+                             zone,
                              0,
                              HashElementShape,
                              0,
                              EqualElementShape);
 
   // create the shapes vector
-  TRI_InitVectorPointer(&shaper->_shapes);
+  TRI_InitVectorPointer(&shaper->_shapes, zone);
 
   // set the find and lookup functions
   shaper->base.findAttributeName = FindAttributeNameArrayShaper;
@@ -518,8 +563,8 @@ TRI_shaper_t* TRI_CreateArrayShaper () {
   // handle basics
   ok = TRI_InsertBasicTypesShaper(&shaper->base);
 
-  if (! ok) {
-    TRI_FreeArrayShaper(&shaper->base);
+  if (! ok || zone->_failed) {
+    TRI_FreeArrayShaper(zone, &shaper->base);
     return NULL;
   }
 
@@ -542,7 +587,7 @@ void TRI_DestroyArrayShaper (TRI_shaper_t* shaper) {
     attribute_2_id_t* a2i;
 
     a2i = s->_attributes._buffer[i];
-    TRI_Free(a2i);
+    TRI_Free(shaper->_memoryZone, a2i);
   }
 
   TRI_DestroyAssociativePointer(&s->_attributeNames);
@@ -552,7 +597,7 @@ void TRI_DestroyArrayShaper (TRI_shaper_t* shaper) {
     TRI_shape_t* shape;
 
     shape = s->_shapes._buffer[i];
-    TRI_Free(shape);
+    TRI_Free(shaper->_memoryZone, shape);
   }
 
   TRI_DestroyAssociativePointer(&s->_shapeDictionary);
@@ -565,9 +610,9 @@ void TRI_DestroyArrayShaper (TRI_shaper_t* shaper) {
 /// @brief destroys an array-based shaper and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeArrayShaper (TRI_shaper_t* shaper) {
+void TRI_FreeArrayShaper (TRI_memory_zone_t* zone, TRI_shaper_t* shaper) {
   TRI_DestroyArrayShaper(shaper);
-  TRI_Free(shaper);
+  TRI_Free(zone, shaper);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -592,11 +637,8 @@ void TRI_FreeArrayShaper (TRI_shaper_t* shaper) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char const* TRI_AttributeNameShapePid (TRI_shaper_t* shaper, TRI_shape_pid_t pid) {
-  TRI_string_buffer_t buffer;
   TRI_shape_path_t const* path;
   char const* e;
-
-  TRI_InitStringBuffer(&buffer);
 
   path = shaper->lookupAttributePathByPid(shaper, pid);
   e = (char const*) path;
@@ -621,14 +663,18 @@ char const* TRI_AttributeNameShapePid (TRI_shaper_t* shaper, TRI_shape_pid_t pid
 /// @brief initialises the shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitShaper (TRI_shaper_t* shaper) {
+void TRI_InitShaper (TRI_shaper_t* shaper, TRI_memory_zone_t* zone) {
+  shaper->_memoryZone = zone;
+
   TRI_InitAssociativeSynced(&shaper->_attributePathsByName,
+                            zone,
                             HashNameKeyAttributePath,
                             HashNameElementAttributePath,
                             EqualNameKeyAttributePath,
                             0);
 
   TRI_InitAssociativeSynced(&shaper->_attributePathsByPid,
+                            zone,
                             HashPidKeyAttributePath,
                             HashPidElementAttributePath,
                             EqualPidKeyAttributePath,
@@ -656,7 +702,7 @@ void TRI_DestroyShaper (TRI_shaper_t* shaper) {
     void* data = shaper->_attributePathsByName._table[i];
 
     if (data) {
-      TRI_Free(data);
+      TRI_Free(shaper->_memoryZone, data);
     }
   }
 
@@ -675,8 +721,12 @@ bool TRI_InsertBasicTypesShaper (TRI_shaper_t* shaper) {
   TRI_shape_t* shape;
 
   // NULL
-  shape = TRI_Allocate(sizeof(TRI_null_shape_t));
-  /* TODO FIXME: memory allocation might fail */
+  shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_null_shape_t));
+
+  if (shape == NULL) {
+    return NULL;
+  }
+
   memset(shape, 0, sizeof(TRI_null_shape_t));
 
   shape->_size = sizeof(TRI_null_shape_t);
@@ -692,8 +742,12 @@ bool TRI_InsertBasicTypesShaper (TRI_shaper_t* shaper) {
   shaper->_sidNull = l->_sid;
 
   // BOOLEAN
-  shape = TRI_Allocate(sizeof(TRI_boolean_shape_t));
-  /* TODO FIXME: memory allocation might fail */
+  shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_boolean_shape_t));
+
+  if (shape == NULL) {
+    return NULL;
+  }
+
   memset(shape, 0, sizeof(TRI_boolean_shape_t));
 
   shape->_size = sizeof(TRI_boolean_shape_t);
@@ -709,25 +763,33 @@ bool TRI_InsertBasicTypesShaper (TRI_shaper_t* shaper) {
   shaper->_sidBoolean = l->_sid;
 
   // NUMBER
-  shape = TRI_Allocate(sizeof(TRI_number_shape_t));
-  /* TODO FIXME: memory allocation might fail */
+  shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_number_shape_t));
+
+  if (shape == NULL) {
+    return NULL;
+  }
+
   memset(shape, 0, sizeof(TRI_number_shape_t));
 
   shape->_size = sizeof(TRI_number_shape_t);
   shape->_type = TRI_SHAPE_NUMBER;
   shape->_dataSize = sizeof(TRI_shape_number_t);
 
+  l = shaper->findShape(shaper, shape);
+
   if (l == NULL) {
     return false;
   }
 
-  l = shaper->findShape(shaper, shape);
-
   shaper->_sidNumber = l->_sid;
 
   // SHORT STRING
-  shape = TRI_Allocate(sizeof(TRI_short_string_shape_t));
-  /* TODO FIXME: memory allocation might fail */
+  shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_short_string_shape_t));
+
+  if (shape == NULL) {
+    return NULL;
+  }
+
   memset(shape, 0, sizeof(TRI_short_string_shape_t));
 
   shape->_size = sizeof(TRI_short_string_shape_t);
@@ -743,8 +805,12 @@ bool TRI_InsertBasicTypesShaper (TRI_shaper_t* shaper) {
   shaper->_sidShortString = l->_sid;
 
   // LONG STRING
-  shape = TRI_Allocate(sizeof(TRI_long_string_shape_t));
-  /* TODO FIXME: memory allocation might fail */
+  shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_long_string_shape_t));
+
+  if (shape == NULL) {
+    return NULL;
+  }
+
   memset(shape, 0, sizeof(TRI_long_string_shape_t));
 
   shape->_size = sizeof(TRI_long_string_shape_t);
@@ -760,8 +826,12 @@ bool TRI_InsertBasicTypesShaper (TRI_shaper_t* shaper) {
   shaper->_sidLongString = l->_sid;
 
   // LIST
-  shape = TRI_Allocate(sizeof(TRI_list_shape_t));
-  /* TODO FIXME: memory allocation might fail */
+  shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_list_shape_t));
+
+  if (shape == NULL) {
+    return NULL;
+  }
+
   memset(shape, 0, sizeof(TRI_list_shape_t));
 
   shape->_size = sizeof(TRI_list_shape_t);

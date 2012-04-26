@@ -369,8 +369,11 @@ static bool FillShapeValueBoolean (TRI_shaper_t* shaper, TRI_shape_value_t* dst,
   dst->_sid = shaper->_sidBoolean;
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_boolean_t);
-  dst->_value = (char*)(ptr = TRI_Allocate(dst->_size));
-  /* TODO FIXME: memory allocation might fail */
+  dst->_value = (char*)(ptr = TRI_Allocate(shaper->_memoryZone, dst->_size));
+
+  if (dst->_value == NULL) {
+    return false;
+  }
 
   *ptr = json->_value._boolean ? 1 : 0;
 
@@ -388,8 +391,11 @@ static bool FillShapeValueNumber (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
   dst->_sid = shaper->_sidNumber;
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_number_t);
-  dst->_value = (char*)(ptr = TRI_Allocate(dst->_size));
-  /* TODO FIXME: memory allocation might fail */
+  dst->_value = (char*)(ptr = TRI_Allocate(shaper->_memoryZone, dst->_size));
+
+  if (dst->_value == NULL) {
+    return false;
+  }
 
   *ptr = json->_value._number;
 
@@ -408,8 +414,11 @@ static bool FillShapeValueString (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
     dst->_sid = shaper->_sidShortString;
     dst->_fixedSized = true;
     dst->_size = sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT;
-    dst->_value = (ptr = TRI_Allocate(dst->_size));
-    /* TODO FIXME: memory allocation might fail */
+    dst->_value = (ptr = TRI_Allocate(shaper->_memoryZone, dst->_size));
+
+    if (dst->_value == NULL) {
+      return false;
+    }
 
     * ((TRI_shape_length_short_string_t*) ptr) = json->_value._string.length;
 
@@ -422,8 +431,11 @@ static bool FillShapeValueString (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
     dst->_sid = shaper->_sidLongString;
     dst->_fixedSized = false;
     dst->_size = sizeof(TRI_shape_length_long_string_t) + json->_value._string.length;
-    dst->_value = (ptr = TRI_Allocate(dst->_size));
-    /* TODO FIXME: memory allocation might fail */
+    dst->_value = (ptr = TRI_Allocate(shaper->_memoryZone, dst->_size));
+
+    if (dst->_value == NULL) {
+      return false;
+    }
 
     * ((TRI_shape_length_long_string_t*) ptr) = json->_value._string.length;
 
@@ -474,8 +486,11 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
 
     dst->_fixedSized = false;
     dst->_size = sizeof(TRI_shape_length_list_t);
-    dst->_value = (ptr = TRI_Allocate(dst->_size));
-    /* TODO FIXME: memory allocation might fail */
+    dst->_value = (ptr = TRI_Allocate(shaper->_memoryZone, dst->_size));
+
+    if (dst->_value == NULL) {
+      return false;
+    }
 
     * (TRI_shape_length_list_t*) ptr = 0;
 
@@ -483,8 +498,12 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
   }
 
   // convert into TRI_shape_value_t array
-  p = (values = TRI_Allocate(sizeof(TRI_shape_value_t) * n));
-  /* TODO FIXME: memory allocation might fail */
+  p = (values = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shape_value_t) * n));
+
+  if (p == NULL) {
+    return false;
+  }
+
   memset(values, 0, sizeof(TRI_shape_value_t) * n);
 
   total = 0;
@@ -497,11 +516,11 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
     if (! ok) {
       for (e = p, p = values;  p < e;  ++p) {
         if (p->_value != NULL) {
-          TRI_Free(p->_value);
+          TRI_Free(shaper->_memoryZone, p->_value);
         }
       }
 
-      TRI_Free(values);
+      TRI_Free(shaper->_memoryZone, values);
 
       return false;
     }
@@ -532,8 +551,19 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
   if (hs && hl) {
     TRI_homogeneous_sized_list_shape_t* shape;
 
-    shape = TRI_Allocate(sizeof(TRI_homogeneous_sized_list_shape_t));
-    /* TODO FIXME: memory allocation might fail */
+    shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_homogeneous_sized_list_shape_t));
+
+    if (shape == NULL) {
+      for (p = values;  p < e;  ++p) {
+        if (p->_value != NULL) {
+          TRI_Free(shaper->_memoryZone, p->_value);
+        }
+      }
+
+      TRI_Free(shaper->_memoryZone, values);
+
+      return false;
+    }
 
     shape->base._size = sizeof(TRI_homogeneous_sized_list_shape_t);
     shape->base._type = TRI_SHAPE_HOMOGENEOUS_SIZED_LIST;
@@ -546,12 +576,12 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
     if (found == NULL) {
       for (p = values;  p < e;  ++p) {
         if (p->_value != NULL) {
-          TRI_Free(p->_value);
+          TRI_Free(shaper->_memoryZone, p->_value);
         }
       }
 
-      TRI_Free(values);
-      TRI_Free(shape);
+      TRI_Free(shaper->_memoryZone, values);
+      TRI_Free(shaper->_memoryZone, shape);
 
       return false;
     }
@@ -561,8 +591,20 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
 
     dst->_fixedSized = false;
     dst->_size = sizeof(TRI_shape_length_list_t) + total;
-    dst->_value = (ptr = TRI_Allocate(dst->_size));
-    /* TODO FIXME: memory allocation might fail */
+    dst->_value = (ptr = TRI_Allocate(shaper->_memoryZone, dst->_size));
+
+    if (dst->_value == NULL) {
+      for (p = values;  p < e;  ++p) {
+        if (p->_value != NULL) {
+          TRI_Free(shaper->_memoryZone, p->_value);
+        }
+      }
+
+      TRI_Free(shaper->_memoryZone, values);
+      TRI_Free(shaper->_memoryZone, shape);
+
+      return false;
+    }
 
     // copy sub-objects into data space
     * (TRI_shape_length_list_t*) ptr = n;
@@ -578,8 +620,19 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
   else if (hs) {
     TRI_homogeneous_list_shape_t* shape;
 
-    shape = TRI_Allocate(sizeof(TRI_homogeneous_list_shape_t));
-    /* TODO FIXME: memory allocation might fail */
+    shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_homogeneous_list_shape_t));
+
+    if (shape == NULL) {
+      for (p = values;  p < e;  ++p) {
+        if (p->_value != NULL) {
+          TRI_Free(shaper->_memoryZone, p->_value);
+        }
+      }
+
+      TRI_Free(shaper->_memoryZone, values);
+
+      return false;
+    }
 
     shape->base._size = sizeof(TRI_homogeneous_list_shape_t);
     shape->base._type = TRI_SHAPE_HOMOGENEOUS_LIST;
@@ -591,12 +644,12 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
     if (found == NULL) {
       for (p = values;  p < e;  ++p) {
         if (p->_value != NULL) {
-          TRI_Free(p->_value);
+          TRI_Free(shaper->_memoryZone, p->_value);
         }
       }
 
-      TRI_Free(values);
-      TRI_Free(shape);
+      TRI_Free(shaper->_memoryZone, values);
+      TRI_Free(shaper->_memoryZone, shape);
 
       return false;
     }
@@ -608,8 +661,20 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
 
     dst->_fixedSized = false;
     dst->_size = offset + total;
-    dst->_value = (ptr = TRI_Allocate(dst->_size));
-    /* TODO FIXME: memory allocation might fail */
+    dst->_value = (ptr = TRI_Allocate(shaper->_memoryZone, dst->_size));
+
+    if (dst->_value == NULL) {
+      for (p = values;  p < e;  ++p) {
+        if (p->_value != NULL) {
+          TRI_Free(shaper->_memoryZone, p->_value);
+        }
+      }
+
+      TRI_Free(shaper->_memoryZone, values);
+      TRI_Free(shaper->_memoryZone, shape);
+
+      return false;
+    }
 
     // copy sub-objects into data space
     * (TRI_shape_length_list_t*) ptr = n;
@@ -641,8 +706,18 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
 
     dst->_fixedSized = false;
     dst->_size = offset + total;
-    dst->_value = (ptr = TRI_Allocate(dst->_size));
-    /* TODO FIXME: memory allocation might fail */
+    dst->_value = (ptr = TRI_Allocate(shaper->_memoryZone, dst->_size));
+
+    if (dst->_value == NULL) {
+      for (p = values;  p < e;  ++p) {
+        if (p->_value != NULL) {
+          TRI_Free(shaper->_memoryZone, p->_value);
+        }
+      }
+
+      TRI_Free(shaper->_memoryZone, values);
+      return false;
+    }
 
     // copy sub-objects into data space
     * (TRI_shape_length_list_t*) ptr = n;
@@ -670,11 +745,11 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
   // free TRI_shape_value_t array
   for (p = values;  p < e;  ++p) {
     if (p->_value != NULL) {
-      TRI_Free(p->_value);
+      TRI_Free(shaper->_memoryZone, p->_value);
     }
   }
 
-  TRI_Free(values);
+  TRI_Free(shaper->_memoryZone, values);
   return true;
 }
 
@@ -714,8 +789,12 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, T
   n = json->_value._objects._length / 2;
 
   // convert into TRI_shape_value_t array
-  p = (values = TRI_Allocate(n * sizeof(TRI_shape_value_t)));
-  /* TODO FIXME: memory allocation might fail */
+  p = (values = TRI_Allocate(shaper->_memoryZone, n * sizeof(TRI_shape_value_t)));
+
+  if (p == NULL) {
+    return false;
+  }
+
   memset(values, 0, n * sizeof(TRI_shape_value_t));
 
   total = 0;
@@ -744,11 +823,11 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, T
     if (! ok) {
       for (e = p, p = values;  p < e;  ++p) {
         if (p->_value != NULL) {
-          TRI_Free(p->_value);
+          TRI_Free(shaper->_memoryZone, p->_value);
         }
       }
 
-      TRI_Free(values);
+      TRI_Free(shaper->_memoryZone, values);
       return false;
     }
 
@@ -785,8 +864,20 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, T
     + n * sizeof(TRI_shape_aid_t)
     + (f + 1) * sizeof(TRI_shape_size_t);
 
-  a = (TRI_array_shape_t*) (ptr = TRI_Allocate(i));
-  /* TODO FIXME: memory allocation might fail */
+  a = (TRI_array_shape_t*) (ptr = TRI_Allocate(shaper->_memoryZone, i));
+
+  if (ptr == NULL) {
+    for (p = values;  p < e;  ++p) {
+      if (p->_value != NULL) {
+        TRI_Free(shaper->_memoryZone, p->_value);
+      }
+    }
+
+    TRI_Free(shaper->_memoryZone, values);
+
+    return false;
+  }
+
   memset(ptr, 0, i);
 
   a->base._type = TRI_SHAPE_ARRAY;
@@ -815,8 +906,20 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, T
 
   dst->_fixedSized = true;
   dst->_size = total;
-  dst->_value = (ptr = TRI_Allocate(dst->_size));
-  /* TODO FIXME: memory allocation might fail */
+  dst->_value = (ptr = TRI_Allocate(shaper->_memoryZone, dst->_size));
+
+  if (ptr == NULL) {
+    for (p = values;  p < e;  ++p) {
+      if (p->_value != NULL) {
+        TRI_Free(shaper->_memoryZone, p->_value);
+      }
+    }
+
+    TRI_Free(shaper->_memoryZone, values);
+    TRI_Free(shaper->_memoryZone, a);
+
+    return false;
+  }
 
   // array of offsets for variable part (within the value)
   offsetsV = (TRI_shape_size_t*) ptr;
@@ -849,17 +952,17 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, T
   // free TRI_shape_value_t array
   for (p = values;  p < e;  ++p) {
     if (p->_value != NULL) {
-      TRI_Free(p->_value);
+      TRI_Free(shaper->_memoryZone, p->_value);
     }
   }
 
-  TRI_Free(values);
+  TRI_Free(shaper->_memoryZone, values);
 
   // lookup this shape
   found = shaper->findShape(shaper, &a->base);
 
   if (found == NULL) {
-    TRI_Free(a);
+    TRI_Free(shaper->_memoryZone, a);
     return false;
   }
 
@@ -907,7 +1010,7 @@ static TRI_json_t* JsonShapeDataNull (TRI_shaper_t* shaper,
                                       TRI_shape_t const* shape,
                                       char const* data,
                                       uint64_t size) {
-  return TRI_CreateNullJson();
+  return TRI_CreateNullJson(shaper->_memoryZone);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -922,7 +1025,7 @@ static TRI_json_t* JsonShapeDataBoolean (TRI_shaper_t* shaper,
 
   v = (* (TRI_shape_boolean_t const*) data) != 0;
 
-  return TRI_CreateBooleanJson(v);
+  return TRI_CreateBooleanJson(shaper->_memoryZone, v);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -937,7 +1040,7 @@ static TRI_json_t* JsonShapeDataNumber (TRI_shaper_t* shaper,
 
   v = * (TRI_shape_number_t const*) data;
 
-  return TRI_CreateNumberJson(v);
+  return TRI_CreateNumberJson(shaper->_memoryZone, v);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -953,7 +1056,7 @@ static TRI_json_t* JsonShapeDataShortString (TRI_shaper_t* shaper,
   l = * (TRI_shape_length_short_string_t const*) data;
   data += sizeof(TRI_shape_length_short_string_t);
 
-  return TRI_CreateString2CopyJson(data, l - 1);
+  return TRI_CreateString2CopyJson(shaper->_memoryZone, data, l - 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -969,7 +1072,7 @@ static TRI_json_t* JsonShapeDataLongString (TRI_shaper_t* shaper,
   l = * (TRI_shape_length_long_string_t const*) data;
   data += sizeof(TRI_shape_length_long_string_t);
 
-  return TRI_CreateString2CopyJson(data, l - 1);
+  return TRI_CreateString2CopyJson(shaper->_memoryZone, data, l - 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -994,8 +1097,9 @@ static TRI_json_t* JsonShapeDataArray (TRI_shaper_t* shaper,
   TRI_shape_size_t const* offsetsF;
   TRI_shape_size_t const* offsetsV;
 
-  array = TRI_CreateArrayJson();
-  if (!array) {
+  array = TRI_CreateArrayJson(shaper->_memoryZone);
+
+  if (array == NULL) {
     return NULL;
   }
 
@@ -1044,8 +1148,8 @@ static TRI_json_t* JsonShapeDataArray (TRI_shaper_t* shaper,
       continue;
     }
 
-    TRI_Insert2ArrayJson(array, name, element);
-    TRI_Free(element);
+    TRI_Insert2ArrayJson(shaper->_memoryZone, array, name, element);
+    TRI_Free(shaper->_memoryZone, element);
   }
 
   offsetsV = (TRI_shape_size_t const*) data;
@@ -1079,8 +1183,12 @@ static TRI_json_t* JsonShapeDataArray (TRI_shaper_t* shaper,
       continue;
     }
 
-    TRI_Insert2ArrayJson(array, name, element);
-    TRI_Free(element);
+    TRI_Insert2ArrayJson(shaper->_memoryZone, array, name, element);
+    TRI_Free(shaper->_memoryZone, element);
+  }
+
+  if (shaper->_memoryZone->_failed) {
+    return NULL;
   }
 
   return array;
@@ -1103,8 +1211,9 @@ static TRI_json_t* JsonShapeDataList (TRI_shaper_t* shaper,
   TRI_shape_length_list_t l;
   TRI_shape_length_list_t i;
   
-  list = TRI_CreateListJson();
-  if (!list) {
+  list = TRI_CreateListJson(shaper->_memoryZone);
+
+  if (list == NULL) {
     return NULL;
   }
 
@@ -1139,7 +1248,11 @@ static TRI_json_t* JsonShapeDataList (TRI_shaper_t* shaper,
     }
 
     TRI_PushBack2ListJson(list, element);
-    TRI_Free(element);
+    TRI_Free(shaper->_memoryZone, element);
+  }
+
+  if (shaper->_memoryZone->_failed) {
+    return NULL;
   }
 
   return list;
@@ -1165,7 +1278,11 @@ static TRI_json_t* JsonShapeDataHomogeneousList (TRI_shaper_t* shaper,
   sid = s->_sidEntry;
 
   ptr = data;
-  list = TRI_CreateListJson();
+  list = TRI_CreateListJson(shaper->_memoryZone);
+
+  if (list == NULL) {
+    return NULL;
+  }
 
   l = * (TRI_shape_length_list_t const*) ptr;
 
@@ -1193,7 +1310,11 @@ static TRI_json_t* JsonShapeDataHomogeneousList (TRI_shaper_t* shaper,
     }
 
     TRI_PushBack2ListJson(list, element);
-    TRI_Free(element);
+    TRI_Free(shaper->_memoryZone, element);
+  }
+
+  if (shaper->_memoryZone->_failed) {
+    return NULL;
   }
 
   return list;
@@ -1220,7 +1341,7 @@ static TRI_json_t* JsonShapeDataHomogeneousSizedList (TRI_shaper_t* shaper,
   sid = s->_sidEntry;
 
   ptr = data;
-  list = TRI_CreateListJson();
+  list = TRI_CreateListJson(shaper->_memoryZone);
 
   length = s->_sizeEntry;
   offset = sizeof(TRI_shape_length_list_t);
@@ -1246,7 +1367,7 @@ static TRI_json_t* JsonShapeDataHomogeneousSizedList (TRI_shaper_t* shaper,
     }
 
     TRI_PushBack2ListJson(list, element);
-    TRI_Free(element);
+    TRI_Free(shaper->_memoryZone, element);
   }
 
   return list;
@@ -1305,7 +1426,14 @@ static bool StringifyJsonShapeDataNull (TRI_shaper_t* shaper,
                                         TRI_shape_t const* shape,
                                         char const* data,
                                         uint64_t size) {
-  TRI_AppendString2StringBuffer(buffer, "null", 4);
+  int res;
+
+  res = TRI_AppendString2StringBuffer(buffer, "null", 4);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return false;
+  }
+
   return true;
 }
 
@@ -1319,14 +1447,19 @@ static bool StringifyJsonShapeDataBoolean (TRI_shaper_t* shaper,
                                            char const* data,
                                            uint64_t size) {
   bool v;
+  int res;
 
   v = (* (TRI_shape_boolean_t const*) data) != 0;
 
   if (v) {
-    TRI_AppendString2StringBuffer(buffer, "true", 4);
+    res = TRI_AppendString2StringBuffer(buffer, "true", 4);
   }
   else {
-    TRI_AppendString2StringBuffer(buffer, "false", 5);
+    res = TRI_AppendString2StringBuffer(buffer, "false", 5);
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return false;
   }
 
   return true;
@@ -1342,9 +1475,14 @@ static bool StringifyJsonShapeDataNumber (TRI_shaper_t* shaper,
                                           char const* data,
                                           uint64_t size) {
   TRI_shape_number_t v;
+  int res;
 
   v = * (TRI_shape_number_t const*) data;
-  TRI_AppendDoubleStringBuffer(buffer, v);
+  res = TRI_AppendDoubleStringBuffer(buffer, v);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return false;
+  }
 
   return true;
 }
@@ -1361,17 +1499,36 @@ static bool StringifyJsonShapeDataShortString (TRI_shaper_t* shaper,
   TRI_shape_length_short_string_t l;
   char* unicoded;
   size_t out;
+  int res;
 
   l = * (TRI_shape_length_short_string_t const*) data;
   data += sizeof(TRI_shape_length_short_string_t);
 
-  TRI_AppendCharStringBuffer(buffer, '"');
+  res = TRI_AppendCharStringBuffer(buffer, '"');
 
-  unicoded = TRI_EscapeUtf8String(data, l - 1, true, &out);
-  TRI_AppendString2StringBuffer(buffer, unicoded, out);
-  TRI_FreeString(unicoded);
+  if (res != TRI_ERROR_NO_ERROR) {
+    return false;
+  }
 
-  TRI_AppendCharStringBuffer(buffer, '"');
+  unicoded = TRI_EscapeUtf8StringZ(shaper->_memoryZone, data, l - 1, true, &out);
+
+  if (unicoded == NULL) {
+    return false;
+  }
+
+  res = TRI_AppendString2StringBuffer(buffer, unicoded, out);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return false;
+  }
+
+  TRI_FreeString(shaper->_memoryZone, unicoded);
+
+  res = TRI_AppendCharStringBuffer(buffer, '"');
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return false;
+  }
 
   return true;
 }
@@ -1388,17 +1545,36 @@ static bool StringifyJsonShapeDataLongString (TRI_shaper_t* shaper,
   TRI_shape_length_long_string_t l;
   char* unicoded;
   size_t out;
+  int res;
 
   l = * (TRI_shape_length_long_string_t const*) data;
   data += sizeof(TRI_shape_length_long_string_t);
 
-  TRI_AppendCharStringBuffer(buffer, '"');
+  res = TRI_AppendCharStringBuffer(buffer, '"');
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return false;
+  }
 
   unicoded = TRI_EscapeUtf8String(data, l - 1, true, &out);
-  TRI_AppendString2StringBuffer(buffer, unicoded, out);
-  TRI_FreeString(unicoded);
 
-  TRI_AppendCharStringBuffer(buffer, '"');
+  if (unicoded == NULL) {
+    return false;
+  }
+
+  res = TRI_AppendString2StringBuffer(buffer, unicoded, out);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return false;
+  }
+
+  TRI_FreeString(shaper->_memoryZone, unicoded);
+
+  res = TRI_AppendCharStringBuffer(buffer, '"');
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return false;
+  }
 
   return true;
 }
@@ -1427,6 +1603,7 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
   char const* qtr;
   char* unicoded;
   size_t out;
+  int res;
 
   s = (TRI_array_shape_t const*) shape;
   f = s->_fixedEntries;
@@ -1441,7 +1618,11 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
   qtr = (char const*) shape;
 
   if (braces) {
-    TRI_AppendCharStringBuffer(buffer, '{');
+    res = TRI_AppendCharStringBuffer(buffer, '{');
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return false;
+    }
   }
 
   qtr += sizeof(TRI_array_shape_t);
@@ -1482,17 +1663,44 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
       first = false;
     }
     else {
-      TRI_AppendCharStringBuffer(buffer, ',');
+      res = TRI_AppendCharStringBuffer(buffer, ',');
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return false;
+      }
     }
 
-    TRI_AppendCharStringBuffer(buffer, '"');
+    res = TRI_AppendCharStringBuffer(buffer, '"');
 
-    unicoded = TRI_EscapeUtf8String(name, strlen(name), true, &out);
-    TRI_AppendString2StringBuffer(buffer, unicoded, out);
-    TRI_FreeString(unicoded);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return false;
+    }
 
-    TRI_AppendCharStringBuffer(buffer, '"');
-    TRI_AppendCharStringBuffer(buffer, ':');
+    unicoded = TRI_EscapeUtf8StringZ(shaper->_memoryZone, name, strlen(name), true, &out);
+
+    if (unicoded == NULL) {
+      return false;
+    }
+
+    res = TRI_AppendString2StringBuffer(buffer, unicoded, out);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return false;
+    }
+
+    TRI_FreeString(shaper->_memoryZone, unicoded);
+
+    res = TRI_AppendCharStringBuffer(buffer, '"');
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return false;
+    }
+
+    res = TRI_AppendCharStringBuffer(buffer, ':');
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return false;
+    }
 
     ok = StringifyJsonShapeData(shaper, buffer, subshape, data + offset, offsetsF[1] - offset);
 
@@ -1532,17 +1740,44 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
       first = false;
     }
     else {
-      TRI_AppendCharStringBuffer(buffer, ',');
+      res = TRI_AppendCharStringBuffer(buffer, ',');
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return false;
+      }
     }
 
-    TRI_AppendCharStringBuffer(buffer, '"');
+    res = TRI_AppendCharStringBuffer(buffer, '"');
 
-    unicoded = TRI_EscapeUtf8String(name, strlen(name), true, &out);
-    TRI_AppendString2StringBuffer(buffer, unicoded, out);
-    TRI_FreeString(unicoded);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return false;
+    }
 
-    TRI_AppendCharStringBuffer(buffer, '"');
-    TRI_AppendCharStringBuffer(buffer, ':');
+    unicoded = TRI_EscapeUtf8StringZ(shaper->_memoryZone, name, strlen(name), true, &out);
+
+    if (unicoded == NULL) {
+      return false;
+    }
+
+    res = TRI_AppendString2StringBuffer(buffer, unicoded, out);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return false;
+    }
+
+    TRI_FreeString(shaper->_memoryZone, unicoded);
+
+    res = TRI_AppendCharStringBuffer(buffer, '"');
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return false;
+    }
+
+    res = TRI_AppendCharStringBuffer(buffer, ':');
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return false;
+    }
 
     ok = StringifyJsonShapeData(shaper, buffer, subshape, data + offset, offsetsV[1] - offset);
 
@@ -1553,7 +1788,11 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
   }
 
   if (braces) {
-    TRI_AppendCharStringBuffer(buffer, '}');
+    res = TRI_AppendCharStringBuffer(buffer, '}');
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return false;
+    }
   }
 
   return true;
@@ -1574,6 +1813,7 @@ static bool StringifyJsonShapeDataList (TRI_shaper_t* shaper,
   TRI_shape_size_t const* offsets;
   bool first;
   char const* ptr;
+  int res;
 
   ptr = data;
   first = true;
@@ -1585,7 +1825,11 @@ static bool StringifyJsonShapeDataList (TRI_shaper_t* shaper,
   ptr += l * sizeof(TRI_shape_sid_t);
   offsets = (TRI_shape_size_t const*) ptr;
 
-  TRI_AppendCharStringBuffer(buffer, '[');
+  res = TRI_AppendCharStringBuffer(buffer, '[');
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return false;
+  }
 
   for (i = 0;  i < l;  ++i, ++sids, ++offsets) {
     TRI_shape_sid_t sid;
@@ -1606,7 +1850,11 @@ static bool StringifyJsonShapeDataList (TRI_shaper_t* shaper,
       first = false;
     }
     else {
-      TRI_AppendCharStringBuffer(buffer, ',');
+      res = TRI_AppendCharStringBuffer(buffer, ',');
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return false;
+      }
     }
 
     ok = StringifyJsonShapeData(shaper, buffer, subshape, data + offset, offsets[1] - offset);
@@ -1617,7 +1865,11 @@ static bool StringifyJsonShapeDataList (TRI_shaper_t* shaper,
     }
   }
 
-  TRI_AppendCharStringBuffer(buffer, ']');
+  res = TRI_AppendCharStringBuffer(buffer, ']');
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return false;
+  }
 
   return true;
 }
@@ -1638,6 +1890,7 @@ static bool StringifyJsonShapeDataHomogeneousList (TRI_shaper_t* shaper,
   TRI_shape_size_t const* offsets;
   bool first;
   char const* ptr;
+  int res;
 
   s = (TRI_homogeneous_list_shape_t const*) shape;
   sid = s->_sidEntry;
@@ -1650,7 +1903,11 @@ static bool StringifyJsonShapeDataHomogeneousList (TRI_shaper_t* shaper,
   ptr += sizeof(TRI_shape_length_list_t);
   offsets = (TRI_shape_size_t const*) ptr;
 
-  TRI_AppendCharStringBuffer(buffer, '[');
+  res = TRI_AppendCharStringBuffer(buffer, '[');
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return false;
+  }
 
   for (i = 0;  i < l;  ++i, ++offsets) {
     TRI_shape_size_t offset;
@@ -1669,7 +1926,11 @@ static bool StringifyJsonShapeDataHomogeneousList (TRI_shaper_t* shaper,
       first = false;
     }
     else {
-      TRI_AppendCharStringBuffer(buffer, ',');
+      res = TRI_AppendCharStringBuffer(buffer, ',');
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return false;
+      }
     }
 
     ok = StringifyJsonShapeData(shaper, buffer, subshape, data + offset, offsets[1] - offset);
@@ -1680,7 +1941,11 @@ static bool StringifyJsonShapeDataHomogeneousList (TRI_shaper_t* shaper,
     }
   }
 
-  TRI_AppendCharStringBuffer(buffer, ']');
+  res = TRI_AppendCharStringBuffer(buffer, ']');
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return false;
+  }
 
   return true;
 }
@@ -1702,6 +1967,7 @@ static bool StringifyJsonShapeDataHomogeneousSizedList (TRI_shaper_t* shaper,
   TRI_shape_size_t offset;
   bool first;
   char const* ptr;
+  int res;
 
   s = (TRI_homogeneous_sized_list_shape_t const*) shape;
   sid = s->_sidEntry;
@@ -1714,7 +1980,11 @@ static bool StringifyJsonShapeDataHomogeneousSizedList (TRI_shaper_t* shaper,
 
   l = * (TRI_shape_length_list_t const*) ptr;
 
-  TRI_AppendCharStringBuffer(buffer, '[');
+  res = TRI_AppendCharStringBuffer(buffer, '[');
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return false;
+  }
 
   for (i = 0;  i < l;  ++i, offset += length) {
     TRI_shape_t const* subshape = shaper->lookupShapeId(shaper, sid);
@@ -1731,7 +2001,11 @@ static bool StringifyJsonShapeDataHomogeneousSizedList (TRI_shaper_t* shaper,
       first = false;
     }
     else {
-      TRI_AppendCharStringBuffer(buffer, ',');
+      res = TRI_AppendCharStringBuffer(buffer, ',');
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return false;
+      }
     }
 
     ok = StringifyJsonShapeData(shaper, buffer, subshape, data + offset, length);
@@ -1742,7 +2016,11 @@ static bool StringifyJsonShapeDataHomogeneousSizedList (TRI_shaper_t* shaper,
     }
   }
 
-  TRI_AppendCharStringBuffer(buffer, ']');
+  res = TRI_AppendCharStringBuffer(buffer, ']');
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return false;
+  }
 
   return true;
 }
@@ -1809,17 +2087,28 @@ static bool StringifyJsonShapeData (TRI_shaper_t* shaper,
 /// @brief performs a deep copy of a shaped json object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaped_json_t* TRI_CopyShapedJson(TRI_shaped_json_t* oldShapedJson) {
+TRI_shaped_json_t* TRI_CopyShapedJson (TRI_shaper_t* shaper, TRI_shaped_json_t* oldShapedJson) {
   TRI_shaped_json_t* newShapedJson;  
+  int res;
+
   if (oldShapedJson == NULL) {
     return NULL;
   }  
-  newShapedJson = TRI_Allocate(sizeof(TRI_shaped_json_t));
+
+  newShapedJson = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shaped_json_t));
+
   if (newShapedJson == NULL) {
     return NULL;
   }  
+
   newShapedJson->_sid  = oldShapedJson->_sid;
-  TRI_CopyToBlob(&(newShapedJson->_data), &(oldShapedJson->_data)); 
+  res = TRI_CopyToBlob(shaper->_memoryZone, &(newShapedJson->_data), &(oldShapedJson->_data)); 
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_Free(shaper->_memoryZone, newShapedJson);
+    return NULL;
+  }
+
   return newShapedJson;
 }
 
@@ -1827,17 +2116,17 @@ TRI_shaped_json_t* TRI_CopyShapedJson(TRI_shaped_json_t* oldShapedJson) {
 /// @brief destroys a json object, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyShapedJson (TRI_shaped_json_t* shaped) {
-  TRI_DestroyBlob(&shaped->_data);
+void TRI_DestroyShapedJson (TRI_shaper_t* shaper, TRI_shaped_json_t* shaped) {
+  TRI_DestroyBlob(shaper->_memoryZone, &shaped->_data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a json object and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeShapedJson (TRI_shaped_json_t* shaped) {
-  TRI_DestroyShapedJson(shaped);
-  TRI_Free(shaped);
+void TRI_FreeShapedJson (TRI_shaper_t* shaper, TRI_shaped_json_t* shaped) {
+  TRI_DestroyShapedJson(shaper, shaped);
+  TRI_Free(shaper->_memoryZone, shaped);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1883,9 +2172,10 @@ TRI_shaped_json_t* TRI_ShapedJsonJson (TRI_shaper_t* shaper, TRI_json_t const* j
   printf("\n");
 #endif
 
-  shaped = TRI_Allocate(sizeof(TRI_shaped_json_t));
-  if (!shaped) {
-    /* TODO FIXME: must destroy(dst) here?? */
+  shaped = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shaped_json_t));
+
+  if (shaped == NULL) {
+    TRI_Free(shaper->_memoryZone, dst._value);
     return NULL;
   }
 
@@ -1942,6 +2232,7 @@ bool TRI_StringifyAugmentedShapedJson (TRI_shaper_t* shaper,
   TRI_shape_t const* shape;
   bool ok;
   size_t num;
+  int res;
 
   shape = shaper->lookupShapeId(shaper, shaped->_sid);
 
@@ -1953,21 +2244,37 @@ bool TRI_StringifyAugmentedShapedJson (TRI_shaper_t* shaper,
     return StringifyJsonShapeData(shaper, buffer, shape, shaped->_data.data, shaped->_data.length);
   }
 
-  TRI_AppendCharStringBuffer(buffer, '{');
+  res = TRI_AppendCharStringBuffer(buffer, '{');
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return false;
+  }
 
   ok = StringifyJsonShapeDataArray(shaper, buffer, shape, shaped->_data.data, shaped->_data.length, false, &num);
 
   if (0 < num) {
-    TRI_AppendCharStringBuffer(buffer, ',');
+    res = TRI_AppendCharStringBuffer(buffer, ',');
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return false;
+    }
   }
 
   if (! ok) {
     return false;
   }
 
-  TRI_Stringify2Json(buffer, augment);
+  res = TRI_Stringify2Json(buffer, augment);
 
-  TRI_AppendCharStringBuffer(buffer, '}');
+  if (res != TRI_ERROR_NO_ERROR) {
+    return false;
+  }
+
+  res = TRI_AppendCharStringBuffer(buffer, '}');
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return false;
+  }
 
   return true;
 }

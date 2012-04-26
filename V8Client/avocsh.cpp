@@ -948,12 +948,12 @@ static void RunShell (v8::Handle<v8::Context> context) {
 
     string i = triagens::basics::StringUtils::trim(input);
     if (i == "exit" || i == "quit") {
-      TRI_FreeString(input);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, input);
       break;
     }
 
     if (i == "help") {
-      TRI_FreeString(input);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, input);
       input = TRI_DuplicateString("help()");
     }
     
@@ -965,7 +965,7 @@ static void RunShell (v8::Handle<v8::Context> context) {
     StartPager();
 
     TRI_ExecuteStringVocBase(context, v8::String::New(input), name, true);
-    TRI_FreeString(input);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, input);
 
     if (tryCatch.HasCaught()) {
       cout << TRI_StringifyV8Exception(&tryCatch);
@@ -1134,7 +1134,7 @@ int main (int argc, char* argv[]) {
 #endif
 #endif
 
-    TRI_FreeString(binaryPath);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, binaryPath);
   }
 
   // parse the program options

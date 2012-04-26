@@ -2680,14 +2680,29 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* sim,
 
   if (location != NULL) {
     loc = shaper->findAttributePathByName(shaper, location);
+
+    if (loc == 0) {
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+      return NULL;
+    }
   }
 
   if (latitude != NULL) {
     lat = shaper->findAttributePathByName(shaper, latitude);
+
+    if (loc == 0) {
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+      return NULL;
+    }
   }
 
   if (longitude != NULL) {
     lon = shaper->findAttributePathByName(shaper, longitude);
+
+    if (loc == 0) {
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+      return NULL;
+    }
   }
 
   // check, if we know the index
@@ -2699,9 +2714,7 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* sim,
   }
   else {
     TRI_set_errno(TRI_ERROR_INTERNAL);
-
     LOG_TRACE("expecting either 'location' or 'latitude' and 'longitude'");
-
     return NULL;
   }
 
@@ -2787,6 +2800,17 @@ static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collecti
 
     path = *((char**)(TRI_AtVector(attributes,j)));    
     pid  = shaper->findAttributePathByName(shaper, path);   
+
+    if (pid == 0) {
+      TRI_DestroyVector(&paths);
+      TRI_DestroyVectorPointer(&fields);
+
+      if (created != NULL) {
+        *created = false;
+      }
+
+      return NULL;
+    }
 
     TRI_PushBackVectorPointer(&fields, path);
     TRI_PushBackVector(&paths, &pid);
@@ -2884,6 +2908,13 @@ static TRI_index_t* CreatePriorityQueueIndexSimCollection (TRI_sim_collection_t*
   for (j = 0;  j < attributes->_length;  ++j) {
     char* path = *((char**)(TRI_AtVector(attributes,j)));    
     TRI_shape_pid_t shape = shaper->findAttributePathByName(shaper, path);   
+
+    if (shape == 0) {
+      TRI_DestroyVector(&paths);
+      TRI_DestroyVectorPointer(&fields);
+      return NULL;
+    }
+
     TRI_PushBackVector(&paths, &shape);
     TRI_PushBackVectorPointer(&fields, path);
   }
@@ -2981,6 +3012,14 @@ static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* coll
   for (j = 0;  j < attributes->_length;  ++j) {
     char* path = *((char**)(TRI_AtVector(attributes,j)));    
     TRI_shape_pid_t shape = shaper->findAttributePathByName(shaper, path);   
+
+    if (shape == 0) {
+      TRI_DestroyVector(&paths);
+      TRI_DestroyVectorPointer(&fields);
+
+      return NULL;
+    }
+
     TRI_PushBackVector(&paths, &shape);
     TRI_PushBackVectorPointer(&fields, path);
   }

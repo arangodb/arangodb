@@ -117,17 +117,17 @@ string const& JSLoader::findScript (string const& name) {
 
     for (size_t i = 0; i < parts.size(); i++) {
       char* filename = TRI_Concatenate2File(parts.at(i).c_str(), name.c_str());
-      char* result = TRI_SlurpFile(filename);
+      char* result = TRI_SlurpFile(TRI_CORE_MEM_ZONE, filename);
 
       if (result == 0 && (i == parts.size() - 1)) {
         LOGGER_ERROR << "cannot locate file '" << name.c_str() << "': " << TRI_last_error();
       }
 
-      TRI_FreeString(filename);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
       if (result != 0) {
         _scripts[name] = result;
-        TRI_FreeString(result);
+        TRI_FreeString(TRI_CORE_MEM_ZONE, result);
         return _scripts[name];
       }
     }

@@ -59,11 +59,13 @@ namespace triagens {
             double requestTimeout,
             double connectTimeout,
             size_t connectRetries) :
-    _hostname (hostname),
-    _port (port),
-    _requestTimeout (requestTimeout),
-    _connectTimeout (connectTimeout),
-    _connectRetries (connectRetries) {
+    _hostname(hostname),
+    _port(port),
+    _requestTimeout(requestTimeout),
+    _connectTimeout(connectTimeout),
+    _connectRetries(connectRetries),
+    _writeBuffer(TRI_UNKNOWN_MEM_ZONE),
+    _readBuffer(TRI_UNKNOWN_MEM_ZONE) {
 
       _lastConnectTime = 0.0;
       _numConnectRetries = 0;

@@ -41,7 +41,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MEMFAIL
-static bool Initialised = false;
+static bool MemFailInitialised = false;
 #endif 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,6 +51,43 @@ static bool Initialised = false;
 #ifdef TRI_ENABLE_MEMFAIL
 static double MemFailProbability;
 #endif 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief core memory zone, allocation will never fail
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_memory_zone_t TriCoreMemZone;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unknown memory zone
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_memory_zone_t TriUnknownMemZone;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Memory
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief core memory zone, allocation will never fail
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_memory_zone_t* TRI_CORE_MEM_ZONE = &TriCoreMemZone;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unknown memory zone
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE = &TriUnknownMemZone;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -73,7 +110,7 @@ static double MemFailProbability;
 void TRI_ActivateMemFailures (double probability) {
   srand(32452843 + time(NULL) * 49979687);
   MemFailProbability = probability;
-  Initialised = true;
+  MemFailInitialised = true;
 }
 #endif 
 
@@ -83,7 +120,7 @@ void TRI_ActivateMemFailures (double probability) {
 
 #ifdef TRI_ENABLE_MEMFAIL
 void TRI_DeactiveMemFailures (void) {
-  Initialised = false;
+  MailFailInitialised = false;
   MemFailProbability = 0.0;
 }
 #endif 
@@ -98,20 +135,29 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n) {
 #ifdef TRI_ENABLE_MEMFAIL
   // if configured with --enable-memfail, we can make calls to malloc fail
   // deliberately. This makes testing memory bottlenecks easier.
-  if (Initialised) {
+
+  if (MemFailInitialised && zone->_failable) {
     if (RAND_MAX * MemFailProbability >= rand ()) {
       errno = ENOMEM;
+      zone->_failed = true;
       return NULL;
     }
   }
+
 #endif
 
   m = malloc((size_t) n);
-  if (m) {
-    // only clear memory if we were able to allocate it beforehand
-    memset(m, 0, (size_t) n);
+
+  if (m == NULL) {
+    if (zone->_failable) {
+      return NULL;
+    }
+
+    printf("PANIC: failed to allocate memory in zone '%d', giving up!", zone->_zid);
+    exit(EXIT_FAILURE);
   }
 
+  memset(m, 0, (size_t) n);
   return m;
 }
 
@@ -129,6 +175,24 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
 
 void TRI_Free (TRI_memory_zone_t* zone, void* m) {
   free(m);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize memory subsystem
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitialiseMemory () {
+  static bool initialised = false;
+
+  if (! initialised) {
+    TriCoreMemZone._zid = 0;
+    TriCoreMemZone._failed = false;
+    TriCoreMemZone._failable = false;
+
+    TriUnknownMemZone._zid = 1;
+    TriUnknownMemZone._failed = false;
+    TriUnknownMemZone._failable = true;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
