@@ -149,11 +149,10 @@ char* LineEditor::prompt (char const* prompt) {
   }
 
   char const* sep = "";
-  char* originalLine = 0; 
 
   while (true) {
     char* result = readline(p);
-    originalLine = result;
+
     p = dotdot.c_str();
 
     if (result == 0) {
@@ -173,6 +172,7 @@ char* LineEditor::prompt (char const* prompt) {
     ++lineno;
 
     // remove any prompt at the beginning of the line
+    char* originalLine = result;
     bool c1 = strncmp(result, prompt, len1) == 0;
     bool c2 = strncmp(result, dotdot.c_str(), len2) == 0;
 
@@ -190,22 +190,20 @@ char* LineEditor::prompt (char const* prompt) {
 
     // extend line and check
     _current += result;
+
     bool ok = isComplete(_current, lineno, strlen(result));
 
+    // cannot use TRI_Free, because it was allocated by the system call readline
+    free(originalLine);
+
+    // stop if line is complete
     if (ok) {
       break;
     }
-
-    TRI_Free(TRI_CORE_MEM_ZONE, originalLine);
   }
 
   char* line = TRI_DuplicateString(_current.c_str());
   _current.clear();
-
-  // avoid memleaks
-  if (originalLine != 0) {
-    TRI_Free(TRI_CORE_MEM_ZONE, originalLine);
-  }
 
   return line;
 }

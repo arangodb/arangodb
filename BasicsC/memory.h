@@ -114,19 +114,34 @@ void TRI_DeactivateMemFailures (void);
 /// @brief basic memory management for allocate
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_ZONE_DEBUG
+#define TRI_Allocate(a,b) TRI_AllocateZ((a),(b),__FILE__,__LINE__)
+void* TRI_AllocateZ (TRI_memory_zone_t*, uint64_t, char const* file, int line);
+#else
 void* TRI_Allocate (TRI_memory_zone_t*, uint64_t);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief basic memory management for reallocate
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_ZONE_DEBUG
+#define TRI_Reallocate(a,b,c) TRI_ReallocateZ((a),(b),(c),__FILE__,__LINE__)
+void* TRI_ReallocateZ (TRI_memory_zone_t*, void*, uint64_t, char const* file, int line);
+#else
 void* TRI_Reallocate (TRI_memory_zone_t*, void*, uint64_t);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief basic memory management for deallocate
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_ZONE_DEBUG
+#define TRI_Free(a,b) TRI_FreeZ((a),(b),__FILE__,__LINE__)
+void TRI_FreeZ (TRI_memory_zone_t*, void*, char const* file, int line);
+#else
 void TRI_Free (TRI_memory_zone_t*, void*);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize memory subsystem

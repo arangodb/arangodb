@@ -58,6 +58,7 @@ static size_t Remaining (TRI_string_buffer_t * self) {
 
 static int Reserve (TRI_string_buffer_t * self, size_t size) {
   size_t len;
+  char* ptr;
 
   if (size < 1) {
     return TRI_ERROR_NO_ERROR;
@@ -68,15 +69,16 @@ static int Reserve (TRI_string_buffer_t * self, size_t size) {
 
     off = self->_current - self->_buffer;
     len = (size_t)(1.2 * (self->_len + size));
+    ptr = TRI_Reallocate(self->_memoryZone, self->_buffer, len + 1);
 
-    self->_buffer = TRI_Reallocate(self->_memoryZone, self->_buffer, self->_len + 1);
-
-    if (self->_buffer == NULL) {
+    if (ptr == NULL) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
+    self->_buffer = ptr;
     self->_len = len;
     self->_current = self->_buffer + off;
+
     memset(self->_current, 0, Remaining(self) + 1);
   }
 

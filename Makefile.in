@@ -125,6 +125,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
 	$(top_srcdir)/m4/configure.basics \
 	$(top_srcdir)/m4/configure.static \
 	$(top_srcdir)/m4/configure.32bit \
+	$(top_srcdir)/m4/configure.memory \
 	$(top_srcdir)/m4/configure.logging \
 	$(top_srcdir)/m4/configure.largefile \
 	$(top_srcdir)/m4/configure.threads \
