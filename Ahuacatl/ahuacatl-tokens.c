@@ -652,7 +652,7 @@ static yyconst flex_int16_t yy_rule_linenum[47] =
 #include <BasicsC/strings.h>
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
-#include "Ahuacatl/ahuacatl-parser.h"
+#include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-grammar.h"
 
 #define YY_EXTRA_TYPE TRI_aql_context_t*

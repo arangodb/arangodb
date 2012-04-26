@@ -87,7 +87,7 @@
 #include <BasicsC/strings.h>
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
-#include "Ahuacatl/ahuacatl-parser.h"
+#include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-error.h"
 
 
