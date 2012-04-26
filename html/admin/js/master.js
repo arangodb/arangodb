@@ -748,6 +748,15 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
   $('#refreshLogButton').live('click', function () {
+    var selected = $("#tabs").tabs( "option", "selected" ); 
+    switch (selected) {
+    case 0:
+      createLogTable(5);
+      break; 
+    default:
+      createLogTable(selected); 
+      break;
+    }
   });
 
 ///////////////////////////////////////////////////////////////////////////////
